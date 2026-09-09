@@ -1698,7 +1698,8 @@
       };
       var over = function (flag) { return flag ? ' data-hyd-over="1"' : ''; };
       var HP = cfg.hyd.parts || {};
-      var trunkOver = !!(HP.trunk && HP.trunk.over);
+      var trunkOver = cfg.hyd.overWhere === 'trunk';
+      var tailOver = cfg.hyd.overWhere === 'beyond';
       var ufhOver = !!(cfg.hyd.ufh && cfg.hyd.ufh.vMax > cfg.hyd.ufh.vLimit);
       // Котлы: весь блок целиком — по нему показывают сопротивление
       // теплообменника и общие числа кольца.
@@ -1707,15 +1708,22 @@
         o.push(zone('boiler', bx, bTop, bx + blocks[bi].w, bBot));
       });
       // Отводы коллектора: полоса вдоль стояка от гребёнки до марки внизу.
-      // Ширина 5 мм — половина шага пары, шире зоны соседей начали бы
-      // перекрываться при сжатом шаге (tapGap ужимается до 2 мм).
+      // Ширина 8 мм при шаге стояков 9 — между соседями остаётся миллиметр.
+      // Уже делать нельзя: под сметой лист ужат до ~560 px, и на 5 мм полоса
+      // выходила шириной в шесть пикселей — попасть в неё мышью не получалось.
       taps.forEach(function (t, i) {
         if (!t.hyd || t.snow) return;
         var x = tapXs[i], y0 = srcY[t.from];
         if (x == null || y0 == null) return;
-        o.push(zone(t.hyd === 'tp' ? 'ufh' : 'trunk', x - 2.5, y0 - 2, x + 2.5, 274,
+        o.push(zone(t.hyd === 'tp' ? 'ufh' : 'trunk', x - 4, y0 - 2, x + 4, 274,
           ' data-hyd-mark="' + (t.mark || '') + '" data-hyd-i="' + (t.hydI || 0) + '"' +
           over(t.hyd === 'tp' ? ufhOver : trunkOver)));
+        // Узкое место за границей листа — отмечаем низ контура, от крана до
+        // марки: дальше труба уходит к потребителю, где оно и находится.
+        if (tailOver && t.hyd === 'rad') {
+          o.push('<rect class="hyd-tail" x="' + n(x - 4) + '" y="248" width="8" height="26"' +
+            ' style="fill:rgba(0,0,0,0);stroke:none"/>');
+        }
       });
     }
 

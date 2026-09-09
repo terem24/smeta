@@ -23672,6 +23672,19 @@ const app = {
                     #scheme_zoom_overlay .hyd-zone[data-hyd-over]:hover {
                         fill: rgba(220, 38, 38, .26) !important;
                     }
+                    /* Узкое место за границей листа: помечаем не сам стояк, а
+                       выход контура внизу — то место, за которым оно лежит. */
+                    #dynamic_scheme .hyd-tail,
+                    #scheme_zoom_overlay .hyd-tail {
+                        fill: rgba(220, 38, 38, .12) !important;
+                        stroke: #dc2626 !important;
+                        stroke-width: .4 !important;
+                        stroke-dasharray: 1.6 1.2 !important;
+                        pointer-events: none;
+                    }
+                    @media print {
+                        #dynamic_scheme .hyd-tail { display: none !important; }
+                    }
                     /* На печати зон нет вовсе: подсветка узкого места — экранная
                        подсказка монтажнику, в рабочей документации ей не место. */
                     @media print {
@@ -23705,11 +23718,19 @@ const app = {
         const f = (v, k) => (Math.round(v * Math.pow(10, k)) / Math.pow(10, k))
             .toFixed(k).replace('.', ',');
         if (w.over) {
+            // Луч, коллектор и клапан прибора на схеме не нарисованы — они у
+            // потребителя, за границей листа. Говорим об этом прямо, иначе
+            // монтажник будет искать на чертеже участок, которого там нет.
+            const beyond = hyd.overWhere === 'beyond';
             return `<div class="hyd-note hyd-note--over">` +
                 `<b>Узкое место:</b> ${esc(w.name)} — ${f(w.v, 2)} м/с при пределе ` +
                 `${f(w.vLim, 1)} м/с. Требуется больший внутренний диаметр.` +
-                `<span class="hyd-note__hint">Участок обведён на схеме красным. ` +
-                `Нажмите на любой стояк или на котёл — покажу его параметры.</span></div>`;
+                `<span class="hyd-note__hint">` +
+                (beyond
+                    ? 'Сам участок за границей схемы, у потребителя: красным отмечены ' +
+                      'выходы контура, по которому он идёт.'
+                    : 'Участок обведён на схеме красным.') +
+                ` Нажмите на стояк или на котёл — покажу его параметры.</span></div>`;
         }
         return `<div class="hyd-note">` +
             `<b>Самый нагруженный участок:</b> ${esc(w.name)} — ${f(w.v, 2)} м/с ` +
@@ -31624,6 +31645,15 @@ const app = {
                 vLim: worstP.vLim || this.RAD_V_MAX, ratio: worstK,
                 over: worstK > 1
             } : null,
+            // Где отмечать превышение на чертеже. Диаметр стояка подбор
+            // выбирает сам и в предел укладывает всегда, а луч Ø16 к прибору
+            // задан жёстко — почти каждое превышение приходится на него.
+            // Луча на схеме нет, он за её границей, и обводить красным стояк
+            // значило бы показать пальцем не туда: 'beyond' отмечает только
+            // низ контура — выход, за которым лежит узкое место.
+            overWhere: (worstP && worstK > 1)
+                ? ((by.trunk && by.trunk.v > (by.trunk.vLim || this.RAD_V_MAX)) ? 'trunk' : 'beyond')
+                : null,
             ufh: ufh
         };
     },
