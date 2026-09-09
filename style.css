@@ -13040,3 +13040,111 @@ body.object-flat #blk_floor_mat_content {
     filter: none;
     opacity: 1;
 }
+
+/* ─── Карточка гидравлики на принципиальной схеме ──────────────────────────
+   Всплывает по клику на прозрачную зону схемы (.hyd-zone, рисует
+   project_scheme.js). Живёт в body, а не внутри #dynamic_scheme: render()
+   удаляет блок схемы целиком при любой правке настроек, и карточка вместе
+   со своими стилями исчезала бы посреди чтения. */
+#hyd_card {
+    position: fixed;
+    z-index: 12000;
+    min-width: 235px;
+    max-width: 330px;
+    padding: 12px 14px 10px;
+    background: #fff;
+    color: #0f172a;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(2, 6, 23, .18);
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+#hyd_card .hyd-card__t {
+    font-weight: 800;
+    font-size: 14px;
+    margin: 0 20px 8px 0;
+}
+
+#hyd_card .hyd-card__r {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 3px 0;
+    border-top: 1px solid #f1f5f9;
+}
+
+#hyd_card .hyd-card__r:first-of-type {
+    border-top: none;
+}
+
+#hyd_card .hyd-card__r > span {
+    color: #64748b;
+}
+
+#hyd_card .hyd-card__r > b {
+    white-space: nowrap;
+}
+
+/* Строка с превышением предела — тем же красным, что и обводка участка на
+   схеме: человек должен связать карточку с подсвеченным местом без пояснений. */
+#hyd_card .hyd-card__r--warn > b,
+#hyd_card .hyd-card__r--warn > span {
+    color: #dc2626;
+}
+
+#hyd_card .hyd-card__s {
+    margin: 9px 0 3px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: #94a3b8;
+}
+
+#hyd_card .hyd-card__x {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+#hyd_card .hyd-card__x:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+
+body.dark-mode #hyd_card {
+    background: #1e293b;
+    color: #e2e8f0;
+    border-color: #334155;
+}
+
+body.dark-mode #hyd_card .hyd-card__r {
+    border-top-color: #334155;
+}
+
+body.dark-mode #hyd_card .hyd-card__r > span {
+    color: #94a3b8;
+}
+
+body.dark-mode #hyd_card .hyd-card__x:hover {
+    background: #334155;
+    color: #e2e8f0;
+}
+
+/* Печать карточку не касается — она экранная. */
+@media print {
+    #hyd_card {
+        display: none !important;
+    }
+}

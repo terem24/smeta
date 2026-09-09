@@ -876,13 +876,13 @@
     function mk(base, i, n) { return n > 1 ? base + '.' + (i + 1) : base; }
     var taps = [];
     for (var ri = 0; ri < radN; ri++) {
-      taps.push({ mark: mk('Т2', ri, radN), color: COL.ret, from: 'ret', dir: 'up', size: thread(cfg.radDn) });
-      taps.push({ mark: mk('Т1', ri, radN), color: COL.supply, from: 'supply', dir: 'down', group: !!cfg.hydro, size: thread(cfg.radDn) });
+      taps.push({ mark: mk('Т2', ri, radN), color: COL.ret, from: 'ret', dir: 'up', size: thread(cfg.radDn), hyd: 'rad', hydI: ri });
+      taps.push({ mark: mk('Т1', ri, radN), color: COL.supply, from: 'supply', dir: 'down', group: !!cfg.hydro, size: thread(cfg.radDn), hyd: 'rad', hydI: ri });
     }
     var tpFrom = taps.length;
     for (var ti = 0; ti < tpN; ti++) {
-      taps.push({ mark: mk('Т21', ti, tpN), color: COL.ret, from: 'ret', dir: 'up', mix: true, size: thread(cfg.tpDn) });
-      taps.push({ mark: mk('Т11', ti, tpN), color: COL.supply, from: 'supply', dir: 'down', pump: true, size: thread(cfg.tpDn) });
+      taps.push({ mark: mk('Т21', ti, tpN), color: COL.ret, from: 'ret', dir: 'up', mix: true, size: thread(cfg.tpDn), hyd: 'tp', hydI: ti });
+      taps.push({ mark: mk('Т11', ti, tpN), color: COL.supply, from: 'supply', dir: 'down', pump: true, size: thread(cfg.tpDn), hyd: 'tp', hydI: ti });
     }
     // Группа загрузки бойлера — такой же отвод коллектора, как остальные:
     // тот же шаг, те же уровни арматуры. Отличие одно — внизу она не идёт
@@ -1680,6 +1680,43 @@
         o.push(diaV(bx3, bottomValveY - 7.2, recDia));
         o.push(bottomMark(bx3, 'Т4', 'up'));
       }
+    }
+
+    // ── зоны гидравлики: прозрачные накладки для карточек на экране ──
+    // Кладутся последними и поверх всего: попадание курсора в SVG решается
+    // порядком отрисовки, и зона обязана лежать над линиями, которые накрывает.
+    // На печати их нет — заливка прозрачная, обводки нет. Стили инлайном, а не
+    // атрибутами: правило «.sheet-a3 rect{stroke:#000;fill:none}» из обёртки
+    // листа иначе обвело бы каждую зону чёрным прямоугольником и сняло заливку,
+    // а вместе с ней и попадание курсора.
+    if (cfg.hyd) {
+      var zone = function (tag, x0, y0, x1, y1, attrs) {
+        return '<rect class="hyd-zone" data-hyd="' + tag + '"' + (attrs || '') +
+          ' x="' + n(Math.min(x0, x1)) + '" y="' + n(Math.min(y0, y1)) +
+          '" width="' + n(Math.abs(x1 - x0)) + '" height="' + n(Math.abs(y1 - y0)) +
+          '" style="fill:rgba(0,0,0,0);stroke:none"/>';
+      };
+      var over = function (flag) { return flag ? ' data-hyd-over="1"' : ''; };
+      var HP = cfg.hyd.parts || {};
+      var trunkOver = !!(HP.trunk && HP.trunk.over);
+      var ufhOver = !!(cfg.hyd.ufh && cfg.hyd.ufh.vMax > cfg.hyd.ufh.vLimit);
+      // Котлы: весь блок целиком — по нему показывают сопротивление
+      // теплообменника и общие числа кольца.
+      bXs.forEach(function (bx, bi) {
+        if (bx == null || !blocks[bi]) return;
+        o.push(zone('boiler', bx, bTop, bx + blocks[bi].w, bBot));
+      });
+      // Отводы коллектора: полоса вдоль стояка от гребёнки до марки внизу.
+      // Ширина 5 мм — половина шага пары, шире зоны соседей начали бы
+      // перекрываться при сжатом шаге (tapGap ужимается до 2 мм).
+      taps.forEach(function (t, i) {
+        if (!t.hyd || t.snow) return;
+        var x = tapXs[i], y0 = srcY[t.from];
+        if (x == null || y0 == null) return;
+        o.push(zone(t.hyd === 'tp' ? 'ufh' : 'trunk', x - 2.5, y0 - 2, x + 2.5, 274,
+          ' data-hyd-mark="' + (t.mark || '') + '" data-hyd-i="' + (t.hydI || 0) + '"' +
+          over(t.hyd === 'tp' ? ufhOver : trunkOver)));
+      });
     }
 
     return o.join('');

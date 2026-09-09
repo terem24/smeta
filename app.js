@@ -23563,6 +23563,10 @@ const app = {
         return cfg ? this._renderSchemeVector(cfg) : this._renderSchemeLayers(spec);
     },
     _renderSchemeVector: function (cfg) {
+        // Карточкам нужен тот же cfg, по которому нарисована схема: рендер
+        // возвращает строку, и достать его из DOM потом неоткуда.
+        this._schemeCfgCache = cfg;
+        this.bindSchemeHyd();
         // Лист А3 (420×297) без рамки и штампа: смета — не рабочая
         // документация, шапка у неё своя. Координаты композитора абсолютные,
         // поэтому viewBox берём во весь лист.
@@ -23645,8 +23649,222 @@ const app = {
                             print-color-adjust: exact !important;
                         }
                     }
-                </style><div class="scheme-svg-wrap" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div></div>`;
+                    /* Гидравлика на схеме: прозрачные зоны из project_scheme.js.
+                       Сами по себе не видны — подсвечиваются только под курсором
+                       и там, где участок вышел за предел скорости. */
+                    #dynamic_scheme .hyd-zone,
+                    #scheme_zoom_overlay .hyd-zone {
+                        cursor: pointer;
+                        transition: fill .15s;
+                    }
+                    #dynamic_scheme .hyd-zone:hover,
+                    #scheme_zoom_overlay .hyd-zone:hover {
+                        fill: rgba(37, 99, 235, .16) !important;
+                    }
+                    #dynamic_scheme .hyd-zone[data-hyd-over],
+                    #scheme_zoom_overlay .hyd-zone[data-hyd-over] {
+                        fill: rgba(220, 38, 38, .14) !important;
+                        stroke: #dc2626 !important;
+                        stroke-width: .4 !important;
+                        stroke-dasharray: 1.6 1.2 !important;
+                    }
+                    #dynamic_scheme .hyd-zone[data-hyd-over]:hover,
+                    #scheme_zoom_overlay .hyd-zone[data-hyd-over]:hover {
+                        fill: rgba(220, 38, 38, .26) !important;
+                    }
+                    /* На печати зон нет вовсе: подсветка узкого места — экранная
+                       подсказка монтажнику, в рабочей документации ей не место. */
+                    @media print {
+                        #dynamic_scheme .hyd-zone { display: none !important; }
+                        #dynamic_scheme .hyd-note { display: none !important; }
+                    }
+                    #dynamic_scheme .hyd-note {
+                        margin: 8px auto 0; max-width: 900px;
+                        font-size: 13px; line-height: 1.45; color: #334155;
+                        background: #f1f5f9; border-left: 3px solid #64748b;
+                        border-radius: 0 8px 8px 0; padding: 8px 12px;
+                    }
+                    #dynamic_scheme .hyd-note.hyd-note--over {
+                        color: #7f1d1d; background: #fef2f2; border-left-color: #dc2626;
+                    }
+                    #dynamic_scheme .hyd-note .hyd-note__hint {
+                        display: block; margin-top: 4px; font-size: 12px; opacity: .8;
+                    }
+                </style><div class="scheme-svg-wrap" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>${this._schemeHydNote(cfg.hyd)}</div>`;
     },
+
+    /**
+     * Плашка под схемой: какой участок кольца ближе всех к своему пределу
+     * скорости. Числа — из buildSchemeHydro, то есть те же, что на листе
+     * гидравлики; формулировка превышения — оттуда же, чтобы лист и схема
+     * не расходились в словах.
+     */
+    _schemeHydNote: function (hyd) {
+        if (!hyd || !hyd.worst) return '';
+        const w = hyd.worst, esc = s => this._hydEsc(s);
+        const f = (v, k) => (Math.round(v * Math.pow(10, k)) / Math.pow(10, k))
+            .toFixed(k).replace('.', ',');
+        if (w.over) {
+            return `<div class="hyd-note hyd-note--over">` +
+                `<b>Узкое место:</b> ${esc(w.name)} — ${f(w.v, 2)} м/с при пределе ` +
+                `${f(w.vLim, 1)} м/с. Требуется больший внутренний диаметр.` +
+                `<span class="hyd-note__hint">Участок обведён на схеме красным. ` +
+                `Нажмите на любой стояк или на котёл — покажу его параметры.</span></div>`;
+        }
+        return `<div class="hyd-note">` +
+            `<b>Самый нагруженный участок:</b> ${esc(w.name)} — ${f(w.v, 2)} м/с ` +
+            `при пределе ${f(w.vLim, 1)} м/с, запас ${Math.round((1 - w.ratio) * 100)} %.` +
+            `<span class="hyd-note__hint">Нажмите на стояк или на котёл — ` +
+            `покажу расход, скорость и потери этого участка.</span></div>`;
+    },
+
+    _hydEsc: function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    },
+
+    /**
+     * Карточка участка по клику на схеме. Зоны рисует project_scheme.js
+     * (класс .hyd-zone, атрибут data-hyd), обработчик один на документ и в
+     * фазе перехвата: обёртка схемы по клику открывает полноэкранный режим,
+     * и всплытие до неё надо остановить раньше, чем она сработает. Тот же
+     * обработчик обслуживает и клон схемы в полноэкранном оверлее.
+     */
+    bindSchemeHyd: function () {
+        if (this._hydBound) return;
+        this._hydBound = true;
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            if (!t || !t.closest) return;
+            if (t.closest('#hyd_card')) return;          // клик внутри карточки
+            const z = t.closest('.hyd-zone');
+            if (!z) { this.closeHydCard(); return; }
+            e.stopPropagation();
+            e.preventDefault();
+            this.showHydCard(z, e.clientX, e.clientY);
+        }, true);
+        window.addEventListener('keydown', e => {
+            if (e.key === 'Escape') this.closeHydCard();
+        });
+    },
+
+    closeHydCard: function () {
+        const el = document.getElementById('hyd_card');
+        if (el) el.remove();
+    },
+
+    showHydCard: function (zoneEl, cx, cy) {
+        this.closeHydCard();
+        const cfg = this._schemeCfgCache;
+        const hyd = cfg && cfg.hyd;
+        if (!hyd) return;
+        const kind = zoneEl.getAttribute('data-hyd');
+        const mark = zoneEl.getAttribute('data-hyd-mark') || '';
+        const idx = parseInt(zoneEl.getAttribute('data-hyd-i'), 10) || 0;
+        const body = kind === 'boiler' ? this._hydCardBoiler(hyd)
+            : kind === 'ufh' ? this._hydCardUfh(hyd, mark, idx)
+                : this._hydCardTrunk(hyd, mark);
+        if (!body) return;
+        const el = document.createElement('div');
+        el.id = 'hyd_card';
+        el.innerHTML = `<button type="button" class="hyd-card__x" aria-label="Закрыть">✕</button>
+            <div class="hyd-card__t">${body.title}</div>${body.rows}`;
+        document.body.appendChild(el);
+        el.querySelector('.hyd-card__x').addEventListener('click', () => this.closeHydCard());
+        // Держим карточку в пределах окна: у правого края она уезжала за экран,
+        // а на телефоне — под нижнюю панель.
+        const r = el.getBoundingClientRect();
+        el.style.left = Math.min(Math.max(8, cx + 14), window.innerWidth - r.width - 8) + 'px';
+        el.style.top = Math.min(Math.max(8, cy + 14), window.innerHeight - r.height - 8) + 'px';
+    },
+
+    // ── содержимое карточек ────────────────────────────────────────────────
+    _hydRow: function (label, value, warn) {
+        return `<div class="hyd-card__r${warn ? ' hyd-card__r--warn' : ''}">` +
+            `<span>${this._hydEsc(label)}</span><b>${this._hydEsc(value)}</b></div>`;
+    },
+
+    _hydNum: function (v, k, unit) {
+        if (v == null || !isFinite(v)) return '—';
+        return (Math.round(v * Math.pow(10, k)) / Math.pow(10, k)).toFixed(k)
+            .replace('.', ',') + (unit ? ' ' + unit : '');
+    },
+
+    _hydCardBoiler: function (hyd) {
+        const P = hyd.parts || {}, R = [];
+        if (P.boiler) R.push(this._hydRow('Теплообменник котла', this._hydNum(P.boiler.dp, 1, 'кПа')));
+        R.push(this._hydRow('Режим', hyd.regime + ', ΔT ' + this._hydNum(hyd.dT, 0, '°C')));
+        R.push(this._hydRow('Расход системы', this._hydNum(hyd.flow, 2, 'м³/ч')));
+        R.push(this._hydRow('Потери кольца', this._hydNum(hyd.dp, 1, 'кПа')));
+        R.push(this._hydRow('Требуемый напор', this._hydNum(hyd.head, 2, 'м')));
+        if (hyd.pump) {
+            R.push(this._hydRow('Насос', hyd.pump.label));
+            R.push(this._hydRow('Напор насоса', this._hydNum(hyd.pump.avail, 2, 'м') +
+                (hyd.pump.reserve ? ' (запас ×' + this._hydNum(hyd.pump.reserve, 1, '') + ')' : '')));
+        } else {
+            R.push(this._hydRow('Насос', 'не подобран', true));
+        }
+        return { title: 'Котёл и кольцо системы', rows: R.join('') };
+    },
+
+    _hydCardTrunk: function (hyd, mark) {
+        const P = hyd.parts || {}, t = P.trunk;
+        if (!t) return null;
+        const R = [];
+        if (t.d) R.push(this._hydRow('Диаметр', 'Ø' + t.d));
+        if (t.flow) R.push(this._hydRow('Расход', this._hydNum(t.flow, 2, 'м³/ч')));
+        R.push(this._hydRow('Скорость', this._hydNum(t.v, 2, 'м/с') +
+            (t.vLim ? ' (предел ' + this._hydNum(t.vLim, 1, '') + ')' : ''), t.over));
+        if (t.len) R.push(this._hydRow('Длина', this._hydNum(t.len, 0, 'м')));
+        R.push(this._hydRow('Потери участка', this._hydNum(t.dp, 1, 'кПа')));
+        if (P.group) R.push(this._hydRow('Насосная группа', this._hydNum(P.group.dp, 1, 'кПа')));
+        // Коллектор, луч и клапан прибора на листе не нарисованы — они за
+        // границей схемы, у потребителя. Но кольцо считается по ним, и без
+        // них карточка стояка обрывалась бы на полпути.
+        const tail = [P.manifold, P.loop, P.valve].filter(Boolean);
+        if (tail.length) {
+            R.push('<div class="hyd-card__s">Дальше по контуру, за границей листа</div>');
+            tail.forEach(p => R.push(this._hydRow(
+                String(p.name).replace(/,\s*[\d.,]+\s*м$/, ''),
+                this._hydNum(p.dp, 1, 'кПа') + (p.v ? ' · ' + this._hydNum(p.v, 2, 'м/с') : ''),
+                p.over)));
+        }
+        return {
+            title: 'Контур отопления' + (mark ? ' ' + this._hydEsc(mark) : ''),
+            rows: R.join('')
+        };
+    },
+
+    _hydCardUfh: function (hyd, mark, idx) {
+        const u = hyd.ufh;
+        if (!u || !u.mans || !u.mans.length) return null;
+        // Отводы Т11 идут в том же порядке, что коллекторы в расчёте. Если
+        // счёт разошёлся (усечённые одинаковые контуры, местный узел подмеса
+        // без своей группы), показываем итог по всему полу: подписать один
+        // коллектор данными другого хуже, чем не подписать вовсе.
+        const m = u.mans[idx] || null;
+        const R = [];
+        if (m) {
+            if (m.label) R.push(this._hydRow('Коллектор', m.label));
+            if (m.outlets) R.push(this._hydRow('Выходов', this._hydNum(m.outlets, 0, 'шт')));
+            R.push(this._hydRow('Расход', this._hydNum(m.flow, 2, 'м³/ч')));
+            R.push(this._hydRow('Требуемый напор', this._hydNum(m.need, 2, 'м')));
+            R.push(this._hydRow('Насос даёт', this._hydNum(m.have, 2, 'м'), !m.ok));
+        } else {
+            R.push(this._hydRow('Коллекторов', this._hydNum(u.mans.length, 0, 'шт')));
+            R.push(this._hydRow('Расход пола', this._hydNum(
+                u.mans.reduce((a, x) => a + (x.flow || 0), 0), 2, 'м³/ч')));
+        }
+        if (u.pump) R.push(this._hydRow('Насос узла', u.pump));
+        if (u.vMax) R.push(this._hydRow('Скорость в петле, макс.',
+            this._hydNum(u.vMax, 2, 'м/с') + ' (предел ' + this._hydNum(u.vLimit, 1, '') + ')',
+            u.vMax > u.vLimit));
+        return {
+            title: 'Тёплый пол' + (mark ? ' ' + this._hydEsc(mark) : ''),
+            rows: R.join('')
+        };
+    },
+
     // Полноэкранный просмотр схемы: на панели сметы лист ужат до ~900 px,
     // и линии 0.2 мм становятся тоньше пикселя. Оверлей даёт масштаб
     // колесом/кнопками и прокрутку перетаскиванием. srcEl — какой SVG
@@ -30875,7 +31093,7 @@ const app = {
             // как R·L·K/1000, отсюда и обратный ход. У арматуры длины нет —
             // там прочерк.
             parts: (h.parts || []).map(x => ({ name: x.name, dp: x.dp, v: x.v || 0,
-                vLim: x.vLim || null,
+                vLim: x.vLim || null, tag: x.tag || null,
                 r: x.len > 0 ? x.dp * 1000 / (x.len * this.RAD_LOCAL_K) : null })),
             balance: bal ? bal.rows.map(r => ({
                 room: r.room, watt: r.watt, flow: r.flow, dp: r.dp,
@@ -31332,6 +31550,84 @@ const app = {
         return notes;
     },
 
+    /**
+     * Гидравлика для принципиальной схемы: те же числа, что на листе
+     * «Гидравлический расчёт», но разложенные по машинным меткам участков
+     * (extra.tag в radHydraulics). Схема по ним подписывает свои стояки и
+     * подсвечивает узкое место.
+     *
+     * Своего расчёта здесь нет — только раскладка уже посчитанного, поэтому
+     * числа на схеме и на листе гидравлики не могут разойтись по определению.
+     * Возвращает null, если радиаторной части в смете нет.
+     */
+    buildSchemeHydro: function () {
+        const h = this.radHydro || this.radHydraulics();
+        if (!h || !h.parts || !h.parts.length) return null;
+        const by = {};
+        h.parts.forEach(p => { if (p.tag && !by[p.tag]) by[p.tag] = p; });
+        const part = t => {
+            const p = by[t];
+            if (!p) return null;
+            return {
+                name: p.name, dp: p.dp, v: p.v || 0, vLim: p.vLim || null,
+                d: p.d || null, len: p.len || null, flow: p.flow || null,
+                over: !!(p.v && p.vLim && p.v > p.vLim)
+            };
+        };
+        // Узкое место — участок, ближе всех подошедший к СВОЕМУ пределу
+        // скорости. Именно к своему: у магистрали и у луча пределы разные
+        // (СП 60.13330.2020, табл. И.1), и один общий максимум по м/с назвал бы
+        // узким местом не тот участок — на магистрали 1,1 м/с это норма, а на
+        // луче с клапаном прибора уже перебор.
+        let worstP = null, worstK = 0;
+        h.parts.forEach(p => {
+            if (!(p.v > 0) || !p.tag) return;
+            const k = p.v / (p.vLim || this.RAD_V_MAX);
+            if (k > worstK) { worstK = k; worstP = p; }
+        });
+        const reg = this.radRegime();
+        const pump = h.pump;
+        // Тёплый пол: коллекторы идут отдельным списком — у каждого свой
+        // расход и свой требуемый напор, и отводы Т11 на схеме соответствуют
+        // им по порядку. Если счёт коллекторов и отводов разойдётся, схема
+        // покажет по контуру общие числа, а не чужие.
+        const b = this._ufhBal;
+        const ufh = (b && b.mans && b.mans.length) ? {
+            mans: b.mans.map(m => {
+                const have = this.ufhPumpHead(m.flow, b.pump);
+                return {
+                    label: m.label, flow: m.flow, need: m.need, have: have,
+                    ok: have >= m.need, outlets: m.outlets || null
+                };
+            }),
+            pump: b.pump ? (b.pump.label || '') : '',
+            vMax: (b.mans || []).reduce((a, m) =>
+                (m.rows || []).reduce((c, r) => Math.max(c, r.v || 0), a), 0),
+            vLimit: this.UFH_V_MAX,
+            ok: !!b.ok
+        } : null;
+        return {
+            regime: reg.label, dT: reg.dt,
+            flow: h.flow, dp: h.dp, head: h.head,
+            branches: h.branches || 1,
+            pump: pump ? {
+                label: pump.label, avail: pump.avail,
+                reserve: h.head > 0 ? pump.avail / h.head : 0
+            } : null,
+            parts: {
+                boiler: part('boiler'), group: part('group'),
+                trunk: part('trunk'), trunkFar: part('trunkFar'),
+                manifold: part('manifold'), loop: part('loop'), valve: part('valve')
+            },
+            worst: worstP ? {
+                tag: worstP.tag, name: worstP.name, v: worstP.v,
+                vLim: worstP.vLim || this.RAD_V_MAX, ratio: worstK,
+                over: worstK > 1
+            } : null,
+            ufh: ufh
+        };
+    },
+
     // Конфигурация принципиальной схемы (project_scheme.js): состав системы
     // определяется по state и позициям сметы — тем же способом, каким
     // renderScheme собирает слои старой PNG-схемы. Возвращает null, если в
@@ -31550,7 +31846,11 @@ const app = {
                 cascade: !!this.thermaticConfig.cascade,
                 dhwSensor: this.thermaticConfig.dhw === 'boiler',
                 mixServo: (this.thermaticConfig.mixCount || 0) > 0
-            } : null
+            } : null,
+            // Гидравлика по меткам участков: схема рисует по ней прозрачные
+            // зоны для карточек и подсвечивает стояки, вышедшие за предел
+            // скорости. Нет радиаторной части — нет и зон.
+            hyd: this.buildSchemeHydro()
         };
     },
 
@@ -43989,6 +44289,10 @@ const app = {
 
         const parts = [];
         let dp = 0;
+        // extra.tag — машинная метка участка: по ней принципиальная схема
+        // находит, к какому месту чертежа относится строка расчёта. Разбирать
+        // для этого подпись регуляркой нельзя: в неё входят и диаметр, и
+        // метраж, и номер ветки, и формулировка меняется от схемы к схеме.
         const add = (name, val, extra) => { parts.push(Object.assign({ name: name, dp: val }, extra || {})); dp += val; };
 
         if (tee) {
@@ -44006,11 +44310,15 @@ const app = {
             const near = this.radPipeDrop(flowBranch, dNear, lenNear, fam);
             const far = this.radPipeDrop(flowBranch / 2, dFar, lenFar, fam);
             add('Магистраль Ø' + dNear + ', ' + lenNear.toFixed(0) + ' м', near.dp,
-                { v: near.v, vLim: this.RAD_V_MAX_TRUNK, len: lenNear });
+                { v: near.v, vLim: this.RAD_V_MAX_TRUNK, len: lenNear,
+                    tag: 'trunk', d: dNear, flow: flowBranch });
             add('Магистраль Ø' + dFar + ', ' + lenFar.toFixed(0) + ' м', far.dp,
-                { v: far.v, vLim: this.RAD_V_MAX_TRUNK, len: lenFar });
+                { v: far.v, vLim: this.RAD_V_MAX_TRUNK, len: lenFar,
+                    tag: 'trunkFar', d: dFar, flow: flowBranch / 2 });
             const br = this.radPipeDrop(flowWorst, 16, 2 * 1.5);
-            add('Отвод к прибору Ø16', br.dp, { v: br.v, vLim: this.RAD_V_MAX, len: 2 * 1.5 });
+            add('Отвод к прибору Ø16', br.dp,
+                { v: br.v, vLim: this.RAD_V_MAX, len: 2 * 1.5,
+                    tag: 'loop', d: 16, flow: flowWorst });
         } else {
             // Коллекторная: от котельной до шкафа идёт один магистральный
             // участок, дальше лучи Ø16. Участок берём ровно тот, что смета
@@ -44031,24 +44339,28 @@ const app = {
             const tr = this.radPipeDrop(flowTr, dTr, trLen, span.fam);
             add((span.riser ? 'Стояк на второй этаж Ø' : 'Подводка к коллектору Ø') + dTr +
                 (branches > 1 ? ' (ветка ' + branches + '-я часть)' : '') +
-                ', ' + trLen.toFixed(0) + ' м', tr.dp, { v: tr.v, vLim: this.RAD_V_MAX_TRUNK, len: trLen });
-            add('Коллектор', this.RAD_MAN_DP);
+                ', ' + trLen.toFixed(0) + ' м', tr.dp,
+                { v: tr.v, vLim: this.RAD_V_MAX_TRUNK, len: trLen,
+                    tag: 'trunk', d: dTr, flow: flowTr, riser: !!span.riser });
+            add('Коллектор', this.RAD_MAN_DP, { tag: 'manifold' });
             const loop = this.radPipeDrop(flowWorst, 16, 2 * avgRun * 1.1);
             add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * avgRun * 1.1).toFixed(0) + ' м', loop.dp,
-                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1 });
+                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1,
+                    tag: 'loop', d: 16, flow: flowWorst });
         }
 
         // Клапан прибора на расчётной преднастройке: dp = (G/Kv)² · 100 кПа.
         const valve = this.radValveKv();
         const valveDp = Math.pow(flowWorst / valve.kv, 2) * 100;
-        add('Клапан прибора (' + valve.label + ')', valveDp);
+        add('Клапан прибора (' + valve.label + ')', valveDp,
+            { tag: 'valve', flow: flowWorst, kv: valve.kv });
         // Насосную группу считаем, только если она в смете есть. На небольшом
         // одноэтажном доме (до 150 м², до 20 кВт, без других групп на коллекторе)
         // радиаторы идут от встроенного насоса котла, группы нет вовсе — а её
         // 12 кПа всё равно прибавлялись к кольцу и завышали требуемый напор.
         const hasGroup = (parseInt(this._radGroupsCount, 10) || 0) > 0;
-        if (hasGroup) add('Насосная группа и обвязка', this.RAD_GROUP_DP);
-        add('Теплообменник котла', this.RAD_BOILER_DP);
+        if (hasGroup) add('Насосная группа и обвязка', this.RAD_GROUP_DP, { tag: 'group' });
+        add('Теплообменник котла', this.RAD_BOILER_DP, { tag: 'boiler' });
 
         const vMax = parts.reduce((a, p) => Math.max(a, p.v || 0), 0);
         // Шум проверяем у каждого участка по его собственному пределу: у
