@@ -14793,7 +14793,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -15711,6 +15711,12 @@ const app = {
             }
             if (u.is_blocked) {
                 badge += `<br><span style="color:#fff; background:#EF4444; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px;">ЗАБЛОКИРОВАН</span>`;
+            }
+            // Доступ приостановлен за долгое отсутствие. Отдельно от блокировки:
+            // тут никто ничего не нарушал, и снимается это другой кнопкой.
+            if (u.frozen_at) {
+                const delOn = new Date(new Date(u.frozen_at).getTime() + 45 * 864e5);
+                badge += `<br><span title="Приостановлен ${new Date(u.frozen_at).toLocaleDateString('ru-RU')} за долгое отсутствие. Удаление ${delOn.toLocaleDateString('ru-RU')}, если не вернуть доступ." style="color:#fff; background:#0EA5E9; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px; cursor:help;">🧊 ЗАМОРОЖЕН</span>`;
             }
             let name = this.getAdminUserDisplayName(u);
             let nameEscaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -24547,6 +24553,11 @@ const app = {
 
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
+                            ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 45 дней.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 45 * 864e5).toLocaleDateString('ru-RU')}.
+                                <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
+                            </div>` : ''}
                             ${(() => {
                                 const flags = this.suspiciousProfileFlags(user);
                                 if (!flags.length) return '';
@@ -27746,7 +27757,7 @@ const app = {
             };
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked';
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at';
 
             let { data: upsertResult, error: upsertError } = await supabaseClient
                 .from('users')
@@ -27790,6 +27801,20 @@ const app = {
                 this.syncUI();
                 this.render();
                 app.alert('Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.');
+                return;
+            }
+            // Доступ приостановлен ночным проходом за долгое отсутствие (frozen_at,
+            // см. миграцию 20260909_inactivity_lifecycle.sql). Это не блокировка за
+            // нарушение, поэтому и текст другой: человек ничего плохого не сделал,
+            // ему нужно объяснить, что делать дальше.
+            if (uRow && uRow.frozen_at) {
+                await supabaseClient.auth.signOut();
+                delete this.state.tgUser;
+                this.state.accountType = 'base';
+                this.saveState();
+                this.syncUI();
+                this.render();
+                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на dima24ba@gmail.com, и мы вернём доступ в тот же день.');
                 return;
             }
             if (uRow) {
@@ -28102,6 +28127,32 @@ const app = {
             }
         } catch (e) {
             app.alert('Не удалось изменить статус блокировки: ' + e.message);
+        }
+    },
+    // Снимает автоматическую заморозку за долгое отсутствие. Отдельно от
+    // toggleUserBlocked: та снимает блокировку, поставленную администратором руками,
+    // и трогать её здесь нельзя — иначе «вернуть доступ» заодно разблокировало бы
+    // того, кого закрыли за дело. Отсчёт молчания при этом начинается заново
+    // (unfreeze_user двигает last_visited), иначе ночной проход заморозил бы
+    // человека той же ночью.
+    unfreezeUser: async function (userId) {
+        if (this.isReadOnlyAdmin()) {
+            app.alert('Режим просмотра. Изменение доступа запрещено.');
+            return;
+        }
+        if (!await app.confirm('Вернуть доступ этой учётной записи? Отсчёт неактивности начнётся заново.')) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('unfreeze_user', { target: userId });
+            if (error) throw error;
+            if (data === false) {
+                app.alert('Учётка не была заморожена — возвращать нечего.');
+            } else {
+                app.alert('✅ Доступ возвращён. Человек снова может войти.');
+            }
+            this.renderAdminMain();
+            this.loadAdminData(this._adminOffset);
+        } catch (e) {
+            app.alert('Не удалось вернуть доступ: ' + (e.message || e));
         }
     },
     // Безвозвратно стирает профиль пользователя и все связанные с ним данные (сметы,
