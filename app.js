@@ -37344,17 +37344,20 @@ const app = {
         const eqLen = Math.round((run + air + bends * CHIMNEY_EQ.bend90) * 10) / 10;
         const limit = this.chimneyLimitFor(b, 'D80');
         const warns = [];
+        // notes — не ошибки, а справка: в красный блок над разделом им не место,
+        // они уходят под значок «i» первой позиции дымохода.
+        const notes = [];
         if (eqLen > limit.max) {
             warns.push(`Суммарная длина каналов ${String(eqLen).replace('.', ',')} м больше предела ${limit.max} м${limit.exact ? '' : ' (ориентировочного)'} — даже раздельная система столько не продавит. Сократите трассу или возьмите котёл помощнее.`);
         }
         if (!limit.exact) {
-            warns.push(`Предел ${limit.max} м для раздельной системы взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
+            notes.push(`Предел ${limit.max} м для раздельной системы взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
         }
-        warns.push(`Посчитано так: дымовой канал ${String(run).replace('.', ',')} м ${onRoof ? 'над кровлей' : 'на фасад'}, воздухозабор ${air} м через стену рядом с котельной. Если на объекте иначе, поправьте количество труб прямо в смете.`);
+        notes.push(`Посчитано так: дымовой канал ${String(run).replace('.', ',')} м ${onRoof ? 'над кровлей' : 'на фасад'}, воздухозабор ${air} м через стену рядом с котельной. Если на объекте иначе, поправьте количество труб прямо в смете.`);
         if (!onRoof && this.chimneyFacadeDoubtful()) {
             warns.push('Дом выше одного этажа, а дым выходит на фасад: СП 60.13330 п. 6.5.5 запрещает фасадный выброс в многоэтажных жилых зданиях. Проверьте по объекту — обычно дымовой канал выводят над кровлей.');
         }
-        return { parts: parts, eqLen: eqLen, dn: 'D80', limit: limit, route: 'split', warns: warns };
+        return { parts: parts, eqLen: eqLen, dn: 'D80', limit: limit, route: 'split', warns: warns, notes: notes };
     },
 
     buildChimney: function (b, kit) {
@@ -37493,10 +37496,13 @@ const app = {
         if (route === 'wall' && this.chimneyFacadeDoubtful()) {
             warns.push('Дом выше одного этажа: каталог STOUT допускает вывод коаксиала на фасад только в одноэтажных домах, а СП 60.13330 п. 6.5.5 прямо запрещает фасадный выброс в многоэтажных жилых зданиях. Проверьте по объекту — обычно такой дымоход выводят над кровлей.');
         }
+        // Справка о происхождении предела — под значок «i» дымохода, а не в
+        // красный блок: он только для ошибок, которые надо исправить.
+        const notes = [];
         if (!limit.exact) {
-            warns.push(`Предел ${limit.max} м взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
+            notes.push(`Предел ${limit.max} м взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
         }
-        return { parts: res.parts, eqLen: res.eqLen, dn: res.dn, limit: limit, route: route, warns: warns };
+        return { parts: res.parts, eqLen: res.eqLen, dn: res.dn, limit: limit, route: route, warns: warns, notes: notes };
     },
 
     // Смена системы или выхода меняет и разумную длину трассы: у стены это метр,
@@ -53322,12 +53328,19 @@ const app = {
                 // кровлей комплект не годится: он фасадный, трасса собирается целиком.
                 const _chRoute = this.buildChimney(b, ch);
                 if (_chRoute && _chRoute.parts.length) {
+                    // Справочные замечания (откуда взят предел длины) — под «i»
+                    // первой позиции дымохода, а не красным над разделом.
+                    const _chNote = (_chRoute.notes && _chRoute.notes.length)
+                        ? `<span style="font-size:11px; line-height:1.4;"><b>Справка по трассе:</b><br>${_chRoute.notes.map(n => '• ' + n).join('<br>')}</span>`
+                        : '';
                     _chRoute.parts.forEach((p, _i) => {
                         const _isKit = (p.item.id === ch.id);
+                        let _desc = _isKit ? this.getDesc('chimney', ch) : (p.tip || null);
+                        if (_i === 0 && _chNote) _desc = _desc ? (_desc + '<br>' + _chNote) : _chNote;
                         addToBill(
                             { ...p.item, sortRank: _i === 0 ? -1 : -0.5, ...(_isKit && ch.chimType === 'cond' ? { noCheapenAlts: true } : {}) },
                             p.qty,
-                            _isKit ? this.getDesc('chimney', ch) : (p.tip || null),
+                            _desc,
                             grp
                         );
                     });
