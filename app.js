@@ -15734,15 +15734,18 @@ const app = {
             </div>
         `;
         } else {
-        // Вкладки растянуты на всю ширину, но отправная точка — содержимое:
-        // flex: 1 0 auto = расти можно, сжиматься нельзя. При равных долях (1 1 0)
-        // длинные подписи вроде «Своё оборудование» резались многоточием, а короткие
-        // держали лишнее место. Запрет на сжатие и означает «текст не съедается»:
-        // если девять вкладок не влезают, ряд переносится на вторую строку.
+        // Ширина вкладки — по её подписи: flex: 0 0 auto, не растём и не сжимаемся.
+        // Ряд переносится на вторую строку, когда не влезает.
+        //
+        // Растягивать остаток ширины на всех (было flex: 1 0 auto) оказалось плохой
+        // идеей везде, где вкладок в строке немного: у менеджера четыре кнопки
+        // раздувались на пол-экрана каждая, а у владельца — четыре кнопки второй
+        // строки до 340 px при своих законных 100. Сжимать (1 1 0) тоже нельзя:
+        // тогда «Своё оборудование» режется многоточием, а короткие держат лишнее.
         navHtml = `
             <div id="admin_nav_tabs" style="display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-shrink: 0; width: 100%; flex-wrap: wrap;">
                 ${ADMIN_TAB_DEFS.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn" title="${t.label}" style="margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 1 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${t.icon}<span class="admin-tab-label"> ${t.label}</span></button>
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn" title="${t.label}" style="margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${t.icon}<span class="admin-tab-label"> ${t.label}</span></button>
                 `).join('')}
             </div>
         `;
