@@ -1273,12 +1273,59 @@ const app = {
     // только то, что можно показать на плашке, и говорит, есть ли ещё места
     // (у каждой компании свой лимит приглашений, distributors.invite_limit).
     //
-    // INVITE_ONLY_REGISTRATION — рубильник «регистрация только по промокоду».
-    // Пока выключен: форма принимает и пустой промокод, как раньше. Включается
-    // последним шагом, когда карточки магазинов заведены. Тех, кто
-    // зарегистрировался до включения, не касается (см. registered_at).
-    INVITE_ONLY_REGISTRATION: false,
+    // Рубильник «регистрация только по промокоду» живёт в базе (таблица
+    // app_settings, ключ registration), включает и выключает его администратор
+    // во вкладке «Дистрибьюторы». Пока выключен, форма принимает и пустой
+    // промокод, как раньше. Тех, кто зарегистрировался до включения, режим не
+    // касается (см. registered_at).
     INVITE_KEY: 'stout_invite',
+
+    // Настройки сайта из базы. Читаются один раз при загрузке страницы, без
+    // входа — режим регистрации нужен форме ещё до появления сессии. Ошибка
+    // чтения (нет связи, таблица ещё не создана) означает «как было»: открытая
+    // регистрация, а не запертая дверь для всех.
+    appSettings: { registration: { mode: 'open' } },
+    _appSettingsPromise: null,
+    loadAppSettings: function (force) {
+        if (this._appSettingsPromise && !force) return this._appSettingsPromise;
+        this._appSettingsPromise = (async () => {
+            try {
+                const { data, error } = await supabaseClient.from('app_settings').select('key, value');
+                if (error) throw error;
+                const merged = Object.assign({}, this.appSettings);
+                (data || []).forEach(row => { if (row && row.key) merged[row.key] = row.value || {}; });
+                this.appSettings = merged;
+            } catch (e) {
+                console.warn('[настройки сайта] не прочитаны, работаем по умолчанию:', e.message || e);
+            }
+            return this.appSettings;
+        })();
+        return this._appSettingsPromise;
+    },
+    inviteOnlyRegistration: function () {
+        const reg = (this.appSettings && this.appSettings.registration) || {};
+        return reg.mode === 'invite';
+    },
+    // Переключатель во вкладке «Дистрибьюторы». Запись защищена политикой
+    // базы: пройдёт только у администратора.
+    setRegistrationMode: async function (mode) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки регистрации запрещено.'); return; }
+        const value = { mode: mode === 'invite' ? 'invite' : 'open' };
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'registration', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { registration: value });
+            app.alert(value.mode === 'invite'
+                ? '🔒 Регистрация закрыта: новые монтажники входят только по промокоду или ссылке менеджера. Тех, кто уже зарегистрирован, это не касается.'
+                : '🔓 Регистрация свободная, как раньше. Промокод остаётся необязательным.');
+        } catch (e) {
+            console.error('[настройки сайта] запись не прошла:', e);
+            app.alert('Не удалось сохранить режим регистрации: ' + (e.message || e) + '. Если таблицы app_settings ещё нет — выполните миграцию 20260911_shop_invites_3_settings.sql.');
+        }
+        if (this._adminTab === 'distributors') this.renderAdminMain();
+    },
 
     captureInvite: function () {
         try {
@@ -6992,9 +7039,29 @@ const app = {
             });
         }
 
+        // Режим регистрации новых монтажников — переключатель сайта, хранится
+        // в базе (app_settings). Только администратору: наблюдателю и менеджеру
+        // карточки компаний и так не показываются.
+        const inviteOnly = this.inviteOnlyRegistration();
+        const regModeHtml = `
+                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; background:${inviteOnly ? 'rgba(217,119,6,0.08)' : 'rgba(16,185,129,0.08)'}; border:1px solid ${inviteOnly ? 'rgba(217,119,6,0.35)' : 'rgba(16,185,129,0.35)'}; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
+                    <span style="font-size:18px; line-height:1;">${inviteOnly ? '🔒' : '🔓'}</span>
+                    <div style="flex:1 1 260px;">
+                        <div style="font-size:13.5px; font-weight:700; color:var(--text-main);">Регистрация новых монтажников: ${inviteOnly ? 'только по промокоду' : 'свободная'}</div>
+                        <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">${inviteOnly
+                            ? 'Новая учётка без промокода или ссылки менеджера упирается в окно «Нужен промокод»: в нём поле кода, платные тарифы и выход. Уже зарегистрированных это не касается.'
+                            : 'Как раньше: промокод в форме необязателен, любой может зарегистрироваться сам. Включите режим «по промокоду», когда карточки магазинов и учётки менеджеров будут готовы.'}</div>
+                    </div>
+                    <select ${isViewer ? 'disabled' : ''} onchange="app.setRegistrationMode(this.value)" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); font-size:13px; font-weight:600;">
+                        <option value="open" ${inviteOnly ? '' : 'selected'}>🔓 Свободная</option>
+                        <option value="invite" ${inviteOnly ? 'selected' : ''}>🔒 Только по промокоду</option>
+                    </select>
+                </div>`;
+
         content.innerHTML += `
             <div style="margin-bottom: 20px;">
                 <h3 style="margin: 0 0 16px; color: var(--text-main);">🏢 Дистрибьюторы</h3>
+                ${regModeHtml}
 
                 <div style="background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                     <h4 style="margin: 0 0 14px; font-size: 14px; color: var(--text-main);" id="dist_form_title">➕ Добавить промокод</h4>
@@ -29158,7 +29225,8 @@ const app = {
         // Применяется при первом входе — см. applyPromoFromRegistration.
         const promoEl = document.getElementById('auth_reg_promo');
         const promoCode = promoEl ? promoEl.value.trim().toUpperCase() : '';
-        if (!promoCode && this.INVITE_ONLY_REGISTRATION) {
+        await this.loadAppSettings();
+        if (!promoCode && this.inviteOnlyRegistration()) {
             const msg = 'Регистрация — по приглашению менеджера магазина-партнёра: введите его промокод. Его выдают бесплатно.';
             if (authErrEl) { authErrEl.innerText = msg; authErrEl.style.display = 'block'; }
             else app.alert(msg);
@@ -29782,7 +29850,8 @@ const app = {
                 // калькулятор не открываем, пока не введён промокод. Старых (без
                 // registered_at) и служебные роли не трогаем. Само окно — после
                 // render(), в общей очереди принудительных окон.
-                this._inviteGateNeeded = !!(this.INVITE_ONLY_REGISTRATION && uRow.registered_at
+                await this.loadAppSettings();
+                this._inviteGateNeeded = !!(this.inviteOnlyRegistration() && uRow.registered_at
                     && !uRow.distributor_id && !this.hasAdminAccess());
 
                 // Загружаем привязку к дистрибьютору
@@ -37814,6 +37883,8 @@ const app = {
 
         this.captureUTM();
         this.captureInvite();
+        // Режим регистрации из базы — в фоне; кто ждёт, дождётся по промису
+        this.loadAppSettings();
         this.applyPricingCurrencyDisplay();
         if (localStorage.getItem('stout_save')) {
             try {
