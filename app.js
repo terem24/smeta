@@ -24389,11 +24389,19 @@ const app = {
             (b == null || g.getAttribute('data-hyd-b') === b));
         switch (d.kind) {
             case 'boiler': return boilers(d.b).concat(part('msup'), part('mret'), part('hydro'));
-            case 'trunk': case 'ufh':
-                return all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
+            case 'trunk': case 'ufh': {
+                const tap = all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
                     g.getAttribute('data-hyd-kind') === (d.kind === 'ufh' ? 'tp' : 'rad') &&
-                    (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i)
-                    .concat(part('msup'), part('mret'), boilers(null), part('hydro'), part('ssup'), part('sret'));
+                    (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i);
+                // Со стрелкой контуры развязаны — в этом весь её смысл: насос
+                // группы гоняет свою воду через стрелку и обратно, а котловой
+                // контур крутится своим кольцом. Тянуть подсветку до котла
+                // значит рисовать путь, которым эта вода не идёт.
+                const sep = part('hydro');
+                return sep.length
+                    ? tap.concat(part('ssup'), part('sret'), sep)
+                    : tap.concat(part('msup'), part('mret'), boilers(null));
+            }
             // Загрузка бойлера: от котла по линии загрузки к змеевику и обратно.
             // Ни гребёнки, ни отводов, ни вторичной пары: при клапане приоритета
             // котёл отсекает отопление физически, а при насосной группе оно
@@ -24511,6 +24519,8 @@ const app = {
         const cfg = this._schemeCfgCache, hyd = cfg && cfg.hyd;
         const esc = s => this._hydEsc(s), num = (v, k, u) => this._hydNum(v, k, u);
         const P = (hyd && hyd.parts) || {};
+        // Есть ли на схеме гидрострелка — от этого зависит и маршрут, и текст.
+        const sep = !!(cfg && cfg.hydro);
         const contour = d.kind === 'trunk' ? 'Контур радиаторов' + (d.mark ? ' ' + d.mark : '')
             : d.kind === 'ufh' ? 'Контур тёплого пола' + (d.mark ? ' ' + d.mark : '')
                 : d.kind === 'dhw' ? 'Контур загрузки бойлера'
@@ -24538,13 +24548,20 @@ const app = {
         if (hyd) {
             if (d.kind === 'trunk') {
                 const t = P.trunk;
-                lines.push('От котла вода идёт по гребёнке и вниз по красному стояку к коллектору радиаторов, ' +
-                    'дальше по лучам к каждому прибору. Остывшая возвращается по синему.');
+                lines.push(sep
+                    ? 'Насос группы берёт воду из гидрострелки и гонит её вниз по красному стояку ' +
+                      'к коллектору радиаторов, дальше по лучам к приборам; остывшая возвращается ' +
+                      'по синему в стрелку. Дальше стрелки этот контур не идёт — она и развязывает ' +
+                      'его с котловым.'
+                    : 'От котла вода идёт по гребёнке и вниз по красному стояку к коллектору радиаторов, ' +
+                      'дальше по лучам к каждому прибору. Остывшая возвращается по синему.');
                 if (t && (d.medium || !d.sym)) lines.push(this._hydWhyDiam(t, hyd.dT));
             } else if (d.kind === 'ufh') {
                 const u = hyd.ufh, m = u && u.mans ? u.mans[d.i] : null;
-                lines.push('От гребёнки вода идёт через узел подмеса к коллектору пола и расходится ' +
-                    'по петлям в стяжке. Обратно — по синему стояку.');
+                lines.push((sep ? 'От гидрострелки' : 'От гребёнки') +
+                    ' вода идёт через узел подмеса к коллектору пола и расходится ' +
+                    'по петлям в стяжке. Обратно — по синему стояку.' +
+                    (sep ? ' Дальше стрелки контур не идёт — она развязывает его с котловым.' : ''));
                 if (m && !d.sym) lines.push('Коллектор ' + esc(m.label || '') + ': ' + num(m.flow, 2, 'м³/ч') +
                     ', насосу нужно ' + num(m.need, 1, 'м') + ' напора, он даёт ' + num(m.have, 1, 'м') +
                     (m.ok ? ' — хватает.' : ' — не хватает.'));
