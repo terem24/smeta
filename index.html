@@ -2852,8 +2852,11 @@
                         <div>
                             <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Сфера деятельности</label>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:center;">
-                                <label class="reg-activity-chip"><input type="checkbox" id="profile_act_installer" value="Монтажник"><span>Монтажник</span></label>
-                                <label class="reg-activity-chip"><input type="checkbox" id="profile_act_seller" value="Продавец"><span>Продавец</span></label>
+                                <!-- Одно из двух, а не галочки: сфера решает, какие вкладки
+                                     кабинета человек видит (см. paidTabsAccess), и «монтажник и
+                                     продавец сразу» открывало обе картины мира одновременно. -->
+                                <label class="reg-activity-chip"><input type="radio" name="profile_activity" id="profile_act_installer" value="Монтажник"><span>Монтажник</span></label>
+                                <label class="reg-activity-chip"><input type="radio" name="profile_activity" id="profile_act_seller" value="Продавец"><span>Продавец</span></label>
                             </div>
                         </div>
 
