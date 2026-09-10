@@ -259,7 +259,12 @@ const Tour = {
     // тексты подменятся на следующем такте tick.
     isSeller: function () {
         try {
-            return !!(window.app && typeof window.app.isSellerOnly === 'function' && window.app.isSellerOnly());
+            // Именно `app`, а не `window.app`: в app.js он объявлен через const, а
+            // const на верхнем уровне свойством window не становится — проверка через
+            // window.app молча возвращала «не продавец» и подсказки оставались
+            // монтажничьими. typeof прикрывает случай, когда app.js ещё не выполнился.
+            if (typeof app === 'undefined' || !app || typeof app.isSellerOnly !== 'function') return false;
+            return !!app.isSellerOnly();
         } catch (e) { return false; }
     },
 
