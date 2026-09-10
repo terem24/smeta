@@ -34114,7 +34114,14 @@ const app = {
         prepareForPrint();
         await this.awaitPrintImages();
 
-        window.print();
+        // Копия готова и картинки дождались — 'beforeprint' не должен собирать её
+        // заново (см. prepareForPrint). Флаг снимает cleanupAfterPrint.
+        app._printBinReady = true;
+        try {
+            window.print();
+        } finally {
+            app._printBinReady = false;
+        }
         this.logPrintedEvent();
         GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
 
@@ -62739,6 +62746,11 @@ document.addEventListener('DOMContentLoaded', function () { app.init(); });
 // executeDownload() на мобильных/планшетах — там PDF скачивается через html2pdf() без
 // настоящего window.print(), поэтому событие 'beforeprint' само по себе не сработает.
 function prepareForPrint() {
+    // Копия уже собрана и картинки дождались (флаг ставит executeDownload перед
+    // window.print()): повторная сборка по 'beforeprint' только навредит — см.
+    // ниже про метку и картинки. Выходим до очистки контейнера.
+    if (typeof app !== 'undefined' && app._printBinReady) return;
+
     document.body.classList.remove('dark-mode');
 
     // 1. Создаем или очищаем скрытый контейнер, который увидит только принтер
@@ -62762,9 +62774,12 @@ function prepareForPrint() {
 
     // Сборка может прийти дважды подряд: executeDownload собирает копию заранее
     // (чтобы дождаться картинок), а потом window.print() поднимает 'beforeprint'
-    // и собирает снова. К этому моменту оригинал уже помечен «спрятать от
-    // принтера» (шаг 5), и клон наследовал метку — на бумагу уходил пустой лист.
-    // Поэтому метку снимаем до клонирования, шаг 5 вернёт её на место.
+    // и собирает снова. Вторая сборка вредна дважды: клон наследовал метку
+    // «спрятать от принтера» (шаг 5) — уходил пустой лист; и картинки в свежих
+    // клонах не успевали к снимку страницы — половина миниатюр печаталась
+    // пустыми клетками. Готовую копию не трогаем (проверка в начале функции),
+    // а на случай сборки по Ctrl+P без предварительной — метку снимаем до
+    // клонирования, шаг 5 вернёт её на место.
     if (printArea) printArea.classList.remove('hide-original-for-print');
     const liveSchemeEarly = document.getElementById('dynamic_scheme');
     if (liveSchemeEarly) liveSchemeEarly.classList.remove('hide-original-for-print');
@@ -62895,6 +62910,7 @@ window.addEventListener('beforeprint', prepareForPrint);
 // функцию — вызывается напрямую из executeDownload() после html2pdf() на мобильных/планшетах,
 // где событие 'afterprint' не наступает (не было настоящего window.print()).
 function cleanupAfterPrint() {
+    if (app) app._printBinReady = false;
     if (app && app.state && app.state.darkMode) {
         document.body.classList.add('dark-mode');
     }
