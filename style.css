@@ -13148,3 +13148,48 @@ body.dark-mode #hyd_card .hyd-card__x:hover {
         display: none !important;
     }
 }
+
+/* ─── Подсказка у курсора на принципиальной схеме ──────────────────────────
+   Появляется при наведении на стояк или котёл вместе с подсветкой пути воды
+   (app.hydHoverOn). Написана словами — для заказчика и менеджера; числа
+   целиком лежат в карточке #hyd_card, которая открывается по клику. */
+#hyd_hint {
+    position: fixed;
+    z-index: 12001;
+    max-width: 340px;
+    padding: 10px 12px 8px;
+    background: rgba(15, 23, 42, .94);
+    color: #f8fafc;
+    border-radius: 10px;
+    box-shadow: 0 10px 28px rgba(2, 6, 23, .28);
+    font-size: 12.5px;
+    line-height: 1.42;
+    pointer-events: none;
+}
+
+#hyd_hint .hyd-hint__t {
+    font-weight: 800;
+    font-size: 13px;
+    margin-bottom: 4px;
+}
+
+#hyd_hint .hyd-hint__l {
+    margin-top: 5px;
+    color: #e2e8f0;
+}
+
+#hyd_hint .hyd-hint__l--warn {
+    color: #fca5a5;
+}
+
+#hyd_hint .hyd-hint__f {
+    margin-top: 7px;
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+@media print {
+    #hyd_hint {
+        display: none !important;
+    }
+}

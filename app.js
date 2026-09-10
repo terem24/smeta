@@ -23567,6 +23567,9 @@ const app = {
         // возвращает строку, и достать его из DOM потом неоткуда.
         this._schemeCfgCache = cfg;
         this.bindSchemeHyd();
+        // Схема сейчас будет удалена и вставлена заново — подсветка и
+        // подсказка от прежней копии повисли бы в воздухе.
+        this.hydHoverOff();
         // Лист А3 (420×297) без рамки и штампа: смета — не рабочая
         // документация, шапка у неё своя. Координаты композитора абсолютные,
         // поэтому viewBox берём во весь лист.
@@ -23685,58 +23688,189 @@ const app = {
                     @media print {
                         #dynamic_scheme .hyd-tail { display: none !important; }
                     }
-                    /* На печати зон нет вовсе: подсветка узкого места — экранная
-                       подсказка монтажнику, в рабочей документации ей не место. */
+                    /* На печати зон нет вовсе: подсветка — экранная подсказка,
+                       в рабочей документации ей не место. */
                     @media print {
-                        #dynamic_scheme .hyd-zone { display: none !important; }
-                        #dynamic_scheme .hyd-note { display: none !important; }
+                        #dynamic_scheme .hyd-zone,
+                        #dynamic_scheme .hyd-ov { display: none !important; }
                     }
-                    #dynamic_scheme .hyd-note {
-                        margin: 8px auto 0; max-width: 900px;
-                        font-size: 13px; line-height: 1.45; color: #334155;
-                        background: #f1f5f9; border-left: 3px solid #64748b;
-                        border-radius: 0 8px 8px 0; padding: 8px 12px;
+                    /* Путь воды при наведении: слой .hyd-ov поверх схемы — клоны
+                       труб маршрута в три слоя (светлое гало, линия своим цветом
+                       подачи/обратки, бегущий белый пунктир — направление
+                       течения). Остальной чертёж приглушается, но не меняется. */
+                    #dynamic_scheme svg.hyd-hover > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail),
+                    #scheme_zoom_overlay svg.hyd-hover > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail) {
+                        opacity: .22;
+                        transition: opacity .18s;
                     }
-                    #dynamic_scheme .hyd-note.hyd-note--over {
-                        color: #7f1d1d; background: #fef2f2; border-left-color: #dc2626;
+                    .hyd-ov * {
+                        fill: none !important;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        pointer-events: none;
                     }
-                    #dynamic_scheme .hyd-note .hyd-note__hint {
-                        display: block; margin-top: 4px; font-size: 12px; opacity: .8;
+                    .hyd-ov .hyd-ov__halo {
+                        stroke: #fff2a8 !important;
+                        stroke-width: 2.8 !important;
                     }
-                </style><div class="scheme-svg-wrap" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>${this._schemeHydNote(cfg.hyd)}</div>`;
+                    .hyd-ov .hyd-ov__line {
+                        stroke-width: 1.15 !important;
+                    }
+                    .hyd-ov .hyd-ov__flow {
+                        stroke: #fff !important;
+                        stroke-width: .55 !important;
+                        stroke-dasharray: 1.5 2 !important;
+                        animation: hydFlow .9s linear infinite;
+                    }
+                    .hyd-ov .hyd-ov__flow.hyd-ov--rev { animation-direction: reverse; }
+                    .hyd-ov .hyd-ov__flow.hyd-ov--none { display: none; }
+                    @keyframes hydFlow { to { stroke-dashoffset: -3.5; } }
+                    @media (prefers-reduced-motion: reduce) {
+                        .hyd-ov .hyd-ov__flow { animation: none; }
+                    }
+                </style><div class="scheme-svg-wrap" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div></div>`;
+    },
+
+    // ── путь воды при наведении ────────────────────────────────────────────
+    /**
+     * Какие группы труб (data-hyd-part из project_scheme.js) составляют путь
+     * воды от зоны под курсором. Стояк отвода: от котлов через гребёнку (при
+     * гидрострелке — через неё и вторичную пару) вниз по подаче и обратно по
+     * обратке. Котёл: его собственные стояки и гребёнка.
+     */
+    _hydRoute: function (zone) {
+        const svg = zone.closest('svg');
+        if (!svg) return [];
+        const kind = zone.getAttribute('data-hyd');
+        const i = zone.getAttribute('data-hyd-i') || '0';
+        const b = zone.getAttribute('data-hyd-b');
+        const all = Array.from(svg.querySelectorAll('g[data-hyd-part]'));
+        const part = p => all.filter(g => g.getAttribute('data-hyd-part') === p);
+        const hydro = part('hydro');
+        let sel;
+        if (kind === 'boiler') {
+            sel = all.filter(g => /^b(sup|ret)$/.test(g.getAttribute('data-hyd-part')) &&
+                g.getAttribute('data-hyd-b') === b);
+            sel = sel.concat(part('msup'), part('mret'), hydro);
+        } else {
+            sel = all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
+                g.getAttribute('data-hyd-kind') === (kind === 'ufh' ? 'tp' : 'rad') &&
+                g.getAttribute('data-hyd-i') === i);
+            sel = sel.concat(part('msup'), part('mret'), part('bsup'), part('bret'),
+                hydro, part('ssup'), part('sret'));
+        }
+        return sel;
     },
 
     /**
-     * Плашка под схемой: какой участок кольца ближе всех к своему пределу
-     * скорости. Числа — из buildSchemeHydro, то есть те же, что на листе
-     * гидравлики; формулировка превышения — оттуда же, чтобы лист и схема
-     * не расходились в словах.
+     * Подсветка: клоны труб маршрута в отдельной группе поверх листа. Сам
+     * чертёж не трогаем — только приглушаем классом на <svg>, а поверх
+     * кладём три слоя: гало, линию своим цветом и бегущий пунктир. Работает
+     * и в полноэкранном просмотре: там та же разметка, скопированная целиком.
      */
-    _schemeHydNote: function (hyd) {
-        if (!hyd || !hyd.worst) return '';
-        const w = hyd.worst, esc = s => this._hydEsc(s);
-        const f = (v, k) => (Math.round(v * Math.pow(10, k)) / Math.pow(10, k))
-            .toFixed(k).replace('.', ',');
-        if (w.over) {
-            // Луч, коллектор и клапан прибора на схеме не нарисованы — они у
-            // потребителя, за границей листа. Говорим об этом прямо, иначе
-            // монтажник будет искать на чертеже участок, которого там нет.
-            const beyond = hyd.overWhere === 'beyond';
-            return `<div class="hyd-note hyd-note--over">` +
-                `<b>Узкое место:</b> ${esc(w.name)} — ${f(w.v, 2)} м/с при пределе ` +
-                `${f(w.vLim, 1)} м/с. Требуется больший внутренний диаметр.` +
-                `<span class="hyd-note__hint">` +
-                (beyond
-                    ? 'Сам участок за границей схемы, у потребителя: красным отмечены ' +
-                      'выходы контура, по которому он идёт.'
-                    : 'Участок обведён на схеме красным.') +
-                ` Нажмите на стояк или на котёл — покажу его параметры.</span></div>`;
+    hydHoverOn: function (zone, ev) {
+        if (this._hydHoverZone === zone) { this._hydHintMove(ev); return; }
+        this.hydHoverOff();
+        const svg = zone.closest('svg');
+        const host = zone.parentNode;
+        if (!svg || !host) return;
+        const NS = 'http://www.w3.org/2000/svg';
+        const ov = document.createElementNS(NS, 'g');
+        ov.setAttribute('class', 'hyd-ov');
+        const pipes = [];
+        this._hydRoute(zone).forEach(g => {
+            const dir = g.getAttribute('data-hyd-dir') || 'none';
+            g.querySelectorAll('[data-p]').forEach(el => pipes.push({ el, dir }));
+        });
+        if (!pipes.length) return;
+        ['halo', 'line', 'flow'].forEach(layer => pipes.forEach(p => {
+            const c = p.el.cloneNode(false);
+            c.removeAttribute('data-p');
+            c.setAttribute('class', 'hyd-ov__' + layer + ' hyd-ov--' + p.dir);
+            ov.appendChild(c);
+        }));
+        host.appendChild(ov);
+        svg.classList.add('hyd-hover');
+        this._hydHoverZone = zone;
+        this._hydShowHint(zone, ev);
+    },
+
+    hydHoverOff: function () {
+        document.querySelectorAll('.hyd-ov').forEach(el => el.remove());
+        document.querySelectorAll('svg.hyd-hover').forEach(el => el.classList.remove('hyd-hover'));
+        this._hydHoverZone = null;
+        const h = document.getElementById('hyd_hint');
+        if (h) h.remove();
+    },
+
+    /**
+     * Подсказка у курсора — для заказчика и менеджера, не для инженера:
+     * словами, куда идёт вода и почему труба такого диаметра. Полная
+     * карточка с числами остаётся по клику.
+     */
+    _hydShowHint: function (zone, ev) {
+        const cfg = this._schemeCfgCache, hyd = cfg && cfg.hyd;
+        if (!hyd) return;
+        const kind = zone.getAttribute('data-hyd');
+        const mark = zone.getAttribute('data-hyd-mark') || '';
+        const idx = parseInt(zone.getAttribute('data-hyd-i'), 10) || 0;
+        const esc = s => this._hydEsc(s), num = (v, k, u) => this._hydNum(v, k, u);
+        const P = hyd.parts || {};
+        let title = '', lines = [];
+        if (kind === 'boiler') {
+            title = 'Котёл';
+            lines.push('Греет воду и подаёт её в гребёнку по красному стояку. ' +
+                'Остывшая вода возвращается по синему — через фильтр, чтобы грязь не попала в котёл.');
+            lines.push('Через котёл проходит ' + num(hyd.flow, 2, 'м³/ч') +
+                (hyd.pump ? '; насос ' + esc(hyd.pump.label) + ' даёт ' + num(hyd.pump.avail, 1, 'м') +
+                    ' напора при нужных ' + num(hyd.head, 1, 'м') + '.' : '.'));
+        } else if (kind === 'ufh') {
+            const u = hyd.ufh, m = u && u.mans ? u.mans[idx] : null;
+            title = 'Контур тёплого пола' + (mark ? ' ' + mark : '');
+            lines.push('От гребёнки вода идёт через насос узла подмеса к коллектору пола и ' +
+                'расходится по петлям в стяжке. Обратно — по синему стояку.');
+            if (m) lines.push('Коллектор ' + esc(m.label || '') + ': ' + num(m.flow, 2, 'м³/ч') +
+                ', насосу нужно ' + num(m.need, 1, 'м') + ' напора, он даёт ' + num(m.have, 1, 'м') +
+                (m.ok ? ' — хватает.' : ' — не хватает.'));
+        } else {
+            const t = P.trunk;
+            title = 'Контур радиаторов' + (mark ? ' ' + mark : '');
+            lines.push('От котла вода идёт по гребёнке и вниз по красному стояку к коллектору ' +
+                'радиаторов, дальше по лучам к каждому прибору. Остывшая возвращается по синему.');
+            if (t) {
+                lines.push('Труба Ø' + esc(t.d) + ': ' + num(t.flow, 2, 'м³/ч') + ', скорость ' +
+                    num(t.v, 2, 'м/с') + ' при норме до ' + num(t.vLim, 1, '') + '.');
+                lines.push('Почему Ø' + esc(t.d) + ': чтобы вода шла не быстрее ' + num(t.vLim, 1, 'м/с') +
+                    ' — иначе трубы шумят (СП 60.13330), — и чтобы потери ' + num(t.dp, 1, 'кПа') +
+                    ' на этом участке уложились в напор насоса.');
+            }
         }
-        return `<div class="hyd-note">` +
-            `<b>Самый нагруженный участок:</b> ${esc(w.name)} — ${f(w.v, 2)} м/с ` +
-            `при пределе ${f(w.vLim, 1)} м/с, запас ${Math.round((1 - w.ratio) * 100)} %.` +
-            `<span class="hyd-note__hint">Нажмите на стояк или на котёл — ` +
-            `покажу расход, скорость и потери этого участка.</span></div>`;
+        if (hyd.worst && hyd.worst.over && kind !== 'ufh') {
+            lines.push('⚠ ' + esc(hyd.worst.name) + ': ' + num(hyd.worst.v, 2, 'м/с') +
+                ' — выше нормы ' + num(hyd.worst.vLim, 1, 'м/с') + '. Нужен больший диаметр.');
+        }
+        let el = document.getElementById('hyd_hint');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'hyd_hint';
+            document.body.appendChild(el);
+        }
+        el.innerHTML = '<div class="hyd-hint__t">' + esc(title) + '</div>' +
+            lines.map(l => '<div class="hyd-hint__l' + (l.charAt(0) === '⚠' ? ' hyd-hint__l--warn' : '') +
+                '">' + l + '</div>').join('') +
+            '<div class="hyd-hint__f">Нажмите — полная карточка с числами</div>';
+        this._hydHintMove(ev);
+    },
+
+    _hydHintMove: function (ev) {
+        const el = document.getElementById('hyd_hint');
+        if (!el || !ev) return;
+        const r = el.getBoundingClientRect();
+        let x = ev.clientX + 18, y = ev.clientY + 18;
+        if (x + r.width > window.innerWidth - 8) x = ev.clientX - r.width - 14;
+        if (y + r.height > window.innerHeight - 8) y = ev.clientY - r.height - 14;
+        el.style.left = Math.max(8, x) + 'px';
+        el.style.top = Math.max(8, y) + 'px';
     },
 
     _hydEsc: function (s) {
@@ -23764,6 +23898,25 @@ const app = {
             e.preventDefault();
             this.showHydCard(z, e.clientX, e.clientY);
         }, true);
+        // Наведение: путь воды и подсказка. mouseover всплывает с любого
+        // потомка, поэтому ищем зону через closest; уход с зоны — mouseout,
+        // у которого relatedTarget уже не внутри неё.
+        document.addEventListener('mouseover', (e) => {
+            const t = e.target;
+            const z = t && t.closest ? t.closest('.hyd-zone') : null;
+            if (z) this.hydHoverOn(z, e);
+        });
+        document.addEventListener('mouseout', (e) => {
+            const t = e.target;
+            const z = t && t.closest ? t.closest('.hyd-zone') : null;
+            if (!z) return;
+            const to = e.relatedTarget;
+            if (to && to.closest && to.closest('.hyd-zone') === z) return;
+            this.hydHoverOff();
+        });
+        document.addEventListener('mousemove', (e) => {
+            if (this._hydHoverZone) this._hydHintMove(e);
+        });
         window.addEventListener('keydown', e => {
             if (e.key === 'Escape') this.closeHydCard();
         });
