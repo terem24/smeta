@@ -53172,13 +53172,30 @@ const app = {
             const sys = this.boilerPipeSystem();
             const kw = boilerPowerForPipes(list);
             if (sys === 'ppr' || sys === 'mp') {
-                return { main: (kw <= 30) ? 22 : 28, tank: 22, pick: null };
+                // Эти системы пока на прежней паре типоразмеров, каскад для них не
+                // разделяется: perBoiler совпадает с общим, как было до правки.
+                const d = (kw <= 30) ? 22 : 28;
+                return { main: d, tank: 22, perBoiler: d, pick: null };
             }
             const pick = this.boilerPickSize(sys, kw);
             const range = this.boilerPipeRange(sys).map(r => r.size)
                 .filter(s => s >= BP_MIN && s <= BP_MAX);
-            const main = range.find(s => s >= pick.size) || range[range.length - 1];
-            return { main: main, tank: Math.min(22, main), pick: pick };
+            const fit = (p) => range.find(s => s >= p) || range[range.length - 1];
+            const main = fit(pick.size);
+
+            // КАСКАД. Через общий участок идёт сумма, а через обвязку КАЖДОГО котла —
+            // только его собственный расход. Считать индивидуальную подводку по сумме
+            // нельзя: на четырёх котлах по 30 кВт это давало трубу 42 и переходник
+            // 1 1/2" на патрубок 3/4", тогда как краны и фильтр в той же обвязке
+            // стояли правильно — по 3/4". Берём мощность самого крупного котла в
+            // каскаде: типоразмер один на все обвязки, чтобы монтажник не собирал
+            // каждый котёл своим набором.
+            const one = Math.max.apply(null, [0].concat((list || [])
+                .filter(b => b).map(b => b.power || 0)));
+            const perBoiler = one > 0
+                ? fit(this.boilerPickSize(sys, one).size)
+                : main;
+            return { main: main, tank: Math.min(22, main), perBoiler: Math.min(perBoiler, main), pick: pick };
         };
 
         const boilerPowerForPipes = (list) => {
@@ -54808,6 +54825,8 @@ const app = {
         const _bpPick = _bpSizes.pick;
         let ss_diameter = _bpSizes.main;
         let _tankSize = _bpSizes.tank;
+        // Типоразмер обвязки одного котла: в каскаде он меньше общего (см. boilerSizes).
+        let _boilerSize = _bpSizes.perBoiler;
 
         // Металлопластик STOUT: труба PE-Xb/Al/PE-Xb (SPM-0001) на латунных пресс-фитингах
         // SFP. Логический диаметр котельной 22/28 (он же наружный у нержавейки) ложится на
@@ -54869,8 +54888,9 @@ const app = {
         // поэтому вёдра заводятся по факту: магистральное и, отдельно, подводка
         // баков (она может совпасть с магистральным — тогда ведро одно).
         let ss_pipes_demand = {};
-        ss_pipes_demand[ss_diameter] = { length: 0, components: [] };
-        if (!ss_pipes_demand[_tankSize]) ss_pipes_demand[_tankSize] = { length: 0, components: [] };
+        [ss_diameter, _tankSize, _boilerSize].forEach(d => {
+            if (!ss_pipes_demand[d]) ss_pipes_demand[d] = { length: 0, components: [] };
+        });
 
         // Функция добавления труб с комбинированным подбором 2м/4м штанг или PPR штанг по 4м
         const addPipesToBill = (L, diam, grp, desc) => {
@@ -55035,8 +55055,8 @@ const app = {
             // подраздел, что и его дымоход с фильтром (см. gasBoilerGrp).
             let grp = (b.type === 'gas') ? gasBoilerGrp(_gasIdxFit++) : elBoilerGrp(_elIdxFit++);
             let bName = (b.type === 'gas') ? "Газовый котёл" : "Электрический котёл";
-            ss_pipes_demand[ss_diameter].length += 2.0;
-            ss_pipes_demand[ss_diameter].components.push(bName === "Газовый котёл" ? "газовый котёл" : "электрический котёл");
+            ss_pipes_demand[_boilerSize].length += 2.0;
+            ss_pipes_demand[_boilerSize].components.push(bName === "Газовый котёл" ? "газовый котёл" : "электрический котёл");
 
             // Участок «котёл → узел гидроразделения». Двух метров выше хватает только
             // на саму обвязку котла — на подводку к коллектору/гидрострелке не
@@ -55046,8 +55066,8 @@ const app = {
             // В каскаде каждый котёл заходит в узел своей парой, поэтому счёт
             // ведётся внутри цикла по котлам, а не один раз на котельную.
             if (needCollector) {
-                ss_pipes_demand[ss_diameter].length += 3.0;
-                ss_pipes_demand[ss_diameter].components.push("подводка к узлу гидроразделения");
+                ss_pipes_demand[_boilerSize].length += 3.0;
+                ss_pipes_demand[_boilerSize].components.push("подводка к узлу гидроразделения");
                 // Повороты трассы — по одному отводу 90° на трубу.
                 if (isAnalog) {
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, ss_diameter === 22 ? 'SKO03290RCT' : 'SKO04090RCT'), 2,
@@ -55057,9 +55077,9 @@ const app = {
                     if (_mpElb) addToBill(_mpElb, 2,
                         `Пресс-угольник 90° ${mpD(ss_diameter)}х${mpD(ss_diameter)} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 } else {
-                    const _elb = this.ssFit('ss_elbow90_ff', ss_diameter);
+                    const _elb = this.ssFit('ss_elbow90_ff', _boilerSize);
                     if (_elb) addToBill(_elb, 2,
-                        `Пресс-угольник 90° В-В ${ss_diameter} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
+                        `Пресс-угольник 90° В-В ${_boilerSize} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 }
             }
 
@@ -55091,21 +55111,21 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 2, `Пресс-тройник переходной 32х26х32 для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
                 }
             } else {
-                // Патрубок котла: у настенных газовых он 3/4" (так в паспортах Haier
-                // и Baxi), на крупной котельной труба уходит вперёд, и точной пары
-                // «диаметр + резьба» в линейке может не быть — тогда ставим ту, что
-                // есть на этом типоразмере, и предупреждаем про резьбовой переход.
-                const _bTh = this.ssThreadFor('ss_adapter_fi', ss_diameter, (ss_diameter >= 28) ? '1' : '3/4');
-                const _bPort = (ss_diameter >= 28) ? '1"' : '3/4"';
-                addToBill(_bTh && this.ssFit('ss_adapter_fi', ss_diameter, _bTh), 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на внутреннюю резьбу ${this.ssThreadLabel(_bTh)} для подключения нержавеющей трубы к патрубкам котла (${bName}).` +
+                // Обвязка ОДНОГО котла считается по его типоразмеру (_boilerSize), а
+                // не по общему: через неё идёт только его расход. Патрубок настенного
+                // газового котла — 3/4" (так в паспортах Haier и Baxi); точной пары
+                // «диаметр + резьба» в линейке может не быть, тогда ставим ту, что
+                // есть, и предупреждаем про резьбовой переход.
+                const _bPort = (_boilerSize >= 28) ? '1"' : '3/4"';
+                const _bTh = this.ssThreadFor('ss_adapter_fi', _boilerSize, (_boilerSize >= 28) ? '1' : '3/4');
+                addToBill(_bTh && this.ssFit('ss_adapter_fi', _boilerSize, _bTh), 2,
+                    `Переходник с пресс-соединения ${_boilerSize} на внутреннюю резьбу ${this.ssThreadLabel(_bTh)} для подключения нержавеющей трубы к патрубкам котла (${bName}).` +
                     (this.ssThreadLabel(_bTh) !== _bPort ? ` <b>Внимание:</b> патрубок котла ${_bPort}, нужен резьбовой переход (в смету не входит).` : ``) +
                     ` Требуется: 2 шт.`, grp);
-                addToBill(this.ssFit('ss_elbow90_ff', ss_diameter), 2, `Пресс-угольник 90° В-В ${ss_diameter} для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                addToBill(this.ssFit('ss_elbow45', ss_diameter), 2, `Пресс-угольник 45° В-В ${ss_diameter} для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                // Тройник ответвления: равнопроходной, пока магистраль и подводка баков
-                // одного размера, и переходной, когда магистраль ушла вперёд.
-                const _bTee = this.ssTee(ss_diameter, _tankSize);
+                addToBill(this.ssFit('ss_elbow90_ff', _boilerSize), 2, `Пресс-угольник 90° В-В ${_boilerSize} для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', _boilerSize), 2, `Пресс-угольник 45° В-В ${_boilerSize} для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                // Тройник ответвления обвязки котла — по его же типоразмеру.
+                const _bTee = this.ssTee(_boilerSize, Math.min(_tankSize, _boilerSize));
                 if (_bTee) addToBill(_bTee.item, 2, `Пресс-тройник ${_bTee.label} для создания ответвлений в контуре обвязки котла (${bName}).${_bTee.note} Требуется: 2 шт.`, grp);
             }
         });
