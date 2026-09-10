@@ -3027,18 +3027,18 @@ const catalog = {
         { id: "RMB-0012-011202", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х2 вых.", price: 1272, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RMB-0012-011203", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х3 вых.", price: 1716, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "compression", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RMB-0012-011204", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х4 вых.", price: 2217, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "compression", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RMB-0013-343402", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х3/4\"х2 вых.", price: 1068, brand: "ROMMER", inSize: "3/4", outSize: "3/4", loops: 2, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0013-343403", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х3/4\"х3 вых.", price: 1527, brand: "ROMMER", inSize: "3/4", outSize: "3/4", loops: 3, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0013-343404", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х3/4\"х4 вых.", price: 2016, brand: "ROMMER", inSize: "3/4", outSize: "3/4", loops: 4, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0014-013402", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х3/4\"х2 вых.", price: 1251, brand: "ROMMER", inSize: "1", outSize: "3/4", loops: 2, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0014-013403", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х3/4\"х3 вых.", price: 1688, brand: "ROMMER", inSize: "1", outSize: "3/4", loops: 3, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0014-013404", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х3/4\"х4 вых.", price: 2181, brand: "ROMMER", inSize: "1", outSize: "3/4", loops: 4, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0015-341202", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х1/2\"х2 вых.", price: 1008, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0015-341203", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х1/2\"х3 вых.", price: 1457, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0015-341204", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х1/2\"х4 вых.", price: 1926, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0016-011202", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х2 вых.", price: 1197, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0016-011203", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х3 вых.", price: 1617, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0016-011204", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х4 вых.", price: 2087, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "RMB-0013-343402", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х3/4\"х2 вых.", price: 1175, brand: "ROMMER", inSize: "3/4", outSize: "3/4", loops: 2, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0013-343403", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х3/4\"х3 вых.", price: 1680, brand: "ROMMER", inSize: "3/4", outSize: "3/4", loops: 3, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0013-343404", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х3/4\"х4 вых.", price: 2218, brand: "ROMMER", inSize: "3/4", outSize: "3/4", loops: 4, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0014-013402", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х3/4\"х2 вых.", price: 1376, brand: "ROMMER", inSize: "1", outSize: "3/4", loops: 2, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0014-013403", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х3/4\"х3 вых.", price: 1857, brand: "ROMMER", inSize: "1", outSize: "3/4", loops: 3, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0014-013404", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х3/4\"х4 вых.", price: 2399, brand: "ROMMER", inSize: "1", outSize: "3/4", loops: 4, connType: "ek", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0015-341202", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х1/2\"х2 вых.", price: 1109, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0015-341203", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х1/2\"х3 вых.", price: 1603, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0015-341204", name: "Коллектор с запорными клапанами, отводы 135°, 3/4\"х1/2\"х4 вых.", price: 2119, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0016-011202", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х2 вых.", price: 1317, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0016-011203", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х3 вых.", price: 1779, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RMB-0016-011204", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х4 вых.", price: 2296, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
         // С шаровыми кранами, макс. 95°C / 10 бар
         { id: "RMB-0007CF-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 974, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
         { id: "RMB-0007CF-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1305, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
@@ -3046,54 +3046,54 @@ const catalog = {
         { id: "RMB-0008CF-011202", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х2 вых.", price: 1165, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
         { id: "RMB-0008CF-011203", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х3 вых.", price: 1542, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
         { id: "RMB-0008CF-011204", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х4 вых.", price: 2023, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0007-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 979, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-09" },
-        { id: "RMB-0007-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1312, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-09" },
-        { id: "RMB-0007-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1747, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-09" },
-        { id: "RMB-0008-011202", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х2 вых.", price: 1171, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-09" },
-        { id: "RMB-0008-011203", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х3 вых.", price: 1550, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-09" },
-        { id: "RMB-0008-011204", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х4 вых.", price: 2034, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-09" }
+        { id: "RMB-0007-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 1077, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
+        { id: "RMB-0007-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1443, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
+        { id: "RMB-0007-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1922, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
+        { id: "RMB-0008-011202", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х2 вых.", price: 1288, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
+        { id: "RMB-0008-011203", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х3 вых.", price: 1705, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
+        { id: "RMB-0008-011204", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х4 вых.", price: 2237, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" }
     ],
     water_parts: [
-        { id: "SFC-0020-001622", name: "Евроконус 16x2.2 (для коллектора)", price: 381, availability: "on_order", price_date: "2026-09-09" },
-        { id: "SFC-0020-002028", name: "Евроконус 20x2.8 (для коллектора)", price: 390, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0024-000034", name: "Заглушка коллектора 3/4\" (HP)", price: 158, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0038-300000", name: "Наклейки \"ВОДОСНАБЖЕНИЕ\"", price: 872, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0035-100016", name: "Защитная втулка синяя 16мм", price: 56, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0035-200016", name: "Защитная втулка красная 16мм", price: 56, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0020-000016", name: "Гильза монтажная 16 (аксиальная)", price: 109, brand: "STOUT", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 85, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFC-0020-002020", name: "Евроконус 20x2.0 (для коллектора)", price: 371, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SFC-0020-001622", name: "Евроконус 16x2.2 (для коллектора)", price: 411, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFC-0020-002028", name: "Евроконус 20x2.8 (для коллектора)", price: 421, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0024-000034", name: "Заглушка коллектора 3/4\" (HP)", price: 170, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0038-300000", name: "Наклейки \"ВОДОСНАБЖЕНИЕ\"", price: 872, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0035-100016", name: "Защитная втулка синяя 16мм", price: 56, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0035-200016", name: "Защитная втулка красная 16мм", price: 56, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0020-000016", name: "Гильза монтажная 16 (аксиальная)", price: 122, brand: "STOUT", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFC-0020-002020", name: "Евроконус 20x2.0 (для коллектора)", price: 401, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Компенсатор гидроудара: 1/2" НР, 1–10 бар рабочее, пик до 50 бар, среда до 90 °C.
     // По паспорту ставится на распределительных коллекторах ХВС/ГВС либо возле точки
     // водоразбора; монтаж только вертикально вверх или горизонтально. Торец коллектора
     // 3/4" ВР (туда же идёт заглушка SFT-0024-000034), поэтому нужна футорка 3/4"НР х 1/2"ВР.
     water_hammer_arrestors: [
-        { id: "SVS-1014-000015", name: "Компенсатор гидроудара 1/2\" НР, хром", price: 2582, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RVS-1001-000015", name: "Компенсатор гидроудара мембранный 1/2\" НР, никель", price: 1484, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 156, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SVS-1014-000015", name: "Компенсатор гидроудара 1/2\" НР, хром", price: 2970, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RVS-1001-000015", name: "Компенсатор гидроудара мембранный 1/2\" НР, никель", price: 1484, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 168, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     water_input_node: [
-        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 583, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "VTr.136.N.0504", name: "Тройник косой для гильзы под погружной датчик температуры 3/4'' х 1/2''", price: 561, brand: "VALTEC", availability: "in_stock", price_date: "2026-07-12" },
         { id: "CBL 10-4", name: "Греющий кабель для водопровода, 4 м", price: 7829, brand: "SelfTec DW", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0029-000134", name: "Переходник ВР-НР 1\" х 3/4\"", price: 236, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFT-0029-000134", name: "Переходник ВР-НР 1\" х 3/4\"", price: 255, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "6395", name: "Пятивыводной штуцер", price: 836, brand: "Aquario", availability: "on_order", price_date: "2026-09-09" },
-        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 350, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SVB-0004-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1167, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 540, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SFT-0002-003420", name: "Удлинитель ВН/НР 3/4\" 20 мм", price: 401, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVB-0004-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1260, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 594, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SFT-0002-003420", name: "Удлинитель ВН/НР 3/4\" 20 мм", price: 432, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 224, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "VT.386.N.05", name: "Фильтр универсальный 3/4''", price: 7624, brand: "VALTEC", availability: "in_stock", price_date: "2026-07-12" },
-        { id: "SVC-0011-000020", name: "Клапан обратный 3/4’’ ВР", price: 1547, brand: "STOUT", rommer: { id: "RVC-0001-000020", name: "Клапан обратный 3/4\"", price: 583, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 504, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 156, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0029-001214", name: "Футорка 1/2\" x 1/4\"", price: 108, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SIM-1010-500608", name: "Манометр 6 бар, 1/4''", price: 307, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SVC-0011-000020", name: "Клапан обратный 3/4’’ ВР", price: 1702, brand: "STOUT", rommer: { id: "RVC-0001-000020", name: "Клапан обратный 3/4\"", price: 641, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 545, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 168, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0029-001214", name: "Футорка 1/2\" x 1/4\"", price: 117, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SIM-1010-500608", name: "Манометр 6 бар, 1/4''", price: 338, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     outdoor_faucet: [
-        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 501, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 504, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1556, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 540, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 583, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 224, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 541, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 545, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 594, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     outdoor_faucets: [
         { id: "RVFF-0001-1520150", name: "Кран незамерзающий, длина 150 мм", price: 2123, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
@@ -3114,14 +3114,14 @@ const catalog = {
         // разные карточки — Big Blue 20 за 770 ₽, SLIM LINE 10 за 140 ₽ и ещё одна
         // за 410 ₽, и парсер взял бы первую попавшуюся. Строка ведётся руками.
         { id: "ВП-20 М-20 ББ", name: "Картридж Big Blue 20", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1556, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 540, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SFT-0002-003480", name: "Удлинитель ВН/ВР 3/4\" 80 мм", price: 1042, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 501, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 504, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0014-000034", name: "Угольник 90° 3/4\" ВР", price: 462, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0057-000034", name: "Сгон угловой с уплотнительным кольцом 3/4\"", price: 713, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 350, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 594, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SFT-0002-003480", name: "Удлинитель ВН/ВР 3/4\" 80 мм", price: 1125, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 541, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 545, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 224, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0014-000034", name: "Угольник 90° 3/4\" ВР", price: 499, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0057-000034", name: "Сгон угловой с уплотнительным кольцом 3/4\"", price: 770, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // ===== Узел ввода ХВС: опции сверх базового набора =====
     //
@@ -3136,15 +3136,15 @@ const catalog = {
     // проверено, поэтому осторожное «под заказ»: первый прогон AutoPrice перепишет
     // фактическим.
     water_pressure_reducer: [
-        { id: "SVS-1010-000020", name: "Редуктор давления поршневой с выходом под манометр, PN 16, 3/4\"", price: 2629, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RVS-0010-000020", name: "Редуктор давления PN16 ВР/ВР 3/4\" с выходом под манометр", price: 1626, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SVS-1010-000020", name: "Редуктор давления поршневой с выходом под манометр, PN 16, 3/4\"", price: 2840, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RVS-0010-000020", name: "Редуктор давления PN16 ВР/ВР 3/4\" с выходом под манометр", price: 1789, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 224, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Счётчик нужен там, где вода городская. На скважине учитывать нечего, поэтому
     // галочка по умолчанию снята. ВСКМ-20 — крыльчатый, 3/4", под горизонтальную
     // установку; сгоны разъёмные, чтобы снять счётчик на поверку не разбирая узел.
     water_meter: [
         { id: "72-20-243", name: "Счётчик воды ВСКМ-20 крыльчатый, 3/4\"", price: 2509, brand: "Декаст", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 583, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Вторая ступень фильтрации («Премиум»): к колбе с картриджем 20 мкм добавляется
     // вторая на 5 мкм. Первая снимает песок и окалину, вторая — взвесь, из-за которой
@@ -3152,8 +3152,8 @@ const catalog = {
     filter_big_blue_stage2: [
         { id: "75185", name: "Колба Big Blue 20'", price: 3745, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-09" },
         { id: "ВП-5 М-20 ББ", name: "Картридж Big Blue 20 тонкой очистки, 5 мкм", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 350, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 583, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Ввод воды в квартиру — набор на ОДИН стояк; ставится дважды, на ХВС и ГВС.
     //
@@ -3435,9 +3435,9 @@ const catalog = {
     // на анкерах, приборы садятся на них хомутами. Так узел снимается и обслуживается
     // целиком, а не выковыривается из штукатурки.
     water_input_frame: [
-        { id: "SAC-0020-503120", name: "Шина сантехническая (монтажный профиль) 50x3x1200 мм", price: 1404, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SAC-0020-411040", name: "Анкер забивной стальной M10х12х40 мм", price: 26, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SAC-0020-000034", name: "Хомут для труб с гайкой 3/4\" (25–29 мм)", price: 54, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SAC-0020-503120", name: "Шина сантехническая (монтажный профиль) 50x3x1200 мм", price: 1404, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SAC-0020-411040", name: "Анкер забивной стальной M10х12х40 мм", price: 26, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SAC-0020-000034", name: "Хомут для труб с гайкой 3/4\" (25–29 мм)", price: 54, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     plug_34: { id: "SFT-0025-000034", name: "Заглушка 3/4\" НР", price: 190, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
     // Глухой торец радиаторной гребёнки (лист «Узел обвязки коллектора радиаторного
@@ -3553,92 +3553,92 @@ const catalog = {
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "500089K", article: "500089.K", name: "Труба кан. D 110 L 1000 Comfort", price: 940, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0002-110200", name: "Труба канализационная бесшумная D 110 L 2000", price: 3770, brand: "STOUT", availability: "in_stock", rommer: { id: "500093", article: "500093", name: "Труба кан. ПП D 110 L 2000", price: 934, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "500093K", article: "500093.K", name: "Труба кан. D 110 L 2000 Comfort", price: 1550, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0001-058100", name: "Труба канализационная бесшумная D 058 L 1000", price: 745, brand: "STOUT", availability: "in_stock", rommer: { id: "500049", article: "500049", name: "Труба кан. ПП D 050 L 1000", price: 227, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "500049K", article: "500049.K", name: "Труба кан. D 050 L 1000 Comfort", price: 356, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0001-058200", name: "Труба канализационная бесшумная D 058 L 2000", price: 1549, brand: "STOUT", availability: "in_stock", rommer: { id: "500053", article: "500053", name: "Труба кан. ПП D 050 L 2000", price: 390, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "500053K", article: "500053.K", name: "Труба кан. D 050 L 2000 Comfort", price: 611, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0010-011045", name: "Отвод бесшумный 45° D 110", price: 1074, brand: "STOUT", availability: "in_stock", rommer: { id: "504053R", article: "504053.R", name: "Отвод 45° D 110 ПП", price: 166, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "504053K", article: "504053.K", name: "Отвод 45° D 110 Comfort", price: 233, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0012-011087", name: "Отвод бесшумный 87° D 110", price: 1074, brand: "STOUT", availability: "in_stock", rommer: { id: "504059R", article: "504059.R", name: "Отвод 87° D 110 ПП", price: 166, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "504059K", article: "504059.K", name: "Отвод 87° D 110 Comfort", price: 233, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0010-005845", name: "Отвод бесшумный 45° D 058", price: 359, brand: "STOUT", availability: "in_stock", rommer: { id: "504029R", article: "504029.R", name: "Отвод 45° D 050 ПП", price: 54, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "504029K", article: "504029.K", name: "Отвод 45° D 050 Comfort", price: 77, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0012-005887", name: "Отвод бесшумный 87° D 058", price: 359, brand: "STOUT", availability: "in_stock", rommer: { id: "504035R", article: "504035.R", name: "Отвод 87° D 050 ПП", price: 54, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "504035K", article: "504035.K", name: "Отвод 87° D 050 Comfort", price: 77, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0015-115845", name: "Тройник бесшумный 45° D 110 x 058", price: 1262, brand: "STOUT", availability: "in_stock", rommer: { id: "510031R", article: "510031.R", name: "Тройник 45° D 110 x 050 ПП", price: 222, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "510031K", article: "510031.K", name: "Тройник 45° D 110 x 050 Comfort", price: 312, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0015-111145", name: "Тройник бесшумный 45° D 110 x 110", price: 1857, brand: "STOUT", availability: "in_stock", rommer: { id: "508025R", article: "508025.R", name: "Тройник 45° D 110 x 110 ПП", price: 302, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "508025K", article: "508025.K", name: "Тройник 45° D 110 x 110 Comfort", price: 424, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0016-115887", name: "Тройник бесшумный 87° D 110 x 058", price: 1262, brand: "STOUT", availability: "in_stock", rommer: { id: "510035R", article: "510035.R", name: "Тройник 87° D 110 x 050 ПП", price: 222, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "510035K", article: "510035.K", name: "Тройник 87° D 110 x 050 Comfort", price: 312, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0013-011058", name: "Переход эксцентрический бесшумный D 110 х 58", price: 611, brand: "STOUT", availability: "in_stock", rommer: { id: "514009R", article: "514009.R", name: "Переход эксц. D 110 x 050 ПП", price: 130, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "514009R", article: "514009.R", name: "Переход эксц. D 110 x 050 ПП", price: 130, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0005-000058", name: "Заглушка D 058", price: 147, brand: "STOUT", availability: "in_stock", rommer: { id: "524003R", article: "524003.R", name: "Заглушка D 050 ПП", price: 32, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "524003K", article: "524003.K", name: "Заглушка D 050 Comfort", price: 45, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0005-000110", name: "Заглушка D 110", price: 339, brand: "STOUT", availability: "in_stock", rommer: { id: "524007R", article: "524007.R", name: "Заглушка D 110 ПП", price: 58, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "524007K", article: "524007.K", name: "Заглушка D 110 Comfort", price: 82, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0006-000058", name: "Муфта соединительная двухраструбная D 58", price: 465, brand: "STOUT", availability: "in_stock", rommer: { id: "528003R", article: "528003.R", name: "Муфта соед. D 050 ПП", price: 93, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "528003K", article: "528003.K", name: "Муфта соед. D 050 Comfort", price: 130, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0006-000110", name: "Муфта соединительная двухраструбная D 110", price: 1110, brand: "STOUT", availability: "in_stock", rommer: { id: "528007R", article: "528007.R", name: "Муфта соед. D 110 ПП", price: 179, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "528007K", article: "528007.K", name: "Муфта соед. D 110 Comfort", price: 251, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0007-000058", name: "Муфта ремонтная D 58", price: 469, brand: "STOUT", availability: "in_stock", rommer: { id: "526003R", article: "526003.R", name: "Муфта рем. D 050 ПП", price: 93, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "526003K", article: "526003.K", name: "Муфта рем. D 050 Comfort", price: 130, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "SKB-0007-000110", name: "Муфта ремонтная D 110", price: 1121, brand: "STOUT", availability: "in_stock", rommer: { id: "526007R", article: "526007.R", name: "Муфта рем. D 110 ПП", price: 179, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "526007K", article: "526007.K", name: "Муфта рем. D 110 Comfort", price: 251, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-09" },
+  price_date: '2026-09-09' }, price_date: "2026-09-10" },
         { id: "900003.R", article: "900003.R", name: "Смазка силиконовая", price: 313, brand: "Sinikon", availability: "in_stock", price_date: "2026-09-09" }
     ],
     ss_pipe_4m: [
@@ -3956,85 +3956,85 @@ const catalog = {
     // делается заменой префикса (см. ssItem в app.js), а не таблицей соответствий.
     // Цена — за метр (как у ROMMER), Терем даёт ровно −15% от РРЦ.
     ss_pipe_4m_316: [
-        { id: "SSS-2001-000015", name: "Труба нерж. 316L, штанга 4м 15х1", price: 712, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2001-000018", name: "Труба нерж. 316L, штанга 4м 18х1", price: 909, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2001-000022", name: "Труба нерж. 316L, штанга 4м 22х1.2", price: 1250, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2001-000028", name: "Труба нерж. 316L, штанга 4м 28х1.2", price: 1525, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2001-000035", name: "Труба нерж. 316L, штанга 4м 35х1.5", price: 2230, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2001-000042", name: "Труба нерж. 316L, штанга 4м 42х1.5", price: 2838, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2001-000054", name: "Труба нерж. 316L, штанга 4м 54х1.5", price: 3673, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2001-000015", name: "Труба нерж. 316L, штанга 4м 15х1", price: 712, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2001-000018", name: "Труба нерж. 316L, штанга 4м 18х1", price: 909, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2001-000022", name: "Труба нерж. 316L, штанга 4м 22х1.2", price: 1250, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2001-000028", name: "Труба нерж. 316L, штанга 4м 28х1.2", price: 1525, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2001-000035", name: "Труба нерж. 316L, штанга 4м 35х1.5", price: 2230, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2001-000042", name: "Труба нерж. 316L, штанга 4м 42х1.5", price: 2838, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2001-000054", name: "Труба нерж. 316L, штанга 4м 54х1.5", price: 3673, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_elbow90_316: [
-        { id: "SSS-2002-000015", name: "Угольник 90° ВПр-НПр 15", price: 312, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2002-000018", name: "Угольник 90° ВПр-НПр 18", price: 373, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2002-000022", name: "Угольник 90° ВПр-НПр 22", price: 466, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2002-000028", name: "Угольник 90° ВПр-НПр 28", price: 584, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2002-000035", name: "Угольник 90° ВПр-НПр 35", price: 834, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2002-000042", name: "Угольник 90° ВПр-НПр 42", price: 1207, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2002-000054", name: "Угольник 90° ВПр-НПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2002-000015", name: "Угольник 90° ВПр-НПр 15", price: 312, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2002-000018", name: "Угольник 90° ВПр-НПр 18", price: 373, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2002-000022", name: "Угольник 90° ВПр-НПр 22", price: 466, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2002-000028", name: "Угольник 90° ВПр-НПр 28", price: 584, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2002-000035", name: "Угольник 90° ВПр-НПр 35", price: 834, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2002-000042", name: "Угольник 90° ВПр-НПр 42", price: 1207, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2002-000054", name: "Угольник 90° ВПр-НПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_elbow90_ff_316: [
-        { id: "SSS-2003-000015", name: "Угольник 90° ВПр-ВПр 15", price: 273, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2003-000018", name: "Угольник 90° ВПр-ВПр 18", price: 317, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2003-000022", name: "Угольник 90° ВПр-ВПр 22", price: 468, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2003-000028", name: "Угольник 90° ВПр-ВПр 28", price: 579, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2003-000035", name: "Угольник 90° ВПр-ВПр 35", price: 881, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2003-000042", name: "Угольник 90° ВПр-ВПр 42", price: 1209, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2003-000054", name: "Угольник 90° ВПр-ВПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2003-000015", name: "Угольник 90° ВПр-ВПр 15", price: 273, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2003-000018", name: "Угольник 90° ВПр-ВПр 18", price: 317, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2003-000022", name: "Угольник 90° ВПр-ВПр 22", price: 468, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2003-000028", name: "Угольник 90° ВПр-ВПр 28", price: 579, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2003-000035", name: "Угольник 90° ВПр-ВПр 35", price: 881, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2003-000042", name: "Угольник 90° ВПр-ВПр 42", price: 1209, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2003-000054", name: "Угольник 90° ВПр-ВПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_elbow45_316: [
-        { id: "SSS-2004-000015", name: "Угольник 45° ВПр-НПр 15", price: 314, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2004-000018", name: "Угольник 45° ВПр-НПр 18", price: 355, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2004-000022", name: "Угольник 45° ВПр-НПр 22", price: 440, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2004-000028", name: "Угольник 45° ВПр-НПр 28", price: 582, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2004-000035", name: "Угольник 45° ВПр-НПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2004-000042", name: "Угольник 45° ВПр-НПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2004-000054", name: "Угольник 45° ВПр-НПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2004-000015", name: "Угольник 45° ВПр-НПр 15", price: 314, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2004-000018", name: "Угольник 45° ВПр-НПр 18", price: 355, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2004-000022", name: "Угольник 45° ВПр-НПр 22", price: 440, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2004-000028", name: "Угольник 45° ВПр-НПр 28", price: 582, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2004-000035", name: "Угольник 45° ВПр-НПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2004-000042", name: "Угольник 45° ВПр-НПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2004-000054", name: "Угольник 45° ВПр-НПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_elbow45_ff_316: [
-        { id: "SSS-2005-000015", name: "Угольник 45° ВПр-ВПр 15", price: 293, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2005-000018", name: "Угольник 45° ВПр-ВПр 18", price: 358, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2005-000022", name: "Угольник 45° ВПр-ВПр 22", price: 447, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2005-000028", name: "Угольник 45° ВПр-ВПр 28", price: 589, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2005-000035", name: "Угольник 45° ВПр-ВПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2005-000042", name: "Угольник 45° ВПр-ВПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2005-000054", name: "Угольник 45° ВПр-ВПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2005-000015", name: "Угольник 45° ВПр-ВПр 15", price: 293, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2005-000018", name: "Угольник 45° ВПр-ВПр 18", price: 358, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2005-000022", name: "Угольник 45° ВПр-ВПр 22", price: 447, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2005-000028", name: "Угольник 45° ВПр-ВПр 28", price: 589, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2005-000035", name: "Угольник 45° ВПр-ВПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2005-000042", name: "Угольник 45° ВПр-ВПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2005-000054", name: "Угольник 45° ВПр-ВПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     ss_bypass_ff_316: [
-        { id: "SSS-2006-000015", name: "Обвод ВПр-ВПр 15", price: 395, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2006-000018", name: "Обвод ВПр-ВПр 18", price: 464, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2006-000022", name: "Обвод ВПр-ВПр 22", price: 577, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2006-000028", name: "Обвод ВПр-ВПр 28", price: 887, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2006-000015", name: "Обвод ВПр-ВПр 15", price: 395, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2006-000018", name: "Обвод ВПр-ВПр 18", price: 464, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2006-000022", name: "Обвод ВПр-ВПр 22", price: 577, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2006-000028", name: "Обвод ВПр-ВПр 28", price: 887, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     ss_bypass_316: [
-        { id: "SSS-2007-000015", name: "Обвод ВПр-НПр 15", price: 663, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2007-000018", name: "Обвод ВПр-НПр 18", price: 775, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2007-000022", name: "Обвод ВПр-НПр 22", price: 1099, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2007-000015", name: "Обвод ВПр-НПр 15", price: 663, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2007-000018", name: "Обвод ВПр-НПр 18", price: 775, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2007-000022", name: "Обвод ВПр-НПр 22", price: 1099, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     ss_bend90_316: [
-        { id: "SSS-2008-001570", name: "Отвод безраструбный 90° 15х70х160", price: 471, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2008-015100", name: "Отвод безраструбный 90° 15х100х600", price: 1495, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2008-001570", name: "Отвод безраструбный 90° 15х70х160", price: 471, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2008-015100", name: "Отвод безраструбный 90° 15х100х600", price: 1495, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     ss_elbow_fi_316: [
-        { id: "SSS-2009-001512", name: "Угольник-переходник ВПр-ВР 15х1/2", price: 802, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2009-001812", name: "Угольник-переходник ВПр-ВР 18х1/2", price: 842, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2009-001834", name: "Угольник-переходник ВПр-ВР 18х3/4", price: 1061, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2009-002212", name: "Угольник-переходник ВПр-ВР 22х1/2", price: 935, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2009-002234", name: "Угольник-переходник ВПр-ВР 22х3/4", price: 1091, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2009-002834", name: "Угольник-переходник ВПр-ВР 28х3/4", price: 1981, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2009-000351", name: "Угольник-переходник ВПр-ВР 35х1", price: 3549, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2009-001512", name: "Угольник-переходник ВПр-ВР 15х1/2", price: 802, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2009-001812", name: "Угольник-переходник ВПр-ВР 18х1/2", price: 842, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2009-001834", name: "Угольник-переходник ВПр-ВР 18х3/4", price: 1061, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2009-002212", name: "Угольник-переходник ВПр-ВР 22х1/2", price: 935, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2009-002234", name: "Угольник-переходник ВПр-ВР 22х3/4", price: 1091, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2009-002834", name: "Угольник-переходник ВПр-ВР 28х3/4", price: 1981, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2009-000351", name: "Угольник-переходник ВПр-ВР 35х1", price: 3549, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_elbow_mi_316: [
-        { id: "SSS-2010-001512", name: "Угольник-переходник ВПр-НР 15х1/2", price: 877, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2010-001812", name: "Угольник-переходник ВПр-НР 18х1/2", price: 1051, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2010-001834", name: "Угольник-переходник ВПр-НР 18х3/4", price: 1106, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2010-002212", name: "Угольник-переходник ВПр-НР 22х1/2", price: 1169, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2010-002234", name: "Угольник-переходник ВПр-НР 22х3/4", price: 1303, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2010-002834", name: "Угольник-переходник ВПр-НР 28х3/4", price: 1822, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2010-000351", name: "Угольник-переходник ВПр-НР 35х1", price: 3060, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2010-001512", name: "Угольник-переходник ВПр-НР 15х1/2", price: 877, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2010-001812", name: "Угольник-переходник ВПр-НР 18х1/2", price: 1051, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2010-001834", name: "Угольник-переходник ВПр-НР 18х3/4", price: 1106, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2010-002212", name: "Угольник-переходник ВПр-НР 22х1/2", price: 1169, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2010-002234", name: "Угольник-переходник ВПр-НР 22х3/4", price: 1303, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2010-002834", name: "Угольник-переходник ВПр-НР 28х3/4", price: 1822, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2010-000351", name: "Угольник-переходник ВПр-НР 35х1", price: 3060, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_wall_elbow_316: [
-        { id: "SSS-2011-001512", name: "Угольник настенный ВПр-ВР 15х1/2", price: 988, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SSS-2011-001512", name: "Угольник настенный ВПр-ВР 15х1/2", price: 988, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SSS-2011-001812", name: "Угольник настенный ВПр-ВР 18х1/2", price: 1136, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
         { id: "SSS-2011-002212", name: "Угольник настенный ВПр-ВР 22х1/2", price: 1372, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
         { id: "SSS-2011-002234", name: "Угольник настенный ВПр-ВР 22х3/4", price: 1372, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
