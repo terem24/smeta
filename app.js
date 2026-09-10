@@ -14344,6 +14344,34 @@ const app = {
         return (this._viewerScopes && this._viewerScopes[String(userId)]) || [];
     },
 
+    // Отмеченные в карточке компании — по галочкам, а не по памяти.
+    pickedViewerDistIds: function () {
+        const box = document.getElementById('admin_edit_viewer_dists');
+        if (!box) return null;
+        return [...box.querySelectorAll('input.admin-viewer-dist:checked')].map(i => i.value).filter(Boolean);
+    },
+
+    /**
+     * Подпись под списком компаний наблюдателя: что именно он увидит.
+     *
+     * Список галочек сам по себе не отвечает на вопрос «и что теперь?» —
+     * поэтому под ним всегда стоит фраза с перечислением отмеченных компаний,
+     * а при пустом выборе — предупреждение, что человек не увидит ничего.
+     */
+    updateViewerDistsHint: function () {
+        const hint = document.getElementById('admin_edit_viewer_dists_hint');
+        if (!hint) return;
+        const picked = this.pickedViewerDistIds() || [];
+        const names = picked.map(id => {
+            const d = (this.adminData.distributors || []).find(x => String(x.id) === String(id));
+            return d ? d.company_name : id;
+        });
+        hint.innerHTML = names.length
+            ? `<span style="color:var(--text-sec);">Отмечено компаний: <b style="color:var(--text-main);">${names.length}</b> — ${names.join(', ')}.
+               Наблюдатель увидит монтажников этих компаний, их расчёты, переписку с ними и их карточки в планировщике. Всё остальное на платформе от него закрыто.</span>`
+            : `<span style="color:#D97706;">Ни одна компания не отмечена — наблюдатель не увидит ни одного монтажника и ни одного расчёта.</span>`;
+    },
+
     // Отсечка выборки по монтажникам своих компаний. Пустой список подменяем
     // заведомо несуществующим id: запрос без условия отдал бы всю базу, а это
     // ровно то, от чего роль и заводилась.
@@ -24886,16 +24914,20 @@ const app = {
                                         <div id="admin_edit_distributor_info" style="margin-top:6px; font-size:11px; color:var(--text-sec); line-height:1.5;"></div>
                                     </div>
                                     <div id="admin_edit_viewer_dists_wrapper" style="display: ${user.account_type === 'viewer' ? 'block' : 'none'}; grid-column: 1 / -1;">
-                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">За какими дистрибьюторами наблюдает (можно несколько — Ctrl или ⌘ + клик)</label>
-                                        <select id="admin_edit_viewer_dists" multiple size="6" ${isViewer ? 'disabled' : ''} style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">За какими дистрибьюторами наблюдает — отметьте галочками</label>
+                                        <div id="admin_edit_viewer_dists" style="max-height:170px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:var(--bg);">
                                             ${(() => {
                                                 const picked = this.viewerScopeFor(user.id);
-                                                return (this.adminData.distributors || []).map(d =>
-                                                    `<option value="${d.id}" ${picked.includes(String(d.id)) ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`
-                                                ).join('');
+                                                const list = this.adminData.distributors || [];
+                                                if (!list.length) return `<div style="padding:10px 12px; font-size:12px; color:var(--text-sec);">Компаний в справочнике пока нет.</div>`;
+                                                return list.map((d, i) => `
+                                                    <label style="display:flex; align-items:center; gap:9px; padding:7px 12px; font-size:12.5px; color:var(--text-main); cursor:${isViewer ? 'not-allowed' : 'pointer'}; ${i ? 'border-top:1px solid var(--border);' : ''}">
+                                                        <input type="checkbox" class="admin-viewer-dist" value="${d.id}" ${picked.includes(String(d.id)) ? 'checked' : ''} ${isViewer ? 'disabled' : ''} onchange="app.updateViewerDistsHint()" style="width:16px; height:16px; flex-shrink:0; accent-color:var(--primary); cursor:inherit;">
+                                                        <span>${d.company_name} <span style="color:var(--text-sec);">(${d.promo_code})</span></span>
+                                                    </label>`).join('');
                                             })()}
-                                        </select>
-                                        <div style="margin-top:6px; font-size:11px; color:var(--text-sec); line-height:1.5;">Наблюдатель увидит только монтажников этих компаний, их расчёты и переписку с ними. Ни одной компании не выбрано — не увидит ничего.</div>
+                                        </div>
+                                        <div id="admin_edit_viewer_dists_hint" style="margin-top:6px; font-size:11.5px; line-height:1.5;"></div>
                                     </div>
                                     <div id="admin_edit_price_source_wrapper" style="display: block; grid-column: 1 / -1;">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Откуда брать цены на оборудование</label>
@@ -24941,6 +24973,8 @@ const app = {
         `;
 
         setTimeout(() => {
+            // Подпись под списком компаний наблюдателя — сразу, а не только после клика
+            this.updateViewerDistsHint();
             const tariffSel = document.getElementById('admin_edit_tariff');
             const subSel = document.getElementById('admin_edit_subtype');
             const subWrap = document.getElementById('admin_edit_subtype_wrapper');
@@ -28291,9 +28325,8 @@ const app = {
         // у всех остальных — пусто. Иначе после смены роли за человеком остался
         // бы список, который ни на что не влияет, а при возврате в наблюдатели
         // молча вернул бы старый доступ.
-        const viewerSel = document.getElementById('admin_edit_viewer_dists');
-        updateData.viewer_distributor_ids = (type === 'viewer' && viewerSel)
-            ? Array.from(viewerSel.selectedOptions).map(o => o.value).filter(Boolean)
+        updateData.viewer_distributor_ids = (type === 'viewer' && this.pickedViewerDistIds())
+            ? this.pickedViewerDistIds()
             : [];
 
         try {
@@ -28330,7 +28363,10 @@ const app = {
         const val = typeSelect.value;
         // Список наблюдаемых компаний — только у роли «Наблюдатель»
         const viewerDistsWrapper = document.getElementById('admin_edit_viewer_dists_wrapper');
-        if (viewerDistsWrapper) viewerDistsWrapper.style.display = val === 'viewer' ? 'block' : 'none';
+        if (viewerDistsWrapper) {
+            viewerDistsWrapper.style.display = val === 'viewer' ? 'block' : 'none';
+            if (val === 'viewer') this.updateViewerDistsHint();
+        }
         if (val === 'pro') {
             if (roleTariffWrapper) roleTariffWrapper.style.display = 'none';
             if (dateWrapper) dateWrapper.style.display = 'block';
