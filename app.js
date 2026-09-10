@@ -1374,6 +1374,58 @@ const app = {
         this.switchAuthTab('register');
     },
 
+    // Окно «Нужен промокод магазина» — для новой учётки без компании при
+    // закрытой регистрации (условие считает handleAuthSession в _inviteGateNeeded).
+    // Закрыть его нельзя: только применить код, оформить тариф или выйти.
+    showInviteGate: function () {
+        const overlay = document.getElementById('invite_gate_overlay');
+        if (!overlay) return;
+        const input = document.getElementById('invite_gate_input');
+        const err = document.getElementById('invite_gate_error');
+        if (input && !input.value) input.value = this.storedInviteCode();
+        if (err) err.style.display = 'none';
+        overlay.style.display = 'flex';
+        this.syncModalOverlayClass();
+        setTimeout(() => { if (input) input.focus(); }, 100);
+    },
+    hideInviteGate: function () {
+        const overlay = document.getElementById('invite_gate_overlay');
+        if (overlay) overlay.style.display = 'none';
+        this._inviteGateNeeded = false;
+        this.syncModalOverlayClass();
+    },
+    applyInviteFromGate: async function () {
+        const input = document.getElementById('invite_gate_input');
+        const err = document.getElementById('invite_gate_error');
+        const btn = document.getElementById('invite_gate_btn');
+        const code = input ? input.value.trim().toUpperCase() : '';
+        const fail = (text) => {
+            if (err) { err.innerText = text; err.style.display = 'block'; }
+            else app.alert(text);
+        };
+        if (!code) { fail('Введите промокод магазина.'); return; }
+        if (btn) { btn.disabled = true; btn.innerText = 'Проверка...'; }
+        try {
+            const res = await this.applyInviteInDb(code);
+            if (!res.ok) { fail(this.inviteRefusalText(res)); return; }
+            const dist = res.distributor;
+            const proMonths = Number(res.pro_months) || 0;
+            this.hideInviteGate();
+            this.syncUI();
+            app.alert(`✅ Вы прикреплены к магазину «${dist.company_name}».` +
+                (proMonths > 0 ? ` Тариф Профи на ${proMonths} мес. — бесплатно.` : '') +
+                ' Страница будет перезагружена через 5 секунд.');
+            setTimeout(() => {
+                window.location.replace(window.location.pathname + window.location.search);
+            }, 5000);
+        } catch (e) {
+            console.error('[applyInviteFromGate]', e);
+            fail('Не удалось проверить промокод. Проверьте связь и попробуйте ещё раз.');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerText = 'Применить промокод'; }
+        }
+    },
+
     setProjectName: function (val) {
         if (!this.checkAccess('base')) { this.syncUI(); return; }
         let clean = String(val).trim();
@@ -5174,7 +5226,7 @@ const app = {
      * из профиля открывается окно тарифов, и снимать класс при закрытии
      * верхнего из них нельзя, пока под ним осталось нижнее.
      */
-    MODAL_OVER_BANNER_IDS: ['profile_modal_overlay', 'custom_modal_overlay', 'quick_start_overlay'],
+    MODAL_OVER_BANNER_IDS: ['profile_modal_overlay', 'custom_modal_overlay', 'quick_start_overlay', 'invite_gate_overlay'],
     syncModalOverlayClass: function () {
         const open = this.MODAL_OVER_BANNER_IDS.some(id => {
             const el = document.getElementById(id);
@@ -5249,6 +5301,17 @@ const app = {
         let overlay = document.getElementById('custom_modal_overlay');
         if (overlay) overlay.classList.remove('active');
         this.syncModalOverlayClass();
+        // Окно тарифов открывали из окна «нужен промокод» — возвращаем его
+        if (this._inviteGateNeeded) this.showInviteGate();
+    },
+
+    // Из окна «нужен промокод» — к платным тарифам. Окно тарифов лежит ниже окон
+    // входа (z-index), поэтому на время его показа окно промокода прячем;
+    // closeModal вернёт его на место, пока условие _inviteGateNeeded в силе.
+    showTariffsFromGate: function () {
+        const overlay = document.getElementById('invite_gate_overlay');
+        if (overlay) overlay.style.display = 'none';
+        this.showModal('pro');
     },
 
     activateTrial: function () {
@@ -5535,30 +5598,19 @@ const app = {
         }
     },
 
-    // Промокод, введённый при регистрации, применяется при первом входе — только тогда
-    // у пользователя появляется строка в users, к которой можно привязать дистрибьютора.
-    applyPromoFromRegistration: async function (code, userRowId) {
-        if (!code || !userRowId) return null;
-        try {
-            const { data: dist, error } = await supabaseClient
-                .from('distributors')
-                .select('*')
-                .eq('promo_code', String(code).trim().toUpperCase())
-                .eq('is_active', true)
-                .maybeSingle();
-            if (error) throw error;
-            if (!dist) return null;
-            if (dist.valid_until && new Date(dist.valid_until) < new Date()) return null;
-
-            const proMonths = Number(dist.pro_months) || 0;
-            const patch = { distributor_id: dist.id };
-            if (proMonths > 0) {
-                patch.account_type = 'pro';
-                patch.demo_ends_at = new Date(Date.now() + proMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
-            }
-            const { error: updErr } = await supabaseClient.from('users').update(patch).eq('id', userRowId);
-            if (updErr) throw updErr;
-
+    // Привязка по промокоду через функцию базы apply_invite_code: проверка
+    // лимита мест и сама привязка идут там одной транзакцией (см. миграцию
+    // 20260911_shop_invites_2_functions.sql). Раньше приложение само читало
+    // карточку компании и писало в users — при двух одновременных «Применить»
+    // лимит проскакивал. Возвращает ответ базы как есть; при успехе ещё и
+    // обновляет состояние: компания, её цены, тариф.
+    applyInviteInDb: async function (code) {
+        const { data, error } = await supabaseClient.rpc('apply_invite_code', { code: String(code || '').trim().toUpperCase() });
+        if (error) throw error;
+        const res = data || { ok: false, reason: 'not_found' };
+        if (res.ok && res.distributor) {
+            const dist = res.distributor;
+            const proMonths = Number(res.pro_months) || 0;
             this.state.distributorId = dist.id;
             this.state.distributorInfo = {
                 company_name: dist.company_name,
@@ -5571,11 +5623,28 @@ const app = {
             };
             if (proMonths > 0) {
                 this.state.accountType = 'pro';
-                if (this.state.tgUser) this.state.tgUser.account_type = 'pro';
-                if (this.state.tgUser) this.state.tgUser.demo_ends_at = patch.demo_ends_at;
+                this.state.groupItems = true; // По умолчанию группировка включена для PRO
+                if (this.state.tgUser) {
+                    this.state.tgUser.account_type = 'pro';
+                    this.state.tgUser.demo_ends_at = res.demo_ends_at || null;
+                }
             }
+            // Код из ссылки менеджера своё дело сделал
+            this.clearInviteCode();
             this.saveState();
-            return { dist, proMonths };
+        }
+        return res;
+    },
+
+    // Промокод, введённый при регистрации, применяется при первом входе — только тогда
+    // у пользователя появляется строка в users, к которой можно привязать дистрибьютора.
+    // Ответ: { dist, proMonths } при успехе, { refused } при отказе базы, null при ошибке.
+    applyPromoFromRegistration: async function (code, userRowId) {
+        if (!code || !userRowId) return null;
+        try {
+            const res = await this.applyInviteInDb(code);
+            if (!res.ok) return { refused: res };
+            return { dist: res.distributor, proMonths: Number(res.pro_months) || 0 };
         } catch (e) {
             console.warn('[applyPromoFromRegistration] Не удалось применить промокод:', e);
             return null;
@@ -5612,109 +5681,23 @@ const app = {
         };
 
         try {
-            // Ищем промокод в таблице distributors
-            const { data: dist, error } = await supabaseClient
-                .from('distributors')
-                .select('*')
-                .eq('promo_code', code)
-                .eq('is_active', true)
-                .maybeSingle();
-
-            if (error) throw error;
-
-            if (!dist) {
-                notify('❌ Промокод не найден или недействителен.', '#EF4444');
+            // Поиск кода, срок действия, лимит мест, «уже привязан к другой
+            // компании» — всё проверяет база; здесь только показываем ответ
+            const res = await this.applyInviteInDb(code);
+            if (!res.ok) {
+                notify((res.reason === 'other_distributor' ? '⚠️ ' : '❌ ') + this.inviteRefusalText(res),
+                    res.reason === 'other_distributor' ? '#D97706' : '#EF4444');
                 if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
                 return;
             }
 
-            // Проверяем, не привязан ли уже к другому дистрибьютору (одноразовая привязка)
-            if (this.state.distributorId && this.state.distributorId !== dist.id) {
-                notify('⚠️ Вы уже привязаны к другому поставщику. Изменение возможно только через администратора.', '#D97706');
-                if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
-                return;
-            }
-
-            // Проверяем срок действия промокода (valid_days / valid_until)
-            if (dist.valid_until && new Date(dist.valid_until) < new Date()) {
-                notify('❌ Срок действия этого промокода истёк.', '#EF4444');
-                if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
-                return;
-            }
-
-            // Месяцы PRO задаёт дистрибьютор. Ноль — обычный случай: промокод
-            // только привязывает монтажника к поставщику, тариф при этом не
-            // меняется. Поэтому именно ?? 0, а не || 3: ноль здесь осмысленное
-            // значение, и подменять его тремя месяцами нельзя.
-            const proMonths = Number(dist.pro_months) || 0;
-            const grantsPro = proMonths > 0;
-            const proEndDate = grantsPro
-                ? new Date(Date.now() + proMonths * 30 * 24 * 60 * 60 * 1000).toISOString()
-                : null;
-
-            // Найдём ID пользователя в БД
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            const authUserId = session?.user?.id || tgUser?.authUserId;
-            const email = session?.user?.email || tgUser?.email;
-
-            let uRow = null;
-            if (authUserId) {
-                let { data } = await supabaseClient.from('users').select('id').eq('auth_user_id', authUserId).maybeSingle();
-                uRow = data;
-            }
-            if (!uRow && email) {
-                let { data } = await supabaseClient.from('users').select('id').eq('email', email).maybeSingle();
-                uRow = data;
-            }
-            if (!uRow && tgUser.id) {
-                let { data } = await supabaseClient.from('users').select('id').eq('id', tgUser.id).maybeSingle();
-                uRow = data;
-            }
-
-            if (!uRow) {
-                notify('❌ Профиль не найден. Попробуйте перезайти в аккаунт.', '#EF4444');
-                if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
-                return;
-            }
-
-            // Обновляем запись пользователя. Тариф трогаем только если
-            // дистрибьютор действительно даёт месяцы PRO — иначе промокод
-            // просто закрепляет монтажника за поставщиком.
-            const userPatch = { distributor_id: dist.id };
-            if (grantsPro) {
-                userPatch.account_type = 'pro';
-                userPatch.demo_ends_at = proEndDate;
-            }
-            const { error: updErr } = await supabaseClient.from('users').update(userPatch).eq('id', uRow.id);
-
-            if (updErr) throw updErr;
-
-            // Обновляем локальное состояние
-            if (grantsPro) {
-                this.state.accountType = 'pro';
-                this.state.groupItems = true; // По умолчанию группировка включена для PRO
-            }
-            this.state.distributorId = dist.id;
-            this.state.distributorInfo = {
-                company_name: dist.company_name,
-                manager_name: dist.manager_name,
-                manager_email: dist.manager_email,
-                manager_phone: dist.manager_phone,
-                director_email: dist.director_email,
-                use_own_prices: !!dist.use_own_prices,
-                price_list_key: dist.price_list_key || null
-            };
-            if (this.state.tgUser) {
-                if (grantsPro) this.state.tgUser.account_type = 'pro';
-                if (!this.state.tgUser.id) this.state.tgUser.id = uRow.id;
-            }
-
-            this.saveState();
+            const dist = res.distributor;
+            const proMonths = Number(res.pro_months) || 0;
             this.syncUI();
             this.closeModal();
 
             app.alert(`✅ Промокод принят! Компания-поставщик: ${dist.company_name}.` +
-                (grantsPro ? ` Вам присвоен тариф Профи на ${proMonths} мес.` : '') +
+                (proMonths > 0 ? ` Вам присвоен тариф Профи на ${proMonths} мес.` : '') +
                 ' Страница будет перезагружена через 6 секунд.');
             setTimeout(() => {
                 window.location.replace(window.location.pathname + window.location.search);
@@ -9144,6 +9127,8 @@ const app = {
         this._profileDbLoaded = false;
         const profileOverlay = document.getElementById('profile_modal_overlay');
         if (profileOverlay) profileOverlay.style.display = 'none';
+        // Окно «нужен промокод» тоже держится за сессию — с ней и уходит
+        this.hideInviteGate();
         // Адрес устройства снимаем ДО выхода: удалять свою строку в push_tokens
         // разрешено только по действующей сессии. Иначе следующий, кто войдёт на
         // этом телефоне, получал бы уведомления предыдущего.
@@ -29344,7 +29329,7 @@ const app = {
             };
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at';
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, registered_at';
 
             let { data: upsertResult, error: upsertError } = await supabaseClient
                 .from('users')
@@ -29477,7 +29462,7 @@ const app = {
                 const regPromo = (user.user_metadata && user.user_metadata.promo_code) || '';
                 if (regPromo && !uRow.distributor_id) {
                     const applied = await this.applyPromoFromRegistration(regPromo, uRow.id);
-                    if (applied) {
+                    if (applied && applied.dist) {
                         uRow.distributor_id = applied.dist.id;
                         if (applied.proMonths > 0) this.state.accountType = 'pro';
                         setTimeout(() => {
@@ -29485,11 +29470,43 @@ const app = {
                                 (applied.proMonths > 0 ? ` Тариф Профи на ${applied.proMonths} мес.` : ''));
                         }, 1200);
                     } else {
+                        // Отказ базы (нет мест, истёк) объясняем её же словами; ошибка
+                        // сети — общей фразой. Окно промокода после входа само
+                        // попросит ввести другой (см. showInviteGate ниже).
+                        const why = (applied && applied.refused)
+                            ? this.inviteRefusalText(applied.refused)
+                            : 'он не найден или истёк.';
                         setTimeout(() => {
-                            app.alert('Промокод, указанный при регистрации, не подошёл — он не найден или истёк. Ввести другой можно в меню «Промокод».');
+                            app.alert('Промокод, указанный при регистрации, не подошёл: ' + why + ' Ввести другой можно в меню «Промокод».');
                         }, 1200);
                     }
                 }
+
+                // Пришёл по ссылке менеджера магазина уже с готовой учёткой (старый
+                // монтажник) — привязываем её тем же кодом, без регистрации. Так
+                // менеджер собирает к себе и тех, кто на сайте давно.
+                const linkPromo = this.storedInviteCode();
+                if (linkPromo && !uRow.distributor_id && linkPromo !== String(regPromo).toUpperCase()) {
+                    const linked = await this.applyPromoFromRegistration(linkPromo, uRow.id);
+                    if (linked && linked.dist) {
+                        uRow.distributor_id = linked.dist.id;
+                        if (linked.proMonths > 0) this.state.accountType = 'pro';
+                        setTimeout(() => {
+                            app.alert(`✅ Вы прикреплены к магазину «${linked.dist.company_name}».` +
+                                (linked.proMonths > 0 ? ` Тариф Профи на ${linked.proMonths} мес. — бесплатно.` : ''));
+                        }, 1200);
+                    } else if (linked && linked.refused && linked.refused.reason === 'not_found') {
+                        this.clearInviteCode();
+                    }
+                    // Прочие отказы (нет мест, истёк) покажет плашка приглашения ниже
+                }
+
+                // Регистрация только по приглашению: новой учётке без компании
+                // калькулятор не открываем, пока не введён промокод. Старых (без
+                // registered_at) и служебные роли не трогаем. Само окно — после
+                // render(), в общей очереди принудительных окон.
+                this._inviteGateNeeded = !!(this.INVITE_ONLY_REGISTRATION && uRow.registered_at
+                    && !uRow.distributor_id && !this.hasAdminAccess());
 
                 // Загружаем привязку к дистрибьютору
                 if (uRow.distributor_id) {
@@ -29533,6 +29550,10 @@ const app = {
                 setTimeout(() => {
                     window.location.replace(window.location.pathname + window.location.search);
                 }, 6000);
+            } else if (this._inviteGateNeeded) {
+                // Сначала промокод, потом анкета: без компании новой учётке всё
+                // равно работать нельзя, и заполнять анкету до этого незачем.
+                this.showInviteGate();
             } else if (this._profileDbLoaded && this.isProfileIncomplete()) {
                 // Google/Telegram-вход или старый аккаунт без обязательной анкеты —
                 // не даём продолжить работу, пока профиль не будет дозаполнен целиком.
@@ -29544,6 +29565,9 @@ const app = {
                 // на e-mail или Яндекс ID (не чаще одного раза за сеанс)
                 setTimeout(() => this.showRuLoginMigrationModal(), 1200);
             }
+            // Вошёл по ссылке менеджера, но привязать не вышло (нет мест, истёк):
+            // плашка объяснит причину. Уже привязанным она сама не показывается.
+            if (!this._inviteGateNeeded) this.showInviteBanner();
         } catch (error) {
             console.error('Ошибка авторизации:', error);
         } finally {

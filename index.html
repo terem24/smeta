@@ -3068,6 +3068,31 @@
             </div>
         </div>
     </div>
+    <!-- Окно «Нужен промокод магазина». Показывается новой учётке без компании, когда
+         регистрация закрыта для всех, кроме приглашённых (app.INVITE_ONLY_REGISTRATION).
+         Крестика нет намеренно: без промокода калькулятор не открывается. Выход — ввести
+         код, оформить платный тариф или выйти из аккаунта. Наполняет app.showInviteGate. -->
+    <div id="invite_gate_overlay" class="auth-modal-overlay" style="display: none; z-index: 100001;">
+        <div class="auth-modal-content" style="max-width: 420px; text-align: center;">
+            <div style="font-size: 34px; line-height: 1; margin-bottom: 10px;">🏪</div>
+            <h3 class="auth-modal-title" style="font-weight: 800; text-align: center; margin-bottom: 10px;">Нужен промокод магазина</h3>
+            <p style="font-size: 14px; color: var(--text-sec); margin: 0 0 16px; line-height: 1.5; text-align: center;">
+                Калькулятор открыт для монтажников магазинов-партнёров. Промокод бесплатно выдаёт
+                менеджер магазина, где вы покупаете оборудование: спросите у него или отсканируйте
+                QR-код у кассы. С промокодом тариф Профи оплачивать не нужно.
+            </p>
+            <input type="text" id="invite_gate_input" class="auth-input" placeholder="Например, SHOP-07" maxlength="32" autocomplete="off"
+                oninput="this.value = this.value.toUpperCase()"
+                onkeydown="if (event.key === 'Enter') app.applyInviteFromGate()"
+                style="max-width: 100%; margin: 0 0 8px; text-align: center; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;">
+            <div id="invite_gate_error" style="display: none; color: #ef4444; font-size: 13px; line-height: 1.4; margin: 0 0 10px; text-align: left;"></div>
+            <button class="auth-btn-base btn-email-submit" id="invite_gate_btn" style="width: 100%; height: 42px;" onclick="app.applyInviteFromGate()">Применить промокод</button>
+            <div style="margin-top: 14px; font-size: 13px; line-height: 1.6; color: var(--text-sec);">
+                Промокода нет? <a href="#" onclick="event.preventDefault(); app.showTariffsFromGate()" style="color: var(--primary); font-weight: 600; text-decoration: none;">Посмотреть платные тарифы</a><br>
+                <a href="#" onclick="event.preventDefault(); app.logout()" style="color: var(--text-sec); text-decoration: none;">Выйти из аккаунта</a>
+            </div>
+        </div>
+    </div>
     <div id="password_reset_success_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 100001;">
         <div class="auth-modal-content" style="max-width: 400px; text-align: center;">
             <span class="auth-modal-close" onclick="app.closePasswordResetSuccessModal()">&times;</span>
