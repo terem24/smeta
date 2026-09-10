@@ -219,7 +219,8 @@ def collect_catalog_items(content):
 # Пересчитать их есть чем: над ценой карточка пишет, сколько товара эта цена
 # покрывает — «цена за 100 м», «цена за 10 м», «цена за 2 м», «цена за шт.»
 # (в разметке это title_price, рядом лежит то же число в RATIO). Делим цену на
-# это количество — и позиция обновляется наравне со всеми.
+# это количество — и позиция обновляется наравне со всеми. Тем же способом
+# считается упаковка штучного товара: «цена за 5 шт.» у защитной втулки.
 #
 # Брать длину бухты из каталога вместо этой подписи нельзя, хотя соблазн есть:
 # у трубы стабильной SPS-0002-001626 в каталоге бухта 100 м, а карточка даёт
@@ -255,11 +256,24 @@ def parse_price_ratio(text):
     return unit, qty
 
 
+def _round_unit(price, qty):
+    value = round(price / qty, 2)
+    return int(value) if abs(value - round(value)) < 1e-9 else value
+
+
 def to_catalog_price(price, ratio, item):
     """Цена с карточки -> цена в единицах каталога. None — пересчитать нечем."""
     if not price:
         return None
     if not is_per_meter(item):
+        # Штучная позиция, но карточка может отдавать цену упаковки: защитная
+        # втулка SFA-0035-100016 стоит 56 ₽, а на сайте «цена за 5 шт. — 280 ₽».
+        # Такие позиции до 09.09.2026 не обновлялись вовсе: коридор ±200 %
+        # отбивал пятикратную цену как чужую карточку — что и уберегло каталог.
+        # Упаковок на сайте немного (две штуки на 380 проверенных карточек), но
+        # молчаливая переплата впятеро — не то, на что стоит полагаться.
+        if ratio and ratio[0] == 'шт' and ratio[1] > 1:
+            return _round_unit(price, ratio[1])
         return price
     length = None
     if ratio and ratio[0] == 'м':
@@ -268,8 +282,7 @@ def to_catalog_price(price, ratio, item):
         length = item['own_len']
     if not length:
         return None
-    value = round(price / length, 2)
-    return int(value) if abs(value - round(value)) < 1e-9 else value
+    return _round_unit(price, length)
 
 
 def fmt_qty(qty):
@@ -557,7 +570,10 @@ def get_price_card_isolation(driver, sku, old_price, item=None):
             final_status = status_in_card or fallback_status
             note = None
             if price_raw != price_in_card:
-                qty = fmt_qty(price_ratio[1]) + ' м' if price_ratio and price_ratio[0] == 'м' else 'штангу'
+                if price_ratio:
+                    qty = fmt_qty(price_ratio[1]) + (' м' if price_ratio[0] == 'м' else ' шт')
+                else:
+                    qty = 'штангу'
                 note = f"цена за {qty}: {price_raw} ₽"
             found_items.append({'price': price_in_card, 'status': final_status, 'note': note})
         

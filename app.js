@@ -4654,6 +4654,23 @@ const app = {
         } catch (e) { return null; }
     },
 
+    // Сфера деятельности и роль «менеджер», выставленные вручную на локальной
+    // машине (та же панель, что и тариф). Нужны, чтобы посмотреть оформление
+    // «магазин» (isShopTheme: менеджер + продавец) и вкладки продавца, не правя
+    // свою запись в базе. На боевом домене всегда null/false.
+    localRole: function () {
+        if (!this.isLocalhost()) return null;
+        try {
+            const v = localStorage.getItem('local_role');
+            return (v === 'installer' || v === 'seller') ? v : null;
+        } catch (e) { return null; }
+    },
+
+    localManager: function () {
+        if (!this.isLocalhost()) return false;
+        try { return localStorage.getItem('local_manager') === '1'; } catch (e) { return false; }
+    },
+
     isPro: function () {
         // Локальная проверка идёт мимо базы: у тестового аккаунта демо-период
         // рано или поздно истекает, и тогда половину интерфейса не посмотреть.
@@ -4710,10 +4727,48 @@ const app = {
             return `<button type="button" onclick="app.setLocalTariff('${val}')"
                 style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${on ? '#22C55E' : 'rgba(255,255,255,.25)'}; background: ${on ? '#22C55E' : 'transparent'}; color: ${on ? '#062b14' : '#fff'};">${label}</button>`;
         };
+        // Второй ряд: сфера деятельности (монтажник / продавец) и роль «менеджер».
+        // Повторное нажатие на активную сферу возвращает её «как в базе»;
+        // «Менеджер» — тумблер, включается поверх любой сферы. «Продавец»
+        // включает оформление «магазин» (isShopTheme), «Менеджер» — панель
+        // управления в урезанном виде менеджера.
+        const role = this.localRole();
+        const mgr = this.localManager();
+        const rbtn = (val, label, on, handler, title) => `<button type="button" onclick="${handler}" title="${title}"
+                style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${on ? '#22C55E' : 'rgba(255,255,255,.25)'}; background: ${on ? '#22C55E' : 'transparent'}; color: ${on ? '#062b14' : '#fff'};">${label}</button>`;
         box.innerHTML = `<span style="opacity:.65; letter-spacing:.3px;">ЛОКАЛЬНО</span>`
             + btn('base', 'Базовый') + btn('pro', 'Профи')
             + `<button type="button" onclick="app.setLocalTariff('')" title="Вернуть тариф как в базе"
-                style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${cur ? 'rgba(255,255,255,.25)' : '#22C55E'}; background: ${cur ? 'transparent' : '#22C55E'}; color: ${cur ? '#fff' : '#062b14'};">Как в базе</button>`;
+                style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${cur ? 'rgba(255,255,255,.25)' : '#22C55E'}; background: ${cur ? 'transparent' : '#22C55E'}; color: ${cur ? '#fff' : '#062b14'};">Как в базе</button>`
+            + `<span style="opacity:.35; margin: 0 2px;">|</span>`
+            + rbtn('installer', 'Монтажник', role === 'installer', "app.setLocalRole('installer')", 'Сфера: монтаж (повторное нажатие — как в базе)')
+            + rbtn('seller', 'Продавец', role === 'seller', "app.setLocalRole('seller')", 'Сфера: продажа без монтажа — включает оформление «магазин» (повторное нажатие — как в базе)')
+            + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы: панель управления в виде менеджера');
+    },
+
+    setLocalRole: function (val) {
+        if (!this.isLocalhost()) return;
+        try {
+            // Нажали на уже активную — снимаем, возвращаемся к записи в базе
+            if (val && this.localRole() === val) localStorage.removeItem('local_role');
+            else if (val === 'installer' || val === 'seller') localStorage.setItem('local_role', val);
+            else localStorage.removeItem('local_role');
+        } catch (e) { }
+        this.mountLocalTariffSwitch();
+        this.syncUI();
+        this.render();
+    },
+
+    toggleLocalManager: function () {
+        if (!this.isLocalhost()) return;
+        try {
+            if (this.localManager()) localStorage.removeItem('local_manager');
+            else localStorage.setItem('local_manager', '1');
+        } catch (e) { }
+        this.mountLocalTariffSwitch();
+        this.syncRailUI && this.syncRailUI();
+        this.syncUI();
+        this.render();
     },
 
     setLocalTariff: function (val) {
@@ -4891,6 +4946,46 @@ const app = {
         if (fromRecognition) calcMeta = { source: 'recognition' };
         else if (this._quickStartPreset) calcMeta = { source: 'quick_start', preset: this._quickStartPreset };
         this.logInvoiceEvent('calculated', calcMeta);
+    },
+
+    /**
+     * Карточка в планировщике — в момент разбора, а не при переносе в смету.
+     *
+     * Разбор, брошенный на экране проверки, до сих пор не оставлял следа нигде:
+     * архив пишется внутри apply(), то есть только у перенесённых, событий тоже
+     * не было. Работа сделана, запросы к модели потрачены — а в панели пусто.
+     *
+     * Номер расчёта выдаём здесь же, если его ещё нет: карточка живёт под ним, и
+     * перенос в смету продолжит ту же карточку, а не заведёт вторую. Отметку
+     * «посчитано» тут НЕ ставим — разбор ещё не расчёт; её поставит перенос
+     * (markRecognitionApplied), потому что обычный ensureCalcId после выданного
+     * номера уже промолчит.
+     */
+    beginRecognitionCard: function (meta) {
+        try {
+            if (!this.state.calc_id) {
+                this.state.calc_id = String(Math.floor(100000 + Math.random() * 900000));
+                this.state.rec_card_pending = true;
+                this.saveState();
+            }
+            this.logInvoiceEvent('recognized', meta || null);
+        } catch (e) {
+            console.warn('[распознавание] карточка не заведена:', e.message || e);
+        }
+    },
+
+    /**
+     * Разобранное уехало в смету — карточка идёт дальше по воронке.
+     *
+     * Срабатывает только если номер выдали мы сами (см. beginRecognitionCard).
+     * Когда монтажник разбирал накладную в уже начатый объект, у того есть свой
+     * номер и своя отметка «посчитано» — второй раз её ставить незачем.
+     */
+    markRecognitionApplied: function () {
+        if (!this.state.rec_card_pending) return;
+        delete this.state.rec_card_pending;
+        this.logInvoiceEvent('calculated', { source: 'recognition' });
+        this.saveState();
     },
 
     getProUntilDate: function () {
@@ -6615,6 +6710,7 @@ const app = {
     // своего ПОСЛЕДНЕГО события; при новом событии сама "переезжает", т.к. рендер берёт самую свежую запись.
     // Метка и цвет конкретного события показываются как бейдж внутри карточки.
     ADMIN_KANBAN_EVENT_META: {
+        recognized: { label: 'Разобран документ', color: '#0D9488' },
         calculated: { label: 'Новый расчёт', color: '#94A3B8' },
         saved: { label: 'Сохранено', color: '#60A5FA' },
         sent: { label: 'Отправлено клиенту', color: '#818CF8' },
@@ -6660,6 +6756,10 @@ const app = {
     },
 
     ADMIN_KANBAN_STAGES: [
+        // Первая ступень воронки: документ разобран, но в смету ещё не уехал.
+        // Карточка появляется на экране проверки — до того такой разбор не
+        // оставлял следа нигде (см. beginRecognitionCard).
+        { key: 'recognized', label: 'Распознано', color: '#0D9488', events: ['recognized'] },
         { key: 'draft', label: 'Расчёты', color: '#60A5FA', events: ['calculated', 'saved'] },
         { key: 'review', label: 'На согласовании', color: '#818CF8', events: ['sent', 'printed', 'confirmed', 'needs_revision', 'invoice_reminder_sent', 'invoice_reminder_declined'] },
         { key: 'payment', label: 'В оплату', color: '#F59E0B', events: ['invoice_requested', 'invoice_issued', 'rejected', 'paid'] },
@@ -6816,8 +6916,11 @@ const app = {
                 // (иначе первая ступень «расчёт сохранён» пустеет сама собой).
                 // Правило было описано в комментарии выше, но в коде его не
                 // было: под нож шло всё, чего нет в estimates.
+                // Разобранный документ — такое же штатное начало воронки, как и
+                // черновик расчёта: сметы в базе у него нет и быть не может.
                 const isDraftOnly = (list) => list.every(e =>
-                    e.event === 'calculated' || this.ADMIN_KANBAN_TECH_EVENTS.includes(e.event));
+                    e.event === 'calculated' || e.event === 'recognized'
+                    || this.ADMIN_KANBAN_TECH_EVENTS.includes(e.event));
                 const orphanCalcIds = Object.keys(byCalc)
                     .filter(calcId => !liveCalcIds.has(calcId) && !isDraftOnly(byCalc[calcId]));
                 if (orphanCalcIds.length) {
@@ -6895,16 +6998,18 @@ const app = {
             // 'calculated' (у смет, сохранённых до появления флага в calc_data)
             if (liveRecMap[String(e.calc_id)] || (e.meta && e.meta.source === 'recognition')) p.fromRecognition = true;
         });
-        // Менеджеру планировщик показывает только сметы его компании. Фильтруем
+        // Менеджеру и наблюдателю планировщик показывает только сметы их компаний. Фильтруем
         // здесь, а не в выборке событий: дистрибьютор у сметы известен лишь после
         // сопоставления её автора со справочником пользователей (userMeta выше).
-        const scopeDists = this.isManagerRole() ? this.managerDistIds().map(String) : null;
+        const scopeDists = this.isScopedAdmin() ? this.managerDistIds().map(String) : null;
         const list = Object.values(projects)
             .filter(p => !scopeDists || scopeDists.includes(String(p.distributor_id || '')));
-        // Брошенный расчёт — тот, у которого так и не появилось сохранённой сметы.
-        // Другого он и быть не может: карточки с историей, но без сметы, чистка
-        // удаляет как осиротевшие (см. выше), остаются только черновики.
-        list.forEach(p => { p.abandoned = !!liveIds && !liveIds.has(String(p.calc_id)); });
+        // Брошенный расчёт — тот, что остановился на «посчитано» и не стал сметой.
+        // Карточку, застрявшую на разборе документа, сюда не относим: она и есть то,
+        // ради чего заводилась, и прятать её по умолчанию бессмысленно.
+        list.forEach(p => {
+            p.abandoned = !!liveIds && !liveIds.has(String(p.calc_id)) && p.current === 'calculated';
+        });
 
         const installers = [...new Set(list.map(p => p.user_name).filter(Boolean))].sort();
         const regions = [...new Set(list.map(p => p.region).filter(Boolean))].sort();
@@ -8988,13 +9093,18 @@ const app = {
         this.setBirthDateRange(document.getElementById('profile_birth_date_input'));
         document.getElementById('profile_region_input').value = tgUser.region || '';
         document.getElementById('profile_city_input').value = tgUser.city || '';
+        // Строго после региона: подсказке нужно с чем сравнивать номер
+        this.showPhoneRegionHint();
         if (document.getElementById('profile_email_input')) {
             document.getElementById('profile_email_input').value = tgUser.email || '';
         }
+        // Сфера теперь одна. У старых анкет в базе их может быть две — показываем
+        // первую и просим выбрать при следующем сохранении, а не молчим.
         const profileActivityTypes = tgUser.activityTypes || [];
+        const pickedActivity = ['Монтажник', 'Продавец'].find(v => profileActivityTypes.includes(v)) || '';
         [['profile_act_installer', 'Монтажник'], ['profile_act_seller', 'Продавец']].forEach(([id, val]) => {
             const chk = document.getElementById(id);
-            if (chk) chk.checked = profileActivityTypes.includes(val);
+            if (chk) chk.checked = (pickedActivity === val);
         });
 
         // Тариф и срок подписки показывает раздел «Подписка» (renderSubscriptionTab)
@@ -11585,11 +11695,44 @@ const app = {
     // дистрибьютора не выведены из-под правила. Решает одна анкета — так его
     // видно на живом сайте под своей учётной записью, а не только на словах.
     isSellerOnly: function () {
+        // Локальная панель (см. mountLocalTariffSwitch) подменяет сферу мимо базы
+        const forcedRole = this.localRole();
+        if (forcedRole) return forcedRole === 'seller';
         const row = this.accessUserRow();
         const list = row.activityTypes || row.activity_types || [];
         if (!Array.isArray(list) || !list.length) return false;
         const has = (word) => list.some(a => String(a).toLowerCase().indexOf(word) !== -1);
         return has('продав') && !has('монтаж');
+    },
+
+    // Оформление «магазин» — для всех продавцов (сфера «продажа» без монтажа,
+    // см. isSellerOnly). Сначала было только менеджерам-продавцам, 10.09.2026
+    // владелец расширил на всех продавцов. Только стили: класс theme-shop на
+    // body, все правила в style.css. Сняли сферу — класс уходит при следующем
+    // syncRoleTabs, расчёт об этом не знает. Тёмная тема поверх магазинной не
+    // накладывается: два набора переопределений друг на друге читались бы плохо.
+    isShopTheme: function () { return this.isSellerOnly(); },
+
+    syncShopTheme: function () {
+        const on = this.isShopTheme();
+        document.body.classList.toggle('theme-shop', on);
+        if (on) document.body.classList.remove('dark-mode');
+        this.syncTopLogo();
+    },
+
+    // Логотип в левом углу шапки. Обычно — по бренду (STOUT / ROMMER), под
+    // темой «магазин» — логотип магазина. Одна функция на оба вызова (render
+    // и syncShopTheme), чтобы выбор не разъехался. Логотип на печатных
+    // документах и листах проекта — отдельный (реквизиты компании), его
+    // это не касается.
+    syncTopLogo: function () {
+        const el = document.getElementById('top_left_logo');
+        if (!el) return;
+        let src, alt;
+        if (this.isShopTheme()) { src = 'img/terem_logo.svg'; alt = 'ТЕРЕМ'; }
+        else if (this.state.brandMode === 'rommer') { src = 'img/rommer_logo.jpg'; alt = 'ROMMER'; }
+        else { src = 'img/stout_logo.png'; alt = 'STOUT'; }
+        if (el.getAttribute('src') !== src) { el.src = src; el.alt = alt; }
     },
 
     /**
@@ -11601,6 +11744,7 @@ const app = {
      * на 2 — иначе список читался бы как «1, 3».
      */
     syncRoleTabs: function () {
+        this.syncShopTheme();
         const seller = this.isSellerOnly();
         const tWk = document.getElementById('tab_works');
         const tMoney = document.getElementById('tab_money');
@@ -14108,6 +14252,9 @@ const app = {
     SUPER_ADMIN_EMAILS: ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'],
 
     getAdminRole: function () {
+        // Локальная панель: кнопка «Менеджер» подменяет роль мимо базы, даже у
+        // суперадмина — иначе оформление «магазин» у себя не посмотреть
+        if (this.localManager()) return 'manager';
         const user = this._currentUserRow || this.state.tgUser || {};
         const email = user.email ? user.email.toLowerCase() : '';
         if (email && this.SUPER_ADMIN_EMAILS.includes(email)) {
@@ -14154,24 +14301,99 @@ const app = {
     // было бы негде — личную вкладку «Переписка с администратором» ему оставляем.
     usesAdminMessenger: function () { return this.hasAdminAccess() && !this.isManagerRole(); },
 
-    managerDistIds: function () { return (this._managerScope && this._managerScope.distIds) || []; },
-    managerUserIds: function () { return (this._managerScope && this._managerScope.userIds) || []; },
+    // ═══ Область видимости: наблюдатель ══════════════════════════════════
+    // Наблюдателю данные режутся так же, как менеджеру, только компании ему
+    // не выводятся из привязки, а назначаются поимённо — и их может быть
+    // несколько (users.viewer_distributor_ids, см. миграцию
+    // 20260910_add_viewer_distributor_scope.sql).
+    //
+    // Не назначено ни одной компании — не видно ничего. Показать такому
+    // наблюдателю всю платформу было бы ровно тем, от чего список и заводился.
+    isViewerRole: function () { return this.getAdminRole() === 'viewer'; },
+
+    // Роли с урезанной областью видимости. Речь только про ДАННЫЕ: какие
+    // разделы кому показывать — отдельный вопрос, за него отвечает adminTabDefs.
+    isScopedAdmin: function () { return this.isManagerRole() || this.isViewerRole(); },
+
+    scopeDistIds: function () { return (this._adminScope && this._adminScope.distIds) || []; },
+    scopeUserIds: function () { return (this._adminScope && this._adminScope.userIds) || []; },
+
+    // Почты своих монтажников. Нужны там, где записи привязаны не к id, а к
+    // логину: таблица projects (в ней только user_email), подложки планов и
+    // архив распознаваний на Beget — они про Supabase ничего не знают.
+    scopeUserEmails: function () { return (this._adminScope && this._adminScope.userEmails) || []; },
+
+    // Своё ли это — по логину. Логин приходит и почтой, и ником, поэтому
+    // сверяем приведёнными к нижнему регистру строками.
+    isScopeEmail: function (login) {
+        const want = String(login || '').trim().toLowerCase();
+        if (!want) return false;
+        return this.scopeUserEmails().indexOf(want) >= 0;
+    },
+
+    // Совместимость: под старыми именами к области видимости обращается код,
+    // писавшийся, когда она была только у менеджера.
+    managerDistIds: function () { return this.scopeDistIds(); },
+    managerUserIds: function () { return this.scopeUserIds(); },
 
     /**
-     * Кто «свои» для менеджера: компании и их монтажники.
-     *
-     * Считается заново при каждой загрузке панели — состав компании меняется,
-     * держать его в кэше между сеансами нельзя. Пустой список компаний значит,
-     * что роль выдали, а компанию в карточке назначить забыли: тогда менеджер
-     * не увидит ничего, и это правильнее, чем показать ему всех подряд.
+     * Своя строка в таблице пользователей с полями, от которых зависит область
+     * видимости. Спрашиваем базу, а не полагаемся на _currentUserRow: тот
+     * заполняется только при загрузке своих смет из облака, и в панель нередко
+     * заходят раньше — тогда список компаний оказывался пустым, и наблюдатель
+     * с назначенными компаниями не видел ничего.
      */
-    resolveManagerScope: async function () {
-        if (!this.isManagerRole()) { this._managerScope = null; return null; }
-        const row = this.accessUserRow();
-        const email = String(row.email || '').trim().toLowerCase();
+    fetchScopeRow: async function () {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const authId = (session && session.user && session.user.id)
+                || (this.state.tgUser && this.state.tgUser.authUserId);
+            if (!authId) return null;
+            const { data } = await supabaseClient.from('users')
+                .select('id, email, distributor_id, viewer_distributor_ids, account_type')
+                .eq('auth_user_id', authId).maybeSingle();
+            return data || null;
+        } catch (e) {
+            console.warn('[область видимости] своя строка не прочитана:', e.message || e);
+            return null;
+        }
+    },
+
+    /**
+     * Кто «свои»: компании и их монтажники.
+     *
+     * Компании набираются из двух источников, и у ролей они разные:
+     *
+     *  · где человек ведёт людей сам — его почта стоит в карточке компании
+     *    менеджером или директором. Считается обеим ролям: наблюдатель нередко
+     *    и сам менеджер какой-то компании, и своих монтажников он должен видеть
+     *    независимо от того, отметили ему эту компанию галочкой или нет;
+     *  · отмеченные владельцем галочками (viewer_distributor_ids) — только
+     *    наблюдателю, это и есть смысл его роли;
+     *  · поле «Дистрибьютор» в собственной карточке — только менеджеру, у него
+     *    оно значит «моя компания». Наблюдателю его НЕ засчитываем: у прочих
+     *    это поле значит «мой менеджер, ему уходит копия запроса счёта», и по
+     *    нему человек получил бы всю чужую компанию ни за что.
+     *
+     * Считается заново при каждой загрузке панели: состав компании меняется,
+     * держать его в кэше между сеансами нельзя.
+     */
+    resolveAdminScope: async function () {
+        if (!this.isScopedAdmin()) { this._adminScope = null; this._managerScope = null; return null; }
+        const local = this.accessUserRow();
+        const remote = await this.fetchScopeRow();
+        const row = Object.assign({}, local, remote || {});
         const ids = new Set();
-        const own = row.distributor_id || this.state.distributorId;
-        if (own) ids.add(String(own));
+
+        if (this.isViewerRole()) {
+            const list = Array.isArray(row.viewer_distributor_ids) ? row.viewer_distributor_ids : [];
+            list.forEach(id => { if (id) ids.add(String(id)); });
+        } else {
+            const own = row.distributor_id || this.state.distributorId;
+            if (own) ids.add(String(own));
+        }
+
+        const email = String(row.email || '').trim().toLowerCase();
         if (email) {
             try {
                 const { data } = await supabaseClient.from('distributors').select('id, manager_email, director_email');
@@ -14180,28 +14402,92 @@ const app = {
                     const dir = String(d.director_email || '').trim().toLowerCase();
                     if ((m && m === email) || (dir && dir === email)) ids.add(String(d.id));
                 });
-            } catch (e) { console.warn('[resolveManagerScope] Не удалось прочитать дистрибьюторов:', e); }
+            } catch (e) { console.warn('[область видимости] Не удалось прочитать дистрибьюторов:', e); }
         }
+
         const distIds = [...ids];
-        let userIds = [];
+        let userIds = [], userEmails = [];
         if (distIds.length) {
             try {
-                const { data } = await supabaseClient.from('users').select('id').in('distributor_id', distIds);
+                const { data } = await supabaseClient.from('users').select('id, email').in('distributor_id', distIds);
                 userIds = (data || []).map(u => String(u.id));
-            } catch (e) { console.warn('[resolveManagerScope] Не удалось прочитать монтажников компании:', e); }
+                userEmails = (data || []).map(u => String(u.email || '').trim().toLowerCase()).filter(Boolean);
+            } catch (e) { console.warn('[область видимости] Не удалось прочитать монтажников компаний:', e); }
         }
-        this._managerScope = { distIds, userIds };
-        return this._managerScope;
+        this._adminScope = { distIds, userIds, userEmails };
+        this._managerScope = this._adminScope;
+        return this._adminScope;
     },
 
-    // Отсечка выборки по монтажникам своей компании. Пустой список подменяем
+    // Старое имя: зовётся из загрузки панели.
+    resolveManagerScope: async function () { return this.resolveAdminScope(); },
+
+    /**
+     * Назначенные компании всех наблюдателей — для их карточек в разделе
+     * «Пользователи». Наблюдателей единицы, поэтому один короткий запрос.
+     *
+     * Пока миграция не выполнена, колонки нет: запрос вернёт ошибку, карточка
+     * просто покажет пустой список, и раздел от этого не пострадает.
+     */
+    loadViewerScopes: async function () {
+        try {
+            const { data, error } = await supabaseClient.from('users')
+                .select('id, viewer_distributor_ids').eq('account_type', 'viewer');
+            if (error) throw error;
+            const map = {};
+            (data || []).forEach(u => {
+                map[String(u.id)] = Array.isArray(u.viewer_distributor_ids)
+                    ? u.viewer_distributor_ids.map(String) : [];
+            });
+            this._viewerScopes = map;
+        } catch (e) {
+            console.warn('[наблюдатели] список компаний не прочитан (выполнена ли миграция?):', e.message || e);
+            this._viewerScopes = this._viewerScopes || {};
+        }
+        return this._viewerScopes;
+    },
+
+    viewerScopeFor: function (userId) {
+        return (this._viewerScopes && this._viewerScopes[String(userId)]) || [];
+    },
+
+    // Отмеченные в карточке компании — по галочкам, а не по памяти.
+    pickedViewerDistIds: function () {
+        const box = document.getElementById('admin_edit_viewer_dists');
+        if (!box) return null;
+        return [...box.querySelectorAll('input.admin-viewer-dist:checked')].map(i => i.value).filter(Boolean);
+    },
+
+    /**
+     * Подпись под списком компаний наблюдателя: что именно он увидит.
+     *
+     * Список галочек сам по себе не отвечает на вопрос «и что теперь?» —
+     * поэтому под ним всегда стоит фраза с перечислением отмеченных компаний,
+     * а при пустом выборе — предупреждение, что человек не увидит ничего.
+     */
+    updateViewerDistsHint: function () {
+        const hint = document.getElementById('admin_edit_viewer_dists_hint');
+        if (!hint) return;
+        const picked = this.pickedViewerDistIds() || [];
+        const names = picked.map(id => {
+            const d = (this.adminData.distributors || []).find(x => String(x.id) === String(id));
+            return d ? d.company_name : id;
+        });
+        hint.innerHTML = names.length
+            ? `<span style="color:var(--text-sec);">Отмечено компаний: <b style="color:var(--text-main);">${names.length}</b> — ${names.join(', ')}.
+               Наблюдатель увидит монтажников этих компаний, их расчёты, переписку с ними и их карточки в планировщике. Сверх того он всегда видит компании, где сам записан менеджером или директором, — отмечать их галочкой не нужно. Всё остальное на платформе от него закрыто.</span>`
+            : `<span style="color:#D97706;">Ни одна компания не отмечена — наблюдатель не увидит ни одного монтажника и ни одного расчёта.</span>`;
+    },
+
+    // Отсечка выборки по монтажникам своих компаний. Пустой список подменяем
     // заведомо несуществующим id: запрос без условия отдал бы всю базу, а это
     // ровно то, от чего роль и заводилась.
-    scopeQueryToManager: function (query, column) {
-        if (!this.isManagerRole()) return query;
-        const ids = this.managerUserIds();
+    scopeAdminQuery: function (query, column) {
+        if (!this.isScopedAdmin()) return query;
+        const ids = this.scopeUserIds();
         return query.in(column, ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
     },
+    scopeQueryToManager: function (query, column) { return this.scopeAdminQuery(query, column); },
 
     // ═══ Доступ к инструментам: распознавание и проектирование ═══════════
     // Администраторам оба инструмента открыты ПО УМОЛЧАНИЮ, наблюдателям и
@@ -14478,9 +14764,9 @@ const app = {
         // Убираем запятые/скобки — они ломают синтаксис .or(), это разделители условий
         const searchFilter = (filters.search || '').trim().replace(/[,()]/g, '');
 
-        // Менеджер видит только монтажников своей компании — это условие
-        // сильнее любых фильтров и снимается только сменой роли.
-        if (this.isManagerRole()) {
+        // Менеджер и наблюдатель видят только монтажников своих компаний —
+        // это условие сильнее любых фильтров и снимается только сменой роли.
+        if (this.isScopedAdmin()) {
             const mine = this.managerDistIds();
             query = query.in('distributor_id', mine.length ? mine : ['00000000-0000-0000-0000-000000000000']);
         }
@@ -14627,7 +14913,7 @@ const app = {
                 .select('id, username, email, phone, region, city, avatar_url, account_type')
                 .order('username', { ascending: true });
             out.allUsersDropdown = data || [];
-            if (this.isManagerRole()) {
+            if (this.isScopedAdmin()) {
                 const mine = new Set(this.managerUserIds());
                 const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                 if (meId) mine.add(String(meId));
@@ -14641,7 +14927,7 @@ const app = {
                     .select('*')
                     .order('created_at', { ascending: false });
                 out.allMessages = data || [];
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = new Set(this.managerUserIds());
                     const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                     if (meId) mine.add(String(meId));
@@ -14655,7 +14941,7 @@ const app = {
                 .select('*')
                 .order('created_at', { ascending: false });
             out.distributors = data || [];
-            if (this.isManagerRole()) {
+            if (this.isScopedAdmin()) {
                 const mine = this.managerDistIds().map(String);
                 out.distributors = out.distributors.filter(d => mine.includes(String(d.id)));
             }
@@ -14686,7 +14972,7 @@ const app = {
 
         try {
             let uq = supabaseClient.from('users').select('id', { count: 'exact', head: true });
-            if (this.isManagerRole()) {
+            if (this.isScopedAdmin()) {
                 const mine = this.managerDistIds();
                 uq = uq.in('distributor_id', mine.length ? mine : ['00000000-0000-0000-0000-000000000000']);
             }
@@ -14775,7 +15061,7 @@ const app = {
         }
 
         if (!this.adminTabNeedsHeavyData()) {
-            if (this.isManagerRole()) await this.resolveManagerScope();
+            if (this.isScopedAdmin()) await this.resolveAdminScope();
             const lists = await this.loadAdminLightData();
             // На телефоне пустой раздел означает меню со сводкой наверху — её
             // четыре числа тяжёлая загрузка сюда не приносит, считаем отдельно
@@ -14795,7 +15081,7 @@ const app = {
         }
         // Менеджеру всё, что ниже, режется по его компании: состав компании
         // выясняем до первого запроса, иначе фильтры уйдут пустыми.
-        if (this.isManagerRole()) await this.resolveManagerScope();
+        if (this.isScopedAdmin()) await this.resolveAdminScope();
         this._adminOffset = offset;
         const content = document.getElementById('admin_content');
         // Запоминаем значение и фокус поля поиска — оно вот-вот исчезнет из DOM вместе
@@ -14806,6 +15092,10 @@ const app = {
             this._pendingAdminSearchFocused = document.activeElement === searchInputBefore;
         }
         
+        // Признак «номер из чужого региона» считается по справочнику диапазонов;
+        // без него строка списка просто не получит эту пометку.
+        this.loadPhoneRegions();
+
         this._pendingAdminFilters = {
             search: this._pendingAdminSearch || '',
             tariff: document.getElementById('admin_filter_tariff')?.value || 'all',
@@ -14830,7 +15120,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -14935,7 +15225,7 @@ const app = {
                 // JSON-путь PostgREST и восстанавливаем прежнюю форму e.calc_data.xxx на клиенте,
                 // чтобы не переписывать весь код рендера ниже.
                 let { data: uEsts, error: errUE } = await supabaseClient.from('estimates')
-                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area')
+                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition')
                     .in('user_id', userIds);
                 if (errUE) throw errUE;
                 userEsts = (uEsts || []).map(e => ({ ...e, calc_data: { calc_id: e.calc_id, shared_invoice_id: e.shared_invoice_id, area: e.area } }));
@@ -14960,9 +15250,7 @@ const app = {
                         byId[String(u.id)] = String(u.id);
                         if (u.email) byEmail[String(u.email).trim().toLowerCase()] = String(u.id);
                     });
-                    // source из meta — откуда взялся расчёт (распознавание, быстрый старт).
-                    // Тянем именно поле, а не весь meta: столбцу нужно одно слово.
-                    const evSel = 'calc_id, user_id, user_email, event, source:meta->>source';
+                    const evSel = 'calc_id, user_id, user_email, event';
                     const emails = Object.keys(byEmail);
                     const queries = [supabaseClient.from('invoice_events').select(evSel).in('user_id', userIds.map(String))];
                     if (emails.length) queries.push(supabaseClient.from('invoice_events').select(evSel).in('user_email', emails));
@@ -14988,18 +15276,28 @@ const app = {
                         if (e.calc_data && e.calc_data.calc_id) own.add(String(e.calc_data.calc_id));
                         if (e.share_id) own.add(String(e.share_id));
                     });
-                    // Отдельно — расчёты, выросшие из распознавания: метка source ставится
-                    // один раз, на событие 'calculated' (см. ensureCalcId). По ней видно,
-                    // сколько разобранных накладных дошло до сметы, а сколько осталось
-                    // лежать в архиве.
-                    const fromRecByUser = {};
                     evRows.forEach(e => {
                         if (!e.calc_id) return;
                         const owner = byId[String(e.user_id)]
                             || byEmail[String(e.user_email || '').trim().toLowerCase()];
-                        if (!owner) return;
-                        bagIn(startedByUser, owner).add(String(e.calc_id));
-                        if (e.source === 'recognition') bagIn(fromRecByUser, owner).add(String(e.calc_id));
+                        if (owner) bagIn(startedByUser, owner).add(String(e.calc_id));
+                    });
+                    // Сколько сохранённых смет собрано распознаванием.
+                    //
+                    // Считаем по флагу from_recognition в самой смете: его ставит
+                    // applyRecognized в момент переноса, и он уезжает в облако вместе с
+                    // расчётом. Метка source у события 'calculated' для этого не годится —
+                    // она появляется только когда номер выдаётся ровно в этот момент, а у
+                    // сметы из одних распознанных строк (площадь нулевая) номер сплошь и
+                    // рядом выдавался позже, при сохранении. По событиям выходило «в смету
+                    // 0» у монтажника, у которого обе сметы собраны из ста пяти
+                    // распознанных строк.
+                    const fromRecByUser = {};
+                    userEsts.forEach(e => {
+                        if (e.from_recognition === 'true' || e.from_recognition === true) {
+                            const o = String(e.user_id);
+                            fromRecByUser[o] = (fromRecByUser[o] || 0) + 1;
+                        }
                     });
                     // Расчёты — объединение: что видно по событиям плюс то, что уже лежит
                     // сохранённой сметой. У смет, сохранённых до появления отметки
@@ -15014,7 +15312,7 @@ const app = {
                         all.forEach(cid => { if (!saved.has(cid)) unsaved++; });
                         userCalcStats[owner] = {
                             total: all.size, unsaved: unsaved,
-                            fromRec: (fromRecByUser[owner] || new Set()).size
+                            fromRec: fromRecByUser[owner] || 0
                         };
                     });
                 }
@@ -15072,9 +15370,9 @@ const app = {
                     .order('username', { ascending: true });
                 allUsersDropdown = data || [];
                 this.autoCleanupDatabaseUsers(allUsersDropdown);
-                // Менеджеру в списке собеседников — только его монтажники (и он сам:
+                // В списке собеседников — только свои монтажники (и он сам:
                 // по своей строке мессенджер отличает свои сообщения от чужих)
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = new Set(this.managerUserIds());
                     const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                     if (meId) mine.add(String(meId));
@@ -15089,10 +15387,10 @@ const app = {
                     .select('*')
                     .order('created_at', { ascending: false });
                 allMessages = data || [];
-                // Переписка менеджера — только с его монтажниками. Объявления для
+                // Переписка — только со своими монтажниками. Объявления для
                 // всех (recipient_id = null) сюда не попадают: рассылка платформы
                 // к переписке компании отношения не имеет.
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = new Set(this.managerUserIds());
                     const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                     if (meId) mine.add(String(meId));
@@ -15108,13 +15406,19 @@ const app = {
                     .select('*')
                     .order('created_at', { ascending: false });
                 distributors = data || [];
-                // Менеджеру — только его компании: список идёт в подписи карточек
+                // Только свои компании: список идёт в подписи карточек
                 // планировщика и в выпадающие фильтры, чужие названия там лишние
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = this.managerDistIds().map(String);
                     distributors = distributors.filter(d => mine.includes(String(d.id)));
                 }
             } catch (e) { console.warn("Could not load distributors:", e); }
+
+            // 8а. Кому из наблюдателей какие компании назначены — для их карточек.
+            // Отдельным запросом, а не колонкой в общей выборке пользователей:
+            // пока миграция не выполнена, колонки в базе нет, и общий запрос
+            // упал бы целиком, унося с собой весь раздел «Пользователи».
+            await this.loadViewerScopes();
 
             this.adminData = {
                 users: users || [],
@@ -15157,6 +15461,7 @@ const app = {
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
         { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
+        { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
@@ -15173,6 +15478,11 @@ const app = {
     // поэтому и закрыт он тем же ключом. Список один, чтобы права не разъехались.
     // «Умное заполнение» — журнал диалогов монтажников с окном ✨, тоже только владельцу.
     OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill'],
+
+    // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
+    // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
+    // платформы, и заводить его может только администратор.
+    ADMIN_ONLY_TABS: ['distributors'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -15209,11 +15519,157 @@ const app = {
 
     // Вкладки, доступные текущему админу. Фильтр в одном месте: список строится
     // и в ряду вкладок на десктопе, и в меню разделов на телефоне.
+    /**
+     * Видно ли роли этот раздел. Одно правило на два применения: ряд вкладок
+     * в самой панели и справка «кто что видит» (showRolesHelp). Пока правило
+     * лежит здесь одно, справка не может разойтись с тем, как панель работает
+     * на самом деле, — а разошедшаяся справка хуже её отсутствия.
+     *
+     * isOwner отдельным доводом, а не выводится из role: права на разделы
+     * владельца даёт личный адрес почты, а не запись в базе (isAnalyticsOwner).
+     */
+    tabVisibleFor: function (tabId, role, isOwner) {
+        if (this.OWNER_ONLY_TABS.indexOf(tabId) >= 0) return !!isOwner;
+        if (this.ADMIN_ONLY_TABS.indexOf(tabId) >= 0) return role === 'super_admin' || role === 'admin';
+        if (role === 'manager') return this.MANAGER_TABS.indexOf(tabId) >= 0;
+        return true;
+    },
+
     adminTabDefs: function () {
-        const defs = this.ADMIN_TAB_DEFS.filter(t => this.OWNER_ONLY_TABS.indexOf(t.id) < 0 || this.isAnalyticsOwner());
-        if (!this.isManagerRole()) return defs;
-        return defs.filter(t => this.MANAGER_TABS.indexOf(t.id) >= 0)
-            .map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
+        const role = this.getAdminRole();
+        const owner = this.isAnalyticsOwner();
+        const defs = this.ADMIN_TAB_DEFS.filter(t => this.tabVisibleFor(t.id, role, owner));
+        if (role !== 'manager') return defs;
+        return defs.map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
+    },
+
+    // ═══ Справка «кто что видит» ═════════════════════════════════════════
+    // Открывается значком «?» рядом с полем «Тип аккаунта / Роль» в карточке
+    // пользователя — там, где вопрос и возникает.
+    //
+    // Таблица разделов НЕ переписана словами: она строится из тех же констант,
+    // по которым панель рисует вкладки (см. tabVisibleFor). Добавили раздел —
+    // он сам появился в справке с верными отметками. Руками ведётся только
+    // список действий ниже: проверки на них разбросаны по коду, свести их в
+    // одно выражение нельзя, поэтому при правке прав правится и эта таблица.
+    ROLE_COLUMNS: [
+        { role: 'super_admin', owner: true, label: 'Владелец', code: 'super_admin' },
+        { role: 'admin', owner: false, label: 'Администратор', code: 'admin' },
+        { role: 'viewer', owner: false, label: 'Наблюдатель', code: 'viewer' },
+        { role: 'manager', owner: false, label: 'Менеджер', code: 'manager' }
+    ],
+
+    // Чьи данные видит роль в тех разделах, что ей открыты.
+    ROLE_SCOPE_NOTE: {
+        super_admin: 'вся платформа',
+        admin: 'вся платформа',
+        viewer: 'назначенные и свои компании',
+        manager: 'своя компания'
+    },
+
+    // 'y' — можно, 'n' — нельзя, 'own' — только по своим компаниям.
+    ROLE_ACTIONS: [
+        { group: 'Учётки' },
+        { name: 'Тариф монтажника', hint: 'Базовый / Профи, срок, источник', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Роли: админ, наблюдатель, менеджер', hint: 'выдать, снять, поменять тариф роли', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
+        { name: 'Блокировка и удаление монтажника', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Блокировка и удаление тех, у кого роль', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
+        { name: 'Показать пароль монтажника', hint: 'копия снимается при входе', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { group: 'Компании и доступы' },
+        { name: 'Промокоды и карточки дистрибьюторов', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Назначить дистрибьютора', hint: 'поштучно и всем по фильтру', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Доступ к распознаванию и проектированию', hint: 'лично, компании, региону', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { group: 'Работа с монтажниками' },
+        { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
+        { name: 'Объявление для всех пользователей', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Удалить сообщение из переписки', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
+        { group: 'Уборка и настройки' },
+        { name: 'Очистить планы этажей и архив распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Словарь марок в аналитике', hint: 'кандидаты, написания, марки графика', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' }
+    ],
+
+    showRolesHelp: function () {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const cols = this.ROLE_COLUMNS;
+        const pill = (kind, text) => {
+            const skin = {
+                full: 'background:rgba(16,185,129,.14); color:#0F8A5F;',
+                part: 'background:rgba(217,119,6,.14); color:#B45309;',
+                none: 'background:var(--surface-light); color:var(--text-sec);'
+            }[kind];
+            return `<span style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; ${skin}">${text}</span>`;
+        };
+        // Шапка прилипает к верху своей таблицы: строк три десятка, и без неё
+        // на середине прокрутки уже не понять, чей это столбец. Прокрутку для
+        // этого держит сама обёртка таблицы (tableBox), а не окно целиком.
+        const th = 'position:sticky; top:0; z-index:1; background:var(--surface-light); padding:9px 8px; text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); border-bottom:1px solid var(--border); white-space:nowrap;';
+        const tableBox = 'overflow:auto; max-height:46vh; border:1px solid var(--border); border-radius:8px;';
+        const td = 'padding:8px; text-align:center; border-bottom:1px solid var(--border); vertical-align:middle;';
+        const tdName = 'padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:12.5px; color:var(--text-main);';
+        const tdGroup = 'padding:7px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-sec); background:var(--surface-light);';
+        const head = `<tr><th style="${th} text-align:left; padding-left:12px;">Раздел</th>${
+            cols.map(c => `<th style="${th}">${c.label}<div style="font-family:monospace; font-size:9.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-sec);">${c.code}</div></th>`).join('')}</tr>`;
+
+        // Разделы — из констант панели, поэтому таблица не может устареть
+        const tabRows = this.ADMIN_TAB_DEFS.map(t => `<tr>
+                <td style="${tdName}">${t.icon} ${esc(t.label)}<div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
+                ${cols.map(c => `<td style="${td}">${this.tabVisibleFor(t.id, c.role, c.owner)
+                    ? (c.role === 'viewer' || c.role === 'manager' ? pill('part', 'свои') : pill('full', 'вся платформа'))
+                    : pill('none', 'нет')}</td>`).join('')}
+            </tr>`).join('');
+
+        const actRows = this.ROLE_ACTIONS.map(a => a.group
+            ? `<tr><td style="${tdGroup}" colspan="${cols.length + 1}">${esc(a.group)}</td></tr>`
+            : `<tr>
+                <td style="${tdName}">${esc(a.name)}${a.hint ? `<div style="font-size:11px; color:var(--text-sec);">${esc(a.hint)}</div>` : ''}</td>
+                ${cols.map(c => {
+                    const v = a[c.role];
+                    return `<td style="${td}">${v === 'y' ? pill('full', 'да') : v === 'own' ? pill('part', 'по своим') : pill('none', 'нет')}</td>`;
+                }).join('')}
+            </tr>`).join('');
+
+        const scopeRow = cols.map(c => `<div style="flex:1 1 150px; min-width:150px;">
+                <div style="font-size:11px; color:var(--text-sec);">${c.label}</div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-main);">${this.ROLE_SCOPE_NOTE[c.role]}</div>
+            </div>`).join('');
+
+        const old = document.getElementById('roles_help_overlay');
+        if (old) old.remove();
+        const ov = document.createElement('div');
+        ov.id = 'roles_help_overlay';
+        ov.style.cssText = 'position:fixed; inset:0; z-index:100000000; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:20px;';
+        ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+        ov.innerHTML = `
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:14px; width:100%; max-width:900px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden;">
+                <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border); flex-shrink:0;">
+                    <h3 style="margin:0; font-size:16px; color:var(--text-main);">Кто что видит и что может менять</h3>
+                    <button class="admin-btn" style="margin-left:auto;" onclick="document.getElementById('roles_help_overlay').remove()">Закрыть</button>
+                </div>
+                <div style="overflow:auto; padding:18px 20px 24px;">
+                    <div style="display:flex; gap:16px; flex-wrap:wrap; padding:12px 14px; margin-bottom:18px; background:var(--surface-light); border-radius:10px;">
+                        <div style="flex:1 1 100%; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-sec);">Чьи данные видит роль</div>
+                        ${scopeRow}
+                    </div>
+                    <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Разделы панели</h4>
+                    <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">Раздела, отмеченного «нет», человек не видит вовсе — ни кнопки, ни пункта в меню. Эта таблица строится из настроек самой панели, поэтому всегда показывает то, как она работает сейчас.</p>
+                    <div style="${tableBox} margin-bottom:24px;">
+                        <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head}</thead><tbody>${tabRows}</tbody></table>
+                    </div>
+                    <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Что можно менять</h4>
+                    <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">У наблюдателя и менеджера панель работает в режиме просмотра: кнопки погашены. Исключений два — переписка и статусы счетов у менеджера.</p>
+                    <div style="${tableBox}">
+                        <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head.replace('>Раздел<', '>Действие<')}</thead><tbody>${actRows}</tbody></table>
+                    </div>
+                    <p style="margin:20px 0 0; padding:12px 14px; background:var(--surface-light); border-left:3px solid var(--primary); border-radius:8px; font-size:12px; color:var(--text-sec); line-height:1.6;">
+                        <b style="color:var(--text-main);">Это про то, что видно в панели, а не про защиту данных.</b>
+                        Разделение делает код на стороне браузера. Пока в Supabase не закрыты политики чтения,
+                        таблицы users и estimates отдаются любому авторизованному через API мимо интерфейса.
+                    </p>
+                </div>
+            </div>`;
+        document.body.appendChild(ov);
     },
 
     // Ниже этой ширины админка живёт по-мобильному: вместо ряда вкладок — меню
@@ -15353,11 +15809,31 @@ const app = {
         const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks } = this.adminData;
 
         const ADMIN_TAB_DEFS = this.adminTabDefs();
+        // Раздел, закрытый для этой роли, мог остаться в памяти с прошлого входа
+        // (или прийти из старой ссылки) — возвращаем к первому доступному.
+        if (this._adminTab && !ADMIN_TAB_DEFS.some(t => t.id === this._adminTab)) {
+            this._adminTab = mobile ? null : ((ADMIN_TAB_DEFS[0] || {}).id || 'stats');
+            if (mobile) { content.innerHTML = this.buildAdminMobileHome(); return; }
+        }
+
+        // Роли без назначенных компаний показывать нечего — и лучше сказать об
+        // этом прямо, чем оставить человека перед пустыми таблицами. Случай не
+        // выдуманный: роль выдают, а компанию в карточке назначить забывают.
+        //
+        // Текст у ролей разный, потому что чинится это по-разному: наблюдателю
+        // компании отмечает владелец списком, менеджеру они берутся из привязки.
+        const scopeWarnHtml = (this.isScopedAdmin() && !this.scopeDistIds().length)
+            ? `<div style="background:rgba(217,119,6,0.12); border:1px solid #D97706; color:#D97706; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; line-height:1.5;">
+                   ${this.isViewerRole()
+                    ? '👁 Вам не назначен ни один дистрибьютор, поэтому разделы пустые. Список компаний ставит владелец в вашей карточке.'
+                    : '🤝 Вам не назначена компания, поэтому разделы пустые. Дистрибьютор ставится в вашей карточке — либо ваша почта вписывается в карточку самой компании, в поле менеджера или директора.'}
+               </div>`
+            : '';
 
         let navHtml;
         if (mobile) {
             if (!this._adminTab) {
-                content.innerHTML = this.buildAdminMobileHome();
+                content.innerHTML = scopeWarnHtml + this.buildAdminMobileHome();
                 return;
             }
             // Внутри раздела вместо вкладок — строка возврата к меню, как в
@@ -15370,19 +15846,23 @@ const app = {
             </div>
         `;
         } else {
-        // Вкладки растянуты на всю ширину, но отправная точка — содержимое:
-        // flex: 1 0 auto = расти можно, сжиматься нельзя. При равных долях (1 1 0)
-        // длинные подписи вроде «Своё оборудование» резались многоточием, а короткие
-        // держали лишнее место. Запрет на сжатие и означает «текст не съедается»:
-        // если девять вкладок не влезают, ряд переносится на вторую строку.
+        // Ширина вкладки — по её подписи: flex: 0 0 auto, не растём и не сжимаемся.
+        // Ряд переносится на вторую строку, когда не влезает.
+        //
+        // Растягивать остаток ширины на всех (было flex: 1 0 auto) оказалось плохой
+        // идеей везде, где вкладок в строке немного: у менеджера четыре кнопки
+        // раздувались на пол-экрана каждая, а у владельца — четыре кнопки второй
+        // строки до 340 px при своих законных 100. Сжимать (1 1 0) тоже нельзя:
+        // тогда «Своё оборудование» режется многоточием, а короткие держат лишнее.
         navHtml = `
             <div id="admin_nav_tabs" style="display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-shrink: 0; width: 100%; flex-wrap: wrap;">
                 ${ADMIN_TAB_DEFS.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn" title="${t.label}" style="margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 1 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${t.icon}<span class="admin-tab-label"> ${t.label}</span></button>
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.label}" style="margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${t.icon}<span class="admin-tab-label"> ${t.label}</span></button>
                 `).join('')}
             </div>
         `;
         }
+        navHtml += scopeWarnHtml;
 
         if (this._adminTab === 'messages') {
             content.innerHTML = navHtml;
@@ -15423,6 +15903,12 @@ const app = {
         if (this._adminTab === 'plans') {
             content.innerHTML = navHtml;
             this.renderAdminPlans();
+            return;
+        }
+
+        if (this._adminTab === 'inactive') {
+            content.innerHTML = navHtml;
+            this.renderAdminInactive();
             return;
         }
 
@@ -15621,8 +16107,14 @@ const app = {
                          с длинными заголовками съедали пол-экрана до таблицы.
                          Регион берётся из фильтра над таблицей — того же, по
                          которому отобран список; дистрибьютору проектирование
-                         включается отдельно, его монтажники разбросаны по регионам. -->
-                    ${(() => {
+                         включается отдельно, его монтажники разбросаны по регионам.
+
+                         Наблюдателю и менеджеру строки нет вовсе. Раньше она
+                         показывалась им погашенной — мёртвый ряд списков и
+                         переключателей, который занимал место до таблицы и
+                         намекал на права, которых у них нет. -->
+
+                    ${isViewer ? '' : (() => {
                         // Регион для массового включения выбирается ЗДЕСЬ же, своим списком:
                         // раньше он молча брался из фильтра над таблицей, и было непонятно,
                         // почему переключатель мёртвый и что вообще надо сделать.
@@ -15762,6 +16254,12 @@ const app = {
             if (u.is_blocked) {
                 badge += `<br><span style="color:#fff; background:#EF4444; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px;">ЗАБЛОКИРОВАН</span>`;
             }
+            // Доступ приостановлен за долгое отсутствие. Отдельно от блокировки:
+            // тут никто ничего не нарушал, и снимается это другой кнопкой.
+            if (u.frozen_at) {
+                const delOn = new Date(new Date(u.frozen_at).getTime() + 45 * 864e5);
+                badge += `<br><span title="Приостановлен ${new Date(u.frozen_at).toLocaleDateString('ru-RU')} за долгое отсутствие. Удаление ${delOn.toLocaleDateString('ru-RU')}, если не вернуть доступ." style="color:#fff; background:#0EA5E9; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px; cursor:help;">🧊 ЗАМОРОЖЕН</span>`;
+            }
             let name = this.getAdminUserDisplayName(u);
             let nameEscaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
             let phone = u.phone || 'Нет телефона';
@@ -15843,14 +16341,18 @@ const app = {
             // Четвёртая строка — про распознавание. Накладные и планы этажей порознь:
             // план в смету не превращается, он ложится подложкой под разметку, и в общем
             // числе он только мешал бы понять, сколько разобрано закупок.
-            // «в смету» — сколько разобранных накладных дошло до расчёта; расхождение с
-            // первым числом и есть то, что осталось лежать в архиве.
+            //
+            // «в сметах» — сколько СОХРАНЁННЫХ смет собрано распознаванием. Заметно
+            // меньше числа разборов, и это нормально: в один объект нередко заносят
+            // несколько накладных, да и сохраняют не всё.
             const docsTxt = u.recStats ? u.recStats.docs : '—';
             const plansTxt = u.recStats ? u.recStats.plans : '—';
             const inBillTxt = u.calcFromRec === null || u.calcFromRec === undefined ? '—' : u.calcFromRec;
+            // Оранжевым — только когда разбирал, а сохранённых смет из распознавания
+            // нет ни одной: работа сделана, результата в облаке нет.
             const recLostColor = (u.recStats && u.recStats.docs > 0 && u.calcFromRec === 0) ? '#D97706' : 'inherit';
             const recognitionLine =
-                `<span title="Разобрано накладных и смет за два года: ${docsTxt}. Из них доведено до расчёта: ${inBillTxt}." style="color:${recLostColor};">Распознано: <b>${docsTxt}</b> (в смету ${inBillTxt})</span>`
+                `<span title="Разобрано накладных и смет за два года: ${docsTxt}. Сохранённых смет, собранных распознаванием: ${inBillTxt}. Одна смета нередко собирается из нескольких накладных, поэтому числа не обязаны совпадать." style="color:${recLostColor};">Распознано: <b>${docsTxt}</b> (в сметах ${inBillTxt})</span>`
                 + ` | <span title="Планы этажей, прочитанные распознаванием (в смету не переносятся — идут подложкой в разметку)">Планов: ${plansTxt}</span>`;
 
             h += `<tr class="active-row admin-list-row" data-search="${searchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.viewAdminUser('${u.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
@@ -16100,8 +16602,7 @@ const app = {
     switchAdminTab: function (tab) {
         // Кнопок «Дашборд» и «Аналитика» у остальных админов нет, но вызов из
         // консоли или старой ссылки обязан упереться в ту же проверку, что и вёрстка.
-        if (this.OWNER_ONLY_TABS.indexOf(tab) >= 0 && !this.isAnalyticsOwner()) return;
-        if (this.isManagerRole() && this.MANAGER_TABS.indexOf(tab) < 0) return;
+        if (!this.tabVisibleFor(tab, this.getAdminRole(), this.isAnalyticsOwner())) return;
         this._adminTab = tab;
         // Данные раздела грузим при переходе в него, а не все сразу при открытии
         // панели. Что уже загружено — не перезапрашиваем: «Пользователей» отмечает
@@ -22160,10 +22661,18 @@ const app = {
                 this._loadingProjects = true;
                 (async () => {
                     try {
-                        const { data, error } = await supabaseClient.from('projects')
+                        let q = supabaseClient.from('projects')
                             .select('id, calc_id, project_name, address, sections, area, eq_sum, works_sum, user_name, user_email, issued_at')
                             .order('issued_at', { ascending: false })
                             .limit(200);
+                        // В projects нет user_id — только почта автора, по ней и
+                        // режем. Пустой список почт подменяем заведомо чужим
+                        // адресом: запрос без условия отдал бы все проекты.
+                        if (this.isScopedAdmin()) {
+                            const mine = this.scopeUserEmails();
+                            q = q.in('user_email', mine.length ? mine : ['-']);
+                        }
+                        const { data, error } = await q;
                         if (error) throw error;
                         this.adminData.projects = data || [];
                         this._projectsError = null;
@@ -22434,9 +22943,10 @@ const app = {
     renderAdminMessages: function () {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         // Рассылка «всем пользователям» — инструмент платформы, а не компании:
-        // менеджеру дистрибьютора её не показываем и отправить не даём, иначе
-        // объявление одной компании уедет монтажникам всех остальных.
-        const canBroadcast = !this.isManagerRole();
+        // тем, у кого панель урезана до своих компаний (менеджер, наблюдатель),
+        // её не показываем и отправить не даём, иначе объявление уедет и тем
+        // монтажникам, которых отправитель даже не видит.
+        const canBroadcast = !this.isScopedAdmin();
         // Свой id в таблице пользователей: по нему отделяем свои переписки от чужих.
         // Обычно его уже заполнил опрос уведомлений, но если нет — спрашиваем базу
         // и рисуем вкладку заново (один раз, иначе при неудаче получился бы цикл).
@@ -23259,8 +23769,8 @@ const app = {
             app.alert('Выберите диалог слева или найдите человека через поиск.');
             return;
         }
-        if (recipientVal === 'all' && this.isManagerRole()) {
-            app.alert('Объявления для всех отправляет администрация сайта. Вам доступна переписка с монтажниками вашей компании.');
+        if (recipientVal === 'all' && this.isScopedAdmin()) {
+            app.alert('Объявления для всех отправляет администрация сайта. Вам доступна переписка с монтажниками ваших компаний.');
             return;
         }
         if (String(recipientVal).indexOf('mgr:') === 0) {
@@ -25144,8 +25654,8 @@ const app = {
             const { data: freshUser, error: userErr } = await supabaseClient.from('users').select('*').eq('id', userId).maybeSingle();
             if (userErr || !freshUser) { app.alert('Пользователь не найден.'); return; }
             user = freshUser;
-            const { data: freshEst } = await supabaseClient.from('estimates').select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, area:calc_data->>area, calc_id:calc_data->>calc_id').eq('user_id', userId);
-            userEstimates = (freshEst || []).map(e => ({ ...e, calc_data: { area: e.area, calc_id: e.calc_id } }));
+            const { data: freshEst } = await supabaseClient.from('estimates').select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, area:calc_data->>area, calc_id:calc_data->>calc_id, from_recognition:calc_data->>from_recognition').eq('user_id', userId);
+            userEstimates = (freshEst || []).map(e => ({ ...e, calc_data: { area: e.area, calc_id: e.calc_id, from_recognition: e.from_recognition } }));
         }
 
         // Начатые расчёты: отметка 'calculated' ставится один раз на объект (см.
@@ -25155,7 +25665,7 @@ const app = {
         // берём из списка: карточку открывают и из переписки, где страницы списка нет.
         let calcStarted = null, calcUnsaved = null, calcSaved = null, calcFromRec = null;
         try {
-            const evSel = 'calc_id, event, source:meta->>source';
+            const evSel = 'calc_id, event';
             const qs = [supabaseClient.from('invoice_events').select(evSel).eq('user_id', String(user.id))];
             // До появления колонки user_id отметки подписывались только почтой
             if (user.email) qs.push(supabaseClient.from('invoice_events').select(evSel).eq('user_email', user.email));
@@ -25175,11 +25685,12 @@ const app = {
             // Плитка показывает доведённые до сметы, а не брошенные: та же
             // арифметика, что и в строке списка, только с положительной стороны.
             calcSaved = calcStarted - calcUnsaved;
-            // Сколько расчётов выросло из распознавания: метка ставится на событие
-            // 'calculated' (см. ensureCalcId). Разница с числом разобранных накладных
-            // и показывает, сколько так и осталось лежать в архиве.
-            calcFromRec = new Set(evRows.filter(e => e.source === 'recognition' && e.calc_id)
-                .map(e => String(e.calc_id))).size;
+            // Сколько сохранённых смет собрано распознаванием — по флагу в самой
+            // смете, а не по метке события (почему именно так — см. одноимённый
+            // расчёт в loadAdminData).
+            calcFromRec = userEstimates.filter(e =>
+                (e.calc_data && (e.calc_data.from_recognition === 'true' || e.calc_data.from_recognition === true))
+                || e.from_recognition === 'true' || e.from_recognition === true).length;
         } catch (e) {
             console.warn('[админка] расчёты монтажника не посчитаны:', e.message || e);
         }
@@ -25187,6 +25698,7 @@ const app = {
         // списком пользователей. Если нет — просим и показываем прочерк.
         this.ensureRecognitionCounts();
         const recStats = this.recognitionStatsFor(user);
+        await this.loadPhoneRegions();
 
         let date = new Date(user.created_at).toLocaleDateString();
         let lastVis = user.last_visited ? new Date(user.last_visited).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Нет данных';
@@ -25253,10 +25765,10 @@ const app = {
                                 <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">расчётов: ${calcStarted === null ? '—' : calcStarted}</div>
                             </div>
                             <div style="background:var(--bg); padding:15px; border-radius:12px; text-align:center; border:1px solid var(--border);"
-                                 title="Накладных и смет, разобранных распознаванием за два года, и сколько из них дошло до расчёта">
+                                 title="Накладных и смет, разобранных распознаванием за два года, и сколько сохранённых смет из них собрано. Одна смета нередко собирается из нескольких накладных, поэтому числа не обязаны совпадать.">
                                 <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700; margin-bottom:5px;">Распознано</div>
                                 <div style="font-size:20px; font-weight:800; color:${(recStats && recStats.docs > 0 && calcFromRec === 0) ? '#D97706' : 'var(--text-main)'};">${recStats === null ? '—' : recStats.docs}</div>
-                                <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">в смету: ${calcFromRec === null ? '—' : calcFromRec}</div>
+                                <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">в сметах: ${calcFromRec === null ? '—' : calcFromRec}</div>
                             </div>
                             <div style="background:var(--bg); padding:15px; border-radius:12px; text-align:center; border:1px solid var(--border);"
                                  title="Планы этажей, прочитанные распознаванием. В смету не переносятся — идут подложкой в разметку помещений">
@@ -25267,6 +25779,11 @@ const app = {
 
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
+                            ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 45 дней.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 45 * 864e5).toLocaleDateString('ru-RU')}.
+                                <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
+                            </div>` : ''}
                             ${(() => {
                                 const flags = this.suspiciousProfileFlags(user);
                                 if (!flags.length) return '';
@@ -25279,6 +25796,15 @@ const app = {
                                 <div><span style="color:var(--text-sec);">Дата рождения:</span> <b style="color:var(--text-main);">${user.birth_date ? new Date(user.birth_date).toLocaleDateString('ru-RU') : '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Регион:</span> <b style="color:var(--text-main);">${user.region || '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Населённый пункт:</span> <b style="color:var(--text-main);">${user.city || '—'}</b></div>
+                                <!-- Где выдан номер (реестр нумерации, phone_regions.js). Само по
+                                     себе расхождение ничего не доказывает: номер переносят между
+                                     регионами, люди переезжают — поэтому просто показываем факт. -->
+                                ${(() => {
+                                    const list = this.regionByPhone(user.phone);
+                                    if (!list.length) return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:var(--text-main);">не определён</b></div>`;
+                                    const match = this.phoneRegionMatches(user.phone, user.region);
+                                    return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:${match === false ? '#D97706' : 'var(--text-main)'};">${list.join(' / ')}</b>${match === false ? ' <span style="color:#D97706;" title="Бывает при переезде или переносе номера — само по себе не значит обман">⚠ не совпадает с анкетой</span>' : (match ? ' <span style="color:#10B981;">✓</span>' : '')}</div>`;
+                                })()}
                                 <div style="grid-column: 1 / -1;"><span style="color:var(--text-sec);">Сфера деятельности:</span> ${(user.activity_types || []).length ? (user.activity_types || []).map(a => `<span style="background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:4px;">${a}</span>`).join('') : ' <b style="color:var(--text-main);">—</b>'}</div>
                             </div>
                         </div>
@@ -25288,8 +25814,10 @@ const app = {
                                 <h4 style="margin:0 0 15px 0; font-size:14px; color:var(--text-main);">⚙️ Управление тарифом</h4>
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
                                     <div>
-                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тип аккаунта / Роль</label>
-                                        <select id="admin_edit_tariff" onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тип аккаунта / Роль
+                                            <button type="button" title="Кто что видит и что может менять" onclick="app.showRolesHelp()" style="border:1px solid var(--border); background:var(--surface-light); color:var(--text-sec); width:16px; height:16px; line-height:1; border-radius:50%; font-size:11px; font-weight:700; cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center;">?</button>
+                                        </label>
+                                        <select id="admin_edit_tariff" ${isViewer ? 'disabled' : ''} onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${user.account_type === 'base' ? 'selected' : ''}>Базовый</option>
                                             <option value="pro" ${user.account_type === 'pro' ? 'selected' : ''}>Профи ⭐️</option>
                                             ${this.getAdminRole() === 'super_admin' || user.account_type === 'admin' ? `<option value="admin" ${user.account_type === 'admin' ? 'selected' : ''}>Администратор ⚙️</option>` : ''}
@@ -25299,18 +25827,18 @@ const app = {
                                     </div>
                                     <div id="admin_edit_role_tariff_wrapper" style="display: ${['admin', 'viewer', 'manager'].includes(user.account_type) ? 'block' : 'none'};">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тариф для роли</label>
-                                        <select id="admin_edit_role_tariff" onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <select id="admin_edit_role_tariff" ${isViewer ? 'disabled' : ''} onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${!(user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'selected' : ''}>Базовый</option>
                                             <option value="pro" ${(user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'selected' : ''}>Профи ⭐️</option>
                                         </select>
                                     </div>
                                     <div id="admin_edit_date_wrapper" style="display: ${user.account_type === 'pro' || (['admin', 'viewer', 'manager'].includes(user.account_type) && user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'block' : 'none'};">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Истекает (для Профи)</label>
-                                        <input type="date" id="admin_edit_date" value="${proDateInput}" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <input type="date" id="admin_edit_date" ${isViewer ? 'disabled' : ''} value="${proDateInput}" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                     </div>
                                     <div id="admin_edit_subtype_wrapper" style="display: ${user.account_type === 'pro' || (['admin', 'viewer', 'manager'].includes(user.account_type) && user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'block' : 'none'};">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Источник Профи</label>
-                                        <select id="admin_edit_subtype" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <select id="admin_edit_subtype" ${isViewer ? 'disabled' : ''} style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="trial" ${proSubtype === 'trial' ? 'selected' : ''}>Пробный</option>
                                             <option value="promo" ${proSubtype === 'promo' ? 'selected' : ''}>Промокод</option>
                                             <option value="paid" ${proSubtype === 'paid' ? 'selected' : ''}>Оплата</option>
@@ -25323,6 +25851,22 @@ const app = {
                                             ${(this.adminData.distributors || []).map(d => `<option value="${d.id}" ${user.distributor_id === d.id ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`).join('')}
                                         </select>
                                         <div id="admin_edit_distributor_info" style="margin-top:6px; font-size:11px; color:var(--text-sec); line-height:1.5;"></div>
+                                    </div>
+                                    <div id="admin_edit_viewer_dists_wrapper" style="display: ${user.account_type === 'viewer' ? 'block' : 'none'}; grid-column: 1 / -1;">
+                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">За какими дистрибьюторами наблюдает — отметьте галочками</label>
+                                        <div id="admin_edit_viewer_dists" style="max-height:170px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:var(--bg);">
+                                            ${(() => {
+                                                const picked = this.viewerScopeFor(user.id);
+                                                const list = this.adminData.distributors || [];
+                                                if (!list.length) return `<div style="padding:10px 12px; font-size:12px; color:var(--text-sec);">Компаний в справочнике пока нет.</div>`;
+                                                return list.map((d, i) => `
+                                                    <label style="display:flex; align-items:center; gap:9px; padding:7px 12px; font-size:12.5px; color:var(--text-main); cursor:${isViewer ? 'not-allowed' : 'pointer'}; ${i ? 'border-top:1px solid var(--border);' : ''}">
+                                                        <input type="checkbox" class="admin-viewer-dist" value="${d.id}" ${picked.includes(String(d.id)) ? 'checked' : ''} ${isViewer ? 'disabled' : ''} onchange="app.updateViewerDistsHint()" style="width:16px; height:16px; flex-shrink:0; accent-color:var(--primary); cursor:inherit;">
+                                                        <span>${d.company_name} <span style="color:var(--text-sec);">(${d.promo_code})</span></span>
+                                                    </label>`).join('');
+                                            })()}
+                                        </div>
+                                        <div id="admin_edit_viewer_dists_hint" style="margin-top:6px; font-size:11.5px; line-height:1.5;"></div>
                                     </div>
                                     <div id="admin_edit_price_source_wrapper" style="display: block; grid-column: 1 / -1;">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Откуда брать цены на оборудование</label>
@@ -25368,6 +25912,8 @@ const app = {
         `;
 
         setTimeout(() => {
+            // Подпись под списком компаний наблюдателя — сразу, а не только после клика
+            this.updateViewerDistsHint();
             const tariffSel = document.getElementById('admin_edit_tariff');
             const subSel = document.getElementById('admin_edit_subtype');
             const subWrap = document.getElementById('admin_edit_subtype_wrapper');
@@ -25515,8 +26061,10 @@ const app = {
     // обновляется по кнопке «Обновить»
     loadAdminInstallerExtrasData: async function (force) {
         if (this._adminInstallerExtras && !force) return this._adminInstallerExtras;
-        const { data, error } = await supabaseClient.from('users')
-            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings');
+        // Свои расценки и своё оборудование — это две вкладки над одной выборкой,
+        // поэтому урезаем её здесь, в одном месте на обе.
+        const { data, error } = await this.scopeAdminQuery(supabaseClient.from('users')
+            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings'), 'id');
         if (error) throw error;
         const rows = (data || []).map(u => {
             const s = u.installer_settings || {};
@@ -25922,6 +26470,144 @@ const app = {
         window.open('plan_editor.html', '_blank');
     },
 
+    // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
+    //
+    // Кому ушло письмо, кто после него вернулся, кто молчит, кого заморозили и
+    // кого в итоге удалили. Журнал лежит в закрытых таблицах, поэтому читаем не
+    // напрямую, а функцией inactivity_report: она сама проверяет, что зовёт
+    // администратор (см. миграцию 20260910_inactivity_report.sql).
+    renderAdminInactive: async function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+        content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
+        const root = () => document.getElementById('admin_inactive_root');
+        try {
+            const { data, error } = await supabaseClient.rpc('inactivity_report');
+            if (error) throw error;
+            this._inactiveReport = data || [];
+        } catch (e) {
+            const known = String(e.message || '').indexOf('inactivity_report') !== -1;
+            if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
+                Не удалось прочитать журнал напоминаний: ${e.message || e}
+                ${known ? '<div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20260910_inactivity_report.sql ещё не выполнена в Supabase.</div>' : ''}
+            </div>`;
+            return;
+        }
+        this.renderAdminInactiveBody();
+    },
+
+    renderAdminInactiveBody: function () {
+        const root = document.getElementById('admin_inactive_root');
+        if (!root) return;
+        const rows = this._inactiveReport || [];
+        const isViewer = this.isReadOnlyAdmin();
+        const esc = s => String(s ?? '').replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+        const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
+
+        const returned = rows.filter(r => r.returned_at).length;
+        const frozen = rows.filter(r => r.stage === 'frozen').length;
+        const deleted = rows.filter(r => r.stage === 'deleted').length;
+        const silent = rows.filter(r => !r.returned_at && r.stage === 'warned').length;
+
+        // Доля вернувшихся — единственная цифра, ради которой всё это затевалось:
+        // она говорит, работает напоминание или люди ушли насовсем.
+        const share = rows.length ? Math.round(returned * 100 / rows.length) : 0;
+
+        let h = `
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
+                <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
+            </div>
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:16px; line-height:1.5;">
+                Письмо уходит после 30 дней молчания, доступ приостанавливается на 45-й день,
+                учётка удаляется через 45 дней заморозки. Проверка идёт каждую ночь.
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Отправлено</div>
+                    <div style="font-size:20px; font-weight:800; color:var(--text-main);">${rows.length}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Вернулись</div>
+                    <div style="font-size:20px; font-weight:800; color:#10B981;">${returned}</div>
+                    <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${share}% от всех</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Молчат</div>
+                    <div style="font-size:20px; font-weight:800; color:#D97706;">${silent}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Заморожены</div>
+                    <div style="font-size:20px; font-weight:800; color:#0EA5E9;">${frozen}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Удалены</div>
+                    <div style="font-size:20px; font-weight:800; color:#EF4444;">${deleted}</div>
+                </div>
+            </div>`;
+
+        if (!rows.length) {
+            h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
+                Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 30 дней.
+            </div>`;
+            root.innerHTML = h;
+            return;
+        }
+
+        h += `<div style="overflow-x:auto;"><table class="admin-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead><tr style="text-align:left; color:var(--text-sec);">
+                <th style="padding:8px;">Кто</th>
+                <th style="padding:8px;">Регион</th>
+                <th style="padding:8px; white-space:nowrap;">Письмо</th>
+                <th style="padding:8px;">Чем кончилось</th>
+                <th style="padding:8px; text-align:center;">Смет</th>
+                <th style="padding:8px;"></th>
+            </tr></thead><tbody>`;
+
+        rows.forEach(r => {
+            // Итог по-русски, а не кодом этапа: ради этой колонки отчёт и нужен.
+            let outcome, color;
+            if (r.stage === 'deleted') {
+                outcome = 'Удалён' + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
+                color = '#EF4444';
+            } else if (r.returned_at) {
+                outcome = 'Вернулся ' + dt(r.returned_at);
+                color = '#10B981';
+            } else if (r.stage === 'frozen') {
+                const delOn = new Date(new Date(r.frozen_at).getTime() + 45 * 864e5);
+                outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
+                color = '#0EA5E9';
+            } else {
+                const d = days(r.warned_at);
+                outcome = 'Не отреагировал' + (d !== null ? ' · ' + d + ' ' + this.plural(d, 'день', 'дня', 'дней') + ' после письма' : '');
+                color = '#D97706';
+            }
+
+            h += `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:8px;">
+                    <b style="color:var(--text-main);">${esc(r.name)}</b>
+                    <div style="font-size:10px; color:var(--text-sec);">${esc(r.phone || '')}${r.email ? ' · ' + esc(r.email) : ''}</div>
+                </td>
+                <td style="padding:8px; color:var(--text-sec);">${esc([r.city, r.region].filter(Boolean).join(', ') || '—')}</td>
+                <td style="padding:8px; white-space:nowrap; color:var(--text-main);">${dt(r.warned_at)}</td>
+                <td style="padding:8px; color:${color}; font-weight:600;">${outcome}</td>
+                <td style="padding:8px; text-align:center; color:var(--text-main);">${r.estimates ?? 0}</td>
+                <td style="padding:8px; text-align:right; white-space:nowrap;">
+                    ${r.stage === 'frozen' && !isViewer
+                        ? `<button class="admin-action-btn btn-obj" onclick="app.unfreezeUser('${r.user_id}')">Вернуть доступ</button>`
+                        : ''}
+                    ${r.stage !== 'deleted'
+                        ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>`
+                        : ''}
+                </td>
+            </tr>`;
+        });
+
+        h += `</tbody></table></div>`;
+        root.innerHTML = h;
+    },
+
     renderAdminPlans: async function () {
         const content = document.getElementById('admin_content');
         if (!content) return;
@@ -25951,6 +26637,15 @@ const app = {
             const r = await fetch(`${this.PLANS_ENDPOINT}?admin=1`, { headers });
             const data = await r.json();
             if (!data.ok) throw new Error(data.error || (r.status === 403 ? 'доступ только для администраторов' : 'сервер не ответил'));
+            // Подложки лежат на Beget и про дистрибьюторов не знают — отбираем
+            // свои по владельцу (в owner сервер кладёт почту). Занятое место
+            // пересчитываем по своим же объектам: общий объём архива — цифра
+            // платформы, а не компании.
+            if (this.isScopedAdmin()) {
+                const mine = (data.projects || []).filter(p => this.isScopeEmail(p.owner));
+                data.projects = mine;
+                data.totalBytes = mine.reduce((s, p) => s + (p.bytes || 0), 0);
+            }
             this._adminPlansData = data;
         } catch (e) {
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать планы: ${e.message}</div>`;
@@ -26204,6 +26899,15 @@ const app = {
             const data = await r.json();
             if (!data.ok) throw new Error(data.error || (r.status === 403 ? 'доступ только для администраторов' : 'архив не ответил'));
             rows = data.rows || [];
+            // Записи архива подписаны и компанией, и логином. Компания точнее:
+            // логин у монтажника может смениться, а distributorId кладётся в
+            // момент разбора. Но у старых записей его нет — там сверяем логин.
+            if (this.isScopedAdmin()) {
+                const dists = this.scopeDistIds().map(String);
+                rows = rows.filter(r2 => r2.distributorId
+                    ? dists.includes(String(r2.distributorId))
+                    : this.isScopeEmail(r2.user));
+            }
         } catch (e) {
             const root = document.getElementById('admin_recognition_root');
             if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать архив: ${e.message}</div>`;
@@ -26212,13 +26916,17 @@ const app = {
 
         // Размер архива приходит отдельно: список ограничен по датам, а место
         // на диске занимают все файлы, включая те, что в список не попали.
+        // Тому, у кого панель урезана до своих монтажников, размер всего архива
+        // не принадлежит — и запрашивать его незачем.
         this._adminRecognitionStats = null;
-        try {
-            const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?stats=1`, { headers });
-            const data = await r.json();
-            if (data.ok) this._adminRecognitionStats = data;
-        } catch (e) {
-            console.warn('[архив] размер не посчитан:', e.message);
+        if (!this.isScopedAdmin()) {
+            try {
+                const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?stats=1`, { headers });
+                const data = await r.json();
+                if (data.ok) this._adminRecognitionStats = data;
+            } catch (e) {
+                console.warn('[архив] размер не посчитан:', e.message);
+            }
         }
 
         // Персональные лимиты: у кого не задан — действует общий.
@@ -26421,6 +27129,11 @@ const app = {
     renderAdminRecognitionBody: function () {
         const root = document.getElementById('admin_recognition_root');
         if (!root) return;
+
+        // Место на диске и копилка промахов подбора считаются сервером по всему
+        // архиву — это показатели платформы, а не компании. Тому, у кого панель
+        // урезана до своих монтажников, они не принадлежат.
+        const platformWide = !this.isScopedAdmin();
 
         const rows = this._adminRecognitionRows || [];
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
@@ -26788,9 +27501,9 @@ const app = {
                 <button class="admin-btn" style="margin-left:auto;"
                         onclick="app.renderAdminRecognition()">Обновить</button>
             </div>
-            ${diskHtml}
+            ${platformWide ? diskHtml : ''}
             ${manualHtml}
-            ${gapsHtml}
+            ${platformWide ? gapsHtml : ''}
             ${pickedHtml}
             <div style="overflow-x:auto;">
                 <table style="width:100%; border-collapse:collapse;">
@@ -28466,7 +29179,7 @@ const app = {
             };
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked';
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at';
 
             let { data: upsertResult, error: upsertError } = await supabaseClient
                 .from('users')
@@ -28510,6 +29223,20 @@ const app = {
                 this.syncUI();
                 this.render();
                 app.alert('Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.');
+                return;
+            }
+            // Доступ приостановлен ночным проходом за долгое отсутствие (frozen_at,
+            // см. миграцию 20260909_inactivity_lifecycle.sql). Это не блокировка за
+            // нарушение, поэтому и текст другой: человек ничего плохого не сделал,
+            // ему нужно объяснить, что делать дальше.
+            if (uRow && uRow.frozen_at) {
+                await supabaseClient.auth.signOut();
+                delete this.state.tgUser;
+                this.state.accountType = 'base';
+                this.saveState();
+                this.syncUI();
+                this.render();
+                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на dima24ba@gmail.com, и мы вернём доступ в тот же день.');
                 return;
             }
             if (uRow) {
@@ -28685,9 +29412,28 @@ const app = {
         // Источник цен: 'terem' — принудительно каталожные цены, 'distributor' —
         // цены дистрибьютора, если он их у себя включил.
         updateData.price_source = document.getElementById('admin_edit_price_source')?.value || 'distributor';
+        // Наблюдаемые компании: у роли «Наблюдатель» — что отмечено в списке,
+        // у всех остальных — пусто. Иначе после смены роли за человеком остался
+        // бы список, который ни на что не влияет, а при возврате в наблюдатели
+        // молча вернул бы старый доступ.
+        updateData.viewer_distributor_ids = (type === 'viewer' && this.pickedViewerDistIds())
+            ? this.pickedViewerDistIds()
+            : [];
 
         try {
-            const { error } = await supabaseClient.from('users').update(updateData).eq('id', userId);
+            let { error } = await supabaseClient.from('users').update(updateData).eq('id', userId);
+            // Колонки может не быть — миграцию выполняют руками. Тариф от этого
+            // страдать не должен: сохраняем всё остальное и говорим, чего не вышло.
+            if (error && /viewer_distributor_ids/.test(error.message || '')) {
+                console.warn('[наблюдатели] колонка viewer_distributor_ids отсутствует, миграция не выполнена');
+                delete updateData.viewer_distributor_ids;
+                ({ error } = await supabaseClient.from('users').update(updateData).eq('id', userId));
+                if (!error) {
+                    app.alert('Тариф обновлён, но список наблюдаемых компаний не сохранён: в базе нет нужного поля. Выполните миграцию 20260910_add_viewer_distributor_scope.sql.');
+                    this.loadAdminData();
+                    return;
+                }
+            }
             if (error) throw error;
             app.alert("✅ Тариф успешно обновлен!");
             this.loadAdminData();
@@ -28706,6 +29452,12 @@ const app = {
         if (!typeSelect) return;
 
         const val = typeSelect.value;
+        // Список наблюдаемых компаний — только у роли «Наблюдатель»
+        const viewerDistsWrapper = document.getElementById('admin_edit_viewer_dists_wrapper');
+        if (viewerDistsWrapper) {
+            viewerDistsWrapper.style.display = val === 'viewer' ? 'block' : 'none';
+            if (val === 'viewer') this.updateViewerDistsHint();
+        }
         if (val === 'pro') {
             if (roleTariffWrapper) roleTariffWrapper.style.display = 'none';
             if (dateWrapper) dateWrapper.style.display = 'block';
@@ -28824,6 +29576,32 @@ const app = {
             app.alert('Не удалось изменить статус блокировки: ' + e.message);
         }
     },
+    // Снимает автоматическую заморозку за долгое отсутствие. Отдельно от
+    // toggleUserBlocked: та снимает блокировку, поставленную администратором руками,
+    // и трогать её здесь нельзя — иначе «вернуть доступ» заодно разблокировало бы
+    // того, кого закрыли за дело. Отсчёт молчания при этом начинается заново
+    // (unfreeze_user двигает last_visited), иначе ночной проход заморозил бы
+    // человека той же ночью.
+    unfreezeUser: async function (userId) {
+        if (this.isReadOnlyAdmin()) {
+            app.alert('Режим просмотра. Изменение доступа запрещено.');
+            return;
+        }
+        if (!await app.confirm('Вернуть доступ этой учётной записи? Отсчёт неактивности начнётся заново.')) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('unfreeze_user', { target: userId });
+            if (error) throw error;
+            if (data === false) {
+                app.alert('Учётка не была заморожена — возвращать нечего.');
+            } else {
+                app.alert('✅ Доступ возвращён. Человек снова может войти.');
+            }
+            this.renderAdminMain();
+            this.loadAdminData(this._adminOffset);
+        } catch (e) {
+            app.alert('Не удалось вернуть доступ: ' + (e.message || e));
+        }
+    },
     // Безвозвратно стирает профиль пользователя и все связанные с ним данные (сметы,
     // рассылки/переписку с админом, чаты с менеджером дистрибьютора). ВАЖНО: это удаляет
     // только строки в public.users и связанных таблицах — сам логин/пароль в Supabase Auth
@@ -28916,7 +29694,7 @@ const app = {
         if (!region) { app.alert('Пожалуйста, укажите регион.'); return; }
         if (!city) { app.alert('Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { app.alert('Пожалуйста, введите корректный email.'); return; }
-        if (activityTypes.length === 0) { app.alert('Выберите хотя бы одну сферу деятельности.'); return; }
+        if (activityTypes.length === 0) { app.alert('Выберите сферу деятельности: монтажник или продавец.'); return; }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser || (!tgUser.authUserId && !tgUser.email && !tgUser.id)) return;
@@ -29016,6 +29794,77 @@ const app = {
     },
     // Возраст на сегодня по дате рождения (ISO-строка вида "YYYY-MM-DD") — используется
     // для проверки диапазона 18-90 лет в регистрации и профиле
+    // ——— Регион по номеру телефона ————————————————————————————————————————
+    // Справочник диапазонов (phone_regions.js) весит 128 КБ и на расчёте не нужен,
+    // поэтому подключается лениво — при первом же разборе номера.
+    loadPhoneRegions: function () {
+        if (typeof PHONE_DEF_RANGES !== 'undefined') return Promise.resolve(true);
+        if (this._phoneRegionsPromise) return this._phoneRegionsPromise;
+        this._phoneRegionsPromise = new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'phone_regions.js?v=1.0';
+            // Не загрузился — живём без подсказки: ни анкета, ни админка от неё не зависят
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+        });
+        return this._phoneRegionsPromise;
+    },
+
+    /**
+     * Субъекты, где выдан номер: ['Москва', 'Московская область'] — два, если
+     * диапазон в реестре записан сразу на столицу с областью. Пустой массив —
+     * справочник не загружен, номер неполный или диапазон никому не отдан.
+     */
+    regionByPhone: function (phone) {
+        if (typeof PHONE_DEF_RANGES === 'undefined' || typeof PHONE_REGION_NAMES === 'undefined') return [];
+        const d = String(phone || '').replace(/\D/g, '');
+        if (d.length !== 11) return [];
+        const line = PHONE_DEF_RANGES[d.slice(1, 4)];
+        if (!line) return [];
+        const num = parseInt(d.slice(4), 10);
+        // Записи идут по возрастанию, каждая — «пропуск от конца предыдущей .
+        // длина . индекс региона» в 36-ричной записи (см. шапку phone_regions.js).
+        let pos = 0;
+        const items = line.split(',');
+        for (let k = 0; k < items.length; k++) {
+            const p = items[k].split('.');
+            const start = pos + parseInt(p[0], 36);
+            const end = start + parseInt(p[1], 36) - 1;
+            if (num < start) return [];      // попали в дыру между диапазонами
+            if (num <= end) return String(PHONE_REGION_NAMES[parseInt(p[2], 36)] || '').split('|');
+            pos = end + 1;
+        }
+        return [];
+    },
+
+    /** Совпадает ли регион анкеты с регионом номера. null — сравнивать не с чем. */
+    phoneRegionMatches: function (phone, region) {
+        const list = this.regionByPhone(phone);
+        if (!list.length || !String(region || '').trim()) return null;
+        const want = this.regionAccessKey(region);
+        return list.some(r => this.regionAccessKey(r) === want);
+    },
+
+    // Строка под полем телефона в анкете. Пишем и когда всё сходится: человек
+    // видит, что номер разобран, и не гадает, почему подсказка пропала.
+    showPhoneRegionHint: function () {
+        const el = document.getElementById('profile_phone_region');
+        const input = document.getElementById('profile_phone_input');
+        if (!el || !input) return;
+        const digits = input.value.replace(/\D/g, '');
+        if (digits.length !== 11) { el.textContent = ''; return; }
+
+        this.loadPhoneRegions().then(() => {
+            const list = this.regionByPhone(input.value);
+            if (!list.length) { el.textContent = ''; return; }
+            const regionEl = document.getElementById('profile_region_input');
+            const match = this.phoneRegionMatches(input.value, regionEl ? regionEl.value : '');
+            el.textContent = (match === false ? '⚠ Номер выдан в другом регионе: ' : 'Номер выдан в регионе: ') + list.join(' / ');
+            el.style.color = match === false ? '#D97706' : 'var(--text-sec)';
+        });
+    },
+
     // ——— Проверка анкеты на выдуманные данные ————————————————————————————
     // Раньше ФИО принималось любым: «маркеев Антон Fghh» уходило в базу как есть.
     // Здесь отсекается то, чего живой человек ввести не мог: латиница, цифры,
@@ -29136,6 +29985,12 @@ const app = {
             if (age < 18 || age > this.PROFILE_MAX_AGE) hard.push('возраст ' + age + ' ' + this.plural(age, 'год', 'года', 'лет'));
         }
         if (u.middle_name && !this.PATRONYMIC_END.test(String(u.middle_name).trim())) soft.push('отчество не похоже на отчество');
+        // Регион, где выдан номер. Мягкий признак, и только он: номер переносят
+        // между операторами и регионами, а люди переезжают — у половины монтажников
+        // Подмосковья номер московский, и ничего подозрительного в этом нет.
+        if (this.phoneRegionMatches(u.phone, u.region) === false) {
+            soft.push('номер выдан в регионе «' + this.regionByPhone(u.phone).join(' / ') + '»');
+        }
         const ipRegion = this.regionByIpCity(u.location);
         if (ipRegion && u.region && this.regionAccessKey(ipRegion) !== this.regionAccessKey(u.region)) {
             soft.push('вход из региона «' + ipRegion + '», а в анкете другой');
@@ -29812,7 +30667,7 @@ const app = {
         const dark = mode === 'auto' ? this.isDarkOutside() : (mode === 'dark');
         const changed = this.state.darkMode !== dark;
         this.state.darkMode = dark;
-        document.body.classList.toggle('dark-mode', dark);
+        document.body.classList.toggle('dark-mode', dark && !this.isShopTheme());
         this.updateThemeButton(mode);
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
         // раз в минуту, и писать состояние каждый раз незачем.
@@ -32733,7 +33588,7 @@ const app = {
         // генерации не менялась).
         try {
             const hasExistingShareId = !!(this.state.shared_invoice_id && this.isValidUUID(this.state.shared_invoice_id));
-            const shareId = hasExistingShareId
+            let shareId = hasExistingShareId
                 ? this.state.shared_invoice_id
                 : this.generateCustomInvoiceId();
             this.state.shared_invoice_id = shareId;
@@ -32757,6 +33612,7 @@ const app = {
             let shareUrl = null;
             let fastSaveReason = '';
             const fastSaveTimeout = this.isMobileOrTablet() ? 20000 : 10000;
+            const fastSaveStartedAt = Date.now();
             try {
                 const isSaved = await withTimeout(
                     this.saveSharedInvoiceJobToCloud({
@@ -32772,7 +33628,46 @@ const app = {
                 if (isSaved) {
                     shareUrl = `${baseOrigin}/invoice.html?id=${shareId}`;
                 } else {
-                    fastSaveReason = 'Сохранение вернуло отказ без ошибки';
+                    fastSaveReason = this.lastSharedInvoiceSaveError || 'Сохранение вернуло отказ без ошибки';
+
+                    // Ссылка на этот объект уже создавалась, значит строка в shared_invoices
+                    // есть и upsert пошёл не вставкой, а обновлением — а права на обновление
+                    // чужой или ничейной строки база не даёт (см. 20260816_shared_invoice_status_rpc.sql).
+                    // Если владелец строки не совпал с текущим входом, отказ будет повторяться
+                    // при каждой отправке этой сметы, и клиенту каждый раз уходит длинная
+                    // ссылка. Поэтому делаем то же, что «Запрос счёта»: пишем смету заново,
+                    // под новым номером — вставка разрешена, и ссылка снова короткая.
+                    // Прежняя ссылка при этом продолжает работать: строку мы не трогаем.
+                    //
+                    // Повторяем только после отказа, пришедшего ответом. Если первая попытка
+                    // упёрлась в таймаут (нет связи с базой), она уходит в catch — там повтор
+                    // бессмысленен и только задержал бы монтажника ещё на один бюджет.
+                    if (hasExistingShareId) {
+                        const retryBudget = Math.max(4000, fastSaveTimeout - (Date.now() - fastSaveStartedAt));
+                        const retryShareId = this.generateCustomInvoiceId();
+                        try {
+                            const isRetrySaved = await withTimeout(
+                                this.saveSharedInvoiceJobToCloud({
+                                    shareId: retryShareId, object_info, manager_info, items, totals,
+                                    tgUser: this.state.tgUser,
+                                    // Номер только что создан, записи с ним в базе заведомо нет.
+                                    skipExistingLookup: true
+                                }),
+                                retryBudget
+                            );
+                            if (isRetrySaved) {
+                                shareId = retryShareId;
+                                this.state.shared_invoice_id = retryShareId;
+                                this.saveState();
+                                shareUrl = `${baseOrigin}/invoice.html?id=${retryShareId}`;
+                            } else {
+                                fastSaveReason = `${fastSaveReason}; повтор с новым номером: ${this.lastSharedInvoiceSaveError || 'отказ без ошибки'}`.slice(0, 300);
+                            }
+                        } catch (retryErr) {
+                            console.warn('[executeShareInvoice] Повтор сохранения с новым номером не удался:', retryErr);
+                            fastSaveReason = `${fastSaveReason}; повтор с новым номером: ${String((retryErr && retryErr.message) || retryErr)}`.slice(0, 300);
+                        }
+                    }
                 }
             } catch (fastSaveErr) {
                 console.warn('[executeShareInvoice] Быстрое сохранение в облако не удалось, используем офлайн-ссылку:', fastSaveErr);
@@ -33349,8 +34244,22 @@ const app = {
             // возвращает supabaseClient.auth.getSession()/getUser() — здесь это tgUser.authUserId),
             // а НЕ на внутренний public.users.id — в отличие от estimates.user_id в saveJobToCloud.
             // Подстановка public.users.id сюда нарушает foreign key shared_invoices_user_id_fkey.
+            //
+            // Берём номер из живой сессии, а tgUser.authUserId оставляем запасным (так же
+            // сделано во всех остальных обращениях к базе). Сохранённый в браузере номер
+            // может оказаться от прошлого способа входа — например, после перезахода через
+            // Яндекс ID у того же человека auth-идентификатор другой. Со старым номером
+            // строка записывается на чужого владельца, и обновить её потом уже нельзя.
+            // getSession() читает локальное хранилище, сети не касается и время не тратит.
             const tgUser = job.tgUser;
-            const dbUserId = (tgUser && tgUser.authUserId) || null;
+            let dbUserId = (tgUser && tgUser.authUserId) || null;
+            try {
+                const { data: sessionData } = await supabaseClient.auth.getSession();
+                const sessionUserId = sessionData && sessionData.session && sessionData.session.user && sessionData.session.user.id;
+                if (sessionUserId) dbUserId = sessionUserId;
+            } catch (e) {
+                console.warn('[saveSharedInvoiceJobToCloud] Сессию прочитать не удалось, берём сохранённый номер:', e);
+            }
 
             let objectInfo = job.object_info;
             // job.skipExistingLookup ставит только быстрое сохранение при первой генерации ссылки:
@@ -33387,13 +34296,34 @@ const app = {
 
             if (error) {
                 console.error('[saveSharedInvoiceJobToCloud] Ошибка Supabase:', error);
+                this.lastSharedInvoiceSaveError = this.describeSupabaseError(error);
                 return false;
             }
+            this.lastSharedInvoiceSaveError = '';
             return true;
         } catch (error) {
             console.error('[saveSharedInvoiceJobToCloud] Ошибка в блоке catch:', error);
+            this.lastSharedInvoiceSaveError = this.describeSupabaseError(error);
             return false;
         }
+    },
+    // Последняя причина отказа saveSharedInvoiceJobToCloud. Сама функция отвечает «да/нет»
+    // (на это опираются очередь и быстрое сохранение), а текст ошибки до сих пор уходил
+    // только в консоль монтажника — в админке в отметке offline_link стояла заглушка
+    // «Сохранение вернуло отказ без ошибки», по которой причину было не установить.
+    lastSharedInvoiceSaveError: '',
+    // Собирает из ответа Supabase короткую строку для отметки в админке: код нужен,
+    // чтобы отличать запрет по правам доступа (42501) от нарушения внешнего ключа (23503)
+    // и от переполнения по размеру — по одному тексту сообщения они путаются.
+    describeSupabaseError: function (error) {
+        if (!error) return 'Неизвестная ошибка';
+        const parts = [];
+        if (error.code) parts.push(`[${error.code}]`);
+        if (error.message) parts.push(String(error.message));
+        if (error.details) parts.push(`— ${String(error.details)}`);
+        if (error.hint) parts.push(`(${String(error.hint)})`);
+        const text = parts.join(' ').trim();
+        return (text || String(error)).slice(0, 300);
     },
     queue: {
         _isProcessing: false,
@@ -37541,17 +38471,20 @@ const app = {
         const eqLen = Math.round((run + air + bends * CHIMNEY_EQ.bend90) * 10) / 10;
         const limit = this.chimneyLimitFor(b, 'D80');
         const warns = [];
+        // notes — не ошибки, а справка: в красный блок над разделом им не место,
+        // они уходят под значок «i» первой позиции дымохода.
+        const notes = [];
         if (eqLen > limit.max) {
             warns.push(`Суммарная длина каналов ${String(eqLen).replace('.', ',')} м больше предела ${limit.max} м${limit.exact ? '' : ' (ориентировочного)'} — даже раздельная система столько не продавит. Сократите трассу или возьмите котёл помощнее.`);
         }
         if (!limit.exact) {
-            warns.push(`Предел ${limit.max} м для раздельной системы взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
+            notes.push(`Предел ${limit.max} м для раздельной системы взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
         }
-        warns.push(`Посчитано так: дымовой канал ${String(run).replace('.', ',')} м ${onRoof ? 'над кровлей' : 'на фасад'}, воздухозабор ${air} м через стену рядом с котельной. Если на объекте иначе, поправьте количество труб прямо в смете.`);
+        notes.push(`Посчитано так: дымовой канал ${String(run).replace('.', ',')} м ${onRoof ? 'над кровлей' : 'на фасад'}, воздухозабор ${air} м через стену рядом с котельной. Если на объекте иначе, поправьте количество труб прямо в смете.`);
         if (!onRoof && this.chimneyFacadeDoubtful()) {
             warns.push('Дом выше одного этажа, а дым выходит на фасад: СП 60.13330 п. 6.5.5 запрещает фасадный выброс в многоэтажных жилых зданиях. Проверьте по объекту — обычно дымовой канал выводят над кровлей.');
         }
-        return { parts: parts, eqLen: eqLen, dn: 'D80', limit: limit, route: 'split', warns: warns };
+        return { parts: parts, eqLen: eqLen, dn: 'D80', limit: limit, route: 'split', warns: warns, notes: notes };
     },
 
     buildChimney: function (b, kit) {
@@ -37690,10 +38623,13 @@ const app = {
         if (route === 'wall' && this.chimneyFacadeDoubtful()) {
             warns.push('Дом выше одного этажа: каталог STOUT допускает вывод коаксиала на фасад только в одноэтажных домах, а СП 60.13330 п. 6.5.5 прямо запрещает фасадный выброс в многоэтажных жилых зданиях. Проверьте по объекту — обычно такой дымоход выводят над кровлей.');
         }
+        // Справка о происхождении предела — под значок «i» дымохода, а не в
+        // красный блок: он только для ошибок, которые надо исправить.
+        const notes = [];
         if (!limit.exact) {
-            warns.push(`Предел ${limit.max} м взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
+            notes.push(`Предел ${limit.max} м взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
         }
-        return { parts: res.parts, eqLen: res.eqLen, dn: res.dn, limit: limit, route: route, warns: warns };
+        return { parts: res.parts, eqLen: res.eqLen, dn: res.dn, limit: limit, route: route, warns: warns, notes: notes };
     },
 
     // Смена системы или выхода меняет и разумную длину трассы: у стены это метр,
@@ -38416,7 +39352,13 @@ const app = {
             let topPrice = topItem?.price || 16078;
             let basePriceVal = baseItem?.price || 5141;
 
-            let epc12Item = catalog.well_auto ? catalog.well_auto.find(x => x.id === 'RCS-0001-000063') : null;
+            // EPC-12 auto лежит в каталоге не отдельной строкой, а ROMMER-аналогом
+            // внутри SIRIO, и поиск по well_auto его не находил: цифровой регулятор
+            // ROMMER просто не показывался в таблице замены. В режиме ROMMER он и так
+            // стоит первой строкой (SIRIO подменяется на него), поэтому там второй раз
+            // его не предлагаем.
+            let epc12Item = (catalog.well_auto ? catalog.well_auto.find(x => x.id === 'RCS-0001-000063') : null)
+                || (!isRommer ? (sirioItem && sirioItem.rommer) : null);
             let epc2Item = catalog.well_auto ? catalog.well_auto.find(x => x.id === 'RCS-0001-000052') : null;
             let epc4Item = catalog.well_auto ? catalog.well_auto.find(x => x.id === 'RCS-0001-000064') : null;
             let epc5Item = catalog.well_auto ? catalog.well_auto.find(x => x.id === 'RCS-0001-000055') : null;
@@ -38514,18 +39456,30 @@ const app = {
         // в общий выбор Pro Aqua / Wavin, где нержавейки нет.
         else if (this.isBoilerPipeRow(item)) {
             const _pprIsPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            // Цена в этой таблице — НЕ цена строки, а стоимость всего раздела
+            // «2. Обвязка котельной» в каждой системе. Замена системы меняет трубу,
+            // все фитинги, хомуты и изоляцию разом, и сравнивать их по цене одной
+            // трубы бессмысленно: она может быть дешевле, а обвязка целиком — дороже.
+            const _totals = this.boilerSystemTotals();
+            const _cur = _totals[this.boilerPipeSystem()] || 0;
+            const _delta = (sys) => {
+                const d = (_totals[sys] || 0) - _cur;
+                if (!_cur || d === 0) return '';
+                const sign = d > 0 ? '+' : '−';
+                return `<div style="font-weight:600; font-size:11px; margin-top:2px; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">`
+                    + `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ на всю обвязку котельной</div>`;
+            };
             customAlts = [
-                { id: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', price: 0, imgId: 'RSS-1001-000022' },
-                { id: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', price: 0, imgId: 'SSS-2001-000022' },
+                { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
+                { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
                 {
-                    id: 'bp_ppr',
+                    id: 'bp_ppr', sys: 'ppr',
                     name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6 (Россия)' : 'Полипропилен PP-RCT STABI PLUS (Чехия)',
                     brand: _pprIsPA ? 'Pro Aqua' : 'Wavin Ekoplastik',
-                    price: 0,
                     imgId: _pprIsPA ? 'PA39012' : 'STRS032RCT'
                 },
-                { id: 'bp_mp', name: 'Металлопластик PE-Xb/Al/PE-Xb, пресс', brand: 'STOUT', price: 0, imgId: 'SPM-0001-053230' }
-            ];
+                { id: 'bp_mp', sys: 'mp', name: 'Металлопластик PE-Xb/Al/PE-Xb, пресс', brand: 'STOUT', imgId: 'SPM-0001-053230' }
+            ].map(a => ({ ...a, price: _totals[a.sys] || 0, name: a.name + _delta(a.sys) }));
         }
         else if (item.originalId && (item.originalId.startsWith('PA') || item.originalId.includes('RCT'))) {
             customAlts = [
@@ -38773,17 +39727,7 @@ const app = {
             basePrice = basePrice / item.len;
         }
 
-        const _tankCoilKwMap = {
-            'SWH-3110-000100': 24, 'SWH-3110-000150': 24, 'SWH-3110-000200': 24,
-            'SWH-1110-000300': 32, 'SWH-1110-000500': 69.5,
-            'SWH-4110-050100': 26, 'SWH-4110-050150': 32, 'SWH-4110-050200': 32, 'SWH-4110-050300': 48, 'SWH-4110-050500': 64,
-            'SWH-2110-000150': 31, 'SWH-2110-000200': 40.2, 'SWH-2110-000300': 55.6, 'SWH-2110-000400': 73.5, 'SWH-2110-000500': 73.5,
-            'SWH-2110-200200': '31 + 40,2', 'SWH-2110-200300': '38,5 + 55,6', 'SWH-2110-200400': '38,5 + 73,5', 'SWH-2110-200500': '38,5 + 73,5',
-            'SWH-1110-050100': 24, 'SWH-1110-050150': 32, 'SWH-1110-050200': 32, 'SWH-1110-050300': 32,
-            'SWH-3210-000080': 18.5, 'SWH-3210-000100': 18.5, 'SWH-3210-000150': 18.5, 'SWH-3210-000200': 18.5,
-            'SWH-1210-050075': 18.5, 'SWH-1210-050100': 18.5, 'SWH-1210-050150': 24, 'SWH-1210-050200': 24,
-            'RWH-2110-000150': 35, 'RWH-2110-000200': 38, 'RWH-2110-000300': 49, 'RWH-2110-000500': 60,
-        };
+        const _tankCoilKwMap = this.TANK_COIL_KW;
         const _tankItemId = item.originalId || item.id || '';
         const _coilKw = _tankCoilKwMap[_tankItemId];
         // Цена выбранного варианта (из swaps, иначе цена исходного товара)
@@ -39965,6 +40909,32 @@ const app = {
 
             // Внутрипольный конвектор (SCQ/SCN) — доп. пункт для перехода в полный пикер
             // радиаторов, сразу отфильтрованный на "Дизайнерские" (см. openConvectorDesignRadPicker).
+            // Обвязка котельной: под таблицей систем — замена ОДНОЙ позиции внутри
+            // той же системы. Тройник на уголок, переход на другую резьбу и т.п.
+            // Без этого выбор системы съедал бы обычную построчную замену.
+            if (this.isBoilerPipeRow(item)) {
+                const _same = this.ssSameSizeAlts(item);
+                if (_same.length) {
+                    html += `
+                        <tr style="border-top: 2px solid var(--border);">
+                            <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
+                                Заменить только эту позицию — тот же материал и типоразмер
+                            </td>
+                        </tr>`;
+                    _same.forEach(alt => {
+                        html += `
+                            <tr style="cursor: pointer;" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
+                                <td class="col-idx"></td>
+                                <td class="col-img">${getImg(alt)}</td>
+                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}</td>
+                                <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand}</td>
+                                <td class="col-pct"></td>
+                                <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${alt.price > 0 ? this.formatPriceHtml(alt.price, true) : '—'}</td>
+                            </tr>`;
+                    });
+                }
+            }
+
             const _convOrigId = item.originalId || item.id;
             if (_convOrigId && (_convOrigId.startsWith('SCQ') || _convOrigId.startsWith('SCN'))) {
                 html += `
@@ -47982,7 +48952,7 @@ const app = {
         // Левая панель кабинета: доступ к админке, счётчик сообщений, подсветка раздела
         this.syncRailUI();
 
-        if (document.getElementById('chk_dark')) document.getElementById('chk_dark').checked = this.state.darkMode; document.body.classList.toggle('dark-mode', this.state.darkMode);
+        if (document.getElementById('chk_dark')) document.getElementById('chk_dark').checked = this.state.darkMode; document.body.classList.toggle('dark-mode', this.state.darkMode && !this.isShopTheme());
 
         // === БЛОКИРОВКИ ===
         document.body.classList.toggle('guest-mode', isGuest);
@@ -49723,6 +50693,388 @@ const app = {
         const id = String(item.originalId || item.id || '');
         if (/^(RSS|SSS)-/.test(id)) return true;
         return String(item.group || '') === '2.5. Трубопроводы котельной';
+    },
+
+    // Паспортная мощность змеевика бойлера, кВт. Строкой записаны баки с двумя
+    // теплообменниками («31 + 40,2»): там первым идёт нижний, гелиоконтурный, а
+    // котёл подключается к верхнему — большему.
+    //
+    // Карта нужна в двух местах: в подсказке позиции бойлера и в подборе диаметра
+    // греющего контура. Поэтому лежит на объекте, а не в теле функции, — иначе
+    // расчёт и подсказка разошлись бы при первой же правке.
+    TANK_COIL_KW: {
+        'SWH-3110-000100': 24, 'SWH-3110-000150': 24, 'SWH-3110-000200': 24,
+        'SWH-1110-000300': 32, 'SWH-1110-000500': 69.5,
+        'SWH-4110-050100': 26, 'SWH-4110-050150': 32, 'SWH-4110-050200': 32, 'SWH-4110-050300': 48, 'SWH-4110-050500': 64,
+        'SWH-2110-000150': 31, 'SWH-2110-000200': 40.2, 'SWH-2110-000300': 55.6, 'SWH-2110-000400': 73.5, 'SWH-2110-000500': 73.5,
+        'SWH-2110-200200': '31 + 40,2', 'SWH-2110-200300': '38,5 + 55,6', 'SWH-2110-200400': '38,5 + 73,5', 'SWH-2110-200500': '38,5 + 73,5',
+        'SWH-1110-050100': 24, 'SWH-1110-050150': 32, 'SWH-1110-050200': 32, 'SWH-1110-050300': 32,
+        'SWH-3210-000080': 18.5, 'SWH-3210-000100': 18.5, 'SWH-3210-000150': 18.5, 'SWH-3210-000200': 18.5,
+        'SWH-1210-050075': 18.5, 'SWH-1210-050100': 18.5, 'SWH-1210-050150': 24, 'SWH-1210-050200': 24,
+        'RWH-2110-000150': 35, 'RWH-2110-000200': 38, 'RWH-2110-000300': 49, 'RWH-2110-000500': 60,
+    },
+
+    /** Мощность змеевика числом: у баков с двумя теплообменниками берётся больший. */
+    tankCoilKw: function (id) {
+        const v = this.TANK_COIL_KW[String(id || '')];
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+            const nums = v.split('+').map(s => parseFloat(s.replace(',', '.').trim())).filter(n => n > 0);
+            return nums.length ? Math.max.apply(null, nums) : 0;
+        }
+        return 0;
+    },
+
+    // === ПОДБОР ДИАМЕТРА ОБВЯЗКИ КОТЕЛЬНОЙ ПО СКОРОСТИ ===
+    //
+    // Historically диаметр котельной назначался одним порогом — до 30 кВт труба 22,
+    // выше 28, — и весь ассортимент сводился к двум типоразмерам из семи. Скорость
+    // при этом считалась, но только ради подсказки: цифра показывалась монтажнику
+    // и никуда не шла. Здесь она наконец решает.
+    //
+    // Предел скорости общий с разводкой дома (RAD_V_MAX_TRUNK): 1,2 м/с для
+    // магистральных участков по СП 60.13330.2020, по шуму и износу.
+    BOILER_V_MAX: 1.2,
+
+    // Перепад котлового контура. Паспортный режим котла — 20 K, и он же стоит по
+    // умолчанию. Переключатель на 10 K живёт в подробном режиме: это режим 75/65,
+    // в котором радиаторы отдают паспортную мощность, но расход через контур
+    // вдвое выше, и диаметр обязан это увидеть.
+    boilerDT: function () {
+        return (this.state.boilerDT === 10) ? 10 : 20;
+    },
+
+    // Расход котлового контура, м³/ч. G = Q / (1,163 × Δt) — та же формула, что в
+    // подсказке к трубе, вынесена сюда, чтобы подсказка и подбор не разъезжались.
+    boilerFlow: function (kw, dt) {
+        const q = parseFloat(kw) || 0;
+        return q / (1.163 * (dt || this.boilerDT()));
+    },
+
+    // Ряд типоразмеров системы обвязки с внутренними диаметрами, мм.
+    //
+    // Внутренний диаметр НЕ вбит таблицей, а выведен из каталога: у нержавейки,
+    // металлопластика и Wavin стенка написана прямо в названии позиции («22х1.2»,
+    // «26x3.0», «32x4,4»), у Pro Aqua — в маркировке SDR 6, то есть стенка равна
+    // диаметру, делённому на 6. Так ряд сам пополнится, когда парсер принесёт новый
+    // типоразмер, и не придётся помнить про вторую таблицу.
+    //
+    // Отдельные ряды у Pro Aqua и Wavin не прихоть: при одном наружном диаметре
+    // 32 мм у STABI PLUS внутренний 23,2, а у DUO SDR 6 — 21,3. Раньше на оба
+    // бренда шёл один набор чисел, и на Pro Aqua пропускная способность
+    // завышалась примерно на восьмую часть.
+    _boilerRangeCache: null,
+    boilerPipeRange: function (system) {
+        if (!this._boilerRangeCache) this._boilerRangeCache = {};
+        const sys = system || this.boilerPipeSystem();
+        if (this._boilerRangeCache[sys]) return this._boilerRangeCache[sys];
+
+        // Наружный диаметр и стенка из названия. Разделитель бывает и латинской
+        // «x», и кириллической «х» — в каталоге встречаются оба.
+        const parse = (name) => {
+            const m = String(name || '').match(/(\d{2,3})\s*[xх]\s*(\d+[.,]?\d*)/);
+            if (!m) return null;
+            const od = parseInt(m[1], 10);
+            const wall = parseFloat(m[2].replace(',', '.'));
+            if (!(od > 0) || !(wall > 0) || wall * 2 >= od) return null;
+            return { size: od, inner: Math.round((od - 2 * wall) * 10) / 10 };
+        };
+
+        let rows = [];
+        if (sys === 'ss304' || sys === 'ss316') {
+            rows = (catalog.ss_pipe_4m || []).map(p => parse(p.name)).filter(Boolean);
+        } else if (sys === 'mp') {
+            rows = (catalog.metal_plastic_pipes || []).map(p => parse(p.name)).filter(Boolean);
+        } else if (sys === 'ppr') {
+            const isPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            if (isPA) {
+                // DUO SDR 6: стенка = D/6, внутренний = D × 2/3. В названии стенки нет.
+                rows = (catalog.ppr_proaqua_pipe || [])
+                    .filter(p => /DUO SDR 6/i.test(p.name || ''))
+                    .map(p => {
+                        const m = String(p.name).match(/(\d{2,3})\s*мм/);
+                        if (!m) return null;
+                        const od = parseInt(m[1], 10);
+                        return { size: od, inner: Math.round(od * 2 / 3 * 10) / 10 };
+                    }).filter(Boolean);
+            } else {
+                rows = (catalog.ppr_ekoplastik_pipe || []).map(p => parse(p.name)).filter(Boolean);
+            }
+        }
+
+        // Дубли по типоразмеру (у металлопластика 16-я идёт бухтами 100 и 200 м)
+        // схлопываем, ряд держим по возрастанию — подбор идёт снизу вверх.
+        const seen = {};
+        rows = rows.filter(r => (seen[r.size] ? false : (seen[r.size] = true)))
+            .sort((a, b) => a.size - b.size);
+        this._boilerRangeCache[sys] = rows;
+        return rows;
+    },
+
+    /**
+     * Наименьший типоразмер системы, на котором скорость не выше предела.
+     *
+     * Возвращает { size, inner, v, flow, capped }. capped = true означает, что ряд
+     * закончился раньше, чем скорость вошла в норму: у металлопластика верх — 32 мм,
+     * дальше система физически не тянет и обвязку надо вести другой. Молча ставить
+     * максимальный типоразмер в этом случае нельзя, иначе смета скроет проблему.
+     */
+    boilerPickSize: function (system, kw, dt) {
+        const sys = system || this.boilerPipeSystem();
+        const _dt = dt || this.boilerDT();
+        const flow = this.boilerFlow(kw, _dt);
+        const range = this.boilerPipeRange(sys);
+        if (!range.length) return null;
+        const vOf = (inner) => {
+            const S = Math.PI * Math.pow(inner / 1000, 2) / 4;
+            return (flow / 3600) / S;
+        };
+        for (let i = 0; i < range.length; i++) {
+            const v = vOf(range[i].inner);
+            if (v <= this.BOILER_V_MAX) {
+                return { size: range[i].size, inner: range[i].inner, v: v, flow: flow, capped: false };
+            }
+        }
+        const last = range[range.length - 1];
+        return { size: last.size, inner: last.inner, v: vOf(last.inner), flow: flow, capped: true };
+    },
+
+    /**
+     * Во что обойдётся раздел «2. Обвязка котельной» в каждой из четырёх систем.
+     *
+     * Замена системы — не замена одной строки: меняются труба, все фитинги, хомуты
+     * и теплоизоляция разом, и по цене одной трубы судить о выборе нельзя. Поэтому
+     * смета пересчитывается целиком под каждую систему и суммируется весь раздел 2.
+     * Оборудование (котлы, баки, насосы) в нём одинаково при любой системе, так что
+     * разница между строчками — это ровно разница обвязки.
+     *
+     * Состояние снимается и возвращается на место, страница не трогается
+     * (render(true) считает без отрисовки). Последним прогоном восстанавливаем
+     * currentEquipmentList под текущую систему — им пользуются счёт, ссылка и листы.
+     */
+    boilerSystemTotals: function () {
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const sumSection2 = () => (this.currentEquipmentList || []).reduce((acc, it) => {
+            return String(it.group || '').indexOf('2.') === 0
+                ? acc + (it.price || 0) * (it.q || 1) : acc;
+        }, 0);
+        const out = {};
+        try {
+            this.BOILER_PIPE_SYSTEMS.forEach(sys => {
+                this.state.boilerPipeSystem = sys;
+                this._boilerRangeCache = null;   // ряд зависит от системы и бренда ППР
+                this.render(true);
+                out[sys] = Math.round(sumSection2());
+            });
+        } finally {
+            // Прогон мог тронуть не только boilerPipeSystem (render кое-где
+            // досогласовывает состояние), поэтому возвращаем снимок целиком.
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this.render(true);
+        }
+        return out;
+    },
+
+    /**
+     * Чем можно заменить ОДНУ позицию обвязки, не трогая систему целиком.
+     *
+     * Выбор системы и выбор детали — разные задачи: «поставить всю котельную на
+     * полипропилен» и «здесь вместо тройника нужен уголок» не должны быть одной
+     * кнопкой. Здесь — второе: тот же материал, тот же типоразмер, другой тип
+     * фитинга. Резьбовые переходы даём все, что есть на этом диаметре: под разные
+     * патрубки нужны разные резьбы.
+     *
+     * Работает только для нержавейки: у ППР и металлопластика артикулы не
+     * разобраны по типоразмерам (см. boilerPipeRange) — там пока только система.
+     */
+    ssSameSizeAlts: function (item) {
+        const id = String((item && (item.originalId || item.id)) || '');
+        if (!/^(RSS|SSS)-/.test(id)) return [];
+        // Типоразмер текущей позиции — из её названия, как и весь индекс.
+        const cur = (catalog.ss_pipe_4m || []).concat(
+            'ss_elbow90_ff ss_elbow90 ss_elbow45 ss_tee ss_tee_red ss_adapter_fi ss_adapter_mi ss_elbow_mi'
+                .split(' ').reduce((a, k) => a.concat(catalog[k] || []), [])
+        ).find(x => x && (x.id === id || String(x.id).replace(/^SSS-2/, 'RSS-1') === id.replace(/^SSS-2/, 'RSS-1')));
+        if (!cur) return [];
+        const m = String(cur.name || '').match(/(\d{2})(?:\s*х|\s*$)/);
+        if (!m) return [];
+        const d = m[1];
+
+        const out = [];
+        const push = (arr, extra) => {
+            const it = this.ssFit(arr, d, extra);
+            if (it && it.id !== id) out.push({ id: it.id, name: it.name, price: it.price || 0, brand: it.brand || 'ROMMER' });
+        };
+        ['ss_elbow90_ff', 'ss_elbow90', 'ss_elbow45', 'ss_tee'].forEach(a => push(a));
+        this.SS_THREADS.forEach(t => { push('ss_adapter_fi', t.t); push('ss_adapter_mi', t.t); push('ss_elbow_mi', t.t); });
+        // Переходные тройники этого диаметра — все имеющиеся ответвления.
+        Object.keys(this.ssFitIndex()['ss_tee_red'] || {}).forEach(k => {
+            if (k.indexOf(d + '|') !== 0) return;
+            const it = this.ssFit('ss_tee_red', d, k.split('|')[1]);
+            if (it && it.id !== id) out.push({ id: it.id, name: it.name, price: it.price || 0, brand: it.brand || 'ROMMER' });
+        });
+        const seen = {};
+        return out.filter(x => (seen[x.id] ? false : (seen[x.id] = true)));
+    },
+
+    // === ФИТИНГИ НЕРЖАВЕЙКИ ПО ТИПОРАЗМЕРУ ===
+    //
+    // Пока котельная знала два диаметра, артикулы фитингов были вписаны в код
+    // строками. На семи типоразмерах так нельзя, а вывести артикул из диаметра
+    // формулой не выходит: коды этой линейки непоследовательны — 22х3/4 это
+    // RSS-1022-002234, но 28х1 уже RSS-1022-000281, а 35х1¼ — RSS-1022-035114.
+    // Зато НАЗВАНИЯ единообразны: «Угольник 90° ВПр-ВПр 22», «Переходник ВПр-НР
+    // 28х1», «Тройник переходной ВПр 28х22х28». По ним и строим индекс — заодно
+    // новый типоразмер от парсера подхватится сам.
+    //
+    // Ключи: 'd' — по диаметру, 'd|резьба' — резьбовые, 'D|d' — переходные тройники.
+    _ssFitIdx: null,
+    ssFitIndex: function () {
+        if (this._ssFitIdx) return this._ssFitIdx;
+        const idx = {};
+        const put = (arr, keyOf) => {
+            const map = {};
+            (catalog[arr] || []).forEach(it => {
+                const k = keyOf(String(it.name || ''));
+                if (k) map[k] = it.id;
+            });
+            idx[arr] = map;
+        };
+        // «… 22» — последнее число в названии и есть типоразмер.
+        const bySize = (name) => {
+            const m = name.match(/(\d{2})\s*$/);
+            return m ? m[1] : null;
+        };
+        // «… 28х1», «… 35х1 1/4» — диаметр и резьба через «х».
+        const bySizeThread = (name) => {
+            const m = name.match(/(\d{2})\s*х\s*(\S+)\s*$/);
+            return m ? (m[1] + '|' + m[2]) : null;
+        };
+        // «… 28х22х28» — магистраль и ответвление.
+        const byTeeRed = (name) => {
+            const m = name.match(/(\d{2})\s*х\s*(\d{2})\s*х\s*(\d{2})\s*$/);
+            return m ? (m[1] + '|' + m[2]) : null;
+        };
+        put('ss_elbow90_ff', bySize);
+        put('ss_elbow90', bySize);
+        put('ss_elbow45', bySize);
+        put('ss_tee', bySize);
+        put('ss_tee_red', byTeeRed);
+        put('ss_adapter_fi', bySizeThread);
+        put('ss_adapter_mi', bySizeThread);
+        put('ss_elbow_mi', bySizeThread);
+        this._ssFitIdx = idx;
+        return idx;
+    },
+
+    /**
+     * Фитинг нержавейки: массив каталога, типоразмер и, для резьбовых, резьба
+     * (или диаметр ответвления у переходного тройника).
+     *
+     * Возврат идёт через ssItem, поэтому переключатель 304 ↔ 316L продолжает
+     * работать: индекс построен по ROMMER-линейке, а ssItem подменяет артикул
+     * на STOUT-овский, если выбрана 316L.
+     */
+    ssFit: function (arr, d, extra) {
+        const key = (extra === undefined || extra === null) ? String(d) : (String(d) + '|' + String(extra));
+        const id = (this.ssFitIndex()[arr] || {})[key];
+        return id ? this.ssItem(catalog[arr], id) : null;
+    },
+
+    /**
+     * Типоразмер, на котором обвязка реально собирается: на выбранном по скорости
+     * диаметре может не оказаться нужного фитинга (например угольника-переходника
+     * 15х3/4 в линейке нет вовсе). Тогда поднимаемся на ступень вверх, пока
+     * набор не сойдётся. Пропустить фитинг молча нельзя — addToBill пропускает
+     * undefined без единого следа, и позиция просто исчезла бы из сметы.
+     */
+    ssSizeWithFittings: function (size, need) {
+        const range = this.boilerPipeRange('ss304').map(r => r.size);
+        const has = (d) => (need || []).every(n => !!this.ssFit(n.arr, d, n.extra));
+        let i = range.indexOf(parseInt(size, 10));
+        if (i < 0) return size;
+        for (; i < range.length; i++) if (has(range[i])) return range[i];
+        return size;
+    },
+
+    // Резьбы в дюймах, по возрастанию. Запись «11/4» — это 1 1/4, так они названы
+    // в каталоге; отдельная таблица нужна, чтобы сравнивать их по величине.
+    SS_THREADS: [
+        { t: '1/2', v: 0.5 }, { t: '3/4', v: 0.75 }, { t: '1', v: 1 },
+        { t: '11/4', v: 1.25 }, { t: '11/2', v: 1.5 }, { t: '2', v: 2 }
+    ],
+
+    /**
+     * Какая резьба реально есть у перехода этого типоразмера.
+     *
+     * Резьба в линейке привязана к диаметру: на 15–22 это 1/2" и 3/4", на 28 —
+     * 3/4" и 1", на 35 — 1" и 1 1/4". Поэтому под патрубок котла нельзя просто
+     * поднять диаметр — на 35-й трубе перехода на 3/4" не существует и не будет.
+     * Берём ближайшую доступную не меньше нужной, а если и таких нет — самую
+     * крупную из имеющихся. Когда результат не совпал с патрубком, вызывающий
+     * код обязан сказать в подсказке, что нужен резьбовой переход: так уже
+     * сделано для трубы 22 с патрубком 1".
+     */
+    ssThreadFor: function (arr, d, want) {
+        const map = this.ssFitIndex()[arr] || {};
+        const have = this.SS_THREADS.filter(x => map[String(d) + '|' + x.t]);
+        if (!have.length) return null;
+        const wv = (this.SS_THREADS.find(x => x.t === want) || {}).v || 0;
+        return (have.find(x => x.v >= wv) || have[have.length - 1]).t;
+    },
+
+    // Резьба в подсказку: «3/4» -> 3/4", «11/4» -> 1 1/4"
+    ssThreadLabel: function (t) {
+        const s = String(t || '');
+        return (s === '11/4' ? '1 1/4' : s === '11/2' ? '1 1/2' : s) + '"';
+    },
+
+    /**
+     * Хомут подводки бака по наружному диаметру трубы.
+     *
+     * Диапазоны — из названий позиций каталога. Раньше здесь стоял прибитый
+     * SAC-0020-000034 «3/4" (25–29 мм)», выбранный, судя по всему, по резьбе
+     * подводки, а не по трубе: на нержавеющую 22 он не затягивается, её диапазон
+     * 20–24. На 15 и 18 в этом семействе хомутов нет вовсе — там берётся
+     * одновинтовой M8, у него ряд начинается с 12 мм.
+     */
+    SS_CLAMP_BY_OD: {
+        15: 'SAC-0020-300014',   // M8 1/4"  (12–15)
+        18: 'SAC-0020-300038',   // M8 3/8"  (16–19)
+        22: 'SAC-0020-000012',   // с гайкой 1/2" (20–24)
+        28: 'SAC-0020-000034',   // с гайкой 3/4" (25–29)
+        35: 'SAC-0020-000001',   // с гайкой 1"   (32–37)
+        42: 'SAC-0020-300114'    // M8 1 1/4"     (40–45)
+    },
+    ssClamp: function (od) {
+        const id = this.SS_CLAMP_BY_OD[parseInt(od, 10)];
+        return id ? (catalog.mounting_system || []).find(x => x.id === id) : null;
+    },
+
+    /**
+     * Тройник врезки: магистраль main, ответвление branch. Возвращает и позицию,
+     * и подпись к ней — чтобы они не разъехались.
+     *
+     * Переходные тройники есть не на все пары: на 28-й магистрали ответвление 22
+     * найдётся, а на 42-й ряд обрывается на 42х35х42, пары 42х22х42 нет вовсе.
+     * В таком случае ставим равнопроходной и честно пишем, что ответвление
+     * сужается по месту. Раньше здесь стоял молчаливый откат, и в смету уходил
+     * равнопроходной тройник с подписью «переходной» — артикул не совпадал с
+     * текстом.
+     */
+    ssTee: function (main, branch) {
+        const eq = this.ssFit('ss_tee', main);
+        if (main === branch) {
+            return eq ? { item: eq, label: `равнопроходной ${main}`, note: '' } : null;
+        }
+        const red = this.ssFit('ss_tee_red', main, branch);
+        if (red) return { item: red, label: `переходной ${main}х${branch}х${main}`, note: '' };
+        return eq ? {
+            item: eq, label: `равнопроходной ${main}`,
+            note: ` Переходного тройника ${main}х${branch}х${main} в линейке нет — ответвление на ${branch} сужается муфтой-переходом по месту (в смету не входит).`
+        } : null;
     },
     // === КОНФИГУРАТОР КОНТРОЛЛЕРА ОТОПЛЕНИЯ (STOUT Thermatic 3001) ===
     //
@@ -51688,8 +53040,16 @@ const app = {
         }
     },
     // ====================================
-    render: function () {
-        this.ensureCalcId();
+    /**
+     * @param {boolean} [computeOnly] — только пересчитать смету, не трогая страницу.
+     *
+     * Нужен, чтобы прикинуть смету «а если бы система обвязки была другой», не
+     * перерисовывая экран и не отмечая расчёт в аналитике. Возврат стоит перед
+     * первой записью в DOM: всё, что выше, — чистый счёт, всё, что ниже, —
+     * отрисовка и побочные эффекты (автосохранение, вкладка «Деньги», виджеты).
+     */
+    render: function (computeOnly) {
+        if (!computeOnly) this.ensureCalcId();
         if (this.state.disabledSections) {
             const migrations = {
                 "1.1 Монтаж котельной": ["1.1 Монтаж котла и бойлера", "1.2 Монтаж обвязки котельной"],
@@ -51719,10 +53079,7 @@ const app = {
         this.updateDocumentTitle();
 
         // Update top left logo based on brandMode
-        let topLogoEl = document.getElementById('top_left_logo');
-        if (topLogoEl) {
-            topLogoEl.src = (this.state.brandMode === 'rommer') ? 'img/rommer_logo.jpg' : 'img/stout_logo.png';
-        }
+        this.syncTopLogo();
 
         this.calcBaseTotal = 0;
         this.calcFinalTotal = 0;
@@ -53075,6 +54432,44 @@ const app = {
         // суммируем внутри типа топлива и берём максимум между типами. Раньше считалась
         // сплошная сумма, и газовый 24 кВт плюс электрический давали за 30 кВт — весь
         // котловой контур уходил с Ø22 на Ø28: труба, тройники, углы, американки.
+        // Типоразмеры котельной — ОДНО место на весь render. Врезка расширительных
+        // баков считается выше блока труб, и если она подберёт диаметр сама, тройник
+        // врезки не сядет на магистраль. Тот же приём, что у магистрали радиаторов:
+        // смета и гидравлика обязаны считать по одним числам.
+        //
+        // main — магистраль, tank — подводка баков (тупиковая ветка, по скорости не
+        // считается). Сверху ряд ограничен 42: на 54 нет теплоизоляции.
+        const BP_MIN = 15, BP_MAX = 42;
+        const boilerSizes = (list) => {
+            const sys = this.boilerPipeSystem();
+            const kw = boilerPowerForPipes(list);
+            if (sys === 'ppr' || sys === 'mp') {
+                // Эти системы пока на прежней паре типоразмеров, каскад для них не
+                // разделяется: perBoiler совпадает с общим, как было до правки.
+                const d = (kw <= 30) ? 22 : 28;
+                return { main: d, tank: 22, perBoiler: d, pick: null };
+            }
+            const pick = this.boilerPickSize(sys, kw);
+            const range = this.boilerPipeRange(sys).map(r => r.size)
+                .filter(s => s >= BP_MIN && s <= BP_MAX);
+            const fit = (p) => range.find(s => s >= p) || range[range.length - 1];
+            const main = fit(pick.size);
+
+            // КАСКАД. Через общий участок идёт сумма, а через обвязку КАЖДОГО котла —
+            // только его собственный расход. Считать индивидуальную подводку по сумме
+            // нельзя: на четырёх котлах по 30 кВт это давало трубу 42 и переходник
+            // 1 1/2" на патрубок 3/4", тогда как краны и фильтр в той же обвязке
+            // стояли правильно — по 3/4". Берём мощность самого крупного котла в
+            // каскаде: типоразмер один на все обвязки, чтобы монтажник не собирал
+            // каждый котёл своим набором.
+            const one = Math.max.apply(null, [0].concat((list || [])
+                .filter(b => b).map(b => b.power || 0)));
+            const perBoiler = one > 0
+                ? fit(this.boilerPickSize(sys, one).size)
+                : main;
+            return { main: main, tank: Math.min(22, main), perBoiler: Math.min(perBoiler, main), pick: pick };
+        };
+
         const boilerPowerForPipes = (list) => {
             let gas = 0, el = 0;
             (list || []).forEach(b => {
@@ -53525,12 +54920,19 @@ const app = {
                 // кровлей комплект не годится: он фасадный, трасса собирается целиком.
                 const _chRoute = this.buildChimney(b, ch);
                 if (_chRoute && _chRoute.parts.length) {
+                    // Справочные замечания (откуда взят предел длины) — под «i»
+                    // первой позиции дымохода, а не красным над разделом.
+                    const _chNote = (_chRoute.notes && _chRoute.notes.length)
+                        ? `<span style="font-size:11px; line-height:1.4;"><b>Справка по трассе:</b><br>${_chRoute.notes.map(n => '• ' + n).join('<br>')}</span>`
+                        : '';
                     _chRoute.parts.forEach((p, _i) => {
                         const _isKit = (p.item.id === ch.id);
+                        let _desc = _isKit ? this.getDesc('chimney', ch) : (p.tip || null);
+                        if (_i === 0 && _chNote) _desc = _desc ? (_desc + '<br>' + _chNote) : _chNote;
                         addToBill(
                             { ...p.item, sortRank: _i === 0 ? -1 : -0.5, ...(_isKit && ch.chimType === 'cond' ? { noCheapenAlts: true } : {}) },
                             p.qty,
-                            _isKit ? this.getDesc('chimney', ch) : (p.tip || null),
+                            _desc,
                             grp
                         );
                     });
@@ -53733,9 +55135,10 @@ const app = {
                     // труба на пресс-фитингах), только типоразмер трубы 26, а не 22.
                     // Хомут 3/4" (25–29 мм) на неё садится тот же.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    // Подводка металлопластика — 26 мм, ей подходит хомут 3/4" (25–29).
+                    let clampItem = this.ssClamp(26);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком ГВС.", grp);
+                    if (clampItem) addToBill(clampItem, 1, "Хомут для фиксации трубы подводки Ø26 перед расширительным баком ГВС.", grp);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака ГВС.", grp);
 
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Отсечной вентиль для подключения расширительного бака ГВС.", grp);
@@ -53751,26 +55154,24 @@ const app = {
                         ? "Пресс-тройник равнопроходный 26х26х26 для врезки расширительного бака ГВС."
                         : "Пресс-тройник переходной 32х26х32 для врезки расширительного бака ГВС.", grp);
                 } else { // Stainless steel (Stout)
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    const _fs = boilerSizes(selBoilers);
+                    // Подводка идёт трубой того же типоразмера, что и ветка бака:
+                    // раньше здесь была прибита 22-я, потому что другой и не бывало.
+                    const _tkTh = this.ssThreadFor('ss_elbow_mi', _fs.tank, '3/4');
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком ГВС.", grp);
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком ГВС.`, grp);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака ГВС.", grp);
 
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Отсечной вентиль для подключения расширительного бака ГВС.", grp);
-                    let maleElbow = this.ssItem(catalog.ss_elbow_mi, "RSS-1010-002234");
-                    let pressElbow = this.ssItem(catalog.ss_elbow90, "RSS-1002-000022");
-                    if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.", grp);
-                    if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.", grp);
+                    let maleElbow = _tkTh && this.ssFit('ss_elbow_mi', _fs.tank, _tkTh);
+                    let pressElbow = this.ssFit('ss_elbow90', _fs.tank);
+                    if (maleElbow) addToBill(maleElbow, 1, `Угольник-переходник 90° ВПр-НР ${_fs.tank}х${this.ssThreadLabel(_tkTh)} для подключения к вентилю бака.` +
+                        (_tkTh !== '3/4' ? ` <b>Внимание:</b> вентиль бака 3/4", нужен резьбовой переход (в смету не входит).` : ``), grp);
+                    if (pressElbow) addToBill(pressElbow, 2, `Угольник 90° ВПр-НПр ${_fs.tank} для обвязки бака.`, grp);
 
-                    let frameBoilerPower = boilerPowerForPipes(selBoilers);
-                    let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
-                    if (frameSsDiameter === 22) {
-                        let teeItem = this.ssItem(catalog.ss_tee, "RSS-1013-000022");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник равнопроходной ВПр 22 для врезки расширительного бака ГВС.", grp);
-                    } else {
-                        let teeItem = this.ssItem(catalog.ss_tee_red, "RSS-1014-282228");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник переходной ВПр 28х22х28 для врезки расширительного бака ГВС.", grp);
-                    }
+                    const _fsTee = this.ssTee(_fs.main, _fs.tank);
+                    if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака ГВС.${_fsTee.note}`, grp);
                 }
             } else {
                 addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Подключение расширительного бака ГВС.", grp);
@@ -54192,9 +55593,10 @@ const app = {
                 } else if (this.boilerPipeSystem() === 'mp') { // Металлопластик STOUT
                     // См. бак ГВС выше: та же подводка, типоразмер трубы 26 вместо 22.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    // Подводка металлопластика — 26 мм, ей подходит хомут 3/4" (25–29).
+                    let clampItem = this.ssClamp(26);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком отопления.");
+                    if (clampItem) addToBill(clampItem, 1, "Хомут для фиксации трубы подводки Ø26 перед расширительным баком отопления.");
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака отопления.");
 
                     addToBill(catalog.tank_kit, 1, "Отсечной вентиль для подключения расширительного бака.");
@@ -54210,26 +55612,23 @@ const app = {
                         ? "Пресс-тройник равнопроходный 26х26х26 для врезки расширительного бака."
                         : "Пресс-тройник переходной 32х26х32 для врезки расширительного бака.");
                 } else { // Stainless steel (Stout)
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    const _fs = boilerSizes(selBoilers);
+                    // См. бак ГВС выше: типоразмер подводки следует за веткой бака.
+                    const _tkTh = this.ssThreadFor('ss_elbow_mi', _fs.tank, '3/4');
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком отопления.");
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком отопления.`);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака отопления.");
 
                     addToBill(catalog.tank_kit, 1, "Отсечной вентиль для подключения расширительного бака.");
-                    let maleElbow = this.ssItem(catalog.ss_elbow_mi, "RSS-1010-002234");
-                    let pressElbow = this.ssItem(catalog.ss_elbow90, "RSS-1002-000022");
-                    if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.");
-                    if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.");
+                    let maleElbow = _tkTh && this.ssFit('ss_elbow_mi', _fs.tank, _tkTh);
+                    let pressElbow = this.ssFit('ss_elbow90', _fs.tank);
+                    if (maleElbow) addToBill(maleElbow, 1, `Угольник-переходник 90° ВПр-НР ${_fs.tank}х${this.ssThreadLabel(_tkTh)} для подключения к вентилю бака.` +
+                        (_tkTh !== '3/4' ? ` <b>Внимание:</b> вентиль бака 3/4", нужен резьбовой переход (в смету не входит).` : ``));
+                    if (pressElbow) addToBill(pressElbow, 2, `Угольник 90° ВПр-НПр ${_fs.tank} для обвязки бака.`);
 
-                    let frameBoilerPower = boilerPowerForPipes(selBoilers);
-                    let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
-                    if (frameSsDiameter === 22) {
-                        let teeItem = this.ssItem(catalog.ss_tee, "RSS-1013-000022");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник равнопроходной ВПр 22 для врезки расширительного бака.");
-                    } else {
-                        let teeItem = this.ssItem(catalog.ss_tee_red, "RSS-1014-282228");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник переходной ВПр 28х22х28 для врезки расширительного бака.");
-                    }
+                    const _fsTee = this.ssTee(_fs.main, _fs.tank);
+                    if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака.${_fsTee.note}`);
                 }
             } else {
                 addToBill(catalog.tank_kit, 1, "Подключение бака.");
@@ -54292,8 +55691,7 @@ const app = {
 
         if (needCollector) {
             // Несущий каркас (рама) или хомуты коллектора котельной на базе C-образного профиля и консолей STOUT
-            let frameBoilerPower = boilerPowerForPipes(selBoilers);
-            let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
+            let frameSsDiameter = boilerSizes(selBoilers).main;
 
             let isDoubleMode = (this.state.boilerFrameType === 'profile_double' || this.state.boilerFrameType === 'direct_double');
             let clampId = "";
@@ -54316,11 +55714,19 @@ const app = {
                     clampId = (mp_diam === 26) ? "SAC-0020-300034" : "SAC-0020-300001";
                 }
             } else { // Stainless steel/Stout
-                if (isDoubleMode) {
-                    clampId = (frameSsDiameter === 22) ? "SAC-0020-200012" : "SAC-0020-200034";
-                } else {
-                    clampId = (frameSsDiameter === 22) ? "SAC-0020-300012" : "SAC-0020-300034";
-                }
+                // Хомут по наружному диаметру трубы: диапазоны взяты из названий
+                // позиций каталога (1/2" — 20–23 мм, 3/4" — 25–28, 1" — 31–35,
+                // 1 1/4" — 40–45). Раньше хватало двух строк, потому что и труб
+                // было две; теперь магистраль может быть 35-й или 42-й.
+                const _clampBySize = {
+                    22: { single: "SAC-0020-300012", double: "SAC-0020-200012" },
+                    28: { single: "SAC-0020-300034", double: "SAC-0020-200034" },
+                    35: { single: "SAC-0020-300001", double: "SAC-0020-200001" },
+                    // Двойного хомута на 1 1/4" в каталоге нет — на 42-й трубе даже в
+                    // двойном режиме ставится одиночный, иначе позиция исчезла бы.
+                    42: { single: "SAC-0020-300114", double: "SAC-0020-300114" }
+                }[frameSsDiameter] || { single: "SAC-0020-300034", double: "SAC-0020-200034" };
+                clampId = isDoubleMode ? _clampBySize.double : _clampBySize.single;
             }
             let clampItem = catalog.mounting_system.find(x => x.id === clampId);
 
@@ -54671,11 +56077,30 @@ const app = {
         // котельную. isAnalog оставлен под полипропилен: под ним завязана вся ветка ППР
         // ниже, включая изоляцию и подбор диаметра.
         let totalBoilerPower = boilerPowerForPipes(selBoilers);
-        let ss_diameter = (totalBoilerPower <= 30) ? 22 : 28;
         let _bpSystem = this.boilerPipeSystem();
         let isAnalog = (_bpSystem === 'ppr');
         let is316 = (_bpSystem === 'ss316');
         let isMp = (_bpSystem === 'mp');
+
+        // Типоразмер магистрали котельной. У нержавейки он теперь подбирается ПО
+        // СКОРОСТИ из всего ряда, а не назначается порогом «30 кВт»: на 10 кВт
+        // порог давал 22-ю, где хватает 18-й, а на 80 кВт — ту же 28-ю, на которой
+        // скорость 1,9 м/с (труба гудит). Расчёт в boilerPickSize, он же считает и
+        // подсказку, поэтому цифра в описании и цифра в подборе — одна.
+        //
+        // Диапазон пока ограничен 22…42: снизу — потому что теплоизоляции на 15 и 18
+        // в boiler_insulation нет, сверху — потому что нет на 54. Расширять надо
+        // вместе с изоляцией, иначе строка утеплителя молча пропадёт из сметы.
+        //
+        // ППР и металлопластик пока остаются на прежней паре типоразмеров: их ряды
+        // требуют своей ревизии фитингов (у металлопластика на 16 и 20 нет резьбы 1",
+        // у ППР два бренда с разными артикулами), и мешать это в одну правку нельзя.
+        const _bpSizes = boilerSizes(selBoilers);
+        const _bpPick = _bpSizes.pick;
+        let ss_diameter = _bpSizes.main;
+        let _tankSize = _bpSizes.tank;
+        // Типоразмер обвязки одного котла: в каскаде он меньше общего (см. boilerSizes).
+        let _boilerSize = _bpSizes.perBoiler;
 
         // Металлопластик STOUT: труба PE-Xb/Al/PE-Xb (SPM-0001) на латунных пресс-фитингах
         // SFP. Логический диаметр котельной 22/28 (он же наружный у нержавейки) ложится на
@@ -54701,12 +56126,15 @@ const app = {
             const dT = 20;
             let gasKw = 0, elKw = 0;
             selBoilers.forEach(b => { if (b) { if (b.type === 'gas') gasKw += b.power || 0; else elKw += b.power || 0; } });
+            // У нержавейки внутренний диаметр берём из того же справочника, по
+            // которому шёл подбор, — тогда подсказка не может разойтись с расчётом.
+            const _ssRow = (this.boilerPipeRange(_bpSystem) || []).find(r => r.size === ss_diameter);
             const inner = isAnalog ? (ss_diameter === 22 ? 23.2 : 29.0)
                 : isMp ? (ss_diameter === 22 ? 20.0 : 26.0)
-                    : (ss_diameter === 22 ? 19.6 : 25.6);
+                    : (_ssRow ? _ssRow.inner : (ss_diameter === 22 ? 19.6 : 25.6));
             const label = isAnalog ? (ss_diameter === 22 ? '32х4,4 мм' : '40х5,5 мм')
                 : isMp ? (ss_diameter === 22 ? '26х3,0 мм' : '32х3,0 мм')
-                    : (ss_diameter === 22 ? '22х1,2 мм' : '28х1,2 мм');
+                    : (`Ø${ss_diameter} мм`);
             const flow = totalBoilerPower / (1.163 * dT);
             const area = Math.PI * Math.pow(inner / 1000, 2) / 4;
             const v = flow / 3600 / area;
@@ -54721,16 +56149,22 @@ const app = {
                 (isMp
                     ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Порог 30 кВт общий для всех систем обвязки: на металлопластике 26х3,0 он даёт 1,14 м/с, выше — переход на 32х3,0.<br>` +
                       `• Больше 32 мм в линейке металлопластика STOUT нет: с 53 кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>`
-                    : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Отсюда и порог 30 кВт: на Ø22 он даёт 1,19 м/с, выше — переход на Ø28.<br>`) +
+                    : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер подобран по ней: взят самый тонкий из ряда 22 · 28 · 35 · 42, на котором скорость в норму укладывается.<br>` +
+                      (ss_diameter >= 42 ? `• Ряд подбора сверху ограничен 42 мм — на 54 мм нет теплоизоляции в каталоге. Если расчёт упёрся в 42, проверьте скорость выше по строке.<br>` : ``) +
+                      (ss_diameter <= 22 ? `• Снизу ряд ограничен 22 мм по той же причине: на 15 и 18 мм теплоизоляции в каталоге нет, хотя по скорости на малых котлах хватило бы и их.<br>` : ``)) +
                 (bothFuels
                     ? `• <b style="color:#F59E0B;">Проверьте схему:</b> если котлы у вас работают ОДНОВРЕМЕННО (электрический как пиковый, а не резервный), диаметр надо считать по сумме ${gasKw + elKw} кВт — тогда замените трубу и фитинги вручную.<br>`
                     : '');
         })();
 
-        let ss_pipes_demand = {
-            22: { length: 0, components: [] },
-            28: { length: 0, components: [] }
-        };
+        // Вёдра метража. Раньше их было ровно два — 22 и 28, — потому что и
+        // типоразмеров было два. Теперь магистраль может быть любой из ряда,
+        // поэтому вёдра заводятся по факту: магистральное и, отдельно, подводка
+        // баков (она может совпасть с магистральным — тогда ведро одно).
+        let ss_pipes_demand = {};
+        [ss_diameter, _tankSize, _boilerSize].forEach(d => {
+            if (!ss_pipes_demand[d]) ss_pipes_demand[d] = { length: 0, components: [] };
+        });
 
         // Функция добавления труб с комбинированным подбором 2м/4м штанг или PPR штанг по 4м
         const addPipesToBill = (L, diam, grp, desc) => {
@@ -54842,10 +56276,12 @@ const app = {
                     `Переходник с пресс-соединения ${_mpDia} на наружную резьбу ${_mpThKey === '1' ? '1"' : _sepTh} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон.` +
                     (_mpThKey !== _sepThKey ? ` <b>Внимание:</b> у выбранного сепаратора резьба ${_sepTh}, дополнительно нужен резьбовой переход ${_sepTh}–1" (в смету не входит).` : ``) + ` Требуется: 2 шт.`, _airSepGrp);
             } else {
-                const _adpId = { '22|3/4': 'RSS-1021-002234', '22|1': 'RSS-1021-000221', '28|3/4': 'RSS-1021-002834', '28|1': 'RSS-1021-000281' }[ss_diameter + '|' + _sepThKey];
-                const _adp = _adpId && this.ssItem(catalog.ss_adapter_mi, _adpId);
+                const _adpTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, _sepThKey);
+                const _adp = _adpTh && this.ssFit('ss_adapter_mi', ss_diameter, _adpTh);
                 if (_adp) addToBill(_adp, 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${_sepTh} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон. Требуется: 2 шт.`, _airSepGrp);
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_adpTh)} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон.` +
+                    (_adpTh !== _sepThKey ? ` <b>Внимание:</b> у сепаратора резьба ${_sepTh}, на трубе ${ss_diameter} перехода такого размера в линейке нет — нужен резьбовой переход ${_sepTh}–${this.ssThreadLabel(_adpTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, _airSepGrp);
             }
         }
 
@@ -54874,9 +56310,12 @@ const app = {
                 if (_tieAdp) addToBill(_tieAdp, 2,
                     `Переходник с пресс-соединения ${mpD(ss_diameter)} на наружную резьбу 1" — вкручивается в муфту на патрубке узла гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
             } else {
-                const _tieAdp = this.ssItem(catalog.ss_adapter_mi, (ss_diameter === 22 ? 'RSS-1021-000221' : 'RSS-1021-000281'));
+                const _tieTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
+                const _tieAdp = _tieTh && this.ssFit('ss_adapter_mi', ss_diameter, _tieTh);
                 if (_tieAdp) addToBill(_tieAdp, 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу 1" — вкручивается в муфту на патрубке узла гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_tieTh)} — вкручивается в муфту на патрубке узла гидроразделения.` +
+                    (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, _hydroTieGrp);
             }
         }
 
@@ -54890,8 +56329,8 @@ const app = {
             // подраздел, что и его дымоход с фильтром (см. gasBoilerGrp).
             let grp = (b.type === 'gas') ? gasBoilerGrp(_gasIdxFit++) : elBoilerGrp(_elIdxFit++);
             let bName = (b.type === 'gas') ? "Газовый котёл" : "Электрический котёл";
-            ss_pipes_demand[ss_diameter].length += 2.0;
-            ss_pipes_demand[ss_diameter].components.push(bName === "Газовый котёл" ? "газовый котёл" : "электрический котёл");
+            ss_pipes_demand[_boilerSize].length += 2.0;
+            ss_pipes_demand[_boilerSize].components.push(bName === "Газовый котёл" ? "газовый котёл" : "электрический котёл");
 
             // Участок «котёл → узел гидроразделения». Двух метров выше хватает только
             // на саму обвязку котла — на подводку к коллектору/гидрострелке не
@@ -54901,8 +56340,8 @@ const app = {
             // В каскаде каждый котёл заходит в узел своей парой, поэтому счёт
             // ведётся внутри цикла по котлам, а не один раз на котельную.
             if (needCollector) {
-                ss_pipes_demand[ss_diameter].length += 3.0;
-                ss_pipes_demand[ss_diameter].components.push("подводка к узлу гидроразделения");
+                ss_pipes_demand[_boilerSize].length += 3.0;
+                ss_pipes_demand[_boilerSize].components.push("подводка к узлу гидроразделения");
                 // Повороты трассы — по одному отводу 90° на трубу.
                 if (isAnalog) {
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, ss_diameter === 22 ? 'SKO03290RCT' : 'SKO04090RCT'), 2,
@@ -54912,9 +56351,9 @@ const app = {
                     if (_mpElb) addToBill(_mpElb, 2,
                         `Пресс-угольник 90° ${mpD(ss_diameter)}х${mpD(ss_diameter)} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 } else {
-                    const _elb = this.ssItem(catalog.ss_elbow90_ff, (ss_diameter === 22 ? 'RSS-1003-000022' : 'RSS-1003-000028'));
+                    const _elb = this.ssFit('ss_elbow90_ff', _boilerSize);
                     if (_elb) addToBill(_elb, 2,
-                        `Пресс-угольник 90° В-В на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
+                        `Пресс-угольник 90° В-В ${_boilerSize} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 }
             }
 
@@ -54946,25 +56385,42 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 2, `Пресс-тройник переходной 32х26х32 для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
                 }
             } else {
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-002234'), 2, `Переходник с пресс-соединения на внутреннюю резьбу 3/4" для подключения нержавеющей трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 2, `Пресс-угольник 90° В-В для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000022'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 2, `Пресс-тройник для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-000281'), 2, `Переходник с пресс-соединения на внутреннюю резьбу 1" для подключения нержавеющей трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000028'), 2, `Пресс-угольник 90° В-В для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000028'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 2, `Пресс-тройник переходной для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
-                }
+                // Обвязка ОДНОГО котла считается по его типоразмеру (_boilerSize), а
+                // не по общему: через неё идёт только его расход. Патрубок настенного
+                // газового котла — 3/4" (так в паспортах Haier и Baxi); точной пары
+                // «диаметр + резьба» в линейке может не быть, тогда ставим ту, что
+                // есть, и предупреждаем про резьбовой переход.
+                const _bPort = (_boilerSize >= 28) ? '1"' : '3/4"';
+                const _bTh = this.ssThreadFor('ss_adapter_fi', _boilerSize, (_boilerSize >= 28) ? '1' : '3/4');
+                addToBill(_bTh && this.ssFit('ss_adapter_fi', _boilerSize, _bTh), 2,
+                    `Переходник с пресс-соединения ${_boilerSize} на внутреннюю резьбу ${this.ssThreadLabel(_bTh)} для подключения нержавеющей трубы к патрубкам котла (${bName}).` +
+                    (this.ssThreadLabel(_bTh) !== _bPort ? ` <b>Внимание:</b> патрубок котла ${_bPort}, нужен резьбовой переход (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _boilerSize), 2, `Пресс-угольник 90° В-В ${_boilerSize} для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', _boilerSize), 2, `Пресс-угольник 45° В-В ${_boilerSize} для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                // Тройник ответвления обвязки котла — по его же типоразмеру.
+                const _bTee = this.ssTee(_boilerSize, Math.min(_tankSize, _boilerSize));
+                if (_bTee) addToBill(_bTee.item, 2, `Пресс-тройник ${_bTee.label} для создания ответвлений в контуре обвязки котла (${bName}).${_bTee.note} Требуется: 2 шт.`, grp);
             }
         });
 
         // 2. Бойлер ГВС
         if (this.state.hotWater && !rigDropped('dhw')) {
             let grp = "2.3. Обвязка Водонагревателя";
-            ss_pipes_demand[ss_diameter].length += 4.0;
-            ss_pipes_demand[ss_diameter].components.push("греющий контур бойлера");
+            // Греющий контур несёт не мощность котельной, а мощность ЗМЕЕВИКА: больше
+            // него в бак всё равно не уйдёт. Паспортные киловатты берём из TANK_COIL_KW
+            // по подобранной модели. Когда модели в карте нет, откатываемся на
+            // типоразмер обвязки котла — он ближе к истине, чем общий: греющий контур
+            // питается от одного котла, а не от всего каскада.
+            const _coilKw = this.tankCoilKw(this._tankPortsModel);
+            let _coilSize = _boilerSize;
+            if (!isAnalog && !isMp && _coilKw > 0) {
+                const _cp = boilerSizes([{ power: _coilKw, type: 'gas' }]);
+                _coilSize = Math.min(_cp.main, ss_diameter);
+            }
+            if (!ss_pipes_demand[_coilSize]) ss_pipes_demand[_coilSize] = { length: 0, components: [] };
+            ss_pipes_demand[_coilSize].length += 4.0;
+            ss_pipes_demand[_coilSize].components.push("греющий контур бойлера");
 
             if (isAnalog) {
                 if (ss_diameter === 22) {
@@ -55012,25 +56468,21 @@ const app = {
                 // в подсказке, что нужен резьбовой переход на 1".
                 const _coilPort = (this._tankPorts && this._tankPorts.coil) || '1"';
                 const _coilIs1 = (_coilPort === '1"');
-                if (ss_diameter === 22) {
-                    const _adp = this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-002234');
-                    addToBill(_adp, 2, `Переходник с пресс-соединения на внутреннюю резьбу 3/4" для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
-                        (_coilIs1 ? ` <b>Внимание:</b> для патрубка 1" дополнительно нужен резьбовой переход 3/4"–1" (в смету не входит).` : ``) + ` Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 4, `Пресс-угольник 90° В-В для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000022'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 2, `Пресс-тройник для создания ответвлений в греющем контуре бойлера ГВС. Требуется: 2 шт.`, grp);
-                } else {
-                    const _adp28 = this.ssItem(catalog.ss_adapter_fi, (_coilIs1 ? 'RSS-1022-000281' : 'RSS-1022-002834'));
-                    addToBill(_adp28, 2, `Переходник с пресс-соединения на внутреннюю резьбу ${_coilIs1 ? '1"' : '3/4"'} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000028'), 4, `Пресс-угольник 90° В-В для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000028'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 2, `Пресс-тройник переходной для создания ответвлений в греющем контуре бойлера ГВС. Требуется: 2 шт.`, grp);
-                }
+                const _coilKey = _coilIs1 ? '1' : '3/4';
+                const _coilTh = this.ssThreadFor('ss_adapter_fi', _coilSize, _coilKey);
+                addToBill(_coilTh && this.ssFit('ss_adapter_fi', _coilSize, _coilTh), 2,
+                    `Переходник с пресс-соединения ${_coilSize} на внутреннюю резьбу ${this.ssThreadLabel(_coilTh)} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
+                    (this.ssThreadLabel(_coilTh) !== _coilPort ? ` <b>Внимание:</b> нужен резьбовой переход ${_coilPort}–${this.ssThreadLabel(_coilTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _coilSize), 4, `Пресс-угольник 90° В-В ${_coilSize} для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', _coilSize), 2, `Пресс-угольник 45° В-В ${_coilSize} для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
+                const _cTee = this.ssTee(_coilSize, Math.min(_tankSize, _coilSize));
+                if (_cTee) addToBill(_cTee.item, 2, `Пресс-тройник ${_cTee.label} для создания ответвлений в греющем контуре бойлера ГВС.${_cTee.note} Требуется: 2 шт.`, grp);
             }
 
             // Трубы для расширительного бака ГВС (1.5 м, всегда диаметром 22)
-            ss_pipes_demand[22].length += 1.5;
-            ss_pipes_demand[22].components.push("расширительный бак ГВС");
+            ss_pipes_demand[_tankSize].length += 1.5;
+            ss_pipes_demand[_tankSize].components.push("расширительный бак ГВС");
 
             if (isAnalog) {
                 addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03225RCT'), 1, `Муфта комбинированная с наружной резьбой 32х3/4" PP-RCT для подключения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
@@ -55049,13 +56501,10 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 1, `Пресс-тройник переходной 32х26х32 для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
                 }
             } else {
-                addToBill(this.ssItem(catalog.ss_adapter_mi, 'RSS-1021-002234'), 1, `Переходник с пресс-соединения на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
-                addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 1, `Пресс-угольник 90° В-В диаметром 22 мм для подведения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 1, `Пресс-тройник диаметром 22 мм для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 1, `Пресс-тройник переходной 28х22х28 мм для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
-                }
+                addToBill(this.ssFit('ss_adapter_mi', _tankSize, this.ssThreadFor('ss_adapter_mi', _tankSize, '3/4')), 1, `Переходник с пресс-соединения ${_tankSize} на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _tankSize), 1, `Пресс-угольник 90° В-В диаметром ${_tankSize} мм для подведения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
+                const _dTee = this.ssTee(ss_diameter, _tankSize);
+                if (_dTee) addToBill(_dTee.item, 1, `Пресс-тройник ${_dTee.label} для врезки линии расширительного бака ГВС.${_dTee.note} Требуется: 1 шт.`, grp);
             }
         }
 
@@ -55085,8 +56534,8 @@ const app = {
             let bName = primaryBoiler ? ((primaryBoiler.type === 'gas') ? "газового котла" : "электрического котла") : "котла";
 
             // Трубы для расширительного бака отопления (1.5 м, всегда диаметром 22)
-            ss_pipes_demand[22].length += 1.5;
-            ss_pipes_demand[22].components.push("расширительный бак отопления");
+            ss_pipes_demand[_tankSize].length += 1.5;
+            ss_pipes_demand[_tankSize].components.push("расширительный бак отопления");
 
             if (isAnalog) {
                 addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03225RCT'), 1, `Муфта комбинированная с наружной резьбой 32х3/4" PP-RCT для подключения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
@@ -55105,13 +56554,10 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 1, `Пресс-тройник переходной 32х26х32 для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
                 }
             } else {
-                addToBill(this.ssItem(catalog.ss_adapter_mi, 'RSS-1021-002234'), 1, `Переходник с пресс-соединения на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
-                addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 1, `Пресс-угольник 90° В-В диаметром 22 мм для подведения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 1, `Пресс-тройник диаметром 22 мм для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 1, `Пресс-тройник переходной 28х22х28 мм для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
-                }
+                addToBill(this.ssFit('ss_adapter_mi', _tankSize, this.ssThreadFor('ss_adapter_mi', _tankSize, '3/4')), 1, `Переходник с пресс-соединения ${_tankSize} на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _tankSize), 1, `Пресс-угольник 90° В-В диаметром ${_tankSize} мм для подведения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
+                const _hTee = this.ssTee(ss_diameter, _tankSize);
+                if (_hTee) addToBill(_hTee.item, 1, `Пресс-тройник ${_hTee.label} для врезки расширительного бака отопления.${_hTee.note} Требуется: 1 шт.`, grp);
             }
         }
 
@@ -55156,7 +56602,11 @@ const app = {
             // Металлопластик 26 и 32 — своего типоразмера трубки под 26 в линейках нет,
             // поэтому берётся ближайшая большая: 28/6 ПРОТЕКТ ПРО на Ø26 и K-FLEX 35/9
             // на Ø32. Обе садятся на трубу с натягом по шву, зазора не остаётся.
-            const _insDiamOf = d => isAnalog ? (d === 22 ? 35 : 42) : (isMp ? (d === 22 ? 28 : 35) : d);
+            // У нержавейки трубка совпадает с трубой один в один, кроме 15-й:
+            // линейка ПРОТЕКТ ПРО начинается с 18/6, её и берём — зазор 3 мм.
+            const _insDiamOf = d => isAnalog ? (d === 22 ? 35 : 42)
+                : isMp ? (d === 22 ? 28 : 35)
+                    : (d === 15 ? 18 : d);
             Object.keys(ss_pipes_demand).forEach(diam => {
                 const _len = ss_pipes_demand[diam].length;
                 if (_len <= 0) return;
@@ -58565,7 +60015,12 @@ const app = {
                 activeAuto = catalog.well_auto.find(a => a.id === 'SCS-0001-000063');
                 autoDesc = `<span style="font-size:11px; line-height:1.4;"><b>Автоматика (Премиум):</b> Цифровой контроллер STOUT BRIO-TOP. Настройка давления включения/выключения с кнопок, защита от сухого хода с авто-рестартом, защита от замерзания.</span>`;
             } else if (this.state.wellAutoType === 'epc12auto') {
-                activeAuto = catalog.well_auto.find(a => a.id === 'RCS-0001-000063');
+                // Тот же артикул, что и в таблице замены: отдельной строки у него нет,
+                // он живёт ROMMER-аналогом внутри SIRIO. Без этого выбор «EPC-12 auto»
+                // не находил ничего и падал на запасную ветку — первую позицию
+                // well_auto, то есть SIRIO за 38 236 ₽ вместо регулятора за 5 880 ₽.
+                activeAuto = catalog.well_auto.find(a => a.id === 'RCS-0001-000063')
+                    || (catalog.well_auto.find(a => a.id === 'SCS-0001-000070') || {}).rommer;
                 autoDesc = `<span style="font-size:11px; line-height:1.4;"><b>Автоматика (ROMMER):</b> Цифровой регулятор давления EPC-12 auto. Запускается и останавливается в соответствии с данными о состоянии давления воды в трубопроводе.</span>`;
             } else if (this.state.wellAutoType === 'epc2') {
                 activeAuto = catalog.well_auto.find(a => a.id === 'RCS-0001-000052');
@@ -59585,6 +61040,11 @@ const app = {
             app.originalEqSum = 0;
             app.originalWorksSum = 0;
         }
+
+        // Дальше — только отрисовка и побочные эффекты. Прикидочному пересчёту
+        // (см. boilerSystemTotals) они не нужны и вредны: перерисовали бы экран
+        // поверх открытого окна замены.
+        if (computeOnly) return;
 
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);

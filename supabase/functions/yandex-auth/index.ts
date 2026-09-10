@@ -25,6 +25,9 @@ const ALLOWED_ORIGINS = [
   "https://terem24.github.io",
   "http://localhost:8080",
   "http://127.0.0.1:8080",
+  // Порт локальных worktree-серверов параллельных сессий (см. .claude/launch.json)
+  "http://localhost:8093",
+  "http://127.0.0.1:8093",
 ];
 
 const json = (body: unknown, status = 200) =>
