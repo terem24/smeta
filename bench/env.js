@@ -58,8 +58,12 @@ const mkEl = () => new Proxy({
     set: (t, k, v) => { t[k] = v; return true; }
 });
 
+// Элементы помним по id: иначе каждая запись в innerHTML уходит в новый объект,
+// и проверить, ЧТО именно код положил на страницу, нельзя — а это половина смысла
+// стенда (текст подсказки, состав таблицы замены).
+const _els = {};
 const doc = {
-    getElementById: () => mkEl(),
+    getElementById: (id) => (_els[id] || (_els[id] = mkEl())),
     querySelector: () => mkEl(),
     querySelectorAll: () => Array.from({ length: 8 }, () => mkEl()),
     createElement: () => mkEl(), createTextNode: () => mkEl(),
@@ -107,6 +111,9 @@ const load = (file, expose) => {
     const src = fs.readFileSync(path.join(root, file), 'utf8');
     vm.runInContext(src + '\n' + expose, ctx, { filename: file });
 };
+// Раскладка стены котельной: из неё смета берёт длину котлового контура.
+// Файл ставит window.boilerWall сам, вытаскивать нечего.
+load('boiler_wall.js', '');
 load('catalog.js', 'globalThis.__catalog = catalog;');
 load('app.js', 'globalThis.__app = app;');
 
@@ -115,6 +122,8 @@ if (!app || typeof app.render !== 'function') {
     throw new Error('app.js не поднялся: объект app или его render недоступны');
 }
 app.__catalog = ctx.__catalog;
+// Доступ к странице-заглушке: нужен, чтобы прочитать, что код в неё записал.
+app.__doc = doc;
 
 /** Состояние объекта: только то, что задаёт расчёт, остальное — по умолчанию. */
 app.__setup = function (over) {
