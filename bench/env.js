@@ -48,7 +48,10 @@ const mkEl = () => new Proxy({
         if (k === 'getBoundingClientRect') return () => ({ width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 });
         if (k === 'querySelector') return () => mkEl();
         if (k === 'querySelectorAll') return () => [];
-        if (k === 'getAttribute') return () => null;
+        // style отдаём строкой, а не null: у авторизованного пользователя render
+        // правит инлайн-стили через getAttribute('style').replace(...), и на null
+        // расчёт падал — то есть ПРОФИ-ветки стендом было не проверить вовсе.
+        if (k === 'getAttribute') return (name) => (name === 'style' ? '' : null);
         if (k === 'closest') return () => null;
         return typeof k === 'string' ? noop : undefined;
     },
