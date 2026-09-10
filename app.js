@@ -40406,41 +40406,37 @@ const app = {
         // в общий выбор Pro Aqua / Wavin, где нержавейки нет.
         else if (this.isBoilerPipeRow(item)) {
             const _pprIsPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
-            // В строке ДВА числа, и оборудования нет ни в одном.
+            // И цена, и разница — про ОДНО И ТО ЖЕ: трубу с фитингами. Ни
+            // оборудования, ни изоляции, ни крепежа тут нет.
             //
-            // В столбце цены — сама обвязка: труба с фитингами. Раньше там стоял
-            // весь раздел 2, а в нём под двести тысяч котла, бойлера, насосов и
-            // гидрострелки — они одинаковы при любой трубе. На их фоне полипропилен
-            // за 4 тыс. против нержавейки за 21 выглядел как «дешевле на 6 %», и
-            // цене «259 000 ₽ за полипропилен» владелец справедливо не поверил.
+            // Раньше в цене стоял весь раздел 2, а в нём под двести тысяч котла,
+            // бойлера, насосов и гидрострелки — они одинаковы при любой трубе. На их
+            // фоне полипропилен за 4 тыс. против нержавейки за 21 выглядел как
+            // «дешевле на 6 %», и цене «259 000 ₽ за полипропилен» владелец
+            // справедливо не поверил.
             //
-            // Под названием — разница с выбранной системой. Она СЧИТАЕТСЯ по итогу
-            // раздела, но оборудование в ней сокращается само: оно в обеих системах
-            // одно и то же. Остаётся ровно то, что меняется, — труба, фитинги,
-            // изоляция и крепёж. Одной ценой трубы этого не покажешь: у ППР труба
-            // толще, и трубка изоляции на неё дороже, так что итог меняется не
-            // ровно на разницу труб.
+            // Изоляция и крепёж из разницы тоже убраны намеренно: их выбирает не
+            // монтажник, а диаметр, и в таблице выбора системы они только мешают —
+            // человек сравнивает трубу с трубой. На итог сметы они, разумеется,
+            // влияют, и это видно в самой смете.
+            //
+            // Что считать обвязкой, решает isBoilerPipeRow — та же проверка, по
+            // которой строка получает кнопку замены.
             const _totals = this.boilerSystemTotals();
-            const _curT = (_totals[this.boilerPipeSystem()] || {}).total || 0;
+            const _curPipe = (_totals[this.boilerPipeSystem()] || {}).pipe || 0;
             const _delta = (sys) => {
-                const t = (_totals[sys] || {}).total || 0;
-                const pipe = (_totals[sys] || {}).pipe || 0;
-                const d = t - _curT;
-                const _note = `труба с фитингами ${pipe.toLocaleString('ru-RU')} ₽`;
-                if (!_curT || d === 0) {
-                    return `<div style="font-size:11px; margin-top:2px; color:var(--text-muted, #6B7280);">${_note}</div>`;
-                }
+                const d = ((_totals[sys] || {}).pipe || 0) - _curPipe;
+                if (!_curPipe || d === 0) return '';
                 const sign = d > 0 ? '+' : '−';
-                return `<div style="font-size:11px; margin-top:2px; color:var(--text-muted, #6B7280);">${_note}` +
-                    ` · <span style="font-weight:600; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">` +
-                    `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ с изоляцией и крепежом</span></div>`;
+                return `<div style="font-weight:600; font-size:11px; margin-top:2px; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">`
+                    + `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ к выбранной системе</div>`;
             };
             customAlts = [
                 { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
                 { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
                 {
                     id: 'bp_ppr', sys: 'ppr',
-                    name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6 (Россия)' : 'Полипропилен PP-RCT STABI PLUS (Чехия)',
+                    name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6' : 'Полипропилен PP-RCT STABI PLUS',
                     brand: _pprIsPA ? 'Pro Aqua' : 'Wavin Ekoplastik',
                     imgId: _pprIsPA ? 'PA39012' : 'STRS032RCT'
                 },
@@ -40459,8 +40455,8 @@ const app = {
         }
         else if (item.originalId && this.isPprArticle(item.originalId)) {
             customAlts = [
-                { id: 'proaqua', name: 'Полипропилен Pro Aqua (Россия)', brand: 'Pro Aqua', price: 0 },
-                { id: 'wavin', name: 'Полипропилен Wavin Ekoplastik (Чехия)', brand: 'Wavin Ekoplastik', price: 0 }
+                { id: 'proaqua', name: 'Полипропилен Pro Aqua', brand: 'Pro Aqua', price: 0 },
+                { id: 'wavin', name: 'Полипропилен Wavin Ekoplastik', brand: 'Wavin Ekoplastik', price: 0 }
             ];
         }
         else if (item.originalId && (item.originalId.startsWith('SKB-') || /^5[0-9]{5}[RK]?$/.test(item.originalId))) {
@@ -52349,9 +52345,10 @@ const app = {
      * итогах раздела это выглядит как «−6 %», и владелец справедливо не поверил
      * такой цене за полипропилен.
      *
-     * Только `pipe` тоже мало: замена системы тянет за собой изоляцию и крепёж
-     * (у ППР труба толще, трубка дороже), и на итог она влияет не ровно на разницу
-     * труб. Поэтому в таблице замены — цена обвязки, а рядом дельта на весь раздел.
+     * `total` таблице замены не нужен — там и цена, и разница считаются по `pipe`:
+     * человек сравнивает трубу с трубой. Но общий итог полезен в стенде и в
+     * разборе «почему смета столько стоит», поэтому считается здесь же: два прохода
+     * по одной смете дешевле, чем два вызова.
      *
      * Что считать обвязкой, решает isBoilerPipeRow — та же проверка, по которой
      * строка получает кнопку замены. Изоляция и крепёж в неё не входят намеренно:
@@ -57977,7 +57974,7 @@ const app = {
                 let p_4m = this.getPprItem(catalog.ppr_ekoplastik_pipe, `STRS0${ppr_diam}RCT`);
                 if (p_4m) {
                     let qty_4m = Math.ceil(L / 4);
-                    addToBill(p_4m, qty_4m, desc.replace('из нержавеющей стали AISI 304', `PP-RCT STABI PLUS ${ppr_diam}x${ppr_diam === 32 ? '4.4' : '5.5'} мм (Чехия)`).replace('нержавеющей трубы', 'трубы PP-RCT STABI PLUS'), grp);
+                    addToBill(p_4m, qty_4m, desc.replace('из нержавеющей стали AISI 304', `PP-RCT STABI PLUS ${ppr_diam}x${ppr_diam === 32 ? '4.4' : '5.5'} мм`).replace('нержавеющей трубы', 'трубы PP-RCT STABI PLUS'), grp);
                 }
             } else if (isPress) {
                 // Пресс-пластик считаем метрами, а не бухтами: на обвязку котельной
@@ -58168,8 +58165,8 @@ const app = {
                 ss_pipes_demand[_boilerSize].components.push("подводка к узлу гидроразделения");
                 // Повороты трассы — по одному отводу 90° на трубу.
                 if (isAnalog) {
-                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, ss_diameter === 22 ? 'SKO03290RCT' : 'SKO04090RCT'), 2,
-                        `Угольник 90° PP-RCT ${ss_diameter === 22 ? 32 : 40} мм на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
+                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, _boilerSize === 22 ? 'SKO03290RCT' : 'SKO04090RCT'), 2,
+                        `Угольник 90° PP-RCT ${_boilerSize === 22 ? 32 : 40} мм на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 } else if (isPress) {
                     const _prD = mpD(_boilerSize);
                     bpPress(bpFit('elbow90', _prD), 2,
@@ -58182,7 +58179,10 @@ const app = {
             }
 
             if (isAnalog) {
-                if (ss_diameter === 22) {
+                // Обвязка ОДНОГО котла — по ЕГО типоразмеру: через неё идёт только его
+                // расход. На каскаде из двух котлов по 20 кВт магистраль уходит на 40-ю
+                // трубу, а подводка каждого остаётся 32-й.
+                if (_boilerSize === 22) {
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), 2, `Муфта комбинированная с внутренней резьбой 32х3/4" PP-RCT для подключения трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, 'SKO03290RCT'), 2, `Угольник 90° PP-RCT 32 мм для поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow45, 'SKO03245RCT'), 2, `Угольник 45° PP-RCT 32 мм для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
@@ -58250,7 +58250,7 @@ const app = {
             // питается от одного котла, а не от всего каскада.
             const _coilKw = this.tankCoilKw(this._tankPortsModel);
             let _coilSize = _boilerSize;
-            if (!isAnalog && _coilKw > 0) {
+            if (_coilKw > 0) {
                 const _cp = boilerSizes([{ power: _coilKw, type: 'gas' }]);
                 _coilSize = Math.min(_cp.main, ss_diameter);
             }
@@ -58282,7 +58282,9 @@ const app = {
             };
 
             if (isAnalog) {
-                if (ss_diameter === 22) {
+                // Греющий контур несёт мощность ЗМЕЕВИКА, а не котельной: типоразмер
+                // здесь свой (_coilSize), сверху ограничен магистралью.
+                if (_coilSize === 22) {
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), 2, `Муфта комбинированная с внутренней резьбой 32х3/4" PP-RCT для подключения трубы к змеевику бойлера ГВС. Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, 'SKO03290RCT'), 4, `Угольник 90° PP-RCT 32 мм для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow45, 'SKO03245RCT'), 2, `Угольник 45° PP-RCT 32 мм для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
