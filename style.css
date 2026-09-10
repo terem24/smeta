@@ -13204,10 +13204,13 @@ body.object-flat #blk_floor_mat_content {
     /* ---------- Панели и блоки ----------
        Панели — белые со скруглением; карточки внутри — серые блоки #F7F7F7
        без рамки, как блок покупки на карточке товара. */
+    /* Рамка тенью, а не border: у панелей box-sizing: border-box и высота
+       впритык под экран — настоящая рамка отнимала 2 px и давала полосу
+       прокрутки, которой в обычном оформлении нет. */
     body.theme-shop .input-panel,
     body.theme-shop .output-panel {
-        box-shadow: none;
-        border: 1px solid var(--border);
+        box-shadow: 0 0 0 1px var(--border);
+        border: none;
         border-radius: var(--radius);
         background: #fff;
     }
