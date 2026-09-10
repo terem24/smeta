@@ -925,6 +925,15 @@ const Docs = {
 
             function docSave() {
                 var bar = document.querySelector('.doc-bar');
+                // Библиотека печати грузится по требованию (hcLoad в index.html).
+                // Если её ещё нет — тянем и повторяем нажатие за пользователя.
+                // Пробуем ровно один раз: не приехала со второго захода — значит
+                // сети нет, и человеку нужен запасной путь, а не бесконечное ожидание.
+                if (!window.html2pdf && window.hcLoad && !docSave._tried) {
+                    docSave._tried = true;
+                    hcLoad('html2pdf').then(docSave).catch(docSave);
+                    return;
+                }
                 if (!window.html2pdf) {
                     alert('Файл не собрался: не загрузилась библиотека. Нажмите «Распечатать» и выберите «Сохранить как PDF».');
                     window.print();
