@@ -13253,15 +13253,16 @@ body.object-flat #blk_floor_mat_content {
         gap: 4px;
     }
 
+    /* Высоту переключателей не трогаем (штатные отступы): левая панель
+       подогнана по высоте экрана, лишние 4 px на группу дают полосу прокрутки,
+       которой у монтажников нет. Кегль поднят только на полпункта. */
     body.theme-shop .tab,
     body.theme-shop .mode-tab {
         border-radius: 10px;
         color: var(--text-sec);
         box-shadow: none;
         font-weight: 500;
-        font-size: 13px;
-        padding-top: 8px;
-        padding-bottom: 8px;
+        font-size: 12.5px;
     }
 
     body.theme-shop .tab:hover,
