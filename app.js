@@ -31158,6 +31158,88 @@ const app = {
             `</span>`;
     },
 
+    /**
+     * Замечание в шапке раздела сметы. Три уровня и одно правило на все разделы.
+     *
+     * Плашка была одна и всегда красная: и «дом в мороз не прогреется», и
+     * «трубу посчитали по планам этажей» выглядели одинаково тревожно. Красный
+     * от этого обесценился — его перестали читать, а вместе с ним и настоящие
+     * ошибки. Теперь цвет отвечает на вопрос «что мне с этим делать»:
+     *
+     *   'error' — расчёт не сошёлся, монтировать как есть нельзя;
+     *   'warn'  — смета рабочая, но есть оговорка или ручная замена;
+     *   'info'  — просто факт расчёта, действий не требует.
+     *
+     * На виду одна строка: заголовок и суть в цифрах. Всё, что длиннее —
+     * разбор по слагаемым, советы, оговорки, — уезжает под «i». Иначе шапка
+     * раздела вырастает в простыню и её перестают читать целиком.
+     *
+     * @param {string} level  'error' | 'warn' | 'info'
+     * @param {string} title  Заголовок в 3–6 слов, без «ВНИМАНИЕ» и восклицаний:
+     *                        тревогу передаёт цвет, а не капслок.
+     * @param {string} short  Одна строка сути — по возможности с цифрами.
+     * @param {string} [details]  HTML под «i»: разбор и что делать.
+     */
+    noteBox: function (level, title, short, details) {
+        if (!title && !short) return '';
+        const ico = { error: '⛔', warn: '⚠️', info: 'ℹ️' }[level] || 'ℹ️';
+        // Плашка живёт внутри заголовка раздела, а тот по клику сворачивается.
+        // Без stopPropagation чтение подсказки закрывало бы весь раздел.
+        const tip = details
+            ? `<span class="tooltip-wrapper tip-panel-wrap note-tip" onclick="event.stopPropagation(); app.toggleNoteTip(this);">` +
+              `<i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i>` +
+              `<div class="tooltip-content tip-panel">${details}</div></span>`
+            : '';
+        return `<div class="note-box note-${level}" onclick="event.stopPropagation();">` +
+            `<span class="note-ico">${ico}</span>` +
+            `<span class="note-text">${title ? `<b>${title}</b>` : ''}${title && short ? ' ' : ''}${short || ''}</span>` +
+            tip +
+            `</div>`;
+    },
+
+    /**
+     * Первая фраза замечания — для строки на виду, когда список замечаний
+     * собирается по ходу расчёта и заранее короткого текста у него нет.
+     * Режем по точке, а не по числу символов: обрубок на середине слова
+     * читается хуже, чем длинная, но целая фраза.
+     */
+    noteLead: function (html, max) {
+        const plain = String(html || '').replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/^[•\s]+/, '').trim();
+        // Точка внутри числа концом фразы не считается: расчёт сыплет
+        // «3.4 м напора», и по первой же точке строка обрывалась на «3.».
+        const m = plain.match(/^[\s\S]*?[.!?](?!\d)/);
+        let lead = (m ? m[0] : plain).trim();
+        if (lead.length > (max || 120)) lead = lead.slice(0, (max || 120)).replace(/\s+\S*$/, '') + '…';
+        return lead;
+    },
+
+    /**
+     * Плашка из списка замечаний, собранного по ходу расчёта.
+     *
+     * Правило на виду одно на все разделы: одно замечание — показываем его
+     * первую фразу, несколько — только счётчик. Весь список всегда лежит
+     * под «i», поэтому ничего не теряется.
+     */
+    noteFromList: function (level, title, lines, tail) {
+        const arr = (lines || []).filter(Boolean);
+        if (!arr.length) return '';
+        const short = arr.length > 1 ? `Замечаний: ${arr.length}.` : this.noteLead(arr[0], 130);
+        return this.noteBox(level, title, short,
+            arr.map(w => `<div class="tip-p">${String(w).replace(/^•\s*/, '')}</div>`).join('') + (tail || ''));
+    },
+
+    /**
+     * Открыть/закрыть подсказку плашки. Свой обработчик, а не initPanelTips:
+     * тот вешается только при отрисовке левой панели, а плашки живут в смете и
+     * должны работать независимо от того, что там нарисовано.
+     */
+    toggleNoteTip: function (el) {
+        document.querySelectorAll('.tooltip-wrapper.tip-open').forEach(w => {
+            if (w !== el) w.classList.remove('tip-open');
+        });
+        el.classList.toggle('tip-open');
+    },
+
     tipHtml: function (content) {
         if (!content) return '';
         // tip-panel-wrap снимает с обёртки position:relative — точкой отсчёта
@@ -53967,7 +54049,7 @@ const app = {
             const isRevealed = this.state.revealedToggles && this.state.revealedToggles.includes(title);
             if (isDisabled) {
                 if (this.state.viewMode === 'equipment') {
-                    let titleHtml = this.flatSecLabel(title) + (warn ? `<div class="warn-box">${warn}</div>` : "");
+                    let titleHtml = this.flatSecLabel(title) + (warn || "");
                     h += `<tr class="row-sec disabled-section" onclick="app.toggleRevealToggle('${title.replace(/'/g, "\\'")}', event)"><td colspan="9">
                         <div class="row-sec-header-wrap">
                             <span class="row-sec-title" data-title="${title}">${titleHtml}</span>
@@ -54091,7 +54173,7 @@ const app = {
             let groupTotals = {};
             bill.forEach(i => { if (i.group) { if (!groupTotals[i.group]) groupTotals[i.group] = 0; groupTotals[i.group] += i.sum; } });
             let secTotal = 0, rows = "";
-            let titleHtml = this.flatSecLabel(title) + (warn ? `<div class="warn-box">${warn}</div>` : "");
+            let titleHtml = this.flatSecLabel(title) + (warn || "");
 
             // Per-section аналог
             const _globalAnalog = this.state.brandMode === 'rommer';
@@ -54150,8 +54232,10 @@ const app = {
                     // трубы, к которой относится.
                     const _gw = (this.groupWarns || {})[i.group];
                     if (_gw) {
-                        rows += `<tr class="group-warn-row"><td colspan="${titleColSpan + 4}" style="padding:6px 10px;">` +
-                            `<div style="background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-text); border-radius:6px; padding:7px 9px; font-size:11px; line-height:1.5; text-align:left;">${_gw}</div>` +
+                        // Плашка та же, что у разделов (app.noteBox): в groupWarns
+                        // лежит уже собранный блок, здесь остаётся только строка таблицы.
+                        rows += `<tr class="group-warn-row"><td colspan="${titleColSpan + 4}" style="padding:2px 10px 6px;">` +
+                            _gw +
                             `</td></tr>`;
                     }
                 }
@@ -55037,8 +55121,12 @@ const app = {
         // Москве это 29.3 кВт против котла на 12. Пока рядом стоит газовый
         // котёл, всё в порядке — электрический там резервный. А когда других
         // источников в смете нет, дом в мороз останется недогретым, и сказать
-        // об этом надо на самой смете, а не только в подсказке под ползунком:
-        // плашка та же, что у нехватки приборов отопления (flushBill(title, warn)).
+        // об этом надо на самой смете, а не только в подсказке под ползунком.
+        //
+        // Уровень плашки зависит от причины. Есть лимит на участок — это не
+        // ошибка расчёта, а данность объекта: больше сеть не даст, и подобрать
+        // мощнее было нельзя. Такое сообщение синее. Лимита нет, а котёл всё
+        // равно мельче теплопотерь — это уже оговорка к смете, янтарная.
         let boilerWarnHtml = null;
         {
             const _needKw = parseFloat(this.getHouseHeatLoss()) || 0;
@@ -55046,10 +55134,19 @@ const app = {
             const _gasKw = this._gasBoilerKw || 0;
             if (_needKw > 0 && _elKw > 0 && _gasKw === 0 && _elKw < _needKw - 0.05) {
                 const _limKw = this.state.detailedRooms ? this.elLimitKw() : 0;
-                boilerWarnHtml = `⚠️ <b>ВНИМАНИЕ: мощности котла не хватает!</b><br>` +
-                    `Теплопотери дома ${_needKw.toFixed(1)} кВт, а электрокотёл в смете — ${_elKw} кВт: он закрывает ${Math.round(_elKw / _needKw * 100)} % и в морозы дом до 20 °C не прогреет.` +
-                    (_limKw ? ` Мощнее не подбирается: на участок выделено ${_limKw} кВт, из них котлу остаётся ${Math.round(this.getElBoilerBudget() * 10) / 10} кВт — остальное берут свет и бытовая техника.` : '') +
-                    `<br><span style="font-weight: 500; display:block; margin-top:6px;">Добавьте второй источник тепла (вкладка «🔥 Газ» в настройках) или увеличьте выделенную на участок мощность.</span>`;
+                const _pct = Math.round(_elKw / _needKw * 100);
+                const _budget = Math.round(this.getElBoilerBudget() * 10) / 10;
+                const _det =
+                    `<div class="tip-p">Теплопотери дома <b>${_needKw.toFixed(1)} кВт</b>, электрокотёл в смете — <b>${_elKw} кВт</b>. Он закрывает ${_pct} %: в расчётные морозы дом до 20 °C не прогреется.</div>` +
+                    (_limKw
+                        ? `<div class="tip-p">Мощнее не подбирается: на участок выделено <b>${_limKw} кВт</b>, котлу из них остаётся ${_budget} кВт — остальное берут свет и бытовая техника.</div>`
+                        : '') +
+                    `<div class="tip-p"><b>Что делать:</b> добавить второй источник тепла (вкладка «🔥 Газ» в настройках) или увеличить выделенную на участок мощность.</div>`;
+                boilerWarnHtml = _limKw
+                    ? this.noteBox('info', 'Котёл подобран по лимиту сети.',
+                        `На участок выделено ${_limKw} кВт — котёл ${_elKw} кВт закрывает ${_pct} % теплопотерь (${_needKw.toFixed(1)} кВт).`, _det)
+                    : this.noteBox('warn', 'Мощности котла не хватает.',
+                        `${_elKw} кВт против ${_needKw.toFixed(1)} кВт теплопотерь — это ${_pct} %.`, _det);
             }
         }
         flushBill("1. Котёл + водонагреватель", boilerWarnHtml);
@@ -56138,13 +56235,17 @@ const app = {
                 const _actCapKw = _actCapM ? parseFloat(_actCapM[1].replace(',', '.')) : 0;
                 const _loadKw = this._radGroupLoadKw || 0;
                 if (_actCapKw > 0 && _loadKw > 0 && (_actCapKw * rQ) < _loadKw) {
-                    hydroWarnHtml = `⚠️ <b>ВНИМАНИЕ: насосная группа не проходит по мощности!</b><br>` +
-                        `«${radGrpActual.name}» — паспортная мощность ${_actCapKw} кВт` +
-                        (rQ > 1 ? ` × ${rQ} шт = ${Math.round(_actCapKw * rQ * 10) / 10} кВт` : ``) +
-                        `, а на радиаторный контур приходится ${Math.round(_loadKw * 10) / 10} кВт.` +
-                        `<br><span style="font-weight:500; display:block; margin-top:6px;">` +
-                        `Группа выбрана вручную. Верните подбор по умолчанию кнопкой ↺ у метки «Изменён» в строке группы ` +
-                        `либо поставьте типоразмер больше — иначе контур не прокачается.</span>`;
+                    // Янтарная, а не красная: расчёт-то сошёлся, это ручная
+                    // замена увела группу вниз по типоразмеру. Вернуть подбор —
+                    // одно нажатие, и об этом сказано под «i».
+                    const _capTotal = Math.round(_actCapKw * rQ * 10) / 10;
+                    hydroWarnHtml = this.noteBox('warn', 'Насосная группа не проходит по мощности.',
+                        `${_capTotal} кВт против ${Math.round(_loadKw * 10) / 10} кВт на радиаторном контуре.`,
+                        `<div class="tip-p">«${radGrpActual.name}» — паспортная мощность ${_actCapKw} кВт` +
+                        (rQ > 1 ? ` × ${rQ} шт = <b>${_capTotal} кВт</b>` : ``) +
+                        `, а на радиаторный контур приходится <b>${Math.round(_loadKw * 10) / 10} кВт</b>.</div>` +
+                        `<div class="tip-p">Группа выбрана вручную — автоподбор такой типоразмер не поставил бы.</div>` +
+                        `<div class="tip-p"><b>Что делать:</b> вернуть подбор по умолчанию кнопкой ↺ у метки «Изменён» в строке группы либо поставить типоразмер больше — иначе контур не прокачается.</div>`);
                 }
             }
             if (tankNeedsPumpGroup) {
@@ -57141,8 +57242,15 @@ const app = {
 
         // Замечания по дымоходу — в шапку того раздела, где он лежит.
         if (app.chimneyWarns && app.chimneyWarns.length) {
-            const _chBlock = `⚠️ <b>ВНИМАНИЕ: дымоход</b><br>` + app.chimneyWarns.join('<br>');
-            hydroWarnHtml = hydroWarnHtml ? (hydroWarnHtml + '<br><br>' + _chBlock) : _chBlock;
+            // Красная только там, где трасса упирается в норму или в предел
+            // производителя: это не собрать. Остальное (например, автоматический
+            // переход на 80/125) — просто рассказ о том, что подобралось.
+            const _chHard = app.chimneyWarns.some(w => /предел|запрещает|только в одноэтаж/i.test(w));
+            const _chBlock = this.noteFromList(
+                _chHard ? 'error' : 'info',
+                _chHard ? 'Дымоход: трасса не проходит.' : 'Дымоход: как собрана трасса.',
+                app.chimneyWarns);
+            hydroWarnHtml = hydroWarnHtml ? (hydroWarnHtml + _chBlock) : _chBlock;
         }
         flushBill("2. Обвязка котельной", hydroWarnHtml);
 
@@ -58560,13 +58668,17 @@ const app = {
                 // у стояка своя. Общий блок раздела остаётся для мощности.
                 const _grpName = /Стояк/.test(loud) ? '3.4. Стояк на второй этаж' : '3.4. Трасса до коллектора';
                 this.groupWarns = this.groupWarns || {};
-                this.groupWarns[_grpName] = '⚠️ Скорость воды ' + _vHot.toFixed(2) +
-                    ' м/с выше ' + _vLim.toFixed(1).replace('.', ',') +
-                    ' м/с (СП 60.13330.2020, табл. И.1) — труба будет слышна.' +
+                // Янтарная: смета рабочая и труба подобрана, речь о шуме — это
+                // оговорка к монтажу, а не ошибка расчёта. Кнопка замены живёт
+                // под «i» вместе с объяснением, зачем её нажимать.
+                this.groupWarns[_grpName] = this.noteBox('warn', 'Труба будет слышна.',
+                    'Скорость воды ' + _vHot.toFixed(2) + ' м/с при пределе ' + _vLim.toFixed(1).replace('.', ',') + ' м/с.',
+                    '<div class="tip-p">Предел ' + _vLim.toFixed(1).replace('.', ',') +
+                    ' м/с — <b>СП 60.13330.2020, табл. И.1</b>. Выше него поток в трубе становится слышен в помещении.</div>' +
                     (this.radPipeFamily() !== 'mp'
-                        ? ' У металлопластика внутренний проход шире при том же наружном размере.' +
-                          ' <button onclick="app.widenRadTrunk()" style="margin-left:4px; padding:2px 8px; border:1px solid var(--primary); background:var(--primary); color:#fff; border-radius:4px; font-size:11px; font-weight:700; cursor:pointer;">Заменить трубу</button>'
-                        : ' Ø32 — крупнейшая труба каталога: разделите разводку на две трассы или переведите систему на режим 80/60.');
+                        ? '<div class="tip-p">У металлопластика внутренний проход шире при том же наружном размере — одна смена трубы снимает около четверти скорости.</div>' +
+                          '<div class="tip-p"><button onclick="event.stopPropagation(); app.widenRadTrunk();" style="padding:4px 10px; border:1px solid var(--primary); background:var(--primary); color:#fff; border-radius:4px; font-size:11px; font-weight:700; cursor:pointer;">Заменить трубу</button></div>'
+                        : '<div class="tip-p"><b>Что делать:</b> Ø32 — крупнейшая труба каталога, поэтому разделите разводку на две трассы или переведите систему на режим 80/60.</div>'));
                 // Ø32 — последний в каталоге, «взять следующий» не всегда есть куда.
                 // Зато внутренний диаметр у семейств разный: на тридцать второй
                 // металлопластик даёт 26 мм против 22,6 у стабильной, и одна смена
@@ -58593,11 +58705,31 @@ const app = {
             else if (!hasConvWarn && hasRadWarn) advice = "Для компенсации теплопотерь добавьте дополнительные радиаторы в проблемные помещения.";
             else advice = "Для компенсации теплопотерь измените тип конвекторов (SCN на SCQ) или добавьте дополнительные радиаторы в проблемные помещения.";
 
-            const title = powerWarns.length
-                ? (hydroWarns.length ? 'ВНИМАНИЕ: мощность и гидравлика' : 'ВНИМАНИЕ: Нехватка мощности отопления!')
-                : 'ВНИМАНИЕ: гидравлика системы';
-            heatWarnHtml = `⚠️ <b>${title}</b><br>` + app.tempWarns.join('<br>') +
-                (advice ? `<br><span style="font-weight: 500; display:block; margin-top:6px;">${advice}</span>` : '');
+            // Мощность и гидравлика — разные разговоры и разная срочность,
+            // поэтому и плашки разные. Раньше они шли одним красным блоком с
+            // общим заголовком, и «система разбита на две ветки» (это калькулятор
+            // сам так решил, делать ничего не надо) читалось как авария.
+            let _blocks = '';
+            if (powerWarns.length) {
+                _blocks += this.noteFromList('error', 'Приборам не хватает мощности.', powerWarns,
+                    advice ? `<div class="tip-p"><b>Что делать:</b> ${advice}</div>` : '');
+            }
+            if (hydroWarns.length) {
+                // Красная — только когда кольцо не продавливает ни один насос
+                // каталога. Разбивка на ветки — решение, а не проблема.
+                const _hHard = hydroWarns.some(w => /не даёт даже насос/i.test(w));
+                const _hBr = (hydroWarns.join(' ').match(/разбита на (\d+)/) || [])[1];
+                // Строку на виду пишем сами: расчётная фраза здесь длинная и
+                // обрывать её многоточием хуже, чем сказать суть своими словами.
+                _blocks += this.noteBox(
+                    _hHard ? 'error' : 'info',
+                    _hHard ? 'Кольцу не хватает напора.' : 'Нагрузка разделена на ветки.',
+                    _hHard
+                        ? 'Нужного напора не даёт ни один насос каталога.'
+                        : (_hBr ? `Одна группа кольцо не продавливает — в смете их ${_hBr}.` : 'Одна насосная группа кольцо не продавливает.'),
+                    hydroWarns.map(w => `<div class="tip-p">${w.replace(/^•\s*/, '').replace(/<b>Гидравлика:<\/b>\s*/i, '')}</div>`).join(''));
+            }
+            heatWarnHtml = _blocks || null;
         }
         // === 3.5. Полотенцесушители (#5) ===
         {
@@ -59105,9 +59237,13 @@ const app = {
             if (!hasRad && tpArea > 0) {
                 let f = (pwr * 1000) / tpArea;
                 if (f > 75) {
-                    warn = `⚠️ <b>ВНИМАНИЕ: Одного только тёплого пола может не хватить для обогрева!</b><br>
-                            Расчетная потребность: <b>${Math.round(f)} Вт/м²</b> (комфортный предел теплоотдачи пола: до 75 Вт/м²).<br>
-                            <span style="font-weight: 500;">Чтобы покрыть такие теплопотери в сильные морозы, пол придется нагревать выше санитарных норм (поверхность будет некомфортно горячей для ног). Настоятельно рекомендуется добавить радиаторы отопления.</span>`;
+                    // Красная: без радиаторов дом в мороз не вытянуть, а пол
+                    // выше санитарной нормы греть нельзя — это не оговорка.
+                    warn = this.noteBox('error', 'Одного тёплого пола не хватит.',
+                        `Нужно ${Math.round(f)} Вт/м² при комфортном пределе 75 Вт/м².`,
+                        `<div class="tip-p">Расчётная потребность — <b>${Math.round(f)} Вт/м²</b>, комфортный предел теплоотдачи пола <b>75 Вт/м²</b>.</div>` +
+                        `<div class="tip-p">Чтобы покрыть такие теплопотери в сильные морозы, пол придётся нагревать выше санитарных норм: поверхность станет некомфортно горячей для ног.</div>` +
+                        `<div class="tip-p"><b>Что делать:</b> добавить радиаторы отопления.</div>`);
                 }
             }
             // Метраж взят с планов — говорим об этом прямо в разделе. Если зоны
@@ -59126,9 +59262,10 @@ const app = {
                     _planNote.push(s);
                 });
             if (_planNote.length) {
-                warn = (warn ? warn + '<br><br>' : '') +
-                    `📐 <b>Труба и коллектор — по планам этажей.</b><br>` + _planNote.join('<br>') +
-                    `<br><span style="font-weight:500;">Те же длины и номера петель стоят в таблице на листе «Тёплый пол».</span>`;
+                // Синяя: это не замечание, а отчёт о том, откуда взялись метры.
+                // В красной рамке его читали как «в смете что-то не так».
+                warn = (warn || '') + this.noteFromList('info', 'Труба и коллектор — по планам этажей.', _planNote,
+                    `<div class="tip-p">Те же длины и номера петель стоят в таблице на листе «Тёплый пол».</div>`);
             }
             // Балансировка: без неё смонтированный пол греет как попало — ближние
             // петли забирают весь расход, дальние стоят холодные. Полная таблица
@@ -59144,13 +59281,13 @@ const app = {
             // предупреждение: расчёту не хватило напора ни при одном перепаде.
             const _bal = this._ufhBal;
             if (_bal && !_bal.ok && _bal.worst) {
-                warn = (warn ? warn + '<br><br>' : '') +
-                    `⚠️ <b>Насосу узла тёплого пола не хватает напора.</b><br>` +
-                    `Коллектору «${_bal.worst.label}» нужно ${_bal.worst.need.toFixed(1).replace('.', ',')} м, ` +
-                    `а насос ${_bal.pump.label} на расходе ${_bal.worst.flow.toFixed(2).replace('.', ',')} м³/ч ` +
-                    `даёт ${_bal.worst.have.toFixed(1).replace('.', ',')} м. ` +
-                    `<span style="font-weight:500;">Разделите этот коллектор на два или укоротите петли, увеличив их число. ` +
-                    `Разбор по слагаемым — в подсказке «i» насосной группы тёплого пола.</span>`;
+                const _need = _bal.worst.need.toFixed(1).replace('.', ',');
+                const _have = _bal.worst.have.toFixed(1).replace('.', ',');
+                warn = (warn || '') + this.noteBox('error', 'Насосу тёплого пола не хватает напора.',
+                    `Коллектору «${_bal.worst.label}» нужно ${_need} м, насос даёт ${_have} м.`,
+                    `<div class="tip-p">Коллектору «${_bal.worst.label}» нужно <b>${_need} м</b>, а насос ${_bal.pump.label} на расходе ${_bal.worst.flow.toFixed(2).replace('.', ',')} м³/ч даёт <b>${_have} м</b>.</div>` +
+                    `<div class="tip-p"><b>Что делать:</b> разделить этот коллектор на два или укоротить петли, увеличив их число.</div>` +
+                    `<div class="tip-p">Разбор по слагаемым — в подсказке «i» насосной группы тёплого пола.</div>`);
             }
             flushBill("4. Водяной тёплый пол", warn);
         }
@@ -59478,12 +59615,14 @@ const app = {
                     `(паспортные «для тёплого пола до 12 кВт» — это тот же расход при перепаде 10 К, на первичке снеготаяния перепад 15 К). ` +
                     (_primKwBig ? `В таблице замены есть DN32 — до ${_primKwBig} кВт. Насос к ней подбирается отдельно: 25/60-180 с присоединением 1½" в неё не встанет.` : ``));
             }
-            const _snowWarn = _snowWarnAll.length
-                ? `⚠️ <b>Снеготаяние — на что смотреть:</b><br>` + _snowWarnAll.map(w => '• ' + w).join('<br>')
-                : '';
+            // Янтарная: узел подобран и смонтируется, это оговорки к нему.
+            const _snowWarn = this.noteFromList('warn', 'Снеготаяние — на что смотреть.', _snowWarnAll);
             flushBill("4.4 Снеготаяние", _snowWarn || null);
         } else if (snowCalc && snowCalc.impossible) {
-            flushBill("4.4 Снеготаяние", `⚠️ <b>Снеготаяние не подобрано.</b><br>` + (snowCalc.warnings || []).map(w => '• ' + w).join('<br>'));
+            // А здесь подбирать оказалось нечего — это красная.
+            flushBill("4.4 Снеготаяние",
+                this.noteFromList('error', 'Снеготаяние не подобрано.', snowCalc.warnings || []) ||
+                this.noteBox('error', 'Снеготаяние не подобрано.', 'Проверьте площадь и параметры участка.'));
         }
 
         currentSectionTitle = "5. Внутреннее водоснабжение";

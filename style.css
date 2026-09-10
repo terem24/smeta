@@ -64,6 +64,13 @@ body.dark-mode {
     /* РџСЂРѕР·СЂР°С‡РЅР°СЏ РїРѕРґСЃРІРµС‚РєР° */
     --warn-bg: #2D1B1B;
     --warn-text: #F87171;
+    --warn-border: rgba(248, 113, 113, 0.35);
+    --note-warn-bg: #2A2113;
+    --note-warn-text: #FBBF24;
+    --note-warn-border: rgba(251, 191, 36, 0.35);
+    --note-info-bg: #16233A;
+    --note-info-text: #93C5FD;
+    --note-info-border: rgba(147, 197, 253, 0.35);
 }
 
 body.dark-mode .input-panel,
@@ -2156,6 +2163,164 @@ body.menu-open .mobile-menu-backdrop {
     letter-spacing: normal;
     width: 100%;
 }
+
+/* === ЗАМЕЧАНИЯ В СМЕТЕ: три уровня, один вид ===
+   Раньше плашка была одна и всегда красная — и «дом не прогреется», и «трубу
+   посчитали по планам этажей» кричали одинаково. Красный перестал значить
+   «стоп»: его переставали читать. Теперь цвет говорит, что делать:
+     .note-error (красная)  — расчёт не сошёлся, монтировать как есть нельзя;
+     .note-warn  (янтарная) — смета рабочая, но есть оговорка или ручная замена;
+     .note-info  (синяя)    — просто факт расчёта, действий не требует.
+   На виду одна строка, всё длинное — под «i» (см. app.noteBox). */
+.note-box {
+    position: relative;
+    display: flex;
+    align-items: flex-start;
+    gap: 7px;
+    margin-top: 5px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.45;
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    width: 100%;
+    /* Заголовок раздела свернут в одну строку с многоточием, плашке это не нужно */
+    white-space: normal;
+    cursor: default;
+}
+
+.note-box + .note-box {
+    margin-top: 4px;
+}
+
+.note-box .note-ico {
+    flex-shrink: 0;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.note-box .note-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* Заголовок плашки — тем же цветом, только жирнее: цветной текст на цветном
+   фоне и так контрастен, второй акцент делает строку пёстрой. */
+.note-box .note-text b {
+    font-weight: 800;
+}
+
+.note-box .note-tip {
+    margin-left: 0;
+    flex-shrink: 0;
+    /* Иконка ровно по первой строке текста, а не по центру всей плашки */
+    align-self: flex-start;
+    margin-top: 1px;
+}
+
+.note-error {
+    background: var(--warn-bg);
+    color: var(--warn-text);
+    border-color: var(--warn-border, #FCA5A5);
+}
+
+.note-warn {
+    background: var(--note-warn-bg, #FFFBEB);
+    color: var(--note-warn-text, #92400E);
+    border-color: var(--note-warn-border, #FCD34D);
+}
+
+.note-info {
+    background: var(--note-info-bg, #EFF6FF);
+    color: var(--note-info-text, #1E40AF);
+    border-color: var(--note-info-border, #93C5FD);
+}
+
+/* Кружок «i» перекрашиваем под уровень: синий значок на янтарной плашке
+   выглядел чужой кнопкой из другого места экрана. */
+.note-warn .info-icon {
+    background: rgba(146, 64, 14, 0.12);
+    color: var(--note-warn-text, #92400E);
+    border-color: var(--note-warn-text, #92400E);
+}
+
+.note-error .info-icon {
+    background: rgba(153, 27, 27, 0.12);
+    color: var(--warn-text);
+    border-color: var(--warn-text);
+}
+
+.note-warn .info-icon:hover,
+.note-error .info-icon:hover {
+    background: currentColor;
+    color: #fff;
+}
+
+/* При печати подсказка под «i» не всплывает — а монтажнику на объекте
+   подробности нужны. Разворачиваем их прямо в плашке обычным текстом.
+   Клиентскую версию это не задевает: там вся плашка скрыта (hide-warns-print). */
+@media print {
+    .note-box .note-tip,
+    .note-box .note-tip .tooltip-content {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        width: 100% !important;
+        height: auto !important;
+    }
+
+    .note-box .note-tip .info-icon { display: none !important; }
+    .note-box { display: block !important; }
+}
+
+body.html2pdf-printing .note-box .note-tip,
+body.html2pdf-printing .note-box .note-tip .tooltip-content {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    height: auto !important;
+}
+
+body.html2pdf-printing .note-box .note-tip .info-icon { display: none !important; }
+body.html2pdf-printing .note-box { display: block !important; }
+
+/* Разворачиваем подсказку в обычный абзац: на бумаге ей некуда всплывать. */
+@media print {
+    .note-box .note-tip .tooltip-content {
+        position: static !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin: 4px 0 0 0 !important;
+        padding: 0 !important;
+        background: none !important;
+        color: inherit !important;
+        box-shadow: none !important;
+        font-weight: 400 !important;
+    }
+
+    .note-box .note-tip .tooltip-content::after { display: none !important; }
+    .note-box .note-tip .tooltip-content b { color: inherit !important; }
+}
+
+body.html2pdf-printing .note-box .note-tip .tooltip-content {
+    position: static !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 4px 0 0 0 !important;
+    padding: 0 !important;
+    background: none !important;
+    color: inherit !important;
+    box-shadow: none !important;
+    font-weight: 400 !important;
+}
+
+body.html2pdf-printing .note-box .note-tip .tooltip-content::after { display: none !important; }
+body.html2pdf-printing .note-box .note-tip .tooltip-content b { color: inherit !important; }
 
 .print-header {
     display: none;
@@ -7182,7 +7347,8 @@ body.dark-mode .btn-get-invoice {
 
 /* #16: скрытие технических предупреждений о нехватке мощности в смете для клиента
    (чекбокс в окне печати; класс навешивает prepareForPrint) */
-body.hide-warns-print .warn-box {
+body.hide-warns-print .warn-box,
+body.hide-warns-print .note-box {
     display: none !important;
 }
 
@@ -13334,6 +13500,12 @@ body.dark-mode #hyd_card .hyd-card__p {
         --warn-bg: #FFF4F4;
         --warn-text: #C4413E;
         --warn-border: #E6605D;
+        --note-warn-bg: #FFF8EC;
+        --note-warn-text: #A2661B;
+        --note-warn-border: #E0A64C;
+        --note-info-bg: #EEF6FB;
+        --note-info-text: #054F78;
+        --note-info-border: #7FB6D9;
         --shop-blue-dark: #054F78;
         --shop-blue-link: #2581C2;
         --shop-blue-outline: #2B8BC8;
