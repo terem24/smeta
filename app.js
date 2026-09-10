@@ -38339,18 +38339,30 @@ const app = {
         // в общий выбор Pro Aqua / Wavin, где нержавейки нет.
         else if (this.isBoilerPipeRow(item)) {
             const _pprIsPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            // Цена в этой таблице — НЕ цена строки, а стоимость всего раздела
+            // «2. Обвязка котельной» в каждой системе. Замена системы меняет трубу,
+            // все фитинги, хомуты и изоляцию разом, и сравнивать их по цене одной
+            // трубы бессмысленно: она может быть дешевле, а обвязка целиком — дороже.
+            const _totals = this.boilerSystemTotals();
+            const _cur = _totals[this.boilerPipeSystem()] || 0;
+            const _delta = (sys) => {
+                const d = (_totals[sys] || 0) - _cur;
+                if (!_cur || d === 0) return '';
+                const sign = d > 0 ? '+' : '−';
+                return `<div style="font-weight:600; font-size:11px; margin-top:2px; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">`
+                    + `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ на всю обвязку котельной</div>`;
+            };
             customAlts = [
-                { id: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', price: 0, imgId: 'RSS-1001-000022' },
-                { id: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', price: 0, imgId: 'SSS-2001-000022' },
+                { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
+                { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
                 {
-                    id: 'bp_ppr',
+                    id: 'bp_ppr', sys: 'ppr',
                     name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6 (Россия)' : 'Полипропилен PP-RCT STABI PLUS (Чехия)',
                     brand: _pprIsPA ? 'Pro Aqua' : 'Wavin Ekoplastik',
-                    price: 0,
                     imgId: _pprIsPA ? 'PA39012' : 'STRS032RCT'
                 },
-                { id: 'bp_mp', name: 'Металлопластик PE-Xb/Al/PE-Xb, пресс', brand: 'STOUT', price: 0, imgId: 'SPM-0001-053230' }
-            ];
+                { id: 'bp_mp', sys: 'mp', name: 'Металлопластик PE-Xb/Al/PE-Xb, пресс', brand: 'STOUT', imgId: 'SPM-0001-053230' }
+            ].map(a => ({ ...a, price: _totals[a.sys] || 0, name: a.name + _delta(a.sys) }));
         }
         else if (item.originalId && (item.originalId.startsWith('PA') || item.originalId.includes('RCT'))) {
             customAlts = [
@@ -39780,6 +39792,32 @@ const app = {
 
             // Внутрипольный конвектор (SCQ/SCN) — доп. пункт для перехода в полный пикер
             // радиаторов, сразу отфильтрованный на "Дизайнерские" (см. openConvectorDesignRadPicker).
+            // Обвязка котельной: под таблицей систем — замена ОДНОЙ позиции внутри
+            // той же системы. Тройник на уголок, переход на другую резьбу и т.п.
+            // Без этого выбор системы съедал бы обычную построчную замену.
+            if (this.isBoilerPipeRow(item)) {
+                const _same = this.ssSameSizeAlts(item);
+                if (_same.length) {
+                    html += `
+                        <tr style="border-top: 2px solid var(--border);">
+                            <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
+                                Заменить только эту позицию — тот же материал и типоразмер
+                            </td>
+                        </tr>`;
+                    _same.forEach(alt => {
+                        html += `
+                            <tr style="cursor: pointer;" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
+                                <td class="col-idx"></td>
+                                <td class="col-img">${getImg(alt)}</td>
+                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}</td>
+                                <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand}</td>
+                                <td class="col-pct"></td>
+                                <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${alt.price > 0 ? this.formatPriceHtml(alt.price, true) : '—'}</td>
+                            </tr>`;
+                    });
+                }
+            }
+
             const _convOrigId = item.originalId || item.id;
             if (_convOrigId && (_convOrigId.startsWith('SCQ') || _convOrigId.startsWith('SCN'))) {
                 html += `
@@ -49672,6 +49710,86 @@ const app = {
         return { size: last.size, inner: last.inner, v: vOf(last.inner), flow: flow, capped: true };
     },
 
+    /**
+     * Во что обойдётся раздел «2. Обвязка котельной» в каждой из четырёх систем.
+     *
+     * Замена системы — не замена одной строки: меняются труба, все фитинги, хомуты
+     * и теплоизоляция разом, и по цене одной трубы судить о выборе нельзя. Поэтому
+     * смета пересчитывается целиком под каждую систему и суммируется весь раздел 2.
+     * Оборудование (котлы, баки, насосы) в нём одинаково при любой системе, так что
+     * разница между строчками — это ровно разница обвязки.
+     *
+     * Состояние снимается и возвращается на место, страница не трогается
+     * (render(true) считает без отрисовки). Последним прогоном восстанавливаем
+     * currentEquipmentList под текущую систему — им пользуются счёт, ссылка и листы.
+     */
+    boilerSystemTotals: function () {
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const sumSection2 = () => (this.currentEquipmentList || []).reduce((acc, it) => {
+            return String(it.group || '').indexOf('2.') === 0
+                ? acc + (it.price || 0) * (it.q || 1) : acc;
+        }, 0);
+        const out = {};
+        try {
+            this.BOILER_PIPE_SYSTEMS.forEach(sys => {
+                this.state.boilerPipeSystem = sys;
+                this._boilerRangeCache = null;   // ряд зависит от системы и бренда ППР
+                this.render(true);
+                out[sys] = Math.round(sumSection2());
+            });
+        } finally {
+            // Прогон мог тронуть не только boilerPipeSystem (render кое-где
+            // досогласовывает состояние), поэтому возвращаем снимок целиком.
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this.render(true);
+        }
+        return out;
+    },
+
+    /**
+     * Чем можно заменить ОДНУ позицию обвязки, не трогая систему целиком.
+     *
+     * Выбор системы и выбор детали — разные задачи: «поставить всю котельную на
+     * полипропилен» и «здесь вместо тройника нужен уголок» не должны быть одной
+     * кнопкой. Здесь — второе: тот же материал, тот же типоразмер, другой тип
+     * фитинга. Резьбовые переходы даём все, что есть на этом диаметре: под разные
+     * патрубки нужны разные резьбы.
+     *
+     * Работает только для нержавейки: у ППР и металлопластика артикулы не
+     * разобраны по типоразмерам (см. boilerPipeRange) — там пока только система.
+     */
+    ssSameSizeAlts: function (item) {
+        const id = String((item && (item.originalId || item.id)) || '');
+        if (!/^(RSS|SSS)-/.test(id)) return [];
+        // Типоразмер текущей позиции — из её названия, как и весь индекс.
+        const cur = (catalog.ss_pipe_4m || []).concat(
+            'ss_elbow90_ff ss_elbow90 ss_elbow45 ss_tee ss_tee_red ss_adapter_fi ss_adapter_mi ss_elbow_mi'
+                .split(' ').reduce((a, k) => a.concat(catalog[k] || []), [])
+        ).find(x => x && (x.id === id || String(x.id).replace(/^SSS-2/, 'RSS-1') === id.replace(/^SSS-2/, 'RSS-1')));
+        if (!cur) return [];
+        const m = String(cur.name || '').match(/(\d{2})(?:\s*х|\s*$)/);
+        if (!m) return [];
+        const d = m[1];
+
+        const out = [];
+        const push = (arr, extra) => {
+            const it = this.ssFit(arr, d, extra);
+            if (it && it.id !== id) out.push({ id: it.id, name: it.name, price: it.price || 0, brand: it.brand || 'ROMMER' });
+        };
+        ['ss_elbow90_ff', 'ss_elbow90', 'ss_elbow45', 'ss_tee'].forEach(a => push(a));
+        this.SS_THREADS.forEach(t => { push('ss_adapter_fi', t.t); push('ss_adapter_mi', t.t); push('ss_elbow_mi', t.t); });
+        // Переходные тройники этого диаметра — все имеющиеся ответвления.
+        Object.keys(this.ssFitIndex()['ss_tee_red'] || {}).forEach(k => {
+            if (k.indexOf(d + '|') !== 0) return;
+            const it = this.ssFit('ss_tee_red', d, k.split('|')[1]);
+            if (it && it.id !== id) out.push({ id: it.id, name: it.name, price: it.price || 0, brand: it.brand || 'ROMMER' });
+        });
+        const seen = {};
+        return out.filter(x => (seen[x.id] ? false : (seen[x.id] = true)));
+    },
+
     // === ФИТИНГИ НЕРЖАВЕЙКИ ПО ТИПОРАЗМЕРУ ===
     //
     // Пока котельная знала два диаметра, артикулы фитингов были вписаны в код
@@ -51793,8 +51911,16 @@ const app = {
         }
     },
     // ====================================
-    render: function () {
-        this.ensureCalcId();
+    /**
+     * @param {boolean} [computeOnly] — только пересчитать смету, не трогая страницу.
+     *
+     * Нужен, чтобы прикинуть смету «а если бы система обвязки была другой», не
+     * перерисовывая экран и не отмечая расчёт в аналитике. Возврат стоит перед
+     * первой записью в DOM: всё, что выше, — чистый счёт, всё, что ниже, —
+     * отрисовка и побочные эффекты (автосохранение, вкладка «Деньги», виджеты).
+     */
+    render: function (computeOnly) {
+        if (!computeOnly) this.ensureCalcId();
         if (this.state.disabledSections) {
             const migrations = {
                 "1.1 Монтаж котельной": ["1.1 Монтаж котла и бойлера", "1.2 Монтаж обвязки котельной"],
@@ -53883,9 +54009,10 @@ const app = {
                     // труба на пресс-фитингах), только типоразмер трубы 26, а не 22.
                     // Хомут 3/4" (25–29 мм) на неё садится тот же.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = this.ssClamp(_fs.tank);
+                    // Подводка металлопластика — 26 мм, ей подходит хомут 3/4" (25–29).
+                    let clampItem = this.ssClamp(26);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком ГВС.`, grp);
+                    if (clampItem) addToBill(clampItem, 1, "Хомут для фиксации трубы подводки Ø26 перед расширительным баком ГВС.", grp);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака ГВС.", grp);
 
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Отсечной вентиль для подключения расширительного бака ГВС.", grp);
@@ -54340,9 +54467,10 @@ const app = {
                 } else if (this.boilerPipeSystem() === 'mp') { // Металлопластик STOUT
                     // См. бак ГВС выше: та же подводка, типоразмер трубы 26 вместо 22.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = this.ssClamp(_fs.tank);
+                    // Подводка металлопластика — 26 мм, ей подходит хомут 3/4" (25–29).
+                    let clampItem = this.ssClamp(26);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком отопления.`);
+                    if (clampItem) addToBill(clampItem, 1, "Хомут для фиксации трубы подводки Ø26 перед расширительным баком отопления.");
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака отопления.");
 
                     addToBill(catalog.tank_kit, 1, "Отсечной вентиль для подключения расширительного бака.");
@@ -59786,6 +59914,11 @@ const app = {
             app.originalEqSum = 0;
             app.originalWorksSum = 0;
         }
+
+        // Дальше — только отрисовка и побочные эффекты. Прикидочному пересчёту
+        // (см. boilerSystemTotals) они не нужны и вредны: перерисовали бы экран
+        // поверх открытого окна замены.
+        if (computeOnly) return;
 
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
