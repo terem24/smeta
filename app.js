@@ -9466,7 +9466,7 @@ const app = {
             // положен в meta события «отправлено» (см. logInvoiceEvent('sent')).
             const shareEv = g.list.find(ev => ev.meta && ev.meta.shared_invoice_id);
             const shareId = shareEv ? String(shareEv.meta.shared_invoice_id) : '';
-            const sums = loc ? `Оборудование: <b>${(loc.inv.eqSum || 0).toLocaleString('ru-RU')} ₽</b>${loc.inv.worksSum > 0 ? ` | Монтаж: <b>${(loc.inv.worksSum || 0).toLocaleString('ru-RU')} ₽</b>` : ''}` : '';
+            const sums = loc ? `Оборудование: <b>${(loc.inv.eqSum || 0).toLocaleString('ru-RU')} ₽</b>${(loc.inv.worksSum > 0 && !this.isSellerOnly()) ? ` | Монтаж: <b>${(loc.inv.worksSum || 0).toLocaleString('ru-RU')} ₽</b>` : ''}` : '';
 
             const historyRows = g.list.map(ev => {
                 const m = EVENT_META[ev.event] || { label: ev.event, color: '#94A3B8' };
@@ -11061,6 +11061,15 @@ const app = {
         if (railInstallers) {
             railInstallers.style.display = (navInstallers && navInstallers.style.display !== 'none') ? 'flex' : 'none';
         }
+
+        // «Прайс» — свои расценки на монтаж. Продавцу про монтаж не показываем
+        // ничего (по решению владельца 10.09.2026): ни пункт в колонке кабинета,
+        // ни его двойник в меню разделов.
+        const sellerNoWorks = this.isSellerOnly();
+        const navWorkPrices = document.querySelector('#profile_nav .lk-nav-item[data-tab="workprices"]');
+        const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
+        if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
+        if (railWorkPrices) railWorkPrices.style.display = sellerNoWorks ? 'none' : '';
 
         // Число непрочитанных берём готовым из бейджа конверта в шапке: считает его
         // loadNotifications, второй раз считать незачем
@@ -62715,6 +62724,15 @@ function prepareForPrint() {
     // Запоминаем текущее состояние
     let originalMode = app.state.viewMode;
     let printArea = document.getElementById('print-area');
+
+    // Сборка может прийти дважды подряд: executeDownload собирает копию заранее
+    // (чтобы дождаться картинок), а потом window.print() поднимает 'beforeprint'
+    // и собирает снова. К этому моменту оригинал уже помечен «спрятать от
+    // принтера» (шаг 5), и клон наследовал метку — на бумагу уходил пустой лист.
+    // Поэтому метку снимаем до клонирования, шаг 5 вернёт её на место.
+    if (printArea) printArea.classList.remove('hide-original-for-print');
+    const liveSchemeEarly = document.getElementById('dynamic_scheme');
+    if (liveSchemeEarly) liveSchemeEarly.classList.remove('hide-original-for-print');
 
     if (printArea) {
         // --- ШАГ 1: ЛИСТ ОБОРУДОВАНИЯ ---
