@@ -3104,7 +3104,12 @@ const catalog = {
     ],
     filter_big_blue: [
         { id: "75185", name: "Колба Big Blue 20'", price: 3745, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "ВП-20 М-20 ББ", name: "Картридж Big Blue 20", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-07-12" },
+        // Артикул поставщика у этого картриджа — просто «ВП-20» (АКВАБРАЙТ,
+        // пористость 20 мкм, Big Blue 20, 770 ₽ — сверено 10.09.2026). В поле
+        // article его не ставим: под кодом «ВП-20» у поставщика лежат сразу три
+        // разные карточки — Big Blue 20 за 770 ₽, SLIM LINE 10 за 140 ₽ и ещё одна
+        // за 410 ₽, и парсер взял бы первую попавшуюся. Строка ведётся руками.
+        { id: "ВП-20 М-20 ББ", name: "Картридж Big Blue 20", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1556, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 540, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
         { id: "SFT-0002-003480", name: "Удлинитель ВН/ВР 3/4\" 80 мм", price: 1042, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
         { id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 501, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
@@ -3418,7 +3423,13 @@ const catalog = {
         { id: "19101081001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, белый глянец", price: 24536, brand: "REHAU", availability: "in_stock", price_date: "2026-09-09", series: "ELLIPSE", color: "white" },
         { id: "19101091001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, хром глянец", price: 27172, brand: "REHAU", availability: "in_stock", price_date: "2026-09-09", series: "ELLIPSE", color: "chrome" },
         { id: "19101101001", name: "Комплект: инсталляция NOVAFLOW + панель NOVA ELLIPSE 001, чёрный мат", price: 26868, brand: "REHAU", availability: "in_stock", price_date: "2026-09-09", series: "ELLIPSE", color: "black" },
-        { id: "M571-VE-01", name: "Инсталляция с кнопкой хром глянцевая и шумоизоляцией", price: 31648, brand: "AlcaPlast", availability: "in_stock", price_date: "2026-07-12", series: "QUAD", color: "chrome" }
+        // Артикул поставщика — AM101/1120-4:1 (сверено 10.09.2026, в наличии).
+        // В поле article не ставим: под этим кодом у него лежат шесть карточек —
+        // кнопки хром, белая и чёрная, от 28 724 до 32 700 ₽, причём хромовых две:
+        // за 31 648 и за 32 050 ₽. Парсер брал бы первую попавшуюся и гонял бы
+        // цену туда-сюда вместе с цветом кнопки. Наши 31 648 ₽ — живая цена одной
+        // из хромовых карточек, поэтому строка ведётся руками.
+        { id: "M571-VE-01", name: "Инсталляция с кнопкой хром глянцевая и шумоизоляцией", price: 31648, brand: "AlcaPlast", availability: "in_stock", price_date: "2026-09-10", series: "QUAD", color: "chrome" }
     ],
     // Панели смыва РЕХАУ: нужны только при выборе инсталляции без панели.
     flush_panels: [
