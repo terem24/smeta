@@ -1565,9 +1565,15 @@ const app = {
         overlay.addEventListener('click', (e) => {
             const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
             if (act === 'copy') this.copyInviteLink(d.promo_code);
-            if (act === 'close' || e.target === overlay) overlay.remove();
+            if (act === 'close' || e.target === overlay) {
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.remove(), 200);
+            }
         });
         document.body.appendChild(overlay);
+        // Как у app.alert: окно появляется классом active через тик, иначе
+        // оно остаётся прозрачным
+        setTimeout(() => overlay.classList.add('active'), 10);
     },
 
     // Лист А5 на кассу: крупный QR, код буквами (если камера не читает) и ссылка
@@ -1653,7 +1659,7 @@ const app = {
                     </div>
                     <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">${this.inviteButtonsHtml(d, false)}</div>
                     <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">
-                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес.` : ''}.
+                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
                         Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
                     </div>
                 </div>`;
@@ -1665,7 +1671,7 @@ const app = {
                 <td style="font-weight:700; color:var(--primary); letter-spacing:0.05em;">${esc(String(d.promo_code || '').toUpperCase())}</td>
                 <td style="text-align:center;"><span data-invite-used="${d.id}">…</span></td>
                 <td style="text-align:center;"><span data-invite-active="${d.id}">…</span></td>
-                <td style="text-align:right; white-space:nowrap;">${this.inviteButtonsHtml(d, true)}</td>
+                <td style="text-align:right;"><div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; max-width:260px; margin-left:auto;">${this.inviteButtonsHtml(d, true)}</div></td>
             </tr>`).join('');
             html = `<div style="${box}">
                 <div style="font-size:14px; font-weight:800; color:var(--text-main); margin-bottom:10px;">🏪 Магазины и приглашения</div>
