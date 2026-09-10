@@ -13240,22 +13240,23 @@ body.object-flat #blk_floor_mat_content {
     }
 
     /* ---------- Переключатели ----------
-       Пара «Добавить в корзину / Быстрый заказ» с сайта: активный — сплошной
-       синий со скруглением, остальные — контур голубого на светло-сером. */
+       Вкладки карточки товара («Модификации / Описание / …»): серая полоса
+       #F5F5F5 со скруглением 12 px, выбранная — белая плашка с тёмным
+       текстом, без синей заливки; остальные — серый текст. */
     body.theme-shop .tabs,
     body.theme-shop .mode-selector-tabs {
-        background: var(--surface-light);
+        background: #F5F5F5;
         padding: 4px;
         border: none;
-        border-radius: var(--radius);
+        border-radius: 12px;
         box-shadow: none;
         gap: 4px;
     }
 
     body.theme-shop .tab,
     body.theme-shop .mode-tab {
-        border-radius: 8px;
-        color: var(--text-main);
+        border-radius: 10px;
+        color: var(--text-sec);
         box-shadow: none;
         font-weight: 500;
         font-size: 13px;
@@ -13265,26 +13266,31 @@ body.object-flat #blk_floor_mat_content {
 
     body.theme-shop .tab:hover,
     body.theme-shop .mode-tab:hover {
-        color: var(--shop-blue-link);
-        background: #fff;
+        color: var(--text-main);
+        background: transparent;
     }
 
     body.theme-shop .tab.active,
     body.theme-shop .tab.multi-active,
-    body.theme-shop .mode-tab.active {
-        background: var(--primary);
-        color: #fff;
+    body.theme-shop .mode-tab.active,
+    body.theme-shop .tab.active.work-active {
+        background: #fff;
+        color: var(--text-main);
         box-shadow: none;
         outline: none;
-        font-weight: 600;
+        font-weight: 500;
     }
 
-    body.theme-shop .tab.active.work-active {
-        background: var(--shop-blue-link);
-        color: #fff;
+    /* ---------- Таблица сметы ----------
+       Список товаров на сайте: строки без линий, каждая вторая — серая
+       плашка #F7F7F7 со скруглением. Скругление ячеек работает только при
+       border-collapse: separate, поэтому таблица под темой переводится на
+       него; ширины колонок от этого не меняются (table-layout: fixed). */
+    body.theme-shop .inv-table {
+        border-collapse: separate;
+        border-spacing: 0;
     }
 
-    /* ---------- Таблица сметы ---------- */
     body.theme-shop .inv-table th {
         color: var(--text-sec);
         background: transparent;
@@ -13292,7 +13298,28 @@ body.object-flat #blk_floor_mat_content {
     }
 
     body.theme-shop .inv-table td {
-        border-bottom-color: #EEEEEE;
+        border-bottom: none;
+        padding-top: 7px;
+        padding-bottom: 7px;
+    }
+
+    /* Строка позиции — та, что начинается с номера. Сплошной фон задаём и
+       нечётным (белый), и чётным (серый): у части строк фон стоит инлайн на
+       tr (подсветка групп котла), под темой он не нужен. */
+    body.theme-shop .inv-table tr:has(> td.col-idx) > td {
+        background: #fff;
+    }
+
+    body.theme-shop .inv-table tr:has(> td.col-idx):nth-child(even) > td {
+        background: #F7F7F7;
+    }
+
+    body.theme-shop .inv-table tr:has(> td.col-idx) > td:first-child {
+        border-radius: 10px 0 0 10px;
+    }
+
+    body.theme-shop .inv-table tr:has(> td.col-idx) > td:last-child {
+        border-radius: 0 10px 10px 0;
     }
 
     /* Заголовок раздела — синий, как «Каталог» в меню магазина, но с мягкими
