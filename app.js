@@ -40000,6 +40000,10 @@ const app = {
         }
         let _allVolsAlts = [];
         let customAlts = null;
+        // Разметка переключателя охвата для строк обвязки котельной. Держим в своей
+        // переменной: _tankFiltersHtml объявляется НИЖЕ по коду, и присваивать её
+        // отсюда нельзя — до объявления let это ошибка времени выполнения.
+        let _bpFilterHtml = '';
         let isRommer = this.state.brandMode === 'rommer';
 
         // Для бойлеров: показываем позиции по swap-фильтрам
@@ -40423,14 +40427,28 @@ const app = {
             // Что считать обвязкой, решает isBoilerPipeRow — та же проверка, по
             // которой строка получает кнопку замены.
             const _totals = this.boilerSystemTotals();
-            const _curPipe = (_totals[this.boilerPipeSystem()] || {}).pipe || 0;
+            // Переключатель охвата. По умолчанию — только труба с фитингами: человек
+            // сравнивает трубу с трубой, а крепёж с изоляцией выбирает не он, а
+            // диаметр. Но разница между охватами сама по себе интересна (у ППР труба
+            // толще, и трубка изоляции на неё дороже), поэтому её можно посмотреть.
+            const _bpScope = (this.state.swapBpScope === 'rig') ? 'rig' : 'pipe';
+            const _val = (sys) => (_totals[sys] || {})[_bpScope] || 0;
+            const _curVal = _val(this.boilerPipeSystem());
             const _delta = (sys) => {
-                const d = ((_totals[sys] || {}).pipe || 0) - _curPipe;
-                if (!_curPipe || d === 0) return '';
+                const d = _val(sys) - _curVal;
+                if (!_curVal || d === 0) return '';
                 const sign = d > 0 ? '+' : '−';
                 return `<div style="font-weight:600; font-size:11px; margin-top:2px; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">`
                     + `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ к выбранной системе</div>`;
             };
+            const _bpB = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active ? 'var(--primary)' : 'transparent'};color:${active ? '#fff' : 'var(--primary)'};font-weight:${active ? 700 : 400};margin:2px;"`;
+            _bpFilterHtml =
+                `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:8px 0 10px;border-bottom:1px solid var(--border);">` +
+                `<span style="font-size:12px;font-weight:700;color:var(--text-sec);margin-right:4px;">Считать:</span>` +
+                `<span onclick="app.setSwapBpScope('pipe')" ${_bpB(_bpScope === 'pipe')}>Только трубы и фитинги</span>` +
+                `<span onclick="app.setSwapBpScope('rig')" ${_bpB(_bpScope === 'rig')}>С крепежом и теплоизоляцией</span>` +
+                `<span style="font-size:11px;color:var(--text-muted, #6B7280);margin-left:6px;">котёл, бойлер и насосы не в счёт — они одинаковы при любой трубе</span>` +
+                `</div>`;
             customAlts = [
                 { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
                 { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
@@ -40451,7 +40469,7 @@ const app = {
             // Подпись отдельным полем, а не хвостом названия: значок «Выбран»
             // рисуется сразу после имени, и подпись-блок утащила бы его на
             // следующую строку.
-            ].map(a => ({ ...a, price: (_totals[a.sys] || {}).pipe || 0, note: _delta(a.sys) }));
+            ].map(a => ({ ...a, price: _val(a.sys), note: _delta(a.sys) }));
         }
         else if (item.originalId && this.isPprArticle(item.originalId)) {
             customAlts = [
@@ -41007,7 +41025,7 @@ const app = {
         };
 
         const _isTankItem = (lookupId || '').startsWith('SWH') || (lookupId || '').startsWith('RWH');
-        let _tankFiltersHtml = '';
+        let _tankFiltersHtml = _bpFilterHtml;
         if (_origId0 === 'well_pump_auto') {
             const _wf = this.state.wellPumpFlowFilter || 'all';
             const _wc = this.state.wellPumpCableFilter || 'cable';
@@ -48804,6 +48822,13 @@ const app = {
         this.state.chimneySwapType = val;
         if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
     },
+    // Охват цены в таблице выбора системы обвязки: 'pipe' — труба с фитингами
+    // (по умолчанию), 'rig' — плюс крепёж и теплоизоляция. Оборудования нет ни в
+    // том, ни в другом: оно одинаково при любой трубе и только топит разницу.
+    setSwapBpScope: function (val) {
+        this.state.swapBpScope = (val === 'rig') ? 'rig' : 'pipe';
+        if (this._lastSwapLookupId) this.openSwapModal(this._lastSwapLookupId);
+    },
     setTeePipeSwapMaterial: function (val) {
         this.state.teePipeSwapMaterial = val;
         this.state.teePipeSwapDiam = null;
@@ -52360,13 +52385,17 @@ const app = {
      */
     boilerSystemTotals: function () {
         const snapshot = JSON.parse(JSON.stringify(this.state));
+        // Крепёж и теплоизоляция лежат своими подразделами — по ним и считаем, а не
+        // по названиям позиций: подразделы формирует сама смета, и они не разъедутся.
         const sums = () => (this.currentEquipmentList || []).reduce((acc, it) => {
-            if (String(it.group || '').indexOf('2.') !== 0) return acc;
+            const g = String(it.group || '');
+            if (g.indexOf('2.') !== 0) return acc;
             const v = (it.price || 0) * (it.q || 1);
             acc.total += v;
-            if (this.isBoilerPipeRow(it)) acc.pipe += v;
+            if (this.isBoilerPipeRow(it)) { acc.pipe += v; acc.rig += v; }
+            else if (g.indexOf('2.8.1') === 0 || g.indexOf('2.8.2') === 0) acc.rig += v;
             return acc;
-        }, { total: 0, pipe: 0 });
+        }, { total: 0, pipe: 0, rig: 0 });
         const out = {};
         try {
             this.BOILER_PIPE_SYSTEMS.forEach(sys => {
@@ -52374,7 +52403,7 @@ const app = {
                 this._boilerRangeCache = null;   // ряд зависит от системы и бренда ППР
                 this.render(true);
                 const r = sums();
-                out[sys] = { total: Math.round(r.total), pipe: Math.round(r.pipe) };
+                out[sys] = { total: Math.round(r.total), pipe: Math.round(r.pipe), rig: Math.round(r.rig) };
             });
         } finally {
             // Прогон мог тронуть не только boilerPipeSystem (render кое-где
