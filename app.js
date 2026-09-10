@@ -1260,6 +1260,120 @@ const app = {
             }
         } catch (e) { }
     },
+
+    // ═══ Приглашение от менеджера магазина ═══════════════════════════════
+    // Магазин-партнёр — это карточка дистрибьютора с промокодом. Менеджер
+    // раздаёт ссылку heatcalc.ru/?ref=КОД; сайт запоминает код в браузере,
+    // показывает плашку «Вас пригласил магазин …» и подставляет код в форму
+    // регистрации. Код живёт в localStorage до применения: человек может открыть
+    // ссылку сегодня, а зарегистрироваться через день с главной страницы.
+    //
+    // Проверка кода идёт через функцию базы check_invite_code: до регистрации
+    // сессии нет, а таблицу компаний анониму читать нельзя. Функция отдаёт
+    // только то, что можно показать на плашке, и говорит, есть ли ещё места
+    // (у каждой компании свой лимит приглашений, distributors.invite_limit).
+    //
+    // INVITE_ONLY_REGISTRATION — рубильник «регистрация только по промокоду».
+    // Пока выключен: форма принимает и пустой промокод, как раньше. Включается
+    // последним шагом, когда карточки магазинов заведены. Тех, кто
+    // зарегистрировался до включения, не касается (см. registered_at).
+    INVITE_ONLY_REGISTRATION: false,
+    INVITE_KEY: 'stout_invite',
+
+    captureInvite: function () {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('ref') || params.get('promo') || '';
+            const code = raw.trim().toUpperCase().replace(/[^A-Z0-9_\-]/g, '');
+            if (code) localStorage.setItem(this.INVITE_KEY, code);
+        } catch (e) { }
+    },
+    storedInviteCode: function () {
+        try { return localStorage.getItem(this.INVITE_KEY) || ''; } catch (e) { return ''; }
+    },
+    clearInviteCode: function () {
+        try { localStorage.removeItem(this.INVITE_KEY); } catch (e) { }
+        this.closeInviteBanner();
+    },
+
+    // Ответ базы как есть: { ok, reason, company_name, manager_name, pro_months, used, limit }
+    checkInviteCode: async function (code) {
+        const { data, error } = await supabaseClient.rpc('check_invite_code', { code: String(code || '') });
+        if (error) throw error;
+        return data || { ok: false, reason: 'not_found' };
+    },
+
+    // Текст отказа для человека. Причины — из check_invite_code / apply_invite_code.
+    inviteRefusalText: function (res) {
+        const company = res && res.company_name ? `«${res.company_name}»` : 'магазина';
+        switch (res && res.reason) {
+            case 'expired':
+                return 'Срок действия промокода истёк. Уточните новый у менеджера магазина.';
+            case 'limit':
+                return `У магазина ${company} закончились места по этому промокоду. Попросите менеджера обратиться к администратору сайта — лимит можно увеличить.`;
+            case 'other_distributor':
+                return 'Вы уже привязаны к другой компании. Изменение возможно только через администратора.';
+            case 'no_session':
+            case 'no_user_row':
+                return 'Не удалось определить аккаунт. Перезайдите на сайт и попробуйте снова.';
+            default:
+                return 'Промокод не найден. Проверьте буквы или уточните его у менеджера магазина.';
+        }
+    },
+
+    // Плашка над сметой. Показывается только тем, кому код ещё есть куда
+    // применить: гостю — «зарегистрируйтесь», вошедшему без компании —
+    // «применить». Уже привязанным не показывается вовсе.
+    showInviteBanner: async function () {
+        const host = document.getElementById('invite_banner');
+        const code = this.storedInviteCode();
+        if (!host || !code) return;
+        if (this.state.tgUser && this.state.distributorId) { this.closeInviteBanner(); return; }
+        let res;
+        try { res = await this.checkInviteCode(code); }
+        catch (e) { console.warn('[приглашение] проверка кода не удалась:', e.message || e); return; }
+
+        // Несуществующий код держать в браузере незачем — иначе он подставлялся
+        // бы в форму регистрации снова и снова.
+        if (!res.ok && res.reason === 'not_found') { this.clearInviteCode(); return; }
+
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const loggedIn = !!this.state.tgUser;
+        const btnStyle = 'font:inherit; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px; border:none; background:var(--primary); color:#fff; cursor:pointer;';
+        const closeStyle = 'font:inherit; font-size:18px; line-height:1; padding:2px 6px; border:none; background:transparent; color:var(--text-sec); cursor:pointer;';
+
+        let text, action = '';
+        if (res.ok) {
+            const who = res.manager_name ? `, менеджер ${esc(res.manager_name)}` : '';
+            const bonus = Number(res.pro_months) > 0 ? ` Тариф Профи на ${Number(res.pro_months)} мес. — бесплатно.` : '';
+            text = `Вас пригласил магазин <b>«${esc(res.company_name)}»</b>${who}. Промокод <b>${esc(code)}</b>.${bonus}`;
+            action = loggedIn
+                ? `<button type="button" style="${btnStyle}" onclick="app.applyPromoCode('${esc(code)}')">Применить промокод</button>`
+                : `<button type="button" style="${btnStyle}" onclick="app.openRegistrationFromInvite()">Зарегистрироваться</button>`;
+        } else {
+            text = esc(this.inviteRefusalText(res));
+        }
+        host.innerHTML = `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 14px;
+                        background:${res.ok ? 'rgba(16,185,129,0.08)' : 'rgba(217,119,6,0.08)'};
+                        border:1px solid ${res.ok ? 'rgba(16,185,129,0.35)' : 'rgba(217,119,6,0.35)'};
+                        border-radius:12px; padding:10px 14px; margin:0 20px 10px;">
+                <span style="font-size:18px; line-height:1;">${res.ok ? '🏪' : '⚠️'}</span>
+                <span style="font-size:13px; color:var(--text-main); text-align:center;">${text}</span>
+                ${action}
+                <button type="button" style="${closeStyle}" title="Скрыть" onclick="app.closeInviteBanner()">×</button>
+            </div>`;
+        host.style.display = 'block';
+    },
+    closeInviteBanner: function () {
+        const host = document.getElementById('invite_banner');
+        if (host) { host.style.display = 'none'; host.innerHTML = ''; }
+    },
+    openRegistrationFromInvite: function () {
+        this.showAuthModal();
+        this.switchAuthTab('register');
+    },
+
     setProjectName: function (val) {
         if (!this.checkAccess('base')) { this.syncUI(); return; }
         let clean = String(val).trim();
@@ -28615,6 +28729,10 @@ const app = {
             // и вход через Яндекс ID — это второй равноправный способ завести аккаунт
             if (socialWrapper) socialWrapper.style.display = '';
             if (modalContent) { modalContent.style.maxWidth = '380px'; modalContent.style.maxHeight = '95vh'; modalContent.style.overflowY = 'auto'; }
+            // Код из ссылки менеджера (?ref=КОД) подставляем, если поле ещё пустое:
+            // введённое руками не трогаем
+            const promoEl = document.getElementById('auth_reg_promo');
+            if (promoEl && !promoEl.value) promoEl.value = this.storedInviteCode();
         }
     },
 
@@ -28773,9 +28891,18 @@ const app = {
             }
             return;
         }
-        // Промокод при регистрации не спрашивается: его вводят в анкете кабинета
-        // (раздел «Профиль»), где уже есть сессия и доступ к таблице distributors
-        const promoCode = '';
+        // Промокод магазина: из поля формы (туда же подставляется код из ссылки
+        // менеджера). Проверяется ниже функцией базы до отправки письма с кодом.
+        // Применяется при первом входе — см. applyPromoFromRegistration.
+        const promoEl = document.getElementById('auth_reg_promo');
+        const promoCode = promoEl ? promoEl.value.trim().toUpperCase() : '';
+        if (!promoCode && this.INVITE_ONLY_REGISTRATION) {
+            const msg = 'Регистрация — по приглашению менеджера магазина-партнёра: введите его промокод. Его выдают бесплатно.';
+            if (authErrEl) { authErrEl.innerText = msg; authErrEl.style.display = 'block'; }
+            else app.alert(msg);
+            if (btn) btn.disabled = false;
+            return;
+        }
 
         // Анкета при регистрации больше не спрашивается — только почта и пароль.
         // ФИО, телефон, дату рождения, сферу, регион и город пользователь заполняет
@@ -28817,6 +28944,26 @@ const app = {
                     btn.innerText = 'Зарегистрироваться';
                 }
                 return;
+            }
+
+            // Промокод проверяем ДО письма: у почты месячный лимит, и опечатка в
+            // коде не должна его тратить. Ошибка проверки (сеть, база) — не повод
+            // отказывать в регистрации: код ещё раз проверится при первом входе.
+            if (promoCode) {
+                if (btn) btn.innerText = 'Проверка промокода...';
+                let inviteRes = null;
+                try { inviteRes = await this.checkInviteCode(promoCode); }
+                catch (checkErr) { console.warn('[регистрация] промокод не проверен:', checkErr.message || checkErr); }
+                if (inviteRes && !inviteRes.ok) {
+                    if (authErrEl) {
+                        authErrEl.innerText = this.inviteRefusalText(inviteRes);
+                        authErrEl.style.display = 'block';
+                    } else {
+                        app.alert(this.inviteRefusalText(inviteRes));
+                    }
+                    if (btn) { btn.disabled = false; btn.innerText = 'Зарегистрироваться'; }
+                    return;
+                }
             }
 
             // Execute the generation of the 4-digit verification code and invoke await emailjs.send(...) STRICTLY inside the condition where the Supabase query successfully confirms the email is available
@@ -37365,6 +37512,7 @@ const app = {
         this.handleYandexCallback();
 
         this.captureUTM();
+        this.captureInvite();
         this.applyPricingCurrencyDisplay();
         if (localStorage.getItem('stout_save')) {
             try {
@@ -37908,6 +38056,10 @@ const app = {
                 // либо она закончилась совсем. Разбираемся, а не делаем вид, что всё в порядке.
                 this.verifySavedLogin();
             }
+            // Гостю, пришедшему по ссылке менеджера магазина, — плашка с приглашением.
+            // Вошедшему её показывает handleAuthSession, когда уже известно, есть ли
+            // у него компания.
+            if (!session) this.showInviteBanner();
             // Ветки «сессии нет» здесь намеренно нет: гостю ни окно быстрого старта,
             // ни подсказки не показываем. Типовой объект он выбрать может — кнопка в
             // центре пустой сметы на месте, — но сохранить смету, отправить её

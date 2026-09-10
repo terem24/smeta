@@ -568,6 +568,9 @@
          строкой над колонками его не замечали, а на телефоне он занимал верх экрана. -->
     <!-- Плашка «цены изменились с момента сохранения» — наполняет app.showRepriceNotice -->
     <div id="reprice_notice" class="no-print" style="display: none;"></div>
+    <!-- Плашка «Вас пригласил магазин …» — появляется, когда сайт открыт по ссылке
+         менеджера (?ref=КОД). Наполняет app.showInviteBanner. -->
+    <div id="invite_banner" class="no-print" style="display: none;"></div>
     <div class="container">
         <!-- ЛЕВАЯ ПАНЕЛЬ ЛИЧНОГО КАБИНЕТА (только широкий экран, от 1025 px).
              Зачем: до неё в кабинет вёл единственный вход — клик по собственному
@@ -2577,9 +2580,19 @@
                         <label class="reg-field-label" style="text-align:left;">Пароль</label>
                         <input type="text" id="auth_reg_password" class="auth-input" placeholder="Придумайте пароль" autocomplete="off" oninput="app.checkPasswordLayout(this)" style="max-width:100%; margin:0 0 12px;">
 
-                        <!-- Промокод дистрибьютора спрашивается не здесь, а в анкете
-                             личного кабинета (раздел «Профиль») — форма регистрации
-                             остаётся из двух полей. -->
+                        <!-- Промокод магазина-партнёра. Подставляется сам, если сайт открыли
+                             по ссылке менеджера (?ref=КОД, см. app.captureInvite). Проверяется
+                             до отправки письма с кодом подтверждения — функцией check_invite_code
+                             в базе, чтобы неверный код не тратил месячный лимит писем.
+                             Промокод дистрибьютора по-прежнему можно ввести и позже,
+                             в анкете кабинета или в окне тарифов. -->
+                        <label class="reg-field-label" style="text-align:left;">Промокод магазина</label>
+                        <input type="text" id="auth_reg_promo" class="auth-input" placeholder="Например, SHOP-07" maxlength="32" autocomplete="off"
+                            oninput="this.value = this.value.toUpperCase()"
+                            style="max-width:100%; margin:0 0 4px; text-transform:uppercase; letter-spacing:0.04em;">
+                        <div id="auth_reg_promo_hint" style="font-size:11.5px; line-height:1.35; color:var(--text-sec); margin:0 0 12px;">
+                            Промокод бесплатно выдаёт менеджер магазина-партнёра. С ним тариф Профи не нужно оплачивать.
+                        </div>
 
                         <!-- Анкета (ФИО, телефон, дата рождения, сфера, регион и город) больше
                              не спрашивается при регистрации: её обязательно заполняют сразу после
