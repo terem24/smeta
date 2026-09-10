@@ -4654,6 +4654,23 @@ const app = {
         } catch (e) { return null; }
     },
 
+    // Сфера деятельности и роль «менеджер», выставленные вручную на локальной
+    // машине (та же панель, что и тариф). Нужны, чтобы посмотреть оформление
+    // «магазин» (isShopTheme: менеджер + продавец) и вкладки продавца, не правя
+    // свою запись в базе. На боевом домене всегда null/false.
+    localRole: function () {
+        if (!this.isLocalhost()) return null;
+        try {
+            const v = localStorage.getItem('local_role');
+            return (v === 'installer' || v === 'seller') ? v : null;
+        } catch (e) { return null; }
+    },
+
+    localManager: function () {
+        if (!this.isLocalhost()) return false;
+        try { return localStorage.getItem('local_manager') === '1'; } catch (e) { return false; }
+    },
+
     isPro: function () {
         // Локальная проверка идёт мимо базы: у тестового аккаунта демо-период
         // рано или поздно истекает, и тогда половину интерфейса не посмотреть.
@@ -4710,10 +4727,47 @@ const app = {
             return `<button type="button" onclick="app.setLocalTariff('${val}')"
                 style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${on ? '#22C55E' : 'rgba(255,255,255,.25)'}; background: ${on ? '#22C55E' : 'transparent'}; color: ${on ? '#062b14' : '#fff'};">${label}</button>`;
         };
+        // Второй ряд: сфера деятельности (монтажник / продавец) и роль «менеджер».
+        // Повторное нажатие на активную сферу возвращает её «как в базе»;
+        // «Менеджер» — тумблер, включается поверх любой сферы. Вместе
+        // «Продавец» + «Менеджер» дают оформление «магазин» (isShopTheme).
+        const role = this.localRole();
+        const mgr = this.localManager();
+        const rbtn = (val, label, on, handler, title) => `<button type="button" onclick="${handler}" title="${title}"
+                style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${on ? '#22C55E' : 'rgba(255,255,255,.25)'}; background: ${on ? '#22C55E' : 'transparent'}; color: ${on ? '#062b14' : '#fff'};">${label}</button>`;
         box.innerHTML = `<span style="opacity:.65; letter-spacing:.3px;">ЛОКАЛЬНО</span>`
             + btn('base', 'Базовый') + btn('pro', 'Профи')
             + `<button type="button" onclick="app.setLocalTariff('')" title="Вернуть тариф как в базе"
-                style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${cur ? 'rgba(255,255,255,.25)' : '#22C55E'}; background: ${cur ? 'transparent' : '#22C55E'}; color: ${cur ? '#fff' : '#062b14'};">Как в базе</button>`;
+                style="font: inherit; padding: 4px 9px; border-radius: 6px; cursor: pointer; border: 1px solid ${cur ? 'rgba(255,255,255,.25)' : '#22C55E'}; background: ${cur ? 'transparent' : '#22C55E'}; color: ${cur ? '#fff' : '#062b14'};">Как в базе</button>`
+            + `<span style="opacity:.35; margin: 0 2px;">|</span>`
+            + rbtn('installer', 'Монтажник', role === 'installer', "app.setLocalRole('installer')", 'Сфера: монтаж (повторное нажатие — как в базе)')
+            + rbtn('seller', 'Продавец', role === 'seller', "app.setLocalRole('seller')", 'Сфера: продажа без монтажа (повторное нажатие — как в базе)')
+            + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы; с «Продавец» даёт оформление «магазин»');
+    },
+
+    setLocalRole: function (val) {
+        if (!this.isLocalhost()) return;
+        try {
+            // Нажали на уже активную — снимаем, возвращаемся к записи в базе
+            if (val && this.localRole() === val) localStorage.removeItem('local_role');
+            else if (val === 'installer' || val === 'seller') localStorage.setItem('local_role', val);
+            else localStorage.removeItem('local_role');
+        } catch (e) { }
+        this.mountLocalTariffSwitch();
+        this.syncUI();
+        this.render();
+    },
+
+    toggleLocalManager: function () {
+        if (!this.isLocalhost()) return;
+        try {
+            if (this.localManager()) localStorage.removeItem('local_manager');
+            else localStorage.setItem('local_manager', '1');
+        } catch (e) { }
+        this.mountLocalTariffSwitch();
+        this.syncRailUI && this.syncRailUI();
+        this.syncUI();
+        this.render();
     },
 
     setLocalTariff: function (val) {
@@ -11635,6 +11689,9 @@ const app = {
     // дистрибьютора не выведены из-под правила. Решает одна анкета — так его
     // видно на живом сайте под своей учётной записью, а не только на словах.
     isSellerOnly: function () {
+        // Локальная панель (см. mountLocalTariffSwitch) подменяет сферу мимо базы
+        const forcedRole = this.localRole();
+        if (forcedRole) return forcedRole === 'seller';
         const row = this.accessUserRow();
         const list = row.activityTypes || row.activity_types || [];
         if (!Array.isArray(list) || !list.length) return false;
@@ -14173,6 +14230,9 @@ const app = {
     SUPER_ADMIN_EMAILS: ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'],
 
     getAdminRole: function () {
+        // Локальная панель: кнопка «Менеджер» подменяет роль мимо базы, даже у
+        // суперадмина — иначе оформление «магазин» у себя не посмотреть
+        if (this.localManager()) return 'manager';
         const user = this._currentUserRow || this.state.tgUser || {};
         const email = user.email ? user.email.toLowerCase() : '';
         if (email && this.SUPER_ADMIN_EMAILS.includes(email)) {
