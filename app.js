@@ -15835,12 +15835,49 @@ const app = {
             // Цифры в шапке панели. Менеджеру они считаются по его компании:
             // показатели всей платформы ему не принадлежат и только путают.
             let { data: sums, error: errS } = await this.scopeQueryToManager(
-                supabaseClient.from('estimates').select('eq_sum, works_sum, total_sum'), 'user_id');
+                supabaseClient.from('estimates').select('user_id, eq_sum, works_sum, total_sum'), 'user_id');
 
             if (errS) throw new Error("Ошибка загрузки связанных данных");
 
-            let totalEq = 0, totalWorks = 0;
-            sums.forEach(s => { totalEq += (s.eq_sum || 0); totalWorks += (s.works_sum || 0); });
+            // Сводка сверху обязана считаться по тем же фильтрам, что и таблица под ней.
+            // Раньше фильтру подчинялось только «Пользователей»: с выбранным регионом он
+            // показывал одного человека, а «Смет сохранено» и обе суммы — всю платформу.
+            // Три числа из четырёх были не про то, что человек видит на экране.
+            //
+            // Сметы уже загружены целиком, поэтому отбираем их на месте, по списку
+            // подходящих людей. Отбор по распознаванию и по сомнительным анкетам база
+            // повторить не может — там список уже посчитан на клиенте (_recogFilteredIds).
+            const af = this._pendingAdminFilters || {};
+            const anyFilter = (af.tariff && af.tariff !== 'all') || (af.expiry && af.expiry !== 'all') ||
+                !!(af.region || '').trim() || (af.activity && af.activity !== 'all') ||
+                (af.recog && af.recog !== 'all') || (af.suspect && af.suspect !== 'all') ||
+                !!(af.search || '').trim();
+            if (anyFilter) {
+                try {
+                    let allowed;
+                    if (this._recogFilteredIds) {
+                        allowed = new Set(this._recogFilteredIds.map(String));
+                    } else {
+                        const { data: idRows, error: errIds } =
+                            await this.buildAdminUserFilter(supabaseClient.from('users').select('id'));
+                        if (errIds) throw errIds;
+                        allowed = new Set((idRows || []).map(r => String(r.id)));
+                    }
+                    sums = (sums || []).filter(s => allowed.has(String(s.user_id)));
+                } catch (e) {
+                    console.warn('[админка] сводку не удалось сузить под фильтры:', e);
+                }
+            }
+
+            // estWithWorks — в скольких сметах монтаж вообще посчитан. Продавцы работы не
+            // считают, поэтому сумма работ делится не на все сметы, а только на эти: без
+            // такой подписи средний чек по монтажу занижался бы вдвое.
+            let totalEq = 0, totalWorks = 0, estWithWorks = 0;
+            sums.forEach(s => {
+                totalEq += (s.eq_sum || 0);
+                totalWorks += (s.works_sum || 0);
+                if ((s.works_sum || 0) > 0) estWithWorks++;
+            });
 
             // 6. Fetch Lightweight list of all users for the message composer dropdown selection
             let allUsersDropdown = [];
@@ -15851,8 +15888,10 @@ const app = {
                 // на расход трафика базы это практически не влияет.
                 // account_type — чтобы отличить письмо наблюдателя от письма
                 // администрации и развести их по разным перепискам (renderAdminMessages).
+                // activity_types — чтобы разложить сметы по сферам в карточке сводки,
+                // не отправляя ради этого отдельный запрос за теми же людьми.
                 let { data } = await supabaseClient.from('users')
-                    .select('id, username, email, phone, region, city, avatar_url, account_type')
+                    .select('id, username, email, phone, region, city, avatar_url, account_type, activity_types')
                     .order('username', { ascending: true });
                 allUsersDropdown = data || [];
                 this.autoCleanupDatabaseUsers(allUsersDropdown);
@@ -15865,6 +15904,26 @@ const app = {
                     allUsersDropdown = allUsersDropdown.filter(u => mine.has(String(u.id)));
                 }
             } catch (e) { console.warn("Could not load users for dropdown:", e); }
+
+            // Разбивка сохранённых смет по сфере деятельности автора — вторая строка
+            // карточки «Смет сохранено». Считается по уже загруженному списку всех
+            // пользователей (allUsersDropdown), лишнего запроса не делаем. Как и с
+            // людьми, суммы не обязаны сходиться с общим числом: у кого-то отмечены
+            // обе сферы, а у чьих-то смет автор из базы удалён или сферу не указал.
+            let estSellers = 0, estInstallers = 0;
+            try {
+                const sellerIds = new Set(), installerIds = new Set();
+                (allUsersDropdown || []).forEach(u => {
+                    const list = (u.activity_types || []).map(a => String(a).toLowerCase());
+                    if (list.some(a => a.indexOf('продав') !== -1)) sellerIds.add(String(u.id));
+                    if (list.some(a => a.indexOf('монтаж') !== -1)) installerIds.add(String(u.id));
+                });
+                (sums || []).forEach(s => {
+                    const uid = String(s.user_id);
+                    if (sellerIds.has(uid)) estSellers++;
+                    if (installerIds.has(uid)) estInstallers++;
+                });
+            } catch (e) { console.warn('[админка] сметы по сферам не посчитаны:', e); }
 
             // 7. Fetch all messages (broadcasts, private and replies) for history listing
             let allMessages = [];
@@ -15916,6 +15975,9 @@ const app = {
                 sellersCount,
                 installersCount,
                 totalEstimates: sums.length,
+                estSellers,
+                estInstallers,
+                estWithWorks,
                 totalEq,
                 totalWorks,
                 sharedStatusesAdmin,
@@ -16295,7 +16357,7 @@ const app = {
         const mobile = this.isAdminMobile();
         if (!this._adminTab && !mobile) this._adminTab = 'stats';
 
-        const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks, sellersCount, installersCount } = this.adminData;
+        const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks, sellersCount, installersCount, estSellers, estInstallers, estWithWorks } = this.adminData;
 
         const ADMIN_TAB_DEFS = this.adminTabDefs();
         // Раздел, закрытый для этой роли, мог остаться в памяти с прошлого входа
@@ -16518,15 +16580,15 @@ const app = {
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
-                        <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span></div>
+                        <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${totalEq.toLocaleString()} ₽</span></div>
-                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span></div>
+                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates}</span></div>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                         <h4 style="margin: 0; white-space: nowrap;">👥 Пользователи</h4>
-                        <div class="admin-filter-row" style="display: flex; gap: 8px; width: auto; flex-grow: 1; justify-content: flex-end; flex-wrap: wrap;">
-                            <input type="text" id="admin_search_input" placeholder="🔍 Поиск по имени..." style="width: 180px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 12px; outline: none; height: 34px; box-sizing: border-box;" onkeyup="app.debouncedAdminSearch()">
+                        <div class="admin-filter-row admin-users-filters" style="display: flex; gap: 8px; width: auto; flex-grow: 1; justify-content: flex-end; flex-wrap: wrap;">
+                            <input type="text" id="admin_search_input" placeholder="🔍 Поиск по имени..." style="width: 180px; min-width: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 12px; outline: none; height: 34px; box-sizing: border-box;" onkeyup="app.debouncedAdminSearch()">
                             <select id="admin_filter_tariff" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${tariffFilter === 'all' ? 'selected' : ''}>Все тарифы</option>
                                 <option value="base" ${tariffFilter === 'base' ? 'selected' : ''}>Базовый</option>
@@ -35131,6 +35193,13 @@ const app = {
     // номер КП (calc_id/share_id) гарантированно стал доступен через "Загрузить код"
     // даже если в момент действия не было связи с Supabase (например, не работал VPN).
     queueCloudSave: function (stateData, eqSum, worksSum) {
+        // Продавец монтаж не делает: печать, ссылка клиенту и счёт работы у него уже
+        // прятали, а сохранение в облако — нет, и в базу годами уходила сумма работ,
+        // которой в его смете не существует. Гасим здесь, в единственной общей точке
+        // всех трёх сохранений, а не в каждом из них по отдельности. Решение
+        // принимается сейчас, а не при отправке: задача может пролежать в очереди
+        // до восстановления связи.
+        if (this.isSellerOnly()) worksSum = 0;
         this.queue.addJob({
             id: "savejob_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
             type: 'save_only',

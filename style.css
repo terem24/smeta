@@ -14261,3 +14261,33 @@ body.dark-mode #hyd_card .hyd-card__p {
         display: none;
     }
 }
+
+
+/* ── Фильтры списка пользователей: одной строкой ──────────────────────────
+   Семь фильтров, сортировка и кнопка «Excel» не помещались в строку и
+   уезжали во второй ряд, оставляя пустое место слева от первого. Разрешаем
+   полям ужиматься (по умолчанию flex не даёт им уйти ниже своей ширины по
+   содержимому — у select это самый длинный пункт списка, «Срок Профи: по
+   возрастанию»), а полю поиска — забирать весь остаток строки.
+   Порог 1400px, а не 900: девять полей в одну строку на экране поуже
+   ужимаются до нечитаемых огрызков, и перенос там честнее. Ниже 900px
+   действует сетка в две колонки, туда это не вмешивается. */
+@media screen and (min-width: 1400px) {
+    #admin_content .admin-users-filters {
+        flex-wrap: nowrap;
+    }
+    #admin_content .admin-users-filters > select {
+        min-width: 0;
+        flex: 0 1 auto;
+        text-overflow: ellipsis;
+    }
+    #admin_content .admin-users-filters > #admin_search_input {
+        flex: 1 1 120px;
+        min-width: 90px;
+        width: auto;
+    }
+    #admin_content .admin-users-filters > button {
+        flex: 0 0 auto;
+        white-space: nowrap;
+    }
+}
