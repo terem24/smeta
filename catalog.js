@@ -1303,16 +1303,16 @@ const catalog = {
         { id: "SVB-0004-200025", name: "Кран шаровой 1\" ВР/НР (Бабочка)", price: 1927, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0004-0210225", name: "Кран шаровой ВР/НР бабочка 1\"", price: 841, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
 
         // НР/НР
-        { id: "SVB-0006-200015", name: "Кран шаровой 1/2\" НР/НР (Бабочка)", price: 902, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0007-0410215", name: "Кран шаровой НР/НР бабочка 1/2\"", price: 280, brand: "ROMMER", availability: "on_order", price_date: "2026-08-19" } },
-        { id: "SVB-0006-200025", name: "Кран шаровой 1\" НР/НР (Бабочка)", price: 1628, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0007-0410225", name: "Кран шаровой НР/НР бабочка 1\"", price: 886, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0006-200015", name: "Кран шаровой 1/2\" НР/НР (Бабочка)", price: 975, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0007-0410215", name: "Кран шаровой НР/НР бабочка 1/2\"", price: 280, brand: "ROMMER", availability: "on_order", price_date: "2026-08-19" } },
+        { id: "SVB-0006-200025", name: "Кран шаровой 1\" НР/НР (Бабочка)", price: 1759, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0007-0410225", name: "Кран шаровой НР/НР бабочка 1\"", price: 886, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
 
         // С американкой — прямой и угловой
-        { id: "SVB-0007-200015", name: "Кран шаровой с американкой 1/2\" ВР/НР (Бабочка)", price: 1028, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SVB-0007-200020", name: "Кран шаровой с американкой 3/4\" ВР/НР (Бабочка)", price: 1556, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 576, brand: "ROMMER", availability: "on_order", price_date: "2026-08-19" } },
-        { id: "SVB-0007-200025", name: "Кран шаровой с американкой 1\" ВР/НР (Бабочка)", price: 2423, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0005-0510225", name: "Кран шаровой с американкой ВР/НР 1\"", price: 1234, brand: "ROMMER", availability: "on_order", price_date: "2026-08-19" } },
-        { id: "SVB-0008-200015", name: "Кран шаровой с американкой угловой 1/2\" ВР/НР", price: 1316, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0006-0610215", name: "Кран шаровой угловой с американкой ВР/НР 1/2\"", price: 381, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SVB-0008-200020", name: "Кран шаровой с американкой угловой 3/4\" ВР/НР", price: 2021, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0006-0610220", name: "Кран шаровой угловой с американкой ВР/НР 3/4\"", price: 638, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SVB-0008-200025", name: "Кран шаровой с американкой угловой 1\" ВР/НР", price: 3159, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0006-0610225", name: "Кран шаровой угловой с американкой ВР/НР 1\"", price: 1450, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } }
+        { id: "SVB-0007-200015", name: "Кран шаровой с американкой 1/2\" ВР/НР (Бабочка)", price: 1110, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0007-200020", name: "Кран шаровой с американкой 3/4\" ВР/НР (Бабочка)", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 576, brand: "ROMMER", availability: "on_order", price_date: "2026-08-19" } },
+        { id: "SVB-0007-200025", name: "Кран шаровой с американкой 1\" ВР/НР (Бабочка)", price: 2617, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0005-0510225", name: "Кран шаровой с американкой ВР/НР 1\"", price: 1234, brand: "ROMMER", availability: "on_order", price_date: "2026-08-19" } },
+        { id: "SVB-0008-200015", name: "Кран шаровой с американкой угловой 1/2\" ВР/НР", price: 1421, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0006-0610215", name: "Кран шаровой угловой с американкой ВР/НР 1/2\"", price: 381, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0008-200020", name: "Кран шаровой с американкой угловой 3/4\" ВР/НР", price: 2183, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0006-0610220", name: "Кран шаровой угловой с американкой ВР/НР 3/4\"", price: 638, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0008-200025", name: "Кран шаровой с американкой угловой 1\" ВР/НР", price: 3411, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0006-0610225", name: "Кран шаровой угловой с американкой ВР/НР 1\"", price: 1450, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } }
     ],
     // Базовая линейка автоподбора — Haier, 18 и 24 кВт. Выше 24 кВт линейка
     // кончается, и подбор идёт по остальным газовым котлам каталога (BAXI,
@@ -1495,26 +1495,26 @@ const catalog = {
     // распознавание перебирает весь каталог, и по нему разбираются старые сметы и
     // накладные, где PLUS ещё встречается. Обратно в подбор не возвращать.
     boilers_plus: [
-        { id: "SEB-2201-000005", name: "Котёл электрический PLUS (5 кВт)", power: 5, price: 59236, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-2201-000007", name: "Котёл электрический PLUS (7 кВт)", power: 7, price: 60121, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-2201-000009", name: "Котёл электрический PLUS (9 кВт)", power: 9, price: 61715, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-2201-000012", name: "Котёл электрический PLUS (12 кВт)", power: 12, price: 62657, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SEB-2201-000014", name: "Котёл электрический PLUS (14 кВт)", power: 14, price: 65191, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-2201-000018", name: "Котёл электрический PLUS (18 кВт)", power: 18, price: 69393, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SEB-2201-000021", name: "Котёл электрический PLUS (21 кВт)", power: 21, price: 71130, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-2201-000024", name: "Котёл электрический PLUS (24 кВт)", power: 24, price: 72724, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-2201-000027", name: "Котёл электрический PLUS (27 кВт)", power: 27, price: 74462, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-08-10" }
+        { id: "SEB-2201-000005", name: "Котёл электрический PLUS (5 кВт)", power: 5, price: 59236, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-2201-000007", name: "Котёл электрический PLUS (7 кВт)", power: 7, price: 60121, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SEB-2201-000009", name: "Котёл электрический PLUS (9 кВт)", power: 9, price: 61715, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-2201-000012", name: "Котёл электрический PLUS (12 кВт)", power: 12, price: 62657, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SEB-2201-000014", name: "Котёл электрический PLUS (14 кВт)", power: 14, price: 65191, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SEB-2201-000018", name: "Котёл электрический PLUS (18 кВт)", power: 18, price: 69393, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SEB-2201-000021", name: "Котёл электрический PLUS (21 кВт)", power: 21, price: 71130, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-2201-000024", name: "Котёл электрический PLUS (24 кВт)", power: 24, price: 72724, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-2201-000027", name: "Котёл электрический PLUS (27 кВт)", power: 27, price: 74462, type: "el", exp: 12, vol: 10, desc: "PLUS: Бак 12л, надежная автоматика.", availability: "in_stock", price_date: "2026-09-10" }
     ],
     boilers_status: [
-        { id: "SEB-3101-000005", name: "Котёл электрический STATUS (5 кВт)", power: 5, price: 66207, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000007", name: "Котёл электрический STATUS (7 кВт)", power: 7, price: 67505, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000009", name: "Котёл электрический STATUS (9 кВт)", power: 9, price: 69453, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000012", name: "Котёл электрический STATUS (12 кВт)", power: 12, price: 70102, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000014", name: "Котёл электрический STATUS (14 кВт)", power: 14, price: 72698, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000018", name: "Котёл электрический STATUS (18 кВт)", power: 18, price: 77242, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000021", name: "Котёл электрический STATUS (21 кВт)", power: 21, price: 77891, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000024", name: "Котёл электрический STATUS (24 кВт)", power: 24, price: 78540, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-3101-000027", name: "Котёл электрический STATUS (27 кВт)", power: 27, price: 82435, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SEB-3101-000005", name: "Котёл электрический STATUS (5 кВт)", power: 5, price: 66207, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000007", name: "Котёл электрический STATUS (7 кВт)", power: 7, price: 67505, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000009", name: "Котёл электрический STATUS (9 кВт)", power: 9, price: 69453, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000012", name: "Котёл электрический STATUS (12 кВт)", power: 12, price: 70102, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000014", name: "Котёл электрический STATUS (14 кВт)", power: 14, price: 72698, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000018", name: "Котёл электрический STATUS (18 кВт)", power: 18, price: 77242, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000021", name: "Котёл электрический STATUS (21 кВт)", power: 21, price: 77891, type: "el", exp: 10, vol: 6, desc: "STATUS: Premium. Бак 10л, сенсорный дисплей.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000024", name: "Котёл электрический STATUS (24 кВт)", power: 24, price: 78540, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-3101-000027", name: "Котёл электрический STATUS (27 кВт)", power: 27, price: 82435, type: "el", exp: 0, vol: 11, desc: "STATUS: Premium. Внимание: НЕТ встроенного бака!", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // POLIS — бюджетная линейка электрокотлов (новинка 2026). В отличие от PLUS и STATUS
     // это «голый» котёл: НЕТ ни встроенного циркуляционного насоса, ни расширительного бака
@@ -1528,21 +1528,21 @@ const catalog = {
     // только релейно, по перемычке комнатного термостата, и плата цифровых шин
     // ему не нужна (в отличие от PLUS и STATUS, которые работают по OpenTherm).
     boilers_polis: [
-        { id: "SEB-5101-000006", name: "Котёл электрический POLIS (6 кВт)", power: 6, price: 26877, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-5101-000009", name: "Котёл электрический POLIS (9 кВт)", power: 9, price: 27522, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-5101-000012", name: "Котёл электрический POLIS (12 кВт)", power: 12, price: 39027, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SEB-5101-000015", name: "Котёл электрический POLIS (15 кВт)", power: 15, price: 39580, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SEB-5101-000006", name: "Котёл электрический POLIS (6 кВт)", power: 6, price: 26877, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-5101-000009", name: "Котёл электрический POLIS (9 кВт)", power: 9, price: 27522, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "220/380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-5101-000012", name: "Котёл электрический POLIS (12 кВт)", power: 12, price: 39027, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SEB-5101-000015", name: "Котёл электрический POLIS (15 кВт)", power: 15, price: 39580, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-09-10" }
     ],
     chimneys: [
         { id: "SCA-6010-210850", name: "Дымоход коаксиальный 60/100", price: 6298, brand: "STOUT", chimType: "trad", rommer: { id: "RCA-6010-251220", name: "Дымоход коаксиальный 60/100", price: 3260, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RCA-6100-251000", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм (раб. дл. 700мм)", price: 2493, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RCA-6100-251220", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1250мм (раб. дл. 950мм)", price: 2934, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RCA-6010-750900", name: "Дымоход коаксиальный 60/100, СТАНДАРТ УНИВЕРСАЛЬНЫЙ, L900мм, однонаправл.", price: 2779, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RCA-6010-751000", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм, однонаправл.", price: 2771, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RCA-6010-751220", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1220мм, однонаправл.", price: 3261, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RCA-8610-210090", name: "Дымоход коаксиальный 60/100, Комплект универсальный для конденсационных котлов Viessmann, Vaillant, Wolf, Ariston, Baxi, Fondital, Ferroli, Navien", price: 4533, brand: "ROMMER", chimType: "cond", availability: "in_stock", price_date: "2026-08-10" },
+  price_date: '2026-08-19' }, availability: "on_order", price_date: "2026-09-10" },
+        { id: "RCA-6100-251000", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм (раб. дл. 700мм)", price: 2493, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-6100-251220", name: "Дымоход коаксиальный 60/100, INOX Line, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1250мм (раб. дл. 950мм)", price: 2934, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-6010-750900", name: "Дымоход коаксиальный 60/100, СТАНДАРТ УНИВЕРСАЛЬНЫЙ, L900мм, однонаправл.", price: 2862, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-6010-751000", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1000мм, однонаправл.", price: 2854, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-6010-751220", name: "Дымоход коаксиальный 60/100, АНТИЛЕД УНИВЕРСАЛЬНЫЙ, L1220мм, однонаправл.", price: 3359, brand: "ROMMER", chimType: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8610-210090", name: "Дымоход коаксиальный 60/100, Комплект универсальный для конденсационных котлов Viessmann, Vaillant, Wolf, Ariston, Baxi, Fondital, Ferroli, Navien", price: 4669, brand: "ROMMER", chimType: "cond", availability: "in_stock", price_date: "2026-09-10" },
         // Родные дымоходы Vaillant PP — только для конденсационных Vaillant (forBrand):
         // их render() ставит по умолчанию вместо универсального ROMMER, традиционные
         // turboTEC остаются на STOUT/ROMMER. Цена = прайс ТЕРЕМ × 0,8, как на сайте.
@@ -1676,9 +1676,9 @@ const catalog = {
     ],
 
     stabs: [
-        { id: "SST-0001-000250", name: "Стабилизатор ST 250", price: 4972, type: "gas", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SST-0001-000600", name: "Стабилизатор ST 600", price: 6896, type: "el", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SST-0001-000900", name: "Стабилизатор ST 900", price: 7432, type: "el", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SST-0001-000250", name: "Стабилизатор ST 250", price: 4972, type: "gas", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SST-0001-000600", name: "Стабилизатор ST 600", price: 6896, type: "el", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SST-0001-000900", name: "Стабилизатор ST 900", price: 7432, type: "el", availability: "in_stock", price_date: "2026-09-10" }
     ],
     valves: [
         // STOUT SFB-0001-000001 (комплект Fugas) снят с производства — заменён на комплект BAXI.
@@ -1699,16 +1699,16 @@ const catalog = {
         { id: "SWH-1110-000500", name: "Бойлер напольный 500л", ports: { cold: '1"', dhw: '1"', coil: '1"', recirc: '1"' }, vol: 500, price: 237980, rommer: { id: "RWH-2110-000500", name: "Бойлер напольный GT 500 л", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 112078, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-09-10" }
     ],
     tanks_stainless: [
-        { id: "SWH-4110-050100", name: "Бойлер напольный 100л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 100, price: 82831, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SWH-4110-050150", name: "Бойлер напольный 150л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 150, price: 92815, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RWH-2110-000150", name: "Бойлер косвенного нагрева напольный GT 150 л, 35 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 45265, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SWH-4110-050200", name: "Бойлер напольный 200л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 200, price: 104861, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RWH-2110-000200", name: "Бойлер косвенного нагрева напольный GT 200 л, 38 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 50596, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SWH-4110-050300", name: "Бойлер напольный 300л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 300, price: 134984, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RWH-2110-000300", name: "Бойлер косвенного нагрева напольный GT 300 л, 49 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 78112, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SWH-4110-050500", name: "Бойлер напольный 500л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 500, price: 213015, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RWH-2110-000500", name: "Бойлер косвенного нагрева напольный GT 500 л, 60 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 112078, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } }
+        { id: "SWH-4110-050100", name: "Бойлер напольный 100л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 100, price: 82831, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SWH-4110-050150", name: "Бойлер напольный 150л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 150, price: 92815, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RWH-2110-000150", name: "Бойлер косвенного нагрева напольный GT 150 л, 35 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 45265, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SWH-4110-050200", name: "Бойлер напольный 200л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 200, price: 104861, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RWH-2110-000200", name: "Бойлер косвенного нагрева напольный GT 200 л, 38 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 50596, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SWH-4110-050300", name: "Бойлер напольный 300л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 300, price: 134984, brand: "STOUT", availability: "on_order", price_date: "2026-09-10", rommer: { id: "RWH-2110-000300", name: "Бойлер косвенного нагрева напольный GT 300 л, 49 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 78112, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SWH-4110-050500", name: "Бойлер напольный 500л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 500, price: 213015, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RWH-2110-000500", name: "Бойлер косвенного нагрева напольный GT 500 л, 60 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 112078, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } }
     ],
     exp_dhw: [
-        { id: "STW-0015-000012", name: "Расширительный бак для ГВС 12л", vol: 12, color: "white", conn: "3/4", price: 2882, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STW-0015-000018", name: "Расширительный бак для ГВС 18л", vol: 18, color: "white", conn: "3/4", price: 3316, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STW-0015-000024", name: "Расширительный бак для ГВС 24л", vol: 24, color: "white", conn: "3/4", price: 3614, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STW-0015-000012", name: "Расширительный бак для ГВС 12л", vol: 12, color: "white", conn: "3/4", price: 2882, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0015-000018", name: "Расширительный бак для ГВС 18л", vol: 18, color: "white", conn: "3/4", price: 3316, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0015-000024", name: "Расширительный бак для ГВС 24л", vol: 24, color: "white", conn: "3/4", price: 3614, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Пул таблицы замены бака ГВС (app.expTankPool('dhw') = exp_dhw + этот массив).
     // Здесь только те артикулы, которых нет в exp_dhw, чтобы автоподбор бака (он идёт
@@ -1716,51 +1716,51 @@ const catalog = {
     // Белый ряд — баки для ГВС (STW-0015), синий — гидроаккумуляторы водоснабжения
     // (STW-0001). Резьба: 8 и 12 л — 3/4", синие 20 и 24 л — 1".
     exp_dhw_alts: [
-        { id: "STW-0015-000008", name: "Расширительный бак для ГВС 8л", vol: 8, color: "white", conn: "3/4", price: 2654, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STW-0001-000008", name: "Расширительный бак гидроаккумулятор 8 л (синий)", vol: 8, color: "blue", conn: "3/4", price: 2527, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STW-0001-000012", name: "Расширительный бак гидроаккумулятор 12 л (синий)", vol: 12, color: "blue", conn: "3/4", price: 2744, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STW-0001-000020", name: "Расширительный бак гидроаккумулятор 20 л (синий)", vol: 20, color: "blue", conn: "1", price: 3158, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STW-0001-100020", name: "Расширительный бак гидроаккумулятор 20 л горизонтальный (синий)", vol: 20, color: "blue", conn: "1", price: 3576, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STW-0001-000024", name: "Расширительный бак гидроаккумулятор 24 л (синий)", vol: 24, color: "blue", conn: "1", price: 3442, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STW-0015-000008", name: "Расширительный бак для ГВС 8л", vol: 8, color: "white", conn: "3/4", price: 2654, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0001-000008", name: "Расширительный бак гидроаккумулятор 8 л (синий)", vol: 8, color: "blue", conn: "3/4", price: 2527, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0001-000012", name: "Расширительный бак гидроаккумулятор 12 л (синий)", vol: 12, color: "blue", conn: "3/4", price: 2744, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0001-000020", name: "Расширительный бак гидроаккумулятор 20 л (синий)", vol: 20, color: "blue", conn: "1", price: 3158, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0001-100020", name: "Расширительный бак гидроаккумулятор 20 л горизонтальный (синий)", vol: 20, color: "blue", conn: "1", price: 3576, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0001-000024", name: "Расширительный бак гидроаккумулятор 24 л (синий)", vol: 24, color: "blue", conn: "1", price: 3442, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     exp_heating: [
-        { id: "STH-0004-000018", name: "Расширительный бак для отопления 18л", vol: 18, color: "red", conn: "3/4", price: 2897, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0006-000024", name: "Расширительный бак для отопления 24л", vol: 24, color: "red", conn: "1", price: 3050, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0006-000050", name: "Расширительный бак для отопления 50л", vol: 50, color: "red", conn: "1", price: 6764, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0006-000080", name: "Расширительный бак для отопления 80л", vol: 80, color: "red", conn: "1", price: 10836, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0006-000100", name: "Расширительный бак для отопления 100л", vol: 100, color: "red", conn: "1", price: 12642, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STH-0004-000018", name: "Расширительный бак для отопления 18л", vol: 18, color: "red", conn: "3/4", price: 2897, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0006-000024", name: "Расширительный бак для отопления 24л", vol: 24, color: "red", conn: "1", price: 3050, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0006-000050", name: "Расширительный бак для отопления 50л", vol: 50, color: "red", conn: "1", price: 6764, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0006-000080", name: "Расширительный бак для отопления 80л", vol: 80, color: "red", conn: "1", price: 10836, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0006-000100", name: "Расширительный бак для отопления 100л", vol: 100, color: "red", conn: "1", price: 12642, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Пул таблицы замены бака отопления (app.expTankPool('heat') = exp_heating + этот
     // массив). Красный ряд STOUT целиком: до 18 л — с диафрагмой (STH-0004), 35 л —
     // STH-0005, от 24 л — со сменной мембраной (STH-0006). Резьба: до 18 л — 3/4",
     // дальше 1". Баки от 500 л не берём: там уже 1 1/2" и другая обвязка.
     exp_heating_alts: [
-        { id: "STH-0004-000005", name: "Расширительный бак для отопления 5л", vol: 5, color: "red", conn: "3/4", price: 2400, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0004-000008", name: "Расширительный бак для отопления 8л", vol: 8, color: "red", conn: "3/4", price: 2424, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0004-000012", name: "Расширительный бак для отопления 12л", vol: 12, color: "red", conn: "3/4", price: 2505, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0005-000035", name: "Расширительный бак для отопления 35л", vol: 35, color: "red", conn: "1", price: 6253, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0006-000150", name: "Расширительный бак для отопления 150л", vol: 150, color: "red", conn: "1", price: 20626, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0006-000200", name: "Расширительный бак для отопления 200л", vol: 200, color: "red", conn: "1", price: 27280, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STH-0006-000300", name: "Расширительный бак для отопления 300л", vol: 300, color: "red", conn: "1", price: 35486, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STH-0004-000005", name: "Расширительный бак для отопления 5л", vol: 5, color: "red", conn: "3/4", price: 2400, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0004-000008", name: "Расширительный бак для отопления 8л", vol: 8, color: "red", conn: "3/4", price: 2424, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0004-000012", name: "Расширительный бак для отопления 12л", vol: 12, color: "red", conn: "3/4", price: 2505, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0005-000035", name: "Расширительный бак для отопления 35л", vol: 35, color: "red", conn: "1", price: 6253, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0006-000150", name: "Расширительный бак для отопления 150л", vol: 150, color: "red", conn: "1", price: 20626, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0006-000200", name: "Расширительный бак для отопления 200л", vol: 200, color: "red", conn: "1", price: 27280, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STH-0006-000300", name: "Расширительный бак для отопления 300л", vol: 300, color: "red", conn: "1", price: 35486, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
-    tank_mount: { id: "SAC-0030-000825", name: "Крепление для бака", price: 1266, availability: "in_stock", price_date: "2026-08-10" },
-    tank_kit: { id: "SVS-0008-012020", name: "Комплект подключения мембранного бака", price: 1990, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RVS-0008-002020", name: "Комплект подключения мембранного бака", price: 1436, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+    tank_mount: { id: "SAC-0030-000825", name: "Крепление для бака", price: 1266, availability: "in_stock", price_date: "2026-09-10" },
+    tank_kit: { id: "SVS-0008-012020", name: "Комплект подключения мембранного бака", price: 1990, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RVS-0008-002020", name: "Комплект подключения мембранного бака", price: 1436, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
     rads: [
         { id: "SRB-0320-050004", name: "Радиатор Space 4 секций", sec: 4, price: 6457, power50: 117, rommer: { id: "RAL-0210-050004", name: "Радиатор Optima 4 секций", price: 2908, brand: "ROMMER", power50: 117, availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SRB-0320-050005", name: "Радиатор Space 5 секций", sec: 5, price: 7528, power50: 117, availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SRB-0320-050005", name: "Радиатор Space 5 секций", sec: 5, price: 7528, power50: 117, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SRB-0320-050006", name: "Радиатор Space 6 секций", sec: 6, price: 8599, power50: 117, rommer: { id: "RAL-0210-050006", name: "Радиатор Optima 6 секций", price: 4362, brand: "ROMMER", power50: 117, availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SRB-0320-050007", name: "Радиатор Space 7 секций", sec: 7, price: 9670, power50: 117, availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SRB-0320-050007", name: "Радиатор Space 7 секций", sec: 7, price: 9670, power50: 117, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SRB-0320-050008", name: "Радиатор Space 8 секций", sec: 8, price: 10741, power50: 117, rommer: { id: "RAL-0210-050008", name: "Радиатор Optima 8 секций", price: 5816, brand: "ROMMER", power50: 117, availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SRB-0320-050009", name: "Радиатор Space 9 секций", sec: 9, price: 11812, power50: 117, availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SRB-0320-050009", name: "Радиатор Space 9 секций", sec: 9, price: 11812, power50: 117, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SRB-0320-050010", name: "Радиатор Space 10 секций", sec: 10, price: 12883, power50: 117, rommer: { id: "RAL-0210-050010", name: "Радиатор Optima 10 секций", price: 7271, brand: "ROMMER", power50: 117, availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SRB-0320-050011", name: "Радиатор Space 11 секций", sec: 11, price: 13954, power50: 117, availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SRB-0320-050011", name: "Радиатор Space 11 секций", sec: 11, price: 13954, power50: 117, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SRB-0320-050012", name: "Радиатор Space 12 секций", sec: 12, price: 15025, power50: 117, rommer: { id: "RAL-0210-050012", name: "Радиатор Optima 12 секций", price: 8725, brand: "ROMMER", power50: 117, availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SRB-0320-050013", name: "Радиатор Space 13 секций", sec: 13, price: 16096, power50: 117, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SRB-0320-050014", name: "Радиатор Space 14 секций", sec: 14, price: 17167, power50: 117, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SRB-0320-050013", name: "Радиатор Space 13 секций", sec: 13, price: 16096, power50: 117, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SRB-0320-050014", name: "Радиатор Space 14 секций", sec: 14, price: 17167, power50: 117, availability: "in_stock", price_date: "2026-09-10" }
     ],
     rad_kits: [
-        { id: "SFT-0049-000002", name: "Ниппель", price: 157, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFT-0049-000001", name: "Переходник под плоское уплотнение", price: 114, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SFT-0049-000002", name: "Ниппель", price: 169, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0049-000001", name: "Переходник под плоское уплотнение", price: 122, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Внутрипольные конвекторы STOUT — только СКЛАДСКАЯ ПРОГРАММА (лист "STOUT Конвекторы
     // внутрипольные", прайс 07.2026): SCQ — высота 75мм/ширина 240мм; SCN — высота 80мм
@@ -1770,53 +1770,53 @@ const catalog = {
     // фактически то же ΔT=70°C, что и у радиаторов); power50 = power70×(50/70)^1.3,
     // как у всех остальных приборов отопления в каталоге (см. getPowerAtDt50 в app.js).
     convectors_scq: [
-        { id: "SCQ-1100-0724080", name: "Конвектор SCQ (с вентилятором) 800мм", len: 0.8, height: 75, width: 240, power70: 1038, power50: 670, price: 48256, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724100", name: "Конвектор SCQ (с вентилятором) 1000мм", len: 1, height: 75, width: 240, power70: 1491, power50: 963, price: 54363, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724125", name: "Конвектор SCQ (с вентилятором) 1250мм", len: 1.25, height: 75, width: 240, power70: 2068, power50: 1335, price: 62012, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724150", name: "Конвектор SCQ (с вентилятором) 1500мм", len: 1.5, height: 75, width: 240, power70: 2650, power50: 1711, price: 69651, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724175", name: "Конвектор SCQ (с вентилятором) 1750мм", len: 1.75, height: 75, width: 240, power70: 3234, power50: 2088, price: 77290, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724200", name: "Конвектор SCQ (с вентилятором) 2000мм", len: 2, height: 75, width: 240, power70: 3813, power50: 2462, price: 84929, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724225", name: "Конвектор SCQ (с вентилятором) 2250мм", len: 2.25, height: 75, width: 240, power70: 4385, power50: 2831, price: 92569, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724250", name: "Конвектор SCQ (с вентилятором) 2500мм", len: 2.5, height: 75, width: 240, power70: 4942, power50: 3191, price: 100208, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724275", name: "Конвектор SCQ (с вентилятором) 2750мм", len: 2.75, height: 75, width: 240, power70: 5482, power50: 3540, price: 107847, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCQ-1100-0724300", name: "Конвектор SCQ (с вентилятором) 3000мм", len: 3, height: 75, width: 240, power70: 5999, power50: 3874, price: 139295, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" }
+        { id: "SCQ-1100-0724080", name: "Конвектор SCQ (с вентилятором) 800мм", len: 0.8, height: 75, width: 240, power70: 1038, power50: 670, price: 48256, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724100", name: "Конвектор SCQ (с вентилятором) 1000мм", len: 1, height: 75, width: 240, power70: 1491, power50: 963, price: 54363, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724125", name: "Конвектор SCQ (с вентилятором) 1250мм", len: 1.25, height: 75, width: 240, power70: 2068, power50: 1335, price: 62012, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724150", name: "Конвектор SCQ (с вентилятором) 1500мм", len: 1.5, height: 75, width: 240, power70: 2650, power50: 1711, price: 69651, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724175", name: "Конвектор SCQ (с вентилятором) 1750мм", len: 1.75, height: 75, width: 240, power70: 3234, power50: 2088, price: 77290, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724200", name: "Конвектор SCQ (с вентилятором) 2000мм", len: 2, height: 75, width: 240, power70: 3813, power50: 2462, price: 84929, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724225", name: "Конвектор SCQ (с вентилятором) 2250мм", len: 2.25, height: 75, width: 240, power70: 4385, power50: 2831, price: 92569, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724250", name: "Конвектор SCQ (с вентилятором) 2500мм", len: 2.5, height: 75, width: 240, power70: 4942, power50: 3191, price: 100208, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724275", name: "Конвектор SCQ (с вентилятором) 2750мм", len: 2.75, height: 75, width: 240, power70: 5482, power50: 3540, price: 107847, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCQ-1100-0724300", name: "Конвектор SCQ (с вентилятором) 3000мм", len: 3, height: 75, width: 240, power70: 5999, power50: 3874, price: 139295, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     convectors_scn: [
         // Высота 80мм, ширина 190мм (SCN-1100-0819***)
-        { id: "SCN-1100-0819080", name: "Конвектор SCN (без вентилятора) 80×190, 800мм", len: 0.8, height: 80, width: 190, power70: 220, power50: 142, price: 19596, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819100", name: "Конвектор SCN (без вентилятора) 80×190, 1000мм", len: 1, height: 80, width: 190, power70: 313, power50: 202, price: 23060, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819120", name: "Конвектор SCN (без вентилятора) 80×190, 1200мм", len: 1.2, height: 80, width: 190, power70: 406, power50: 262, price: 26516, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819140", name: "Конвектор SCN (без вентилятора) 80×190, 1400мм", len: 1.4, height: 80, width: 190, power70: 499, power50: 322, price: 29982, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819160", name: "Конвектор SCN (без вентилятора) 80×190, 1600мм", len: 1.6, height: 80, width: 190, power70: 591, power50: 382, price: 33447, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819180", name: "Конвектор SCN (без вентилятора) 80×190, 1800мм", len: 1.8, height: 80, width: 190, power70: 684, power50: 442, price: 36903, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819200", name: "Конвектор SCN (без вентилятора) 80×190, 2000мм", len: 2, height: 80, width: 190, power70: 777, power50: 502, price: 40368, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819220", name: "Конвектор SCN (без вентилятора) 80×190, 2200мм", len: 2.2, height: 80, width: 190, power70: 870, power50: 562, price: 43833, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819240", name: "Конвектор SCN (без вентилятора) 80×190, 2400мм", len: 2.4, height: 80, width: 190, power70: 963, power50: 622, price: 47289, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819260", name: "Конвектор SCN (без вентилятора) 80×190, 2600мм", len: 2.6, height: 80, width: 190, power70: 1056, power50: 682, price: 50755, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819280", name: "Конвектор SCN (без вентилятора) 80×190, 2800мм", len: 2.8, height: 80, width: 190, power70: 1149, power50: 742, price: 54219, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0819300", name: "Конвектор SCN (без вентилятора) 80×190, 3000мм", len: 3, height: 80, width: 190, power70: 1242, power50: 802, price: 57679, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
+        { id: "SCN-1100-0819080", name: "Конвектор SCN (без вентилятора) 80×190, 800мм", len: 0.8, height: 80, width: 190, power70: 220, power50: 142, price: 19596, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819100", name: "Конвектор SCN (без вентилятора) 80×190, 1000мм", len: 1, height: 80, width: 190, power70: 313, power50: 202, price: 23060, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819120", name: "Конвектор SCN (без вентилятора) 80×190, 1200мм", len: 1.2, height: 80, width: 190, power70: 406, power50: 262, price: 26516, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819140", name: "Конвектор SCN (без вентилятора) 80×190, 1400мм", len: 1.4, height: 80, width: 190, power70: 499, power50: 322, price: 29982, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819160", name: "Конвектор SCN (без вентилятора) 80×190, 1600мм", len: 1.6, height: 80, width: 190, power70: 591, power50: 382, price: 33447, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819180", name: "Конвектор SCN (без вентилятора) 80×190, 1800мм", len: 1.8, height: 80, width: 190, power70: 684, power50: 442, price: 36903, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819200", name: "Конвектор SCN (без вентилятора) 80×190, 2000мм", len: 2, height: 80, width: 190, power70: 777, power50: 502, price: 40368, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819220", name: "Конвектор SCN (без вентилятора) 80×190, 2200мм", len: 2.2, height: 80, width: 190, power70: 870, power50: 562, price: 43833, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819240", name: "Конвектор SCN (без вентилятора) 80×190, 2400мм", len: 2.4, height: 80, width: 190, power70: 963, power50: 622, price: 47289, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819260", name: "Конвектор SCN (без вентилятора) 80×190, 2600мм", len: 2.6, height: 80, width: 190, power70: 1056, power50: 682, price: 50755, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819280", name: "Конвектор SCN (без вентилятора) 80×190, 2800мм", len: 2.8, height: 80, width: 190, power70: 1149, power50: 742, price: 54219, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0819300", name: "Конвектор SCN (без вентилятора) 80×190, 3000мм", len: 3, height: 80, width: 190, power70: 1242, power50: 802, price: 57679, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
         // Высота 80мм, ширина 240мм (SCN-1100-0824***) — базовая складская линейка (по умолчанию в автоподборе)
-        { id: "SCN-1100-0824080", name: "Конвектор SCN (без вентилятора) 800мм", len: 0.8, height: 80, width: 240, power70: 277, power50: 179, price: 22276, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824100", name: "Конвектор SCN (без вентилятора) 1000мм", len: 1, height: 80, width: 240, power70: 382, power50: 247, price: 26459, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824120", name: "Конвектор SCN (без вентилятора) 1200мм", len: 1.2, height: 80, width: 240, power70: 487, power50: 314, price: 30643, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824140", name: "Конвектор SCN (без вентилятора) 1400мм", len: 1.4, height: 80, width: 240, power70: 591, power50: 382, price: 34826, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824160", name: "Конвектор SCN (без вентилятора) 1600мм", len: 1.6, height: 80, width: 240, power70: 696, power50: 449, price: 39009, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824180", name: "Конвектор SCN (без вентилятора) 1800мм", len: 1.8, height: 80, width: 240, power70: 801, power50: 517, price: 43193, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824200", name: "Конвектор SCN (без вентилятора) 2000мм", len: 2, height: 80, width: 240, power70: 905, power50: 584, price: 47375, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824220", name: "Конвектор SCN (без вентилятора) 2200мм", len: 2.2, height: 80, width: 240, power70: 1010, power50: 652, price: 51559, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824240", name: "Конвектор SCN (без вентилятора) 2400мм", len: 2.4, height: 80, width: 240, power70: 1115, power50: 720, price: 55742, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824260", name: "Конвектор SCN (без вентилятора) 2600мм", len: 2.6, height: 80, width: 240, power70: 1219, power50: 787, price: 59926, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824280", name: "Конвектор SCN (без вентилятора) 2800мм", len: 2.8, height: 80, width: 240, power70: 1324, power50: 855, price: 64109, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0824300", name: "Конвектор SCN (без вентилятора) 3000мм", len: 3, height: 80, width: 240, power70: 1429, power50: 923, price: 68292, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
+        { id: "SCN-1100-0824080", name: "Конвектор SCN (без вентилятора) 800мм", len: 0.8, height: 80, width: 240, power70: 277, power50: 179, price: 22276, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824100", name: "Конвектор SCN (без вентилятора) 1000мм", len: 1, height: 80, width: 240, power70: 382, power50: 247, price: 26459, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824120", name: "Конвектор SCN (без вентилятора) 1200мм", len: 1.2, height: 80, width: 240, power70: 487, power50: 314, price: 30643, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824140", name: "Конвектор SCN (без вентилятора) 1400мм", len: 1.4, height: 80, width: 240, power70: 591, power50: 382, price: 34826, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824160", name: "Конвектор SCN (без вентилятора) 1600мм", len: 1.6, height: 80, width: 240, power70: 696, power50: 449, price: 39009, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824180", name: "Конвектор SCN (без вентилятора) 1800мм", len: 1.8, height: 80, width: 240, power70: 801, power50: 517, price: 43193, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824200", name: "Конвектор SCN (без вентилятора) 2000мм", len: 2, height: 80, width: 240, power70: 905, power50: 584, price: 47375, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824220", name: "Конвектор SCN (без вентилятора) 2200мм", len: 2.2, height: 80, width: 240, power70: 1010, power50: 652, price: 51559, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824240", name: "Конвектор SCN (без вентилятора) 2400мм", len: 2.4, height: 80, width: 240, power70: 1115, power50: 720, price: 55742, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824260", name: "Конвектор SCN (без вентилятора) 2600мм", len: 2.6, height: 80, width: 240, power70: 1219, power50: 787, price: 59926, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824280", name: "Конвектор SCN (без вентилятора) 2800мм", len: 2.8, height: 80, width: 240, power70: 1324, power50: 855, price: 64109, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0824300", name: "Конвектор SCN (без вентилятора) 3000мм", len: 3, height: 80, width: 240, power70: 1429, power50: 923, price: 68292, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
         // Высота 80мм, ширина 300мм (SCN-1100-0830***). ВНИМАНИЕ: цена 2400мм (82526₽) в
         // прайс-листе 07.2026 нарушает монотонный рост цены с длиной (2200мм=68541₽,
         // 2600мм=80007₽) — похоже на опечатку у поставщика, перенесена как есть из прайса,
         // не исправлена вручную. Проверить у поставщика при следующем обновлении цен.
-        { id: "SCN-1100-0830080", name: "Конвектор SCN (без вентилятора) 80×300, 800мм", len: 0.8, height: 80, width: 300, power70: 355, power50: 229, price: 25569, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830100", name: "Конвектор SCN (без вентилятора) 80×300, 1000мм", len: 1, height: 80, width: 300, power70: 493, power50: 318, price: 30728, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830120", name: "Конвектор SCN (без вентилятора) 80×300, 1200мм", len: 1.2, height: 80, width: 300, power70: 630, power50: 407, price: 35887, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830140", name: "Конвектор SCN (без вентилятора) 80×300, 1400мм", len: 1.4, height: 80, width: 300, power70: 768, power50: 496, price: 41047, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830160", name: "Конвектор SCN (без вентилятора) 80×300, 1600мм", len: 1.6, height: 80, width: 300, power70: 906, power50: 585, price: 46207, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SCN-1100-0830080", name: "Конвектор SCN (без вентилятора) 80×300, 800мм", len: 0.8, height: 80, width: 300, power70: 355, power50: 229, price: 25569, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830100", name: "Конвектор SCN (без вентилятора) 80×300, 1000мм", len: 1, height: 80, width: 300, power70: 493, power50: 318, price: 30728, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830120", name: "Конвектор SCN (без вентилятора) 80×300, 1200мм", len: 1.2, height: 80, width: 300, power70: 630, power50: 407, price: 35887, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830140", name: "Конвектор SCN (без вентилятора) 80×300, 1400мм", len: 1.4, height: 80, width: 300, power70: 768, power50: 496, price: 41047, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830160", name: "Конвектор SCN (без вентилятора) 80×300, 1600мм", len: 1.6, height: 80, width: 300, power70: 906, power50: 585, price: 46207, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SCN-1100-0830180", name: "Конвектор SCN (без вентилятора) 80×300, 1800мм", len: 1.8, height: 80, width: 300, power70: 1043, power50: 673, price: 51367, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
         { id: "SCN-1100-0830200", name: "Конвектор SCN (без вентилятора) 80×300, 2000мм", len: 2, height: 80, width: 300, power70: 1181, power50: 763, price: 56527, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
         { id: "SCN-1100-0830220", name: "Конвектор SCN (без вентилятора) 80×300, 2200мм", len: 2.2, height: 80, width: 300, power70: 1319, power50: 852, price: 61687, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
