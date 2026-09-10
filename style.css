@@ -13045,10 +13045,12 @@ body.object-flat #blk_floor_mat_content {
    Включается классом body.theme-shop из app.js (syncShopTheme), когда у
    пользователя одновременно роль «менеджер дистрибьютора» и сфера «продажа»
    без монтажа. Только оформление: шрифт, цвета, углы, плоский стиль без теней.
-   Значения сняты со стилей сайта магазина (teremonline.ru, 10.09.2026):
-   шрифт Roboto; кнопки #03659A с углами 0; значки и ссылки #0081C5;
-   коралловый #E6615E; серые полосы #F1F5F9; рамки #E1E1E1; фон #FBFBFB.
-   Размеры шрифтов и отступы не трогаем — под них подогнаны высоты панелей.
+   Значения сняты с карточки товара на сайте магазина (teremonline.ru,
+   10.09.2026): шрифт Roboto; кнопки #03659A со скруглением 10 px, надписи
+   заглавными 12 px/600, высота 43 px; вторая кнопка — контур #2B8BC8 на
+   #F5F5F5; серые блоки #F7F7F7 со скруглением 10 px без рамки; поле поиска
+   с рамкой #D7D7D7 и скруглением 4 px; голубой #2581C2 для значков, ссылок
+   и наведения; коралловый #E6605D; зелёный «в наличии» #41B756.
    Тёмная тема поверх магазинной не накладывается (класс dark-mode снимается
    в app.js). Печать и PDF не затрагиваем: весь блок только для экрана. */
 
@@ -13077,22 +13079,24 @@ body.object-flat #blk_floor_mat_content {
 @media screen {
     body.theme-shop {
         --primary: #03659A;
-        --primary-light: #E6F0F6;
-        --bg: #FBFBFB;
+        --primary-light: #E8F2F8;
+        --bg: #FFFFFF;
         --surface: #FFFFFF;
-        --surface-light: #F1F5F9;
+        --surface-light: #F7F7F7;
         --text-main: #1E1E1E;
-        --text-sec: #7A7A7A;
-        --text-muted: #9A9A9A;
+        --text-sec: #5C666F;
+        --text-muted: #8A9199;
         --border: #E1E1E1;
-        --radius: 4px;
+        --radius: 10px;
         --warn-bg: #FFF4F4;
         --warn-text: #C4413E;
-        --warn-border: #E6615E;
+        --warn-border: #E6605D;
         --shop-blue-dark: #054F78;
-        --shop-blue-link: #0081C5;
-        --shop-red: #E6615E;
-        --shop-ring: 0 0 0 2px rgba(3, 101, 154, 0.3);
+        --shop-blue-link: #2581C2;
+        --shop-blue-outline: #2B8BC8;
+        --shop-red: #E6605D;
+        --shop-green: #41B756;
+        --shop-ring: 0 0 0 3px rgba(37, 129, 194, 0.25);
         --shop-font: 'Roboto', 'Segoe UI', Arial, sans-serif;
         background: var(--bg);
         color: var(--text-main);
@@ -13120,6 +13124,29 @@ body.object-flat #blk_floor_mat_content {
         font-family: var(--shop-font) !important;
     }
 
+    /* Кегль: на сайте текст крупнее, чем в калькуляторе. Поднимаем таблицу
+       и подписи на полпункта-пункт, не трогая высоты панелей. */
+    body.theme-shop .inv-table {
+        font-size: 12.5px;
+    }
+
+    body.theme-shop .inv-table th {
+        font-size: 11px;
+    }
+
+    body.theme-shop .lbl,
+    body.theme-shop .control-item h3,
+    body.theme-shop .control-item h4 {
+        font-size: 13.5px !important;
+    }
+
+    body.theme-shop .doc-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text-main);
+        text-transform: none;
+    }
+
     /* ---------- Шапка ---------- */
     body.theme-shop .site-header {
         background: #fff;
@@ -13136,9 +13163,11 @@ body.object-flat #blk_floor_mat_content {
     }
 
     body.theme-shop .header-totals-block {
-        border-radius: 0;
+        border-radius: var(--radius);
         box-shadow: none;
-        border-color: var(--border);
+        border: none;
+        background: var(--surface-light);
+        padding: 6px 14px;
     }
 
     body.theme-shop #anim_works_sum,
@@ -13147,31 +13176,34 @@ body.object-flat #blk_floor_mat_content {
     }
 
     body.theme-shop .header-fill-bar-fill {
-        background: var(--shop-blue-link);
-        border-radius: 0;
+        background: var(--shop-green);
+        border-radius: 0 2px 2px 0;
     }
 
-    /* Кнопки-иконки шапки: квадрат, голубые значки как на сайте */
+    /* Кнопки-иконки шапки: как значки «Сравнение / Избранное» на сайте —
+       серые контурные, при наведении голубые */
     body.theme-shop .btn-ctrl {
-        border-radius: 0;
+        border-radius: var(--radius);
         background: #fff;
-        color: var(--shop-blue-link);
+        color: var(--text-sec);
         border-color: var(--border);
     }
 
     body.theme-shop .btn-ctrl:hover {
-        border-color: var(--primary);
-        color: #fff;
-        background: var(--primary);
+        border-color: var(--shop-blue-link);
+        color: var(--shop-blue-link);
+        background: var(--primary-light);
     }
 
     body.theme-shop .btn-ctrl.btn-reset:hover {
         border-color: var(--shop-red);
-        color: #fff;
-        background: var(--shop-red);
+        color: var(--shop-red);
+        background: #FFF4F4;
     }
 
-    /* ---------- Панели ---------- */
+    /* ---------- Панели и блоки ----------
+       Панели — белые со скруглением; карточки внутри — серые блоки #F7F7F7
+       без рамки, как блок покупки на карточке товара. */
     body.theme-shop .input-panel,
     body.theme-shop .output-panel {
         box-shadow: none;
@@ -13181,60 +13213,60 @@ body.object-flat #blk_floor_mat_content {
     }
 
     body.theme-shop .control-card {
-        background: #fff;
-        border-color: var(--border);
+        background: var(--surface-light);
+        border: none;
         border-radius: var(--radius);
         box-shadow: none;
     }
 
-    body.theme-shop .zone-card,
+    body.theme-shop .zone-card {
+        background: var(--surface-light);
+        border: none;
+        border-radius: var(--radius);
+        box-shadow: none;
+    }
+
     body.theme-shop .doc-summary {
-        background: #fff;
-        border-color: var(--border);
+        background: var(--surface-light);
+        border: none;
         border-radius: var(--radius);
         box-shadow: none;
     }
 
     body.theme-shop .stepper {
         background-color: #fff;
-        border-color: var(--border);
-        border-radius: 0;
+        border-color: #D7D7D7;
+        border-radius: 8px;
     }
 
-    body.theme-shop .doc-title {
-        color: var(--text-main);
-        font-weight: 700;
-    }
-
-    /* ---------- Переключатели-блоки (как пункты меню магазина) ----------
-       Активный — сплошной синий с белым текстом, остальные — белые с рамкой. */
+    /* ---------- Переключатели ----------
+       Пара «Добавить в корзину / Быстрый заказ» с сайта: активный — сплошной
+       синий со скруглением, остальные — контур голубого на светло-сером. */
     body.theme-shop .tabs,
     body.theme-shop .mode-selector-tabs {
-        background: #fff;
-        padding: 0;
-        border: 1px solid var(--border);
-        border-radius: 0;
+        background: var(--surface-light);
+        padding: 4px;
+        border: none;
+        border-radius: var(--radius);
         box-shadow: none;
-        overflow: hidden;
+        gap: 4px;
     }
 
     body.theme-shop .tab,
     body.theme-shop .mode-tab {
-        border-radius: 0;
+        border-radius: 8px;
         color: var(--text-main);
         box-shadow: none;
         font-weight: 500;
-    }
-
-    body.theme-shop .tab + .tab,
-    body.theme-shop .mode-tab + .mode-tab {
-        border-left: 1px solid var(--border);
+        font-size: 13px;
+        padding-top: 8px;
+        padding-bottom: 8px;
     }
 
     body.theme-shop .tab:hover,
     body.theme-shop .mode-tab:hover {
         color: var(--shop-blue-link);
-        background: var(--surface-light);
+        background: #fff;
     }
 
     body.theme-shop .tab.active,
@@ -13244,7 +13276,7 @@ body.object-flat #blk_floor_mat_content {
         color: #fff;
         box-shadow: none;
         outline: none;
-        font-weight: 500;
+        font-weight: 600;
     }
 
     body.theme-shop .tab.active.work-active {
@@ -13254,39 +13286,63 @@ body.object-flat #blk_floor_mat_content {
 
     /* ---------- Таблица сметы ---------- */
     body.theme-shop .inv-table th {
-        color: var(--text-main);
-        background: var(--surface-light);
-        border-bottom: 1px solid var(--border);
+        color: var(--text-sec);
+        background: transparent;
+        border-bottom: 2px solid var(--border);
     }
 
-    /* Заголовок раздела — сплошной синий блок, как «Каталог» в меню магазина */
+    body.theme-shop .inv-table td {
+        border-bottom-color: #EEEEEE;
+    }
+
+    /* Заголовок раздела — синий, как «Каталог» в меню магазина, но с мягкими
+       углами по краям полосы */
     body.theme-shop tr.group-header:not([style]) td {
         background-color: var(--primary);
         color: #fff;
-        border-radius: 0;
+        font-size: 11px;
+        padding-top: 9px;
+        padding-bottom: 8px;
     }
 
-    /* Подраздел — светло-серая полоса с синим текстом */
+    body.theme-shop tr.group-header:not([style]) td:first-child {
+        border-radius: 8px 0 0 8px;
+    }
+
+    body.theme-shop tr.group-header:not([style]) td:last-child {
+        border-radius: 0 8px 8px 0;
+    }
+
+    /* Подраздел — серый блок с синим текстом */
     body.theme-shop tr.group-header[style] td {
         background-color: var(--surface-light);
         color: var(--primary);
+        font-size: 10.5px;
     }
 
     body.theme-shop tr.group-header[style] td[style*="9CA3AF"] {
         color: var(--text-sec) !important;
     }
 
-    /* ---------- Кнопки: углы 0, как .btn-default на сайте ---------- */
+    /* ---------- Кнопки: как «Добавить в корзину» ---------- */
     body.theme-shop .btn-base,
-    body.theme-shop .footer-btns .btn-base,
-    body.theme-shop .btn-add-zone,
-    body.theme-shop .btn-add-custom {
-        border-radius: 0;
+    body.theme-shop .footer-btns .btn-base {
+        border-radius: var(--radius);
         box-shadow: none;
-        font-weight: 500;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        min-height: 44px;
         transition: background-color var(--dur-fast) ease-in-out,
                     border-color var(--dur-fast) ease-in-out,
                     color var(--dur-fast) ease-in-out;
+    }
+
+    body.theme-shop .btn-add-zone,
+    body.theme-shop .btn-add-custom {
+        border-radius: var(--radius);
+        box-shadow: none;
     }
 
     body.theme-shop .btn-base:hover {
@@ -13307,15 +13363,20 @@ body.object-flat #blk_floor_mat_content {
         filter: none;
     }
 
+    /* Второстепенные — как «Быстрый заказ»: контур голубого на светло-сером */
     body.theme-shop .footer-btns .btn-secondary-action {
-        background-color: #fff;
-        color: var(--text-main);
-        border-color: var(--border);
+        background-color: #F5F5F5;
+        color: var(--shop-blue-outline);
+        border: 1px solid var(--shop-blue-outline);
+    }
+
+    body.theme-shop .footer-btns .btn-secondary-action svg {
+        stroke: var(--shop-blue-outline);
     }
 
     body.theme-shop .footer-btns .btn-secondary-action:hover {
-        background-color: var(--primary);
-        border-color: var(--primary);
+        background-color: var(--shop-blue-outline);
+        border-color: var(--shop-blue-outline);
         color: #fff;
     }
 
@@ -13340,7 +13401,7 @@ body.object-flat #blk_floor_mat_content {
     /* Плавающая кнопка «умного заполнения»: без градиента и свечения */
     body.theme-shop .ai-parse-fab {
         background: var(--primary);
-        border-radius: 0;
+        border-radius: var(--radius);
         box-shadow: none;
     }
 
@@ -13350,15 +13411,15 @@ body.object-flat #blk_floor_mat_content {
         box-shadow: none;
     }
 
-    /* ---------- Поля ввода ---------- */
+    /* ---------- Поля ввода: как поле поиска на сайте ---------- */
     body.theme-shop input[type=text],
     body.theme-shop input[type=number],
     body.theme-shop input[type=email],
     body.theme-shop input[type=tel],
     body.theme-shop select,
     body.theme-shop textarea {
-        border-color: var(--border);
-        border-radius: 0;
+        border-color: #D7D7D7;
+        border-radius: 4px;
         box-shadow: none;
     }
 
@@ -13373,7 +13434,7 @@ body.object-flat #blk_floor_mat_content {
     body.theme-shop .tab:focus-visible,
     body.theme-shop .mode-tab:focus-visible {
         outline: none;
-        border-color: var(--primary);
+        border-color: var(--shop-blue-link);
         box-shadow: var(--shop-ring);
     }
 
@@ -13382,12 +13443,10 @@ body.object-flat #blk_floor_mat_content {
     }
 
     body.theme-shop .slider {
-        background-color: #CFCFCF;
-        border-radius: 0;
+        background-color: #D7D7D7;
     }
 
     body.theme-shop .slider:before {
-        border-radius: 0;
         box-shadow: none;
     }
 
@@ -13401,26 +13460,30 @@ body.object-flat #blk_floor_mat_content {
     }
 
     /* ---------- Меню кабинета (колонка слева) ----------
-       Как боковой каталог магазина: белая колонка с разделителями, голубые
-       значки, активный раздел — сплошной синий блок с белым значком. */
+       Как боковой каталог магазина: белая колонка, тонкие разделители, при
+       наведении голубой текст, активный раздел — синий блок с белым значком. */
     body.theme-shop .lk-rail {
-        border-radius: 0;
+        border-radius: var(--radius);
         border-color: var(--border);
         box-shadow: none;
         background: #fff;
     }
 
     body.theme-shop .lk-rail-item {
-        border-radius: 0;
+        border-radius: 8px;
         color: var(--text-main);
     }
 
     body.theme-shop .lk-rail-item svg {
-        color: var(--shop-blue-link);
+        color: var(--text-sec);
     }
 
     body.theme-shop .lk-rail-item:hover {
         background: var(--surface-light);
+        color: var(--shop-blue-link);
+    }
+
+    body.theme-shop .lk-rail-item:hover svg {
         color: var(--shop-blue-link);
     }
 
