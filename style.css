@@ -13523,6 +13523,319 @@ body.object-flat #blk_floor_mat_content {
         color: #fff;
     }
 
+    /* ======================================================================
+       КАБИНЕТ, АДМИНКА, СООБЩЕНИЯ — тот же язык, что и у сметы.
+       Большинство их стилей уже идёт через переменные (--primary, --surface,
+       --border), поэтому здесь только форма: скругления, тени, кнопки как
+       «В корзину», выбранный раздел как на боковом каталоге сайта.
+       Проекты (листы, редактор планов, вкладка «Проекты») не трогаем.
+       ====================================================================== */
+
+    /* ---------- Окна ---------- */
+    body.theme-shop .auth-modal-overlay {
+        background: rgba(30, 30, 30, 0.45);
+        backdrop-filter: none;
+    }
+
+    body.theme-shop .auth-modal-content {
+        border-radius: 12px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+        border: 1px solid var(--border);
+    }
+
+    body.theme-shop .auth-modal-title {
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    body.theme-shop .auth-input,
+    body.theme-shop .feedback-input,
+    body.theme-shop .feedback-textarea {
+        border-color: #D7D7D7;
+        border-radius: 4px;
+        background: #fff;
+    }
+
+    /* ---------- Меню разделов кабинета (левая колонка окна) ----------
+       Как боковой каталог на сайте: пункты в строку со значком, при наведении
+       голубой текст, выбранный — на сером с синей полосой слева. */
+    body.theme-shop .lk-nav {
+        border-right-color: var(--border);
+    }
+
+    body.theme-shop .lk-nav-item {
+        border-radius: 8px;
+        color: var(--text-main);
+        font-weight: 500;
+    }
+
+    body.theme-shop .lk-nav-item:hover {
+        background: var(--surface-light);
+        color: var(--shop-blue-link);
+    }
+
+    body.theme-shop .lk-nav-item.active {
+        background: var(--surface-light);
+        border-color: transparent;
+        color: var(--primary);
+        box-shadow: inset 3px 0 0 var(--primary);
+        font-weight: 600;
+    }
+
+    body.theme-shop .lk-nav-avatar {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* ---------- Кнопки кабинета и админки ----------
+       Главные — как «Добавить в корзину»: синие, скруглённые, надпись
+       заглавными. Второстепенные (admin-btn, lk-btn-sm, btn-header-blue) —
+       белые с серой рамкой, при наведении голубые. */
+    body.theme-shop .custom-modal-btn,
+    body.theme-shop .calc-dialog-btn-confirm,
+    body.theme-shop .btn-email-submit {
+        background: var(--primary);
+        color: #fff;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        box-shadow: none;
+    }
+
+    body.theme-shop .custom-modal-btn:hover,
+    body.theme-shop .calc-dialog-btn-confirm:hover,
+    body.theme-shop .btn-email-submit:hover {
+        background: var(--shop-blue-dark);
+        transform: none;
+        box-shadow: none;
+    }
+
+    body.theme-shop .auth-btn-base {
+        border-radius: 10px;
+    }
+
+    body.theme-shop .calc-dialog-btn {
+        border-radius: 10px;
+    }
+
+    body.theme-shop .calc-dialog-btn-cancel:hover {
+        background: #fff;
+        border-color: var(--shop-blue-outline);
+        color: var(--shop-blue-outline);
+    }
+
+    body.theme-shop .admin-btn,
+    body.theme-shop .lk-btn-sm,
+    body.theme-shop .btn-header-blue {
+        border-radius: 10px;
+        background: #fff;
+        border-color: #D7D7D7;
+        color: var(--text-main);
+        box-shadow: none;
+    }
+
+    body.theme-shop .admin-btn:hover:not(:disabled),
+    body.theme-shop .lk-btn-sm:hover,
+    body.theme-shop .btn-header-blue:hover {
+        border-color: var(--shop-blue-outline);
+        color: var(--shop-blue-outline);
+        background: #fff;
+    }
+
+    body.theme-shop .admin-btn.danger,
+    body.theme-shop .lk-btn-sm.lk-btn-danger {
+        color: var(--shop-red);
+    }
+
+    body.theme-shop .admin-btn.danger:hover:not(:disabled) {
+        border-color: var(--shop-red);
+        color: var(--shop-red);
+    }
+
+    body.theme-shop .admin-action-btn {
+        border-radius: 8px;
+    }
+
+    /* Кнопка «написать» в таблицах: была сине-голубой по чужой палитре */
+    body.theme-shop .admin-action-btn.btn-msg {
+        border-color: rgba(3, 101, 154, 0.25);
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    body.theme-shop .admin-action-btn.btn-msg:hover {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    body.theme-shop .admin-action-btn.btn-del {
+        color: var(--shop-red);
+        border-color: rgba(230, 96, 93, 0.3);
+    }
+
+    /* ---------- Кабинет: карточки и списки ---------- */
+    body.theme-shop .lk-card {
+        background: var(--surface-light);
+        border: none;
+        border-radius: 10px;
+    }
+
+    body.theme-shop .lk-card-accent {
+        background: var(--primary-light);
+        box-shadow: inset 0 0 0 1px rgba(3, 101, 154, 0.25);
+    }
+
+    body.theme-shop .lk-section-head h4 {
+        font-weight: 700;
+    }
+
+    body.theme-shop .lk-row {
+        border-radius: 8px;
+    }
+
+    body.theme-shop .lk-nav-logout,
+    body.theme-shop .lk-nav-logout:hover {
+        color: var(--shop-red);
+    }
+
+    body.theme-shop .lk-rail-badge,
+    body.theme-shop .notif-tab-badge {
+        background: var(--shop-red);
+    }
+
+    /* ---------- Админка: полоса вкладок ----------
+       Кнопки заданы инлайн в скрипте (var(--primary) у активной), поэтому
+       здесь !important. Вид тот же, что у вкладок сметы: серая полоса,
+       выбранная — белая плашка с тёмным текстом. */
+    body.theme-shop #admin_nav_tabs {
+        background: #F5F5F5;
+        border-radius: 12px;
+        padding: 4px !important;
+        border-bottom: none !important;
+        gap: 4px !important;
+    }
+
+    body.theme-shop .admin-tab-btn {
+        background: transparent !important;
+        color: var(--text-sec) !important;
+        border: none !important;
+        border-radius: 10px !important;
+        font-weight: 500 !important;
+        box-shadow: none !important;
+    }
+
+    body.theme-shop .admin-tab-btn:hover {
+        color: var(--text-main) !important;
+    }
+
+    body.theme-shop .admin-tab-btn.active {
+        background: #fff !important;
+        color: var(--text-main) !important;
+    }
+
+    /* Уведомления: те же вкладки */
+    body.theme-shop .notif-tabs {
+        background: #F5F5F5;
+        border-radius: 12px;
+        padding: 4px;
+        gap: 4px;
+    }
+
+    body.theme-shop .notif-tab {
+        background: transparent;
+        border: none;
+        border-radius: 10px;
+        color: var(--text-sec);
+        font-weight: 500;
+    }
+
+    body.theme-shop .notif-tab.active {
+        background: #fff;
+        border-color: transparent;
+        color: var(--text-main);
+    }
+
+    /* ---------- Админка: таблицы ----------
+       Чередование строк, как у списка товаров; наведение подсвечивает
+       светло-синим (в скрипте оно ставится инлайн на tr, ячейки выше него). */
+    body.theme-shop #admin_content .inv-table tr.admin-list-row:nth-child(even) > td,
+    body.theme-shop #admin_content .inv-table tr.admin-estimate-row:nth-child(even) > td {
+        background: #F7F7F7;
+    }
+
+    body.theme-shop #admin_content .inv-table tr.admin-list-row > td:first-child,
+    body.theme-shop #admin_content .inv-table tr.admin-estimate-row > td:first-child {
+        border-radius: 10px 0 0 10px;
+    }
+
+    body.theme-shop #admin_content .inv-table tr.admin-list-row > td:last-child,
+    body.theme-shop #admin_content .inv-table tr.admin-estimate-row > td:last-child {
+        border-radius: 0 10px 10px 0;
+    }
+
+    body.theme-shop #admin_content .inv-table tr.admin-list-row:hover > td,
+    body.theme-shop #admin_content .inv-table tr.admin-estimate-row:hover > td {
+        background: var(--primary-light);
+    }
+
+    /* Плитки сводки: серые блоки без цветных рамок и подложек */
+    body.theme-shop #admin_content .admin-stat-grid .control-card {
+        background: var(--surface-light) !important;
+        border: none !important;
+        border-radius: 10px;
+    }
+
+    /* Поля фильтров и поиска админки — как поле поиска на сайте */
+    body.theme-shop #admin_content input:not([type="checkbox"]):not([type="radio"]),
+    body.theme-shop #admin_content select,
+    body.theme-shop #admin_content textarea {
+        border-color: #D7D7D7;
+        border-radius: 4px !important;
+        background: #fff;
+    }
+
+    /* ---------- Планировщик (канбан) ----------
+       Колонки и карточки заданы инлайн; здесь только снимаем тени —
+       на сайте всё плоское. */
+    body.theme-shop .admin-kanban-cols > div {
+        box-shadow: none !important;
+        border: 1px solid var(--border);
+    }
+
+    body.theme-shop .admin-kanban-cols > div > div:last-child > div {
+        box-shadow: none !important;
+        border: 1px solid var(--border);
+    }
+
+    /* ---------- Чат ---------- */
+    body.theme-shop .admin-chat-bubble {
+        box-shadow: none;
+    }
+
+    body.theme-shop .admin-chat-bubble.from-user {
+        background: var(--surface-light);
+    }
+
+    body.theme-shop .admin-chat-item.active {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    body.theme-shop .admin-chat-badge {
+        background: var(--shop-red);
+    }
+
+    body.theme-shop .admin-chat-send {
+        border-radius: 10px;
+    }
+
+    body.theme-shop .admin-chat-compose textarea {
+        border-color: #D7D7D7;
+        border-radius: 10px;
+    }
+
     /* Переключатель темы в магазинном оформлении не действует — прячем */
     body.theme-shop #btn_theme,
     body.theme-shop #btn_theme_admin {
