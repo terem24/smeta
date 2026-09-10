@@ -34778,7 +34778,9 @@ const app = {
             if (fuelArr.length > 0) boilerName = fuelArr.join(' / ');
 
             const eqSum = app.lastEqSum || 0;
-            const worksSum = (this.state.accountType === 'pro') ? (app.lastWorksSum || 0) : 0;
+            // Продавец монтаж не делает — в счёт работы не идут (как в печати и ссылке)
+            const noWorks = this.isSellerOnly();
+            const worksSum = (!noWorks && this.state.accountType === 'pro') ? (app.lastWorksSum || 0) : 0;
             const total = eqSum + worksSum;
 
             const authorName = this.formatShortName(tgUser) || "Дмитрий";
@@ -34820,7 +34822,7 @@ const app = {
                 // shareInvoice) — без очистки Supabase-клиент падает на JSON.stringify тела запроса.
                 const items = {
                     equipment: (this.currentEquipmentList || []).map(({ alts, ...rest }) => rest),
-                    works: this.currentWorksList || []
+                    works: noWorks ? [] : (this.currentWorksList || [])
                 };
 
                 const totals = {
@@ -34936,7 +34938,7 @@ const app = {
                 try {
                     let items = {
                         equipment: this.currentEquipmentList || [],
-                        works: this.currentWorksList || []
+                        works: noWorks ? [] : (this.currentWorksList || [])
                     };
                     let totals = {
                         equipment: eqSum,
@@ -61567,8 +61569,10 @@ const app = {
             // Проверяем тариф и авторизацию
             let isPro = this.isPro();
             // Раздел "Работы" открыт Базовому (авторизованному, не PRO) тарифу — сумма монтажа
-            // в шапке должна показываться и ему, не только PRO
-            let showWorksTotal = isPro || !!this.state.tgUser;
+            // в шапке должна показываться и ему, не только PRO. Продавцу монтаж не
+            // показываем вовсе: ни суммы, ни слова «Монтаж» (по решению владельца
+            // 10.09.2026). Каркас пересобирается при смене признака (dataset.isPro).
+            let showWorksTotal = (isPro || !!this.state.tgUser) && !this.isSellerOnly();
 
             // Маржа в шапке — только ПРОФИ и только когда закупка настроена.
             // Каркас пересобирается и при смене этого признака: иначе цифра либо
@@ -61612,20 +61616,12 @@ const app = {
                 headerTotals.dataset.lastShowBlurEq = String(currentShowBlur);
             }
 
-            // Запускаем анимацию Монтажа. У продавца монтажа нет — прочерк вместо
-            // суммы: раздел работ ему не показывается и наружу не уходит.
-            if (showWorksTotal && this.isSellerOnly()) {
-                const elWorks = document.getElementById('anim_works_sum');
-                if (elWorks && elWorks.innerText !== '—') elWorks.innerText = '—';
-                headerTotals.dataset.lastWorks = 0;
-            } else if (showWorksTotal) {
+            // Запускаем анимацию Монтажа (у продавца блока нет — см. showWorksTotal)
+            if (showWorksTotal) {
                 let elWorks = document.getElementById('anim_works_sum');
                 let oldWorks = parseFloat(headerTotals.dataset.lastWorks) || 0;
                 let newWorks = app.lastWorksSum || 0;
                 let lastShowBlurWorks = headerTotals.dataset.lastShowBlurWorks === 'true';
-                // Сфера сменилась с продавца на монтажника при нулевой сумме —
-                // анимации не будет, прочерк убираем руками
-                if (elWorks && elWorks.innerText === '—') elWorks.innerText = newWorks.toLocaleString('ru-RU') + ' ₽';
                 if ((oldWorks !== newWorks) && elWorks) {
                     app.animateNumber(elWorks, oldWorks, newWorks, 800);
                     headerTotals.dataset.lastWorks = newWorks;
@@ -61694,17 +61690,18 @@ const app = {
             // Проверяем тариф и авторизацию. Раздел "Работы" открыт и Базовому
             // (авторизованному, не PRO) тарифу — сумма монтажа показывается и ему.
             let isPro = this.isPro();
-            let showWorksTotal = isPro || !!this.state.tgUser;
+            // Продавцу блок «Монтаж» не показываем вовсе (как в настольной шапке):
+            // подпись и разделитель прячем, сумму не считаем
+            const sellerNoWorks = this.isSellerOnly();
+            let showWorksTotal = (isPro || !!this.state.tgUser) && !sellerNoWorks;
+            mobileTotals.querySelectorAll('.m-total-work, .m-total-div').forEach(el => {
+                el.style.display = sellerNoWorks ? 'none' : '';
+            });
 
-            if (showWorksTotal && mWorkEl && this.isSellerOnly()) {
-                // Продавец: прочерк вместо суммы монтажа (как в настольной шапке)
-                if (mWorkEl.innerText !== '—') mWorkEl.innerText = '—';
-                mobileTotals.dataset.lastWorks = 0;
-            } else if (showWorksTotal && mWorkEl) {
+            if (showWorksTotal && mWorkEl) {
                 let oldWorks = parseFloat(mobileTotals.dataset.lastWorks) || 0;
                 let newWorks = app.lastWorksSum || 0;
                 let lastShowBlurWorks = mobileTotals.dataset.lastShowBlurWorks === 'true';
-                if (mWorkEl.innerText === '—') mWorkEl.innerText = newWorks.toLocaleString('ru-RU') + ' ₽';
                 if (oldWorks !== newWorks) {
                     app.animateNumber(mWorkEl, oldWorks, newWorks, 800);
                     mobileTotals.dataset.lastWorks = newWorks;
