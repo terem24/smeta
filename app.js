@@ -49537,6 +49537,120 @@ const app = {
         if (/^(RSS|SSS)-/.test(id)) return true;
         return String(item.group || '') === '2.5. Трубопроводы котельной';
     },
+
+    // === ПОДБОР ДИАМЕТРА ОБВЯЗКИ КОТЕЛЬНОЙ ПО СКОРОСТИ ===
+    //
+    // Historically диаметр котельной назначался одним порогом — до 30 кВт труба 22,
+    // выше 28, — и весь ассортимент сводился к двум типоразмерам из семи. Скорость
+    // при этом считалась, но только ради подсказки: цифра показывалась монтажнику
+    // и никуда не шла. Здесь она наконец решает.
+    //
+    // Предел скорости общий с разводкой дома (RAD_V_MAX_TRUNK): 1,2 м/с для
+    // магистральных участков по СП 60.13330.2020, по шуму и износу.
+    BOILER_V_MAX: 1.2,
+
+    // Перепад котлового контура. Паспортный режим котла — 20 K, и он же стоит по
+    // умолчанию. Переключатель на 10 K живёт в подробном режиме: это режим 75/65,
+    // в котором радиаторы отдают паспортную мощность, но расход через контур
+    // вдвое выше, и диаметр обязан это увидеть.
+    boilerDT: function () {
+        return (this.state.boilerDT === 10) ? 10 : 20;
+    },
+
+    // Расход котлового контура, м³/ч. G = Q / (1,163 × Δt) — та же формула, что в
+    // подсказке к трубе, вынесена сюда, чтобы подсказка и подбор не разъезжались.
+    boilerFlow: function (kw, dt) {
+        const q = parseFloat(kw) || 0;
+        return q / (1.163 * (dt || this.boilerDT()));
+    },
+
+    // Ряд типоразмеров системы обвязки с внутренними диаметрами, мм.
+    //
+    // Внутренний диаметр НЕ вбит таблицей, а выведен из каталога: у нержавейки,
+    // металлопластика и Wavin стенка написана прямо в названии позиции («22х1.2»,
+    // «26x3.0», «32x4,4»), у Pro Aqua — в маркировке SDR 6, то есть стенка равна
+    // диаметру, делённому на 6. Так ряд сам пополнится, когда парсер принесёт новый
+    // типоразмер, и не придётся помнить про вторую таблицу.
+    //
+    // Отдельные ряды у Pro Aqua и Wavin не прихоть: при одном наружном диаметре
+    // 32 мм у STABI PLUS внутренний 23,2, а у DUO SDR 6 — 21,3. Раньше на оба
+    // бренда шёл один набор чисел, и на Pro Aqua пропускная способность
+    // завышалась примерно на восьмую часть.
+    _boilerRangeCache: null,
+    boilerPipeRange: function (system) {
+        if (!this._boilerRangeCache) this._boilerRangeCache = {};
+        const sys = system || this.boilerPipeSystem();
+        if (this._boilerRangeCache[sys]) return this._boilerRangeCache[sys];
+
+        // Наружный диаметр и стенка из названия. Разделитель бывает и латинской
+        // «x», и кириллической «х» — в каталоге встречаются оба.
+        const parse = (name) => {
+            const m = String(name || '').match(/(\d{2,3})\s*[xх]\s*(\d+[.,]?\d*)/);
+            if (!m) return null;
+            const od = parseInt(m[1], 10);
+            const wall = parseFloat(m[2].replace(',', '.'));
+            if (!(od > 0) || !(wall > 0) || wall * 2 >= od) return null;
+            return { size: od, inner: Math.round((od - 2 * wall) * 10) / 10 };
+        };
+
+        let rows = [];
+        if (sys === 'ss304' || sys === 'ss316') {
+            rows = (catalog.ss_pipe_4m || []).map(p => parse(p.name)).filter(Boolean);
+        } else if (sys === 'mp') {
+            rows = (catalog.metal_plastic_pipes || []).map(p => parse(p.name)).filter(Boolean);
+        } else if (sys === 'ppr') {
+            const isPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            if (isPA) {
+                // DUO SDR 6: стенка = D/6, внутренний = D × 2/3. В названии стенки нет.
+                rows = (catalog.ppr_proaqua_pipe || [])
+                    .filter(p => /DUO SDR 6/i.test(p.name || ''))
+                    .map(p => {
+                        const m = String(p.name).match(/(\d{2,3})\s*мм/);
+                        if (!m) return null;
+                        const od = parseInt(m[1], 10);
+                        return { size: od, inner: Math.round(od * 2 / 3 * 10) / 10 };
+                    }).filter(Boolean);
+            } else {
+                rows = (catalog.ppr_ekoplastik_pipe || []).map(p => parse(p.name)).filter(Boolean);
+            }
+        }
+
+        // Дубли по типоразмеру (у металлопластика 16-я идёт бухтами 100 и 200 м)
+        // схлопываем, ряд держим по возрастанию — подбор идёт снизу вверх.
+        const seen = {};
+        rows = rows.filter(r => (seen[r.size] ? false : (seen[r.size] = true)))
+            .sort((a, b) => a.size - b.size);
+        this._boilerRangeCache[sys] = rows;
+        return rows;
+    },
+
+    /**
+     * Наименьший типоразмер системы, на котором скорость не выше предела.
+     *
+     * Возвращает { size, inner, v, flow, capped }. capped = true означает, что ряд
+     * закончился раньше, чем скорость вошла в норму: у металлопластика верх — 32 мм,
+     * дальше система физически не тянет и обвязку надо вести другой. Молча ставить
+     * максимальный типоразмер в этом случае нельзя, иначе смета скроет проблему.
+     */
+    boilerPickSize: function (system, kw, dt) {
+        const sys = system || this.boilerPipeSystem();
+        const _dt = dt || this.boilerDT();
+        const flow = this.boilerFlow(kw, _dt);
+        const range = this.boilerPipeRange(sys);
+        if (!range.length) return null;
+        const vOf = (inner) => {
+            const S = Math.PI * Math.pow(inner / 1000, 2) / 4;
+            return (flow / 3600) / S;
+        };
+        for (let i = 0; i < range.length; i++) {
+            const v = vOf(range[i].inner);
+            if (v <= this.BOILER_V_MAX) {
+                return { size: range[i].size, inner: range[i].inner, v: v, flow: flow, capped: false };
+            }
+        }
+        const last = range[range.length - 1];
+        return { size: last.size, inner: last.inner, v: vOf(last.inner), flow: flow, capped: true };
+    },
     // === КОНФИГУРАТОР КОНТРОЛЛЕРА ОТОПЛЕНИЯ (STOUT Thermatic 3001) ===
     //
     // Контроллер — не просто ещё одна позиция сметы, а конфигурация: он
