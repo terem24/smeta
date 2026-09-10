@@ -13,6 +13,7 @@
  *   node bench/boiler.js bill       состав и суммы по реальным объектам
  *   node bench/boiler.js systems    цена четырёх систем обвязки
  *   node bench/boiler.js pumps      напор встроенных насосов котлов
+ *   node bench/boiler.js swap       таблица замены: открывается ли выбор системы
  *
  * Сравнить две версии кода: снять «до» из git и прогнать оба дерева —
  *   git show <ревизия>:app.js > /tmp/before/app.js   (туда же catalog.js)
@@ -116,8 +117,78 @@ function pumps() {
         });
 }
 
+/**
+ * Таблица замены: каждая ли строка обвязки открывает ВЫБОР СИСТЕМЫ.
+ *
+ * Класс ошибки, повторившийся трижды. Строка обвязки опознаётся по артикулу, и
+ * стоит признаку разойтись с соседней веткой модалки — строка проваливается в
+ * чужой список: то в брендовый переключатель «Pro Aqua / Wavin», то вовсе никуда.
+ * На экране это выглядит как «замена не работает», и глазами по одной смете не
+ * ловится: ломается ровно один артикул из дюжины.
+ *
+ * Проверяем не признак, а РЕЗУЛЬТАТ — что именно модалка положила на страницу.
+ */
+function swap() {
+    console.log('\n=== ТАБЛИЦА ЗАМЕНЫ: строки раздела 2, открывающие выбор системы ===');
+
+    // Что считать «строкой обвязки» — определяем НЕЗАВИСИМО от кода приложения:
+    // по принадлежности артикула каталожным массивам системы. Повторить здесь
+    // app.isBoilerPipeRow значило бы проверять признак сам собой.
+    const ids = (names) => {
+        const out = {};
+        names.forEach(n => (app.__catalog[n] || []).forEach(x => {
+            if (x && x.id) out[x.id] = 1;
+            (x && x.alts || []).forEach(a => { if (a && a.id) out[a.id] = 1; });
+            // Номенклатура ROMMER лежит полем .rommer внутри позиции STOUT.
+            if (x && x.rommer && x.rommer.id) out[x.rommer.id] = 1;
+        }));
+        return out;
+    };
+    const FAM = {
+        ss304: ids(Object.keys(app.__catalog).filter(k => k.indexOf('ss_') === 0)),
+        ss316: ids(Object.keys(app.__catalog).filter(k => k.indexOf('ss_') === 0)),
+        ppr: ids(Object.keys(app.__catalog).filter(k => k.indexOf('ppr_') === 0)),
+        mp: ids(['water_fittings_press_mp', 'metal_plastic_pipes']),
+        stable: ids(['axial_fittings_pex', 'stable_pipes']),
+        stable_r: ids(['axial_fittings_pex', 'stable_pipes'])
+    };
+
+    ['ss304', 'ss316', 'ppr', 'mp', 'stable', 'stable_r'].forEach(sys => {
+        ['proaqua', 'wavin'].forEach(brand => {
+            if (sys !== 'ppr' && brand === 'wavin') return;   // бренд ППР на другие не влияет
+            app.state.pprSystemBrand = brand;
+            app._boilerRangeCache = null;
+            app.__setup({ area: 200, res: 5, region: 100, boilerPipeSystem: sys });
+            const body = app.__doc.getElementById('swap_modal_body');
+            let ok = 0;
+            const bad = [];
+            (app.currentEquipmentList || [])
+                .filter(x => String(x.group || '').indexOf('2.') === 0)
+                .forEach(x => {
+                    const id = String(x.originalId || x.id);
+                    // Синтетические id трубы (boiler_pipe_*) в каталоге не лежат —
+                    // добавляем их к семейству по приставке.
+                    const own = FAM[sys][id] || id.indexOf('boiler_pipe_') === 0;
+                    if (!own) return;
+                    body.innerHTML = '';
+                    app._lastSwapLookupId = null;
+                    let html = '';
+                    try { app.openSwapModal(id); html = String(body.innerHTML || ''); } catch (e) { html = ''; }
+                    if (/Нержавеющая сталь AISI 304/.test(html)) ok++;
+                    else bad.push(id);
+                });
+            console.log('  ' + padR(sys + (sys === 'ppr' ? ' / ' + brand : ''), 18) +
+                'своих строк: ' + pad(ok + bad.length, 2) + ', открывают выбор: ' + pad(ok, 2) +
+                (bad.length ? ('   ОШИБКА, выбор не открывается: ' + bad.join(', ')) : ''));
+        });
+    });
+    app.state.pprSystemBrand = 'proaqua';
+    console.log('\n  «Своих строк» — позиции раздела 2, чьи артикулы лежат в каталожных');
+    console.log('  массивах этой системы. Каждая обязана открывать выбор из шести систем.');
+}
+
 const what = (process.argv[2] || 'all').toLowerCase();
-const parts = { sizes, bill, systems, pumps };
+const parts = { sizes, bill, systems, pumps, swap };
 if (parts[what]) parts[what]();
 else if (what === 'all') Object.values(parts).forEach(f => f());
 else {

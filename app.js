@@ -39652,7 +39652,7 @@ const app = {
                     : [])
             ].map(a => ({ ...a, price: _totals[a.sys] || 0, name: a.name + _delta(a.sys) }));
         }
-        else if (item.originalId && (item.originalId.startsWith('PA') || item.originalId.includes('RCT'))) {
+        else if (item.originalId && this.isPprArticle(item.originalId)) {
             customAlts = [
                 { id: 'proaqua', name: 'Полипропилен Pro Aqua (Россия)', brand: 'Pro Aqua', price: 0 },
                 { id: 'wavin', name: 'Полипропилен Wavin Ekoplastik (Чехия)', brand: 'Wavin Ekoplastik', price: 0 }
@@ -50876,6 +50876,20 @@ const app = {
     // наружные диаметры, те же узлы, то же аксиальное соединение. Различаются только
     // артикулы, поэтому везде, где решается «как считать», спрашиваем это, а не
     // равенство конкретному имени.
+    /**
+     * Артикул полипропилена — Pro Aqua или Wavin.
+     *
+     * Признак один на два места: по нему строка котельной опознаётся как обвязка
+     * (isBoilerPipeRow), и по нему же openSwapModal отдаёт выбор бренда ППР в
+     * водоснабжении. Пока проверок было две — «оканчивается на RCT» здесь и
+     * «содержит RCT» там, — они расходились ровно на одном артикуле: равнопроходный
+     * тройник STK032RCT[X] с лишней буквой на конце. Строка обвязки проваливалась в
+     * брендовый переключатель и предлагала вместо шести систем «другой полипропилен».
+     */
+    isPprArticle: function (id) {
+        const s = String(id || '');
+        return s.indexOf('PA') === 0 || s.indexOf('RCT') !== -1;
+    },
     isStableSys: function (sys) {
         const v = sys || this.boilerPipeSystem();
         return v === 'stable' || v === 'stable_r';
@@ -50960,7 +50974,7 @@ const app = {
         const sys = this.boilerPipeSystem();
         if (sys === 'mp') return /^(boiler_pipe_mp_|SPM-|SFP-)/.test(id);
         if (this.isStableSys(sys)) return /^(boiler_pipe_stable_|SPS-|SFA-|RPS-|RFA-)/.test(id);
-        if (sys === 'ppr') return /RCT$/.test(id) || /^PA\d/.test(id);
+        if (sys === 'ppr') return this.isPprArticle(id);
         return false;
     },
 
