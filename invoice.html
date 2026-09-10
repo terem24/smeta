@@ -3446,6 +3446,12 @@
             document.getElementById('total_eq').textContent = `${(totals.equipment || 0).toLocaleString()} ₽`;
             document.getElementById('total_works').textContent = `${(totals.works || 0).toLocaleString()} ₽`;
             document.getElementById('grand_total').textContent = `${(totals.grandTotal || 0).toLocaleString()} ₽`;
+            // Смета без работ (продавец, или монтажник снял раздел при отправке):
+            // строку «Итого по монтажным работам: 0 ₽» не показываем вовсе —
+            // клиенту нечего оплачивать за монтаж, и упоминать его незачем.
+            const noWorksAtAll = !(totals.works) && !(((data.items || {}).works) || []).length;
+            const worksSumRow = document.getElementById('total_works').closest('.sum-item');
+            if (worksSumRow) worksSumRow.style.display = noWorksAtAll ? 'none' : '';
 
             // 4. Specifications Tables
             const items = data.items || {};
@@ -4227,7 +4233,10 @@
 
                 comment += `💰 ФИНАНСОВЫЕ ПОКАЗАТЕЛИ:\n`;
                 comment += `- Итого по оборудованию: ${(totals.equipment || 0).toLocaleString('ru-RU')} ₽\n`;
-                comment += `- Итого по монтажным работам: ${(totals.works || 0).toLocaleString('ru-RU')} ₽\n`;
+                // Смета без работ — строку про монтаж не пишем (см. блок итогов выше)
+                if ((totals.works || 0) > 0 || (worksList && worksList.length > 0)) {
+                    comment += `- Итого по монтажным работам: ${(totals.works || 0).toLocaleString('ru-RU')} ₽\n`;
+                }
                 comment += `- Общая сумма по смете: ${(totals.grandTotal || 0).toLocaleString('ru-RU')} ₽\n\n`;
 
                 if (eqList && eqList.length > 0) {

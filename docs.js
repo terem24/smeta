@@ -196,6 +196,8 @@ const Docs = {
     },
 
     worksList: function () {
+        // Продавец монтаж не делает — работ в документах нет (как в печати и ссылке)
+        if (app.isSellerOnly && app.isSellerOnly()) return [];
         const snap = this._ctx && this._ctx.snap;
         if (snap) return (snap.items && snap.items.works) || [];
         return this.withSnapPrices(app.currentWorksList || [], true);
@@ -480,7 +482,7 @@ const Docs = {
             return { eq: eq, works: works, total: eq + works };
         }
         const eq = Number(app.lastEqSum) || 0;
-        const works = Number(app.lastWorksSum) || 0;
+        const works = (app.isSellerOnly && app.isSellerOnly()) ? 0 : (Number(app.lastWorksSum) || 0);
         return { eq: eq, works: works, total: eq + works };
     },
 
@@ -923,6 +925,15 @@ const Docs = {
 
             function docSave() {
                 var bar = document.querySelector('.doc-bar');
+                // Библиотека печати грузится по требованию (hcLoad в index.html).
+                // Если её ещё нет — тянем и повторяем нажатие за пользователя.
+                // Пробуем ровно один раз: не приехала со второго захода — значит
+                // сети нет, и человеку нужен запасной путь, а не бесконечное ожидание.
+                if (!window.html2pdf && window.hcLoad && !docSave._tried) {
+                    docSave._tried = true;
+                    hcLoad('html2pdf').then(docSave).catch(docSave);
+                    return;
+                }
                 if (!window.html2pdf) {
                     alert('Файл не собрался: не загрузилась библиотека. Нажмите «Распечатать» и выберите «Сохранить как PDF».');
                     window.print();

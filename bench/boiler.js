@@ -39,6 +39,7 @@ function sizes() {
         '  ' + padR(title, 22) + app.boilerPipeRange(sys).map(r => r.size + ' (' + r.inner + ')').join('   ');
     console.log(line('ss304', 'Нержавейка 304/316L'));
     console.log(line('mp', 'Металлопластик'));
+    console.log(line('stable', 'Стабильная PE-Xa'));
     console.log(line('ppr', 'ППР Pro Aqua'));
     app.state.pprSystemBrand = 'wavin'; app._boilerRangeCache = null;
     console.log(line('ppr', 'ППР Wavin'));
@@ -46,13 +47,14 @@ function sizes() {
 
     [20, 10].forEach(dt => {
         console.log('\n=== ПОДБОР ПО СКОРОСТИ, Δt = ' + dt + ' °C (предел ' + app.BOILER_V_MAX + ' м/с) ===');
-        console.log('   кВт | нержавейка    | металлопластик | ППР Pro Aqua');
+        console.log('   кВт | нержавейка    | металлопластик | стабильная    | ППР Pro Aqua');
         [10, 15, 20, 25, 30, 35, 40, 50, 60, 80].forEach(kw => {
             const f = (s) => {
                 const r = app.boilerPickSize(s, kw, dt);
                 return (r.capped ? '!' : ' ') + pad(r.size, 3) + ' v=' + r.v.toFixed(2);
             };
-            console.log('  ' + pad(kw, 4) + ' |' + padR(f('ss304'), 15) + '|' + padR(f('mp'), 16) + '|' + f('ppr'));
+            console.log('  ' + pad(kw, 4) + ' |' + padR(f('ss304'), 15) + '|' + padR(f('mp'), 16) +
+                '|' + padR(f('stable'), 15) + '|' + f('ppr'));
         });
     });
     console.log('\n  «!» — ряд системы закончился, скорость выше предела');
