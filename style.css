@@ -13127,6 +13127,14 @@ body.object-flat #blk_floor_mat_content {
         box-shadow: none;
     }
 
+    /* Логотип магазина (img/terem_logo.svg, подставляет syncTopLogo): эмблема с
+       юбилейной надписью, у него пропорции 133×78 — чуть выше, чем у STOUT */
+    body.theme-shop .site-header-left img,
+    body.theme-shop .stout-logo-img {
+        max-height: 46px;
+        max-width: 90px;
+    }
+
     body.theme-shop .header-totals-block {
         border-radius: 0;
         box-shadow: none;

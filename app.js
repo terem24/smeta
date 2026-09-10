@@ -11711,6 +11711,22 @@ const app = {
         const on = this.isShopTheme();
         document.body.classList.toggle('theme-shop', on);
         if (on) document.body.classList.remove('dark-mode');
+        this.syncTopLogo();
+    },
+
+    // Логотип в левом углу шапки. Обычно — по бренду (STOUT / ROMMER), под
+    // темой «магазин» — логотип магазина. Одна функция на оба вызова (render
+    // и syncShopTheme), чтобы выбор не разъехался. Логотип на печатных
+    // документах и листах проекта — отдельный (реквизиты компании), его
+    // это не касается.
+    syncTopLogo: function () {
+        const el = document.getElementById('top_left_logo');
+        if (!el) return;
+        let src, alt;
+        if (this.isShopTheme()) { src = 'img/terem_logo.svg'; alt = 'ТЕРЕМ'; }
+        else if (this.state.brandMode === 'rommer') { src = 'img/rommer_logo.jpg'; alt = 'ROMMER'; }
+        else { src = 'img/stout_logo.png'; alt = 'STOUT'; }
+        if (el.getAttribute('src') !== src) { el.src = src; el.alt = alt; }
     },
 
     /**
@@ -51607,10 +51623,7 @@ const app = {
         this.updateDocumentTitle();
 
         // Update top left logo based on brandMode
-        let topLogoEl = document.getElementById('top_left_logo');
-        if (topLogoEl) {
-            topLogoEl.src = (this.state.brandMode === 'rommer') ? 'img/rommer_logo.jpg' : 'img/stout_logo.png';
-        }
+        this.syncTopLogo();
 
         this.calcBaseTotal = 0;
         this.calcFinalTotal = 0;
