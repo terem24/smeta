@@ -24014,13 +24014,64 @@ const app = {
         }
         el.innerHTML = '<div class="hyd-hint__t">' + esc(title) + '</div>' +
             lines.map(l => '<div class="hyd-hint__l">' + l + '</div>').join('') +
-            (d.kind ? '<div class="hyd-hint__f">Нажмите — полная карточка с числами</div>' : '');
+            (d.kind ? '<div class="hyd-hint__f">Нажмите — полная карточка с числами · плашку можно перетащить</div>' : '');
+        this._hydDraggable(el, '_hydHintPos');
         this._hydHintPlace(d.svg);
+    },
+
+    /**
+     * Перетаскивание плашки за любое место (у карточки — кроме крестика).
+     * Куда поставили, там и будут появляться следующие: положение лежит в
+     * this[key] до переключения «Подсказок». Pointer-события — чтобы
+     * работало и пальцем; захват указателя — чтобы курсор, выскочив за
+     * плашку, не ронял её и не будил наведение на схеме.
+     */
+    _hydDraggable: function (el, key) {
+        if (el.__hydDrag) return;
+        el.__hydDrag = true;
+        el.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 || (e.target.closest && e.target.closest('.hyd-card__x'))) return;
+            const r = el.getBoundingClientRect();
+            const dx = e.clientX - r.left, dy = e.clientY - r.top;
+            let moved = false;
+            const move = (ev) => {
+                if (!moved && Math.abs(ev.clientX - e.clientX) + Math.abs(ev.clientY - e.clientY) < 3) return;
+                moved = true;
+                this._hydDragging = true;
+                el.classList.add('hyd-dragging');
+                const left = Math.min(Math.max(0, ev.clientX - dx), window.innerWidth - r.width);
+                const top = Math.min(Math.max(0, ev.clientY - dy), window.innerHeight - r.height);
+                el.style.left = left + 'px';
+                el.style.top = top + 'px';
+                this[key] = { left, top };
+            };
+            const up = () => {
+                el.removeEventListener('pointermove', move);
+                el.removeEventListener('pointerup', up);
+                el.removeEventListener('pointercancel', up);
+                el.classList.remove('hyd-dragging');
+                // Флаг снимаем чуть позже: mouseover от отпускания приходит
+                // тем же тиком и иначе успевал бы переключить подсказку.
+                setTimeout(() => { this._hydDragging = false; }, 50);
+            };
+            try { el.setPointerCapture(e.pointerId); } catch (x) { /* старый браузер */ }
+            el.addEventListener('pointermove', move);
+            el.addEventListener('pointerup', up);
+            el.addEventListener('pointercancel', up);
+            e.preventDefault();
+        });
     },
 
     _hydHintPlace: function (svg) {
         const el = document.getElementById('hyd_hint');
         if (!el || !svg) return;
+        // Плашку уже переставляли руками — уважаем выбор, только держим в окне.
+        if (this._hydHintPos) {
+            const p = this._hydHintPos;
+            el.style.left = Math.min(Math.max(0, p.left), window.innerWidth - el.offsetWidth) + 'px';
+            el.style.top = Math.min(Math.max(0, p.top), window.innerHeight - el.offsetHeight) + 'px';
+            return;
+        }
         const r = svg.getBoundingClientRect();
         const left = Math.max(8, r.left + 12);
         // Два прохода: первый ставит блок на место и даёт ему настоящую
@@ -24057,7 +24108,7 @@ const app = {
         document.addEventListener('click', (e) => {
             const t = e.target;
             if (!t || !t.closest) return;
-            if (t.closest('#hyd_card')) return;          // клик внутри карточки
+            if (t.closest('#hyd_card') || t.closest('#hyd_hint')) return;   // клик по плашке
             if (!this.hydEnabled()) return;
             const d = this._hydDescr(t);
             if (!d) { this.closeHydCard(); return; }
@@ -24072,11 +24123,16 @@ const app = {
             const t = e.target;
             if (!t || !t.closest) return;
             if (!this.hydEnabled()) return;
+            // Над самой подсказкой или карточкой, и пока их тащат, — ничего
+            // не трогаем: иначе до плашки нельзя было бы доехать мышью.
+            if (this._hydDragging || t.closest('#hyd_hint') || t.closest('#hyd_card')) return;
             const svg = t.closest('svg.scheme-svg');
             if (svg) this._hydPrepare(svg);
             const d = this._hydDescr(t);
             if (d) this.hydHoverOn(d);
-            else if (this._hydHoverEl) this.hydHoverOff();
+            // Над пустым полем листа подсказка остаётся — сменится, когда
+            // наведут на другой элемент; гаснет только за пределами схемы.
+            else if (this._hydHoverEl && !svg) this.hydHoverOff();
         });
         window.addEventListener('keydown', e => {
             if (e.key === 'Escape') this.closeHydCard();
@@ -24099,6 +24155,8 @@ const app = {
         try { localStorage.setItem('hc_scheme_hints', on ? '1' : '0'); } catch (e) { /* приватный режим */ }
         this.hydHoverOff();
         this.closeHydCard();
+        this._hydHintPos = null;      // ручные положения плашек — до переключения
+        this._hydCardPos = null;
         document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => { b.textContent = this._hydToggleLabel(); });
         document.querySelectorAll('.scheme-svg-wrap, #scheme_zoom_overlay').forEach(el => el.classList.toggle('hyd-off', !on));
     },
@@ -24132,10 +24190,13 @@ const app = {
         document.body.appendChild(el);
         el.querySelector('.hyd-card__x').addEventListener('click', () => this.closeHydCard());
         // Держим карточку в пределах окна: у правого края она уезжала за экран,
-        // а на телефоне — под нижнюю панель.
+        // а на телефоне — под нижнюю панель. Если карточку уже перетаскивали,
+        // открываем там, куда её поставили.
         const r = el.getBoundingClientRect();
-        el.style.left = Math.min(Math.max(8, cx + 14), window.innerWidth - r.width - 8) + 'px';
-        el.style.top = Math.min(Math.max(8, cy + 14), window.innerHeight - r.height - 8) + 'px';
+        const p = this._hydCardPos;
+        el.style.left = Math.min(Math.max(8, p ? p.left : cx + 14), window.innerWidth - r.width - 8) + 'px';
+        el.style.top = Math.min(Math.max(8, p ? p.top : cy + 14), window.innerHeight - r.height - 8) + 'px';
+        this._hydDraggable(el, '_hydCardPos');
     },
 
     // ── содержимое карточек ────────────────────────────────────────────────
