@@ -14265,9 +14265,18 @@ const app = {
     /**
      * Кто «свои»: компании и их монтажники.
      *
-     * Менеджеру компании выводятся из привязки (поле «Дистрибьютор» в карточке
-     * плюс компании, где его почта стоит менеджером или директором),
-     * наблюдателю — берутся из назначенного ему списка.
+     * Компании набираются из двух источников, и у ролей они разные:
+     *
+     *  · где человек ведёт людей сам — его почта стоит в карточке компании
+     *    менеджером или директором. Считается обеим ролям: наблюдатель нередко
+     *    и сам менеджер какой-то компании, и своих монтажников он должен видеть
+     *    независимо от того, отметили ему эту компанию галочкой или нет;
+     *  · отмеченные владельцем галочками (viewer_distributor_ids) — только
+     *    наблюдателю, это и есть смысл его роли;
+     *  · поле «Дистрибьютор» в собственной карточке — только менеджеру, у него
+     *    оно значит «моя компания». Наблюдателю его НЕ засчитываем: у прочих
+     *    это поле значит «мой менеджер, ему уходит копия запроса счёта», и по
+     *    нему человек получил бы всю чужую компанию ни за что.
      *
      * Считается заново при каждой загрузке панели: состав компании меняется,
      * держать его в кэше между сеансами нельзя.
@@ -14283,19 +14292,20 @@ const app = {
             const list = Array.isArray(row.viewer_distributor_ids) ? row.viewer_distributor_ids : [];
             list.forEach(id => { if (id) ids.add(String(id)); });
         } else {
-            const email = String(row.email || '').trim().toLowerCase();
             const own = row.distributor_id || this.state.distributorId;
             if (own) ids.add(String(own));
-            if (email) {
-                try {
-                    const { data } = await supabaseClient.from('distributors').select('id, manager_email, director_email');
-                    (data || []).forEach(d => {
-                        const m = String(d.manager_email || '').trim().toLowerCase();
-                        const dir = String(d.director_email || '').trim().toLowerCase();
-                        if ((m && m === email) || (dir && dir === email)) ids.add(String(d.id));
-                    });
-                } catch (e) { console.warn('[область видимости] Не удалось прочитать дистрибьюторов:', e); }
-            }
+        }
+
+        const email = String(row.email || '').trim().toLowerCase();
+        if (email) {
+            try {
+                const { data } = await supabaseClient.from('distributors').select('id, manager_email, director_email');
+                (data || []).forEach(d => {
+                    const m = String(d.manager_email || '').trim().toLowerCase();
+                    const dir = String(d.director_email || '').trim().toLowerCase();
+                    if ((m && m === email) || (dir && dir === email)) ids.add(String(d.id));
+                });
+            } catch (e) { console.warn('[область видимости] Не удалось прочитать дистрибьюторов:', e); }
         }
 
         const distIds = [...ids];
@@ -14368,7 +14378,7 @@ const app = {
         });
         hint.innerHTML = names.length
             ? `<span style="color:var(--text-sec);">Отмечено компаний: <b style="color:var(--text-main);">${names.length}</b> — ${names.join(', ')}.
-               Наблюдатель увидит монтажников этих компаний, их расчёты, переписку с ними и их карточки в планировщике. Всё остальное на платформе от него закрыто.</span>`
+               Наблюдатель увидит монтажников этих компаний, их расчёты, переписку с ними и их карточки в планировщике. Сверх того он всегда видит компании, где сам записан менеджером или директором, — отмечать их галочкой не нужно. Всё остальное на платформе от него закрыто.</span>`
             : `<span style="color:#D97706;">Ни одна компания не отмечена — наблюдатель не увидит ни одного монтажника и ни одного расчёта.</span>`;
     },
 
@@ -15451,7 +15461,7 @@ const app = {
     ROLE_SCOPE_NOTE: {
         super_admin: 'вся платформа',
         admin: 'вся платформа',
-        viewer: 'назначенные компании',
+        viewer: 'назначенные и свои компании',
         manager: 'своя компания'
     },
 
