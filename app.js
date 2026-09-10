@@ -14221,6 +14221,19 @@ const app = {
     scopeDistIds: function () { return (this._adminScope && this._adminScope.distIds) || []; },
     scopeUserIds: function () { return (this._adminScope && this._adminScope.userIds) || []; },
 
+    // Почты своих монтажников. Нужны там, где записи привязаны не к id, а к
+    // логину: таблица projects (в ней только user_email), подложки планов и
+    // архив распознаваний на Beget — они про Supabase ничего не знают.
+    scopeUserEmails: function () { return (this._adminScope && this._adminScope.userEmails) || []; },
+
+    // Своё ли это — по логину. Логин приходит и почтой, и ником, поэтому
+    // сверяем приведёнными к нижнему регистру строками.
+    isScopeEmail: function (login) {
+        const want = String(login || '').trim().toLowerCase();
+        if (!want) return false;
+        return this.scopeUserEmails().indexOf(want) >= 0;
+    },
+
     // Совместимость: под старыми именами к области видимости обращается код,
     // писавшийся, когда она была только у менеджера.
     managerDistIds: function () { return this.scopeDistIds(); },
@@ -14286,14 +14299,15 @@ const app = {
         }
 
         const distIds = [...ids];
-        let userIds = [];
+        let userIds = [], userEmails = [];
         if (distIds.length) {
             try {
-                const { data } = await supabaseClient.from('users').select('id').in('distributor_id', distIds);
+                const { data } = await supabaseClient.from('users').select('id, email').in('distributor_id', distIds);
                 userIds = (data || []).map(u => String(u.id));
+                userEmails = (data || []).map(u => String(u.email || '').trim().toLowerCase()).filter(Boolean);
             } catch (e) { console.warn('[область видимости] Не удалось прочитать монтажников компаний:', e); }
         }
-        this._adminScope = { distIds, userIds };
+        this._adminScope = { distIds, userIds, userEmails };
         this._managerScope = this._adminScope;
         return this._adminScope;
     },
@@ -14328,6 +14342,34 @@ const app = {
 
     viewerScopeFor: function (userId) {
         return (this._viewerScopes && this._viewerScopes[String(userId)]) || [];
+    },
+
+    // Отмеченные в карточке компании — по галочкам, а не по памяти.
+    pickedViewerDistIds: function () {
+        const box = document.getElementById('admin_edit_viewer_dists');
+        if (!box) return null;
+        return [...box.querySelectorAll('input.admin-viewer-dist:checked')].map(i => i.value).filter(Boolean);
+    },
+
+    /**
+     * Подпись под списком компаний наблюдателя: что именно он увидит.
+     *
+     * Список галочек сам по себе не отвечает на вопрос «и что теперь?» —
+     * поэтому под ним всегда стоит фраза с перечислением отмеченных компаний,
+     * а при пустом выборе — предупреждение, что человек не увидит ничего.
+     */
+    updateViewerDistsHint: function () {
+        const hint = document.getElementById('admin_edit_viewer_dists_hint');
+        if (!hint) return;
+        const picked = this.pickedViewerDistIds() || [];
+        const names = picked.map(id => {
+            const d = (this.adminData.distributors || []).find(x => String(x.id) === String(id));
+            return d ? d.company_name : id;
+        });
+        hint.innerHTML = names.length
+            ? `<span style="color:var(--text-sec);">Отмечено компаний: <b style="color:var(--text-main);">${names.length}</b> — ${names.join(', ')}.
+               Наблюдатель увидит монтажников этих компаний, их расчёты, переписку с ними и их карточки в планировщике. Всё остальное на платформе от него закрыто.</span>`
+            : `<span style="color:#D97706;">Ни одна компания не отмечена — наблюдатель не увидит ни одного монтажника и ни одного расчёта.</span>`;
     },
 
     // Отсечка выборки по монтажникам своих компаний. Пустой список подменяем
@@ -15365,14 +15407,153 @@ const app = {
 
     // Вкладки, доступные текущему админу. Фильтр в одном месте: список строится
     // и в ряду вкладок на десктопе, и в меню разделов на телефоне.
+    /**
+     * Видно ли роли этот раздел. Одно правило на два применения: ряд вкладок
+     * в самой панели и справка «кто что видит» (showRolesHelp). Пока правило
+     * лежит здесь одно, справка не может разойтись с тем, как панель работает
+     * на самом деле, — а разошедшаяся справка хуже её отсутствия.
+     *
+     * isOwner отдельным доводом, а не выводится из role: права на разделы
+     * владельца даёт личный адрес почты, а не запись в базе (isAnalyticsOwner).
+     */
+    tabVisibleFor: function (tabId, role, isOwner) {
+        if (this.OWNER_ONLY_TABS.indexOf(tabId) >= 0) return !!isOwner;
+        if (this.ADMIN_ONLY_TABS.indexOf(tabId) >= 0) return role === 'super_admin' || role === 'admin';
+        if (role === 'manager') return this.MANAGER_TABS.indexOf(tabId) >= 0;
+        return true;
+    },
+
     adminTabDefs: function () {
-        let defs = this.ADMIN_TAB_DEFS.filter(t => this.OWNER_ONLY_TABS.indexOf(t.id) < 0 || this.isAnalyticsOwner());
-        // Разделы платформы — только администраторам. Владелец сюда попадает
-        // ролью super_admin, поэтому отдельного исключения ему не нужно.
-        if (!this.hasFeatureRoleAccess()) defs = defs.filter(t => this.ADMIN_ONLY_TABS.indexOf(t.id) < 0);
-        if (!this.isManagerRole()) return defs;
-        return defs.filter(t => this.MANAGER_TABS.indexOf(t.id) >= 0)
-            .map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
+        const role = this.getAdminRole();
+        const owner = this.isAnalyticsOwner();
+        const defs = this.ADMIN_TAB_DEFS.filter(t => this.tabVisibleFor(t.id, role, owner));
+        if (role !== 'manager') return defs;
+        return defs.map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
+    },
+
+    // ═══ Справка «кто что видит» ═════════════════════════════════════════
+    // Открывается значком «?» рядом с полем «Тип аккаунта / Роль» в карточке
+    // пользователя — там, где вопрос и возникает.
+    //
+    // Таблица разделов НЕ переписана словами: она строится из тех же констант,
+    // по которым панель рисует вкладки (см. tabVisibleFor). Добавили раздел —
+    // он сам появился в справке с верными отметками. Руками ведётся только
+    // список действий ниже: проверки на них разбросаны по коду, свести их в
+    // одно выражение нельзя, поэтому при правке прав правится и эта таблица.
+    ROLE_COLUMNS: [
+        { role: 'super_admin', owner: true, label: 'Владелец', code: 'super_admin' },
+        { role: 'admin', owner: false, label: 'Администратор', code: 'admin' },
+        { role: 'viewer', owner: false, label: 'Наблюдатель', code: 'viewer' },
+        { role: 'manager', owner: false, label: 'Менеджер', code: 'manager' }
+    ],
+
+    // Чьи данные видит роль в тех разделах, что ей открыты.
+    ROLE_SCOPE_NOTE: {
+        super_admin: 'вся платформа',
+        admin: 'вся платформа',
+        viewer: 'назначенные компании',
+        manager: 'своя компания'
+    },
+
+    // 'y' — можно, 'n' — нельзя, 'own' — только по своим компаниям.
+    ROLE_ACTIONS: [
+        { group: 'Учётки' },
+        { name: 'Тариф монтажника', hint: 'Базовый / Профи, срок, источник', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Роли: админ, наблюдатель, менеджер', hint: 'выдать, снять, поменять тариф роли', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
+        { name: 'Блокировка и удаление монтажника', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Блокировка и удаление тех, у кого роль', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
+        { name: 'Показать пароль монтажника', hint: 'копия снимается при входе', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { group: 'Компании и доступы' },
+        { name: 'Промокоды и карточки дистрибьюторов', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Назначить дистрибьютора', hint: 'поштучно и всем по фильтру', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Доступ к распознаванию и проектированию', hint: 'лично, компании, региону', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { group: 'Работа с монтажниками' },
+        { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
+        { name: 'Объявление для всех пользователей', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Удалить сообщение из переписки', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
+        { group: 'Уборка и настройки' },
+        { name: 'Очистить планы этажей и архив распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Словарь марок в аналитике', hint: 'кандидаты, написания, марки графика', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' }
+    ],
+
+    showRolesHelp: function () {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const cols = this.ROLE_COLUMNS;
+        const pill = (kind, text) => {
+            const skin = {
+                full: 'background:rgba(16,185,129,.14); color:#0F8A5F;',
+                part: 'background:rgba(217,119,6,.14); color:#B45309;',
+                none: 'background:var(--surface-light); color:var(--text-sec);'
+            }[kind];
+            return `<span style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; ${skin}">${text}</span>`;
+        };
+        const th = 'padding:9px 8px; text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); border-bottom:1px solid var(--border); white-space:nowrap;';
+        const td = 'padding:8px; text-align:center; border-bottom:1px solid var(--border); vertical-align:middle;';
+        const tdName = 'padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:12.5px; color:var(--text-main);';
+        const tdGroup = 'padding:7px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-sec); background:var(--surface-light);';
+        const head = `<tr><th style="${th} text-align:left; padding-left:12px;">Раздел</th>${
+            cols.map(c => `<th style="${th}">${c.label}<div style="font-family:monospace; font-size:9.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-sec);">${c.code}</div></th>`).join('')}</tr>`;
+
+        // Разделы — из констант панели, поэтому таблица не может устареть
+        const tabRows = this.ADMIN_TAB_DEFS.map(t => `<tr>
+                <td style="${tdName}">${t.icon} ${esc(t.label)}<div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
+                ${cols.map(c => `<td style="${td}">${this.tabVisibleFor(t.id, c.role, c.owner)
+                    ? (c.role === 'viewer' || c.role === 'manager' ? pill('part', 'свои') : pill('full', 'вся платформа'))
+                    : pill('none', 'нет')}</td>`).join('')}
+            </tr>`).join('');
+
+        const actRows = this.ROLE_ACTIONS.map(a => a.group
+            ? `<tr><td style="${tdGroup}" colspan="${cols.length + 1}">${esc(a.group)}</td></tr>`
+            : `<tr>
+                <td style="${tdName}">${esc(a.name)}${a.hint ? `<div style="font-size:11px; color:var(--text-sec);">${esc(a.hint)}</div>` : ''}</td>
+                ${cols.map(c => {
+                    const v = a[c.role];
+                    return `<td style="${td}">${v === 'y' ? pill('full', 'да') : v === 'own' ? pill('part', 'по своим') : pill('none', 'нет')}</td>`;
+                }).join('')}
+            </tr>`).join('');
+
+        const scopeRow = cols.map(c => `<div style="flex:1 1 150px; min-width:150px;">
+                <div style="font-size:11px; color:var(--text-sec);">${c.label}</div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-main);">${this.ROLE_SCOPE_NOTE[c.role]}</div>
+            </div>`).join('');
+
+        const old = document.getElementById('roles_help_overlay');
+        if (old) old.remove();
+        const ov = document.createElement('div');
+        ov.id = 'roles_help_overlay';
+        ov.style.cssText = 'position:fixed; inset:0; z-index:100000000; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:20px;';
+        ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+        ov.innerHTML = `
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:14px; width:100%; max-width:900px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden;">
+                <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border); flex-shrink:0;">
+                    <h3 style="margin:0; font-size:16px; color:var(--text-main);">Кто что видит и что может менять</h3>
+                    <button class="admin-btn" style="margin-left:auto;" onclick="document.getElementById('roles_help_overlay').remove()">Закрыть</button>
+                </div>
+                <div style="overflow:auto; padding:18px 20px 24px;">
+                    <div style="display:flex; gap:16px; flex-wrap:wrap; padding:12px 14px; margin-bottom:18px; background:var(--surface-light); border-radius:10px;">
+                        <div style="flex:1 1 100%; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-sec);">Чьи данные видит роль</div>
+                        ${scopeRow}
+                    </div>
+                    <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Разделы панели</h4>
+                    <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">Раздела, отмеченного «нет», человек не видит вовсе — ни кнопки, ни пункта в меню. Эта таблица строится из настроек самой панели, поэтому всегда показывает то, как она работает сейчас.</p>
+                    <div style="overflow-x:auto; margin-bottom:24px;">
+                        <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head}</thead><tbody>${tabRows}</tbody></table>
+                    </div>
+                    <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Что можно менять</h4>
+                    <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">У наблюдателя и менеджера панель работает в режиме просмотра: кнопки погашены. Исключений два — переписка и статусы счетов у менеджера.</p>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head.replace('>Раздел<', '>Действие<')}</thead><tbody>${actRows}</tbody></table>
+                    </div>
+                    <p style="margin:20px 0 0; padding:12px 14px; background:var(--surface-light); border-left:3px solid var(--primary); border-radius:8px; font-size:12px; color:var(--text-sec); line-height:1.6;">
+                        <b style="color:var(--text-main);">Это про то, что видно в панели, а не про защиту данных.</b>
+                        Разделение делает код на стороне браузера. Пока в Supabase не закрыты политики чтения,
+                        таблицы users и estimates отдаются любому авторизованному через API мимо интерфейса.
+                    </p>
+                </div>
+            </div>`;
+        document.body.appendChild(ov);
     },
 
     // Ниже этой ширины админка живёт по-мобильному: вместо ряда вкладок — меню
@@ -16278,9 +16459,7 @@ const app = {
     switchAdminTab: function (tab) {
         // Кнопок «Дашборд» и «Аналитика» у остальных админов нет, но вызов из
         // консоли или старой ссылки обязан упереться в ту же проверку, что и вёрстка.
-        if (this.OWNER_ONLY_TABS.indexOf(tab) >= 0 && !this.isAnalyticsOwner()) return;
-        if (this.ADMIN_ONLY_TABS.indexOf(tab) >= 0 && !this.hasFeatureRoleAccess()) return;
-        if (this.isManagerRole() && this.MANAGER_TABS.indexOf(tab) < 0) return;
+        if (!this.tabVisibleFor(tab, this.getAdminRole(), this.isAnalyticsOwner())) return;
         this._adminTab = tab;
         // Данные раздела грузим при переходе в него, а не все сразу при открытии
         // панели. Что уже загружено — не перезапрашиваем: «Пользователей» отмечает
@@ -22339,10 +22518,18 @@ const app = {
                 this._loadingProjects = true;
                 (async () => {
                     try {
-                        const { data, error } = await supabaseClient.from('projects')
+                        let q = supabaseClient.from('projects')
                             .select('id, calc_id, project_name, address, sections, area, eq_sum, works_sum, user_name, user_email, issued_at')
                             .order('issued_at', { ascending: false })
                             .limit(200);
+                        // В projects нет user_id — только почта автора, по ней и
+                        // режем. Пустой список почт подменяем заведомо чужим
+                        // адресом: запрос без условия отдал бы все проекты.
+                        if (this.isScopedAdmin()) {
+                            const mine = this.scopeUserEmails();
+                            q = q.in('user_email', mine.length ? mine : ['-']);
+                        }
+                        const { data, error } = await q;
                         if (error) throw error;
                         this.adminData.projects = data || [];
                         this._projectsError = null;
@@ -24827,7 +25014,9 @@ const app = {
                                 <h4 style="margin:0 0 15px 0; font-size:14px; color:var(--text-main);">⚙️ Управление тарифом</h4>
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
                                     <div>
-                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тип аккаунта / Роль</label>
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тип аккаунта / Роль
+                                            <button type="button" title="Кто что видит и что может менять" onclick="app.showRolesHelp()" style="border:1px solid var(--border); background:var(--surface-light); color:var(--text-sec); width:16px; height:16px; line-height:1; border-radius:50%; font-size:11px; font-weight:700; cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center;">?</button>
+                                        </label>
                                         <select id="admin_edit_tariff" onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${user.account_type === 'base' ? 'selected' : ''}>Базовый</option>
                                             <option value="pro" ${user.account_type === 'pro' ? 'selected' : ''}>Профи ⭐️</option>
@@ -24864,16 +25053,20 @@ const app = {
                                         <div id="admin_edit_distributor_info" style="margin-top:6px; font-size:11px; color:var(--text-sec); line-height:1.5;"></div>
                                     </div>
                                     <div id="admin_edit_viewer_dists_wrapper" style="display: ${user.account_type === 'viewer' ? 'block' : 'none'}; grid-column: 1 / -1;">
-                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">За какими дистрибьюторами наблюдает (можно несколько — Ctrl или ⌘ + клик)</label>
-                                        <select id="admin_edit_viewer_dists" multiple size="6" ${isViewer ? 'disabled' : ''} style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">За какими дистрибьюторами наблюдает — отметьте галочками</label>
+                                        <div id="admin_edit_viewer_dists" style="max-height:170px; overflow-y:auto; border:1px solid var(--border); border-radius:6px; background:var(--bg);">
                                             ${(() => {
                                                 const picked = this.viewerScopeFor(user.id);
-                                                return (this.adminData.distributors || []).map(d =>
-                                                    `<option value="${d.id}" ${picked.includes(String(d.id)) ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`
-                                                ).join('');
+                                                const list = this.adminData.distributors || [];
+                                                if (!list.length) return `<div style="padding:10px 12px; font-size:12px; color:var(--text-sec);">Компаний в справочнике пока нет.</div>`;
+                                                return list.map((d, i) => `
+                                                    <label style="display:flex; align-items:center; gap:9px; padding:7px 12px; font-size:12.5px; color:var(--text-main); cursor:${isViewer ? 'not-allowed' : 'pointer'}; ${i ? 'border-top:1px solid var(--border);' : ''}">
+                                                        <input type="checkbox" class="admin-viewer-dist" value="${d.id}" ${picked.includes(String(d.id)) ? 'checked' : ''} ${isViewer ? 'disabled' : ''} onchange="app.updateViewerDistsHint()" style="width:16px; height:16px; flex-shrink:0; accent-color:var(--primary); cursor:inherit;">
+                                                        <span>${d.company_name} <span style="color:var(--text-sec);">(${d.promo_code})</span></span>
+                                                    </label>`).join('');
                                             })()}
-                                        </select>
-                                        <div style="margin-top:6px; font-size:11px; color:var(--text-sec); line-height:1.5;">Наблюдатель увидит только монтажников этих компаний, их расчёты и переписку с ними. Ни одной компании не выбрано — не увидит ничего.</div>
+                                        </div>
+                                        <div id="admin_edit_viewer_dists_hint" style="margin-top:6px; font-size:11.5px; line-height:1.5;"></div>
                                     </div>
                                     <div id="admin_edit_price_source_wrapper" style="display: block; grid-column: 1 / -1;">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Откуда брать цены на оборудование</label>
@@ -24919,6 +25112,8 @@ const app = {
         `;
 
         setTimeout(() => {
+            // Подпись под списком компаний наблюдателя — сразу, а не только после клика
+            this.updateViewerDistsHint();
             const tariffSel = document.getElementById('admin_edit_tariff');
             const subSel = document.getElementById('admin_edit_subtype');
             const subWrap = document.getElementById('admin_edit_subtype_wrapper');
@@ -25066,8 +25261,10 @@ const app = {
     // обновляется по кнопке «Обновить»
     loadAdminInstallerExtrasData: async function (force) {
         if (this._adminInstallerExtras && !force) return this._adminInstallerExtras;
-        const { data, error } = await supabaseClient.from('users')
-            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings');
+        // Свои расценки и своё оборудование — это две вкладки над одной выборкой,
+        // поэтому урезаем её здесь, в одном месте на обе.
+        const { data, error } = await this.scopeAdminQuery(supabaseClient.from('users')
+            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings'), 'id');
         if (error) throw error;
         const rows = (data || []).map(u => {
             const s = u.installer_settings || {};
@@ -25502,6 +25699,15 @@ const app = {
             const r = await fetch(`${this.PLANS_ENDPOINT}?admin=1`, { headers });
             const data = await r.json();
             if (!data.ok) throw new Error(data.error || (r.status === 403 ? 'доступ только для администраторов' : 'сервер не ответил'));
+            // Подложки лежат на Beget и про дистрибьюторов не знают — отбираем
+            // свои по владельцу (в owner сервер кладёт почту). Занятое место
+            // пересчитываем по своим же объектам: общий объём архива — цифра
+            // платформы, а не компании.
+            if (this.isScopedAdmin()) {
+                const mine = (data.projects || []).filter(p => this.isScopeEmail(p.owner));
+                data.projects = mine;
+                data.totalBytes = mine.reduce((s, p) => s + (p.bytes || 0), 0);
+            }
             this._adminPlansData = data;
         } catch (e) {
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать планы: ${e.message}</div>`;
@@ -25755,6 +25961,15 @@ const app = {
             const data = await r.json();
             if (!data.ok) throw new Error(data.error || (r.status === 403 ? 'доступ только для администраторов' : 'архив не ответил'));
             rows = data.rows || [];
+            // Записи архива подписаны и компанией, и логином. Компания точнее:
+            // логин у монтажника может смениться, а distributorId кладётся в
+            // момент разбора. Но у старых записей его нет — там сверяем логин.
+            if (this.isScopedAdmin()) {
+                const dists = this.scopeDistIds().map(String);
+                rows = rows.filter(r2 => r2.distributorId
+                    ? dists.includes(String(r2.distributorId))
+                    : this.isScopeEmail(r2.user));
+            }
         } catch (e) {
             const root = document.getElementById('admin_recognition_root');
             if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать архив: ${e.message}</div>`;
@@ -25763,13 +25978,17 @@ const app = {
 
         // Размер архива приходит отдельно: список ограничен по датам, а место
         // на диске занимают все файлы, включая те, что в список не попали.
+        // Тому, у кого панель урезана до своих монтажников, размер всего архива
+        // не принадлежит — и запрашивать его незачем.
         this._adminRecognitionStats = null;
-        try {
-            const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?stats=1`, { headers });
-            const data = await r.json();
-            if (data.ok) this._adminRecognitionStats = data;
-        } catch (e) {
-            console.warn('[архив] размер не посчитан:', e.message);
+        if (!this.isScopedAdmin()) {
+            try {
+                const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?stats=1`, { headers });
+                const data = await r.json();
+                if (data.ok) this._adminRecognitionStats = data;
+            } catch (e) {
+                console.warn('[архив] размер не посчитан:', e.message);
+            }
         }
 
         // Персональные лимиты: у кого не задан — действует общий.
@@ -25972,6 +26191,11 @@ const app = {
     renderAdminRecognitionBody: function () {
         const root = document.getElementById('admin_recognition_root');
         if (!root) return;
+
+        // Место на диске и копилка промахов подбора считаются сервером по всему
+        // архиву — это показатели платформы, а не компании. Тому, у кого панель
+        // урезана до своих монтажников, они не принадлежат.
+        const platformWide = !this.isScopedAdmin();
 
         const rows = this._adminRecognitionRows || [];
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
@@ -26339,9 +26563,9 @@ const app = {
                 <button class="admin-btn" style="margin-left:auto;"
                         onclick="app.renderAdminRecognition()">Обновить</button>
             </div>
-            ${diskHtml}
+            ${platformWide ? diskHtml : ''}
             ${manualHtml}
-            ${gapsHtml}
+            ${platformWide ? gapsHtml : ''}
             ${pickedHtml}
             <div style="overflow-x:auto;">
                 <table style="width:100%; border-collapse:collapse;">
@@ -28240,9 +28464,8 @@ const app = {
         // у всех остальных — пусто. Иначе после смены роли за человеком остался
         // бы список, который ни на что не влияет, а при возврате в наблюдатели
         // молча вернул бы старый доступ.
-        const viewerSel = document.getElementById('admin_edit_viewer_dists');
-        updateData.viewer_distributor_ids = (type === 'viewer' && viewerSel)
-            ? Array.from(viewerSel.selectedOptions).map(o => o.value).filter(Boolean)
+        updateData.viewer_distributor_ids = (type === 'viewer' && this.pickedViewerDistIds())
+            ? this.pickedViewerDistIds()
             : [];
 
         try {
@@ -28279,7 +28502,10 @@ const app = {
         const val = typeSelect.value;
         // Список наблюдаемых компаний — только у роли «Наблюдатель»
         const viewerDistsWrapper = document.getElementById('admin_edit_viewer_dists_wrapper');
-        if (viewerDistsWrapper) viewerDistsWrapper.style.display = val === 'viewer' ? 'block' : 'none';
+        if (viewerDistsWrapper) {
+            viewerDistsWrapper.style.display = val === 'viewer' ? 'block' : 'none';
+            if (val === 'viewer') this.updateViewerDistsHint();
+        }
         if (val === 'pro') {
             if (roleTariffWrapper) roleTariffWrapper.style.display = 'none';
             if (dateWrapper) dateWrapper.style.display = 'block';
