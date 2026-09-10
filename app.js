@@ -15489,7 +15489,11 @@ const app = {
             }[kind];
             return `<span style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; ${skin}">${text}</span>`;
         };
-        const th = 'padding:9px 8px; text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); border-bottom:1px solid var(--border); white-space:nowrap;';
+        // Шапка прилипает к верху своей таблицы: строк три десятка, и без неё
+        // на середине прокрутки уже не понять, чей это столбец. Прокрутку для
+        // этого держит сама обёртка таблицы (tableBox), а не окно целиком.
+        const th = 'position:sticky; top:0; z-index:1; background:var(--surface-light); padding:9px 8px; text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); border-bottom:1px solid var(--border); white-space:nowrap;';
+        const tableBox = 'overflow:auto; max-height:46vh; border:1px solid var(--border); border-radius:8px;';
         const td = 'padding:8px; text-align:center; border-bottom:1px solid var(--border); vertical-align:middle;';
         const tdName = 'padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:12.5px; color:var(--text-main);';
         const tdGroup = 'padding:7px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-sec); background:var(--surface-light);';
@@ -15538,12 +15542,12 @@ const app = {
                     </div>
                     <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Разделы панели</h4>
                     <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">Раздела, отмеченного «нет», человек не видит вовсе — ни кнопки, ни пункта в меню. Эта таблица строится из настроек самой панели, поэтому всегда показывает то, как она работает сейчас.</p>
-                    <div style="overflow-x:auto; margin-bottom:24px;">
+                    <div style="${tableBox} margin-bottom:24px;">
                         <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head}</thead><tbody>${tabRows}</tbody></table>
                     </div>
                     <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Что можно менять</h4>
                     <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">У наблюдателя и менеджера панель работает в режиме просмотра: кнопки погашены. Исключений два — переписка и статусы счетов у менеджера.</p>
-                    <div style="overflow-x:auto;">
+                    <div style="${tableBox}">
                         <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head.replace('>Раздел<', '>Действие<')}</thead><tbody>${actRows}</tbody></table>
                     </div>
                     <p style="margin:20px 0 0; padding:12px 14px; background:var(--surface-light); border-left:3px solid var(--primary); border-radius:8px; font-size:12px; color:var(--text-sec); line-height:1.6;">
