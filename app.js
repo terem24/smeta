@@ -24485,6 +24485,7 @@ const app = {
         // списком пользователей. Если нет — просим и показываем прочерк.
         this.ensureRecognitionCounts();
         const recCount = this.recognitionCountFor(user);
+        await this.loadPhoneRegions();
 
         let date = new Date(user.created_at).toLocaleDateString();
         let lastVis = user.last_visited ? new Date(user.last_visited).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Нет данных';
@@ -24576,6 +24577,15 @@ const app = {
                                 <div><span style="color:var(--text-sec);">Дата рождения:</span> <b style="color:var(--text-main);">${user.birth_date ? new Date(user.birth_date).toLocaleDateString('ru-RU') : '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Регион:</span> <b style="color:var(--text-main);">${user.region || '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Населённый пункт:</span> <b style="color:var(--text-main);">${user.city || '—'}</b></div>
+                                <!-- Где выдан номер (реестр нумерации, phone_regions.js). Само по
+                                     себе расхождение ничего не доказывает: номер переносят между
+                                     регионами, люди переезжают — поэтому просто показываем факт. -->
+                                ${(() => {
+                                    const list = this.regionByPhone(user.phone);
+                                    if (!list.length) return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:var(--text-main);">не определён</b></div>`;
+                                    const match = this.phoneRegionMatches(user.phone, user.region);
+                                    return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:${match === false ? '#D97706' : 'var(--text-main)'};">${list.join(' / ')}</b>${match === false ? ' <span style="color:#D97706;" title="Бывает при переезде или переносе номера — само по себе не значит обман">⚠ не совпадает с анкетой</span>' : (match ? ' <span style="color:#10B981;">✓</span>' : '')}</div>`;
+                                })()}
                                 <div style="grid-column: 1 / -1;"><span style="color:var(--text-sec);">Сфера деятельности:</span> ${(user.activity_types || []).length ? (user.activity_types || []).map(a => `<span style="background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:4px;">${a}</span>`).join('') : ' <b style="color:var(--text-main);">—</b>'}</div>
                             </div>
                         </div>
