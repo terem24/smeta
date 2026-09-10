@@ -4219,7 +4219,7 @@ body.modal-over-banner .hc-cookie-banner {
         overflow-wrap: anywhere;
     }
     /* Суммы вида «29 815 463 ₽» при 20–24px не помещались в половину экрана */
-    #admin_content .admin-stat-grid .control-card > span:last-child {
+    #admin_content .admin-stat-grid .control-card > span:nth-child(2) {
         font-size: 17px !important;
         line-height: 1.2;
     }

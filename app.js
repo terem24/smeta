@@ -15665,8 +15665,17 @@ const app = {
             if (isSuspectFilter) {
                 users = users.filter(u => this.suspiciousProfileFlags(u).length > 0);
             }
+            // Сколько среди отобранных продавцов и сколько монтажников — для карточки
+            // «Пользователей». Один человек может отметить обе сферы, поэтому числа
+            // не обязаны складываться в общее. Когда отбор шёл на клиенте, список
+            // здесь ещё полный — считаем по нему до нарезки на страницу; иначе два
+            // лёгких запроса-счётчика с теми же фильтрами, что и у таблицы.
+            let sellersCount = 0, installersCount = 0;
+            const hasActivity = (u, word) => (u.activity_types || []).some(a => String(a).toLowerCase().indexOf(word) !== -1);
             if (isRecogFilter || isSuspectFilter) {
                 totalUsers = users.length;
+                sellersCount = users.filter(u => hasActivity(u, 'продав')).length;
+                installersCount = users.filter(u => hasActivity(u, 'монтаж')).length;
                 // Массовое назначение дистрибьютора повторяет фильтры запросом к базе,
                 // а про доступ к распознаванию и про сомнительные анкеты база не знает —
                 // поэтому запоминаем, кто именно отобран, иначе «назначить отфильтрованным
@@ -15675,6 +15684,15 @@ const app = {
                 if (!isClientSort) users = users.slice(offset, offset + this._adminPageSize);
             } else {
                 this._recogFilteredIds = null;
+                try {
+                    const countBy = async (word) => {
+                        let cq = supabaseClient.from('users').select('id', { count: 'exact', head: true });
+                        cq = this.buildAdminUserFilter(cq).contains('activity_types', [word]);
+                        const { count } = await cq;
+                        return count || 0;
+                    };
+                    [sellersCount, installersCount] = await Promise.all([countBy('Продавец'), countBy('Монтажник')]);
+                } catch (e) { console.warn('[админка] продавцы/монтажники не посчитаны:', e); }
             }
 
             // Сортировка по тарифу — до запроса смет, чтобы тянуть их только для своей страницы
@@ -15895,6 +15913,8 @@ const app = {
                 // Список смет уже здесь — вкладке «Расчёты» перезапрашивать нечего
                 estimatesLoaded: true,
                 totalUsers: totalUsers || 0,
+                sellersCount,
+                installersCount,
                 totalEstimates: sums.length,
                 totalEq,
                 totalWorks,
@@ -16275,7 +16295,7 @@ const app = {
         const mobile = this.isAdminMobile();
         if (!this._adminTab && !mobile) this._adminTab = 'stats';
 
-        const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks } = this.adminData;
+        const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks, sellersCount, installersCount } = this.adminData;
 
         const ADMIN_TAB_DEFS = this.adminTabDefs();
         // Раздел, закрытый для этой роли, мог остаться в памяти с прошлого входа
@@ -16497,7 +16517,7 @@ const app = {
 
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-                        <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span></div>
+                        <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span></div>
                         <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${totalEq.toLocaleString()} ₽</span></div>
                         <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span></div>
