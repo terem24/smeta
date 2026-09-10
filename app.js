@@ -15369,6 +15369,7 @@ const app = {
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
         { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
+        { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
@@ -15810,6 +15811,12 @@ const app = {
         if (this._adminTab === 'plans') {
             content.innerHTML = navHtml;
             this.renderAdminPlans();
+            return;
+        }
+
+        if (this._adminTab === 'inactive') {
+            content.innerHTML = navHtml;
+            this.renderAdminInactive();
             return;
         }
 
@@ -25727,6 +25734,144 @@ const app = {
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         this.pushPlansToEditor();
         window.open('plan_editor.html', '_blank');
+    },
+
+    // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
+    //
+    // Кому ушло письмо, кто после него вернулся, кто молчит, кого заморозили и
+    // кого в итоге удалили. Журнал лежит в закрытых таблицах, поэтому читаем не
+    // напрямую, а функцией inactivity_report: она сама проверяет, что зовёт
+    // администратор (см. миграцию 20260910_inactivity_report.sql).
+    renderAdminInactive: async function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+        content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
+        const root = () => document.getElementById('admin_inactive_root');
+        try {
+            const { data, error } = await supabaseClient.rpc('inactivity_report');
+            if (error) throw error;
+            this._inactiveReport = data || [];
+        } catch (e) {
+            const known = String(e.message || '').indexOf('inactivity_report') !== -1;
+            if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
+                Не удалось прочитать журнал напоминаний: ${e.message || e}
+                ${known ? '<div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20260910_inactivity_report.sql ещё не выполнена в Supabase.</div>' : ''}
+            </div>`;
+            return;
+        }
+        this.renderAdminInactiveBody();
+    },
+
+    renderAdminInactiveBody: function () {
+        const root = document.getElementById('admin_inactive_root');
+        if (!root) return;
+        const rows = this._inactiveReport || [];
+        const isViewer = this.isReadOnlyAdmin();
+        const esc = s => String(s ?? '').replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+        const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
+
+        const returned = rows.filter(r => r.returned_at).length;
+        const frozen = rows.filter(r => r.stage === 'frozen').length;
+        const deleted = rows.filter(r => r.stage === 'deleted').length;
+        const silent = rows.filter(r => !r.returned_at && r.stage === 'warned').length;
+
+        // Доля вернувшихся — единственная цифра, ради которой всё это затевалось:
+        // она говорит, работает напоминание или люди ушли насовсем.
+        const share = rows.length ? Math.round(returned * 100 / rows.length) : 0;
+
+        let h = `
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
+                <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
+            </div>
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:16px; line-height:1.5;">
+                Письмо уходит после 30 дней молчания, доступ приостанавливается на 45-й день,
+                учётка удаляется через 45 дней заморозки. Проверка идёт каждую ночь.
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Отправлено</div>
+                    <div style="font-size:20px; font-weight:800; color:var(--text-main);">${rows.length}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Вернулись</div>
+                    <div style="font-size:20px; font-weight:800; color:#10B981;">${returned}</div>
+                    <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${share}% от всех</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Молчат</div>
+                    <div style="font-size:20px; font-weight:800; color:#D97706;">${silent}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Заморожены</div>
+                    <div style="font-size:20px; font-weight:800; color:#0EA5E9;">${frozen}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Удалены</div>
+                    <div style="font-size:20px; font-weight:800; color:#EF4444;">${deleted}</div>
+                </div>
+            </div>`;
+
+        if (!rows.length) {
+            h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
+                Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 30 дней.
+            </div>`;
+            root.innerHTML = h;
+            return;
+        }
+
+        h += `<div style="overflow-x:auto;"><table class="admin-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead><tr style="text-align:left; color:var(--text-sec);">
+                <th style="padding:8px;">Кто</th>
+                <th style="padding:8px;">Регион</th>
+                <th style="padding:8px; white-space:nowrap;">Письмо</th>
+                <th style="padding:8px;">Чем кончилось</th>
+                <th style="padding:8px; text-align:center;">Смет</th>
+                <th style="padding:8px;"></th>
+            </tr></thead><tbody>`;
+
+        rows.forEach(r => {
+            // Итог по-русски, а не кодом этапа: ради этой колонки отчёт и нужен.
+            let outcome, color;
+            if (r.stage === 'deleted') {
+                outcome = 'Удалён' + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
+                color = '#EF4444';
+            } else if (r.returned_at) {
+                outcome = 'Вернулся ' + dt(r.returned_at);
+                color = '#10B981';
+            } else if (r.stage === 'frozen') {
+                const delOn = new Date(new Date(r.frozen_at).getTime() + 45 * 864e5);
+                outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
+                color = '#0EA5E9';
+            } else {
+                const d = days(r.warned_at);
+                outcome = 'Не отреагировал' + (d !== null ? ' · ' + d + ' ' + this.plural(d, 'день', 'дня', 'дней') + ' после письма' : '');
+                color = '#D97706';
+            }
+
+            h += `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:8px;">
+                    <b style="color:var(--text-main);">${esc(r.name)}</b>
+                    <div style="font-size:10px; color:var(--text-sec);">${esc(r.phone || '')}${r.email ? ' · ' + esc(r.email) : ''}</div>
+                </td>
+                <td style="padding:8px; color:var(--text-sec);">${esc([r.city, r.region].filter(Boolean).join(', ') || '—')}</td>
+                <td style="padding:8px; white-space:nowrap; color:var(--text-main);">${dt(r.warned_at)}</td>
+                <td style="padding:8px; color:${color}; font-weight:600;">${outcome}</td>
+                <td style="padding:8px; text-align:center; color:var(--text-main);">${r.estimates ?? 0}</td>
+                <td style="padding:8px; text-align:right; white-space:nowrap;">
+                    ${r.stage === 'frozen' && !isViewer
+                        ? `<button class="admin-action-btn btn-obj" onclick="app.unfreezeUser('${r.user_id}')">Вернуть доступ</button>`
+                        : ''}
+                    ${r.stage !== 'deleted'
+                        ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>`
+                        : ''}
+                </td>
+            </tr>`;
+        });
+
+        h += `</tbody></table></div>`;
+        root.innerHTML = h;
     },
 
     renderAdminPlans: async function () {
