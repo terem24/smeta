@@ -13193,3 +13193,28 @@ body.dark-mode #hyd_card .hyd-card__x:hover {
         display: none !important;
     }
 }
+
+/* Подсказка: подзаголовок контура и предупреждение; абзац в карточке */
+#hyd_hint .hyd-hint__c {
+    display: inline-block;
+    font-size: 11px;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, .1);
+    border-radius: 6px;
+    padding: 1px 7px;
+}
+
+#hyd_hint .hyd-hint__warn {
+    color: #fca5a5;
+}
+
+#hyd_card .hyd-card__p {
+    margin: 0 0 8px;
+    color: #475569;
+    font-size: 12.5px;
+    line-height: 1.4;
+}
+
+body.dark-mode #hyd_card .hyd-card__p {
+    color: #cbd5e1;
+}

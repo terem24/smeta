@@ -506,6 +506,41 @@
     return ln(x0, y, x1, y, { c: color, w: LW.pipe });
   }
 
+  // ─── Имена символов для подсказок на экране ────────────────────────────
+  // Каждый символ заворачивается в <g data-sym="тип" data-sym-name="имя">:
+  // по наведению подсказка называет элемент и объясняет, зачем он здесь, а
+  // по клику даёт карточку. На чертёж обёртка не влияет — ни на печать, ни
+  // на геометрию. Имя может зависеть от аргументов (valve3, gauge, котёл).
+  // Заворачиваются и символы легенды — там подсказка тоже уместна.
+  function sym(fn, type, name) {
+    return function () {
+      var out = fn.apply(null, arguments);
+      var nm = typeof name === 'function' ? name.apply(null, arguments) : name;
+      return '<g data-sym="' + type + '" data-sym-name="' + nm + '">' + out + '</g>';
+    };
+  }
+  ballValve = sym(ballValve, 'valve', 'Шаровой кран');
+  checkValve = sym(checkValve, 'check', 'Обратный клапан');
+  pump = sym(pump, 'pump', 'Циркуляционный насос');
+  valve3 = sym(valve3, 'valve3', function (x, y, kind) {
+    return kind === 'prio' ? 'Клапан приоритета бойлера'
+      : kind === 'servo' ? 'Смесительный клапан с сервоприводом'
+        : 'Термостатический смесительный клапан';
+  });
+  safetyValve = sym(safetyValve, 'safety', 'Предохранительный клапан');
+  airVent = sym(airVent, 'airvent', 'Автоматический воздухоотводчик');
+  gauge = sym(gauge, 'gauge', function (x, y, letter) {
+    return letter === 'М' ? 'Манометр' : 'Термометр / датчик температуры';
+  });
+  filterSym = sym(filterSym, 'filter', 'Фильтр-грязевик');
+  airSep = sym(airSep, 'airsep', 'Сепаратор воздуха');
+  safetyGroup = sym(safetyGroup, 'safetygroup', 'Группа безопасности котла');
+  hydroSep = sym(hydroSep, 'hydro', 'Гидравлический разделитель');
+  expTank = sym(expTank, 'exptank', 'Расширительный бак');
+  boilerUnit = sym(boilerUnit, 'boiler', function (x, y, kind) {
+    return kind === 'gas' ? 'Газовый котёл' : 'Электрический котёл';
+  });
+
   // ─── Таблица «Условные графические обозначения» ────────────────────────
   // Легенда фильтруется по составу конкретной схемы: символ, которого на
   // листе нет, в таблицу не попадает (раньше монтажник искал на схеме
@@ -1372,6 +1407,7 @@
       // Стояк подачи: вода идёт вниз, как нарисовано (fwd); обратки — вверх (rev).
       o.push(t.hyd
         ? '<g data-hyd-part="tap" data-hyd-kind="' + t.hyd + '" data-hyd-i="' + (t.hydI || 0) +
+          '" data-hyd-mark="' + (t.mark || '') +
           '" data-hyd-dir="' + (t.from === 'supply' ? 'fwd' : 'rev') + '">'
         : '<g>');
       if (t.load) {
