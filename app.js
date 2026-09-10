@@ -29212,6 +29212,27 @@ const app = {
                 }
             }
 
+            // Ответ пришёл без ошибки, но пустым. Так бывает, когда запись прошла, а
+            // отдать строку обратно не дали (права на чтение после записи): запасная
+            // ветка выше на это не срабатывает — она смотрит только на ошибку, — и
+            // дальше по коду пустой ответ неотличим от «человека нет в базе»: тариф
+            // падает до базового, сметы не уходят в облако, показывается «Аккаунт не
+            // подключён». Перечитываем строку отдельным запросом по auth_user_id.
+            // Вставку здесь не делаем намеренно: строка, скорее всего, есть, и
+            // повторная вставка плодила бы двойников.
+            if (!upsertError && (!upsertResult || !upsertResult.length)) {
+                const { data: reread, error: rereadError } = await supabaseClient
+                    .from('users')
+                    .select(adminSelectCols)
+                    .eq('auth_user_id', authUserId)
+                    .limit(1);
+                if (rereadError) {
+                    console.warn('[handleAuthSession] Перечитать учётную запись не удалось:', rereadError.message);
+                } else if (reread && reread.length) {
+                    upsertResult = reread;
+                }
+            }
+
             let uRow = upsertResult ? upsertResult[0] : null;
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
