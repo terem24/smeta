@@ -177,7 +177,8 @@ Deno.serve(async (req) => {
     // сессия есть и проверяется ниже, внутри ветки), а «клиент открыл смету» пишет та
     // же анонимная страница по ссылке. Поэтому здесь токен не требуем, а требуем его
     // внутри ветки — для всех событий, кроме открытия.
-    const needsAuth = reason !== "shared_invoice" && reason !== "invoice_event";
+    const needsAuth = reason !== "shared_invoice" && reason !== "invoice_event" &&
+      reason !== "inactivity";
     let callerId = "";
     let isAdmin = false;
 
@@ -392,6 +393,30 @@ Deno.serve(async (req) => {
 
       title = knownTitle;
       payload.calcId = String(row.calc_id);
+    } else if (reason === "inactivity") {
+      // Напоминание тому, кто давно не заходил, и сообщение о приостановке доступа.
+      // Зовёт не человек, а ночной проход в базе (process_inactive_accounts →
+      // inactivity_send_push), поэтому вместо сессии проверяем сервисный ключ: у
+      // приложения его нет и быть не может, значит подделать вызов из браузера нельзя.
+      const callerKey = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!callerKey || callerKey !== serviceKey) {
+        return json({ error: "Событие доступно только планировщику" }, 401);
+      }
+
+      // Что именно случилось, читаем из журнала, а не из запроса.
+      const rows = await get(
+        `inactivity_notices?user_id=eq.${encodeURIComponent(rowId)}&select=user_id,stage&limit=1`,
+      );
+      const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+      if (!row) return json({ status: "skipped", reason: "notice-not-found" });
+
+      const frozen = String(row.stage) === "frozen";
+      recipientUserIds = [String(row.user_id)];
+      title = frozen ? "Доступ к HeatCalc.ru приостановлен" : "Вы давно не заходили";
+      text = frozen
+        ? "Расчёты сохранены. Напишите нам — вернём доступ в тот же день."
+        : "Зайдите в калькулятор, чтобы сохранить аккаунт и свои расчёты.";
+      payload.open = "messages";
     } else if (reason === "shared_invoice") {
       // Клиент открыл ссылку и согласовал смету или отправил замечания.
       // Статус читаем из базы, а не из запроса: иначе по чужой ссылке можно было бы
