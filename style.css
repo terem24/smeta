@@ -13040,3 +13040,214 @@ body.object-flat #blk_floor_mat_content {
     filter: none;
     opacity: 1;
 }
+
+/* ================== ТЕМА «МАГАЗИН» (менеджер + продавец) ==================
+   Включается классом body.theme-shop из app.js (syncShopTheme), когда у
+   пользователя одновременно роль «менеджер дистрибьютора» и сфера «продажа»
+   без монтажа. Только оформление: цвета, радиусы, плоский стиль без теней.
+   Размеры шрифтов и отступы не трогаем — под них подогнаны высоты панелей.
+   Тёмная тема поверх магазинной не накладывается (класс dark-mode снимается
+   в app.js). Печать и PDF не затрагиваем: весь блок только для экрана. */
+@media screen {
+    body.theme-shop {
+        --primary: #0000EE;
+        --primary-light: rgba(0, 0, 238, 0.08);
+        --bg: #F6F6F6;
+        --surface: #FFFFFF;
+        --surface-light: #F6F6F6;
+        --text-main: #303030;
+        --text-sec: #454545;
+        --text-muted: #6B6B6B;
+        --border: #DDDDDD;
+        --radius: 8px;
+        --warn-bg: #FDF1F0;
+        --warn-text: #C4413E;
+        --warn-border: #E6605D;
+        --shop-btn: #03659A;
+        --shop-btn-hover: #05587F;
+        --shop-accent: #E6605D;
+        --shop-ring: 0 0 0 3px rgba(0, 0, 238, 0.25);
+        background: var(--bg);
+        color: var(--text-main);
+    }
+
+    /* Панели: рамка вместо тени */
+    body.theme-shop .input-panel,
+    body.theme-shop .output-panel {
+        box-shadow: none;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+    }
+
+    body.theme-shop .control-card {
+        background: var(--surface-light);
+        border-radius: var(--radius);
+        box-shadow: none;
+    }
+
+    body.theme-shop .zone-card,
+    body.theme-shop .doc-summary {
+        background: var(--surface);
+        border-color: var(--border);
+        border-radius: var(--radius);
+        box-shadow: none;
+    }
+
+    body.theme-shop .stepper {
+        background-color: var(--surface-light);
+        border-color: var(--border);
+        border-radius: 50px;
+    }
+
+    /* Вкладки: таблетка, активная — белая с рамкой, без тени */
+    body.theme-shop .tabs {
+        background: var(--surface-light);
+        border-radius: 50px;
+    }
+
+    body.theme-shop .tab {
+        border-radius: 50px;
+    }
+
+    body.theme-shop .tab.active {
+        background: var(--surface);
+        color: var(--primary);
+        box-shadow: none;
+        outline: 1px solid var(--border);
+    }
+
+    body.theme-shop .tab.multi-active {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: none;
+    }
+
+    /* Кнопки: круглые, плоские, без «подскока» при наведении */
+    body.theme-shop .btn-base,
+    body.theme-shop .footer-btns .btn-base,
+    body.theme-shop .btn-add-zone,
+    body.theme-shop .btn-add-custom {
+        border-radius: 50px;
+        box-shadow: none;
+        font-weight: 500;
+        transition: background-color var(--dur-fast) ease-in-out,
+                    border-color var(--dur-fast) ease-in-out,
+                    filter var(--dur-fast) ease-in-out;
+    }
+
+    body.theme-shop .btn-base:hover {
+        transform: none;
+        box-shadow: none;
+        filter: brightness(0.95);
+    }
+
+    body.theme-shop .footer-btns .btn-primary-action {
+        background-color: var(--shop-btn);
+        border-color: var(--shop-btn);
+        color: #fff;
+    }
+
+    body.theme-shop .footer-btns .btn-primary-action:hover {
+        background-color: var(--shop-btn-hover);
+        filter: none;
+    }
+
+    body.theme-shop .footer-btns .btn-secondary-action {
+        background-color: var(--surface);
+        color: var(--text-main);
+        border-color: var(--border);
+    }
+
+    body.theme-shop .footer-btns .btn-secondary-action:hover {
+        background-color: var(--surface-light);
+        border-color: var(--text-sec);
+    }
+
+    body.theme-shop .btn-tg,
+    body.theme-shop .btn-share {
+        background-color: var(--shop-btn);
+    }
+
+    body.theme-shop .btn-tg:hover,
+    body.theme-shop .btn-share:hover {
+        background-color: var(--shop-btn-hover);
+    }
+
+    body.theme-shop .btn-print {
+        background-color: var(--text-main);
+    }
+
+    body.theme-shop .btn-ctrl {
+        border-radius: 50%;
+        background: var(--surface);
+        color: var(--text-sec);
+        border-color: var(--border);
+    }
+
+    body.theme-shop .btn-ctrl:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: var(--primary-light);
+    }
+
+    body.theme-shop .btn-ctrl.btn-reset:hover {
+        border-color: var(--shop-accent);
+        color: var(--shop-accent);
+        background: rgba(230, 96, 93, 0.1);
+    }
+
+    /* Поля ввода: серая рамка, синее кольцо в фокусе вместо тени */
+    body.theme-shop input[type=text],
+    body.theme-shop input[type=number],
+    body.theme-shop input[type=email],
+    body.theme-shop input[type=tel],
+    body.theme-shop select,
+    body.theme-shop textarea {
+        border-color: var(--border);
+        border-radius: var(--radius);
+        box-shadow: none;
+    }
+
+    body.theme-shop input[type=text]:focus,
+    body.theme-shop input[type=number]:focus,
+    body.theme-shop input[type=email]:focus,
+    body.theme-shop input[type=tel]:focus,
+    body.theme-shop select:focus,
+    body.theme-shop textarea:focus,
+    body.theme-shop .btn-base:focus-visible,
+    body.theme-shop .btn-ctrl:focus-visible,
+    body.theme-shop .tab:focus-visible {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: var(--shop-ring);
+    }
+
+    body.theme-shop input[type=range] {
+        accent-color: var(--primary);
+    }
+
+    body.theme-shop input:checked + .slider {
+        background-color: var(--primary);
+    }
+
+    /* Ссылки — чистый синий, как на сайте магазина */
+    body.theme-shop a {
+        color: var(--primary);
+    }
+
+    /* Меню кабинета: активный раздел таблеткой */
+    body.theme-shop .lk-rail-item {
+        border-radius: 50px;
+    }
+
+    body.theme-shop .lk-rail-item.active {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    /* Переключатель темы в магазинном оформлении не действует — прячем */
+    body.theme-shop #btn_theme,
+    body.theme-shop #btn_theme_admin {
+        display: none;
+    }
+}

@@ -11642,6 +11642,20 @@ const app = {
         return has('продав') && !has('монтаж');
     },
 
+    // Оформление «магазин» — для менеджера дистрибьютора, который сам продавец
+    // (роль «менеджер» и сфера «продажа» без монтажа одновременно). Только
+    // стили: класс theme-shop на body, все правила в style.css. Снят любой из
+    // двух статусов — класс уходит при следующем syncRoleTabs, расчёт об
+    // этом не знает. Тёмная тема поверх магазинной не накладывается: два
+    // набора переопределений друг на друге читались бы плохо.
+    isShopTheme: function () { return this.isManagerRole() && this.isSellerOnly(); },
+
+    syncShopTheme: function () {
+        const on = this.isShopTheme();
+        document.body.classList.toggle('theme-shop', on);
+        if (on) document.body.classList.remove('dark-mode');
+    },
+
     /**
      * Показ вкладок по сфере деятельности. Вызывается из syncUI() — там же,
      * где решается судьба вкладки распознавания.
@@ -11651,6 +11665,7 @@ const app = {
      * на 2 — иначе список читался бы как «1, 3».
      */
     syncRoleTabs: function () {
+        this.syncShopTheme();
         const seller = this.isSellerOnly();
         const tWk = document.getElementById('tab_works');
         const tMoney = document.getElementById('tab_money');
@@ -29641,7 +29656,7 @@ const app = {
         const dark = mode === 'auto' ? this.isDarkOutside() : (mode === 'dark');
         const changed = this.state.darkMode !== dark;
         this.state.darkMode = dark;
-        document.body.classList.toggle('dark-mode', dark);
+        document.body.classList.toggle('dark-mode', dark && !this.isShopTheme());
         this.updateThemeButton(mode);
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
         // раз в минуту, и писать состояние каждый раз незачем.
@@ -47795,7 +47810,7 @@ const app = {
         // Левая панель кабинета: доступ к админке, счётчик сообщений, подсветка раздела
         this.syncRailUI();
 
-        if (document.getElementById('chk_dark')) document.getElementById('chk_dark').checked = this.state.darkMode; document.body.classList.toggle('dark-mode', this.state.darkMode);
+        if (document.getElementById('chk_dark')) document.getElementById('chk_dark').checked = this.state.darkMode; document.body.classList.toggle('dark-mode', this.state.darkMode && !this.isShopTheme());
 
         // === БЛОКИРОВКИ ===
         document.body.classList.toggle('guest-mode', isGuest);
