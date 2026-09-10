@@ -54931,10 +54931,16 @@ const app = {
             // ниже, значит идёт «малый» (логические 22), иначе «большой» (28).
             const BP_PAIR = { mp: 26, ppr: 32, stable: 25, stable_r: 25 };
             if (BP_PAIR[sys]) {
-                // Каскад для этих систем не разделяется: perBoiler совпадает с общим.
                 const pick = this.boilerPickSize(sys, kw);
-                const d = (pick && pick.size <= BP_PAIR[sys]) ? 22 : 28;
-                return { main: d, tank: 22, perBoiler: d, pick: pick };
+                const toPair = (p) => (p && p.size <= BP_PAIR[sys]) ? 22 : 28;
+                const d = toPair(pick);
+                // КАСКАД. Через обвязку каждого котла идёт только ЕГО расход, а не
+                // сумма, — как у нержавейки. Пока здесь стояло perBoiler = main, на
+                // каскаде из двух котлов подводка каждого считалась по суммарной
+                // мощности: на стабильной это 32 мм там, где хватает 25.
+                const one = Math.max.apply(null, [0].concat((list || []).filter(b => b).map(b => b.power || 0)));
+                const per = one > 0 ? Math.min(toPair(this.boilerPickSize(sys, one)), d) : d;
+                return { main: d, tank: 22, perBoiler: per, pick: pick };
             }
             const pick = this.boilerPickSize(sys, kw);
             const range = this.boilerPipeRange(sys).map(r => r.size)
@@ -57065,7 +57071,7 @@ const app = {
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, ss_diameter === 22 ? 'SKO03290RCT' : 'SKO04090RCT'), 2,
                         `Угольник 90° PP-RCT ${ss_diameter === 22 ? 32 : 40} мм на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 } else if (isPress) {
-                    const _prD = mpD(ss_diameter);
+                    const _prD = mpD(_boilerSize);
                     bpPress(bpFit('elbow90', _prD), 2,
                         `${bpWord('Угольник')} 90° ${bpSz(_prD)} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp, 2, _prD);
                 } else {
@@ -57095,9 +57101,11 @@ const app = {
                 // 45° нет ни одного (84 позиции, только 90°), а в аксиальной он есть
                 // только на 32 мм, и собирать узел по-разному на двух типоразмерах
                 // хуже, чем одинаково на 90°.
-                const _prD = mpD(ss_diameter);
+                // Обвязка ОДНОГО котла считается по ЕГО типоразмеру, а не по общему:
+                // через неё идёт только его расход (см. boilerSizes, perBoiler).
+                const _prD = mpD(_boilerSize);
                 const _prSm = mpD(22);
-                const _prPort = (ss_diameter === 22) ? '3/4' : '1';
+                const _prPort = (_boilerSize === 22) ? '3/4' : '1';
                 const _prTh = bpThreadFor('fi', _prD, _prPort);
                 bpPress(_prTh.item, 2,
                     `Переходник с трубы ${_prD} на внутреннюю резьбу ${bpThLabel(_prTh.key)} для подключения ${_pressWord} трубы к патрубкам котла (${bName}).` +
@@ -57105,7 +57113,7 @@ const app = {
                     ` Требуется: 2 шт.`, grp, 1, _prD);
                 bpPress(bpFit('elbow90', _prD), 4,
                     `${bpWord('Угольник')} 90° ${bpSz(_prD)} для поворотов трубопровода и обхода препятствий при обвязке котла (${bName}). ${isStable ? 'Угол 45° в аксиальной линейке есть только на 32 мм, поэтому обходы для единообразия тоже собираются на 90°.' : 'Углов 45° в линейке металлопластика нет, поэтому обходы тоже собираются на 90°.'} Требуется: 4 шт.`, grp, 2, _prD);
-                if (ss_diameter === 22) {
+                if (_boilerSize === 22) {
                     bpPress(bpFit('tee', _prD), 2,
                         `${bpWord('Тройник')} равнопроходный ${isStable ? _prD : `${_prD}х${_prD}х${_prD}`} для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp, 3, _prD);
                 } else {
@@ -57142,7 +57150,7 @@ const app = {
             // питается от одного котла, а не от всего каскада.
             const _coilKw = this.tankCoilKw(this._tankPortsModel);
             let _coilSize = _boilerSize;
-            if (!isAnalog && !isPress && _coilKw > 0) {
+            if (!isAnalog && _coilKw > 0) {
                 const _cp = boilerSizes([{ power: _coilKw, type: 'gas' }]);
                 _coilSize = Math.min(_cp.main, ss_diameter);
             }
@@ -57176,7 +57184,7 @@ const app = {
                 // 3/4", включая баки на 300 и 500 л.
                 const _coilPort = (this._tankPorts && this._tankPorts.coil) || '1"';
                 const _coilKey = (_coilPort === '1"') ? '1' : '3/4';
-                const _prD = mpD(ss_diameter);
+                const _prD = mpD(_coilSize);
                 const _prSm = mpD(22);
                 const _coilTh = bpThreadFor('fi', _prD, _coilKey);
                 bpPress(_coilTh.item, 2,
@@ -57184,7 +57192,7 @@ const app = {
                     (_coilTh.key !== _coilKey ? ` <b>Внимание:</b> на трубе ${_prD} пары под ${_coilPort} в линейке нет — дополнительно нужен резьбовой переход ${_coilPort}–${bpThLabel(_coilTh.key)} (в смету не входит).` : ``) + ` Требуется: 2 шт.`, grp, 1, _prD);
                 bpPress(bpFit('elbow90', _prD), 6,
                     `${bpWord('Угольник')} 90° ${bpSz(_prD)} для поворотов трубопровода и обхода препятствий в греющем контуре бойлера ГВС. ${isStable ? 'Угол 45° в аксиальной линейке есть только на 32 мм, поэтому обходы для единообразия тоже собираются на 90°.' : 'Углов 45° в линейке металлопластика нет, поэтому обходы тоже собираются на 90°.'} Требуется: 6 шт.`, grp, 2, _prD);
-                if (ss_diameter === 22) {
+                if (_coilSize === 22) {
                     bpPress(bpFit('tee', _prD), 2,
                         `${bpWord('Тройник')} равнопроходный ${isStable ? _prD : `${_prD}х${_prD}х${_prD}`} для ответвлений в греющем контуре бойлера ГВС. Требуется: 2 шт.`, grp, 3, _prD);
                 } else {
