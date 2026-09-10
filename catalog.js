@@ -2089,34 +2089,34 @@ const catalog = {
         { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0 (50 м)", len: 50, price: 708, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     stable_pipes: [
-        { id: "SPS-0002-001626", name: "Труба стабильная PE-Xa/Al/PE-RT 16.2х2.6 (100 м)", len: 100, price: 266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RPS-0001-001626", name: "Труба стабильная PE-Xa/Al/PE-RT 16.2х2.6 (100 м)", len: 100, price: 195, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SPS-0002-002029", name: "Труба стабильная PE-Xa/Al/PE-RT II 20х2.9 (100 м)",   len: 100, price: 379, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RPS-0001-002029", name: "Труба стабильная PE-Xa/Al/PE-RT II 20х2.9 (100 м)",   len: 100, price: 277, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SPS-0002-002537", name: "Труба стабильная PE-Xa/Al/PE-RT II 25х3.7 (50 м)",    len: 50,  price: 534, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RPS-0001-002537", name: "Труба стабильная PE-Xa/Al/PE-RT II 25х3.7 (50 м)",    len: 50,  price: 390, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        { id: "SPS-0002-003247", name: "Труба стабильная PE-Xa/Al/PE-RT II 32х4.7 (50 м)",    len: 50,  price: 1008, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RPS-0001-003247", name: "Труба стабильная PE-Xa/Al/PE-RT II 32х4.7 (50 м)",    len: 50,  price: 737, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
+        { id: "SPS-0002-001626", name: "Труба стабильная PE-Xa/Al/PE-RT 16.2х2.6 (100 м)", len: 100, price: 266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPS-0001-001626", name: "Труба стабильная PE-Xa/Al/PE-RT 16.2х2.6 (100 м)", len: 100, price: 195, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SPS-0002-002029", name: "Труба стабильная PE-Xa/Al/PE-RT II 20х2.9 (100 м)",   len: 100, price: 379, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPS-0001-002029", name: "Труба стабильная PE-Xa/Al/PE-RT II 20х2.9 (100 м)",   len: 100, price: 277, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SPS-0002-002537", name: "Труба стабильная PE-Xa/Al/PE-RT II 25х3.7 (50 м)",    len: 50,  price: 534, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPS-0001-002537", name: "Труба стабильная PE-Xa/Al/PE-RT II 25х3.7 (50 м)",    len: 50,  price: 390, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SPS-0002-003247", name: "Труба стабильная PE-Xa/Al/PE-RT II 32х4.7 (50 м)",    len: 50,  price: 1008, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPS-0001-003247", name: "Труба стабильная PE-Xa/Al/PE-RT II 32х4.7 (50 м)",    len: 50,  price: 737, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
     ],
     insulated_pipes_mp_red: [
-        { id: "SPI-0001-101620", name: "Труба металлопластиковая в теплоизоляции (красная) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPI-0001-102020", name: "Труба металлопластиковая в теплоизоляции (красная) 20x2.0 (100 м)", len: 100, price: 314, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPI-0001-052630", name: "Труба металлопластиковая в теплоизоляции (красная) 26x3.0 (50 м)", len: 50, price: 531, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPI-0001-053230", name: "Труба металлопластиковая в теплоизоляции (красная) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SPI-0001-101620", name: "Труба металлопластиковая в теплоизоляции (красная) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0001-102020", name: "Труба металлопластиковая в теплоизоляции (красная) 20x2.0 (100 м)", len: 100, price: 314, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0001-052630", name: "Труба металлопластиковая в теплоизоляции (красная) 26x3.0 (50 м)", len: 50, price: 531, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0001-053230", name: "Труба металлопластиковая в теплоизоляции (красная) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     insulated_pipes_mp_blue: [
-        { id: "SPI-0002-101620", name: "Труба металлопластиковая в теплоизоляции (синяя) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPI-0002-102020", name: "Труба металлопластиковая в теплоизоляции (синяя) 20x2.0 (100 м)", len: 100, price: 314, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPI-0002-052630", name: "Труба металлопластиковая в теплоизоляции (синяя) 26x3.0 (50 м)", len: 50, price: 531, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPI-0002-053230", name: "Труба металлопластиковая в теплоизоляции (синяя) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SPI-0002-101620", name: "Труба металлопластиковая в теплоизоляции (синяя) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0002-102020", name: "Труба металлопластиковая в теплоизоляции (синяя) 20x2.0 (100 м)", len: 100, price: 314, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0002-052630", name: "Труба металлопластиковая в теплоизоляции (синяя) 26x3.0 (50 м)", len: 50, price: 531, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0002-053230", name: "Труба металлопластиковая в теплоизоляции (синяя) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     insulated_pipes: [
-        { id: "SPI-0003-001622", name: "Труба 16x2.2 в теплоизоляции (красная)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 87, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }], availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPI-0004-001622", name: "Труба 16x2.2 в теплоизоляции (синяя)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 87, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }], availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SPI-0003-001622", name: "Труба 16x2.2 в теплоизоляции (красная)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }], availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0004-001622", name: "Труба 16x2.2 в теплоизоляции (синяя)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }], availability: "in_stock", price_date: "2026-09-10" }
     ],
     rad_pipes_grey: [
-        { id: "SPX-0001-001622", name: "Труба PEX-a/EVOH серая 16x2.2 (100м)", len: 100, price: 175, rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 87, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-241622", name: "Труба PEX-a/EVOH серая 16x2.2 (240м)", len: 240, price: 175, rommer: { id: "RPX-0001-241622", name: "Труба PEX-a 16x2.2", price: 87, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-501622", name: "Труба PEX-a/EVOH серая 16x2.2 (500м)", len: 500, price: 175, rommer: { id: "RPX-0001-501622", name: "Труба PEX-a 16x2.2", price: 87, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-002028", name: "Труба PEX-a/EVOH серая 20x2.8 (100м)", len: 100, price: 262, rommer: { id: "RPX-0001-002028", name: "Труба PEX-a 20x2.8", price: 133, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-002535", name: "Труба PEX-a/EVOH серая 25x3.5 (50м)", len: 50, price: 407, rommer: { id: "RPX-0001-002535", name: "Труба PEX-a 25x3.5", price: 214, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-003244", name: "Труба PEX-a/EVOH серая 32x4.4 (50м)", len: 50, price: 661, rommer: { id: "RPX-0001-003244", name: "Труба PEX-a 32x4.4", price: 364, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SPX-0001-001622", name: "Труба PEX-a/EVOH серая 16x2.2 (100м)", len: 100, price: 190, rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-241622", name: "Труба PEX-a/EVOH серая 16x2.2 (240м)", len: 240, price: 190, rommer: { id: "RPX-0001-241622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-501622", name: "Труба PEX-a/EVOH серая 16x2.2 (500м)", len: 500, price: 190, rommer: { id: "RPX-0001-501622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-002028", name: "Труба PEX-a/EVOH серая 20x2.8 (100м)", len: 100, price: 283, rommer: { id: "RPX-0001-002028", name: "Труба PEX-a 20x2.8", price: 146, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-002535", name: "Труба PEX-a/EVOH серая 25x3.5 (50м)", len: 50, price: 439, rommer: { id: "RPX-0001-002535", name: "Труба PEX-a 25x3.5", price: 235, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-003244", name: "Труба PEX-a/EVOH серая 32x4.4 (50м)", len: 50, price: 714, rommer: { id: "RPX-0001-003244", name: "Труба PEX-a 32x4.4", price: 400, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" }
     ],
     axial_fittings_pex: [
         // Латунные аксиальные фитинги STOUT для труб PE-Xa (серая) — тройниковая/шлейфовая разводка
@@ -2196,8 +2196,8 @@ const catalog = {
         { id: "SFA-0030-000025", name: "Заглушка 25", price: 388, brand: "STOUT", rommer: { id: "RFA-0030-000025", name: "Заглушка 25", price: 284, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" }
     ],
     insulation: [
-        { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
     ],
     manifolds: [
         { id: "SMS-0917-000002", loops: 2, price: 8904, rommer: { id: "RMS-1200-000002", name: "Коллектор с расходомерами 1\"x2 вых.", price: 5045, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
@@ -2421,7 +2421,7 @@ const catalog = {
     // на объект нужно меньше. Плата — теплоносителя в контуре на 15 % больше и
     // стенка тоньше. Серая 20х2.8 никуда не делась и переключается в панели.
     snow_pipes_red: [
-        { id: "SPX-0002-002020", name: "Труба PEX-a/EVOH красная 20x2.0 (100м)", len: 100, price: 194, brand: "STOUT", rommer: { id: "RPX-0002-002020", name: "Труба PEX-a 20x2.0", price: 108, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SPX-0002-002020", name: "Труба PEX-a/EVOH красная 20x2.0 (100м)", len: 100, price: 210, brand: "STOUT", rommer: { id: "RPX-0002-002020", name: "Труба PEX-a 20x2.0", price: 119, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Датчик осадков — единственная позиция раздела, которой нет ни у STOUT, ни у
     // ROMMER: в прайсе ТЕРЕМ ничего похожего не числится, поэтому позиция идёт
@@ -2694,10 +2694,10 @@ const catalog = {
     // берётся K-FLEX ST 9 мм — там ближайшие типоразмеры 35 и 42.
     // Красная на подачу, синяя на обратку — как в разводке отопления.
     boiler_insulation: {
-        22: { red: { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-             blue: { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",   dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
-        28: { red: { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-             blue: { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",   dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" } },
+        22: { red: { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+             blue: { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",   dn: 22, thick: 6, len: 2, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        28: { red: { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+             blue: { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",   dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
         // K-FLEX цветовой разбивки не имеет — одна позиция на подачу и обратку.
         // Цена за трубку 2 м, поэтому unit «шт», а не «м», как у ПРОТЕКТ ПРО.
         35: { red: { id: "R09035215508", name: "Трубка K-FLEX ST 35/9, 2м", dn: 35, thick: 9, len: 2, price: 223, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-08-20" } },
@@ -2713,49 +2713,49 @@ const catalog = {
         { id: "WARME-PRO65-20", brand: "WARME", name: "Eco Pro 65, 20кг", vol: 18, price: 6588, type: "pro65", availability: "in_stock", price_date: "2026-07-12" }
     ],
     well_pumps: [
-        { id: "RPW-0012-350215", name: "Насос скважинный 2-44, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 64, price: 12890, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-350221", name: "Насос скважинный 2-63, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 89, price: 16348, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-370227", name: "Насос скважинный 2-81, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 115, price: 22165, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-380239", name: "Насос скважинный 2-111, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 166, price: 35369, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-350321", name: "Насос скважинный 3-51, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 84, price: 18549, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-350326", name: "Насос скважинный 3-63, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 104, price: 21665, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-370331", name: "Насос скважинный 3-77, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 124, price: 32334, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-380337", name: "Насос скважинный 3-92, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 148, price: 35369, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-0012-370428", name: "Насос скважинный 4-76, Ду 75 мм, с кабелем", q_max: 5.4, h_max: 115, price: 32602, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-1012-350270",  name: "Насос скважинный RHS 2-70, кабель 50 м",  q_max: 4.5, h_max: 83,  watt: 800,  price: 36475, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-1012-360295",  name: "Насос скважинный RHS 2-95, кабель 60 м",  q_max: 4.5, h_max: 108, watt: 1100, price: 46486, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-1012-3802135", name: "Насос скважинный RHS 2-135, кабель 80 м", q_max: 4.5, h_max: 152, watt: 1500, price: 74983, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-1012-330345",  name: "Насос скважинный RHS 3-45, кабель 30 м",  q_max: 7.9, h_max: 52,  watt: 800,  price: 32256, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-1012-350365",  name: "Насос скважинный RHS 3-65, кабель 50 м",  q_max: 7.9, h_max: 77,  watt: 1100, price: 41461, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-1012-360390",  name: "Насос скважинный RHS 3-90, кабель 60 м",  q_max: 7.9, h_max: 102, watt: 1500, price: 59488, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RPW-1012-3703110", name: "Насос скважинный RHS 3-110, кабель 70 м", q_max: 7.9, h_max: 128, watt: 2200, price: 81465, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "RPW-0012-350215", name: "Насос скважинный 2-44, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 64, price: 14179, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-350221", name: "Насос скважинный 2-63, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 89, price: 17983, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-370227", name: "Насос скважинный 2-81, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 115, price: 24382, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-380239", name: "Насос скважинный 2-111, Ду 75 мм, с кабелем", q_max: 2.7, h_max: 166, price: 38906, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-350321", name: "Насос скважинный 3-51, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 84, price: 20404, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-350326", name: "Насос скважинный 3-63, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 104, price: 23832, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-370331", name: "Насос скважинный 3-77, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 124, price: 35567, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-380337", name: "Насос скважинный 3-92, Ду 75 мм, с кабелем", q_max: 3.9, h_max: 148, price: 38906, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-0012-370428", name: "Насос скважинный 4-76, Ду 75 мм, с кабелем", q_max: 5.4, h_max: 115, price: 35862, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-1012-350270",  name: "Насос скважинный RHS 2-70, кабель 50 м",  q_max: 4.5, h_max: 83,  watt: 800,  price: 40123, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-1012-360295",  name: "Насос скважинный RHS 2-95, кабель 60 м",  q_max: 4.5, h_max: 108, watt: 1100, price: 51135, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-1012-3802135", name: "Насос скважинный RHS 2-135, кабель 80 м", q_max: 4.5, h_max: 152, watt: 1500, price: 82481, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-1012-330345",  name: "Насос скважинный RHS 3-45, кабель 30 м",  q_max: 7.9, h_max: 52,  watt: 800,  price: 35482, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-1012-350365",  name: "Насос скважинный RHS 3-65, кабель 50 м",  q_max: 7.9, h_max: 77,  watt: 1100, price: 45607, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-1012-360390",  name: "Насос скважинный RHS 3-90, кабель 60 м",  q_max: 7.9, h_max: 102, watt: 1500, price: 65437, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RPW-1012-3703110", name: "Насос скважинный RHS 3-110, кабель 70 м", q_max: 7.9, h_max: 128, watt: 2200, price: 89612, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
     ],
     well_parts: [
         { id: "10011032", name: "Труба ПНД 32х3.0 питьевая (кратно 5м)", price: 117.8, brand: "CYKLON", unit: "м", availability: "in_stock", price_date: "2026-09-09" },
         { id: "75618", name: "Трос 4 мм нерж.сталь (кратно 10м)", price: 70, brand: "UNIPUMP", unit: "м", availability: "in_stock", price_date: "2026-06-06" },
         { id: "39023", name: "Зажим (хомут) для троса 4-5 мм", price: 36, brand: "UNIPUMP", unit: "шт" },
         { id: "83652", name: "Оголовок скважинный 133-152/32", price: 3828, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SVC-0011-000032", name: "Клапан обратный с металлическим седлом, 1 1/4\"", price: 3518, brand: "STOUT", unit: "шт", rommer: { id: "RVC-0001-000032", name: "Клапан обратный с метал. седлом 1 1/4\"", price: 1432, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SVC-0011-000032", name: "Клапан обратный с металлическим седлом, 1 1/4\"", price: 3870, brand: "STOUT", unit: "шт", rommer: { id: "RVC-0001-000032", name: "Клапан обратный с метал. седлом 1 1/4\"", price: 1575, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
         { id: "53003214", name: "Муфта ПНД 32х1 1/4\" НР", price: 108, brand: "Политэк", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
         { id: "31852", name: "Коуш для крепления троса до 5 мм", price: 21, brand: "UNIPUMP", unit: "шт" },
-        { id: "STW-0001-000024", name: "Расширительный бак гидроаккумулятор 24 л (синий)", price: 3442, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "STW-0002-000050", name: "Гидроаккумулятор STOUT 50 л (для водоснабжения)", price: 9648, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "STW-0002-000080", name: "Гидроаккумулятор STOUT 80 л (для водоснабжения)", price: 12642, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "STW-0002-000100", name: "Гидроаккумулятор STOUT 100 л (для водоснабжения)", price: 17077, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "STW-0002-000150", name: "Гидроаккумулятор STOUT 150 л (для водоснабжения)", price: 21957, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0001-003232", name: "Фитинг ПНД, Муфта соединительная равнопроходная 32x32", price: 1721, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0002-000321", name: "Фитинг ПНД, Переходник с наружной резьбой 32xR 1\"", price: 1100, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0002-032114", name: "Муфта ПНД 32х1 1/4\" НР (латунь)", price: 1297, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0002-040114", name: "Фитинг ПНД, Переходник с наружной резьбой 40xR 1 1/4\"", price: 1796, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0003-000321", name: "Фитинг ПНД, Переходник с внутренней резьбой 32xRp 1\"", price: 1151, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0003-040114", name: "Фитинг ПНД, Переходник с внутренней резьбой 40xRp 1\"", price: 1872, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0004-323232", name: "Фитинг ПНД, Тройник равнопроходный 32x32x32", price: 2860, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFH-0006-003232", name: "Фитинг ПНД, Угольник 90° 32x32", price: 2201, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "STW-0001-000024", name: "Расширительный бак гидроаккумулятор 24 л (синий)", price: 3442, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0002-000050", name: "Гидроаккумулятор STOUT 50 л (для водоснабжения)", price: 9648, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0002-000080", name: "Гидроаккумулятор STOUT 80 л (для водоснабжения)", price: 12642, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0002-000100", name: "Гидроаккумулятор STOUT 100 л (для водоснабжения)", price: 17077, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STW-0002-000150", name: "Гидроаккумулятор STOUT 150 л (для водоснабжения)", price: 21957, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0001-003232", name: "Фитинг ПНД, Муфта соединительная равнопроходная 32x32", price: 1721, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0002-000321", name: "Фитинг ПНД, Переходник с наружной резьбой 32xR 1\"", price: 1100, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0002-032114", name: "Муфта ПНД 32х1 1/4\" НР (латунь)", price: 1297, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0002-040114", name: "Фитинг ПНД, Переходник с наружной резьбой 40xR 1 1/4\"", price: 1796, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0003-000321", name: "Фитинг ПНД, Переходник с внутренней резьбой 32xRp 1\"", price: 1151, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0003-040114", name: "Фитинг ПНД, Переходник с внутренней резьбой 40xRp 1\"", price: 1872, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0004-323232", name: "Фитинг ПНД, Тройник равнопроходный 32x32x32", price: 2860, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFH-0006-003232", name: "Фитинг ПНД, Угольник 90° 32x32", price: 2201, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     well_auto: [
-        { id: "SCS-0001-000070", name: "Блок управления насосом SIRIO UNIVERSAL", price: 38236, brand: "STOUT", unit: "шт", rommer: { id: "RCS-0001-000063", name: "Устройство управления насосом EPC-12 auto", price: 5880, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCS-0001-000063", name: "Устройство управления насосом BRIO-TOP", price: 16078, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCS-0001-000064", name: "Устройство управления насосом BRIO", price: 5141, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCS-0001-000070", name: "Блок управления насосом SIRIO UNIVERSAL", price: 38236, brand: "STOUT", unit: "шт", rommer: { id: "RCS-0001-000063", name: "Устройство управления насосом EPC-12 auto", price: 6468, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCS-0001-000063", name: "Устройство управления насосом BRIO-TOP", price: 16078, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCS-0001-000064", name: "Устройство управления насосом BRIO", price: 5141, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         // Здесь стояло «Устройство управления насосом EPC-17» (RCS-0001-000071)
         // с ценой 0 ₽: у поставщика такого товара нет ни под этим кодом, ни под
         // каким-либо другим — из линейки EPC он возит EPC-12 auto, EPC-2, EPC-4 и
@@ -2763,20 +2763,20 @@ const catalog = {
         // замены наравне с остальными (alts у всей автоматики скважины), то есть
         // монтажник мог выбрать её и получить в смете строку за 0 ₽. Убрана
         // 09.09.2026; вернуть имеет смысл только вместе с настоящим артикулом.
-        { id: "RCS-0001-000052", name: "Блок насосной автоматики EPC-2", price: 2654, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RCS-0001-000064", name: "Устройство управления насосом EPC-4", price: 2285, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RCS-0001-000055", name: "Блок насосной автоматики EPC-5", price: 2722, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "RCS-0001-000052", name: "Блок насосной автоматики EPC-2", price: 2919, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCS-0001-000064", name: "Устройство управления насосом EPC-4", price: 2514, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCS-0001-000055", name: "Блок насосной автоматики EPC-5", price: 2994, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     well_relays: [
-        { id: "RCS-0001-000005", name: "Реле давления KRS-5, 1/4\"", price: 605, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RCS-0001-000003", name: "Реле сухого хода KRS-6, 1/4\"", price: 655, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RCS-0001-000053", name: "Реле давления для водоснабжения со встроенным манометром KRS-7", price: 1159, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "RCS-0001-000005", name: "Реле давления KRS-5, 1/4\"", price: 666, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCS-0001-000003", name: "Реле сухого хода KRS-6, 1/4\"", price: 721, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCS-0001-000053", name: "Реле давления для водоснабжения со встроенным манометром KRS-7", price: 1275, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     water_pipes: [
-        { id: "SPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 175, unit: "м", rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 87, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-002028", name: "Труба PEX-a 20x2.8 (серая)", price: 262, unit: "м", rommer: { id: "RPX-0001-002028", name: "Труба PEX-a 20x2.8", price: 133, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-002535", name: "Труба PEX-a 25x3.5 (серая)", price: 407, unit: "м", rommer: { id: "RPX-0001-002535", name: "Труба PEX-a 25x3.5", price: 214, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPX-0001-003244", name: "Труба PEX-a 32x4.4 (серая)", price: 661, unit: "м", rommer: { id: "RPX-0001-003244", name: "Труба PEX-a 32x4.4", price: 364, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 190, unit: "м", rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-002028", name: "Труба PEX-a 20x2.8 (серая)", price: 283, unit: "м", rommer: { id: "RPX-0001-002028", name: "Труба PEX-a 20x2.8", price: 146, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-002535", name: "Труба PEX-a 25x3.5 (серая)", price: 439, unit: "м", rommer: { id: "RPX-0001-002535", name: "Труба PEX-a 25x3.5", price: 235, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPX-0001-003244", name: "Труба PEX-a 32x4.4 (серая)", price: 714, unit: "м", rommer: { id: "RPX-0001-003244", name: "Труба PEX-a 32x4.4", price: 400, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Металлопластик, отмеренный метрами (водоснабжение, подводка полотенцесушителя).
     //
@@ -2792,10 +2792,10 @@ const catalog = {
     // Цена стоит ЗА МЕТР: строка добавляется в смету метражом, без asCoilPrice, и поля
     // len здесь быть не должно — иначе метры превратятся в бухты.
     water_pipes_mp: [
-        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 143, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 242, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 439, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0", price: 644, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 157, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 266, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 483, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0", price: 708, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Обе трубки — 18/6 SUPER PROTECT, красная на ГВС и синяя на ХВС.
     //
@@ -2815,64 +2815,64 @@ const catalog = {
         { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }
     ],
     insulation_pro: [
-        { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",  dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",  dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RIC-0001-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (синяя)",  dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",  dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RIC-0002-220602", name: "Трубка ПРОТЕКТ ПРО 22/6, 2м (красная)", dn: 22, thick: 6, len: 2, pack: 160, price: 29, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RIC-0002-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (красная)", dn: 28, thick: 6, len: 2, pack: 120, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
     ],
     water_fittings: [
-        { id: "SFA-0032-001612", name: "Водорозетка 16x1/2\" (тупиковая)", price: 865, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0040-001612", name: "Угольник проточный 16x1/2\" (Бронза)", price: 2838, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0039-002012", name: "Угольник проточный 20x1/2\" (проходная)", price: 2698, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0027-252525", name: "Кронштейн монтажный (75/150)", price: 895, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0035-100012", name: "Пробка с наружней резьбой (Синяя)", price: 28, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0035-200012", name: "Пробка с наружней резьбой (Красная)", price: 28, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFA-0031-000016", name: "Фиксатор поворота 90° (14-18 мм)", price: 52, availability: "on_order", price_date: "2026-09-09" },
-        { id: "SFA-0031-000120", name: "Фиксатор поворота 90° (20 мм)", price: 79, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SMF-0003-028032", name: "Дюбель-крюк двойной", price: 7, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SFA-0032-001612", name: "Водорозетка 16x1/2\" (тупиковая)", price: 969, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0040-001612", name: "Угольник проточный 16x1/2\" (Бронза)", price: 3178, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0039-002012", name: "Угольник проточный 20x1/2\" (проходная)", price: 3022, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0027-252525", name: "Кронштейн монтажный (75/150)", price: 968, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0035-100012", name: "Пробка с наружней резьбой (Синяя)", price: 28, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0035-200012", name: "Пробка с наружней резьбой (Красная)", price: 28, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0031-000016", name: "Фиксатор поворота 90° (14-18 мм)", price: 52, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0031-000120", name: "Фиксатор поворота 90° (20 мм)", price: 79, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMF-0003-028032", name: "Дюбель-крюк двойной", price: 7, availability: "in_stock", price_date: "2026-09-10" }
     ],
     water_fittings_press_mp: [
         // Латунные пресс-фитинги STOUT для труб PE-Xb/Al/PE-Xb
         // Переходник с наружной резьбой
-        { id: "SFP-0001-001216", name: "Переходник с наружной резьбой 1/2\"х16", price: 312, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0001-003416", name: "Переходник с наружной резьбой 3/4\"x16", price: 623, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0001-001220", name: "Переходник с наружной резьбой 1/2\"х20", price: 417, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0001-003420", name: "Переходник с наружной резьбой 3/4\"х20", price: 559, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0001-003426", name: "Переходник с наружной резьбой 3/4\"х26", price: 705, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0001-000126", name: "Переходник с наружной резьбой 1\"х26", price: 789, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0001-000132", name: "Переходник с наружной резьбой 1\"х32", price: 1144, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFP-0001-001216", name: "Переходник с наружной резьбой 1/2\"х16", price: 337, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0001-003416", name: "Переходник с наружной резьбой 3/4\"x16", price: 673, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0001-001220", name: "Переходник с наружной резьбой 1/2\"х20", price: 450, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0001-003420", name: "Переходник с наружной резьбой 3/4\"х20", price: 604, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0001-003426", name: "Переходник с наружной резьбой 3/4\"х26", price: 761, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0001-000126", name: "Переходник с наружной резьбой 1\"х26", price: 853, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0001-000132", name: "Переходник с наружной резьбой 1\"х32", price: 1236, availability: "in_stock", price_date: "2026-09-10" },
         // Переходник с внутренней резьбой
-        { id: "SFP-0002-001216", name: "Переходник с внутренней резьбой 1/2\"х16", price: 476, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0002-001220", name: "Переходник с внутренней резьбой 1/2\"х20", price: 557, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0002-003420", name: "Переходник с внутренней резьбой 3/4\"х20", price: 664, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0002-003426", name: "Переходник с внутренней резьбой 3/4\"х26", price: 742, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0002-000126", name: "Переходник с внутренней резьбой 1\"х26", price: 858, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0002-000132", name: "Переходник с внутренней резьбой 1\"х32", price: 1232, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFP-0002-001216", name: "Переходник с внутренней резьбой 1/2\"х16", price: 513, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0002-001220", name: "Переходник с внутренней резьбой 1/2\"х20", price: 601, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0002-003420", name: "Переходник с внутренней резьбой 3/4\"х20", price: 718, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0002-003426", name: "Переходник с внутренней резьбой 3/4\"х26", price: 802, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0002-000126", name: "Переходник с внутренней резьбой 1\"х26", price: 927, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0002-000132", name: "Переходник с внутренней резьбой 1\"х32", price: 1330, availability: "in_stock", price_date: "2026-09-10" },
         // Муфта соединительная равнопроходная
-        { id: "SFP-0003-001616", name: "Муфта соединительная равнопроходная 16х16", price: 564, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0003-002020", name: "Муфта соединительная равнопроходная 20х20", price: 657, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0003-002626", name: "Муфта соединительная равнопроходная 26х26", price: 1123, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0003-003232", name: "Муфта соединительная равнопроходная 32х32", price: 1657, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFP-0003-001616", name: "Муфта соединительная равнопроходная 16х16", price: 609, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0003-002020", name: "Муфта соединительная равнопроходная 20х20", price: 709, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0003-002626", name: "Муфта соединительная равнопроходная 26х26", price: 1213, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0003-003232", name: "Муфта соединительная равнопроходная 32х32", price: 1789, availability: "in_stock", price_date: "2026-09-10" },
         // Муфта соединительная переходная
-        { id: "SFP-0004-002016", name: "Муфта соединительная переходная 20х16", price: 817, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0004-002620", name: "Муфта соединительная переходная 26х20", price: 1089, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0004-003226", name: "Муфта соединительная переходная 32х26", price: 1513, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFP-0004-002016", name: "Муфта соединительная переходная 20х16", price: 882, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0004-002620", name: "Муфта соединительная переходная 26х20", price: 1177, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0004-003226", name: "Муфта соединительная переходная 32х26", price: 1635, availability: "in_stock", price_date: "2026-09-10" },
         // Тройник переходной
-        { id: "SFP-0005-162016", name: "Тройник переходной 16x20x16", price: 1168, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-201616", name: "Тройник переходной 20х16х16", price: 1083, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-201620", name: "Тройник переходной 20х16х20", price: 1124, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-202016", name: "Тройник переходной 20х20х16", price: 1130, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-202620", name: "Тройник переходной 20х26х20", price: 1600, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-261620", name: "Тройник переходной 26х16х20", price: 1573, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-261626", name: "Тройник переходной 26х16х26", price: 1573, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-262016", name: "Тройник переходной 26х20х16", price: 1588, availability: "on_order", price_date: "2026-09-09" },
-        { id: "SFP-0005-262020", name: "Тройник переходной 26х20х20", price: 1588, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-262026", name: "Тройник переходной 26х20х26", price: 1573, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-262616", name: "Тройник переходной 26х26х16", price: 1600, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-262620", name: "Тройник переходной 26х26х20", price: 1585, availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SFP-0005-263226", name: "Тройник переходной 26х32х26", price: 2603, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SFP-0005-162016", name: "Тройник переходной 16x20x16", price: 1262, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-201616", name: "Тройник переходной 20х16х16", price: 1169, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-201620", name: "Тройник переходной 20х16х20", price: 1214, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-202016", name: "Тройник переходной 20х20х16", price: 1220, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-202620", name: "Тройник переходной 20х26х20", price: 1728, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-261620", name: "Тройник переходной 26х16х20", price: 1699, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-261626", name: "Тройник переходной 26х16х26", price: 1699, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-262016", name: "Тройник переходной 26х20х16", price: 1715, availability: "on_order", price_date: "2026-09-10" },
+        { id: "SFP-0005-262020", name: "Тройник переходной 26х20х20", price: 1715, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-262026", name: "Тройник переходной 26х20х26", price: 1699, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-262616", name: "Тройник переходной 26х26х16", price: 1728, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-262620", name: "Тройник переходной 26х26х20", price: 1712, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFP-0005-263226", name: "Тройник переходной 26х32х26", price: 2811, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFP-0005-322026", name: "Тройник переходной 32х20х26", price: 2625, availability: "in_stock", price_date: "2026-09-09" },
         { id: "SFP-0005-322032", name: "Тройник переходной 32х20х32", price: 2748, availability: "on_order", price_date: "2026-09-09" },
         { id: "SFP-0005-322626", name: "Тройник переходной 32х26х26", price: 2748, availability: "in_stock", price_date: "2026-09-09" },
