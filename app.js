@@ -24285,7 +24285,7 @@ const app = {
                     @media (prefers-reduced-motion: reduce) {
                         .hyd-ov .hyd-ov__flow { animation: none; }
                     }
-                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды и подсказки при наведении">${this._hydToggleLabel()}</button></div></div>`;
+                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды при наведении. Числа и подсказки — на весь экран">${this._hydToggleLabel(false)}</button></div></div>`;
     },
 
     // ── что под курсором и путь воды ───────────────────────────────────────
@@ -24340,6 +24340,10 @@ const app = {
         const d = { svg, el, kind: null, i: 0, b: null, mark: '', sym: null, medium: null,
             part: grp ? grp.getAttribute('data-hyd-part') : null };
         if (symEl) d.sym = { type: symEl.getAttribute('data-sym'), name: symEl.getAttribute('data-sym-name') || '', el: symEl };
+        // Бойлер и змеевик стоят вне групп маршрута — контур у них свой, и
+        // узнаётся он по самому символу.
+        if (d.sym && (d.sym.type === 'tank' || d.sym.type === 'coil')) d.kind = 'dhw';
+        if (pipe && this._HYD_LOAD_COLS[this._hydColorOf(pipe)]) d.kind = 'dhw';
         if (pipe) d.medium = this._hydMedium(pipe);
         if (zone) {
             d.kind = zone.getAttribute('data-hyd');
@@ -24354,16 +24358,42 @@ const app = {
                 d.mark = grp.getAttribute('data-hyd-mark') || '';
             } else if (p === 'bsup' || p === 'bret') {
                 d.kind = 'boiler'; d.b = grp.getAttribute('data-hyd-b');
-            } else if (p === 'hydro') d.kind = 'hydro';
+            } else if (p === 'load') d.kind = 'dhw';
+            else if (p === 'hydro') d.kind = 'hydro';
             else d.kind = 'main';
         }
         return d;
     },
 
-    _hydMedium: function (pipe) {
-        let c = ((pipe.style && pipe.style.stroke) || pipe.getAttribute('stroke') || '').toLowerCase().replace(/\s/g, '');
+    // Цвета линий загрузки бойлера: подача и обратка греющего контура.
+    _HYD_LOAD_COLS: { '#800040': 'fwd', '#8282ff': 'rev' },
+
+    /**
+     * Трубы контура загрузки бойлера. Берутся по цвету среды, а не по обёртке
+     * группы: композитор рисует эти линии в трёх местах (узел у котла, полоса
+     * под коллектором, подводка к змеевику), и обернуть их все значило бы
+     * ставить метку в трёх местах и забыть в четвёртом при первой же правке.
+     * Цвет здесь и есть обозначение среды — он на схеме не может быть чужим.
+     */
+    _hydLoadPipes: function (svg) {
+        const out = [];
+        svg.querySelectorAll('[data-p]').forEach(el => {
+            const dir = this._HYD_LOAD_COLS[this._hydColorOf(el)];
+            if (dir) out.push({ el: el, dir: dir });
+        });
+        return out;
+    },
+
+    /** Цвет линии как #rrggbb — из инлайн-стиля или атрибута. */
+    _hydColorOf: function (el) {
+        let c = ((el.style && el.style.stroke) || el.getAttribute('stroke') || '').toLowerCase().replace(/\s/g, '');
         const m = c.match(/^rgb\((\d+),(\d+),(\d+)\)$/);
         if (m) c = '#' + [m[1], m[2], m[3]].map(v => (+v).toString(16).padStart(2, '0')).join('');
+        return c;
+    },
+
+    _hydMedium: function (pipe) {
+        const c = this._hydColorOf(pipe);
         return {
             '#ff0000': 'подача отопления', '#0000ff': 'обратка отопления',
             '#800040': 'загрузка бойлера, подача', '#8282ff': 'загрузка бойлера, обратка',
@@ -24386,11 +24416,36 @@ const app = {
             (b == null || g.getAttribute('data-hyd-b') === b));
         switch (d.kind) {
             case 'boiler': return boilers(d.b).concat(part('msup'), part('mret'), part('hydro'));
-            case 'trunk': case 'ufh':
-                return all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
+            case 'trunk': case 'ufh': {
+                const tap = all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
                     g.getAttribute('data-hyd-kind') === (d.kind === 'ufh' ? 'tp' : 'rad') &&
-                    (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i)
-                    .concat(part('msup'), part('mret'), boilers(null), part('hydro'), part('ssup'), part('sret'));
+                    (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i);
+                // Со стрелкой контуры развязаны — в этом весь её смысл: насос
+                // группы гоняет свою воду через стрелку и обратно, а котловой
+                // контур крутится своим кольцом. Тянуть подсветку до котла
+                // значит рисовать путь, которым эта вода не идёт.
+                const sep = part('hydro');
+                return sep.length
+                    ? tap.concat(part('ssup'), part('sret'), sep)
+                    : tap.concat(part('msup'), part('mret'), boilers(null));
+            }
+            // Загрузка бойлера: от котла по линии загрузки к змеевику и обратно.
+            // Ни гребёнки, ни отводов, ни вторичной пары: при клапане приоритета
+            // котёл отсекает отопление физически, а при насосной группе оно
+            // просто не участвует в этом кольце. Раньше сюда подмешивалась вся
+            // котловая гребёнка — на схеме загоралась половина листа, к бойлеру
+            // отношения не имеющая.
+            //
+            // Стояки — только того котла, от которого узел загрузки и отходит
+            // (его номер стоит на обёртке узла). Второй котёл каскада в это
+            // время греет отопление, и подсвечивать его стояки незачем.
+            case 'dhw': {
+                const load = part('load');
+                const own = load.map(g => g.getAttribute('data-hyd-b')).filter(v => v != null);
+                return load.concat(own.length
+                    ? own.reduce((a, b) => a.concat(boilers(b)), [])
+                    : boilers(null));
+            }
             case 'main': return part('msup').concat(part('mret'), boilers(null), part('hydro'));
             case 'hydro': return part('hydro').concat(part('msup'), part('mret'), part('ssup'), part('sret'));
             default: return [];
@@ -24416,6 +24471,10 @@ const app = {
             const dir = g.getAttribute('data-hyd-dir') || 'none';
             g.querySelectorAll('[data-p]').forEach(el => pipes.push({ el, dir }));
         });
+        if (d.kind === 'dhw') {
+            const seen = new Set(pipes.map(p => p.el));
+            this._hydLoadPipes(d.svg).forEach(p => { if (!seen.has(p.el)) pipes.push(p); });
+        }
         ['halo', 'line', 'flow'].forEach(layer => pipes.forEach(p => {
             const c = p.el.cloneNode(false);
             c.removeAttribute('data-p'); c.removeAttribute('data-pi');
@@ -24457,7 +24516,9 @@ const app = {
         safetygroup: 'Группа безопасности котла: манометр, воздухоотводчик и предохранительный клапан на одном узле.',
         hydro: 'Гидрострелка развязывает котловой контур и контуры потребителей: насосы не мешают друг другу, а котёл всегда получает свой расход.',
         exptank: 'Расширительный бак принимает лишний объём воды при нагреве, чтобы давление в системе не росло.',
-        boiler: 'Котёл греет воду и подаёт её в гребёнку по красному стояку. Остывшая возвращается по синему — через фильтр.'
+        boiler: 'Котёл греет воду и подаёт её в гребёнку по красному стояку. Остывшая возвращается по синему — через фильтр.',
+        tank: 'Бойлер косвенного нагрева: бак с водой для крана и душа. Своей горелки у него нет — воду греет котёл, прогоняя горячий теплоноситель через змеевик внутри бака.',
+        coil: 'Змеевик — труба-спираль внутри бака, по ней идёт горячая вода от котла и отдаёт тепло воде для душа. Смешивания нет: это два разных контура.'
     },
     _hydSymText: function (sym) {
         if (!sym) return '';
@@ -24481,12 +24542,16 @@ const app = {
      * место, — чертёж не закрывает. Полная карточка с числами — по клику.
      */
     _hydShowHint: function (d) {
+        if (!this._hydExpanded(d.svg)) return;
         const cfg = this._schemeCfgCache, hyd = cfg && cfg.hyd;
         const esc = s => this._hydEsc(s), num = (v, k, u) => this._hydNum(v, k, u);
         const P = (hyd && hyd.parts) || {};
+        // Есть ли на схеме гидрострелка — от этого зависит и маршрут, и текст.
+        const sep = !!(cfg && cfg.hydro);
         const contour = d.kind === 'trunk' ? 'Контур радиаторов' + (d.mark ? ' ' + d.mark : '')
             : d.kind === 'ufh' ? 'Контур тёплого пола' + (d.mark ? ' ' + d.mark : '')
-                : d.kind === 'boiler' ? 'Котёл'
+                : d.kind === 'dhw' ? 'Контур загрузки бойлера'
+                    : d.kind === 'boiler' ? 'Котёл'
                     : d.kind === 'main' ? 'Гребёнка котельной'
                         : d.kind === 'hydro' ? 'Гидравлический разделитель' : '';
         let title, lines = [];
@@ -24510,22 +24575,46 @@ const app = {
         if (hyd) {
             if (d.kind === 'trunk') {
                 const t = P.trunk;
-                lines.push('От котла вода идёт по гребёнке и вниз по красному стояку к коллектору радиаторов, ' +
-                    'дальше по лучам к каждому прибору. Остывшая возвращается по синему.');
-                if (t && (d.medium || !d.sym)) {
-                    lines.push('Труба Ø' + esc(t.d) + ': ' + num(t.flow, 2, 'м³/ч') + ', скорость ' +
-                        num(t.v, 2, 'м/с') + ' при норме до ' + num(t.vLim, 1, '') + '.');
-                    lines.push('Почему Ø' + esc(t.d) + ': чтобы вода шла не быстрее ' + num(t.vLim, 1, 'м/с') +
-                        ' — иначе трубы шумят (СП 60.13330), — и чтобы потери ' + num(t.dp, 1, 'кПа') +
-                        ' на этом участке уложились в напор насоса.');
-                }
+                lines.push(sep
+                    ? 'Насос группы берёт воду из гидрострелки и гонит её вниз по красному стояку ' +
+                      'к коллектору радиаторов, дальше по лучам к приборам; остывшая возвращается ' +
+                      'по синему в стрелку. Дальше стрелки этот контур не идёт — она и развязывает ' +
+                      'его с котловым.'
+                    : 'От котла вода идёт по гребёнке и вниз по красному стояку к коллектору радиаторов, ' +
+                      'дальше по лучам к каждому прибору. Остывшая возвращается по синему.');
+                if (t && (d.medium || !d.sym)) lines.push(this._hydWhyDiam(t, hyd.dT));
             } else if (d.kind === 'ufh') {
                 const u = hyd.ufh, m = u && u.mans ? u.mans[d.i] : null;
-                lines.push('От гребёнки вода идёт через узел подмеса к коллектору пола и расходится ' +
-                    'по петлям в стяжке. Обратно — по синему стояку.');
+                lines.push((sep ? 'От гидрострелки' : 'От гребёнки') +
+                    ' вода идёт через узел подмеса к коллектору пола и расходится ' +
+                    'по петлям в стяжке. Обратно — по синему стояку.' +
+                    (sep ? ' Дальше стрелки контур не идёт — она развязывает его с котловым.' : ''));
                 if (m && !d.sym) lines.push('Коллектор ' + esc(m.label || '') + ': ' + num(m.flow, 2, 'м³/ч') +
                     ', насосу нужно ' + num(m.need, 1, 'м') + ' напора, он даёт ' + num(m.have, 1, 'м') +
                     (m.ok ? ' — хватает.' : ' — не хватает.'));
+            } else if (d.kind === 'dhw' && hyd.dhw) {
+                const w = hyd.dhw;
+                lines.push('Пока греется бойлер, котёл гонит горячую воду в змеевик внутри бака ' +
+                    'и возвращает её остывшей. Вода из крана с теплоносителем не смешивается.');
+                if (w.boilerKw > 0 && w.boilerKw < w.coilKw) {
+                    lines.push('Змеевик рассчитан на ' + num(w.coilKw, 1, 'кВт') + ', но котёл даёт ' +
+                        num(w.boilerKw, 1, 'кВт') + ' — контур считается по меньшему.');
+                }
+                lines.push('Змеевик ' + num(w.kw, 1, 'кВт') + ': ' + num(w.flow, 2, 'м³/ч') +
+                    ' при перепаде ' + num(w.dT, 0, '°C') + '; кольцо ' + num(w.dp, 1, 'кПа') +
+                    ' — это ' + num(w.head, 1, 'м') + ' напора.' +
+                    (w.pump ? ' ' + (w.pump.builtin ? 'Насос котла' : 'Насос группы') + ' даёт ' +
+                        num(w.pump.avail, 1, 'м') + (w.pump.ok ? ' — хватает.' : ' — не хватает.') : ''));
+                // Какой участок объяснять — тот, на который навели: змеевик,
+                // если курсор на нём, иначе линию загрузки.
+                const want = (d.sym && d.sym.type === 'coil') ? 'coil' : 'loadline';
+                const lp = (w.parts || []).find(p => p.tag === want);
+                if (lp && (d.medium || d.sym)) lines.push(this._hydWhyDiam(lp, w.dT, w.kw));
+                if (w.limited) {
+                    lines.push('Патрубок ' + esc(w.port) + ' больше ' + num(w.flow, 2, 'м³/ч') +
+                        ' не пропустит, поэтому перепад складывается ' + num(w.dT, 0, '°C') +
+                        ' вместо расчётных ' + num(w.dTNom, 0, '') + ' — бак прогреется чуть дольше. Это нормально.');
+                }
             } else if (d.kind === 'boiler') {
                 if (!d.sym) lines.push(this._HYD_SYM_TEXT.boiler);
                 lines.push('Через котёл проходит ' + num(hyd.flow, 2, 'м³/ч') +
@@ -24599,6 +24688,69 @@ const app = {
         });
     },
 
+    /**
+     * «Почему такой диаметр» — цепочкой, которую монтажник может пересчитать
+     * на бумаге: мощность → расход → площадь сечения → скорость → норма.
+     * Общими словами («чтобы не шумело») этот вопрос не закрывается: на схеме
+     * стоит конкретное Ø25, и человек хочет видеть, откуда оно взялось.
+     *
+     * Формат повторяет подсказку трубы обвязки котельной в смете — тот же
+     * порядок и те же формулы, чтобы два объяснения не выглядели чужими.
+     * kw — мощность участка, если она известна снаружи (у греющего контура
+     * это паспорт змеевика); иначе выводится из расхода и перепада.
+     */
+    _hydWhyDiam: function (p, dT, kw) {
+        const num = (v, k, u) => this._hydNum(v, k, u);
+        const out = [];
+        const q = (kw != null && kw > 0) ? kw
+            : (p.flow > 0 && dT > 0 ? p.flow * 1.163 * dT : 0);
+        if (q > 0 && p.flow > 0) {
+            out.push('Несёт ' + num(q, 1, 'кВт') + '; расход G = Q / (1,163 × ΔT) = ' +
+                num(q, 1, '') + ' / (1,163 × ' + num(dT, 0, '') + ') = <b>' + num(p.flow, 2, 'м³/ч') + '</b>.');
+        } else if (p.flow > 0) {
+            out.push('Расход через участок — <b>' + num(p.flow, 2, 'м³/ч') + '</b>.');
+        }
+        if (p.dIn && p.v) {
+            const s = Math.PI * p.dIn * p.dIn / 4;
+            out.push('Скорость v = G / (3600 × S): труба Ø' + p.d + ', внутренний ' +
+                num(p.dIn * 1000, 1, 'мм') + ' → S = ' + s.toExponential(2).replace('.', ',') +
+                ' м² → <b>' + num(p.v, 2, 'м/с') + '</b>.');
+        } else if (p.v) {
+            out.push('Скорость в трубе — <b>' + num(p.v, 2, 'м/с') + '</b>.');
+        }
+        if (p.vLim) {
+            out.push('Норма — не быстрее ' + num(p.vLim, 1, 'м/с') +
+                ' (СП 60.13330.2020, по шуму и износу)' + (p.over ? ' — <b>превышена</b>.' : '.'));
+        }
+        if (p.tag === 'coil') {
+            out.push('Диаметр здесь не подбирают: змеевик такой, какой стоит в баке — ' +
+                'его присоединение и задаёт пропускную способность контура.');
+        }
+        // Главный довод «почему не меньше»: что было бы на соседнем размере.
+        if (p.smaller) {
+            if (p.smaller.v > (p.vLim || 1.2)) {
+                out.push('На Ø' + p.smaller.d + ' скорость вышла бы ' + num(p.smaller.v, 2, 'м/с') +
+                    ' — выше нормы, поэтому взят Ø' + p.d + '.');
+            } else {
+                // Потери меняются примерно как диаметр в пятой степени: скорость
+                // растёт квадратом сечения, а сама потеря — квадратом скорости
+                // и ещё раз обратно диаметру. Показываем результат числом, а не
+                // ссылкой на степень — её никто в уме не возводит.
+                const k = p.dIn && p.smaller.dIn ? Math.pow(p.dIn / p.smaller.dIn, 5) : 0;
+                out.push('На Ø' + p.smaller.d + ' было бы ' + num(p.smaller.v, 2, 'м/с') +
+                    ' — по скорости проходит' + (k > 1.5
+                        ? ', но потери на этом участке выросли бы примерно в ' + num(k, 1, 'раза') +
+                          ' (' + num(p.dp * k, 1, 'кПа') + ' вместо ' + num(p.dp, 1, '') + '), и запас насоса съедается.'
+                        : '.'));
+            }
+        }
+        if (p.dp) {
+            out.push('Потери участка — ' + num(p.dp, 1, 'кПа') +
+                (p.len ? ' на ' + num(p.len, 0, 'м') : '') + '.');
+        }
+        return out.join(' ');
+    },
+
     _hydHintPlace: function (svg) {
         const el = document.getElementById('hyd_hint');
         if (!el || !svg) return;
@@ -24647,6 +24799,9 @@ const app = {
             if (!t || !t.closest) return;
             if (t.closest('#hyd_card') || t.closest('#hyd_hint')) return;   // клик по плашке
             if (!this.hydEnabled()) return;
+            // В нераскрытой схеме клик обязан открыть её на весь экран, а не
+            // выкатить карточку поверх и без того тесного листа.
+            if (!this._hydExpanded(t)) { this.closeHydCard(); return; }
             const d = this._hydDescr(t);
             if (!d) { this.closeHydCard(); return; }
             e.stopPropagation();
@@ -24683,8 +24838,11 @@ const app = {
     hydEnabled: function () {
         try { return localStorage.getItem('hc_scheme_hints') !== '0'; } catch (e) { return true; }
     },
-    _hydToggleLabel: function () {
-        return this.hydEnabled() ? '💡 Подсказки: вкл' : '💡 Подсказки: выкл';
+    // Подпись по месту: на схеме под сметой подсказок нет (см. _hydExpanded),
+    // и обещать их кнопкой было бы враньём — там она включает подсветку.
+    _hydToggleLabel: function (expanded) {
+        const what = expanded ? 'Подсказки' : 'Подсветка';
+        return '💡 ' + what + (this.hydEnabled() ? ': вкл' : ': выкл');
     },
     toggleHydHints: function (ev) {
         if (ev) { ev.stopPropagation(); ev.preventDefault(); }   // обёртка схемы по клику открывает полноэкранный режим
@@ -24694,8 +24852,21 @@ const app = {
         this.closeHydCard();
         this._hydHintPos = null;      // ручные положения плашек — до переключения
         this._hydCardPos = null;
-        document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => { b.textContent = this._hydToggleLabel(); });
+        document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => {
+            b.textContent = this._hydToggleLabel(b.classList.contains('scheme-zoom-hints'));
+        });
         document.querySelectorAll('.scheme-svg-wrap, #scheme_zoom_overlay').forEach(el => el.classList.toggle('hyd-off', !on));
+    },
+
+    /**
+     * Раскрыта ли схема. На панели сметы лист ужат до ~450 px, и плашка
+     * подсказки шириной 340 закрывает почти весь чертёж — там она не помощь,
+     * а помеха. Поэтому подсказки и карточки работают только в полноэкранном
+     * просмотре; в маленьком виде остаётся подсветка пути воды (она ничего не
+     * загораживает), а клик по схеме, как и раньше, раскрывает её.
+     */
+    _hydExpanded: function (el) {
+        return !!(el && el.closest && el.closest('#scheme_zoom_overlay'));
     },
 
     closeHydCard: function () {
@@ -24708,7 +24879,8 @@ const app = {
         const cfg = this._schemeCfgCache;
         const hyd = cfg && cfg.hyd;
         let body = null;
-        if (hyd && d.kind === 'ufh') body = this._hydCardUfh(hyd, d.mark, d.i);
+        if (hyd && d.kind === 'dhw') body = this._hydCardDhw(hyd);
+        else if (hyd && d.kind === 'ufh') body = this._hydCardUfh(hyd, d.mark, d.i);
         else if (hyd && d.kind === 'trunk') body = this._hydCardTrunk(hyd, d.mark);
         else if (hyd && d.kind) body = this._hydCardBoiler(hyd);
         if (body && d.kind === 'main') body.title = 'Гребёнка и кольцо системы';
@@ -24793,6 +24965,40 @@ const app = {
         };
     },
 
+    _hydCardDhw: function (hyd) {
+        const w = hyd.dhw;
+        if (!w) return null;
+        const R = [];
+        R.push(this._hydRow('Змеевик, паспорт', this._hydNum(w.coilKw, 1, 'кВт') +
+            (w.port ? ' · ' + w.port : '')));
+        if (w.boilerKw > 0 && w.boilerKw < w.coilKw) {
+            R.push(this._hydRow('Котёл даёт', this._hydNum(w.boilerKw, 1, 'кВт')));
+            R.push(this._hydRow('В расчёт идёт', this._hydNum(w.kw, 1, 'кВт')));
+        }
+        R.push(this._hydRow('Расход', this._hydNum(w.flow, 2, 'м³/ч')));
+        R.push(this._hydRow('Перепад', this._hydNum(w.dT, 0, '°C') +
+            (w.limited ? ' (расчётный ' + this._hydNum(w.dTNom, 0, '') + ')' : '')));
+        (w.parts || []).forEach(p => R.push(this._hydRow(
+            String(p.name).replace(/,\s*≈?[\d.,]+\s*м$/, '') + (p.est ? ' *' : ''),
+            this._hydNum(p.dp, 1, 'кПа') + (p.v ? ' · ' + this._hydNum(p.v, 2, 'м/с') : ''),
+            p.over)));
+        R.push(this._hydRow('Потери кольца', this._hydNum(w.dp, 1, 'кПа')));
+        R.push(this._hydRow('Требуемый напор', this._hydNum(w.head, 2, 'м')));
+        if (w.pump) {
+            R.push(this._hydRow(w.pump.builtin ? 'Насос котла' : 'Насос группы', w.pump.label));
+            R.push(this._hydRow('Даёт напора', this._hydNum(w.pump.avail, 2, 'м'), !w.pump.ok));
+        }
+        // Звёздочка стоит у змеевика: его сопротивление посчитано, а не взято
+        // из паспорта, и молчать об этом нельзя.
+        if ((w.parts || []).some(p => p.est)) {
+            R.push('<div class="hyd-card__p" style="margin:8px 0 0">* сопротивление змеевика ' +
+                'расчётное: паспорт его не даёт, оно восстановлено по мощности и присоединению' +
+                (w.coilLen ? ' (≈' + this._hydNum(w.coilLen, 0, 'м') + ' трубы, ' +
+                    this._hydNum(w.coilArea, 1, 'м²') + ')' : '') + '. Точность около четверти.</div>');
+        }
+        return { title: 'Контур загрузки бойлера', rows: R.join('') };
+    },
+
     _hydCardUfh: function (hyd, mark, idx) {
         const u = hyd.ufh;
         if (!u || !u.mans || !u.mans.length) return null;
@@ -24837,7 +25043,7 @@ const app = {
         ov.id = 'scheme_zoom_overlay';
         ov.innerHTML =
             `<div class="scheme-zoom-bar">
-                <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel()}</button>
+                <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel(true)}</button>
                 <button type="button" data-z="out" aria-label="Уменьшить">−</button>
                 <button type="button" data-z="fit">Вписать</button>
                 <button type="button" data-z="in" aria-label="Увеличить">+</button>
@@ -32988,16 +33194,37 @@ const app = {
      * Возвращает null, если радиаторной части в смете нет.
      */
     buildSchemeHydro: function () {
+        // Контур загрузки бойлера — свой расчёт, своё кольцо и свой побудитель
+        // циркуляции. К радиаторному отношения не имеет: они работают по
+        // очереди, а не вместе, — поэтому считается до проверки радиаторов и
+        // живёт даже там, где их нет вовсе (котельная на ГВС и тёплый пол).
+        const dhw = this.dhwLoadHydraulics();
         const h = this.radHydro || this.radHydraulics();
-        if (!h || !h.parts || !h.parts.length) return null;
+        const hasRad = !!(h && h.parts && h.parts.length);
+        if (!hasRad && !dhw && !(this._ufhBal && this._ufhBal.mans && this._ufhBal.mans.length)) return null;
         const by = {};
-        h.parts.forEach(p => { if (p.tag && !by[p.tag]) by[p.tag] = p; });
+        if (hasRad) h.parts.forEach(p => { if (p.tag && !by[p.tag]) by[p.tag] = p; });
+        // Ряд типоразмеров радиаторной разводки — тот же, из которого выбирает
+        // смета (radPickDiam). Нужен, чтобы подсказка могла показать не только
+        // выбранный диаметр, но и что было бы на соседнем меньшем: без этого
+        // «почему Ø25» остаётся словами, которые нечем проверить.
+        const ROW = [16, 20, 25, 32];
+        const fam = this.radPipeFamily();
         const part = t => {
             const p = by[t];
             if (!p) return null;
+            const dIn = p.d ? this.radPipeId(p.d, fam) : null;
+            let smaller = null;
+            const i = ROW.indexOf(p.d);
+            if (i > 0 && p.flow > 0) {
+                const sd = ROW[i - 1], sIn = this.radPipeId(sd, fam);
+                smaller = { d: sd, dIn: sIn,
+                    v: (p.flow / 3600) / (Math.PI * sIn * sIn / 4) };
+            }
             return {
                 name: p.name, dp: p.dp, v: p.v || 0, vLim: p.vLim || null,
-                d: p.d || null, len: p.len || null, flow: p.flow || null,
+                d: p.d || null, dIn: dIn, len: p.len || null, flow: p.flow || null,
+                smaller: smaller,
                 over: !!(p.v && p.vLim && p.v > p.vLim)
             };
         };
@@ -33007,13 +33234,13 @@ const app = {
         // узким местом не тот участок — на магистрали 1,1 м/с это норма, а на
         // луче с клапаном прибора уже перебор.
         let worstP = null, worstK = 0;
-        h.parts.forEach(p => {
+        if (hasRad) h.parts.forEach(p => {
             if (!(p.v > 0) || !p.tag) return;
             const k = p.v / (p.vLim || this.RAD_V_MAX);
             if (k > worstK) { worstK = k; worstP = p; }
         });
         const reg = this.radRegime();
-        const pump = h.pump;
+        const pump = hasRad ? h.pump : null;
         // Тёплый пол: коллекторы идут отдельным списком — у каждого свой
         // расход и свой требуемый напор, и отводы Т11 на схеме соответствуют
         // им по порядку. Если счёт коллекторов и отводов разойдётся, схема
@@ -33035,8 +33262,9 @@ const app = {
         } : null;
         return {
             regime: reg.label, dT: reg.dt,
-            flow: h.flow, dp: h.dp, head: h.head,
-            branches: h.branches || 1,
+            hasRad: hasRad,
+            flow: hasRad ? h.flow : 0, dp: hasRad ? h.dp : 0, head: hasRad ? h.head : 0,
+            branches: (hasRad && h.branches) || 1,
             pump: pump ? {
                 label: pump.label, avail: pump.avail,
                 reserve: h.head > 0 ? pump.avail / h.head : 0
@@ -33060,7 +33288,41 @@ const app = {
             overWhere: (worstP && worstK > 1)
                 ? ((by.trunk && by.trunk.v > (by.trunk.vLim || this.RAD_V_MAX)) ? 'trunk' : 'beyond')
                 : null,
-            ufh: ufh
+            ufh: ufh,
+            dhw: dhw ? {
+                coilKw: dhw.coilKw, kw: dhw.kw, boilerKw: dhw.boilerKw, port: dhw.port,
+                flow: dhw.flow, dT: dhw.dT, dTNom: dhw.dTNom, limited: dhw.limited,
+                dp: dhw.dp, head: dhw.head,
+                pump: dhw.pump, noisy: dhw.noisy,
+                coilLen: dhw.geom ? dhw.geom.len : null,
+                coilArea: dhw.geom ? dhw.geom.area : null,
+                parts: dhw.parts.map(p => {
+                    // Линия загрузки идёт трубой обвязки котельной, а не
+                    // разводки: и ряд типоразмеров, и внутренние диаметры у неё
+                    // свои (boilerPipeRange). У змеевика соседнего размера нет
+                    // вовсе — какой в баке, такой и есть.
+                    let dIn = null, smaller = null;
+                    if (p.tag === 'loadline' && this._dhwLoad) {
+                        const row = (this.boilerPipeRange(this._dhwLoad.system) || [])
+                            .slice().sort((a, b) => a.size - b.size);
+                        const i = row.findIndex(r => r.size === p.d);
+                        if (i >= 0) dIn = row[i].inner / 1000;
+                        if (i > 0 && p.flow > 0) {
+                            const sIn = row[i - 1].inner / 1000;
+                            smaller = { d: row[i - 1].size, dIn: sIn,
+                                v: (p.flow / 3600) / (Math.PI * sIn * sIn / 4) };
+                        }
+                    } else if (p.tag === 'coil') {
+                        dIn = (p.d || 0) / 1000;
+                    }
+                    return {
+                        name: p.name, dp: p.dp, v: p.v || 0, vLim: p.vLim || null,
+                        tag: p.tag || null, d: p.d || null, dIn: dIn, len: p.len || null,
+                        flow: p.flow || null, smaller: smaller,
+                        est: !!p.est, over: !!(p.v && p.vLim && p.v > p.vLim)
+                    };
+                })
+            } : null
         };
     },
 
@@ -45463,6 +45725,187 @@ const app = {
         { label: '25/80', hMax: 8, qMax: 5.5 }
     ],
 
+    // ─── Греющий контур бойлера ──────────────────────────────────────────────
+    //
+    // Сопротивления змеевика нет ни в одном паспорте STOUT и ROMMER — ни в кПа,
+    // ни через Kv. Зато есть паспортная мощность (TANK_COIL_KW) и присоединение
+    // (ports.coil в каталоге), а этого хватает, чтобы восстановить геометрию:
+    // змеевик — обычная гладкая труба, свёрнутая в спираль.
+    //
+    //   мощность → площадь:  F = Q / (k · Δt_ср)
+    //   площадь  → длина:    L = F / (π · D_нар)
+    //
+    // k = 750 Вт/(м²·К) — стальная эмалированная труба вода-вода при свободной
+    // конвекции в баке; Δt_ср = 30 К — средний напор при греющей воде 80/60 и
+    // воде бака 10 → 60 °C. В этих же условиях паспорт мощность и меряет.
+    //
+    // Проверка на OptiBase 200 л: 40,2 кВт → 1,79 м² → около 18 м трубы 1",
+    // сопротивление 6–7 кПа. Габарит трубы для бака этого размера правдоподобен,
+    // а сопротивление попадает ровно в тот диапазон, который публикуют
+    // производители, эту цифру дающие.
+    //
+    // Точность — порядка четверти: диаметра витка и шага спирали мы не знаем.
+    // Для подбора насоса загрузки этого достаточно (рядом стоят 12 кПа насосной
+    // группы и 15 кПа котла), но в подсказке сказано прямо, что цифра расчётная,
+    // а не паспортная. Появится паспортная — заменить надо здесь, а не в схеме.
+    DHW_COIL_K: 750,            // коэффициент теплопередачи змеевика, Вт/(м²·К)
+    DHW_COIL_DTM: 30,           // средний температурный напор, К
+    // Труба змеевика по присоединительной резьбе: наружный диаметр и стенка, мм.
+    DHW_COIL_PIPE: {
+        '3/4"': { od: 26.9, wall: 2.3 },
+        '1"': { od: 33.5, wall: 2.6 },
+        '1 1/4"': { od: 42.4, wall: 2.6 }
+    },
+    // Диаметр витка спирали, м. Паспорт его не даёт; 0,35 — типичный для баков
+    // 100…500 л: змеевик идёт вдоль стенки корпуса Ø500…650 мм с отступом.
+    DHW_COIL_WIND_D: 0.35,
+    // Два предела скорости в змеевике. Рабочий — 1,2 м/с: выше него расход
+    // просто не задают, это общая проектная норма для стальных труб. Предельный
+    // — 1,5 м/с: за ним эрозия стенки заметно ускоряется (шум здесь ни при чём,
+    // бак стоит в котельной).
+    DHW_COIL_V_WORK: 1.2,
+    DHW_COIL_V_MAX: 1.5,
+    DHW_CHECK_KV: 9,            // обратный клапан DN25 на линии загрузки, м³/ч
+
+    /** Геометрия змеевика по паспортной мощности и присоединительной резьбе. */
+    dhwCoilGeometry: function (coilKw, port) {
+        const q = parseFloat(coilKw) || 0;
+        if (!(q > 0)) return null;
+        const p = this.DHW_COIL_PIPE[port] || this.DHW_COIL_PIPE['1"'];
+        const area = q * 1000 / (this.DHW_COIL_K * this.DHW_COIL_DTM);
+        return {
+            area: area,
+            len: area / (Math.PI * p.od / 1000),
+            dIn: (p.od - 2 * p.wall) / 1000,
+            od: p.od
+        };
+    },
+
+    /**
+     * Во сколько раз витая труба сопротивляется сильнее прямой. Формула Ито:
+     * λ_сп / λ_пр = 1 + 0,075 · Re^0,25 · √(d/D), где D — диаметр витка.
+     * На рабочих расходах выходит 1,3…1,4 — то есть треть сопротивления
+     * змеевика даёт сама спираль, и списывать её нельзя.
+     */
+    dhwCoilCurl: function (Re, dIn) {
+        if (!(Re > 0)) return 1;
+        return 1 + 0.075 * Math.pow(Re, 0.25) * Math.sqrt(dIn / this.DHW_COIL_WIND_D);
+    },
+
+    /**
+     * Гидравлика контура загрузки бойлера: котёл → линия загрузки → змеевик и
+     * обратно. Считается по мощности ЗМЕЕВИКА, а не котельной: больше него в бак
+     * всё равно не уйдёт, и тем же числом смета подбирает диаметр этого контура.
+     *
+     * Побудитель циркуляции зависит от схемы загрузки: при насосной группе это
+     * её насос (те же RAD_PUMPS, что у радиаторов), при клапане приоритета —
+     * встроенный насос котла, и тогда сопротивление самой группы в кольцо не
+     * входит. Признак берётся из состава сметы, как и в buildSchemeConfig.
+     *
+     * Возвращает null, если бойлера в смете нет или модель не нашлась в
+     * TANK_COIL_KW — гадать мощность змеевика по объёму бака не будем.
+     */
+    dhwLoadHydraulics: function () {
+        const L = this._dhwLoad;
+        if (!L || !(L.coilKw > 0)) return null;
+        const dtNom = this.boilerDT();
+        // Мощность контура — меньшее из двух: сколько котёл отдаст и сколько
+        // змеевик примет. Считать по одному змеевику значило бы обещать расход,
+        // которого источник не даёт: бак на 31 кВт за котлом на 24 получает 24.
+        const kw = (L.boilerKw > 0) ? Math.min(L.coilKw, L.boilerKw) : L.coilKw;
+        let flow = this.boilerFlow(kw, dtNom);
+        if (!(flow > 0)) return null;
+        const f = this.RAD_FLUID;
+        // Геометрия змеевика — по его ПАСПОРТНОЙ мощности: длина трубы в баке
+        // от источника не зависит, даже если котёл мельче.
+        const g = this.dhwCoilGeometry(L.coilKw, L.port);
+
+        // Змеевик — дроссель, и паспортную мощность он отдаёт не при любом
+        // перепаде. У баков с патрубком 3/4" (нержавеющие DUPLEX, ROMMER GT)
+        // расход по расчётным 20 К разогнал бы воду до полутора метров в
+        // секунду: столько через эту трубу просто не пойдёт. Тогда перепад
+        // складывается больше расчётного — бак греется дольше, и сказать об
+        // этом честнее, чем показывать потери для расхода, которого не будет.
+        let dt = dtNom, limited = false;
+        if (g) {
+            const vNom = (flow / 3600) / (Math.PI * g.dIn * g.dIn / 4);
+            if (vNom > this.DHW_COIL_V_WORK) {
+                flow = this.DHW_COIL_V_WORK * (Math.PI * g.dIn * g.dIn / 4) * 3600;
+                dt = kw / (1.163 * flow);
+                limited = true;
+            }
+        }
+        const parts = [];
+        let dp = 0;
+        const add = (name, val, extra) => {
+            parts.push(Object.assign({ name: name, dp: val }, extra || {}));
+            dp += val;
+        };
+
+        // Змеевик — самая тяжёлая часть кольца и единственная, которой нет в
+        // паспорте. Помечаем est: подсказка обязана сказать, что цифра расчётная.
+        if (g) {
+            const dr = this.snowPipeDrop(flow, g.dIn, f);
+            const curl = this.dhwCoilCurl(dr.Re, g.dIn);
+            add('Змеевик бойлера ' + L.port + ', ≈' + g.len.toFixed(0) + ' м', dr.R * g.len * curl / 1000, {
+                v: dr.v, vLim: this.DHW_COIL_V_MAX, len: g.len, flow: flow, kw: kw,
+                d: Math.round(g.dIn * 1000), tag: 'coil', est: true,
+                curl: curl, area: g.area
+            });
+        }
+
+        // Линия загрузки — тот же метраж, который смета кладёт на греющий контур
+        // (4 м пары подача + обратка), и та же труба обвязки котельной.
+        const row = (this.boilerPipeRange(L.system) || []).find(r => r.size === L.size);
+        const dIn = row ? row.inner / 1000 : 0.0196;
+        const dl = this.snowPipeDrop(flow, dIn, f);
+        // Предел для линии загрузки — жилой, как у всей разводки: 1,2 м/с.
+        // RAD_V_MAX_TRUNK (1,5) относится к магистрали отопления с её малой
+        // суммой КМС, а здесь на четырёх метрах стоят кран, американка и
+        // обратный клапан.
+        add('Линия загрузки Ø' + L.size + ', ' + L.len.toFixed(0) + ' м', dl.R * L.len * this.RAD_LOCAL_K / 1000, {
+            v: dl.v, vLim: this.DHW_COIL_V_WORK, len: L.len, flow: flow, kw: kw,
+            d: L.size, tag: 'loadline'
+        });
+
+        if (L.pump) {
+            // Обратный клапан стоит только в насосной схеме: без него стоящий
+            // насос давал бы паразитную циркуляцию через змеевик.
+            add('Обратный клапан', Math.pow(flow / this.DHW_CHECK_KV, 2) * 100,
+                { tag: 'loadcheck', flow: flow });
+            add('Насосная группа и обвязка', this.RAD_GROUP_DP, { tag: 'loadgroup' });
+        }
+        add('Теплообменник котла', this.RAD_BOILER_DP, { tag: 'boiler' });
+
+        const head = dp / 9.81;
+        // Кто гонит контур. При насосной группе — её насос из ряда RAD_PUMPS;
+        // при клапане приоритета котёл переключает на змеевик свой контур
+        // целиком, и работает его встроенный насос по паспортной кривой.
+        let pump = null;
+        if (L.pump) {
+            const pick = this.RAD_PUMPS.find(pm => pm.hMax * (1 - Math.pow(flow / pm.qMax, 2)) >= head)
+                || this.RAD_PUMPS[this.RAD_PUMPS.length - 1];
+            const avail = pick.hMax * (1 - Math.pow(flow / pick.qMax, 2));
+            pump = { label: pick.label, avail: Math.max(0, avail), builtin: false,
+                ok: avail >= head };
+        } else if (L.pumpCurve) {
+            const avail = this.boilerPumpHead(L.pumpCurve, flow);
+            if (avail != null) pump = { label: L.pumpCurve.label, avail: avail, builtin: true,
+                ok: avail >= head, unknown: L.pumpCurve.kind === 'unknown' };
+        }
+
+        const vMax = parts.reduce((a, p) => Math.max(a, p.v || 0), 0);
+        const loud = parts.filter(p => (p.v || 0) > (p.vLim || this.DHW_COIL_V_MAX));
+        return {
+            coilKw: L.coilKw, kw: kw, boilerKw: L.boilerKw || 0,
+            dT: dt, dTNom: dtNom, limited: limited,
+            flow: flow, dp: dp, head: head,
+            parts: parts, pump: pump, vMax: vMax,
+            noisy: loud.length > 0, loud: loud.map(p => p.name),
+            geom: g, port: L.port, tank: L.tankName || ''
+        };
+    },
+
     // ─── Клапан прибора ──────────────────────────────────────────────────────
     // Здесь стояло одно число на любую систему — Kv 0,6 «на средней
     // преднастройке», взятое на глаз. Теперь цифры паспортные, и своя на каждый
@@ -56173,6 +56616,10 @@ const app = {
         // считала бы кольцо по стояку из прошлого расчёта.
         this._radTrunk = null;
         this._radTee = null;
+        // Исходные данные греющего контура бойлера запишет раздел его обвязки
+        // ниже. Без сброса гидравлика загрузки при выключении ГВС считала бы
+        // змеевик из прошлого расчёта.
+        this._dhwLoad = null;
         if (rQ > 0) {
             const _grpsForCap = dn25 ? catalog.groups_dn25 : catalog.groups_dn20;
             const _directGrp = _grpsForCap && _grpsForCap[0];
@@ -57115,6 +57562,29 @@ const app = {
             if (!ss_pipes_demand[_coilSize]) ss_pipes_demand[_coilSize] = { length: 0, components: [] };
             ss_pipes_demand[_coilSize].length += 4.0;
             ss_pipes_demand[_coilSize].components.push("греющий контур бойлера");
+
+            // Исходные данные для dhwLoadHydraulics: та же мощность змеевика, тот
+            // же типоразмер линии и тот же метраж, что ушли в смету, — иначе
+            // расчёт обещал бы напор для трубы, которой монтажник не купит.
+            // Схему загрузки берём по факту: при клапане приоритета насосной
+            // группы нет, контур гонит встроенный насос котла.
+            // Бойлер греет ОДИН котёл, а не каскад: узел загрузки отходит от
+            // него одного. Его мощность — второй потолок контура: через него
+            // не пройдёт больше, чем котёл отдаёт, каким бы ёмким ни был
+            // змеевик. Тем же минимумом ограничивает себя и подбор диаметра
+            // выше (_coilSize берёт Math.min с типоразмером обвязки котла).
+            const _loadB = selBoilers.find(b => b && b.type === 'gas') || selBoilers[0] || null;
+            this._dhwLoad = {
+                coilKw: _coilKw,
+                boilerKw: _loadB ? (parseFloat(_loadB.power) || 0) : 0,
+                size: _coilSize,
+                len: 4.0,
+                port: (this._tankPorts && this._tankPorts.coil) || '1"',
+                system: _bpSystem,
+                pump: !!tankNeedsPumpGroup,
+                pumpCurve: this.boilerPumpOf(_loadB),
+                tankName: (this._tankPortsModel || '')
+            };
 
             if (isAnalog) {
                 if (ss_diameter === 22) {
