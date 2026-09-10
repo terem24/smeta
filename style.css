@@ -13218,3 +13218,31 @@ body.dark-mode #hyd_card .hyd-card__x:hover {
 body.dark-mode #hyd_card .hyd-card__p {
     color: #cbd5e1;
 }
+
+/* ─── Переключатель «Подсказки» на схеме ───────────────────────────────────
+   Подсветка пути воды и подсказки при наведении включаются по желанию:
+   кнопка внизу справа на схеме под сметой (низ листа там пуст) и в панели
+   полноэкранного просмотра. Выключено — чертёж ведёт себя как картинка. */
+.scheme-hints-btn {
+    position: absolute; bottom: 10px; right: 10px;
+    padding: 6px 12px; font-size: 12.5px; font-weight: 600;
+    color: var(--text-sec); background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+.scheme-hints-btn:hover { color: var(--primary); border-color: var(--primary); }
+#scheme_zoom_overlay .scheme-zoom-bar .scheme-zoom-hints {
+    margin-right: auto; font-size: 13px; font-weight: 600;
+}
+.scheme-svg-wrap.hyd-off .hyd-hit,
+.scheme-svg-wrap.hyd-off .hyd-zone,
+.scheme-svg-wrap.hyd-off [data-sym] *,
+#scheme_zoom_overlay.hyd-off .hyd-hit,
+#scheme_zoom_overlay.hyd-off .hyd-zone,
+#scheme_zoom_overlay.hyd-off [data-sym] * {
+    pointer-events: none !important;
+    cursor: inherit !important;
+}
+@media print {
+    .scheme-hints-btn { display: none !important; }
+}

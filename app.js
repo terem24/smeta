@@ -23748,7 +23748,7 @@ const app = {
                     @media (prefers-reduced-motion: reduce) {
                         .hyd-ov .hyd-ov__flow { animation: none; }
                     }
-                </style><div class="scheme-svg-wrap" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div></div>`;
+                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды и подсказки при наведении">${this._hydToggleLabel()}</button></div></div>`;
     },
 
     // ── что под курсором и путь воды ───────────────────────────────────────
@@ -24058,6 +24058,7 @@ const app = {
             const t = e.target;
             if (!t || !t.closest) return;
             if (t.closest('#hyd_card')) return;          // клик внутри карточки
+            if (!this.hydEnabled()) return;
             const d = this._hydDescr(t);
             if (!d) { this.closeHydCard(); return; }
             e.stopPropagation();
@@ -24070,6 +24071,7 @@ const app = {
         document.addEventListener('mouseover', (e) => {
             const t = e.target;
             if (!t || !t.closest) return;
+            if (!this.hydEnabled()) return;
             const svg = t.closest('svg.scheme-svg');
             if (svg) this._hydPrepare(svg);
             const d = this._hydDescr(t);
@@ -24079,6 +24081,26 @@ const app = {
         window.addEventListener('keydown', e => {
             if (e.key === 'Escape') this.closeHydCard();
         });
+    },
+
+    // ── переключатель «Подсказки» ──────────────────────────────────────────
+    // Подсветка пути воды и подсказки — по желанию: кому-то на схеме нужен
+    // чистый чертёж. Настройка живёт в localStorage, а не в state: это
+    // предпочтение экрана, а не сметы, и в облако ей ехать незачем.
+    hydEnabled: function () {
+        try { return localStorage.getItem('hc_scheme_hints') !== '0'; } catch (e) { return true; }
+    },
+    _hydToggleLabel: function () {
+        return this.hydEnabled() ? '💡 Подсказки: вкл' : '💡 Подсказки: выкл';
+    },
+    toggleHydHints: function (ev) {
+        if (ev) { ev.stopPropagation(); ev.preventDefault(); }   // обёртка схемы по клику открывает полноэкранный режим
+        const on = !this.hydEnabled();
+        try { localStorage.setItem('hc_scheme_hints', on ? '1' : '0'); } catch (e) { /* приватный режим */ }
+        this.hydHoverOff();
+        this.closeHydCard();
+        document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => { b.textContent = this._hydToggleLabel(); });
+        document.querySelectorAll('.scheme-svg-wrap, #scheme_zoom_overlay').forEach(el => el.classList.toggle('hyd-off', !on));
     },
 
     closeHydCard: function () {
@@ -24217,12 +24239,14 @@ const app = {
         ov.id = 'scheme_zoom_overlay';
         ov.innerHTML =
             `<div class="scheme-zoom-bar">
+                <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel()}</button>
                 <button type="button" data-z="out" aria-label="Уменьшить">−</button>
                 <button type="button" data-z="fit">Вписать</button>
                 <button type="button" data-z="in" aria-label="Увеличить">+</button>
                 <button type="button" data-z="close" aria-label="Закрыть">✕</button>
             </div>
             <div class="scheme-zoom-canvas">${src.outerHTML}</div>`;
+        if (!this.hydEnabled()) ov.classList.add('hyd-off');
         document.body.appendChild(ov);
         const canvas = ov.querySelector('.scheme-zoom-canvas');
         const svg = canvas.querySelector('svg');
@@ -24242,6 +24266,7 @@ const app = {
         ov.addEventListener('click', (e) => {
             const z = e.target.dataset && e.target.dataset.z;
             if (z === 'in') zoom(1.3);
+            else if (z === 'hints') this.toggleHydHints(e);
             else if (z === 'out') zoom(1 / 1.3);
             else if (z === 'fit') fit();
             else if (z === 'close' || e.target === ov || e.target === canvas) ov.remove();
