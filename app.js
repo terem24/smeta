@@ -6943,10 +6943,10 @@ const app = {
             // 'calculated' (у смет, сохранённых до появления флага в calc_data)
             if (liveRecMap[String(e.calc_id)] || (e.meta && e.meta.source === 'recognition')) p.fromRecognition = true;
         });
-        // Менеджеру планировщик показывает только сметы его компании. Фильтруем
+        // Менеджеру и наблюдателю планировщик показывает только сметы их компаний. Фильтруем
         // здесь, а не в выборке событий: дистрибьютор у сметы известен лишь после
         // сопоставления её автора со справочником пользователей (userMeta выше).
-        const scopeDists = this.isManagerRole() ? this.managerDistIds().map(String) : null;
+        const scopeDists = this.isScopedAdmin() ? this.managerDistIds().map(String) : null;
         const list = Object.values(projects)
             .filter(p => !scopeDists || scopeDists.includes(String(p.distributor_id || '')));
         // Брошенный расчёт — тот, что остановился на «посчитано» и не стал сметой.
@@ -14204,54 +14204,141 @@ const app = {
     // было бы негде — личную вкладку «Переписка с администратором» ему оставляем.
     usesAdminMessenger: function () { return this.hasAdminAccess() && !this.isManagerRole(); },
 
-    managerDistIds: function () { return (this._managerScope && this._managerScope.distIds) || []; },
-    managerUserIds: function () { return (this._managerScope && this._managerScope.userIds) || []; },
+    // ═══ Область видимости: наблюдатель ══════════════════════════════════
+    // Наблюдателю данные режутся так же, как менеджеру, только компании ему
+    // не выводятся из привязки, а назначаются поимённо — и их может быть
+    // несколько (users.viewer_distributor_ids, см. миграцию
+    // 20260910_add_viewer_distributor_scope.sql).
+    //
+    // Не назначено ни одной компании — не видно ничего. Показать такому
+    // наблюдателю всю платформу было бы ровно тем, от чего список и заводился.
+    isViewerRole: function () { return this.getAdminRole() === 'viewer'; },
+
+    // Роли с урезанной областью видимости. Речь только про ДАННЫЕ: какие
+    // разделы кому показывать — отдельный вопрос, за него отвечает adminTabDefs.
+    isScopedAdmin: function () { return this.isManagerRole() || this.isViewerRole(); },
+
+    scopeDistIds: function () { return (this._adminScope && this._adminScope.distIds) || []; },
+    scopeUserIds: function () { return (this._adminScope && this._adminScope.userIds) || []; },
+
+    // Совместимость: под старыми именами к области видимости обращается код,
+    // писавшийся, когда она была только у менеджера.
+    managerDistIds: function () { return this.scopeDistIds(); },
+    managerUserIds: function () { return this.scopeUserIds(); },
 
     /**
-     * Кто «свои» для менеджера: компании и их монтажники.
-     *
-     * Считается заново при каждой загрузке панели — состав компании меняется,
-     * держать его в кэше между сеансами нельзя. Пустой список компаний значит,
-     * что роль выдали, а компанию в карточке назначить забыли: тогда менеджер
-     * не увидит ничего, и это правильнее, чем показать ему всех подряд.
+     * Своя строка в таблице пользователей с полями, от которых зависит область
+     * видимости. Спрашиваем базу, а не полагаемся на _currentUserRow: тот
+     * заполняется только при загрузке своих смет из облака, и в панель нередко
+     * заходят раньше — тогда список компаний оказывался пустым, и наблюдатель
+     * с назначенными компаниями не видел ничего.
      */
-    resolveManagerScope: async function () {
-        if (!this.isManagerRole()) { this._managerScope = null; return null; }
-        const row = this.accessUserRow();
-        const email = String(row.email || '').trim().toLowerCase();
-        const ids = new Set();
-        const own = row.distributor_id || this.state.distributorId;
-        if (own) ids.add(String(own));
-        if (email) {
-            try {
-                const { data } = await supabaseClient.from('distributors').select('id, manager_email, director_email');
-                (data || []).forEach(d => {
-                    const m = String(d.manager_email || '').trim().toLowerCase();
-                    const dir = String(d.director_email || '').trim().toLowerCase();
-                    if ((m && m === email) || (dir && dir === email)) ids.add(String(d.id));
-                });
-            } catch (e) { console.warn('[resolveManagerScope] Не удалось прочитать дистрибьюторов:', e); }
+    fetchScopeRow: async function () {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const authId = (session && session.user && session.user.id)
+                || (this.state.tgUser && this.state.tgUser.authUserId);
+            if (!authId) return null;
+            const { data } = await supabaseClient.from('users')
+                .select('id, email, distributor_id, viewer_distributor_ids, account_type')
+                .eq('auth_user_id', authId).maybeSingle();
+            return data || null;
+        } catch (e) {
+            console.warn('[область видимости] своя строка не прочитана:', e.message || e);
+            return null;
         }
+    },
+
+    /**
+     * Кто «свои»: компании и их монтажники.
+     *
+     * Менеджеру компании выводятся из привязки (поле «Дистрибьютор» в карточке
+     * плюс компании, где его почта стоит менеджером или директором),
+     * наблюдателю — берутся из назначенного ему списка.
+     *
+     * Считается заново при каждой загрузке панели: состав компании меняется,
+     * держать его в кэше между сеансами нельзя.
+     */
+    resolveAdminScope: async function () {
+        if (!this.isScopedAdmin()) { this._adminScope = null; this._managerScope = null; return null; }
+        const local = this.accessUserRow();
+        const remote = await this.fetchScopeRow();
+        const row = Object.assign({}, local, remote || {});
+        const ids = new Set();
+
+        if (this.isViewerRole()) {
+            const list = Array.isArray(row.viewer_distributor_ids) ? row.viewer_distributor_ids : [];
+            list.forEach(id => { if (id) ids.add(String(id)); });
+        } else {
+            const email = String(row.email || '').trim().toLowerCase();
+            const own = row.distributor_id || this.state.distributorId;
+            if (own) ids.add(String(own));
+            if (email) {
+                try {
+                    const { data } = await supabaseClient.from('distributors').select('id, manager_email, director_email');
+                    (data || []).forEach(d => {
+                        const m = String(d.manager_email || '').trim().toLowerCase();
+                        const dir = String(d.director_email || '').trim().toLowerCase();
+                        if ((m && m === email) || (dir && dir === email)) ids.add(String(d.id));
+                    });
+                } catch (e) { console.warn('[область видимости] Не удалось прочитать дистрибьюторов:', e); }
+            }
+        }
+
         const distIds = [...ids];
         let userIds = [];
         if (distIds.length) {
             try {
                 const { data } = await supabaseClient.from('users').select('id').in('distributor_id', distIds);
                 userIds = (data || []).map(u => String(u.id));
-            } catch (e) { console.warn('[resolveManagerScope] Не удалось прочитать монтажников компании:', e); }
+            } catch (e) { console.warn('[область видимости] Не удалось прочитать монтажников компаний:', e); }
         }
-        this._managerScope = { distIds, userIds };
-        return this._managerScope;
+        this._adminScope = { distIds, userIds };
+        this._managerScope = this._adminScope;
+        return this._adminScope;
     },
 
-    // Отсечка выборки по монтажникам своей компании. Пустой список подменяем
+    // Старое имя: зовётся из загрузки панели.
+    resolveManagerScope: async function () { return this.resolveAdminScope(); },
+
+    /**
+     * Назначенные компании всех наблюдателей — для их карточек в разделе
+     * «Пользователи». Наблюдателей единицы, поэтому один короткий запрос.
+     *
+     * Пока миграция не выполнена, колонки нет: запрос вернёт ошибку, карточка
+     * просто покажет пустой список, и раздел от этого не пострадает.
+     */
+    loadViewerScopes: async function () {
+        try {
+            const { data, error } = await supabaseClient.from('users')
+                .select('id, viewer_distributor_ids').eq('account_type', 'viewer');
+            if (error) throw error;
+            const map = {};
+            (data || []).forEach(u => {
+                map[String(u.id)] = Array.isArray(u.viewer_distributor_ids)
+                    ? u.viewer_distributor_ids.map(String) : [];
+            });
+            this._viewerScopes = map;
+        } catch (e) {
+            console.warn('[наблюдатели] список компаний не прочитан (выполнена ли миграция?):', e.message || e);
+            this._viewerScopes = this._viewerScopes || {};
+        }
+        return this._viewerScopes;
+    },
+
+    viewerScopeFor: function (userId) {
+        return (this._viewerScopes && this._viewerScopes[String(userId)]) || [];
+    },
+
+    // Отсечка выборки по монтажникам своих компаний. Пустой список подменяем
     // заведомо несуществующим id: запрос без условия отдал бы всю базу, а это
     // ровно то, от чего роль и заводилась.
-    scopeQueryToManager: function (query, column) {
-        if (!this.isManagerRole()) return query;
-        const ids = this.managerUserIds();
+    scopeAdminQuery: function (query, column) {
+        if (!this.isScopedAdmin()) return query;
+        const ids = this.scopeUserIds();
         return query.in(column, ids.length ? ids : ['00000000-0000-0000-0000-000000000000']);
     },
+    scopeQueryToManager: function (query, column) { return this.scopeAdminQuery(query, column); },
 
     // ═══ Доступ к инструментам: распознавание и проектирование ═══════════
     // Администраторам оба инструмента открыты ПО УМОЛЧАНИЮ, наблюдателям и
@@ -14528,9 +14615,9 @@ const app = {
         // Убираем запятые/скобки — они ломают синтаксис .or(), это разделители условий
         const searchFilter = (filters.search || '').trim().replace(/[,()]/g, '');
 
-        // Менеджер видит только монтажников своей компании — это условие
-        // сильнее любых фильтров и снимается только сменой роли.
-        if (this.isManagerRole()) {
+        // Менеджер и наблюдатель видят только монтажников своих компаний —
+        // это условие сильнее любых фильтров и снимается только сменой роли.
+        if (this.isScopedAdmin()) {
             const mine = this.managerDistIds();
             query = query.in('distributor_id', mine.length ? mine : ['00000000-0000-0000-0000-000000000000']);
         }
@@ -14677,7 +14764,7 @@ const app = {
                 .select('id, username, email, phone, region, city, avatar_url, account_type')
                 .order('username', { ascending: true });
             out.allUsersDropdown = data || [];
-            if (this.isManagerRole()) {
+            if (this.isScopedAdmin()) {
                 const mine = new Set(this.managerUserIds());
                 const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                 if (meId) mine.add(String(meId));
@@ -14691,7 +14778,7 @@ const app = {
                     .select('*')
                     .order('created_at', { ascending: false });
                 out.allMessages = data || [];
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = new Set(this.managerUserIds());
                     const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                     if (meId) mine.add(String(meId));
@@ -14705,7 +14792,7 @@ const app = {
                 .select('*')
                 .order('created_at', { ascending: false });
             out.distributors = data || [];
-            if (this.isManagerRole()) {
+            if (this.isScopedAdmin()) {
                 const mine = this.managerDistIds().map(String);
                 out.distributors = out.distributors.filter(d => mine.includes(String(d.id)));
             }
@@ -14736,7 +14823,7 @@ const app = {
 
         try {
             let uq = supabaseClient.from('users').select('id', { count: 'exact', head: true });
-            if (this.isManagerRole()) {
+            if (this.isScopedAdmin()) {
                 const mine = this.managerDistIds();
                 uq = uq.in('distributor_id', mine.length ? mine : ['00000000-0000-0000-0000-000000000000']);
             }
@@ -14825,7 +14912,7 @@ const app = {
         }
 
         if (!this.adminTabNeedsHeavyData()) {
-            if (this.isManagerRole()) await this.resolveManagerScope();
+            if (this.isScopedAdmin()) await this.resolveAdminScope();
             const lists = await this.loadAdminLightData();
             // На телефоне пустой раздел означает меню со сводкой наверху — её
             // четыре числа тяжёлая загрузка сюда не приносит, считаем отдельно
@@ -14845,7 +14932,7 @@ const app = {
         }
         // Менеджеру всё, что ниже, режется по его компании: состав компании
         // выясняем до первого запроса, иначе фильтры уйдут пустыми.
-        if (this.isManagerRole()) await this.resolveManagerScope();
+        if (this.isScopedAdmin()) await this.resolveAdminScope();
         this._adminOffset = offset;
         const content = document.getElementById('admin_content');
         // Запоминаем значение и фокус поля поиска — оно вот-вот исчезнет из DOM вместе
@@ -15130,9 +15217,9 @@ const app = {
                     .order('username', { ascending: true });
                 allUsersDropdown = data || [];
                 this.autoCleanupDatabaseUsers(allUsersDropdown);
-                // Менеджеру в списке собеседников — только его монтажники (и он сам:
+                // В списке собеседников — только свои монтажники (и он сам:
                 // по своей строке мессенджер отличает свои сообщения от чужих)
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = new Set(this.managerUserIds());
                     const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                     if (meId) mine.add(String(meId));
@@ -15147,10 +15234,10 @@ const app = {
                     .select('*')
                     .order('created_at', { ascending: false });
                 allMessages = data || [];
-                // Переписка менеджера — только с его монтажниками. Объявления для
+                // Переписка — только со своими монтажниками. Объявления для
                 // всех (recipient_id = null) сюда не попадают: рассылка платформы
                 // к переписке компании отношения не имеет.
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = new Set(this.managerUserIds());
                     const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
                     if (meId) mine.add(String(meId));
@@ -15166,13 +15253,19 @@ const app = {
                     .select('*')
                     .order('created_at', { ascending: false });
                 distributors = data || [];
-                // Менеджеру — только его компании: список идёт в подписи карточек
+                // Только свои компании: список идёт в подписи карточек
                 // планировщика и в выпадающие фильтры, чужие названия там лишние
-                if (this.isManagerRole()) {
+                if (this.isScopedAdmin()) {
                     const mine = this.managerDistIds().map(String);
                     distributors = distributors.filter(d => mine.includes(String(d.id)));
                 }
             } catch (e) { console.warn("Could not load distributors:", e); }
+
+            // 8а. Кому из наблюдателей какие компании назначены — для их карточек.
+            // Отдельным запросом, а не колонкой в общей выборке пользователей:
+            // пока миграция не выполнена, колонки в базе нет, и общий запрос
+            // упал бы целиком, унося с собой весь раздел «Пользователи».
+            await this.loadViewerScopes();
 
             this.adminData = {
                 users: users || [],
@@ -15232,6 +15325,11 @@ const app = {
     // «Умное заполнение» — журнал диалогов монтажников с окном ✨, тоже только владельцу.
     OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill'],
 
+    // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
+    // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
+    // платформы, и заводить его может только администратор.
+    ADMIN_ONLY_TABS: ['distributors'],
+
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
     // Права даёт isAdminEmail (три личных адреса владельца), а НЕ account_type:
@@ -15268,7 +15366,10 @@ const app = {
     // Вкладки, доступные текущему админу. Фильтр в одном месте: список строится
     // и в ряду вкладок на десктопе, и в меню разделов на телефоне.
     adminTabDefs: function () {
-        const defs = this.ADMIN_TAB_DEFS.filter(t => this.OWNER_ONLY_TABS.indexOf(t.id) < 0 || this.isAnalyticsOwner());
+        let defs = this.ADMIN_TAB_DEFS.filter(t => this.OWNER_ONLY_TABS.indexOf(t.id) < 0 || this.isAnalyticsOwner());
+        // Разделы платформы — только администраторам. Владелец сюда попадает
+        // ролью super_admin, поэтому отдельного исключения ему не нужно.
+        if (!this.hasFeatureRoleAccess()) defs = defs.filter(t => this.ADMIN_ONLY_TABS.indexOf(t.id) < 0);
         if (!this.isManagerRole()) return defs;
         return defs.filter(t => this.MANAGER_TABS.indexOf(t.id) >= 0)
             .map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
@@ -15411,11 +15512,25 @@ const app = {
         const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks } = this.adminData;
 
         const ADMIN_TAB_DEFS = this.adminTabDefs();
+        // Раздел, закрытый для этой роли, мог остаться в памяти с прошлого входа
+        // (или прийти из старой ссылки) — возвращаем к первому доступному.
+        if (this._adminTab && !ADMIN_TAB_DEFS.some(t => t.id === this._adminTab)) {
+            this._adminTab = mobile ? null : ((ADMIN_TAB_DEFS[0] || {}).id || 'stats');
+            if (mobile) { content.innerHTML = this.buildAdminMobileHome(); return; }
+        }
+
+        // Наблюдателю без назначенных компаний показывать нечего — и лучше
+        // сказать об этом прямо, чем оставить его перед пустыми таблицами.
+        const scopeWarnHtml = (this.isViewerRole() && !this.scopeDistIds().length)
+            ? `<div style="background:rgba(217,119,6,0.12); border:1px solid #D97706; color:#D97706; border-radius:8px; padding:10px 14px; margin-bottom:14px; font-size:12px; line-height:1.5;">
+                   👁 Вам не назначен ни один дистрибьютор, поэтому разделы пустые. Список компаний ставит владелец в вашей карточке.
+               </div>`
+            : '';
 
         let navHtml;
         if (mobile) {
             if (!this._adminTab) {
-                content.innerHTML = this.buildAdminMobileHome();
+                content.innerHTML = scopeWarnHtml + this.buildAdminMobileHome();
                 return;
             }
             // Внутри раздела вместо вкладок — строка возврата к меню, как в
@@ -15441,6 +15556,7 @@ const app = {
             </div>
         `;
         }
+        navHtml += scopeWarnHtml;
 
         if (this._adminTab === 'messages') {
             content.innerHTML = navHtml;
@@ -16163,6 +16279,7 @@ const app = {
         // Кнопок «Дашборд» и «Аналитика» у остальных админов нет, но вызов из
         // консоли или старой ссылки обязан упереться в ту же проверку, что и вёрстка.
         if (this.OWNER_ONLY_TABS.indexOf(tab) >= 0 && !this.isAnalyticsOwner()) return;
+        if (this.ADMIN_ONLY_TABS.indexOf(tab) >= 0 && !this.hasFeatureRoleAccess()) return;
         if (this.isManagerRole() && this.MANAGER_TABS.indexOf(tab) < 0) return;
         this._adminTab = tab;
         // Данные раздела грузим при переходе в него, а не все сразу при открытии
@@ -22496,9 +22613,10 @@ const app = {
     renderAdminMessages: function () {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         // Рассылка «всем пользователям» — инструмент платформы, а не компании:
-        // менеджеру дистрибьютора её не показываем и отправить не даём, иначе
-        // объявление одной компании уедет монтажникам всех остальных.
-        const canBroadcast = !this.isManagerRole();
+        // тем, у кого панель урезана до своих компаний (менеджер, наблюдатель),
+        // её не показываем и отправить не даём, иначе объявление уедет и тем
+        // монтажникам, которых отправитель даже не видит.
+        const canBroadcast = !this.isScopedAdmin();
         // Свой id в таблице пользователей: по нему отделяем свои переписки от чужих.
         // Обычно его уже заполнил опрос уведомлений, но если нет — спрашиваем базу
         // и рисуем вкладку заново (один раз, иначе при неудаче получился бы цикл).
@@ -23321,8 +23439,8 @@ const app = {
             app.alert('Выберите диалог слева или найдите человека через поиск.');
             return;
         }
-        if (recipientVal === 'all' && this.isManagerRole()) {
-            app.alert('Объявления для всех отправляет администрация сайта. Вам доступна переписка с монтажниками вашей компании.');
+        if (recipientVal === 'all' && this.isScopedAdmin()) {
+            app.alert('Объявления для всех отправляет администрация сайта. Вам доступна переписка с монтажниками ваших компаний.');
             return;
         }
         if (String(recipientVal).indexOf('mgr:') === 0) {
@@ -24744,6 +24862,18 @@ const app = {
                                             ${(this.adminData.distributors || []).map(d => `<option value="${d.id}" ${user.distributor_id === d.id ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`).join('')}
                                         </select>
                                         <div id="admin_edit_distributor_info" style="margin-top:6px; font-size:11px; color:var(--text-sec); line-height:1.5;"></div>
+                                    </div>
+                                    <div id="admin_edit_viewer_dists_wrapper" style="display: ${user.account_type === 'viewer' ? 'block' : 'none'}; grid-column: 1 / -1;">
+                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">За какими дистрибьюторами наблюдает (можно несколько — Ctrl или ⌘ + клик)</label>
+                                        <select id="admin_edit_viewer_dists" multiple size="6" ${isViewer ? 'disabled' : ''} style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                            ${(() => {
+                                                const picked = this.viewerScopeFor(user.id);
+                                                return (this.adminData.distributors || []).map(d =>
+                                                    `<option value="${d.id}" ${picked.includes(String(d.id)) ? 'selected' : ''}>${d.company_name} (${d.promo_code})</option>`
+                                                ).join('');
+                                            })()}
+                                        </select>
+                                        <div style="margin-top:6px; font-size:11px; color:var(--text-sec); line-height:1.5;">Наблюдатель увидит только монтажников этих компаний, их расчёты и переписку с ними. Ни одной компании не выбрано — не увидит ничего.</div>
                                     </div>
                                     <div id="admin_edit_price_source_wrapper" style="display: block; grid-column: 1 / -1;">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Откуда брать цены на оборудование</label>
@@ -28106,9 +28236,29 @@ const app = {
         // Источник цен: 'terem' — принудительно каталожные цены, 'distributor' —
         // цены дистрибьютора, если он их у себя включил.
         updateData.price_source = document.getElementById('admin_edit_price_source')?.value || 'distributor';
+        // Наблюдаемые компании: у роли «Наблюдатель» — что отмечено в списке,
+        // у всех остальных — пусто. Иначе после смены роли за человеком остался
+        // бы список, который ни на что не влияет, а при возврате в наблюдатели
+        // молча вернул бы старый доступ.
+        const viewerSel = document.getElementById('admin_edit_viewer_dists');
+        updateData.viewer_distributor_ids = (type === 'viewer' && viewerSel)
+            ? Array.from(viewerSel.selectedOptions).map(o => o.value).filter(Boolean)
+            : [];
 
         try {
-            const { error } = await supabaseClient.from('users').update(updateData).eq('id', userId);
+            let { error } = await supabaseClient.from('users').update(updateData).eq('id', userId);
+            // Колонки может не быть — миграцию выполняют руками. Тариф от этого
+            // страдать не должен: сохраняем всё остальное и говорим, чего не вышло.
+            if (error && /viewer_distributor_ids/.test(error.message || '')) {
+                console.warn('[наблюдатели] колонка viewer_distributor_ids отсутствует, миграция не выполнена');
+                delete updateData.viewer_distributor_ids;
+                ({ error } = await supabaseClient.from('users').update(updateData).eq('id', userId));
+                if (!error) {
+                    app.alert('Тариф обновлён, но список наблюдаемых компаний не сохранён: в базе нет нужного поля. Выполните миграцию 20260910_add_viewer_distributor_scope.sql.');
+                    this.loadAdminData();
+                    return;
+                }
+            }
             if (error) throw error;
             app.alert("✅ Тариф успешно обновлен!");
             this.loadAdminData();
@@ -28127,6 +28277,9 @@ const app = {
         if (!typeSelect) return;
 
         const val = typeSelect.value;
+        // Список наблюдаемых компаний — только у роли «Наблюдатель»
+        const viewerDistsWrapper = document.getElementById('admin_edit_viewer_dists_wrapper');
+        if (viewerDistsWrapper) viewerDistsWrapper.style.display = val === 'viewer' ? 'block' : 'none';
         if (val === 'pro') {
             if (roleTariffWrapper) roleTariffWrapper.style.display = 'none';
             if (dateWrapper) dateWrapper.style.display = 'block';
