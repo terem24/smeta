@@ -49765,6 +49765,28 @@ const app = {
     },
 
     /**
+     * Хомут подводки бака по наружному диаметру трубы.
+     *
+     * Диапазоны — из названий позиций каталога. Раньше здесь стоял прибитый
+     * SAC-0020-000034 «3/4" (25–29 мм)», выбранный, судя по всему, по резьбе
+     * подводки, а не по трубе: на нержавеющую 22 он не затягивается, её диапазон
+     * 20–24. На 15 и 18 в этом семействе хомутов нет вовсе — там берётся
+     * одновинтовой M8, у него ряд начинается с 12 мм.
+     */
+    SS_CLAMP_BY_OD: {
+        15: 'SAC-0020-300014',   // M8 1/4"  (12–15)
+        18: 'SAC-0020-300038',   // M8 3/8"  (16–19)
+        22: 'SAC-0020-000012',   // с гайкой 1/2" (20–24)
+        28: 'SAC-0020-000034',   // с гайкой 3/4" (25–29)
+        35: 'SAC-0020-000001',   // с гайкой 1"   (32–37)
+        42: 'SAC-0020-300114'    // M8 1 1/4"     (40–45)
+    },
+    ssClamp: function (od) {
+        const id = this.SS_CLAMP_BY_OD[parseInt(od, 10)];
+        return id ? (catalog.mounting_system || []).find(x => x.id === id) : null;
+    },
+
+    /**
      * Тройник врезки: магистраль main, ответвление branch. Возвращает и позицию,
      * и подпись к ней — чтобы они не разъехались.
      *
@@ -53144,9 +53166,8 @@ const app = {
         // смета и гидравлика обязаны считать по одним числам.
         //
         // main — магистраль, tank — подводка баков (тупиковая ветка, по скорости не
-        // считается). BP_MIN/BP_MAX ограничивают ряд нержавейки тем, на что есть
-        // теплоизоляция: на 15, 18 и 54 её в boiler_insulation нет.
-        const BP_MIN = 22, BP_MAX = 42;
+        // считается). Сверху ряд ограничен 42: на 54 нет теплоизоляции.
+        const BP_MIN = 15, BP_MAX = 42;
         const boilerSizes = (list) => {
             const sys = this.boilerPipeSystem();
             const kw = boilerPowerForPipes(list);
@@ -53825,9 +53846,9 @@ const app = {
                     // труба на пресс-фитингах), только типоразмер трубы 26, а не 22.
                     // Хомут 3/4" (25–29 мм) на неё садится тот же.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком ГВС.", grp);
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком ГВС.`, grp);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака ГВС.", grp);
 
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Отсечной вентиль для подключения расширительного бака ГВС.", grp);
@@ -53843,18 +53864,22 @@ const app = {
                         ? "Пресс-тройник равнопроходный 26х26х26 для врезки расширительного бака ГВС."
                         : "Пресс-тройник переходной 32х26х32 для врезки расширительного бака ГВС.", grp);
                 } else { // Stainless steel (Stout)
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    const _fs = boilerSizes(selBoilers);
+                    // Подводка идёт трубой того же типоразмера, что и ветка бака:
+                    // раньше здесь была прибита 22-я, потому что другой и не бывало.
+                    const _tkTh = this.ssThreadFor('ss_elbow_mi', _fs.tank, '3/4');
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком ГВС.", grp);
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком ГВС.`, grp);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака ГВС.", grp);
 
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Отсечной вентиль для подключения расширительного бака ГВС.", grp);
-                    let maleElbow = this.ssItem(catalog.ss_elbow_mi, "RSS-1010-002234");
-                    let pressElbow = this.ssItem(catalog.ss_elbow90, "RSS-1002-000022");
-                    if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.", grp);
-                    if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.", grp);
+                    let maleElbow = _tkTh && this.ssFit('ss_elbow_mi', _fs.tank, _tkTh);
+                    let pressElbow = this.ssFit('ss_elbow90', _fs.tank);
+                    if (maleElbow) addToBill(maleElbow, 1, `Угольник-переходник 90° ВПр-НР ${_fs.tank}х${this.ssThreadLabel(_tkTh)} для подключения к вентилю бака.` +
+                        (_tkTh !== '3/4' ? ` <b>Внимание:</b> вентиль бака 3/4", нужен резьбовой переход (в смету не входит).` : ``), grp);
+                    if (pressElbow) addToBill(pressElbow, 2, `Угольник 90° ВПр-НПр ${_fs.tank} для обвязки бака.`, grp);
 
-                    const _fs = boilerSizes(selBoilers);
                     const _fsTee = this.ssTee(_fs.main, _fs.tank);
                     if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака ГВС.${_fsTee.note}`, grp);
                 }
@@ -54278,9 +54303,9 @@ const app = {
                 } else if (this.boilerPipeSystem() === 'mp') { // Металлопластик STOUT
                     // См. бак ГВС выше: та же подводка, типоразмер трубы 26 вместо 22.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком отопления.");
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком отопления.`);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака отопления.");
 
                     addToBill(catalog.tank_kit, 1, "Отсечной вентиль для подключения расширительного бака.");
@@ -54296,18 +54321,21 @@ const app = {
                         ? "Пресс-тройник равнопроходный 26х26х26 для врезки расширительного бака."
                         : "Пресс-тройник переходной 32х26х32 для врезки расширительного бака.");
                 } else { // Stainless steel (Stout)
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    const _fs = boilerSizes(selBoilers);
+                    // См. бак ГВС выше: типоразмер подводки следует за веткой бака.
+                    const _tkTh = this.ssThreadFor('ss_elbow_mi', _fs.tank, '3/4');
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком отопления.");
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком отопления.`);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака отопления.");
 
                     addToBill(catalog.tank_kit, 1, "Отсечной вентиль для подключения расширительного бака.");
-                    let maleElbow = this.ssItem(catalog.ss_elbow_mi, "RSS-1010-002234");
-                    let pressElbow = this.ssItem(catalog.ss_elbow90, "RSS-1002-000022");
-                    if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.");
-                    if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.");
+                    let maleElbow = _tkTh && this.ssFit('ss_elbow_mi', _fs.tank, _tkTh);
+                    let pressElbow = this.ssFit('ss_elbow90', _fs.tank);
+                    if (maleElbow) addToBill(maleElbow, 1, `Угольник-переходник 90° ВПр-НР ${_fs.tank}х${this.ssThreadLabel(_tkTh)} для подключения к вентилю бака.` +
+                        (_tkTh !== '3/4' ? ` <b>Внимание:</b> вентиль бака 3/4", нужен резьбовой переход (в смету не входит).` : ``));
+                    if (pressElbow) addToBill(pressElbow, 2, `Угольник 90° ВПр-НПр ${_fs.tank} для обвязки бака.`);
 
-                    const _fs = boilerSizes(selBoilers);
                     const _fsTee = this.ssTee(_fs.main, _fs.tank);
                     if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака.${_fsTee.note}`);
                 }
@@ -55268,7 +55296,11 @@ const app = {
             // Металлопластик 26 и 32 — своего типоразмера трубки под 26 в линейках нет,
             // поэтому берётся ближайшая большая: 28/6 ПРОТЕКТ ПРО на Ø26 и K-FLEX 35/9
             // на Ø32. Обе садятся на трубу с натягом по шву, зазора не остаётся.
-            const _insDiamOf = d => isAnalog ? (d === 22 ? 35 : 42) : (isMp ? (d === 22 ? 28 : 35) : d);
+            // У нержавейки трубка совпадает с трубой один в один, кроме 15-й:
+            // линейка ПРОТЕКТ ПРО начинается с 18/6, её и берём — зазор 3 мм.
+            const _insDiamOf = d => isAnalog ? (d === 22 ? 35 : 42)
+                : isMp ? (d === 22 ? 28 : 35)
+                    : (d === 15 ? 18 : d);
             Object.keys(ss_pipes_demand).forEach(diam => {
                 const _len = ss_pipes_demand[diam].length;
                 if (_len <= 0) return;
