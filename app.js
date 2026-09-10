@@ -8951,6 +8951,8 @@ const app = {
         this.setBirthDateRange(document.getElementById('profile_birth_date_input'));
         document.getElementById('profile_region_input').value = tgUser.region || '';
         document.getElementById('profile_city_input').value = tgUser.city || '';
+        // Строго после региона: подсказке нужно с чем сравнивать номер
+        this.showPhoneRegionHint();
         if (document.getElementById('profile_email_input')) {
             document.getElementById('profile_email_input').value = tgUser.email || '';
         }
@@ -14769,6 +14771,10 @@ const app = {
             this._pendingAdminSearchFocused = document.activeElement === searchInputBefore;
         }
         
+        // Признак «номер из чужого региона» считается по справочнику диапазонов;
+        // без него строка списка просто не получит эту пометку.
+        this.loadPhoneRegions();
+
         this._pendingAdminFilters = {
             search: this._pendingAdminSearch || '',
             tariff: document.getElementById('admin_filter_tariff')?.value || 'all',
@@ -28347,6 +28353,77 @@ const app = {
     },
     // Возраст на сегодня по дате рождения (ISO-строка вида "YYYY-MM-DD") — используется
     // для проверки диапазона 18-90 лет в регистрации и профиле
+    // ——— Регион по номеру телефона ————————————————————————————————————————
+    // Справочник диапазонов (phone_regions.js) весит 128 КБ и на расчёте не нужен,
+    // поэтому подключается лениво — при первом же разборе номера.
+    loadPhoneRegions: function () {
+        if (typeof PHONE_DEF_RANGES !== 'undefined') return Promise.resolve(true);
+        if (this._phoneRegionsPromise) return this._phoneRegionsPromise;
+        this._phoneRegionsPromise = new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'phone_regions.js?v=1.0';
+            // Не загрузился — живём без подсказки: ни анкета, ни админка от неё не зависят
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+        });
+        return this._phoneRegionsPromise;
+    },
+
+    /**
+     * Субъекты, где выдан номер: ['Москва', 'Московская область'] — два, если
+     * диапазон в реестре записан сразу на столицу с областью. Пустой массив —
+     * справочник не загружен, номер неполный или диапазон никому не отдан.
+     */
+    regionByPhone: function (phone) {
+        if (typeof PHONE_DEF_RANGES === 'undefined' || typeof PHONE_REGION_NAMES === 'undefined') return [];
+        const d = String(phone || '').replace(/\D/g, '');
+        if (d.length !== 11) return [];
+        const line = PHONE_DEF_RANGES[d.slice(1, 4)];
+        if (!line) return [];
+        const num = parseInt(d.slice(4), 10);
+        // Записи идут по возрастанию, каждая — «пропуск от конца предыдущей .
+        // длина . индекс региона» в 36-ричной записи (см. шапку phone_regions.js).
+        let pos = 0;
+        const items = line.split(',');
+        for (let k = 0; k < items.length; k++) {
+            const p = items[k].split('.');
+            const start = pos + parseInt(p[0], 36);
+            const end = start + parseInt(p[1], 36) - 1;
+            if (num < start) return [];      // попали в дыру между диапазонами
+            if (num <= end) return String(PHONE_REGION_NAMES[parseInt(p[2], 36)] || '').split('|');
+            pos = end + 1;
+        }
+        return [];
+    },
+
+    /** Совпадает ли регион анкеты с регионом номера. null — сравнивать не с чем. */
+    phoneRegionMatches: function (phone, region) {
+        const list = this.regionByPhone(phone);
+        if (!list.length || !String(region || '').trim()) return null;
+        const want = this.regionAccessKey(region);
+        return list.some(r => this.regionAccessKey(r) === want);
+    },
+
+    // Строка под полем телефона в анкете. Пишем и когда всё сходится: человек
+    // видит, что номер разобран, и не гадает, почему подсказка пропала.
+    showPhoneRegionHint: function () {
+        const el = document.getElementById('profile_phone_region');
+        const input = document.getElementById('profile_phone_input');
+        if (!el || !input) return;
+        const digits = input.value.replace(/\D/g, '');
+        if (digits.length !== 11) { el.textContent = ''; return; }
+
+        this.loadPhoneRegions().then(() => {
+            const list = this.regionByPhone(input.value);
+            if (!list.length) { el.textContent = ''; return; }
+            const regionEl = document.getElementById('profile_region_input');
+            const match = this.phoneRegionMatches(input.value, regionEl ? regionEl.value : '');
+            el.textContent = (match === false ? '⚠ Номер выдан в другом регионе: ' : 'Номер выдан в регионе: ') + list.join(' / ');
+            el.style.color = match === false ? '#D97706' : 'var(--text-sec)';
+        });
+    },
+
     // ——— Проверка анкеты на выдуманные данные ————————————————————————————
     // Раньше ФИО принималось любым: «маркеев Антон Fghh» уходило в базу как есть.
     // Здесь отсекается то, чего живой человек ввести не мог: латиница, цифры,
@@ -28467,6 +28544,12 @@ const app = {
             if (age < 18 || age > this.PROFILE_MAX_AGE) hard.push('возраст ' + age + ' ' + this.plural(age, 'год', 'года', 'лет'));
         }
         if (u.middle_name && !this.PATRONYMIC_END.test(String(u.middle_name).trim())) soft.push('отчество не похоже на отчество');
+        // Регион, где выдан номер. Мягкий признак, и только он: номер переносят
+        // между операторами и регионами, а люди переезжают — у половины монтажников
+        // Подмосковья номер московский, и ничего подозрительного в этом нет.
+        if (this.phoneRegionMatches(u.phone, u.region) === false) {
+            soft.push('номер выдан в регионе «' + this.regionByPhone(u.phone).join(' / ') + '»');
+        }
         const ipRegion = this.regionByIpCity(u.location);
         if (ipRegion && u.region && this.regionAccessKey(ipRegion) !== this.regionAccessKey(u.region)) {
             soft.push('вход из региона «' + ipRegion + '», а в анкете другой');

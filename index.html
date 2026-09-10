@@ -2811,7 +2811,10 @@
                         <div class="profile-2col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
                             <div>
                                 <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Телефон для смет</label>
-                                <input type="tel" id="profile_phone_input" class="auth-input" placeholder="+7 (___) ___-__-__" oninput="app.maskPhone(this)" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
+                                <input type="tel" id="profile_phone_input" class="auth-input" placeholder="+7 (___) ___-__-__" oninput="app.maskPhone(this); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 2px; height: 32px; font-size: 13px; padding: 6px 10px;">
+                                <!-- Регион, где выдан номер (справочник phone_regions.js). Подсказка,
+                                     а не проверка: номер переносят и с ним переезжают. -->
+                                <div id="profile_phone_region" style="font-size: 10.5px; color: var(--text-sec); min-height: 13px; margin-bottom: 4px;"></div>
                             </div>
                             <div>
                                 <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Email для уведомлений</label>
@@ -2836,13 +2839,13 @@
                         <div class="profile-2col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
                             <div>
                                 <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Ваш город (для смет)</label>
-                                <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="city_suggestions" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input')" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
+                                <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="city_suggestions" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
                             </div>
                             <div>
                                 <!-- Регион подставляется по городу (app.autofillRegionByCity); как только
                                      пользователь правит его сам, автоподстановка для него отключается -->
                                 <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Регион</label>
-                                <input type="text" id="profile_region_input" class="auth-input" placeholder="Подставится по городу" oninput="app.markRegionEdited(this)" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
+                                <input type="text" id="profile_region_input" class="auth-input" placeholder="Подставится по городу" oninput="app.markRegionEdited(this); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
                             </div>
                         </div>
 
