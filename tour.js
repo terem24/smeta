@@ -352,11 +352,42 @@ const Tour = {
         if (!el) return true;
         if (el.style && el.style.display === 'none') return true;
         // У шага без mob нет двойника на второй вкладке телефона: спрятать его может
-        // только право или ширина экрана, и оба условия за время обучения не меняются.
-        // Тогда верим вычисленному стилю — так у гостя из счёта уходят панель
-        // разделов и документы, которых он всё равно не увидит.
-        if (!s.mob) { try { return getComputedStyle(el).display === 'none'; } catch (e) { return false; } }
+        // только право или ширина экрана, и за время обучения это не изменится. Тогда
+        // спрашиваем ровно так же, как спрашивает показ шага (target), — иначе счётчик
+        // и показ разойдутся: у гостя панель разделов в счёт попадала, а на экран нет,
+        // и номер прыгал через два.
+        if (!s.mob) return !this.target(s);
         return false;
+    },
+
+    // План прохода: какие шаги вообще будут показаны. Считается один раз на запуск,
+    // а не на каждую карточку, — иначе «из скольки» пляшет по ходу обучения. Кнопка
+    // умного заполнения, например, живёт только на вкладке «Оборудование», и стоит
+    // обучению уйти на работы, как она пропадает: пересчёт на месте показывал то
+    // 17, то 18. Права за один проход не меняются, а если всё-таки изменились —
+    // план пересобирается там, где это заметно (см. show и tick).
+    buildPlan: function () {
+        this._plan = this.STEPS.map(s => !this.unavailable(s));
+    },
+
+    planned: function (i) {
+        if (!this._plan) this.buildPlan();
+        return !!this._plan[i];
+    },
+
+    // План — предположение, а показ шага и его пропуск — факт. Факт сильнее: шаг,
+    // который человек видит, считается всегда, а пропущенный не считается никогда.
+    // Без этого номер повторялся или прыгал там, где предположение не сошлось —
+    // например, кнопка умного заполнения живёт только на вкладке «Оборудование»,
+    // и на момент составления плана её могло не быть на экране.
+    plan1: function (i) {
+        if (!this._plan) this.buildPlan();
+        this._plan[i] = true;
+    },
+
+    unplan: function (i) {
+        if (!this._plan) this.buildPlan();
+        this._plan[i] = false;
     },
 
     // Шаг с учётом сферы: поля из seller перекрывают основные (title, text, anim).
@@ -453,6 +484,7 @@ const Tour = {
     start: function () {
         this.injectStyles();
         document.body.classList.add('tour-running');
+        this.buildPlan();
         this.show();
         if (this._timer) clearInterval(this._timer);
         // Полсекунды — компромисс: реакция на действие человека ощущается сразу,
@@ -489,10 +521,12 @@ const Tour = {
     prev: function () {
         if (this._step <= 0) return;
         this._step--;
-        // Через пропущенные шаги перешагиваем и назад тоже. Иначе «Назад» у продавца
-        // упирался бы в шаг про монтажные работы: show() увёл бы его вперёд, и
-        // кнопка выглядела бы сломанной — нажимаешь, а карточка та же.
-        while (this._step > 0 && this.skipped(this.STEPS[this._step])) this._step--;
+        // Через пропущенные шаги перешагиваем и назад тоже — по плану, а не только по
+        // сфере деятельности. Иначе «Назад» упирался бы в шаг, которого человеку не
+        // показывают: show() увёл бы его обратно вперёд, и кнопка выглядела бы
+        // сломанной — нажимаешь, а карточка та же. Так было у продавца на «Итоге»:
+        // позади него и «Деньги», и распознавание без доступа.
+        while (this._step > 0 && !this.planned(this._step)) this._step--;
         this.save();
         this.show();
     },
@@ -597,6 +631,7 @@ const Tour = {
             if (!s) { this.finish(); return; }
             // Шаг не про этого человека: у продавца нет того, что он показывает
             if (this.skipped(s)) {
+                this.unplan(this._step);
                 if (this._step >= this.STEPS.length - 1) { this.finish(); return; }
                 this._step++;
                 continue;
@@ -612,6 +647,9 @@ const Tour = {
             if (!el && s.mob) { this.mobTab(s.mob); el = this.target(s); }
             const alreadyDone = s.done && !s.last && (() => { try { return s.done(); } catch (e) { return false; } })();
             if (el && !alreadyDone) break;
+            // Шаг пропущен на самом деле — вычёркиваем его из плана, иначе номер
+            // следующей карточки перескочит через него.
+            this.unplan(this._step);
             if (this._step >= this.STEPS.length - 1) { this.finish(); return; }
             this._step++;
         }
@@ -644,8 +682,10 @@ const Tour = {
         // пропущенной десяткой читается как сбой обучения. Считаем прямо здесь, а не
         // один раз при запуске: вкладки появляются и исчезают по ходу — вошёл в
         // аккаунт, включили доступ к распознаванию, сменился тариф.
-        const total = this.STEPS.filter(s => !this.unavailable(s)).length;
-        const n = this.STEPS.slice(0, this._step + 1).filter(s => !this.unavailable(s)).length;
+        // Шаг на экране — значит он в счёте, что бы там ни решил план заранее.
+        this.plan1(this._step);
+        const total = this._plan.filter(Boolean).length;
+        const n = this._plan.slice(0, this._step + 1).filter(Boolean).length;
         const v = this.view(step);
         card.innerHTML =
             '<div class="tour-card-head">' +
@@ -780,7 +820,7 @@ const Tour = {
         // localStorage раньше, чем закончится вход, а на localhost её ещё и
         // переключают на ходу. Разошлась с тем, что нарисовано, — собираем заново.
         const cardNow = document.getElementById('tour_card');
-        if (cardNow && cardNow.dataset.seller !== (this.isSeller() ? '1' : '0')) { this.show(); return; }
+        if (cardNow && cardNow.dataset.seller !== (this.isSeller() ? '1' : '0')) { this.buildPlan(); this.show(); return; }
         if (this.skipped(step)) { this.show(); return; }
         // Человек сделал то, о чём шаг — двигаемся дальше сами
         if (step.done && !step.last) {
