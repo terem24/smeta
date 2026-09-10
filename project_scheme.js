@@ -423,6 +423,9 @@
     o.push(txt(x + w / 2, y + 6.4, 'Бойлер косвенного нагрева', { size: SZ.txt, anchor: 'middle', fit: w - 3 }));
     var cy = y + h * 0.42, R = Math.min(19, h * 0.26);
     o.push(path('M' + n(x) + ',' + n(cy - R) + ' A' + n(R) + ',' + n(R) + ' 0 0 1 ' + n(x) + ',' + n(cy + R) + ' Z', { f: '#fff' }));
+    // Змеевик — свой символ: у него своя подсказка (в нём почти всё
+    // сопротивление контура загрузки) и своя строка в карточке.
+    o.push('<g data-sym="coil" data-sym-name="Змеевик бойлера">');
     var loops = h > 70 ? 7 : 5;
     for (var i = 0; i < loops; i++) {
       var t = i / (loops - 1);
@@ -432,6 +435,7 @@
       o.push('<line x1="' + n(x + 0.8) + '" y1="' + n(yy) + '" x2="' + n(x + 0.8 + Math.max(4, half)) + '" y2="' + n(yy) +
         '" style="stroke:' + col + ';stroke-width:2;opacity:' + n(0.55 + 0.45 * Math.abs(1 - 2 * t)) + '" stroke-linecap="round"/>');
     }
+    o.push('</g>');
     o.push(circle(x + w * 0.62, y + h * 0.42, 3.2, { f: '#555' }));
     o.push(circle(x + w * 0.5, y + h * 0.78, 4.6, { f: '#555' }));
     return o.join('');
@@ -519,6 +523,7 @@
       return '<g data-sym="' + type + '" data-sym-name="' + nm + '">' + out + '</g>';
     };
   }
+  indirectTank = sym(indirectTank, 'tank', 'Бойлер косвенного нагрева');
   ballValve = sym(ballValve, 'valve', 'Шаровой кран');
   checkValve = sym(checkValve, 'check', 'Обратный клапан');
   pump = sym(pump, 'pump', 'Циркуляционный насос');
@@ -1245,8 +1250,10 @@
           // отопления шунтировала его — приоритет ГВС не обеспечивался.
           o.push(ln(xs, ys, xs, ys + 1.6, { c: COL.supply, w: LW.pipe }));
           o.push(valve3(xs, ys + 4.1, 'prio', 'udr', 'l'));
+          o.push('<g data-hyd-part="load" data-hyd-dir="fwd">');
           o.push(hpipe(xs + 2.5, xls, ys + 4.1, COL.loadS));
           o.push(vpipe(xls, ys + 4.1, mY.loadS, COL.loadS, [mY.supply, mY.ret]));
+          o.push('</g>');
           ys += 6.6;
         } else {
           // Насосная группа загрузки — на тройнике от подачи после крана
@@ -1255,6 +1262,7 @@
           // ветка) — только кран.
           var yTee = ys + 1.4;
           o.push(ln(xs, ys, xs, ys + 2.8, { c: COL.supply, w: LW.pipe }));
+          o.push('<g data-hyd-part="load" data-hyd-dir="fwd">');
           o.push(hpipe(xs, xls, yTee, COL.loadS));
           o.push(ln(xls, yTee, xls, yTee + 1.2, { c: COL.loadS, w: LW.pipe }));
           o.push(ballValve(xls, yTee + 3.7, true));
@@ -1268,6 +1276,7 @@
           } else {
             o.push(vpipe(xls, yTee + 6.2, mY.loadS, COL.loadS, [mY.supply, mY.ret]));
           }
+          o.push('</g>');
           ys += 2.8;
         }
         o.push(diaV(xls, stemDiaY, dia));
@@ -1329,7 +1338,9 @@
     if (hasLoad && !(cfg.loadPump && cfg.hydro)) {
       // при насосной группе на коллекторе (после гидрострелки) обратка
       // загрузки уходит во вторичный коллектор, а не в котловую обратку
+      o.push('<g data-hyd-part="load" data-hyd-dir="rev">');
       o.push(vpipe(jx, mY.ret, mY.loadR, COL.loadR, [mY.loadS]));
+      o.push('</g>');
     }
 
     // ── потребители ──
@@ -1393,6 +1404,7 @@
       return crossAll.filter(function (yy) { return yy !== fromY; });
     }
 
+    var tankBox = null;             // габариты бойлера — под зону подсветки
     var bottomValveY = 256.78;      // центр нижних кранов (обмер: 254.28+2.5)
     var loadRx = null;
     taps.forEach(function (t, i) {
@@ -1604,6 +1616,7 @@
       var wall = !!cfg.indirect.wall;
       var tW = wall ? 40 : 52, tH = wall ? 56 : 84, tX = 415 - tW - 1.5, tY = wall ? 78 : 92;
       o.push(indirectTank(tX, tY, tW, tH));
+      tankBox = { x: tX, y: tY, w: tW, h: tH };
       // датчик ГВС — в штатной гильзе бойлера (режим «Бойлер» контроллера)
       if (cfg.auto && cfg.auto.dhwSensor) o.push(gauge(tX + tW - 7, tY + tH * 0.55, 'Т'));
       var pT3 = tY + tH * 0.167, pT4 = tY + tH * 0.244, pT1 = tY + tH * 0.321,
@@ -1787,6 +1800,12 @@
         if (bx == null || !blocks[bi]) return;
         o.push(zone('boiler', bx, bTop, bx + blocks[bi].w, bBot, ' data-hyd-b="' + bi + '"'));
       });
+      // Бойлер: зона по корпусу бака. Рисуется он далеко не всегда (только
+      // при косвенном нагреве), поэтому координаты берём с самого рисунка —
+      // так зона не разъедется, если компоновку подвинут.
+      if (cfg.hyd.dhw && tankBox) {
+        o.push(zone('dhw', tankBox.x, tankBox.y, tankBox.x + tankBox.w, tankBox.y + tankBox.h));
+      }
       // Отводы коллектора: полоса вдоль стояка от гребёнки до марки внизу.
       // Ширина 8 мм при шаге стояков 9 — между соседями остаётся миллиметр.
       // Уже делать нельзя: под сметой лист ужат до ~560 px, и на 5 мм полоса
