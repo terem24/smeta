@@ -9038,13 +9038,18 @@ const app = {
         this.setBirthDateRange(document.getElementById('profile_birth_date_input'));
         document.getElementById('profile_region_input').value = tgUser.region || '';
         document.getElementById('profile_city_input').value = tgUser.city || '';
+        // Строго после региона: подсказке нужно с чем сравнивать номер
+        this.showPhoneRegionHint();
         if (document.getElementById('profile_email_input')) {
             document.getElementById('profile_email_input').value = tgUser.email || '';
         }
+        // Сфера теперь одна. У старых анкет в базе их может быть две — показываем
+        // первую и просим выбрать при следующем сохранении, а не молчим.
         const profileActivityTypes = tgUser.activityTypes || [];
+        const pickedActivity = ['Монтажник', 'Продавец'].find(v => profileActivityTypes.includes(v)) || '';
         [['profile_act_installer', 'Монтажник'], ['profile_act_seller', 'Продавец']].forEach(([id, val]) => {
             const chk = document.getElementById(id);
-            if (chk) chk.checked = profileActivityTypes.includes(val);
+            if (chk) chk.checked = (pickedActivity === val);
         });
 
         // Тариф и срок подписки показывает раздел «Подписка» (renderSubscriptionTab)
@@ -14995,6 +15000,10 @@ const app = {
             this._pendingAdminSearchFocused = document.activeElement === searchInputBefore;
         }
         
+        // Признак «номер из чужого региона» считается по справочнику диапазонов;
+        // без него строка списка просто не получит эту пометку.
+        this.loadPhoneRegions();
+
         this._pendingAdminFilters = {
             search: this._pendingAdminSearch || '',
             tariff: document.getElementById('admin_filter_tariff')?.value || 'all',
@@ -15019,7 +15028,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -15360,6 +15369,7 @@ const app = {
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
         { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
+        { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
@@ -15804,6 +15814,12 @@ const app = {
             return;
         }
 
+        if (this._adminTab === 'inactive') {
+            content.innerHTML = navHtml;
+            this.renderAdminInactive();
+            return;
+        }
+
         if (this._adminTab === 'projects') {
             content.innerHTML = navHtml;
             this.renderAdminProjects();
@@ -16145,6 +16161,12 @@ const app = {
             }
             if (u.is_blocked) {
                 badge += `<br><span style="color:#fff; background:#EF4444; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px;">ЗАБЛОКИРОВАН</span>`;
+            }
+            // Доступ приостановлен за долгое отсутствие. Отдельно от блокировки:
+            // тут никто ничего не нарушал, и снимается это другой кнопкой.
+            if (u.frozen_at) {
+                const delOn = new Date(new Date(u.frozen_at).getTime() + 45 * 864e5);
+                badge += `<br><span title="Приостановлен ${new Date(u.frozen_at).toLocaleDateString('ru-RU')} за долгое отсутствие. Удаление ${delOn.toLocaleDateString('ru-RU')}, если не вернуть доступ." style="color:#fff; background:#0EA5E9; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px; cursor:help;">🧊 ЗАМОРОЖЕН</span>`;
             }
             let name = this.getAdminUserDisplayName(u);
             let nameEscaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -24942,6 +24964,7 @@ const app = {
         // списком пользователей. Если нет — просим и показываем прочерк.
         this.ensureRecognitionCounts();
         const recStats = this.recognitionStatsFor(user);
+        await this.loadPhoneRegions();
 
         let date = new Date(user.created_at).toLocaleDateString();
         let lastVis = user.last_visited ? new Date(user.last_visited).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Нет данных';
@@ -25022,6 +25045,11 @@ const app = {
 
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
+                            ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 45 дней.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 45 * 864e5).toLocaleDateString('ru-RU')}.
+                                <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
+                            </div>` : ''}
                             ${(() => {
                                 const flags = this.suspiciousProfileFlags(user);
                                 if (!flags.length) return '';
@@ -25034,6 +25062,15 @@ const app = {
                                 <div><span style="color:var(--text-sec);">Дата рождения:</span> <b style="color:var(--text-main);">${user.birth_date ? new Date(user.birth_date).toLocaleDateString('ru-RU') : '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Регион:</span> <b style="color:var(--text-main);">${user.region || '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Населённый пункт:</span> <b style="color:var(--text-main);">${user.city || '—'}</b></div>
+                                <!-- Где выдан номер (реестр нумерации, phone_regions.js). Само по
+                                     себе расхождение ничего не доказывает: номер переносят между
+                                     регионами, люди переезжают — поэтому просто показываем факт. -->
+                                ${(() => {
+                                    const list = this.regionByPhone(user.phone);
+                                    if (!list.length) return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:var(--text-main);">не определён</b></div>`;
+                                    const match = this.phoneRegionMatches(user.phone, user.region);
+                                    return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:${match === false ? '#D97706' : 'var(--text-main)'};">${list.join(' / ')}</b>${match === false ? ' <span style="color:#D97706;" title="Бывает при переезде или переносе номера — само по себе не значит обман">⚠ не совпадает с анкетой</span>' : (match ? ' <span style="color:#10B981;">✓</span>' : '')}</div>`;
+                                })()}
                                 <div style="grid-column: 1 / -1;"><span style="color:var(--text-sec);">Сфера деятельности:</span> ${(user.activity_types || []).length ? (user.activity_types || []).map(a => `<span style="background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:4px;">${a}</span>`).join('') : ' <b style="color:var(--text-main);">—</b>'}</div>
                             </div>
                         </div>
@@ -25697,6 +25734,144 @@ const app = {
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         this.pushPlansToEditor();
         window.open('plan_editor.html', '_blank');
+    },
+
+    // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
+    //
+    // Кому ушло письмо, кто после него вернулся, кто молчит, кого заморозили и
+    // кого в итоге удалили. Журнал лежит в закрытых таблицах, поэтому читаем не
+    // напрямую, а функцией inactivity_report: она сама проверяет, что зовёт
+    // администратор (см. миграцию 20260910_inactivity_report.sql).
+    renderAdminInactive: async function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+        content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
+        const root = () => document.getElementById('admin_inactive_root');
+        try {
+            const { data, error } = await supabaseClient.rpc('inactivity_report');
+            if (error) throw error;
+            this._inactiveReport = data || [];
+        } catch (e) {
+            const known = String(e.message || '').indexOf('inactivity_report') !== -1;
+            if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
+                Не удалось прочитать журнал напоминаний: ${e.message || e}
+                ${known ? '<div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20260910_inactivity_report.sql ещё не выполнена в Supabase.</div>' : ''}
+            </div>`;
+            return;
+        }
+        this.renderAdminInactiveBody();
+    },
+
+    renderAdminInactiveBody: function () {
+        const root = document.getElementById('admin_inactive_root');
+        if (!root) return;
+        const rows = this._inactiveReport || [];
+        const isViewer = this.isReadOnlyAdmin();
+        const esc = s => String(s ?? '').replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+        const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
+
+        const returned = rows.filter(r => r.returned_at).length;
+        const frozen = rows.filter(r => r.stage === 'frozen').length;
+        const deleted = rows.filter(r => r.stage === 'deleted').length;
+        const silent = rows.filter(r => !r.returned_at && r.stage === 'warned').length;
+
+        // Доля вернувшихся — единственная цифра, ради которой всё это затевалось:
+        // она говорит, работает напоминание или люди ушли насовсем.
+        const share = rows.length ? Math.round(returned * 100 / rows.length) : 0;
+
+        let h = `
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
+                <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
+            </div>
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:16px; line-height:1.5;">
+                Письмо уходит после 30 дней молчания, доступ приостанавливается на 45-й день,
+                учётка удаляется через 45 дней заморозки. Проверка идёт каждую ночь.
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Отправлено</div>
+                    <div style="font-size:20px; font-weight:800; color:var(--text-main);">${rows.length}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Вернулись</div>
+                    <div style="font-size:20px; font-weight:800; color:#10B981;">${returned}</div>
+                    <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${share}% от всех</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Молчат</div>
+                    <div style="font-size:20px; font-weight:800; color:#D97706;">${silent}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Заморожены</div>
+                    <div style="font-size:20px; font-weight:800; color:#0EA5E9;">${frozen}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Удалены</div>
+                    <div style="font-size:20px; font-weight:800; color:#EF4444;">${deleted}</div>
+                </div>
+            </div>`;
+
+        if (!rows.length) {
+            h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
+                Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 30 дней.
+            </div>`;
+            root.innerHTML = h;
+            return;
+        }
+
+        h += `<div style="overflow-x:auto;"><table class="admin-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead><tr style="text-align:left; color:var(--text-sec);">
+                <th style="padding:8px;">Кто</th>
+                <th style="padding:8px;">Регион</th>
+                <th style="padding:8px; white-space:nowrap;">Письмо</th>
+                <th style="padding:8px;">Чем кончилось</th>
+                <th style="padding:8px; text-align:center;">Смет</th>
+                <th style="padding:8px;"></th>
+            </tr></thead><tbody>`;
+
+        rows.forEach(r => {
+            // Итог по-русски, а не кодом этапа: ради этой колонки отчёт и нужен.
+            let outcome, color;
+            if (r.stage === 'deleted') {
+                outcome = 'Удалён' + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
+                color = '#EF4444';
+            } else if (r.returned_at) {
+                outcome = 'Вернулся ' + dt(r.returned_at);
+                color = '#10B981';
+            } else if (r.stage === 'frozen') {
+                const delOn = new Date(new Date(r.frozen_at).getTime() + 45 * 864e5);
+                outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
+                color = '#0EA5E9';
+            } else {
+                const d = days(r.warned_at);
+                outcome = 'Не отреагировал' + (d !== null ? ' · ' + d + ' ' + this.plural(d, 'день', 'дня', 'дней') + ' после письма' : '');
+                color = '#D97706';
+            }
+
+            h += `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:8px;">
+                    <b style="color:var(--text-main);">${esc(r.name)}</b>
+                    <div style="font-size:10px; color:var(--text-sec);">${esc(r.phone || '')}${r.email ? ' · ' + esc(r.email) : ''}</div>
+                </td>
+                <td style="padding:8px; color:var(--text-sec);">${esc([r.city, r.region].filter(Boolean).join(', ') || '—')}</td>
+                <td style="padding:8px; white-space:nowrap; color:var(--text-main);">${dt(r.warned_at)}</td>
+                <td style="padding:8px; color:${color}; font-weight:600;">${outcome}</td>
+                <td style="padding:8px; text-align:center; color:var(--text-main);">${r.estimates ?? 0}</td>
+                <td style="padding:8px; text-align:right; white-space:nowrap;">
+                    ${r.stage === 'frozen' && !isViewer
+                        ? `<button class="admin-action-btn btn-obj" onclick="app.unfreezeUser('${r.user_id}')">Вернуть доступ</button>`
+                        : ''}
+                    ${r.stage !== 'deleted'
+                        ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>`
+                        : ''}
+                </td>
+            </tr>`;
+        });
+
+        h += `</tbody></table></div>`;
+        root.innerHTML = h;
     },
 
     renderAdminPlans: async function () {
@@ -28270,7 +28445,7 @@ const app = {
             };
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked';
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at';
 
             let { data: upsertResult, error: upsertError } = await supabaseClient
                 .from('users')
@@ -28314,6 +28489,20 @@ const app = {
                 this.syncUI();
                 this.render();
                 app.alert('Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.');
+                return;
+            }
+            // Доступ приостановлен ночным проходом за долгое отсутствие (frozen_at,
+            // см. миграцию 20260909_inactivity_lifecycle.sql). Это не блокировка за
+            // нарушение, поэтому и текст другой: человек ничего плохого не сделал,
+            // ему нужно объяснить, что делать дальше.
+            if (uRow && uRow.frozen_at) {
+                await supabaseClient.auth.signOut();
+                delete this.state.tgUser;
+                this.state.accountType = 'base';
+                this.saveState();
+                this.syncUI();
+                this.render();
+                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на dima24ba@gmail.com, и мы вернём доступ в тот же день.');
                 return;
             }
             if (uRow) {
@@ -28653,6 +28842,32 @@ const app = {
             app.alert('Не удалось изменить статус блокировки: ' + e.message);
         }
     },
+    // Снимает автоматическую заморозку за долгое отсутствие. Отдельно от
+    // toggleUserBlocked: та снимает блокировку, поставленную администратором руками,
+    // и трогать её здесь нельзя — иначе «вернуть доступ» заодно разблокировало бы
+    // того, кого закрыли за дело. Отсчёт молчания при этом начинается заново
+    // (unfreeze_user двигает last_visited), иначе ночной проход заморозил бы
+    // человека той же ночью.
+    unfreezeUser: async function (userId) {
+        if (this.isReadOnlyAdmin()) {
+            app.alert('Режим просмотра. Изменение доступа запрещено.');
+            return;
+        }
+        if (!await app.confirm('Вернуть доступ этой учётной записи? Отсчёт неактивности начнётся заново.')) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('unfreeze_user', { target: userId });
+            if (error) throw error;
+            if (data === false) {
+                app.alert('Учётка не была заморожена — возвращать нечего.');
+            } else {
+                app.alert('✅ Доступ возвращён. Человек снова может войти.');
+            }
+            this.renderAdminMain();
+            this.loadAdminData(this._adminOffset);
+        } catch (e) {
+            app.alert('Не удалось вернуть доступ: ' + (e.message || e));
+        }
+    },
     // Безвозвратно стирает профиль пользователя и все связанные с ним данные (сметы,
     // рассылки/переписку с админом, чаты с менеджером дистрибьютора). ВАЖНО: это удаляет
     // только строки в public.users и связанных таблицах — сам логин/пароль в Supabase Auth
@@ -28745,7 +28960,7 @@ const app = {
         if (!region) { app.alert('Пожалуйста, укажите регион.'); return; }
         if (!city) { app.alert('Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { app.alert('Пожалуйста, введите корректный email.'); return; }
-        if (activityTypes.length === 0) { app.alert('Выберите хотя бы одну сферу деятельности.'); return; }
+        if (activityTypes.length === 0) { app.alert('Выберите сферу деятельности: монтажник или продавец.'); return; }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser || (!tgUser.authUserId && !tgUser.email && !tgUser.id)) return;
@@ -28845,6 +29060,77 @@ const app = {
     },
     // Возраст на сегодня по дате рождения (ISO-строка вида "YYYY-MM-DD") — используется
     // для проверки диапазона 18-90 лет в регистрации и профиле
+    // ——— Регион по номеру телефона ————————————————————————————————————————
+    // Справочник диапазонов (phone_regions.js) весит 128 КБ и на расчёте не нужен,
+    // поэтому подключается лениво — при первом же разборе номера.
+    loadPhoneRegions: function () {
+        if (typeof PHONE_DEF_RANGES !== 'undefined') return Promise.resolve(true);
+        if (this._phoneRegionsPromise) return this._phoneRegionsPromise;
+        this._phoneRegionsPromise = new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'phone_regions.js?v=1.0';
+            // Не загрузился — живём без подсказки: ни анкета, ни админка от неё не зависят
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+        });
+        return this._phoneRegionsPromise;
+    },
+
+    /**
+     * Субъекты, где выдан номер: ['Москва', 'Московская область'] — два, если
+     * диапазон в реестре записан сразу на столицу с областью. Пустой массив —
+     * справочник не загружен, номер неполный или диапазон никому не отдан.
+     */
+    regionByPhone: function (phone) {
+        if (typeof PHONE_DEF_RANGES === 'undefined' || typeof PHONE_REGION_NAMES === 'undefined') return [];
+        const d = String(phone || '').replace(/\D/g, '');
+        if (d.length !== 11) return [];
+        const line = PHONE_DEF_RANGES[d.slice(1, 4)];
+        if (!line) return [];
+        const num = parseInt(d.slice(4), 10);
+        // Записи идут по возрастанию, каждая — «пропуск от конца предыдущей .
+        // длина . индекс региона» в 36-ричной записи (см. шапку phone_regions.js).
+        let pos = 0;
+        const items = line.split(',');
+        for (let k = 0; k < items.length; k++) {
+            const p = items[k].split('.');
+            const start = pos + parseInt(p[0], 36);
+            const end = start + parseInt(p[1], 36) - 1;
+            if (num < start) return [];      // попали в дыру между диапазонами
+            if (num <= end) return String(PHONE_REGION_NAMES[parseInt(p[2], 36)] || '').split('|');
+            pos = end + 1;
+        }
+        return [];
+    },
+
+    /** Совпадает ли регион анкеты с регионом номера. null — сравнивать не с чем. */
+    phoneRegionMatches: function (phone, region) {
+        const list = this.regionByPhone(phone);
+        if (!list.length || !String(region || '').trim()) return null;
+        const want = this.regionAccessKey(region);
+        return list.some(r => this.regionAccessKey(r) === want);
+    },
+
+    // Строка под полем телефона в анкете. Пишем и когда всё сходится: человек
+    // видит, что номер разобран, и не гадает, почему подсказка пропала.
+    showPhoneRegionHint: function () {
+        const el = document.getElementById('profile_phone_region');
+        const input = document.getElementById('profile_phone_input');
+        if (!el || !input) return;
+        const digits = input.value.replace(/\D/g, '');
+        if (digits.length !== 11) { el.textContent = ''; return; }
+
+        this.loadPhoneRegions().then(() => {
+            const list = this.regionByPhone(input.value);
+            if (!list.length) { el.textContent = ''; return; }
+            const regionEl = document.getElementById('profile_region_input');
+            const match = this.phoneRegionMatches(input.value, regionEl ? regionEl.value : '');
+            el.textContent = (match === false ? '⚠ Номер выдан в другом регионе: ' : 'Номер выдан в регионе: ') + list.join(' / ');
+            el.style.color = match === false ? '#D97706' : 'var(--text-sec)';
+        });
+    },
+
     // ——— Проверка анкеты на выдуманные данные ————————————————————————————
     // Раньше ФИО принималось любым: «маркеев Антон Fghh» уходило в базу как есть.
     // Здесь отсекается то, чего живой человек ввести не мог: латиница, цифры,
@@ -28965,6 +29251,12 @@ const app = {
             if (age < 18 || age > this.PROFILE_MAX_AGE) hard.push('возраст ' + age + ' ' + this.plural(age, 'год', 'года', 'лет'));
         }
         if (u.middle_name && !this.PATRONYMIC_END.test(String(u.middle_name).trim())) soft.push('отчество не похоже на отчество');
+        // Регион, где выдан номер. Мягкий признак, и только он: номер переносят
+        // между операторами и регионами, а люди переезжают — у половины монтажников
+        // Подмосковья номер московский, и ничего подозрительного в этом нет.
+        if (this.phoneRegionMatches(u.phone, u.region) === false) {
+            soft.push('номер выдан в регионе «' + this.regionByPhone(u.phone).join(' / ') + '»');
+        }
         const ipRegion = this.regionByIpCity(u.location);
         if (ipRegion && u.region && this.regionAccessKey(ipRegion) !== this.regionAccessKey(u.region)) {
             soft.push('вход из региона «' + ipRegion + '», а в анкете другой');
