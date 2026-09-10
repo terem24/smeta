@@ -32223,6 +32223,15 @@ const app = {
         if (chkHeatLoss) chkHeatLoss.checked = true;
         if (chkScheme) chkScheme.checked = true;
 
+        // Продавец монтаж не делает: раздела «Монтажные работы» у него нет на
+        // экране, и наружу — в печать, Excel и ссылку клиенту — он тоже не
+        // уходит. Карточку прячем, галку снимаем; сам флаг ещё раз гасится в
+        // confirmShareOptions и в execute*, чтобы обходные вызовы не протащили.
+        const sellerNoWorks = this.isSellerOnly();
+        const cardWorksOpt = document.getElementById('card_opt_works');
+        if (cardWorksOpt) cardWorksOpt.style.display = sellerNoWorks ? 'none' : '';
+        if (sellerNoWorks && chkWorks) chkWorks.checked = false;
+
         // "Расчёт теплопотерь" и "Схема" имеет смысл предлагать только при печати/PDF,
         // и только если для них реально есть готовые данные (иначе печатать нечего).
         // Доступно на любом тарифе (Базовый и Профи): теплопотери — когда включён режим
@@ -32347,7 +32356,8 @@ const app = {
         const cardHeatLoss = document.getElementById('card_opt_heatloss');
         const cardScheme = document.getElementById('card_opt_scheme');
         const showEq = chkEq ? chkEq.checked : false;
-        const showWorks = chkWorks ? chkWorks.checked : false;
+        // У продавца работ нет (см. openShareOptionsModal)
+        const showWorks = (chkWorks && !this.isSellerOnly()) ? chkWorks.checked : false;
         const heatLossVisible = !!(cardHeatLoss && cardHeatLoss.style.display !== 'none');
         const schemeVisible = !!(cardScheme && cardScheme.style.display !== 'none');
         const showHeatLoss = heatLossVisible && chkHeatLoss ? chkHeatLoss.checked : false;
@@ -33561,6 +33571,9 @@ const app = {
     },
 
     executeShareInvoice: async function (showEq, showWorks) {
+        // Продавцу работы в ссылку не идут ни при каком вызове (в том числе из
+        // режима обучения, который зовёт эту функцию напрямую)
+        if (this.isSellerOnly()) showWorks = false;
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
@@ -33924,6 +33937,7 @@ const app = {
         return cssText;
     },
     executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme) {
+        if (this.isSellerOnly()) showWorks = false; // у продавца работ нет
         this.printOptions = {
             eq: showEq,
             works: showWorks,
@@ -34089,6 +34103,7 @@ const app = {
     // смета, что и в PDF: те же разделы, строки, скидки и группировки, без второй
     // копии логики сметы. В Excel не переносятся только фотографии и схема.
     executeExcelDownload: async function (showEq, showWorks, showHeatLoss) {
+        if (this.isSellerOnly()) showWorks = false; // у продавца работ нет
         if (!window.ExcelExport) {
             app.alert('Выгрузка в Excel сейчас недоступна. Обновите страницу и попробуйте снова.');
             return;
@@ -61551,12 +61566,20 @@ const app = {
                 headerTotals.dataset.lastShowBlurEq = String(currentShowBlur);
             }
 
-            // Запускаем анимацию Монтажа
-            if (showWorksTotal) {
+            // Запускаем анимацию Монтажа. У продавца монтажа нет — прочерк вместо
+            // суммы: раздел работ ему не показывается и наружу не уходит.
+            if (showWorksTotal && this.isSellerOnly()) {
+                const elWorks = document.getElementById('anim_works_sum');
+                if (elWorks && elWorks.innerText !== '—') elWorks.innerText = '—';
+                headerTotals.dataset.lastWorks = 0;
+            } else if (showWorksTotal) {
                 let elWorks = document.getElementById('anim_works_sum');
                 let oldWorks = parseFloat(headerTotals.dataset.lastWorks) || 0;
                 let newWorks = app.lastWorksSum || 0;
                 let lastShowBlurWorks = headerTotals.dataset.lastShowBlurWorks === 'true';
+                // Сфера сменилась с продавца на монтажника при нулевой сумме —
+                // анимации не будет, прочерк убираем руками
+                if (elWorks && elWorks.innerText === '—') elWorks.innerText = newWorks.toLocaleString('ru-RU') + ' ₽';
                 if ((oldWorks !== newWorks) && elWorks) {
                     app.animateNumber(elWorks, oldWorks, newWorks, 800);
                     headerTotals.dataset.lastWorks = newWorks;
@@ -61627,10 +61650,15 @@ const app = {
             let isPro = this.isPro();
             let showWorksTotal = isPro || !!this.state.tgUser;
 
-            if (showWorksTotal && mWorkEl) {
+            if (showWorksTotal && mWorkEl && this.isSellerOnly()) {
+                // Продавец: прочерк вместо суммы монтажа (как в настольной шапке)
+                if (mWorkEl.innerText !== '—') mWorkEl.innerText = '—';
+                mobileTotals.dataset.lastWorks = 0;
+            } else if (showWorksTotal && mWorkEl) {
                 let oldWorks = parseFloat(mobileTotals.dataset.lastWorks) || 0;
                 let newWorks = app.lastWorksSum || 0;
                 let lastShowBlurWorks = mobileTotals.dataset.lastShowBlurWorks === 'true';
+                if (mWorkEl.innerText === '—') mWorkEl.innerText = newWorks.toLocaleString('ru-RU') + ' ₽';
                 if (oldWorks !== newWorks) {
                     app.animateNumber(mWorkEl, oldWorks, newWorks, 800);
                     mobileTotals.dataset.lastWorks = newWorks;
