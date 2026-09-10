@@ -111,6 +111,9 @@ const load = (file, expose) => {
     const src = fs.readFileSync(path.join(root, file), 'utf8');
     vm.runInContext(src + '\n' + expose, ctx, { filename: file });
 };
+// Раскладка стены котельной: из неё смета берёт длину котлового контура.
+// Файл ставит window.boilerWall сам, вытаскивать нечего.
+load('boiler_wall.js', '');
 load('catalog.js', 'globalThis.__catalog = catalog;');
 load('app.js', 'globalThis.__app = app;');
 

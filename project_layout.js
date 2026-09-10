@@ -258,43 +258,13 @@
   }
 
   // ─── Раскладка стены (реальные мм, от левого края стены) ───────────────
+  // Считает boiler_wall.js — тот же файл подключает и калькулятор: по этой
+  // раскладке он берёт длину котлового контура для расчёта потерь. Держать
+  // здесь свою копию значит гарантировать, что чертёж и расчёт разойдутся.
   function planWall(ctx) {
-    var GAP = 150;
-    var x = GAP, blocks = {};
-    if (ctx.tankH) {
-      blocks.tankH = { x: x, w: ctx.tankH.d };
-      x += ctx.tankH.d + GAP;
-    }
-    // зона отводов: под котлами; ширина от числа контуров
-    var zoneW = Math.max((ctx.loops.length - 1) * 90 + 140,
-      ctx.gasCount * ctx.boilerW + ctx.elCount * ctx.elW +
-      (ctx.gasCount + ctx.elCount - 1) * 60);
-    blocks.zone = { x: x, w: zoneW };
-    // котлы по центру зоны
-    var bw = ctx.gasCount * ctx.boilerW + ctx.elCount * ctx.elW +
-      (ctx.gasCount + ctx.elCount - 1) * 60;
-    var bx = x + (zoneW - bw) / 2;
-    blocks.boilers = [];
-    for (var g = 0; g < ctx.gasCount; g++) {
-      blocks.boilers.push({ x: bx, w: ctx.boilerW, h: ctx.boilerH, gas: true });
-      bx += ctx.boilerW + 60;
-    }
-    for (var e = 0; e < ctx.elCount; e++) {
-      blocks.boilers.push({ x: bx, w: ctx.elW, h: ctx.elH, gas: false });
-      bx += ctx.elW + 60;
-    }
-    x += zoneW;
-    if (ctx.hydro) { blocks.hydro = { x: x + 30, w: 120 }; x += 180; }
-    if (ctx.tankD) {
-      blocks.tankD = { x: x + GAP / 2, w: ctx.tankD.d };
-      x += ctx.tankD.d + GAP;
-    }
-    if (ctx.indirect) {
-      blocks.indirect = { x: x + GAP / 2, w: ctx.indirect.d };
-      x += ctx.indirect.d + GAP;
-    }
-    blocks.W = x + GAP;
-    return blocks;
+    var BW = window.boilerWall;
+    if (!BW) throw new Error('boiler_wall.js не подключён — раскладку стены взять неоткуда');
+    return BW.plan(ctx);
   }
 
   // ─── Лист «Вид котельной спереди» ──────────────────────────────────────
