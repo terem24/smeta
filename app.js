@@ -15407,14 +15407,153 @@ const app = {
 
     // Вкладки, доступные текущему админу. Фильтр в одном месте: список строится
     // и в ряду вкладок на десктопе, и в меню разделов на телефоне.
+    /**
+     * Видно ли роли этот раздел. Одно правило на два применения: ряд вкладок
+     * в самой панели и справка «кто что видит» (showRolesHelp). Пока правило
+     * лежит здесь одно, справка не может разойтись с тем, как панель работает
+     * на самом деле, — а разошедшаяся справка хуже её отсутствия.
+     *
+     * isOwner отдельным доводом, а не выводится из role: права на разделы
+     * владельца даёт личный адрес почты, а не запись в базе (isAnalyticsOwner).
+     */
+    tabVisibleFor: function (tabId, role, isOwner) {
+        if (this.OWNER_ONLY_TABS.indexOf(tabId) >= 0) return !!isOwner;
+        if (this.ADMIN_ONLY_TABS.indexOf(tabId) >= 0) return role === 'super_admin' || role === 'admin';
+        if (role === 'manager') return this.MANAGER_TABS.indexOf(tabId) >= 0;
+        return true;
+    },
+
     adminTabDefs: function () {
-        let defs = this.ADMIN_TAB_DEFS.filter(t => this.OWNER_ONLY_TABS.indexOf(t.id) < 0 || this.isAnalyticsOwner());
-        // Разделы платформы — только администраторам. Владелец сюда попадает
-        // ролью super_admin, поэтому отдельного исключения ему не нужно.
-        if (!this.hasFeatureRoleAccess()) defs = defs.filter(t => this.ADMIN_ONLY_TABS.indexOf(t.id) < 0);
-        if (!this.isManagerRole()) return defs;
-        return defs.filter(t => this.MANAGER_TABS.indexOf(t.id) >= 0)
-            .map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
+        const role = this.getAdminRole();
+        const owner = this.isAnalyticsOwner();
+        const defs = this.ADMIN_TAB_DEFS.filter(t => this.tabVisibleFor(t.id, role, owner));
+        if (role !== 'manager') return defs;
+        return defs.map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
+    },
+
+    // ═══ Справка «кто что видит» ═════════════════════════════════════════
+    // Открывается значком «?» рядом с полем «Тип аккаунта / Роль» в карточке
+    // пользователя — там, где вопрос и возникает.
+    //
+    // Таблица разделов НЕ переписана словами: она строится из тех же констант,
+    // по которым панель рисует вкладки (см. tabVisibleFor). Добавили раздел —
+    // он сам появился в справке с верными отметками. Руками ведётся только
+    // список действий ниже: проверки на них разбросаны по коду, свести их в
+    // одно выражение нельзя, поэтому при правке прав правится и эта таблица.
+    ROLE_COLUMNS: [
+        { role: 'super_admin', owner: true, label: 'Владелец', code: 'super_admin' },
+        { role: 'admin', owner: false, label: 'Администратор', code: 'admin' },
+        { role: 'viewer', owner: false, label: 'Наблюдатель', code: 'viewer' },
+        { role: 'manager', owner: false, label: 'Менеджер', code: 'manager' }
+    ],
+
+    // Чьи данные видит роль в тех разделах, что ей открыты.
+    ROLE_SCOPE_NOTE: {
+        super_admin: 'вся платформа',
+        admin: 'вся платформа',
+        viewer: 'назначенные компании',
+        manager: 'своя компания'
+    },
+
+    // 'y' — можно, 'n' — нельзя, 'own' — только по своим компаниям.
+    ROLE_ACTIONS: [
+        { group: 'Учётки' },
+        { name: 'Тариф монтажника', hint: 'Базовый / Профи, срок, источник', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Роли: админ, наблюдатель, менеджер', hint: 'выдать, снять, поменять тариф роли', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
+        { name: 'Блокировка и удаление монтажника', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Блокировка и удаление тех, у кого роль', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
+        { name: 'Показать пароль монтажника', hint: 'копия снимается при входе', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { group: 'Компании и доступы' },
+        { name: 'Промокоды и карточки дистрибьюторов', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Назначить дистрибьютора', hint: 'поштучно и всем по фильтру', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Доступ к распознаванию и проектированию', hint: 'лично, компании, региону', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { group: 'Работа с монтажниками' },
+        { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
+        { name: 'Объявление для всех пользователей', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Удалить сообщение из переписки', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
+        { group: 'Уборка и настройки' },
+        { name: 'Очистить планы этажей и архив распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Словарь марок в аналитике', hint: 'кандидаты, написания, марки графика', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' }
+    ],
+
+    showRolesHelp: function () {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const cols = this.ROLE_COLUMNS;
+        const pill = (kind, text) => {
+            const skin = {
+                full: 'background:rgba(16,185,129,.14); color:#0F8A5F;',
+                part: 'background:rgba(217,119,6,.14); color:#B45309;',
+                none: 'background:var(--surface-light); color:var(--text-sec);'
+            }[kind];
+            return `<span style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11.5px; font-weight:600; white-space:nowrap; ${skin}">${text}</span>`;
+        };
+        const th = 'padding:9px 8px; text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); border-bottom:1px solid var(--border); white-space:nowrap;';
+        const td = 'padding:8px; text-align:center; border-bottom:1px solid var(--border); vertical-align:middle;';
+        const tdName = 'padding:8px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:12.5px; color:var(--text-main);';
+        const tdGroup = 'padding:7px 12px; text-align:left; border-bottom:1px solid var(--border); font-size:10.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--text-sec); background:var(--surface-light);';
+        const head = `<tr><th style="${th} text-align:left; padding-left:12px;">Раздел</th>${
+            cols.map(c => `<th style="${th}">${c.label}<div style="font-family:monospace; font-size:9.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-sec);">${c.code}</div></th>`).join('')}</tr>`;
+
+        // Разделы — из констант панели, поэтому таблица не может устареть
+        const tabRows = this.ADMIN_TAB_DEFS.map(t => `<tr>
+                <td style="${tdName}">${t.icon} ${esc(t.label)}<div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
+                ${cols.map(c => `<td style="${td}">${this.tabVisibleFor(t.id, c.role, c.owner)
+                    ? (c.role === 'viewer' || c.role === 'manager' ? pill('part', 'свои') : pill('full', 'вся платформа'))
+                    : pill('none', 'нет')}</td>`).join('')}
+            </tr>`).join('');
+
+        const actRows = this.ROLE_ACTIONS.map(a => a.group
+            ? `<tr><td style="${tdGroup}" colspan="${cols.length + 1}">${esc(a.group)}</td></tr>`
+            : `<tr>
+                <td style="${tdName}">${esc(a.name)}${a.hint ? `<div style="font-size:11px; color:var(--text-sec);">${esc(a.hint)}</div>` : ''}</td>
+                ${cols.map(c => {
+                    const v = a[c.role];
+                    return `<td style="${td}">${v === 'y' ? pill('full', 'да') : v === 'own' ? pill('part', 'по своим') : pill('none', 'нет')}</td>`;
+                }).join('')}
+            </tr>`).join('');
+
+        const scopeRow = cols.map(c => `<div style="flex:1 1 150px; min-width:150px;">
+                <div style="font-size:11px; color:var(--text-sec);">${c.label}</div>
+                <div style="font-size:13px; font-weight:600; color:var(--text-main);">${this.ROLE_SCOPE_NOTE[c.role]}</div>
+            </div>`).join('');
+
+        const old = document.getElementById('roles_help_overlay');
+        if (old) old.remove();
+        const ov = document.createElement('div');
+        ov.id = 'roles_help_overlay';
+        ov.style.cssText = 'position:fixed; inset:0; z-index:100000000; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:20px;';
+        ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+        ov.innerHTML = `
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:14px; width:100%; max-width:900px; max-height:88vh; display:flex; flex-direction:column; overflow:hidden;">
+                <div style="display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border); flex-shrink:0;">
+                    <h3 style="margin:0; font-size:16px; color:var(--text-main);">Кто что видит и что может менять</h3>
+                    <button class="admin-btn" style="margin-left:auto;" onclick="document.getElementById('roles_help_overlay').remove()">Закрыть</button>
+                </div>
+                <div style="overflow:auto; padding:18px 20px 24px;">
+                    <div style="display:flex; gap:16px; flex-wrap:wrap; padding:12px 14px; margin-bottom:18px; background:var(--surface-light); border-radius:10px;">
+                        <div style="flex:1 1 100%; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-sec);">Чьи данные видит роль</div>
+                        ${scopeRow}
+                    </div>
+                    <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Разделы панели</h4>
+                    <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">Раздела, отмеченного «нет», человек не видит вовсе — ни кнопки, ни пункта в меню. Эта таблица строится из настроек самой панели, поэтому всегда показывает то, как она работает сейчас.</p>
+                    <div style="overflow-x:auto; margin-bottom:24px;">
+                        <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head}</thead><tbody>${tabRows}</tbody></table>
+                    </div>
+                    <h4 style="margin:0 0 8px; font-size:13.5px; color:var(--text-main);">Что можно менять</h4>
+                    <p style="margin:0 0 10px; font-size:12px; color:var(--text-sec); line-height:1.5;">У наблюдателя и менеджера панель работает в режиме просмотра: кнопки погашены. Исключений два — переписка и статусы счетов у менеджера.</p>
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%; min-width:640px; border-collapse:collapse;"><thead>${head.replace('>Раздел<', '>Действие<')}</thead><tbody>${actRows}</tbody></table>
+                    </div>
+                    <p style="margin:20px 0 0; padding:12px 14px; background:var(--surface-light); border-left:3px solid var(--primary); border-radius:8px; font-size:12px; color:var(--text-sec); line-height:1.6;">
+                        <b style="color:var(--text-main);">Это про то, что видно в панели, а не про защиту данных.</b>
+                        Разделение делает код на стороне браузера. Пока в Supabase не закрыты политики чтения,
+                        таблицы users и estimates отдаются любому авторизованному через API мимо интерфейса.
+                    </p>
+                </div>
+            </div>`;
+        document.body.appendChild(ov);
     },
 
     // Ниже этой ширины админка живёт по-мобильному: вместо ряда вкладок — меню
@@ -16320,9 +16459,7 @@ const app = {
     switchAdminTab: function (tab) {
         // Кнопок «Дашборд» и «Аналитика» у остальных админов нет, но вызов из
         // консоли или старой ссылки обязан упереться в ту же проверку, что и вёрстка.
-        if (this.OWNER_ONLY_TABS.indexOf(tab) >= 0 && !this.isAnalyticsOwner()) return;
-        if (this.ADMIN_ONLY_TABS.indexOf(tab) >= 0 && !this.hasFeatureRoleAccess()) return;
-        if (this.isManagerRole() && this.MANAGER_TABS.indexOf(tab) < 0) return;
+        if (!this.tabVisibleFor(tab, this.getAdminRole(), this.isAnalyticsOwner())) return;
         this._adminTab = tab;
         // Данные раздела грузим при переходе в него, а не все сразу при открытии
         // панели. Что уже загружено — не перезапрашиваем: «Пользователей» отмечает
@@ -24877,7 +25014,9 @@ const app = {
                                 <h4 style="margin:0 0 15px 0; font-size:14px; color:var(--text-main);">⚙️ Управление тарифом</h4>
                                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px;">
                                     <div>
-                                        <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тип аккаунта / Роль</label>
+                                        <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тип аккаунта / Роль
+                                            <button type="button" title="Кто что видит и что может менять" onclick="app.showRolesHelp()" style="border:1px solid var(--border); background:var(--surface-light); color:var(--text-sec); width:16px; height:16px; line-height:1; border-radius:50%; font-size:11px; font-weight:700; cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center;">?</button>
+                                        </label>
                                         <select id="admin_edit_tariff" onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${user.account_type === 'base' ? 'selected' : ''}>Базовый</option>
                                             <option value="pro" ${user.account_type === 'pro' ? 'selected' : ''}>Профи ⭐️</option>
