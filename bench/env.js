@@ -44,7 +44,15 @@ const mkEl = () => new Proxy({
     get: (t, k) => {
         if (k in t) return t[k];
         if (k === 'classList') return { add: noop, remove: noop, toggle: noop, contains: () => false };
-        if (k === 'parentNode' || k === 'firstChild' || k === 'lastChild' || k === 'nextSibling') return null;
+        // parentNode — не null, а простой узел: init() вставляет через него панели
+        // (setParamsDock, меню разделов), и на null всё падало, не дойдя до конца.
+        // Свой parentNode у него уже null — иначе цикл «поднимайся до корня» завис бы.
+        if (k === 'parentNode') return {
+            insertBefore: noop, appendChild: noop, removeChild: noop, replaceChild: noop,
+            parentNode: null, children: [], classList: { add: noop, remove: noop, toggle: noop, contains: () => false },
+            querySelector: () => null, querySelectorAll: () => [], style: { setProperty: noop, removeProperty: noop }
+        };
+        if (k === 'firstChild' || k === 'lastChild' || k === 'nextSibling') return null;
         if (k === 'getBoundingClientRect') return () => ({ width: 0, height: 0, top: 0, left: 0, right: 0, bottom: 0 });
         if (k === 'querySelector') return () => mkEl();
         if (k === 'querySelectorAll') return () => [];
@@ -82,7 +90,11 @@ const ctx = {
         search: '', hash: '', protocol: 'http:', origin: 'http://localhost', reload: noop
     },
     navigator: { userAgent: 'node', language: 'ru', serviceWorker: { register: () => Promise.resolve() } },
-    setTimeout, clearTimeout, setInterval, clearInterval,
+    // Таймеры — заглушки: init() заводит опросы и автосохранение, и на настоящих
+    // таймерах процесс стенда не завершался бы, а в выводе шёл мусор от фоновых
+    // задач. Смета считается синхронно, ждать нечего.
+    setTimeout: () => 0, clearTimeout: noop, setInterval: () => 0, clearInterval: noop,
+    URLSearchParams, TextEncoder, TextDecoder,
     fetch: () => Promise.resolve({ ok: true, json: () => Promise.resolve({}), text: () => Promise.resolve('') }),
     addEventListener: noop, removeEventListener: noop,
     matchMedia: () => ({ matches: false, addEventListener: noop, addListener: noop }),
@@ -94,8 +106,16 @@ const ctx = {
 
 // supabase-js: app.js создаёт клиента на верхнем уровне. Прокси возвращает сам
 // себя на любое обращение, поэтому цепочки .from().select().eq() не падают.
+// then отдаёт ПУСТОЙ ответ, а не undefined: init() ждёт getSession() и запросы к
+// таблицам, и без обещания обрывался на первом же. Форма ответа как у supabase-js
+// ({ data, error }), внутри пусто — сети здесь нет и быть не должно.
+const EMPTY = { data: { session: null, user: null }, error: null, count: 0 };
 const chain = new Proxy(function () {}, {
-    get: (t, k) => (k === 'then' ? undefined : chain),
+    get: (t, k) => {
+        if (k === 'then') return (res, rej) => Promise.resolve(res ? res(EMPTY) : EMPTY);
+        if (k === 'catch' || k === 'finally') return () => chain;
+        return chain;
+    },
     apply: () => chain,
     construct: () => chain
 });
@@ -122,6 +142,25 @@ if (!app || typeof app.render !== 'function') {
     throw new Error('app.js не поднялся: объект app или его render недоступны');
 }
 app.__catalog = ctx.__catalog;
+
+// init() поднимает то, чего в самих файлах нет: связывает альтернативы Pro Aqua с
+// позициями Wavin (linkPprAlts), собирает ANALOG_MAP и прочие таблицы замен,
+// ставит сессию. Без него стенд считал полипропилен ВСЕГДА на Wavin, каким бы ни
+// был переключатель бренда, — то есть цены ППР на стенде относились к бренду,
+// который по умолчанию не выбран. Свой вывод init() глушим: он рассказывает про
+// сессию и фоновые очереди, к смете это отношения не имеет.
+app.__initError = null;
+// BENCH_NO_INIT=1 — прогнать без init(), чтобы увидеть, что именно он приносит.
+if (!process.env.BENCH_NO_INIT) (function () {
+    const _log = ctx.console;
+    ctx.console = { log: () => {}, warn: () => {}, error: () => {}, info: () => {}, debug: () => {} };
+    try { app.init(); } catch (e) { app.__initError = e.message; }
+    ctx.console = _log;
+})();
+if (app.__initError) {
+    console.warn('[стенд] init() не прошёл целиком: ' + app.__initError +
+        ' — часть таблиц замен могла не собраться');
+}
 // Доступ к странице-заглушке: нужен, чтобы прочитать, что код в неё записал.
 app.__doc = doc;
 

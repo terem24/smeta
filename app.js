@@ -40406,18 +40406,34 @@ const app = {
         // в общий выбор Pro Aqua / Wavin, где нержавейки нет.
         else if (this.isBoilerPipeRow(item)) {
             const _pprIsPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
-            // Цена в этой таблице — НЕ цена строки, а стоимость всего раздела
-            // «2. Обвязка котельной» в каждой системе. Замена системы меняет трубу,
-            // все фитинги, хомуты и изоляцию разом, и сравнивать их по цене одной
-            // трубы бессмысленно: она может быть дешевле, а обвязка целиком — дороже.
+            // В строке ДВА числа, и оборудования нет ни в одном.
+            //
+            // В столбце цены — сама обвязка: труба с фитингами. Раньше там стоял
+            // весь раздел 2, а в нём под двести тысяч котла, бойлера, насосов и
+            // гидрострелки — они одинаковы при любой трубе. На их фоне полипропилен
+            // за 4 тыс. против нержавейки за 21 выглядел как «дешевле на 6 %», и
+            // цене «259 000 ₽ за полипропилен» владелец справедливо не поверил.
+            //
+            // Под названием — разница с выбранной системой. Она СЧИТАЕТСЯ по итогу
+            // раздела, но оборудование в ней сокращается само: оно в обеих системах
+            // одно и то же. Остаётся ровно то, что меняется, — труба, фитинги,
+            // изоляция и крепёж. Одной ценой трубы этого не покажешь: у ППР труба
+            // толще, и трубка изоляции на неё дороже, так что итог меняется не
+            // ровно на разницу труб.
             const _totals = this.boilerSystemTotals();
-            const _cur = _totals[this.boilerPipeSystem()] || 0;
+            const _curT = (_totals[this.boilerPipeSystem()] || {}).total || 0;
             const _delta = (sys) => {
-                const d = (_totals[sys] || 0) - _cur;
-                if (!_cur || d === 0) return '';
+                const t = (_totals[sys] || {}).total || 0;
+                const pipe = (_totals[sys] || {}).pipe || 0;
+                const d = t - _curT;
+                const _note = `труба с фитингами ${pipe.toLocaleString('ru-RU')} ₽`;
+                if (!_curT || d === 0) {
+                    return `<div style="font-size:11px; margin-top:2px; color:var(--text-muted, #6B7280);">${_note}</div>`;
+                }
                 const sign = d > 0 ? '+' : '−';
-                return `<div style="font-weight:600; font-size:11px; margin-top:2px; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">`
-                    + `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ на всю обвязку котельной</div>`;
+                return `<div style="font-size:11px; margin-top:2px; color:var(--text-muted, #6B7280);">${_note}` +
+                    ` · <span style="font-weight:600; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">` +
+                    `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ с изоляцией и крепежом</span></div>`;
             };
             customAlts = [
                 { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
@@ -40436,7 +40452,10 @@ const app = {
                 ...(this.isPro()
                     ? [{ id: 'bp_stable_r', sys: 'stable_r', name: 'Стабильная PE-Xa/Al/PE-RT, аксиальные фитинги', brand: 'ROMMER', imgId: 'RPS-0001-003247' }]
                     : [])
-            ].map(a => ({ ...a, price: _totals[a.sys] || 0, name: a.name + _delta(a.sys) }));
+            // Подпись отдельным полем, а не хвостом названия: значок «Выбран»
+            // рисуется сразу после имени, и подпись-блок утащила бы его на
+            // следующую строку.
+            ].map(a => ({ ...a, price: (_totals[a.sys] || {}).pipe || 0, note: _delta(a.sys) }));
         }
         else if (item.originalId && this.isPprArticle(item.originalId)) {
             customAlts = [
@@ -41856,7 +41875,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}${badgeHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}${badgeHtml}${alt.note || ''}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -52319,13 +52338,24 @@ const app = {
     },
 
     /**
-     * Во что обойдётся раздел «2. Обвязка котельной» в каждой из четырёх систем.
+     * Во что обойдётся раздел «2. Обвязка котельной» в каждой из систем.
      *
-     * Замена системы — не замена одной строки: меняются труба, все фитинги, хомуты
-     * и теплоизоляция разом, и по цене одной трубы судить о выборе нельзя. Поэтому
-     * смета пересчитывается целиком под каждую систему и суммируется весь раздел 2.
-     * Оборудование (котлы, баки, насосы) в нём одинаково при любой системе, так что
-     * разница между строчками — это ровно разница обвязки.
+     * Возвращает по системе ДВА числа: `pipe` — труба с фитингами, `total` — весь
+     * раздел 2. Одного мало ни того, ни другого.
+     *
+     * Только `total` показывать нельзя: в нём 176 тысяч котла, бойлера, насосов и
+     * гидрострелки — они одинаковы при любой трубе и топят разницу. Полипропилен
+     * на 200 м² стоит 4 132 ₽ против 21 490 у нержавейки — впятеро дешевле, — но в
+     * итогах раздела это выглядит как «−6 %», и владелец справедливо не поверил
+     * такой цене за полипропилен.
+     *
+     * Только `pipe` тоже мало: замена системы тянет за собой изоляцию и крепёж
+     * (у ППР труба толще, трубка дороже), и на итог она влияет не ровно на разницу
+     * труб. Поэтому в таблице замены — цена обвязки, а рядом дельта на весь раздел.
+     *
+     * Что считать обвязкой, решает isBoilerPipeRow — та же проверка, по которой
+     * строка получает кнопку замены. Изоляция и крепёж в неё не входят намеренно:
+     * это не выбор системы, а следствие диаметра.
      *
      * Состояние снимается и возвращается на место, страница не трогается
      * (render(true) считает без отрисовки). Последним прогоном восстанавливаем
@@ -52333,17 +52363,21 @@ const app = {
      */
     boilerSystemTotals: function () {
         const snapshot = JSON.parse(JSON.stringify(this.state));
-        const sumSection2 = () => (this.currentEquipmentList || []).reduce((acc, it) => {
-            return String(it.group || '').indexOf('2.') === 0
-                ? acc + (it.price || 0) * (it.q || 1) : acc;
-        }, 0);
+        const sums = () => (this.currentEquipmentList || []).reduce((acc, it) => {
+            if (String(it.group || '').indexOf('2.') !== 0) return acc;
+            const v = (it.price || 0) * (it.q || 1);
+            acc.total += v;
+            if (this.isBoilerPipeRow(it)) acc.pipe += v;
+            return acc;
+        }, { total: 0, pipe: 0 });
         const out = {};
         try {
             this.BOILER_PIPE_SYSTEMS.forEach(sys => {
                 this.state.boilerPipeSystem = sys;
                 this._boilerRangeCache = null;   // ряд зависит от системы и бренда ППР
                 this.render(true);
-                out[sys] = Math.round(sumSection2());
+                const r = sums();
+                out[sys] = { total: Math.round(r.total), pipe: Math.round(r.pipe) };
             });
         } finally {
             // Прогон мог тронуть не только boilerPipeSystem (render кое-где

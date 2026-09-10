@@ -90,12 +90,15 @@ function systems() {
     console.log('\n=== ЦЕНА РАЗДЕЛА 2 В КАЖДОЙ СИСТЕМЕ ОБВЯЗКИ (объект 200 м²) ===');
     app.__setup({ area: 200, res: 5 });
     const t = app.boilerSystemTotals();
-    const cur = t[app.boilerPipeSystem()] || 0;
+    const cur = (t[app.boilerPipeSystem()] || {}).total || 0;
+    console.log('  система   труба+фитинги   весь раздел 2   разница');
     Object.entries(t).forEach(([k, v]) => {
-        const d = v - cur;
-        console.log('  ' + padR(k, 8) + pad(v, 8) + ' Р   ' +
+        const d = v.total - cur;
+        console.log('  ' + padR(k, 10) + pad(v.pipe, 8) + ' Р' + pad(v.total, 14) + ' Р   ' +
             (d === 0 ? '(текущая)' : (d > 0 ? '+' : '') + d + ' Р'));
     });
+    console.log('\n  Оборудование (котёл, бойлер, насосы, гидрострелка) во всех системах');
+    console.log('  одно и то же — в разнице оно сокращается, в итоге раздела топит её.');
 }
 
 function pumps() {
