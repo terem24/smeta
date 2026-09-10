@@ -1817,26 +1817,26 @@ const catalog = {
         { id: "SCN-1100-0830120", name: "Конвектор SCN (без вентилятора) 80×300, 1200мм", len: 1.2, height: 80, width: 300, power70: 630, power50: 407, price: 35887, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SCN-1100-0830140", name: "Конвектор SCN (без вентилятора) 80×300, 1400мм", len: 1.4, height: 80, width: 300, power70: 768, power50: 496, price: 41047, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SCN-1100-0830160", name: "Конвектор SCN (без вентилятора) 80×300, 1600мм", len: 1.6, height: 80, width: 300, power70: 906, power50: 585, price: 46207, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SCN-1100-0830180", name: "Конвектор SCN (без вентилятора) 80×300, 1800мм", len: 1.8, height: 80, width: 300, power70: 1043, power50: 673, price: 51367, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830200", name: "Конвектор SCN (без вентилятора) 80×300, 2000мм", len: 2, height: 80, width: 300, power70: 1181, power50: 763, price: 56527, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830220", name: "Конвектор SCN (без вентилятора) 80×300, 2200мм", len: 2.2, height: 80, width: 300, power70: 1319, power50: 852, price: 61687, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830240", name: "Конвектор SCN (без вентилятора) 80×300, 2400мм", len: 2.4, height: 80, width: 300, power70: 1456, power50: 940, price: 74274, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830260", name: "Конвектор SCN (без вентилятора) 80×300, 2600мм", len: 2.6, height: 80, width: 300, power70: 1594, power50: 1029, price: 72006, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830280", name: "Конвектор SCN (без вентилятора) 80×300, 2800мм", len: 2.8, height: 80, width: 300, power70: 1732, power50: 1118, price: 77165, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCN-1100-0830300", name: "Конвектор SCN (без вентилятора) 80×300, 3000мм", len: 3, height: 80, width: 300, power70: 1869, power50: 1207, price: 82326, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
+        { id: "SCN-1100-0830180", name: "Конвектор SCN (без вентилятора) 80×300, 1800мм", len: 1.8, height: 80, width: 300, power70: 1043, power50: 673, price: 51367, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830200", name: "Конвектор SCN (без вентилятора) 80×300, 2000мм", len: 2, height: 80, width: 300, power70: 1181, power50: 763, price: 56527, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830220", name: "Конвектор SCN (без вентилятора) 80×300, 2200мм", len: 2.2, height: 80, width: 300, power70: 1319, power50: 852, price: 61687, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830240", name: "Конвектор SCN (без вентилятора) 80×300, 2400мм", len: 2.4, height: 80, width: 300, power70: 1456, power50: 940, price: 66846, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830260", name: "Конвектор SCN (без вентилятора) 80×300, 2600мм", len: 2.6, height: 80, width: 300, power70: 1594, power50: 1029, price: 72006, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830280", name: "Конвектор SCN (без вентилятора) 80×300, 2800мм", len: 2.8, height: 80, width: 300, power70: 1732, power50: 1118, price: 77165, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCN-1100-0830300", name: "Конвектор SCN (без вентилятора) 80×300, 3000мм", len: 3, height: 80, width: 300, power70: 1869, power50: 1207, price: 82326, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
         // Высота 110мм, ширина 240мм (SCN-1100-1124***)
-        { id: "SCN-1100-1124080", name: "Конвектор SCN (без вентилятора) 110×240, 800мм", len: 0.8, height: 110, width: 240, power70: 277, power50: 179, price: 22945, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124100", name: "Конвектор SCN (без вентилятора) 110×240, 1000мм", len: 1, height: 110, width: 240, power70: 455, power50: 294, price: 27253, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124120", name: "Конвектор SCN (без вентилятора) 110×240, 1200мм", len: 1.2, height: 110, width: 240, power70: 587, power50: 379, price: 31562, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124140", name: "Конвектор SCN (без вентилятора) 110×240, 1400мм", len: 1.4, height: 110, width: 240, power70: 718, power50: 464, price: 35869, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124160", name: "Конвектор SCN (без вентилятора) 110×240, 1600мм", len: 1.6, height: 110, width: 240, power70: 849, power50: 548, price: 40177, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124180", name: "Конвектор SCN (без вентилятора) 110×240, 1800мм", len: 1.8, height: 110, width: 240, power70: 981, power50: 633, price: 44485, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124200", name: "Конвектор SCN (без вентилятора) 110×240, 2000мм", len: 2, height: 110, width: 240, power70: 1112, power50: 718, price: 48797, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124220", name: "Конвектор SCN (без вентилятора) 110×240, 2200мм", len: 2.2, height: 110, width: 240, power70: 1244, power50: 803, price: 53109, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124240", name: "Конвектор SCN (без вентилятора) 110×240, 2400мм", len: 2.4, height: 110, width: 240, power70: 1375, power50: 888, price: 57417, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124260", name: "Конвектор SCN (без вентилятора) 110×240, 2600мм", len: 2.6, height: 110, width: 240, power70: 1506, power50: 972, price: 61725, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124280", name: "Конвектор SCN (без вентилятора) 110×240, 2800мм", len: 2.8, height: 110, width: 240, power70: 1638, power50: 1058, price: 66033, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCN-1100-1124300", name: "Конвектор SCN (без вентилятора) 110×240, 3000мм", len: 3, height: 110, width: 240, power70: 1769, power50: 1142, price: 70341, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-08-10" }
+        { id: "SCN-1100-1124080", name: "Конвектор SCN (без вентилятора) 110×240, 800мм", len: 0.8, height: 110, width: 240, power70: 277, power50: 179, price: 22945, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124100", name: "Конвектор SCN (без вентилятора) 110×240, 1000мм", len: 1, height: 110, width: 240, power70: 455, power50: 294, price: 27253, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124120", name: "Конвектор SCN (без вентилятора) 110×240, 1200мм", len: 1.2, height: 110, width: 240, power70: 587, power50: 379, price: 31562, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124140", name: "Конвектор SCN (без вентилятора) 110×240, 1400мм", len: 1.4, height: 110, width: 240, power70: 718, power50: 464, price: 35869, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124160", name: "Конвектор SCN (без вентилятора) 110×240, 1600мм", len: 1.6, height: 110, width: 240, power70: 849, power50: 548, price: 40177, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124180", name: "Конвектор SCN (без вентилятора) 110×240, 1800мм", len: 1.8, height: 110, width: 240, power70: 981, power50: 633, price: 44485, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124200", name: "Конвектор SCN (без вентилятора) 110×240, 2000мм", len: 2, height: 110, width: 240, power70: 1112, power50: 718, price: 48797, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124220", name: "Конвектор SCN (без вентилятора) 110×240, 2200мм", len: 2.2, height: 110, width: 240, power70: 1244, power50: 803, price: 53109, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124240", name: "Конвектор SCN (без вентилятора) 110×240, 2400мм", len: 2.4, height: 110, width: 240, power70: 1375, power50: 888, price: 57417, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124260", name: "Конвектор SCN (без вентилятора) 110×240, 2600мм", len: 2.6, height: 110, width: 240, power70: 1506, power50: 972, price: 61725, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124280", name: "Конвектор SCN (без вентилятора) 110×240, 2800мм", len: 2.8, height: 110, width: 240, power70: 1638, power50: 1058, price: 66033, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCN-1100-1124300", name: "Конвектор SCN (без вентилятора) 110×240, 3000мм", len: 3, height: 110, width: 240, power70: 1769, power50: 1142, price: 70341, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     conv_valves: [
         { id: "SVT-0001-000015", name: "Клапан термостатический, прямой 1/2\"", price: 1180, brand: "STOUT", unit: "шт", rommer: { id: "RVT-0001-100015", name: "Клапан термостатический прямой 1/2\"", price: 776, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
@@ -1851,32 +1851,32 @@ const catalog = {
         { id: "SVL-1156-000015", name: "Клапан запорно-балансировочный угловой 1/2\"", price: 597, brand: "STOUT", unit: "шт", rommer: { id: "RVL-0002-100015", name: "Клапан запорно-балансировочный прямой/угловой 1/2\"", price: 387, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" }
     ],
     conv_parts: [
-        { id: "SFA-0020-000016", name: "Монтажная гильза 16", price: 109, brand: "STOUT", unit: "шт", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 70, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 77, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SFA-0020-000016", name: "Монтажная гильза 16", price: 109, brand: "STOUT", unit: "шт", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-08-19" },
+        { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFA-0001-001612", name: "Переходник 16xR 1/2\" НР", price: 289, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-19" },
         { id: "703102", name: "Настенный регулятор Vartronic, цвет белый", price: 10942, brand: "Varmann", unit: "шт", availability: "in_stock", price_date: "2026-08-20" }
     ],
     rad_tube_set: [
         { id: "SFA-0025-001650", name: "Трубка Г-образная 16/500 мм (для радиат.)", price: 2863, brand: "STOUT", rommer: { id: "RFA-0025-001650", name: "Трубка Г-образная для подключения радиатора 16/500", price: 1160, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SFA-0000-162025", name: "Фиксирующая скоба для трубок", price: 449, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFA-0020-000016", name: "Гильза монтажная 16 (аксиальная)", price: 109, brand: "STOUT", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 70, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SFC-0027-001520", name: "Фитинг компрессионный 15x3/4\" (для трубки)", price: 566, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SFA-0000-162025", name: "Фиксирующая скоба для трубок", price: 503, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0020-000016", name: "Гильза монтажная 16 (аксиальная)", price: 109, brand: "STOUT", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-08-19" },
+        { id: "SFC-0027-001520", name: "Фитинг компрессионный 15x3/4\" (для трубки)", price: 611, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Фиксаторы поворота типа «башмак» — альтернатива Г-образным трубкам при подключении
     // к нижним выводам радиатора. Держат ту же трубу 16, что идёт по полу, поэтому ни
     // гильзы, ни компрессионного фитинга под отдельную трубку им не требуется.
     // В пакете — комплект на ОДИН радиатор (по 2 шт. каждой детали, на подачу и обратку).
     rad_shoe_set: [
-        { id: "SFA-0038-100016", name: "Комплект фиксаторов поворота \"башмак\" 16 мм (базовый)", price: 201, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFA-0038-300016", name: "Комплект фиксаторов поворота \"башмак\" 16 мм (без подпятника)", price: 189, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFA-0038-200016", name: "Комплект защитных кожухов 1/2 на трубу 16 мм (белые)", price: 178, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SFA-0038-100016", name: "Комплект фиксаторов поворота \"башмак\" 16 мм (базовый)", price: 201, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0038-300016", name: "Комплект фиксаторов поворота \"башмак\" 16 мм (без подпятника)", price: 189, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0038-200016", name: "Комплект защитных кожухов 1/2 на трубу 16 мм (белые)", price: 178, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Ряд заведён целиком: в сметах встречаются и «втулка защитная 16/20 красная», и
     // «защитная втулка 20 чёрная». Цветные исполнения на 20 и на 16-20 в прайсе есть
     // (SFA-0035-100020, -200020, -181620, -281620), цена у всех трёх цветов одна.
     protective_sleeves: [
-        { id: "SFA-0035-200016", name: "Защитная втулка красная (для трубы 16 мм)", price: 56, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFA-0035-100016", name: "Защитная втулка синяя (для трубы 16 мм)", price: 56, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SFA-0035-200016", name: "Защитная втулка красная (для трубы 16 мм)", price: 56, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0035-100016", name: "Защитная втулка синяя (для трубы 16 мм)", price: 56, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFA-0035-200020", name: "Защитная втулка красная (для трубы 20 мм)", price: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
         { id: "SFA-0035-100020", name: "Защитная втулка синяя (для трубы 20 мм)", price: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
         { id: "SFA-0035-281620", name: "Защитная втулка красная (для трубы 16-20 мм)", price: 35, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
@@ -1886,9 +1886,9 @@ const catalog = {
     // Цвет у втулки только маркировочный (красная — подача, синяя — обратка), поэтому
     // чёрная одинаково закрывает оба вывода.
     protective_sleeves_black: [
-        { id: "SFA-0035-300016", name: "Защитная втулка чёрная (для трубы 16 мм)", price: 56, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFA-0035-300020", name: "Защитная втулка чёрная (для трубы 20 мм)", price: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFA-0035-381620", name: "Защитная втулка чёрная (для трубы 16-20 мм)", price: 35, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SFA-0035-300016", name: "Защитная втулка чёрная (для трубы 16 мм)", price: 56, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0035-300020", name: "Защитная втулка чёрная (для трубы 20 мм)", price: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0035-381620", name: "Защитная втулка чёрная (для трубы 16-20 мм)", price: 35, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     label_kits: [
         { id: "SFA-0038-100000", name: "Комплект маркировочных наклеек \"ОТОПЛЕНИЕ\"", price: 872, brand: "STOUT", availability: "in_stock", price_date: "2026-08-15" },
@@ -1897,41 +1897,41 @@ const catalog = {
     heads: [
         { id: "SHT-0001-003015", name: "Головка термостатическая (Газо-жидкостная)", price: 1316, type: "gas", desc: "Стандартное решение. Быстрая реакция.", rommer: { id: "RHT-0001-103015", name: "Головка термостатическая жидкостная", price: 557, brand: "ROMMER", type: "liquid", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SHT-0002-003015", name: "Головка термостатическая (Жидкостная)", price: 1334, type: "liquid", desc: "Классическая надежная модель.", rommer: { id: "RHT-0001-103015", name: "Головка термостатическая жидкостная", price: 557, brand: "ROMMER", type: "liquid", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "STE-2070-703011", name: "Умная термостатическая головка Zigbee", price: 3300, type: "smart", desc: "Управление со смартфона. Требует шлюз.", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STE-2070-703011", name: "Умная термостатическая головка Zigbee", price: 3300, type: "smart", desc: "Управление со смартфона. Требует шлюз.", availability: "in_stock", price_date: "2026-09-10" }
     ],
-    smart_hub: { id: "STE-2071-804010", name: "Беспроводной шлюз Zigbee", price: 4896, availability: "in_stock", price_date: "2026-08-10" },
+    smart_hub: { id: "STE-2071-804010", name: "Беспроводной шлюз Zigbee", price: 4896, availability: "in_stock", price_date: "2026-09-10" },
     ufh_mech: [
-        { id: "STE-2001-130210", name: "Термостат универсальный, белый", price: 2142.00, desc: "Механический термостат (Белый).", ctrlType: "mech", wifi: false, color: "white", current: 3, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-2001-130220", name: "Термостат универсальный, черный", price: 2249, desc: "Механический термостат (Черный).", ctrlType: "mech", wifi: false, color: "black", current: 3, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STE-2001-130210", name: "Термостат универсальный, белый", price: 2356, desc: "Механический термостат (Белый).", ctrlType: "mech", wifi: false, color: "white", current: 3, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-2001-130220", name: "Термостат универсальный, черный", price: 2474, desc: "Механический термостат (Черный).", ctrlType: "mech", wifi: false, color: "black", current: 3, availability: "in_stock", price_date: "2026-09-10" }
     ],
     ufh_electro: [
-        { id: "STE-2002-331212", name: "Терморегулятор универсальный, белый", price: 11603, desc: "Электронный термостат с дисплеем (Белый).", ctrlType: "touch", wifi: true, color: "white", current: 3, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-2002-331222", name: "Терморегулятор универсальный, черный", price: 12067, desc: "Электронный термостат с дисплеем (Черный).", ctrlType: "touch", wifi: true, color: "black", current: 3, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STE-2002-331212", name: "Терморегулятор универсальный, белый", price: 12763, desc: "Электронный термостат с дисплеем (Белый).", ctrlType: "touch", wifi: true, color: "white", current: 3, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-2002-331222", name: "Терморегулятор универсальный, черный", price: 13274, desc: "Электронный термостат с дисплеем (Черный).", ctrlType: "touch", wifi: true, color: "black", current: 3, availability: "in_stock", price_date: "2026-09-10" }
     ],
     thermostats_stout: [
-        { id: "STE-2001-110710", name: "Термостат тёплого пола 16А, белый", price: 2356, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 16, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-2001-110720", name: "Термостат тёплого пола 16А, чёрный", price: 2468, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "black", current: 16, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-2002-311722", name: "Термостат, сенсорный экран, чёрный", price: 12531, brand: "STOUT", unit: "шт", ctrlType: "touch", wifi: true, color: "black", current: 16, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-2002-311712", name: "Термостат, сенсорный экран, белый", price: 12067, brand: "STOUT", unit: "шт", ctrlType: "touch", wifi: true, color: "white", current: 16, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-3001-130210", name: "Термостат тёплого пола 3А, белый", price: 1010, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 3, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-3001-110710", name: "Термостат тёплого пола 16А, белый", price: 1112, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 16, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-3002-331212", name: "Термостат, белый", price: 4998.00, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "white", current: 3, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-3002-311712", name: "Термостат, белый", price: 5202.00, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "white", current: 16, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-3002-331222", name: "Термостат, чёрный", price: 5202.00, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "black", current: 3, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-3002-311722", name: "Термостат, чёрный", price: 5406.00, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "black", current: 16, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "STE-3003-231232", name: "Термостат, с кнопками, серый", price: 5253.00, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "gray", current: 3, availability: "on_order", price_date: "2026-08-10" },
-        { id: "STE-3003-211732", name: "Термостат, с кнопками, серый", price: 5457.00, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "gray", current: 16, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "STE-2001-110710", name: "Термостат тёплого пола 16А, белый", price: 2592, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 16, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-2001-110720", name: "Термостат тёплого пола 16А, чёрный", price: 2715, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "black", current: 16, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-2002-311722", name: "Термостат, сенсорный экран, чёрный", price: 13784, brand: "STOUT", unit: "шт", ctrlType: "touch", wifi: true, color: "black", current: 16, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-2002-311712", name: "Термостат, сенсорный экран, белый", price: 13274, brand: "STOUT", unit: "шт", ctrlType: "touch", wifi: true, color: "white", current: 16, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3001-130210", name: "Термостат тёплого пола 3А, белый", price: 1111, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 3, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3001-110710", name: "Термостат тёплого пола 16А, белый", price: 1223, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 16, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3002-331212", name: "Термостат, белый", price: 5498, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "white", current: 3, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3002-311712", name: "Термостат, белый", price: 5722, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "white", current: 16, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3002-331222", name: "Термостат, чёрный", price: 5722, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "black", current: 3, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3002-311722", name: "Термостат, чёрный", price: 5947, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "black", current: 16, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3003-231232", name: "Термостат, с кнопками, серый", price: 3500, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "gray", current: 3, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "STE-3003-211732", name: "Термостат, с кнопками, серый", price: 6003, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: true, color: "gray", current: 16, availability: "in_stock", price_date: "2026-09-10" }
     ],
-    actuators: { id: "STE-0010-230001", name: "Сервопривод компактный 230В (NC)", price: 2458, type: "nc", voltage: 230, rommer: { id: "RTE-0010-230001", name: "Сервопривод термоэлектрический (NC) 230В", price: 760, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }, availability: "in_stock", price_date: "2026-08-19" },
+    actuators: { id: "STE-0010-230001", name: "Сервопривод компактный 230В (NC)", price: 2458, type: "nc", voltage: 230, rommer: { id: "RTE-0010-230001", name: "Сервопривод термоэлектрический (NC) 230В", price: 790, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-08-19" },
     actuators_rommer: [
-        { id: "RTE-0010-024001", name: "Сервопривод компактный НЗ, 24В", price: 911, brand: "ROMMER", unit: "шт", type: "nc", voltage: 24, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RTE-0010-024002", name: "Сервопривод компактный НО, 24В", price: 911, brand: "ROMMER", unit: "шт", type: "no", voltage: 24, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RTE-0010-230001", name: "Сервопривод компактный НЗ, 230В", price: 718, brand: "ROMMER", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RTE-0010-230002", name: "Сервопривод компактный НО, 230В", price: 718, brand: "ROMMER", unit: "шт", type: "no", voltage: 230, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RTE-0020-024001", name: "Сервопривод с поворотным фиксатором штока НЗ, 24В", price: 1101, brand: "ROMMER", unit: "шт", type: "nc", voltage: 24, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RTE-0020-230001", name: "Сервопривод с поворотным фиксатором штока НЗ, 230В", price: 1057, brand: "ROMMER", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "RTE-0010-024001", name: "Сервопривод компактный НЗ, 24В", price: 1002, brand: "ROMMER", unit: "шт", type: "nc", voltage: 24, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RTE-0010-024002", name: "Сервопривод компактный НО, 24В", price: 1002, brand: "ROMMER", unit: "шт", type: "no", voltage: 24, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RTE-0010-230001", name: "Сервопривод компактный НЗ, 230В", price: 790, brand: "ROMMER", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RTE-0010-230002", name: "Сервопривод компактный НО, 230В", price: 790, brand: "ROMMER", unit: "шт", type: "no", voltage: 230, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RTE-0020-024001", name: "Сервопривод с поворотным фиксатором штока НЗ, 24В", price: 1211, brand: "ROMMER", unit: "шт", type: "nc", voltage: 24, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RTE-0020-230001", name: "Сервопривод с поворотным фиксатором штока НЗ, 230В", price: 1163, brand: "ROMMER", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-09-10" }
     ],
-    wiring_center: { id: "STE-3050-650522", name: "Проводной контроллер", price: 7446, availability: "in_stock", price_date: "2026-08-10" },
+    wiring_center: { id: "STE-3050-650522", name: "Проводной контроллер", price: 8191, availability: "in_stock", price_date: "2026-09-10" },
     // Кабель к автоматике тёплого пола. В прайсе STOUT его нет — это
     // электромонтажный материал, цены ориентировочные и подлежат уточнению
     // у поставщика. Отдельная позиция на каждое назначение: одна и та же
@@ -1967,12 +1967,12 @@ const catalog = {
         { id: "CBL-MKESH-2X05", name: "Кабель МКЭШ 2×0,5 экран. — сухой контакт на контроллер", price: 75, unit: "м", brand: "—", availability: "in_stock", price_date: "2026-08-09" }
     ],
     h_valves: [
-        { id: "SVH-0004-000020", name: "Узел нижн. подкл. (Угловой)", price: 1161, type: "angled", desc: "Трубы выходят из стены.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVH-0002-000020", name: "Узел нижн. подкл. (Прямой)", price: 1141, type: "straight", desc: "Трубы выходят из пола.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVH-0001-000020", name: "Узел нижн. подкл. однотрубный (Прямой)", price: 2028, type: "straight", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVH-0003-000020", name: "Узел нижн. подкл. однотрубный (Угловой)", price: 1896, type: "angled", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVH-0005-000020", name: "Узел нижн. подкл. раздельный (Прямой)", price: 767, type: "straight", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVH-0006-000020", name: "Узел нижн. подкл. раздельный (Угловой)", price: 747, type: "angled", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SVH-0004-000020", name: "Узел нижн. подкл. (Угловой)", price: 1254, type: "angled", desc: "Трубы выходят из стены.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVH-0002-000020", name: "Узел нижн. подкл. (Прямой)", price: 1233, type: "straight", desc: "Трубы выходят из пола.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVH-0001-000020", name: "Узел нижн. подкл. однотрубный (Прямой)", price: 2191, type: "straight", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVH-0003-000020", name: "Узел нижн. подкл. однотрубный (Угловой)", price: 2048, type: "angled", desc: "Для однотрубной системы.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVH-0005-000020", name: "Узел нижн. подкл. раздельный (Прямой)", price: 829, type: "straight", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVH-0006-000020", name: "Узел нижн. подкл. раздельный (Угловой)", price: 807, type: "angled", desc: "Раздельный монтаж.", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Радиаторный коллектор — серия SMS-0912 «с запорными клапанами, полностью укомплектован»:
     // подающая гребёнка с запорными клапанами, обратная с отсечными клапанами под
@@ -1988,36 +1988,36 @@ const catalog = {
     // connType: 'ek' — выход под евроконус, 'compression' — под обжим.
     manifolds_rad: [
         { id: "SMS-0912-000002", loops: 2, inSize: "1", outSize: "3/4", connType: "ek", price: 18513, name: "Коллектор радиаторный в сборе 2 вых.", rommer: { id: "RMS-3210-000002", name: "Коллектор радиаторный в сборе 1\"x2 вых.", price: 9358, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SMS-0912-000003", loops: 3, inSize: "1", outSize: "3/4", connType: "ek", price: 19707, name: "Коллектор радиаторный в сборе 3 вых.", rommer: { id: "RMS-3210-000003", name: "Коллектор радиаторный в сборе 1\"x3 вых.", price: 10789, brand: "ROMMER",
+        { id: "SMS-0912-000003", loops: 3, inSize: "1", outSize: "3/4", connType: "ek", price: 20693, name: "Коллектор радиаторный в сборе 3 вых.", rommer: { id: "RMS-3210-000003", name: "Коллектор радиаторный в сборе 1\"x3 вых.", price: 10789, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000004", loops: 4, inSize: "1", outSize: "3/4", connType: "ek", price: 21976, name: "Коллектор радиаторный в сборе 4 вых.", rommer: { id: "RMS-3210-000004", name: "Коллектор радиаторный в сборе 1\"x4 вых.", price: 12226, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000004", loops: 4, inSize: "1", outSize: "3/4", connType: "ek", price: 23075, name: "Коллектор радиаторный в сборе 4 вых.", rommer: { id: "RMS-3210-000004", name: "Коллектор радиаторный в сборе 1\"x4 вых.", price: 12226, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000005", loops: 5, inSize: "1", outSize: "3/4", connType: "ek", price: 23649, name: "Коллектор радиаторный в сборе 5 вых.", rommer: { id: "RMS-3210-000005", name: "Коллектор радиаторный в сборе 1\"x5 вых.", price: 13657, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000005", loops: 5, inSize: "1", outSize: "3/4", connType: "ek", price: 24831, name: "Коллектор радиаторный в сборе 5 вых.", rommer: { id: "RMS-3210-000005", name: "Коллектор радиаторный в сборе 1\"x5 вых.", price: 13657, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000006", loops: 6, inSize: "1", outSize: "3/4", connType: "ek", price: 26394, name: "Коллектор радиаторный в сборе 6 вых.", rommer: { id: "RMS-3210-000006", name: "Коллектор радиаторный в сборе 1\"x6 вых.", price: 15089, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000006", loops: 6, inSize: "1", outSize: "3/4", connType: "ek", price: 27714, name: "Коллектор радиаторный в сборе 6 вых.", rommer: { id: "RMS-3210-000006", name: "Коллектор радиаторный в сборе 1\"x6 вых.", price: 15089, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000007", loops: 7, inSize: "1", outSize: "3/4", connType: "ek", price: 29740, name: "Коллектор радиаторный в сборе 7 вых.", rommer: { id: "RMS-3210-000007", name: "Коллектор радиаторный в сборе 1\"x7 вых.", price: 16547, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000007", loops: 7, inSize: "1", outSize: "3/4", connType: "ek", price: 31227, name: "Коллектор радиаторный в сборе 7 вых.", rommer: { id: "RMS-3210-000007", name: "Коллектор радиаторный в сборе 1\"x7 вых.", price: 16547, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000008", loops: 8, inSize: "1", outSize: "3/4", connType: "ek", price: 33443, name: "Коллектор радиаторный в сборе 8 вых.", rommer: { id: "RMS-3210-000008", name: "Коллектор радиаторный в сборе 1\"x8 вых.", price: 17878, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000008", loops: 8, inSize: "1", outSize: "3/4", connType: "ek", price: 35115, name: "Коллектор радиаторный в сборе 8 вых.", rommer: { id: "RMS-3210-000008", name: "Коллектор радиаторный в сборе 1\"x8 вых.", price: 17878, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000009", loops: 9, inSize: "1", outSize: "3/4", connType: "ek", price: 36069, name: "Коллектор радиаторный в сборе 9 вых.", rommer: { id: "RMS-3210-000009", name: "Коллектор радиаторный в сборе 1\"x9 вых.", price: 19241, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000009", loops: 9, inSize: "1", outSize: "3/4", connType: "ek", price: 37873, name: "Коллектор радиаторный в сборе 9 вых.", rommer: { id: "RMS-3210-000009", name: "Коллектор радиаторный в сборе 1\"x9 вых.", price: 19241, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000010", loops: 10, inSize: "1", outSize: "3/4", connType: "ek", price: 38100, name: "Коллектор радиаторный в сборе 10 вых.", rommer: { id: "RMS-3210-000010", name: "Коллектор радиаторный в сборе 1\"x10 вых.", price: 20572, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000010", loops: 10, inSize: "1", outSize: "3/4", connType: "ek", price: 40005, name: "Коллектор радиаторный в сборе 10 вых.", rommer: { id: "RMS-3210-000010", name: "Коллектор радиаторный в сборе 1\"x10 вых.", price: 20572, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000011", loops: 11, inSize: "1", outSize: "3/4", connType: "ek", price: 40130, name: "Коллектор радиаторный в сборе 11 вых.", rommer: { id: "RMS-3210-000011", name: "Коллектор радиаторный в сборе 1\"x11 вых.", price: 21965, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000011", loops: 11, inSize: "1", outSize: "3/4", connType: "ek", price: 42136, name: "Коллектор радиаторный в сборе 11 вых.", rommer: { id: "RMS-3210-000011", name: "Коллектор радиаторный в сборе 1\"x11 вых.", price: 21965, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0912-000012", loops: 12, inSize: "1", outSize: "3/4", connType: "ek", price: 44193, name: "Коллектор радиаторный в сборе 12 вых.", rommer: { id: "RMS-3210-000012", name: "Коллектор радиаторный в сборе 1\"x12 вых.", price: 23296, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0912-000012", loops: 12, inSize: "1", outSize: "3/4", connType: "ek", price: 46403, name: "Коллектор радиаторный в сборе 12 вых.", rommer: { id: "RMS-3210-000012", name: "Коллектор радиаторный в сборе 1\"x12 вых.", price: 23296, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SMS-0912-000013", loops: 13, inSize: "1", outSize: "3/4", connType: "ek", price: 47058, name: "Коллектор радиаторный в сборе 13 вых.", availability: "in_stock", price_date: "2026-08-10" }
     ],
     manifolds_chrome_blocks: [
@@ -2025,45 +2025,45 @@ const catalog = {
         { id: "SMB-6850-013403", name: "Коллекторный блок 1\" x 3 вых", loops: 3, inSize: "1", outSize: "3/4", connType: "ek", price: 4169, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RMS-1001-030001", name: "Комплект прямых шаровых кранов с термометрами 1”", price: 6212, brand: "ROMMER", availability: "in_stock", price_date: "2026-06-27" } },
         { id: "SMB-6850-013404", name: "Коллекторный блок 1\" x 4 вых", loops: 4, inSize: "1", outSize: "3/4", connType: "ek", price: 5511, brand: "STOUT", availability: "in_stock", price_date: "2026-09-09", rommer: { id: "RMS-1001-030001", name: "Комплект прямых шаровых кранов с термометрами 1”", price: 6212, brand: "ROMMER", availability: "in_stock", price_date: "2026-06-27" } }
     ],
-    manifold_brackets: { id: "SMB-0002-000002", name: "Кронштейны для коллекторов (пара)", price: 797, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
+    manifold_brackets: { id: "SMB-0002-000002", name: "Кронштейны для коллекторов (пара)", price: 797, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
     // === КОЛЛЕКТОРНЫЕ ШКАФЫ ===
     // outs — паспортное число выходов, inner — ВНУТРЕННЯЯ ширина корпуса (мм).
     // Подбираем по inner, а не по outs: сноска в паспорте STOUT SCC (ред. 2026) гласит,
     // что outs указано для коллектора БЕЗ запорной и сливной гарнитуры. Комплектный блок
     // на 10 выходов длиной 712 мм в ШРН-3 (внутри 670 мм) не входит — см. app.pickCabinet().
     cabinets_shrn: [
-        { id: "SCC-0001-000013", name: "Шкаф распределительный наружный ШРН-0 (1–3 вых.)", sizeName: "ШРН-0", outs: [1, 3], inner: 330, innerH: 560, innerD: 120, price: 3234, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0001-000013", name: "Шкаф распределительный наружный ШРН-0 (1–3 вых.)", price: 2467, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0001-000045", name: "Шкаф распределительный наружный ШРН-1 (4–5 вых.)", sizeName: "ШРН-1", outs: [4, 5], inner: 420, innerH: 560, innerD: 120, price: 3684, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0001-000045", name: "Шкаф распределительный наружный ШРН-1 (4–5 вых.)", price: 2811, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0001-000067", name: "Шкаф распределительный наружный ШРН-2 (6–7 вых.)", sizeName: "ШРН-2", outs: [6, 7], inner: 520, innerH: 560, innerD: 120, price: 3939, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0001-000067", name: "Шкаф распределительный наружный ШРН-2 (6–7 вых.)", price: 3006, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0001-000810", name: "Шкаф распределительный наружный ШРН-3 (8–10 вых.)", sizeName: "ШРН-3", outs: [8, 10], inner: 670, innerH: 560, innerD: 120, price: 4605, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0001-000810", name: "Шкаф распределительный наружный ШРН-3 (8–10 вых.)", price: 3513, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0001-001112", name: "Шкаф распределительный наружный ШРН-4 (11–12 вых.)", sizeName: "ШРН-4", outs: [11, 12], inner: 820, innerH: 560, innerD: 120, price: 5885, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0001-001112", name: "Шкаф распределительный наружный ШРН-4 (11–12 вых.)", price: 4490, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0001-001316", name: "Шкаф распределительный наружный ШРН-5 (13–16 вых.)", sizeName: "ШРН-5", outs: [13, 16], inner: 970, innerH: 560, innerD: 120, price: 6921, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0001-001316", name: "Шкаф распределительный наружный ШРН-5 (13–16 вых.)", price: 5280, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0001-001718", name: "Шкаф распределительный наружный ШРН-6 (17–18 вых.)", sizeName: "ШРН-6", outs: [17, 18], inner: 1120, innerH: 560, innerD: 120, price: 7716, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0001-001718", name: "Шкаф распределительный наружный ШРН-6 (17–18 вых.)", price: 5886, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0001-001920", name: "Шкаф распределительный наружный ШРН-7 (19–20 вых.)", sizeName: "ШРН-7", outs: [19, 20], inner: 1270, innerH: 560, innerD: 120, price: 9152, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SCC-0001-000013", name: "Шкаф распределительный наружный ШРН-0 (1–3 вых.)", sizeName: "ШРН-0", outs: [1, 3], inner: 330, innerH: 560, innerD: 120, price: 3557, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0001-000013", name: "Шкаф распределительный наружный ШРН-0 (1–3 вых.)", price: 2467, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0001-000045", name: "Шкаф распределительный наружный ШРН-1 (4–5 вых.)", sizeName: "ШРН-1", outs: [4, 5], inner: 420, innerH: 560, innerD: 120, price: 4052, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0001-000045", name: "Шкаф распределительный наружный ШРН-1 (4–5 вых.)", price: 2811, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0001-000067", name: "Шкаф распределительный наружный ШРН-2 (6–7 вых.)", sizeName: "ШРН-2", outs: [6, 7], inner: 520, innerH: 560, innerD: 120, price: 4334, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0001-000067", name: "Шкаф распределительный наружный ШРН-2 (6–7 вых.)", price: 3006, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0001-000810", name: "Шкаф распределительный наружный ШРН-3 (8–10 вых.)", sizeName: "ШРН-3", outs: [8, 10], inner: 670, innerH: 560, innerD: 120, price: 5066, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0001-000810", name: "Шкаф распределительный наружный ШРН-3 (8–10 вых.)", price: 3513, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0001-001112", name: "Шкаф распределительный наружный ШРН-4 (11–12 вых.)", sizeName: "ШРН-4", outs: [11, 12], inner: 820, innerH: 560, innerD: 120, price: 6474, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0001-001112", name: "Шкаф распределительный наружный ШРН-4 (11–12 вых.)", price: 4490, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0001-001316", name: "Шкаф распределительный наружный ШРН-5 (13–16 вых.)", sizeName: "ШРН-5", outs: [13, 16], inner: 970, innerH: 560, innerD: 120, price: 7613, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0001-001316", name: "Шкаф распределительный наружный ШРН-5 (13–16 вых.)", price: 5280, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0001-001718", name: "Шкаф распределительный наружный ШРН-6 (17–18 вых.)", sizeName: "ШРН-6", outs: [17, 18], inner: 1120, innerH: 560, innerD: 120, price: 8488, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0001-001718", name: "Шкаф распределительный наружный ШРН-6 (17–18 вых.)", price: 5886, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0001-001920", name: "Шкаф распределительный наружный ШРН-7 (19–20 вых.)", sizeName: "ШРН-7", outs: [19, 20], inner: 1270, innerH: 560, innerD: 120, price: 10067, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     cabinets_shrv: [
-        { id: "SCC-0002-000013", name: "Шкаф распределительный встроенный ШРВ-0 (1–3 вых.)", sizeName: "ШРВ-0", outs: [1, 3], inner: 354, innerH: 490, innerD: 121, price: 3922, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0002-000013", name: "Шкаф распределительный встроенный ШРВ-0 (1–3 вых.)", price: 2992, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0002-000045", name: "Шкаф распределительный встроенный ШРВ-1 (4–5 вых.)", sizeName: "ШРВ-1", outs: [4, 5], inner: 444, innerH: 490, innerD: 121, price: 4223, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0002-000045", name: "Шкаф распределительный встроенный ШРВ-1 (4–5 вых.)", price: 3221, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0002-000067", name: "Шкаф распределительный встроенный ШРВ-2 (6–7 вых.)", sizeName: "ШРВ-2", outs: [6, 7], inner: 544, innerH: 490, innerD: 121, price: 4479, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0002-000067", name: "Шкаф распределительный встроенный ШРВ-2 (6–7 вых.)", price: 3417, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0002-000810", name: "Шкаф распределительный встроенный ШРВ-3 (8–10 вых.)", sizeName: "ШРВ-3", outs: [8, 10], inner: 694, innerH: 490, innerD: 121, price: 5125, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0002-000810", name: "Шкаф распределительный встроенный ШРВ-3 (8–10 вых.)", price: 3910, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0002-001112", name: "Шкаф распределительный встроенный ШРВ-4 (11–12 вых.)", sizeName: "ШРВ-4", outs: [11, 12], inner: 844, innerH: 490, innerD: 121, price: 6477, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0002-001112", name: "Шкаф распределительный встроенный ШРВ-4 (11–12 вых.)", price: 4941, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0002-001316", name: "Шкаф распределительный встроенный ШРВ-5 (13–16 вых.)", sizeName: "ШРВ-5", outs: [13, 16], inner: 994, innerH: 490, innerD: 121, price: 7596, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0002-001316", name: "Шкаф распределительный встроенный ШРВ-5 (13–16 вых.)", price: 5795, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0002-001718", name: "Шкаф распределительный встроенный ШРВ-6 (17–18 вых.)", sizeName: "ШРВ-6", outs: [17, 18], inner: 1144, innerH: 490, innerD: 121, price: 8310, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RCM-0002-001718", name: "Шкаф распределительный встроенный ШРВ-6 (17–18 вых.)", price: 6340, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SCC-0002-001920", name: "Шкаф распределительный встроенный ШРВ-7 (19–20 вых.)", sizeName: "ШРВ-7", outs: [19, 20], inner: 1294, innerH: 490, innerD: 121, price: 10050, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SCC-0002-000013", name: "Шкаф распределительный встроенный ШРВ-0 (1–3 вых.)", sizeName: "ШРВ-0", outs: [1, 3], inner: 354, innerH: 490, innerD: 121, price: 4314, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0002-000013", name: "Шкаф распределительный встроенный ШРВ-0 (1–3 вых.)", price: 2992, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0002-000045", name: "Шкаф распределительный встроенный ШРВ-1 (4–5 вых.)", sizeName: "ШРВ-1", outs: [4, 5], inner: 444, innerH: 490, innerD: 121, price: 4645, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0002-000045", name: "Шкаф распределительный встроенный ШРВ-1 (4–5 вых.)", price: 3221, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0002-000067", name: "Шкаф распределительный встроенный ШРВ-2 (6–7 вых.)", sizeName: "ШРВ-2", outs: [6, 7], inner: 544, innerH: 490, innerD: 121, price: 4927, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0002-000067", name: "Шкаф распределительный встроенный ШРВ-2 (6–7 вых.)", price: 3417, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0002-000810", name: "Шкаф распределительный встроенный ШРВ-3 (8–10 вых.)", sizeName: "ШРВ-3", outs: [8, 10], inner: 694, innerH: 490, innerD: 121, price: 5638, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0002-000810", name: "Шкаф распределительный встроенный ШРВ-3 (8–10 вых.)", price: 3910, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0002-001112", name: "Шкаф распределительный встроенный ШРВ-4 (11–12 вых.)", sizeName: "ШРВ-4", outs: [11, 12], inner: 844, innerH: 490, innerD: 121, price: 7125, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0002-001112", name: "Шкаф распределительный встроенный ШРВ-4 (11–12 вых.)", price: 4941, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0002-001316", name: "Шкаф распределительный встроенный ШРВ-5 (13–16 вых.)", sizeName: "ШРВ-5", outs: [13, 16], inner: 994, innerH: 490, innerD: 121, price: 8356, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0002-001316", name: "Шкаф распределительный встроенный ШРВ-5 (13–16 вых.)", price: 5795, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0002-001718", name: "Шкаф распределительный встроенный ШРВ-6 (17–18 вых.)", sizeName: "ШРВ-6", outs: [17, 18], inner: 1144, innerH: 490, innerD: 121, price: 9141, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RCM-0002-001718", name: "Шкаф распределительный встроенный ШРВ-6 (17–18 вых.)", price: 6340, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SCC-0002-001920", name: "Шкаф распределительный встроенный ШРВ-7 (19–20 вых.)", sizeName: "ШРВ-7", outs: [19, 20], inner: 1294, innerH: 490, innerD: 121, price: 11055, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Углублённый (180 мм) — единственная серия, куда по глубине входит насосно-смесительный
     // узел. Встроенного углублённого у STOUT нет: у ШРВ раздвигается глубина УСТАНОВКИ
     // в стене (125→195), а внутренняя глубина корпуса остаётся 121 мм.
     // ВАЖНО: у SCC-1003 нет боковой перфорации — только нижнее подключение труб.
     cabinets_shrn180: [
-        { id: "SCC-1003-000013", imgId: "SCC-1003-000810", name: "Шкаф распределительный наружный углублённый ШРН-180-0 (1–3 вых.)", sizeName: "ШРН-180-0", outs: [1, 3], inner: 328, innerH: 560, innerD: 178, price: 8756, brand: "STOUT", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCC-1003-000045", imgId: "SCC-1003-000810", name: "Шкаф распределительный наружный углублённый ШРН-180-1 (4–5 вых.)", sizeName: "ШРН-180-1", outs: [4, 5], inner: 418, innerH: 560, innerD: 178, price: 9349, brand: "STOUT", availability: "on_order", price_date: "2026-08-10" },
-        { id: "SCC-1003-000067", name: "Шкаф распределительный наружный углублённый ШРН-180-2 (6–7 вых.)", sizeName: "ШРН-180-2", outs: [6, 7], inner: 518, innerH: 560, innerD: 178, price: 10207, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCC-1003-000810", name: "Шкаф распределительный наружный углублённый ШРН-180-3 (8–10 вых.)", sizeName: "ШРН-180-3", outs: [8, 10], inner: 668, innerH: 560, innerD: 178, price: 12040, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCC-1003-001112", name: "Шкаф распределительный наружный углублённый ШРН-180-4 (11–12 вых.)", sizeName: "ШРН-180-4", outs: [11, 12], inner: 818, innerH: 560, innerD: 178, price: 14317, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCC-1003-001316", name: "Шкаф распределительный наружный углублённый ШРН-180-5 (13–16 вых.)", sizeName: "ШРН-180-5", outs: [13, 16], inner: 968, innerH: 560, innerD: 178, price: 16229, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCC-1003-001718", name: "Шкаф распределительный наружный углублённый ШРН-180-6 (17–18 вых.)", sizeName: "ШРН-180-6", outs: [17, 18], inner: 1118, innerH: 560, innerD: 178, price: 17416, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SCC-1003-001920", name: "Шкаф распределительный наружный углублённый ШРН-180-7 (19–20 вых.)", sizeName: "ШРН-180-7", outs: [19, 20], inner: 1268, innerH: 560, innerD: 178, price: 19219, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "SCC-1003-000013", imgId: "SCC-1003-000810", name: "Шкаф распределительный наружный углублённый ШРН-180-0 (1–3 вых.)", sizeName: "ШРН-180-0", outs: [1, 3], inner: 328, innerH: 560, innerD: 178, price: 9632, brand: "STOUT", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCC-1003-000045", imgId: "SCC-1003-000810", name: "Шкаф распределительный наружный углублённый ШРН-180-1 (4–5 вых.)", sizeName: "ШРН-180-1", outs: [4, 5], inner: 418, innerH: 560, innerD: 178, price: 10283, brand: "STOUT", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SCC-1003-000067", name: "Шкаф распределительный наружный углублённый ШРН-180-2 (6–7 вых.)", sizeName: "ШРН-180-2", outs: [6, 7], inner: 518, innerH: 560, innerD: 178, price: 11227, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCC-1003-000810", name: "Шкаф распределительный наружный углублённый ШРН-180-3 (8–10 вых.)", sizeName: "ШРН-180-3", outs: [8, 10], inner: 668, innerH: 560, innerD: 178, price: 13244, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCC-1003-001112", name: "Шкаф распределительный наружный углублённый ШРН-180-4 (11–12 вых.)", sizeName: "ШРН-180-4", outs: [11, 12], inner: 818, innerH: 560, innerD: 178, price: 15749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCC-1003-001316", name: "Шкаф распределительный наружный углублённый ШРН-180-5 (13–16 вых.)", sizeName: "ШРН-180-5", outs: [13, 16], inner: 968, innerH: 560, innerD: 178, price: 17852, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCC-1003-001718", name: "Шкаф распределительный наружный углублённый ШРН-180-6 (17–18 вых.)", sizeName: "ШРН-180-6", outs: [17, 18], inner: 1118, innerH: 560, innerD: 178, price: 19158, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SCC-1003-001920", name: "Шкаф распределительный наружный углублённый ШРН-180-7 (19–20 вых.)", sizeName: "ШРН-180-7", outs: [19, 20], inner: 1268, innerH: 560, innerD: 178, price: 21141, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Эконом-серия наружных шкафов. Паспорта с внутренними размерами у неё нет,
     // поэтому inner — оценка «наружная ширина минус 34 мм» (разница корпуса и просвета
@@ -2121,7 +2121,7 @@ const catalog = {
     axial_fittings_pex: [
         // Латунные аксиальные фитинги STOUT для труб PE-Xa (серая) — тройниковая/шлейфовая разводка
         // Монтажная гильза
-        { id: "SFA-0020-000016", name: "Монтажная гильза 16 (аксиальная)", price: 109, brand: "STOUT", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16х2.0-2.6", price: 73, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }, availability: "in_stock", price_date: "2026-08-19" },
+        { id: "SFA-0020-000016", name: "Монтажная гильза 16 (аксиальная)", price: 109, brand: "STOUT", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16х2.0-2.6", price: 94, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0020-000020", name: "Монтажная гильза 20 (аксиальная)", price: 112, brand: "STOUT", rommer: { id: "RFA-0020-000020", name: "Монтажная гильза 20х2.8", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0020-000025", name: "Монтажная гильза 25 (аксиальная)", price: 175, brand: "STOUT", rommer: { id: "RFA-0020-000025", name: "Монтажная гильза 25х3.5", price: 135, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0020-000032", name: "Монтажная гильза 32 (аксиальная)", price: 362, brand: "STOUT", rommer: { id: "RFA-0020-000032", name: "Монтажная гильза 32х4,4", price: 290, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
@@ -2154,8 +2154,8 @@ const catalog = {
         { id: "SFA-0014-252025", name: "Тройник переходной 25x20x25", price: 1046, brand: "STOUT", rommer: { id: "RFA-0014-252025", name: "Тройник переходной 25x20x25", price: 539, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0014-252516", name: "Тройник переходной 25x25x16", price: 1211, brand: "STOUT", rommer: { id: "RFA-0014-252516", name: "Тройник переходной 25x25x16", price: 499, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0014-252520", name: "Тройник переходной 25x25x20", price: 1087, brand: "STOUT", rommer: { id: "RFA-0014-252520", name: "Тройник переходной 25x25x20", price: 543, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SFA-0014-253225", name: "Тройник переходной 25x32x25", price: 1645, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFA-0014-322025", name: "Тройник переходной 32x20x25", price: 1720, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SFA-0014-253225", name: "Тройник переходной 25x32x25", price: 1842, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFA-0014-322025", name: "Тройник переходной 32x20x25", price: 1926, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFA-0014-321632", name: "Тройник переходной 32x16x32", price: 1646, brand: "STOUT", rommer: { id: "RFA-0014-321632", name: "Тройник переходной 32x16x32", price: 818, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0014-322032", name: "Тройник переходной 32x20x32", price: 1656, brand: "STOUT", rommer: { id: "RFA-0014-322032", name: "Тройник переходной 32x20x32", price: 839, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0014-322525", name: "Тройник переходной 32x25x25", price: 1795, brand: "STOUT", rommer: { id: "RFA-0014-322525", name: "Тройник переходной 32x25x25", price: 781, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
@@ -2189,7 +2189,7 @@ const catalog = {
         { id: "SFA-0007-000025", name: "Угольник 90° 25", price: 991, brand: "STOUT", rommer: { id: "RFA-0007-000025", name: "Угольник 25", price: 464, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0007-000032", name: "Угольник 90° 32", price: 1897, brand: "STOUT", rommer: { id: "RFA-0007-000032", name: "Угольник 32", price: 851, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         // Угольник 45°
-        { id: "SFA-0031-000032", name: "Угольник 45° 32", price: 2281, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SFA-0031-000032", name: "Угольник 45° 32", price: 2555, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         // Заглушка (конец магистрали)
         { id: "SFA-0030-000016", name: "Заглушка 16", price: 171, brand: "STOUT", rommer: { id: "RFA-0030-000016", name: "Заглушка 16", price: 87, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
         { id: "SFA-0030-000020", name: "Заглушка 20", price: 224, brand: "STOUT", rommer: { id: "RFA-0030-000020", name: "Заглушка 20", price: 135, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
@@ -2201,54 +2201,54 @@ const catalog = {
     ],
     manifolds: [
         { id: "SMS-0917-000002", loops: 2, price: 8479, rommer: { id: "RMS-1200-000002", name: "Коллектор с расходомерами 1\"x2 вых.", price: 4586, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SMS-0917-000003", loops: 3, price: 10717, rommer: { id: "RMS-1200-000003", name: "Коллектор с расходомерами 1\"x3 вых.", price: 5819, brand: "ROMMER",
+        { id: "SMS-0917-000003", loops: 3, price: 11253, rommer: { id: "RMS-1200-000003", name: "Коллектор с расходомерами 1\"x3 вых.", price: 5819, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000004", loops: 4, price: 12973, rommer: { id: "RMS-1200-000004", name: "Коллектор с расходомерами 1\"x4 вых.", price: 6956, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000004", loops: 4, price: 13622, rommer: { id: "RMS-1200-000004", name: "Коллектор с расходомерами 1\"x4 вых.", price: 6956, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000005", loops: 5, price: 15532, rommer: { id: "RMS-1200-000005", name: "Коллектор с расходомерами 1\"x5 вых.", price: 7978, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000005", loops: 5, price: 16309, rommer: { id: "RMS-1200-000005", name: "Коллектор с расходомерами 1\"x5 вых.", price: 7978, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000006", loops: 6, price: 17796, rommer: { id: "RMS-1200-000006", name: "Коллектор с расходомерами 1\"x6 вых.", price: 9088, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000006", loops: 6, price: 18685, rommer: { id: "RMS-1200-000006", name: "Коллектор с расходомерами 1\"x6 вых.", price: 9088, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000007", loops: 7, price: 20830, rommer: { id: "RMS-1200-000007", name: "Коллектор с расходомерами 1\"x7 вых.", price: 10412, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000007", loops: 7, price: 21871, rommer: { id: "RMS-1200-000007", name: "Коллектор с расходомерами 1\"x7 вых.", price: 10412, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000008", loops: 8, price: 23477, rommer: { id: "RMS-1200-000008", name: "Коллектор с расходомерами 1\"x8 вых.", price: 11599, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000008", loops: 8, price: 24650, rommer: { id: "RMS-1200-000008", name: "Коллектор с расходомерами 1\"x8 вых.", price: 11599, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000009", loops: 9, price: 25873, rommer: { id: "RMS-1200-000009", name: "Коллектор с расходомерами 1\"x9 вых.", price: 13010, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000009", loops: 9, price: 27167, rommer: { id: "RMS-1200-000009", name: "Коллектор с расходомерами 1\"x9 вых.", price: 13010, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000010", loops: 10, price: 28480, rommer: { id: "RMS-1200-000010", name: "Коллектор с расходомерами 1\"x10 вых.", price: 16206, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000010", loops: 10, price: 29904, rommer: { id: "RMS-1200-000010", name: "Коллектор с расходомерами 1\"x10 вых.", price: 16206, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000011", loops: 11, price: 30864, rommer: { id: "RMS-1200-000011", name: "Коллектор с расходомерами 1\"x11 вых.", price: 17472, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000011", loops: 11, price: 32407, rommer: { id: "RMS-1200-000011", name: "Коллектор с расходомерами 1\"x11 вых.", price: 17472, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000012", loops: 12, price: 33210, rommer: { id: "RMS-1200-000012", name: "Коллектор с расходомерами 1\"x12 вых.", price: 18783, brand: "ROMMER",
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000012", loops: 12, price: 34871, rommer: { id: "RMS-1200-000012", name: "Коллектор с расходомерами 1\"x12 вых.", price: 18783, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SMS-0917-000013", loops: 13, price: 36993, availability: "in_stock", price_date: "2026-08-10" }
+  price_date: '2026-08-19' }, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SMS-0917-000013", loops: 13, price: 38842, availability: "in_stock", price_date: "2026-09-10" }
     ],
     manifolds_full_kit: [
-        { id: "SMS-0907-000002", loops: 2, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 19827, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000002", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 9707, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000003", loops: 3, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 22342, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000003", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 11313, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000004", loops: 4, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 25257, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000004", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 12924, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000005", loops: 5, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 27587, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000005", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 14530, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000006", loops: 6, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 31389, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000006", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 16137, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000007", loops: 7, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 35337, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000007", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 17769, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000008", loops: 8, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 40045, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000008", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 19276, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000009", loops: 9, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 45022, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000009", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 20812, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000010", loops: 10, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 47775, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000010", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 22318, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000011", loops: 11, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 52693, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000011", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 23885, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SMS-0907-000012", loops: 12, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 56674, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1210-000012", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 25392, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000002", loops: 2, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 20818, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000002", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 9707, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000003", loops: 3, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 23459, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000003", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 11313, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000004", loops: 4, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 26520, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000004", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 12924, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000005", loops: 5, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 28966, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000005", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 14530, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000006", loops: 6, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 32958, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000006", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 16137, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000007", loops: 7, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 37105, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000007", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 17769, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000008", loops: 8, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 42048, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000008", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 19276, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000009", loops: 9, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 47272, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000009", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 20812, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000010", loops: 10, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 50164, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000010", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 22318, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000011", loops: 11, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 55328, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000011", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 23885, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0907-000012", loops: 12, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 59507, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000012", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 25392, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
         { id: "SMS-0907-000013", loops: 13, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x13", price: 35337, availability: "in_stock", price_date: "2026-07-13" }
     ],
     manifolds_shutoff: [
-        { id: "SMS-0927-000002", loops: 2, name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 11466, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1201-000002", name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 5537, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SMS-0927-000002", loops: 2, name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 12040, availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1201-000002", name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 5537, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
         { id: "SMS-0927-000003", loops: 3, name: "Коллектор с запорными клапанами 1\"/3/4\"x3", price: 12899, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1201-000003", name: "Коллектор с запорными клапанами 1\"/3/4\"x3", price: 5845, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
         { id: "SMS-0927-000004", loops: 4, name: "Коллектор с запорными клапанами 1\"/3/4\"x4", price: 15527, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1201-000004", name: "Коллектор с запорными клапанами 1\"/3/4\"x4", price: 6985, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
         { id: "SMS-0927-000005", loops: 5, name: "Коллектор с запорными клапанами 1\"/3/4\"x5", price: 18633, availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RMS-1201-000005", name: "Коллектор с запорными клапанами 1\"/3/4\"x5", price: 8030, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
