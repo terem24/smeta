@@ -24258,7 +24258,7 @@ const app = {
                     @media (prefers-reduced-motion: reduce) {
                         .hyd-ov .hyd-ov__flow { animation: none; }
                     }
-                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды и подсказки при наведении">${this._hydToggleLabel()}</button></div></div>`;
+                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды при наведении. Числа и подсказки — на весь экран">${this._hydToggleLabel(false)}</button></div></div>`;
     },
 
     // ── что под курсором и путь воды ───────────────────────────────────────
@@ -24494,6 +24494,7 @@ const app = {
      * место, — чертёж не закрывает. Полная карточка с числами — по клику.
      */
     _hydShowHint: function (d) {
+        if (!this._hydExpanded(d.svg)) return;
         const cfg = this._schemeCfgCache, hyd = cfg && cfg.hyd;
         const esc = s => this._hydEsc(s), num = (v, k, u) => this._hydNum(v, k, u);
         const P = (hyd && hyd.parts) || {};
@@ -24675,6 +24676,9 @@ const app = {
             if (!t || !t.closest) return;
             if (t.closest('#hyd_card') || t.closest('#hyd_hint')) return;   // клик по плашке
             if (!this.hydEnabled()) return;
+            // В нераскрытой схеме клик обязан открыть её на весь экран, а не
+            // выкатить карточку поверх и без того тесного листа.
+            if (!this._hydExpanded(t)) { this.closeHydCard(); return; }
             const d = this._hydDescr(t);
             if (!d) { this.closeHydCard(); return; }
             e.stopPropagation();
@@ -24711,8 +24715,11 @@ const app = {
     hydEnabled: function () {
         try { return localStorage.getItem('hc_scheme_hints') !== '0'; } catch (e) { return true; }
     },
-    _hydToggleLabel: function () {
-        return this.hydEnabled() ? '💡 Подсказки: вкл' : '💡 Подсказки: выкл';
+    // Подпись по месту: на схеме под сметой подсказок нет (см. _hydExpanded),
+    // и обещать их кнопкой было бы враньём — там она включает подсветку.
+    _hydToggleLabel: function (expanded) {
+        const what = expanded ? 'Подсказки' : 'Подсветка';
+        return '💡 ' + what + (this.hydEnabled() ? ': вкл' : ': выкл');
     },
     toggleHydHints: function (ev) {
         if (ev) { ev.stopPropagation(); ev.preventDefault(); }   // обёртка схемы по клику открывает полноэкранный режим
@@ -24722,8 +24729,21 @@ const app = {
         this.closeHydCard();
         this._hydHintPos = null;      // ручные положения плашек — до переключения
         this._hydCardPos = null;
-        document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => { b.textContent = this._hydToggleLabel(); });
+        document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => {
+            b.textContent = this._hydToggleLabel(b.classList.contains('scheme-zoom-hints'));
+        });
         document.querySelectorAll('.scheme-svg-wrap, #scheme_zoom_overlay').forEach(el => el.classList.toggle('hyd-off', !on));
+    },
+
+    /**
+     * Раскрыта ли схема. На панели сметы лист ужат до ~450 px, и плашка
+     * подсказки шириной 340 закрывает почти весь чертёж — там она не помощь,
+     * а помеха. Поэтому подсказки и карточки работают только в полноэкранном
+     * просмотре; в маленьком виде остаётся подсветка пути воды (она ничего не
+     * загораживает), а клик по схеме, как и раньше, раскрывает её.
+     */
+    _hydExpanded: function (el) {
+        return !!(el && el.closest && el.closest('#scheme_zoom_overlay'));
     },
 
     closeHydCard: function () {
@@ -24896,7 +24916,7 @@ const app = {
         ov.id = 'scheme_zoom_overlay';
         ov.innerHTML =
             `<div class="scheme-zoom-bar">
-                <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel()}</button>
+                <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel(true)}</button>
                 <button type="button" data-z="out" aria-label="Уменьшить">−</button>
                 <button type="button" data-z="fit">Вписать</button>
                 <button type="button" data-z="in" aria-label="Увеличить">+</button>
