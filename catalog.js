@@ -1262,21 +1262,21 @@ const CHIMNEY_LIMITS = [
 
 const catalog = {
     dhw_pump: [
-        { id: "RCP-0005-152080", name: "Насос ГВС COMFORT с таймером (80 мм)", price: 12018, brand: "ROMMER", desc: "Насос рециркуляции с таймером.", rommer: { id: "RCP-0005-150480", name: "Насос ГВС COMFORT, корпус латунь (80 мм)", price: 6060, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "RCP-0005-151780", name: "Насос ГВС COMFORT (80 мм)", price: 10926, brand: "ROMMER", desc: "Насос рециркуляции базовый.", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RCP-0005-150480", name: "Насос ГВС COMFORT, корпус латунь (80 мм)", price: 6009, brand: "ROMMER", desc: "Бюджетный насос, корпус латунь.", availability: "in_stock", price_date: "2026-08-10" }
+        { id: "RCP-0005-152080", name: "Насос ГВС COMFORT с таймером (80 мм)", price: 12018, brand: "ROMMER", desc: "Насос рециркуляции с таймером.", rommer: { id: "RCP-0005-150480", name: "Насос ГВС COMFORT, корпус латунь (80 мм)", price: 6610, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-08-19" },
+        { id: "RCP-0005-151780", name: "Насос ГВС COMFORT (80 мм)", price: 12019, brand: "ROMMER", desc: "Насос рециркуляции базовый.", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCP-0005-150480", name: "Насос ГВС COMFORT, корпус латунь (80 мм)", price: 6610, brand: "ROMMER", desc: "Бюджетный насос, корпус латунь.", availability: "in_stock", price_date: "2026-09-10" }
     ],
     dhw_fittings: [
-        { id: "SFT-0041-000001", name: "Американка 1\" ВР/НР (Змеевик бойлера)", price: 1016, availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SFT-0041-000001", name: "Американка 1\" ВР/НР (Змеевик бойлера)", price: 1098, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SVB-0002-200025", name: "Кран шаровой 1\" ВР/ВР (Змеевик бойлера)", price: 1657, rommer: { id: "RBV-0003-2110225", name: "Кран шаровой ВР/ВР бабочка 1\"", price: 950, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "SFT-0041-000034", name: "Американка 3/4\" ВР/НР (ГВС/Рецирк)", price: 597, availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SFT-0041-000034", name: "Американка 3/4\" ВР/НР (ГВС/Рецирк)", price: 645, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SVB-0002-200020", name: "Кран шаровой 3/4\" ВР/ВР (Бабочка)", price: 1052, rommer: { id: "RBV-0003-2110220", name: "Кран шаровой ВР/ВР бабочка 3/4\"", price: 487, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "RVS-0003-006015", name: "Клапан предохранительный 6 бар", price: 471, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SFT-0031-000034", name: "Крестовина 3/4\" ВР", price: 1151, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVC-0012-000020", name: "Клапан обратный пружинный 3/4\"", price: 1128, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVB-0006-200020", name: "Кран шаровой 3/4\" НР/НР (Вход ХВС)", price: 1256, rommer: { id: "RBV-0007-2410220", name: "Кран шаровой 3/4\" НР/НР", price: 523, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }, availability: "in_stock", price_date: "2026-08-19" },
-        { id: "RBV-0007-2410220", name: "Кран шаровой 3/4\" НР/НР", price: 549, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVC-0012-000020", name: "Обратный клапан 3/4\" (Для рециркуляции)", price: 1128, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "RVS-0003-006015", name: "Клапан предохранительный 6 бар", price: 518, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SFT-0031-000034", name: "Крестовина 3/4\" ВР", price: 1244, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVC-0012-000020", name: "Клапан обратный пружинный 3/4\"", price: 1241, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVB-0006-200020", name: "Кран шаровой 3/4\" НР/НР (Вход ХВС)", price: 1256, rommer: { id: "RBV-0007-2410220", name: "Кран шаровой 3/4\" НР/НР", price: 652, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-08-19" },
+        { id: "RBV-0007-2410220", name: "Кран шаровой 3/4\" НР/НР", price: 652, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVC-0012-000020", name: "Обратный клапан 3/4\" (Для рециркуляции)", price: 1241, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Латунные шаровые краны STOUT с ROMMER-аналогами — ходовой ряд 1/2…2".
     // В смете их пишут по условному проходу («кран 15») или по исполнению
@@ -1292,15 +1292,15 @@ const catalog = {
     // (0012→0002, 0014→0004). Старые артикулы в подбор не возвращать.
     ball_valves: [
         // ВР/ВР — «ВВ» в рукописной смете
-        { id: "SVB-0002-200015", name: "Кран шаровой 1/2\" ВР/ВР (Бабочка)", price: 725, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0003-0110215", name: "Кран шаровой ВР/ВР бабочка 1/2\"", price: 253, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SVB-0001-200032", name: "Кран шаровой 1 1/4\" ВР/ВР (Рычаг)", price: 2673, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0003-0110232", name: "Кран шаровой ВР/ВР бабочка 1 1/4\"", price: 1226, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SVB-0001-200040", name: "Кран шаровой 1 1/2\" ВР/ВР (Рычаг)", price: 3972, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVB-0001-200050", name: "Кран шаровой 2\" ВР/ВР (Рычаг)", price: 6264, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
+        { id: "SVB-0002-200015", name: "Кран шаровой 1/2\" ВР/ВР (Бабочка)", price: 783, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0003-0110215", name: "Кран шаровой ВР/ВР бабочка 1/2\"", price: 253, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0001-200032", name: "Кран шаровой 1 1/4\" ВР/ВР (Рычаг)", price: 2887, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0003-0110232", name: "Кран шаровой ВР/ВР бабочка 1 1/4\"", price: 1226, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0001-200040", name: "Кран шаровой 1 1/2\" ВР/ВР (Рычаг)", price: 4290, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVB-0001-200050", name: "Кран шаровой 2\" ВР/ВР (Рычаг)", price: 6765, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
 
         // ВР/НР — «ВН»
-        { id: "SVB-0004-200015", name: "Кран шаровой 1/2\" ВР/НР (Бабочка)", price: 789, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0004-0210215", name: "Кран шаровой ВР/НР бабочка 1/2\"", price: 266, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0004-200015", name: "Кран шаровой 1/2\" ВР/НР (Бабочка)", price: 851, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0004-0210215", name: "Кран шаровой ВР/НР бабочка 1/2\"", price: 266, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
         { id: "SVB-0004-200020", name: "Кран шаровой 3/4\" ВР/НР (Бабочка)", price: 1167, brand: "STOUT", availability: "in_stock", price_date: "2026-08-19", rommer: { id: "RBV-0004-0210220", name: "Кран шаровой ВР/НР бабочка 3/4\"", price: 425, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
-        { id: "SVB-0004-200025", name: "Кран шаровой 1\" ВР/НР (Бабочка)", price: 1784, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0004-0210225", name: "Кран шаровой ВР/НР бабочка 1\"", price: 841, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVB-0004-200025", name: "Кран шаровой 1\" ВР/НР (Бабочка)", price: 1927, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0004-0210225", name: "Кран шаровой ВР/НР бабочка 1\"", price: 841, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
 
         // НР/НР
         { id: "SVB-0006-200015", name: "Кран шаровой 1/2\" НР/НР (Бабочка)", price: 902, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RBV-0007-0410215", name: "Кран шаровой НР/НР бабочка 1/2\"", price: 280, brand: "ROMMER", availability: "on_order", price_date: "2026-08-19" } },
@@ -1593,34 +1593,34 @@ const catalog = {
         { id: "RCA-6010-000090", name: "Отвод промежуточный коаксиальный 60/100, 90°", price: 1507, brand: "ROMMER", role: "bend90", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RCA-6010-000045", name: "Отвод промежуточный коаксиальный 60/100, 45°", price: 1433, brand: "ROMMER", role: "bend45", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RCA-6010-000101", name: "Конденсатоотводчик коаксиальный универсальный 60/100", price: 2466, brand: "ROMMER", role: "drain", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-6010-000106", name: "Накладка декоративная D100, белая", price: 141, brand: "ROMMER", role: "rosette", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-6010-000003", name: "Крепление к стене D100, металлическое", price: 300, brand: "ROMMER", role: "bracket", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-6010-000001", name: "Хомут комплект D100 (хомут резиновый, стальной гнутый, саморезы)", price: 194, brand: "ROMMER", role: "clamp", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-6010-000106", name: "Накладка декоративная D100, белая", price: 145, brand: "ROMMER", role: "rosette", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-6010-000003", name: "Крепление к стене D100, металлическое", price: 309, brand: "ROMMER", role: "bracket", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-6010-000001", name: "Хомут комплект D100 (хомут резиновый, стальной гнутый, саморезы)", price: 200, brand: "ROMMER", role: "clamp", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-10" },
     ],
 
     // Коаксиал 60/100 конденсационный (полипропилен)
     chimney_cond_60100: [
-        { id: "RCA-8610-000250", name: "Удлинитель конденсационный коаксиальный 60/100, L 250 мм", price: 1535, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8610-000500", name: "Удлинитель конденсационный коаксиальный 60/100, L 500 мм", price: 2369, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8610-001000", name: "Удлинитель конденсационный коаксиальный 60/100, L 1000 мм", price: 3760, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8610-002000", name: "Удлинитель конденсационный коаксиальный 60/100, L 2000 мм", price: 5741, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 2.0, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8610-010090", name: "Отвод конденсационный коаксиальный 60/100, 90°", price: 1619, brand: "ROMMER", role: "bend90", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8610-000045", name: "Отвод конденсационный коаксиальный 60/100, 45°", price: 1782, brand: "ROMMER", role: "bend45", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8610-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 60/100", price: 8070, brand: "ROMMER", role: "term_roof", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-8610-000250", name: "Удлинитель конденсационный коаксиальный 60/100, L 250 мм", price: 1581, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8610-000500", name: "Удлинитель конденсационный коаксиальный 60/100, L 500 мм", price: 2440, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8610-001000", name: "Удлинитель конденсационный коаксиальный 60/100, L 1000 мм", price: 3873, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8610-002000", name: "Удлинитель конденсационный коаксиальный 60/100, L 2000 мм", price: 5913, brand: "ROMMER", role: "ext", dn: "60/100", kind: "cond", len_m: 2.0, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8610-010090", name: "Отвод конденсационный коаксиальный 60/100, 90°", price: 1668, brand: "ROMMER", role: "bend90", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8610-000045", name: "Отвод конденсационный коаксиальный 60/100, 45°", price: 1835, brand: "ROMMER", role: "bend45", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8610-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 60/100", price: 8312, brand: "ROMMER", role: "term_roof", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
     ],
 
     // Коаксиал 80/125 конденсационный (для длинных трасс)
     chimney_cond_80125: [
-        { id: "RCA-8012-000002", name: "Переход с 60/100 на 80/125 конденсационный", price: 2074, brand: "ROMMER", role: "adapter", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-250800", name: "Комплект дымохода конденсационный 80/125, 800 мм", price: 8230, brand: "ROMMER", role: "term_wall", dn: "80/125", kind: "cond", len_m: 0.8, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-000250", name: "Удлинитель коаксиальный конденсационный 80/125, L 250 мм", price: 1579, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-000500", name: "Удлинитель коаксиальный конденсационный 80/125, L 500 мм", price: 3028, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-001000", name: "Удлинитель коаксиальный конденсационный 80/125, L 1000 мм", price: 5245, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-002000", name: "Удлинитель коаксиальный конденсационный 80/125, L 2000 мм", price: 14285, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 2.0, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-000090", name: "Отвод коаксиальный конденсационный 80/125, 90°", price: 2863, brand: "ROMMER", role: "bend90", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-000045", name: "Отвод коаксиальный конденсационный 80/125, 45°", price: 3150, brand: "ROMMER", role: "bend45", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8012-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 80/125", price: 7703, brand: "ROMMER", role: "term_roof", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8125-000103", name: "Крепление к стене D125, металлическое", price: 434, brand: "ROMMER", role: "bracket", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-8012-000002", name: "Переход с 60/100 на 80/125 конденсационный", price: 2136, brand: "ROMMER", role: "adapter", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8012-250800", name: "Комплект дымохода конденсационный 80/125, 800 мм", price: 8477, brand: "ROMMER", role: "term_wall", dn: "80/125", kind: "cond", len_m: 0.8, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8012-000250", name: "Удлинитель коаксиальный конденсационный 80/125, L 250 мм", price: 1626, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8012-000500", name: "Удлинитель коаксиальный конденсационный 80/125, L 500 мм", price: 3119, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8012-001000", name: "Удлинитель коаксиальный конденсационный 80/125, L 1000 мм", price: 5402, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8012-002000", name: "Удлинитель коаксиальный конденсационный 80/125, L 2000 мм", price: 14714, brand: "ROMMER", role: "ext", dn: "80/125", kind: "cond", len_m: 2.0, availability: "on_order", price_date: "2026-09-10" },
+        { id: "RCA-8012-000090", name: "Отвод коаксиальный конденсационный 80/125, 90°", price: 2949, brand: "ROMMER", role: "bend90", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8012-000045", name: "Отвод коаксиальный конденсационный 80/125, 45°", price: 3245, brand: "ROMMER", role: "bend45", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8012-000001", name: "Оголовок с ветрозащитой вертикальный конденсационный 80/125", price: 7934, brand: "ROMMER", role: "term_roof", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-8125-000103", name: "Крепление к стене D125, металлическое", price: 447, brand: "ROMMER", role: "bracket", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
     ],
 
 
@@ -1645,34 +1645,34 @@ const catalog = {
     // app.chimneyD80Adapter), а остальные остаются в таблице замены.
     chimney_split_d80: [
         { id: "RCA-8080-290002", name: "Комплект адаптеров D80 на раздельную систему (Kiturami, Hubert, Haier, Arderia и др.)", price: 1783, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "haier", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8080-210002", name: "Адаптер моноблочный на раздельную систему 80/80 (BAXI кроме ECO Nova/Classic и др.)", price: 2215, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "baxi", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-8080-210002", name: "Адаптер моноблочный на раздельную систему 80/80 (BAXI кроме ECO Nova/Classic и др.)", price: 2281, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "baxi", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RCA-8080-250002", name: "Адаптер моноблочный универсальный на раздельную систему 80/80 (кроме Immergas)", price: 2373, brand: "ROMMER", role: "adapter_d80", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-8080-240002", name: "Адаптер моноблочный на раздельную систему 80/80 (Ferroli, Bosch, Buderus и др.)", price: 2261, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "bosch", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-8080-240002", name: "Адаптер моноблочный на раздельную систему 80/80 (Ferroli, Bosch, Buderus и др.)", price: 2329, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "bosch", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RCA-8080-280002", name: "Комплект адаптеров (воздуховод + газоход) на раздельную систему 80/80 (Navien и др.)", price: 1783, brand: "ROMMER", role: "adapter_d80", kind: "trad", d80Group: "navien", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0880-250000", name: "Адаптер моноблочный конденсационный, переход с 60/100 на 80/80", price: 4506, brand: "ROMMER", role: "adapter_d80", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-000250", name: "Удлинитель D80, L 250 мм", price: 494, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-000500", name: "Удлинитель D80, L 500 мм", price: 720, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-001000", name: "Удлинитель D80, L 1000 мм", price: 1134, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-001500", name: "Удлинитель D80, L 1500 мм", price: 1860, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-002000", name: "Удлинитель D80, L 2000 мм", price: 2519, brand: "ROMMER", role: "ext", kind: "trad", len_m: 2.0, availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-0880-250000", name: "Адаптер моноблочный конденсационный, переход с 60/100 на 80/80", price: 4641, brand: "ROMMER", role: "adapter_d80", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-000250", name: "Удлинитель D80, L 250 мм", price: 509, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-000500", name: "Удлинитель D80, L 500 мм", price: 742, brand: "ROMMER", role: "ext", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-001000", name: "Удлинитель D80, L 1000 мм", price: 1168, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.0, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-001500", name: "Удлинитель D80, L 1500 мм", price: 1916, brand: "ROMMER", role: "ext", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-002000", name: "Удлинитель D80, L 2000 мм", price: 2595, brand: "ROMMER", role: "ext", kind: "trad", len_m: 2.0, availability: "in_stock", price_date: "2026-09-10" },
         { id: "RCA-0080-000090", name: "Отвод D80, 90°", price: 826, brand: "ROMMER", role: "bend90", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
         { id: "RCA-0080-000045", name: "Отвод D80, 45°", price: 828, brand: "ROMMER", role: "bend45", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0808-00000250", name: "Удлинитель конденсационный Ø80, L 250 мм", price: 857, brand: "ROMMER", role: "ext", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0808-00000500", name: "Удлинитель конденсационный Ø80, L 500 мм", price: 1385, brand: "ROMMER", role: "ext", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0808-00001000", name: "Удлинитель конденсационный Ø80, L 1000 мм", price: 2202, brand: "ROMMER", role: "ext", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0808-00002000", name: "Удлинитель конденсационный Ø80, L 2000 мм", price: 4282, brand: "ROMMER", role: "ext", kind: "cond", len_m: 2.0, availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0808-0000090", name: "Отвод конденсационный Ø80, 90°", price: 1115, brand: "ROMMER", role: "bend90", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0808-0000045", name: "Отвод конденсационный Ø80, 45°", price: 1115, brand: "ROMMER", role: "bend45", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-010006", name: "Оголовок с ветрозащитой D80, чёрный (дымовой канал над кровлей)", price: 2629, brand: "ROMMER", role: "term_flue_roof", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-010004", name: "Наконечник D80, белый (дымовой канал на фасад)", price: 663, brand: "ROMMER", role: "term_flue_wall", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-010003", name: "Наконечник-решётка D80 (воздухозабор)", price: 344, brand: "ROMMER", role: "term_air", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-010005", name: "Зонт для вертикальной системы D80, нержавейка (воздухозабор над кровлей)", price: 826, brand: "ROMMER", role: "term_air_roof", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-020137", name: "Конденсатоотводчик универсальный D80", price: 1864, brand: "ROMMER", role: "drain", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-020111", name: "Крепление к стене D80, металлическое", price: 287, brand: "ROMMER", role: "bracket", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-010002", name: "Накладка декоративная D80, белая", price: 137, brand: "ROMMER", role: "rosette", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-0808-00000250", name: "Удлинитель конденсационный Ø80, L 250 мм", price: 883, brand: "ROMMER", role: "ext", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0808-00000500", name: "Удлинитель конденсационный Ø80, L 500 мм", price: 1427, brand: "ROMMER", role: "ext", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0808-00001000", name: "Удлинитель конденсационный Ø80, L 1000 мм", price: 2268, brand: "ROMMER", role: "ext", kind: "cond", len_m: 1.0, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0808-00002000", name: "Удлинитель конденсационный Ø80, L 2000 мм", price: 4410, brand: "ROMMER", role: "ext", kind: "cond", len_m: 2.0, availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0808-0000090", name: "Отвод конденсационный Ø80, 90°", price: 1148, brand: "ROMMER", role: "bend90", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0808-0000045", name: "Отвод конденсационный Ø80, 45°", price: 1148, brand: "ROMMER", role: "bend45", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-010006", name: "Оголовок с ветрозащитой D80, чёрный (дымовой канал над кровлей)", price: 2708, brand: "ROMMER", role: "term_flue_roof", kind: "any", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-010004", name: "Наконечник D80, белый (дымовой канал на фасад)", price: 683, brand: "ROMMER", role: "term_flue_wall", kind: "any", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-010003", name: "Наконечник-решётка D80 (воздухозабор)", price: 354, brand: "ROMMER", role: "term_air", kind: "any", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-010005", name: "Зонт для вертикальной системы D80, нержавейка (воздухозабор над кровлей)", price: 851, brand: "ROMMER", role: "term_air_roof", kind: "any", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-020137", name: "Конденсатоотводчик универсальный D80", price: 1920, brand: "ROMMER", role: "drain", kind: "any", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-020111", name: "Крепление к стене D80, металлическое", price: 296, brand: "ROMMER", role: "bracket", kind: "any", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0080-010002", name: "Накладка декоративная D80, белая", price: 141, brand: "ROMMER", role: "rosette", kind: "any", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RCA-0080-010007", name: "Хомут стальной D80", price: 118, brand: "ROMMER", role: "clamp", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0080-010080", name: "Уплотнение силиконовое D80", price: 213, brand: "ROMMER", role: "seal", kind: "trad", availability: "in_stock", price_date: "2026-07-29" },
-        { id: "RCA-0808-000102", name: "Уплотнение Ø80 для конденсационных труб", price: 334, brand: "ROMMER", role: "seal", kind: "cond", availability: "in_stock", price_date: "2026-07-29" },
+        { id: "RCA-0080-010080", name: "Уплотнение силиконовое D80", price: 219, brand: "ROMMER", role: "seal", kind: "trad", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "RCA-0808-000102", name: "Уплотнение Ø80 для конденсационных труб", price: 344, brand: "ROMMER", role: "seal", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
     ],
 
     stabs: [
@@ -2565,7 +2565,7 @@ const catalog = {
     rommer_check_valve_34: { id: "RVC-0001-000020", name: "Клапан обратный 3/4\"", price: 530, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" },
     // STOUT SFW-0072-000020 снят с производства: из подбора и из списка замен убран,
     // по умолчанию ставим аналогичный ROMMER.
-    filter_mag: { id: "RFW-0080-256620", name: "Фильтр-шламоотделитель магнитный 3/4\"", price: 2598, brand: "ROMMER", availability: "in_stock", price_date: "2026-07-29" },
+    filter_mag: { id: "RFW-0080-256620", name: "Фильтр-шламоотделитель магнитный 3/4\"", price: 2857, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
     filter_mag_alts: [
         { id: "RFW-0081-000820", name: "Сепаратор шлама поворотный ВР 3/4\"",      price: 6317,  brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" },
         { id: "RFW-0081-000825", name: "Сепаратор шлама поворотный ВР 1\"",         price: 6800,  brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" },
@@ -3309,7 +3309,7 @@ const catalog = {
     // бы шестнадцатиамперные приборы. Теперь при «3 А» список честно пуст:
     // трёхамперных термостатов для мата здесь нет и быть не должно.
     ufh_el_thermostats: [
-        { id: "STE-3001-110710", name: "Термостат теплого пола 16А белый", kind: "mech", price: 1112, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 16, availability: "on_order", price_date: "2026-07-29",
+        { id: "STE-3001-110710", name: "Термостат теплого пола 16А белый", kind: "mech", price: 1223, brand: "STOUT", unit: "шт", ctrlType: "mech", wifi: false, color: "white", current: 16, availability: "in_stock", price_date: "2026-09-10",
           alts: [{ id: "STE-2001-110710", name: "Термостат теплого пола 16А белый", price: 2592, brand: "STOUT", ctrlType: "mech", wifi: false, color: "white", current: 16,
   availability: 'in_stock',
   price_date: '2026-09-10' }, { id: "STE-2001-110720", name: "Термостат теплого пола 16А черный", price: 2715, brand: "STOUT", ctrlType: "mech", wifi: false, color: "black", current: 16,
@@ -3325,7 +3325,7 @@ const catalog = {
   price_date: '2026-09-10' }, { id: "STE-2002-311722", name: "Терморегулятор теплого пола 16А, TFT, NTC 10К -2м, черный", price: 13784, brand: "STOUT", ctrlType: "touch", wifi: false, color: "black", current: 16,
   availability: 'in_stock',
   price_date: '2026-09-10' }, { id: "100037050400", name: "Терморегулятор механический Теплолюкс Solus белый", price: 4544, brand: "Теплолюкс", ctrlType: "mech", wifi: false, color: "white", current: 16 }, { id: "100037059700", name: "Терморегулятор механический Теплолюкс Solus черный", price: 4544, brand: "Теплолюкс", ctrlType: "mech", wifi: false, color: "black", current: 16 }, { id: "100037087900", name: "Терморегулятор электронный Теплолюкс Pontus белый", price: 8012, brand: "Теплолюкс", ctrlType: "electronic", wifi: false, color: "white", current: 16 }, { id: "100037088300", name: "Терморегулятор электронный Теплолюкс Pontus черный", price: 8012, brand: "Теплолюкс", ctrlType: "electronic", wifi: false, color: "black", current: 16 }, { id: "100037088400", name: "Терморегулятор электронный Теплолюкс Pontus wi-fi белый", price: 10019, brand: "Теплолюкс", ctrlType: "electronic", wifi: true, color: "white", current: 16 }, { id: "100037088500", name: "Терморегулятор электронный Теплолюкс Pontus wi-fi черный", price: 10019, brand: "Теплолюкс", ctrlType: "electronic", wifi: true, color: "black", current: 16 }, { id: "100037059500", name: "Терморегулятор электронный Теплолюкс Pontus черный Space", price: 10202, brand: "Теплолюкс", ctrlType: "electronic", wifi: false, color: "black", current: 16 }, { id: "100037059600", name: "Терморегулятор электронный Теплолюкс Pontus wi-fi черный Space", price: 12209, brand: "Теплолюкс", ctrlType: "electronic", wifi: true, color: "black", current: 16 }, { id: "100035924300", name: "Терморегулятор EcoSmart 25", price: 13122, brand: "Теплолюкс", ctrlType: "touch", wifi: false, color: "grey", current: 16 }, { id: "100037093700", name: "Терморегулятор Теплолюкс EcoSmart 25 черный", price: 13122, brand: "Теплолюкс", ctrlType: "touch", wifi: false, color: "black", current: 16 }] },
-        { id: "STE-3002-311712", name: "Терморегулятор теплого пола 16А, белый", kind: "electro", price: 5202, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: false, color: "white", current: 16, availability: "on_order", price_date: "2026-07-29",
+        { id: "STE-3002-311712", name: "Терморегулятор теплого пола 16А, белый", kind: "electro", price: 5722, brand: "STOUT", unit: "шт", ctrlType: "electronic", wifi: false, color: "white", current: 16, availability: "in_stock", price_date: "2026-09-10",
           alts: [{ id: "STE-3001-110710", name: "Термостат теплого пола 16А белый", price: 1223, brand: "STOUT", ctrlType: "mech", wifi: false, color: "white", current: 16,
   availability: 'in_stock',
   price_date: '2026-09-10' }, { id: "STE-2001-110710", name: "Термостат теплого пола 16А белый", price: 2592, brand: "STOUT", ctrlType: "mech", wifi: false, color: "white", current: 16,
@@ -3341,7 +3341,7 @@ const catalog = {
   price_date: '2026-09-10' }, { id: "STE-2002-311722", name: "Терморегулятор теплого пола 16А, TFT, NTC 10К -2м, черный", price: 13784, brand: "STOUT", ctrlType: "touch", wifi: false, color: "black", current: 16,
   availability: 'in_stock',
   price_date: '2026-09-10' }, { id: "100037050400", name: "Терморегулятор механический Теплолюкс Solus белый", price: 4544, brand: "Теплолюкс", ctrlType: "mech", wifi: false, color: "white", current: 16 }, { id: "100037059700", name: "Терморегулятор механический Теплолюкс Solus черный", price: 4544, brand: "Теплолюкс", ctrlType: "mech", wifi: false, color: "black", current: 16 }, { id: "100037087900", name: "Терморегулятор электронный Теплолюкс Pontus белый", price: 8012, brand: "Теплолюкс", ctrlType: "electronic", wifi: false, color: "white", current: 16 }, { id: "100037088300", name: "Терморегулятор электронный Теплолюкс Pontus черный", price: 8012, brand: "Теплолюкс", ctrlType: "electronic", wifi: false, color: "black", current: 16 }, { id: "100037088400", name: "Терморегулятор электронный Теплолюкс Pontus wi-fi белый", price: 10019, brand: "Теплолюкс", ctrlType: "electronic", wifi: true, color: "white", current: 16 }, { id: "100037088500", name: "Терморегулятор электронный Теплолюкс Pontus wi-fi черный", price: 10019, brand: "Теплолюкс", ctrlType: "electronic", wifi: true, color: "black", current: 16 }, { id: "100037059500", name: "Терморегулятор электронный Теплолюкс Pontus черный Space", price: 10202, brand: "Теплолюкс", ctrlType: "electronic", wifi: false, color: "black", current: 16 }, { id: "100037059600", name: "Терморегулятор электронный Теплолюкс Pontus wi-fi черный Space", price: 12209, brand: "Теплолюкс", ctrlType: "electronic", wifi: true, color: "black", current: 16 }, { id: "100035924300", name: "Терморегулятор EcoSmart 25", price: 13122, brand: "Теплолюкс", ctrlType: "touch", wifi: false, color: "grey", current: 16 }, { id: "100037093700", name: "Терморегулятор Теплолюкс EcoSmart 25 черный", price: 13122, brand: "Теплолюкс", ctrlType: "touch", wifi: false, color: "black", current: 16 }] },
-        { id: "STE-2002-311712", name: "Терморегулятор теплого пола 16А, TFT, NTC 10К -2м, белый", kind: "screen", price: 12067, brand: "STOUT", unit: "шт", ctrlType: "touch", wifi: false, color: "white", current: 16, availability: "on_order", price_date: "2026-07-29",
+        { id: "STE-2002-311712", name: "Терморегулятор теплого пола 16А, TFT, NTC 10К -2м, белый", kind: "screen", price: 13274, brand: "STOUT", unit: "шт", ctrlType: "touch", wifi: false, color: "white", current: 16, availability: "in_stock", price_date: "2026-09-10",
           alts: [{ id: "STE-3001-110710", name: "Термостат теплого пола 16А белый", price: 1223, brand: "STOUT", ctrlType: "mech", wifi: false, color: "white", current: 16,
   availability: 'in_stock',
   price_date: '2026-09-10' }, { id: "STE-2001-110710", name: "Термостат теплого пола 16А белый", price: 2592, brand: "STOUT", ctrlType: "mech", wifi: false, color: "white", current: 16,
@@ -3399,7 +3399,7 @@ const catalog = {
     // ставит никто — вешать некуда, а капель принимают как данность. Смета
     // должна показывать то, что действительно смонтируют.
     water_heater_kit: [
-        { id: "SVB-1007-200015", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 1028, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-07-29", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "on_order", price_date: "2026-07-29" } }
+        { id: "SVB-1007-200015", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 1110, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
     ],
     // Обвязка радиатора, висящего на стояке (типовая квартира).
     //
@@ -3414,19 +3414,19 @@ const catalog = {
     // им прибор настраивают на свою долю и им же отсекают, чтобы снять радиатор
     // на промывку, не сливая стояк.
     flat_rad_kit: [
-        { id: "SVT-0002-000015", name: "Клапан термостатический угловой 1/2\"", price: 1101, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-07-29", rommer: { id: "RVT-0002-100015", name: "Клапан термостатический угловой 1/2\"", price: 769, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
+        { id: "SVT-0002-000015", name: "Клапан термостатический угловой 1/2\"", price: 1189, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RVT-0002-100015", name: "Клапан термостатический угловой 1/2\"", price: 769, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
         { id: "SVL-1156-000015", name: "Клапан запорно-балансировочный угловой 1/2\"", price: 597, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-19", rommer: { id: "RVL-0002-100015", name: "Клапан запорно-балансировочный угловой 1/2\"", price: 387, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-19" } },
         { id: "SKU-0320-000080", name: "Комплект настенных регулируемых кронштейнов", price: 326, brand: "STOUT", unit: "компл", availability: "in_stock", price_date: "2026-08-10" }
     ],
     flat_water_inlet: [
-        { id: "SVB-0001-200015", name: "Кран шаровой полнопроходной ВР/ВР, рычаг 1/2\"", price: 729, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-07-29", rommer: { id: "RBV-0001-2110315", name: "Кран шаровой ВР/ВР, ручка рычаг 1/2\"", price: 319, brand: "ROMMER", availability: "on_order", price_date: "2026-07-29" } },
-        { id: "SFW-0011-000015", name: "Фильтр сетчатый косой 1/2\"", price: 563, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RFW-0001-000015", name: "Фильтр грубой очистки косой 500 мкм 1/2\"", price: 293, brand: "ROMMER", availability: "on_order", price_date: "2026-07-29" } },
+        { id: "SVB-0001-200015", name: "Кран шаровой полнопроходной ВР/ВР, рычаг 1/2\"", price: 787, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0001-2110315", name: "Кран шаровой ВР/ВР, ручка рычаг 1/2\"", price: 380, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SFW-0011-000015", name: "Фильтр сетчатый косой 1/2\"", price: 563, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-10", rommer: { id: "RFW-0001-000015", name: "Фильтр грубой очистки косой 500 мкм 1/2\"", price: 319, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
         { id: "72-15-244", name: "Счётчик воды ВСКМ-15, 110 мм, с комплектом монтажных частей и обратным клапаном", price: 1230, brand: "Декаст", unit: "шт", availability: "on_order", price_date: "2026-07-29" },
-        { id: "SVS-1010-000015", name: "Редуктор давления поршневой с выходом под манометр, PN 16, 1/2\"", price: 2363, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-07-29", rommer: { id: "RVS-0010-000015", name: "Редуктор давления PN16 ВР/ВР 1/2\" с выходом под манометр", price: 1309, brand: "ROMMER", availability: "on_order", price_date: "2026-07-29" } },
-        { id: "SFT-0020-000012", name: "Тройник 1/2\" ВР", price: 341, brand: "STOUT", availability: "on_order", price_date: "2026-07-29" },
+        { id: "SVS-1010-000015", name: "Редуктор давления поршневой с выходом под манометр, PN 16, 1/2\"", price: 2552, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RVS-0010-000015", name: "Редуктор давления PN16 ВР/ВР 1/2\" с выходом под манометр", price: 1613, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SFT-0020-000012", name: "Тройник 1/2\" ВР", price: 368, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFT-0029-001214", name: "Футорка 1/2\" x 1/4\"", price: 108, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
         { id: "SIM-1010-500608", name: "Манометр 6 бар, 1/4''", price: 307, brand: "STOUT", availability: "in_stock", price_date: "2026-08-10" },
-        { id: "SVB-1007-200015", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 1028, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-07-29", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "on_order", price_date: "2026-07-29" } }
+        { id: "SVB-1007-200015", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 1110, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
     ],
     water_leak_protection: [
         { id: "100035512000", name: "Система защиты от протечки воды", price: 17990, brand: "Neptun", availability: "on_order", price_date: "2026-09-09" }
