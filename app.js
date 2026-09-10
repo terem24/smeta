@@ -9093,13 +9093,18 @@ const app = {
         this.setBirthDateRange(document.getElementById('profile_birth_date_input'));
         document.getElementById('profile_region_input').value = tgUser.region || '';
         document.getElementById('profile_city_input').value = tgUser.city || '';
+        // Строго после региона: подсказке нужно с чем сравнивать номер
+        this.showPhoneRegionHint();
         if (document.getElementById('profile_email_input')) {
             document.getElementById('profile_email_input').value = tgUser.email || '';
         }
+        // Сфера теперь одна. У старых анкет в базе их может быть две — показываем
+        // первую и просим выбрать при следующем сохранении, а не молчим.
         const profileActivityTypes = tgUser.activityTypes || [];
+        const pickedActivity = ['Монтажник', 'Продавец'].find(v => profileActivityTypes.includes(v)) || '';
         [['profile_act_installer', 'Монтажник'], ['profile_act_seller', 'Продавец']].forEach(([id, val]) => {
             const chk = document.getElementById(id);
-            if (chk) chk.checked = profileActivityTypes.includes(val);
+            if (chk) chk.checked = (pickedActivity === val);
         });
 
         // Тариф и срок подписки показывает раздел «Подписка» (renderSubscriptionTab)
@@ -15087,6 +15092,10 @@ const app = {
             this._pendingAdminSearchFocused = document.activeElement === searchInputBefore;
         }
         
+        // Признак «номер из чужого региона» считается по справочнику диапазонов;
+        // без него строка списка просто не получит эту пометку.
+        this.loadPhoneRegions();
+
         this._pendingAdminFilters = {
             search: this._pendingAdminSearch || '',
             tariff: document.getElementById('admin_filter_tariff')?.value || 'all',
@@ -15111,7 +15120,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -15452,6 +15461,7 @@ const app = {
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
         { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
+        { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
@@ -15896,6 +15906,12 @@ const app = {
             return;
         }
 
+        if (this._adminTab === 'inactive') {
+            content.innerHTML = navHtml;
+            this.renderAdminInactive();
+            return;
+        }
+
         if (this._adminTab === 'projects') {
             content.innerHTML = navHtml;
             this.renderAdminProjects();
@@ -16237,6 +16253,12 @@ const app = {
             }
             if (u.is_blocked) {
                 badge += `<br><span style="color:#fff; background:#EF4444; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px;">ЗАБЛОКИРОВАН</span>`;
+            }
+            // Доступ приостановлен за долгое отсутствие. Отдельно от блокировки:
+            // тут никто ничего не нарушал, и снимается это другой кнопкой.
+            if (u.frozen_at) {
+                const delOn = new Date(new Date(u.frozen_at).getTime() + 45 * 864e5);
+                badge += `<br><span title="Приостановлен ${new Date(u.frozen_at).toLocaleDateString('ru-RU')} за долгое отсутствие. Удаление ${delOn.toLocaleDateString('ru-RU')}, если не вернуть доступ." style="color:#fff; background:#0EA5E9; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px; cursor:help;">🧊 ЗАМОРОЖЕН</span>`;
             }
             let name = this.getAdminUserDisplayName(u);
             let nameEscaped = name.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
@@ -25034,6 +25056,7 @@ const app = {
         // списком пользователей. Если нет — просим и показываем прочерк.
         this.ensureRecognitionCounts();
         const recStats = this.recognitionStatsFor(user);
+        await this.loadPhoneRegions();
 
         let date = new Date(user.created_at).toLocaleDateString();
         let lastVis = user.last_visited ? new Date(user.last_visited).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Нет данных';
@@ -25114,6 +25137,11 @@ const app = {
 
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
+                            ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 45 дней.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 45 * 864e5).toLocaleDateString('ru-RU')}.
+                                <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
+                            </div>` : ''}
                             ${(() => {
                                 const flags = this.suspiciousProfileFlags(user);
                                 if (!flags.length) return '';
@@ -25126,6 +25154,15 @@ const app = {
                                 <div><span style="color:var(--text-sec);">Дата рождения:</span> <b style="color:var(--text-main);">${user.birth_date ? new Date(user.birth_date).toLocaleDateString('ru-RU') : '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Регион:</span> <b style="color:var(--text-main);">${user.region || '—'}</b></div>
                                 <div><span style="color:var(--text-sec);">Населённый пункт:</span> <b style="color:var(--text-main);">${user.city || '—'}</b></div>
+                                <!-- Где выдан номер (реестр нумерации, phone_regions.js). Само по
+                                     себе расхождение ничего не доказывает: номер переносят между
+                                     регионами, люди переезжают — поэтому просто показываем факт. -->
+                                ${(() => {
+                                    const list = this.regionByPhone(user.phone);
+                                    if (!list.length) return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:var(--text-main);">не определён</b></div>`;
+                                    const match = this.phoneRegionMatches(user.phone, user.region);
+                                    return `<div><span style="color:var(--text-sec);">Регион номера:</span> <b style="color:${match === false ? '#D97706' : 'var(--text-main)'};">${list.join(' / ')}</b>${match === false ? ' <span style="color:#D97706;" title="Бывает при переезде или переносе номера — само по себе не значит обман">⚠ не совпадает с анкетой</span>' : (match ? ' <span style="color:#10B981;">✓</span>' : '')}</div>`;
+                                })()}
                                 <div style="grid-column: 1 / -1;"><span style="color:var(--text-sec);">Сфера деятельности:</span> ${(user.activity_types || []).length ? (user.activity_types || []).map(a => `<span style="background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:4px;">${a}</span>`).join('') : ' <b style="color:var(--text-main);">—</b>'}</div>
                             </div>
                         </div>
@@ -25789,6 +25826,144 @@ const app = {
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         this.pushPlansToEditor();
         window.open('plan_editor.html', '_blank');
+    },
+
+    // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
+    //
+    // Кому ушло письмо, кто после него вернулся, кто молчит, кого заморозили и
+    // кого в итоге удалили. Журнал лежит в закрытых таблицах, поэтому читаем не
+    // напрямую, а функцией inactivity_report: она сама проверяет, что зовёт
+    // администратор (см. миграцию 20260910_inactivity_report.sql).
+    renderAdminInactive: async function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+        content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
+        const root = () => document.getElementById('admin_inactive_root');
+        try {
+            const { data, error } = await supabaseClient.rpc('inactivity_report');
+            if (error) throw error;
+            this._inactiveReport = data || [];
+        } catch (e) {
+            const known = String(e.message || '').indexOf('inactivity_report') !== -1;
+            if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
+                Не удалось прочитать журнал напоминаний: ${e.message || e}
+                ${known ? '<div style="margin-top:8px; color:var(--text-sec); font-size:12px;">Похоже, миграция 20260910_inactivity_report.sql ещё не выполнена в Supabase.</div>' : ''}
+            </div>`;
+            return;
+        }
+        this.renderAdminInactiveBody();
+    },
+
+    renderAdminInactiveBody: function () {
+        const root = document.getElementById('admin_inactive_root');
+        if (!root) return;
+        const rows = this._inactiveReport || [];
+        const isViewer = this.isReadOnlyAdmin();
+        const esc = s => String(s ?? '').replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
+        const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
+
+        const returned = rows.filter(r => r.returned_at).length;
+        const frozen = rows.filter(r => r.stage === 'frozen').length;
+        const deleted = rows.filter(r => r.stage === 'deleted').length;
+        const silent = rows.filter(r => !r.returned_at && r.stage === 'warned').length;
+
+        // Доля вернувшихся — единственная цифра, ради которой всё это затевалось:
+        // она говорит, работает напоминание или люди ушли насовсем.
+        const share = rows.length ? Math.round(returned * 100 / rows.length) : 0;
+
+        let h = `
+            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
+                <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
+            </div>
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:16px; line-height:1.5;">
+                Письмо уходит после 30 дней молчания, доступ приостанавливается на 45-й день,
+                учётка удаляется через 45 дней заморозки. Проверка идёт каждую ночь.
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Отправлено</div>
+                    <div style="font-size:20px; font-weight:800; color:var(--text-main);">${rows.length}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Вернулись</div>
+                    <div style="font-size:20px; font-weight:800; color:#10B981;">${returned}</div>
+                    <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${share}% от всех</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Молчат</div>
+                    <div style="font-size:20px; font-weight:800; color:#D97706;">${silent}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Заморожены</div>
+                    <div style="font-size:20px; font-weight:800; color:#0EA5E9;">${frozen}</div>
+                </div>
+                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Удалены</div>
+                    <div style="font-size:20px; font-weight:800; color:#EF4444;">${deleted}</div>
+                </div>
+            </div>`;
+
+        if (!rows.length) {
+            h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
+                Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 30 дней.
+            </div>`;
+            root.innerHTML = h;
+            return;
+        }
+
+        h += `<div style="overflow-x:auto;"><table class="admin-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+            <thead><tr style="text-align:left; color:var(--text-sec);">
+                <th style="padding:8px;">Кто</th>
+                <th style="padding:8px;">Регион</th>
+                <th style="padding:8px; white-space:nowrap;">Письмо</th>
+                <th style="padding:8px;">Чем кончилось</th>
+                <th style="padding:8px; text-align:center;">Смет</th>
+                <th style="padding:8px;"></th>
+            </tr></thead><tbody>`;
+
+        rows.forEach(r => {
+            // Итог по-русски, а не кодом этапа: ради этой колонки отчёт и нужен.
+            let outcome, color;
+            if (r.stage === 'deleted') {
+                outcome = 'Удалён' + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
+                color = '#EF4444';
+            } else if (r.returned_at) {
+                outcome = 'Вернулся ' + dt(r.returned_at);
+                color = '#10B981';
+            } else if (r.stage === 'frozen') {
+                const delOn = new Date(new Date(r.frozen_at).getTime() + 45 * 864e5);
+                outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
+                color = '#0EA5E9';
+            } else {
+                const d = days(r.warned_at);
+                outcome = 'Не отреагировал' + (d !== null ? ' · ' + d + ' ' + this.plural(d, 'день', 'дня', 'дней') + ' после письма' : '');
+                color = '#D97706';
+            }
+
+            h += `<tr style="border-top:1px solid var(--border);">
+                <td style="padding:8px;">
+                    <b style="color:var(--text-main);">${esc(r.name)}</b>
+                    <div style="font-size:10px; color:var(--text-sec);">${esc(r.phone || '')}${r.email ? ' · ' + esc(r.email) : ''}</div>
+                </td>
+                <td style="padding:8px; color:var(--text-sec);">${esc([r.city, r.region].filter(Boolean).join(', ') || '—')}</td>
+                <td style="padding:8px; white-space:nowrap; color:var(--text-main);">${dt(r.warned_at)}</td>
+                <td style="padding:8px; color:${color}; font-weight:600;">${outcome}</td>
+                <td style="padding:8px; text-align:center; color:var(--text-main);">${r.estimates ?? 0}</td>
+                <td style="padding:8px; text-align:right; white-space:nowrap;">
+                    ${r.stage === 'frozen' && !isViewer
+                        ? `<button class="admin-action-btn btn-obj" onclick="app.unfreezeUser('${r.user_id}')">Вернуть доступ</button>`
+                        : ''}
+                    ${r.stage !== 'deleted'
+                        ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>`
+                        : ''}
+                </td>
+            </tr>`;
+        });
+
+        h += `</tbody></table></div>`;
+        root.innerHTML = h;
     },
 
     renderAdminPlans: async function () {
@@ -28362,7 +28537,7 @@ const app = {
             };
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked';
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at';
 
             let { data: upsertResult, error: upsertError } = await supabaseClient
                 .from('users')
@@ -28406,6 +28581,20 @@ const app = {
                 this.syncUI();
                 this.render();
                 app.alert('Ваш аккаунт заблокирован администратором. Для уточнения причин свяжитесь с поддержкой.');
+                return;
+            }
+            // Доступ приостановлен ночным проходом за долгое отсутствие (frozen_at,
+            // см. миграцию 20260909_inactivity_lifecycle.sql). Это не блокировка за
+            // нарушение, поэтому и текст другой: человек ничего плохого не сделал,
+            // ему нужно объяснить, что делать дальше.
+            if (uRow && uRow.frozen_at) {
+                await supabaseClient.auth.signOut();
+                delete this.state.tgUser;
+                this.state.accountType = 'base';
+                this.saveState();
+                this.syncUI();
+                this.render();
+                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на dima24ba@gmail.com, и мы вернём доступ в тот же день.');
                 return;
             }
             if (uRow) {
@@ -28745,6 +28934,32 @@ const app = {
             app.alert('Не удалось изменить статус блокировки: ' + e.message);
         }
     },
+    // Снимает автоматическую заморозку за долгое отсутствие. Отдельно от
+    // toggleUserBlocked: та снимает блокировку, поставленную администратором руками,
+    // и трогать её здесь нельзя — иначе «вернуть доступ» заодно разблокировало бы
+    // того, кого закрыли за дело. Отсчёт молчания при этом начинается заново
+    // (unfreeze_user двигает last_visited), иначе ночной проход заморозил бы
+    // человека той же ночью.
+    unfreezeUser: async function (userId) {
+        if (this.isReadOnlyAdmin()) {
+            app.alert('Режим просмотра. Изменение доступа запрещено.');
+            return;
+        }
+        if (!await app.confirm('Вернуть доступ этой учётной записи? Отсчёт неактивности начнётся заново.')) return;
+        try {
+            const { data, error } = await supabaseClient.rpc('unfreeze_user', { target: userId });
+            if (error) throw error;
+            if (data === false) {
+                app.alert('Учётка не была заморожена — возвращать нечего.');
+            } else {
+                app.alert('✅ Доступ возвращён. Человек снова может войти.');
+            }
+            this.renderAdminMain();
+            this.loadAdminData(this._adminOffset);
+        } catch (e) {
+            app.alert('Не удалось вернуть доступ: ' + (e.message || e));
+        }
+    },
     // Безвозвратно стирает профиль пользователя и все связанные с ним данные (сметы,
     // рассылки/переписку с админом, чаты с менеджером дистрибьютора). ВАЖНО: это удаляет
     // только строки в public.users и связанных таблицах — сам логин/пароль в Supabase Auth
@@ -28837,7 +29052,7 @@ const app = {
         if (!region) { app.alert('Пожалуйста, укажите регион.'); return; }
         if (!city) { app.alert('Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { app.alert('Пожалуйста, введите корректный email.'); return; }
-        if (activityTypes.length === 0) { app.alert('Выберите хотя бы одну сферу деятельности.'); return; }
+        if (activityTypes.length === 0) { app.alert('Выберите сферу деятельности: монтажник или продавец.'); return; }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser || (!tgUser.authUserId && !tgUser.email && !tgUser.id)) return;
@@ -28937,6 +29152,77 @@ const app = {
     },
     // Возраст на сегодня по дате рождения (ISO-строка вида "YYYY-MM-DD") — используется
     // для проверки диапазона 18-90 лет в регистрации и профиле
+    // ——— Регион по номеру телефона ————————————————————————————————————————
+    // Справочник диапазонов (phone_regions.js) весит 128 КБ и на расчёте не нужен,
+    // поэтому подключается лениво — при первом же разборе номера.
+    loadPhoneRegions: function () {
+        if (typeof PHONE_DEF_RANGES !== 'undefined') return Promise.resolve(true);
+        if (this._phoneRegionsPromise) return this._phoneRegionsPromise;
+        this._phoneRegionsPromise = new Promise((resolve) => {
+            const s = document.createElement('script');
+            s.src = 'phone_regions.js?v=1.0';
+            // Не загрузился — живём без подсказки: ни анкета, ни админка от неё не зависят
+            s.onload = () => resolve(true);
+            s.onerror = () => resolve(false);
+            document.head.appendChild(s);
+        });
+        return this._phoneRegionsPromise;
+    },
+
+    /**
+     * Субъекты, где выдан номер: ['Москва', 'Московская область'] — два, если
+     * диапазон в реестре записан сразу на столицу с областью. Пустой массив —
+     * справочник не загружен, номер неполный или диапазон никому не отдан.
+     */
+    regionByPhone: function (phone) {
+        if (typeof PHONE_DEF_RANGES === 'undefined' || typeof PHONE_REGION_NAMES === 'undefined') return [];
+        const d = String(phone || '').replace(/\D/g, '');
+        if (d.length !== 11) return [];
+        const line = PHONE_DEF_RANGES[d.slice(1, 4)];
+        if (!line) return [];
+        const num = parseInt(d.slice(4), 10);
+        // Записи идут по возрастанию, каждая — «пропуск от конца предыдущей .
+        // длина . индекс региона» в 36-ричной записи (см. шапку phone_regions.js).
+        let pos = 0;
+        const items = line.split(',');
+        for (let k = 0; k < items.length; k++) {
+            const p = items[k].split('.');
+            const start = pos + parseInt(p[0], 36);
+            const end = start + parseInt(p[1], 36) - 1;
+            if (num < start) return [];      // попали в дыру между диапазонами
+            if (num <= end) return String(PHONE_REGION_NAMES[parseInt(p[2], 36)] || '').split('|');
+            pos = end + 1;
+        }
+        return [];
+    },
+
+    /** Совпадает ли регион анкеты с регионом номера. null — сравнивать не с чем. */
+    phoneRegionMatches: function (phone, region) {
+        const list = this.regionByPhone(phone);
+        if (!list.length || !String(region || '').trim()) return null;
+        const want = this.regionAccessKey(region);
+        return list.some(r => this.regionAccessKey(r) === want);
+    },
+
+    // Строка под полем телефона в анкете. Пишем и когда всё сходится: человек
+    // видит, что номер разобран, и не гадает, почему подсказка пропала.
+    showPhoneRegionHint: function () {
+        const el = document.getElementById('profile_phone_region');
+        const input = document.getElementById('profile_phone_input');
+        if (!el || !input) return;
+        const digits = input.value.replace(/\D/g, '');
+        if (digits.length !== 11) { el.textContent = ''; return; }
+
+        this.loadPhoneRegions().then(() => {
+            const list = this.regionByPhone(input.value);
+            if (!list.length) { el.textContent = ''; return; }
+            const regionEl = document.getElementById('profile_region_input');
+            const match = this.phoneRegionMatches(input.value, regionEl ? regionEl.value : '');
+            el.textContent = (match === false ? '⚠ Номер выдан в другом регионе: ' : 'Номер выдан в регионе: ') + list.join(' / ');
+            el.style.color = match === false ? '#D97706' : 'var(--text-sec)';
+        });
+    },
+
     // ——— Проверка анкеты на выдуманные данные ————————————————————————————
     // Раньше ФИО принималось любым: «маркеев Антон Fghh» уходило в базу как есть.
     // Здесь отсекается то, чего живой человек ввести не мог: латиница, цифры,
@@ -29057,6 +29343,12 @@ const app = {
             if (age < 18 || age > this.PROFILE_MAX_AGE) hard.push('возраст ' + age + ' ' + this.plural(age, 'год', 'года', 'лет'));
         }
         if (u.middle_name && !this.PATRONYMIC_END.test(String(u.middle_name).trim())) soft.push('отчество не похоже на отчество');
+        // Регион, где выдан номер. Мягкий признак, и только он: номер переносят
+        // между операторами и регионами, а люди переезжают — у половины монтажников
+        // Подмосковья номер московский, и ничего подозрительного в этом нет.
+        if (this.phoneRegionMatches(u.phone, u.region) === false) {
+            soft.push('номер выдан в регионе «' + this.regionByPhone(u.phone).join(' / ') + '»');
+        }
         const ipRegion = this.regionByIpCity(u.location);
         if (ipRegion && u.region && this.regionAccessKey(ipRegion) !== this.regionAccessKey(u.region)) {
             soft.push('вход из региона «' + ipRegion + '», а в анкете другой');
@@ -38431,18 +38723,30 @@ const app = {
         // в общий выбор Pro Aqua / Wavin, где нержавейки нет.
         else if (this.isBoilerPipeRow(item)) {
             const _pprIsPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            // Цена в этой таблице — НЕ цена строки, а стоимость всего раздела
+            // «2. Обвязка котельной» в каждой системе. Замена системы меняет трубу,
+            // все фитинги, хомуты и изоляцию разом, и сравнивать их по цене одной
+            // трубы бессмысленно: она может быть дешевле, а обвязка целиком — дороже.
+            const _totals = this.boilerSystemTotals();
+            const _cur = _totals[this.boilerPipeSystem()] || 0;
+            const _delta = (sys) => {
+                const d = (_totals[sys] || 0) - _cur;
+                if (!_cur || d === 0) return '';
+                const sign = d > 0 ? '+' : '−';
+                return `<div style="font-weight:600; font-size:11px; margin-top:2px; color:${d > 0 ? 'var(--danger, #EF4444)' : 'var(--success, #16A34A)'};">`
+                    + `${sign}${Math.abs(d).toLocaleString('ru-RU')} ₽ на всю обвязку котельной</div>`;
+            };
             customAlts = [
-                { id: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', price: 0, imgId: 'RSS-1001-000022' },
-                { id: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', price: 0, imgId: 'SSS-2001-000022' },
+                { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
+                { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
                 {
-                    id: 'bp_ppr',
+                    id: 'bp_ppr', sys: 'ppr',
                     name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6 (Россия)' : 'Полипропилен PP-RCT STABI PLUS (Чехия)',
                     brand: _pprIsPA ? 'Pro Aqua' : 'Wavin Ekoplastik',
-                    price: 0,
                     imgId: _pprIsPA ? 'PA39012' : 'STRS032RCT'
                 },
-                { id: 'bp_mp', name: 'Металлопластик PE-Xb/Al/PE-Xb, пресс', brand: 'STOUT', price: 0, imgId: 'SPM-0001-053230' }
-            ];
+                { id: 'bp_mp', sys: 'mp', name: 'Металлопластик PE-Xb/Al/PE-Xb, пресс', brand: 'STOUT', imgId: 'SPM-0001-053230' }
+            ].map(a => ({ ...a, price: _totals[a.sys] || 0, name: a.name + _delta(a.sys) }));
         }
         else if (item.originalId && (item.originalId.startsWith('PA') || item.originalId.includes('RCT'))) {
             customAlts = [
@@ -38690,17 +38994,7 @@ const app = {
             basePrice = basePrice / item.len;
         }
 
-        const _tankCoilKwMap = {
-            'SWH-3110-000100': 24, 'SWH-3110-000150': 24, 'SWH-3110-000200': 24,
-            'SWH-1110-000300': 32, 'SWH-1110-000500': 69.5,
-            'SWH-4110-050100': 26, 'SWH-4110-050150': 32, 'SWH-4110-050200': 32, 'SWH-4110-050300': 48, 'SWH-4110-050500': 64,
-            'SWH-2110-000150': 31, 'SWH-2110-000200': 40.2, 'SWH-2110-000300': 55.6, 'SWH-2110-000400': 73.5, 'SWH-2110-000500': 73.5,
-            'SWH-2110-200200': '31 + 40,2', 'SWH-2110-200300': '38,5 + 55,6', 'SWH-2110-200400': '38,5 + 73,5', 'SWH-2110-200500': '38,5 + 73,5',
-            'SWH-1110-050100': 24, 'SWH-1110-050150': 32, 'SWH-1110-050200': 32, 'SWH-1110-050300': 32,
-            'SWH-3210-000080': 18.5, 'SWH-3210-000100': 18.5, 'SWH-3210-000150': 18.5, 'SWH-3210-000200': 18.5,
-            'SWH-1210-050075': 18.5, 'SWH-1210-050100': 18.5, 'SWH-1210-050150': 24, 'SWH-1210-050200': 24,
-            'RWH-2110-000150': 35, 'RWH-2110-000200': 38, 'RWH-2110-000300': 49, 'RWH-2110-000500': 60,
-        };
+        const _tankCoilKwMap = this.TANK_COIL_KW;
         const _tankItemId = item.originalId || item.id || '';
         const _coilKw = _tankCoilKwMap[_tankItemId];
         // Цена выбранного варианта (из swaps, иначе цена исходного товара)
@@ -39882,6 +40176,32 @@ const app = {
 
             // Внутрипольный конвектор (SCQ/SCN) — доп. пункт для перехода в полный пикер
             // радиаторов, сразу отфильтрованный на "Дизайнерские" (см. openConvectorDesignRadPicker).
+            // Обвязка котельной: под таблицей систем — замена ОДНОЙ позиции внутри
+            // той же системы. Тройник на уголок, переход на другую резьбу и т.п.
+            // Без этого выбор системы съедал бы обычную построчную замену.
+            if (this.isBoilerPipeRow(item)) {
+                const _same = this.ssSameSizeAlts(item);
+                if (_same.length) {
+                    html += `
+                        <tr style="border-top: 2px solid var(--border);">
+                            <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
+                                Заменить только эту позицию — тот же материал и типоразмер
+                            </td>
+                        </tr>`;
+                    _same.forEach(alt => {
+                        html += `
+                            <tr style="cursor: pointer;" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
+                                <td class="col-idx"></td>
+                                <td class="col-img">${getImg(alt)}</td>
+                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}</td>
+                                <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand}</td>
+                                <td class="col-pct"></td>
+                                <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${alt.price > 0 ? this.formatPriceHtml(alt.price, true) : '—'}</td>
+                            </tr>`;
+                    });
+                }
+            }
+
             const _convOrigId = item.originalId || item.id;
             if (_convOrigId && (_convOrigId.startsWith('SCQ') || _convOrigId.startsWith('SCN'))) {
                 html += `
@@ -49629,6 +49949,388 @@ const app = {
         if (/^(RSS|SSS)-/.test(id)) return true;
         return String(item.group || '') === '2.5. Трубопроводы котельной';
     },
+
+    // Паспортная мощность змеевика бойлера, кВт. Строкой записаны баки с двумя
+    // теплообменниками («31 + 40,2»): там первым идёт нижний, гелиоконтурный, а
+    // котёл подключается к верхнему — большему.
+    //
+    // Карта нужна в двух местах: в подсказке позиции бойлера и в подборе диаметра
+    // греющего контура. Поэтому лежит на объекте, а не в теле функции, — иначе
+    // расчёт и подсказка разошлись бы при первой же правке.
+    TANK_COIL_KW: {
+        'SWH-3110-000100': 24, 'SWH-3110-000150': 24, 'SWH-3110-000200': 24,
+        'SWH-1110-000300': 32, 'SWH-1110-000500': 69.5,
+        'SWH-4110-050100': 26, 'SWH-4110-050150': 32, 'SWH-4110-050200': 32, 'SWH-4110-050300': 48, 'SWH-4110-050500': 64,
+        'SWH-2110-000150': 31, 'SWH-2110-000200': 40.2, 'SWH-2110-000300': 55.6, 'SWH-2110-000400': 73.5, 'SWH-2110-000500': 73.5,
+        'SWH-2110-200200': '31 + 40,2', 'SWH-2110-200300': '38,5 + 55,6', 'SWH-2110-200400': '38,5 + 73,5', 'SWH-2110-200500': '38,5 + 73,5',
+        'SWH-1110-050100': 24, 'SWH-1110-050150': 32, 'SWH-1110-050200': 32, 'SWH-1110-050300': 32,
+        'SWH-3210-000080': 18.5, 'SWH-3210-000100': 18.5, 'SWH-3210-000150': 18.5, 'SWH-3210-000200': 18.5,
+        'SWH-1210-050075': 18.5, 'SWH-1210-050100': 18.5, 'SWH-1210-050150': 24, 'SWH-1210-050200': 24,
+        'RWH-2110-000150': 35, 'RWH-2110-000200': 38, 'RWH-2110-000300': 49, 'RWH-2110-000500': 60,
+    },
+
+    /** Мощность змеевика числом: у баков с двумя теплообменниками берётся больший. */
+    tankCoilKw: function (id) {
+        const v = this.TANK_COIL_KW[String(id || '')];
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+            const nums = v.split('+').map(s => parseFloat(s.replace(',', '.').trim())).filter(n => n > 0);
+            return nums.length ? Math.max.apply(null, nums) : 0;
+        }
+        return 0;
+    },
+
+    // === ПОДБОР ДИАМЕТРА ОБВЯЗКИ КОТЕЛЬНОЙ ПО СКОРОСТИ ===
+    //
+    // Historically диаметр котельной назначался одним порогом — до 30 кВт труба 22,
+    // выше 28, — и весь ассортимент сводился к двум типоразмерам из семи. Скорость
+    // при этом считалась, но только ради подсказки: цифра показывалась монтажнику
+    // и никуда не шла. Здесь она наконец решает.
+    //
+    // Предел скорости общий с разводкой дома (RAD_V_MAX_TRUNK): 1,2 м/с для
+    // магистральных участков по СП 60.13330.2020, по шуму и износу.
+    BOILER_V_MAX: 1.2,
+
+    // Перепад котлового контура. Паспортный режим котла — 20 K, и он же стоит по
+    // умолчанию. Переключатель на 10 K живёт в подробном режиме: это режим 75/65,
+    // в котором радиаторы отдают паспортную мощность, но расход через контур
+    // вдвое выше, и диаметр обязан это увидеть.
+    boilerDT: function () {
+        return (this.state.boilerDT === 10) ? 10 : 20;
+    },
+
+    // Расход котлового контура, м³/ч. G = Q / (1,163 × Δt) — та же формула, что в
+    // подсказке к трубе, вынесена сюда, чтобы подсказка и подбор не разъезжались.
+    boilerFlow: function (kw, dt) {
+        const q = parseFloat(kw) || 0;
+        return q / (1.163 * (dt || this.boilerDT()));
+    },
+
+    // Ряд типоразмеров системы обвязки с внутренними диаметрами, мм.
+    //
+    // Внутренний диаметр НЕ вбит таблицей, а выведен из каталога: у нержавейки,
+    // металлопластика и Wavin стенка написана прямо в названии позиции («22х1.2»,
+    // «26x3.0», «32x4,4»), у Pro Aqua — в маркировке SDR 6, то есть стенка равна
+    // диаметру, делённому на 6. Так ряд сам пополнится, когда парсер принесёт новый
+    // типоразмер, и не придётся помнить про вторую таблицу.
+    //
+    // Отдельные ряды у Pro Aqua и Wavin не прихоть: при одном наружном диаметре
+    // 32 мм у STABI PLUS внутренний 23,2, а у DUO SDR 6 — 21,3. Раньше на оба
+    // бренда шёл один набор чисел, и на Pro Aqua пропускная способность
+    // завышалась примерно на восьмую часть.
+    _boilerRangeCache: null,
+    boilerPipeRange: function (system) {
+        if (!this._boilerRangeCache) this._boilerRangeCache = {};
+        const sys = system || this.boilerPipeSystem();
+        if (this._boilerRangeCache[sys]) return this._boilerRangeCache[sys];
+
+        // Наружный диаметр и стенка из названия. Разделитель бывает и латинской
+        // «x», и кириллической «х» — в каталоге встречаются оба.
+        const parse = (name) => {
+            const m = String(name || '').match(/(\d{2,3})\s*[xх]\s*(\d+[.,]?\d*)/);
+            if (!m) return null;
+            const od = parseInt(m[1], 10);
+            const wall = parseFloat(m[2].replace(',', '.'));
+            if (!(od > 0) || !(wall > 0) || wall * 2 >= od) return null;
+            return { size: od, inner: Math.round((od - 2 * wall) * 10) / 10 };
+        };
+
+        let rows = [];
+        if (sys === 'ss304' || sys === 'ss316') {
+            rows = (catalog.ss_pipe_4m || []).map(p => parse(p.name)).filter(Boolean);
+        } else if (sys === 'mp') {
+            rows = (catalog.metal_plastic_pipes || []).map(p => parse(p.name)).filter(Boolean);
+        } else if (sys === 'ppr') {
+            const isPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            if (isPA) {
+                // DUO SDR 6: стенка = D/6, внутренний = D × 2/3. В названии стенки нет.
+                rows = (catalog.ppr_proaqua_pipe || [])
+                    .filter(p => /DUO SDR 6/i.test(p.name || ''))
+                    .map(p => {
+                        const m = String(p.name).match(/(\d{2,3})\s*мм/);
+                        if (!m) return null;
+                        const od = parseInt(m[1], 10);
+                        return { size: od, inner: Math.round(od * 2 / 3 * 10) / 10 };
+                    }).filter(Boolean);
+            } else {
+                rows = (catalog.ppr_ekoplastik_pipe || []).map(p => parse(p.name)).filter(Boolean);
+            }
+        }
+
+        // Дубли по типоразмеру (у металлопластика 16-я идёт бухтами 100 и 200 м)
+        // схлопываем, ряд держим по возрастанию — подбор идёт снизу вверх.
+        const seen = {};
+        rows = rows.filter(r => (seen[r.size] ? false : (seen[r.size] = true)))
+            .sort((a, b) => a.size - b.size);
+        this._boilerRangeCache[sys] = rows;
+        return rows;
+    },
+
+    /**
+     * Наименьший типоразмер системы, на котором скорость не выше предела.
+     *
+     * Возвращает { size, inner, v, flow, capped }. capped = true означает, что ряд
+     * закончился раньше, чем скорость вошла в норму: у металлопластика верх — 32 мм,
+     * дальше система физически не тянет и обвязку надо вести другой. Молча ставить
+     * максимальный типоразмер в этом случае нельзя, иначе смета скроет проблему.
+     */
+    boilerPickSize: function (system, kw, dt) {
+        const sys = system || this.boilerPipeSystem();
+        const _dt = dt || this.boilerDT();
+        const flow = this.boilerFlow(kw, _dt);
+        const range = this.boilerPipeRange(sys);
+        if (!range.length) return null;
+        const vOf = (inner) => {
+            const S = Math.PI * Math.pow(inner / 1000, 2) / 4;
+            return (flow / 3600) / S;
+        };
+        for (let i = 0; i < range.length; i++) {
+            const v = vOf(range[i].inner);
+            if (v <= this.BOILER_V_MAX) {
+                return { size: range[i].size, inner: range[i].inner, v: v, flow: flow, capped: false };
+            }
+        }
+        const last = range[range.length - 1];
+        return { size: last.size, inner: last.inner, v: vOf(last.inner), flow: flow, capped: true };
+    },
+
+    /**
+     * Во что обойдётся раздел «2. Обвязка котельной» в каждой из четырёх систем.
+     *
+     * Замена системы — не замена одной строки: меняются труба, все фитинги, хомуты
+     * и теплоизоляция разом, и по цене одной трубы судить о выборе нельзя. Поэтому
+     * смета пересчитывается целиком под каждую систему и суммируется весь раздел 2.
+     * Оборудование (котлы, баки, насосы) в нём одинаково при любой системе, так что
+     * разница между строчками — это ровно разница обвязки.
+     *
+     * Состояние снимается и возвращается на место, страница не трогается
+     * (render(true) считает без отрисовки). Последним прогоном восстанавливаем
+     * currentEquipmentList под текущую систему — им пользуются счёт, ссылка и листы.
+     */
+    boilerSystemTotals: function () {
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const sumSection2 = () => (this.currentEquipmentList || []).reduce((acc, it) => {
+            return String(it.group || '').indexOf('2.') === 0
+                ? acc + (it.price || 0) * (it.q || 1) : acc;
+        }, 0);
+        const out = {};
+        try {
+            this.BOILER_PIPE_SYSTEMS.forEach(sys => {
+                this.state.boilerPipeSystem = sys;
+                this._boilerRangeCache = null;   // ряд зависит от системы и бренда ППР
+                this.render(true);
+                out[sys] = Math.round(sumSection2());
+            });
+        } finally {
+            // Прогон мог тронуть не только boilerPipeSystem (render кое-где
+            // досогласовывает состояние), поэтому возвращаем снимок целиком.
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this.render(true);
+        }
+        return out;
+    },
+
+    /**
+     * Чем можно заменить ОДНУ позицию обвязки, не трогая систему целиком.
+     *
+     * Выбор системы и выбор детали — разные задачи: «поставить всю котельную на
+     * полипропилен» и «здесь вместо тройника нужен уголок» не должны быть одной
+     * кнопкой. Здесь — второе: тот же материал, тот же типоразмер, другой тип
+     * фитинга. Резьбовые переходы даём все, что есть на этом диаметре: под разные
+     * патрубки нужны разные резьбы.
+     *
+     * Работает только для нержавейки: у ППР и металлопластика артикулы не
+     * разобраны по типоразмерам (см. boilerPipeRange) — там пока только система.
+     */
+    ssSameSizeAlts: function (item) {
+        const id = String((item && (item.originalId || item.id)) || '');
+        if (!/^(RSS|SSS)-/.test(id)) return [];
+        // Типоразмер текущей позиции — из её названия, как и весь индекс.
+        const cur = (catalog.ss_pipe_4m || []).concat(
+            'ss_elbow90_ff ss_elbow90 ss_elbow45 ss_tee ss_tee_red ss_adapter_fi ss_adapter_mi ss_elbow_mi'
+                .split(' ').reduce((a, k) => a.concat(catalog[k] || []), [])
+        ).find(x => x && (x.id === id || String(x.id).replace(/^SSS-2/, 'RSS-1') === id.replace(/^SSS-2/, 'RSS-1')));
+        if (!cur) return [];
+        const m = String(cur.name || '').match(/(\d{2})(?:\s*х|\s*$)/);
+        if (!m) return [];
+        const d = m[1];
+
+        const out = [];
+        const push = (arr, extra) => {
+            const it = this.ssFit(arr, d, extra);
+            if (it && it.id !== id) out.push({ id: it.id, name: it.name, price: it.price || 0, brand: it.brand || 'ROMMER' });
+        };
+        ['ss_elbow90_ff', 'ss_elbow90', 'ss_elbow45', 'ss_tee'].forEach(a => push(a));
+        this.SS_THREADS.forEach(t => { push('ss_adapter_fi', t.t); push('ss_adapter_mi', t.t); push('ss_elbow_mi', t.t); });
+        // Переходные тройники этого диаметра — все имеющиеся ответвления.
+        Object.keys(this.ssFitIndex()['ss_tee_red'] || {}).forEach(k => {
+            if (k.indexOf(d + '|') !== 0) return;
+            const it = this.ssFit('ss_tee_red', d, k.split('|')[1]);
+            if (it && it.id !== id) out.push({ id: it.id, name: it.name, price: it.price || 0, brand: it.brand || 'ROMMER' });
+        });
+        const seen = {};
+        return out.filter(x => (seen[x.id] ? false : (seen[x.id] = true)));
+    },
+
+    // === ФИТИНГИ НЕРЖАВЕЙКИ ПО ТИПОРАЗМЕРУ ===
+    //
+    // Пока котельная знала два диаметра, артикулы фитингов были вписаны в код
+    // строками. На семи типоразмерах так нельзя, а вывести артикул из диаметра
+    // формулой не выходит: коды этой линейки непоследовательны — 22х3/4 это
+    // RSS-1022-002234, но 28х1 уже RSS-1022-000281, а 35х1¼ — RSS-1022-035114.
+    // Зато НАЗВАНИЯ единообразны: «Угольник 90° ВПр-ВПр 22», «Переходник ВПр-НР
+    // 28х1», «Тройник переходной ВПр 28х22х28». По ним и строим индекс — заодно
+    // новый типоразмер от парсера подхватится сам.
+    //
+    // Ключи: 'd' — по диаметру, 'd|резьба' — резьбовые, 'D|d' — переходные тройники.
+    _ssFitIdx: null,
+    ssFitIndex: function () {
+        if (this._ssFitIdx) return this._ssFitIdx;
+        const idx = {};
+        const put = (arr, keyOf) => {
+            const map = {};
+            (catalog[arr] || []).forEach(it => {
+                const k = keyOf(String(it.name || ''));
+                if (k) map[k] = it.id;
+            });
+            idx[arr] = map;
+        };
+        // «… 22» — последнее число в названии и есть типоразмер.
+        const bySize = (name) => {
+            const m = name.match(/(\d{2})\s*$/);
+            return m ? m[1] : null;
+        };
+        // «… 28х1», «… 35х1 1/4» — диаметр и резьба через «х».
+        const bySizeThread = (name) => {
+            const m = name.match(/(\d{2})\s*х\s*(\S+)\s*$/);
+            return m ? (m[1] + '|' + m[2]) : null;
+        };
+        // «… 28х22х28» — магистраль и ответвление.
+        const byTeeRed = (name) => {
+            const m = name.match(/(\d{2})\s*х\s*(\d{2})\s*х\s*(\d{2})\s*$/);
+            return m ? (m[1] + '|' + m[2]) : null;
+        };
+        put('ss_elbow90_ff', bySize);
+        put('ss_elbow90', bySize);
+        put('ss_elbow45', bySize);
+        put('ss_tee', bySize);
+        put('ss_tee_red', byTeeRed);
+        put('ss_adapter_fi', bySizeThread);
+        put('ss_adapter_mi', bySizeThread);
+        put('ss_elbow_mi', bySizeThread);
+        this._ssFitIdx = idx;
+        return idx;
+    },
+
+    /**
+     * Фитинг нержавейки: массив каталога, типоразмер и, для резьбовых, резьба
+     * (или диаметр ответвления у переходного тройника).
+     *
+     * Возврат идёт через ssItem, поэтому переключатель 304 ↔ 316L продолжает
+     * работать: индекс построен по ROMMER-линейке, а ssItem подменяет артикул
+     * на STOUT-овский, если выбрана 316L.
+     */
+    ssFit: function (arr, d, extra) {
+        const key = (extra === undefined || extra === null) ? String(d) : (String(d) + '|' + String(extra));
+        const id = (this.ssFitIndex()[arr] || {})[key];
+        return id ? this.ssItem(catalog[arr], id) : null;
+    },
+
+    /**
+     * Типоразмер, на котором обвязка реально собирается: на выбранном по скорости
+     * диаметре может не оказаться нужного фитинга (например угольника-переходника
+     * 15х3/4 в линейке нет вовсе). Тогда поднимаемся на ступень вверх, пока
+     * набор не сойдётся. Пропустить фитинг молча нельзя — addToBill пропускает
+     * undefined без единого следа, и позиция просто исчезла бы из сметы.
+     */
+    ssSizeWithFittings: function (size, need) {
+        const range = this.boilerPipeRange('ss304').map(r => r.size);
+        const has = (d) => (need || []).every(n => !!this.ssFit(n.arr, d, n.extra));
+        let i = range.indexOf(parseInt(size, 10));
+        if (i < 0) return size;
+        for (; i < range.length; i++) if (has(range[i])) return range[i];
+        return size;
+    },
+
+    // Резьбы в дюймах, по возрастанию. Запись «11/4» — это 1 1/4, так они названы
+    // в каталоге; отдельная таблица нужна, чтобы сравнивать их по величине.
+    SS_THREADS: [
+        { t: '1/2', v: 0.5 }, { t: '3/4', v: 0.75 }, { t: '1', v: 1 },
+        { t: '11/4', v: 1.25 }, { t: '11/2', v: 1.5 }, { t: '2', v: 2 }
+    ],
+
+    /**
+     * Какая резьба реально есть у перехода этого типоразмера.
+     *
+     * Резьба в линейке привязана к диаметру: на 15–22 это 1/2" и 3/4", на 28 —
+     * 3/4" и 1", на 35 — 1" и 1 1/4". Поэтому под патрубок котла нельзя просто
+     * поднять диаметр — на 35-й трубе перехода на 3/4" не существует и не будет.
+     * Берём ближайшую доступную не меньше нужной, а если и таких нет — самую
+     * крупную из имеющихся. Когда результат не совпал с патрубком, вызывающий
+     * код обязан сказать в подсказке, что нужен резьбовой переход: так уже
+     * сделано для трубы 22 с патрубком 1".
+     */
+    ssThreadFor: function (arr, d, want) {
+        const map = this.ssFitIndex()[arr] || {};
+        const have = this.SS_THREADS.filter(x => map[String(d) + '|' + x.t]);
+        if (!have.length) return null;
+        const wv = (this.SS_THREADS.find(x => x.t === want) || {}).v || 0;
+        return (have.find(x => x.v >= wv) || have[have.length - 1]).t;
+    },
+
+    // Резьба в подсказку: «3/4» -> 3/4", «11/4» -> 1 1/4"
+    ssThreadLabel: function (t) {
+        const s = String(t || '');
+        return (s === '11/4' ? '1 1/4' : s === '11/2' ? '1 1/2' : s) + '"';
+    },
+
+    /**
+     * Хомут подводки бака по наружному диаметру трубы.
+     *
+     * Диапазоны — из названий позиций каталога. Раньше здесь стоял прибитый
+     * SAC-0020-000034 «3/4" (25–29 мм)», выбранный, судя по всему, по резьбе
+     * подводки, а не по трубе: на нержавеющую 22 он не затягивается, её диапазон
+     * 20–24. На 15 и 18 в этом семействе хомутов нет вовсе — там берётся
+     * одновинтовой M8, у него ряд начинается с 12 мм.
+     */
+    SS_CLAMP_BY_OD: {
+        15: 'SAC-0020-300014',   // M8 1/4"  (12–15)
+        18: 'SAC-0020-300038',   // M8 3/8"  (16–19)
+        22: 'SAC-0020-000012',   // с гайкой 1/2" (20–24)
+        28: 'SAC-0020-000034',   // с гайкой 3/4" (25–29)
+        35: 'SAC-0020-000001',   // с гайкой 1"   (32–37)
+        42: 'SAC-0020-300114'    // M8 1 1/4"     (40–45)
+    },
+    ssClamp: function (od) {
+        const id = this.SS_CLAMP_BY_OD[parseInt(od, 10)];
+        return id ? (catalog.mounting_system || []).find(x => x.id === id) : null;
+    },
+
+    /**
+     * Тройник врезки: магистраль main, ответвление branch. Возвращает и позицию,
+     * и подпись к ней — чтобы они не разъехались.
+     *
+     * Переходные тройники есть не на все пары: на 28-й магистрали ответвление 22
+     * найдётся, а на 42-й ряд обрывается на 42х35х42, пары 42х22х42 нет вовсе.
+     * В таком случае ставим равнопроходной и честно пишем, что ответвление
+     * сужается по месту. Раньше здесь стоял молчаливый откат, и в смету уходил
+     * равнопроходной тройник с подписью «переходной» — артикул не совпадал с
+     * текстом.
+     */
+    ssTee: function (main, branch) {
+        const eq = this.ssFit('ss_tee', main);
+        if (main === branch) {
+            return eq ? { item: eq, label: `равнопроходной ${main}`, note: '' } : null;
+        }
+        const red = this.ssFit('ss_tee_red', main, branch);
+        if (red) return { item: red, label: `переходной ${main}х${branch}х${main}`, note: '' };
+        return eq ? {
+            item: eq, label: `равнопроходной ${main}`,
+            note: ` Переходного тройника ${main}х${branch}х${main} в линейке нет — ответвление на ${branch} сужается муфтой-переходом по месту (в смету не входит).`
+        } : null;
+    },
     // === КОНФИГУРАТОР КОНТРОЛЛЕРА ОТОПЛЕНИЯ (STOUT Thermatic 3001) ===
     //
     // Контроллер — не просто ещё одна позиция сметы, а конфигурация: он
@@ -51593,8 +52295,16 @@ const app = {
         }
     },
     // ====================================
-    render: function () {
-        this.ensureCalcId();
+    /**
+     * @param {boolean} [computeOnly] — только пересчитать смету, не трогая страницу.
+     *
+     * Нужен, чтобы прикинуть смету «а если бы система обвязки была другой», не
+     * перерисовывая экран и не отмечая расчёт в аналитике. Возврат стоит перед
+     * первой записью в DOM: всё, что выше, — чистый счёт, всё, что ниже, —
+     * отрисовка и побочные эффекты (автосохранение, вкладка «Деньги», виджеты).
+     */
+    render: function (computeOnly) {
+        if (!computeOnly) this.ensureCalcId();
         if (this.state.disabledSections) {
             const migrations = {
                 "1.1 Монтаж котельной": ["1.1 Монтаж котла и бойлера", "1.2 Монтаж обвязки котельной"],
@@ -52977,6 +53687,44 @@ const app = {
         // суммируем внутри типа топлива и берём максимум между типами. Раньше считалась
         // сплошная сумма, и газовый 24 кВт плюс электрический давали за 30 кВт — весь
         // котловой контур уходил с Ø22 на Ø28: труба, тройники, углы, американки.
+        // Типоразмеры котельной — ОДНО место на весь render. Врезка расширительных
+        // баков считается выше блока труб, и если она подберёт диаметр сама, тройник
+        // врезки не сядет на магистраль. Тот же приём, что у магистрали радиаторов:
+        // смета и гидравлика обязаны считать по одним числам.
+        //
+        // main — магистраль, tank — подводка баков (тупиковая ветка, по скорости не
+        // считается). Сверху ряд ограничен 42: на 54 нет теплоизоляции.
+        const BP_MIN = 15, BP_MAX = 42;
+        const boilerSizes = (list) => {
+            const sys = this.boilerPipeSystem();
+            const kw = boilerPowerForPipes(list);
+            if (sys === 'ppr' || sys === 'mp') {
+                // Эти системы пока на прежней паре типоразмеров, каскад для них не
+                // разделяется: perBoiler совпадает с общим, как было до правки.
+                const d = (kw <= 30) ? 22 : 28;
+                return { main: d, tank: 22, perBoiler: d, pick: null };
+            }
+            const pick = this.boilerPickSize(sys, kw);
+            const range = this.boilerPipeRange(sys).map(r => r.size)
+                .filter(s => s >= BP_MIN && s <= BP_MAX);
+            const fit = (p) => range.find(s => s >= p) || range[range.length - 1];
+            const main = fit(pick.size);
+
+            // КАСКАД. Через общий участок идёт сумма, а через обвязку КАЖДОГО котла —
+            // только его собственный расход. Считать индивидуальную подводку по сумме
+            // нельзя: на четырёх котлах по 30 кВт это давало трубу 42 и переходник
+            // 1 1/2" на патрубок 3/4", тогда как краны и фильтр в той же обвязке
+            // стояли правильно — по 3/4". Берём мощность самого крупного котла в
+            // каскаде: типоразмер один на все обвязки, чтобы монтажник не собирал
+            // каждый котёл своим набором.
+            const one = Math.max.apply(null, [0].concat((list || [])
+                .filter(b => b).map(b => b.power || 0)));
+            const perBoiler = one > 0
+                ? fit(this.boilerPickSize(sys, one).size)
+                : main;
+            return { main: main, tank: Math.min(22, main), perBoiler: Math.min(perBoiler, main), pick: pick };
+        };
+
         const boilerPowerForPipes = (list) => {
             let gas = 0, el = 0;
             (list || []).forEach(b => {
@@ -53642,9 +54390,10 @@ const app = {
                     // труба на пресс-фитингах), только типоразмер трубы 26, а не 22.
                     // Хомут 3/4" (25–29 мм) на неё садится тот же.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    // Подводка металлопластика — 26 мм, ей подходит хомут 3/4" (25–29).
+                    let clampItem = this.ssClamp(26);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком ГВС.", grp);
+                    if (clampItem) addToBill(clampItem, 1, "Хомут для фиксации трубы подводки Ø26 перед расширительным баком ГВС.", grp);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака ГВС.", grp);
 
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Отсечной вентиль для подключения расширительного бака ГВС.", grp);
@@ -53660,26 +54409,24 @@ const app = {
                         ? "Пресс-тройник равнопроходный 26х26х26 для врезки расширительного бака ГВС."
                         : "Пресс-тройник переходной 32х26х32 для врезки расширительного бака ГВС.", grp);
                 } else { // Stainless steel (Stout)
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    const _fs = boilerSizes(selBoilers);
+                    // Подводка идёт трубой того же типоразмера, что и ветка бака:
+                    // раньше здесь была прибита 22-я, потому что другой и не бывало.
+                    const _tkTh = this.ssThreadFor('ss_elbow_mi', _fs.tank, '3/4');
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком ГВС.", grp);
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком ГВС.`, grp);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака ГВС.", grp);
 
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Отсечной вентиль для подключения расширительного бака ГВС.", grp);
-                    let maleElbow = this.ssItem(catalog.ss_elbow_mi, "RSS-1010-002234");
-                    let pressElbow = this.ssItem(catalog.ss_elbow90, "RSS-1002-000022");
-                    if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.", grp);
-                    if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.", grp);
+                    let maleElbow = _tkTh && this.ssFit('ss_elbow_mi', _fs.tank, _tkTh);
+                    let pressElbow = this.ssFit('ss_elbow90', _fs.tank);
+                    if (maleElbow) addToBill(maleElbow, 1, `Угольник-переходник 90° ВПр-НР ${_fs.tank}х${this.ssThreadLabel(_tkTh)} для подключения к вентилю бака.` +
+                        (_tkTh !== '3/4' ? ` <b>Внимание:</b> вентиль бака 3/4", нужен резьбовой переход (в смету не входит).` : ``), grp);
+                    if (pressElbow) addToBill(pressElbow, 2, `Угольник 90° ВПр-НПр ${_fs.tank} для обвязки бака.`, grp);
 
-                    let frameBoilerPower = boilerPowerForPipes(selBoilers);
-                    let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
-                    if (frameSsDiameter === 22) {
-                        let teeItem = this.ssItem(catalog.ss_tee, "RSS-1013-000022");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник равнопроходной ВПр 22 для врезки расширительного бака ГВС.", grp);
-                    } else {
-                        let teeItem = this.ssItem(catalog.ss_tee_red, "RSS-1014-282228");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник переходной ВПр 28х22х28 для врезки расширительного бака ГВС.", grp);
-                    }
+                    const _fsTee = this.ssTee(_fs.main, _fs.tank);
+                    if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака ГВС.${_fsTee.note}`, grp);
                 }
             } else {
                 addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Подключение расширительного бака ГВС.", grp);
@@ -54101,9 +54848,10 @@ const app = {
                 } else if (this.boilerPipeSystem() === 'mp') { // Металлопластик STOUT
                     // См. бак ГВС выше: та же подводка, типоразмер трубы 26 вместо 22.
                     const _mp = (id) => (catalog.water_fittings_press_mp || []).find(x => x.id === id);
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    // Подводка металлопластика — 26 мм, ей подходит хомут 3/4" (25–29).
+                    let clampItem = this.ssClamp(26);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком отопления.");
+                    if (clampItem) addToBill(clampItem, 1, "Хомут для фиксации трубы подводки Ø26 перед расширительным баком отопления.");
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака отопления.");
 
                     addToBill(catalog.tank_kit, 1, "Отсечной вентиль для подключения расширительного бака.");
@@ -54119,26 +54867,23 @@ const app = {
                         ? "Пресс-тройник равнопроходный 26х26х26 для врезки расширительного бака."
                         : "Пресс-тройник переходной 32х26х32 для врезки расширительного бака.");
                 } else { // Stainless steel (Stout)
-                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-000034"); // 3/4"
+                    const _fs = boilerSizes(selBoilers);
+                    // См. бак ГВС выше: типоразмер подводки следует за веткой бака.
+                    const _tkTh = this.ssThreadFor('ss_elbow_mi', _fs.tank, '3/4');
+                    let clampItem = this.ssClamp(_fs.tank);
                     let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                    if (clampItem) addToBill(clampItem, 1, "Хомут 3/4\" для фиксации трубы подводки перед расширительным баком отопления.");
+                    if (clampItem) addToBill(clampItem, 1, `Хомут для фиксации трубы подводки Ø${_fs.tank} перед расширительным баком отопления.`);
                     if (studItem) addToBill(studItem, 1, "Шпилька-шуруп с дюбелем для крепления хомута подводки бака отопления.");
 
                     addToBill(catalog.tank_kit, 1, "Отсечной вентиль для подключения расширительного бака.");
-                    let maleElbow = this.ssItem(catalog.ss_elbow_mi, "RSS-1010-002234");
-                    let pressElbow = this.ssItem(catalog.ss_elbow90, "RSS-1002-000022");
-                    if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.");
-                    if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.");
+                    let maleElbow = _tkTh && this.ssFit('ss_elbow_mi', _fs.tank, _tkTh);
+                    let pressElbow = this.ssFit('ss_elbow90', _fs.tank);
+                    if (maleElbow) addToBill(maleElbow, 1, `Угольник-переходник 90° ВПр-НР ${_fs.tank}х${this.ssThreadLabel(_tkTh)} для подключения к вентилю бака.` +
+                        (_tkTh !== '3/4' ? ` <b>Внимание:</b> вентиль бака 3/4", нужен резьбовой переход (в смету не входит).` : ``));
+                    if (pressElbow) addToBill(pressElbow, 2, `Угольник 90° ВПр-НПр ${_fs.tank} для обвязки бака.`);
 
-                    let frameBoilerPower = boilerPowerForPipes(selBoilers);
-                    let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
-                    if (frameSsDiameter === 22) {
-                        let teeItem = this.ssItem(catalog.ss_tee, "RSS-1013-000022");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник равнопроходной ВПр 22 для врезки расширительного бака.");
-                    } else {
-                        let teeItem = this.ssItem(catalog.ss_tee_red, "RSS-1014-282228");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник переходной ВПр 28х22х28 для врезки расширительного бака.");
-                    }
+                    const _fsTee = this.ssTee(_fs.main, _fs.tank);
+                    if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака.${_fsTee.note}`);
                 }
             } else {
                 addToBill(catalog.tank_kit, 1, "Подключение бака.");
@@ -54201,8 +54946,7 @@ const app = {
 
         if (needCollector) {
             // Несущий каркас (рама) или хомуты коллектора котельной на базе C-образного профиля и консолей STOUT
-            let frameBoilerPower = boilerPowerForPipes(selBoilers);
-            let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
+            let frameSsDiameter = boilerSizes(selBoilers).main;
 
             let isDoubleMode = (this.state.boilerFrameType === 'profile_double' || this.state.boilerFrameType === 'direct_double');
             let clampId = "";
@@ -54225,11 +54969,19 @@ const app = {
                     clampId = (mp_diam === 26) ? "SAC-0020-300034" : "SAC-0020-300001";
                 }
             } else { // Stainless steel/Stout
-                if (isDoubleMode) {
-                    clampId = (frameSsDiameter === 22) ? "SAC-0020-200012" : "SAC-0020-200034";
-                } else {
-                    clampId = (frameSsDiameter === 22) ? "SAC-0020-300012" : "SAC-0020-300034";
-                }
+                // Хомут по наружному диаметру трубы: диапазоны взяты из названий
+                // позиций каталога (1/2" — 20–23 мм, 3/4" — 25–28, 1" — 31–35,
+                // 1 1/4" — 40–45). Раньше хватало двух строк, потому что и труб
+                // было две; теперь магистраль может быть 35-й или 42-й.
+                const _clampBySize = {
+                    22: { single: "SAC-0020-300012", double: "SAC-0020-200012" },
+                    28: { single: "SAC-0020-300034", double: "SAC-0020-200034" },
+                    35: { single: "SAC-0020-300001", double: "SAC-0020-200001" },
+                    // Двойного хомута на 1 1/4" в каталоге нет — на 42-й трубе даже в
+                    // двойном режиме ставится одиночный, иначе позиция исчезла бы.
+                    42: { single: "SAC-0020-300114", double: "SAC-0020-300114" }
+                }[frameSsDiameter] || { single: "SAC-0020-300034", double: "SAC-0020-200034" };
+                clampId = isDoubleMode ? _clampBySize.double : _clampBySize.single;
             }
             let clampItem = catalog.mounting_system.find(x => x.id === clampId);
 
@@ -54580,11 +55332,30 @@ const app = {
         // котельную. isAnalog оставлен под полипропилен: под ним завязана вся ветка ППР
         // ниже, включая изоляцию и подбор диаметра.
         let totalBoilerPower = boilerPowerForPipes(selBoilers);
-        let ss_diameter = (totalBoilerPower <= 30) ? 22 : 28;
         let _bpSystem = this.boilerPipeSystem();
         let isAnalog = (_bpSystem === 'ppr');
         let is316 = (_bpSystem === 'ss316');
         let isMp = (_bpSystem === 'mp');
+
+        // Типоразмер магистрали котельной. У нержавейки он теперь подбирается ПО
+        // СКОРОСТИ из всего ряда, а не назначается порогом «30 кВт»: на 10 кВт
+        // порог давал 22-ю, где хватает 18-й, а на 80 кВт — ту же 28-ю, на которой
+        // скорость 1,9 м/с (труба гудит). Расчёт в boilerPickSize, он же считает и
+        // подсказку, поэтому цифра в описании и цифра в подборе — одна.
+        //
+        // Диапазон пока ограничен 22…42: снизу — потому что теплоизоляции на 15 и 18
+        // в boiler_insulation нет, сверху — потому что нет на 54. Расширять надо
+        // вместе с изоляцией, иначе строка утеплителя молча пропадёт из сметы.
+        //
+        // ППР и металлопластик пока остаются на прежней паре типоразмеров: их ряды
+        // требуют своей ревизии фитингов (у металлопластика на 16 и 20 нет резьбы 1",
+        // у ППР два бренда с разными артикулами), и мешать это в одну правку нельзя.
+        const _bpSizes = boilerSizes(selBoilers);
+        const _bpPick = _bpSizes.pick;
+        let ss_diameter = _bpSizes.main;
+        let _tankSize = _bpSizes.tank;
+        // Типоразмер обвязки одного котла: в каскаде он меньше общего (см. boilerSizes).
+        let _boilerSize = _bpSizes.perBoiler;
 
         // Металлопластик STOUT: труба PE-Xb/Al/PE-Xb (SPM-0001) на латунных пресс-фитингах
         // SFP. Логический диаметр котельной 22/28 (он же наружный у нержавейки) ложится на
@@ -54610,12 +55381,15 @@ const app = {
             const dT = 20;
             let gasKw = 0, elKw = 0;
             selBoilers.forEach(b => { if (b) { if (b.type === 'gas') gasKw += b.power || 0; else elKw += b.power || 0; } });
+            // У нержавейки внутренний диаметр берём из того же справочника, по
+            // которому шёл подбор, — тогда подсказка не может разойтись с расчётом.
+            const _ssRow = (this.boilerPipeRange(_bpSystem) || []).find(r => r.size === ss_diameter);
             const inner = isAnalog ? (ss_diameter === 22 ? 23.2 : 29.0)
                 : isMp ? (ss_diameter === 22 ? 20.0 : 26.0)
-                    : (ss_diameter === 22 ? 19.6 : 25.6);
+                    : (_ssRow ? _ssRow.inner : (ss_diameter === 22 ? 19.6 : 25.6));
             const label = isAnalog ? (ss_diameter === 22 ? '32х4,4 мм' : '40х5,5 мм')
                 : isMp ? (ss_diameter === 22 ? '26х3,0 мм' : '32х3,0 мм')
-                    : (ss_diameter === 22 ? '22х1,2 мм' : '28х1,2 мм');
+                    : (`Ø${ss_diameter} мм`);
             const flow = totalBoilerPower / (1.163 * dT);
             const area = Math.PI * Math.pow(inner / 1000, 2) / 4;
             const v = flow / 3600 / area;
@@ -54630,16 +55404,22 @@ const app = {
                 (isMp
                     ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Порог 30 кВт общий для всех систем обвязки: на металлопластике 26х3,0 он даёт 1,14 м/с, выше — переход на 32х3,0.<br>` +
                       `• Больше 32 мм в линейке металлопластика STOUT нет: с 53 кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>`
-                    : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Отсюда и порог 30 кВт: на Ø22 он даёт 1,19 м/с, выше — переход на Ø28.<br>`) +
+                    : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер подобран по ней: взят самый тонкий из ряда 22 · 28 · 35 · 42, на котором скорость в норму укладывается.<br>` +
+                      (ss_diameter >= 42 ? `• Ряд подбора сверху ограничен 42 мм — на 54 мм нет теплоизоляции в каталоге. Если расчёт упёрся в 42, проверьте скорость выше по строке.<br>` : ``) +
+                      (ss_diameter <= 22 ? `• Снизу ряд ограничен 22 мм по той же причине: на 15 и 18 мм теплоизоляции в каталоге нет, хотя по скорости на малых котлах хватило бы и их.<br>` : ``)) +
                 (bothFuels
                     ? `• <b style="color:#F59E0B;">Проверьте схему:</b> если котлы у вас работают ОДНОВРЕМЕННО (электрический как пиковый, а не резервный), диаметр надо считать по сумме ${gasKw + elKw} кВт — тогда замените трубу и фитинги вручную.<br>`
                     : '');
         })();
 
-        let ss_pipes_demand = {
-            22: { length: 0, components: [] },
-            28: { length: 0, components: [] }
-        };
+        // Вёдра метража. Раньше их было ровно два — 22 и 28, — потому что и
+        // типоразмеров было два. Теперь магистраль может быть любой из ряда,
+        // поэтому вёдра заводятся по факту: магистральное и, отдельно, подводка
+        // баков (она может совпасть с магистральным — тогда ведро одно).
+        let ss_pipes_demand = {};
+        [ss_diameter, _tankSize, _boilerSize].forEach(d => {
+            if (!ss_pipes_demand[d]) ss_pipes_demand[d] = { length: 0, components: [] };
+        });
 
         // Функция добавления труб с комбинированным подбором 2м/4м штанг или PPR штанг по 4м
         const addPipesToBill = (L, diam, grp, desc) => {
@@ -54751,10 +55531,12 @@ const app = {
                     `Переходник с пресс-соединения ${_mpDia} на наружную резьбу ${_mpThKey === '1' ? '1"' : _sepTh} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон.` +
                     (_mpThKey !== _sepThKey ? ` <b>Внимание:</b> у выбранного сепаратора резьба ${_sepTh}, дополнительно нужен резьбовой переход ${_sepTh}–1" (в смету не входит).` : ``) + ` Требуется: 2 шт.`, _airSepGrp);
             } else {
-                const _adpId = { '22|3/4': 'RSS-1021-002234', '22|1': 'RSS-1021-000221', '28|3/4': 'RSS-1021-002834', '28|1': 'RSS-1021-000281' }[ss_diameter + '|' + _sepThKey];
-                const _adp = _adpId && this.ssItem(catalog.ss_adapter_mi, _adpId);
+                const _adpTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, _sepThKey);
+                const _adp = _adpTh && this.ssFit('ss_adapter_mi', ss_diameter, _adpTh);
                 if (_adp) addToBill(_adp, 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${_sepTh} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон. Требуется: 2 шт.`, _airSepGrp);
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_adpTh)} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон.` +
+                    (_adpTh !== _sepThKey ? ` <b>Внимание:</b> у сепаратора резьба ${_sepTh}, на трубе ${ss_diameter} перехода такого размера в линейке нет — нужен резьбовой переход ${_sepTh}–${this.ssThreadLabel(_adpTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, _airSepGrp);
             }
         }
 
@@ -54783,9 +55565,12 @@ const app = {
                 if (_tieAdp) addToBill(_tieAdp, 2,
                     `Переходник с пресс-соединения ${mpD(ss_diameter)} на наружную резьбу 1" — вкручивается в муфту на патрубке узла гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
             } else {
-                const _tieAdp = this.ssItem(catalog.ss_adapter_mi, (ss_diameter === 22 ? 'RSS-1021-000221' : 'RSS-1021-000281'));
+                const _tieTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
+                const _tieAdp = _tieTh && this.ssFit('ss_adapter_mi', ss_diameter, _tieTh);
                 if (_tieAdp) addToBill(_tieAdp, 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу 1" — вкручивается в муфту на патрубке узла гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_tieTh)} — вкручивается в муфту на патрубке узла гидроразделения.` +
+                    (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, _hydroTieGrp);
             }
         }
 
@@ -54799,8 +55584,8 @@ const app = {
             // подраздел, что и его дымоход с фильтром (см. gasBoilerGrp).
             let grp = (b.type === 'gas') ? gasBoilerGrp(_gasIdxFit++) : elBoilerGrp(_elIdxFit++);
             let bName = (b.type === 'gas') ? "Газовый котёл" : "Электрический котёл";
-            ss_pipes_demand[ss_diameter].length += 2.0;
-            ss_pipes_demand[ss_diameter].components.push(bName === "Газовый котёл" ? "газовый котёл" : "электрический котёл");
+            ss_pipes_demand[_boilerSize].length += 2.0;
+            ss_pipes_demand[_boilerSize].components.push(bName === "Газовый котёл" ? "газовый котёл" : "электрический котёл");
 
             // Участок «котёл → узел гидроразделения». Двух метров выше хватает только
             // на саму обвязку котла — на подводку к коллектору/гидрострелке не
@@ -54810,8 +55595,8 @@ const app = {
             // В каскаде каждый котёл заходит в узел своей парой, поэтому счёт
             // ведётся внутри цикла по котлам, а не один раз на котельную.
             if (needCollector) {
-                ss_pipes_demand[ss_diameter].length += 3.0;
-                ss_pipes_demand[ss_diameter].components.push("подводка к узлу гидроразделения");
+                ss_pipes_demand[_boilerSize].length += 3.0;
+                ss_pipes_demand[_boilerSize].components.push("подводка к узлу гидроразделения");
                 // Повороты трассы — по одному отводу 90° на трубу.
                 if (isAnalog) {
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, ss_diameter === 22 ? 'SKO03290RCT' : 'SKO04090RCT'), 2,
@@ -54821,9 +55606,9 @@ const app = {
                     if (_mpElb) addToBill(_mpElb, 2,
                         `Пресс-угольник 90° ${mpD(ss_diameter)}х${mpD(ss_diameter)} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 } else {
-                    const _elb = this.ssItem(catalog.ss_elbow90_ff, (ss_diameter === 22 ? 'RSS-1003-000022' : 'RSS-1003-000028'));
+                    const _elb = this.ssFit('ss_elbow90_ff', _boilerSize);
                     if (_elb) addToBill(_elb, 2,
-                        `Пресс-угольник 90° В-В на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
+                        `Пресс-угольник 90° В-В ${_boilerSize} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 }
             }
 
@@ -54855,25 +55640,42 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 2, `Пресс-тройник переходной 32х26х32 для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
                 }
             } else {
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-002234'), 2, `Переходник с пресс-соединения на внутреннюю резьбу 3/4" для подключения нержавеющей трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 2, `Пресс-угольник 90° В-В для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000022'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 2, `Пресс-тройник для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-000281'), 2, `Переходник с пресс-соединения на внутреннюю резьбу 1" для подключения нержавеющей трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000028'), 2, `Пресс-угольник 90° В-В для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000028'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 2, `Пресс-тройник переходной для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
-                }
+                // Обвязка ОДНОГО котла считается по его типоразмеру (_boilerSize), а
+                // не по общему: через неё идёт только его расход. Патрубок настенного
+                // газового котла — 3/4" (так в паспортах Haier и Baxi); точной пары
+                // «диаметр + резьба» в линейке может не быть, тогда ставим ту, что
+                // есть, и предупреждаем про резьбовой переход.
+                const _bPort = (_boilerSize >= 28) ? '1"' : '3/4"';
+                const _bTh = this.ssThreadFor('ss_adapter_fi', _boilerSize, (_boilerSize >= 28) ? '1' : '3/4');
+                addToBill(_bTh && this.ssFit('ss_adapter_fi', _boilerSize, _bTh), 2,
+                    `Переходник с пресс-соединения ${_boilerSize} на внутреннюю резьбу ${this.ssThreadLabel(_bTh)} для подключения нержавеющей трубы к патрубкам котла (${bName}).` +
+                    (this.ssThreadLabel(_bTh) !== _bPort ? ` <b>Внимание:</b> патрубок котла ${_bPort}, нужен резьбовой переход (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _boilerSize), 2, `Пресс-угольник 90° В-В ${_boilerSize} для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', _boilerSize), 2, `Пресс-угольник 45° В-В ${_boilerSize} для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                // Тройник ответвления обвязки котла — по его же типоразмеру.
+                const _bTee = this.ssTee(_boilerSize, Math.min(_tankSize, _boilerSize));
+                if (_bTee) addToBill(_bTee.item, 2, `Пресс-тройник ${_bTee.label} для создания ответвлений в контуре обвязки котла (${bName}).${_bTee.note} Требуется: 2 шт.`, grp);
             }
         });
 
         // 2. Бойлер ГВС
         if (this.state.hotWater && !rigDropped('dhw')) {
             let grp = "2.3. Обвязка Водонагревателя";
-            ss_pipes_demand[ss_diameter].length += 4.0;
-            ss_pipes_demand[ss_diameter].components.push("греющий контур бойлера");
+            // Греющий контур несёт не мощность котельной, а мощность ЗМЕЕВИКА: больше
+            // него в бак всё равно не уйдёт. Паспортные киловатты берём из TANK_COIL_KW
+            // по подобранной модели. Когда модели в карте нет, откатываемся на
+            // типоразмер обвязки котла — он ближе к истине, чем общий: греющий контур
+            // питается от одного котла, а не от всего каскада.
+            const _coilKw = this.tankCoilKw(this._tankPortsModel);
+            let _coilSize = _boilerSize;
+            if (!isAnalog && !isMp && _coilKw > 0) {
+                const _cp = boilerSizes([{ power: _coilKw, type: 'gas' }]);
+                _coilSize = Math.min(_cp.main, ss_diameter);
+            }
+            if (!ss_pipes_demand[_coilSize]) ss_pipes_demand[_coilSize] = { length: 0, components: [] };
+            ss_pipes_demand[_coilSize].length += 4.0;
+            ss_pipes_demand[_coilSize].components.push("греющий контур бойлера");
 
             if (isAnalog) {
                 if (ss_diameter === 22) {
@@ -54921,25 +55723,21 @@ const app = {
                 // в подсказке, что нужен резьбовой переход на 1".
                 const _coilPort = (this._tankPorts && this._tankPorts.coil) || '1"';
                 const _coilIs1 = (_coilPort === '1"');
-                if (ss_diameter === 22) {
-                    const _adp = this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-002234');
-                    addToBill(_adp, 2, `Переходник с пресс-соединения на внутреннюю резьбу 3/4" для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
-                        (_coilIs1 ? ` <b>Внимание:</b> для патрубка 1" дополнительно нужен резьбовой переход 3/4"–1" (в смету не входит).` : ``) + ` Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 4, `Пресс-угольник 90° В-В для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000022'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 2, `Пресс-тройник для создания ответвлений в греющем контуре бойлера ГВС. Требуется: 2 шт.`, grp);
-                } else {
-                    const _adp28 = this.ssItem(catalog.ss_adapter_fi, (_coilIs1 ? 'RSS-1022-000281' : 'RSS-1022-002834'));
-                    addToBill(_adp28, 2, `Переходник с пресс-соединения на внутреннюю резьбу ${_coilIs1 ? '1"' : '3/4"'} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000028'), 4, `Пресс-угольник 90° В-В для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000028'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 2, `Пресс-тройник переходной для создания ответвлений в греющем контуре бойлера ГВС. Требуется: 2 шт.`, grp);
-                }
+                const _coilKey = _coilIs1 ? '1' : '3/4';
+                const _coilTh = this.ssThreadFor('ss_adapter_fi', _coilSize, _coilKey);
+                addToBill(_coilTh && this.ssFit('ss_adapter_fi', _coilSize, _coilTh), 2,
+                    `Переходник с пресс-соединения ${_coilSize} на внутреннюю резьбу ${this.ssThreadLabel(_coilTh)} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
+                    (this.ssThreadLabel(_coilTh) !== _coilPort ? ` <b>Внимание:</b> нужен резьбовой переход ${_coilPort}–${this.ssThreadLabel(_coilTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _coilSize), 4, `Пресс-угольник 90° В-В ${_coilSize} для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', _coilSize), 2, `Пресс-угольник 45° В-В ${_coilSize} для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
+                const _cTee = this.ssTee(_coilSize, Math.min(_tankSize, _coilSize));
+                if (_cTee) addToBill(_cTee.item, 2, `Пресс-тройник ${_cTee.label} для создания ответвлений в греющем контуре бойлера ГВС.${_cTee.note} Требуется: 2 шт.`, grp);
             }
 
             // Трубы для расширительного бака ГВС (1.5 м, всегда диаметром 22)
-            ss_pipes_demand[22].length += 1.5;
-            ss_pipes_demand[22].components.push("расширительный бак ГВС");
+            ss_pipes_demand[_tankSize].length += 1.5;
+            ss_pipes_demand[_tankSize].components.push("расширительный бак ГВС");
 
             if (isAnalog) {
                 addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03225RCT'), 1, `Муфта комбинированная с наружной резьбой 32х3/4" PP-RCT для подключения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
@@ -54958,13 +55756,10 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 1, `Пресс-тройник переходной 32х26х32 для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
                 }
             } else {
-                addToBill(this.ssItem(catalog.ss_adapter_mi, 'RSS-1021-002234'), 1, `Переходник с пресс-соединения на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
-                addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 1, `Пресс-угольник 90° В-В диаметром 22 мм для подведения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 1, `Пресс-тройник диаметром 22 мм для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 1, `Пресс-тройник переходной 28х22х28 мм для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
-                }
+                addToBill(this.ssFit('ss_adapter_mi', _tankSize, this.ssThreadFor('ss_adapter_mi', _tankSize, '3/4')), 1, `Переходник с пресс-соединения ${_tankSize} на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _tankSize), 1, `Пресс-угольник 90° В-В диаметром ${_tankSize} мм для подведения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
+                const _dTee = this.ssTee(ss_diameter, _tankSize);
+                if (_dTee) addToBill(_dTee.item, 1, `Пресс-тройник ${_dTee.label} для врезки линии расширительного бака ГВС.${_dTee.note} Требуется: 1 шт.`, grp);
             }
         }
 
@@ -54994,8 +55789,8 @@ const app = {
             let bName = primaryBoiler ? ((primaryBoiler.type === 'gas') ? "газового котла" : "электрического котла") : "котла";
 
             // Трубы для расширительного бака отопления (1.5 м, всегда диаметром 22)
-            ss_pipes_demand[22].length += 1.5;
-            ss_pipes_demand[22].components.push("расширительный бак отопления");
+            ss_pipes_demand[_tankSize].length += 1.5;
+            ss_pipes_demand[_tankSize].components.push("расширительный бак отопления");
 
             if (isAnalog) {
                 addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03225RCT'), 1, `Муфта комбинированная с наружной резьбой 32х3/4" PP-RCT для подключения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
@@ -55014,13 +55809,10 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 1, `Пресс-тройник переходной 32х26х32 для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
                 }
             } else {
-                addToBill(this.ssItem(catalog.ss_adapter_mi, 'RSS-1021-002234'), 1, `Переходник с пресс-соединения на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
-                addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 1, `Пресс-угольник 90° В-В диаметром 22 мм для подведения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 1, `Пресс-тройник диаметром 22 мм для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 1, `Пресс-тройник переходной 28х22х28 мм для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
-                }
+                addToBill(this.ssFit('ss_adapter_mi', _tankSize, this.ssThreadFor('ss_adapter_mi', _tankSize, '3/4')), 1, `Переходник с пресс-соединения ${_tankSize} на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _tankSize), 1, `Пресс-угольник 90° В-В диаметром ${_tankSize} мм для подведения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
+                const _hTee = this.ssTee(ss_diameter, _tankSize);
+                if (_hTee) addToBill(_hTee.item, 1, `Пресс-тройник ${_hTee.label} для врезки расширительного бака отопления.${_hTee.note} Требуется: 1 шт.`, grp);
             }
         }
 
@@ -55065,7 +55857,11 @@ const app = {
             // Металлопластик 26 и 32 — своего типоразмера трубки под 26 в линейках нет,
             // поэтому берётся ближайшая большая: 28/6 ПРОТЕКТ ПРО на Ø26 и K-FLEX 35/9
             // на Ø32. Обе садятся на трубу с натягом по шву, зазора не остаётся.
-            const _insDiamOf = d => isAnalog ? (d === 22 ? 35 : 42) : (isMp ? (d === 22 ? 28 : 35) : d);
+            // У нержавейки трубка совпадает с трубой один в один, кроме 15-й:
+            // линейка ПРОТЕКТ ПРО начинается с 18/6, её и берём — зазор 3 мм.
+            const _insDiamOf = d => isAnalog ? (d === 22 ? 35 : 42)
+                : isMp ? (d === 22 ? 28 : 35)
+                    : (d === 15 ? 18 : d);
             Object.keys(ss_pipes_demand).forEach(diam => {
                 const _len = ss_pipes_demand[diam].length;
                 if (_len <= 0) return;
@@ -59499,6 +60295,11 @@ const app = {
             app.originalEqSum = 0;
             app.originalWorksSum = 0;
         }
+
+        // Дальше — только отрисовка и побочные эффекты. Прикидочному пересчёту
+        // (см. boilerSystemTotals) они не нужны и вредны: перерисовали бы экран
+        // поверх открытого окна замены.
+        if (computeOnly) return;
 
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
