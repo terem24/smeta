@@ -24395,9 +24395,22 @@ const app = {
                     (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i)
                     .concat(part('msup'), part('mret'), boilers(null), part('hydro'), part('ssup'), part('sret'));
             // Загрузка бойлера: от котла по линии загрузки к змеевику и обратно.
-            // Вторичная пара и отводы сюда не входят — во время нагрева бойлера
-            // отопление стоит, а при клапане приоритета отсечено физически.
-            case 'dhw': return part('load').concat(boilers(null), part('msup'), part('mret'));
+            // Ни гребёнки, ни отводов, ни вторичной пары: при клапане приоритета
+            // котёл отсекает отопление физически, а при насосной группе оно
+            // просто не участвует в этом кольце. Раньше сюда подмешивалась вся
+            // котловая гребёнка — на схеме загоралась половина листа, к бойлеру
+            // отношения не имеющая.
+            //
+            // Стояки — только того котла, от которого узел загрузки и отходит
+            // (его номер стоит на обёртке узла). Второй котёл каскада в это
+            // время греет отопление, и подсвечивать его стояки незачем.
+            case 'dhw': {
+                const load = part('load');
+                const own = load.map(g => g.getAttribute('data-hyd-b')).filter(v => v != null);
+                return load.concat(own.length
+                    ? own.reduce((a, b) => a.concat(boilers(b)), [])
+                    : boilers(null));
+            }
             case 'main': return part('msup').concat(part('mret'), boilers(null), part('hydro'));
             case 'hydro': return part('hydro').concat(part('msup'), part('mret'), part('ssup'), part('sret'));
             default: return [];

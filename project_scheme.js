@@ -1250,7 +1250,7 @@
           // отопления шунтировала его — приоритет ГВС не обеспечивался.
           o.push(ln(xs, ys, xs, ys + 1.6, { c: COL.supply, w: LW.pipe }));
           o.push(valve3(xs, ys + 4.1, 'prio', 'udr', 'l'));
-          o.push('<g data-hyd-part="load" data-hyd-dir="fwd">');
+          o.push('<g data-hyd-part="load" data-hyd-dir="fwd" data-hyd-b="' + bi + '">');
           o.push(hpipe(xs + 2.5, xls, ys + 4.1, COL.loadS));
           o.push(vpipe(xls, ys + 4.1, mY.loadS, COL.loadS, [mY.supply, mY.ret]));
           o.push('</g>');
@@ -1262,7 +1262,7 @@
           // ветка) — только кран.
           var yTee = ys + 1.4;
           o.push(ln(xs, ys, xs, ys + 2.8, { c: COL.supply, w: LW.pipe }));
-          o.push('<g data-hyd-part="load" data-hyd-dir="fwd">');
+          o.push('<g data-hyd-part="load" data-hyd-dir="fwd" data-hyd-b="' + bi + '">');
           o.push(hpipe(xs, xls, yTee, COL.loadS));
           o.push(ln(xls, yTee, xls, yTee + 1.2, { c: COL.loadS, w: LW.pipe }));
           o.push(ballValve(xls, yTee + 3.7, true));
