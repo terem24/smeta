@@ -1426,6 +1426,261 @@ const app = {
         }
     },
 
+    // ═══ Приглашения: ссылка менеджера, счётчик мест, QR, печать ════════
+    // Менеджер ничего не формирует: ссылка у магазина постоянная и получается
+    // из промокода карточки. Здесь — всё, чем он её раздаёт: «поделиться» с
+    // телефона (системное меню: WhatsApp, Telegram, СМС), копирование, QR на
+    // экран и лист А5 на кассу. Тот же набор видит наблюдатель по каждому
+    // магазину и администратор во вкладке «Дистрибьюторы».
+    INVITE_SITE_URL: 'https://heatcalc.ru/',
+
+    inviteLinkFor: function (code) {
+        return this.INVITE_SITE_URL + '?ref=' + encodeURIComponent(String(code || '').trim().toUpperCase());
+    },
+
+    // Готовый текст сообщения монтажнику — чтобы продавцу ничего не сочинять
+    inviteMessageFor: function (d) {
+        const months = Number(d.pro_months) || 0;
+        return `Регистрируйтесь в калькуляторе отопления HeatCalc по моей ссылке: ${this.inviteLinkFor(d.promo_code)}\n`
+            + `Промокод ${String(d.promo_code || '').toUpperCase()}`
+            + (months > 0 ? `, тариф Профи на ${months} мес. бесплатно.` : '.')
+            + ` Магазин «${d.company_name || ''}»${d.manager_name ? ', ' + d.manager_name : ''}.`;
+    },
+
+    findDist: function (id) {
+        return ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === String(id)) || null;
+    },
+
+    // Занятые места и активные за 30 дней по компаниям — одним запросом.
+    // Считаем так же, как функция базы: служебные роли местом не считаются.
+    loadInviteStats: async function (distIds) {
+        const stats = {};
+        (distIds || []).forEach(id => { stats[String(id)] = { used: 0, active30: 0 }; });
+        if (!distIds || !distIds.length) return stats;
+        try {
+            const { data, error } = await supabaseClient.from('users')
+                .select('distributor_id, account_type, last_visited')
+                .in('distributor_id', distIds);
+            if (error) throw error;
+            const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+            (data || []).forEach(u => {
+                if (['admin', 'viewer', 'manager'].includes(u.account_type || '')) return;
+                const s = stats[String(u.distributor_id)];
+                if (!s) return;
+                s.used++;
+                if (u.last_visited && new Date(u.last_visited).getTime() > cutoff) s.active30++;
+            });
+        } catch (e) {
+            console.warn('[приглашения] счётчик мест не прочитан:', e.message || e);
+            Object.keys(stats).forEach(k => { stats[k] = null; });
+        }
+        return stats;
+    },
+
+    inviteCounterHtml: function (d, s) {
+        if (!s) return '<span style="color:var(--text-sec);" title="Не удалось посчитать">—</span>';
+        const limit = Number(d && d.invite_limit) || 0;
+        const full = limit > 0 && s.used >= limit;
+        return `<b style="color:${full ? '#EF4444' : 'var(--text-main)'};" title="${full ? 'Места закончились — лимит меняет администратор в карточке компании' : 'Приглашено монтажников'}">${s.used}</b>`
+            + ` <span style="color:var(--text-sec);">из ${limit > 0 ? limit : '∞'}</span>`;
+    },
+
+    // Дописывает счётчики в уже нарисованную разметку: сначала страница, потом
+    // цифры — так раздел не ждёт лишний запрос, а плейсхолдеры «…» живут долю секунды
+    fillInviteStats: async function (distIds) {
+        const stats = await this.loadInviteStats(distIds);
+        (distIds || []).forEach(id => {
+            const d = this.findDist(id);
+            const s = stats[String(id)];
+            document.querySelectorAll(`[data-invite-used="${id}"]`).forEach(el => { el.innerHTML = this.inviteCounterHtml(d, s); });
+            document.querySelectorAll(`[data-invite-active="${id}"]`).forEach(el => { el.textContent = s ? String(s.active30) : '—'; });
+        });
+    },
+
+    shareInvite: async function (distId) {
+        const d = this.findDist(distId);
+        if (!d) return;
+        const text = this.inviteMessageFor(d);
+        // Системное меню «поделиться» есть на телефонах и в части настольных
+        // браузеров; где его нет — кладём текст в буфер обмена
+        if (navigator.share) {
+            try { await navigator.share({ title: 'Калькулятор HeatCalc', text: text }); return; }
+            catch (e) { if (e && e.name === 'AbortError') return; }
+        }
+        try {
+            await this.copyToClipboard(text);
+            app.alert('Текст приглашения скопирован. Вставьте его в WhatsApp, Telegram или СМС.');
+        } catch (e) { app.alert(text); }
+    },
+
+    copyInviteLink: async function (code) {
+        const link = this.inviteLinkFor(code);
+        try { await this.copyToClipboard(link); app.alert('Ссылка скопирована:\n' + link); }
+        catch (e) { app.alert(link); }
+    },
+
+    // QR-код картинкой (data:) — рисует qrcode.js из отложенных скриптов
+    qrDataUrl: async function (text, size) {
+        if (typeof QRCode === 'undefined') { try { await this.lazy('qrcode'); } catch (e) { } }
+        if (typeof QRCode === 'undefined') return '';
+        const box = document.createElement('div');
+        box.style.cssText = 'position:fixed; left:-9999px; top:0;';
+        document.body.appendChild(box);
+        try {
+            new QRCode(box, { text: text, width: size, height: size, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+            const canvas = box.querySelector('canvas');
+            if (canvas) return canvas.toDataURL('image/png');
+            const img = box.querySelector('img');
+            return (img && img.src) || '';
+        } catch (e) {
+            console.warn('[приглашения] QR не нарисован:', e);
+            return '';
+        } finally {
+            box.remove();
+        }
+    },
+
+    // QR на экран: продавец показывает телефон, монтажник наводит камеру
+    showInviteQr: async function (distId) {
+        const d = this.findDist(distId);
+        if (!d) return;
+        const link = this.inviteLinkFor(d.promo_code);
+        const src = await this.qrDataUrl(link, 260);
+        if (!src) { app.alert('Не удалось нарисовать QR-код. Ссылка: ' + link); return; }
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card" style="text-align:center; max-width:340px;">
+                <h3 class="calc-dialog-title" style="margin-bottom:6px;">${esc(d.company_name)}</h3>
+                <div style="font-size:12.5px; color:var(--text-sec); margin-bottom:12px;">Отсканируйте камерой телефона</div>
+                <img src="${src}" alt="QR" style="width:220px; height:220px; display:block; margin:0 auto 10px; border-radius:8px; background:#fff; padding:6px; box-sizing:content-box;">
+                <div style="font-size:20px; font-weight:800; letter-spacing:0.08em; color:var(--primary); margin-bottom:4px;">${esc(String(d.promo_code || '').toUpperCase())}</div>
+                <div style="font-size:11.5px; color:var(--text-sec); word-break:break-all; margin-bottom:14px;">${esc(link)}</div>
+                <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <button type="button" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main);" data-act="copy">Скопировать ссылку</button>
+                    <button type="button" class="auth-btn-base btn-email-submit" style="height:36px; padding:0 18px; font-size:13px;" data-act="close">Закрыть</button>
+                </div>
+            </div>`;
+        overlay.addEventListener('click', (e) => {
+            const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+            if (act === 'copy') this.copyInviteLink(d.promo_code);
+            if (act === 'close' || e.target === overlay) overlay.remove();
+        });
+        document.body.appendChild(overlay);
+    },
+
+    // Лист А5 на кассу: крупный QR, код буквами (если камера не читает) и ссылка
+    printInviteSheet: async function (distId) {
+        const d = this.findDist(distId);
+        if (!d) return;
+        const link = this.inviteLinkFor(d.promo_code);
+        const src = await this.qrDataUrl(link, 600);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const months = Number(d.pro_months) || 0;
+        const logo = new URL('logo_hc_new.png', window.location.href).href;
+        const w = window.open('', '_blank');
+        if (!w) { app.alert('Браузер не дал открыть окно печати. Разрешите всплывающие окна для этого сайта.'); return; }
+        w.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8">
+            <title>Приглашение — ${esc(d.company_name)}</title>
+            <style>
+                @page { size: A5 portrait; margin: 12mm; }
+                body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; text-align: center; }
+                .logo { height: 34px; margin: 6mm 0 4mm; }
+                h1 { font-size: 20px; margin: 0 0 3mm; }
+                p { font-size: 13px; line-height: 1.45; margin: 0 0 4mm; color: #333; }
+                .qr { width: 78mm; height: 78mm; display: block; margin: 0 auto 4mm; }
+                .code { font-size: 30px; font-weight: 800; letter-spacing: 0.12em; margin: 0 0 2mm; }
+                .link { font-size: 12px; color: #555; word-break: break-all; margin-bottom: 4mm; }
+                .shop { font-size: 12px; color: #333; }
+                .foot { font-size: 10px; color: #888; margin-top: 6mm; }
+            </style></head><body>
+            <img class="logo" src="${logo}" alt="HeatCalc" onerror="this.style.display='none'">
+            <h1>Бесплатный калькулятор отопления для монтажников</h1>
+            <p>Смета с оборудованием и работами за 5 минут, счёт клиенту, договор и акты.<br>
+               Регистрируйтесь по QR-коду или введите промокод на сайте.${months > 0 ? `<br><b>Тариф Профи на ${months} мес. — бесплатно.</b>` : ''}</p>
+            ${src ? `<img class="qr" src="${src}" alt="QR">` : ''}
+            <div class="code">${esc(String(d.promo_code || '').toUpperCase())}</div>
+            <div class="link">${esc(link)}</div>
+            <div class="shop">Магазин «${esc(d.company_name)}»${d.manager_name ? ', менеджер ' + esc(d.manager_name) : ''}${d.manager_phone ? ', ' + esc(d.manager_phone) : ''}</div>
+            <div class="foot">heatcalc.ru — инженерный калькулятор систем отопления, водоснабжения и канализации</div>
+            <script>window.onload = function () { setTimeout(function () { window.print(); }, 400); };<\/script>
+            </body></html>`);
+        w.document.close();
+    },
+
+    // Кнопки раздачи ссылки — одним набором для карточки менеджера, строки
+    // наблюдателя и таблицы дистрибьюторов
+    inviteButtonsHtml: function (d, compact) {
+        const base = 'font:inherit; font-weight:700; border-radius:8px; cursor:pointer; white-space:nowrap;';
+        const st = compact
+            ? base + ' font-size:11px; padding:4px 8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);'
+            : base + ' font-size:12.5px; padding:8px 14px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
+        const primary = compact ? st : st + ' background:var(--primary); color:#fff; border-color:var(--primary);';
+        const id = String(d.id);
+        const code = String(d.promo_code || '').toUpperCase().replace(/'/g, '');
+        return `
+            <button type="button" style="${primary}" onclick="app.shareInvite('${id}')" title="Открыть меню «поделиться» или скопировать готовый текст">📤 Поделиться</button>
+            <button type="button" style="${st}" onclick="app.copyInviteLink('${code}')" title="Скопировать ссылку-приглашение">🔗 Ссылка</button>
+            <button type="button" style="${st}" onclick="app.showInviteQr('${id}')" title="QR-код на экран">▦ QR</button>
+            <button type="button" style="${st}" onclick="app.printInviteSheet('${id}')" title="Лист А5 на кассу">🖨 Печать</button>`;
+    },
+
+    // Блок над списком монтажников у менеджера и наблюдателя (вкладка
+    // «Пользователи»). Менеджеру — карточка своего магазина со ссылкой и
+    // счётчиком; наблюдателю — сводка по всем его магазинам. Администратору
+    // блок не нужен: у него есть вкладка «Дистрибьюторы».
+    renderInviteBlock: function () {
+        if (!this.isScopedAdmin()) return '';
+        const dists = (this.adminData && this.adminData.distributors) || [];
+        if (!dists.length) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
+        let html;
+        if (this.isManagerRole()) {
+            html = dists.map(d => {
+                const code = String(d.promo_code || '').toUpperCase();
+                const months = Number(d.pro_months) || 0;
+                return `<div style="${box}">
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:10px;">
+                        <div style="font-size:14px; font-weight:800; color:var(--text-main);">🏪 Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
+                        <div style="font-size:13px;">Приглашено: <span data-invite-used="${d.id}">…</span></div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px;">
+                        <span style="font-size:12px; color:var(--text-sec);">Промокод</span>
+                        <b style="font-size:16px; letter-spacing:0.08em; color:var(--primary);">${esc(code)}</b>
+                        <span style="font-size:12px; color:var(--text-sec); word-break:break-all;">${esc(this.inviteLinkFor(code))}</span>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">${this.inviteButtonsHtml(d, false)}</div>
+                    <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">
+                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес.` : ''}.
+                        Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            const rows = dists.map(d => `<tr>
+                <td><b>${esc(d.company_name)}</b></td>
+                <td style="font-size:12px;">${esc(d.manager_name || '—')}<br><span style="color:var(--text-sec);">${esc(d.manager_email || '')}</span></td>
+                <td style="font-weight:700; color:var(--primary); letter-spacing:0.05em;">${esc(String(d.promo_code || '').toUpperCase())}</td>
+                <td style="text-align:center;"><span data-invite-used="${d.id}">…</span></td>
+                <td style="text-align:center;"><span data-invite-active="${d.id}">…</span></td>
+                <td style="text-align:right; white-space:nowrap;">${this.inviteButtonsHtml(d, true)}</td>
+            </tr>`).join('');
+            html = `<div style="${box}">
+                <div style="font-size:14px; font-weight:800; color:var(--text-main); margin-bottom:10px;">🏪 Магазины и приглашения</div>
+                <div style="overflow-x:auto;">
+                <table class="inv-table" style="margin:0;">
+                    <thead><tr><th>Магазин</th><th>Менеджер</th><th>Промокод</th><th style="text-align:center;">Приглашено</th><th style="text-align:center;" title="Заходили в последние 30 дней">Активных</th><th></th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                </div>
+            </div>`;
+        }
+        setTimeout(() => this.fillInviteStats(dists.map(d => d.id)), 0);
+        return html;
+    },
+
     setProjectName: function (val) {
         if (!this.checkAccess('base')) { this.syncUI(); return; }
         let clean = String(val).trim();
@@ -6691,7 +6946,7 @@ const app = {
 
         let tableRows = '';
         if (dists.length === 0) {
-            tableRows = '<tr><td colspan="9" style="text-align:center; padding: 30px; color: var(--text-sec);">Промокодов нет. Добавьте первый.</td></tr>';
+            tableRows = '<tr><td colspan="10" style="text-align:center; padding: 30px; color: var(--text-sec);">Промокодов нет. Добавьте первый.</td></tr>';
         } else {
             dists.forEach((d, i) => {
                 const statusBadge = d.is_active
@@ -6710,12 +6965,14 @@ const app = {
                 tableRows += `<tr>
                     <td style="color:var(--text-sec);">${i + 1}</td>
                     <td><b>${d.company_name || '—'}</b><br>${innCell(d)}<span style="font-size:10px; color:var(--text-sec);">📍 ${regionsText}</span></td>
-                    <td style="font-weight:700; color:var(--primary); font-size:13px; letter-spacing:0.05em;">${d.promo_code}</td>
+                    <td style="font-weight:700; color:var(--primary); font-size:13px; letter-spacing:0.05em;">${d.promo_code}
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">${this.inviteButtonsHtml(d, true)}</div></td>
                     <td><div style="font-size:12px;">${d.manager_name || '—'}<br><span style="color:var(--text-sec);">${d.manager_email || ''}</span><br><span style="color:var(--text-sec);">${d.manager_phone || ''}</span>${d.director_email ? `<br><span style="color:var(--text-sec);">👁 ${d.director_email}</span>` : ''}</div></td>
                     <td style="text-align:center;">${Number(d.pro_months) > 0
                         ? `<b style="color:var(--primary);">${d.pro_months}</b>`
                         : '<span style="color:var(--text-sec);" title="Промокод только привязывает монтажника к дистрибьютору, тариф не выдаётся">без PRO</span>'
                     }<br><span style="font-size:10px; color:var(--text-sec);">до ${validUntilText}</span></td>
+                    <td style="text-align:center; white-space:nowrap;"><span data-invite-used="${d.id}">…</span><br><span style="font-size:10px; color:var(--text-sec);" title="Заходили в последние 30 дней">активных: <span data-invite-active="${d.id}">…</span></span></td>
                     <td style="text-align:center; font-size:12px;">${priceCell}</td>
                     <td style="text-align:center;">${this.renderDistAccessCell(d, isViewer)}</td>
                     <td>${statusBadge}</td>
@@ -6766,6 +7023,10 @@ const app = {
                             <input type="number" id="dist_pro_months" min="0" max="36" value="0" ${isViewer ? 'disabled' : ''} placeholder="0 — без PRO" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
                         </div>
                         <div>
+                            <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;" title="Сколько монтажников можно привязать этим промокодом. Ручная привязка из панели лимит не проверяет">Лимит приглашений</label>
+                            <input type="number" id="dist_invite_limit" min="0" max="9999" value="5" ${isViewer ? 'disabled' : ''} style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
+                        </div>
+                        <div>
                             <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;">Действителен до (необяз.)</label>
                             <input type="date" id="dist_valid_until" ${isViewer ? 'disabled' : ''} style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
                         </div>
@@ -6806,11 +7067,13 @@ const app = {
                 </div>
 
                 <table class="inv-table">
-                    <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
+                    <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;" title="Монтажников привязано / лимит приглашений">Приглашено</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
                     <tbody>${tableRows}</tbody>
                 </table>
             </div>
         `;
+        // Счётчики мест — отдельным запросом после отрисовки
+        if (dists.length) this.fillInviteStats(dists.map(d => d.id));
     },
 
     // Вкладка "Статусы смет" — CRM-канбан по жизненному циклу сметы, сгруппированный в 3 смысловых
@@ -7628,6 +7891,9 @@ const app = {
         // «|| 3» здесь недопустимо: оно молча превращало бы ноль в три месяца.
         const proMonthsRaw = parseInt(document.getElementById('dist_pro_months')?.value ?? '', 10);
         const proMonths = Number.isFinite(proMonthsRaw) ? Math.max(0, proMonthsRaw) : 0;
+        // Лимит приглашений: пустое поле — 5, как в базе по умолчанию
+        const inviteLimitRaw = parseInt(document.getElementById('dist_invite_limit')?.value ?? '', 10);
+        const inviteLimit = Number.isFinite(inviteLimitRaw) ? Math.max(0, inviteLimitRaw) : 5;
         const validUntilVal = document.getElementById('dist_valid_until')?.value || '';
         const isActive = document.getElementById('dist_active').value === '1';
         const regions = (document.getElementById('dist_regions')?.value || '').split(',').map(r => r.trim()).filter(Boolean);
@@ -7669,6 +7935,7 @@ const app = {
             manager_phone: phone,
             director_email: directorEmail || null,
             pro_months: proMonths,
+            invite_limit: inviteLimit,
             valid_until: validUntilVal ? new Date(validUntilVal).toISOString() : null,
             is_active: isActive,
             regions: regions,
@@ -7705,6 +7972,7 @@ const app = {
         document.getElementById('dist_phone').value = dist.manager_phone || '';
         if (document.getElementById('dist_director_email')) document.getElementById('dist_director_email').value = dist.director_email || '';
         if (document.getElementById('dist_pro_months')) document.getElementById('dist_pro_months').value = Number(dist.pro_months) || 0;
+        if (document.getElementById('dist_invite_limit')) document.getElementById('dist_invite_limit').value = (dist.invite_limit == null) ? 5 : Number(dist.invite_limit);
         if (document.getElementById('dist_valid_until') && dist.valid_until) {
             document.getElementById('dist_valid_until').value = dist.valid_until.split('T')[0];
         }
@@ -7728,6 +7996,7 @@ const app = {
         document.getElementById('dist_phone').value = '';
         if (document.getElementById('dist_director_email')) document.getElementById('dist_director_email').value = '';
         if (document.getElementById('dist_pro_months')) document.getElementById('dist_pro_months').value = '0';
+        if (document.getElementById('dist_invite_limit')) document.getElementById('dist_invite_limit').value = '5';
         if (document.getElementById('dist_valid_until')) document.getElementById('dist_valid_until').value = '';
         document.getElementById('dist_active').value = '1';
         if (document.getElementById('dist_regions')) document.getElementById('dist_regions').value = '';
@@ -15699,6 +15968,7 @@ const app = {
         { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { group: 'Работа с монтажниками' },
         { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
+        { name: 'Ссылка-приглашение, QR и счётчик мест', hint: 'в «Пользователях»; лимит мест меняет администратор в карточке компании', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { name: 'Объявление для всех пользователей', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Удалить сообщение из переписки', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
@@ -16513,7 +16783,8 @@ const app = {
 
         const searchQuery = document.getElementById('admin_search_input')?.value || this._pendingAdminSearch || '';
         const shouldRefocus = !!this._pendingAdminSearchFocused;
-        content.innerHTML = navHtml + h;
+        // Менеджеру и наблюдателю — блок приглашений над списком монтажников
+        content.innerHTML = navHtml + this.renderInviteBlock() + h;
         if (searchQuery) {
             const input = document.getElementById('admin_search_input');
             if (input) {
