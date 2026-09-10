@@ -1260,6 +1260,480 @@ const app = {
             }
         } catch (e) { }
     },
+
+    // ═══ Приглашение от менеджера магазина ═══════════════════════════════
+    // Магазин-партнёр — это карточка дистрибьютора с промокодом. Менеджер
+    // раздаёт ссылку heatcalc.ru/?ref=КОД; сайт запоминает код в браузере,
+    // показывает плашку «Вас пригласил магазин …» и подставляет код в форму
+    // регистрации. Код живёт в localStorage до применения: человек может открыть
+    // ссылку сегодня, а зарегистрироваться через день с главной страницы.
+    //
+    // Проверка кода идёт через функцию базы check_invite_code: до регистрации
+    // сессии нет, а таблицу компаний анониму читать нельзя. Функция отдаёт
+    // только то, что можно показать на плашке, и говорит, есть ли ещё места
+    // (у каждой компании свой лимит приглашений, distributors.invite_limit).
+    //
+    // Рубильник «регистрация только по промокоду» живёт в базе (таблица
+    // app_settings, ключ registration), включает и выключает его администратор
+    // во вкладке «Дистрибьюторы». Пока выключен, форма принимает и пустой
+    // промокод, как раньше. Тех, кто зарегистрировался до включения, режим не
+    // касается (см. registered_at).
+    INVITE_KEY: 'stout_invite',
+
+    // Настройки сайта из базы. Читаются один раз при загрузке страницы, без
+    // входа — режим регистрации нужен форме ещё до появления сессии. Ошибка
+    // чтения (нет связи, таблица ещё не создана) означает «как было»: открытая
+    // регистрация, а не запертая дверь для всех.
+    appSettings: { registration: { mode: 'open' } },
+    _appSettingsPromise: null,
+    loadAppSettings: function (force) {
+        if (this._appSettingsPromise && !force) return this._appSettingsPromise;
+        this._appSettingsPromise = (async () => {
+            try {
+                const { data, error } = await supabaseClient.from('app_settings').select('key, value');
+                if (error) throw error;
+                const merged = Object.assign({}, this.appSettings);
+                (data || []).forEach(row => { if (row && row.key) merged[row.key] = row.value || {}; });
+                this.appSettings = merged;
+            } catch (e) {
+                console.warn('[настройки сайта] не прочитаны, работаем по умолчанию:', e.message || e);
+            }
+            return this.appSettings;
+        })();
+        return this._appSettingsPromise;
+    },
+    inviteOnlyRegistration: function () {
+        const reg = (this.appSettings && this.appSettings.registration) || {};
+        return reg.mode === 'invite';
+    },
+    // Переключатель во вкладке «Дистрибьюторы». Запись защищена политикой
+    // базы: пройдёт только у администратора.
+    setRegistrationMode: async function (mode) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки регистрации запрещено.'); return; }
+        const value = { mode: mode === 'invite' ? 'invite' : 'open' };
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'registration', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { registration: value });
+            app.alert(value.mode === 'invite'
+                ? '🔒 Регистрация закрыта: новые монтажники входят только по промокоду или ссылке менеджера. Тех, кто уже зарегистрирован, это не касается.'
+                : '🔓 Регистрация свободная, как раньше. Промокод остаётся необязательным.');
+        } catch (e) {
+            console.error('[настройки сайта] запись не прошла:', e);
+            app.alert('Не удалось сохранить режим регистрации: ' + (e.message || e) + '. Если таблицы app_settings ещё нет — выполните миграцию 20260911_shop_invites_3_settings.sql.');
+        }
+        if (this._adminTab === 'distributors') this.renderAdminMain();
+    },
+
+    captureInvite: function () {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const raw = params.get('ref') || params.get('promo') || '';
+            const code = raw.trim().toUpperCase().replace(/[^A-Z0-9_\-]/g, '');
+            if (code) localStorage.setItem(this.INVITE_KEY, code);
+        } catch (e) { }
+    },
+    storedInviteCode: function () {
+        try { return localStorage.getItem(this.INVITE_KEY) || ''; } catch (e) { return ''; }
+    },
+    clearInviteCode: function () {
+        try { localStorage.removeItem(this.INVITE_KEY); } catch (e) { }
+        this.closeInviteBanner();
+    },
+
+    // Ответ базы как есть: { ok, reason, company_name, manager_name, pro_months, used, limit }
+    checkInviteCode: async function (code) {
+        const { data, error } = await supabaseClient.rpc('check_invite_code', { code: String(code || '') });
+        if (error) throw error;
+        return data || { ok: false, reason: 'not_found' };
+    },
+
+    // Текст отказа для человека. Причины — из check_invite_code / apply_invite_code.
+    inviteRefusalText: function (res) {
+        const company = res && res.company_name ? `«${res.company_name}»` : 'магазина';
+        switch (res && res.reason) {
+            case 'expired':
+                return 'Срок действия промокода истёк. Уточните новый у менеджера магазина.';
+            case 'limit':
+                return `У магазина ${company} закончились места по этому промокоду. Попросите менеджера обратиться к администратору сайта — лимит можно увеличить.`;
+            case 'other_distributor':
+                return 'Вы уже привязаны к другой компании. Изменение возможно только через администратора.';
+            case 'no_session':
+            case 'no_user_row':
+                return 'Не удалось определить аккаунт. Перезайдите на сайт и попробуйте снова.';
+            default:
+                return 'Промокод не найден. Проверьте буквы или уточните его у менеджера магазина.';
+        }
+    },
+
+    // Плашка над сметой. Показывается только тем, кому код ещё есть куда
+    // применить: гостю — «зарегистрируйтесь», вошедшему без компании —
+    // «применить». Уже привязанным не показывается вовсе.
+    showInviteBanner: async function () {
+        const host = document.getElementById('invite_banner');
+        const code = this.storedInviteCode();
+        if (!host || !code) return;
+        if (this.state.tgUser && this.state.distributorId) { this.closeInviteBanner(); return; }
+        let res;
+        try { res = await this.checkInviteCode(code); }
+        catch (e) { console.warn('[приглашение] проверка кода не удалась:', e.message || e); return; }
+
+        // Несуществующий код держать в браузере незачем — иначе он подставлялся
+        // бы в форму регистрации снова и снова.
+        if (!res.ok && res.reason === 'not_found') { this.clearInviteCode(); return; }
+
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const loggedIn = !!this.state.tgUser;
+        const btnStyle = 'font:inherit; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:8px; border:none; background:var(--primary); color:#fff; cursor:pointer;';
+        const closeStyle = 'font:inherit; font-size:18px; line-height:1; padding:2px 6px; border:none; background:transparent; color:var(--text-sec); cursor:pointer;';
+
+        let text, action = '';
+        if (res.ok) {
+            const who = res.manager_name ? `, менеджер ${esc(res.manager_name)}` : '';
+            const bonus = Number(res.pro_months) > 0 ? ` Тариф Профи на ${Number(res.pro_months)} мес. — бесплатно.` : '';
+            text = `Вас пригласил магазин <b>«${esc(res.company_name)}»</b>${who}. Промокод <b>${esc(code)}</b>.${bonus}`;
+            action = loggedIn
+                ? `<button type="button" style="${btnStyle}" onclick="app.applyPromoCode('${esc(code)}')">Применить промокод</button>`
+                : `<button type="button" style="${btnStyle}" onclick="app.openRegistrationFromInvite()">Зарегистрироваться</button>`;
+        } else {
+            text = esc(this.inviteRefusalText(res));
+        }
+        host.innerHTML = `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 14px;
+                        background:${res.ok ? 'rgba(16,185,129,0.08)' : 'rgba(217,119,6,0.08)'};
+                        border:1px solid ${res.ok ? 'rgba(16,185,129,0.35)' : 'rgba(217,119,6,0.35)'};
+                        border-radius:12px; padding:10px 14px; margin:0 20px 10px;">
+                <span style="font-size:18px; line-height:1;">${res.ok ? '🏪' : '⚠️'}</span>
+                <span style="font-size:13px; color:var(--text-main); text-align:center;">${text}</span>
+                ${action}
+                <button type="button" style="${closeStyle}" title="Скрыть" onclick="app.closeInviteBanner()">×</button>
+            </div>`;
+        host.style.display = 'block';
+    },
+    closeInviteBanner: function () {
+        const host = document.getElementById('invite_banner');
+        if (host) { host.style.display = 'none'; host.innerHTML = ''; }
+    },
+    openRegistrationFromInvite: function () {
+        this.showAuthModal();
+        this.switchAuthTab('register');
+    },
+
+    // Окно «Нужен промокод магазина» — для новой учётки без компании при
+    // закрытой регистрации (условие считает handleAuthSession в _inviteGateNeeded).
+    // Закрыть его нельзя: только применить код, оформить тариф или выйти.
+    showInviteGate: function () {
+        const overlay = document.getElementById('invite_gate_overlay');
+        if (!overlay) return;
+        const input = document.getElementById('invite_gate_input');
+        const err = document.getElementById('invite_gate_error');
+        if (input && !input.value) input.value = this.storedInviteCode();
+        if (err) err.style.display = 'none';
+        overlay.style.display = 'flex';
+        this.syncModalOverlayClass();
+        setTimeout(() => { if (input) input.focus(); }, 100);
+    },
+    hideInviteGate: function () {
+        const overlay = document.getElementById('invite_gate_overlay');
+        if (overlay) overlay.style.display = 'none';
+        this._inviteGateNeeded = false;
+        this.syncModalOverlayClass();
+    },
+    applyInviteFromGate: async function () {
+        const input = document.getElementById('invite_gate_input');
+        const err = document.getElementById('invite_gate_error');
+        const btn = document.getElementById('invite_gate_btn');
+        const code = input ? input.value.trim().toUpperCase() : '';
+        const fail = (text) => {
+            if (err) { err.innerText = text; err.style.display = 'block'; }
+            else app.alert(text);
+        };
+        if (!code) { fail('Введите промокод магазина.'); return; }
+        if (btn) { btn.disabled = true; btn.innerText = 'Проверка...'; }
+        try {
+            const res = await this.applyInviteInDb(code);
+            if (!res.ok) { fail(this.inviteRefusalText(res)); return; }
+            const dist = res.distributor;
+            const proMonths = Number(res.pro_months) || 0;
+            this.hideInviteGate();
+            this.syncUI();
+            app.alert(`✅ Вы прикреплены к магазину «${dist.company_name}».` +
+                (proMonths > 0 ? ` Тариф Профи на ${proMonths} мес. — бесплатно.` : '') +
+                ' Страница будет перезагружена через 5 секунд.');
+            setTimeout(() => {
+                window.location.replace(window.location.pathname + window.location.search);
+            }, 5000);
+        } catch (e) {
+            console.error('[applyInviteFromGate]', e);
+            fail('Не удалось проверить промокод. Проверьте связь и попробуйте ещё раз.');
+        } finally {
+            if (btn) { btn.disabled = false; btn.innerText = 'Применить промокод'; }
+        }
+    },
+
+    // ═══ Приглашения: ссылка менеджера, счётчик мест, QR, печать ════════
+    // Менеджер ничего не формирует: ссылка у магазина постоянная и получается
+    // из промокода карточки. Здесь — всё, чем он её раздаёт: «поделиться» с
+    // телефона (системное меню: WhatsApp, Telegram, СМС), копирование, QR на
+    // экран и лист А5 на кассу. Тот же набор видит наблюдатель по каждому
+    // магазину и администратор во вкладке «Дистрибьюторы».
+    INVITE_SITE_URL: 'https://heatcalc.ru/',
+
+    inviteLinkFor: function (code) {
+        return this.INVITE_SITE_URL + '?ref=' + encodeURIComponent(String(code || '').trim().toUpperCase());
+    },
+
+    // Готовый текст сообщения монтажнику — чтобы продавцу ничего не сочинять
+    inviteMessageFor: function (d) {
+        const months = Number(d.pro_months) || 0;
+        return `Регистрируйтесь в калькуляторе отопления HeatCalc по моей ссылке: ${this.inviteLinkFor(d.promo_code)}\n`
+            + `Промокод ${String(d.promo_code || '').toUpperCase()}`
+            + (months > 0 ? `, тариф Профи на ${months} мес. бесплатно.` : '.')
+            + ` Магазин «${d.company_name || ''}»${d.manager_name ? ', ' + d.manager_name : ''}.`;
+    },
+
+    findDist: function (id) {
+        return ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === String(id)) || null;
+    },
+
+    // Занятые места и активные за 30 дней по компаниям — одним запросом.
+    // Считаем так же, как функция базы: служебные роли местом не считаются.
+    loadInviteStats: async function (distIds) {
+        const stats = {};
+        (distIds || []).forEach(id => { stats[String(id)] = { used: 0, active30: 0 }; });
+        if (!distIds || !distIds.length) return stats;
+        try {
+            const { data, error } = await supabaseClient.from('users')
+                .select('distributor_id, account_type, last_visited')
+                .in('distributor_id', distIds);
+            if (error) throw error;
+            const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+            (data || []).forEach(u => {
+                if (['admin', 'viewer', 'manager'].includes(u.account_type || '')) return;
+                const s = stats[String(u.distributor_id)];
+                if (!s) return;
+                s.used++;
+                if (u.last_visited && new Date(u.last_visited).getTime() > cutoff) s.active30++;
+            });
+        } catch (e) {
+            console.warn('[приглашения] счётчик мест не прочитан:', e.message || e);
+            Object.keys(stats).forEach(k => { stats[k] = null; });
+        }
+        return stats;
+    },
+
+    inviteCounterHtml: function (d, s) {
+        if (!s) return '<span style="color:var(--text-sec);" title="Не удалось посчитать">—</span>';
+        const limit = Number(d && d.invite_limit) || 0;
+        const full = limit > 0 && s.used >= limit;
+        return `<b style="color:${full ? '#EF4444' : 'var(--text-main)'};" title="${full ? 'Места закончились — лимит меняет администратор в карточке компании' : 'Приглашено монтажников'}">${s.used}</b>`
+            + ` <span style="color:var(--text-sec);">из ${limit > 0 ? limit : '∞'}</span>`;
+    },
+
+    // Дописывает счётчики в уже нарисованную разметку: сначала страница, потом
+    // цифры — так раздел не ждёт лишний запрос, а плейсхолдеры «…» живут долю секунды
+    fillInviteStats: async function (distIds) {
+        const stats = await this.loadInviteStats(distIds);
+        (distIds || []).forEach(id => {
+            const d = this.findDist(id);
+            const s = stats[String(id)];
+            document.querySelectorAll(`[data-invite-used="${id}"]`).forEach(el => { el.innerHTML = this.inviteCounterHtml(d, s); });
+            document.querySelectorAll(`[data-invite-active="${id}"]`).forEach(el => { el.textContent = s ? String(s.active30) : '—'; });
+        });
+    },
+
+    shareInvite: async function (distId) {
+        const d = this.findDist(distId);
+        if (!d) return;
+        const text = this.inviteMessageFor(d);
+        // Системное меню «поделиться» есть на телефонах и в части настольных
+        // браузеров; где его нет — кладём текст в буфер обмена
+        if (navigator.share) {
+            try { await navigator.share({ title: 'Калькулятор HeatCalc', text: text }); return; }
+            catch (e) { if (e && e.name === 'AbortError') return; }
+        }
+        try {
+            await this.copyToClipboard(text);
+            app.alert('Текст приглашения скопирован. Вставьте его в WhatsApp, Telegram или СМС.');
+        } catch (e) { app.alert(text); }
+    },
+
+    copyInviteLink: async function (code) {
+        const link = this.inviteLinkFor(code);
+        try { await this.copyToClipboard(link); app.alert('Ссылка скопирована:\n' + link); }
+        catch (e) { app.alert(link); }
+    },
+
+    // QR-код картинкой (data:) — рисует qrcode.js из отложенных скриптов
+    qrDataUrl: async function (text, size) {
+        if (typeof QRCode === 'undefined') { try { await this.lazy('qrcode'); } catch (e) { } }
+        if (typeof QRCode === 'undefined') return '';
+        const box = document.createElement('div');
+        box.style.cssText = 'position:fixed; left:-9999px; top:0;';
+        document.body.appendChild(box);
+        try {
+            new QRCode(box, { text: text, width: size, height: size, colorDark: '#000000', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+            const canvas = box.querySelector('canvas');
+            if (canvas) return canvas.toDataURL('image/png');
+            const img = box.querySelector('img');
+            return (img && img.src) || '';
+        } catch (e) {
+            console.warn('[приглашения] QR не нарисован:', e);
+            return '';
+        } finally {
+            box.remove();
+        }
+    },
+
+    // QR на экран: продавец показывает телефон, монтажник наводит камеру
+    showInviteQr: async function (distId) {
+        const d = this.findDist(distId);
+        if (!d) return;
+        const link = this.inviteLinkFor(d.promo_code);
+        const src = await this.qrDataUrl(link, 260);
+        if (!src) { app.alert('Не удалось нарисовать QR-код. Ссылка: ' + link); return; }
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card" style="text-align:center; max-width:340px;">
+                <h3 class="calc-dialog-title" style="margin-bottom:6px;">${esc(d.company_name)}</h3>
+                <div style="font-size:12.5px; color:var(--text-sec); margin-bottom:12px;">Отсканируйте камерой телефона</div>
+                <img src="${src}" alt="QR" style="width:220px; height:220px; display:block; margin:0 auto 10px; border-radius:8px; background:#fff; padding:6px; box-sizing:content-box;">
+                <div style="font-size:20px; font-weight:800; letter-spacing:0.08em; color:var(--primary); margin-bottom:4px;">${esc(String(d.promo_code || '').toUpperCase())}</div>
+                <div style="font-size:11.5px; color:var(--text-sec); word-break:break-all; margin-bottom:14px;">${esc(link)}</div>
+                <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <button type="button" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main);" data-act="copy">Скопировать ссылку</button>
+                    <button type="button" class="auth-btn-base btn-email-submit" style="height:36px; padding:0 18px; font-size:13px;" data-act="close">Закрыть</button>
+                </div>
+            </div>`;
+        overlay.addEventListener('click', (e) => {
+            const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+            if (act === 'copy') this.copyInviteLink(d.promo_code);
+            if (act === 'close' || e.target === overlay) {
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.remove(), 200);
+            }
+        });
+        document.body.appendChild(overlay);
+        // Как у app.alert: окно появляется классом active через тик, иначе
+        // оно остаётся прозрачным
+        setTimeout(() => overlay.classList.add('active'), 10);
+    },
+
+    // Лист А5 на кассу: крупный QR, код буквами (если камера не читает) и ссылка
+    printInviteSheet: async function (distId) {
+        const d = this.findDist(distId);
+        if (!d) return;
+        const link = this.inviteLinkFor(d.promo_code);
+        const src = await this.qrDataUrl(link, 600);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const months = Number(d.pro_months) || 0;
+        const logo = new URL('logo_hc_new.png', window.location.href).href;
+        const w = window.open('', '_blank');
+        if (!w) { app.alert('Браузер не дал открыть окно печати. Разрешите всплывающие окна для этого сайта.'); return; }
+        w.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8">
+            <title>Приглашение — ${esc(d.company_name)}</title>
+            <style>
+                @page { size: A5 portrait; margin: 12mm; }
+                body { font-family: Arial, Helvetica, sans-serif; color: #111; margin: 0; text-align: center; }
+                .logo { height: 34px; margin: 6mm 0 4mm; }
+                h1 { font-size: 20px; margin: 0 0 3mm; }
+                p { font-size: 13px; line-height: 1.45; margin: 0 0 4mm; color: #333; }
+                .qr { width: 78mm; height: 78mm; display: block; margin: 0 auto 4mm; }
+                .code { font-size: 30px; font-weight: 800; letter-spacing: 0.12em; margin: 0 0 2mm; }
+                .link { font-size: 12px; color: #555; word-break: break-all; margin-bottom: 4mm; }
+                .shop { font-size: 12px; color: #333; }
+                .foot { font-size: 10px; color: #888; margin-top: 6mm; }
+            </style></head><body>
+            <img class="logo" src="${logo}" alt="HeatCalc" onerror="this.style.display='none'">
+            <h1>Бесплатный калькулятор отопления для монтажников</h1>
+            <p>Смета с оборудованием и работами за 5 минут, счёт клиенту, договор и акты.<br>
+               Регистрируйтесь по QR-коду или введите промокод на сайте.${months > 0 ? `<br><b>Тариф Профи на ${months} мес. — бесплатно.</b>` : ''}</p>
+            ${src ? `<img class="qr" src="${src}" alt="QR">` : ''}
+            <div class="code">${esc(String(d.promo_code || '').toUpperCase())}</div>
+            <div class="link">${esc(link)}</div>
+            <div class="shop">Магазин «${esc(d.company_name)}»${d.manager_name ? ', менеджер ' + esc(d.manager_name) : ''}${d.manager_phone ? ', ' + esc(d.manager_phone) : ''}</div>
+            <div class="foot">heatcalc.ru — инженерный калькулятор систем отопления, водоснабжения и канализации</div>
+            <script>window.onload = function () { setTimeout(function () { window.print(); }, 400); };<\/script>
+            </body></html>`);
+        w.document.close();
+    },
+
+    // Кнопки раздачи ссылки — одним набором для карточки менеджера, строки
+    // наблюдателя и таблицы дистрибьюторов
+    inviteButtonsHtml: function (d, compact) {
+        const base = 'font:inherit; font-weight:700; border-radius:8px; cursor:pointer; white-space:nowrap;';
+        const st = compact
+            ? base + ' font-size:11px; padding:4px 8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);'
+            : base + ' font-size:12.5px; padding:8px 14px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);';
+        const primary = compact ? st : st + ' background:var(--primary); color:#fff; border-color:var(--primary);';
+        const id = String(d.id);
+        const code = String(d.promo_code || '').toUpperCase().replace(/'/g, '');
+        return `
+            <button type="button" style="${primary}" onclick="app.shareInvite('${id}')" title="Открыть меню «поделиться» или скопировать готовый текст">📤 Поделиться</button>
+            <button type="button" style="${st}" onclick="app.copyInviteLink('${code}')" title="Скопировать ссылку-приглашение">🔗 Ссылка</button>
+            <button type="button" style="${st}" onclick="app.showInviteQr('${id}')" title="QR-код на экран">▦ QR</button>
+            <button type="button" style="${st}" onclick="app.printInviteSheet('${id}')" title="Лист А5 на кассу">🖨 Печать</button>`;
+    },
+
+    // Блок над списком монтажников у менеджера и наблюдателя (вкладка
+    // «Пользователи»). Менеджеру — карточка своего магазина со ссылкой и
+    // счётчиком; наблюдателю — сводка по всем его магазинам. Администратору
+    // блок не нужен: у него есть вкладка «Дистрибьюторы».
+    renderInviteBlock: function () {
+        if (!this.isScopedAdmin()) return '';
+        const dists = (this.adminData && this.adminData.distributors) || [];
+        if (!dists.length) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
+        let html;
+        if (this.isManagerRole()) {
+            html = dists.map(d => {
+                const code = String(d.promo_code || '').toUpperCase();
+                const months = Number(d.pro_months) || 0;
+                return `<div style="${box}">
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:10px;">
+                        <div style="font-size:14px; font-weight:800; color:var(--text-main);">🏪 Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
+                        <div style="font-size:13px;">Приглашено: <span data-invite-used="${d.id}">…</span></div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px;">
+                        <span style="font-size:12px; color:var(--text-sec);">Промокод</span>
+                        <b style="font-size:16px; letter-spacing:0.08em; color:var(--primary);">${esc(code)}</b>
+                        <span style="font-size:12px; color:var(--text-sec); word-break:break-all;">${esc(this.inviteLinkFor(code))}</span>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">${this.inviteButtonsHtml(d, false)}</div>
+                    <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">
+                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
+                        Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
+                    </div>
+                </div>`;
+            }).join('');
+        } else {
+            const rows = dists.map(d => `<tr>
+                <td><b>${esc(d.company_name)}</b></td>
+                <td style="font-size:12px;">${esc(d.manager_name || '—')}<br><span style="color:var(--text-sec);">${esc(d.manager_email || '')}</span></td>
+                <td style="font-weight:700; color:var(--primary); letter-spacing:0.05em;">${esc(String(d.promo_code || '').toUpperCase())}</td>
+                <td style="text-align:center;"><span data-invite-used="${d.id}">…</span></td>
+                <td style="text-align:center;"><span data-invite-active="${d.id}">…</span></td>
+                <td style="text-align:right;"><div style="display:flex; flex-wrap:wrap; gap:4px; justify-content:flex-end; max-width:260px; margin-left:auto;">${this.inviteButtonsHtml(d, true)}</div></td>
+            </tr>`).join('');
+            html = `<div style="${box}">
+                <div style="font-size:14px; font-weight:800; color:var(--text-main); margin-bottom:10px;">🏪 Магазины и приглашения</div>
+                <div style="overflow-x:auto;">
+                <table class="inv-table" style="margin:0;">
+                    <thead><tr><th>Магазин</th><th>Менеджер</th><th>Промокод</th><th style="text-align:center;">Приглашено</th><th style="text-align:center;" title="Заходили в последние 30 дней">Активных</th><th></th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+                </div>
+            </div>`;
+        }
+        setTimeout(() => this.fillInviteStats(dists.map(d => d.id)), 0);
+        return html;
+    },
+
     setProjectName: function (val) {
         if (!this.checkAccess('base')) { this.syncUI(); return; }
         let clean = String(val).trim();
@@ -5060,7 +5534,7 @@ const app = {
      * из профиля открывается окно тарифов, и снимать класс при закрытии
      * верхнего из них нельзя, пока под ним осталось нижнее.
      */
-    MODAL_OVER_BANNER_IDS: ['profile_modal_overlay', 'custom_modal_overlay', 'quick_start_overlay'],
+    MODAL_OVER_BANNER_IDS: ['profile_modal_overlay', 'custom_modal_overlay', 'quick_start_overlay', 'invite_gate_overlay'],
     syncModalOverlayClass: function () {
         const open = this.MODAL_OVER_BANNER_IDS.some(id => {
             const el = document.getElementById(id);
@@ -5135,6 +5609,17 @@ const app = {
         let overlay = document.getElementById('custom_modal_overlay');
         if (overlay) overlay.classList.remove('active');
         this.syncModalOverlayClass();
+        // Окно тарифов открывали из окна «нужен промокод» — возвращаем его
+        if (this._inviteGateNeeded) this.showInviteGate();
+    },
+
+    // Из окна «нужен промокод» — к платным тарифам. Окно тарифов лежит ниже окон
+    // входа (z-index), поэтому на время его показа окно промокода прячем;
+    // closeModal вернёт его на место, пока условие _inviteGateNeeded в силе.
+    showTariffsFromGate: function () {
+        const overlay = document.getElementById('invite_gate_overlay');
+        if (overlay) overlay.style.display = 'none';
+        this.showModal('pro');
     },
 
     activateTrial: function () {
@@ -5421,30 +5906,19 @@ const app = {
         }
     },
 
-    // Промокод, введённый при регистрации, применяется при первом входе — только тогда
-    // у пользователя появляется строка в users, к которой можно привязать дистрибьютора.
-    applyPromoFromRegistration: async function (code, userRowId) {
-        if (!code || !userRowId) return null;
-        try {
-            const { data: dist, error } = await supabaseClient
-                .from('distributors')
-                .select('*')
-                .eq('promo_code', String(code).trim().toUpperCase())
-                .eq('is_active', true)
-                .maybeSingle();
-            if (error) throw error;
-            if (!dist) return null;
-            if (dist.valid_until && new Date(dist.valid_until) < new Date()) return null;
-
-            const proMonths = Number(dist.pro_months) || 0;
-            const patch = { distributor_id: dist.id };
-            if (proMonths > 0) {
-                patch.account_type = 'pro';
-                patch.demo_ends_at = new Date(Date.now() + proMonths * 30 * 24 * 60 * 60 * 1000).toISOString();
-            }
-            const { error: updErr } = await supabaseClient.from('users').update(patch).eq('id', userRowId);
-            if (updErr) throw updErr;
-
+    // Привязка по промокоду через функцию базы apply_invite_code: проверка
+    // лимита мест и сама привязка идут там одной транзакцией (см. миграцию
+    // 20260911_shop_invites_2_functions.sql). Раньше приложение само читало
+    // карточку компании и писало в users — при двух одновременных «Применить»
+    // лимит проскакивал. Возвращает ответ базы как есть; при успехе ещё и
+    // обновляет состояние: компания, её цены, тариф.
+    applyInviteInDb: async function (code) {
+        const { data, error } = await supabaseClient.rpc('apply_invite_code', { code: String(code || '').trim().toUpperCase() });
+        if (error) throw error;
+        const res = data || { ok: false, reason: 'not_found' };
+        if (res.ok && res.distributor) {
+            const dist = res.distributor;
+            const proMonths = Number(res.pro_months) || 0;
             this.state.distributorId = dist.id;
             this.state.distributorInfo = {
                 company_name: dist.company_name,
@@ -5457,11 +5931,28 @@ const app = {
             };
             if (proMonths > 0) {
                 this.state.accountType = 'pro';
-                if (this.state.tgUser) this.state.tgUser.account_type = 'pro';
-                if (this.state.tgUser) this.state.tgUser.demo_ends_at = patch.demo_ends_at;
+                this.state.groupItems = true; // По умолчанию группировка включена для PRO
+                if (this.state.tgUser) {
+                    this.state.tgUser.account_type = 'pro';
+                    this.state.tgUser.demo_ends_at = res.demo_ends_at || null;
+                }
             }
+            // Код из ссылки менеджера своё дело сделал
+            this.clearInviteCode();
             this.saveState();
-            return { dist, proMonths };
+        }
+        return res;
+    },
+
+    // Промокод, введённый при регистрации, применяется при первом входе — только тогда
+    // у пользователя появляется строка в users, к которой можно привязать дистрибьютора.
+    // Ответ: { dist, proMonths } при успехе, { refused } при отказе базы, null при ошибке.
+    applyPromoFromRegistration: async function (code, userRowId) {
+        if (!code || !userRowId) return null;
+        try {
+            const res = await this.applyInviteInDb(code);
+            if (!res.ok) return { refused: res };
+            return { dist: res.distributor, proMonths: Number(res.pro_months) || 0 };
         } catch (e) {
             console.warn('[applyPromoFromRegistration] Не удалось применить промокод:', e);
             return null;
@@ -5498,109 +5989,23 @@ const app = {
         };
 
         try {
-            // Ищем промокод в таблице distributors
-            const { data: dist, error } = await supabaseClient
-                .from('distributors')
-                .select('*')
-                .eq('promo_code', code)
-                .eq('is_active', true)
-                .maybeSingle();
-
-            if (error) throw error;
-
-            if (!dist) {
-                notify('❌ Промокод не найден или недействителен.', '#EF4444');
+            // Поиск кода, срок действия, лимит мест, «уже привязан к другой
+            // компании» — всё проверяет база; здесь только показываем ответ
+            const res = await this.applyInviteInDb(code);
+            if (!res.ok) {
+                notify((res.reason === 'other_distributor' ? '⚠️ ' : '❌ ') + this.inviteRefusalText(res),
+                    res.reason === 'other_distributor' ? '#D97706' : '#EF4444');
                 if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
                 return;
             }
 
-            // Проверяем, не привязан ли уже к другому дистрибьютору (одноразовая привязка)
-            if (this.state.distributorId && this.state.distributorId !== dist.id) {
-                notify('⚠️ Вы уже привязаны к другому поставщику. Изменение возможно только через администратора.', '#D97706');
-                if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
-                return;
-            }
-
-            // Проверяем срок действия промокода (valid_days / valid_until)
-            if (dist.valid_until && new Date(dist.valid_until) < new Date()) {
-                notify('❌ Срок действия этого промокода истёк.', '#EF4444');
-                if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
-                return;
-            }
-
-            // Месяцы PRO задаёт дистрибьютор. Ноль — обычный случай: промокод
-            // только привязывает монтажника к поставщику, тариф при этом не
-            // меняется. Поэтому именно ?? 0, а не || 3: ноль здесь осмысленное
-            // значение, и подменять его тремя месяцами нельзя.
-            const proMonths = Number(dist.pro_months) || 0;
-            const grantsPro = proMonths > 0;
-            const proEndDate = grantsPro
-                ? new Date(Date.now() + proMonths * 30 * 24 * 60 * 60 * 1000).toISOString()
-                : null;
-
-            // Найдём ID пользователя в БД
-            const { data: { session } } = await supabaseClient.auth.getSession();
-            const authUserId = session?.user?.id || tgUser?.authUserId;
-            const email = session?.user?.email || tgUser?.email;
-
-            let uRow = null;
-            if (authUserId) {
-                let { data } = await supabaseClient.from('users').select('id').eq('auth_user_id', authUserId).maybeSingle();
-                uRow = data;
-            }
-            if (!uRow && email) {
-                let { data } = await supabaseClient.from('users').select('id').eq('email', email).maybeSingle();
-                uRow = data;
-            }
-            if (!uRow && tgUser.id) {
-                let { data } = await supabaseClient.from('users').select('id').eq('id', tgUser.id).maybeSingle();
-                uRow = data;
-            }
-
-            if (!uRow) {
-                notify('❌ Профиль не найден. Попробуйте перезайти в аккаунт.', '#EF4444');
-                if (applyBtn) { applyBtn.disabled = false; applyBtn.innerText = 'Применить'; }
-                return;
-            }
-
-            // Обновляем запись пользователя. Тариф трогаем только если
-            // дистрибьютор действительно даёт месяцы PRO — иначе промокод
-            // просто закрепляет монтажника за поставщиком.
-            const userPatch = { distributor_id: dist.id };
-            if (grantsPro) {
-                userPatch.account_type = 'pro';
-                userPatch.demo_ends_at = proEndDate;
-            }
-            const { error: updErr } = await supabaseClient.from('users').update(userPatch).eq('id', uRow.id);
-
-            if (updErr) throw updErr;
-
-            // Обновляем локальное состояние
-            if (grantsPro) {
-                this.state.accountType = 'pro';
-                this.state.groupItems = true; // По умолчанию группировка включена для PRO
-            }
-            this.state.distributorId = dist.id;
-            this.state.distributorInfo = {
-                company_name: dist.company_name,
-                manager_name: dist.manager_name,
-                manager_email: dist.manager_email,
-                manager_phone: dist.manager_phone,
-                director_email: dist.director_email,
-                use_own_prices: !!dist.use_own_prices,
-                price_list_key: dist.price_list_key || null
-            };
-            if (this.state.tgUser) {
-                if (grantsPro) this.state.tgUser.account_type = 'pro';
-                if (!this.state.tgUser.id) this.state.tgUser.id = uRow.id;
-            }
-
-            this.saveState();
+            const dist = res.distributor;
+            const proMonths = Number(res.pro_months) || 0;
             this.syncUI();
             this.closeModal();
 
             app.alert(`✅ Промокод принят! Компания-поставщик: ${dist.company_name}.` +
-                (grantsPro ? ` Вам присвоен тариф Профи на ${proMonths} мес.` : '') +
+                (proMonths > 0 ? ` Вам присвоен тариф Профи на ${proMonths} мес.` : '') +
                 ' Страница будет перезагружена через 6 секунд.');
             setTimeout(() => {
                 window.location.replace(window.location.pathname + window.location.search);
@@ -6594,7 +6999,7 @@ const app = {
 
         let tableRows = '';
         if (dists.length === 0) {
-            tableRows = '<tr><td colspan="9" style="text-align:center; padding: 30px; color: var(--text-sec);">Промокодов нет. Добавьте первый.</td></tr>';
+            tableRows = '<tr><td colspan="10" style="text-align:center; padding: 30px; color: var(--text-sec);">Промокодов нет. Добавьте первый.</td></tr>';
         } else {
             dists.forEach((d, i) => {
                 const statusBadge = d.is_active
@@ -6613,12 +7018,14 @@ const app = {
                 tableRows += `<tr>
                     <td style="color:var(--text-sec);">${i + 1}</td>
                     <td><b>${d.company_name || '—'}</b><br>${innCell(d)}<span style="font-size:10px; color:var(--text-sec);">📍 ${regionsText}</span></td>
-                    <td style="font-weight:700; color:var(--primary); font-size:13px; letter-spacing:0.05em;">${d.promo_code}</td>
+                    <td style="font-weight:700; color:var(--primary); font-size:13px; letter-spacing:0.05em;">${d.promo_code}
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">${this.inviteButtonsHtml(d, true)}</div></td>
                     <td><div style="font-size:12px;">${d.manager_name || '—'}<br><span style="color:var(--text-sec);">${d.manager_email || ''}</span><br><span style="color:var(--text-sec);">${d.manager_phone || ''}</span>${d.director_email ? `<br><span style="color:var(--text-sec);">👁 ${d.director_email}</span>` : ''}</div></td>
                     <td style="text-align:center;">${Number(d.pro_months) > 0
                         ? `<b style="color:var(--primary);">${d.pro_months}</b>`
                         : '<span style="color:var(--text-sec);" title="Промокод только привязывает монтажника к дистрибьютору, тариф не выдаётся">без PRO</span>'
                     }<br><span style="font-size:10px; color:var(--text-sec);">до ${validUntilText}</span></td>
+                    <td style="text-align:center; white-space:nowrap;"><span data-invite-used="${d.id}">…</span><br><span style="font-size:10px; color:var(--text-sec);" title="Заходили в последние 30 дней">активных: <span data-invite-active="${d.id}">…</span></span></td>
                     <td style="text-align:center; font-size:12px;">${priceCell}</td>
                     <td style="text-align:center;">${this.renderDistAccessCell(d, isViewer)}</td>
                     <td>${statusBadge}</td>
@@ -6632,9 +7039,29 @@ const app = {
             });
         }
 
+        // Режим регистрации новых монтажников — переключатель сайта, хранится
+        // в базе (app_settings). Только администратору: наблюдателю и менеджеру
+        // карточки компаний и так не показываются.
+        const inviteOnly = this.inviteOnlyRegistration();
+        const regModeHtml = `
+                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; background:${inviteOnly ? 'rgba(217,119,6,0.08)' : 'rgba(16,185,129,0.08)'}; border:1px solid ${inviteOnly ? 'rgba(217,119,6,0.35)' : 'rgba(16,185,129,0.35)'}; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
+                    <span style="font-size:18px; line-height:1;">${inviteOnly ? '🔒' : '🔓'}</span>
+                    <div style="flex:1 1 260px;">
+                        <div style="font-size:13.5px; font-weight:700; color:var(--text-main);">Регистрация новых монтажников: ${inviteOnly ? 'только по промокоду' : 'свободная'}</div>
+                        <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">${inviteOnly
+                            ? 'Новая учётка без промокода или ссылки менеджера упирается в окно «Нужен промокод»: в нём поле кода, платные тарифы и выход. Уже зарегистрированных это не касается.'
+                            : 'Как раньше: промокод в форме необязателен, любой может зарегистрироваться сам. Включите режим «по промокоду», когда карточки магазинов и учётки менеджеров будут готовы.'}</div>
+                    </div>
+                    <select ${isViewer ? 'disabled' : ''} onchange="app.setRegistrationMode(this.value)" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); font-size:13px; font-weight:600;">
+                        <option value="open" ${inviteOnly ? '' : 'selected'}>🔓 Свободная</option>
+                        <option value="invite" ${inviteOnly ? 'selected' : ''}>🔒 Только по промокоду</option>
+                    </select>
+                </div>`;
+
         content.innerHTML += `
             <div style="margin-bottom: 20px;">
                 <h3 style="margin: 0 0 16px; color: var(--text-main);">🏢 Дистрибьюторы</h3>
+                ${regModeHtml}
 
                 <div style="background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                     <h4 style="margin: 0 0 14px; font-size: 14px; color: var(--text-main);" id="dist_form_title">➕ Добавить промокод</h4>
@@ -6667,6 +7094,10 @@ const app = {
                         <div>
                             <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;" title="0 — промокод только привязывает монтажника к дистрибьютору, тариф не меняется">Месяцев PRO при активации</label>
                             <input type="number" id="dist_pro_months" min="0" max="36" value="0" ${isViewer ? 'disabled' : ''} placeholder="0 — без PRO" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
+                        </div>
+                        <div>
+                            <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;" title="Сколько монтажников можно привязать этим промокодом. Ручная привязка из панели лимит не проверяет">Лимит приглашений</label>
+                            <input type="number" id="dist_invite_limit" min="0" max="9999" value="5" ${isViewer ? 'disabled' : ''} style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
                         </div>
                         <div>
                             <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;">Действителен до (необяз.)</label>
@@ -6709,11 +7140,13 @@ const app = {
                 </div>
 
                 <table class="inv-table">
-                    <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
+                    <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;" title="Монтажников привязано / лимит приглашений">Приглашено</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
                     <tbody>${tableRows}</tbody>
                 </table>
             </div>
         `;
+        // Счётчики мест — отдельным запросом после отрисовки
+        if (dists.length) this.fillInviteStats(dists.map(d => d.id));
     },
 
     // Вкладка "Статусы смет" — CRM-канбан по жизненному циклу сметы, сгруппированный в 3 смысловых
@@ -7531,6 +7964,9 @@ const app = {
         // «|| 3» здесь недопустимо: оно молча превращало бы ноль в три месяца.
         const proMonthsRaw = parseInt(document.getElementById('dist_pro_months')?.value ?? '', 10);
         const proMonths = Number.isFinite(proMonthsRaw) ? Math.max(0, proMonthsRaw) : 0;
+        // Лимит приглашений: пустое поле — 5, как в базе по умолчанию
+        const inviteLimitRaw = parseInt(document.getElementById('dist_invite_limit')?.value ?? '', 10);
+        const inviteLimit = Number.isFinite(inviteLimitRaw) ? Math.max(0, inviteLimitRaw) : 5;
         const validUntilVal = document.getElementById('dist_valid_until')?.value || '';
         const isActive = document.getElementById('dist_active').value === '1';
         const regions = (document.getElementById('dist_regions')?.value || '').split(',').map(r => r.trim()).filter(Boolean);
@@ -7572,6 +8008,7 @@ const app = {
             manager_phone: phone,
             director_email: directorEmail || null,
             pro_months: proMonths,
+            invite_limit: inviteLimit,
             valid_until: validUntilVal ? new Date(validUntilVal).toISOString() : null,
             is_active: isActive,
             regions: regions,
@@ -7608,6 +8045,7 @@ const app = {
         document.getElementById('dist_phone').value = dist.manager_phone || '';
         if (document.getElementById('dist_director_email')) document.getElementById('dist_director_email').value = dist.director_email || '';
         if (document.getElementById('dist_pro_months')) document.getElementById('dist_pro_months').value = Number(dist.pro_months) || 0;
+        if (document.getElementById('dist_invite_limit')) document.getElementById('dist_invite_limit').value = (dist.invite_limit == null) ? 5 : Number(dist.invite_limit);
         if (document.getElementById('dist_valid_until') && dist.valid_until) {
             document.getElementById('dist_valid_until').value = dist.valid_until.split('T')[0];
         }
@@ -7631,6 +8069,7 @@ const app = {
         document.getElementById('dist_phone').value = '';
         if (document.getElementById('dist_director_email')) document.getElementById('dist_director_email').value = '';
         if (document.getElementById('dist_pro_months')) document.getElementById('dist_pro_months').value = '0';
+        if (document.getElementById('dist_invite_limit')) document.getElementById('dist_invite_limit').value = '5';
         if (document.getElementById('dist_valid_until')) document.getElementById('dist_valid_until').value = '';
         document.getElementById('dist_active').value = '1';
         if (document.getElementById('dist_regions')) document.getElementById('dist_regions').value = '';
@@ -9030,6 +9469,8 @@ const app = {
         this._profileDbLoaded = false;
         const profileOverlay = document.getElementById('profile_modal_overlay');
         if (profileOverlay) profileOverlay.style.display = 'none';
+        // Окно «нужен промокод» тоже держится за сессию — с ней и уходит
+        this.hideInviteGate();
         // Адрес устройства снимаем ДО выхода: удалять свою строку в push_tokens
         // разрешено только по действующей сессии. Иначе следующий, кто войдёт на
         // этом телефоне, получал бы уведомления предыдущего.
@@ -15609,6 +16050,7 @@ const app = {
         { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { group: 'Работа с монтажниками' },
         { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
+        { name: 'Ссылка-приглашение, QR и счётчик мест', hint: 'в «Пользователях»; лимит мест меняет администратор в карточке компании', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { name: 'Объявление для всех пользователей', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Удалить сообщение из переписки', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
@@ -16423,7 +16865,8 @@ const app = {
 
         const searchQuery = document.getElementById('admin_search_input')?.value || this._pendingAdminSearch || '';
         const shouldRefocus = !!this._pendingAdminSearchFocused;
-        content.innerHTML = navHtml + h;
+        // Менеджеру и наблюдателю — блок приглашений над списком монтажников
+        content.innerHTML = navHtml + this.renderInviteBlock() + h;
         if (searchQuery) {
             const input = document.getElementById('admin_search_input');
             if (input) {
@@ -28830,6 +29273,10 @@ const app = {
             // и вход через Яндекс ID — это второй равноправный способ завести аккаунт
             if (socialWrapper) socialWrapper.style.display = '';
             if (modalContent) { modalContent.style.maxWidth = '380px'; modalContent.style.maxHeight = '95vh'; modalContent.style.overflowY = 'auto'; }
+            // Код из ссылки менеджера (?ref=КОД) подставляем, если поле ещё пустое:
+            // введённое руками не трогаем
+            const promoEl = document.getElementById('auth_reg_promo');
+            if (promoEl && !promoEl.value) promoEl.value = this.storedInviteCode();
         }
     },
 
@@ -28988,9 +29435,19 @@ const app = {
             }
             return;
         }
-        // Промокод при регистрации не спрашивается: его вводят в анкете кабинета
-        // (раздел «Профиль»), где уже есть сессия и доступ к таблице distributors
-        const promoCode = '';
+        // Промокод магазина: из поля формы (туда же подставляется код из ссылки
+        // менеджера). Проверяется ниже функцией базы до отправки письма с кодом.
+        // Применяется при первом входе — см. applyPromoFromRegistration.
+        const promoEl = document.getElementById('auth_reg_promo');
+        const promoCode = promoEl ? promoEl.value.trim().toUpperCase() : '';
+        await this.loadAppSettings();
+        if (!promoCode && this.inviteOnlyRegistration()) {
+            const msg = 'Регистрация — по приглашению менеджера магазина-партнёра: введите его промокод. Его выдают бесплатно.';
+            if (authErrEl) { authErrEl.innerText = msg; authErrEl.style.display = 'block'; }
+            else app.alert(msg);
+            if (btn) btn.disabled = false;
+            return;
+        }
 
         // Анкета при регистрации больше не спрашивается — только почта и пароль.
         // ФИО, телефон, дату рождения, сферу, регион и город пользователь заполняет
@@ -29032,6 +29489,26 @@ const app = {
                     btn.innerText = 'Зарегистрироваться';
                 }
                 return;
+            }
+
+            // Промокод проверяем ДО письма: у почты месячный лимит, и опечатка в
+            // коде не должна его тратить. Ошибка проверки (сеть, база) — не повод
+            // отказывать в регистрации: код ещё раз проверится при первом входе.
+            if (promoCode) {
+                if (btn) btn.innerText = 'Проверка промокода...';
+                let inviteRes = null;
+                try { inviteRes = await this.checkInviteCode(promoCode); }
+                catch (checkErr) { console.warn('[регистрация] промокод не проверен:', checkErr.message || checkErr); }
+                if (inviteRes && !inviteRes.ok) {
+                    if (authErrEl) {
+                        authErrEl.innerText = this.inviteRefusalText(inviteRes);
+                        authErrEl.style.display = 'block';
+                    } else {
+                        app.alert(this.inviteRefusalText(inviteRes));
+                    }
+                    if (btn) { btn.disabled = false; btn.innerText = 'Зарегистрироваться'; }
+                    return;
+                }
             }
 
             // Execute the generation of the 4-digit verification code and invoke await emailjs.send(...) STRICTLY inside the condition where the Supabase query successfully confirms the email is available
@@ -29412,7 +29889,7 @@ const app = {
             };
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at';
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, registered_at';
 
             let { data: upsertResult, error: upsertError } = await supabaseClient
                 .from('users')
@@ -29545,7 +30022,7 @@ const app = {
                 const regPromo = (user.user_metadata && user.user_metadata.promo_code) || '';
                 if (regPromo && !uRow.distributor_id) {
                     const applied = await this.applyPromoFromRegistration(regPromo, uRow.id);
-                    if (applied) {
+                    if (applied && applied.dist) {
                         uRow.distributor_id = applied.dist.id;
                         if (applied.proMonths > 0) this.state.accountType = 'pro';
                         setTimeout(() => {
@@ -29553,11 +30030,44 @@ const app = {
                                 (applied.proMonths > 0 ? ` Тариф Профи на ${applied.proMonths} мес.` : ''));
                         }, 1200);
                     } else {
+                        // Отказ базы (нет мест, истёк) объясняем её же словами; ошибка
+                        // сети — общей фразой. Окно промокода после входа само
+                        // попросит ввести другой (см. showInviteGate ниже).
+                        const why = (applied && applied.refused)
+                            ? this.inviteRefusalText(applied.refused)
+                            : 'он не найден или истёк.';
                         setTimeout(() => {
-                            app.alert('Промокод, указанный при регистрации, не подошёл — он не найден или истёк. Ввести другой можно в меню «Промокод».');
+                            app.alert('Промокод, указанный при регистрации, не подошёл: ' + why + ' Ввести другой можно в меню «Промокод».');
                         }, 1200);
                     }
                 }
+
+                // Пришёл по ссылке менеджера магазина уже с готовой учёткой (старый
+                // монтажник) — привязываем её тем же кодом, без регистрации. Так
+                // менеджер собирает к себе и тех, кто на сайте давно.
+                const linkPromo = this.storedInviteCode();
+                if (linkPromo && !uRow.distributor_id && linkPromo !== String(regPromo).toUpperCase()) {
+                    const linked = await this.applyPromoFromRegistration(linkPromo, uRow.id);
+                    if (linked && linked.dist) {
+                        uRow.distributor_id = linked.dist.id;
+                        if (linked.proMonths > 0) this.state.accountType = 'pro';
+                        setTimeout(() => {
+                            app.alert(`✅ Вы прикреплены к магазину «${linked.dist.company_name}».` +
+                                (linked.proMonths > 0 ? ` Тариф Профи на ${linked.proMonths} мес. — бесплатно.` : ''));
+                        }, 1200);
+                    } else if (linked && linked.refused && linked.refused.reason === 'not_found') {
+                        this.clearInviteCode();
+                    }
+                    // Прочие отказы (нет мест, истёк) покажет плашка приглашения ниже
+                }
+
+                // Регистрация только по приглашению: новой учётке без компании
+                // калькулятор не открываем, пока не введён промокод. Старых (без
+                // registered_at) и служебные роли не трогаем. Само окно — после
+                // render(), в общей очереди принудительных окон.
+                await this.loadAppSettings();
+                this._inviteGateNeeded = !!(this.inviteOnlyRegistration() && uRow.registered_at
+                    && !uRow.distributor_id && !this.hasAdminAccess());
 
                 // Загружаем привязку к дистрибьютору
                 if (uRow.distributor_id) {
@@ -29601,6 +30111,10 @@ const app = {
                 setTimeout(() => {
                     window.location.replace(window.location.pathname + window.location.search);
                 }, 6000);
+            } else if (this._inviteGateNeeded) {
+                // Сначала промокод, потом анкета: без компании новой учётке всё
+                // равно работать нельзя, и заполнять анкету до этого незачем.
+                this.showInviteGate();
             } else if (this._profileDbLoaded && this.isProfileIncomplete()) {
                 // Google/Telegram-вход или старый аккаунт без обязательной анкеты —
                 // не даём продолжить работу, пока профиль не будет дозаполнен целиком.
@@ -29612,6 +30126,9 @@ const app = {
                 // на e-mail или Яндекс ID (не чаще одного раза за сеанс)
                 setTimeout(() => this.showRuLoginMigrationModal(), 1200);
             }
+            // Вошёл по ссылке менеджера, но привязать не вышло (нет мест, истёк):
+            // плашка объяснит причину. Уже привязанным она сама не показывается.
+            if (!this._inviteGateNeeded) this.showInviteBanner();
         } catch (error) {
             console.error('Ошибка авторизации:', error);
         } finally {
@@ -37643,6 +38160,9 @@ const app = {
         this.handleYandexCallback();
 
         this.captureUTM();
+        this.captureInvite();
+        // Режим регистрации из базы — в фоне; кто ждёт, дождётся по промису
+        this.loadAppSettings();
         this.applyPricingCurrencyDisplay();
         if (localStorage.getItem('stout_save')) {
             try {
@@ -38186,6 +38706,10 @@ const app = {
                 // либо она закончилась совсем. Разбираемся, а не делаем вид, что всё в порядке.
                 this.verifySavedLogin();
             }
+            // Гостю, пришедшему по ссылке менеджера магазина, — плашка с приглашением.
+            // Вошедшему её показывает handleAuthSession, когда уже известно, есть ли
+            // у него компания.
+            if (!session) this.showInviteBanner();
             // Ветки «сессии нет» здесь намеренно нет: гостю ни окно быстрого старта,
             // ни подсказки не показываем. Типовой объект он выбрать может — кнопка в
             // центре пустой сметы на месте, — но сохранить смету, отправить её
