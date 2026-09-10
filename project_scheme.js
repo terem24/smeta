@@ -34,13 +34,20 @@
   var GREY = { body: '#f0f0f0', edge: '#e1e1e1', icon: '#1e88c7' };
 
   function n(v) { return Math.round(v * 100) / 100; }
+  // Труба или нет — по цвету среды и толщине: символы арматуры чёрные, образцы
+  // легенды толще (LW.sample). Помеченные data-p линии клонирует подсветка
+  // пути воды на экране; на сам чертёж атрибут не влияет.
+  var PIPE_COLS = Object.keys(COL).map(function (k) { return COL[k]; });
+  function isPipe(o) {
+    return !!(o && o.c && (o.w || LW.sym) === LW.pipe && PIPE_COLS.indexOf(o.c) >= 0);
+  }
   // Линии и прямоугольники задают вид инлайн-стилем: общий <style> листа
   // (.sheet-a3 line,rect {stroke:#000}) иначе перебьёт цвета трубопроводов.
   function ln(x1, y1, x2, y2, o) {
     o = o || {};
     return '<line x1="' + n(x1) + '" y1="' + n(y1) + '" x2="' + n(x2) + '" y2="' + n(y2) +
       '" style="stroke:' + (o.c || '#000') + ';stroke-width:' + (o.w || LW.sym) +
-      (o.dash ? ';stroke-dasharray:' + o.dash : '') + '"/>';
+      (o.dash ? ';stroke-dasharray:' + o.dash : '') + '"' + (isPipe(o) ? ' data-p="1"' : '') + '/>';
   }
   function pline(pts, o) {
     o = o || {};
@@ -52,7 +59,7 @@
   function path(d, o) {
     o = o || {};
     return '<path d="' + d + '" fill="' + (o.f || 'none') + '" stroke="' + (o.c || 'none') +
-      '" stroke-width="' + (o.w || 0) + '"/>';
+      '" stroke-width="' + (o.w || 0) + '"' + (isPipe(o) ? ' data-p="1"' : '') + '/>';
   }
   function circle(cx, cy, r, o) {
     o = o || {};
@@ -499,6 +506,41 @@
     return ln(x0, y, x1, y, { c: color, w: LW.pipe });
   }
 
+  // ─── Имена символов для подсказок на экране ────────────────────────────
+  // Каждый символ заворачивается в <g data-sym="тип" data-sym-name="имя">:
+  // по наведению подсказка называет элемент и объясняет, зачем он здесь, а
+  // по клику даёт карточку. На чертёж обёртка не влияет — ни на печать, ни
+  // на геометрию. Имя может зависеть от аргументов (valve3, gauge, котёл).
+  // Заворачиваются и символы легенды — там подсказка тоже уместна.
+  function sym(fn, type, name) {
+    return function () {
+      var out = fn.apply(null, arguments);
+      var nm = typeof name === 'function' ? name.apply(null, arguments) : name;
+      return '<g data-sym="' + type + '" data-sym-name="' + nm + '">' + out + '</g>';
+    };
+  }
+  ballValve = sym(ballValve, 'valve', 'Шаровой кран');
+  checkValve = sym(checkValve, 'check', 'Обратный клапан');
+  pump = sym(pump, 'pump', 'Циркуляционный насос');
+  valve3 = sym(valve3, 'valve3', function (x, y, kind) {
+    return kind === 'prio' ? 'Клапан приоритета бойлера'
+      : kind === 'servo' ? 'Смесительный клапан с сервоприводом'
+        : 'Термостатический смесительный клапан';
+  });
+  safetyValve = sym(safetyValve, 'safety', 'Предохранительный клапан');
+  airVent = sym(airVent, 'airvent', 'Автоматический воздухоотводчик');
+  gauge = sym(gauge, 'gauge', function (x, y, letter) {
+    return letter === 'М' ? 'Манометр' : 'Термометр / датчик температуры';
+  });
+  filterSym = sym(filterSym, 'filter', 'Фильтр-грязевик');
+  airSep = sym(airSep, 'airsep', 'Сепаратор воздуха');
+  safetyGroup = sym(safetyGroup, 'safetygroup', 'Группа безопасности котла');
+  hydroSep = sym(hydroSep, 'hydro', 'Гидравлический разделитель');
+  expTank = sym(expTank, 'exptank', 'Расширительный бак');
+  boilerUnit = sym(boilerUnit, 'boiler', function (x, y, kind) {
+    return kind === 'gas' ? 'Газовый котёл' : 'Электрический котёл';
+  });
+
   // ─── Таблица «Условные графические обозначения» ────────────────────────
   // Легенда фильтруется по составу конкретной схемы: символ, которого на
   // листе нет, в таблицу не попадает (раньше монтажник искал на схеме
@@ -876,13 +918,13 @@
     function mk(base, i, n) { return n > 1 ? base + '.' + (i + 1) : base; }
     var taps = [];
     for (var ri = 0; ri < radN; ri++) {
-      taps.push({ mark: mk('Т2', ri, radN), color: COL.ret, from: 'ret', dir: 'up', size: thread(cfg.radDn) });
-      taps.push({ mark: mk('Т1', ri, radN), color: COL.supply, from: 'supply', dir: 'down', group: !!cfg.hydro, size: thread(cfg.radDn) });
+      taps.push({ mark: mk('Т2', ri, radN), color: COL.ret, from: 'ret', dir: 'up', size: thread(cfg.radDn), hyd: 'rad', hydI: ri });
+      taps.push({ mark: mk('Т1', ri, radN), color: COL.supply, from: 'supply', dir: 'down', group: !!cfg.hydro, size: thread(cfg.radDn), hyd: 'rad', hydI: ri });
     }
     var tpFrom = taps.length;
     for (var ti = 0; ti < tpN; ti++) {
-      taps.push({ mark: mk('Т21', ti, tpN), color: COL.ret, from: 'ret', dir: 'up', mix: true, size: thread(cfg.tpDn) });
-      taps.push({ mark: mk('Т11', ti, tpN), color: COL.supply, from: 'supply', dir: 'down', pump: true, size: thread(cfg.tpDn) });
+      taps.push({ mark: mk('Т21', ti, tpN), color: COL.ret, from: 'ret', dir: 'up', mix: true, size: thread(cfg.tpDn), hyd: 'tp', hydI: ti });
+      taps.push({ mark: mk('Т11', ti, tpN), color: COL.supply, from: 'supply', dir: 'down', pump: true, size: thread(cfg.tpDn), hyd: 'tp', hydI: ti });
     }
     // Группа загрузки бойлера — такой же отвод коллектора, как остальные:
     // тот же шаг, те же уровни арматуры. Отличие одно — внизу она не идёт
@@ -1176,6 +1218,12 @@
       // собственные патрубки, а не сечение магистрали.
       var portSize = isPolis ? '1"' : mainThread;
 
+      // Группы маршрутов (data-hyd-part) — для подсветки пути воды на экране:
+      // по наведению на стояк или котёл слой поверх схемы клонирует трубы
+      // нужных групп. data-hyd-dir — куда бежит анимация вдоль линии:
+      // fwd — как нарисовано (сверху вниз, слева направо), rev — обратно.
+      // На чертёж группы не влияют.
+      o.push('<g data-hyd-part="bsup" data-hyd-dir="fwd" data-hyd-b="' + bi + '">');
       // подача: кран → [насос ГБМ] → [Fugas или тройник загрузки] →
       // [обратный клапан при каскаде] → гребёнка
       o.push(ln(xs, bBot, xs, bBot + 2.53, { c: COL.supply, w: LW.pipe }));
@@ -1233,10 +1281,13 @@
       o.push(vpipe(xs, ys, mY.supply, COL.supply, others(mY.supply)));
       o.push(diaV(xs, stemDiaY, dia));
       o.push(arrowSym(xs, stemArrowDown, 'down'));
+      o.push('</g>');
 
       // обратка: кран + фильтр + кран. Обратный клапан каскада стоит на
       // подаче — дублировать его на обратке незачем (одного разрыва кольца
       // достаточно, лишний клапан — лишнее сопротивление).
+      // Вода по обратке идёт вверх, в котёл, — анимация обратная.
+      o.push('<g data-hyd-part="bret" data-hyd-dir="rev" data-hyd-b="' + bi + '">');
       o.push(ln(xRet, bBot, xRet, bBot + 2.53, { c: COL.ret, w: LW.pipe }));
       o.push(ballValve(xRet, bBot + 5.03, true));
       o.push(leaderValve(xRet, bBot + 5.03, portSize));
@@ -1249,6 +1300,7 @@
       o.push(vpipe(xRet, bBot + 23.74, mY.ret, COL.ret, others(mY.ret)));
       o.push(diaV(xRet, stemDiaY, dia));
       o.push(arrowSym(xRet, stemArrowUp, 'up'));
+      o.push('</g>');
 
       // двухконтурный газовый: ГВС и ХВС из котла. В эталоне ТМ-2 эти стояки
       // были сплошными; краны добавлены сознательно — без них замена котла
@@ -1289,34 +1341,50 @@
       secPair = { supply: 161, ret: 173 };
       var xd = hydroX + 11, xu = hydroX + 16.5;
       mRight = xu;
-      // котловая пара к гидрострелке
+      // котловая пара к гидрострелке. Подача бежит от котлов вправо, к
+      // стрелке (fwd); обратка — от стрелки влево, к котлам (rev).
+      o.push('<g data-hyd-part="msup" data-hyd-dir="fwd">');
       o.push(hpipe(mLeft, xd, mY.supply, COL.supply));
-      o.push(hpipe(mLeft, xu, mY.ret, COL.ret));
       o.push(diaH(hydroX - 2, mY.supply, dia));
+      o.push('</g><g data-hyd-part="mret" data-hyd-dir="rev">');
+      o.push(hpipe(mLeft, xu, mY.ret, COL.ret));
       o.push(diaH(hydroX - 2, mY.ret, dia));
+      o.push('</g>');
       // При нижней разводке загрузки стояки гидрострелки пересекает только
       // верхняя горизонталь к Т2 бойлера — на уровне его патрубка
       var loadYs = (hasLoad && !loadDown) ? [mY.loadS, mY.loadR] : (loadDown ? [pT2e] : []);
+      // Стояки стрелки: подача вниз (fwd) и коротким отводом влево в стрелку
+      // (rev — отвод нарисован слева направо); обратка из стрелки вправо
+      // (fwd) и вверх к котлам (rev).
+      o.push('<g data-hyd-part="hydro" data-hyd-dir="fwd">');
       o.push(vpipe(xd, mY.supply, secPair.supply, COL.supply, [mY.ret].concat(loadYs)));
+      o.push('</g><g data-hyd-part="hydro" data-hyd-dir="rev">');
       o.push(hpipe(hydroX + 4.5, xd, secPair.supply, COL.supply));
       o.push(openArrow(hydroX + 6.4, secPair.supply, 'left', COL.supply));
       o.push(vpipe(xu, mY.ret, secPair.ret, COL.ret, loadYs));
+      o.push('</g><g data-hyd-part="hydro" data-hyd-dir="fwd">');
       o.push(hpipe(hydroX + 4.5, xu, secPair.ret, COL.ret));
       o.push(openArrow(xu - 0.8, secPair.ret, 'right', COL.ret));
+      o.push('</g><g data-hyd-part="hydro" data-hyd-dir="none">');
       o.push(hydroSep(hydroX, 167, cfg.hydro.kw));
+      o.push('</g>');
       // датчик «Каскад» — на подаче за гидрострелкой (по нему контроллер
       // ведёт общую температуру каскада)
       if (cfg.auto && cfg.auto.cascade) {
         o.push(ln(hydroX - 10, secPair.supply - 2.4, hydroX - 10, secPair.supply, { w: LW.thin }));
         o.push(gauge(hydroX - 10, secPair.supply - 4.95, 'Т'));
       }
-      // вторичная пара к насосным группам
+      // вторичная пара к насосным группам: подача идёт от стрелки влево, к
+      // отводам (rev), обратка собирается с отводов и идёт вправо (fwd).
+      o.push('<g data-hyd-part="ssup" data-hyd-dir="rev">');
       o.push(hpipe(tapX0 - 8, hydroX - 4.5, secPair.supply, COL.supply));
       o.push(tick(tapX0 - 8, secPair.supply, false, COL.supply));
       o.push(openArrow(hydroX - 15, secPair.supply, 'left', COL.supply));
+      o.push('</g><g data-hyd-part="sret" data-hyd-dir="fwd">');
       o.push(hpipe(tapX0 - 8, hydroX - 4.5, secPair.ret, COL.ret));
       o.push(tick(tapX0 - 8, secPair.ret, false, COL.ret));
       o.push(openArrow(hydroX - 6.4, secPair.ret, 'right', COL.ret));
+      o.push('</g>');
       srcY = { supply: secPair.supply, ret: secPair.ret, dhw: mY.dhw, cold: mY.cold };
     }
 
@@ -1336,6 +1404,12 @@
       // Резьба арматуры стояка — по DN насосной группы этого контура
       // (санитарные отводы В1/Т3 идут своим размером, у них t.size нет).
       var tSize = t.size || '3/4"';
+      // Стояк подачи: вода идёт вниз, как нарисовано (fwd); обратки — вверх (rev).
+      o.push(t.hyd
+        ? '<g data-hyd-part="tap" data-hyd-kind="' + t.hyd + '" data-hyd-i="' + (t.hydI || 0) +
+          '" data-hyd-mark="' + (t.mark || '') +
+          '" data-hyd-dir="' + (t.from === 'supply' ? 'fwd' : 'rev') + '">'
+        : '<g>');
       if (t.load) {
         // Ровно та же группа, что у радиаторного контура: обратка — чистый
         // стояк, подача — обратный клапан + кран + насос на тех же высотах,
@@ -1360,6 +1434,7 @@
         o.push(ballValve(x, bottomValveY, true));
         o.push(leaderValve(x, bottomValveY, tSize));
         o.push(diaV(x, bottomValveY - 7.2, dia));
+        o.push('</g>');
         return;
       }
       if (t.mix) {
@@ -1407,6 +1482,7 @@
       o.push(bottomMark(x, t.mark, t.dir));
       // Усечённые одинаковые контуры ТП — их реальное число у последней пары
       if (t.note) o.push(txt(x + 2.6, 270.2, t.note, { size: SZ.dia, rotate: -90 }));
+      o.push('</g>');
     });
 
     // правый край котловой гребёнки (без гидрострелки). Если потребителей
@@ -1419,18 +1495,22 @@
     if (!cfg.hydro) {
       mRight = taps.length ? tapsEnd + 14.7 : 229;
       if (loadNodeX !== null) mRight = Math.max(mRight, loadNodeX + 26);
+      o.push('<g data-hyd-part="msup" data-hyd-dir="fwd">');
       o.push(hpipe(mLeft, mRight, mY.supply, COL.supply));
       o.push(tick(mRight, mY.supply, false, COL.supply));
       o.push(diaH(mRight, mY.supply, dia));
+      o.push('</g>');
       // датчик «Каскад» без гидрострелки — на общей подающей магистрали
       if (cfg.auto && cfg.auto.cascade) {
         o.push(ln(mRight - 6, mY.supply - 2.4, mRight - 6, mY.supply, { w: LW.thin }));
         o.push(gauge(mRight - 6, mY.supply - 4.95, 'Т'));
       }
       var retRight = cfg.tankHeating ? mRight + 4.7 : mRight;
+      o.push('<g data-hyd-part="mret" data-hyd-dir="rev">');
       o.push(hpipe(mLeft, retRight, mY.ret, COL.ret));
       if (!cfg.tankHeating) o.push(tick(retRight, mY.ret, false, COL.ret));
       o.push(diaH(mRight, mY.ret, dia));
+      o.push('</g>');
       if (twoCirc) {
         o.push(hpipe(mLeft, mRight, mY.dhw, COL.dhw));
         o.push(tick(mRight, mY.dhw, false, COL.dhw));
@@ -1680,6 +1760,51 @@
         o.push(diaV(bx3, bottomValveY - 7.2, recDia));
         o.push(bottomMark(bx3, 'Т4', 'up'));
       }
+    }
+
+    // ── зоны гидравлики: прозрачные накладки для карточек на экране ──
+    // Кладутся последними и поверх всего: попадание курсора в SVG решается
+    // порядком отрисовки, и зона обязана лежать над линиями, которые накрывает.
+    // На печати их нет — заливка прозрачная, обводки нет. Стили инлайном, а не
+    // атрибутами: правило «.sheet-a3 rect{stroke:#000;fill:none}» из обёртки
+    // листа иначе обвело бы каждую зону чёрным прямоугольником и сняло заливку,
+    // а вместе с ней и попадание курсора.
+    if (cfg.hyd) {
+      var zone = function (tag, x0, y0, x1, y1, attrs) {
+        return '<rect class="hyd-zone" data-hyd="' + tag + '"' + (attrs || '') +
+          ' x="' + n(Math.min(x0, x1)) + '" y="' + n(Math.min(y0, y1)) +
+          '" width="' + n(Math.abs(x1 - x0)) + '" height="' + n(Math.abs(y1 - y0)) +
+          '" style="fill:rgba(0,0,0,0);stroke:none"/>';
+      };
+      var over = function (flag) { return flag ? ' data-hyd-over="1"' : ''; };
+      var HP = cfg.hyd.parts || {};
+      var trunkOver = cfg.hyd.overWhere === 'trunk';
+      var tailOver = cfg.hyd.overWhere === 'beyond';
+      var ufhOver = !!(cfg.hyd.ufh && cfg.hyd.ufh.vMax > cfg.hyd.ufh.vLimit);
+      // Котлы: весь блок целиком — по нему показывают сопротивление
+      // теплообменника и общие числа кольца.
+      bXs.forEach(function (bx, bi) {
+        if (bx == null || !blocks[bi]) return;
+        o.push(zone('boiler', bx, bTop, bx + blocks[bi].w, bBot, ' data-hyd-b="' + bi + '"'));
+      });
+      // Отводы коллектора: полоса вдоль стояка от гребёнки до марки внизу.
+      // Ширина 8 мм при шаге стояков 9 — между соседями остаётся миллиметр.
+      // Уже делать нельзя: под сметой лист ужат до ~560 px, и на 5 мм полоса
+      // выходила шириной в шесть пикселей — попасть в неё мышью не получалось.
+      taps.forEach(function (t, i) {
+        if (!t.hyd || t.snow) return;
+        var x = tapXs[i], y0 = srcY[t.from];
+        if (x == null || y0 == null) return;
+        o.push(zone(t.hyd === 'tp' ? 'ufh' : 'trunk', x - 4, y0 - 2, x + 4, 274,
+          ' data-hyd-mark="' + (t.mark || '') + '" data-hyd-i="' + (t.hydI || 0) + '"' +
+          over(t.hyd === 'tp' ? ufhOver : trunkOver)));
+        // Узкое место за границей листа — отмечаем низ контура, от крана до
+        // марки: дальше труба уходит к потребителю, где оно и находится.
+        if (tailOver && t.hyd === 'rad') {
+          o.push('<rect class="hyd-tail" x="' + n(x - 4) + '" y="248" width="8" height="26"' +
+            ' style="fill:rgba(0,0,0,0);stroke:none"/>');
+        }
+      });
     }
 
     return o.join('');

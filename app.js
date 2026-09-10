@@ -1021,7 +1021,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin' },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin' },
 
     lastSavedStateString: "",
 
@@ -24073,6 +24073,13 @@ const app = {
         return cfg ? this._renderSchemeVector(cfg) : this._renderSchemeLayers(spec);
     },
     _renderSchemeVector: function (cfg) {
+        // Карточкам нужен тот же cfg, по которому нарисована схема: рендер
+        // возвращает строку, и достать его из DOM потом неоткуда.
+        this._schemeCfgCache = cfg;
+        this.bindSchemeHyd();
+        // Схема сейчас будет удалена и вставлена заново — подсветка и
+        // подсказка от прежней копии повисли бы в воздухе.
+        this.hydHoverOff();
         // Лист А3 (420×297) без рамки и штампа: смета — не рабочая
         // документация, шапка у неё своя. Координаты композитора абсолютные,
         // поэтому viewBox берём во весь лист.
@@ -24155,8 +24162,640 @@ const app = {
                             print-color-adjust: exact !important;
                         }
                     }
-                </style><div class="scheme-svg-wrap" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div></div>`;
+                    /* Гидравлика на схеме: прозрачные зоны из project_scheme.js.
+                       Сами по себе не видны — подсвечиваются только под курсором
+                       и там, где участок вышел за предел скорости. */
+                    #dynamic_scheme .hyd-zone,
+                    #scheme_zoom_overlay .hyd-zone {
+                        cursor: pointer;
+                        transition: fill .15s;
+                    }
+                    #dynamic_scheme .hyd-zone:hover,
+                    #scheme_zoom_overlay .hyd-zone:hover {
+                        fill: rgba(37, 99, 235, .16) !important;
+                    }
+                    #dynamic_scheme .hyd-zone[data-hyd-over],
+                    #scheme_zoom_overlay .hyd-zone[data-hyd-over] {
+                        fill: rgba(220, 38, 38, .14) !important;
+                        stroke: #dc2626 !important;
+                        stroke-width: .4 !important;
+                        stroke-dasharray: 1.6 1.2 !important;
+                    }
+                    #dynamic_scheme .hyd-zone[data-hyd-over]:hover,
+                    #scheme_zoom_overlay .hyd-zone[data-hyd-over]:hover {
+                        fill: rgba(220, 38, 38, .26) !important;
+                    }
+                    /* Наводить можно на всё: тень трубы ловит курсор вместо
+                       линии в 0,2 мм; символы (кран, насос, фильтр…) — по
+                       всей площади, а не только по контуру. Зоны стояков
+                       курсор не ловят — их дело только красная метка. */
+                    .hyd-zone[data-hyd="trunk"], .hyd-zone[data-hyd="ufh"] { pointer-events: none; }
+                    svg.scheme-svg [data-sym] * { pointer-events: all; cursor: pointer; }
+                    .hyd-hit * {
+                        fill: none !important;
+                        stroke: transparent !important;
+                        stroke-width: 2.4 !important;
+                        pointer-events: stroke;
+                        cursor: pointer;
+                    }
+                    .hyd-ov .hyd-ov__symhalo, .hyd-ov .hyd-ov__symhalo * {
+                        stroke: #fff2a8 !important; stroke-width: 1.8 !important; fill: none !important;
+                    }
+                    .hyd-ov .hyd-ov__sym, .hyd-ov .hyd-ov__sym * {
+                        stroke: #f59e0b !important; stroke-width: .5 !important; fill: none !important;
+                    }
+                    @media print { #dynamic_scheme .hyd-hit { display: none !important; } }
+                    /* Узкое место за границей листа: помечаем не сам стояк, а
+                       выход контура внизу — то место, за которым оно лежит. */
+                    #dynamic_scheme .hyd-tail,
+                    #scheme_zoom_overlay .hyd-tail {
+                        fill: rgba(220, 38, 38, .12) !important;
+                        stroke: #dc2626 !important;
+                        stroke-width: .4 !important;
+                        stroke-dasharray: 1.6 1.2 !important;
+                        pointer-events: none;
+                    }
+                    @media print {
+                        #dynamic_scheme .hyd-tail { display: none !important; }
+                    }
+                    /* На печати зон нет вовсе: подсветка — экранная подсказка,
+                       в рабочей документации ей не место. */
+                    @media print {
+                        #dynamic_scheme .hyd-zone,
+                        #dynamic_scheme .hyd-ov { display: none !important; }
+                    }
+                    /* Путь воды при наведении: слой .hyd-ov поверх схемы — клоны
+                       труб маршрута в три слоя (светлое гало, линия своим цветом
+                       подачи/обратки, бегущий белый пунктир — направление
+                       течения). Остальной чертёж приглушается, но не меняется. */
+                    #dynamic_scheme svg.hyd-hover > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail):not(.hyd-hit),
+                    #scheme_zoom_overlay svg.hyd-hover > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail):not(.hyd-hit) {
+                        opacity: .22;
+                        transition: opacity .18s;
+                    }
+                    .hyd-ov * {
+                        fill: none !important;
+                        stroke-linecap: round;
+                        stroke-linejoin: round;
+                        pointer-events: none;
+                    }
+                    .hyd-ov .hyd-ov__halo {
+                        stroke: #fff2a8 !important;
+                        stroke-width: 2.8 !important;
+                    }
+                    .hyd-ov .hyd-ov__line {
+                        stroke-width: 1.15 !important;
+                    }
+                    .hyd-ov .hyd-ov__flow {
+                        stroke: #fff !important;
+                        stroke-width: .55 !important;
+                        stroke-dasharray: 1.5 2 !important;
+                        animation: hydFlow .9s linear infinite;
+                    }
+                    .hyd-ov .hyd-ov__flow.hyd-ov--rev { animation-direction: reverse; }
+                    .hyd-ov .hyd-ov__flow.hyd-ov--none { display: none; }
+                    @keyframes hydFlow { to { stroke-dashoffset: -3.5; } }
+                    @media (prefers-reduced-motion: reduce) {
+                        .hyd-ov .hyd-ov__flow { animation: none; }
+                    }
+                </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды и подсказки при наведении">${this._hydToggleLabel()}</button></div></div>`;
     },
+
+    // ── что под курсором и путь воды ───────────────────────────────────────
+    /**
+     * Невидимая «тень» труб: линии на листе толщиной 0,2 мм, мышью в них не
+     * попасть. Поверх каждой трубы маршрута кладётся её клон с широким
+     * прозрачным штрихом (pointer-events: stroke) — он и ловит курсор, а по
+     * data-hit-pi ведёт к самой трубе. Строится один раз на каждый <svg>
+     * при первом наведении; клон листа в полноэкранном режиме уносит слой
+     * с собой вместе с номерами.
+     */
+    _hydPrepare: function (svg) {
+        if (svg.__hydReady) return;
+        svg.__hydReady = true;
+        if (svg.querySelector('.hyd-hit')) return;
+        const host = svg.querySelector(':scope > g');
+        if (!host) return;
+        const NS = 'http://www.w3.org/2000/svg';
+        const hit = document.createElementNS(NS, 'g');
+        hit.setAttribute('class', 'hyd-hit');
+        let n = 0;
+        svg.querySelectorAll('g[data-hyd-part] [data-p]').forEach(el => {
+            el.setAttribute('data-pi', n);
+            const c = el.cloneNode(false);
+            c.removeAttribute('data-p');
+            c.setAttribute('class', 'hyd-hit__p');
+            c.setAttribute('data-hit-pi', n);
+            hit.appendChild(c);
+            n++;
+        });
+        host.appendChild(hit);
+    },
+
+    /**
+     * Описание элемента под курсором: труба (через тень или сама линия),
+     * символ (<g data-sym>) или зона котла. Контур — по группе маршрута
+     * g[data-hyd-part], в которой элемент лежит; среда трубы — по её цвету,
+     * он на схеме и есть обозначение среды.
+     */
+    _hydDescr: function (target) {
+        if (!target || !target.closest) return null;
+        const svg = target.closest('svg.scheme-svg');
+        if (!svg) return null;
+        let el = target;
+        const hitEl = target.closest('.hyd-hit__p');
+        if (hitEl) el = svg.querySelector('[data-pi="' + hitEl.getAttribute('data-hit-pi') + '"]') || target;
+        const zone = el.closest('.hyd-zone');
+        const symEl = el.closest('[data-sym]');
+        const grp = el.closest('g[data-hyd-part]');
+        const pipe = (!symEl && el.getAttribute && el.getAttribute('data-p')) ? el : null;
+        if (!zone && !symEl && !pipe) return null;
+        const d = { svg, el, kind: null, i: 0, b: null, mark: '', sym: null, medium: null,
+            part: grp ? grp.getAttribute('data-hyd-part') : null };
+        if (symEl) d.sym = { type: symEl.getAttribute('data-sym'), name: symEl.getAttribute('data-sym-name') || '', el: symEl };
+        if (pipe) d.medium = this._hydMedium(pipe);
+        if (zone) {
+            d.kind = zone.getAttribute('data-hyd');
+            d.i = parseInt(zone.getAttribute('data-hyd-i'), 10) || 0;
+            d.b = zone.getAttribute('data-hyd-b');
+            d.mark = zone.getAttribute('data-hyd-mark') || '';
+        } else if (grp) {
+            const p = d.part;
+            if (p === 'tap') {
+                d.kind = grp.getAttribute('data-hyd-kind') === 'tp' ? 'ufh' : 'trunk';
+                d.i = parseInt(grp.getAttribute('data-hyd-i'), 10) || 0;
+                d.mark = grp.getAttribute('data-hyd-mark') || '';
+            } else if (p === 'bsup' || p === 'bret') {
+                d.kind = 'boiler'; d.b = grp.getAttribute('data-hyd-b');
+            } else if (p === 'hydro') d.kind = 'hydro';
+            else d.kind = 'main';
+        }
+        return d;
+    },
+
+    _hydMedium: function (pipe) {
+        let c = ((pipe.style && pipe.style.stroke) || pipe.getAttribute('stroke') || '').toLowerCase().replace(/\s/g, '');
+        const m = c.match(/^rgb\((\d+),(\d+),(\d+)\)$/);
+        if (m) c = '#' + [m[1], m[2], m[3]].map(v => (+v).toString(16).padStart(2, '0')).join('');
+        return {
+            '#ff0000': 'подача отопления', '#0000ff': 'обратка отопления',
+            '#800040': 'загрузка бойлера, подача', '#8282ff': 'загрузка бойлера, обратка',
+            '#ff8000': 'горячая вода', '#00ffff': 'холодная вода', '#ff00ff': 'рециркуляция',
+            '#7030a0': 'снеготаяние, подача', '#b799d8': 'снеготаяние, обратка'
+        }[c] || null;
+    },
+
+    /**
+     * Какие группы труб (data-hyd-part из project_scheme.js) составляют путь
+     * воды для элемента. Стояк отвода: от котлов через гребёнку (при
+     * гидрострелке — через неё и вторичную пару) вниз по подаче и обратно
+     * по обратке. Котёл: его стояки и гребёнка. Символ вне групп (легенда,
+     * бак, бойлер) — пути нет, подсвечивается только он сам.
+     */
+    _hydRoute: function (d) {
+        const all = Array.from(d.svg.querySelectorAll('g[data-hyd-part]'));
+        const part = p => all.filter(g => g.getAttribute('data-hyd-part') === p);
+        const boilers = b => all.filter(g => /^b(sup|ret)$/.test(g.getAttribute('data-hyd-part')) &&
+            (b == null || g.getAttribute('data-hyd-b') === b));
+        switch (d.kind) {
+            case 'boiler': return boilers(d.b).concat(part('msup'), part('mret'), part('hydro'));
+            case 'trunk': case 'ufh':
+                return all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
+                    g.getAttribute('data-hyd-kind') === (d.kind === 'ufh' ? 'tp' : 'rad') &&
+                    (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i)
+                    .concat(part('msup'), part('mret'), boilers(null), part('hydro'), part('ssup'), part('sret'));
+            case 'main': return part('msup').concat(part('mret'), boilers(null), part('hydro'));
+            case 'hydro': return part('hydro').concat(part('msup'), part('mret'), part('ssup'), part('sret'));
+            default: return [];
+        }
+    },
+
+    /**
+     * Подсветка: клоны труб маршрута в отдельной группе поверх листа — гало,
+     * линия своим цветом среды, бегущий пунктир по течению; сам элемент под
+     * курсором обводится отдельно. Чертёж не трогаем — только приглушаем
+     * классом на <svg>. Работает и в полноэкранном просмотре.
+     */
+    hydHoverOn: function (d) {
+        if (this._hydHoverEl === d.el) return;
+        this.hydHoverOff();
+        const host = d.svg.querySelector(':scope > g');
+        if (!host) return;
+        const NS = 'http://www.w3.org/2000/svg';
+        const ov = document.createElementNS(NS, 'g');
+        ov.setAttribute('class', 'hyd-ov');
+        const pipes = [];
+        this._hydRoute(d).forEach(g => {
+            const dir = g.getAttribute('data-hyd-dir') || 'none';
+            g.querySelectorAll('[data-p]').forEach(el => pipes.push({ el, dir }));
+        });
+        ['halo', 'line', 'flow'].forEach(layer => pipes.forEach(p => {
+            const c = p.el.cloneNode(false);
+            c.removeAttribute('data-p'); c.removeAttribute('data-pi');
+            c.setAttribute('class', 'hyd-ov__' + layer + ' hyd-ov--' + p.dir);
+            ov.appendChild(c);
+        }));
+        // Сам элемент под курсором: символ — обводкой, труба — она уже в
+        // маршруте, добавляем только жирную метку поверх.
+        const own = d.sym ? d.sym.el : d.el;
+        ['symhalo', 'sym'].forEach(layer => {
+            const c = own.cloneNode(true);
+            c.removeAttribute('data-sym'); c.removeAttribute('data-p'); c.removeAttribute('data-pi');
+            c.setAttribute('class', 'hyd-ov__' + layer);
+            ov.appendChild(c);
+        });
+        host.appendChild(ov);
+        if (pipes.length) d.svg.classList.add('hyd-hover');
+        this._hydHoverEl = d.el;
+        this._hydShowHint(d);
+    },
+
+    hydHoverOff: function () {
+        document.querySelectorAll('.hyd-ov').forEach(el => el.remove());
+        document.querySelectorAll('svg.hyd-hover').forEach(el => el.classList.remove('hyd-hover'));
+        this._hydHoverEl = null;
+        const h = document.getElementById('hyd_hint');
+        if (h) h.remove();
+    },
+
+    // Что делает элемент — словами, для заказчика и менеджера.
+    _HYD_SYM_TEXT: {
+        valve: 'Шаровой кран: перекрывает участок, чтобы обслужить или заменить прибор, не сливая всю систему.',
+        check: 'Обратный клапан: пропускает воду только в одну сторону — иначе работающий насос соседнего контура гонял бы поток через этот.',
+        pump: 'Насос гонит воду по своему кольцу. Подобран по расходу контура и по сопротивлению самого дальнего прибора.',
+        safety: 'Предохранительный клапан сбрасывает воду при давлении выше 3 бар — защита котла и труб.',
+        airvent: 'Автоматический воздухоотводчик выпускает воздух из верхней точки — иначе он копится и мешает циркуляции.',
+        filter: 'Фильтр-грязевик на обратке перед котлом: ловит песок и окалину — теплообменник котла забивается первым.',
+        airsep: 'Сепаратор воздуха стоит на подаче сразу за котлом: воздух выделяется в самой горячей точке, здесь его и ловят.',
+        safetygroup: 'Группа безопасности котла: манометр, воздухоотводчик и предохранительный клапан на одном узле.',
+        hydro: 'Гидрострелка развязывает котловой контур и контуры потребителей: насосы не мешают друг другу, а котёл всегда получает свой расход.',
+        exptank: 'Расширительный бак принимает лишний объём воды при нагреве, чтобы давление в системе не росло.',
+        boiler: 'Котёл греет воду и подаёт её в гребёнку по красному стояку. Остывшая возвращается по синему — через фильтр.'
+    },
+    _hydSymText: function (sym) {
+        if (!sym) return '';
+        if (sym.type === 'valve3') {
+            return /приоритет/i.test(sym.name)
+                ? 'Клапан приоритета: пока греется бойлер, переключает котёл целиком на него — горячая вода готовится быстрее.'
+                : 'Смесительный клапан подмешивает остывшую обратку в подачу: тёплому полу нужна вода не горячее 40–45 °C, а котёл даёт 60–80.';
+        }
+        if (sym.type === 'gauge') {
+            return /Манометр/.test(sym.name)
+                ? 'Манометр показывает давление в системе; в норме 1–2 бар на холодной.'
+                : 'Термометр показывает температуру в этой точке — по нему проверяют режим и настраивают систему.';
+        }
+        return this._HYD_SYM_TEXT[sym.type] || '';
+    },
+
+    /**
+     * Подсказка — словами, для заказчика и менеджера: что это за элемент,
+     * куда идёт вода и почему труба такого диаметра. Стоит не у курсора, а
+     * прижата к углу листа (там только легенда) или под лист, если есть
+     * место, — чертёж не закрывает. Полная карточка с числами — по клику.
+     */
+    _hydShowHint: function (d) {
+        const cfg = this._schemeCfgCache, hyd = cfg && cfg.hyd;
+        const esc = s => this._hydEsc(s), num = (v, k, u) => this._hydNum(v, k, u);
+        const P = (hyd && hyd.parts) || {};
+        const contour = d.kind === 'trunk' ? 'Контур радиаторов' + (d.mark ? ' ' + d.mark : '')
+            : d.kind === 'ufh' ? 'Контур тёплого пола' + (d.mark ? ' ' + d.mark : '')
+                : d.kind === 'boiler' ? 'Котёл'
+                    : d.kind === 'main' ? 'Гребёнка котельной'
+                        : d.kind === 'hydro' ? 'Гидравлический разделитель' : '';
+        let title, lines = [];
+        if (d.sym) {
+            title = d.sym.name;
+            const t = this._hydSymText(d.sym);
+            if (t) lines.push(esc(t));
+            if (d.sym.type === 'pump' && hyd) {
+                if (d.kind === 'trunk' && hyd.pump) lines.push('Этот насос: ' + esc(hyd.pump.label) + ' — даёт ' +
+                    num(hyd.pump.avail, 1, 'м') + ' напора при нужных ' + num(hyd.head, 1, 'м') + '.');
+                const m = d.kind === 'ufh' && hyd.ufh && hyd.ufh.mans ? hyd.ufh.mans[d.i] : null;
+                if (m) lines.push('Этот насос: ' + esc(hyd.ufh.pump || '') + ' — даёт ' + num(m.have, 1, 'м') +
+                    ' напора при нужных ' + num(m.need, 1, 'м') + (m.ok ? '.' : ' — не хватает.'));
+            }
+        } else if (d.medium) {
+            title = 'Труба: ' + d.medium;
+        } else {
+            title = contour || 'Элемент схемы';
+        }
+        if (contour && contour !== title) lines.unshift('<span class="hyd-hint__c">' + esc(contour) + '</span>');
+        if (hyd) {
+            if (d.kind === 'trunk') {
+                const t = P.trunk;
+                lines.push('От котла вода идёт по гребёнке и вниз по красному стояку к коллектору радиаторов, ' +
+                    'дальше по лучам к каждому прибору. Остывшая возвращается по синему.');
+                if (t && (d.medium || !d.sym)) {
+                    lines.push('Труба Ø' + esc(t.d) + ': ' + num(t.flow, 2, 'м³/ч') + ', скорость ' +
+                        num(t.v, 2, 'м/с') + ' при норме до ' + num(t.vLim, 1, '') + '.');
+                    lines.push('Почему Ø' + esc(t.d) + ': чтобы вода шла не быстрее ' + num(t.vLim, 1, 'м/с') +
+                        ' — иначе трубы шумят (СП 60.13330), — и чтобы потери ' + num(t.dp, 1, 'кПа') +
+                        ' на этом участке уложились в напор насоса.');
+                }
+            } else if (d.kind === 'ufh') {
+                const u = hyd.ufh, m = u && u.mans ? u.mans[d.i] : null;
+                lines.push('От гребёнки вода идёт через узел подмеса к коллектору пола и расходится ' +
+                    'по петлям в стяжке. Обратно — по синему стояку.');
+                if (m && !d.sym) lines.push('Коллектор ' + esc(m.label || '') + ': ' + num(m.flow, 2, 'м³/ч') +
+                    ', насосу нужно ' + num(m.need, 1, 'м') + ' напора, он даёт ' + num(m.have, 1, 'м') +
+                    (m.ok ? ' — хватает.' : ' — не хватает.'));
+            } else if (d.kind === 'boiler') {
+                if (!d.sym) lines.push(this._HYD_SYM_TEXT.boiler);
+                lines.push('Через котёл проходит ' + num(hyd.flow, 2, 'м³/ч') +
+                    (hyd.pump ? '; насос ' + esc(hyd.pump.label) + ' даёт ' + num(hyd.pump.avail, 1, 'м') +
+                        ' напора при нужных ' + num(hyd.head, 1, 'м') + '.' : '.'));
+            } else if (d.kind === 'main') {
+                lines.push('Гребёнка: сюда котлы отдают горячую воду, отсюда она расходится по контурам; ' +
+                    'по нижней трубе остывшая возвращается к котлам. Общий расход ' + num(hyd.flow, 2, 'м³/ч') + '.');
+            } else if (d.kind === 'hydro' && !d.sym) {
+                lines.push(this._HYD_SYM_TEXT.hydro);
+            }
+            if (hyd.worst && hyd.worst.over && (d.kind === 'trunk' || d.kind === 'boiler' || d.kind === 'main')) {
+                lines.push('<span class="hyd-hint__warn">⚠ ' + esc(hyd.worst.name) + ': ' + num(hyd.worst.v, 2, 'м/с') +
+                    ' — выше нормы ' + num(hyd.worst.vLim, 1, 'м/с') + '. Нужен больший диаметр.</span>');
+            }
+        }
+        if (!lines.length && !title) return;
+        let el = document.getElementById('hyd_hint');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'hyd_hint';
+            document.body.appendChild(el);
+        }
+        el.innerHTML = '<div class="hyd-hint__t">' + esc(title) + '</div>' +
+            lines.map(l => '<div class="hyd-hint__l">' + l + '</div>').join('') +
+            (d.kind ? '<div class="hyd-hint__f">Нажмите — полная карточка с числами · плашку можно перетащить</div>' : '');
+        this._hydDraggable(el, '_hydHintPos');
+        this._hydHintPlace(d.svg);
+    },
+
+    /**
+     * Перетаскивание плашки за любое место (у карточки — кроме крестика).
+     * Куда поставили, там и будут появляться следующие: положение лежит в
+     * this[key] до переключения «Подсказок». Pointer-события — чтобы
+     * работало и пальцем; захват указателя — чтобы курсор, выскочив за
+     * плашку, не ронял её и не будил наведение на схеме.
+     */
+    _hydDraggable: function (el, key) {
+        if (el.__hydDrag) return;
+        el.__hydDrag = true;
+        el.addEventListener('pointerdown', (e) => {
+            if (e.button !== 0 || (e.target.closest && e.target.closest('.hyd-card__x'))) return;
+            const r = el.getBoundingClientRect();
+            const dx = e.clientX - r.left, dy = e.clientY - r.top;
+            let moved = false;
+            const move = (ev) => {
+                if (!moved && Math.abs(ev.clientX - e.clientX) + Math.abs(ev.clientY - e.clientY) < 3) return;
+                moved = true;
+                this._hydDragging = true;
+                el.classList.add('hyd-dragging');
+                const left = Math.min(Math.max(0, ev.clientX - dx), window.innerWidth - r.width);
+                const top = Math.min(Math.max(0, ev.clientY - dy), window.innerHeight - r.height);
+                el.style.left = left + 'px';
+                el.style.top = top + 'px';
+                this[key] = { left, top };
+            };
+            const up = () => {
+                el.removeEventListener('pointermove', move);
+                el.removeEventListener('pointerup', up);
+                el.removeEventListener('pointercancel', up);
+                el.classList.remove('hyd-dragging');
+                // Флаг снимаем чуть позже: mouseover от отпускания приходит
+                // тем же тиком и иначе успевал бы переключить подсказку.
+                setTimeout(() => { this._hydDragging = false; }, 50);
+            };
+            try { el.setPointerCapture(e.pointerId); } catch (x) { /* старый браузер */ }
+            el.addEventListener('pointermove', move);
+            el.addEventListener('pointerup', up);
+            el.addEventListener('pointercancel', up);
+            e.preventDefault();
+        });
+    },
+
+    _hydHintPlace: function (svg) {
+        const el = document.getElementById('hyd_hint');
+        if (!el || !svg) return;
+        // Плашку уже переставляли руками — уважаем выбор, только держим в окне.
+        if (this._hydHintPos) {
+            const p = this._hydHintPos;
+            el.style.left = Math.min(Math.max(0, p.left), window.innerWidth - el.offsetWidth) + 'px';
+            el.style.top = Math.min(Math.max(0, p.top), window.innerHeight - el.offsetHeight) + 'px';
+            return;
+        }
+        const r = svg.getBoundingClientRect();
+        const left = Math.max(8, r.left + 12);
+        // Два прохода: первый ставит блок на место и даёт ему настоящую
+        // ширину, второй меряет высоту уже в этом положении — на первом
+        // показе высота до расстановки бывала занижена, и низ уезжал за край.
+        for (let pass = 0; pass < 2; pass++) {
+            const h = el.offsetHeight;
+            // Под листом, если он влезает в окно, — чертёж свободен целиком;
+            // иначе в левом нижнем углу листа, над легендой трубопроводов.
+            let top = (r.bottom + 8 + h <= window.innerHeight - 8)
+                ? r.bottom + 8
+                : Math.min(r.bottom, window.innerHeight) - h - 12;
+            top = Math.min(top, window.innerHeight - h - 8);
+            el.style.left = left + 'px';
+            el.style.top = Math.max(8, top) + 'px';
+        }
+    },
+
+    _hydEsc: function (s) {
+        return String(s == null ? '' : s).replace(/[&<>"]/g,
+            c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    },
+
+    /**
+     * Карточка участка по клику на схеме. Зоны рисует project_scheme.js
+     * (класс .hyd-zone, атрибут data-hyd), обработчик один на документ и в
+     * фазе перехвата: обёртка схемы по клику открывает полноэкранный режим,
+     * и всплытие до неё надо остановить раньше, чем она сработает. Тот же
+     * обработчик обслуживает и клон схемы в полноэкранном оверлее.
+     */
+    bindSchemeHyd: function () {
+        if (this._hydBound) return;
+        this._hydBound = true;
+        document.addEventListener('click', (e) => {
+            const t = e.target;
+            if (!t || !t.closest) return;
+            if (t.closest('#hyd_card') || t.closest('#hyd_hint')) return;   // клик по плашке
+            if (!this.hydEnabled()) return;
+            const d = this._hydDescr(t);
+            if (!d) { this.closeHydCard(); return; }
+            e.stopPropagation();
+            e.preventDefault();
+            this.showHydCard(d, e.clientX, e.clientY);
+        }, true);
+        // Наведение: путь воды и подсказка. mouseover приходит с любого
+        // элемента листа (фон — тоже элемент), поэтому одного события
+        // хватает и на вход, и на уход: не над чем — гасим.
+        document.addEventListener('mouseover', (e) => {
+            const t = e.target;
+            if (!t || !t.closest) return;
+            if (!this.hydEnabled()) return;
+            // Над самой подсказкой или карточкой, и пока их тащат, — ничего
+            // не трогаем: иначе до плашки нельзя было бы доехать мышью.
+            if (this._hydDragging || t.closest('#hyd_hint') || t.closest('#hyd_card')) return;
+            const svg = t.closest('svg.scheme-svg');
+            if (svg) this._hydPrepare(svg);
+            const d = this._hydDescr(t);
+            if (d) this.hydHoverOn(d);
+            // Над пустым полем листа подсказка остаётся — сменится, когда
+            // наведут на другой элемент; гаснет только за пределами схемы.
+            else if (this._hydHoverEl && !svg) this.hydHoverOff();
+        });
+        window.addEventListener('keydown', e => {
+            if (e.key === 'Escape') this.closeHydCard();
+        });
+    },
+
+    // ── переключатель «Подсказки» ──────────────────────────────────────────
+    // Подсветка пути воды и подсказки — по желанию: кому-то на схеме нужен
+    // чистый чертёж. Настройка живёт в localStorage, а не в state: это
+    // предпочтение экрана, а не сметы, и в облако ей ехать незачем.
+    hydEnabled: function () {
+        try { return localStorage.getItem('hc_scheme_hints') !== '0'; } catch (e) { return true; }
+    },
+    _hydToggleLabel: function () {
+        return this.hydEnabled() ? '💡 Подсказки: вкл' : '💡 Подсказки: выкл';
+    },
+    toggleHydHints: function (ev) {
+        if (ev) { ev.stopPropagation(); ev.preventDefault(); }   // обёртка схемы по клику открывает полноэкранный режим
+        const on = !this.hydEnabled();
+        try { localStorage.setItem('hc_scheme_hints', on ? '1' : '0'); } catch (e) { /* приватный режим */ }
+        this.hydHoverOff();
+        this.closeHydCard();
+        this._hydHintPos = null;      // ручные положения плашек — до переключения
+        this._hydCardPos = null;
+        document.querySelectorAll('.scheme-hints-btn, .scheme-zoom-hints').forEach(b => { b.textContent = this._hydToggleLabel(); });
+        document.querySelectorAll('.scheme-svg-wrap, #scheme_zoom_overlay').forEach(el => el.classList.toggle('hyd-off', !on));
+    },
+
+    closeHydCard: function () {
+        const el = document.getElementById('hyd_card');
+        if (el) el.remove();
+    },
+
+    showHydCard: function (d, cx, cy) {
+        this.closeHydCard();
+        const cfg = this._schemeCfgCache;
+        const hyd = cfg && cfg.hyd;
+        let body = null;
+        if (hyd && d.kind === 'ufh') body = this._hydCardUfh(hyd, d.mark, d.i);
+        else if (hyd && d.kind === 'trunk') body = this._hydCardTrunk(hyd, d.mark);
+        else if (hyd && d.kind) body = this._hydCardBoiler(hyd);
+        if (body && d.kind === 'main') body.title = 'Гребёнка и кольцо системы';
+        if (body && d.kind === 'hydro') body.title = 'Гидрострелка и кольцо системы';
+        // Символ вне контуров (легенда, бак, бойлер): карточка — только что
+        // это и зачем.
+        if (!body && d.sym) body = { title: d.sym.name,
+            rows: '<div class="hyd-card__p">' + this._hydEsc(this._hydSymText(d.sym)) + '</div>' };
+        else if (body && d.sym) body.rows = '<div class="hyd-card__p">' + this._hydEsc(d.sym.name) + ' — ' +
+            this._hydEsc(this._hydSymText(d.sym)) + '</div>' + body.rows;
+        if (!body) return;
+        const el = document.createElement('div');
+        el.id = 'hyd_card';
+        el.innerHTML = `<button type="button" class="hyd-card__x" aria-label="Закрыть">✕</button>
+            <div class="hyd-card__t">${body.title}</div>${body.rows}`;
+        document.body.appendChild(el);
+        el.querySelector('.hyd-card__x').addEventListener('click', () => this.closeHydCard());
+        // Держим карточку в пределах окна: у правого края она уезжала за экран,
+        // а на телефоне — под нижнюю панель. Если карточку уже перетаскивали,
+        // открываем там, куда её поставили.
+        const r = el.getBoundingClientRect();
+        const p = this._hydCardPos;
+        el.style.left = Math.min(Math.max(8, p ? p.left : cx + 14), window.innerWidth - r.width - 8) + 'px';
+        el.style.top = Math.min(Math.max(8, p ? p.top : cy + 14), window.innerHeight - r.height - 8) + 'px';
+        this._hydDraggable(el, '_hydCardPos');
+    },
+
+    // ── содержимое карточек ────────────────────────────────────────────────
+    _hydRow: function (label, value, warn) {
+        return `<div class="hyd-card__r${warn ? ' hyd-card__r--warn' : ''}">` +
+            `<span>${this._hydEsc(label)}</span><b>${this._hydEsc(value)}</b></div>`;
+    },
+
+    _hydNum: function (v, k, unit) {
+        if (v == null || !isFinite(v)) return '—';
+        return (Math.round(v * Math.pow(10, k)) / Math.pow(10, k)).toFixed(k)
+            .replace('.', ',') + (unit ? ' ' + unit : '');
+    },
+
+    _hydCardBoiler: function (hyd) {
+        const P = hyd.parts || {}, R = [];
+        if (P.boiler) R.push(this._hydRow('Теплообменник котла', this._hydNum(P.boiler.dp, 1, 'кПа')));
+        R.push(this._hydRow('Режим', hyd.regime + ', ΔT ' + this._hydNum(hyd.dT, 0, '°C')));
+        R.push(this._hydRow('Расход системы', this._hydNum(hyd.flow, 2, 'м³/ч')));
+        R.push(this._hydRow('Потери кольца', this._hydNum(hyd.dp, 1, 'кПа')));
+        R.push(this._hydRow('Требуемый напор', this._hydNum(hyd.head, 2, 'м')));
+        if (hyd.pump) {
+            R.push(this._hydRow('Насос', hyd.pump.label));
+            R.push(this._hydRow('Напор насоса', this._hydNum(hyd.pump.avail, 2, 'м') +
+                (hyd.pump.reserve ? ' (запас ×' + this._hydNum(hyd.pump.reserve, 1, '') + ')' : '')));
+        } else {
+            R.push(this._hydRow('Насос', 'не подобран', true));
+        }
+        return { title: 'Котёл и кольцо системы', rows: R.join('') };
+    },
+
+    _hydCardTrunk: function (hyd, mark) {
+        const P = hyd.parts || {}, t = P.trunk;
+        if (!t) return null;
+        const R = [];
+        if (t.d) R.push(this._hydRow('Диаметр', 'Ø' + t.d));
+        if (t.flow) R.push(this._hydRow('Расход', this._hydNum(t.flow, 2, 'м³/ч')));
+        R.push(this._hydRow('Скорость', this._hydNum(t.v, 2, 'м/с') +
+            (t.vLim ? ' (предел ' + this._hydNum(t.vLim, 1, '') + ')' : ''), t.over));
+        if (t.len) R.push(this._hydRow('Длина', this._hydNum(t.len, 0, 'м')));
+        R.push(this._hydRow('Потери участка', this._hydNum(t.dp, 1, 'кПа')));
+        if (P.group) R.push(this._hydRow('Насосная группа', this._hydNum(P.group.dp, 1, 'кПа')));
+        // Коллектор, луч и клапан прибора на листе не нарисованы — они за
+        // границей схемы, у потребителя. Но кольцо считается по ним, и без
+        // них карточка стояка обрывалась бы на полпути.
+        const tail = [P.manifold, P.loop, P.valve].filter(Boolean);
+        if (tail.length) {
+            R.push('<div class="hyd-card__s">Дальше по контуру, за границей листа</div>');
+            tail.forEach(p => R.push(this._hydRow(
+                String(p.name).replace(/,\s*[\d.,]+\s*м$/, ''),
+                this._hydNum(p.dp, 1, 'кПа') + (p.v ? ' · ' + this._hydNum(p.v, 2, 'м/с') : ''),
+                p.over)));
+        }
+        return {
+            title: 'Контур отопления' + (mark ? ' ' + this._hydEsc(mark) : ''),
+            rows: R.join('')
+        };
+    },
+
+    _hydCardUfh: function (hyd, mark, idx) {
+        const u = hyd.ufh;
+        if (!u || !u.mans || !u.mans.length) return null;
+        // Отводы Т11 идут в том же порядке, что коллекторы в расчёте. Если
+        // счёт разошёлся (усечённые одинаковые контуры, местный узел подмеса
+        // без своей группы), показываем итог по всему полу: подписать один
+        // коллектор данными другого хуже, чем не подписать вовсе.
+        const m = u.mans[idx] || null;
+        const R = [];
+        if (m) {
+            if (m.label) R.push(this._hydRow('Коллектор', m.label));
+            if (m.outlets) R.push(this._hydRow('Выходов', this._hydNum(m.outlets, 0, 'шт')));
+            R.push(this._hydRow('Расход', this._hydNum(m.flow, 2, 'м³/ч')));
+            R.push(this._hydRow('Требуемый напор', this._hydNum(m.need, 2, 'м')));
+            R.push(this._hydRow('Насос даёт', this._hydNum(m.have, 2, 'м'), !m.ok));
+        } else {
+            R.push(this._hydRow('Коллекторов', this._hydNum(u.mans.length, 0, 'шт')));
+            R.push(this._hydRow('Расход пола', this._hydNum(
+                u.mans.reduce((a, x) => a + (x.flow || 0), 0), 2, 'м³/ч')));
+        }
+        if (u.pump) R.push(this._hydRow('Насос узла', u.pump));
+        if (u.vMax) R.push(this._hydRow('Скорость в петле, макс.',
+            this._hydNum(u.vMax, 2, 'м/с') + ' (предел ' + this._hydNum(u.vLimit, 1, '') + ')',
+            u.vMax > u.vLimit));
+        return {
+            title: 'Тёплый пол' + (mark ? ' ' + this._hydEsc(mark) : ''),
+            rows: R.join('')
+        };
+    },
+
     // Полноэкранный просмотр схемы: на панели сметы лист ужат до ~900 px,
     // и линии 0.2 мм становятся тоньше пикселя. Оверлей даёт масштаб
     // колесом/кнопками и прокрутку перетаскиванием. srcEl — какой SVG
@@ -24171,12 +24810,14 @@ const app = {
         ov.id = 'scheme_zoom_overlay';
         ov.innerHTML =
             `<div class="scheme-zoom-bar">
+                <button type="button" data-z="hints" class="scheme-zoom-hints">${this._hydToggleLabel()}</button>
                 <button type="button" data-z="out" aria-label="Уменьшить">−</button>
                 <button type="button" data-z="fit">Вписать</button>
                 <button type="button" data-z="in" aria-label="Увеличить">+</button>
                 <button type="button" data-z="close" aria-label="Закрыть">✕</button>
             </div>
             <div class="scheme-zoom-canvas">${src.outerHTML}</div>`;
+        if (!this.hydEnabled()) ov.classList.add('hyd-off');
         document.body.appendChild(ov);
         const canvas = ov.querySelector('.scheme-zoom-canvas');
         const svg = canvas.querySelector('svg');
@@ -24196,6 +24837,7 @@ const app = {
         ov.addEventListener('click', (e) => {
             const z = e.target.dataset && e.target.dataset.z;
             if (z === 'in') zoom(1.3);
+            else if (z === 'hints') this.toggleHydHints(e);
             else if (z === 'out') zoom(1 / 1.3);
             else if (z === 'fit') fit();
             else if (z === 'close' || e.target === ov || e.target === canvas) ov.remove();
@@ -31730,7 +32372,7 @@ const app = {
             // как R·L·K/1000, отсюда и обратный ход. У арматуры длины нет —
             // там прочерк.
             parts: (h.parts || []).map(x => ({ name: x.name, dp: x.dp, v: x.v || 0,
-                vLim: x.vLim || null,
+                vLim: x.vLim || null, tag: x.tag || null,
                 r: x.len > 0 ? x.dp * 1000 / (x.len * this.RAD_LOCAL_K) : null })),
             balance: bal ? bal.rows.map(r => ({
                 room: r.room, watt: r.watt, flow: r.flow, dp: r.dp,
@@ -32187,6 +32829,93 @@ const app = {
         return notes;
     },
 
+    /**
+     * Гидравлика для принципиальной схемы: те же числа, что на листе
+     * «Гидравлический расчёт», но разложенные по машинным меткам участков
+     * (extra.tag в radHydraulics). Схема по ним подписывает свои стояки и
+     * подсвечивает узкое место.
+     *
+     * Своего расчёта здесь нет — только раскладка уже посчитанного, поэтому
+     * числа на схеме и на листе гидравлики не могут разойтись по определению.
+     * Возвращает null, если радиаторной части в смете нет.
+     */
+    buildSchemeHydro: function () {
+        const h = this.radHydro || this.radHydraulics();
+        if (!h || !h.parts || !h.parts.length) return null;
+        const by = {};
+        h.parts.forEach(p => { if (p.tag && !by[p.tag]) by[p.tag] = p; });
+        const part = t => {
+            const p = by[t];
+            if (!p) return null;
+            return {
+                name: p.name, dp: p.dp, v: p.v || 0, vLim: p.vLim || null,
+                d: p.d || null, len: p.len || null, flow: p.flow || null,
+                over: !!(p.v && p.vLim && p.v > p.vLim)
+            };
+        };
+        // Узкое место — участок, ближе всех подошедший к СВОЕМУ пределу
+        // скорости. Именно к своему: у магистрали и у луча пределы разные
+        // (СП 60.13330.2020, табл. И.1), и один общий максимум по м/с назвал бы
+        // узким местом не тот участок — на магистрали 1,1 м/с это норма, а на
+        // луче с клапаном прибора уже перебор.
+        let worstP = null, worstK = 0;
+        h.parts.forEach(p => {
+            if (!(p.v > 0) || !p.tag) return;
+            const k = p.v / (p.vLim || this.RAD_V_MAX);
+            if (k > worstK) { worstK = k; worstP = p; }
+        });
+        const reg = this.radRegime();
+        const pump = h.pump;
+        // Тёплый пол: коллекторы идут отдельным списком — у каждого свой
+        // расход и свой требуемый напор, и отводы Т11 на схеме соответствуют
+        // им по порядку. Если счёт коллекторов и отводов разойдётся, схема
+        // покажет по контуру общие числа, а не чужие.
+        const b = this._ufhBal;
+        const ufh = (b && b.mans && b.mans.length) ? {
+            mans: b.mans.map(m => {
+                const have = this.ufhPumpHead(m.flow, b.pump);
+                return {
+                    label: m.label, flow: m.flow, need: m.need, have: have,
+                    ok: have >= m.need, outlets: m.outlets || null
+                };
+            }),
+            pump: b.pump ? (b.pump.label || '') : '',
+            vMax: (b.mans || []).reduce((a, m) =>
+                (m.rows || []).reduce((c, r) => Math.max(c, r.v || 0), a), 0),
+            vLimit: this.UFH_V_MAX,
+            ok: !!b.ok
+        } : null;
+        return {
+            regime: reg.label, dT: reg.dt,
+            flow: h.flow, dp: h.dp, head: h.head,
+            branches: h.branches || 1,
+            pump: pump ? {
+                label: pump.label, avail: pump.avail,
+                reserve: h.head > 0 ? pump.avail / h.head : 0
+            } : null,
+            parts: {
+                boiler: part('boiler'), group: part('group'),
+                trunk: part('trunk'), trunkFar: part('trunkFar'),
+                manifold: part('manifold'), loop: part('loop'), valve: part('valve')
+            },
+            worst: worstP ? {
+                tag: worstP.tag, name: worstP.name, v: worstP.v,
+                vLim: worstP.vLim || this.RAD_V_MAX, ratio: worstK,
+                over: worstK > 1
+            } : null,
+            // Где отмечать превышение на чертеже. Диаметр стояка подбор
+            // выбирает сам и в предел укладывает всегда, а луч Ø16 к прибору
+            // задан жёстко — почти каждое превышение приходится на него.
+            // Луча на схеме нет, он за её границей, и обводить красным стояк
+            // значило бы показать пальцем не туда: 'beyond' отмечает только
+            // низ контура — выход, за которым лежит узкое место.
+            overWhere: (worstP && worstK > 1)
+                ? ((by.trunk && by.trunk.v > (by.trunk.vLim || this.RAD_V_MAX)) ? 'trunk' : 'beyond')
+                : null,
+            ufh: ufh
+        };
+    },
+
     // Конфигурация принципиальной схемы (project_scheme.js): состав системы
     // определяется по state и позициям сметы — тем же способом, каким
     // renderScheme собирает слои старой PNG-схемы. Возвращает null, если в
@@ -32405,7 +33134,11 @@ const app = {
                 cascade: !!this.thermaticConfig.cascade,
                 dhwSensor: this.thermaticConfig.dhw === 'boiler',
                 mixServo: (this.thermaticConfig.mixCount || 0) > 0
-            } : null
+            } : null,
+            // Гидравлика по меткам участков: схема рисует по ней прозрачные
+            // зоны для карточек и подсвечивает стояки, вышедшие за предел
+            // скорости. Нет радиаторной части — нет и зон.
+            hyd: this.buildSchemeHydro()
         };
     },
 
@@ -34320,7 +35053,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
             accountType: currentAccType,
@@ -44959,6 +45692,10 @@ const app = {
 
         const parts = [];
         let dp = 0;
+        // extra.tag — машинная метка участка: по ней принципиальная схема
+        // находит, к какому месту чертежа относится строка расчёта. Разбирать
+        // для этого подпись регуляркой нельзя: в неё входят и диаметр, и
+        // метраж, и номер ветки, и формулировка меняется от схемы к схеме.
         const add = (name, val, extra) => { parts.push(Object.assign({ name: name, dp: val }, extra || {})); dp += val; };
 
         if (tee) {
@@ -44976,11 +45713,15 @@ const app = {
             const near = this.radPipeDrop(flowBranch, dNear, lenNear, fam);
             const far = this.radPipeDrop(flowBranch / 2, dFar, lenFar, fam);
             add('Магистраль Ø' + dNear + ', ' + lenNear.toFixed(0) + ' м', near.dp,
-                { v: near.v, vLim: this.RAD_V_MAX_TRUNK, len: lenNear });
+                { v: near.v, vLim: this.RAD_V_MAX_TRUNK, len: lenNear,
+                    tag: 'trunk', d: dNear, flow: flowBranch });
             add('Магистраль Ø' + dFar + ', ' + lenFar.toFixed(0) + ' м', far.dp,
-                { v: far.v, vLim: this.RAD_V_MAX_TRUNK, len: lenFar });
+                { v: far.v, vLim: this.RAD_V_MAX_TRUNK, len: lenFar,
+                    tag: 'trunkFar', d: dFar, flow: flowBranch / 2 });
             const br = this.radPipeDrop(flowWorst, 16, 2 * 1.5);
-            add('Отвод к прибору Ø16', br.dp, { v: br.v, vLim: this.RAD_V_MAX, len: 2 * 1.5 });
+            add('Отвод к прибору Ø16', br.dp,
+                { v: br.v, vLim: this.RAD_V_MAX, len: 2 * 1.5,
+                    tag: 'loop', d: 16, flow: flowWorst });
         } else {
             // Коллекторная: от котельной до шкафа идёт один магистральный
             // участок, дальше лучи Ø16. Участок берём ровно тот, что смета
@@ -45001,24 +45742,28 @@ const app = {
             const tr = this.radPipeDrop(flowTr, dTr, trLen, span.fam);
             add((span.riser ? 'Стояк на второй этаж Ø' : 'Подводка к коллектору Ø') + dTr +
                 (branches > 1 ? ' (ветка ' + branches + '-я часть)' : '') +
-                ', ' + trLen.toFixed(0) + ' м', tr.dp, { v: tr.v, vLim: this.RAD_V_MAX_TRUNK, len: trLen });
-            add('Коллектор', this.RAD_MAN_DP);
+                ', ' + trLen.toFixed(0) + ' м', tr.dp,
+                { v: tr.v, vLim: this.RAD_V_MAX_TRUNK, len: trLen,
+                    tag: 'trunk', d: dTr, flow: flowTr, riser: !!span.riser });
+            add('Коллектор', this.RAD_MAN_DP, { tag: 'manifold' });
             const loop = this.radPipeDrop(flowWorst, 16, 2 * avgRun * 1.1);
             add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * avgRun * 1.1).toFixed(0) + ' м', loop.dp,
-                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1 });
+                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1,
+                    tag: 'loop', d: 16, flow: flowWorst });
         }
 
         // Клапан прибора на расчётной преднастройке: dp = (G/Kv)² · 100 кПа.
         const valve = this.radValveKv();
         const valveDp = Math.pow(flowWorst / valve.kv, 2) * 100;
-        add('Клапан прибора (' + valve.label + ')', valveDp);
+        add('Клапан прибора (' + valve.label + ')', valveDp,
+            { tag: 'valve', flow: flowWorst, kv: valve.kv });
         // Насосную группу считаем, только если она в смете есть. На небольшом
         // одноэтажном доме (до 150 м², до 20 кВт, без других групп на коллекторе)
         // радиаторы идут от встроенного насоса котла, группы нет вовсе — а её
         // 12 кПа всё равно прибавлялись к кольцу и завышали требуемый напор.
         const hasGroup = (parseInt(this._radGroupsCount, 10) || 0) > 0;
-        if (hasGroup) add('Насосная группа и обвязка', this.RAD_GROUP_DP);
-        add('Теплообменник котла', this.RAD_BOILER_DP);
+        if (hasGroup) add('Насосная группа и обвязка', this.RAD_GROUP_DP, { tag: 'group' });
+        add('Теплообменник котла', this.RAD_BOILER_DP, { tag: 'boiler' });
 
         const vMax = parts.reduce((a, p) => Math.max(a, p.v || 0), 0);
         // Шум проверяем у каждого участка по его собственному пределу: у
@@ -47176,6 +47921,20 @@ const app = {
         this.render();
         this.saveState();
     },
+    /**
+     * Перепад котлового контура: 20 K (паспортный режим котла) или 10 K.
+     *
+     * Влияет на расход через обвязку, а через него — на диаметр трубы и на все её
+     * фитинги. Отдельно от режима радиаторов (radRegime): за гидрострелкой контуры
+     * разные, и перепад у них свой. Совпадают они только когда узла гидроразделения
+     * нет, и тогда это осознанный выбор монтажника, а не наша догадка.
+     */
+    setBoilerDT: function (k) {
+        this.state.boilerDT = (parseInt(k, 10) === 10) ? 10 : 20;
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
     setRadConnectionScheme: function (scheme) {
         this.state.radConnectionScheme = (scheme === 'tee') ? 'tee' : 'manifold';
         // Держим в синхроне с меткой активного варианта в свап-модалке коллектора (там же можно
@@ -47498,6 +48257,23 @@ const app = {
         _rgTab('rad_regime_7565', _rg === 'r7565');
         const _rgNote = document.getElementById('lbl_rad_regime_note');
         if (_rgNote) _rgNote.textContent = this.RAD_REGIMES[_rg].note;
+
+        // Перепад котлового контура — только в подробном режиме, как и перепад
+        // тёплого пола: в быстром расчёте менять его незачем.
+        {
+            const _bdtBlock = document.getElementById('blk_boiler_dt');
+            if (_bdtBlock) _bdtBlock.style.display = this.state.detailedRooms ? 'block' : 'none';
+            const _bdt = this.boilerDT();
+            const _bdtTab = (id, on) => { const e = document.getElementById(id); if (e) e.className = on ? 'tab active' : 'tab'; };
+            _bdtTab('boiler_dt_20', _bdt === 20);
+            _bdtTab('boiler_dt_10', _bdt === 10);
+            const _bdtNote = document.getElementById('lbl_boiler_dt_note');
+            if (_bdtNote) {
+                _bdtNote.textContent = (_bdt === 10)
+                    ? 'Перепад 10 K. Расход через котловой контур вдвое выше, чем в паспортном режиме, — обвязка считается по нему.'
+                    : 'Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.';
+            }
+        }
         if (hasTp) {
             // Перепад контура — рядом с шагом укладки: обе настройки про то, как
             // разложен и как работает сам пол.
@@ -49976,6 +50752,96 @@ const app = {
         if (typeof v === 'string') {
             const nums = v.split('+').map(s => parseFloat(s.replace(',', '.').trim())).filter(n => n > 0);
             return nums.length ? Math.max.apply(null, nums) : 0;
+        }
+        return 0;
+    },
+
+    // === ВСТРОЕННЫЙ НАСОС КОТЛА ===
+    //
+    // Напор, которым котёл гонит свой контур. Нужен, чтобы проверять обвязку не
+    // только по скорости, но и по тому, дотянет ли насос.
+    //
+    // Точки сняты с ПАСПОРТНЫХ графиков, между ними линейная интерполяция.
+    // Квадратичная формула H = hMax·(1 − (Q/qMax)²), которой описаны насосы
+    // снеготаяния, сюда не годится: кривые STATUS и Haier почти прямые, и на
+    // расходе 1 м³/ч она завышает напор примерно на пятую часть — то есть врёт
+    // в ту сторону, где расчёт покажет запас, которого нет.
+    //
+    // kind: 'residual' — сопротивление котла уже вычтено (так пишут STOUT и BAXI),
+    //       'unknown'  — в паспорте не сказано; считать нельзя, пока не выяснено.
+    //
+    // Источники: паспорт STOUT STATUS (рис. 1, насос BSR 25/60, есть на диске);
+    // BAXI ECO Nova разд. 15 — там прямо сказано, что сопротивление котла учтено;
+    // BAXI LUNA Duo-tec E — SECTION E, а «остаточность» видна в итальянском
+    // оригинале: «portata-prevalenza disponibile alla placca»;
+    // Haier — руководство на L1PB12…L1PB35, график подписан просто «Напор».
+    BOILER_PUMPS: [
+        {
+            id: 'stout_status', kind: 'residual',
+            label: 'STOUT STATUS, насос BSR 25/60, скорость III',
+            test: (b) => /^SEB-3101-/.test(String(b && b.id || '')),
+            pts: [[0.5, 4.0], [1.0, 3.2], [1.5, 2.35], [2.0, 1.5], [2.5, 0.75]]
+        },
+        {
+            id: 'haier', kind: 'unknown',
+            label: 'Haier, штатный насос 6 м, скорость III',
+            note: 'В руководстве Haier не сказано, вычтено ли сопротивление самого котла, и отдельного графика сопротивления там нет. Пока считаем эту кривую непроверенной.',
+            test: (b) => /^GE0Q6/.test(String(b && b.id || '')),
+            pts: [[0, 6.0], [1.0, 4.1], [1.5, 3.2], [2.0, 2.05], [2.5, 1.0]]
+        },
+        {
+            id: 'baxi_econova', kind: 'residual',
+            label: 'BAXI ECO Nova, штатный насос',
+            test: (b) => /ECO\s*Nova/i.test(String(b && b.name || '')),
+            pts: [[0, 5.05], [0.4, 4.55], [0.6, 4.0], [0.8, 3.0], [1.0, 2.0], [1.1, 1.3]]
+        },
+        {
+            // Старшие 1.28 и 40 идут с более напористым насосом — отдельная кривая.
+            id: 'baxi_duotec_big', kind: 'residual',
+            label: 'BAXI LUNA Duo-tec E 1.28 / 40, максимальная скорость',
+            test: (b) => /Duo-tec\s*E/i.test(String(b && b.name || '')) && /\b(1\.28|40)\b/.test(String(b && b.name || '')),
+            pts: [[0.1, 7.5], [0.4, 6.6], [0.6, 5.9], [0.8, 5.0], [1.0, 4.0], [1.2, 2.8], [1.5, 1.0]]
+        },
+        {
+            id: 'baxi_duotec', kind: 'residual',
+            label: 'BAXI LUNA Duo-tec E, максимальная скорость',
+            test: (b) => /Duo-tec\s*E/i.test(String(b && b.name || '')),
+            pts: [[0.1, 5.55], [0.4, 5.1], [0.6, 4.55], [0.8, 3.8], [1.0, 2.9], [1.15, 1.9]]
+        }
+    ],
+
+    /**
+     * Кривая встроенного насоса подобранного котла — или null, если её нет.
+     *
+     * Отдельный случай — POLIS: у него насоса нет вовсе (noPump), контур гонит
+     * насос группы быстрого монтажа. Возвращаем null, чтобы вызывающий код не
+     * принял отсутствие кривой за отсутствие напора.
+     */
+    boilerPumpOf: function (b) {
+        if (!b || b.noPump) return null;
+        return this.BOILER_PUMPS.find(p => p.test(b)) || null;
+    },
+
+    /**
+     * Напор насоса на расходе flow (м³/ч), линейной интерполяцией по точкам.
+     * За правым концом кривой возвращает 0: насос столько не прокачает, и
+     * продолжать прямую в минус было бы враньём в обратную сторону.
+     */
+    boilerPumpHead: function (pump, flow) {
+        if (!pump || !pump.pts || !pump.pts.length) return null;
+        const q = parseFloat(flow) || 0;
+        const p = pump.pts;
+        if (q <= p[0][0]) return p[0][1];
+        // Ровно в последней точке отдаём её паспортное значение, и только ЗА ней —
+        // ноль: продолжать прямую вниз было бы враньём, а обрывать на самой точке
+        // значило бы терять законные метры напора.
+        const _last = p[p.length - 1];
+        if (q >= _last[0]) return (q > _last[0]) ? 0 : _last[1];
+        for (let i = 1; i < p.length; i++) {
+            if (q <= p[i][0]) {
+                const [q0, h0] = p[i - 1], [q1, h1] = p[i];
+                return h0 + (h1 - h0) * (q - q0) / (q1 - q0);
+            }
         }
         return 0;
     },
@@ -55378,7 +56244,10 @@ const app = {
         // Порог и взялся из скорости: на Ø22х1,2 (внутренний 19,6 мм) при Δt=20 °C
         // 30 кВт дают ровно 1,19 м/с — предел для жилых зданий.
         const _pipeCalcNote = (() => {
-            const dT = 20;
+            // Тот же перепад, по которому шёл подбор: иначе подсказка объясняла бы
+            // цифру, которой в расчёте нет. Раньше здесь было зашито 20, и при
+            // переключении на 10 K текст остался бы от прежнего режима.
+            const dT = this.boilerDT();
             let gasKw = 0, elKw = 0;
             selBoilers.forEach(b => { if (b) { if (b.type === 'gas') gasKw += b.power || 0; else elKw += b.power || 0; } });
             // У нержавейки внутренний диаметр берём из того же справочника, по
@@ -55405,11 +56274,36 @@ const app = {
                     ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Порог 30 кВт общий для всех систем обвязки: на металлопластике 26х3,0 он даёт 1,14 м/с, выше — переход на 32х3,0.<br>` +
                       `• Больше 32 мм в линейке металлопластика STOUT нет: с 53 кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>`
                     : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер подобран по ней: взят самый тонкий из ряда 22 · 28 · 35 · 42, на котором скорость в норму укладывается.<br>` +
+                      (dT === 10 ? `• Перепад котлового контура задан вручную — 10 K вместо паспортных 20. Расход вдвое выше, и диаметр обвязки поднялся примерно на две ступени. Переключается в подробном режиме, блок «Перепад котлового контура».<br>` : ``) +
                       (ss_diameter >= 42 ? `• Ряд подбора сверху ограничен 42 мм — на 54 мм нет теплоизоляции в каталоге. Если расчёт упёрся в 42, проверьте скорость выше по строке.<br>` : ``) +
                       (ss_diameter <= 22 ? `• Снизу ряд ограничен 22 мм по той же причине: на 15 и 18 мм теплоизоляции в каталоге нет, хотя по скорости на малых котлах хватило бы и их.<br>` : ``)) +
                 (bothFuels
                     ? `• <b style="color:#F59E0B;">Проверьте схему:</b> если котлы у вас работают ОДНОВРЕМЕННО (электрический как пиковый, а не резервный), диаметр надо считать по сумме ${gasKw + elKw} кВт — тогда замените трубу и фитинги вручную.<br>`
-                    : '');
+                    : '') +
+                // Напор встроенного насоса на расчётном расходе — тот бюджет, из
+                // которого оплачивается сопротивление всей обвязки. Считаем его на
+                // расход ОДНОГО котла: в каскаде каждый гонит свою пару труб.
+                (() => {
+                    const _b1 = (selBoilers || []).find(b => b && !b.noPump);
+                    const _pump = this.boilerPumpOf(_b1);
+                    if (!_pump) {
+                        const _polis = (selBoilers || []).some(b => b && b.noPump);
+                        return _polis
+                            ? `<br><b>Напор:</b> у котла нет встроенного насоса — контур гонит насос группы быстрого монтажа, его характеристика в подсказке к самой группе.<br>`
+                            : ``;
+                    }
+                    const _q1 = this.boilerFlow(_b1.power || 0, dT);
+                    const _h = this.boilerPumpHead(_pump, _q1);
+                    if (_h === null) return ``;
+                    const _kindNote = (_pump.kind === 'residual')
+                        ? `Это ОСТАТОЧНЫЙ напор: сопротивление самого котла из него уже вычтено, всё остальное — ваш бюджет на обвязку.`
+                        : `<b style="color:#F59E0B;">Осторожно:</b> ${_pump.note || 'тип кривой не подтверждён по паспорту.'}`;
+                    return `<br><b>Напор встроенного насоса (${_pump.label}):</b><br>`
+                        + `• Расход одного котла ${_b1.power || 0} кВт при Δt = ${dT} °C: <b>${_q1.toFixed(2)} м³/ч</b>.<br>`
+                        + `• На этом расходе насос даёт <b>${_h.toFixed(2)} м вод. ст.</b> ${_h <= 0 ? '— то есть расход за пределом его кривой, контур обязан идти через гидрострелку.' : ''}<br>`
+                        + `• ${_kindNote}<br>`
+                        + `• Потери самой обвязки калькулятор пока НЕ считает: у фильтра-шламоотделителя и сепаратора воздуха нет паспортной пропускной способности в каталоге. Сравнивайте с этим числом сами.<br>`;
+                })();
         })();
 
         // Вёдра метража. Раньше их было ровно два — 22 и 28, — потому что и

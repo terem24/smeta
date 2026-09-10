@@ -149,7 +149,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=3.65">
+    <link rel="stylesheet" href="style.css?v=3.66">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.01" defer></script>
@@ -172,7 +172,7 @@
          плагина Capacitor нет, все методы тихо выходят. Подключать до app.js —
          app.init() дёргает appPush.init(). -->
     <script src="push.js?v=1.1" defer></script>
-    <script src="app.js?v=7.52" defer></script>
+    <script src="app.js?v=7.55" defer></script>
     <script src="tour.js?v=2.1" defer></script>
     <!-- Выгрузка сметы в Excel: читает уже готовую печатную вёрстку (#print_bin) -->
     <script src="reprice.js?v=1.4" defer></script>
@@ -183,7 +183,7 @@
          векторный композитор, что рисует лист схемы в проекте, поэтому нужен
          и движок листов (рамка/штамп из него не берутся, только текст). -->
     <script src="project_sheets.js?v=4.20" defer></script>
-    <script src="project_scheme.js?v=4.51" defer></script>
+    <script src="project_scheme.js?v=4.52" defer></script>
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
@@ -1321,6 +1321,22 @@
                         style="font-size: 11px; color: var(--primary); border-bottom: 1px dashed var(--primary); cursor: pointer;">Котёл стоит дальше от стены</span>
                 </div>
                 <div id="chim_note" style="font-size: 11px; line-height: 1.5; color: var(--text-sec); margin-top: 8px;"></div>
+            </div>
+
+            <!-- Перепад котлового контура. От него зависит расход через обвязку, а
+                 значит диаметр трубы и все её фитинги. Паспортный режим котла — 20 K,
+                 он и стоит по умолчанию. Только в подробном режиме: в быстром расчёте
+                 менять его незачем. Это НЕ режим радиаторов (80/60 ↔ 75/65) — тот
+                 живёт за гидрострелкой и настраивается отдельно, ниже. -->
+            <div class="control-item" id="blk_boiler_dt" style="display:none; margin-bottom: 16px;">
+                <span class="lbl-sub" style="margin-bottom: 6px;">Перепад котлового контура</span>
+                <div class="tabs" id="boiler_dt_tabs">
+                    <div class="tab active" id="boiler_dt_20" onclick="app.setBoilerDT(20)" title="Паспортный режим котла: подача и обратка расходятся на 20 K. Расход через обвязку вдвое меньше, труба и фитинги скромнее.">20 K</div>
+                    <div class="tab" id="boiler_dt_10" onclick="app.setBoilerDT(10)" title="Перепад 10 K — режим 75/65. Расход через котловой контур вдвое выше, и диаметр обвязки уходит примерно на две ступени вверх. Ставить, когда котёл работает на систему напрямую, без гидрострелки.">10 K</div>
+                </div>
+                <div class="info-card" style="margin-top: 6px; font-size: 11px; line-height: 1.4;">
+                    <span id="lbl_boiler_dt_note">Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.</span>
+                </div>
             </div>
 
             <!-- Оформлен как все остальные пункты панели (toggle-item): черта
