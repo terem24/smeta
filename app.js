@@ -49651,6 +49651,142 @@ const app = {
         const last = range[range.length - 1];
         return { size: last.size, inner: last.inner, v: vOf(last.inner), flow: flow, capped: true };
     },
+
+    // === ФИТИНГИ НЕРЖАВЕЙКИ ПО ТИПОРАЗМЕРУ ===
+    //
+    // Пока котельная знала два диаметра, артикулы фитингов были вписаны в код
+    // строками. На семи типоразмерах так нельзя, а вывести артикул из диаметра
+    // формулой не выходит: коды этой линейки непоследовательны — 22х3/4 это
+    // RSS-1022-002234, но 28х1 уже RSS-1022-000281, а 35х1¼ — RSS-1022-035114.
+    // Зато НАЗВАНИЯ единообразны: «Угольник 90° ВПр-ВПр 22», «Переходник ВПр-НР
+    // 28х1», «Тройник переходной ВПр 28х22х28». По ним и строим индекс — заодно
+    // новый типоразмер от парсера подхватится сам.
+    //
+    // Ключи: 'd' — по диаметру, 'd|резьба' — резьбовые, 'D|d' — переходные тройники.
+    _ssFitIdx: null,
+    ssFitIndex: function () {
+        if (this._ssFitIdx) return this._ssFitIdx;
+        const idx = {};
+        const put = (arr, keyOf) => {
+            const map = {};
+            (catalog[arr] || []).forEach(it => {
+                const k = keyOf(String(it.name || ''));
+                if (k) map[k] = it.id;
+            });
+            idx[arr] = map;
+        };
+        // «… 22» — последнее число в названии и есть типоразмер.
+        const bySize = (name) => {
+            const m = name.match(/(\d{2})\s*$/);
+            return m ? m[1] : null;
+        };
+        // «… 28х1», «… 35х1 1/4» — диаметр и резьба через «х».
+        const bySizeThread = (name) => {
+            const m = name.match(/(\d{2})\s*х\s*(\S+)\s*$/);
+            return m ? (m[1] + '|' + m[2]) : null;
+        };
+        // «… 28х22х28» — магистраль и ответвление.
+        const byTeeRed = (name) => {
+            const m = name.match(/(\d{2})\s*х\s*(\d{2})\s*х\s*(\d{2})\s*$/);
+            return m ? (m[1] + '|' + m[2]) : null;
+        };
+        put('ss_elbow90_ff', bySize);
+        put('ss_elbow90', bySize);
+        put('ss_elbow45', bySize);
+        put('ss_tee', bySize);
+        put('ss_tee_red', byTeeRed);
+        put('ss_adapter_fi', bySizeThread);
+        put('ss_adapter_mi', bySizeThread);
+        put('ss_elbow_mi', bySizeThread);
+        this._ssFitIdx = idx;
+        return idx;
+    },
+
+    /**
+     * Фитинг нержавейки: массив каталога, типоразмер и, для резьбовых, резьба
+     * (или диаметр ответвления у переходного тройника).
+     *
+     * Возврат идёт через ssItem, поэтому переключатель 304 ↔ 316L продолжает
+     * работать: индекс построен по ROMMER-линейке, а ssItem подменяет артикул
+     * на STOUT-овский, если выбрана 316L.
+     */
+    ssFit: function (arr, d, extra) {
+        const key = (extra === undefined || extra === null) ? String(d) : (String(d) + '|' + String(extra));
+        const id = (this.ssFitIndex()[arr] || {})[key];
+        return id ? this.ssItem(catalog[arr], id) : null;
+    },
+
+    /**
+     * Типоразмер, на котором обвязка реально собирается: на выбранном по скорости
+     * диаметре может не оказаться нужного фитинга (например угольника-переходника
+     * 15х3/4 в линейке нет вовсе). Тогда поднимаемся на ступень вверх, пока
+     * набор не сойдётся. Пропустить фитинг молча нельзя — addToBill пропускает
+     * undefined без единого следа, и позиция просто исчезла бы из сметы.
+     */
+    ssSizeWithFittings: function (size, need) {
+        const range = this.boilerPipeRange('ss304').map(r => r.size);
+        const has = (d) => (need || []).every(n => !!this.ssFit(n.arr, d, n.extra));
+        let i = range.indexOf(parseInt(size, 10));
+        if (i < 0) return size;
+        for (; i < range.length; i++) if (has(range[i])) return range[i];
+        return size;
+    },
+
+    // Резьбы в дюймах, по возрастанию. Запись «11/4» — это 1 1/4, так они названы
+    // в каталоге; отдельная таблица нужна, чтобы сравнивать их по величине.
+    SS_THREADS: [
+        { t: '1/2', v: 0.5 }, { t: '3/4', v: 0.75 }, { t: '1', v: 1 },
+        { t: '11/4', v: 1.25 }, { t: '11/2', v: 1.5 }, { t: '2', v: 2 }
+    ],
+
+    /**
+     * Какая резьба реально есть у перехода этого типоразмера.
+     *
+     * Резьба в линейке привязана к диаметру: на 15–22 это 1/2" и 3/4", на 28 —
+     * 3/4" и 1", на 35 — 1" и 1 1/4". Поэтому под патрубок котла нельзя просто
+     * поднять диаметр — на 35-й трубе перехода на 3/4" не существует и не будет.
+     * Берём ближайшую доступную не меньше нужной, а если и таких нет — самую
+     * крупную из имеющихся. Когда результат не совпал с патрубком, вызывающий
+     * код обязан сказать в подсказке, что нужен резьбовой переход: так уже
+     * сделано для трубы 22 с патрубком 1".
+     */
+    ssThreadFor: function (arr, d, want) {
+        const map = this.ssFitIndex()[arr] || {};
+        const have = this.SS_THREADS.filter(x => map[String(d) + '|' + x.t]);
+        if (!have.length) return null;
+        const wv = (this.SS_THREADS.find(x => x.t === want) || {}).v || 0;
+        return (have.find(x => x.v >= wv) || have[have.length - 1]).t;
+    },
+
+    // Резьба в подсказку: «3/4» -> 3/4", «11/4» -> 1 1/4"
+    ssThreadLabel: function (t) {
+        const s = String(t || '');
+        return (s === '11/4' ? '1 1/4' : s === '11/2' ? '1 1/2' : s) + '"';
+    },
+
+    /**
+     * Тройник врезки: магистраль main, ответвление branch. Возвращает и позицию,
+     * и подпись к ней — чтобы они не разъехались.
+     *
+     * Переходные тройники есть не на все пары: на 28-й магистрали ответвление 22
+     * найдётся, а на 42-й ряд обрывается на 42х35х42, пары 42х22х42 нет вовсе.
+     * В таком случае ставим равнопроходной и честно пишем, что ответвление
+     * сужается по месту. Раньше здесь стоял молчаливый откат, и в смету уходил
+     * равнопроходной тройник с подписью «переходной» — артикул не совпадал с
+     * текстом.
+     */
+    ssTee: function (main, branch) {
+        const eq = this.ssFit('ss_tee', main);
+        if (main === branch) {
+            return eq ? { item: eq, label: `равнопроходной ${main}`, note: '' } : null;
+        }
+        const red = this.ssFit('ss_tee_red', main, branch);
+        if (red) return { item: red, label: `переходной ${main}х${branch}х${main}`, note: '' };
+        return eq ? {
+            item: eq, label: `равнопроходной ${main}`,
+            note: ` Переходного тройника ${main}х${branch}х${main} в линейке нет — ответвление на ${branch} сужается муфтой-переходом по месту (в смету не входит).`
+        } : null;
+    },
     // === КОНФИГУРАТОР КОНТРОЛЛЕРА ОТОПЛЕНИЯ (STOUT Thermatic 3001) ===
     //
     // Контроллер — не просто ещё одна позиция сметы, а конфигурация: он
@@ -53002,6 +53138,28 @@ const app = {
         // суммируем внутри типа топлива и берём максимум между типами. Раньше считалась
         // сплошная сумма, и газовый 24 кВт плюс электрический давали за 30 кВт — весь
         // котловой контур уходил с Ø22 на Ø28: труба, тройники, углы, американки.
+        // Типоразмеры котельной — ОДНО место на весь render. Врезка расширительных
+        // баков считается выше блока труб, и если она подберёт диаметр сама, тройник
+        // врезки не сядет на магистраль. Тот же приём, что у магистрали радиаторов:
+        // смета и гидравлика обязаны считать по одним числам.
+        //
+        // main — магистраль, tank — подводка баков (тупиковая ветка, по скорости не
+        // считается). BP_MIN/BP_MAX ограничивают ряд нержавейки тем, на что есть
+        // теплоизоляция: на 15, 18 и 54 её в boiler_insulation нет.
+        const BP_MIN = 22, BP_MAX = 42;
+        const boilerSizes = (list) => {
+            const sys = this.boilerPipeSystem();
+            const kw = boilerPowerForPipes(list);
+            if (sys === 'ppr' || sys === 'mp') {
+                return { main: (kw <= 30) ? 22 : 28, tank: 22, pick: null };
+            }
+            const pick = this.boilerPickSize(sys, kw);
+            const range = this.boilerPipeRange(sys).map(r => r.size)
+                .filter(s => s >= BP_MIN && s <= BP_MAX);
+            const main = range.find(s => s >= pick.size) || range[range.length - 1];
+            return { main: main, tank: Math.min(22, main), pick: pick };
+        };
+
         const boilerPowerForPipes = (list) => {
             let gas = 0, el = 0;
             (list || []).forEach(b => {
@@ -53696,15 +53854,9 @@ const app = {
                     if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.", grp);
                     if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.", grp);
 
-                    let frameBoilerPower = boilerPowerForPipes(selBoilers);
-                    let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
-                    if (frameSsDiameter === 22) {
-                        let teeItem = this.ssItem(catalog.ss_tee, "RSS-1013-000022");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник равнопроходной ВПр 22 для врезки расширительного бака ГВС.", grp);
-                    } else {
-                        let teeItem = this.ssItem(catalog.ss_tee_red, "RSS-1014-282228");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник переходной ВПр 28х22х28 для врезки расширительного бака ГВС.", grp);
-                    }
+                    const _fs = boilerSizes(selBoilers);
+                    const _fsTee = this.ssTee(_fs.main, _fs.tank);
+                    if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака ГВС.${_fsTee.note}`, grp);
                 }
             } else {
                 addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Подключение расширительного бака ГВС.", grp);
@@ -54155,15 +54307,9 @@ const app = {
                     if (maleElbow) addToBill(maleElbow, 1, "Угольник-переходник 90° ВПр-НР 22х3/4\" для подключения к вентилю бака.");
                     if (pressElbow) addToBill(pressElbow, 2, "Угольник 90° ВПр-НПр 22 для обвязки бака.");
 
-                    let frameBoilerPower = boilerPowerForPipes(selBoilers);
-                    let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
-                    if (frameSsDiameter === 22) {
-                        let teeItem = this.ssItem(catalog.ss_tee, "RSS-1013-000022");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник равнопроходной ВПр 22 для врезки расширительного бака.");
-                    } else {
-                        let teeItem = this.ssItem(catalog.ss_tee_red, "RSS-1014-282228");
-                        if (teeItem) addToBill(teeItem, 1, "Тройник переходной ВПр 28х22х28 для врезки расширительного бака.");
-                    }
+                    const _fs = boilerSizes(selBoilers);
+                    const _fsTee = this.ssTee(_fs.main, _fs.tank);
+                    if (_fsTee) addToBill(_fsTee.item, 1, `Тройник ВПр ${_fsTee.label} для врезки расширительного бака.${_fsTee.note}`);
                 }
             } else {
                 addToBill(catalog.tank_kit, 1, "Подключение бака.");
@@ -54226,8 +54372,7 @@ const app = {
 
         if (needCollector) {
             // Несущий каркас (рама) или хомуты коллектора котельной на базе C-образного профиля и консолей STOUT
-            let frameBoilerPower = boilerPowerForPipes(selBoilers);
-            let frameSsDiameter = (frameBoilerPower <= 30) ? 22 : 28;
+            let frameSsDiameter = boilerSizes(selBoilers).main;
 
             let isDoubleMode = (this.state.boilerFrameType === 'profile_double' || this.state.boilerFrameType === 'direct_double');
             let clampId = "";
@@ -54250,11 +54395,19 @@ const app = {
                     clampId = (mp_diam === 26) ? "SAC-0020-300034" : "SAC-0020-300001";
                 }
             } else { // Stainless steel/Stout
-                if (isDoubleMode) {
-                    clampId = (frameSsDiameter === 22) ? "SAC-0020-200012" : "SAC-0020-200034";
-                } else {
-                    clampId = (frameSsDiameter === 22) ? "SAC-0020-300012" : "SAC-0020-300034";
-                }
+                // Хомут по наружному диаметру трубы: диапазоны взяты из названий
+                // позиций каталога (1/2" — 20–23 мм, 3/4" — 25–28, 1" — 31–35,
+                // 1 1/4" — 40–45). Раньше хватало двух строк, потому что и труб
+                // было две; теперь магистраль может быть 35-й или 42-й.
+                const _clampBySize = {
+                    22: { single: "SAC-0020-300012", double: "SAC-0020-200012" },
+                    28: { single: "SAC-0020-300034", double: "SAC-0020-200034" },
+                    35: { single: "SAC-0020-300001", double: "SAC-0020-200001" },
+                    // Двойного хомута на 1 1/4" в каталоге нет — на 42-й трубе даже в
+                    // двойном режиме ставится одиночный, иначе позиция исчезла бы.
+                    42: { single: "SAC-0020-300114", double: "SAC-0020-300114" }
+                }[frameSsDiameter] || { single: "SAC-0020-300034", double: "SAC-0020-200034" };
+                clampId = isDoubleMode ? _clampBySize.double : _clampBySize.single;
             }
             let clampItem = catalog.mounting_system.find(x => x.id === clampId);
 
@@ -54605,11 +54758,28 @@ const app = {
         // котельную. isAnalog оставлен под полипропилен: под ним завязана вся ветка ППР
         // ниже, включая изоляцию и подбор диаметра.
         let totalBoilerPower = boilerPowerForPipes(selBoilers);
-        let ss_diameter = (totalBoilerPower <= 30) ? 22 : 28;
         let _bpSystem = this.boilerPipeSystem();
         let isAnalog = (_bpSystem === 'ppr');
         let is316 = (_bpSystem === 'ss316');
         let isMp = (_bpSystem === 'mp');
+
+        // Типоразмер магистрали котельной. У нержавейки он теперь подбирается ПО
+        // СКОРОСТИ из всего ряда, а не назначается порогом «30 кВт»: на 10 кВт
+        // порог давал 22-ю, где хватает 18-й, а на 80 кВт — ту же 28-ю, на которой
+        // скорость 1,9 м/с (труба гудит). Расчёт в boilerPickSize, он же считает и
+        // подсказку, поэтому цифра в описании и цифра в подборе — одна.
+        //
+        // Диапазон пока ограничен 22…42: снизу — потому что теплоизоляции на 15 и 18
+        // в boiler_insulation нет, сверху — потому что нет на 54. Расширять надо
+        // вместе с изоляцией, иначе строка утеплителя молча пропадёт из сметы.
+        //
+        // ППР и металлопластик пока остаются на прежней паре типоразмеров: их ряды
+        // требуют своей ревизии фитингов (у металлопластика на 16 и 20 нет резьбы 1",
+        // у ППР два бренда с разными артикулами), и мешать это в одну правку нельзя.
+        const _bpSizes = boilerSizes(selBoilers);
+        const _bpPick = _bpSizes.pick;
+        let ss_diameter = _bpSizes.main;
+        let _tankSize = _bpSizes.tank;
 
         // Металлопластик STOUT: труба PE-Xb/Al/PE-Xb (SPM-0001) на латунных пресс-фитингах
         // SFP. Логический диаметр котельной 22/28 (он же наружный у нержавейки) ложится на
@@ -54635,12 +54805,15 @@ const app = {
             const dT = 20;
             let gasKw = 0, elKw = 0;
             selBoilers.forEach(b => { if (b) { if (b.type === 'gas') gasKw += b.power || 0; else elKw += b.power || 0; } });
+            // У нержавейки внутренний диаметр берём из того же справочника, по
+            // которому шёл подбор, — тогда подсказка не может разойтись с расчётом.
+            const _ssRow = (this.boilerPipeRange(_bpSystem) || []).find(r => r.size === ss_diameter);
             const inner = isAnalog ? (ss_diameter === 22 ? 23.2 : 29.0)
                 : isMp ? (ss_diameter === 22 ? 20.0 : 26.0)
-                    : (ss_diameter === 22 ? 19.6 : 25.6);
+                    : (_ssRow ? _ssRow.inner : (ss_diameter === 22 ? 19.6 : 25.6));
             const label = isAnalog ? (ss_diameter === 22 ? '32х4,4 мм' : '40х5,5 мм')
                 : isMp ? (ss_diameter === 22 ? '26х3,0 мм' : '32х3,0 мм')
-                    : (ss_diameter === 22 ? '22х1,2 мм' : '28х1,2 мм');
+                    : (`Ø${ss_diameter} мм`);
             const flow = totalBoilerPower / (1.163 * dT);
             const area = Math.PI * Math.pow(inner / 1000, 2) / 4;
             const v = flow / 3600 / area;
@@ -54655,16 +54828,21 @@ const app = {
                 (isMp
                     ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Порог 30 кВт общий для всех систем обвязки: на металлопластике 26х3,0 он даёт 1,14 м/с, выше — переход на 32х3,0.<br>` +
                       `• Больше 32 мм в линейке металлопластика STOUT нет: с 53 кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>`
-                    : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Отсюда и порог 30 кВт: на Ø22 он даёт 1,19 м/с, выше — переход на Ø28.<br>`) +
+                    : `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер подобран по ней: взят самый тонкий из ряда 22 · 28 · 35 · 42, на котором скорость в норму укладывается.<br>` +
+                      (ss_diameter >= 42 ? `• Ряд подбора сверху ограничен 42 мм — на 54 мм нет теплоизоляции в каталоге. Если расчёт упёрся в 42, проверьте скорость выше по строке.<br>` : ``) +
+                      (ss_diameter <= 22 ? `• Снизу ряд ограничен 22 мм по той же причине: на 15 и 18 мм теплоизоляции в каталоге нет, хотя по скорости на малых котлах хватило бы и их.<br>` : ``)) +
                 (bothFuels
                     ? `• <b style="color:#F59E0B;">Проверьте схему:</b> если котлы у вас работают ОДНОВРЕМЕННО (электрический как пиковый, а не резервный), диаметр надо считать по сумме ${gasKw + elKw} кВт — тогда замените трубу и фитинги вручную.<br>`
                     : '');
         })();
 
-        let ss_pipes_demand = {
-            22: { length: 0, components: [] },
-            28: { length: 0, components: [] }
-        };
+        // Вёдра метража. Раньше их было ровно два — 22 и 28, — потому что и
+        // типоразмеров было два. Теперь магистраль может быть любой из ряда,
+        // поэтому вёдра заводятся по факту: магистральное и, отдельно, подводка
+        // баков (она может совпасть с магистральным — тогда ведро одно).
+        let ss_pipes_demand = {};
+        ss_pipes_demand[ss_diameter] = { length: 0, components: [] };
+        if (!ss_pipes_demand[_tankSize]) ss_pipes_demand[_tankSize] = { length: 0, components: [] };
 
         // Функция добавления труб с комбинированным подбором 2м/4м штанг или PPR штанг по 4м
         const addPipesToBill = (L, diam, grp, desc) => {
@@ -54776,10 +54954,12 @@ const app = {
                     `Переходник с пресс-соединения ${_mpDia} на наружную резьбу ${_mpThKey === '1' ? '1"' : _sepTh} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон.` +
                     (_mpThKey !== _sepThKey ? ` <b>Внимание:</b> у выбранного сепаратора резьба ${_sepTh}, дополнительно нужен резьбовой переход ${_sepTh}–1" (в смету не входит).` : ``) + ` Требуется: 2 шт.`, _airSepGrp);
             } else {
-                const _adpId = { '22|3/4': 'RSS-1021-002234', '22|1': 'RSS-1021-000221', '28|3/4': 'RSS-1021-002834', '28|1': 'RSS-1021-000281' }[ss_diameter + '|' + _sepThKey];
-                const _adp = _adpId && this.ssItem(catalog.ss_adapter_mi, _adpId);
+                const _adpTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, _sepThKey);
+                const _adp = _adpTh && this.ssFit('ss_adapter_mi', ss_diameter, _adpTh);
                 if (_adp) addToBill(_adp, 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${_sepTh} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон. Требуется: 2 шт.`, _airSepGrp);
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_adpTh)} для присоединения сепаратора воздуха — у него внутренняя резьба с обеих сторон.` +
+                    (_adpTh !== _sepThKey ? ` <b>Внимание:</b> у сепаратора резьба ${_sepTh}, на трубе ${ss_diameter} перехода такого размера в линейке нет — нужен резьбовой переход ${_sepTh}–${this.ssThreadLabel(_adpTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, _airSepGrp);
             }
         }
 
@@ -54808,9 +54988,12 @@ const app = {
                 if (_tieAdp) addToBill(_tieAdp, 2,
                     `Переходник с пресс-соединения ${mpD(ss_diameter)} на наружную резьбу 1" — вкручивается в муфту на патрубке узла гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
             } else {
-                const _tieAdp = this.ssItem(catalog.ss_adapter_mi, (ss_diameter === 22 ? 'RSS-1021-000221' : 'RSS-1021-000281'));
+                const _tieTh = this.ssThreadFor('ss_adapter_mi', ss_diameter, '1');
+                const _tieAdp = _tieTh && this.ssFit('ss_adapter_mi', ss_diameter, _tieTh);
                 if (_tieAdp) addToBill(_tieAdp, 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу 1" — вкручивается в муфту на патрубке узла гидроразделения. Требуется: 2 шт.`, _hydroTieGrp);
+                    `Переходник с пресс-соединения ${ss_diameter} на наружную резьбу ${this.ssThreadLabel(_tieTh)} — вкручивается в муфту на патрубке узла гидроразделения.` +
+                    (_tieTh !== '1' ? ` <b>Внимание:</b> муфта узла на 1", нужен резьбовой переход 1"–${this.ssThreadLabel(_tieTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, _hydroTieGrp);
             }
         }
 
@@ -54846,9 +55029,9 @@ const app = {
                     if (_mpElb) addToBill(_mpElb, 2,
                         `Пресс-угольник 90° ${mpD(ss_diameter)}х${mpD(ss_diameter)} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 } else {
-                    const _elb = this.ssItem(catalog.ss_elbow90_ff, (ss_diameter === 22 ? 'RSS-1003-000022' : 'RSS-1003-000028'));
+                    const _elb = this.ssFit('ss_elbow90_ff', ss_diameter);
                     if (_elb) addToBill(_elb, 2,
-                        `Пресс-угольник 90° В-В на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
+                        `Пресс-угольник 90° В-В ${ss_diameter} на повороте подводки от котла (${bName}) к узлу гидроразделения. Требуется: 2 шт.`, grp);
                 }
             }
 
@@ -54880,17 +55063,22 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 2, `Пресс-тройник переходной 32х26х32 для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
                 }
             } else {
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-002234'), 2, `Переходник с пресс-соединения на внутреннюю резьбу 3/4" для подключения нержавеющей трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 2, `Пресс-угольник 90° В-В для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000022'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 2, `Пресс-тройник для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-000281'), 2, `Переходник с пресс-соединения на внутреннюю резьбу 1" для подключения нержавеющей трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000028'), 2, `Пресс-угольник 90° В-В для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000028'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 2, `Пресс-тройник переходной для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
-                }
+                // Патрубок котла: у настенных газовых он 3/4" (так в паспортах Haier
+                // и Baxi), на крупной котельной труба уходит вперёд, и точной пары
+                // «диаметр + резьба» в линейке может не быть — тогда ставим ту, что
+                // есть на этом типоразмере, и предупреждаем про резьбовой переход.
+                const _bTh = this.ssThreadFor('ss_adapter_fi', ss_diameter, (ss_diameter >= 28) ? '1' : '3/4');
+                const _bPort = (ss_diameter >= 28) ? '1"' : '3/4"';
+                addToBill(_bTh && this.ssFit('ss_adapter_fi', ss_diameter, _bTh), 2,
+                    `Переходник с пресс-соединения ${ss_diameter} на внутреннюю резьбу ${this.ssThreadLabel(_bTh)} для подключения нержавеющей трубы к патрубкам котла (${bName}).` +
+                    (this.ssThreadLabel(_bTh) !== _bPort ? ` <b>Внимание:</b> патрубок котла ${_bPort}, нужен резьбовой переход (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', ss_diameter), 2, `Пресс-угольник 90° В-В ${ss_diameter} для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', ss_diameter), 2, `Пресс-угольник 45° В-В ${ss_diameter} для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
+                // Тройник ответвления: равнопроходной, пока магистраль и подводка баков
+                // одного размера, и переходной, когда магистраль ушла вперёд.
+                const _bTee = this.ssTee(ss_diameter, _tankSize);
+                if (_bTee) addToBill(_bTee.item, 2, `Пресс-тройник ${_bTee.label} для создания ответвлений в контуре обвязки котла (${bName}).${_bTee.note} Требуется: 2 шт.`, grp);
             }
         });
 
@@ -54946,25 +55134,21 @@ const app = {
                 // в подсказке, что нужен резьбовой переход на 1".
                 const _coilPort = (this._tankPorts && this._tankPorts.coil) || '1"';
                 const _coilIs1 = (_coilPort === '1"');
-                if (ss_diameter === 22) {
-                    const _adp = this.ssItem(catalog.ss_adapter_fi, 'RSS-1022-002234');
-                    addToBill(_adp, 2, `Переходник с пресс-соединения на внутреннюю резьбу 3/4" для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
-                        (_coilIs1 ? ` <b>Внимание:</b> для патрубка 1" дополнительно нужен резьбовой переход 3/4"–1" (в смету не входит).` : ``) + ` Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 4, `Пресс-угольник 90° В-В для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000022'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 2, `Пресс-тройник для создания ответвлений в греющем контуре бойлера ГВС. Требуется: 2 шт.`, grp);
-                } else {
-                    const _adp28 = this.ssItem(catalog.ss_adapter_fi, (_coilIs1 ? 'RSS-1022-000281' : 'RSS-1022-002834'));
-                    addToBill(_adp28, 2, `Переходник с пресс-соединения на внутреннюю резьбу ${_coilIs1 ? '1"' : '3/4"'} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000028'), 4, `Пресс-угольник 90° В-В для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_elbow45, 'RSS-1004-000028'), 2, `Пресс-угольник 45° В-В для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 2, `Пресс-тройник переходной для создания ответвлений в греющем контуре бойлера ГВС. Требуется: 2 шт.`, grp);
-                }
+                const _coilKey = _coilIs1 ? '1' : '3/4';
+                const _coilTh = this.ssThreadFor('ss_adapter_fi', ss_diameter, _coilKey);
+                addToBill(_coilTh && this.ssFit('ss_adapter_fi', ss_diameter, _coilTh), 2,
+                    `Переходник с пресс-соединения ${ss_diameter} на внутреннюю резьбу ${this.ssThreadLabel(_coilTh)} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
+                    (this.ssThreadLabel(_coilTh) !== _coilPort ? ` <b>Внимание:</b> нужен резьбовой переход ${_coilPort}–${this.ssThreadLabel(_coilTh)} (в смету не входит).` : ``) +
+                    ` Требуется: 2 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', ss_diameter), 4, `Пресс-угольник 90° В-В ${ss_diameter} для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', ss_diameter), 2, `Пресс-угольник 45° В-В ${ss_diameter} для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
+                const _cTee = this.ssTee(ss_diameter, _tankSize);
+                if (_cTee) addToBill(_cTee.item, 2, `Пресс-тройник ${_cTee.label} для создания ответвлений в греющем контуре бойлера ГВС.${_cTee.note} Требуется: 2 шт.`, grp);
             }
 
             // Трубы для расширительного бака ГВС (1.5 м, всегда диаметром 22)
-            ss_pipes_demand[22].length += 1.5;
-            ss_pipes_demand[22].components.push("расширительный бак ГВС");
+            ss_pipes_demand[_tankSize].length += 1.5;
+            ss_pipes_demand[_tankSize].components.push("расширительный бак ГВС");
 
             if (isAnalog) {
                 addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03225RCT'), 1, `Муфта комбинированная с наружной резьбой 32х3/4" PP-RCT для подключения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
@@ -54983,13 +55167,10 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 1, `Пресс-тройник переходной 32х26х32 для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
                 }
             } else {
-                addToBill(this.ssItem(catalog.ss_adapter_mi, 'RSS-1021-002234'), 1, `Переходник с пресс-соединения на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
-                addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 1, `Пресс-угольник 90° В-В диаметром 22 мм для подведения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 1, `Пресс-тройник диаметром 22 мм для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 1, `Пресс-тройник переходной 28х22х28 мм для врезки линии расширительного бака ГВС. Требуется: 1 шт.`, grp);
-                }
+                addToBill(this.ssFit('ss_adapter_mi', _tankSize, this.ssThreadFor('ss_adapter_mi', _tankSize, '3/4')), 1, `Переходник с пресс-соединения ${_tankSize} на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _tankSize), 1, `Пресс-угольник 90° В-В диаметром ${_tankSize} мм для подведения трубы к расширительному баку ГВС. Требуется: 1 шт.`, grp);
+                const _dTee = this.ssTee(ss_diameter, _tankSize);
+                if (_dTee) addToBill(_dTee.item, 1, `Пресс-тройник ${_dTee.label} для врезки линии расширительного бака ГВС.${_dTee.note} Требуется: 1 шт.`, grp);
             }
         }
 
@@ -55019,8 +55200,8 @@ const app = {
             let bName = primaryBoiler ? ((primaryBoiler.type === 'gas') ? "газового котла" : "электрического котла") : "котла";
 
             // Трубы для расширительного бака отопления (1.5 м, всегда диаметром 22)
-            ss_pipes_demand[22].length += 1.5;
-            ss_pipes_demand[22].components.push("расширительный бак отопления");
+            ss_pipes_demand[_tankSize].length += 1.5;
+            ss_pipes_demand[_tankSize].components.push("расширительный бак отопления");
 
             if (isAnalog) {
                 addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_mi, 'SZE03225RCT'), 1, `Муфта комбинированная с наружной резьбой 32х3/4" PP-RCT для подключения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
@@ -55039,13 +55220,10 @@ const app = {
                     addToBill(mpItem('SFP-0005-322632'), 1, `Пресс-тройник переходной 32х26х32 для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
                 }
             } else {
-                addToBill(this.ssItem(catalog.ss_adapter_mi, 'RSS-1021-002234'), 1, `Переходник с пресс-соединения на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
-                addToBill(this.ssItem(catalog.ss_elbow90_ff, 'RSS-1003-000022'), 1, `Пресс-угольник 90° В-В диаметром 22 мм для подведения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
-                if (ss_diameter === 22) {
-                    addToBill(this.ssItem(catalog.ss_tee, 'RSS-1013-000022'), 1, `Пресс-тройник диаметром 22 мм для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
-                } else {
-                    addToBill(this.ssItem(catalog.ss_tee_red, 'RSS-1014-282228'), 1, `Пресс-тройник переходной 28х22х28 мм для врезки расширительного бака отопления. Требуется: 1 шт.`, grp);
-                }
+                addToBill(this.ssFit('ss_adapter_mi', _tankSize, this.ssThreadFor('ss_adapter_mi', _tankSize, '3/4')), 1, `Переходник с пресс-соединения ${_tankSize} на наружную резьбу 3/4" для подключения нержавеющей трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow90_ff', _tankSize), 1, `Пресс-угольник 90° В-В диаметром ${_tankSize} мм для подведения трубы к расширительному баку отопления. Требуется: 1 шт.`, grp);
+                const _hTee = this.ssTee(ss_diameter, _tankSize);
+                if (_hTee) addToBill(_hTee.item, 1, `Пресс-тройник ${_hTee.label} для врезки расширительного бака отопления.${_hTee.note} Требуется: 1 шт.`, grp);
             }
         }
 
