@@ -38598,17 +38598,7 @@ const app = {
             basePrice = basePrice / item.len;
         }
 
-        const _tankCoilKwMap = {
-            'SWH-3110-000100': 24, 'SWH-3110-000150': 24, 'SWH-3110-000200': 24,
-            'SWH-1110-000300': 32, 'SWH-1110-000500': 69.5,
-            'SWH-4110-050100': 26, 'SWH-4110-050150': 32, 'SWH-4110-050200': 32, 'SWH-4110-050300': 48, 'SWH-4110-050500': 64,
-            'SWH-2110-000150': 31, 'SWH-2110-000200': 40.2, 'SWH-2110-000300': 55.6, 'SWH-2110-000400': 73.5, 'SWH-2110-000500': 73.5,
-            'SWH-2110-200200': '31 + 40,2', 'SWH-2110-200300': '38,5 + 55,6', 'SWH-2110-200400': '38,5 + 73,5', 'SWH-2110-200500': '38,5 + 73,5',
-            'SWH-1110-050100': 24, 'SWH-1110-050150': 32, 'SWH-1110-050200': 32, 'SWH-1110-050300': 32,
-            'SWH-3210-000080': 18.5, 'SWH-3210-000100': 18.5, 'SWH-3210-000150': 18.5, 'SWH-3210-000200': 18.5,
-            'SWH-1210-050075': 18.5, 'SWH-1210-050100': 18.5, 'SWH-1210-050150': 24, 'SWH-1210-050200': 24,
-            'RWH-2110-000150': 35, 'RWH-2110-000200': 38, 'RWH-2110-000300': 49, 'RWH-2110-000500': 60,
-        };
+        const _tankCoilKwMap = this.TANK_COIL_KW;
         const _tankItemId = item.originalId || item.id || '';
         const _coilKw = _tankCoilKwMap[_tankItemId];
         // Цена выбранного варианта (из swaps, иначе цена исходного товара)
@@ -49538,6 +49528,36 @@ const app = {
         return String(item.group || '') === '2.5. Трубопроводы котельной';
     },
 
+    // Паспортная мощность змеевика бойлера, кВт. Строкой записаны баки с двумя
+    // теплообменниками («31 + 40,2»): там первым идёт нижний, гелиоконтурный, а
+    // котёл подключается к верхнему — большему.
+    //
+    // Карта нужна в двух местах: в подсказке позиции бойлера и в подборе диаметра
+    // греющего контура. Поэтому лежит на объекте, а не в теле функции, — иначе
+    // расчёт и подсказка разошлись бы при первой же правке.
+    TANK_COIL_KW: {
+        'SWH-3110-000100': 24, 'SWH-3110-000150': 24, 'SWH-3110-000200': 24,
+        'SWH-1110-000300': 32, 'SWH-1110-000500': 69.5,
+        'SWH-4110-050100': 26, 'SWH-4110-050150': 32, 'SWH-4110-050200': 32, 'SWH-4110-050300': 48, 'SWH-4110-050500': 64,
+        'SWH-2110-000150': 31, 'SWH-2110-000200': 40.2, 'SWH-2110-000300': 55.6, 'SWH-2110-000400': 73.5, 'SWH-2110-000500': 73.5,
+        'SWH-2110-200200': '31 + 40,2', 'SWH-2110-200300': '38,5 + 55,6', 'SWH-2110-200400': '38,5 + 73,5', 'SWH-2110-200500': '38,5 + 73,5',
+        'SWH-1110-050100': 24, 'SWH-1110-050150': 32, 'SWH-1110-050200': 32, 'SWH-1110-050300': 32,
+        'SWH-3210-000080': 18.5, 'SWH-3210-000100': 18.5, 'SWH-3210-000150': 18.5, 'SWH-3210-000200': 18.5,
+        'SWH-1210-050075': 18.5, 'SWH-1210-050100': 18.5, 'SWH-1210-050150': 24, 'SWH-1210-050200': 24,
+        'RWH-2110-000150': 35, 'RWH-2110-000200': 38, 'RWH-2110-000300': 49, 'RWH-2110-000500': 60,
+    },
+
+    /** Мощность змеевика числом: у баков с двумя теплообменниками берётся больший. */
+    tankCoilKw: function (id) {
+        const v = this.TANK_COIL_KW[String(id || '')];
+        if (typeof v === 'number') return v;
+        if (typeof v === 'string') {
+            const nums = v.split('+').map(s => parseFloat(s.replace(',', '.').trim())).filter(n => n > 0);
+            return nums.length ? Math.max.apply(null, nums) : 0;
+        }
+        return 0;
+    },
+
     // === ПОДБОР ДИАМЕТРА ОБВЯЗКИ КОТЕЛЬНОЙ ПО СКОРОСТИ ===
     //
     // Historically диаметр котельной назначался одним порогом — до 30 кВт труба 22,
@@ -55133,8 +55153,20 @@ const app = {
         // 2. Бойлер ГВС
         if (this.state.hotWater && !rigDropped('dhw')) {
             let grp = "2.3. Обвязка Водонагревателя";
-            ss_pipes_demand[ss_diameter].length += 4.0;
-            ss_pipes_demand[ss_diameter].components.push("греющий контур бойлера");
+            // Греющий контур несёт не мощность котельной, а мощность ЗМЕЕВИКА: больше
+            // него в бак всё равно не уйдёт. Паспортные киловатты берём из TANK_COIL_KW
+            // по подобранной модели. Когда модели в карте нет, откатываемся на
+            // типоразмер обвязки котла — он ближе к истине, чем общий: греющий контур
+            // питается от одного котла, а не от всего каскада.
+            const _coilKw = this.tankCoilKw(this._tankPortsModel);
+            let _coilSize = _boilerSize;
+            if (!isAnalog && !isMp && _coilKw > 0) {
+                const _cp = boilerSizes([{ power: _coilKw, type: 'gas' }]);
+                _coilSize = Math.min(_cp.main, ss_diameter);
+            }
+            if (!ss_pipes_demand[_coilSize]) ss_pipes_demand[_coilSize] = { length: 0, components: [] };
+            ss_pipes_demand[_coilSize].length += 4.0;
+            ss_pipes_demand[_coilSize].components.push("греющий контур бойлера");
 
             if (isAnalog) {
                 if (ss_diameter === 22) {
@@ -55183,14 +55215,14 @@ const app = {
                 const _coilPort = (this._tankPorts && this._tankPorts.coil) || '1"';
                 const _coilIs1 = (_coilPort === '1"');
                 const _coilKey = _coilIs1 ? '1' : '3/4';
-                const _coilTh = this.ssThreadFor('ss_adapter_fi', ss_diameter, _coilKey);
-                addToBill(_coilTh && this.ssFit('ss_adapter_fi', ss_diameter, _coilTh), 2,
-                    `Переходник с пресс-соединения ${ss_diameter} на внутреннюю резьбу ${this.ssThreadLabel(_coilTh)} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
+                const _coilTh = this.ssThreadFor('ss_adapter_fi', _coilSize, _coilKey);
+                addToBill(_coilTh && this.ssFit('ss_adapter_fi', _coilSize, _coilTh), 2,
+                    `Переходник с пресс-соединения ${_coilSize} на внутреннюю резьбу ${this.ssThreadLabel(_coilTh)} для подключения нержавеющей трубы к патрубкам змеевика бойлера ГВС. Патрубок змеевика — ${_coilPort} по паспорту.` +
                     (this.ssThreadLabel(_coilTh) !== _coilPort ? ` <b>Внимание:</b> нужен резьбовой переход ${_coilPort}–${this.ssThreadLabel(_coilTh)} (в смету не входит).` : ``) +
                     ` Требуется: 2 шт.`, grp);
-                addToBill(this.ssFit('ss_elbow90_ff', ss_diameter), 4, `Пресс-угольник 90° В-В ${ss_diameter} для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
-                addToBill(this.ssFit('ss_elbow45', ss_diameter), 2, `Пресс-угольник 45° В-В ${ss_diameter} для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
-                const _cTee = this.ssTee(ss_diameter, _tankSize);
+                addToBill(this.ssFit('ss_elbow90_ff', _coilSize), 4, `Пресс-угольник 90° В-В ${_coilSize} для поворотов трубопровода греющего контура бойлера ГВС. Требуется: 4 шт.`, grp);
+                addToBill(this.ssFit('ss_elbow45', _coilSize), 2, `Пресс-угольник 45° В-В ${_coilSize} для обхода препятствий и плавных поворотов в обвязке бойлера ГВС. Требуется: 2 шт.`, grp);
+                const _cTee = this.ssTee(_coilSize, Math.min(_tankSize, _coilSize));
                 if (_cTee) addToBill(_cTee.item, 2, `Пресс-тройник ${_cTee.label} для создания ответвлений в греющем контуре бойлера ГВС.${_cTee.note} Требуется: 2 шт.`, grp);
             }
 
