@@ -4171,61 +4171,61 @@ const catalog = {
         { id: "SSS-2022-000281", name: "Переходник ВПр-ВР 28х1", price: 1047, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SSS-2022-000351", name: "Переходник ВПр-ВР 35х1", price: 949, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SSS-2022-035114", name: "Переходник ВПр-ВР 35х11/4", price: 1320, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2022-042112", name: "Переходник ВПр-ВР 42х11/2", price: 1823, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2022-000542", name: "Переходник ВПр-ВР 54х2", price: 2196, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2022-042112", name: "Переходник ВПр-ВР 42х11/2", price: 1823, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2022-000542", name: "Переходник ВПр-ВР 54х2", price: 2196, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_insert_fi_316: [
-        { id: "SSS-2023-001512", name: "Вставка переходная НПр-ВР 15х1/2", price: 433, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-001534", name: "Вставка переходная НПр-ВР 15х3/4", price: 472, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-001812", name: "Вставка переходная НПр-ВР 18х1/2", price: 502, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-001834", name: "Вставка переходная НПр-ВР 18х3/4", price: 611, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-000181", name: "Вставка переходная НПр-ВР 18х1", price: 870, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-002212", name: "Вставка переходная НПр-ВР 22х1/2", price: 522, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-002234", name: "Вставка переходная НПр-ВР 22х3/4", price: 617, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-000221", name: "Вставка переходная НПр-ВР 22х1", price: 771, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-002834", name: "Вставка переходная НПр-ВР 28х3/4", price: 777, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-000281", name: "Вставка переходная НПр-ВР 28х1", price: 850, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-035114", name: "Вставка переходная НПр-ВР 35х11/4", price: 1240, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-042112", name: "Вставка переходная НПр-ВР 42х11/2", price: 1757, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2023-000542", name: "Вставка переходная НПр-ВР 54х2", price: 2331, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2023-001512", name: "Вставка переходная НПр-ВР 15х1/2", price: 433, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-001534", name: "Вставка переходная НПр-ВР 15х3/4", price: 472, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-001812", name: "Вставка переходная НПр-ВР 18х1/2", price: 502, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-001834", name: "Вставка переходная НПр-ВР 18х3/4", price: 611, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-000181", name: "Вставка переходная НПр-ВР 18х1", price: 870, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-002212", name: "Вставка переходная НПр-ВР 22х1/2", price: 522, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-002234", name: "Вставка переходная НПр-ВР 22х3/4", price: 617, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-000221", name: "Вставка переходная НПр-ВР 22х1", price: 771, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2023-002834", name: "Вставка переходная НПр-ВР 28х3/4", price: 777, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-000281", name: "Вставка переходная НПр-ВР 28х1", price: 850, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-035114", name: "Вставка переходная НПр-ВР 35х11/4", price: 1240, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-042112", name: "Вставка переходная НПр-ВР 42х11/2", price: 1757, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2023-000542", name: "Вставка переходная НПр-ВР 54х2", price: 2331, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     ss_insert_mi_316: [
-        { id: "SSS-2024-001512", name: "Вставка переходная НПр-НР 15х1/2", price: 433, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-001534", name: "Вставка переходная НПр-НР 15х3/4", price: 472, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-001812", name: "Вставка переходная НПр-НР 18х1/2", price: 518, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-001834", name: "Вставка переходная НПр-НР 18х3/4", price: 611, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-000181", name: "Вставка переходная НПр-НР 18х1", price: 870, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-002212", name: "Вставка переходная НПр-НР 22х1/2", price: 522, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-002234", name: "Вставка переходная НПр-НР 22х3/4", price: 617, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-000221", name: "Вставка переходная НПр-НР 22х1", price: 771, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-002834", name: "Вставка переходная НПр-НР 28х3/4", price: 777, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-000281", name: "Вставка переходная НПр-НР 28х1", price: 850, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-035114", name: "Вставка переходная НПр-НР 35х11/4", price: 1231, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-042112", name: "Вставка переходная НПр-НР 42х11/2", price: 1696, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2024-000542", name: "Вставка переходная НПр-НР 54х2", price: 2388, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2024-001512", name: "Вставка переходная НПр-НР 15х1/2", price: 433, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-001534", name: "Вставка переходная НПр-НР 15х3/4", price: 472, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-001812", name: "Вставка переходная НПр-НР 18х1/2", price: 518, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-001834", name: "Вставка переходная НПр-НР 18х3/4", price: 611, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-000181", name: "Вставка переходная НПр-НР 18х1", price: 870, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-002212", name: "Вставка переходная НПр-НР 22х1/2", price: 522, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-002234", name: "Вставка переходная НПр-НР 22х3/4", price: 617, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-000221", name: "Вставка переходная НПр-НР 22х1", price: 771, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-002834", name: "Вставка переходная НПр-НР 28х3/4", price: 777, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-000281", name: "Вставка переходная НПр-НР 28х1", price: 850, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-035114", name: "Вставка переходная НПр-НР 35х11/4", price: 1231, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-042112", name: "Вставка переходная НПр-НР 42х11/2", price: 1696, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2024-000542", name: "Вставка переходная НПр-НР 54х2", price: 2388, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_plug_316: [
-        { id: "SSS-2025-000015", name: "Заглушка ВПр 15", price: 205, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2025-000018", name: "Заглушка ВПр 18", price: 226, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2025-000022", name: "Заглушка ВПр 22", price: 257, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2025-000028", name: "Заглушка ВПр 28", price: 337, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2025-000035", name: "Заглушка ВПр 35", price: 362, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2025-000042", name: "Заглушка ВПр 42", price: 527, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2025-000054", name: "Заглушка ВПр 54", price: 638, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2025-000015", name: "Заглушка ВПр 15", price: 205, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2025-000018", name: "Заглушка ВПр 18", price: 226, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2025-000022", name: "Заглушка ВПр 22", price: 257, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2025-000028", name: "Заглушка ВПр 28", price: 337, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2025-000035", name: "Заглушка ВПр 35", price: 362, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2025-000042", name: "Заглушка ВПр 42", price: 527, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2025-000054", name: "Заглушка ВПр 54", price: 638, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
     ],
     ss_union_fi_316: [
-        { id: "SSS-2026-001512", name: "Переходник с накидной гайкой ВПр-ВР 15х1/2", price: 597, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-001534", name: "Переходник с накидной гайкой ВПр-ВР 15х3/4", price: 917, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-001812", name: "Переходник с накидной гайкой ВПр-ВР 18х1/2", price: 584, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-001834", name: "Переходник с накидной гайкой ВПр-ВР 18х3/4", price: 855, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-002212", name: "Переходник с накидной гайкой ВПр-ВР 22х1/2", price: 886, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-002234", name: "Переходник с накидной гайкой ВПр-ВР 22х3/4", price: 886, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-002834", name: "Переходник с накидной гайкой ВПр-ВР 28х3/4", price: 1080, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-000281", name: "Переходник с накидной гайкой ВПр-ВР 28х1", price: 1134, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-000351", name: "Переходник с накидной гайкой ВПр-ВР 35х1", price: 1420, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-035114", name: "Переходник с накидной гайкой ВПр-ВР 35х11/4", price: 1274, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-042112", name: "Переходник с накидной гайкой ВПр-ВР 42х11/2", price: 2028, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SSS-2026-000542", name: "Переходник с накидной гайкой ВПр-ВР 54х2", price: 2521, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SSS-2026-001512", name: "Переходник с накидной гайкой ВПр-ВР 15х1/2", price: 597, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-001534", name: "Переходник с накидной гайкой ВПр-ВР 15х3/4", price: 917, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-001812", name: "Переходник с накидной гайкой ВПр-ВР 18х1/2", price: 584, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-001834", name: "Переходник с накидной гайкой ВПр-ВР 18х3/4", price: 855, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-002212", name: "Переходник с накидной гайкой ВПр-ВР 22х1/2", price: 886, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-002234", name: "Переходник с накидной гайкой ВПр-ВР 22х3/4", price: 886, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-002834", name: "Переходник с накидной гайкой ВПр-ВР 28х3/4", price: 1080, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-000281", name: "Переходник с накидной гайкой ВПр-ВР 28х1", price: 1134, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-000351", name: "Переходник с накидной гайкой ВПр-ВР 35х1", price: 1420, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-035114", name: "Переходник с накидной гайкой ВПр-ВР 35х11/4", price: 1274, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SSS-2026-042112", name: "Переходник с накидной гайкой ВПр-ВР 42х11/2", price: 2028, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2026-000542", name: "Переходник с накидной гайкой ВПр-ВР 54х2", price: 2521, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
     ppr_ekoplastik_pipe: [
         { id: "STRS020RCT", article: "STRS020RCT", name: "Труба PP-RCT STABI PLUS 20x2,8", price: 428.6, brand: "Wavin", unit: "шт", availability: "in_stock" },
@@ -5169,14 +5169,14 @@ const catalog = {
     // Автоматическая подпитка системы отопления. Клапан механический и от
     // контроллера не зависит: сам держит заданное давление в контуре.
     feed_valves: [
-        { id: "SVS-0050-526115", name: "Клапан подпиточный автоматический 1/2\" ВН/ВН, с манометром", price: 5947, brand: "STOUT", unit: "шт", rommer: { id: "RVS-0050-001515", name: "Клапан подпиточный автоматический 1/2\" ВН/НР, с манометром", price: 2318, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }, availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SVS-0050-526115", name: "Клапан подпиточный автоматический 1/2\" ВН/ВН, с манометром", price: 5947, brand: "STOUT", unit: "шт", rommer: { id: "RVS-0050-001515", name: "Клапан подпиточный автоматический 1/2\" ВН/НР, с манометром", price: 2550, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Обвязка линии подпитки: фильтр бережёт седло клапана от окалины и песка
     // из водопровода, обратный клапан не пускает теплоноситель обратно в ХВС.
     // Диаметр 1/2" — по присоединению самого подпиточного клапана.
     feed_line_parts: [
-        { id: "SFW-0011-000015", name: "Фильтр сетчатый муфтовый 1/2\"", price: 563, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SVC-0012-000015", name: "Клапан обратный пружинный с нейлоновым седлом 1/2\"", price: 813, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "SFW-0011-000015", name: "Фильтр сетчатый муфтовый 1/2\"", price: 619, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SVC-0012-000015", name: "Клапан обратный пружинный с нейлоновым седлом 1/2\"", price: 893, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
     ],
 
     // Позиции, которых не было ни в каталоге, ни в прайсе, но которые
@@ -5213,14 +5213,14 @@ const catalog = {
         // размера («28 (трубы до 20Ø)»), слова «гофра» там нет вовсе — поэтому
         // подбор по названию её не находил. Ряд заведён целиком, чтобы другие
         // размеры не пришлось добавлять поштучно. 0002 — красная, 0001 — синяя.
-        { id: "SPG-0002-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), красная, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPG-0002-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), красная, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPG-0002-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), красная, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPG-0002-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), красная, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPG-0001-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), синяя, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPG-0001-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), синяя, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPG-0001-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), синяя, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SPG-0001-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), синяя, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SPG-0002-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), красная, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPG-0002-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), красная, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPG-0002-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), красная, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPG-0002-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), красная, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPG-0001-502316", name: "Труба гофрированная ПНД 23 (для труб до 16 мм), синяя, бухта 50 м", price: 19, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPG-0001-502820", name: "Труба гофрированная ПНД 28 (для труб до 20 мм), синяя, бухта 50 м", price: 24, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPG-0001-503525", name: "Труба гофрированная ПНД 35 (для труб до 25 мм), синяя, бухта 50 м", price: 35, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPG-0001-504032", name: "Труба гофрированная ПНД 40 (для труб до 32 мм), синяя, бухта 30 м", price: 46, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
 
         { id: "10.В.050.R.M.B", article: "10.В.050.R.M.B", name: "Трап регулируемый боковой, решетка металлическая 100х100 (белый) D 50", price: 1576.06, unit: "шт", brand: "Sinikon", availability: "in_stock", price_date: "2026-07-28" },
 
