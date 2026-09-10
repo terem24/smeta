@@ -14221,6 +14221,19 @@ const app = {
     scopeDistIds: function () { return (this._adminScope && this._adminScope.distIds) || []; },
     scopeUserIds: function () { return (this._adminScope && this._adminScope.userIds) || []; },
 
+    // Почты своих монтажников. Нужны там, где записи привязаны не к id, а к
+    // логину: таблица projects (в ней только user_email), подложки планов и
+    // архив распознаваний на Beget — они про Supabase ничего не знают.
+    scopeUserEmails: function () { return (this._adminScope && this._adminScope.userEmails) || []; },
+
+    // Своё ли это — по логину. Логин приходит и почтой, и ником, поэтому
+    // сверяем приведёнными к нижнему регистру строками.
+    isScopeEmail: function (login) {
+        const want = String(login || '').trim().toLowerCase();
+        if (!want) return false;
+        return this.scopeUserEmails().indexOf(want) >= 0;
+    },
+
     // Совместимость: под старыми именами к области видимости обращается код,
     // писавшийся, когда она была только у менеджера.
     managerDistIds: function () { return this.scopeDistIds(); },
@@ -14286,14 +14299,15 @@ const app = {
         }
 
         const distIds = [...ids];
-        let userIds = [];
+        let userIds = [], userEmails = [];
         if (distIds.length) {
             try {
-                const { data } = await supabaseClient.from('users').select('id').in('distributor_id', distIds);
+                const { data } = await supabaseClient.from('users').select('id, email').in('distributor_id', distIds);
                 userIds = (data || []).map(u => String(u.id));
+                userEmails = (data || []).map(u => String(u.email || '').trim().toLowerCase()).filter(Boolean);
             } catch (e) { console.warn('[область видимости] Не удалось прочитать монтажников компаний:', e); }
         }
-        this._adminScope = { distIds, userIds };
+        this._adminScope = { distIds, userIds, userEmails };
         this._managerScope = this._adminScope;
         return this._adminScope;
     },
@@ -22339,10 +22353,18 @@ const app = {
                 this._loadingProjects = true;
                 (async () => {
                     try {
-                        const { data, error } = await supabaseClient.from('projects')
+                        let q = supabaseClient.from('projects')
                             .select('id, calc_id, project_name, address, sections, area, eq_sum, works_sum, user_name, user_email, issued_at')
                             .order('issued_at', { ascending: false })
                             .limit(200);
+                        // В projects нет user_id — только почта автора, по ней и
+                        // режем. Пустой список почт подменяем заведомо чужим
+                        // адресом: запрос без условия отдал бы все проекты.
+                        if (this.isScopedAdmin()) {
+                            const mine = this.scopeUserEmails();
+                            q = q.in('user_email', mine.length ? mine : ['-']);
+                        }
+                        const { data, error } = await q;
                         if (error) throw error;
                         this.adminData.projects = data || [];
                         this._projectsError = null;
@@ -25066,8 +25088,10 @@ const app = {
     // обновляется по кнопке «Обновить»
     loadAdminInstallerExtrasData: async function (force) {
         if (this._adminInstallerExtras && !force) return this._adminInstallerExtras;
-        const { data, error } = await supabaseClient.from('users')
-            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings');
+        // Свои расценки и своё оборудование — это две вкладки над одной выборкой,
+        // поэтому урезаем её здесь, в одном месте на обе.
+        const { data, error } = await this.scopeAdminQuery(supabaseClient.from('users')
+            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings'), 'id');
         if (error) throw error;
         const rows = (data || []).map(u => {
             const s = u.installer_settings || {};
@@ -25502,6 +25526,15 @@ const app = {
             const r = await fetch(`${this.PLANS_ENDPOINT}?admin=1`, { headers });
             const data = await r.json();
             if (!data.ok) throw new Error(data.error || (r.status === 403 ? 'доступ только для администраторов' : 'сервер не ответил'));
+            // Подложки лежат на Beget и про дистрибьюторов не знают — отбираем
+            // свои по владельцу (в owner сервер кладёт почту). Занятое место
+            // пересчитываем по своим же объектам: общий объём архива — цифра
+            // платформы, а не компании.
+            if (this.isScopedAdmin()) {
+                const mine = (data.projects || []).filter(p => this.isScopeEmail(p.owner));
+                data.projects = mine;
+                data.totalBytes = mine.reduce((s, p) => s + (p.bytes || 0), 0);
+            }
             this._adminPlansData = data;
         } catch (e) {
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать планы: ${e.message}</div>`;
@@ -25755,6 +25788,15 @@ const app = {
             const data = await r.json();
             if (!data.ok) throw new Error(data.error || (r.status === 403 ? 'доступ только для администраторов' : 'архив не ответил'));
             rows = data.rows || [];
+            // Записи архива подписаны и компанией, и логином. Компания точнее:
+            // логин у монтажника может смениться, а distributorId кладётся в
+            // момент разбора. Но у старых записей его нет — там сверяем логин.
+            if (this.isScopedAdmin()) {
+                const dists = this.scopeDistIds().map(String);
+                rows = rows.filter(r2 => r2.distributorId
+                    ? dists.includes(String(r2.distributorId))
+                    : this.isScopeEmail(r2.user));
+            }
         } catch (e) {
             const root = document.getElementById('admin_recognition_root');
             if (root) root.innerHTML = `<div style="color:#EF4444; padding:20px;">Не удалось прочитать архив: ${e.message}</div>`;
@@ -25763,13 +25805,17 @@ const app = {
 
         // Размер архива приходит отдельно: список ограничен по датам, а место
         // на диске занимают все файлы, включая те, что в список не попали.
+        // Тому, у кого панель урезана до своих монтажников, размер всего архива
+        // не принадлежит — и запрашивать его незачем.
         this._adminRecognitionStats = null;
-        try {
-            const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?stats=1`, { headers });
-            const data = await r.json();
-            if (data.ok) this._adminRecognitionStats = data;
-        } catch (e) {
-            console.warn('[архив] размер не посчитан:', e.message);
+        if (!this.isScopedAdmin()) {
+            try {
+                const r = await fetch(`${this.RECOGNIZE_ARCHIVE}?stats=1`, { headers });
+                const data = await r.json();
+                if (data.ok) this._adminRecognitionStats = data;
+            } catch (e) {
+                console.warn('[архив] размер не посчитан:', e.message);
+            }
         }
 
         // Персональные лимиты: у кого не задан — действует общий.
@@ -25972,6 +26018,11 @@ const app = {
     renderAdminRecognitionBody: function () {
         const root = document.getElementById('admin_recognition_root');
         if (!root) return;
+
+        // Место на диске и копилка промахов подбора считаются сервером по всему
+        // архиву — это показатели платформы, а не компании. Тому, у кого панель
+        // урезана до своих монтажников, они не принадлежат.
+        const platformWide = !this.isScopedAdmin();
 
         const rows = this._adminRecognitionRows || [];
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
@@ -26339,9 +26390,9 @@ const app = {
                 <button class="admin-btn" style="margin-left:auto;"
                         onclick="app.renderAdminRecognition()">Обновить</button>
             </div>
-            ${diskHtml}
+            ${platformWide ? diskHtml : ''}
             ${manualHtml}
-            ${gapsHtml}
+            ${platformWide ? gapsHtml : ''}
             ${pickedHtml}
             <div style="overflow-x:auto;">
                 <table style="width:100%; border-collapse:collapse;">
