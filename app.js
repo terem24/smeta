@@ -1727,6 +1727,18 @@ const app = {
     // price_update.php при сборке — по курсу самой книги (медиана отношений ₽/€ по
     // таблицам с обеими ценами). Здесь пересчитывать нечего и не по чему: какая
     // позиция пришла из евро-листа, в индексе не помечено.
+    /**
+     * Догрузка отложенного модуля (список групп — в index.html, окно hcLoad).
+     * Тяжёлые части — распознавание, документы, выгрузка в Excel, печать в PDF —
+     * на старте не грузятся, иначе браузер разбирает их до первой отрисовки.
+     *
+     * Там, где загрузчика нет (мобильная оболочка и invoice.html подключают всё
+     * обычными тегами), возвращаем готовый промис и идём дальше.
+     */
+    lazy: function (name) {
+        return (typeof hcLoad === 'function') ? hcLoad(name) : Promise.resolve();
+    },
+
     _ensurePriceIndexLoaded: function () {
         if (this._priceIndexLoadPromise) return this._priceIndexLoadPromise;
         this._buildCatalogSearchIndex();
@@ -7808,7 +7820,7 @@ const app = {
                         <div style="display:flex; justify-content:flex-end; gap:8px; align-items: center;">
                             ${getInvoiceBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'open')" title="Открыть расчёт в калькуляторе">Открыть</button>
-                            <button class="lk-btn-sm" onclick="event.stopPropagation(); Reprice.open('${item.id}')" title="Сравнить цены сметы с сегодняшними">Цены</button>
+                            <button class="lk-btn-sm" onclick="event.stopPropagation(); app.lazy('reprice').then(() => Reprice.open('${item.id}'))" title="Сравнить цены сметы с сегодняшними">Цены</button>
                             ${shareBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'download')" title="Скачать смету: PDF или Excel">Скачать</button>
                             ${canDelete ? `
@@ -8246,7 +8258,10 @@ const app = {
         // Оно само выбирает, с чем сравнивать: слепок цен той сметы, снимок
         // отправленной клиенту или, если ни того ни другого нет, даты цен каталога.
         this._repriceSaved = saved;
-        const canDetail = typeof Reprice !== 'undefined' && !!this._loadedEstimateId;
+        // Модуль разбора цен грузится по требованию: кнопку показываем, если он
+        // либо уже здесь, либо его есть чем догрузить.
+        const canDetail = (typeof Reprice !== 'undefined' || typeof hcLoad === 'function')
+            && !!this._loadedEstimateId;
 
         host.innerHTML = `
             <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px 14px;
@@ -8289,12 +8304,15 @@ const app = {
      * разницу можно лишь по датам цен в каталоге — и для этого нужен её состав.
      */
     showRepriceDetails: function () {
-        if (typeof Reprice === 'undefined' || !this._loadedEstimateId) return;
+        if (!this._loadedEstimateId) return;
         const saved = this._repriceSaved || {};
-        Reprice.open(this._loadedEstimateId, {
-            bill: this.currentEquipmentList || [],
-            savedAt: saved.at
-        });
+        this.lazy('reprice').then(() => {
+            if (typeof Reprice === 'undefined') return;
+            Reprice.open(this._loadedEstimateId, {
+                bill: this.currentEquipmentList || [],
+                savedAt: saved.at
+            });
+        }).catch(() => { });
     },
 
     /**
@@ -9488,7 +9506,7 @@ const app = {
                         ${historyRows ? `<details style="margin-top:2px;"><summary style="cursor:pointer; font-size:11.5px; color:var(--text-sec);">История статусов (${g.list.length})</summary><div style="margin-top:6px;">${historyRows}</div></details>` : ''}
                         <div style="display:flex; gap:6px; margin-top:4px;">
                             ${loc ? `<button class="btn-subscribe" onclick="app.loadRequestedEstimate(${loc.index})" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0;">Открыть смету</button>` : ''}
-                            <button class="btn-subscribe" onclick="Docs.openForOrder('${esc(g.calcId)}', '${shareId || ''}')" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border);">📄 Документы</button>
+                            <button class="btn-subscribe" onclick="app.lazy('docs').then(() => Docs.openForOrder('${esc(g.calcId)}', '${shareId || ''}'))" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border);">📄 Документы</button>
                         </div>
                      </div>`;
         });
@@ -30192,7 +30210,12 @@ const app = {
             if (scheme) scheme.remove();
             if (panelRec) {
                 panelRec.style.display = 'block';
-                if (typeof RecognizeUI !== 'undefined') RecognizeUI.mountInline(panelRec);
+                // Сюда попадаем ровно тогда, когда распознавание понадобилось —
+                // здесь его и грузим. Если фоновая догрузка успела раньше,
+                // промис отдаётся сразу и панель собирается без задержки.
+                this.lazy('recognize').then(() => {
+                    if (typeof RecognizeUI !== 'undefined') RecognizeUI.mountInline(panelRec);
+                }).catch(() => { });
             }
             // Полный render() здесь не нужен — таблица сметы скрыта. Но виджет
             // конкурса живёт вне таблицы и сам не спрячется, его чистим явно.
@@ -34055,6 +34078,7 @@ const app = {
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak: { mode: ['css', 'legacy'] }
                 };
+                await this.lazy('html2pdf');
                 await html2pdf().set(opt).from(printBin).save();
                 this.logPrintedEvent();
                 GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
@@ -34125,6 +34149,7 @@ const app = {
     // копии логики сметы. В Excel не переносятся только фотографии и схема.
     executeExcelDownload: async function (showEq, showWorks, showHeatLoss) {
         if (this.isSellerOnly()) showWorks = false; // у продавца работ нет
+        if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
         if (!window.ExcelExport) {
             app.alert('Выгрузка в Excel сейчас недоступна. Обновите страницу и попробуйте снова.');
             return;
@@ -62260,6 +62285,16 @@ const app = {
         const emailInput = document.getElementById('userEmail');
 
         if (!overlay || !qrContainer) return;
+
+        // QR рисует qrcode.js — он в отложенных. Догружаем и открываем окно заново.
+        // Одной попытки достаточно: если файл не приехал, окно всё равно нужно
+        // показать — ссылка на оплату в нём есть и без картинки с кодом.
+        if (typeof QRCode === 'undefined' && !this._qrLoadTried) {
+            this._qrLoadTried = true;
+            const again = () => this.openPaymentModal(type);
+            this.lazy('qrcode').then(again, again);
+            return;
+        }
 
         const plan = this.proPaymentLinks[type];
         if (!plan) return;

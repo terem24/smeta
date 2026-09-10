@@ -6914,11 +6914,21 @@ window.RecognizeUI = RecognizeUI;
  * пустых данных. Поэтому проверяем видимость кнопки ещё несколько раз
  * после загрузки — дёшево и снимает зависимость от порядка событий.
  */
-document.addEventListener('DOMContentLoaded', () => {
+function recognizeBoot() {
     const tick = () => { try { RecognizeUI.syncButton(); } catch (e) { } };
     tick();
     [300, 1000, 2500, 5000].forEach(ms => setTimeout(tick, ms));
     // Списки доступа нужны только монтажникам, поэтому грузятся один раз
     // и не блокируют запуск калькулятора.
     RecognizeUI.loadAccess();
-});
+}
+
+// Файл больше не подключён тегом в шапке: его подтягивает hcLoad(), и приехать
+// он может как до DOMContentLoaded, так и заметно позже. Во втором случае
+// подписка на событие уже бессмысленна — оно прошло, — поэтому смотрим на
+// состояние документа, а не ждём его вслепую.
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', recognizeBoot);
+} else {
+    recognizeBoot();
+}
