@@ -25036,7 +25036,7 @@ const app = {
                                         <label style="display:flex; align-items:center; gap:6px; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тип аккаунта / Роль
                                             <button type="button" title="Кто что видит и что может менять" onclick="app.showRolesHelp()" style="border:1px solid var(--border); background:var(--surface-light); color:var(--text-sec); width:16px; height:16px; line-height:1; border-radius:50%; font-size:11px; font-weight:700; cursor:pointer; padding:0; display:inline-flex; align-items:center; justify-content:center;">?</button>
                                         </label>
-                                        <select id="admin_edit_tariff" onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <select id="admin_edit_tariff" ${isViewer ? 'disabled' : ''} onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${user.account_type === 'base' ? 'selected' : ''}>Базовый</option>
                                             <option value="pro" ${user.account_type === 'pro' ? 'selected' : ''}>Профи ⭐️</option>
                                             ${this.getAdminRole() === 'super_admin' || user.account_type === 'admin' ? `<option value="admin" ${user.account_type === 'admin' ? 'selected' : ''}>Администратор ⚙️</option>` : ''}
@@ -25046,18 +25046,18 @@ const app = {
                                     </div>
                                     <div id="admin_edit_role_tariff_wrapper" style="display: ${['admin', 'viewer', 'manager'].includes(user.account_type) ? 'block' : 'none'};">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тариф для роли</label>
-                                        <select id="admin_edit_role_tariff" onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <select id="admin_edit_role_tariff" ${isViewer ? 'disabled' : ''} onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${!(user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'selected' : ''}>Базовый</option>
                                             <option value="pro" ${(user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'selected' : ''}>Профи ⭐️</option>
                                         </select>
                                     </div>
                                     <div id="admin_edit_date_wrapper" style="display: ${user.account_type === 'pro' || (['admin', 'viewer', 'manager'].includes(user.account_type) && user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'block' : 'none'};">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Истекает (для Профи)</label>
-                                        <input type="date" id="admin_edit_date" value="${proDateInput}" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <input type="date" id="admin_edit_date" ${isViewer ? 'disabled' : ''} value="${proDateInput}" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                     </div>
                                     <div id="admin_edit_subtype_wrapper" style="display: ${user.account_type === 'pro' || (['admin', 'viewer', 'manager'].includes(user.account_type) && user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'block' : 'none'};">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Источник Профи</label>
-                                        <select id="admin_edit_subtype" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                        <select id="admin_edit_subtype" ${isViewer ? 'disabled' : ''} style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="trial" ${proSubtype === 'trial' ? 'selected' : ''}>Пробный</option>
                                             <option value="promo" ${proSubtype === 'promo' ? 'selected' : ''}>Промокод</option>
                                             <option value="paid" ${proSubtype === 'paid' ? 'selected' : ''}>Оплата</option>
