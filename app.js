@@ -9043,10 +9043,13 @@ const app = {
         if (document.getElementById('profile_email_input')) {
             document.getElementById('profile_email_input').value = tgUser.email || '';
         }
+        // Сфера теперь одна. У старых анкет в базе их может быть две — показываем
+        // первую и просим выбрать при следующем сохранении, а не молчим.
         const profileActivityTypes = tgUser.activityTypes || [];
+        const pickedActivity = ['Монтажник', 'Продавец'].find(v => profileActivityTypes.includes(v)) || '';
         [['profile_act_installer', 'Монтажник'], ['profile_act_seller', 'Продавец']].forEach(([id, val]) => {
             const chk = document.getElementById(id);
-            if (chk) chk.checked = profileActivityTypes.includes(val);
+            if (chk) chk.checked = (pickedActivity === val);
         });
 
         // Тариф и срок подписки показывает раздел «Подписка» (renderSubscriptionTab)
@@ -28812,7 +28815,7 @@ const app = {
         if (!region) { app.alert('Пожалуйста, укажите регион.'); return; }
         if (!city) { app.alert('Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { app.alert('Пожалуйста, введите корректный email.'); return; }
-        if (activityTypes.length === 0) { app.alert('Выберите хотя бы одну сферу деятельности.'); return; }
+        if (activityTypes.length === 0) { app.alert('Выберите сферу деятельности: монтажник или продавец.'); return; }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser || (!tgUser.authUserId && !tgUser.email && !tgUser.id)) return;
