@@ -5792,7 +5792,13 @@ const app = {
                 localStorage.getItem('user_city');
 
             let eq = app.lastEqSum || 0;
-            let wk = (this.state.accountType === 'pro') ? (app.lastWorksSum || 0) : 0;
+            // Монтаж сохраняем всем, а не только Профи. Раньше здесь стояла проверка
+            // тарифа, и у монтажника на базовом сумма работ уезжала в базу нулём — при
+            // том, что на экране он её видел. Печать и ссылка клиента тариф не
+            // спрашивали, поэтому в одной и той же смете works_sum зависел от того, какая
+            // кнопка записала строку последней: 20 смет из 34 лежали с нулём.
+            // Единственное исключение — продавец: монтаж он не делает (isSellerOnly).
+            let wk = this.isSellerOnly() ? 0 : (app.lastWorksSum || 0);
             const total = eq + wk;
 
             const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
@@ -35670,7 +35676,9 @@ const app = {
             const eqSum = app.lastEqSum || 0;
             // Продавец монтаж не делает — в счёт работы не идут (как в печати и ссылке)
             const noWorks = this.isSellerOnly();
-            const worksSum = (!noWorks && this.state.accountType === 'pro') ? (app.lastWorksSum || 0) : 0;
+            // Тариф здесь больше не спрашиваем: монтаж считают все, кроме продавца
+            // (см. сохранение в облако — там та же причина).
+            const worksSum = noWorks ? 0 : (app.lastWorksSum || 0);
             const total = eqSum + worksSum;
 
             const authorName = this.formatShortName(tgUser) || "Дмитрий";
@@ -36258,7 +36266,9 @@ const app = {
             }
 
             const eq = app.lastEqSum || 0;
-            const wk = (this.state.accountType === 'pro') ? (app.lastWorksSum || 0) : 0;
+            // Автосохранение тоже пишет монтаж всем, кроме продавца: иначе оно раз в
+            // 15 минут затирало нулём сумму, которую только что записала печать.
+            const wk = this.isSellerOnly() ? 0 : (app.lastWorksSum || 0);
             const total = eq + wk;
 
             const autoData = {
