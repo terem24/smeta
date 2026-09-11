@@ -7498,7 +7498,10 @@ const app = {
                 <div style="font-size:13px; color:var(--text-sec);">Проекты: <b style="color:var(--text-main);">${filtered.length}</b></div>
                 <div class="admin-filter-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <select id="kanban_installer_filter" onchange="app.renderAdminKanban(true)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; outline: none; cursor: pointer;">
-                        <option value="all">Все монтажники (${list.length})</option>
+                        <!-- В скобках — сколько людей в списке, а не сколько у них
+                             проектов. Стояло list.length, то есть число карточек
+                             планировщика: на 46 зарегистрированных показывало 287. -->
+                        <option value="all">Все монтажники (${installers.length})</option>
                         ${installers.map(name => `<option value="${name.replace(/"/g, '&quot;')}" ${installerFilter === name ? 'selected' : ''}>${name}</option>`).join('')}
                     </select>
                     <select id="kanban_region_filter" onchange="app.renderAdminKanban(true)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; outline: none; cursor: pointer;">
@@ -15871,12 +15874,14 @@ const app = {
 
             // estWithWorks — в скольких сметах монтаж вообще посчитан. Продавцы работы не
             // считают, поэтому сумма работ делится не на все сметы, а только на эти: без
-            // такой подписи средний чек по монтажу занижался бы вдвое.
-            let totalEq = 0, totalWorks = 0, estWithWorks = 0;
+            // такой подписи средний чек по монтажу занижался бы вчетверо. По той же
+            // причине оборудование делится на estWithEq: пустые сметы в среднее не идут.
+            let totalEq = 0, totalWorks = 0, estWithWorks = 0, estWithEq = 0;
             sums.forEach(s => {
                 totalEq += (s.eq_sum || 0);
                 totalWorks += (s.works_sum || 0);
                 if ((s.works_sum || 0) > 0) estWithWorks++;
+                if ((s.eq_sum || 0) > 0) estWithEq++;
             });
 
             // 6. Fetch Lightweight list of all users for the message composer dropdown selection
@@ -15978,6 +15983,7 @@ const app = {
                 estSellers,
                 estInstallers,
                 estWithWorks,
+                estWithEq,
                 totalEq,
                 totalWorks,
                 sharedStatusesAdmin,
@@ -16357,7 +16363,7 @@ const app = {
         const mobile = this.isAdminMobile();
         if (!this._adminTab && !mobile) this._adminTab = 'stats';
 
-        const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks, sellersCount, installersCount, estSellers, estInstallers, estWithWorks } = this.adminData;
+        const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks, sellersCount, installersCount, estSellers, estInstallers, estWithWorks, estWithEq } = this.adminData;
 
         const ADMIN_TAB_DEFS = this.adminTabDefs();
         // Раздел, закрытый для этой роли, мог остаться в памяти с прошлого входа
@@ -16581,8 +16587,8 @@ const app = {
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
-                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${totalEq.toLocaleString()} ₽</span></div>
-                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates}</span></div>
+                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${totalEq.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                     </div>
                     
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
