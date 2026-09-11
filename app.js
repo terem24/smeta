@@ -5322,6 +5322,7 @@ const app = {
      * берутся из того, что видел клиент, а не пересчитываются по сегодняшнему каталогу.
      */
     logPrintedEvent: function () {
+        if (window.SessionTrack) SessionTrack.screen('share');
         const shareId = this.state.shared_invoice_id;
         this.capturePriceSnapshot();
         this.logInvoiceEvent('printed', shareId ? { shared_invoice_id: shareId } : null);
@@ -15192,6 +15193,88 @@ const app = {
 
     // Общие условия фильтра списка монтажников — переиспользуются и для загрузки страницы
     // списка, и для массового назначения дистрибьютора всем, кто попадает под фильтр
+    // Как называются экраны в подсказке «Был:». Ключи ставит session_track.js;
+    // незнакомый ключ показываем как есть — новый экран лучше видеть сырым,
+    // чем не видеть вовсе.
+    SESSION_SCREEN_NAMES: {
+        'params': 'параметры расчёта',
+        'tab:equipment': 'смета',
+        'tab:works': 'работы',
+        'tab:money': 'деньги',
+        'tab:3d': '3D',
+        'tab:recognize': 'распознавание',
+        'catalog': 'подбор замены',
+        'sheets': 'листы проекта',
+        'plans': 'планы этажей',
+        'share': 'отправка клиенту',
+        'lk:requisites': 'мои данные',
+        'lk:company': 'реквизиты компании',
+        'lk:manager': 'менеджер',
+        'lk:installers': 'мои монтажники',
+        'lk:messages': 'сообщения',
+        'lk:objects': 'объекты',
+        'lk:orders': 'заказы и счета',
+        'lk:summary': 'сводка',
+        'lk:workprices': 'цены на монтаж',
+        'lk:equipment': 'своё оборудование',
+        'lk:rating': 'баллы',
+        'lk:admin': 'панель управления'
+    },
+
+    /**
+     * Строка «На сайте» в списке пользователей.
+     *
+     * Время активное: вкладка на переднем плане и человек что-то делал (см.
+     * session_track.js). Поэтому «0 мин» у того, кто заходил, значит не ошибку, а
+     * открыл и сразу ушёл — это и есть самый важный случай.
+     *
+     * Оранжевым — те, ради кого всё и затевалось: ходит не первый раз, время тратит,
+     * а ни одного расчёта не начал.
+     */
+    sessionSummary: function (u) {
+        const sec = u.sess_sec || 0;
+        const visits = u.sess_visits || 0;
+        const days = u.sess_days || 0;
+        if (!visits) {
+            return {
+                text: 'На сайте: <b>—</b>', color: 'inherit', screensHtml: '—',
+                title: 'Замер времени начался позже, чем он заходил в последний раз'
+            };
+        }
+
+        const h = Math.floor(sec / 3600), m = Math.round((sec % 3600) / 60);
+        const timeTxt = sec < 60 ? 'меньше минуты' : (h ? h + ' ч ' + m + ' мин' : m + ' мин');
+        const avg = Math.round(sec / visits / 60);
+
+        const screens = u.sess_screens && typeof u.sess_screens === 'object' ? u.sess_screens : {};
+        const parts = Object.keys(screens)
+            .sort((a, b) => screens[b] - screens[a])
+            .slice(0, 6)
+            .map(k => (this.SESSION_SCREEN_NAMES[k] || k) + ' (' + screens[k] + ')');
+        const wasIn = parts.length ? parts.join(', ') : 'никуда не заходил';
+
+        // «Начинал расчёты» считает тот же счётчик, что и строкой выше (calcStarted):
+        // отметка ставится один раз на объект, в момент первого настоящего расчёта.
+        const noCalc = (u.calcStarted === 0) && visits >= 3;
+        const color = noCalc ? '#D97706' : 'inherit';
+
+        return {
+            color: color,
+            // Для карточки — весь список экранов, а не первые шесть: место есть
+            screensHtml: Object.keys(screens).length
+                ? Object.keys(screens).sort((a, b) => screens[b] - screens[a])
+                    .map(k => (this.SESSION_SCREEN_NAMES[k] || k) + ' <span style="color:var(--text-sec); font-weight:400;">(' + screens[k] + ')</span>')
+                    .join(', ')
+                : '<span style="color:var(--text-sec); font-weight:400;">никуда не заходил</span>',
+            text: 'На сайте: <b>' + timeTxt + '</b> · ' + visits + ' ' + this.plural(visits, 'визит', 'визита', 'визитов')
+                + ' · ' + days + ' ' + this.plural(days, 'день', 'дня', 'дней'),
+            title: 'Активное время: только когда вкладка открыта и человек что-то делает. '
+                + 'Средний визит: ' + (avg < 1 ? 'меньше минуты' : avg + ' мин') + '. '
+                + 'Был (в скольких визитах): ' + wasIn + '.'
+                + (noCalc ? ' Ходит регулярно, но ни одного расчёта не начинал.' : '')
+        };
+    },
+
     // Единое ФИО-представление пользователя в админке — используется и при сортировке по имени,
     // и при отрисовке строки таблицы, чтобы не разъезжались друг с другом
     getAdminUserDisplayName: function (u) {
@@ -15597,7 +15680,7 @@ const app = {
         try {
             // 1. Fetch Users (Paginated)
             let query = supabaseClient.from('users')
-                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at', { count: 'exact' });
+                .select('id, username, email, phone, created_at, last_visited, last_device, account_type, demo_ends_at, city, location, avatar_url, distributor_id, price_source, pro_expires_at, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, sess_visits, sess_sec, sess_days, sess_screens', { count: 'exact' });
             query = this.buildAdminUserFilter(query);
 
             const sortType = document.getElementById('sort-installers')?.value || 'login_desc';
@@ -16918,6 +17001,12 @@ const app = {
                 `<span title="Разобрано накладных и смет за два года: ${docsTxt}. Сохранённых смет, собранных распознаванием: ${inBillTxt}. Одна смета нередко собирается из нескольких накладных, поэтому числа не обязаны совпадать." style="color:${recLostColor};">Распознано: <b>${docsTxt}</b> (в сметах ${inBillTxt})</span>`
                 + ` | <span title="Планы этажей, прочитанные распознаванием (в смету не переносятся — идут подложкой в разметку)">Планов: ${plansTxt}</span>`;
 
+            // Пятая строка — сколько человек провёл в калькуляторе и где был.
+            // Единственная строка, которая заполняется у тех, кто ничего не считает,
+            // и по ней видно, чем они вместо этого заняты (см. sessionSummary).
+            const sess = this.sessionSummary(u);
+            const sessionLine = `<span title="${sess.title}" style="color:${sess.color};">${sess.text}</span>`;
+
             h += `<tr class="active-row admin-list-row" data-search="${searchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.viewAdminUser('${u.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
@@ -16928,7 +17017,7 @@ const app = {
                              Содержимое коротких и однотипных ячеек — сумма со
                              сметами, тариф с устройством, два переключателя
                              доступа — отдельной строки на каждую не стоило. -->
-                        <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span></td>
+                        <td class="admin-cell-half"><b style="color:var(--primary);">${u.ltv.toLocaleString()} ₽</b><br><span style="font-size:10px;color:var(--text-sec);">Смет: ${u.projectsCount} | Ср.объект: ${u.avgArea} м²</span><br><span style="font-size:10px;color:var(--text-sec);">${activityLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${recognitionLine}</span><br><span style="font-size:10px;color:var(--text-sec);">${sessionLine}</span></td>
                         <td class="admin-cell-half">${badge}<br><span style="font-size:10px;color:var(--text-sec);">${device}</span></td>
                         <td onclick="event.stopPropagation();">${distCell}</td>
                         <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
@@ -26428,6 +26517,9 @@ const app = {
             userEstimates = (freshEst || []).map(e => ({ ...e, calc_data: { area: e.area, calc_id: e.calc_id, from_recognition: e.from_recognition } }));
         }
 
+        // Время на сайте и список открытых экранов — те же итоги, что в строке списка
+        const sessCard = this.sessionSummary(user);
+
         // Начатые расчёты: отметка 'calculated' ставится один раз на объект (см.
         // ensureCalcId), поэтому число разных номеров расчёта и есть число заходов
         // «посчитать». Разница с числом сохранённых смет и показывает, сколько
@@ -26655,6 +26747,8 @@ const app = {
                                     <span style="color:var(--text-sec);">Зарегистрирован:</span> <span style="color:var(--text-main); font-weight:600;">${date}</span>
                                     <span style="color:var(--text-sec);">Последний визит:</span> <span style="color:var(--text-main); font-weight:600;">${lastVis}</span>
                                     <span style="color:var(--text-sec);">Устройство:</span> <span style="color:var(--text-main); font-weight:600;">${user.last_device || 'Неизвестно'}</span>
+                                    <span style="color:var(--text-sec);">На сайте:</span> <span title="${sessCard.title}" style="color:${sessCard.color === 'inherit' ? 'var(--text-main)' : sessCard.color}; font-weight:600; cursor:help;">${sessCard.text.replace('На сайте: ', '')}</span>
+                                    <span style="color:var(--text-sec);">Был:</span> <span style="color:var(--text-main); font-weight:600; line-height:1.5;">${sessCard.screensHtml}</span>
                                     <span style="color:var(--text-sec);">Email:</span> <span style="color:var(--text-main); font-weight:600;">${user.email || '—'}</span>
                                     <span style="color:var(--text-sec);">Пароль:</span>
                                     <span id="admin_pwd_cell" style="color:var(--text-main); font-weight:600;">${
@@ -27229,6 +27323,7 @@ const app = {
 
     /** Открытие редактора планов: сначала отдаём ему планы этого объекта. */
     openPlanEditor: function () {
+        if (window.SessionTrack) SessionTrack.screen('plans');
         if (!this.canUseDesign()) {
             app.alert('Раздел проектирования вам пока не открыт. Его включает администратор.');
             return;
@@ -30988,6 +31083,8 @@ const app = {
             if (!this.isPro()) { this.showModal('pro'); return; }
         }
         this.state.viewMode = mode;
+        // Куда человек ходит в калькуляторе — для разбора «заходит, но не считает»
+        if (window.SessionTrack) SessionTrack.screen('tab:' + mode);
         let tEq = document.getElementById('tab_equipment');
         let tWk = document.getElementById('tab_works');
         let t3d = document.getElementById('tab_3d');
@@ -34167,6 +34264,7 @@ const app = {
     // по текущей смете. Данные уходят через localStorage, страницу листов рисует
     // sheet_demo.html — по той же схеме, по какой invoice.html получает счёт.
     openProjectSheets: async function () {
+        if (window.SessionTrack) SessionTrack.screen('sheets');
         if (!this.canUseDesign()) { app.alert('Раздел проектирования вам пока не открыт. Его включает администратор.'); return; }
         const list = this.currentEquipmentList || [];
         if (!list.length) { app.alert("Смета пуста — сначала рассчитайте объект."); return; }
@@ -39966,6 +40064,7 @@ const app = {
         return { boiler: top, qty: Math.max(2, Math.ceil(targetPower / top.power)) };
     },
     openSwapModal: function (lookupId) {
+        if (window.SessionTrack) SessionTrack.screen('catalog');
         // Полотенцесушители (SHQ-) заменяются собственным пикером с фильтрами по высоте/ширине/цвету (#5).
         if (lookupId && String(lookupId).startsWith('SHQ-')) { this.openTowelWarmerPicker(); return; }
         let isFirstOpen = (this._lastSwapLookupId !== lookupId) || !document.getElementById('swap_modal_overlay') || document.getElementById('swap_modal_overlay').style.display === 'none';
