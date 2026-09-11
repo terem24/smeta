@@ -25820,7 +25820,10 @@ const app = {
                 (2 - Math.abs(sh.taps - taps));
             if (score > bestScore) { bestScore = score; best = sh; }
         });
-        return this._renderSheetImage(best && best.url) + this.renderHvsNodeView();
+        // Вид узла в сборе (renderHvsNodeView) из сметы убран — остаётся только
+        // лист ГОСТ. Сам вид нужен на листах проекта, поэтому кадры и hvsNodePhoto
+        // на месте.
+        return this._renderSheetImage(best && best.url);
     },
 
     /**
