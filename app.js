@@ -25060,7 +25060,11 @@ const app = {
         host.appendChild(ov);
         // Класс проявления — следующим кадром: повешенный сразу, он попал бы
         // в тот же стилевой пересчёт, что и вставка, и перехода бы не было.
-        requestAnimationFrame(() => { if (ov.isConnected) ov.classList.add('hyd-ov--in'); });
+        // Таймер — страховка: в неактивной вкладке кадры не выдаются вовсе, и
+        // слой остался бы прозрачным навсегда.
+        const light = () => { if (ov.isConnected) ov.classList.add('hyd-ov--in'); };
+        requestAnimationFrame(light);
+        setTimeout(light, 80);
         if (pipes.length) d.svg.classList.add('hyd-hover');
         this._hydOv = ov;
         this._hydKey = key;
