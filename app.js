@@ -25871,6 +25871,30 @@ const app = {
         if (f.iso && f.iso.w) {
             out.iso = { url: this.HVS_VIEW_DIR + key + '_iso.jpg', ratio: f.iso.w / f.iso.h };
         }
+        out.lines = this.hvsNodeLines();
+        return out;
+    },
+
+    /**
+     * Что узел ввода раздаёт — списком на лист проекта.
+     *
+     * В проектах-образцах у сложного узла рядом с видом стоит перечень линий
+     * («1-Ввод ХВС, 2-Линия для гидробака скважины, 3-Линия уличного полива…»):
+     * по нему сразу видно, на сколько направлений собирается коллектор. Состав
+     * берём из расчёта, а не из чертежа — иначе список разошёлся бы со сметой.
+     */
+    hvsNodeLines: function () {
+        const s = this.state, out = [];
+        out.push(s.well ? 'Ввод ХВС от скважины' : 'Ввод ХВС от наружной сети');
+        if (s.well) out.push('Линия ХВС на гидроаккумулятор скважины');
+        const taps = parseInt(s.outdoorFaucet) || 0;
+        if (taps > 0) out.push('Линия уличного полива' + (taps > 1 ? ' (' + taps + ' крана)' : ''));
+        if (this.filterLevel() !== 'none')
+            out.push('Подающая и обратная линии магистральной фильтрации');
+        const fl = Math.max(1, parseInt(s.floors) || 1);
+        for (let i = 1; i <= fl; i++) out.push('Распределение ХВС по потребителям ' + i + ' этажа');
+        if (s.hotWater) out.push('Линия загрузки бойлера косвенного нагрева');
+        if (s.recirc) out.push('Линия рециркуляции ГВС');
         return out;
     },
 
@@ -33284,6 +33308,10 @@ const app = {
                     id: f + '.' + String(idx + 1).padStart(2, '0'),
                     name: r.name || 'Помещение ' + (idx + 1),
                     area: parseFloat(r.area) || 0,
+                    // Расчётная температура помещения нужна не только строкам
+                    // теплопотерь, но и сводному листу «Основные данные
+                    // помещений» — берём ту же, по которой считались потери.
+                    tv: L.Tv,
                     items: items, total: L.Q_sum
                 };
             });
@@ -33427,26 +33455,47 @@ const app = {
         const tee = s.radConnectionScheme === 'tee';
 
         // показатели по этажам: площадь и теплопотери (тот же расчёт, что в смете)
-        let rows = [], totArea = 0, totQ = 0;
+        //
+        // Графа «на вентиляцию» раньше стояла прочерком, а нагрев приточного
+        // воздуха уходил в графу «на отопление» — по ГОСТ 21.602-2016 это две
+        // разные составляющие, и на листе теплопотерь они уже разведены
+        // (buildHeatLossData даёт вентиляции отдельную строку без R). Здесь
+        // берём ту же цифру, чтобы сводка и подробный расчёт сходились.
+        const ventOf = fl => (fl.rooms || []).reduce((a, r) =>
+            a + (r.items || []).reduce((b, it) =>
+                b + (it.R === null || it.R === undefined ? (it.Q || 0) : 0), 0), 0);
+        // ГВС по этажам не раскладывается — это нагрузка источника. Ставим её
+        // в строку «Итого» тем же числом, каким подбирался котёл: мощность
+        // прогрева бойлера за час (boilerTargetPower). Общий расход по объекту —
+        // не сумма, а большее из двух: котлы греют бойлер с приоритетом ГВС,
+        // отопление на это время отключается.
+        const _need = this.boilerTargetPower(this.getHouseHeatLoss());
+        const dhwW = s.hotWater ? Math.round((_need.dhwKw || 0) * 1000) : 0;
+        let rows = [], totArea = 0, totQ = 0, totVent = 0;
         const hl = this.buildHeatLossData();
         if (hl && hl.length) {
             hl.forEach(fl => {
                 let a = 0;
                 fl.rooms.forEach(r => { a += r.area; });
-                totArea += a; totQ += fl.total;
+                const v = ventOf(fl);
+                totArea += a; totQ += fl.total; totVent += v;
                 rows.push([fl.label, String(tOut), a.toFixed(1),
-                    String(Math.round(fl.total)), '—', s.hotWater ? 'Приоритет' : '—',
-                    String(Math.round(fl.total))]);
+                    String(Math.round(fl.total - v)), v > 0 ? String(Math.round(v)) : '—',
+                    '—', String(Math.round(fl.total))]);
             });
         } else {
             totArea = parseFloat(s.area) || 0;
             totQ = Math.round(this.getHouseHeatLoss() * 1000);
             rows.push(['Объект', String(tOut), totArea.toFixed(1),
-                String(totQ), '—', s.hotWater ? 'Приоритет' : '—', String(totQ)]);
+                String(totQ), '—', dhwW ? String(dhwW) : '—',
+                String(Math.max(totQ, dhwW))]);
         }
         if (rows.length > 1)
-            rows.push(['Итого', '', totArea.toFixed(1), String(Math.round(totQ)), '—',
-                s.hotWater ? 'Приоритет' : '—', String(Math.round(totQ))]);
+            rows.push(['Итого', '', totArea.toFixed(1),
+                String(Math.round(totQ - totVent)),
+                totVent > 0 ? String(Math.round(totVent)) : '—',
+                dhwW ? String(dhwW) : '—',
+                String(Math.max(Math.round(totQ), dhwW))]);
 
         // состав пола: слои сверху вниз, трубы лежат в стяжке
         const floorLayers = hasTp ? [

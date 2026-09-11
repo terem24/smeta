@@ -44,7 +44,8 @@
    * photo — { url, ratio, marks: [{x, y, t}] } из projectNodes3D.
    * subs — замены подписей: { 'Евроконус': 'Евроконус 16x2.0' } из сметы.
    */
-  function viewBody(title, photo, subs, notes) {
+  function viewBody(title, photo, subs, notes, vopts) {
+    vopts = vopts || {};
     var o = [];
     o.push(txt(217.5, 14.8, title, { anchor: 'middle', size: SZ.title }));
 
@@ -74,17 +75,56 @@
     // рендере, шаг не меньше 6 мм, иначе подписи слипаются.
     var LX = 286, gap = 6.4;
     var marks = (photo.marks || []).slice().sort(function (a, b) { return a.y - b.y; });
-    var ly = y + 6;
-    marks.forEach(function (m) {
-      var ax = x + m.x * w, ay = y + m.y * h;
-      if (ly < ay) ly = ay;                       // полка не выше своей точки
-      var label = subs && subs[m.t] ? subs[m.t] : m.t;
-      o.push('<circle cx="' + n(ax) + '" cy="' + n(ay) + '" r="0.55" style="fill:#000"/>');
-      o.push(line(ax, ay, LX - 3, ly));
-      o.push(line(LX - 3, ly, LX - 1, ly));
-      o.push(txt(LX, ly + 1.1, short(label, 46), { size: SZ.small }));
-      ly += gap;
-    });
+    if (vopts.numbered) {
+      // Сложный узел: полок с полными названиями на нём столько, что линии
+      // выносок перечёркивают сам узел. В проектах-образцах такие узлы
+      // подписывают номерами, а расшифровку дают списком рядом — так сделан
+      // лист «Узел ввода воды», где к каждой линии подведена своя цифра.
+      // Делаем то же: на виде остаются номера, справа — легенда.
+      //
+      // Нумеруем слева направо, а не сверху вниз: узел ввода собран в линию,
+      // и порядок номеров совпадает с ходом воды — кран, фильтр, счётчик,
+      // редуктор, клапан. По высоте идут только отводы (манометр, бак), им
+      // вставать первыми номерами незачем.
+      marks.sort(function (a, b) { return (a.x - b.x) || (a.y - b.y); });
+      marks.forEach(function (m, i) {
+        var ax = x + m.x * w, ay = y + m.y * h;
+        o.push('<circle cx="' + n(ax) + '" cy="' + n(ay) + '" r="0.7" style="fill:#000"/>');
+        // Номер с белой подложкой: на фотографии узла чёрная цифра поверх
+        // трубы иначе не читается.
+        o.push(txt(ax + 1.8, ay - 1.6, String(i + 1),
+          { size: 3.9, weight: 'bold', halo: 0.9 }));
+      });
+      var ly0 = y + 6;
+      o.push(txt(LX, ly0, 'Экспликация узла:', { size: SZ.small, weight: 'bold' }));
+      marks.forEach(function (m, i) {
+        var label = subs && subs[m.t] ? subs[m.t] : m.t;
+        o.push(txt(LX, ly0 + 5.4 + i * 4.6, (i + 1) + '. ' + short(label, 44),
+          { size: SZ.small }));
+      });
+      // Какие линии узел обслуживает — тем же списком под экспликацией.
+      // Без номеров: на готовом кадре линии не подписаны, и цифра ссылалась бы
+      // в пустоту. Состав приходит из расчёта (hvsNodePhoto), не выдумывается.
+      if (vopts.lines && vopts.lines.length) {
+        var lly = ly0 + 5.4 + marks.length * 4.6 + 5;
+        o.push(txt(LX, lly, 'Линии узла:', { size: SZ.small, weight: 'bold' }));
+        vopts.lines.forEach(function (s, i) {
+          o.push(txt(LX, lly + 5.4 + i * 4.6, '– ' + short(s, 44), { size: SZ.small }));
+        });
+      }
+    } else {
+      var ly = y + 6;
+      marks.forEach(function (m) {
+        var ax = x + m.x * w, ay = y + m.y * h;
+        if (ly < ay) ly = ay;                     // полка не выше своей точки
+        var label = subs && subs[m.t] ? subs[m.t] : m.t;
+        o.push('<circle cx="' + n(ax) + '" cy="' + n(ay) + '" r="0.55" style="fill:#000"/>');
+        o.push(line(ax, ay, LX - 3, ly));
+        o.push(line(LX - 3, ly, LX - 1, ly));
+        o.push(txt(LX, ly + 1.1, short(label, 46), { size: SZ.small }));
+        ly += gap;
+      });
+    }
 
     var ny = Math.max(y + h + 8, 246);
     (notes || []).forEach(function (s, i) {
@@ -189,7 +229,7 @@
         body: viewBody(t, opts.photo, null, opts.notes || [
           'Соединения выполнять по паспортам изделий; резьбовые — с уплотнением.',
           'После сборки провести гидравлическое испытание и осмотр всех соединений.'
-        ]) + warn([
+        ], { numbered: true, lines: opts.photo.lines || null }) + warn([
           'Примечание:',
           'На данном виде показана принципиальная схема обвязки; ' +
             'фактические типоразмеры и количество деталей — по спецификации.'
