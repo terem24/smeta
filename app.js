@@ -24802,11 +24802,23 @@ const app = {
                        труб маршрута в три слоя (светлое гало, линия своим цветом
                        подачи/обратки, бегущий белый пунктир — направление
                        течения). Остальной чертёж приглушается, но не меняется. */
+                    /* Переход задан и в обычном состоянии, а не только под
+                       .hyd-hover: правило со свойством transition перестаёт
+                       совпадать вместе со снятым классом, и возврат яркости
+                       шёл рывком. */
+                    #dynamic_scheme svg.scheme-svg > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail):not(.hyd-hit),
+                    #scheme_zoom_overlay svg.scheme-svg > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail):not(.hyd-hit) {
+                        transition: opacity .28s ease;
+                    }
                     #dynamic_scheme svg.hyd-hover > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail):not(.hyd-hit),
                     #scheme_zoom_overlay svg.hyd-hover > g > :not(.hyd-ov):not(.hyd-zone):not(.hyd-tail):not(.hyd-hit) {
-                        opacity: .22;
-                        transition: opacity .18s;
+                        opacity: .34;
                     }
+                    /* Слой подсветки проявляется и гаснет: класс hyd-ov--in
+                       вешается следующим кадром после вставки, старый слой
+                       уходит в прозрачность навстречу новому. */
+                    .hyd-ov { opacity: 0; transition: opacity .22s ease; }
+                    .hyd-ov.hyd-ov--in { opacity: 1; }
                     .hyd-ov * {
                         fill: none !important;
                         stroke-linecap: round;
@@ -24831,6 +24843,7 @@ const app = {
                     @keyframes hydFlow { to { stroke-dashoffset: -3.5; } }
                     @media (prefers-reduced-motion: reduce) {
                         .hyd-ov .hyd-ov__flow { animation: none; }
+                        .hyd-ov { transition: none; }
                     }
                 </style><div class="scheme-svg-wrap${this.hydEnabled() ? '' : ' hyd-off'}" onclick="app.openSchemeFullscreen()" title="Открыть на весь экран">${svg}<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button><button type="button" class="scheme-hints-btn" onclick="app.toggleHydHints(event)" title="Подсветка пути воды при наведении. Числа и подсказки — на весь экран">${this._hydToggleLabel(false)}</button></div></div>`;
     },
@@ -25007,9 +25020,24 @@ const app = {
      */
     hydHoverOn: function (d) {
         if (this._hydHoverEl === d.el) return;
-        this.hydHoverOff();
         const host = d.svg.querySelector(':scope > g');
         if (!host) return;
+        // Тот же маршрут — путь не пересобираем. Раньше слой строился заново
+        // на каждом элементе, и при движении вдоль одной трубы подсветка
+        // гасла и зажигалась на каждом сегменте: это и был рывок. Меняется
+        // только обводка того, что под курсором.
+        const key = this._hydRouteKey(d);
+        const cur = this._hydOv;
+        if (cur && cur.isConnected && cur.ownerSVGElement === d.svg && this._hydKey === key) {
+            this._hydOwnOutline(cur, d);
+            this._hydHoverEl = d.el;
+            this._hydShowHint(d);
+            return;
+        }
+        // Старый слой уводим в прозрачность, новый проявляется ему навстречу:
+        // переход с участка на участок читается как перетекание, а не как
+        // мигание. Приглушение чертежа при этом не снимаем.
+        this._hydFadeOut();
         const NS = 'http://www.w3.org/2000/svg';
         const ov = document.createElementNS(NS, 'g');
         ov.setAttribute('class', 'hyd-ov');
@@ -25028,8 +25056,28 @@ const app = {
             c.setAttribute('class', 'hyd-ov__' + layer + ' hyd-ov--' + p.dir);
             ov.appendChild(c);
         }));
-        // Сам элемент под курсором: символ — обводкой, труба — она уже в
-        // маршруте, добавляем только жирную метку поверх.
+        this._hydOwnOutline(ov, d);
+        host.appendChild(ov);
+        // Класс проявления — следующим кадром: повешенный сразу, он попал бы
+        // в тот же стилевой пересчёт, что и вставка, и перехода бы не было.
+        requestAnimationFrame(() => { if (ov.isConnected) ov.classList.add('hyd-ov--in'); });
+        if (pipes.length) d.svg.classList.add('hyd-hover');
+        this._hydOv = ov;
+        this._hydKey = key;
+        this._hydHoverEl = d.el;
+        this._hydShowHint(d);
+    },
+
+    // Из чего складывается маршрут (_hydRoute): пока эти приметы те же —
+    // подсвечен тот же путь, и перерисовывать его незачем.
+    _hydRouteKey: function (d) {
+        return [d.kind, d.part, d.b, d.i, d.mark, d.sym && d.sym.type].join('|');
+    },
+
+    // Обводка того, что под курсором: символ — целиком, труба — жирной
+    // меткой поверх своего же маршрута.
+    _hydOwnOutline: function (ov, d) {
+        ov.querySelectorAll('.hyd-ov__symhalo, .hyd-ov__sym').forEach(el => el.remove());
         const own = d.sym ? d.sym.el : d.el;
         ['symhalo', 'sym'].forEach(layer => {
             const c = own.cloneNode(true);
@@ -25037,14 +25085,23 @@ const app = {
             c.setAttribute('class', 'hyd-ov__' + layer);
             ov.appendChild(c);
         });
-        host.appendChild(ov);
-        if (pipes.length) d.svg.classList.add('hyd-hover');
-        this._hydHoverEl = d.el;
-        this._hydShowHint(d);
+    },
+
+    // Слои подсветки снимаются не сразу: сначала гаснут, потом уходят из
+    // разметки. Приглушение чертежа остаётся — его снимает hydHoverOff.
+    _hydFadeOut: function () {
+        document.querySelectorAll('.hyd-ov').forEach(el => {
+            if (el.__hydGone) return;
+            el.__hydGone = true;
+            el.classList.remove('hyd-ov--in');
+            setTimeout(() => el.remove(), 260);
+        });
+        this._hydOv = null;
+        this._hydKey = null;
     },
 
     hydHoverOff: function () {
-        document.querySelectorAll('.hyd-ov').forEach(el => el.remove());
+        this._hydFadeOut();
         document.querySelectorAll('svg.hyd-hover').forEach(el => el.classList.remove('hyd-hover'));
         this._hydHoverEl = null;
         const h = document.getElementById('hyd_hint');
@@ -25382,8 +25439,11 @@ const app = {
     // Подсветка пути воды и подсказки — по желанию: кому-то на схеме нужен
     // чистый чертёж. Настройка живёт в localStorage, а не в state: это
     // предпочтение экрана, а не сметы, и в облако ей ехать незачем.
+    // По умолчанию выключено: схема открывается чистым чертежом, подсветка
+    // включается кнопкой. Кто её включал раньше — у того так и останется,
+    // в localStorage лежит '1'.
     hydEnabled: function () {
-        try { return localStorage.getItem('hc_scheme_hints') !== '0'; } catch (e) { return true; }
+        try { return localStorage.getItem('hc_scheme_hints') === '1'; } catch (e) { return false; }
     },
     // Подпись по месту: на схеме под сметой подсказок нет (см. _hydExpanded),
     // и обещать их кнопкой было бы враньём — там она включает подсветку.
