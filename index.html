@@ -2778,14 +2778,19 @@
             <div class="share-option-card" id="card_opt_timer" style="display: none;" onclick="app.toggleShareOption('timer')">
                 <input type="checkbox" id="share_opt_timer" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
                 <div style="display: flex; flex-direction: column; text-align: left; gap: 2px; flex: 1; min-width: 0;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                        ⏳ Счёт действителен
-                        <input type="number" id="share_opt_timer_days" min="1" max="90" step="1" value="2"
-                            onclick="event.stopPropagation();" onkeydown="event.stopPropagation();" oninput="app.updateShareOptionsUI();"
-                            style="width: 52px; height: 26px; padding: 2px 6px; font-size: 13px; font-weight: 700; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-main); text-align: center;">
-                        <span id="share_opt_timer_days_word">дня</span>
+                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2; display: flex; align-items: center; column-gap: 6px; row-gap: 4px; flex-wrap: wrap;">
+                        <span>⏳ Счёт действителен</span>
+                        <span class="share-timer-days">
+                            <input type="number" id="share_opt_timer_days" min="1" max="90" step="1" value="2" inputmode="numeric"
+                                onclick="event.stopPropagation();" onkeydown="event.stopPropagation();" oninput="app.updateShareOptionsUI();"
+                                style="width: 48px; height: 30px; min-height: 0; padding: 2px 4px; font-size: 13px; font-weight: 700; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-main); text-align: center; margin: 0; box-sizing: border-box;">
+                            <span id="share_opt_timer_days_word">дня</span>
+                        </span>
                     </span>
-                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">Клиент видит обратный отсчёт. Когда срок выйдет, цены скроются и останется одна кнопка — «Обновить счёт»: вы получите уведомление и отправите счёт заново по той же ссылке.</span>
+                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">
+                        <span class="share-timer-hint-long">Клиент видит обратный отсчёт. Когда срок выйдет, цены скроются и останется одна кнопка — «Обновить счёт»: вы получите уведомление и отправите счёт заново по той же ссылке.</span>
+                        <span class="share-timer-hint-short">Клиент видит отсчёт. Когда срок выйдет, цены скроются, и он сможет только попросить обновить счёт.</span>
+                    </span>
                 </div>
             </div>
 

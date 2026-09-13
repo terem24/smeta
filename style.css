@@ -9353,6 +9353,31 @@ body.dark-mode .sec-analog-badge.active .sec-analog-label {
     outline: none;
 }
 
+/* Карточка «Счёт действителен N дней» в окне ссылки клиенту.
+   Число и слово «дня» — одна неразрывная группа: на телефоне поле
+   ввода крупнее (16px против приближения в iOS), и без группы слово
+   уезжало на отдельную строку. Короткая подсказка — для телефона. */
+.share-timer-days {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.share-timer-hint-short {
+    display: none;
+}
+
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    .share-timer-hint-long {
+        display: none;
+    }
+
+    .share-timer-hint-short {
+        display: inline;
+    }
+}
+
 body.dark-mode .share-option-card {
     background: rgba(255, 255, 255, 0.02);
     border-color: rgba(255, 255, 255, 0.08);
