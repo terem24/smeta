@@ -28,6 +28,14 @@ window.IdleHint = {
     GIVE_UP_MS: 5 * 60 * 1000,       // так и не освободился — в этот заход не показываем
     MAX_SHOWS: 5,                    // всего показов за жизнь браузера на одного человека
 
+    // ВРЕМЕННО, на проверку. Владелец (app.isAnalyticsOwner) видит подсказку без
+    // трёх визитов, без проверки расчётов и без ограничений по дням и числу показов:
+    // визиты считаются только с 13.09, а у его учёток расчёты есть — по обычным
+    // правилам он её не увидел бы никогда. Условия экрана (пустой расчёт, ничего
+    // не открыто, обучение выключено, полминуты ожидания) остаются как у всех.
+    // После проверки — false.
+    TEST_OWNER: true,
+
     _timer: null,
     _started: 0,
 
@@ -55,8 +63,9 @@ window.IdleHint = {
     consider: async function (uRow) {
         try {
             if (!uRow || !uRow.id || typeof app === 'undefined') return;
+            const ownerTest = this.TEST_OWNER && app.isAnalyticsOwner && app.isAnalyticsOwner();
             const minVisits = app.IDLE_MIN_VISITS || 3;
-            if (!((uRow.sess_visits || 0) >= minVisits)) return;
+            if (!ownerTest && !((uRow.sess_visits || 0) >= minVisits)) return;
 
             // Открыта смета по ссылке, печать, просмотр менеджером — человек пришёл
             // читать документ, а не считать (те же признаки, что у быстрого старта).
@@ -64,13 +73,15 @@ window.IdleHint = {
             if (['id', 'print', 'view', 'manager', 'share', 'code'].some(k => q.has(k))) return;
             if ((window.location.hash || '').indexOf('data=') > -1) return;
 
-            const rec = this.read(uRow.id);
-            if (rec.off) return;
-            if ((rec.shown || 0) >= this.MAX_SHOWS) return;
-            if (rec.day === this.today()) return;
-            try { if (localStorage.getItem('quick_start_used') === '1') return; } catch (e) { }
+            if (!ownerTest) {
+                const rec = this.read(uRow.id);
+                if (rec.off) return;
+                if ((rec.shown || 0) >= this.MAX_SHOWS) return;
+                if (rec.day === this.today()) return;
+                try { if (localStorage.getItem('quick_start_used') === '1') return; } catch (e) { }
 
-            if (await this.hasCalcs(uRow)) return;
+                if (await this.hasCalcs(uRow)) return;
+            }
 
             this._started = Date.now();
             clearTimeout(this._timer);
