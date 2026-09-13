@@ -36,6 +36,8 @@ window.SessionTrack = {
 
     lastAct: 0,
     token: null,
+    uid: null,                       // чей сейчас вход (auth.users.id); null — гость
+    authKnown: false,                // ответ о сессии уже пришёл
     started: false,
 
     init: function () {
@@ -79,12 +81,43 @@ window.SessionTrack = {
         // Токен доступа держим под рукой: при закрытии окна спрашивать его уже поздно,
         // ответ придёт, когда страницы не будет.
         this.refreshToken();
+        // Вход, выход и смена аккаунта без перезагрузки страницы — см. onAuth.
+        try {
+            if (typeof supabaseClient !== 'undefined' && supabaseClient) {
+                supabaseClient.auth.onAuthStateChange((event, session) => this.onAuth(session));
+            }
+        } catch (e) { }
+    },
+
+    /**
+     * Визит принадлежит одному аккаунту.
+     *
+     * Номер визита живёт в браузере, а не в аккаунте. Без этой проверки вышло бы так:
+     * вышел из одной учётки, через десять минут вошёл в другую — браузер продолжает
+     * тот же визит, сервер видит, что строка с этим номером чужая, и молча отбрасывает
+     * всё время второй учётки. Чужому оно не приписывалось (это сервер не даёт), но
+     * терялось целиком — а владелец как раз проверяет сайт под несколькими учётками.
+     *
+     * Поэтому при смене хозяина прежний визит досылаем его же токеном (он ещё
+     * действует, даже после выхода — до конца срока) и закрываем, а дальше счёт идёт
+     * новым визитом. Гость, который вошёл, — тот же человек: его визит просто
+     * получает владельца и продолжается.
+     */
+    onAuth: function (session) {
+        const uid = (session && session.user && session.user.id) || null;
+        if (this.authKnown && this.uid && uid !== this.uid) {
+            this.flush(true);
+            try { localStorage.removeItem(this.KEY); } catch (e) { }
+        }
+        this.uid = uid;
+        this.token = (session && session.access_token) || null;
+        this.authKnown = true;
     },
 
     // ── визит в localStorage ────────────────────────────────────────────────
 
     newVisit: function (now) {
-        return { id: this.uuid(), start: now, beat: now, sec: 0, sent: 0, screens: {} };
+        return { id: this.uuid(), uid: this.uid, start: now, beat: now, sec: 0, sent: 0, screens: {} };
     },
 
     // create=false — только прочитать; пустой ответ означает «визита нет, и заводить его
@@ -92,9 +125,14 @@ window.SessionTrack = {
     load: function (now, create) {
         let v = null;
         try { v = JSON.parse(localStorage.getItem(this.KEY) || 'null'); } catch (e) { v = null; }
-        const stale = !v || !v.id || !(now - (v.beat || 0) < this.GAP_MS);
+        // Визит другого аккаунта — тоже чужой. Сюда попадаем, когда смена входа прошла
+        // не в этой вкладке (в соседней или в установленном приложении) и onAuth её не
+        // видел: досылать прежний визит тут уже нечем, начинаем новый.
+        const foreign = !!(v && v.uid && this.uid && v.uid !== this.uid);
+        const stale = !v || !v.id || foreign || !(now - (v.beat || 0) < this.GAP_MS);
         if (stale) return create ? this.newVisit(now) : null;
         if (!v.screens || typeof v.screens !== 'object') v.screens = {};
+        if (!v.uid && this.uid) v.uid = this.uid;          // гость вошёл — визит его
         return v;
     },
 
@@ -115,6 +153,7 @@ window.SessionTrack = {
     tick: function () {
         const now = Date.now();
         if (document.hidden) return;
+        if (!this.authKnown) return;                        // ещё не знаем, чей визит
         if (now - this.lastAct > this.IDLE_MS) return;      // человек отошёл
         const v = this.load(now, true);
         v.sec += Math.round(this.TICK_MS / 1000);
@@ -148,7 +187,7 @@ window.SessionTrack = {
         try {
             if (typeof supabaseClient === 'undefined' || !supabaseClient) return Promise.resolve(null);
             return supabaseClient.auth.getSession().then(({ data }) => {
-                this.token = (data && data.session && data.session.access_token) || null;
+                this.onAuth(data && data.session);
                 return this.token;
             }).catch(() => null);
         } catch (e) { return Promise.resolve(null); }
