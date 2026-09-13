@@ -429,13 +429,17 @@ Deno.serve(async (req) => {
 
       const info = row.object_info || {};
       const status = String(info.status || "");
-      if (status !== "confirmed" && status !== "needs_revision") {
+      // refresh_requested — срок действия счёта по ссылке вышел, клиент нажал
+      // «Обновить счёт» (таймер счёта, миграция 20260913_invoice_timer_refresh_status.sql)
+      if (status !== "confirmed" && status !== "needs_revision" && status !== "refresh_requested") {
         return json({ status: "skipped", reason: "status-not-notifiable" });
       }
       if (!row.user_id) return json({ status: "skipped", reason: "owner-unknown" });
 
       recipientUserIds = [String(row.user_id)];
-      title = status === "confirmed" ? "Клиент согласовал смету" : "Клиент просит доработать смету";
+      title = status === "confirmed"
+        ? "Клиент согласовал смету"
+        : (status === "refresh_requested" ? "Срок счёта вышел: клиент просит обновить" : "Клиент просит доработать смету");
       // Та же подпись, что у событий сметы: по какой именно ссылке пришёл ответ.
       // Страница пишет объект в projectName; project_name/object_name остались от
       // прежних версий записи и встречаются в старых строках.

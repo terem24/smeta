@@ -854,6 +854,91 @@
             border: 1px solid #FCD34D;
         }
 
+        /* ── Таймер счёта ──────────────────────────────────────────────
+           Ссылка действует N дней (object_info.valid_until). Пока срок идёт —
+           полоска с обратным отсчётом. Когда вышел, а клиент ни согласовал,
+           ни отклонил — страница становится чёрно-белой, цены скрываются,
+           остаётся одна кнопка «Обновить счёт». */
+        .status-refresh {
+            background-color: #FFEDD5;
+            color: #9A3412;
+            border: 1px solid #FDBA74;
+        }
+
+        .timer-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 12.5px;
+            font-weight: 600;
+            margin-top: 4px;
+            margin-bottom: 18px;
+            background: #EFF6FF;
+            color: #1E40AF;
+            border: 1px solid #BFDBFE;
+            line-height: 1.3;
+        }
+
+        .timer-bar.timer-soon {
+            background: #FFF7ED;
+            color: #9A3412;
+            border-color: #FED7AA;
+        }
+
+        .timer-bar.timer-over {
+            background: #F3F4F6;
+            color: #4B5563;
+            border-color: #D1D5DB;
+        }
+
+        .timer-bar b {
+            font-variant-numeric: tabular-nums;
+        }
+
+        body.invoice-expired .container {
+            filter: grayscale(1);
+        }
+
+        /* Цены прячем цветом, а не удалением: таблица не прыгает, а вернуть их
+           одним классом проще, чем перерисовывать смету. Мобильные подписи
+           («× », «Сумма:») живут в ::before тех же ячеек и уходят вместе с ними. */
+        body.invoice-expired td.col-price,
+        body.invoice-expired td.col-sum,
+        body.invoice-expired tr.subtotal-row td,
+        body.invoice-expired .sum-val {
+            color: transparent !important;
+            text-shadow: 0 0 9px rgba(60, 60, 60, 0.45);
+            user-select: none;
+            pointer-events: none;
+        }
+
+        body.invoice-expired td.col-price::before,
+        body.invoice-expired td.col-sum::before {
+            color: transparent !important;
+        }
+
+        .btn-refresh-invoice {
+            background-color: #F97316 !important;
+        }
+
+        .btn-refresh-invoice:hover {
+            background-color: #EA580C !important;
+        }
+
+        .btn-refresh-invoice:disabled {
+            background-color: #FDBA74 !important;
+        }
+
+        .fab-refresh {
+            background-color: #F97316;
+        }
+
+        .fab-refresh:hover {
+            background-color: #EA580C;
+        }
+
         .mob-unit-label {
             display: none;
         }
@@ -2320,6 +2405,16 @@
                 <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
         </button>
+        <!-- Refresh Button (Orange arrows): срок действия счёта вышел -->
+        <button class="fab-btn fab-refresh" id="fab_refresh" onclick="requestInvoiceRefresh()" title="Срок действия счёта вышел — попросить обновить"
+            style="display: none;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+        </button>
         <!-- Revise Button (Red cross) -->
         <button class="fab-btn fab-revise" onclick="openRevisionModal()" title="Есть замечания / правки">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
@@ -2404,6 +2499,14 @@
         <section class="title-block">
             <h1 id="proposal_title">Коммерческое предложение</h1>
             <div id="status_badge" class="status-badge" style="display: none;"></div>
+            <div id="timer_bar" class="timer-bar no-print" style="display: none;"></div>
+            <div id="refresh_container" class="no-print"
+                style="display: none; margin-top: 4px; margin-bottom: 25px; text-align: center;">
+                <button class="btn-get-invoice-client btn-refresh-invoice" id="btn_refresh_invoice" onclick="requestInvoiceRefresh()">
+                    🔄 Обновить счёт
+                </button>
+                <div id="refresh_hint" style="font-size: 12px; color: #6B7280; margin-top: 10px; line-height: 1.45; max-width: 520px; margin-left: auto; margin-right: auto;"></div>
+            </div>
             <div id="get_invoice_container" class="no-print"
                 style="display: none; margin-top: 15px; margin-bottom: 25px; text-align: center;">
                 <button class="btn-get-invoice-client" onclick="requestInvoice()">
@@ -3779,6 +3882,16 @@
                     badgeEl.style.display = 'inline-flex';
                     if (getInvoiceContainer) getInvoiceContainer.style.display = 'none';
                     if (btnGetInvoice) btnGetInvoice.disabled = true;
+                } else if (obj.status === 'refresh_requested') {
+                    // Срок вышел, клиент уже попросил обновить: ждём монтажника.
+                    // Кнопки согласования прячем — цен на странице сейчас нет.
+                    badgeEl.textContent = '⏳ Запрошено обновление счёта';
+                    badgeEl.className = 'status-badge status-refresh';
+                    badgeEl.style.display = 'inline-flex';
+                    if (confirmBtn) confirmBtn.style.display = 'none';
+                    if (reviseBtn) reviseBtn.style.display = 'none';
+                    if (getInvoiceContainer) getInvoiceContainer.style.display = 'none';
+                    if (btnGetInvoice) btnGetInvoice.style.display = 'none';
                 } else {
                     badgeEl.style.display = 'none';
                     // Re-show them if status goes back to 'sent' (just in case)
@@ -3796,6 +3909,134 @@
                 if (reviseBtn) reviseBtn.style.display = 'none';
                 if (getInvoiceContainer) getInvoiceContainer.style.display = 'none';
                 if (btnGetInvoice) btnGetInvoice.style.display = 'none';
+            }
+
+            // Таймер — после статуса: он же решает, оставлять ли кнопки согласования
+            applyInvoiceTimer(obj);
+        }
+
+        // ── Таймер счёта ────────────────────────────────────────────────
+        // Состояние ссылки по сроку действия:
+        //   none    — срока нет или клиент уже ответил (таймер больше не нужен);
+        //   running — срок идёт, показываем обратный отсчёт;
+        //   expired — срок вышел, ответа не было: цены скрыты, одна кнопка «Обновить счёт»;
+        //   asked   — клиент уже нажал «Обновить счёт», ждём монтажника.
+        let invoiceTimerInterval = null;
+
+        function invoiceTimerState(obj) {
+            if (!obj) return 'none';
+            if (obj.status === 'refresh_requested') return 'asked';
+            if (obj.status && obj.status !== 'sent') return 'none';
+            if (!obj.valid_until) return 'none';
+            const t = new Date(obj.valid_until).getTime();
+            if (!isFinite(t)) return 'none';
+            return t > Date.now() ? 'running' : 'expired';
+        }
+
+        function fmtValidUntil(iso) {
+            const d = new Date(iso);
+            if (isNaN(d.getTime())) return '';
+            return d.toLocaleDateString('ru-RU') + ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // «1 д 05 ч 12 мин» — в часах и минутах, секунды клиенту ни к чему
+        function fmtRemaining(ms) {
+            const totalMin = Math.max(0, Math.floor(ms / 60000));
+            const d = Math.floor(totalMin / 1440);
+            const h = Math.floor((totalMin % 1440) / 60);
+            const m = totalMin % 60;
+            const two = (n) => String(n).padStart(2, '0');
+            if (d > 0) return `${d} д ${two(h)} ч ${two(m)} мин`;
+            if (h > 0) return `${h} ч ${two(m)} мин`;
+            return `${m} мин`;
+        }
+
+        function applyInvoiceTimer(obj) {
+            const bar = document.getElementById('timer_bar');
+            const refreshBox = document.getElementById('refresh_container');
+            const refreshBtn = document.getElementById('btn_refresh_invoice');
+            const refreshHint = document.getElementById('refresh_hint');
+            const fabRefresh = document.getElementById('fab_refresh');
+            const confirmBtn = document.querySelector('.fab-confirm');
+            const reviseBtn = document.querySelector('.fab-revise');
+            const getInvoiceContainer = document.getElementById('get_invoice_container');
+            const btnGetInvoice = document.getElementById('btn_get_invoice');
+
+            if (invoiceTimerInterval) { clearInterval(invoiceTimerInterval); invoiceTimerInterval = null; }
+
+            const state = invoiceTimerState(obj);
+            const showRefresh = (state === 'expired' || state === 'asked') && !IS_PREVIEW;
+
+            document.body.classList.toggle('invoice-expired', state === 'expired' || state === 'asked');
+            if (refreshBox) refreshBox.style.display = showRefresh ? 'block' : 'none';
+            if (fabRefresh) fabRefresh.style.display = showRefresh ? '' : 'none';
+
+            if (state === 'expired' || state === 'asked') {
+                // Цен нет — согласовывать и запрашивать счёт нечего
+                if (confirmBtn) confirmBtn.style.display = 'none';
+                if (reviseBtn) reviseBtn.style.display = 'none';
+                if (getInvoiceContainer) getInvoiceContainer.style.display = 'none';
+                if (btnGetInvoice) btnGetInvoice.style.display = 'none';
+            }
+
+            if (!bar) return;
+            if (state === 'none') { bar.style.display = 'none'; return; }
+
+            const until = fmtValidUntil(obj.valid_until);
+            if (state === 'running') {
+                const tick = () => {
+                    const left = new Date(obj.valid_until).getTime() - Date.now();
+                    if (left <= 0) {
+                        // Срок вышел прямо на открытой странице — переключаемся без перезагрузки
+                        applyInvoiceTimer(obj);
+                        return;
+                    }
+                    bar.className = 'timer-bar' + (left < 6 * 3600000 ? ' timer-soon' : '');
+                    bar.innerHTML = `⏳ Цены действительны ещё <b>${fmtRemaining(left)}</b> · до ${until}`;
+                    bar.title = 'Когда срок выйдет, цены скроются: можно будет попросить обновить счёт';
+                };
+                tick();
+                bar.style.display = 'inline-flex';
+                invoiceTimerInterval = setInterval(tick, 30000);
+                return;
+            }
+
+            bar.className = 'timer-bar timer-over';
+            bar.style.display = 'inline-flex';
+            if (state === 'expired') {
+                bar.innerHTML = `⌛ Срок действия счёта вышел ${until}`;
+                if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '🔄 Обновить счёт'; }
+                if (refreshHint) refreshHint.textContent = 'Цены могли измениться, поэтому они скрыты. Нажмите «Обновить счёт» — монтажник пересчитает смету по сегодняшним ценам, и она появится по этой же ссылке.';
+            } else {
+                const askedAt = obj.refresh_requested_at ? fmtValidUntil(obj.refresh_requested_at) : '';
+                bar.innerHTML = `⌛ Срок действия вышел · запрос на обновление отправлен${askedAt ? ' ' + askedAt : ''}`;
+                if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = '✓ Запрос отправлен'; }
+                if (refreshHint) refreshHint.textContent = 'Монтажник получил уведомление. Обновлённый счёт с новым сроком появится по этой же ссылке — откройте её позже.';
+            }
+        }
+
+        // Кнопка «Обновить счёт»: клиент просит монтажника переотправить смету.
+        // Пишется как статус refresh_requested — той же функцией, что и остальные ответы.
+        async function requestInvoiceRefresh() {
+            if (IS_PREVIEW) {
+                alert('Это предпросмотр сметы. Обновить счёт может попросить только клиент по своей ссылке.');
+                return;
+            }
+            if (invoiceData && invoiceData.object_info && invoiceData.object_info.status === 'refresh_requested') {
+                alert('Запрос уже отправлен. Монтажник обновит счёт, и он появится по этой же ссылке.');
+                return;
+            }
+            const btn = document.getElementById('btn_refresh_invoice');
+            const fab = document.getElementById('fab_refresh');
+            if (btn) { btn.disabled = true; btn.textContent = '⌛ Отправляем…'; }
+            if (fab) fab.disabled = true;
+            try {
+                await updateInvoiceStatus('refresh_requested');
+            } finally {
+                if (fab) fab.disabled = false;
+                // Текст кнопки и подсказку расставит applyInvoiceTimer по новому статусу;
+                // при ошибке статус остался прежним — кнопку возвращаем.
+                if (btn && btn.textContent === '⌛ Отправляем…') { btn.disabled = false; btn.textContent = '🔄 Обновить счёт'; }
             }
         }
 
@@ -3969,6 +4210,12 @@
                 updatedObjectInfo.client_comment = comment;
             }
             updatedObjectInfo.status_updated_at = new Date().toISOString();
+            if (status === 'refresh_requested') {
+                // То же, что проставит база (set_shared_invoice_status): нужно сразу,
+                // чтобы полоска таймера показала время запроса без перечитывания строки
+                updatedObjectInfo.refresh_requested_at = updatedObjectInfo.status_updated_at;
+                updatedObjectInfo.refresh_count = (Number(updatedObjectInfo.refresh_count) || 0) + 1;
+            }
 
             try {
                 // Show a loading spinner or disable buttons
@@ -4001,6 +4248,8 @@
                 // Show success
                 if (status === 'confirmed') {
                     alert("Коммерческое предложение успешно подтверждено! Менеджер уведомлен.");
+                } else if (status === 'refresh_requested') {
+                    alert("Запрос отправлен. Монтажник обновит счёт, и он появится по этой же ссылке.");
                 } else {
                     alert("Замечания успешно отправлены менеджеру.");
                     closeRevisionModal();
@@ -4052,7 +4301,9 @@
                 const projectName = invoiceData?.object_info?.projectName || 'Новый объект';
                 const statusText = status === 'confirmed'
                     ? 'Поздравляем! Смета одобрена заказчиком!'
-                    : 'Смета отклонена (требует доработки)';
+                    : (status === 'refresh_requested'
+                        ? 'Срок действия счёта вышел — клиент просит обновить смету'
+                        : 'Смета отклонена (требует доработки)');
                 const invoiceUrl = window.location.href;
 
                 console.log("[sendStatusEmailNotification] Sending status update to:", managerEmail);
