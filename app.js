@@ -9827,9 +9827,13 @@ const app = {
         if (document.getElementById('set_password_card')) return;
         const isRecovery = mode === 'recovery';
 
+        // Собрано на тех же классах, что app.prompt: поле во всю ширину карточки,
+        // кнопки справа внизу. Классы формы входа (auth-input) тут не годятся —
+        // у них своя ширина и отступы, и поле выходило уже кнопки.
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
         const close = () => {
+            document.removeEventListener('keydown', onKey);
             overlay.classList.remove('active');
             setTimeout(() => overlay.remove(), 200);
         };
@@ -9837,42 +9841,99 @@ const app = {
         const card = document.createElement('div');
         card.className = 'calc-dialog-card';
         card.id = 'set_password_card';
-        card.style.maxWidth = '420px';
+        // Телефон боком с открытой клавиатурой: окно не должно уходить за край
+        card.style.maxHeight = 'calc(100dvh - 32px)';
+        card.style.overflowY = 'auto';
+        card.style.boxSizing = 'border-box';
 
         const title = document.createElement('h3');
         title.className = 'calc-dialog-title';
-        title.innerText = isRecovery ? 'Задайте новый пароль' : 'Сменить пароль';
+        title.innerText = isRecovery ? 'Новый пароль' : 'Сменить пароль';
         card.appendChild(title);
 
-        const msg = document.createElement('div');
+        const msg = document.createElement('p');
         msg.className = 'calc-dialog-message';
-        msg.style.textAlign = 'left';
         msg.innerText = isRecovery
             ? 'Вы перешли по ссылке для сброса пароля. Придумайте новый — дальше входите с ним. Аккаунт и сметы остаются те же.'
             : 'Новый пароль заменит старый. Аккаунт и сметы остаются те же.';
         card.appendChild(msg);
 
+        const wrap = document.createElement('div');
+        wrap.className = 'calc-dialog-input-wrapper';
+
+        const box = document.createElement('div');
+        box.style.position = 'relative';
+
         const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'auth-input';
-        input.placeholder = 'Новый пароль, минимум 6 символов';
+        input.type = 'password';
+        input.className = 'calc-dialog-input';
+        input.placeholder = 'Новый пароль';
         input.autocomplete = 'new-password';
-        input.style.marginTop = '12px';
-        input.oninput = () => this.checkPasswordLayout(input);
-        card.appendChild(input);
+        input.setAttribute('autocapitalize', 'off');
+        input.setAttribute('spellcheck', 'false');
+        input.style.paddingRight = '96px';
+        box.appendChild(input);
+
+        const eye = document.createElement('button');
+        eye.type = 'button';
+        eye.innerText = 'Показать';
+        eye.style.cssText = 'position:absolute; top:50%; right:6px; transform:translateY(-50%); ' +
+            'border:none; background:transparent; color:var(--primary); font-size:13px; ' +
+            'font-weight:600; padding:6px 8px; cursor:pointer; border-radius:6px;';
+        eye.onclick = () => {
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            eye.innerText = show ? 'Скрыть' : 'Показать';
+            input.focus();
+        };
+        box.appendChild(eye);
+        wrap.appendChild(box);
+
+        // Одна строка под полем: подсказка, предупреждение о раскладке или ошибка
+        const note = document.createElement('div');
+        note.style.cssText = 'font-size:12.5px; line-height:1.4; color:var(--text-sec);';
+        const NOTE_DEFAULT = 'Не короче 6 символов. Запишите его: посмотреть пароль потом нельзя.';
+        const setNote = (text, tone) => {
+            note.innerText = text;
+            note.style.color = tone === 'error' ? '#dc2626' : (tone === 'warn' ? '#d97706' : 'var(--text-sec)');
+        };
+        setNote(NOTE_DEFAULT);
+        wrap.appendChild(note);
+        card.appendChild(wrap);
+
+        input.oninput = () => {
+            if (/[Ѐ-ӿ]/.test(input.value)) setNote('Включена русская раскладка — переключите на английскую.', 'warn');
+            else setNote(NOTE_DEFAULT);
+        };
+
+        const buttons = document.createElement('div');
+        buttons.className = 'calc-dialog-buttons';
+        buttons.style.flexWrap = 'wrap';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.className = 'calc-dialog-btn calc-dialog-btn-cancel';
+        cancelBtn.innerText = isRecovery ? 'Не сейчас' : 'Отмена';
+        cancelBtn.style.flex = '1 1 auto';
+        cancelBtn.onclick = close;
 
         const saveBtn = document.createElement('button');
+        saveBtn.type = 'button';
         saveBtn.className = 'calc-dialog-btn calc-dialog-btn-confirm';
-        saveBtn.style.width = '100%';
-        saveBtn.innerText = 'Сохранить пароль';
-        saveBtn.onclick = async () => {
+        saveBtn.innerText = 'Сохранить';
+        saveBtn.style.flex = '1 1 auto';
+
+        const submit = async () => {
+            if (saveBtn.disabled) return;
             const value = input.value.trim();
             if (value.length < 6) {
-                app.alert('Пароль должен быть не короче 6 символов.');
+                setNote('Пароль должен быть не короче 6 символов.', 'error');
+                input.focus();
                 return;
             }
             saveBtn.disabled = true;
-            saveBtn.innerText = 'Сохраняем...';
+            cancelBtn.disabled = true;
+            saveBtn.innerText = 'Сохраняем…';
             try {
                 const { error } = await supabaseClient.auth.updateUser({ password: value });
                 if (error) throw error;
@@ -9882,22 +9943,23 @@ const app = {
                 this.renderProfileLoginMethod();
             } catch (err) {
                 console.error('Не удалось задать пароль:', err);
-                app.alert('Не удалось сохранить пароль: ' + getFriendlyErrorMessage(err));
+                setNote('Не удалось сохранить пароль: ' + getFriendlyErrorMessage(err), 'error');
                 saveBtn.disabled = false;
-                saveBtn.innerText = 'Сохранить пароль';
+                cancelBtn.disabled = false;
+                saveBtn.innerText = 'Сохранить';
             }
         };
-        card.appendChild(saveBtn);
+        saveBtn.onclick = submit;
 
-        const later = document.createElement('div');
-        later.style.cssText = 'text-align:center; margin-top:14px;';
-        const laterLink = document.createElement('a');
-        laterLink.href = '#';
-        laterLink.style.cssText = 'color: var(--text-sec); text-decoration: none; font-size: 13px;';
-        laterLink.innerText = isRecovery ? 'Не сейчас' : 'Отмена';
-        laterLink.onclick = (e) => { e.preventDefault(); close(); };
-        later.appendChild(laterLink);
-        card.appendChild(later);
+        const onKey = (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); submit(); }
+            else if (e.key === 'Escape' && !saveBtn.disabled) close();
+        };
+        document.addEventListener('keydown', onKey);
+
+        buttons.appendChild(cancelBtn);
+        buttons.appendChild(saveBtn);
+        card.appendChild(buttons);
 
         overlay.appendChild(card);
         document.body.appendChild(overlay);
