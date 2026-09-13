@@ -7182,6 +7182,8 @@ const app = {
         invoice_requested: { label: 'Запрошен счёт', color: '#F59E0B' },
         confirmed: { label: 'Одобрено', color: '#10B981' },
         needs_revision: { label: 'На доработке', color: '#EF4444' },
+        // Срок действия счёта по ссылке вышел, клиент нажал «Обновить счёт»
+        refresh_requested: { label: 'Клиент просит обновить счёт', color: '#F97316' },
         invoice_issued: { label: 'Счёт выставлен', color: '#10B981' },
         rejected: { label: 'Отклонен', color: '#EF4444' },
         invoice_reminder_sent: { label: 'Напоминание: выставить счёт?', color: '#F59E0B' },
@@ -7222,7 +7224,7 @@ const app = {
         // оставлял следа нигде (см. beginRecognitionCard).
         { key: 'recognized', label: 'Распознано', color: '#0D9488', events: ['recognized'] },
         { key: 'draft', label: 'Расчёты', color: '#60A5FA', events: ['calculated', 'saved'] },
-        { key: 'review', label: 'На согласовании', color: '#818CF8', events: ['sent', 'printed', 'confirmed', 'needs_revision', 'invoice_reminder_sent', 'invoice_reminder_declined'] },
+        { key: 'review', label: 'На согласовании', color: '#818CF8', events: ['sent', 'printed', 'confirmed', 'needs_revision', 'refresh_requested', 'invoice_reminder_sent', 'invoice_reminder_declined'] },
         { key: 'payment', label: 'В оплату', color: '#F59E0B', events: ['invoice_requested', 'invoice_issued', 'rejected', 'paid'] },
     ],
 
@@ -8194,7 +8196,12 @@ const app = {
 
                     if (!sharedError && sharedList) {
                         sharedList.forEach(item => {
-                            sharedStatuses[item.id] = item.object_info?.status || 'sent';
+                            // Просроченный таймер — своё состояние списка: клиент по такой
+                            // ссылке уже не видит цен и может только просить обновить.
+                            let st = item.object_info?.status || 'sent';
+                            const vu = item.object_info?.valid_until;
+                            if (st === 'sent' && vu && new Date(vu).getTime() < Date.now()) st = 'expired';
+                            sharedStatuses[item.id] = st;
                         });
                     }
                 } catch (e) {
@@ -8250,6 +8257,10 @@ const app = {
                     statusBadge = `<span class="status-badge-cabinet status-cabinet-confirmed" title="Смета согласована клиентом">Одобрена</span>`;
                 } else if (status === 'needs_revision') {
                     statusBadge = `<span class="status-badge-cabinet status-cabinet-revision" title="Клиент просит внести правки">На доработке</span>`;
+                } else if (status === 'refresh_requested') {
+                    statusBadge = `<span class="status-badge-cabinet status-cabinet-refresh" title="Срок действия счёта вышел, клиент просит обновить. Нажмите «Ссылка клиенту» → «Обновить счёт»">Просят обновить</span>`;
+                } else if (status === 'expired') {
+                    statusBadge = `<span class="status-badge-cabinet status-cabinet-expired" title="Срок действия счёта вышел: клиент видит смету без цен">Срок истёк</span>`;
                 } else {
                     statusBadge = `<span class="status-badge-cabinet status-cabinet-sent" title="Ссылка отправлена клиенту">Отправлена</span>`;
                 }
@@ -8365,12 +8376,14 @@ const app = {
             ? window.location.origin : 'https://heatcalc.ru';
         const url = `${baseOrigin}/invoice.html?id=${shareId}`;
 
-        let sent = '', eq = 0, wk = 0;
+        let sent = '', eq = 0, wk = 0, info = {};
         try {
             const { data } = await supabaseClient.from('shared_invoices')
-                .select('created_at, totals').eq('id', shareId).maybeSingle();
+                .select('created_at, totals, object_info').eq('id', shareId).maybeSingle();
             if (data) {
-                sent = data.created_at ? new Date(data.created_at).toLocaleDateString('ru-RU') : '';
+                info = data.object_info || {};
+                const sentIso = info.sent_at || data.created_at;
+                sent = sentIso ? new Date(sentIso).toLocaleDateString('ru-RU') : '';
                 eq = Number(data.totals && data.totals.equipment) || 0;
                 wk = Number(data.totals && data.totals.works) || 0;
             }
@@ -8383,12 +8396,35 @@ const app = {
                    Оборудование ${num(eq)} ₽${wk ? `, монтаж ${num(wk)} ₽` : ''} — те суммы, что видит клиент.
                </div>` : '';
 
+        // Таймер счёта: идёт, вышел или клиент уже попросил обновить. Слова здесь
+        // важнее цифр — монтажник решает, жать ли «Обновить счёт».
+        let timerLine = '';
+        const asked = info.status === 'refresh_requested';
+        const expired = !asked && info.status === 'sent' && info.valid_until && new Date(info.valid_until).getTime() < Date.now();
+        if (asked) {
+            const when = info.refresh_requested_at ? this.formatValidUntil(info.refresh_requested_at) : '';
+            const times = Number(info.refresh_count) || 0;
+            timerLine = `<div style="font-size:12.5px; color:#B45309; margin-top:6px; font-weight:600;">
+                    ⏳ Срок действия вышел, клиент просит обновить счёт${when ? ' (' + esc(when) + ')' : ''}${times > 1 ? ', уже ' + times + ' раза' : ''}.
+                    Сейчас он видит смету без цен.</div>`;
+        } else if (expired) {
+            timerLine = `<div style="font-size:12.5px; color:#B45309; margin-top:6px; font-weight:600;">
+                    ⏳ Срок действия вышел ${esc(this.formatValidUntil(info.valid_until))}: клиент видит смету без цен и может только попросить обновить счёт.</div>`;
+        } else if (info.valid_until && info.status === 'sent') {
+            timerLine = `<div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">
+                    ⏳ Счёт действителен до ${esc(this.formatValidUntil(info.valid_until))}.</div>`;
+        } else if (info.status === 'sent' && info.valid_days === 0) {
+            timerLine = `<div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">Без срока действия.</div>`;
+        }
+        const resendLabel = (asked || expired) ? 'Обновить счёт по сегодняшним ценам' : 'Отправить заново по сегодняшним ценам';
+
         this.showPlainModal('Ссылка клиенту',
             `<div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
                 <div style="font-size:14px; font-weight:700; color:var(--text-main);">
                     Смета отправлена${sent ? ' ' + esc(sent) : ''}
                 </div>
                 ${sums}
+                ${timerLine}
                 <div style="margin-top:8px; font-size:12px; word-break:break-all; color:var(--primary);">${esc(url)}</div>
              </div>
              <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -8404,10 +8440,26 @@ const app = {
              </p>
              <button type="button" class="custom-modal-btn" style="margin-top:6px; background:transparent; color:var(--text-sec); border:1px solid var(--border);"
                 onclick="app.resendSharedLink('${esc(estimateId)}')">
-                Отправить заново по сегодняшним ценам</button>
+                ${resendLabel}</button>
              <p style="font-size:11px; color:var(--text-sec); margin-top:6px; line-height:1.5;">
-                Переотправка перезапишет ссылку: клиент увидит сегодняшние цены, а прежняя версия сметы пропадёт.
+                Переотправка перезапишет ссылку: клиент увидит сегодняшние цены${(asked || expired) ? ' и новый срок действия' : ''}, а прежняя версия сметы пропадёт. Адрес ссылки не изменится.
              </p>`);
+    },
+
+    // «Обновить счёт» из карточки уведомления: открываем смету и сразу зовём окно
+    // ссылки — там монтажник ещё раз видит, какие разделы уйдут и на сколько дней.
+    // Ссылка та же (номер снимка хранится в смете), статус вернётся в «отправлен».
+    refreshSharedFromNotification: async function (notificationId, estimateId, btn) {
+        if (!estimateId) return;
+        this.markNotifState('read', notificationId);
+        if (btn) { btn.disabled = true; btn.textContent = '⌛ Открываем…'; }
+        try {
+            this.closeNotificationsModal();
+            this.closeAdminModal();
+            await this.cloudRowAction(estimateId, 'share');
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🔄 Обновить счёт'; }
+        }
     },
 
     // Переотправка из окна ссылки — то же, что кнопка «Ссылка клиенту» у сметы,
@@ -9844,7 +9896,7 @@ const app = {
     // запрошен счёт. Черновики (calculated/saved) сюда не попадают — они в «Мои объекты».
     // «Клиент открыл» сюда намеренно не входит: монтажник открывает свою же
     // ссылку, чтобы проверить смету, и черновик уезжал бы в заказы сам собой.
-    ORDER_EVENT_KEYS: ['sent', 'printed', 'invoice_requested', 'confirmed', 'needs_revision', 'invoice_issued', 'rejected', 'invoice_reminder_sent', 'invoice_reminder_declined', 'paid'],
+    ORDER_EVENT_KEYS: ['sent', 'printed', 'invoice_requested', 'confirmed', 'needs_revision', 'refresh_requested', 'invoice_issued', 'rejected', 'invoice_reminder_sent', 'invoice_reminder_declined', 'paid'],
 
     renderOrdersTab: async function () {
         const container = document.getElementById('profile_tab_orders');
@@ -11616,6 +11668,37 @@ const app = {
         if (!Array.isArray(this.installerSettings.deletionLog)) this.installerSettings.deletionLog = [];
         if (this.installerSettings.company && typeof this.installerSettings.company !== 'object') this.installerSettings.company = null;
     },
+
+    // ── Таймер счёта ─────────────────────────────────────────────────────────
+    // Сколько дней действует счёт по ссылке клиенту. Настройка учётной записи:
+    // подставляется в окно «Создание ссылки для клиента», где её можно поменять
+    // на одну отправку. undefined — монтажник ничего не трогал, действует 2 дня;
+    // 0 — таймер выключен осознанно (в кабинете стёрли цифру или поставили ноль).
+    INVOICE_VALID_DAYS_DEFAULT: 2,
+    INVOICE_VALID_DAYS_MAX: 90,
+    invoiceValidDaysDefault: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const v = this.installerSettings.invoiceValidDays;
+        if (v === undefined || v === null || v === '') return this.INVOICE_VALID_DAYS_DEFAULT;
+        const n = Math.round(Number(v));
+        if (!isFinite(n) || n < 0) return this.INVOICE_VALID_DAYS_DEFAULT;
+        return Math.min(n, this.INVOICE_VALID_DAYS_MAX);
+    },
+    setInvoiceValidDays: function (v) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        let n = (v === '' || v === null || v === undefined) ? 0 : Math.round(Number(v));
+        if (!isFinite(n) || n < 0) n = 0;
+        n = Math.min(n, this.INVOICE_VALID_DAYS_MAX);
+        if (this.installerSettings.invoiceValidDays === n) return;
+        this.installerSettings.invoiceValidDays = n;
+        this.pushInstallerSettingsToCloud();
+    },
+    // «до 15.09.2026, 15:20» — одна подпись и для окна ссылки, и для списка объектов
+    formatValidUntil: function (iso) {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleDateString('ru-RU') + ', ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    },
     saveInstallerSettingsLocal: function () {
         // Логотип лежит здесь целиком (base64, до 1 МБ), поэтому запись вполне может
         // упереться в лимит localStorage. Ошибку гасим: настройки уедут в облако, а
@@ -11685,6 +11768,8 @@ const app = {
         document.getElementById('profile_company_address').value = cc.address ? cc.address : defAddr;
         document.getElementById('profile_company_bank').value = cc.bank ? cc.bank : defBank;
         document.getElementById('profile_logo_preview').src = cc.logo || 'img/logo.jpg';
+        const daysEl = document.getElementById('profile_invoice_valid_days');
+        if (daysEl) daysEl.value = String(this.invoiceValidDaysDefault());
     },
     _resolveInstallerCloudUserId: async function () {
         try {
@@ -12968,6 +13053,27 @@ const app = {
                                         isRead: readIds.includes(item.id)
                                     });
                                 }
+                            } else if (status === 'refresh_requested') {
+                                // Срок действия счёта вышел, клиент просит обновить. Идентификатор
+                                // карточки — с отметкой времени просьбы: одна и та же ссылка может
+                                // просрочиться и во второй раз, и разобранная карточка не должна
+                                // глушить новую просьбу.
+                                const est = sharedMap[item.id];
+                                if (est) {
+                                    const nid = item.id + ':refresh:' + (objInfo.refresh_requested_at || objInfo.status_updated_at || '');
+                                    notifications.push({
+                                        id: nid,
+                                        shareId: item.id,
+                                        estimateId: est.id,
+                                        projectName: est.project_name,
+                                        totalSum: est.total_sum,
+                                        status: status,
+                                        refreshCount: Number(objInfo.refresh_count) || 1,
+                                        comment: '',
+                                        time: objInfo.refresh_requested_at || objInfo.status_updated_at || item.created_at,
+                                        isRead: readIds.includes(nid)
+                                    });
+                                }
                             }
                         });
                     }
@@ -13868,6 +13974,30 @@ const app = {
                         <div style="display:flex; align-items:center; gap:10px; margin-top: 2px;">
                             <button class="auth-btn-base btn-email-submit" style="margin: 0; width: auto; padding: 0 14px; height: 30px; font-size: 11.5px; font-weight: bold; background: #10B981; border-color: #10B981;" onclick="app.respondInvoiceReminder('${n.id}', '${n.calcId}', ${n.estimateId ? `'${n.estimateId}'` : 'null'}, 'accept', this)">📄 Выставить счёт</button>
                             <span style="font-size: 11px; color: var(--text-sec); cursor: pointer; text-decoration: underline;" onclick="app.respondInvoiceReminder('${n.id}', '${n.calcId}', ${n.estimateId ? `'${n.estimateId}'` : 'null'}, 'decline', this)">Отказаться</span>
+                        </div>
+                    </div>
+                `;
+            } else if (n.status === 'refresh_requested') {
+                // Клиент просит обновить просроченный счёт. Две кнопки — два ответа
+                // монтажника: переотправить как есть по сегодняшним ценам или сначала
+                // посмотреть, что в ценах изменилось. Клик по карточке открывает смету —
+                // на случай, если надо что-то поменять в составе.
+                const borderCol = '#F97316';
+                const estArg = n.estimateId ? `'${n.estimateId}'` : 'null';
+                h += `
+                    <div class="notification-card" style="background: rgba(249, 115, 22, 0.05); border-left: 4.5px solid ${borderCol}; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: 0.2s; border: 1px solid var(--border); border-left-color: ${borderCol}; position: relative; ${isUnread ? 'box-shadow: 0 2px 6px rgba(249, 115, 22, 0.08);' : 'opacity: 0.85;'}" onclick="app.handleNotificationClick('${n.id}', '${n.estimateId}')" onmouseover="this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 8px rgba(0,0,0,0.05)';" onmouseout="this.style.transform='none'; this.style.boxShadow='none';">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 800; color: #9A3412; font-size: 10px; letter-spacing: 0.03em;">ПРОСЯТ ОБНОВИТЬ СЧЁТ ⏳${unreadDot}</span>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size: 10px; color: var(--text-sec); font-weight: 500;">${dateStr}</span>
+                                <span onclick="event.stopPropagation(); app.dismissNotification('${n.id}', event)" title="Удалить уведомление" style="cursor:pointer; color:var(--text-sec); font-size:13px; line-height:1; padding:2px;">✕</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>
+                        <div style="font-size: 12px; color: #9A3412; margin: 2px 0 4px;">Срок действия счёта вышел, клиент видит смету без цен и просит обновить${n.refreshCount > 1 ? ` (уже ${n.refreshCount}-й раз)` : ''}. Ссылка у него останется прежней.</div>
+                        <div style="display:flex; align-items:center; gap:10px; margin-top: 2px; flex-wrap: wrap;">
+                            <button class="auth-btn-base btn-email-submit" style="margin: 0; width: auto; padding: 0 14px; height: 30px; font-size: 11.5px; font-weight: bold; background: #F97316; border-color: #F97316;" onclick="event.stopPropagation(); app.refreshSharedFromNotification('${n.id}', ${estArg}, this)">🔄 Обновить счёт</button>
+                            <span style="font-size: 11px; color: var(--text-sec); cursor: pointer; text-decoration: underline;" onclick="event.stopPropagation(); app.markNotifState('read', '${n.id}'); app.closeNotificationsModal(); app.lazy('reprice').then(() => Reprice.open(${estArg}))">Сначала сверить цены</span>
                         </div>
                     </div>
                 `;
@@ -18883,6 +19013,10 @@ const app = {
         inv_funnel:    { t: 'Смета → счёт',                       icon: '🧭', sec: 'us' },
         inv_speed:     { t: 'Сколько это занимает',               icon: '⏱️', sec: 'us' },
         inv_waiting:   { t: 'Ждут счёта',                         icon: '🔔', sec: 'us' },
+        // Срок действия счёта по ссылке: отвечают ли клиенты быстрее, когда
+        // цены вот-вот скроются. Считается по самим ссылкам (shared_invoices),
+        // а не по событиям: там лежат и срок, и момент ответа, и просьбы обновить.
+        inv_timer:     { t: 'Таймер счёта',                       icon: '⏳', sec: 'us' },
         funnel:        { t: 'Воронка новичков',                   icon: '🚀', sec: 'us' },
         // Идентификатор оставлен прежним намеренно: блок вырос из «Демо на
         // исходе» в полные сроки Профи, но у владельца он уже стоит в
@@ -18936,6 +19070,7 @@ const app = {
                     { id: 'activity', span: 2 }, { id: 'quiet_list', span: 2 },
                     { id: 'inv_funnel', span: 2 }, { id: 'inv_speed', span: 2 },
                     { id: 'inv_waiting', span: 4 },
+                    { id: 'inv_timer', span: 4 },
                     { id: 'own_projects', span: 1 }, { id: 'own_rec', span: 1 },
                     { id: 'rec_regions', span: 2 }, { id: 'rec_gaps', span: 2 },
                     { id: 'est_vs_demand', span: 4 },
@@ -19887,6 +20022,10 @@ const app = {
         // своих: без ownReady считать её не из чего.
         const evReady = this.ensureDashboardEvents();
         const inv = (evReady && ownReady) ? this.dashboardInvoiceFunnel(region) : null;
+        // Таймер счёта — по строкам ссылок клиентам; регион берётся из своих
+        // монтажников, поэтому тоже ждёт ownReady.
+        const timerReady = this.ensureDashboardTimer();
+        const invTimer = (timerReady && ownReady) ? this.dashboardInvoiceTimer(region) : null;
         // История тарифа — своя таблица и свой запрос: её может не быть вовсе,
         // и ждать её ради остальных чисел незачем.
         this.ensureTariffEvents();
@@ -19904,7 +20043,7 @@ const app = {
             // нет, блоки не исчезают, а честно показывают, что идёт счёт: иначе
             // полдашборда мигало бы пустотой при каждом открытии.
             ['own_ests', 'own_active', 'own_users', 'own_projects', 'own_rec', 'own_invoices',
-             'est_vs_demand', 'activity', 'quiet_list', 'inv_funnel', 'inv_speed', 'inv_waiting',
+             'est_vs_demand', 'activity', 'quiet_list', 'inv_funnel', 'inv_speed', 'inv_waiting', 'inv_timer',
              'funnel', 'demo_soon', 'pro_active', 'chek', 'group_usage', 'dist_money'].forEach(id => {
                 B[id] = card(head(this.DASH_WIDGETS[id].t, 'сметы, монтажники, проекты')
                     + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Считаем свои сметы и монтажников…</div>`);
@@ -20259,6 +20398,61 @@ const app = {
                             Ещё ${num(inv.waitingOld)} — старше месяца; в список не берём: это уже не «дожать», а несостоявшаяся сделка.
                        </div>` : '')
                     + (inv.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">История событий обрезана по потолку строк — числа неполные.</div>` : ''));
+            }
+
+            // Таймер счёта: две колонки — ссылки со сроком действия и без него.
+            // Вопрос один: стали ли клиенты отвечать чаще и быстрее.
+            {
+                const tm = invTimer;
+                const tHead = head('Таймер счёта', `ссылки клиентам за ${this.DASH_EV_DAYS} дней · со сроком действия против бессрочных`);
+                if (!tm) {
+                    B.inv_timer = card(tHead + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Читаем ссылки клиентам…</div>`);
+                } else if (tm.error) {
+                    B.inv_timer = card(tHead + `<div style="padding:16px 0; color:#EF4444; font-size:12.5px;">Ссылки не прочитались: ${esc(tm.error)}</div>`);
+                } else if (!tm.timer.n && !tm.none.n) {
+                    B.inv_timer = card(tHead + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Ссылок клиентам за этот период нет${region ? ` — по крайней мере у монтажников региона «${esc(region)}»` : ''}.</div>`);
+                } else {
+                    const hrs = (h) => {
+                        if (h === null || h === undefined) return '—';
+                        if (h < 1) return Math.max(1, Math.round(h * 60)) + ' мин';
+                        if (h < 48) return h.toFixed(1).replace('.', ',') + ' ч';
+                        return (h / 24).toFixed(1).replace('.', ',') + ' дн.';
+                    };
+                    const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
+                    const better = (a, b, lowerIsBetter) => {
+                        if (a === null || b === null || a === undefined || b === undefined) return '';
+                        const good = lowerIsBetter ? a < b : a > b;
+                        const same = a === b;
+                        return same ? '' : (good ? '#10B981' : '#EF4444');
+                    };
+                    const cell = (v, color) => `<td style="text-align:right; padding:6px 8px; font-size:13px; font-weight:700; color:${color || 'var(--text-main)'}; white-space:nowrap;">${v}</td>`;
+                    const lbl = (t) => `<td style="padding:6px 0; font-size:12.5px; color:var(--text-main);">${t}</td>`;
+                    const g = tm.timer, z = tm.none;
+                    const rowsHtml = [
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Ссылок отправлено')}${cell(num(g.n))}${cell(num(z.n))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент ответил (согласовал, вернул или запросил счёт)')}${cell(pct(g.answered, g.n), better(g.n ? g.answered / g.n : null, z.n ? z.answered / z.n : null, false))}${cell(pct(z.answered, z.n))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Из них согласовал')}${cell(pct(g.confirmed, g.n), better(g.n ? g.confirmed / g.n : null, z.n ? z.confirmed / z.n : null, false))}${cell(pct(z.confirmed, z.n))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Среднее время ответа заказчика')}${cell(hrs(g.avgHours), better(g.avgHours, z.avgHours, true))}${cell(hrs(z.avgHours))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Медиана времени ответа')}${cell(hrs(g.medHours), better(g.medHours, z.medHours, true))}${cell(hrs(z.medHours))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Ответил в срок, до конца таймера')}${cell(pct(g.answeredInTime, g.answered))}${cell('<span style="color:var(--text-sec); font-weight:500;">нет срока</span>')}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Срок вышел без ответа')}${cell(num(g.expiredSilent), g.expiredSilent ? '#F97316' : '')}${cell('—')}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент просил обновить счёт')}${cell(g.refreshLinks ? `${num(g.refreshLinks)} ${this.plural(g.refreshLinks, 'ссылка', 'ссылки', 'ссылок')}${g.refreshTotal > g.refreshLinks ? `, ${num(g.refreshTotal)} раз` : ''}` : '0')}${cell('—')}</tr>`,
+                        `<tr>${lbl('Монтажник обновил после просьбы · среднее время реакции')}${cell(g.refreshLinks ? `${num(g.refreshed)} из ${num(g.refreshLinks)}${g.refreshAvgHours !== null ? ' · ' + hrs(g.refreshAvgHours) : ''}` : '—')}${cell('—')}</tr>`
+                    ].join('');
+                    B.inv_timer = card(tHead
+                        + `<div style="overflow-x:auto; margin-top:10px;"><table style="width:100%; border-collapse:collapse;">
+                            <thead><tr style="border-bottom:2px solid var(--border);">
+                                <th style="text-align:left; padding:4px 0; font-size:11px; color:var(--text-sec); font-weight:600;"></th>
+                                <th style="text-align:right; padding:4px 8px; font-size:11px; color:var(--text-sec); font-weight:700; white-space:nowrap;">⏳ с таймером</th>
+                                <th style="text-align:right; padding:4px 8px; font-size:11px; color:var(--text-sec); font-weight:700; white-space:nowrap;">без таймера</th>
+                            </tr></thead><tbody>${rowsHtml}</tbody></table></div>`
+                        + `<div style="font-size:11.5px; color:var(--text-sec); margin-top:10px; line-height:1.55;">
+                            Время ответа — от первой отправки ссылки до нажатия клиентом любой кнопки. Зелёным — где таймер выиграл, красным — где проиграл.
+                            «Без таймера» включает и ссылки, отправленные до появления срока действия${tm.legacy ? ` (таких ${num(tm.legacy)})` : ''}: это и есть база для сравнения.
+                            Обновление после просьбы клиента считается по переотправке той же ссылки.
+                           </div>`
+                        + (tm.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">Список ссылок обрезан по потолку строк — числа неполные.</div>` : ''));
+                }
             }
 
             // 5 и 6: чек с площадью по месяцам и свои марки в сметах против поиска
@@ -22013,6 +22207,131 @@ const app = {
     DASH_POS_CAP: 3000,
     DASH_POS_DAYS: 400,
 
+    /**
+     * Ссылки клиентам для блока «Таймер счёта».
+     *
+     * Из shared_invoices берём только поля статуса и сроков — по одному
+     * значению из object_info, а не весь объект: состав и цены в этот блок не
+     * нужны, а весят они больше всего. Читается раз за сеанс.
+     */
+    ensureDashboardTimer: function () {
+        if (this._dashTimer) return true;
+        if (this._loadingDashTimer) return false;
+        if (typeof supabaseClient === 'undefined' || !supabaseClient) return false;
+        this._loadingDashTimer = true;
+        (async () => {
+            const out = { rows: [], error: null, capped: false };
+            try {
+                const since = new Date(Date.now() - this.DASH_EV_DAYS * 86400000).toISOString();
+                const res = await this.fetchAllRows('shared_invoices',
+                    'id, created_at, email:manager_info->>email, status:object_info->>status, ' +
+                    'sent_at:object_info->>sent_at, first_sent_at:object_info->>first_sent_at, ' +
+                    'valid_days:object_info->>valid_days, valid_until:object_info->>valid_until, ' +
+                    'status_updated_at:object_info->>status_updated_at, ' +
+                    'refresh_requested_at:object_info->>refresh_requested_at, refresh_count:object_info->>refresh_count, ' +
+                    'refreshed_at:object_info->>refreshed_at',
+                    {
+                        order: 'created_at', cap: this.DASH_EV_CAP, page: this.DASH_EV_PAGE,
+                        build: (qy) => qy.gte('created_at', since)
+                    });
+                out.rows = res.rows;
+                out.capped = res.capped;
+            } catch (e) {
+                out.error = (e && e.message) || String(e);
+            }
+            this._dashTimer = out;
+            this._dashTimerStats = null;
+            this._loadingDashTimer = false;
+            if (this._adminTab === 'dashboard') this.renderAdminMain();
+        })();
+        return false;
+    },
+
+    dashboardInvoiceTimer: function (region) {
+        const src = this._dashTimer, own = this._dashOwn;
+        if (!src || !own) return null;
+        const key = region || '*';
+        this._dashTimerStats = this._dashTimerStats || {};
+        if (this._dashTimerStats[key]) return this._dashTimerStats[key];
+        const regionOfEmail = {};
+        (own.users || []).forEach(u => { if (u.email) regionOfEmail[String(u.email).toLowerCase()] = u.region || ''; });
+        const out = this.buildInvoiceTimerStats(src.rows, region
+            ? (r => r.email && regionOfEmail[String(r.email).toLowerCase()] === region) : null);
+        out.error = src.error || null;
+        out.capped = !!src.capped;
+        this._dashTimerStats[key] = out;
+        return out;
+    },
+
+    /**
+     * Две группы ссылок: со сроком действия (valid_days > 0) и без него.
+     * У каждой — сколько отправлено, сколько получили ответ, среднее и медиана
+     * времени ответа. У группы с таймером ещё: ответили ли до конца срока,
+     * сколько просрочено молча, сколько раз клиент просил обновить и как
+     * быстро монтажник обновлял.
+     *
+     * Ответом считаем любую кнопку клиента — согласовал, вернул на доработку,
+     * запросил счёт. Просьба обновить счёт ответом НЕ считается: это не решение
+     * по смете, а сообщение «срок вышел, я ещё думаю».
+     */
+    buildInvoiceTimerStats: function (rows, keep) {
+        const HOUR = 3600000, now = Date.now();
+        const ANSWERED = { confirmed: 1, needs_revision: 1, invoice_requested: 1 };
+        const mk = () => ({ n: 0, answered: 0, confirmed: 0, hours: [], answeredInTime: 0, expiredSilent: 0,
+            refreshLinks: 0, refreshTotal: 0, refreshed: 0, refreshHours: [] });
+        const timer = mk(), none = mk();
+        let legacy = 0;
+        (rows || []).forEach(r => {
+            if (!r) return;
+            if (keep && !keep(r)) return;
+            const days = Number(r.valid_days);
+            const hasTimer = isFinite(days) && days > 0;
+            if (r.valid_days === null || r.valid_days === undefined) legacy++;
+            const g = hasTimer ? timer : none;
+            g.n++;
+            const sentT = new Date(r.first_sent_at || r.sent_at || r.created_at).getTime();
+            const st = String(r.status || 'sent');
+            if (ANSWERED[st]) {
+                g.answered++;
+                if (st === 'confirmed') g.confirmed++;
+                const ansT = new Date(r.status_updated_at || '').getTime();
+                if (isFinite(sentT) && isFinite(ansT) && ansT >= sentT) {
+                    g.hours.push((ansT - sentT) / HOUR);
+                    if (hasTimer) {
+                        const vu = new Date(r.valid_until || '').getTime();
+                        if (isFinite(vu) && ansT <= vu) g.answeredInTime++;
+                    }
+                }
+            } else if (hasTimer) {
+                const vu = new Date(r.valid_until || '').getTime();
+                if (st === 'refresh_requested' || (st === 'sent' && isFinite(vu) && vu < now)) g.expiredSilent++;
+            }
+            const rc = Number(r.refresh_count) || 0;
+            if (rc > 0) {
+                g.refreshLinks++;
+                g.refreshTotal += rc;
+                if (r.refreshed_at) {
+                    g.refreshed++;
+                    const a = new Date(r.refresh_requested_at || '').getTime(), b = new Date(r.refreshed_at).getTime();
+                    if (isFinite(a) && isFinite(b) && b >= a) g.refreshHours.push((b - a) / HOUR);
+                }
+            }
+        });
+        const avg = (arr) => arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null;
+        const median = (arr) => {
+            if (!arr.length) return null;
+            const a = arr.slice().sort((x, y) => x - y), m = Math.floor(a.length / 2);
+            return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+        };
+        [timer, none].forEach(g => {
+            g.avgHours = avg(g.hours);
+            g.medHours = median(g.hours);
+            g.refreshAvgHours = avg(g.refreshHours);
+            delete g.hours; delete g.refreshHours;
+        });
+        return { timer, none, legacy, error: null, capped: false };
+    },
+
     ensureDashboardPositions: function () {
         if (this._dashPos) return true;
         if (this._loadingDashPos) return false;
@@ -23461,6 +23780,7 @@ const app = {
                     const st = sharedStatusesAdmin[sharedInvoiceId];
                     if (st === 'confirmed') adminStatusBadge = `<span class="status-badge-cabinet status-cabinet-confirmed">✓ Одобрена</span>`;
                     else if (st === 'needs_revision') adminStatusBadge = `<span class="status-badge-cabinet status-cabinet-revision">✍ На доработке</span>`;
+                    else if (st === 'refresh_requested') adminStatusBadge = `<span class="status-badge-cabinet status-cabinet-refresh" title="Срок действия счёта вышел, клиент просит обновить">⏳ Просят обновить</span>`;
                     else adminStatusBadge = `<span class="status-badge-cabinet status-cabinet-sent">Отправлена</span>`;
                 }
 
@@ -30665,6 +30985,9 @@ const app = {
             address: document.getElementById('profile_company_address').value.trim(),
             bank: document.getElementById('profile_company_bank').value.trim()
         });
+        // Срок действия счёта по ссылке — там же, в настройках учётной записи
+        const validDaysEl = document.getElementById('profile_invoice_valid_days');
+        if (validDaysEl) this.setInvoiceValidDays(validDaysEl.value.trim());
         this.updateHeaderCompanyDetails();
 
         // Город в анкете только что заполнили или сменили — подставляем его в расчёт
@@ -33195,6 +33518,19 @@ const app = {
         if (cardHeatLoss) cardHeatLoss.style.display = heatLossReady ? 'flex' : 'none';
         if (cardScheme) cardScheme.style.display = schemeReady ? 'flex' : 'none';
 
+        // Таймер счёта — только у ссылки: у печати и Excel срока нет. Галочка и
+        // число дней — из кабинета монтажника; 0 там означает «без таймера», тогда
+        // галочка снята, а в поле стоят обычные 2 дня на случай, если её поставят.
+        const cardTimer = document.getElementById('card_opt_timer');
+        const chkTimer = document.getElementById('share_opt_timer');
+        const daysTimer = document.getElementById('share_opt_timer_days');
+        if (cardTimer) cardTimer.style.display = actionType === 'share' ? 'flex' : 'none';
+        if (actionType === 'share') {
+            const def = this.invoiceValidDaysDefault();
+            if (chkTimer) chkTimer.checked = def > 0;
+            if (daysTimer) daysTimer.value = String(def > 0 ? def : this.INVOICE_VALID_DAYS_DEFAULT);
+        }
+
         if (actionType === 'share') {
             if (titleEl) titleEl.innerText = "Создание ссылки для клиента";
             if (descEl) descEl.innerText = "Выберите, какие сметы будут доступны клиенту по ссылке. Клиент увидит только выбранные разделы в режиме чтения (без возможности редактирования).";
@@ -33289,6 +33625,21 @@ const app = {
             else cardScheme.classList.remove('selected');
         }
 
+        // Таймер счёта: подсветка карточки и склонение «день/дня/дней» под число.
+        // На кнопку не влияет — ссылка без таймера тоже ссылка.
+        const cardTimer = document.getElementById('card_opt_timer');
+        const chkTimer = document.getElementById('share_opt_timer');
+        const daysTimer = document.getElementById('share_opt_timer_days');
+        const wordTimer = document.getElementById('share_opt_timer_days_word');
+        if (cardTimer && chkTimer) {
+            if (chkTimer.checked) cardTimer.classList.add('selected');
+            else cardTimer.classList.remove('selected');
+        }
+        if (daysTimer && wordTimer) {
+            const n = Math.round(Number(daysTimer.value)) || 0;
+            wordTimer.textContent = this.plural(n, 'день', 'дня', 'дней');
+        }
+
         // Disable button if nothing is checked
         if (btn) {
             btn.disabled = (!showEq && !showWorks && !showHeatLoss && !showScheme);
@@ -33318,7 +33669,16 @@ const app = {
         this.closeShareOptionsModal();
 
         if (this.shareActionType === 'share') {
-            this.executeShareInvoice(showEq, showWorks);
+            // Срок действия на эту отправку: снятая галочка или пустое поле — без таймера
+            const chkTimer = document.getElementById('share_opt_timer');
+            const daysTimer = document.getElementById('share_opt_timer_days');
+            let validDays = 0;
+            if (chkTimer && chkTimer.checked && daysTimer) {
+                validDays = Math.round(Number(daysTimer.value)) || 0;
+                if (validDays < 0) validDays = 0;
+                if (validDays > this.INVOICE_VALID_DAYS_MAX) validDays = this.INVOICE_VALID_DAYS_MAX;
+            }
+            this.executeShareInvoice(showEq, showWorks, validDays);
         } else if (this.shareActionType === 'excel') {
             this.executeExcelDownload(showEq, showWorks, showHeatLoss);
         } else {
@@ -34573,10 +34933,14 @@ const app = {
         this.openShareOptionsModal('share');
     },
 
-    executeShareInvoice: async function (showEq, showWorks) {
+    executeShareInvoice: async function (showEq, showWorks, validDays) {
         // Продавцу работы в ссылку не идут ни при каком вызове (в том числе из
         // режима обучения, который зовёт эту функцию напрямую)
         if (this.isSellerOnly()) showWorks = false;
+        // Срок действия счёта. Обходные вызовы (режим обучения, переотправка из
+        // списка объектов) третьего аргумента не передают — берём настройку кабинета.
+        if (validDays === undefined || validDays === null) validDays = this.invoiceValidDaysDefault();
+        validDays = Math.max(0, Math.min(this.INVOICE_VALID_DAYS_MAX, Math.round(Number(validDays)) || 0));
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
@@ -34621,6 +34985,16 @@ const app = {
             eqDiscount: this.state.eqDiscount || 0,
             priceListKey: this.activeDistPriceKey()
         };
+
+        // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
+        // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
+        // «Обновить счёт». valid_days = 0 — таймера нет, valid_until пустой.
+        const sentAt = new Date();
+        object_info.sent_at = sentAt.toISOString();
+        object_info.valid_days = validDays;
+        object_info.valid_until = validDays > 0
+            ? new Date(sentAt.getTime() + validDays * 86400000).toISOString()
+            : null;
 
         let manager_info = {
             name: this.formatShortName(tgUser) || '',
@@ -34796,11 +35170,14 @@ const app = {
 
             GRM.trackAction('share', shareId);  // геймификация: +10 XP + значки ссылок (шаринг ссылки клиенту)
 
+            const validNote = object_info.valid_until
+                ? ` Счёт действителен до ${this.formatValidUntil(object_info.valid_until)}.`
+                : '';
             app.copyToClipboard(shareUrl).then(() => {
-                app.prompt("✅ Ссылка создана и скопирована! Отправьте её клиенту:", shareUrl);
+                app.prompt("✅ Ссылка создана и скопирована! Отправьте её клиенту." + validNote, shareUrl);
             }).catch(err => {
                 console.error('Ошибка копирования:', err);
-                app.prompt("✅ Ссылка создана! Скопируйте и отправьте клиенту:", shareUrl);
+                app.prompt("✅ Ссылка создана! Скопируйте и отправьте клиенту." + validNote, shareUrl);
             });
         } catch (err) {
             console.error('[shareInvoice] Ошибка генерации ссылки:', err);
@@ -35390,11 +35767,22 @@ const app = {
                 try {
                     const { data: existing } = await supabaseClient.from('shared_invoices').select('object_info').eq('id', job.shareId).maybeSingle();
                     if (existing && existing.object_info) {
+                        const ex = existing.object_info;
+                        // Клиент просил обновить просроченный счёт — эта запись и есть
+                        // ответ на просьбу: статус снова «отправлен», таймер идёт заново
+                        // (sent_at/valid_until уже новые в job.object_info). Отметки о
+                        // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
+                        // как таймер повлиял на ответы клиентов.
+                        const wasRefreshAsked = ex.status === 'refresh_requested';
                         objectInfo = {
                             ...job.object_info,
-                            status: existing.object_info.status || job.object_info.status,
-                            client_comment: existing.object_info.client_comment || null,
-                            status_updated_at: existing.object_info.status_updated_at || null
+                            status: wasRefreshAsked ? (job.object_info.status || 'sent') : (ex.status || job.object_info.status),
+                            client_comment: ex.client_comment || null,
+                            status_updated_at: wasRefreshAsked ? null : (ex.status_updated_at || null),
+                            refresh_requested_at: ex.refresh_requested_at || null,
+                            refresh_count: ex.refresh_count || 0,
+                            refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
+                            first_sent_at: ex.first_sent_at || ex.sent_at || job.object_info.sent_at
                         };
                     }
                 } catch (e) {
@@ -36868,6 +37256,7 @@ const app = {
             const statusLabels = {
                 'confirmed': { label: '🎉 Поздравляем! Смета одобрена заказчиком!', icon: '🎉' },
                 'needs_revision': { label: '⚠️ Смета отклонена (требует доработки)', icon: '⚠️' },
+                'refresh_requested': { label: '⏳ Срок счёта вышел — клиент просит обновить', icon: '⏳' },
                 'sent': { label: 'Отправлена клиенту', icon: '📤' }
             };
 

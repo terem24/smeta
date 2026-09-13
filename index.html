@@ -2765,6 +2765,23 @@
                 </div>
             </div>
 
+            <!-- Таймер счёта: только для ссылки клиенту (см. app.openShareOptionsModal).
+                 Срок по умолчанию берётся из кабинета монтажника («Реквизиты компании»),
+                 здесь его можно поменять на одну отправку или снять галочку совсем. -->
+            <div class="share-option-card" id="card_opt_timer" style="display: none;" onclick="app.toggleShareOption('timer')">
+                <input type="checkbox" id="share_opt_timer" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                <div style="display: flex; flex-direction: column; text-align: left; gap: 2px; flex: 1; min-width: 0;">
+                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        ⏳ Счёт действителен
+                        <input type="number" id="share_opt_timer_days" min="1" max="90" step="1" value="2"
+                            onclick="event.stopPropagation();" onkeydown="event.stopPropagation();" oninput="app.updateShareOptionsUI();"
+                            style="width: 52px; height: 26px; padding: 2px 6px; font-size: 13px; font-weight: 700; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-main); text-align: center;">
+                        <span id="share_opt_timer_days_word">дня</span>
+                    </span>
+                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">Клиент видит обратный отсчёт. Когда срок выйдет, цены скроются и останется одна кнопка — «Обновить счёт»: вы получите уведомление и отправите счёт заново по той же ссылке.</span>
+                </div>
+            </div>
+
             <button id="btn_confirm_share_options" class="auth-btn-base btn-email-submit" style="width: 100%; height: 44px; margin-top: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;" onclick="app.confirmShareOptions()">
                 <span id="btn_confirm_share_options_text">Создать ссылку</span>
             </button>
@@ -2996,6 +3013,16 @@
                         <textarea id="profile_company_bank" class="auth-input" style="height: 44px; resize: none; font-size: 11px; padding: 6px; font-family: inherit; max-width: 100%; margin-bottom: 8px;" placeholder="ИНН 7729646148..."></textarea>
 
                         <button type="button" class="lk-btn-sm" style="margin-top: 4px;" onclick="app.resetCompanyDetails()">Сбросить реквизиты по умолчанию</button>
+                    </div>
+
+                    <!-- Срок действия счёта по ссылке клиенту. Значение по умолчанию для окна
+                         «Создание ссылки для клиента»; 0 или пусто — таймер выключен. -->
+                    <div class="lk-card" style="margin-top: 10px;">
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">⏳ Счёт по ссылке действителен, дней</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="profile_invoice_valid_days" class="auth-input" min="0" max="90" step="1" placeholder="2" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center;">
+                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">По умолчанию 2 дня. Поставьте 0 или очистите поле — таймера не будет. Перед каждой отправкой срок можно поменять прямо в окне ссылки.</span>
+                        </div>
                     </div>
             </div>
 
