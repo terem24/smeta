@@ -56516,6 +56516,12 @@ const app = {
                 </div>
             </td></tr>`;
             let lastGroup = null;
+            // Дата обновления цены в подсказке «i» — продавцам, менеджерам и
+            // администрации: им отвечать клиенту, насколько цена свежая.
+            // Монтажнику не показываем. У позиции в смете price_date бывает не
+            // всегда (замены, аналоги) — тогда берём дату артикула из каталога.
+            const _showPriceDate = this.isSellerOnly() || this.hasAdminAccess();
+            const _priceDateIdx = _showPriceDate ? this.catalogPriceDateIndex() : null;
             bill.forEach((i, arrIndex) => {
                 let lookupId = i.originalId || i.id;
                 let isOpt = this.state.optItems[lookupId];
@@ -56588,7 +56594,20 @@ const app = {
                         `style="display:inline-block; cursor:pointer; background:var(--primary); color:#fff; font-weight:700; padding:5px 10px; border-radius:5px;">` +
                         `Поставить один котёл</span></div></div>`;
                 }
-                let finalTooltipContent = `${descText}${availStatusLine}${singleAltLine}`;
+                let priceDateLine = '';
+                if (_showPriceDate) {
+                    const _pd = i.price_date || _priceDateIdx[i.id] || (i.article && _priceDateIdx[i.article]) || '';
+                    const _d = _pd ? new Date(_pd) : null;
+                    if (_d && !isNaN(_d.getTime())) {
+                        const _days = Math.max(0, Math.floor((Date.now() - _d.getTime()) / 86400000));
+                        const _ago = _days === 0 ? 'сегодня' : `${_days} дн. назад`;
+                        const _old = _days > 31;
+                        priceDateLine = `<div style="margin-top: 6px; color: ${_old ? '#eab308' : '#cbd5e1'};">Цена обновлена: <b>${_d.toLocaleDateString('ru-RU')}</b> (${_ago})</div>`;
+                    } else {
+                        priceDateLine = `<div style="margin-top: 6px; color: #94a3b8;">Цена обновлена: дата неизвестна</div>`;
+                    }
+                }
+                let finalTooltipContent = `${descText}${availStatusLine}${priceDateLine}${singleAltLine}`;
 
                 let tipHtml = finalTooltipContent ? `
                     <div class="tooltip-wrapper">
