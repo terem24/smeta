@@ -6,11 +6,15 @@
  * номером расчёта, ни сохранённой сметы. Условие одно на оба места намеренно: иначе в
  * панели был бы список людей, из которых подсказку видит непонятно кто.
  *
- * ПОЧЕМУ НЕ ОКНО БЫСТРОГО СТАРТА. Оно показывается новичку трижды за жизнь браузера и
- * потом молчит навсегда. Кто закрыл его три раза не глядя и продолжает заходить, до сих
- * пор не получал больше ничего. Второе окно поверх экрана ему не нужно — он уже
- * закрывал такие. Поэтому карточка в углу: не мешает смотреть, закрывается одним
- * нажатием и ведёт в то же окно типовых объектов, где смета собирается за минуту.
+ * ЗАЧЕМ, ЕСЛИ ЕСТЬ ОКНО БЫСТРОГО СТАРТА. Оно показывается новичку трижды за жизнь
+ * браузера и потом молчит навсегда. Кто закрыл его три раза не глядя и продолжает
+ * заходить, до сих пор не получал больше ничего.
+ *
+ * ПОЧЕМУ ОКНО ПО ЦЕНТРУ, А НЕ КАРТОЧКА В УГЛУ. Первая версия была карточкой справа
+ * внизу, и на проверке владелец её просто не заметил: угол экрана у калькулятора
+ * занят кнопкой ИИ-заполнения, сметой и подвалом с кнопками, взгляд туда не идёт.
+ * Человеку, который неделю ходит и не начинает, тихая карточка не поможет — нужен
+ * один заметный вопрос. Раз в день и не больше пяти раз это не навязчиво.
  *
  * КОГДА. Не сразу при входе, а когда человек провёл на пустом калькуляторе полминуты и
  * так и не начал: зашёл посмотреть цену или прочитать сообщение — не трогаем. Не чаще
@@ -163,56 +167,76 @@ window.IdleHint = {
         const seller = app.isSellerOnly && app.isSellerOnly();
         const what = seller ? 'котёл, радиаторы и трубы' : 'оборудование и работы';
 
-        const bottom = 16 + ((typeof Tour !== 'undefined' && Tour.bottomBusy) ? Tour.bottomBusy() : 0);
-        const card = document.createElement('div');
-        card.id = 'idle_hint_card';
-        card.setAttribute('role', 'dialog');
-        card.setAttribute('aria-label', 'Смета за минуту');
-        card.style.cssText = `position:fixed; right:16px; bottom:${bottom}px; z-index:9000;
-            width:340px; max-width:calc(100vw - 32px); box-sizing:border-box;
-            background:var(--surface); color:var(--text-main); border:1px solid var(--border);
-            border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,0.18); padding:16px 16px 12px;
-            opacity:0; transform:translateY(12px); transition:opacity .25s, transform .25s;`;
-        card.innerHTML = `
-            <button type="button" onclick="IdleHint.close('later')" aria-label="Закрыть"
-                style="position:absolute; top:6px; right:8px; background:none; border:none; font-size:20px;
-                       line-height:1; color:var(--text-sec); cursor:pointer; padding:6px;">&times;</button>
-            <div style="font-size:15px; font-weight:700; margin:0 24px 6px 0;">🏠 Смета за минуту</div>
-            <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec); margin-bottom:12px;">
-                Возьмите готовый объект, похожий на ваш, — калькулятор сразу подберёт ${what}.
-                Площадь и регион поправите уже по готовой смете.
-            </div>
-            <button type="button" onclick="IdleHint.pick()"
-                style="width:100%; height:36px; border:none; border-radius:9px; background:var(--primary);
-                       color:#fff; font-size:13px; font-weight:700; cursor:pointer;">Выбрать типовой объект</button>
-            <button type="button" onclick="IdleHint.tour()"
-                style="width:100%; height:32px; margin-top:6px; border:1px solid var(--border); border-radius:9px;
-                       background:transparent; color:var(--text-main); font-size:12.5px; cursor:pointer;">Показать, куда нажимать</button>
-            <div style="text-align:center; margin-top:8px;">
-                <a href="#" onclick="IdleHint.close('off'); return false;"
-                   style="font-size:11px; color:var(--text-sec); text-decoration:none;">Больше не показывать</a>
+        // Разметка и классы — те же, что у окна быстрого старта (custom-modal-overlay /
+        // custom-modal): затемнение, размытие фона и вид окна уже настроены в style.css
+        // и одинаково ведут себя в тёмной теме и на телефоне. Размытие здесь сильнее
+        // обычного: окно должно заметно отделять вопрос от калькулятора под ним.
+        //
+        // display задан прямо в стиле: у класса display:none, и переключение его на
+        // block одновременно с .active убивает плавное появление.
+        const wrap = document.createElement('div');
+        wrap.id = 'idle_hint_card';
+        wrap.className = 'custom-modal-overlay';
+        wrap.style.cssText = 'display:block; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); background:rgba(0,0,0,0.55);';
+        wrap.setAttribute('role', 'dialog');
+        wrap.setAttribute('aria-modal', 'true');
+        wrap.setAttribute('aria-label', 'Смета за минуту');
+        wrap.onclick = (e) => { if (e.target === wrap) IdleHint.close('later'); };
+        wrap.innerHTML = `
+            <div class="custom-modal" style="max-width:460px; padding:34px 30px 24px; text-align:center;
+                 transition:transform .3s ease; transform:translate(-50%, -46%) scale(.97);">
+                <span class="auth-modal-close" onclick="IdleHint.close('later')"
+                    style="top:6px; right:8px; padding:10px 14px;">&times;</span>
+                <div style="font-size:46px; line-height:1; margin-bottom:12px;">🏠</div>
+                <div class="custom-modal-title" style="font-size:22px; margin-bottom:8px;">Смета за минуту</div>
+                <div class="custom-modal-text" style="font-size:14px; margin-bottom:22px;">
+                    Возьмите готовый объект, похожий на ваш, — калькулятор сразу подберёт ${what}.
+                    Площадь и регион поправите уже по готовой смете.
+                </div>
+                <button type="button" class="custom-modal-btn" onclick="IdleHint.pick()"
+                    style="height:46px; font-size:15px;">Выбрать типовой объект</button>
+                <button type="button" class="custom-modal-btn custom-modal-close" onclick="IdleHint.tour()"
+                    style="color:var(--text-main);">Показать, куда нажимать</button>
+                <div style="margin-top:14px;">
+                    <a href="#" onclick="IdleHint.close('off'); return false;"
+                       style="font-size:12px; color:var(--text-sec); text-decoration:none;">Больше не показывать</a>
+                </div>
             </div>`;
-        card.dataset.user = uRow.id;
-        document.body.appendChild(card);
+        wrap.dataset.user = uRow.id;
+        document.body.appendChild(wrap);
+
+        // Escape закрывает, как крестик
+        this._onKey = (e) => { if (e.key === 'Escape') IdleHint.close('later'); };
+        document.addEventListener('keydown', this._onKey);
+
         // Через таймер, а не кадр: в фоновой вкладке кадры не рисуются (см. showQuickStart)
-        setTimeout(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; }, 20);
+        setTimeout(() => {
+            wrap.classList.add('active');
+            const box = wrap.querySelector('.custom-modal');
+            if (box) box.style.transform = 'translate(-50%, -50%) scale(1)';
+        }, 20);
     },
 
     // how: 'later' — крестик, завтра можно снова; 'off' — не показывать никогда;
     // 'used' — человек пошёл по подсказке, дальше она не нужна.
     close: function (how) {
-        const card = document.getElementById('idle_hint_card');
-        if (!card) return;
-        const userId = card.dataset.user;
+        const wrap = document.getElementById('idle_hint_card');
+        if (!wrap) return;
+        const userId = wrap.dataset.user;
         if (userId && (how === 'off' || how === 'used')) {
             const rec = this.read(userId);
             rec.off = true;
             this.write(userId, rec);
         }
         if (window.SessionTrack && how === 'off') SessionTrack.screen('hint:idle_off');
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(12px)';
-        setTimeout(() => card.remove(), 250);
+        if (this._onKey) { document.removeEventListener('keydown', this._onKey); this._onKey = null; }
+        // Уходит по нажатию «Выбрать типовой объект» — сразу, без затухания: следом
+        // открывается окно быстрого старта, и два затемнения на миг наложились бы.
+        if (how === 'used') { wrap.remove(); return; }
+        wrap.classList.remove('active');
+        const box = wrap.querySelector('.custom-modal');
+        if (box) box.style.transform = 'translate(-50%, -46%) scale(.97)';
+        setTimeout(() => wrap.remove(), 300);
     },
 
     pick: function () {
