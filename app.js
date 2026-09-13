@@ -16577,6 +16577,7 @@ const app = {
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
         { id: 'equipment', icon: '🧰', label: 'Своё оборудование', hint: 'Добавленное, удалённое, замены' },
+        { id: 'successors', icon: '🔁', label: 'Замены позиций', hint: 'Снятые с поставки и чем заменить' },
         { id: 'recognition', icon: '🔍', label: 'Распознавание', hint: 'Архив смет и месячные лимиты' },
         { id: 'plans', icon: '📐', label: 'Планы этажей', hint: 'Подложки планов на сервере' },
         { id: 'projects', icon: '📁', label: 'Проекты', hint: 'Выпущенные комплекты листов' },
@@ -16593,7 +16594,9 @@ const app = {
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
     // платформы, и заводить его может только администратор.
-    ADMIN_ONLY_TABS: ['distributors'],
+    // «Замены позиций» — подтверждённая замена меняет позицию каталога у всех
+    // пользователей сразу, решать это наблюдателю или менеджеру нельзя.
+    ADMIN_ONLY_TABS: ['distributors', 'successors'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -16699,6 +16702,7 @@ const app = {
         { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
         { group: 'Уборка и настройки' },
         { name: 'Очистить планы этажей и архив распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Подтвердить замену снятой позиции каталога', hint: 'раздел «Замены позиций»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Словарь марок в аналитике', hint: 'кандидаты, написания, марки графика', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' }
     ],
 
@@ -17027,6 +17031,12 @@ const app = {
         if (this._adminTab === 'projects') {
             content.innerHTML = navHtml;
             this.renderAdminProjects();
+            return;
+        }
+
+        if (this._adminTab === 'successors') {
+            content.innerHTML = navHtml;
+            this.renderAdminSuccessors();
             return;
         }
 
@@ -24067,6 +24077,212 @@ const app = {
 
         h += `</tbody></table></div>`;
         wrap.innerHTML = h;
+    },
+
+    /**
+     * Вкладка «Замены позиций»: снятые с поставки позиции каталога и чем их
+     * заменить.
+     *
+     * Пары находит парсер цен (AutoPrice.py, find_successor): позиция на
+     * teremonline «Под заказ», а во вкладке «Похожие» сайт ставит преемника того
+     * же бренда, в наличии и с ценой в пределах ±30 %. Здесь админ решает.
+     * Подтверждённое раз в сутки переносит в catalog.js AutoSuccessors.py
+     * (workflow apply-successors.yml): у позиции меняются артикул, название,
+     * цена и наличие, а id остаётся прежним — на нём держатся подбор, старые
+     * сметы и ссылки клиентам. Схема таблицы и прав — в миграции
+     * 20260913_catalog_successors.sql.
+     *
+     * Всё, что пришло с сайта (названия, ссылки), выводится через esc: строки
+     * в таблицу пишет функция по публичному ключу, и чужой текст не должен
+     * исполняться в админке.
+     */
+    renderAdminSuccessors: function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+
+        const wrap = document.createElement('div');
+        wrap.id = 'admin-successors-body';
+        content.appendChild(wrap);
+
+        if (this.adminData.successors == null) {
+            wrap.innerHTML = `<div style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка замен…</div>`;
+            if (!this._loadingSuccessors) {
+                this._loadingSuccessors = true;
+                (async () => {
+                    try {
+                        const { data, error } = await supabaseClient.from('catalog_successors')
+                            .select('id, old_article, new_article, catalog_name, new_name, apply_name, brand, old_site_price, new_site_price, catalog_price, new_price, old_url, new_url, status, found_at, seen_at, decided_at, decided_by')
+                            .order('found_at', { ascending: false })
+                            .limit(500);
+                        if (error) throw error;
+                        this.adminData.successors = data || [];
+                        this._successorsError = null;
+                    } catch (e) {
+                        // Чаще всего таблицы просто нет: миграцию
+                        // 20260913_catalog_successors.sql ещё не выполняли
+                        console.warn('Could not load catalog successors:', e.message || e);
+                        this.adminData.successors = [];
+                        this._successorsError = e.message || String(e);
+                    }
+                    this._loadingSuccessors = false;
+                    if (this._adminTab === 'successors') this.renderAdminMain();
+                })();
+            }
+            return;
+        }
+
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => (n == null || n === '') ? '—' : (Math.round(Number(n) * 100) / 100).toLocaleString('ru-RU');
+        const siteLink = (url, text) => {
+            const u = String(url || '');
+            if (!/^\/product\/[^"'<>\s]+$/.test(u) && !/^https:\/\/(www\.)?teremonline\.ru\/product\/[^"'<>\s]+$/.test(u)) return esc(text);
+            const href = u.startsWith('http') ? u : 'https://www.teremonline.ru' + u;
+            return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);">${esc(text)}</a>`;
+        };
+        const when = iso => iso ? new Date(iso).toLocaleDateString('ru-RU') : '';
+
+        const rows = this.adminData.successors || [];
+        // Перенесена ли пара в каталог — видно по самому каталогу: позиция со
+        // старым id уже носит новый артикул. Отдельного статуса в базе нет,
+        // чтобы его не мог выставить никто, кроме факта в catalog.js.
+        // У цепочки («А → Б», потом «Б → В») позиция уже носит В, и первая пара
+        // тоже исполнена — показываем, чем её заменили дальше.
+        const catalogArticle = r => {
+            const it = this.findCatalogItemById(r.old_article);
+            return (it && it.article && it.article !== r.old_article) ? it.article : null;
+        };
+        const filter = this._successorsFilter || 'new';
+        const count = st => rows.filter(r => r.status === st).length;
+        const list = rows.filter(r => r.status === filter);
+
+        const chip = (id, label) => {
+            const on = filter === id;
+            return `<button class="admin-btn" style="background:${on ? 'var(--primary)' : 'var(--surface-light)'}; color:${on ? 'white' : 'var(--text-sec)'}; border:1px solid ${on ? 'var(--primary)' : 'var(--border)'};" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} · ${count(id)}</button>`;
+        };
+
+        let h = `
+            <div style="margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                    <h3 style="margin:0; color:var(--text-main);">🔁 Замены позиций</h3>
+                    <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
+                </div>
+                <p style="margin:0 0 14px; font-size:12.5px; color:var(--text-sec); line-height:1.55; max-width:900px;">
+                    Парсер цен находит позиции каталога, которые на сайте ТЕРЕМ стали «Под заказ», и товар, который сайт предлагает вместо них.
+                    Подтверждённая замена попадает в калькулятор в течение суток: у позиции меняются артикул, название, цена и наличие.
+                    Старые сметы и ссылки клиентам продолжают работать.
+                </p>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+                    ${chip('new', 'Новые')}${chip('approved', 'Подтверждённые')}${chip('rejected', 'Отклонённые')}
+                </div>`;
+
+        if (!list.length) {
+            const empty = this._successorsError
+                ? 'Список недоступен. Похоже, миграция supabase/migrations/20260913_catalog_successors.sql ещё не выполнена.'
+                : (filter === 'new'
+                    ? 'Новых замен нет. Список пополняет парсер цен: 10-го числа по STOUT и ROMMER, 20-го по остальным брендам.'
+                    : 'Здесь пока пусто.');
+            h += `<div style="padding:30px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">${empty}</div>`;
+        } else {
+            list.forEach(r => {
+                const id = Number(r.id);
+                const oldP = Number(r.catalog_price) || 0;
+                const newP = Number(r.new_price) || 0;
+                const pct = oldP ? Math.round((newP - oldP) / oldP * 100) : null;
+                const pctHtml = pct == null ? '' : `<span style="font-weight:700; color:${pct > 0 ? '#D97706' : '#10B981'};">${pct > 0 ? '+' : ''}${pct} %</span>`;
+                const nameValue = r.apply_name || r.catalog_name || '';
+
+                let actions;
+                if (r.status === 'new') {
+                    actions = `
+                        <button class="admin-btn" style="background:#10B981; color:white; border-color:#10B981;" onclick="app.adminSuccessorDecide(${id}, 'approved')">Подтвердить</button>
+                        <button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'rejected')">Отклонить</button>`;
+                } else if (r.status === 'approved' && catalogArticle(r) === r.new_article) {
+                    actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге</span>`;
+                } else if (r.status === 'approved' && catalogArticle(r)) {
+                    actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге, заменено дальше на ${esc(catalogArticle(r))}</span>`;
+                } else if (r.status === 'approved') {
+                    actions = `
+                        <span style="color:var(--text-sec); font-size:12.5px;">Ждёт переноса в каталог (раз в сутки)</span>
+                        <button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'new')">Отменить</button>`;
+                } else {
+                    actions = `<button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'new')">Вернуть в новые</button>`;
+                }
+
+                const decided = r.decided_at ? `<span>решено ${esc(when(r.decided_at))}${r.decided_by ? ' · ' + esc(r.decided_by) : ''}</span>` : '';
+
+                h += `
+                <div style="border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:var(--surface);">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px 24px;">
+                        <div>
+                            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); margin-bottom:4px;">Снято · ${esc(r.brand || '')}</div>
+                            <div style="font-weight:800; color:var(--text-main);">${siteLink(r.old_url, r.old_article)}</div>
+                            <div style="font-size:13px; color:var(--text-main); margin:2px 0;">${esc(r.catalog_name || '')}</div>
+                            <div style="font-size:12px; color:var(--text-sec);">в каталоге ${fmt(r.catalog_price)} ₽ · на сайте ${fmt(r.old_site_price)} ₽, под заказ</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); margin-bottom:4px;">Предлагается</div>
+                            <div style="font-weight:800; color:var(--text-main);">${siteLink(r.new_url, r.new_article)}</div>
+                            <div style="font-size:13px; color:var(--text-main); margin:2px 0;">${esc(r.new_name || '')}</div>
+                            <div style="font-size:12px; color:var(--text-sec);">станет ${fmt(r.new_price)} ₽ ${pctHtml} · на сайте ${fmt(r.new_site_price)} ₽, в наличии</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                        <label style="font-size:12px; color:var(--text-sec);" for="succ_name_${id}">Название в калькуляторе</label>
+                        <input id="succ_name_${id}" type="text" value="${esc(nameValue)}" ${r.status === 'new' ? '' : 'disabled'}
+                               style="flex:1 1 320px; min-width:0; padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:13px;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                        ${actions}
+                        <span style="margin-left:auto; font-size:11.5px; color:var(--text-sec); display:flex; gap:12px; flex-wrap:wrap;">
+                            <span>найдено ${esc(when(r.found_at))}</span>${decided}
+                        </span>
+                    </div>
+                </div>`;
+            });
+        }
+
+        h += `</div>`;
+        wrap.innerHTML = h;
+    },
+
+    /**
+     * Решение по замене: 'approved', 'rejected' или 'new' (вернуть на
+     * рассмотрение). При подтверждении сохраняется название из поля карточки —
+     * его и поставит в каталог AutoSuccessors.py.
+     */
+    adminSuccessorDecide: async function (id, status) {
+        if (['approved', 'rejected', 'new'].indexOf(status) < 0) return;
+        const row = (this.adminData.successors || []).find(r => Number(r.id) === Number(id));
+        if (!row) return;
+
+        const patch = { status: status };
+        if (status === 'new') {
+            patch.decided_at = null;
+            patch.decided_by = null;
+        } else {
+            patch.decided_at = new Date().toISOString();
+            patch.decided_by = (this._currentUserRow && this._currentUserRow.email)
+                || (this.state && this.state.user && this.state.user.email) || null;
+        }
+        if (status === 'approved') {
+            const inp = document.getElementById('succ_name_' + Number(id));
+            const name = inp ? inp.value.trim() : '';
+            if (!name) { this.alert('Укажите название, под которым позиция будет в калькуляторе.'); return; }
+            patch.apply_name = name.slice(0, 300);
+        }
+
+        try {
+            const { data, error } = await supabaseClient.from('catalog_successors')
+                .update(patch).eq('id', Number(id)).select('id');
+            if (error) throw error;
+            // Без прав на строку Supabase не ругается, а просто ничего не обновляет
+            if (!data || !data.length) throw new Error('нет прав на изменение');
+            Object.assign(row, patch);
+            this.renderAdminMain();
+        } catch (e) {
+            console.warn('[adminSuccessorDecide]', e.message || e);
+            this.alert('Не удалось сохранить решение. Попробуйте ещё раз или обновите список.');
+        }
     },
 
     /**
