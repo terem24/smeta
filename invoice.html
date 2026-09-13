@@ -923,8 +923,24 @@
         body.invoice-expired .sum-val {
             color: transparent !important;
             text-shadow: 0 0 9px rgba(60, 60, 60, 0.45);
-            user-select: none;
+            /* Safari на айфоне без приставки -webkit- выделять не запрещает:
+               долгим нажатием цену можно было скопировать. touch-callout гасит
+               меню «Скопировать» у долгого нажатия. */
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
             pointer-events: none;
+        }
+
+        /* Выделение можно протянуть от названия товара через соседнюю цену —
+           тогда цена попадала в буфер вместе с названием. Пока счёт просрочен,
+           таблицы и итоги не выделяются целиком. */
+        body.invoice-expired #equipment_container,
+        body.invoice-expired #works_container,
+        body.invoice-expired .summary-card {
+            -webkit-user-select: none !important;
+            user-select: none !important;
+            -webkit-touch-callout: none !important;
         }
 
         body.invoice-expired td.col-price::before,
@@ -2363,7 +2379,11 @@
            Запрос со «screen» намеренно: обычный (max-width: 768px) в этом файле
            действует и на печать — ширина A4 с полями укладывается в 768px. */
         @media screen and (max-width: 768px) {
+            /* absolute, а не fixed: при прокрутке закреплённая кнопка ложилась
+               на заголовок «Коммерческое предложение» и закрывала его конец.
+               Теперь она стоит в углу шапки и уезжает вместе со страницей. */
             .theme-fab {
+                position: absolute;
                 top: 8px;
                 right: 8px;
                 width: 36px;
