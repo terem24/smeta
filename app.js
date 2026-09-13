@@ -5451,6 +5451,9 @@ const app = {
         let calcMeta = null;
         if (fromRecognition) calcMeta = { source: 'recognition' };
         else if (this._quickStartPreset) calcMeta = { source: 'quick_start', preset: this._quickStartPreset };
+        // Пришёл к расчёту через подсказку «Смета за минуту» (idle_hint.js) — по этой
+        // метке видно, работает ли подсказка, а не только сколько раз она висела.
+        if (this._idleHintUsed) calcMeta = Object.assign(calcMeta || {}, { via: 'idle_hint' });
         this.logInvoiceEvent('calculated', calcMeta);
     },
 
@@ -15450,6 +15453,10 @@ const app = {
         'sheets': 'листы проекта',
         'plans': 'планы этажей',
         'share': 'отправка клиенту',
+        'hint:idle': 'видел подсказку «смета за минуту»',
+        'hint:idle_pick': 'из подсказки — к типовым объектам',
+        'hint:idle_tour': 'из подсказки — в обучение',
+        'hint:idle_off': 'отключил подсказку',
         'lk:requisites': 'мои данные',
         'lk:company': 'реквизиты компании',
         'lk:manager': 'менеджер',
@@ -30661,7 +30668,8 @@ const app = {
             };
             Object.keys(upsertObj).forEach(k => { if (upsertObj[k] === undefined) delete upsertObj[k]; });
 
-            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, registered_at';
+            // sess_visits — для подсказки «Смета за минуту» (idle_hint.js)
+            const adminSelectCols = 'id, account_type, demo_ends_at, username, phone, city, distributor_id, last_name, first_name, middle_name, birth_date, region, activity_types, is_blocked, frozen_at, registered_at, sess_visits';
 
             let { data: upsertResult, error: upsertError } = await supabaseClient
                 .from('users')
@@ -30788,6 +30796,9 @@ const app = {
                 // сохранены, — нет. Считаем их только пока человек не решил сам:
                 // это один запрос на браузер, и только у тех, кто ещё не выбирал.
                 this.decideNewcomerDefaults(uRow.id);
+                // Заходит не первый раз, а посчитать так ничего и не начал — через
+                // полминуты на пустом калькуляторе предложим типовой объект.
+                if (window.IdleHint) IdleHint.consider(uRow);
 
                 // Промокод, введённый при регистрации, применяем один раз — при первом
                 // входе, когда запись в users уже создана и ещё нет привязки к поставщику
