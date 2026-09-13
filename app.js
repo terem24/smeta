@@ -42,6 +42,15 @@ function supabaseProxyFetch(input, init) {
     return fetch(input, init);
 }
 
+// Ссылка из письма «Сброс пароля» открывает сайт с #…&type=recovery в адресе.
+// Метку снимаем ДО создания клиента: Supabase разбирает адрес прямо в конструкторе
+// и стирает его, а событие PASSWORD_RECOVERY выстреливает раньше, чем app.init
+// успевает на него подписаться. Без этой метки ссылка молча впускала человека в
+// аккаунт, а окна с новым паролем не было — и пароль он так и не узнавал.
+const HC_PASSWORD_RECOVERY = /(^|[#&?])type=recovery(&|$)/.test(
+    (window.location.hash || '').replace(/^#/, '') + '&' + (window.location.search || '').replace(/^\?/, '')
+);
+
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
     global: { fetch: supabaseProxyFetch }
 });
@@ -9785,6 +9794,11 @@ const app = {
             else current = 'Email';
         }
 
+        // Сменить пароль можно при любом способе входа: у аккаунта через Яндекс ID
+        // это добавляет вход по e-mail. Без адреса (старый Telegram) пароль не к чему.
+        const pwdBtn = email
+            ? `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:var(--bg-sec, #f1f5f9); color:var(--text-main); border:1px solid var(--border); border-radius:8px;" onclick="app.showSetPasswordModal('change')">Сменить пароль</button>`
+            : '';
         const linkBtn = this.isYandexLinked()
             ? ''
             : `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:#FC3F1D; color:#fff; border:none; border-radius:8px;" onclick="app.loginYandex(true)">Подключить Яндекс ID</button>`;
@@ -9795,9 +9809,98 @@ const app = {
                     <span class="lk-card-label">Вход в аккаунт</span>
                     <span style="margin-left:8px;"><b>${current}</b>${email ? ` · ${email}` : ''}</span>
                 </div>
-                ${linkBtn}
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    ${pwdBtn}
+                    ${linkBtn}
+                </div>
             </div>
         `;
+    },
+
+    // Новый пароль — по ссылке из письма (mode 'recovery') или кнопкой в кабинете
+    // ('change'). Показать человеку его текущий пароль нельзя: Supabase хранит
+    // только необратимый отпечаток, а копия на Beget снимается лишь при входе
+    // после 07.09.2026 и отдаётся одному админу. Поэтому «не помню пароль»
+    // решается тем, что его можно задать заново, не выходя из аккаунта.
+    showSetPasswordModal: function (mode) {
+        if (document.getElementById('set_password_card')) return;
+        const isRecovery = mode === 'recovery';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        const close = () => {
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+        };
+
+        const card = document.createElement('div');
+        card.className = 'calc-dialog-card';
+        card.id = 'set_password_card';
+        card.style.maxWidth = '420px';
+
+        const title = document.createElement('h3');
+        title.className = 'calc-dialog-title';
+        title.innerText = isRecovery ? 'Задайте новый пароль' : 'Сменить пароль';
+        card.appendChild(title);
+
+        const msg = document.createElement('div');
+        msg.className = 'calc-dialog-message';
+        msg.style.textAlign = 'left';
+        msg.innerText = isRecovery
+            ? 'Вы перешли по ссылке для сброса пароля. Придумайте новый — дальше входите с ним. Аккаунт и сметы остаются те же.'
+            : 'Новый пароль заменит старый. Аккаунт и сметы остаются те же.';
+        card.appendChild(msg);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'auth-input';
+        input.placeholder = 'Новый пароль, минимум 6 символов';
+        input.autocomplete = 'new-password';
+        input.style.marginTop = '12px';
+        input.oninput = () => this.checkPasswordLayout(input);
+        card.appendChild(input);
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'calc-dialog-btn calc-dialog-btn-confirm';
+        saveBtn.style.width = '100%';
+        saveBtn.innerText = 'Сохранить пароль';
+        saveBtn.onclick = async () => {
+            const value = input.value.trim();
+            if (value.length < 6) {
+                app.alert('Пароль должен быть не короче 6 символов.');
+                return;
+            }
+            saveBtn.disabled = true;
+            saveBtn.innerText = 'Сохраняем...';
+            try {
+                const { error } = await supabaseClient.auth.updateUser({ password: value });
+                if (error) throw error;
+                app.rememberPasswordForAdmin(value, 'change', null);
+                close();
+                await app.alert('Пароль сохранён. Входите с ним по e-mail.', 'Готово');
+                this.renderProfileLoginMethod();
+            } catch (err) {
+                console.error('Не удалось задать пароль:', err);
+                app.alert('Не удалось сохранить пароль: ' + getFriendlyErrorMessage(err));
+                saveBtn.disabled = false;
+                saveBtn.innerText = 'Сохранить пароль';
+            }
+        };
+        card.appendChild(saveBtn);
+
+        const later = document.createElement('div');
+        later.style.cssText = 'text-align:center; margin-top:14px;';
+        const laterLink = document.createElement('a');
+        laterLink.href = '#';
+        laterLink.style.cssText = 'color: var(--text-sec); text-decoration: none; font-size: 13px;';
+        laterLink.innerText = isRecovery ? 'Не сейчас' : 'Отмена';
+        laterLink.onclick = (e) => { e.preventDefault(); close(); };
+        later.appendChild(laterLink);
+        card.appendChild(later);
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        setTimeout(() => { overlay.classList.add('active'); input.focus(); }, 10);
     },
 
     // Шапка колонки разделов: аватар, имя и тариф. Данные те же, что в шапке сайта
@@ -30304,6 +30407,22 @@ const app = {
             let utm = localStorage.getItem('stout_utm') || '';
 
             this.state.tgUser = this.state.tgUser || {};
+            // Анкета в памяти браузера принадлежит тому, кто входил здесь последним.
+            // Если сессия пришла от другого человека без «Выйти» — по ссылке сброса
+            // пароля из письма или вторым аккаунтом в той же вкладке, — чужие ФИО,
+            // телефон и дата рождения ушли бы в upsert ниже и перезаписали строку
+            // вошедшего. Так 13.09.2026 данные владельца оказались в демо-аккаунте.
+            const prevUser = this.state.tgUser;
+            const prevIsOther = prevUser.authUserId
+                ? prevUser.authUserId !== authUserId
+                : !!(prevUser.email && email && prevUser.email.toLowerCase() !== email.toLowerCase());
+            if (prevIsOther) {
+                this.state.tgUser = {};
+                this._currentUserRow = null;
+                this._cloudEstimates = null;
+                this._profileDbLoaded = false;
+                this.clearInstallerSettingsOnLogout();
+            }
             const existingCity = this.state.tgUser.city || regCity || localStorage.getItem('user_city') || '';
             const existingPhone = this.state.tgUser.phone || phone || '';
 
@@ -39242,6 +39361,13 @@ const app = {
 
         // Подписка на изменения авторизации Supabase.
         supabaseClient.auth.onAuthStateChange((event, session) => {
+            // Приходит, только если подписка успела раньше разбора адреса; обычно
+            // срабатывает метка HC_PASSWORD_RECOVERY в getSession ниже.
+            if (event === 'PASSWORD_RECOVERY' && session) {
+                this.handleAuthSession(session);
+                this.showSetPasswordModal('recovery');
+                return;
+            }
             if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
                 let isGoogleCallback = event === 'SIGNED_IN' && window.location.hash.includes('access_token');
                 if (isGoogleCallback) {
@@ -39272,6 +39398,7 @@ const app = {
         supabaseClient.auth.getSession().then(({ data: { session } }) => {
             if (session) {
                 this.handleAuthSession(session);
+                if (HC_PASSWORD_RECOVERY) this.showSetPasswordModal('recovery');
             } else if (this.state.tgUser) {
                 // Вход помнит localStorage, а сессии нет: либо её пора обновить,
                 // либо она закончилась совсем. Разбираемся, а не делаем вид, что всё в порядке.
