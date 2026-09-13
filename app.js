@@ -1030,7 +1030,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin' },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin' },
 
     lastSavedStateString: "",
 
@@ -27036,7 +27036,7 @@ const app = {
             // «Fugas»/«фугас» — прежнее название комплекта STOUT (снят с производства);
             // «3-х ход. клапана» — нынешний комплект BAXI. Ищем оба, иначе слой пропадёт
             // и на старых сметах, и на новых.
-            if ((s.tankLoadScheme || 'valve') === 'valve' && (hasItem("fugas") || hasItem("фугас") || hasItem("3-х ход. клапана"))) {
+            if (this.tankLoadSchemeEff() === 'valve' && (hasItem("fugas") || hasItem("фугас") || hasItem("3-х ход. клапана"))) {
                 if (hasGasBoiler) layers.push('fugas_gas.png');
                 if (hasElBoiler && !hasItem("POLIS")) layers.push('fugas_el.png');
             }
@@ -34930,7 +34930,7 @@ const app = {
         const tankDhw = spec.find(i => /расширительн\S*\s+бак/i.test(nameOf(i)) && /гвс/i.test(nameOf(i)));
 
         const power = Math.max(1, Math.round(this.getHouseHeatLoss() || 0));
-        const loadScheme = (s.tankLoadScheme || 'valve');
+        const loadScheme = this.tankLoadSchemeEff();
 
         // Насосные группы — по позициям сметы, как котлы выше. Раньше конфигурация
         // несла только флаги rad/tp, и схема рисовала ровно один радиаторный контур
@@ -37065,7 +37065,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
             accountType: currentAccType,
@@ -41212,7 +41212,7 @@ const app = {
             ];
             // Цену в шапке модалки берут у активного варианта ДО построчной простановки
             // isActive — без этой пометки там оказалась бы цена артикула из строки сметы.
-            const _curTankLoad = ((this.state.tankLoadScheme || 'valve') === 'pump') ? 'tankpump' : 'fugas';
+            const _curTankLoad = (this.tankLoadSchemeEff() === 'pump') ? 'tankpump' : 'fugas';
             customAlts.forEach(a => { a.isActive = (a.id === _curTankLoad); });
         }
         else if (item.originalId === 'SFA-0025-001650_bottom') {
@@ -44673,6 +44673,9 @@ const app = {
             // Схема загрузки бойлера живёт не в swaps, а в tankLoadScheme — том же поле,
             // что и переключатель в панели настроек.
             this.state.tankLoadScheme = (chosenId === 'tankpump') ? 'pump' : 'valve';
+            // Насосная группа бойлера садится на коллектор — без гидрострелки его
+            // нет, и выбор молча не сработал бы. Явный выбор группы сильнее.
+            if (chosenId === 'tankpump' && this.state.boilerScheme === 'direct') this.state.boilerScheme = 'auto';
             // Якорей два, и лежат они в разных разделах под разными originalId (клапан — в
             // обвязке котла, насосная группа — в гидравлике). Отметку о ручной правке снимаем
             // с обоих: после переключения одна из строк исчезает из сметы, и значок «Изменён»
@@ -50540,11 +50543,29 @@ const app = {
             _bdtTab('boiler_dt_20', _bdt === 20);
             _bdtTab('boiler_dt_10', _bdt === 10);
             const _bdtNote = document.getElementById('lbl_boiler_dt_note');
+            const _bdtLocked = this.boilerSchemeMode() === 'direct' && hasRad;
             if (_bdtNote) {
-                _bdtNote.textContent = (_bdt === 10)
+                _bdtNote.textContent = _bdtLocked
+                    ? `Без гидрострелки перепад котла равен режиму радиаторов — ${_bdt} K. Меняется в «Режиме системы».`
+                    : (_bdt === 10)
                     ? 'Перепад 10 K. Расход через котловой контур вдвое выше, чем в паспортном режиме, — обвязка считается по нему.'
                     : 'Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.';
             }
+        }
+
+        // Схема котельной — там, где есть что подключать к котлу. В квартире
+        // котельной нет, без радиаторов и тёплого пола выбирать нечего.
+        {
+            const _bsBlock = document.getElementById('blk_boiler_scheme');
+            const _bsOn = (this.state.objectType !== 'flat') && (hasRad || hasTp) &&
+                (this.state.fuels || []).length > 0;
+            if (_bsBlock) _bsBlock.style.display = _bsOn ? 'block' : 'none';
+            const _bs = this.boilerSchemeMode();
+            ['auto', 'direct', 'hydro'].forEach(m => {
+                const e = document.getElementById('boiler_scheme_' + m);
+                if (e) e.className = (_bs === m) ? 'tab active' : 'tab';
+            });
+            this.syncBoilerSchemeNote();
         }
         if (hasTp) {
             // Перепад контура — рядом с шагом укладки: обе настройки про то, как
@@ -50980,7 +51001,7 @@ const app = {
         }
         if (document.getElementById('chk_hw')) document.getElementById('chk_hw').checked = this.state.hotWater;
         if (document.getElementById('chk_recirc')) document.getElementById('chk_recirc').checked = this.state.recirc;
-        if (document.getElementById('chk_tank_pump')) document.getElementById('chk_tank_pump').checked = (this.state.tankLoadScheme === 'pump');
+        if (document.getElementById('chk_tank_pump')) document.getElementById('chk_tank_pump').checked = (this.tankLoadSchemeEff() === 'pump');
         if (document.getElementById('chk_water_input')) document.getElementById('chk_water_input').checked = this.state.waterInput;
         if (document.getElementById('blk_water_input_opts')) document.getElementById('blk_water_input_opts').style.display = this.state.waterInput ? 'flex' : 'none';
         if (document.getElementById('val_outdoor_faucet')) document.getElementById('val_outdoor_faucet').innerText = parseInt(this.state.outdoorFaucet) || 0;
@@ -52437,6 +52458,8 @@ const app = {
             return;
         }
         this.state.tankLoadScheme = chk ? 'pump' : 'valve';
+        // Группа бойлера живёт на коллекторе — см. тот же случай в таблице замены
+        if (chk && this.state.boilerScheme === 'direct') this.state.boilerScheme = 'auto';
         this.syncUI();
         this.render();
         this.saveState();
@@ -53340,7 +53363,75 @@ const app = {
     // в котором радиаторы отдают паспортную мощность, но расход через контур
     // вдвое выше, и диаметр обязан это увидеть.
     boilerDT: function () {
+        // Без гидрострелки котёл и радиаторы — одно кольцо: через теплообменник
+        // идёт тот же расход, что через приборы, и перепад у них общий. Свой
+        // перепад котловому контуру даёт только гидравлическое разделение, поэтому
+        // в режиме «Без гидрострелки» обвязка считается по режиму радиаторов.
+        if (this.boilerSchemeMode() === 'direct' && (this.state.systems || []).includes('rad'))
+            return this.radDT();
         return (this.state.boilerDT === 10) ? 10 : 20;
+    },
+
+    /**
+     * Схема котельной, выбранная монтажником: 'auto' | 'direct' | 'hydro'.
+     *
+     * 'auto'   — как было всегда: гидрострелку и насосные группы калькулятор
+     *            ставит сам (площадь больше 150 м², второй этаж, мощность выше
+     *            20 кВт, группа тёплого пола или бойлера).
+     * 'direct' — без гидрострелки. Радиаторы питает насос котла, тёплый пол —
+     *            свой узел подмеса, бойлер — трёхходовой клапан котла. Так собраны
+     *            и «котёл и пять радиаторов», и котельная с лучевыми коллекторами
+     *            прямо на котле.
+     * 'hydro'  — с гидрострелкой и насосными группами даже там, где авто
+     *            обошёлся бы без них.
+     *
+     * Условия схемы без гидрострелки — практика проектирования, а не пункт СП,
+     * и в подсказках так и сказано: ссылка на норму, где этого нет, хуже её
+     * отсутствия (см. «Нормативная база расчётов» в CLAUDE.md).
+     */
+    boilerSchemeMode: function () {
+        const v = this.state.boilerScheme;
+        return (v === 'direct' || v === 'hydro') ? v : 'auto';
+    },
+
+    /**
+     * Схема загрузки бойлера с учётом схемы котельной. Насосная группа бойлера
+     * висит на коллекторе котельной, а без гидрострелки коллектора нет — бойлер
+     * тогда греется трёхходовым клапаном. Выбор монтажника в state не трогаем:
+     * вернёт схему «Авто» — вернётся и его насосная группа.
+     */
+    tankLoadSchemeEff: function () {
+        if (this.boilerSchemeMode() === 'direct') return 'valve';
+        return (this.state.tankLoadScheme === 'pump') ? 'pump' : 'valve';
+    },
+
+    /**
+     * Строка под переключателем схемы котельной. В «Авто» говорит, что
+     * калькулятор выбрал: по ней видно, нужен ли переключатель вообще. Зовётся
+     * и из syncUI, и из render — решение о гидрострелке известно только после
+     * расчёта, а syncUI идёт до него.
+     */
+    syncBoilerSchemeNote: function () {
+        const el = document.getElementById('lbl_boiler_scheme_note');
+        if (!el) return;
+        const bs = this.boilerSchemeMode(), had = this.needCollector;
+        el.textContent = (bs === 'direct')
+            ? 'Радиаторы от насоса котла, тёплый пол — через узел подмеса, бойлер — через трёхходовой клапан. Оговорки — в шапке раздела «2. Обвязка котельной».'
+            : (bs === 'hydro')
+            ? 'Гидрострелка и насосная группа на каждый контур, даже если хватило бы насоса котла.'
+            : (had === true)
+            ? 'Сейчас калькулятор поставил гидрострелку и насосные группы.'
+            : (had === false)
+            ? 'Сейчас гидрострелка не нужна: систему тянет насос котла.'
+            : 'Гидрострелку и насосные группы калькулятор ставит сам.';
+    },
+
+    setBoilerScheme: function (mode, event) {
+        if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
+        this.state.boilerScheme = (mode === 'direct' || mode === 'hydro') ? mode : 'auto';
+        this.syncUI();
+        this.render();
+        this.saveState();
     },
 
     // Расход котлового контура, м³/ч. G = Q / (1,163 × Δt) — та же формула, что в
@@ -57796,7 +57887,9 @@ const app = {
         // ни датчика бойлера. ГВС остаётся на основном газовом котле, POLIS держит только
         // отопление. Поэтому узел загрузки ему не ставим.
         let hasElSel = selBoilers.some(b => b.type !== 'gas' && !b.noPump) && !rigDropped('el');
-        let tankNeedsPumpGroup = !!this.state.hotWater && !rigDropped('dhw') && (this.state.tankLoadScheme || 'valve') === 'pump';
+        // tankLoadSchemeEff, а не state: при схеме котельной «Без гидрострелки»
+        // коллектора, на котором висела бы насосная группа бойлера, нет.
+        let tankNeedsPumpGroup = !!this.state.hotWater && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';
         if (!tankNeedsPumpGroup) {
             if (hasGasSel) addTankLoadingKit(gasBoilerGrp(0), selBoilers.find(b => b && b.type === 'gas'));
             if (hasElSel) addTankLoadingKit(elBoilerGrp(0));
@@ -58136,6 +58229,23 @@ const app = {
         // Эко-схема (локальные узлы) ставится, если нет радиаторов и коллекторов ТП не больше 2-х
         let useEco = (!hasRad && hasTp && estMans <= 2);
 
+        // Схема котельной, выбранная монтажником (boilerSchemeMode). «Без
+        // гидрострелки» собирается, только если тёплый пол проходит через один
+        // узел подмеса: групп тёплого пола на коллекторе у этой схемы нет. Не
+        // проходит — считаем как «Авто» и объясняем почему в шапке раздела 2:
+        // смета, которую нельзя смонтировать, хуже сметы с гидрострелкой.
+        const _bScheme = this.boilerSchemeMode();
+        let _schemeBlockedUfh = false;
+        if (_bScheme === 'direct' && hasTp && tpArea > 0) {
+            if (this.isUfhMixTypeCompatible('std', tpArea, this.state.brandMode, tpAreaPerMan)) {
+                this.state.ufhMixType = 'std';
+            } else {
+                _schemeBlockedUfh = true;
+            }
+        }
+        const _forceDirect = (_bScheme === 'direct') && !_schemeBlockedUfh;
+        const _forceHydro = (_bScheme === 'hydro');
+
         // Логика расчета насосных групп
         let rQ = 0, tQ = 0;
         if (hasTp && tpArea > 0) {
@@ -58147,10 +58257,11 @@ const app = {
             }
         }
 
-        if (hasRad) {
+        if (hasRad && !_forceDirect) {
             // Встроенного насоса настенного котла хватает на радиаторы мощностью до 20 кВт (площадь до 150 м2)
             // Если требуется коллектор (из-за других насосных групп, т.е. tQ > 0), то на радиаторы также ставится группа.
-            if (this.state.area > 150 || this.state.floors === 2 || pwr > 20 || tQ > 0) {
+            // Схема «С гидрострелкой» ставит группу и там, где хватило бы насоса котла.
+            if (_forceHydro || this.state.area > 150 || this.state.floors === 2 || pwr > 20 || tQ > 0) {
                 // #7: на двухэтажном доме группа ставится на КАЖДЫЙ ЭТАЖ С РАДИАТОРАМИ, а не просто
                 // «две, раз дом двухэтажный». В подробном режиме мы точно знаем, где радиаторы: если
                 // они, например, только на 2-м этаже (1-й — чистый тёплый пол), нужна одна группа.
@@ -58169,6 +58280,9 @@ const app = {
         // Коллектор нужен, если есть хотя бы одна насосная группа — включая насосную группу
         // загрузки бойлера (tankNeedsPumpGroup), она тоже висит на коллекторе котельной.
         let needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup;
+        // «С гидрострелкой» при одном тёплом поле: коллектор нужен ради его группы,
+        // а саму группу вместо узла подмеса поставит переключение ниже.
+        if (_forceHydro && hasTp && tpArea > 0) needCollector = true;
 
         // Если коллектор нужен из-за радиаторов, но ТП выбран локальный узел подмеса (std) —
         // автоматически переключаем на централизованный узел в коллекторе (dn20/dn25).
@@ -58187,6 +58301,9 @@ const app = {
                 }
             }
         }
+        // Коллектор без единой группы — пустая железка: такое бывает, только если
+        // «С гидрострелкой» попросили, а группу тёплого пола подобрать не из чего.
+        if (needCollector && (rQ + tQ) < 1 && !tankNeedsPumpGroup) needCollector = false;
 
         // Балансировка: перепад, расход каждой петли и хватает ли напора самому
         // тяжёлому коллектору. Отсюда же берётся насос для строки сметы и таблица
@@ -58210,7 +58327,10 @@ const app = {
             const _order = ['std', _servo ? 'dn20_servo' : 'dn20', _servo ? 'dn25_servo' : 'dn25']
                 .concat(_brand === 'rommer' ? [] : ['dn32_servo']);   // DN32 у ROMMER нет
             const _at = _order.indexOf(_curType);
-            const _cands = (_at < 0) ? [_curType] : _order.slice(_at).filter(t =>
+            // Без гидрострелки узел подмеса поднимать некуда: следующий по Kvs —
+            // уже группа на коллекторе, а коллектора в этой схеме нет. Не хватит
+            // напора — скажет плашка тёплого пола, схему молча не меняем.
+            const _cands = (_forceDirect || _at < 0) ? [_curType] : _order.slice(_at).filter(t =>
                 t === _curType || this.isUfhMixTypeCompatible(t, tpArea, _brand, tpAreaPerMan));
             // Два круга: сначала весь ряд узлов на рабочих перепадах (5 и 7 К), и
             // только если не прошёл ни один — тот же ряд с крайними 10 К. Иначе
@@ -58284,6 +58404,7 @@ const app = {
         this.radMeters = radMeters;
         this.boilersVol = boilersVol;
         this.needCollector = needCollector;
+        this.syncBoilerSchemeNote();
         this.vSys = vSys;
         let reqExp = vSys * 0.12; let bltin = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { bltin += (b.exp !== undefined ? b.exp : 0); }); }
         let def = reqExp - bltin; if (def > 0) {
@@ -59925,6 +60046,48 @@ const app = {
                 app.chimneyWarns);
             hydroWarnHtml = hydroWarnHtml ? (hydroWarnHtml + _chBlock) : _chBlock;
         }
+
+        // Схема котельной, выбранная вручную (boilerSchemeMode): что собрано и
+        // какие оговорки. В «Авто» молчим — там всё решает калькулятор, и
+        // рассказывать о каждом решении значит завалить шапку раздела.
+        {
+            const _p = t => `<div class="tip-p">${t}</div>`;
+            let _sb = '';
+            if (_bScheme === 'direct' && _schemeBlockedUfh) {
+                const _lim = (this.state.brandMode === 'rommer') ? 100 : 120;
+                _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
+                    `Узел подмеса тянет тёплый пол до ${_lim} м², в расчёте ${Math.round(tpArea)} м² — котельная собрана как в режиме «Авто».`,
+                    _p('В схеме без гидрострелки тёплый пол питается от одного узла подмеса со своим насосом. ' +
+                        `Узел рассчитан на площадь до ${_lim} м²; больше — нужны группы на коллекторе, а коллектору нужна гидрострелка.`) +
+                    _p('<b>Что делать:</b> оставить схему как есть или уменьшить площадь тёплого пола.'));
+            } else if (_forceDirect) {
+                const _parts = [];
+                if (hasRad) _parts.push('радиаторы питает насос котла');
+                if (hasTp && tpArea > 0) _parts.push('тёплый пол — свой узел подмеса');
+                if (this.state.hotWater) _parts.push('бойлер — трёхходовой клапан котла');
+                const _lostTankPump = !!this.state.hotWater && this.state.tankLoadScheme === 'pump';
+                const _multi = selBoilers.length > 1;
+                let det = _p('Схема выбрана вручную. Котёл и потребители — одно кольцо: насос котла продавливает ' +
+                    'всю систему, поэтому его напор проверяет гидравлический расчёт радиаторов.') +
+                    _p('Такая котельная работает, когда котёл один, у потребителей не больше одного своего насоса ' +
+                        '(узел подмеса тёплого пола) и его расход меньше расхода котлового насоса. ' +
+                        'Это практика проектирования, а не требование норм.');
+                if (hasRad) det += _p(`Перепад котлового контура принят равным режиму радиаторов — ${this.radDT()} K: ` +
+                    'без разделения через теплообменник идёт тот же расход, что через приборы.');
+                if (_lostTankPump) det += _p('Насосную группу бойлера подключать некуда — её место на коллекторе котельной. ' +
+                    'В смете трёхходовой клапан; вернёте схему «Авто» — вернётся и группа.');
+                if (_multi) det += _p(`Котлов ${selBoilers.length}: без гидрострелки они работают поочерёдно, ` +
+                    'на выходе каждого нужен обратный клапан. Одновременная работа каскадом требует разделения потоков.');
+                _sb = this.noteBox((_lostTankPump || _multi) ? 'warn' : 'info',
+                    'Котельная без гидрострелки.',
+                    (_parts.length ? _parts.join(', ').replace(/^./, c => c.toUpperCase()) : 'Схема выбрана вручную') + '.',
+                    det);
+            } else if (_forceHydro && !needCollector && (hasRad || (hasTp && tpArea > 0))) {
+                _sb = this.noteBox('info', 'Гидрострелка не поставлена.',
+                    'Подключить к ней нечего: насосную группу тёплого пола для этой площади подобрать не из чего.');
+            }
+            if (_sb) hydroWarnHtml = hydroWarnHtml ? (_sb + hydroWarnHtml) : _sb;
+        }
         flushBill("2. Обвязка котельной", hydroWarnHtml);
 
 
@@ -61305,7 +61468,16 @@ const app = {
         }
         if (this.radHydro) {
             const h = this.radHydro;
-            if (!h.pump) {
+            if (!h.pump && !h.hasGroup) {
+                // Групп нет — качает насос котла (схема без гидрострелки, выбранная
+                // вручную или авто на маленьком доме). Ни веток, ни 25/80 здесь нет,
+                // и советовать их нечего: помогает насосная группа.
+                const _have = (h.pumps && h.pumps[0]) ? Math.max(0, h.pumps[0].avail) : 0;
+                app.tempWarns.push('• <b>Гидравлика:</b> насос котла не даёт напора на кольцо: нужно ' +
+                    h.head.toFixed(1) + ' м при расходе ' + h.flowBranch.toFixed(2) + ' м³/ч, есть около ' +
+                    _have.toFixed(1) + ' м (кривая принята по насосу 25/60 — паспортной кривой насоса котла у нас нет). ' +
+                    'Нужна насосная группа: выберите схему котельной «С гидрострелкой» или «Авто».');
+            } else if (!h.pump) {
                 // Ветки уже посчитаны и стоят в смете (см. radBranchesByHydraulics);
                 // если и на четырёх кольцо не проходит, дальше помогает не насос,
                 // а диаметр — об этом и говорим.
@@ -61390,14 +61562,19 @@ const app = {
             if (hydroWarns.length) {
                 // Красная — только когда кольцо не продавливает ни один насос
                 // каталога. Разбивка на ветки — решение, а не проблема.
-                const _hHard = hydroWarns.some(w => /не даёт даже насос/i.test(w));
+                // Насос котла без группы — тоже красная: смонтировать как есть нельзя,
+                // но причина другая, и строка на виду говорит о ней, а не о каталоге.
+                const _hBoiler = hydroWarns.some(w => /насос котла не даёт/i.test(w));
+                const _hHard = _hBoiler || hydroWarns.some(w => /не даёт даже насос/i.test(w));
                 const _hBr = (hydroWarns.join(' ').match(/разбита на (\d+)/) || [])[1];
                 // Строку на виду пишем сами: расчётная фраза здесь длинная и
                 // обрывать её многоточием хуже, чем сказать суть своими словами.
                 _blocks += this.noteBox(
                     _hHard ? 'error' : 'info',
                     _hHard ? 'Кольцу не хватает напора.' : 'Нагрузка разделена на ветки.',
-                    _hHard
+                    _hBoiler
+                        ? 'Насоса котла мало — нужна насосная группа.'
+                        : _hHard
                         ? 'Нужного напора не даёт ни один насос каталога.'
                         : (_hBr ? `Одна группа кольцо не продавливает — в смете их ${_hBr}.` : 'Одна насосная группа кольцо не продавливает.'),
                     hydroWarns.map(w => `<div class="tip-p">${w.replace(/^•\s*/, '').replace(/<b>Гидравлика:<\/b>\s*/i, '')}</div>`).join(''));
