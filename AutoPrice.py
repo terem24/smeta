@@ -328,6 +328,198 @@ def apply_price_status(obj_text, start_idx, price_local_start, price_local_end, 
     return edits
 
 
+def js_string_field(own_text, field):
+    """Строковое поле объекта каталога с учётом экранирования: название крана
+    «3/4\\"/1/2\\"х4 вых.» содержит кавычки внутри строки, и простая регулярка
+    [^"']+ обрывала бы его на первой. Возвращает (значение, начало, конец) —
+    границы литерала вместе с кавычками — или None."""
+    m = re.search(r'(?<![\w$])(["\']?)' + re.escape(field) + r'\1\s*:\s*("(?:[^"\\\n]|\\.)*"|\'(?:[^\'\\\n]|\\.)*\')',
+                  own_text)
+    if not m:
+        return None
+    literal = m.group(2)
+    body = literal[1:-1]
+    value = re.sub(r'\\(.)', r'\1', body)
+    return value, m.start(2), m.end(2)
+
+
+# ---------------------------------------------------------------------------
+# Замена снятой позиции — блок «Похожие» на карточке товара
+# ---------------------------------------------------------------------------
+#
+# Когда производитель снимает артикул, ТЕРЕМ ставит в карточке старого товара
+# ссылку на преемника во вкладке «Похожие» (#similar): у крана SVB-0005-000020
+# там SVB-0005-200020 из линейки ГОСТ, у коллектора SMB-6201-341204 — новая
+# серия SMB-6211-341204.
+#
+# Парсер в каталог ничего не пишет. Найденная пара уходит в таблицу
+# catalog_successors в Supabase, админ смотрит её в разделе админки «Замены
+# позиций» и подтверждает или отклоняет. Подтверждённое переносит в каталог
+# AutoSuccessors.py (ежедневный workflow apply-successors.yml). Так ошибка
+# сайта не попадёт в смету сама.
+#
+# «Похожие» — не всегда преемник. Проверка 13.09.2026: у действующего насоса
+# ROMMER RCP-0002-2561801 там более дорогой Profi RCP-0004-2560180, у крана
+# SVB-1014-000020 (красная ручка) — такой же снятый SVB-0014-000020. Поэтому
+# кандидат предлагается только если:
+#   - старая позиция на сайте не в наличии («Под заказ», «Ожидается»): у
+#     товаров в наличии блок почти пустой (0 из 25 в выборке), а когда он есть,
+#     это скорее соседняя модель;
+#   - кандидат сам в наличии — иначе это такой же снятый товар;
+#   - тот же бренд: у своих артикулов та же первая буква (S — STOUT,
+#     R — ROMMER), у чужих — бренд из каталога есть в названии кандидата;
+#   - цена кандидата отличается от цены старой позиции на сайте не больше чем
+#     на 30 %: у преемников разница 0–23 % (коллектор SMB-6211 по той же цене,
+#     кран ГОСТ SVB-0005-200020 дороже на 15 %, полнопроходной вместо
+#     стандартнопроходного — на 20–23 %), а Profi вместо обычного насоса
+#     дороже на 47 %. Коридор страхует от временного «Ожидается»: при нём
+#     вкладка «Похожие» может вести на соседнюю модель, а не на преемника.
+# Годных кандидатов несколько — берётся первый в порядке сайта.
+#
+# Карточка товара запрашивается обычным GET, без Selenium: блок лежит в
+# исходном HTML. Запрос делается только для позиций «Под заказ» — это около
+# шестисот артикулов, плюс ~10 минут к прогону.
+OWN_CODE_RE = re.compile(r'^[A-Z]{3}[\s\-]\d{4}[\s\-]\S+$')
+SUCCESSOR_FAIL_LIMIT = 5   # подряд неудачных запросов — до конца прогона не ищем
+successor_fails = 0
+APP_JS_FILE = "app.js"
+SUPABASE_PROPOSE_PATH = "/rest/v1/rpc/catalog_successor_propose"
+
+
+def _norm_article(text):
+    """«SMB 6211 341204» -> «SMB-6211-341204»: на сайте разделители плавают,
+    в каталоге свои артикулы всегда через дефис."""
+    art = re.sub(r'\s+', ' ', (text or '').strip())
+    if OWN_CODE_RE.match(art):
+        art = re.sub(r'[\s\-]+', '-', art)
+    return art
+
+
+def find_successor(product_url, item, site_price):
+    """Преемник из вкладки «Похожие»: {'article', 'name', 'site_price', 'url'} или None."""
+    global successor_fails
+    if not product_url or not site_price or successor_fails >= SUCCESSOR_FAIL_LIMIT:
+        return None
+    import urllib.request, ssl
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    url = product_url if product_url.startswith('http') else SEARCH_URL + product_url
+    try:
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
+        html = urllib.request.urlopen(req, timeout=30, context=ctx).read().decode('utf-8', 'ignore')
+        successor_fails = 0
+    except Exception:
+        successor_fails += 1
+        if successor_fails >= SUCCESSOR_FAIL_LIMIT:
+            print(f"\n[Замены] {SUCCESSOR_FAIL_LIMIT} запросов карточки подряд не прошли — "
+                  f"вкладку «Похожие» до конца прогона не читаем.")
+        return None
+
+    soup = BeautifulSoup(html, 'html.parser')
+    tab = soup.find(id='similar')
+    if not tab:
+        return None
+
+    sku = item.get('sku') or ''
+    own = bool(OWN_CODE_RE.match(sku))
+    brand = (item.get('brand') or '').strip().lower()
+    sku_norm = re.sub(r'[\s\-–—_.]+', '', sku).upper()
+
+    # Элемент вкладки: <p>название</p> и блок из трёх span — наличие, цена,
+    # «Арт. SVB-0005-200020». Кнопка «В корзину» лежит внутри той же ссылки,
+    # поэтому поля берутся из своих span, а не из текста элемента целиком.
+    for cand in tab.select('a.catalog-product-list-item'):
+        info = cand.select_one('.catalog-product-list-item-info-price')
+        if not info:
+            continue
+        spans = [s.get_text(' ', strip=True) for s in info.find_all('span', recursive=False)]
+        art_text = next((s for s in spans if s.startswith('Арт.')), None)
+        price_text = next((s for s in spans if 'руб' in s), None)
+        if not art_text or not price_text:
+            continue
+        art = _norm_article(art_text[len('Арт.'):])
+        if not art or '"' in art or "'" in art:
+            continue
+        if re.sub(r'[\s\-–—_.]+', '', art).upper() == sku_norm:
+            continue
+        if not any(read_status(s) == 'in_stock' for s in spans):
+            continue
+        title = cand.select_one('.catalog-product-list-item-info-title p')
+        cand_name = title.get_text(' ', strip=True) if title else ''
+        if own:
+            if not OWN_CODE_RE.match(art) or art[0] != sku[0]:
+                continue
+        else:
+            if not brand or brand == '—' or brand not in cand_name.lower():
+                continue
+        cand_price = clean_price(price_text)
+        if not cand_price or not (site_price * 0.7 <= cand_price <= site_price * 1.3):
+            continue
+        return {'article': art, 'name': cand_name, 'site_price': cand_price, 'url': cand.get('href') or ''}
+    return None
+
+
+def load_supabase_credentials():
+    """supabaseUrl/supabaseKey из app.js. Ключ публичный (anon), он и так уходит
+    в браузер. Тот же приём, что в AutoCompanyInfo.py и AutoWordstat.py."""
+    with open(APP_JS_FILE, "r", encoding="utf-8") as f:
+        src = f.read()
+    m_url = re.search(r"const\s+supabaseUrl\s*=\s*'([^']+)'", src)
+    m_key = re.search(r"const\s+supabaseKey\s*=\s*'([^']+)'", src)
+    if not m_url or not m_key:
+        raise RuntimeError("supabaseUrl/supabaseKey не найдены в %s" % APP_JS_FILE)
+    return m_url.group(1), m_key.group(1)
+
+
+def supabase_rpc(path, payload):
+    """POST в RPC Supabase по публичному ключу. Возвращает разобранный JSON."""
+    import urllib.request, json
+    supabase_url, supabase_key = load_supabase_credentials()
+    req = urllib.request.Request(supabase_url.rstrip('/') + path,
+                                 data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
+                                 method='POST')
+    req.add_header('Content-Type', 'application/json')
+    req.add_header('apikey', supabase_key)
+    req.add_header('Authorization', 'Bearer %s' % supabase_key)
+    with urllib.request.urlopen(req, timeout=30) as r:
+        body = r.read().decode('utf-8')
+    return json.loads(body) if body else None
+
+
+def propose_successor(item, res, succ):
+    """Пара «снятый артикул → преемник» в очередь админки. Ошибка не роняет
+    прогон: цены важнее, а пара найдётся снова в следующем месяце."""
+    own = _own_text(item['obj_text'])
+    name = js_string_field(own, 'name')
+    # Цена преемника в единицах каталога: тот же множитель, каким цена старой
+    # позиции переведена с карточки в каталог («цена за 100 м» -> за метр,
+    # «цена за 5 шт.» -> за штуку). У штучного товара множитель равен 1.
+    factor = (res['price'] / res['raw']) if res.get('raw') else 1
+    new_price = round(succ['site_price'] * factor, 2)
+    if abs(new_price - round(new_price)) < 1e-9:
+        new_price = int(round(new_price))
+    payload = {'p': {
+        'old_article': item['sku'],
+        'new_article': succ['article'],
+        'catalog_name': name[0] if name else '',
+        'new_name': succ['name'],
+        'brand': item.get('brand') or '',
+        'old_site_price': res.get('raw'),
+        'new_site_price': succ['site_price'],
+        'catalog_price': item.get('old_price'),
+        'new_price': new_price,
+        'old_url': res.get('url') or '',
+        'new_url': succ['url'],
+    }}
+    try:
+        answer = supabase_rpc(SUPABASE_PROPOSE_PATH, payload)
+        return answer
+    except Exception as e:
+        print(f" [Замены] не записано в базу: {str(e)[:80]}", end="")
+        return None
+
+
 # Разделы, которые обновляются целиком по листингу, без поштучного поиска.
 #
 # У РЕХАУ артикулы числовые (19101021001), и поиск по ним работает — но тратит
@@ -530,9 +722,16 @@ def get_price_card_isolation(driver, sku, old_price, item=None):
         price_in_card = None
         price_raw = price_ratio = None
         status_in_card = None
+        # Ссылка на карточку товара — по ней читается вкладка «Похожие» (см.
+        # find_successor). Берём из контейнера этого товара в выдаче поиска,
+        # а не выше: там уже ссылки соседних товаров.
+        product_url = None
+        box = text_node.find_parent(class_='product-item')
+        link = box.find('a', href=re.compile(r'/product/')) if box else None
+        if link: product_url = link.get('href')
         for _ in range(10):
             if not card: break
-            
+
             if not status_in_card:
                 status_in_card = read_status(card.get_text(" ", strip=True))
             
@@ -575,7 +774,8 @@ def get_price_card_isolation(driver, sku, old_price, item=None):
                 else:
                     qty = 'штангу'
                 note = f"цена за {qty}: {price_raw} ₽"
-            found_items.append({'price': price_in_card, 'status': final_status, 'note': note})
+            found_items.append({'price': price_in_card, 'status': final_status, 'note': note,
+                                'raw': price_raw, 'url': product_url})
         
     if not found_items:
         # Цену нашли, а пересчитать нечем: карточка даёт цену за штуку, в
@@ -871,6 +1071,8 @@ def update_catalog_prices():
     print(f"Найдено товаров (с вложенными ROMMER): {len(items_to_process)}\n")
     replacements = []
     price_cache = {}
+    successor_cache = {}
+    successors_found = []
     updated_count = 0
     not_found_streak = 0
     # Сколько раз цена прочиталась, а наличие — нет. Если это число вдруг
@@ -929,7 +1131,23 @@ def update_catalog_prices():
             if not res['status']: print(" (наличие не прочитано -> Под заказ)")
             elif new_status == 'in_stock': print(" (В наличии)")
             else: print(" (Под заказ)")
-            
+
+            # Не в наличии — смотрим, не поставил ли сайт преемника. Пару
+            # отправляем в очередь админки сразу, а не в конце: прогон может
+            # оборваться по шестичасовому лимиту джобы. Один артикул лежит в
+            # каталоге в нескольких местах — спрашиваем сайт один раз.
+            if res['status'] == 'on_order' and sku not in successor_cache:
+                succ = find_successor(res.get('url'), item, res.get('raw'))
+                successor_cache[sku] = succ
+                if succ:
+                    print(f"    замена с сайта: {succ['article']} ({succ['site_price']} ₽)", end="")
+                    answer = propose_successor(item, res, succ)
+                    if answer:
+                        print(f" -> в очереди админки: {answer}")
+                    else:
+                        print()
+                    successors_found.append((sku, succ['article']))
+
             import datetime
             current_date_str = datetime.datetime.now().strftime('%Y-%m-%d')
             edits = apply_price_status(
@@ -962,6 +1180,10 @@ def update_catalog_prices():
         if unknown_status_count:
             print(f"Наличие не прочитано (записано «Под заказ»): {unknown_status_count}")
     else: print("\nИзменений не требуется.")
+    if successors_found:
+        print(f"\nЗамены с сайта (раздел админки «Замены позиций»), {len(successors_found)}:")
+        for old_sku, new_sku in sorted(set(successors_found)):
+            print(f"  {old_sku} -> {new_sku}")
     return True
 
 if __name__ == "__main__":

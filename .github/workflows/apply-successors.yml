@@ -1,0 +1,60 @@
+name: Apply Catalog Successors
+
+# Перенос подтверждённых замен снятых позиций в catalog.js.
+#
+# Пары «снято → преемник» находит парсер цен (AutoPrice.py), админ подтверждает
+# их в админке, раздел «Замены позиций». Этот workflow раз в сутки забирает
+# подтверждённое из базы и переписывает позиции каталога (AutoSuccessors.py).
+# Работает секунды: браузер не нужен, selenium ставится только потому, что
+# скрипт берёт общие функции разбора каталога из AutoPrice.py.
+#
+# Время — 12:00 UTC, в стороне от парсера цен (02:00 UTC, до шести часов).
+# Вдобавок у всех, кто пишет catalog.js, общая группа concurrency: парсер
+# сохраняет каталог снимком от своего старта, и параллельный перенос он
+# затёр бы следующим же чекпоинтом.
+on:
+  schedule:
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: catalog-js-writers
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install selenium beautifulsoup4
+      - name: Apply approved successors
+        run: python AutoSuccessors.py
+      # Каталог грузится сайтом одним файлом: синтаксическая ошибка в нём кладёт
+      # калькулятор целиком. Не прошёл проверку — не коммитим.
+      - name: Check catalog.js syntax
+        run: node --check catalog.js
+      - name: Commit and push changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          git add catalog.js
+          if git diff --staged --quiet; then
+            echo "Новых подтверждённых замен нет."
+          else
+            git commit -m "Замены снятых позиций из админки"
+            for i in {1..5}; do
+              git pull --rebase origin main && git push origin main && exit 0
+              git rebase --abort || true
+              sleep 5
+            done
+            exit 1
+          fi
