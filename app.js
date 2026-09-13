@@ -2364,6 +2364,38 @@ const app = {
         return scored.slice(0, 10).map(s => s.it);
     },
 
+    // Поиск товара по свободной фразе в "Умном заполнении" — тот же поиск, что и в окне
+    // "Своё оборудование" (сперва строгий, затем ослабленный при пустом результате), но
+    // вызывается из чата, когда фраза не про параметры дома, а про конкретный товар
+    // ("нужен кран с накидной гайкой на дюйм").
+    _aiChatFindProducts: function (query) {
+        const strict = this.searchCatalog(query);
+        if (strict.length) return { list: strict, loose: false };
+        return { list: this.searchCatalogLoose(query), loose: true };
+    },
+
+    // Добавляет найденную по чату позицию каталога в текущую смету — тем же механизмом,
+    // что и ручное добавление через "Своё оборудование" (state.userAddedEq), поэтому дальше
+    // позиция живёт как обычная: правится, удаляется, попадает в печать и в счёт.
+    addFoundProductToBill: function (item, sectionTitle) {
+        if (!item) return;
+        sectionTitle = sectionTitle || '9. Дополнительные материалы';
+        const price = Math.round(item.price);
+        if (!this.state.userAddedEq) this.state.userAddedEq = [];
+        this.state.userAddedEq.push({
+            id: 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            name: item.name,
+            price: price,
+            q: 1,
+            brand: ' ', // Пробел обманывает дефолтную проверку, чтобы не писался STOUT
+            desc: `Добавлено из каталога (арт. ${item.article || item.id})`,
+            section: sectionTitle
+        });
+        this.addEquipmentToLibrary({ name: item.name, price: price, brand: ' ', section: sectionTitle });
+        this.saveState();
+        this.render();
+    },
+
     // Переиспользуемая кнопка голосового ввода (Web Speech API) — вызывающий код сам решает,
     // что делать с распознанным текстом через колбэк onTranscript
     _createVoiceMicButton: function (onTranscript) {
@@ -2548,7 +2580,7 @@ const app = {
         }
         // Проверяем ДО "проверки связи" — иначе "работает" в "как это работает" перетягивает на себя
         if (/что\s*ты\s*умеешь|как[а-я]*\s*это\s*работает|что\s*сказать|что\s*говорить|помоги[а-я]*|инструкц[а-я]*/i.test(t)) {
-            return { type: 'help', message: 'Я умею распознавать характеристики объекта из текста. Скажите площадь, этажность, отопление и остекление — расставлю галочки сам. Понимаю и остальное хозяйство: автоматику котельной, защиту от протечек, рециркуляцию, полотенцесушитель, узел ввода воды, снеготаяние дорожек, материал труб и выделенную мощность по электричеству.' };
+            return { type: 'help', message: 'Я умею распознавать характеристики объекта из текста. Скажите площадь, этажность, отопление и остекление — расставлю галочки сам. Понимаю и остальное хозяйство: автоматику котельной, защиту от протечек, рециркуляцию, полотенцесушитель, узел ввода воды, снеготаяние дорожек, материал труб и выделенную мощность по электричеству. А если назвать конкретный товар — найду его в каталоге и предложу сразу добавить в смету.' };
         }
         if (/тест[а-я]*|проверк[а-я]*\s*связ[а-я]*|раз\s*два\s*три|раз\s*раз|123|работает|слышно|(?<![а-я])ау(?![а-я])|ку-?ку|(?<![а-я])алло(?![а-я])/i.test(t)) {
             return { type: 'test', message: 'Слышу вас отлично! Проверка пройдена. Теперь расскажите про объект: какая площадь, сколько этажей, будут ли радиаторы?' };
@@ -3917,6 +3949,11 @@ const app = {
         };
         this.flushAiFillLogQueue();
 
+        // Догружаем расширенный прайс и общий прайс-лист ТЕРЕМ в фоне для поиска товаров —
+        // без ожидания: пока не пришли, поиск просто идёт по catalog.js (см. addCustomEqPrompt).
+        this._ensurePriceExtraLoaded();
+        this._ensurePriceIndexLoaded();
+
         const addBubble = (role, html) => {
             const b = document.createElement('div');
             b.className = 'ai-chat-bubble ai-chat-' + role;
@@ -3927,7 +3964,7 @@ const app = {
             return b;
         };
 
-        addBubble('assistant', 'Опишите объект простыми словами голосом или текстом — я распознаю параметры, а когда закончите, нажмите «Применить». Например: «150 квадратов, высота потолков 3 метра, везде тёплый пол и заливаем антифриз».');
+        addBubble('assistant', 'Опишите объект простыми словами голосом или текстом — я распознаю параметры, а когда закончите, нажмите «Применить». Например: «150 квадратов, высота потолков 3 метра, везде тёплый пол и заливаем антифриз». Можно также назвать нужный товар — например, «кран с накидной гайкой на дюйм» — я найду его в каталоге и предложу добавить в смету.');
 
         const inputWrap = document.createElement('div');
         inputWrap.className = 'eq-name-wrap ai-parse-input-wrap';
@@ -4111,6 +4148,40 @@ const app = {
             addBubble('assistant', topic.question);
         };
 
+        // Карточки товаров, найденных по свободной фразе (см. app._aiChatFindProducts) — с ценой,
+        // артикулом и кнопкой добавления прямо в смету, без отдельного окна "Своё оборудование".
+        const renderProductResults = (list, isLoose) => {
+            const title = isLoose ? 'Точного совпадения нет, возможно вы имели в виду:' : 'Нашёл в каталоге:';
+            const items = list.map((it, i) => `
+                <div class="ai-chat-product-item" data-idx="${i}">
+                    <img src="img/${it.id}.jpg" class="ai-chat-product-img" loading="lazy" decoding="async" onerror="this.style.display='none'">
+                    <div class="ai-chat-product-text">
+                        <span class="ai-chat-product-name">${escapeHtml(it.name)}</span>
+                        <span class="ai-chat-product-meta">${escapeHtml(it.article || it.id)}${it.brand ? ' · ' + escapeHtml(it.brand) : ''} · ${Math.round(it.price).toLocaleString('ru-RU')} ₽</span>
+                    </div>
+                    <button type="button" class="ai-chat-product-add">+ В смету</button>
+                </div>
+            `).join('');
+            return `<div class="ai-parse-preview-title">${title}</div><div class="ai-chat-product-list">${items}</div>`;
+        };
+
+        // После вставки пузырька с карточками — навешиваем добавление в смету по клику.
+        // Кнопку можно нажимать повторно (несколько единиц одной позиции).
+        const wireProductButtons = (bubbleEl, list) => {
+            Array.from(bubbleEl.querySelectorAll('.ai-chat-product-item')).forEach((el, i) => {
+                const item = list[i];
+                const btn = el.querySelector('.ai-chat-product-add');
+                if (!item || !btn) return;
+                let added = 0;
+                btn.onclick = () => {
+                    this.addFoundProductToBill(item);
+                    added++;
+                    btn.textContent = added > 1 ? `✓ Добавлено ×${added}` : '✓ Добавлено';
+                    btn.classList.add('ai-chat-product-added');
+                };
+            });
+        };
+
         const sendMessage = () => {
             const text = textInput.value.trim();
             if (!text) { textInput.focus(); return; }
@@ -4216,8 +4287,20 @@ const app = {
                 askFollowUp();
             } else {
                 const intent = this.detectSpecialIntent(text);
-                const msg = (intent && intent.message) ? intent.message : 'Не удалось ничего распознать — попробуйте описать подробнее: площадь, этажность, отопление, тёплый пол.';
-                addBubble('assistant', msg);
+                if (intent && intent.message) {
+                    addBubble('assistant', intent.message);
+                } else {
+                    // Ни один параметр дома не распознан и это не приветствие/тест/помощь —
+                    // пробуем понять фразу как название товара ("нужен кран с накидной гайкой").
+                    const found = this._aiChatFindProducts(text);
+                    if (found.list.length) {
+                        note('product', found.list.map(it => ({ label: 'Товар', display: it.name })));
+                        const bubble = addBubble('assistant', renderProductResults(found.list, found.loose));
+                        wireProductButtons(bubble, found.list);
+                    } else {
+                        addBubble('assistant', 'Не удалось ничего распознать — попробуйте описать подробнее: площадь, этажность, отопление, тёплый пол, либо назовите конкретный товар для поиска в каталоге.');
+                    }
+                }
             }
             textInput.focus();
         };
@@ -20827,7 +20910,7 @@ const app = {
             // Вопрос один: стали ли клиенты отвечать чаще и быстрее.
             {
                 const tm = invTimer;
-                const tHead = head('Таймер счёта', `ссылки клиентам за ${this.DASH_EV_DAYS} дней · со сроком действия против бессрочных`);
+                const tHead = head('Таймер счёта', `ссылки клиентам за ${this.DASH_TIMER_DAYS} дней · со сроком действия против бессрочных`);
                 if (!tm) {
                     B.inv_timer = card(tHead + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Читаем ссылки клиентам…</div>`);
                 } else if (tm.error) {
@@ -20842,7 +20925,10 @@ const app = {
                         return (h / 24).toFixed(1).replace('.', ',') + ' дн.';
                     };
                     const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
-                    const better = (a, b, lowerIsBetter) => {
+                    // Цвет — только когда данных хватает (enough). На одной-двух
+                    // ссылках зелёный и красный говорят о случайности, а не о таймере.
+                    const better = (a, b, lowerIsBetter, enough) => {
+                        if (!enough) return '';
                         if (a === null || b === null || a === undefined || b === undefined) return '';
                         const good = lowerIsBetter ? a < b : a > b;
                         const same = a === b;
@@ -20850,13 +20936,16 @@ const app = {
                     };
                     const cell = (v, color) => `<td style="text-align:right; padding:6px 8px; font-size:13px; font-weight:700; color:${color || 'var(--text-main)'}; white-space:nowrap;">${v}</td>`;
                     const lbl = (t) => `<td style="padding:6px 0; font-size:12.5px; color:var(--text-main);">${t}</td>`;
+                    const sub = (t) => `<br><small style="color:var(--text-sec); font-weight:500;">${t}</small>`;
                     const g = tm.timer, z = tm.none;
+                    const share = (x, of) => of ? x / of : null;
                     const rowsHtml = [
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Ссылок отправлено')}${cell(num(g.n))}${cell(num(z.n))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент ответил (согласовал, вернул или запросил счёт)')}${cell(pct(g.answered, g.n), better(g.n ? g.answered / g.n : null, z.n ? z.answered / z.n : null, false))}${cell(pct(z.answered, z.n))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Из них согласовал')}${cell(pct(g.confirmed, g.n), better(g.n ? g.confirmed / g.n : null, z.n ? z.confirmed / z.n : null, false))}${cell(pct(z.confirmed, z.n))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Среднее время ответа заказчика')}${cell(hrs(g.avgHours), better(g.avgHours, z.avgHours, true))}${cell(hrs(z.avgHours))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Медиана времени ответа')}${cell(hrs(g.medHours), better(g.medHours, z.medHours, true))}${cell(hrs(z.medHours))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('С итогом: клиент ответил или срок уже прошёл' + sub(`остальные ещё ждут — в доли не входят`))}${cell(num(g.finished) + (g.pending ? sub(`ждут ${num(g.pending)}`) : ''))}${cell(num(z.finished) + (z.pending ? sub(`ждут ${num(z.pending)}`) : ''))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент ответил (согласовал, вернул или запросил счёт)')}${cell(pct(g.answered, g.finished), better(share(g.answered, g.finished), share(z.answered, z.finished), false, tm.enoughShare))}${cell(pct(z.answered, z.finished))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Из них согласовал')}${cell(pct(g.confirmed, g.finished), better(share(g.confirmed, g.finished), share(z.confirmed, z.finished), false, tm.enoughShare))}${cell(pct(z.confirmed, z.finished))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Среднее время ответа заказчика')}${cell(hrs(g.avgHours), better(g.avgHours, z.avgHours, true, tm.enoughTime))}${cell(hrs(z.avgHours))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Медиана времени ответа')}${cell(hrs(g.medHours), better(g.medHours, z.medHours, true, tm.enoughTime))}${cell(hrs(z.medHours))}</tr>`,
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Ответил в срок, до конца таймера')}${cell(pct(g.answeredInTime, g.answered))}${cell('<span style="color:var(--text-sec); font-weight:500;">нет срока</span>')}</tr>`,
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Срок вышел без ответа')}${cell(num(g.expiredSilent), g.expiredSilent ? '#F97316' : '')}${cell('—')}</tr>`,
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент просил обновить счёт')}${cell(g.refreshLinks ? `${num(g.refreshLinks)} ${this.plural(g.refreshLinks, 'ссылка', 'ссылки', 'ссылок')}${g.refreshTotal > g.refreshLinks ? `, ${num(g.refreshTotal)} раз` : ''}` : '0')}${cell('—')}</tr>`,
@@ -20869,9 +20958,21 @@ const app = {
                                 <th style="text-align:right; padding:4px 8px; font-size:11px; color:var(--text-sec); font-weight:700; white-space:nowrap;">⏳ с таймером</th>
                                 <th style="text-align:right; padding:4px 8px; font-size:11px; color:var(--text-sec); font-weight:700; white-space:nowrap;">без таймера</th>
                             </tr></thead><tbody>${rowsHtml}</tbody></table></div>`
+                        + (!tm.enoughShare
+                            ? `<div style="font-size:12px; color:#B45309; margin-top:10px; line-height:1.5; font-weight:600;">
+                                Мало данных для сравнения: нужно хотя бы по ${num(this.DASH_TIMER_MIN_LINKS)} ссылок с итогом в каждой колонке
+                                (сейчас ${num(g.finished)} с таймером и ${num(z.finished)} без). До тех пор цифры без цвета — выводы делать рано.
+                               </div>`
+                            : (!tm.enoughTime
+                                ? `<div style="font-size:12px; color:#B45309; margin-top:10px; line-height:1.5;">
+                                    Доли уже можно сравнивать, сроки ответа — ещё нет: мало ответов со временем.
+                                   </div>` : ''))
                         + `<div style="font-size:11.5px; color:var(--text-sec); margin-top:10px; line-height:1.55;">
-                            Время ответа — от первой отправки ссылки до нажатия клиентом любой кнопки. Зелёным — где таймер выиграл, красным — где проиграл.
-                            «Без таймера» включает и ссылки, отправленные до появления срока действия${tm.legacy ? ` (таких ${num(tm.legacy)})` : ''}: это и есть база для сравнения.
+                            Обе колонки — ссылки, впервые отправленные за последние ${num(this.DASH_TIMER_DAYS)} дней.
+                            Доли считаются только по ссылкам с итогом: клиент ответил, у таймера вышел срок, у бессрочной ссылки прошло ${num(this.INVOICE_VALID_DAYS_DEFAULT)} ${this.plural(this.INVOICE_VALID_DAYS_DEFAULT, 'день', 'дня', 'дней')} — столько же, сколько таймер по умолчанию.
+                            Время ответа — от первой отправки до нажатия клиентом любой кнопки. Зелёным — где таймер выиграл, красным — где проиграл.
+                            ${tm.tests ? `Не учтено ${num(tm.tests)} ${this.plural(tm.tests, 'ссылка', 'ссылки', 'ссылок')}: кнопку нажали в первые ${num(this.DASH_TIMER_TEST_MINUTES)} минут после отправки — это проверка самим монтажником, а не ответ заказчика.` : ''}
+                            ${tm.legacy ? `В колонке «без таймера» есть ссылки, отправленные до появления срока действия (${num(tm.legacy)}).` : ''}
                             Обновление после просьбы клиента считается по переотправке той же ссылки.
                            </div>`
                         + (tm.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">Список ссылок обрезан по потолку строк — числа неполные.</div>` : ''));
@@ -22645,7 +22746,9 @@ const app = {
         (async () => {
             const out = { rows: [], error: null, capped: false };
             try {
-                const since = new Date(Date.now() - this.DASH_EV_DAYS * 86400000).toISOString();
+                // Ссылка могла быть создана раньше периода и переотправлена в нём —
+                // берём с запасом, а в период отбирает buildInvoiceTimerStats по первой отправке.
+                const since = new Date(Date.now() - (this.DASH_TIMER_DAYS + 30) * 86400000).toISOString();
                 const res = await this.fetchAllRows('shared_invoices',
                     'id, created_at, email:manager_info->>email, status:object_info->>status, ' +
                     'sent_at:object_info->>sent_at, first_sent_at:object_info->>first_sent_at, ' +
@@ -22697,37 +22800,63 @@ const app = {
      * запросил счёт. Просьба обновить счёт ответом НЕ считается: это не решение
      * по смете, а сообщение «срок вышел, я ещё думаю».
      */
+    // Правила честного сравнения в блоке «Таймер счёта»:
+    // период одинаковый для обеих колонок, цветом сравниваем только при
+    // достаточном числе ссылок, нажатие в первые минуты после отправки — это
+    // проверка самим монтажником, а не ответ заказчика.
+    DASH_TIMER_DAYS: 90,
+    DASH_TIMER_MIN_LINKS: 10,
+    DASH_TIMER_TEST_MINUTES: 5,
+
     buildInvoiceTimerStats: function (rows, keep) {
-        const HOUR = 3600000, now = Date.now();
+        const HOUR = 3600000, DAY = 86400000, now = Date.now();
         const ANSWERED = { confirmed: 1, needs_revision: 1, invoice_requested: 1 };
-        const mk = () => ({ n: 0, answered: 0, confirmed: 0, hours: [], answeredInTime: 0, expiredSilent: 0,
+        const since = now - this.DASH_TIMER_DAYS * DAY;
+        const testMs = this.DASH_TIMER_TEST_MINUTES * 60000;
+        // Ссылка без таймера «завершена», когда прошло столько же, сколько
+        // длится таймер по умолчанию: иначе вчерашние бессрочные ссылки
+        // тянули бы долю ответивших вниз так же, как ещё идущие таймеры.
+        const noTimerWindow = (this.INVOICE_VALID_DAYS_DEFAULT || 2) * DAY;
+        const mk = () => ({ n: 0, finished: 0, pending: 0, answered: 0, confirmed: 0, hours: [], answeredInTime: 0, expiredSilent: 0,
             refreshLinks: 0, refreshTotal: 0, refreshed: 0, refreshHours: [] });
         const timer = mk(), none = mk();
-        let legacy = 0;
+        let legacy = 0, tests = 0;
         (rows || []).forEach(r => {
             if (!r) return;
             if (keep && !keep(r)) return;
+            const sentT = new Date(r.first_sent_at || r.sent_at || r.created_at).getTime();
+            if (!isFinite(sentT) || sentT < since) return;
             const days = Number(r.valid_days);
             const hasTimer = isFinite(days) && days > 0;
+            const st = String(r.status || 'sent');
+            const ansT = new Date(r.status_updated_at || '').getTime();
+            // Проверка монтажником: кнопку нажали через считаные минуты после
+            // последней отправки, и клиент ещё не просил обновить счёт. Такую
+            // ссылку не считаем ни в одну колонку — её итог ненастоящий.
+            const lastSentT = new Date(r.sent_at || r.first_sent_at || r.created_at).getTime();
+            if (ANSWERED[st] && isFinite(ansT) && isFinite(lastSentT) && ansT - lastSentT >= 0
+                && ansT - lastSentT < testMs && !(Number(r.refresh_count) > 0)) {
+                tests++;
+                return;
+            }
             if (r.valid_days === null || r.valid_days === undefined) legacy++;
             const g = hasTimer ? timer : none;
             g.n++;
-            const sentT = new Date(r.first_sent_at || r.sent_at || r.created_at).getTime();
-            const st = String(r.status || 'sent');
-            if (ANSWERED[st]) {
+            const vu = new Date(r.valid_until || '').getTime();
+            const answered = !!ANSWERED[st];
+            const finished = answered
+                || (hasTimer ? (st === 'refresh_requested' || (isFinite(vu) && vu < now)) : (now - sentT >= noTimerWindow));
+            if (!finished) { g.pending++; return; }
+            g.finished++;
+            if (answered) {
                 g.answered++;
                 if (st === 'confirmed') g.confirmed++;
-                const ansT = new Date(r.status_updated_at || '').getTime();
-                if (isFinite(sentT) && isFinite(ansT) && ansT >= sentT) {
+                if (isFinite(ansT) && ansT >= sentT) {
                     g.hours.push((ansT - sentT) / HOUR);
-                    if (hasTimer) {
-                        const vu = new Date(r.valid_until || '').getTime();
-                        if (isFinite(vu) && ansT <= vu) g.answeredInTime++;
-                    }
+                    if (hasTimer && isFinite(vu) && ansT <= vu) g.answeredInTime++;
                 }
             } else if (hasTimer) {
-                const vu = new Date(r.valid_until || '').getTime();
-                if (st === 'refresh_requested' || (st === 'sent' && isFinite(vu) && vu < now)) g.expiredSilent++;
+                g.expiredSilent++;
             }
             const rc = Number(r.refresh_count) || 0;
             if (rc > 0) {
@@ -22747,12 +22876,20 @@ const app = {
             return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
         };
         [timer, none].forEach(g => {
+            g.timed = g.hours.length;
             g.avgHours = avg(g.hours);
             g.medHours = median(g.hours);
             g.refreshAvgHours = avg(g.refreshHours);
             delete g.hours; delete g.refreshHours;
         });
-        return { timer, none, legacy, error: null, capped: false };
+        const minN = this.DASH_TIMER_MIN_LINKS;
+        return {
+            timer, none, legacy, tests, error: null, capped: false,
+            // Сравнивать доли можно, когда в обеих колонках есть по minN
+            // завершённых ссылок; сроки — когда по minN ответов со временем.
+            enoughShare: timer.finished >= minN && none.finished >= minN,
+            enoughTime: timer.timed >= minN && none.timed >= minN
+        };
     },
 
     ensureDashboardPositions: function () {
@@ -35549,6 +35686,23 @@ const app = {
         // На мобильном канале два тяжёлых запроса душат друг друга, быстрое сохранение не
         // укладывалось в таймаут — и клиенту уходила длинная офлайн-ссылка. Снимок состояния
         // делаем сразу (как раньше), а отправку в очередь откладываем.
+        //
+        // До снимка в состоянии уже должны быть номер ссылки и слепок цен: по ним
+        // «Сверка цен» в «Моих объектах» находит, с какими ценами смета ушла клиенту.
+        // Снимок, сделанный раньше, уносил в базу смету без того и другого, и сверка
+        // объявляла только что отправленную смету старой, «до августа 2026 года».
+        //
+        // id для строки в shared_invoices генерируется на клиенте заранее (переиспользуем,
+        // если он уже был создан для этого объекта раньше, чтобы ссылка при повторной
+        // генерации не менялась).
+        const hasExistingShareId = !!(this.state.shared_invoice_id && this.isValidUUID(this.state.shared_invoice_id));
+        let shareId = hasExistingShareId
+            ? this.state.shared_invoice_id
+            : this.generateCustomInvoiceId();
+        this.state.shared_invoice_id = shareId;
+        this.capturePriceSnapshot();
+        this.saveState();
+
         const cloudSaveSnapshot = JSON.parse(JSON.stringify(this.state));
         const cloudSaveEqSum = app.lastEqSum || 0;
         const cloudSaveWorksSum = app.lastWorksSum || 0;
@@ -35559,17 +35713,7 @@ const app = {
             this.queueCloudSave(cloudSaveSnapshot, cloudSaveEqSum, cloudSaveWorksSum);
         };
 
-        // id для строки в shared_invoices генерируется на клиенте заранее (переиспользуем,
-        // если он уже был создан для этого объекта раньше, чтобы ссылка при повторной
-        // генерации не менялась).
         try {
-            const hasExistingShareId = !!(this.state.shared_invoice_id && this.isValidUUID(this.state.shared_invoice_id));
-            let shareId = hasExistingShareId
-                ? this.state.shared_invoice_id
-                : this.generateCustomInvoiceId();
-            this.state.shared_invoice_id = shareId;
-            this.saveState();
-
             object_info.status = object_info.status || 'sent';
             object_info.client_comment = object_info.client_comment || null;
             object_info.status_updated_at = object_info.status_updated_at || null;
@@ -35635,6 +35779,9 @@ const app = {
                                 shareId = retryShareId;
                                 this.state.shared_invoice_id = retryShareId;
                                 this.saveState();
+                                // Снимок для облака сделан до повтора — в очередь он ещё не
+                                // ушёл, так что номер в нём поправить можно.
+                                cloudSaveSnapshot.shared_invoice_id = retryShareId;
                                 shareUrl = `${baseOrigin}/invoice.html?id=${retryShareId}`;
                             } else {
                                 fastSaveReason = `${fastSaveReason}; повтор с новым номером: ${this.lastSharedInvoiceSaveError || 'отказ без ошибки'}`.slice(0, 300);
