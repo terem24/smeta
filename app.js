@@ -50690,7 +50690,7 @@ const app = {
             _bdtTab('boiler_dt_20', _bdt === 20);
             _bdtTab('boiler_dt_10', _bdt === 10);
             const _bdtNote = document.getElementById('lbl_boiler_dt_note');
-            const _bdtLocked = this.boilerSchemeMode() === 'direct' && hasRad;
+            const _bdtLocked = this.boilerSchemeEff() === 'direct' && hasRad;
             if (_bdtNote) {
                 _bdtNote.textContent = _bdtLocked
                     ? `Без гидрострелки перепад котла равен режиму радиаторов — ${_bdt} K. Меняется в «Режиме системы».`
@@ -53514,7 +53514,7 @@ const app = {
         // идёт тот же расход, что через приборы, и перепад у них общий. Свой
         // перепад котловому контуру даёт только гидравлическое разделение, поэтому
         // в режиме «Без гидрострелки» обвязка считается по режиму радиаторов.
-        if (this.boilerSchemeMode() === 'direct' && (this.state.systems || []).includes('rad'))
+        if (this.boilerSchemeEff() === 'direct' && (this.state.systems || []).includes('rad'))
             return this.radDT();
         return (this.state.boilerDT === 10) ? 10 : 20;
     },
@@ -53542,13 +53542,36 @@ const app = {
     },
 
     /**
+     * «Без гидрострелки» выбрана, но не собирается: тёплый пол больше, чем тянет
+     * один узел подмеса. Считается по одному состоянию, без расчёта сметы, —
+     * потому что спрашивают об этом и до него: схема загрузки бойлера решается в
+     * render раньше, чем посчитан тёплый пол, и без этой проверки бойлер уходил
+     * на трёхходовой клапан, хотя котельная собиралась как в «Авто».
+     * У узла 'std' предел считается по всей площади (isUfhMixTypeCompatible).
+     */
+    boilerSchemeDirectBlocked: function () {
+        if (this.boilerSchemeMode() !== 'direct') return false;
+        const s = this.state;
+        if (!(s.systems || []).includes('tp')) return false;
+        const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
+        if (!(area > 0)) return false;
+        return !this.isUfhMixTypeCompatible('std', area, s.brandMode, area);
+    },
+
+    /** Схема, по которой смета собирается на самом деле: 'auto' | 'direct' | 'hydro'. */
+    boilerSchemeEff: function () {
+        const m = this.boilerSchemeMode();
+        return (m === 'direct' && this.boilerSchemeDirectBlocked()) ? 'auto' : m;
+    },
+
+    /**
      * Схема загрузки бойлера с учётом схемы котельной. Насосная группа бойлера
      * висит на коллекторе котельной, а без гидрострелки коллектора нет — бойлер
      * тогда греется трёхходовым клапаном. Выбор монтажника в state не трогаем:
      * вернёт схему «Авто» — вернётся и его насосная группа.
      */
     tankLoadSchemeEff: function () {
-        if (this.boilerSchemeMode() === 'direct') return 'valve';
+        if (this.boilerSchemeEff() === 'direct') return 'valve';
         return (this.state.tankLoadScheme === 'pump') ? 'pump' : 'valve';
     },
 
@@ -53561,9 +53584,18 @@ const app = {
     syncBoilerSchemeNote: function () {
         const el = document.getElementById('lbl_boiler_scheme_note');
         if (!el) return;
-        const bs = this.boilerSchemeMode(), had = this.needCollector;
-        el.textContent = (bs === 'direct')
-            ? 'Радиаторы от насоса котла, тёплый пол — через узел подмеса, бойлер — через трёхходовой клапан. Оговорки — в шапке раздела «2. Обвязка котельной».'
+        const bs = this.boilerSchemeMode(), had = this.needCollector, s = this.state;
+        // Перечисляем только то, что в расчёте есть: «тёплый пол — через узел
+        // подмеса» в доме без тёплого пола читается как ошибка калькулятора.
+        const parts = [];
+        if ((s.systems || []).includes('rad')) parts.push('радиаторы от насоса котла');
+        if ((s.systems || []).includes('tp')) parts.push('тёплый пол через узел подмеса');
+        if (s.hotWater) parts.push('бойлер через трёхходовой клапан');
+        el.textContent = (bs === 'direct' && this.boilerSchemeDirectBlocked())
+            ? 'Без гидрострелки не собрать: тёплый пол больше, чем тянет узел подмеса. Смета собрана как в «Авто».'
+            : (bs === 'direct')
+            ? (parts.length ? parts.join(', ').replace(/^./, c => c.toUpperCase()) + '. ' : '') +
+              'Оговорки — в шапке раздела «2. Обвязка котельной».'
             : (bs === 'hydro')
             ? 'Гидрострелка и насосная группа на каждый контур, даже если хватило бы насоса котла.'
             : (had === true)
@@ -58382,13 +58414,11 @@ const app = {
         // проходит — считаем как «Авто» и объясняем почему в шапке раздела 2:
         // смета, которую нельзя смонтировать, хуже сметы с гидрострелкой.
         const _bScheme = this.boilerSchemeMode();
-        let _schemeBlockedUfh = false;
-        if (_bScheme === 'direct' && hasTp && tpArea > 0) {
-            if (this.isUfhMixTypeCompatible('std', tpArea, this.state.brandMode, tpAreaPerMan)) {
-                this.state.ufhMixType = 'std';
-            } else {
-                _schemeBlockedUfh = true;
-            }
+        // Та же проверка, по которой выше решалась загрузка бойлера
+        // (tankLoadSchemeEff) — одна функция, чтобы смета не разошлась сама с собой.
+        const _schemeBlockedUfh = this.boilerSchemeDirectBlocked();
+        if (_bScheme === 'direct' && !_schemeBlockedUfh && hasTp && tpArea > 0) {
+            this.state.ufhMixType = 'std';
         }
         const _forceDirect = (_bScheme === 'direct') && !_schemeBlockedUfh;
         const _forceHydro = (_bScheme === 'hydro');
