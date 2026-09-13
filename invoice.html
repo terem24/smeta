@@ -2648,6 +2648,19 @@
             return /^(rec|custom|user)_/.test(s) ? '' : s;
         }
 
+        // Фото позиции не нашлось по артикулу — пробуем код каталога, и только
+        // потом ставим заглушку. Запасной адрес используется один раз.
+        function tableImgFallback(img) {
+            const alt = img.getAttribute('data-alt-src');
+            if (alt) {
+                img.removeAttribute('data-alt-src');
+                img.src = alt;
+                return;
+            }
+            img.onerror = null;
+            img.src = 'img/favicon.png';
+        }
+
         function copySpecFor1C() {
             if (!invoiceData || !invoiceData.items || !invoiceData.items.equipment) {
                 alert("Данные сметы не найдены");
@@ -3598,6 +3611,11 @@
                         // заведомо несуществующим 'img/нет.jpg'.
                         const cleanSku = realSku(i.displaySku || i.id);
                         const imgPath = cleanSku ? `img/${cleanSku}.jpg` : 'img/favicon.png';
+                        // Запасной путь — код каталога. У STOUT и ROMMER артикул и код
+                        // совпадают, а у чужих брендов фото названо по коду каталога
+                        // (ASKON-MU-25M.jpg), тогда как артикул производителя — «МУ-25М».
+                        const altSku = realSku(i.id);
+                        const altImgPath = (altSku && altSku !== cleanSku) ? `img/${altSku}.jpg` : '';
 
                         let availStyle = '';
                         let availText = '';
@@ -3686,7 +3704,7 @@
                         tr.innerHTML = `
                             <td class="col-idx">${globalIdx++}</td>
                             <td class="col-img">
-                                <img src="${imgPath}" class="table-img" onerror="this.onerror=null; this.src='img/favicon.png';">
+                                <img src="${imgPath}" class="table-img" data-alt-src="${altImgPath.replace(/"/g, '&quot;')}" onerror="tableImgFallback(this)">
                             </td>
                             <td class="col-name">${i.name}</td>
                             <td class="col-sku">${i.displaySku || '-'}</td>
