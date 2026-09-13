@@ -897,6 +897,37 @@
             font-variant-numeric: tabular-nums;
         }
 
+        /* Тёмная тема (у клиента включается сама с 20:00 до 8:00): светлые
+           плашки таймера светились пятнами на тёмном фоне. Те же оттенки,
+           но полупрозрачной подложкой и светлым текстом. */
+        body.dark-mode .timer-bar {
+            background: rgba(59, 130, 246, 0.14);
+            color: #93C5FD;
+            border-color: rgba(96, 165, 250, 0.35);
+        }
+
+        body.dark-mode .timer-bar.timer-soon {
+            background: rgba(249, 115, 22, 0.14);
+            color: #FDBA74;
+            border-color: rgba(251, 146, 60, 0.35);
+        }
+
+        body.dark-mode .timer-bar.timer-over {
+            background: rgba(255, 255, 255, 0.06);
+            color: #D1D5DB;
+            border-color: rgba(255, 255, 255, 0.16);
+        }
+
+        body.dark-mode {
+            --price-blur: rgba(229, 231, 235, 0.55);
+        }
+
+        body.dark-mode .status-refresh {
+            background-color: rgba(249, 115, 22, 0.14);
+            color: #FDBA74;
+            border-color: rgba(251, 146, 60, 0.35);
+        }
+
         /* Чёрно-белым делаем всё, кроме кнопки «Обновить счёт»: фильтр на
            родителе обесцвечивает и потомков, поэтому красим по частям. */
         body.invoice-expired .container > *:not(.title-block),
@@ -922,7 +953,9 @@
         body.invoice-expired #works_tbody tr.subtotal-row td,
         body.invoice-expired .sum-val {
             color: transparent !important;
-            text-shadow: 0 0 9px rgba(60, 60, 60, 0.45);
+            /* Цвет размытия — переменной: в тёмной теме тёмное пятно на тёмном
+               фоне пропадало, и таблица выглядела так, будто цен нет вовсе. */
+            text-shadow: 0 0 9px var(--price-blur, rgba(60, 60, 60, 0.45));
             /* Safari на айфоне без приставки -webkit- выделять не запрещает:
                долгим нажатием цену можно было скопировать. touch-callout гасит
                меню «Скопировать» у долгого нажатия. */
@@ -2414,6 +2447,14 @@
                 --img-bg: #FFFFFF;
                 --track: #E5E7EB;
                 --track-hover: #D1D5DB;
+                --price-blur: rgba(60, 60, 60, 0.45);
+            }
+
+            /* Бейдж «Запрошено обновление» на бумаге — в светлых цветах */
+            body.dark-mode .status-refresh {
+                background-color: #FFEDD5;
+                color: #9A3412;
+                border-color: #FDBA74;
             }
         }
 
