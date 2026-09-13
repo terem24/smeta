@@ -24,8 +24,8 @@
 window.IdleHint = {
 
     DELAY_MS: 30 * 1000,             // сколько человек должен провести на пустом калькуляторе
-    RETRY_MS: 10 * 1000,             // экран занят (окно, обучение) — ждём и пробуем снова
-    GIVE_UP_MS: 5 * 60 * 1000,       // так и не освободился — в этот заход не показываем
+    POLL_MS: 5 * 1000,               // как часто смотрим на экран
+    GIVE_UP_MS: 10 * 60 * 1000,      // за столько с входа не сложилось — в этот заход не показываем
     MAX_SHOWS: 5,                    // всего показов за жизнь браузера на одного человека
 
     // ВРЕМЕННО, на проверку. Владелец (app.isAnalyticsOwner) видит подсказку без
@@ -38,6 +38,7 @@ window.IdleHint = {
 
     _timer: null,
     _started: 0,
+    _emptySince: 0,                  // с какого момента расчёт пуст без перерыва
 
     // Запись в localStorage — своя у каждого аккаунта: на одном компьютере
     // бывает несколько учёток, и «больше не показывать» одной не касается другой.
@@ -84,8 +85,9 @@ window.IdleHint = {
             }
 
             this._started = Date.now();
-            clearTimeout(this._timer);
-            this._timer = setTimeout(() => this.tryShow(uRow), this.DELAY_MS);
+            this._emptySince = 0;
+            clearInterval(this._timer);
+            this._timer = setInterval(() => this.poll(uRow), this.POLL_MS);
         } catch (e) {
             console.warn('[IdleHint]', e && e.message);
         }
@@ -125,15 +127,27 @@ window.IdleHint = {
         return true;
     },
 
-    tryShow: function (uRow) {
-        // Пока ждали — начал считать сам. Подсказка больше не нужна.
-        if (!app.isCalcEmpty()) return;
-        if (!this.screenFree()) {
-            if (Date.now() - this._started < this.GIVE_UP_MS) {
-                this._timer = setTimeout(() => this.tryShow(uRow), this.RETRY_MS);
-            }
+    /**
+     * Полминуты считаются от момента, когда расчёт стал пустым, а не от входа.
+     *
+     * Первая версия заводила один таймер при входе и через полминуты сдавалась, если
+     * расчёт был не пуст. А он у многих не пуст при входе: в браузере остаётся
+     * прошлый расчёт, и человек сначала жмёт «Сбросить». Такому подсказка не
+     * показывалась до следующей перезагрузки — ровно так её не увидел владелец на
+     * проверке. Теперь смотрим на экран раз в пять секунд: начал считать — отсчёт
+     * обнуляется, сбросил расчёт — пошёл заново.
+     */
+    poll: function (uRow) {
+        const now = Date.now();
+        if (document.getElementById('idle_hint_card') || now - this._started > this.GIVE_UP_MS) {
+            clearInterval(this._timer);
             return;
         }
+        if (!app.isCalcEmpty()) { this._emptySince = 0; return; }
+        if (!this._emptySince) this._emptySince = now;
+        if (now - this._emptySince < this.DELAY_MS) return;
+        if (!this.screenFree()) return;
+        clearInterval(this._timer);
         this.show(uRow);
     },
 
