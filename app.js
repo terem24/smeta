@@ -35500,6 +35500,23 @@ const app = {
         // На мобильном канале два тяжёлых запроса душат друг друга, быстрое сохранение не
         // укладывалось в таймаут — и клиенту уходила длинная офлайн-ссылка. Снимок состояния
         // делаем сразу (как раньше), а отправку в очередь откладываем.
+        //
+        // До снимка в состоянии уже должны быть номер ссылки и слепок цен: по ним
+        // «Сверка цен» в «Моих объектах» находит, с какими ценами смета ушла клиенту.
+        // Снимок, сделанный раньше, уносил в базу смету без того и другого, и сверка
+        // объявляла только что отправленную смету старой, «до августа 2026 года».
+        //
+        // id для строки в shared_invoices генерируется на клиенте заранее (переиспользуем,
+        // если он уже был создан для этого объекта раньше, чтобы ссылка при повторной
+        // генерации не менялась).
+        const hasExistingShareId = !!(this.state.shared_invoice_id && this.isValidUUID(this.state.shared_invoice_id));
+        let shareId = hasExistingShareId
+            ? this.state.shared_invoice_id
+            : this.generateCustomInvoiceId();
+        this.state.shared_invoice_id = shareId;
+        this.capturePriceSnapshot();
+        this.saveState();
+
         const cloudSaveSnapshot = JSON.parse(JSON.stringify(this.state));
         const cloudSaveEqSum = app.lastEqSum || 0;
         const cloudSaveWorksSum = app.lastWorksSum || 0;
@@ -35510,17 +35527,7 @@ const app = {
             this.queueCloudSave(cloudSaveSnapshot, cloudSaveEqSum, cloudSaveWorksSum);
         };
 
-        // id для строки в shared_invoices генерируется на клиенте заранее (переиспользуем,
-        // если он уже был создан для этого объекта раньше, чтобы ссылка при повторной
-        // генерации не менялась).
         try {
-            const hasExistingShareId = !!(this.state.shared_invoice_id && this.isValidUUID(this.state.shared_invoice_id));
-            let shareId = hasExistingShareId
-                ? this.state.shared_invoice_id
-                : this.generateCustomInvoiceId();
-            this.state.shared_invoice_id = shareId;
-            this.saveState();
-
             object_info.status = object_info.status || 'sent';
             object_info.client_comment = object_info.client_comment || null;
             object_info.status_updated_at = object_info.status_updated_at || null;
@@ -35586,6 +35593,9 @@ const app = {
                                 shareId = retryShareId;
                                 this.state.shared_invoice_id = retryShareId;
                                 this.saveState();
+                                // Снимок для облака сделан до повтора — в очередь он ещё не
+                                // ушёл, так что номер в нём поправить можно.
+                                cloudSaveSnapshot.shared_invoice_id = retryShareId;
                                 shareUrl = `${baseOrigin}/invoice.html?id=${retryShareId}`;
                             } else {
                                 fastSaveReason = `${fastSaveReason}; повтор с новым номером: ${this.lastSharedInvoiceSaveError || 'отказ без ошибки'}`.slice(0, 300);
