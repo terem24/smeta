@@ -235,7 +235,15 @@ if (payload && payload.items && payload.items.length) {
       mepSlots.push([pad2(base + 1), 'Сводная схема сетей ' + fl + ' этажа', 'лист не формируется']);
     });
   }
-  var mepHlStart = 3 + nFloors * 2;
+  // Сводка по помещениям — перед подробным расчётом: сначала «какая нагрузка»,
+  // потом «из чего она сложилась». В проектах-образцах порядок тот же.
+  var mepRdStart = 3 + nFloors * 2;
+  var mepRooms = (payload.heatloss && payload.heatloss.length &&
+                  projectSheets.roomDataSheets)
+    ? projectSheets.roomDataSheets(payload.heatloss,
+        { code: MARK.mep.code, sheetStart: mepRdStart, num: numMep })
+    : [];
+  var mepHlStart = mepRdStart + mepRooms.length;
   var mepHl = (payload.heatloss && payload.heatloss.length)
     ? projectSheets.heatLossSheets(payload.heatloss,
         { code: MARK.mep.code, sheetStart: mepHlStart, num: numMep })
@@ -522,7 +530,7 @@ if (payload && payload.items && payload.items.length) {
   var made = [];        // [{mk, total}] — для перекрёстных ссылок в общих данных
   var svgs = [];        // листы комплекта по порядку разделов
 
-  var mepTotal = mepPlans.length + mepHl.length;
+  var mepTotal = mepPlans.length + mepRooms.length + mepHl.length;
   var tmTotal = (tmScheme.length + tmNodes.length + tmSpec.length)
     ? 1 + tmScheme.length + tmLayout.length + tmNodes.length + tmArt.length +
       tmPipe.length + tmSpec.length : 0;
@@ -563,6 +571,7 @@ if (payload && payload.items && payload.items.length) {
   if (mepTotal) {
     svgs.push(titleOf('mep'));
     mepPlans.forEach(function (p) { svgs.push(p.svg); });
+    mepRooms.forEach(function (s) { svgs.push(s); });
     mepHl.forEach(function (s) { svgs.push(s); });
     made.push({ mk: 'mep', total: mepTotal });
   }

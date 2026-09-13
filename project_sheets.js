@@ -445,6 +445,33 @@
     { w: 55, title: 'Примечание', align: 'left' }
   ];
 
+  // Примечание под таблицей спецификации — два пункта, обязательные для
+  // рабочей документации. Первый снимает вопрос о заменах, второй объясняет,
+  // почему в спецификации нет хомутов и метизов: их номенклатуру по
+  // ГОСТ 21.110-2013 п. 4.6 определяет монтажная организация, а не проект.
+  // Раньше листы уходили заказчику без обоих — и оба каждый раз спрашивали.
+  var SPEC_NOTE = [
+    '1. Допускается замена оборудования, изделий и материалов, предусмотренных проектом,',
+    'на аналогичные (с заменой производителя и/или поставщика) при условии сохранения',
+    '(или улучшения) технических характеристик.',
+    '2. Крепёжные элементы трубопровода (опоры, болты, гайки, шайбы, прокладки)',
+    'в спецификацию не включены. Номенклатуру и количество данных элементов определяет',
+    'строительно-монтажная организация согласно ГОСТ 21.110-2013 п. 4.6.'
+  ];
+  var SPEC_NOTE_STEP = 3.9;                 // шаг строк примечания, мм
+  // Сколько места держать под примечание при разбивке на листы: заголовок,
+  // строки и отступ от таблицы.
+  var SPEC_NOTE_H = 6 + (SPEC_NOTE.length + 1) * SPEC_NOTE_STEP;
+
+  /** Примечание под таблицей: x — левый край, y — базовая линия заголовка. */
+  function specNote(x, y) {
+    var o = [text(x, y, 'Примечание:', { size: 3.1, weight: 'bold' })];
+    SPEC_NOTE.forEach(function (s, i) {
+      o.push(text(x, y + (i + 1) * SPEC_NOTE_STEP, s, { size: 3.1 }));
+    });
+    return o.join('');
+  }
+
   /** items: [{ section } | { name, unit, qty, note }]
    *  numTitle — «№» на листах В и О, «Позиция» на листах ТМ */
   function specification(opts) {
@@ -461,7 +488,8 @@
     var t = table(FR.l, BODY_TOP, cols, rows, {});
     return sheet({
       title: opts.title || 'Спецификация оборудования и материалов',
-      code: opts.code, sheet: opts.sheet, body: t.svg
+      code: opts.code, sheet: opts.sheet,
+      body: t.svg + (t.bottom + SPEC_NOTE_H <= 281 ? specNote(FR.l, t.bottom + 6) : '')
     });
   }
 
@@ -696,6 +724,78 @@
       sheetTitle: opts.sheetTitle, stage: opts.stage, sheet: opts.sheet,
       total: opts.total, people: opts.people, date: opts.date, org: opts.org,
       body: o.join('')
+    });
+  }
+
+  // ─── Лист «Основные данные помещений» ──────────────────────────────────
+  // Сводка на один взгляд: номер, название, площадь, расчётная температура и
+  // нагрузка. Лист «Расчёт теплопотерь» отвечает на вопрос «откуда цифра», а
+  // этот — «какая цифра»; в проектах-образцах он идёт перед расчётом, и
+  // монтажник на объекте смотрит именно в него.
+  //
+  // Таблица узкая и стоит по центру поля чертежа — как в образцах: пять граф
+  // на лист А3 растягивать не во что.
+  var RD_COLS = [
+    { w: 25, title: '№', align: 'center' },
+    { w: 90, title: 'Наименование', align: 'left' },
+    { w: 35, title: 'Площадь, м²', align: 'center' },
+    { w: 40, title: 'Расчётная температура, °C', align: 'center' },
+    { w: 30, title: 'Нагрузка, Вт', align: 'center' }
+  ];
+
+  /**
+   * floors: тот же массив, что у heatLossSheets — [{ label, rooms, total }],
+   * где комната даёт id, name, area, tv, total.
+   * opts: { code, sheetStart, num }
+   */
+  function roomDataSheets(floors, opts) {
+    opts = opts || {};
+    var fmtNo = opts.num || function (v) { return String(v); };
+    var w = RD_COLS.reduce(function (a, c) { return a + c.w; }, 0);
+    var x = FR.l + (FRAME.w - w) / 2;
+
+    var rows = [], totArea = 0, totQ = 0, many = (floors || []).length > 1;
+    (floors || []).forEach(function (fl) {
+      // Этаж заголовком — только когда этажей больше одного: на одноэтажном
+      // объекте строка «1 этаж» над единственной таблицей ничего не говорит.
+      if (many) rows.push({ section: fl.label });
+      (fl.rooms || []).forEach(function (r) {
+        totArea += r.area || 0; totQ += r.total || 0;
+        rows.push([r.id, r.name, (r.area || 0).toFixed(2),
+          (r.tv === undefined || r.tv === null) ? '—' : String(r.tv),
+          String(Math.round(r.total || 0))]);
+      });
+    });
+    if (!rows.length) return [];
+    // Итог — обычной строкой со всеми графами: в отличие от листа теплопотерь,
+    // здесь в итоге две цифры (площадь и нагрузка), а «пустая» строка table()
+    // печатает только первую и последнюю графы.
+    var fin = ['', 'Итого', totArea.toFixed(2), '', String(Math.round(totQ))];
+    fin.nofill = true;
+    rows.push(fin);
+
+    // Разбивка на листы — как у спецификации: последняя строка не ниже 275 мм
+    var headH = 5.5;
+    var perSheet = Math.floor((275 - BODY_TOP - headH) / ROW_H);
+    var pages = [], page = [];
+    rows.forEach(function (r) {
+      if (page.length >= perSheet) { pages.push(page); page = []; }
+      page.push(r);
+    });
+    if (page.length) pages.push(page);
+    for (var p = 0; p < pages.length - 1; p++) {
+      var tail = pages[p][pages[p].length - 1];
+      if (tail && tail.section) { pages[p].pop(); pages[p + 1].unshift(tail); }
+    }
+
+    var start = opts.sheetStart || 1;
+    return pages.map(function (pageRows, idx) {
+      var t = table(x, BODY_TOP, RD_COLS, pageRows, { headH: headH });
+      return sheet({
+        title: 'Основные данные помещений',
+        titleSize: 5.19, titleY: 11.2,
+        code: opts.code, sheet: fmtNo(start + idx), body: t.svg
+      });
     });
   }
 
@@ -1143,14 +1243,25 @@
       var tail = pages[p][pages[p].length - 1];
       if (tail && tail.section) { pages[p].pop(); pages[p + 1].unshift(tail); }
     }
+    // Под таблицей последнего листа — примечание (см. specNote). Если строки
+    // заняли всю страницу, отодвигаем хвост на следующую: примечание не
+    // должно налезть на штамп.
+    var last = pages[pages.length - 1] || [];
+    while (last.length > 1 &&
+           BODY_TOP + headH + last.length * ROW_H > 275 - SPEC_NOTE_H) {
+      var moved = last.pop();
+      pages.push(last = [moved]);
+    }
 
     var start = opts.sheetStart || 1;
     var fmtNo = opts.num || function (v) { return String(v); };
     return pages.map(function (pageRows, idx) {
       var t = table(FR.l, BODY_TOP, SPEC_COLS, pageRows, {});
+      var body = t.svg;
+      if (idx === pages.length - 1) body += specNote(FR.l, t.bottom + 6);
       return sheet({
         title: opts.title || 'Спецификация оборудования и материалов',
-        code: opts.code, sheet: fmtNo(start + idx), body: t.svg
+        code: opts.code, sheet: fmtNo(start + idx), body: body
       });
     });
   }
@@ -1161,6 +1272,7 @@
     table: table, specification: specification,
     fromEquipment: fromEquipment,
     titleSheet: titleSheet, generalData: generalData, stampBig: stampBig,
+    roomDataSheets: roomDataSheets,
     heatLossSheets: heatLossSheets,
     hydraulicsSheets: hydraulicsSheets,
     ufhHydraulicsSheets: ufhHydraulicsSheets,
