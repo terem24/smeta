@@ -15549,6 +15549,101 @@ const app = {
      * адресом (см. подсчёт расчётов в loadAdminData). Номера порциями: длинный
      * список не влезает в адрес запроса.
      */
+    /**
+     * «Кому позвонить» — список для менеджера дистрибьютора.
+     *
+     * Те же люди, что в фильтре «Ходит, но не считает», но только его компании и
+     * сразу готовым списком над монтажниками: искать фильтр в строке из девяти
+     * выпадающих списков менеджер не станет, а позвонить пяти людям по готовому
+     * списку — станет. Живой звонок знакомого менеджера сильнее любой подсказки на
+     * сайте: подсказку можно закрыть, а на вопрос «что не получилось?» человек
+     * отвечает.
+     *
+     * Только менеджеру. Наблюдатель не звонит, у владельца есть сам фильтр по всей
+     * платформе. Пока фильтр «Ходит, но не считает» включён, блок не рисуем — он
+     * повторял бы таблицу под собой.
+     *
+     * Рисуется пустой обёрткой и заполняется следом (как счётчики приглашений):
+     * список пользователей не должен ждать ещё трёх запросов. Никого нет — блок
+     * остаётся пустым и места не занимает.
+     */
+    renderIdleCallBlock: function () {
+        if (!this.isManagerRole()) return '';
+        const f = this._pendingAdminFilters || {};
+        if (f.idle === 'yes') return '';
+        setTimeout(() => this.fillIdleCallBlock(), 0);
+        return '<div id="idle_call_block"></div>';
+    },
+
+    fillIdleCallBlock: async function () {
+        const host = document.getElementById('idle_call_block');
+        if (!host) return;
+        try {
+            const distIds = this.managerDistIds();
+            if (!distIds.length) return;
+            const { data, error } = await supabaseClient.from('users')
+                .select('id, username, email, phone, city, region, last_name, first_name, middle_name, last_visited, sess_visits, sess_sec, sess_days, sess_screens')
+                .in('distributor_id', distIds)
+                .gte('sess_visits', this.IDLE_MIN_VISITS)
+                .order('last_visited', { ascending: false, nullsFirst: false });
+            if (error) throw error;
+            const people = await this.filterIdleVisitors(data || []);
+            // Пока грузили, менеджер мог уйти на другую вкладку панели
+            if (!document.body.contains(host) || !people.length) return;
+
+            const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const jsq = v => String(v == null ? '' : v).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            const rows = people.map(u => {
+                const name = this.getAdminUserDisplayName(u);
+                const sess = this.sessionSummary(u);
+                const phoneDigits = String(u.phone || '').replace(/[^\d+]/g, '');
+                const phone = u.phone
+                    ? `<a href="tel:${esc(phoneDigits)}" onclick="event.stopPropagation();" style="color:var(--primary); font-weight:700; text-decoration:none; white-space:nowrap;">📞 ${esc(u.phone)}</a>`
+                    : '<span style="color:var(--text-sec);">телефона нет</span>';
+                const last = u.last_visited
+                    ? new Date(u.last_visited).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
+                    : '—';
+                const sawHint = u.sess_screens && u.sess_screens['hint:idle']
+                    ? '<span title="Подсказку «Смета за минуту» на сайте видел, но расчёт так и не начал" style="font-size:10px; font-weight:700; color:#D97706; background:rgba(217,119,6,0.1); padding:1px 6px; border-radius:6px; margin-left:6px; white-space:nowrap;">подсказка не помогла</span>'
+                    : '';
+                return `<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; padding:10px 0; border-top:1px solid var(--border);">
+                    <div style="flex:1 1 220px; min-width:0;">
+                        <div style="font-size:13px; font-weight:700; color:var(--text-main);">${esc(name)}${sawHint}</div>
+                        <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${esc([u.city, u.region].filter(Boolean).join(', ') || 'город не указан')} · заходил ${last}</div>
+                    </div>
+                    <div style="flex:1 1 220px; font-size:11.5px; color:var(--text-sec);" title="${sess.title}">${sess.text.replace('На сайте: ', 'На сайте ')}</div>
+                    <div style="flex:0 0 auto; font-size:13px;">${phone}</div>
+                    <div style="flex:0 0 auto; display:flex; gap:6px;">
+                        <button class="admin-action-btn btn-msg" onclick="app.adminMessageUser('${u.id}', '${jsq(name)}')" title="Написать в чат калькулятора"><span class="btn-icon">💬</span><span class="btn-text"> Написать</span></button>
+                        <button class="admin-action-btn btn-obj" onclick="app.viewAdminUser('${u.id}')" title="Карточка: где был на сайте"><span class="btn-icon">👤</span><span class="btn-text"> Карточка</span></button>
+                    </div>
+                </div>`;
+            }).join('');
+
+            host.innerHTML = `<div style="background:rgba(217,119,6,0.06); border:1px solid rgba(217,119,6,0.35); border-radius:12px; padding:14px 16px; margin-bottom:16px;">
+                <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px;">
+                    <div style="font-size:14px; font-weight:800; color:var(--text-main);">📞 Кому позвонить: заходят, но не считают — ${people.length}</div>
+                    <button type="button" class="admin-btn" style="height:28px; font-size:11.5px;" onclick="app.showIdleInList()">Показать в списке</button>
+                </div>
+                <div style="font-size:12px; line-height:1.5; color:var(--text-sec); margin:6px 0 4px;">
+                    Заходили ${this.IDLE_MIN_VISITS} и более раз, но не начали ни одного расчёта. Спросите, что не получилось:
+                    чаще всего человек не понял, с чего начать. Предложите вместе посчитать его объект или типовой дом — это пара минут.
+                </div>
+                ${rows}
+            </div>`;
+        } catch (e) {
+            // Список вспомогательный: не получилось — просто не показываем
+            console.warn('[кому позвонить] не собран:', e.message || e);
+        }
+    },
+
+    // Кнопка «Показать в списке»: тот же отбор фильтром таблицы
+    showIdleInList: function () {
+        const sel = document.getElementById('admin_filter_idle');
+        if (sel) sel.value = 'yes';
+        this.loadAdminData(0);
+    },
+
     filterIdleVisitors: async function (users) {
         if (!users.length) return users;
         const ids = users.map(u => String(u.id));
@@ -17428,7 +17523,7 @@ const app = {
         const searchQuery = document.getElementById('admin_search_input')?.value || this._pendingAdminSearch || '';
         const shouldRefocus = !!this._pendingAdminSearchFocused;
         // Менеджеру и наблюдателю — блок приглашений над списком монтажников
-        content.innerHTML = navHtml + this.renderInviteBlock() + h;
+        content.innerHTML = navHtml + this.renderInviteBlock() + this.renderIdleCallBlock() + h;
         if (searchQuery) {
             const input = document.getElementById('admin_search_input');
             if (input) {
