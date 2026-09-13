@@ -897,16 +897,29 @@
             font-variant-numeric: tabular-nums;
         }
 
-        body.invoice-expired .container {
+        /* Чёрно-белым делаем всё, кроме кнопки «Обновить счёт»: фильтр на
+           родителе обесцвечивает и потомков, поэтому красим по частям. */
+        body.invoice-expired .container > *:not(.title-block),
+        body.invoice-expired .title-block > *:not(#refresh_container) {
             filter: grayscale(1);
         }
 
         /* Цены прячем цветом, а не удалением: таблица не прыгает, а вернуть их
            одним классом проще, чем перерисовывать смету. Мобильные подписи
            («× », «Сумма:») живут в ::before тех же ячеек и уходят вместе с ними. */
+        /* Селекторы с #equipment_tbody / #works_tbody обязательны: мобильная
+           вёрстка таблицы красит все ячейки правилом «#equipment_tbody td
+           { color: … !important }», и без идентификатора в селекторе оно
+           перебивало скрытие — на телефоне цены оставались видны. */
         body.invoice-expired td.col-price,
         body.invoice-expired td.col-sum,
         body.invoice-expired tr.subtotal-row td,
+        body.invoice-expired #equipment_tbody td.col-price,
+        body.invoice-expired #equipment_tbody td.col-sum,
+        body.invoice-expired #equipment_tbody tr.subtotal-row td,
+        body.invoice-expired #works_tbody td.col-price,
+        body.invoice-expired #works_tbody td.col-sum,
+        body.invoice-expired #works_tbody tr.subtotal-row td,
         body.invoice-expired .sum-val {
             color: transparent !important;
             text-shadow: 0 0 9px rgba(60, 60, 60, 0.45);
@@ -915,20 +928,61 @@
         }
 
         body.invoice-expired td.col-price::before,
-        body.invoice-expired td.col-sum::before {
+        body.invoice-expired td.col-sum::before,
+        body.invoice-expired #equipment_tbody td.col-price::before,
+        body.invoice-expired #equipment_tbody td.col-sum::before,
+        body.invoice-expired #works_tbody td.col-price::before,
+        body.invoice-expired #works_tbody td.col-sum::before {
             color: transparent !important;
         }
 
+        /* Полоска отсчёта: одна текстовая строка, а не flex-колонки — иначе на
+           телефоне «Цены действительны ещё», время и дата вставали тремя узкими
+           столбиками. На узком экране дата уходит второй строкой. */
+        .timer-bar .timer-text {
+            display: block;
+            text-align: center;
+        }
+
+        .timer-bar .timer-until-sep {
+            white-space: pre;
+        }
+
+        @media (max-width: 768px) {
+            /* display не трогаем: его ставит скрипт (inline-flex или none).
+               Внутри один блок .timer-text, так что текст идёт строкой. */
+            .timer-bar {
+                max-width: 100%;
+                box-sizing: border-box;
+                border-radius: 14px;
+            }
+
+            .timer-bar .timer-until {
+                display: block;
+                font-weight: 500;
+                font-size: 12px;
+                margin-top: 2px;
+            }
+
+            .timer-bar .timer-until-sep {
+                display: none;
+            }
+        }
+
+        /* background целиком, а не background-color: у базовой кнопки зелёный
+           градиент, и он ложился поверх цвета */
         .btn-refresh-invoice {
-            background-color: #F97316 !important;
+            background: linear-gradient(135deg, #F97316 0%, #EA580C 100%) !important;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25) !important;
         }
 
         .btn-refresh-invoice:hover {
-            background-color: #EA580C !important;
+            background: linear-gradient(135deg, #EA580C 0%, #C2410C 100%) !important;
         }
 
         .btn-refresh-invoice:disabled {
-            background-color: #FDBA74 !important;
+            background: #9CA3AF !important;
+            box-shadow: none !important;
         }
 
         .fab-refresh {
@@ -4010,7 +4064,7 @@
                         return;
                     }
                     bar.className = 'timer-bar' + (left < 6 * 3600000 ? ' timer-soon' : '');
-                    bar.innerHTML = `⏳ Цены действительны ещё <b>${fmtRemaining(left)}</b> · до ${until}`;
+                    bar.innerHTML = `<span class="timer-text">⏳ Цены действительны ещё <b>${fmtRemaining(left)}</b><span class="timer-until-sep"> · </span><span class="timer-until">до ${until}</span></span>`;
                     bar.title = 'Когда срок выйдет, цены скроются: можно будет попросить обновить счёт';
                 };
                 tick();
@@ -4022,12 +4076,12 @@
             bar.className = 'timer-bar timer-over';
             bar.style.display = 'inline-flex';
             if (state === 'expired') {
-                bar.innerHTML = `⌛ Срок действия счёта вышел ${until}`;
+                bar.innerHTML = `<span class="timer-text">⌛ Срок действия счёта вышел<span class="timer-until-sep"> </span><span class="timer-until">${until}</span></span>`;
                 if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '🔄 Обновить счёт'; }
                 if (refreshHint) refreshHint.textContent = 'Цены могли измениться, поэтому они скрыты. Нажмите «Обновить счёт» — монтажник пересчитает смету по сегодняшним ценам, и она появится по этой же ссылке.';
             } else {
                 const askedAt = obj.refresh_requested_at ? fmtValidUntil(obj.refresh_requested_at) : '';
-                bar.innerHTML = `⌛ Срок действия вышел · запрос на обновление отправлен${askedAt ? ' ' + askedAt : ''}`;
+                bar.innerHTML = `<span class="timer-text">⌛ Срок действия вышел<span class="timer-until-sep"> · </span><span class="timer-until">запрос на обновление отправлен${askedAt ? ' ' + askedAt : ''}</span></span>`;
                 if (refreshBtn) { refreshBtn.disabled = true; refreshBtn.textContent = '✓ Запрос отправлен'; }
                 if (refreshHint) refreshHint.textContent = 'Монтажник получил уведомление. Обновлённый счёт с новым сроком появится по этой же ссылке — откройте её позже.';
             }
