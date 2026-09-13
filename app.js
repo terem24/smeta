@@ -15464,6 +15464,53 @@ const app = {
         'lk:admin': 'панель управления'
     },
 
+    // С какого числа визитов человек считается «ходит». Один-два захода — это ещё
+    // знакомство с сайтом, а не привычка; с трёх видно, что он возвращается.
+    IDLE_MIN_VISITS: 3,
+
+    /**
+     * Фильтр «Ходит, но не считает»: из кандидатов (3+ визита, отбирает база)
+     * оставляет тех, у кого нет ни одного расчёта.
+     *
+     * «Расчёт» — ровно то же, что в строке «Сохранено: N (расчётов M)»: любая
+     * отметка в invoice_events с номером расчёта или сохранённая смета. Иначе фильтр
+     * показывал бы человека, у которого в строке написано «расчётов 2».
+     *
+     * Отметки ищем и по user_id, и по почте — старые события подписаны только
+     * адресом (см. подсчёт расчётов в loadAdminData). Номера порциями: длинный
+     * список не влезает в адрес запроса.
+     */
+    filterIdleVisitors: async function (users) {
+        if (!users.length) return users;
+        const ids = users.map(u => String(u.id));
+        const emailOwner = {};
+        users.forEach(u => { if (u.email) emailOwner[String(u.email).trim().toLowerCase()] = String(u.id); });
+        const emails = Object.keys(emailOwner);
+        const busy = new Set();
+        const take = (r, pick) => {
+            if (r.error) throw r.error;
+            (r.data || []).forEach(row => { const id = pick(row); if (id) busy.add(id); });
+        };
+        const CHUNK = 100;
+        const jobs = [];
+        for (let i = 0; i < ids.length; i += CHUNK) {
+            const part = ids.slice(i, i + CHUNK);
+            jobs.push(supabaseClient.from('invoice_events').select('user_id')
+                .in('user_id', part).not('calc_id', 'is', null)
+                .then(r => take(r, row => String(row.user_id))));
+            jobs.push(supabaseClient.from('estimates').select('user_id')
+                .in('user_id', part)
+                .then(r => take(r, row => String(row.user_id))));
+        }
+        for (let i = 0; i < emails.length; i += CHUNK) {
+            jobs.push(supabaseClient.from('invoice_events').select('user_email')
+                .in('user_email', emails.slice(i, i + CHUNK)).not('calc_id', 'is', null)
+                .then(r => take(r, row => emailOwner[String(row.user_email || '').trim().toLowerCase()])));
+        }
+        await Promise.all(jobs);
+        return users.filter(u => !busy.has(String(u.id)));
+    },
+
     /**
      * Строка «На сайте» в списке пользователей.
      *
@@ -15498,7 +15545,7 @@ const app = {
 
         // «Начинал расчёты» считает тот же счётчик, что и строкой выше (calcStarted):
         // отметка ставится один раз на объект, в момент первого настоящего расчёта.
-        const noCalc = (u.calcStarted === 0) && visits >= 3;
+        const noCalc = (u.calcStarted === 0) && visits >= this.IDLE_MIN_VISITS;
         const color = noCalc ? '#D97706' : 'inherit';
 
         return {
@@ -15558,6 +15605,7 @@ const app = {
             region: document.getElementById('admin_filter_region')?.value || '',
             activity: document.getElementById('admin_filter_activity')?.value || 'all',
             recog: document.getElementById('admin_filter_recog')?.value || 'all',
+            idle: document.getElementById('admin_filter_idle')?.value || 'all',
             search: document.getElementById('admin_search_input')?.value || ''
         };
         const tariffFilter = filters.tariff;
@@ -15584,6 +15632,9 @@ const app = {
             }
         }
         if (activityFilter !== 'all') query = query.contains('activity_types', [activityFilter]);
+        // «Ходит, но не считает» — половину условия (3+ визита) знает сама база,
+        // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
+        if (filters.idle === 'yes') query = query.gte('sess_visits', this.IDLE_MIN_VISITS);
         if (searchFilter) {
             const cols = ['username', 'email', 'phone', 'city', 'region', 'last_name', 'first_name', 'middle_name'];
             query = query.or(cols.map(c => `${c}.ilike.%${searchFilter}%`).join(','));
@@ -15906,7 +15957,8 @@ const app = {
             region: document.getElementById('admin_filter_region')?.value || '',
             activity: document.getElementById('admin_filter_activity')?.value || 'all',
             recog: document.getElementById('admin_filter_recog')?.value || 'all',
-            suspect: document.getElementById('admin_filter_suspect')?.value || 'all'
+            suspect: document.getElementById('admin_filter_suspect')?.value || 'all',
+            idle: document.getElementById('admin_filter_idle')?.value || 'all'
         };
 
         const estSearchInputBefore = document.getElementById('admin_est_search_input');
@@ -15942,6 +15994,9 @@ const app = {
             // поэтому фильтру по ним тоже нужен весь список целиком.
             const suspectFilter = (this._pendingAdminFilters && this._pendingAdminFilters.suspect) || 'all';
             const isSuspectFilter = suspectFilter === 'yes';
+            // «Ходит, но не считает»: расчёты лежат в других таблицах, отбор по ним
+            // тоже клиентский, и список нужен целиком.
+            const isIdleFilter = ((this._pendingAdminFilters && this._pendingAdminFilters.idle) || 'all') === 'yes';
 
             if (sortType === 'login_desc') {
                 query = query
@@ -15977,7 +16032,7 @@ const app = {
             let users = [];
             let totalUsers = 0;
 
-            if (isClientSort || isRecogFilter || isSuspectFilter) {
+            if (isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter) {
                 let { data, error, count } = await query;
                 if (error) throw error;
                 users = data || [];
@@ -16000,6 +16055,9 @@ const app = {
             if (isSuspectFilter) {
                 users = users.filter(u => this.suspiciousProfileFlags(u).length > 0);
             }
+            if (isIdleFilter) {
+                users = await this.filterIdleVisitors(users);
+            }
             // Сколько среди отобранных продавцов и сколько монтажников — для карточки
             // «Пользователей». Один человек может отметить обе сферы, поэтому числа
             // не обязаны складываться в общее. Когда отбор шёл на клиенте, список
@@ -16007,7 +16065,7 @@ const app = {
             // лёгких запроса-счётчика с теми же фильтрами, что и у таблицы.
             let sellersCount = 0, installersCount = 0;
             const hasActivity = (u, word) => (u.activity_types || []).some(a => String(a).toLowerCase().indexOf(word) !== -1);
-            if (isRecogFilter || isSuspectFilter) {
+            if (isRecogFilter || isSuspectFilter || isIdleFilter) {
                 totalUsers = users.length;
                 sellersCount = users.filter(u => hasActivity(u, 'продав')).length;
                 installersCount = users.filter(u => hasActivity(u, 'монтаж')).length;
@@ -16186,6 +16244,7 @@ const app = {
             const anyFilter = (af.tariff && af.tariff !== 'all') || (af.expiry && af.expiry !== 'all') ||
                 !!(af.region || '').trim() || (af.activity && af.activity !== 'all') ||
                 (af.recog && af.recog !== 'all') || (af.suspect && af.suspect !== 'all') ||
+                (af.idle && af.idle !== 'all') ||
                 !!(af.search || '').trim();
             if (anyFilter) {
                 try {
@@ -16896,6 +16955,7 @@ const app = {
             activity: 'all',
             recog: 'all',
             suspect: 'all',
+            idle: 'all',
             search: ''
         };
         const tariffFilter = filters.tariff;
@@ -16904,6 +16964,7 @@ const app = {
         const activityFilter = filters.activity;
         const recogFilter = filters.recog || 'all';
         const suspectFilter = filters.suspect || 'all';
+        const idleFilter = filters.idle || 'all';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
         // обновлённый recognize_archive.php (см. designAccessSupported).
@@ -16968,6 +17029,12 @@ const app = {
                             <select id="admin_filter_suspect" onchange="app.loadAdminData(0)" title="Анкеты, похожие на выдуманные: латиница в ФИО, несуществующий номер, вход из чужого региона" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${suspectFilter === 'all' ? 'selected' : ''}>⚠️ Анкета: любая</option>
                                 <option value="yes" ${suspectFilter === 'yes' ? 'selected' : ''}>⚠️ Анкета: сомнительные</option>
+                            </select>
+                            <!-- Кто заходит регулярно, а посчитать так ничего и не начал.
+                                 Условие то же, что у оранжевой строки «На сайте» (sessionSummary). -->
+                            <select id="admin_filter_idle" onchange="app.loadAdminData(0)" title="Заходил ${this.IDLE_MIN_VISITS} и более раз, но не начал ни одного расчёта и не сохранил ни одной сметы" style="background: var(--surface); color: var(--text-main); border: 1px solid ${idleFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${idleFilter === 'all' ? 'selected' : ''}>👣 Визиты: все</option>
+                                <option value="yes" ${idleFilter === 'yes' ? 'selected' : ''}>👣 Ходит, но не считает</option>
                             </select>
                             <select id="admin_filter_activity" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${activityFilter === 'all' ? 'selected' : ''}>Вся сфера деят-ти</option>
