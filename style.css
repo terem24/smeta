@@ -7977,6 +7977,72 @@ body.dark-mode .ai-parse-preview-check {
     font-weight: 600;
 }
 
+/* Карточки товаров, найденных по свободному описанию в "Умном заполнении" —
+   тот же поиск по каталогу, что и в окне "Своё оборудование", но с добавлением
+   в один клик прямо из диалога, без отдельного окна. */
+.ai-chat-product-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.ai-chat-product-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 8px;
+}
+
+.ai-chat-product-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border-radius: 6px;
+    background: #fff;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.ai-chat-product-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+}
+
+.ai-chat-product-name {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.ai-chat-product-meta {
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+.ai-chat-product-add {
+    flex-shrink: 0;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--primary);
+    color: #fff;
+    white-space: nowrap;
+}
+
+.ai-chat-product-add.ai-chat-product-added {
+    background: #16a34a;
+}
+
 /* Feedback Modal Container */
 .feedback-modal {
     max-width: 440px !important;
