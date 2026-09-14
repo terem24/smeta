@@ -47484,16 +47484,18 @@ const app = {
         // весь дом в getHouseHeatLoss и добавлялась только к мощности котла, а в
         // помещение не попадала — из-за чего радиаторы подбирались по одним
         // ограждениям и суммарно недобирали до котла те самые 20–30 %.
-        // Формула та же, что была на дом, применённая к объёму помещения:
-        // сумма по всем комнатам совпадает с прежней домовой до копейки, и
-        // подбор котла от этой правки не сдвигается.
+        // Q = V · n · 0,34 · (Tv − Tn): 0,34 Вт·ч/(м³·K) — теплоёмкость воздуха
+        // c·ρ = 1,005 кДж/(кг·K) × 1,2 кг/м³ / 3,6. Раньше вместо (Tv − Tn) стояла
+        // единая разность 20 − Tn (15,3 · region/100), и лист «Теплопотери», где
+        // напечатана эта формула с ΔT помещения, не сходился с числом в строке:
+        // гараж на +5 получал столько же, сколько жилая на +22.
         var vol = area * rHeight;
         var n_eff = 0.35;
         if (s.ventilationEnabled) {
             n_eff = (s.ventilationType === 'forced') ? 1.0
                 : (s.ventilationType === 'recuperator' ? 0.25 : 0.35);
         }
-        var Q_vent = vol * n_eff * 15.3 * ((s.region || 100) / 100);
+        var Q_vent = dT > 0 ? vol * n_eff * 0.34 * dT : 0;
 
         var Q_env = Q_wall + Q_glz + Q_roof + Q_floor;
 
@@ -53075,7 +53077,12 @@ const app = {
                 tooltipCalc = `${houseVol.toFixed(0)} м³ * 0.25 ч⁻¹ * уд. нагрев`;
             }
 
-            let q_vent_w = houseVol * n_eff * 15.3 * (this.state.region / 100);
+            // Та же формула, что в getRoomHeatLoss: при покомнатном расчёте — сумма по
+            // помещениям с их температурами, иначе дом целиком при +20 °C.
+            const _ventRooms = (this.state.detailedRooms && Array.isArray(this.state.rooms)) ? this.state.rooms : [];
+            let q_vent_w = _ventRooms.length
+                ? _ventRooms.reduce((a, r) => a + (this.getRoomHeatLoss(r).Q_vent || 0), 0)
+                : houseVol * n_eff * 0.34 * Math.max(0, 20 - this.getDesignTemp());
             let q_vent_kw = q_vent_w / 1000;
             let airFlow = houseVol * (vType === 'forced' ? 1.0 : 0.35);
 
