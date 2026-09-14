@@ -8066,10 +8066,14 @@ const app = {
 
         // 2. Менеджеры и директора, вписанные в карточки почтой, но не привязанные полем
         const known = new Set(data.people.map(u => String(u.email || '').trim().toLowerCase()).filter(Boolean));
+        // Ищем и как записано в карточке, и в нижнем регистре: сравнение в базе
+        // чувствительно к регистру, а «I.Dorohovich@…» в карточке и «i.dorohovich@…»
+        // в учётке — один человек
         const mails = new Set();
         dists.forEach(d => [d.manager_email, d.director_email].forEach(m => {
-            const v = String(m || '').trim().toLowerCase();
-            if (v && !known.has(v)) mails.add(v);
+            const raw = String(m || '').trim();
+            const v = raw.toLowerCase();
+            if (v && !known.has(v)) { mails.add(v); mails.add(raw); }
         }));
         if (mails.size) {
             try {
