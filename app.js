@@ -43556,8 +43556,8 @@ const app = {
             }
         }
         else if (item.originalId === 'RDG-0015-004002' || item.originalId === 'RDG-1015-004003') {
-            let p0 = catalog.hydro_dn25?.find(x => x.id === 'RDG-0015-004002')?.price || catalog.hydro_arrow?.rommer?.price || 6596;
-            let p1 = catalog.hydro_dn25?.find(x => x.id === 'RDG-1015-004003')?.price || 16722;
+            let p0 = this.findCatalogItemById('RDG-0015-004002')?.price || catalog.hydro_arrow?.rommer?.price || 7256;
+            let p1 = this.findCatalogItemById('RDG-1015-004003')?.price || 21245;
             customAlts = [
                 { id: 'standard', name: 'Гидравлический разделитель (Стандарт)', brand: 'ROMMER', price: p0, imgId: 'RDG-0015-004002' },
                 { id: 'pro', name: 'Гидравлический разделитель (Pro с накидными гайками)', brand: 'ROMMER', price: p1, imgId: 'RDG-1015-004003' }
@@ -58638,17 +58638,22 @@ const app = {
                     finalItem.availability = actualAvail;
                 }
 
+                // Цены гидрострелок — из каталога (обновляет парсер), а не числом в коде:
+                // зашитые 16 722 и 6 596 ₽ отстали от каталожных 21 245 и 7 256 ₽.
                 if (finalItem.id === 'RDG-0015-004002' && this.state.hydroArrowType === 'pro') {
+                    const _pro = this.findCatalogItemById('RDG-1015-004003');
                     finalItem.id = "RDG-1015-004003";
                     finalItem.name = "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч";
-                    finalItem.price = 16722;
+                    finalItem.price = _pro ? _pro.price : 21245;
+                    if (_pro && _pro.availability) finalItem.availability = _pro.availability;
                     finalItem.brand = "ROMMER";
                 }
                 if (finalItem.id === 'RDG-0015-004002' || finalItem.id === 'RDG-1015-004003') {
+                    const _p = (id, fb) => { const c = this.findCatalogItemById(id); return c ? c.price : fb; };
                     finalItem.originalId = finalItem.id;
                     finalItem.alts = [
-                        { id: "RDG-0015-004002", name: "Гидравлическая стрелка с накидными гайками 1 1/4″", price: 6596, brand: "ROMMER" },
-                        { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: 16722, brand: "ROMMER" }
+                        { id: "RDG-0015-004002", name: "Гидравлическая стрелка с накидными гайками 1 1/4″", price: _p('RDG-0015-004002', 7256), brand: "ROMMER" },
+                        { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: _p('RDG-1015-004003', 21245), brand: "ROMMER" }
                     ];
                 }
 
@@ -65643,7 +65648,7 @@ const app = {
                 catalog.outdoor_faucet.forEach(item => {
                     addToBill(item, count, "", grp62);
                 });
-                addToBill({ id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT" }, count, "", grp62);
+                { const _n = this.findCatalogItemById("SFT-0004-003434"); addToBill({ id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: _n ? _n.price : 224, availability: _n ? _n.availability : undefined, brand: "STOUT" }, count, "", grp62); }
             }
 
             if (this.filterLevel() !== 'none') {
@@ -65682,11 +65687,22 @@ const app = {
 
             // Кран с американкой, поэтому ROMMER-аналог тоже с американкой: без поля
             // rommer позиция оставалась STOUT даже при переключении сметы на ROMMER.
-            let ballValve = { id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1556, brand: "STOUT", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 640.13, brand: "ROMMER", availability: "in_stock", price_date: "2026-07-19" } };
-            let tee34 = { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 504, brand: "STOUT" };
-            let union34 = { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 583, brand: "STOUT" };
-            let nipple34 = { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT" };
-            let ext30 = { id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 501, brand: "STOUT" };
+            // Цена и наличие — из каталога: числа в коде (207/1556/504/583/501) отстали от
+            // каталожных, а слитая строка показывала одну цену при сумме по другой.
+            const _live = (o) => {
+                const c = this.findCatalogItemById(o.id);
+                const out = c ? { ...o, price: c.price, availability: c.availability, price_date: c.price_date } : { ...o };
+                if (o.rommer) {
+                    const cr = this.findCatalogItemById(o.rommer.id);
+                    if (cr) out.rommer = { ...o.rommer, price: cr.price, availability: cr.availability, price_date: cr.price_date };
+                }
+                return out;
+            };
+            let ballValve = _live({ id: "SVB-1007-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1556, brand: "STOUT", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 640.13, brand: "ROMMER", availability: "in_stock", price_date: "2026-07-19" } });
+            let tee34 = _live({ id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 504, brand: "STOUT" });
+            let union34 = _live({ id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 583, brand: "STOUT" });
+            let nipple34 = _live({ id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 207, brand: "STOUT" });
+            let ext30 = _live({ id: "SFT-0002-003430", name: "Удлинитель ВН/ВР 3/4\" 30 мм", price: 501, brand: "STOUT" });
 
             let grp64 = "6.4. ХВС в коллектор водоснабжения";
             addToBill(tee34, 1, "", grp64); addToBill(ballValve, 1, "", grp64);
