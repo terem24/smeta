@@ -9406,6 +9406,23 @@ const app = {
         googleBtn.style.display = (country && country !== 'RU') ? '' : 'none';
     },
 
+    // Каким способом получена эта сессия: 'oauth' (Google), 'password', 'otp'
+    // (Яндекс ID и ссылки из писем), 'recovery'. Берётся из поля amr токена —
+    // последний по времени способ. Токен не читается — считаем, что Google,
+    // как и было до этой проверки.
+    sessionSignInMethod: function (session) {
+        try {
+            const part = String(session.access_token || '').split('.')[1] || '';
+            const b64 = part.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((part.length + 3) % 4);
+            const amr = JSON.parse(atob(b64)).amr;
+            if (!Array.isArray(amr) || !amr.length) return 'oauth';
+            const last = amr.slice().sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
+            return (last && last.method) || 'oauth';
+        } catch (e) {
+            return 'oauth';
+        }
+    },
+
     // Аккаунт уже переведён на e-mail/Яндекс, но человек снова жмёт Google.
     // Аккаунт живой — ничего не удаляем, просто не пускаем этим способом.
     refuseGoogleForMigratedRU: async function () {
@@ -31075,7 +31092,11 @@ const app = {
             if (isGoogleAccount && !this.isAdminEmail(email)) {
                 const country = await this.detectVisitorCountry();
                 if (country === 'RU') {
-                    if (meta.ru_login_migrated) {
+                    // Отказываем только входу через сам Google. Аккаунт остаётся «гугловым»
+                    // и после перевода на почту, поэтому без этой проверки выкидывало и
+                    // вход по паролю, и ссылку сброса пароля из письма: сессию снимали
+                    // раньше, чем человек успевал задать новый пароль («Auth session missing»).
+                    if (meta.ru_login_migrated && !HC_PASSWORD_RECOVERY && this.sessionSignInMethod(session) === 'oauth') {
                         // Человек уже перевёл аккаунт на e-mail/Яндекс — Google закрыт
                         await this.refuseGoogleForMigratedRU();
                         return;
