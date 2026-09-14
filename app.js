@@ -55874,7 +55874,7 @@ const app = {
 
     /**
      * «Без гидрострелки» выбрана, но не собирается: тёплый пол больше, чем тянет
-     * один узел подмеса. Считается по одному состоянию, без расчёта сметы, —
+     * один узел подмеса, или есть снеготаяние. Считается по одному состоянию, без расчёта сметы, —
      * потому что спрашивают об этом и до него: схема загрузки бойлера решается в
      * render раньше, чем посчитан тёплый пол, и без этой проверки бойлер уходил
      * на трёхходовой клапан, хотя котельная собиралась как в «Авто».
@@ -55890,11 +55890,33 @@ const app = {
      * нажатия, которое смета всё равно не выполнит.
      */
     boilerSchemeDirectImpossible: function () {
+        return !!this.boilerSchemeDirectWhy();
+    },
+
+    /**
+     * Почему «Без гидрострелки» не собрать: 'ufh' — тёплый пол больше, чем тянет
+     * один узел подмеса; 'snow' — снеготаяние (его смесительная группа садится
+     * только на коллектор, а коллектору нужна стрелка); '' — собирается.
+     * calcSnowMelt ничего не пишет в state, поэтому звать его здесь можно и до
+     * render — туда, где решается загрузка бойлера.
+     */
+    boilerSchemeDirectWhy: function () {
         const s = this.state;
-        if (!(s.systems || []).includes('tp')) return false;
-        const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
-        if (!(area > 0)) return false;
-        return !this.isUfhMixTypeCompatible('std', area, s.brandMode, area);
+        if ((s.systems || []).includes('tp')) {
+            const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
+            if (area > 0 && !this.isUfhMixTypeCompatible('std', area, s.brandMode, area)) return 'ufh';
+        }
+        const sn = this.calcSnowMelt();
+        if (sn && !sn.impossible) return 'snow';
+        return '';
+    },
+
+    /** Та же причина словами — для строки под кнопками и подсказки кнопки. */
+    boilerSchemeDirectWhyText: function () {
+        const w = this.boilerSchemeDirectWhy();
+        return w === 'ufh' ? 'тёплый пол больше, чем тянет узел подмеса'
+            : w === 'snow' ? 'группе снеготаяния нужен коллектор, а коллектору — гидрострелка'
+            : '';
     },
 
     /** Схема, по которой смета собирается на самом деле: 'auto' | 'direct' | 'hydro'. */
@@ -55928,7 +55950,7 @@ const app = {
         const bs = this.boilerSchemeMode(), had = this.needCollector, s = this.state;
         const blocked = this.boilerSchemeDirectBlocked();
         const impossible = this.boilerSchemeDirectImpossible();
-        const noDirectWhy = 'тёплый пол больше, чем тянет узел подмеса';
+        const noDirectWhy = this.boilerSchemeDirectWhyText();
 
         // Какая кнопка горит: выбранная вручную, а в автоподборе (и когда «Без
         // стрелки» не собрать) — та, по которой смета собрана на самом деле.
@@ -61076,6 +61098,7 @@ const app = {
             }
             if (tQ > 0) why.push('группа тёплого пола');
             if (tankNeedsPumpGroup) why.push('насосная группа бойлера');
+            if (_snowOnCollector) why.push('снеготаяние');
             this._bsAutoWhy = why;
         }
         this.syncBoilerSchemeNote();
@@ -62738,7 +62761,14 @@ const app = {
         {
             const _p = t => `<div class="tip-p">${t}</div>`;
             let _sb = '';
-            if (_bScheme === 'direct' && _schemeBlockedUfh) {
+            if (_bScheme === 'direct' && _schemeBlockedUfh && this.boilerSchemeDirectWhy() === 'snow') {
+                _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
+                    'В расчёте снеготаяние — котельная собрана по автоподбору.',
+                    _p('Первичный контур снеготаяния — смесительная группа со своим насосом. Она ставится на ' +
+                        'коллектор котельной, как группы радиаторов и тёплого пола, а коллектор без гидрострелки ' +
+                        'не работает: насосы групп и котла мешали бы друг другу. Это практика проектирования, а не требование норм.') +
+                    _p('<b>Что делать:</b> оставить схему как есть или выключить снеготаяние.'));
+            } else if (_bScheme === 'direct' && _schemeBlockedUfh) {
                 const _lim = (this.state.brandMode === 'rommer') ? 100 : 120;
                 _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
                     `Узел подмеса тянет тёплый пол до ${_lim} м², в расчёте ${Math.round(tpArea)} м² — котельная собрана по автоподбору.`,
