@@ -8218,11 +8218,23 @@ const app = {
             };
         };
 
-        // ── Компании: филиалы с одним email директора, иначе с одним названием ──
+        // ── Компании: по названию до «ОП», «филиал» и т. п. ──
+        // Карточки филиалов называют «ООО "ТЕРЕМ" ОП Королев»: компания — то, что
+        // до обозначения подразделения, филиал — то, что после. Группировка по
+        // email директора не годилась: у головной карточки его может не быть или
+        // стоять другой, и одна компания разваливалась на несколько. \b здесь не
+        // годится — он не видит границ кириллических слов, отсюда (?=\s|$).
+        const splitName = (name) => {
+            const n = String(name || '').replace(/\s+/g, ' ').trim();
+            const m = n.match(/^(.*?)[\s,–—-]+(?:ОП|ОСП|обособленное подразделение|филиал|отделение|магазин)(?=[\s."«]|$)[\s.]*(.*)$/i);
+            return (m && m[1].trim()) ? { base: m[1].trim(), rest: m[2].trim() } : { base: n, rest: '' };
+        };
+        const normBase = s => lc(s).replace(/[«»“”„"']/g, '"').replace(/\s+/g, ' ');
         const groups = [];
         const groupByKey = {};
         dists.forEach(d => {
-            const key = lc(d.director_email) ? 'dir:' + lc(d.director_email) : 'name:' + lc(d.company_name);
+            const base = splitName(d.company_name).base;
+            const key = base ? 'name:' + normBase(base) : 'dir:' + lc(d.director_email);
             if (!groupByKey[key]) { groupByKey[key] = { key, dists: [] }; groups.push(groupByKey[key]); }
             groupByKey[key].dists.push(d);
         });
@@ -8232,23 +8244,32 @@ const app = {
         groups.forEach((g, i) => { g.id = 'c' + i; groupById[g.id] = g; });
         groups.forEach(g => {
             const names = {};
-            g.dists.forEach(d => { const n = String(d.company_name || '').trim(); if (n) names[n] = (names[n] || 0) + 1; });
+            g.dists.forEach(d => { const n = splitName(d.company_name).base; if (n) names[n] = (names[n] || 0) + 1; });
             g.title = Object.keys(names).sort((a, b) => names[b] - names[a])[0] || 'Без названия';
             const ids = new Set(g.dists.map(d => String(d.id)));
             const heads = [];
-            const director = lc(g.dists[0].director_email) ? userByEmail[lc(g.dists[0].director_email)] : null;
-            if (director) heads.push(director);
+            // Директоров может быть несколько: у головной карточки свой, у филиалов свой
+            const dirMails = [...new Set(g.dists.map(d => lc(d.director_email)).filter(Boolean))];
+            dirMails.forEach(m => { const u = userByEmail[m]; if (u && !heads.some(x => String(x.id) === String(u.id))) heads.push(u); });
             D.heads.forEach(h => { if (h.viewer_distributor_ids.some(id => ids.has(String(id))) && !heads.some(x => String(x.id) === String(h.id))) heads.push(h); });
             g.heads = heads;
-            g.directorEmail = g.dists[0].director_email || '';
+            g.directorEmail = dirMails.filter(m => !userByEmail[m]).join(', ');
             g.stats = statsFor([...ids]);
+            // Сначала подразделения по алфавиту, карточки без «ОП» (головные) — в конце
+            g.dists.sort((a, b) => {
+                const ra = splitName(a.company_name).rest, rb = splitName(b.company_name).rest;
+                if (!ra !== !rb) return ra ? -1 : 1;
+                return ra.localeCompare(rb, 'ru');
+            });
         });
 
         const branchLabel = (d, g) => {
-            const sameName = g.dists.every(x => String(x.company_name || '').trim() === g.title);
-            if (!sameName || g.dists.length === 1) return String(d.company_name || '').trim() || 'Филиал';
+            const rest = splitName(d.company_name).rest;
+            if (rest) return rest;
+            if (g && g.dists.length === 1) return String(d.company_name || '').trim() || 'Филиал';
+            // Карточка без подразделения в названии: различаем по менеджеру или промокоду
             const region = String((Array.isArray(d.regions) ? d.regions[0] : String(d.regions || '').split(',')[0]) || '').trim();
-            return region || d.manager_name || String(d.promo_code || '').toUpperCase() || 'Филиал';
+            return d.manager_name || region || ('Промокод ' + String(d.promo_code || '—').toUpperCase());
         };
         const managersOf = (d) => {
             const list = [];
@@ -8306,9 +8327,11 @@ const app = {
                     </div>
                 </div>`;
             }).join('');
-            const headsHtml = g.heads.length
-                ? g.heads.map(h => `<span class="brx-head">👤 ${esc(nameOf(h))}</span>`).join('')
-                : `<span class="brx-muted">${g.directorEmail ? 'Директор ' + esc(g.directorEmail) + ' не зарегистрирован' : 'Руководитель не назначен'}</span>`;
+            const HEADS_SHOWN = 4;
+            const headsHtml = (g.heads.slice(0, HEADS_SHOWN).map(h => `<span class="brx-head" title="${esc(h.email || '')}">👤 ${esc(nameOf(h))}</span>`).join('')
+                + (g.heads.length > HEADS_SHOWN ? `<span class="brx-muted">и ещё ${g.heads.length - HEADS_SHOWN}</span>` : '')
+                + (g.directorEmail ? `<span class="brx-muted">Директор ${esc(g.directorEmail)} не зарегистрирован</span>` : ''))
+                || '<span class="brx-muted">Руководитель не назначен</span>';
             return `<div class="brx-group">
                 <div class="brx-node brx-company${isSel('company', g.id) ? ' sel' : ''}" onclick="app.selectBranchNode('company','${g.id}')">
                     <div class="brx-title" style="font-size:15px;">🏢 ${esc(g.title)} <span class="brx-muted" style="font-weight:600;">· ${g.dists.length} ${g.dists.length === 1 ? 'филиал' : (g.dists.length < 5 ? 'филиала' : 'филиалов')}</span></div>
