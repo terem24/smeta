@@ -1544,8 +1544,11 @@ const app = {
             + ` Магазин «${d.company_name || ''}»${d.manager_name ? ', ' + d.manager_name : ''}.`;
     },
 
+    // Карточка компании для кнопок приглашения: из панели управления или, у
+    // менеджера без роли, из раздела кабинета «Мои монтажники»
     findDist: function (id) {
-        return ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === String(id)) || null;
+        const pool = ((this.adminData && this.adminData.distributors) || []).concat(this._cabinetInviteDists || []);
+        return pool.find(d => String(d.id) === String(id)) || null;
     },
 
     // Занятые места и активные за 30 дней по компаниям — одним запросом.
@@ -1729,6 +1732,52 @@ const app = {
             <button type="button" style="${st}" onclick="app.printInviteSheet('${id}')" title="Лист А5 на кассу">🖨 Печать</button>`;
     },
 
+    // Карточка «Пригласить монтажника» по каждой компании: промокод, ссылка,
+    // кнопки раздачи и счётчик. Одна и та же у менеджера в панели управления и
+    // в разделе кабинета «Мои монтажники».
+    inviteCardsHtml: function (dists) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
+        return (dists || []).map(d => {
+            const code = String(d.promo_code || '').toUpperCase();
+            const months = Number(d.pro_months) || 0;
+            return `<div style="${box}">
+                <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:10px;">
+                    <div style="font-size:14px; font-weight:800; color:var(--text-main);">🏪 Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
+                    <div style="font-size:13px;">Приглашено: <span data-invite-used="${d.id}">…</span></div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px;">
+                    <span style="font-size:12px; color:var(--text-sec);">Промокод</span>
+                    <b style="font-size:16px; letter-spacing:0.08em; color:var(--primary);">${esc(code)}</b>
+                    <span style="font-size:12px; color:var(--text-sec); word-break:break-all;">${esc(this.inviteLinkFor(code))}</span>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">${this.inviteButtonsHtml(d, false)}</div>
+                <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">
+                    Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
+                    Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    // Компании, где эта почта стоит менеджером, — для карточек приглашения в
+    // кабинете. Отбор тот же, что у resolveManagedInstallers. Выключенные
+    // компании не берём: их промокод всё равно не сработает.
+    loadCabinetInviteDists: async function (managerEmail) {
+        if (!managerEmail) { this._cabinetInviteDists = []; return []; }
+        try {
+            const { data, error } = await supabaseClient.from('distributors')
+                .select('id, company_name, manager_name, manager_phone, promo_code, pro_months, invite_limit, is_active')
+                .ilike('manager_email', managerEmail.trim());
+            if (error) throw error;
+            this._cabinetInviteDists = (data || []).filter(d => d.is_active !== false && d.promo_code);
+        } catch (e) {
+            console.warn('[приглашения] компании менеджера не прочитаны:', e.message || e);
+            this._cabinetInviteDists = [];
+        }
+        return this._cabinetInviteDists;
+    },
+
     // Блок над списком монтажников у менеджера и наблюдателя (вкладка
     // «Пользователи»). Менеджеру — карточка своего магазина со ссылкой и
     // счётчиком; наблюдателю — сводка по всем его магазинам. Администратору
@@ -1741,26 +1790,7 @@ const app = {
         const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
         let html;
         if (this.isManagerRole()) {
-            html = dists.map(d => {
-                const code = String(d.promo_code || '').toUpperCase();
-                const months = Number(d.pro_months) || 0;
-                return `<div style="${box}">
-                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:10px;">
-                        <div style="font-size:14px; font-weight:800; color:var(--text-main);">🏪 Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
-                        <div style="font-size:13px;">Приглашено: <span data-invite-used="${d.id}">…</span></div>
-                    </div>
-                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px;">
-                        <span style="font-size:12px; color:var(--text-sec);">Промокод</span>
-                        <b style="font-size:16px; letter-spacing:0.08em; color:var(--primary);">${esc(code)}</b>
-                        <span style="font-size:12px; color:var(--text-sec); word-break:break-all;">${esc(this.inviteLinkFor(code))}</span>
-                    </div>
-                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">${this.inviteButtonsHtml(d, false)}</div>
-                    <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">
-                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
-                        Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
-                    </div>
-                </div>`;
-            }).join('');
+            html = this.inviteCardsHtml(dists);
         } else {
             const rows = dists.map(d => `<tr>
                 <td><b>${esc(d.company_name)}</b></td>
@@ -6746,9 +6776,18 @@ const app = {
         const me = await this.resolveCurrentUserForChat();
         if (!me) { container.innerHTML = `<div class="lk-empty">Авторизуйтесь, чтобы увидеть список монтажников.</div>`; return; }
 
-        const installers = await this.resolveManagedInstallers(me.email);
+        const [installers, inviteDists] = await Promise.all([
+            this.resolveManagedInstallers(me.email),
+            this.loadCabinetInviteDists(me.email)
+        ]);
+        // Ссылка-приглашение сверху: без неё новому менеджеру некого было бы и
+        // увидеть в этом списке
+        const inviteHtml = this.inviteCardsHtml(inviteDists);
+        // Счётчик «Приглашено» дописывается в уже вставленную разметку
+        const fillInvites = () => { if (inviteDists.length) this.fillInviteStats(inviteDists.map(d => d.id)); };
         if (!installers.length) {
-            container.innerHTML = `<div class="lk-empty">У вас пока нет привязанных монтажников.</div>`;
+            container.innerHTML = inviteHtml + `<div class="lk-empty">У вас пока нет привязанных монтажников.${inviteDists.length ? ' Отправьте им ссылку-приглашение.' : ''}</div>`;
+            fillInvites();
             return;
         }
         this._managedInstallersCache = installers;
@@ -6793,7 +6832,8 @@ const app = {
         h += `</div><div id="manager_installer_chat_detail" style="margin-top:16px;"></div>`;
         // Сводка считается своим запросом и приезжает позже списка: список с
         // перепиской нужен сразу, а числа могут и подождать секунду.
-        container.innerHTML = `<div id="manager_summary_host"></div>` + h;
+        container.innerHTML = inviteHtml + `<div id="manager_summary_host"></div>` + h;
+        fillInvites();
         this.renderManagerSummary(installers);
     },
 
@@ -10854,17 +10894,23 @@ const app = {
 
     // Показывает вкладку «Мои монтажники» только тем, кто зарегистрировался под email,
     // совпадающим с manager_email хотя бы одного дистрибьютора — то есть реально является
-    // чьим-то менеджером. Остальным вкладка вообще не показывается.
+    // чьим-то менеджером (с монтажниками или хотя бы с действующим промокодом).
+    // Остальным вкладка вообще не показывается.
     refreshManagerTabVisibility: async function (email) {
         const tabBtn = document.querySelector('#profile_nav .lk-nav-item[data-tab="installers"]');
         if (!tabBtn) return;
         tabBtn.style.display = 'none';
         if (!email) return;
         try {
-            const installers = await this.resolveManagedInstallers(email);
-            if (installers && installers.length) {
+            // Раздел нужен и менеджеру, у которого монтажников ещё нет: в нём
+            // ссылка-приглашение, по которой он их и соберёт
+            const [installers, inviteDists] = await Promise.all([
+                this.resolveManagedInstallers(email),
+                this.loadCabinetInviteDists(email)
+            ]);
+            if ((installers && installers.length) || inviteDists.length) {
                 tabBtn.style.display = '';
-                this._managedInstallersCache = installers;
+                this._managedInstallersCache = installers || [];
             }
         } catch (e) {
             console.warn('[refreshManagerTabVisibility] Ошибка проверки роли менеджера:', e);
