@@ -57855,6 +57855,11 @@ const app = {
                 let coverageColor = margin >= 0 ? '#10B981' : '#F59E0B';
                 let coverageIcon = margin >= 0 ? '✅' : '⚠️';
 
+                let tvLine = "";
+                if (o.kTv && o.kTv < 0.995) {
+                    tvLine = `<span style="color:#9CA3AF; font-size:11px; display:block;">Помещение +${o.tv} °C: прибор отдаёт ${Math.round(o.kTv * 100)} % паспортной мощности — ((70 − ${o.tv}) / 50)^1,3, ГОСТ 31311-2005.</span>`;
+                }
+
                 let warnWin = "";
                 if (o.count > o.win) {
                     warnWin = `<br><span style="color:#F59E0B; font-weight:700; display:block; margin-top:4px;">⚠️ Окон (${o.win}) мало! Добавлено приборов: ${o.count - o.win} шт.</span>`;
@@ -57867,6 +57872,7 @@ const app = {
                     <hr style="margin:8px 0; border:none; border-top:1px dashed #4B5563;">
                     <b style="display:block; margin-bottom:2px;">${o.demandLabel}: ${o.demand} Вт</b>
                     <b style="display:block; margin-bottom:4px;">Фактическая мощность: ${o.fact} Вт (${o.count} шт).</b>
+                    ${tvLine}
                     <span style="color:${coverageColor}; font-weight:700;">${coverageIcon} Покрытие: ${margin + 100}% (${marginText})</span>
                     ${warnWin}
                 </span>`;
@@ -62280,6 +62286,15 @@ const app = {
 
                     let qUfhMax = r.area * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
 
+                    // Паспортная мощность прибора дана при ΔT = 50 K: средняя температура воды
+                    // 70 °C (её дают оба режима, 80/60 и 75/65) при воздухе +20 °C. В помещении
+                    // теплее прибор отдаёт меньше — в долю ((70 − Tv) / 50)^1,3 (ГОСТ 31311-2005):
+                    // ванная +25 °C — 0,87, жилая +22 °C — 0,95. Без поправки ванная получала
+                    // «+2 % запаса» и недогрев 11 %. В помещении прохладнее +20 °C прибор отдал
+                    // бы больше паспорта, но этот запас оставляем и прибор не уменьшаем.
+                    const roomTv = roomLoss.Tv || 20;
+                    const kTv = Math.min(1, Math.pow(Math.max(1, 70 - roomTv) / 50, 1.3));
+
                     // Прибор ставится под окно, но помещение без окон отапливать
                     // тоже нужно: гардеробная, кладовая, котельная. Раньше цикл по
                     // окнам просто не запускался — нагрузка такой комнаты сидела в
@@ -62336,7 +62351,7 @@ const app = {
                         roomDemandSum += wLoad; // накапливаем потребность по помещению
 
                         if (w.isPan) {
-                            let reqPower70 = wLoad / 0.65;
+                            let reqPower70 = wLoad / 0.65 / kTv;
                             let dbAll = this.state.convectorType === 'scn' ? catalog.convectors_scn : catalog.convectors_scq;
                             // Автоподбор всегда идёт по базовой складской ширине/высоте (240×80 SCN,
                             // 240×75 SCQ) — остальные складские варианты (190/300мм, 110мм высота)
@@ -62347,7 +62362,7 @@ const app = {
                             if (!item) item = db[db.length - 1];
                             item.alts = [catalog.convectors_scq[0], catalog.convectors_scn[0]];
 
-                            let factPower = Math.round(item.power70 * 0.65);
+                            let factPower = Math.round(item.power70 * 0.65 * kTv);
 
                             if (factPower < Math.round(wLoad)) {
                                 app.tempWarns.push(`• ${app._warnRoomLabel(r.id, app.spotLabel(r, w, wIdx) + ':')} дефицит конвектора ~${Math.round(wLoad) - factPower} Вт. Переключите на вентиляторную модель (SCQ).`);
@@ -62371,7 +62386,12 @@ const app = {
                             app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv' });
                         } else if (roomHasRad) {
                             let isRommer = (this.state.brandMode === 'rommer');
-                            let reqPwr = Math.round(wLoad);
+                            // reqReal — сколько месту нужно на самом деле, reqPwr — та же нагрузка,
+                            // пересчитанная в паспортные ватты (ΔT = 50 K при +20 °C): по ней идёт
+                            // подбор секций и панелей. Фактическая мощность ниже приводится обратно
+                            // к температуре помещения и сравнивается с reqReal.
+                            const reqReal = Math.round(wLoad);
+                            let reqPwr = Math.round(wLoad / kTv);
                             let p50_space = (isRommer && catalog.rads[0].rommer) ? (catalog.rads[0].rommer.power50 || 117) : 117;
                             let p50_titan = (isRommer && titanRads[0].rommer) ? (titanRads[0].rommer.power50 || 128) : 128;
 
@@ -62638,23 +62658,28 @@ const app = {
                             // Каждый радиатор индивидуален: уникальный ключ + запрет слияния в счёте
                             activeItem = { ...activeItem, originalId: instanceKey, noMerge: true };
 
-                            if (factPower < reqPwr) {
-                                app.tempWarns.push(`• ${app._warnRoomLabel(r.id, app.spotLabel(r, w, wIdx) + ':')} дефицит мощности радиатора ~${reqPwr - factPower} Вт.`);
+                            // Паспортные ватты подобранного прибора → отдача при температуре помещения
+                            factPower = Math.round(factPower * kTv);
+
+                            if (factPower < reqReal) {
+                                app.tempWarns.push(`• ${app._warnRoomLabel(r.id, app.spotLabel(r, w, wIdx) + ':')} дефицит мощности радиатора ~${reqReal - factPower} Вт.`);
                             }
 
                             let devInfo = app.getDesc('rad_tooltip', {
                                 item: activeItem,
                                 isRommer: isRommer,
-                                demand: reqPwr,
+                                demand: reqReal,
                                 fact: factPower,
                                 count: 1,
                                 win: 1,
-                                demandLabel: "Потребность на окно"
+                                demandLabel: "Потребность на окно",
+                                kTv: kTv,
+                                tv: roomTv
                             });
 
-                            let margin = Math.round(((factPower - reqPwr) / reqPwr) * 100);
+                            let margin = Math.round(((factPower - reqReal) / Math.max(1, reqReal)) * 100);
                             let marginColor = margin >= 0 ? '#10B981' : '#ef4444';
-                            let locInfo = `<span style="font-size:11px; line-height:1.2;">• <b>${app.spotLabel(r, w, wIdx)}</b>: ${w.noWin ? r.area + " м²" : w.width + "м"} | Требуются: <b>${reqPwr} Вт</b>, подобран: <b>${factPower} Вт</b>, запас: <b style="color:${marginColor};">${margin}%</b></span>`;
+                            let locInfo = `<span style="font-size:11px; line-height:1.2;">• <b>${app.spotLabel(r, w, wIdx)}</b>: ${w.noWin ? r.area + " м²" : w.width + "м"} | Требуются: <b>${reqReal} Вт</b>, подобран: <b>${factPower} Вт</b>, запас: <b style="color:${marginColor};">${margin}%</b></span>`;
 
                             let wDesc = locInfo + "|||" + devInfo;
                             // Подпись стороны подключения в самом названии строки — чтобы монтажник
@@ -62669,7 +62694,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqPwr, kind: 'rad' });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad' });
                         }
                     });
                     // === Проверка покрытия теплопотерь помещения ===
