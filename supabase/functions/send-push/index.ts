@@ -178,7 +178,7 @@ Deno.serve(async (req) => {
     // же анонимная страница по ссылке. Поэтому здесь токен не требуем, а требуем его
     // внутри ветки — для всех событий, кроме открытия.
     const needsAuth = reason !== "shared_invoice" && reason !== "invoice_event" &&
-      reason !== "inactivity";
+      reason !== "inactivity" && reason !== "kp_reminder";
     let callerId = "";
     let isAdmin = false;
 
@@ -417,6 +417,29 @@ Deno.serve(async (req) => {
         ? "Расчёты сохранены. Напишите нам — вернём доступ в тот же день."
         : "Зайдите в калькулятор, чтобы сохранить аккаунт и свои расчёты.";
       payload.open = "messages";
+    } else if (reason === "kp_reminder") {
+      // КП ушло клиенту N дней назад, а счёт не запрошен. Зовёт ночной проход в базе
+      // (send_kp_invoice_reminders → kp_reminder_send_push), поэтому, как у inactivity,
+      // пропуском служит сервисный ключ. Адресатов читаем из журнала напоминаний.
+      const callerKey = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
+      if (!callerKey || callerKey !== serviceKey) {
+        return json({ error: "Событие доступно только планировщику" }, 401);
+      }
+
+      const rows = await get(
+        `kp_invoice_reminders?id=eq.${encodeURIComponent(rowId)}&select=calc_id,installer_id,manager_ids,days&limit=1`,
+      );
+      const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+      if (!row) return json({ status: "skipped", reason: "reminder-not-found" });
+
+      const toManager = String(body.to || "") === "manager";
+      recipientUserIds = toManager
+        ? (Array.isArray(row.manager_ids) ? row.manager_ids.map((id: unknown) => String(id)) : [])
+        : (row.installer_id ? [String(row.installer_id)] : []);
+      title = toManager ? "Счёт по КП не выставлен" : "Напоминание: выставить счёт";
+      text = `КП ушло клиенту ${row.days} дн. назад, счёт не запрошен · расчёт № ${row.calc_id}`;
+      payload.open = "messages";
+      payload.calcId = String(row.calc_id);
     } else if (reason === "shared_invoice") {
       // Клиент открыл ссылку и согласовал смету или отправил замечания.
       // Статус читаем из базы, а не из запроса: иначе по чужой ссылке можно было бы

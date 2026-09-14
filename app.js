@@ -7377,6 +7377,9 @@ const app = {
         // Технические отметки, не статусы — в колонки канбана не попадают, видны только в истории
         offline_link: { label: 'Облако не ответило — длинная ссылка', color: '#94A3B8' },
         opened: { label: 'Клиент открыл смету', color: '#0EA5E9' },
+        // Пишет база раз в сутки (send_kp_invoice_reminders): КП ушло клиенту N дней
+        // назад, счёт не запрошен — напомнили монтажнику и менеджеру
+        kp_reminder_sent: { label: 'Напоминание: КП без счёта', color: '#F59E0B' },
     },
     // Технические отметки: пишутся в ту же таблицу invoice_events, но воронкой не являются.
     // Карточка канбана живёт в колонке своего ПОСЛЕДНЕГО события, а событие, не входящее ни в
@@ -7389,7 +7392,7 @@ const app = {
     // прыгала бы из «В оплату» обратно «На согласование» при каждом открытии.
     // В воронке дашборда шаг всё равно учитывается: она считает по INVOICE_FLOW,
     // а не по колонкам канбана.
-    ADMIN_KANBAN_TECH_EVENTS: ['offline_link', 'opened'],
+    ADMIN_KANBAN_TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent'],
     /**
      * Показывать ли на доске брошенные расчёты.
      *
@@ -12055,6 +12058,30 @@ const app = {
         this.installerSettings.invoiceValidDays = n;
         this.pushInstallerSettingsToCloud();
     },
+    // ── Напоминание «выставить счёт» ─────────────────────────────────────────
+    // Через сколько дней после отправки КП клиенту (ссылка или файл) напомнить
+    // монтажнику и его менеджеру, что счёт так и не запрошен. Считает и отправляет
+    // база раз в сутки (send_kp_invoice_reminders), отсюда только настройка:
+    // users.installer_settings.kpReminderDays. undefined — 10 дней, 0 — выключено.
+    // Число по умолчанию то же, что default_days в миграции.
+    KP_REMINDER_DAYS_DEFAULT: 10,
+    kpReminderDaysDefault: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const v = this.installerSettings.kpReminderDays;
+        if (v === undefined || v === null || v === '') return this.KP_REMINDER_DAYS_DEFAULT;
+        const n = Math.round(Number(v));
+        if (!isFinite(n) || n < 0) return this.KP_REMINDER_DAYS_DEFAULT;
+        return Math.min(n, this.INVOICE_VALID_DAYS_MAX);
+    },
+    setKpReminderDays: function (v) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        let n = (v === '' || v === null || v === undefined) ? 0 : Math.round(Number(v));
+        if (!isFinite(n) || n < 0) n = 0;
+        n = Math.min(n, this.INVOICE_VALID_DAYS_MAX);
+        if (this.installerSettings.kpReminderDays === n) return;
+        this.installerSettings.kpReminderDays = n;
+        this.pushInstallerSettingsToCloud();
+    },
     // «до 15.09.2026, 15:20» — одна подпись и для окна ссылки, и для списка объектов
     formatValidUntil: function (iso) {
         const d = new Date(iso);
@@ -12132,6 +12159,8 @@ const app = {
         document.getElementById('profile_logo_preview').src = cc.logo || 'img/logo.jpg';
         const daysEl = document.getElementById('profile_invoice_valid_days');
         if (daysEl) daysEl.value = String(this.invoiceValidDaysDefault());
+        const kpDaysEl = document.getElementById('profile_kp_reminder_days');
+        if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
     },
     _resolveInstallerCloudUserId: async function () {
         try {
@@ -32236,6 +32265,8 @@ const app = {
         // Срок действия счёта по ссылке — там же, в настройках учётной записи
         const validDaysEl = document.getElementById('profile_invoice_valid_days');
         if (validDaysEl) this.setInvoiceValidDays(validDaysEl.value.trim());
+        const kpDaysEl = document.getElementById('profile_kp_reminder_days');
+        if (kpDaysEl) this.setKpReminderDays(kpDaysEl.value.trim());
         this.updateHeaderCompanyDetails();
 
         // Город в анкете только что заполнили или сменили — подставляем его в расчёт
