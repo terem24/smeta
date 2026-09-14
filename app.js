@@ -59566,13 +59566,17 @@ const app = {
                         </div>` : "";
 
                     const isLoggedIn = !!(app.state.tgUser);
+                    // Название работы уходит строкой JS внутрь HTML-атрибута. Кавычка в нём
+                    // («фиксаторов поворота "башмак"», своя работа с апострофом) рвала
+                    // атрибут, и такую работу нельзя было ни переоценить, ни удалить.
+                    const wNameArg = String(w.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
                     let workPriceHtml;
                     if (!isLoggedIn) {
                         workPriceHtml = `<span class="price-blur" onclick="app.showAuthModal(); event.stopPropagation();" title="Войдите или зарегистрируйтесь, чтобы увидеть цену">${w.price.toLocaleString()}</span>`;
                     } else {
-                        workPriceHtml = `<span class="price-edit" contenteditable="true" onblur="app.updateWorkPrice('${w.name}', this.innerText)" title="Изменить цену">${w.price.toLocaleString()}</span>`;
+                        workPriceHtml = `<span class="price-edit" contenteditable="true" onblur="app.updateWorkPrice('${wNameArg}', this.innerText)" title="Изменить цену">${w.price.toLocaleString()}</span>`;
                     }
-                    rows += `<tr ${rowStyle} onclick="this.classList.toggle('active-row')"><td class="col-idx">${globalIdx++}</td><td class="col-img hidden-col"></td><td class="col-name"><span class="work-del-btn" onclick="event.stopPropagation(); app.deleteWork('${w.name}')" title="Удалить работу">✖</span>${w.name}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">-</td><td class="col-brand hidden-col"></td><td class="col-unit">${w.unit}</td><td class="col-qty"><div class="qty-wrap"><span class="work-qty-num">${w.q}</span>${tipHtml}</div></td><td class="col-price"><span class="mob-mult" style="display:none;">${w.q}</span>${workPriceHtml}</td><td class="col-sum">${app.formatPriceHtml(w.sum)}</td></tr>`;
+                    rows += `<tr ${rowStyle} onclick="this.classList.toggle('active-row')"><td class="col-idx">${globalIdx++}</td><td class="col-img hidden-col"></td><td class="col-name"><span class="work-del-btn" onclick="event.stopPropagation(); app.deleteWork('${wNameArg}')" title="Удалить работу">✖</span>${w.name}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">-</td><td class="col-brand hidden-col"></td><td class="col-unit">${w.unit}</td><td class="col-qty"><div class="qty-wrap"><span class="work-qty-num">${w.q}</span>${tipHtml}</div></td><td class="col-price"><span class="mob-mult" style="display:none;">${w.q}</span>${workPriceHtml}</td><td class="col-sum">${app.formatPriceHtml(w.sum)}</td></tr>`;
                 });
 
                 h += rows + `<tr class="row-subtotal"><td colspan="9">Итого: ${app.formatPriceHtml(secTotal, true)}</td></tr>`;
