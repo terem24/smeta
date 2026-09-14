@@ -9426,7 +9426,9 @@ const app = {
     // Аккаунт уже переведён на e-mail/Яндекс, но человек снова жмёт Google.
     // Аккаунт живой — ничего не удаляем, просто не пускаем этим способом.
     refuseGoogleForMigratedRU: async function () {
-        try { await supabaseClient.auth.signOut(); } catch (e) { }
+        // Только эта вкладка: глобальный выход отзывал бы сессии на всех устройствах,
+        // в том числе ту, в которой человек как раз задаёт новый пароль
+        try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (e) { }
         delete this.state.tgUser;
         this.state.accountType = 'base';
         this._authHandling = false;
@@ -9534,12 +9536,8 @@ const app = {
         msg.className = 'calc-dialog-message';
         msg.style.textAlign = 'left';
         msg.innerHTML =
-            '<p style="margin: 0 0 10px;">Ваш аккаунт создан через Google. По требованиям ' +
-            'российского законодательства авторизация пользователей из России через форму входа ' +
-            'Google больше не допускается — кнопка Google убрана, и войти этим способом ' +
-            'в следующий раз не получится.</p>' +
-            '<p style="margin: 0 0 12px;">Выберите замену — <b>аккаунт останется тот же</b>: ' +
-            'все сметы, настройки и тариф сохранятся.</p>';
+            '<p style="margin: 0 0 12px;">Вход через Google в России больше не работает. ' +
+            'Выберите другой способ — <b>аккаунт и сметы останутся те же</b>.</p>';
         card.appendChild(msg);
 
         // Вариант 1 — Яндекс ID
@@ -9561,7 +9559,7 @@ const app = {
         pwdWrap.style.paddingTop = '12px';
         pwdWrap.innerHTML =
             '<div style="font-size: 13px; color: var(--text-sec); margin-bottom: 8px;">' +
-            'Или задайте пароль, чтобы входить по e-mail' +
+            'Или придумайте пароль для входа по почте' +
             (this.state.tgUser && this.state.tgUser.email ? ' (' + this.state.tgUser.email + ')' : '') +
             ':</div>';
 
@@ -31101,7 +31099,9 @@ const app = {
                         await this.refuseGoogleForMigratedRU();
                         return;
                     }
-                    this._needRuLoginMigration = true;
+                    // Уже перешёл на пароль или Яндекс — предлагать переход нечего.
+                    // По ссылке сброса пароля хватает окна «Новый пароль».
+                    if (!meta.ru_login_migrated && !HC_PASSWORD_RECOVERY) this._needRuLoginMigration = true;
                 }
             }
 
