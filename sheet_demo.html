@@ -419,7 +419,16 @@ if (payload && payload.items && payload.items.length) {
         sheetStart: base + 1, floor: fl, num: numOf('v') }), ttl + '. 3D вид водоснабжения');
     });
   }
-  var vNodeStart = itemsBy.v.length ? 3 + nFloors * 2 : 3;
+  // Мокрые зоны крупно — санузлы, кухня, котельная: привязки приборов и высоты
+  // водорозеток и выпусков. Сразу за планами этажей, как в проектах-образцах.
+  // Выпуски канализации тут же: монтажник собирает воду и канализацию зоны
+  // по одному листу, а не сверяет два раздела.
+  var vZoneStart = itemsBy.v.length ? 3 + nFloors * 2 : 3;
+  var vZones = (plans && window.projectPlans && projectPlans.wetZoneSheets && itemsBy.v.length)
+    ? projectPlans.wetZoneSheets(plans, { code: MARK.v.code, sheetStart: vZoneStart,
+        num: numOf('v'), recirc: !!(payload.scheme && payload.scheme.recirc) })
+    : [];
+  var vNodeStart = vZoneStart + vZones.length;
   // Узел обвязки коллекторов водоснабжения — тот же готовый лист, что в смете
   var vNodes = [];
   if (NS && NS.water && itemsBy.v.length) {
@@ -557,8 +566,8 @@ if (payload && payload.items && payload.items.length) {
       tmPipe.length + tmSpec.length : 0;
   var oTotal = (oBody.length + oNodes.length + oArt.length + oHydro.length + oUfhHydro.length + oSpec.length)
     ? 1 + oBody.length + oNodes.length + oArt.length + oHydro.length + oUfhHydro.length + oSpec.length : 0;
-  var vTotal = (vBody.length + vNodes.length + vSpec.length)
-    ? 1 + vBody.length + vNodes.length + vPipe.length + vSpec.length : 0;
+  var vTotal = (vBody.length + vZones.length + vNodes.length + vSpec.length)
+    ? 1 + vBody.length + vZones.length + vNodes.length + vPipe.length + vSpec.length : 0;
   var kTotal = (kBody.length + kSpec.length)
     ? 1 + kBody.length + kSpec.length : 0;
 
@@ -678,6 +687,7 @@ if (payload && payload.items && payload.items.length) {
   if (vTotal) {
     var vRows = [];
     vSlots.forEach(function (r) { vRows.push(r); });
+    vZones.forEach(function (p, i) { vRows.push([numOf('v')(vZoneStart + i), p.title]); });
     vNodes.forEach(function (p, i) { vRows.push([numOf('v')(vNodeStart + i), p.title]); });
     vPipe.forEach(function (p, i) { vRows.push([numOf('v')(vPipeNo + i), p.title]); });
     vSpec.forEach(function (_, i) {
@@ -687,6 +697,7 @@ if (payload && payload.items && payload.items.length) {
     var vNotes = (gdVk.notes && gdVk.notes.length) ? gdVk.notes
       : commonNotes('v', 'Титульный лист, общие данные' +
           (vBody.length ? ', планы водоснабжения (' + vBody.length + ' л.)' : '') +
+          (vZones.length ? ', мокрые зоны (' + vZones.length + ' л.)' : '') +
           (vNodes.length ? ', узел коллектора водоснабжения' : '') +
           ' и спецификация', vTotal);
     svgs.push(titleOf('v'));
@@ -695,6 +706,7 @@ if (payload && payload.items && payload.items.length) {
       // её место занимают условные обозначения систем и схема пола.
       { floorScheme: gdVk.floorScheme }));
     vBody.forEach(function (p) { svgs.push(p.svg); });
+    vZones.forEach(function (p) { svgs.push(p.svg); });
     vNodes.forEach(function (p) { svgs.push(p.svg); });
     vPipe.forEach(function (p) { svgs.push(p.svg); });
     vSpec.forEach(function (s) { svgs.push(s); });

@@ -1381,6 +1381,319 @@
     });
   }
 
+  // ═══ Листы мокрых зон: подводки и выпуски крупно ════════════════════════
+  // На плане этажа санузел занимает пару сантиметров, и монтажнику на объекте
+  // оттуда нечего взять. В проектах-образцах на каждую мокрую зону — кухню,
+  // санузлы, котельную — свой лист: зона крупно, привязки приборов от стен и
+  // высоты водорозеток и выпусков. Так и здесь: приборы, трассы воды (В1/Т3)
+  // и выпуски канализации (К1) — те же, что на планах этажа, только в зуме.
+
+  // Высоты от чистого пола, мм: водорозетки ХВС/ГВС и низ выпуска канализации.
+  // Взяты из общих указаний проекта-образца — это практика монтажа, а не
+  // требование норм; на листе сказано, что уточняются по паспорту прибора.
+  // hw: null — горячей воды к прибору нет (унитаз, машины).
+  var WET_H = {
+    basin:  { cw: 600,  hw: 600,  sew: 400, d: 50 },
+    toilet: { cw: 400,  hw: null, sew: 0,   d: 110 },
+    bath:   { cw: 800,  hw: 800,  sew: 0,   d: 50 },
+    shower: { cw: 1100, hw: 1100, sew: 0,   d: 50 },
+    wash:   { cw: 200,  hw: null, sew: 400, d: 50 },
+    dish:   { cw: 400,  hw: null, sew: 400, d: 50 }
+  };
+
+  // ─── Обрезка по рамке зума, в координатах листа ───
+  // Геометрически, а не clip-path: трассы и контур зоны должны кончаться у
+  // рамки в любом просмотрщике и в любой печати в PDF.
+
+  /** Отрезок в прямоугольнике R (Лианг — Барски): [x1,y1,x2,y2] или null */
+  function clipSeg(a, b, R) {
+    var t0 = 0, t1 = 1, dx = b[0] - a[0], dy = b[1] - a[1];
+    var p = [-dx, dx, -dy, dy], q = [a[0] - R.x0, R.x1 - a[0], a[1] - R.y0, R.y1 - a[1]];
+    for (var i = 0; i < 4; i++) {
+      if (p[i] === 0) { if (q[i] < 0) return null; continue; }
+      var r = q[i] / p[i];
+      if (p[i] < 0) { if (r > t1) return null; if (r > t0) t0 = r; }
+      else { if (r < t0) return null; if (r < t1) t1 = r; }
+    }
+    return [[a[0] + t0 * dx, a[1] + t0 * dy], [a[0] + t1 * dx, a[1] + t1 * dy]];
+  }
+
+  /** Ломаная (точки листа) → d для path, обрезанная рамкой; разрывы — новым M */
+  function clipPathD(P, R) {
+    var d = [], last = null;
+    for (var i = 1; i < P.length; i++) {
+      var s = clipSeg(P[i - 1], P[i], R);
+      if (!s) { last = null; continue; }
+      if (!last || Math.abs(last[0] - s[0][0]) > 0.01 || Math.abs(last[1] - s[0][1]) > 0.01)
+        d.push('M' + n(s[0][0]) + ',' + n(s[0][1]));
+      d.push('L' + n(s[1][0]) + ',' + n(s[1][1]));
+      last = s[1];
+    }
+    return d.join('');
+  }
+
+  /** Многоугольник (точки листа), обрезанный рамкой (Сазерленд — Ходжмен) */
+  function clipPoly(P, R) {
+    var edges = [
+      function (p) { return p[0] >= R.x0; }, function (p) { return p[0] <= R.x1; },
+      function (p) { return p[1] >= R.y0; }, function (p) { return p[1] <= R.y1; }
+    ];
+    var cut = [
+      function (a, b) { var k = (R.x0 - a[0]) / (b[0] - a[0]); return [R.x0, a[1] + k * (b[1] - a[1])]; },
+      function (a, b) { var k = (R.x1 - a[0]) / (b[0] - a[0]); return [R.x1, a[1] + k * (b[1] - a[1])]; },
+      function (a, b) { var k = (R.y0 - a[1]) / (b[1] - a[1]); return [a[0] + k * (b[0] - a[0]), R.y0]; },
+      function (a, b) { var k = (R.y1 - a[1]) / (b[1] - a[1]); return [a[0] + k * (b[0] - a[0]), R.y1]; }
+    ];
+    var out = P;
+    for (var e = 0; e < 4 && out.length; e++) {
+      var inp = out; out = [];
+      for (var i = 0; i < inp.length; i++) {
+        var cur = inp[i], prev = inp[(i + inp.length - 1) % inp.length];
+        var ci = edges[e](cur), pi = edges[e](prev);
+        if (ci) { if (!pi) out.push(cut[e](prev, cur)); out.push(cur); }
+        else if (pi) out.push(cut[e](prev, cur));
+      }
+    }
+    return out;
+  }
+
+  /** Зона прибора: по имени из редактора, иначе та, внутри которой он стоит */
+  function wetZoneOf(f, q) {
+    var zs = (f.zones || []).filter(function (z) { return z.pts && z.pts.length > 2; });
+    var key = String(q.z || '').trim().toLowerCase();
+    if (key) {
+      for (var i = 0; i < zs.length; i++)
+        if (String(zs[i].name || '').trim().toLowerCase() === key) return zs[i];
+    }
+    for (var k = 0; k < zs.length; k++) if (pip([q.x, q.y], zs[k].pts)) return zs[k];
+    return null;
+  }
+
+  function wetZoneBody(f, zone, group, opts) {
+    var o = [], ppm = f.pxPerM || 100;
+    var BOX = { x0: 30, y0: 34, x1: 262, y1: 236 };
+    // Рамка зума. Санузел целиком влезает крупно, а кухня-гостиная на 40 м² —
+    // нет: мойка на ней терялась. Поэтому рамка строится от приборов (с запасом
+    // метр), а стены зоны подтягиваются в неё по одной, ближние первыми, пока
+    // масштаб не мельче 1:25. От попавших в рамку стен и считаются привязки.
+    var pts = [];
+    group.forEach(function (g) {
+      var q = g.q, r = Math.max(q.w || 600, q.d || 600) / 1000 * ppm / 2;
+      pts.push([q.x - r, q.y - r]); pts.push([q.x + r, q.y + r]);
+    });
+    var fb = bbox(pts), pad = 0.5 * ppm, air = 1.0 * ppm;
+    var bb = [fb[0] - air, fb[1] - air, fb[2] + air, fb[3] + air];
+    var zWalls = {};                              // стороны зоны, попавшие в рамку
+    if (zone) {
+      var zb0 = bbox(zone.pts);
+      var maxW = (BOX.x1 - BOX.x0) * 25 * ppm / 1000, maxH = (BOX.y1 - BOX.y0) * 25 * ppm / 1000;
+      [['l', fb[0] - zb0[0]], ['t', fb[1] - zb0[1]], ['r', zb0[2] - fb[2]], ['b', zb0[3] - fb[3]]]
+        .sort(function (a, b) { return a[1] - b[1]; })
+        .forEach(function (e) {
+          var c = bb.slice();
+          if (e[0] === 'l') c[0] = Math.min(c[0], zb0[0] - pad);
+          if (e[0] === 't') c[1] = Math.min(c[1], zb0[1] - pad);
+          if (e[0] === 'r') c[2] = Math.max(c[2], zb0[2] + pad);
+          if (e[0] === 'b') c[3] = Math.max(c[3], zb0[3] + pad);
+          if (c[2] - c[0] <= maxW && c[3] - c[1] <= maxH) { bb = c; zWalls[e[0]] = true; }
+        });
+      // за стенами зоны больше полуметра не показываем — там уже чужое помещение
+      bb = [Math.max(bb[0], zb0[0] - pad), Math.max(bb[1], zb0[1] - pad),
+            Math.min(bb[2], zb0[2] + pad), Math.min(bb[3], zb0[3] + pad)];
+    }
+    // не крупнее 1:10 — иначе у маленького санузла значки приборов на пол-листа
+    var s = Math.min((BOX.x1 - BOX.x0) / (bb[2] - bb[0]), (BOX.y1 - BOX.y0) / (bb[3] - bb[1]), 100 / ppm);
+    var ox = BOX.x0 + ((BOX.x1 - BOX.x0) - (bb[2] - bb[0]) * s) / 2 - bb[0] * s;
+    var oy = BOX.y0 + ((BOX.y1 - BOX.y0) - (bb[3] - bb[1]) * s) / 2 - bb[1] * s;
+    var t = { s: s, ox: ox, oy: oy,
+      X: function (px) { return ox + px * s; }, Y: function (px) { return oy + px * s; } };
+    var cid = 'wz' + (opts.uid || 0);
+    var vx0 = t.X(bb[0]), vy0 = t.Y(bb[1]), vw = (bb[2] - bb[0]) * s, vh = (bb[3] - bb[1]) * s;
+
+    var R = { x0: vx0, y0: vy0, x1: vx0 + vw, y1: vy0 + vh };
+    var toSheet = function (pts) { return pts.map(function (p) { return [t.X(p[0]), t.Y(p[1])]; }); };
+    // Подложка и контуры стен — растр и заливки, их геометрически не обрезать:
+    // режет clip-path (браузер и печать из браузера).
+    var under = (f.img ? imageTag(f, t, 0.3) : '') + (wallsBody(f, t) || '');
+    if (under) {
+      o.push('<defs><clipPath id="' + cid + '"><rect x="' + n(vx0) + '" y="' + n(vy0) + '" width="' + n(vw) +
+        '" height="' + n(vh) + '"/></clipPath></defs>');
+      o.push('<g clip-path="url(#' + cid + ')">' + under + '</g>');
+    }
+    if (zone) {
+      var zp = clipPoly(toSheet(zone.pts), R);
+      if (zp.length > 2) o.push('<polygon points="' + zp.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' ') +
+        '" style="fill:none;stroke:' + COLT.wc + ';stroke-width:0.4;stroke-dasharray:1.6,1.2"/>');
+    }
+
+    var idx = {};
+    group.forEach(function (g) { idx[g.i] = g; });
+    var step = Math.max(1.0, 0.07 * ppm * s);
+    var seg = function (pts, style) {
+      var d = clipPathD(toSheet(pts), R);
+      if (d) o.push('<path d="' + d + '" style="fill:none;' + style + '"/>');
+    };
+    (f.wlines || []).forEach(function (w) {
+      var g = idx[w.i];
+      if (!g || !w.pts || w.pts.length < 2) return;
+      seg(offsetPoly(w.pts, -step / 2 / s), 'stroke:' + COL_CW + ';stroke-width:0.5');
+      if ((WET_H[g.q.t] || {}).hw) seg(offsetPoly(w.pts, step / 2 / s), 'stroke:' + COL_HW + ';stroke-width:0.5');
+    });
+    var risers = {};
+    (f.slines || []).forEach(function (sl) {
+      var g = idx[sl.i];
+      if (!g || !sl.pts || sl.pts.length < 2) return;
+      seg(sl.pts, 'stroke:' + COL_SEW + ';stroke-width:' + (sl.d >= 110 ? 0.9 : 0.6) + ';stroke-dasharray:2.4,0.8');
+      var end = sl.pts[sl.pts.length - 1];
+      risers[Math.round(end[0]) + ',' + Math.round(end[1])] = end;
+    });
+    o.push('<rect x="' + n(vx0) + '" y="' + n(vy0) + '" width="' + n(vw) + '" height="' + n(vh) +
+      '" style="fill:none;stroke:#000;stroke-width:0.25"/>');
+
+    // приборы с номерами
+    group.forEach(function (g, gi) {
+      fixtureMark(g.q, t, f, o, COL_CW);
+      var X = t.X(g.q.x), Y = t.Y(g.q.y) - Math.max(4, (g.q.d || 600) / 1000 * ppm * s / 2 + 2.6);
+      o.push('<circle cx="' + n(X) + '" cy="' + n(Y) + '" r="2.3" style="fill:#ffffff;stroke:#000;stroke-width:0.2"/>');
+      o.push(txt(X, Y + 1.0, String(gi + 1), { size: 2.7, anchor: 'middle' }));
+    });
+    // Стояки, к которым уходят выпуски зоны, — поверх приборов: стояк обычно
+    // стоит в углу у унитаза, и значок унитаза закрывал его подпись.
+    var rk = Object.keys(risers);
+    rk.forEach(function (k, ri) {
+      var p = risers[k], cx = t.X(p[0]), cy = t.Y(p[1]);
+      // стояк за рамкой — выпуск уходит к нему за обрез, значок не рисуем
+      if (cx < vx0 || cx > vx0 + vw || cy < vy0 || cy > vy0 + vh) return;
+      var lbl = 'Ст. К1' + (rk.length > 1 ? '-' + (ri + 1) : '');
+      o.push('<circle cx="' + n(cx) + '" cy="' + n(cy) + '" r="' + n(Math.max(1.6, 0.055 * ppm * s)) +
+        '" style="fill:#ffffff;stroke:#7a5c00;stroke-width:0.5"/>');
+      o.push('<rect x="' + n(cx - lbl.length * 0.8 - 0.8) + '" y="' + n(cy + 2.4) + '" width="' + n(lbl.length * 1.6 + 1.6) +
+        '" height="4" rx="0.5" style="fill:#ffffff;fill-opacity:0.9;stroke:none"/>');
+      o.push(txt(cx, cy + 5.4, lbl, { size: 2.9, anchor: 'middle', fill: '#7a5c00' }));
+    });
+
+    // Привязки приборов от стен зоны: цепочки по осям приборов сверху и слева
+    if (zone) {
+      var zb = bbox(zone.pts), mm = function (px) { return Math.round(px / ppm * 100) * 10; };
+      // концы цепочки — только стены, попавшие в рамку: размер до стены за
+      // обрезом листа читать не от чего
+      var chain = function (a0, a1, vals) {
+        var arr = [];
+        if (a0 != null) arr.push(a0);
+        arr = arr.concat(vals);
+        if (a1 != null) arr.push(a1);
+        arr.sort(function (a, b) { return a - b; });
+        return arr.filter(function (v, i) { return i === 0 || v - arr[i - 1] > 0.02 * ppm; });
+      };
+      var xs = chain(zWalls.l ? zb[0] : null, zWalls.r ? zb[2] : null, group.map(function (g) { return g.q.x; }));
+      var ys = chain(zWalls.t ? zb[1] : null, zWalls.b ? zb[3] : null, group.map(function (g) { return g.q.y; }));
+      var dimLine = function (a, b, y, v, vertical) {
+        if (vertical) {
+          o.push('<line x1="' + n(y) + '" y1="' + n(a) + '" x2="' + n(y) + '" y2="' + n(b) + '" style="stroke:#000;stroke-width:0.15"/>');
+          o.push(txt(y - 1, (a + b) / 2, String(v), { size: 2.5, anchor: 'middle' }).replace('<text',
+            '<text transform="rotate(-90 ' + n(y - 1) + ' ' + n((a + b) / 2) + ')"'));
+        } else {
+          o.push('<line x1="' + n(a) + '" y1="' + n(y) + '" x2="' + n(b) + '" y2="' + n(y) + '" style="stroke:#000;stroke-width:0.15"/>');
+          o.push(txt((a + b) / 2, y - 1, String(v), { size: 2.5, anchor: 'middle' }));
+        }
+      };
+      var yTop = vy0 - 4, xLeft = vx0 - 4;
+      xs.forEach(function (v, i) {
+        o.push('<line x1="' + n(t.X(v)) + '" y1="' + n(yTop - 1.6) + '" x2="' + n(t.X(v)) + '" y2="' + n(yTop + 1.6) +
+          '" style="stroke:#000;stroke-width:0.3"/>');
+        if (i) dimLine(t.X(xs[i - 1]), t.X(v), yTop, mm(v - xs[i - 1]), false);
+      });
+      ys.forEach(function (v, i) {
+        o.push('<line x1="' + n(xLeft - 1.6) + '" y1="' + n(t.Y(v)) + '" x2="' + n(xLeft + 1.6) + '" y2="' + n(t.Y(v)) +
+          '" style="stroke:#000;stroke-width:0.3"/>');
+        if (i) dimLine(t.Y(ys[i - 1]), t.Y(v), xLeft, mm(v - ys[i - 1]), true);
+      });
+    }
+
+    // Таблица высот
+    var TX = 274, TY = 40, W = [8, 42, 16, 16, 12, 16], rh = 6.4;
+    var Wsum = W.reduce(function (a, b) { return a + b; }, 0);
+    o.push(txt(TX + Wsum / 2, TY - 7.2, 'Подводки и выпуски приборов', { size: 4.2, anchor: 'middle' }));
+    o.push(txt(TX + Wsum / 2, TY - 2.4, 'высота от чистого пола, мм', { size: 3.0, anchor: 'middle' }));
+    var rows = [['№', 'Прибор', 'В1', 'Т3', 'К1 Ø', 'К1 h']];
+    group.forEach(function (g, gi) {
+      var h = WET_H[g.q.t] || {};
+      rows.push([gi + 1, (FIXT[g.q.t] || ['Прибор'])[0], h.cw != null ? h.cw : '—',
+        h.hw != null ? h.hw : '—', h.d ? 'd' + h.d : '—',
+        h.sew == null ? '—' : (h.sew === 0 ? 'пол' : h.sew)]);
+    });
+    rows.forEach(function (r, ri) {
+      var y = TY + ri * rh, x = TX;
+      o.push('<rect x="' + n(TX) + '" y="' + n(y) + '" width="' + n(Wsum) + '" height="' + rh +
+        '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+      W.forEach(function (w, ci) {
+        o.push(txt(ci === 1 ? x + 1.4 : x + w / 2, y + rh / 2 + 1.2, r[ci],
+          { size: ri ? 3.0 : 3.2, anchor: ci === 1 ? 'start' : 'middle' }));
+        if (ci) o.push('<line x1="' + n(x) + '" y1="' + n(y) + '" x2="' + n(x) + '" y2="' + n(y + rh) +
+          '" style="stroke:#000;stroke-width:0.15"/>');
+        x += w;
+      });
+    });
+
+    var ly = TY + rows.length * rh + 9;
+    o.push(txt(TX, ly, 'Условные обозначения', { size: 3.6 }));
+    [['В1 — холодное водоснабжение', COL_CW, ''], ['Т3 — горячее водоснабжение', COL_HW, ''],
+     ['К1 — выпуск бытовой канализации', COL_SEW, '2.4,0.8']].forEach(function (r, i) {
+      var yy = ly + 5 + i * 5;
+      o.push('<line x1="' + n(TX) + '" y1="' + n(yy) + '" x2="' + n(TX + 9) + '" y2="' + n(yy) +
+        '" style="stroke:' + r[1] + ';stroke-width:0.7' + (r[2] ? ';stroke-dasharray:' + r[2] : '') + '"/>');
+      o.push(txt(TX + 11.5, yy + 1.1, r[0], { size: 3.0 }));
+    });
+    var notes = [
+      'Высоты — практика монтажа из проектов-образцов;',
+      'уточняются по паспорту конкретного прибора.',
+      'Водорозетки — до оси, выпуски — до низа трубы.',
+      'Уклон выпусков: d50 — 0,03; d110 — 0,02 к стояку.',
+      'Повороты выпусков — отводами 45°, не 90°.',
+      'Трассы показаны условно; разводку уточнить по месту.'
+    ];
+    if (opts.recirc) notes.push('Рециркуляция ГВС (Т4) — по плану водоснабжения этажа.');
+    notes.forEach(function (s2, i) { o.push(txt(TX, ly + 24 + i * 4.4, s2, { size: 3.0 })); });
+    var scale = Math.round(1000 / (ppm * s) / 5) * 5;
+    o.push(txt(BOX.x0, BOX.y1 + 10, 'Масштаб ~1:' + scale, { size: 3.0 }));
+    return o.join('');
+  }
+
+  /**
+   * Листы мокрых зон по этажам: [{ title, svg }].
+   * opts: { code, sheetStart, num, floor, recirc }
+   * Зона — одна из зон плана, к которой отнесены приборы (санузел, кухня,
+   * котельная). Приборы без зоны идут общим листом «Приборы этажа».
+   */
+  function wetZoneSheets(plans, opts) {
+    opts = opts || {};
+    var out = [], num = opts.sheetStart || 1;
+    var fmt = opts.num || function (v) { return String(v); };
+    if (!plans || !plans.floors) return out;
+    plans.floors.forEach(function (f, fi) {
+      if (!f || !f.pxPerM || !(f.fixtures || []).length) return;
+      if (opts.floor && opts.floor !== fi + 1) return;
+      var groups = [], byZone = {};
+      f.fixtures.forEach(function (q, i) {
+        if (q.t === 'riser' || !WET_H[q.t]) return;
+        var z = wetZoneOf(f, q);
+        var key = z ? 'z' + f.zones.indexOf(z) : '_';
+        if (!byZone[key]) { byZone[key] = { zone: z, items: [] }; groups.push(byZone[key]); }
+        byZone[key].items.push({ q: q, i: i });
+      });
+      groups.forEach(function (G) {
+        var nm = G.zone ? (G.zone.name || (G.zone.type === 'boiler' ? 'Котельная' : 'Зона')) : 'Приборы этажа';
+        var ttl = 'Этаж 0' + (fi + 1) + '. ' + nm + ': подводки и выпуски';
+        out.push({ title: ttl, svg: window.projectSheets.sheet({
+          code: opts.code, sheet: fmt(num),
+          body: title(ttl) + wetZoneBody(f, G.zone, G.items, { uid: fi + '_' + num, recirc: opts.recirc })
+        }) });
+        num++;
+      });
+    });
+    return out;
+  }
+
   /** Листы ВК: [{title, svg}] — только по этажам, где расставлены приборы */
   /**
    * Планы водоснабжения и канализации.
@@ -1739,7 +2052,7 @@
   // из той же укладки, что нарисована на листе.
   // loopRows — для листа узла коллектора (project_ufh_manifold.js): номера,
   // длины и расходы петель там должны совпадать с листом укладки.
-  window.projectPlans = { sheets: sheets, waterSheets: waterSheets, iso3dSheets: iso3dSheets,
+  window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom, layZone: layZone, layZoneLoops: layZoneLoops,
     floorLoops: floorLoops, loopRows: loopRows, num1: num1,
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
