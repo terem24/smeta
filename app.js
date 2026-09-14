@@ -45287,6 +45287,22 @@ const app = {
         return arr.reduce((a, b) => (b.power50 > a.power50 ? b : a));
     },
 
+    /**
+     * Сколько теплопотерь дома остаётся радиаторам, кВт, когда есть тёплый пол.
+     * Раньше — всегда 70 %, какой бы ни была площадь пола: при полу только в
+     * санузле на 8 м² радиаторы недобирали четверть, при полу во весь дом — брали
+     * лишнее. Теперь пол забирает свою площадь × 52 Вт/м² — предел при поверхности
+     * +26 °C и воздухе +21 °C (СП 60.13330.2020, п. 6.4.8; q = 8,92·Δt^1,1), тот же,
+     * что у плашки «Одного тёплого пола не хватит». Остальное — радиаторам.
+     */
+    radLoadKw: function (pwrKw, tpArea) {
+        const p = parseFloat(pwrKw) || 0;
+        const a = parseFloat(tpArea) || 0;
+        if (!(a > 0)) return p;
+        const qFloor = 8.92 * Math.pow(26 - 21, 1.1) / 1000;   // кВт/м²
+        return Math.max(0, p - a * qFloor);
+    },
+
     radBySec: function (arr, n) {
         const list = (arr || []).filter(x => x && x.sec > 0);
         if (!list.length) return (arr || [])[0];
@@ -60576,7 +60592,7 @@ const app = {
         let hasTp = this.state.systems.includes('tp');
         let radSecs = 0, radMeters = 0, tpMeters = 0;
         let tpArea = this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0);
-        if (hasRad) { let load = (hasTp && tpArea > 0) ? pwr * 1000 * 0.7 : pwr * 1000; radSecs = Math.ceil(load / 117); if (radSecs > 0) { let pipe = Math.ceil(this.state.win * (Math.sqrt(this.state.area / (this.state.floors === 2 ? 2 : 1)) + 3) * 1.1); radMeters = pipe * 2; } }
+        if (hasRad) { let load = this.radLoadKw(pwr, hasTp ? tpArea : 0) * 1000; radSecs = Math.ceil(load / 117); if (radSecs > 0) { let pipe = Math.ceil(this.state.win * (Math.sqrt(this.state.area / (this.state.floors === 2 ? 2 : 1)) + 3) * 1.1); radMeters = pipe * 2; } }
 
         let stepVal1 = this.state.ufhStep1 || 150;
         let stepVal2 = this.state.ufhStep2 || 150;
@@ -60977,10 +60993,8 @@ const app = {
             const _directGrp = _grpsForCap && _grpsForCap[0];
             const _capMatch = _directGrp && /для\s+радиаторов\s+(?:до\s+)?(\d+(?:[.,]\d+)?)\s*кВт/i.exec(_directGrp.name || '');
             const _capKw = _capMatch ? parseFloat(_capMatch[1].replace(',', '.')) : 0;
-            // Радиаторная доля теплопотерь: при наличии тёплого пола на радиаторы приходится ~70%
-            // (та же пропорция, что и в расчёте приборов отопления ниже — heatLoadTotal).
-            const _pwrKw = parseFloat(pwr) || 0; // getHouseHeatLoss() возвращает строку с кВт
-            const _radLoadKw = (hasTp && tpArea > 0) ? _pwrKw * 0.7 : _pwrKw;
+            // Радиаторная доля теплопотерь — та же, что в расчёте приборов ниже (radLoadKw).
+            const _radLoadKw = this.radLoadKw(pwr, hasTp ? tpArea : 0);
             if (_capKw > 0) {
                 this._radGroupCapacityKw = _capKw;
                 this._radGroupLoadKw = _radLoadKw;
@@ -62578,7 +62592,7 @@ const app = {
             let totalRadCountBottomSteel = 0;
             let totalConvCount = 0;
             let totalVartronic = 0;
-            let heatLoadTotal = Math.round((hasTp && tpArea > 0) ? pwr * 700 : pwr * 1000);
+            let heatLoadTotal = Math.round(this.radLoadKw(pwr, hasTp ? tpArea : 0) * 1000);
 
             if (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0) {
                 this.state.rooms.forEach(r => {
