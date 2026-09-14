@@ -45262,6 +45262,31 @@ const app = {
      * массиве: у серий только с чётными секциями (алюминий, Vega, Alpha, ROMMER
      * Plus/Profi) нечётное n давало сразу максимум — 12 секций вместо 8.
      */
+    /**
+     * Стальная панель под окно. Массив идёт по типам 11 → 21 → 22 → 33, и первый
+     * подходящий по мощности — всегда самый тонкий и самый длинный: 2600 Вт под
+     * окно 1,2 м давали Тип 21 длиной 2,4 м при Тип 33 на 1,3 м. Порядок выбора:
+     * 1) мощности хватает и длина 50–90 % окна — первый (самый тонкий тип);
+     * 2) мощности хватает и не шире 90 % окна — самый длинный из них;
+     * 3) мощности хватает — самый короткий, чтобы как можно меньше выйти за окно;
+     * 4) не хватает ни одной — самая мощная.
+     */
+    pickPanelForWindow: function (list, reqPwr, winW) {
+        const arr = (list || []).filter(x => x && x.power50 > 0);
+        if (!arr.length) return (list || [])[0];
+        const W = parseFloat(winW) || 0;
+        const len = x => (x.sec || 0) / 1000;
+        const ok = arr.filter(x => x.power50 >= reqPwr);
+        if (W > 0) {
+            const inBand = ok.find(x => len(x) >= W * 0.5 && len(x) <= W * 0.9);
+            if (inBand) return inBand;
+            const narrow = ok.filter(x => len(x) <= W * 0.9);
+            if (narrow.length) return narrow.reduce((a, b) => (len(b) > len(a) ? b : a));
+        }
+        if (ok.length) return ok.reduce((a, b) => (len(b) < len(a) ? b : a));
+        return arr.reduce((a, b) => (b.power50 > a.power50 ? b : a));
+    },
+
     radBySec: function (arr, n) {
         const list = (arr || []).filter(x => x && x.sec > 0);
         if (!list.length) return (arr || [])[0];
@@ -62724,12 +62749,8 @@ const app = {
                             let itemVega500Al = pickSect(vega500AlRads, p50_vega500Al, 12);
 
                             // === Панельные: выбираем тип (11/21/22/33) по мощности + диапазону ширины 50–90% ===
-                            const panelMinW = w.width * 0.50, panelMaxW = w.width * 0.90;
                             const defaultSteelRads = steelRads.filter(s => app.getRadHeightFromId(s.id) === 500);
-                            let bestPanel = defaultSteelRads.find(s => s.power50 >= reqPwr && (s.sec / 1000) >= panelMinW && (s.sec / 1000) <= panelMaxW)
-                                || defaultSteelRads.find(s => s.power50 >= reqPwr && (s.sec / 1000) >= panelMinW)
-                                || defaultSteelRads.find(s => s.power50 >= reqPwr)
-                                || defaultSteelRads[defaultSteelRads.length - 1];
+                            let bestPanel = this.pickPanelForWindow(defaultSteelRads, reqPwr, w.width);
 
                             let altsList = [itemSpace, itemTitan, itemSpaceRu, itemTitanSide, itemSpaceRu350, itemTitan350, itemTitan200, itemAluminum, itemAlum350, itemPlusAl, itemPlusAl200, bestPanel,
                                 itemVegaBm500, itemVegaBm350, itemVegaBm200, itemAlphaBm500, itemAlphaBm350, itemTitanBottom350, itemTitanGraphite500, itemTitanGraphite350, itemVega500Al];
@@ -62846,11 +62867,7 @@ const app = {
                                             if (filtered.length > 0) {
                                                 // Сортируем по длине в мм по возрастанию
                                                 filtered.sort((a, b) => a.sec - b.sec);
-                                                const panelMinW = w.width * 0.50, panelMaxW = w.width * 0.90;
-                                                targetItem = filtered.find(s => s.power50 >= reqPwr && (s.sec / 1000) >= panelMinW && (s.sec / 1000) <= panelMaxW)
-                                                    || filtered.find(s => s.power50 >= reqPwr && (s.sec / 1000) >= panelMinW)
-                                                    || filtered.find(s => s.power50 >= reqPwr)
-                                                    || filtered[filtered.length - 1];
+                                                targetItem = this.pickPanelForWindow(filtered, reqPwr, w.width);
                                             }
                                         }
                                     } else {
@@ -62971,7 +62988,10 @@ const app = {
                 let itemTitan = this.radBySec(titanRads, secPerRadTitan);
 
                 const defaultSteelRads = steelRads.filter(s => app.getRadHeightFromId(s.id) === 500);
-                let bestPanel = defaultSteelRads.find(s => s.power50 >= loadPerWindow) || defaultSteelRads[defaultSteelRads.length - 1];
+                // Ширины окон в быстром режиме нет — берём ту же, что подставляется окну
+                // новой комнаты (getDefaultWindowWidth) при средней площади на окно.
+                let bestPanel = this.pickPanelForWindow(defaultSteelRads, loadPerWindow,
+                    this.getDefaultWindowWidth((parseFloat(this.state.area) || 0) / Math.max(1, win)));
                 let countSteel = Math.max(win, Math.ceil(heatLoadTotal / bestPanel.power50));
 
                 let altsList = [itemSpace, itemTitan, bestPanel];
