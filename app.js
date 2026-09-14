@@ -7486,13 +7486,91 @@ const app = {
         return { rows: out, capped: true };
     },
 
-    renderAdminKanban: async function (skipFetch) {
+    /**
+     * Дочитка планировщика: только то, что появилось после прошлой загрузки.
+     *
+     * Полная загрузка — это вся история событий (на сентябрь 2026 — 180 КБ из
+     * 215 КБ всего открытия), и раньше она шла при каждом входе в раздел и после
+     * каждой смены статуса. Теперь полностью читаем раз в KANBAN_FULL_TTL (и по
+     * кнопке «Обновить»), а в промежутке берём новые события, новые сметы и
+     * учётки тех, кто появился в новых событиях. Чистка осиротевших событий и
+     * досоздание пропущенных — только при полной загрузке: им нужен весь список.
+     *
+     * Что может отстать до полной загрузки: сумма пересохранённой сметы и смена
+     * дистрибьютора у монтажника. Новые сметы и новые люди видны сразу.
+     */
+    KANBAN_FULL_TTL: 30 * 60 * 1000,
+
+    kanbanCacheOwner: function () {
+        const u = this._currentUserRow || this.state.tgUser || {};
+        return this.getAdminRole() + ':' + String(u.email || '').toLowerCase();
+    },
+
+    kanbanFetchIncrement: async function () {
+        const events = this._kanbanEvents || [];
+        const since = events.reduce((m, e) => (e.created_at && e.created_at > m ? e.created_at : m), '');
+        if (!since) return false;
+        // gte, а не gt: у событий одной секунды совпадает время, и строгое
+        // сравнение теряло бы соседнее. Повторы отсекаем по id.
+        const { rows: fresh } = await this.fetchAllRows('invoice_events', '*', { build: q => q.gte('created_at', since), order: 'created_at' });
+        const seen = new Set(events.map(e => String(e.id)));
+        const added = (fresh || []).filter(e => !seen.has(String(e.id)));
+        if (added.length) this._kanbanEvents = events.concat(added);
+
+        // Сметы, сохранённые после прошлой загрузки: их суммы и признак «живая смета»
+        const estSince = this._kanbanFullAtIso || since;
+        try {
+            const { rows: ests } = await this.fetchAllRows('estimates',
+                'id, created_at, share_id, total_sum, eq_sum, works_sum, calc_id:calc_data->>calc_id, from_recognition:calc_data->>from_recognition',
+                { build: q => q.gte('created_at', estSince), order: 'created_at' });
+            const live = new Set(this._kanbanLiveIds || []);
+            (ests || []).forEach(e => {
+                const sum = parseFloat(e.total_sum) || ((parseFloat(e.eq_sum) || 0) + (parseFloat(e.works_sum) || 0)) || 0;
+                [e.calc_id, e.share_id].filter(Boolean).map(String).forEach(cid => {
+                    live.add(cid);
+                    this._kanbanCalcSumMap[cid] = sum;
+                    if (e.from_recognition === 'true' || e.from_recognition === true) this._kanbanRecMap[cid] = true;
+                });
+            });
+            if (this._kanbanLiveIds) this._kanbanLiveIds = Array.from(live);
+        } catch (e) { console.warn('[планировщик] новые сметы не дочитаны:', e.message || e); }
+
+        // Учётки авторов новых событий, которых ещё нет в справочнике
+        const meta = this._kanbanUserMeta || (this._kanbanUserMeta = {});
+        const unknown = [...new Set(added.map(e => String(e.user_email || '').toLowerCase()).filter(m => m && !meta[m]))];
+        if (unknown.length) {
+            try {
+                const { data } = await supabaseClient.from('users').select('email, region, distributor_id').in('email', unknown.slice(0, 100));
+                (data || []).forEach(u => { if (u.email) meta[u.email.toLowerCase()] = { region: u.region || null, distributor_id: u.distributor_id || null }; });
+            } catch (e) { console.warn('[планировщик] новые учётки не дочитаны:', e.message || e); }
+        }
+        return true;
+    },
+
+    renderAdminKanban: async function (skipFetch, force) {
         const content = document.getElementById('admin_content');
         if (!content) return;
 
         const installerFilter = document.getElementById('kanban_installer_filter')?.value || 'all';
 
+        // Свежая полная загрузка есть и принадлежит этому же человеку — дочитываем
+        // только новое. Под другой учёткой кэш не годится: у менеджера и владельца
+        // разные права, и смешивать их данные нельзя.
+        const cacheOk = !!this._kanbanEvents && this._kanbanOwner === this.kanbanCacheOwner()
+            && this._kanbanFullAt && (Date.now() - this._kanbanFullAt < this.KANBAN_FULL_TTL);
+        if (!skipFetch && !force && cacheOk) {
+            try {
+                if (await this.kanbanFetchIncrement()) skipFetch = true;
+            } catch (e) {
+                console.warn('[планировщик] дочитка не удалась, читаем полностью:', e.message || e);
+            }
+        }
+        if (skipFetch && this._kanbanEvents && this._kanbanOwner && this._kanbanOwner !== this.kanbanCacheOwner()) skipFetch = false;
+
         if (!skipFetch || !this._kanbanEvents) {
+            // Отметку ставим до чтения: дочитка «с момента загрузки» не должна
+            // пропустить сметы, сохранённые, пока шла сама загрузка
+            const fullStartedIso = new Date().toISOString();
             content.innerHTML += `<div id="kanban_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка истории...</div>`;
             let events = null;
             let error = null;
@@ -7647,6 +7725,9 @@ const app = {
             // доведённого до дела: суммой это не проверить — сохранённая смета бывает
             // и нулевой. Список переживает skipFetch вместе с остальными картами.
             this._kanbanLiveIds = liveCalcIds ? Array.from(liveCalcIds) : null;
+            this._kanbanFullAt = Date.now();
+            this._kanbanFullAtIso = fullStartedIso;
+            this._kanbanOwner = this.kanbanCacheOwner();
         } else if (!document.getElementById('kanban_root')) {
             content.innerHTML += `<div id="kanban_root"></div>`;
         }
@@ -7770,7 +7851,7 @@ const app = {
                                onchange="app.toggleKanbanAbandoned(this.checked)" style="cursor:pointer;">
                         Брошенные расчёты (${abandonedCount})
                     </label>
-                    <button class="btn-header-blue" onclick="app.renderAdminKanban()" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
+                    <button class="btn-header-blue" onclick="app.renderAdminKanban(false, true)" title="Перечитать всю историю заново" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
                 </div>
             </div>
         `;
@@ -8519,9 +8600,11 @@ const app = {
 
     _kanbanMyEmail: null,
     kanbanMyEmail: async function () {
-        if (this._kanbanMyEmail) return this._kanbanMyEmail;
+        const owner = this.kanbanCacheOwner();
+        if (this._kanbanMyEmail && this._kanbanMyEmailOwner === owner) return this._kanbanMyEmail;
         const me = await this.resolveCurrentUserForChat();
         this._kanbanMyEmail = me && me.email ? String(me.email).trim().toLowerCase() : '';
+        this._kanbanMyEmailOwner = owner;
         return this._kanbanMyEmail;
     },
 
@@ -8770,8 +8853,9 @@ const app = {
                     : (status === 'paid' ? "💰 Статус изменен: Оплачено" : "❌ Статус изменен: Отклонен"));
             }
 
-            // Перезагружаем данные канбана и карточки
-            this._kanbanEvents = null; // сбросить кэш, чтобы загрузить свежие данные
+            // Перезагружаем данные канбана и карточки. Кэш не сбрасываем: доска
+            // дочитает только новые события, в том числе только что записанное,
+            // а не всю историю заново после каждого переноса карточки.
             if (preset && preset.stayOnBoard) {
                 // Перенос с доски: остаёмся на доске. Она дописывает себя в конец
                 // раздела, поэтому старую убираем, а навигацию над ней не трогаем.
