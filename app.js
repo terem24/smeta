@@ -58700,12 +58700,13 @@ const app = {
                 // туда позицию. Поэтому суммы такого раздела копим отдельно и
                 // отдаём в общий итог только когда он и правда вышел.
                 const _origAdd = Math.round(originalPrice * finalQty);
+                // «Рекомендованная цена» (originalEqSum) здесь больше не копится: строка
+                // ещё может уйти в выключенный раздел или сменить количество руками.
+                // Её считает flushBill по итоговым строкам — см. там.
                 if (this.flatSkipsSection(secTitle)) {
                     _pendingFinalSum += _origAdd;
-                    if (!isOpt) _pendingOrigSum += _origAdd;
                 } else {
                     this.calcFinalTotal += _origAdd;
-                    if (!isOpt) app.originalEqSum = (app.originalEqSum || 0) + _origAdd;
                 }
 
                 // Одинаковые позиции внутри одного подраздела складываем в одну строку.
@@ -58929,7 +58930,6 @@ const app = {
                     .some(eq => (eq.section || '9. Дополнительные материалы') === title);
                 if (_revived) {
                     this.calcFinalTotal += _pendingFinalSum;
-                    app.originalEqSum = (app.originalEqSum || 0) + _pendingOrigSum;
                 }
                 _pendingOrigSum = 0; _pendingFinalSum = 0;
                 if (!_revived) {
@@ -58998,6 +58998,16 @@ const app = {
                     }
                 });
             }
+
+            // «Рекомендованная цена» — по тем строкам, что реально вышли в смету, и по
+            // их окончательному количеству: цена до скидки × количество. Раньше сумма
+            // копилась в addToBill, до проверки выключенного раздела и до ручного
+            // количества, и при нулевой скидке расходилась с «Итого».
+            bill.forEach(entry => {
+                if (this.state.optItems && this.state.optItems[entry.originalId || entry.id]) return;
+                const _bp = (entry.basePrice !== undefined ? entry.basePrice : entry.price) || 0;
+                app.originalEqSum = (app.originalEqSum || 0) + Math.round(_bp * (entry.q || 0));
+            });
 
             // Порядок строк: подразделы идут подряд, а внутри каждого — от больших
             // сумм к малым. Так смета читается сверху вниз по значимости: сначала
