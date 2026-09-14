@@ -361,6 +361,9 @@ function getFriendlyErrorMessage(err, defaultMsg = 'Неизвестная ош�
     if (msg.includes('email not confirmed')) {
         return 'Email не подтвержден. Пожалуйста, проверьте почту и подтвердите ваш аккаунт.';
     }
+    if (msg.includes('should be different from the old password')) {
+        return 'Такой пароль уже установлен — входите с ним или придумайте другой.';
+    }
     if (msg.includes('already registered') || msg.includes('already exists')) {
         return 'Пользователь с таким email уже зарегистрирован. Войдите в систему.';
     }
