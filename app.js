@@ -47265,6 +47265,23 @@ const app = {
      * Уточнённые доли — для прямоугольника со сторонами 1:1,4: одна стена это
      * от четверти до трети периметра, две смежные — чуть больше половины.
      */
+    /**
+     * Высота окна в помещении, м. Во втором свете окно тянется за потолком, поэтому
+     * высота считается от высоты помещения, а не берётся из окна. Одна функция на
+     * теплопотери и на раскладку по окнам: раньше подбор приборов брал обычные
+     * 1,5 м, и гостиная во второй свет недобирала радиаторами около 15 %.
+     */
+    roomWinHeight: function (r, w) {
+        var s = this.state;
+        var fl = parseInt(r.floor) || 1;
+        var normalHeight = (fl === 2) ? (s.h2 || 2.7) : (s.h1 || 2.7);
+        var isDoubleHeight = !!(r.doubleHeight && r.customHeight && r.customHeight > normalHeight);
+        if (!isDoubleHeight) return this.winHeight(w);
+        var rHeight = r.customHeight;
+        var wH = w.isPan ? (rHeight - 0.3) : Math.min(1.5 * rHeight / normalHeight, rHeight - 0.9);
+        return Math.max(0.5, wH);
+    },
+
     roomOuterGeom: function (r) {
         var OUTER_SHARE = { 1: 0.30, 2: 0.55, 3: 0.75 };
         var area = parseFloat(r.area) || 1;
@@ -47410,16 +47427,7 @@ const app = {
         var totalWinArea = 0;
         var self = this;
         (r.windows || []).forEach(function (w) {
-            var wH;
-            if (isDoubleHeight) {
-                // Во втором свете окно тянется за потолком, поэтому здесь высота
-                // считается от высоты помещения, а не берётся из окна.
-                wH = w.isPan ? (rHeight - 0.3) : Math.min(1.5 * rHeight / normalHeight, rHeight - 0.9);
-                wH = Math.max(0.5, wH);
-            } else {
-                wH = self.winHeight(w);
-            }
-            totalWinArea += parseFloat(w.width || 1) * wH;
+            totalWinArea += parseFloat(w.width || 1) * self.roomWinHeight(r, w);
         });
 
         var wallArea = Math.max(0, outerPerim * rHeight - totalWinArea);
@@ -62444,7 +62452,7 @@ const app = {
                         // установки в помещении без окон стекла нет: ширину 0
                         // нельзя пропускать через «|| 1», иначе комната получила бы
                         // потери через окно метровой ширины, которого не существует.
-                        let wHeight = this.winHeight(w);
+                        let wHeight = this.roomWinHeight(r, w);
                         let wArea = w.noWin ? 0 : parseFloat(w.width || 1) * wHeight;
                         // kOrient — та же надбавка на румб, что учтена в теплопотерях
                         // помещения. Без неё окно недобирало бы то, что комната уже
