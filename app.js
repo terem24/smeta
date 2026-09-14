@@ -52702,11 +52702,8 @@ const app = {
             const _bsOn = this.state.detailedRooms && (this.state.objectType !== 'flat') &&
                 (hasRad || hasTp) && (this.state.fuels || []).length > 0;
             if (_bsBlock) _bsBlock.style.display = _bsOn ? 'block' : 'none';
-            const _bs = this.boilerSchemeMode();
-            ['auto', 'direct', 'hydro'].forEach(m => {
-                const e = document.getElementById('boiler_scheme_' + m);
-                if (e) e.className = (_bs === m) ? 'tab active' : 'tab';
-            });
+            // Подсветка кнопок — там же, где строка под ними: в автоподборе
+            // горит кнопка, которую выбрал расчёт, а он идёт после syncUI.
             this.syncBoilerSchemeNote();
         }
         if (hasTp) {
@@ -55550,7 +55547,15 @@ const app = {
      * У узла 'std' предел считается по всей площади (isUfhMixTypeCompatible).
      */
     boilerSchemeDirectBlocked: function () {
-        if (this.boilerSchemeMode() !== 'direct') return false;
+        return this.boilerSchemeMode() === 'direct' && this.boilerSchemeDirectImpossible();
+    },
+
+    /**
+     * «Без гидрострелки» не собрать при нынешнем доме — независимо от того,
+     * что выбрано. По ней кнопка «Без стрелки» гаснет заранее, а не после
+     * нажатия, которое смета всё равно не выполнит.
+     */
+    boilerSchemeDirectImpossible: function () {
         const s = this.state;
         if (!(s.systems || []).includes('tp')) return false;
         const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
@@ -55576,37 +55581,66 @@ const app = {
     },
 
     /**
-     * Строка под переключателем схемы котельной. В «Авто» говорит, что
-     * калькулятор выбрал: по ней видно, нужен ли переключатель вообще. Зовётся
-     * и из syncUI, и из render — решение о гидрострелке известно только после
-     * расчёта, а syncUI идёт до него.
+     * Кнопки схемы котельной и строка под ними. Кнопок две — «Без стрелки» и
+     * «Со стрелкой»; автоподбор отдельной кнопкой не показан. Пока монтажник
+     * ничего не нажимал, горит кнопка, которую выбрал расчёт, и строка говорит
+     * почему. Нажал — выбор закреплён, под строкой ссылка «Вернуть автоподбор».
+     * Зовётся и из syncUI, и из render — решение о гидрострелке известно
+     * только после расчёта, а syncUI идёт до него.
      */
     syncBoilerSchemeNote: function () {
         const el = document.getElementById('lbl_boiler_scheme_note');
         if (!el) return;
         const bs = this.boilerSchemeMode(), had = this.needCollector, s = this.state;
+        const blocked = this.boilerSchemeDirectBlocked();
+        const impossible = this.boilerSchemeDirectImpossible();
+        const noDirectWhy = 'тёплый пол больше, чем тянет узел подмеса';
+
+        // Какая кнопка горит: выбранная вручную, а в автоподборе (и когда «Без
+        // стрелки» не собрать) — та, по которой смета собрана на самом деле.
+        const lit = (bs !== 'auto' && !blocked) ? bs
+            : (had === true) ? 'hydro' : (had === false) ? 'direct' : null;
+        const tDirect = document.getElementById('boiler_scheme_direct');
+        const tHydro = document.getElementById('boiler_scheme_hydro');
+        if (tHydro) tHydro.className = (lit === 'hydro') ? 'tab active' : 'tab';
+        if (tDirect) {
+            tDirect.className = (lit === 'direct') ? 'tab active' : 'tab';
+            tDirect.style.opacity = impossible ? '0.45' : '';
+            tDirect.title = impossible
+                ? 'Без гидрострелки не собрать: ' + noDirectWhy + '.'
+                : 'Без гидрострелки. Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.';
+        }
+        const lnk = document.getElementById('lnk_boiler_scheme_auto');
+        if (lnk) lnk.hidden = (bs === 'auto');
+
         // Перечисляем только то, что в расчёте есть: «тёплый пол — через узел
         // подмеса» в доме без тёплого пола читается как ошибка калькулятора.
         const parts = [];
         if ((s.systems || []).includes('rad')) parts.push('радиаторы от насоса котла');
         if ((s.systems || []).includes('tp')) parts.push('тёплый пол через узел подмеса');
         if (s.hotWater) parts.push('бойлер через трёхходовой клапан');
-        el.textContent = (bs === 'direct' && this.boilerSchemeDirectBlocked())
-            ? 'Без гидрострелки не собрать: тёплый пол больше, чем тянет узел подмеса. Смета собрана как в «Авто».'
+        const why = this._bsAutoWhy || [];
+        el.textContent = blocked
+            ? 'Без гидрострелки не собрать: ' + noDirectWhy + '. Смета собрана по автоподбору.'
             : (bs === 'direct')
-            ? (parts.length ? parts.join(', ').replace(/^./, c => c.toUpperCase()) + '. ' : '') +
+            ? 'Выбрано вручную. ' +
+              (parts.length ? parts.join(', ').replace(/^./, c => c.toUpperCase()) + '. ' : '') +
               'Оговорки — в шапке раздела «2. Обвязка котельной».'
             : (bs === 'hydro')
-            ? 'Гидрострелка и насосная группа на каждый контур, даже если хватило бы насоса котла.'
+            ? 'Выбрано вручную: гидрострелка и насосная группа на каждый контур, даже если хватило бы насоса котла.'
             : (had === true)
-            ? 'Сейчас калькулятор поставил гидрострелку и насосные группы.'
+            ? 'Подобрано автоматически' + (why.length ? ': ' + why.join(', ') : '') + '.' +
+              (impossible ? ' Без гидрострелки не собрать: ' + noDirectWhy + '.' : '')
             : (had === false)
-            ? 'Сейчас гидрострелка не нужна: систему тянет насос котла.'
-            : 'Гидрострелку и насосные группы калькулятор ставит сам.';
+            ? 'Подобрано автоматически: систему тянет насос котла.'
+            : 'Схему калькулятор подбирает сам.';
     },
 
     setBoilerScheme: function (mode, event) {
         if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
+        // «Без стрелки», которую не собрать, не закрепляем: смета её всё равно
+        // не выполнит, а выбор висел бы в state и сработал бы неожиданно потом.
+        if (mode === 'direct' && this.boilerSchemeDirectImpossible()) { this.syncBoilerSchemeNote(); return; }
         this.state.boilerScheme = (mode === 'direct' || mode === 'hydro') ? mode : 'auto';
         this.syncUI();
         this.render();
@@ -60598,6 +60632,19 @@ const app = {
         this.radMeters = radMeters;
         this.boilersVol = boilersVol;
         this.needCollector = needCollector;
+        // Почему автоподбор поставил гидрострелку — для строки под кнопками схемы.
+        // Те же условия, что выше ставили группы; перечисляем только сработавшие.
+        {
+            const why = [];
+            if (rQ > 0) {
+                if (this.state.area > 150) why.push('площадь больше 150 м²');
+                if (this.state.floors === 2) why.push('второй этаж');
+                if (pwr > 20) why.push('мощность больше 20 кВт');
+            }
+            if (tQ > 0) why.push('группа тёплого пола');
+            if (tankNeedsPumpGroup) why.push('насосная группа бойлера');
+            this._bsAutoWhy = why;
+        }
         this.syncBoilerSchemeNote();
         this.vSys = vSys;
         let reqExp = vSys * 0.12; let bltin = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { bltin += (b.exp !== undefined ? b.exp : 0); }); }
@@ -62250,7 +62297,7 @@ const app = {
             if (_bScheme === 'direct' && _schemeBlockedUfh) {
                 const _lim = (this.state.brandMode === 'rommer') ? 100 : 120;
                 _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
-                    `Узел подмеса тянет тёплый пол до ${_lim} м², в расчёте ${Math.round(tpArea)} м² — котельная собрана как в режиме «Авто».`,
+                    `Узел подмеса тянет тёплый пол до ${_lim} м², в расчёте ${Math.round(tpArea)} м² — котельная собрана по автоподбору.`,
                     _p('В схеме без гидрострелки тёплый пол питается от одного узла подмеса со своим насосом. ' +
                         `Узел рассчитан на площадь до ${_lim} м²; больше — нужны группы на коллекторе, а коллектору нужна гидрострелка.`) +
                     _p('<b>Что делать:</b> оставить схему как есть или уменьшить площадь тёплого пола.'));
@@ -62269,7 +62316,7 @@ const app = {
                 if (hasRad) det += _p(`Перепад котлового контура принят равным режиму радиаторов — ${this.radDT()} K: ` +
                     'без разделения через теплообменник идёт тот же расход, что через приборы.');
                 if (_lostTankPump) det += _p('Насосную группу бойлера подключать некуда — её место на коллекторе котельной. ' +
-                    'В смете трёхходовой клапан; вернёте схему «Авто» — вернётся и группа.');
+                    'В смете трёхходовой клапан; вернёте автоподбор схемы — вернётся и группа.');
                 if (_multi) det += _p(`Котлов ${selBoilers.length}: без гидрострелки они работают поочерёдно, ` +
                     'на выходе каждого нужен обратный клапан. Одновременная работа каскадом требует разделения потоков.');
                 _sb = this.noteBox((_lostTankPump || _multi) ? 'warn' : 'info',
@@ -63692,7 +63739,7 @@ const app = {
                 app.tempWarns.push('• <b>Гидравлика:</b> насос котла не даёт напора на кольцо: нужно ' +
                     h.head.toFixed(1) + ' м при расходе ' + h.flowBranch.toFixed(2) + ' м³/ч, есть около ' +
                     _have.toFixed(1) + ' м (кривая принята по насосу 25/60 — паспортной кривой насоса котла у нас нет). ' +
-                    'Нужна насосная группа: выберите схему котельной «С гидрострелкой» или «Авто».');
+                    'Нужна насосная группа: выберите схему котельной «Со стрелкой» или верните автоподбор.');
             } else if (!h.pump) {
                 // Ветки уже посчитаны и стоят в смете (см. radBranchesByHydraulics);
                 // если и на четырёх кольцо не проходит, дальше помогает не насос,
