@@ -1694,6 +1694,213 @@
     return out;
   }
 
+  // ═══ Аксонометрические схемы В1/Т3 и К1 ═════════════════════════════════
+  // ГОСТ 21.601-2011 требует в составе ВК схем систем, а 3D-вид с плитой и
+  // подложкой — это не схема: на ней нет диаметров, отметок и марок стояков.
+  // Схема строится из тех же трасс, что планы этажа (wlines, slines), во
+  // фронтальной изометрии: ось Y плана уходит вверх-вправо под 45°, без
+  // сокращения. Одна линия на трубу, у прибора — подъём к водорозетке или
+  // выпуск с отметкой, у стояка — марка и отметки пола и потолка.
+
+  var AXO_BOX = { x0: 26, y0: 28, x1: 300, y1: 246 };
+  var AXO_COLL_MM = 1000;          // гребёнки коллектора водоснабжения на стене
+
+  function axoFit(f, pts3) {
+    var c = Math.SQRT1_2;
+    var raw = function (px, py, z) { var d = f.h - py; return [px + d * c, -z - d * c]; };
+    var bb = bbox(pts3.map(function (p) { return raw(p[0], p[1], p[2]); }));
+    var B = AXO_BOX;
+    var s = Math.min((B.x1 - B.x0) / Math.max(1, bb[2] - bb[0]), (B.y1 - B.y0) / Math.max(1, bb[3] - bb[1]));
+    var ox = B.x0 + ((B.x1 - B.x0) - (bb[2] - bb[0]) * s) / 2 - bb[0] * s;
+    var oy = B.y0 + ((B.y1 - B.y0) - (bb[3] - bb[1]) * s) / 2 - bb[1] * s;
+    return { s: s, P: function (px, py, z) { var r = raw(px, py, z || 0); return [ox + r[0] * s, oy + r[1] * s]; } };
+  }
+
+  function axoPath(pts3, t) {
+    return pts3.map(function (p, i) {
+      var q = t.P(p[0], p[1], p[2]);
+      return (i ? 'L' : 'M') + n(q[0]) + ',' + n(q[1]);
+    }).join('');
+  }
+
+  /** Отметка «▽ +0,600» у точки листа */
+  function axoLevel(o, x, y, mm, col) {
+    var v = (mm >= 0 ? '+' : '−') + (Math.abs(mm) / 1000).toFixed(3).replace('.', ',');
+    o.push('<path d="M' + n(x - 1.3) + ',' + n(y - 2.2) + 'L' + n(x + 1.3) + ',' + n(y - 2.2) + 'L' + n(x) + ',' + n(y) + 'Z"' +
+      ' style="fill:none;stroke:' + (col || '#000') + ';stroke-width:0.2"/>');
+    o.push('<line x1="' + n(x) + '" y1="' + n(y - 2.2) + '" x2="' + n(x + 12) + '" y2="' + n(y - 2.2) +
+      '" style="stroke:' + (col || '#000') + ';stroke-width:0.15"/>');
+    o.push(txt(x + 2, y - 3, v, { size: 2.6, fill: col }));
+  }
+
+  function axoBody(f, num, opts) {
+    var kind = opts.kind, o = [], ppm = f.pxPerM || 100;
+    var mm = function (v) { return v / 1000 * ppm; };
+    var fx = f.fixtures || [];
+    var H = (opts.floorH || 2.7) * 1000;
+    var lines = kind === 'sewer' ? (f.slines || []) : (f.wlines || []);
+    lines = lines.filter(function (L) { return L.pts && L.pts.length > 1 && fx[L.i] && WET_H[fx[L.i].t]; });
+
+    // точки для вписывания: трассы, подъёмы и стояки
+    var pts3 = [];
+    lines.forEach(function (L) {
+      L.pts.forEach(function (p) { pts3.push([p[0], p[1], 0]); pts3.push([p[0], p[1], mm(1200)]); });
+    });
+    var risers = fx.filter(function (q) { return q.t === 'riser'; });
+    if (kind === 'sewer') risers.forEach(function (r) { pts3.push([r.x, r.y, mm(H)]); pts3.push([r.x, r.y, -mm(600)]); });
+    if (!pts3.length) return null;
+    var t = axoFit(f, pts3);
+    var step = mm(60);
+    var marks = [];                                  // буквы приборов у концов трасс
+
+    if (kind !== 'sewer') {
+      var collAt = null;
+      // Подводки лучевые: у каждого прибора своя пара труб от коллектора. На
+      // плане они идут одним коридором и сливаются в линию, поэтому на схеме
+      // каждый луч сдвинут на свою полосу — иначе не видно, сколько их.
+      var lane = mm(110), lanes = lines.length;
+      lines.forEach(function (L, li) {
+        var q = fx[L.i], h = WET_H[q.t];
+        var off = (li - (lanes - 1) / 2) * lane;
+        var sets = [['cw', off - step / 2, COL_CW]];
+        if (h.hw) sets.push(['hw', off + step / 2, COL_HW]);
+        sets.forEach(function (S) {
+          var pl = offsetPoly(L.pts, S[1]);
+          var end = pl[pl.length - 1], z = mm(h[S[0]]);
+          var p3 = [[pl[0][0], pl[0][1], mm(AXO_COLL_MM)]]
+            .concat(pl.map(function (p) { return [p[0], p[1], 0]; }))
+            .concat([[end[0], end[1], z]]);
+          o.push('<path d="' + axoPath(p3, t) + '" style="fill:none;stroke:' + S[2] + ';stroke-width:0.45"/>');
+          // водорозетка — кружок на конце подъёма
+          var e = t.P(end[0], end[1], z);
+          o.push('<circle cx="' + n(e[0]) + '" cy="' + n(e[1]) + '" r="0.8" style="fill:#fff;stroke:' + S[2] + ';stroke-width:0.35"/>');
+          if (S[0] === 'cw') {
+            axoLevel(o, e[0] + 1.2, e[1] - 0.6, h.cw, COL_CW);
+            marks.push({ p: e, t: q.t });
+          }
+        });
+        if (!collAt) collAt = L.pts;
+      });
+      if (collAt) {
+        // Гребёнка — поперёк первого участка трассы: в эту же сторону
+        // разнесены лучи (offsetPoly сдвигает на (−dy, dx)), и спуски
+        // приходят ровно на неё.
+        var a0 = collAt[0], a1 = collAt[1];
+        var dx = a1[0] - a0[0], dy = a1[1] - a0[1], dl = Math.hypot(dx, dy) || 1;
+        var nx = -dy / dl, ny = dx / dl, half = (lanes - 1) / 2 * lane + mm(150);
+        var c0 = t.P(a0[0] - nx * half, a0[1] - ny * half, mm(AXO_COLL_MM));
+        var c1 = t.P(a0[0] + nx * half, a0[1] + ny * half, mm(AXO_COLL_MM));
+        o.push('<line x1="' + n(c0[0]) + '" y1="' + n(c0[1]) + '" x2="' + n(c1[0]) + '" y2="' + n(c1[1]) +
+          '" style="stroke:#000;stroke-width:1.2;stroke-linecap:round"/>');
+        o.push(txt(c1[0] + 2.5, c1[1] - 2.5, 'Коллекторы В1/Т3', { size: 3.0 }));
+        axoLevel(o, c0[0] - 14, c0[1], AXO_COLL_MM);
+      }
+    } else {
+      lines.forEach(function (L) {
+        var q = fx[L.i], h = WET_H[q.t], d = L.d || h.d;
+        var slope = d >= 110 ? 0.02 : 0.03;
+        var len = 0, zs = [0];
+        for (var k = 1; k < L.pts.length; k++) {
+          len += Math.hypot(L.pts[k][0] - L.pts[k - 1][0], L.pts[k][1] - L.pts[k - 1][1]);
+          zs.push(-len * slope);                     // уклон к стояку
+        }
+        var start = L.pts[0];
+        var p3 = [[start[0], start[1], mm(h.sew)]].concat(L.pts.map(function (p, i) { return [p[0], p[1], zs[i]]; }));
+        o.push('<path d="' + axoPath(p3, t) + '" style="fill:none;stroke:' + COL_SEW +
+          ';stroke-width:' + (d >= 110 ? 0.8 : 0.5) + '"/>');
+        var e = t.P(start[0], start[1], mm(h.sew));
+        axoLevel(o, e[0] + 1.2, e[1] - 0.6, h.sew, COL_SEW);
+        marks.push({ p: e, t: q.t });
+        // подпись диаметра и уклона — на самом длинном участке
+        var bi = 1, bl = -1;
+        for (var j = 1; j < L.pts.length; j++) {
+          var sl = Math.hypot(L.pts[j][0] - L.pts[j - 1][0], L.pts[j][1] - L.pts[j - 1][1]);
+          if (sl > bl) { bl = sl; bi = j; }
+        }
+        var mA = t.P((L.pts[bi][0] + L.pts[bi - 1][0]) / 2, (L.pts[bi][1] + L.pts[bi - 1][1]) / 2, (zs[bi] + zs[bi - 1]) / 2);
+        o.push(txt(mA[0], mA[1] - 1.4, 'd' + d + ', i=' + String(slope).replace('.', ','), { size: 2.5, anchor: 'middle', fill: COL_SEW }));
+      });
+      risers.forEach(function (r, ri) {
+        var a = t.P(r.x, r.y, -mm(600)), b = t.P(r.x, r.y, mm(H));
+        o.push('<line x1="' + n(a[0]) + '" y1="' + n(a[1]) + '" x2="' + n(b[0]) + '" y2="' + n(b[1]) +
+          '" style="stroke:' + COL_SEW + ';stroke-width:1.0"/>');
+        var lbl = 'Ст. К1' + (risers.length > 1 ? '-' + (ri + 1) : '') + ' d110';
+        o.push(txt(b[0] + 2, b[1] + 3, lbl, { size: 3.0, fill: COL_SEW }));
+        var fl = t.P(r.x, r.y, 0);
+        axoLevel(o, fl[0] - 14, fl[1], 0);
+        axoLevel(o, b[0] - 14, b[1] + 2.2, H);
+      });
+    }
+
+    // буквы приборов у концов трасс — как на планах этажа
+    marks.forEach(function (m) {
+      o.push('<circle cx="' + n(m.p[0] - 3) + '" cy="' + n(m.p[1] - 2.4) + '" r="2.1" style="fill:#fff;stroke:#000;stroke-width:0.2"/>');
+      o.push(txt(m.p[0] - 3, m.p[1] - 1.5, (FIXT[m.t] || ['', '?'])[1], { size: 2.4, anchor: 'middle' }));
+    });
+
+    // Легенда и указания
+    var LX = 312, ly = 34;
+    o.push(txt(LX, ly, 'Условные обозначения', { size: 3.6 }));
+    var leg = kind === 'sewer'
+      ? [['К1 — бытовая канализация', COL_SEW]]
+      : [['В1 — холодное водоснабжение', COL_CW], ['Т3 — горячее водоснабжение', COL_HW]];
+    leg.forEach(function (r, i) {
+      var yy = ly + 5 + i * 5;
+      o.push('<line x1="' + LX + '" y1="' + n(yy) + '" x2="' + (LX + 9) + '" y2="' + n(yy) +
+        '" style="stroke:' + r[1] + ';stroke-width:0.7"/>');
+      o.push(txt(LX + 11.5, yy + 1.1, r[0], { size: 3.0 }));
+    });
+    var used = {};
+    marks.forEach(function (m) { used[m.t] = true; });
+    var ly2 = ly + 8 + leg.length * 5;
+    Object.keys(used).forEach(function (k, i) {
+      var yy = ly2 + i * 4.6;
+      o.push('<circle cx="' + (LX + 2.1) + '" cy="' + n(yy - 1) + '" r="2.1" style="fill:#fff;stroke:#000;stroke-width:0.2"/>');
+      o.push(txt(LX + 2.1, yy - 0.1, FIXT[k][1], { size: 2.4, anchor: 'middle' }));
+      o.push(txt(LX + 6, yy, FIXT[k][0], { size: 3.0 }));
+    });
+    var notes = [
+      'Фронтальная изометрия, ось Y под 45° без сокращения.',
+      'Отметки — от чистого пола этажа (±0,000), м.'
+    ];
+    if (kind === 'sewer') {
+      notes.push('Выпуски d50 — уклон 0,03, d110 — 0,02 к стояку.');
+      notes.push('Повороты — отводами 45°; стояки на всю высоту этажа.');
+    } else {
+      notes.push('Подводки к приборам: ' + (opts.pipeLabel || 'PEX 16×2,2') + ', в теплоизоляции.');
+      notes.push('Отметки водорозеток — до оси; уточнять по паспорту прибора.');
+      if (opts.recirc) notes.push('Т4 (рециркуляция ГВС) — по плану водоснабжения этажа.');
+    }
+    notes.push('Трассы — по плану этажа, условно; уточняются по месту.');
+    var ny = ly2 + Object.keys(used).length * 4.6 + 8;
+    notes.forEach(function (s2, i) { o.push(txt(LX, ny + i * 4.4, s2, { size: 2.9 })); });
+    return o.join('');
+  }
+
+  /**
+   * Аксонометрические схемы по этажам: [{ title, svg }].
+   * opts: { kind: 'water' | 'sewer', code, sheetStart, num, floor,
+   *         floorH: [м, м], pipeLabel, recirc }
+   */
+  function axonoSheets(plans, opts) {
+    opts = opts || {};
+    var out = [], num = opts.sheetStart || 1;
+    var fmt = opts.num || function (v) { return String(v); };
+    var kind = opts.kind === 'sewer' ? 'sewer' : 'water';
+    if (!plans || !plans.floors) return out;
+    plans.floors.forEach(function (f, fi) {
+      if (!f || !f.pxPerM || !(f.fixtures || []).length) return;
+      if (opts.floor && opts.floor !== fi + 1) return;
+      var body = axoBody(f, fi + 1, { kind: kind, floorH: (opts.floorH || [])[fi],
+        pipeLabel: opts.pipeLabel, recirc: opts.recirc });
+      if (!body) return;
+      var ttl = 'Этаж 0' + (fi + 1) + '. Схема ' + (kind === 'sewer' ? 'системы К1' : 'систем В1, Т3');
+      out.push({ title: ttl, svg: window.projectSheets.sheet({
+        code: opts.code, sheet: fmt(num++), body: title(ttl) + body }) });
+    });
+    return out;
+  }
+
   /** Листы ВК: [{title, svg}] — только по этажам, где расставлены приборы */
   /**
    * Планы водоснабжения и канализации.
@@ -2052,7 +2259,7 @@
   // из той же укладки, что нарисована на листе.
   // loopRows — для листа узла коллектора (project_ufh_manifold.js): номера,
   // длины и расходы петель там должны совпадать с листом укладки.
-  window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, iso3dSheets: iso3dSheets,
+  window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom, layZone: layZone, layZoneLoops: layZoneLoops,
     floorLoops: floorLoops, loopRows: loopRows, num1: num1,
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
