@@ -49061,6 +49061,154 @@ const app = {
         return val;
     },
 
+    // ─── Трубы канализации: длины по планам и нарезка на отрезки ─────────
+    // Бесшумные трубы продаются отрезками 0,25 / 0,5 / 1 / 1,5 / 2 / 3 м.
+    // Раньше смета знала только 1 и 2 м и складывала метраж всех приборов
+    // одного типа в одну цифру: у ванны 1,5 м выходило две трубы по метру.
+    // Теперь у каждого прибора своя трасса, и она режется на отрезки из всего
+    // ряда. Трасса — с плана этажа, если канализация там разведена (редактор
+    // планов ведёт линию от прибора к стояку, computeVk), иначе прежняя
+    // норма на прибор. Одна функция на обе ветки сметы, с группировкой и без:
+    // иначе итог «плавал» бы при переключении тумблера.
+    SEWER_PIPE_IDS: {
+        58: { 250: 'SKB-0001-005825', 500: 'SKB-0001-005850', 1000: 'SKB-0001-058100',
+              1500: 'SKB-0001-058150', 2000: 'SKB-0001-058200', 3000: 'SKB-0001-058300' },
+        110: { 250: 'SKB-0002-011025', 500: 'SKB-0002-011050', 1000: 'SKB-0002-110100',
+               1500: 'SKB-0002-110150', 2000: 'SKB-0002-110200', 3000: 'SKB-0002-110300' }
+    },
+    // Норма на прибор, м — прежние цифры сметы, когда плана нет
+    SEWER_FIX_M: { toilet: 1.0, bath: 1.5, shower: 1.5, basin: 1.0, bidet: 1.0, wash: 1.0, dish: 1.0 },
+    // Подъём выпуска над полом у приборов, которые сливают выше пола: мойка,
+    // раковина, стиральная и посудомоечная машины — 400 мм (так в образцах
+    // проектов: «выпуски от уровня чистого пола … 400 мм»). Ванна, душ и унитаз
+    // сливают на уровне пола — подъёма нет.
+    SEWER_RISE_M: { basin: 0.4, wash: 0.4, dish: 0.4 },
+
+    /**
+     * Трассы канализации с планов: { 'имя зоны': { toilet: [м, …], bath: […] } }
+     * либо null. Длина — ломаная от прибора до стояка на плане, без подъёма.
+     */
+    _sewerGeomCache: null,
+    sewerGeom: function () {
+        const plans = this.currentPlans();
+        if (!plans || !Array.isArray(plans.floors)) return null;
+        const key = this._plansRev;
+        if (this._sewerGeomCache && this._sewerGeomCache.key === key) return this._sewerGeomCache.val;
+        const byZone = {};
+        let any = false;
+        plans.floors.forEach(f => {
+            if (!f || !f.pxPerM || !Array.isArray(f.slines) || !Array.isArray(f.fixtures)) return;
+            f.slines.forEach(s => {
+                const q = f.fixtures[s.i];
+                if (!q || q.t === 'riser' || !Array.isArray(s.pts) || s.pts.length < 2) return;
+                let px = 0;
+                for (let k = 1; k < s.pts.length; k++)
+                    px += Math.hypot(s.pts[k][0] - s.pts[k - 1][0], s.pts[k][1] - s.pts[k - 1][1]);
+                const zk = String(q.z || '').trim().toLowerCase();
+                const z = byZone[zk] = byZone[zk] || {};
+                (z[q.t] = z[q.t] || []).push(px / f.pxPerM);
+                any = true;
+            });
+        });
+        const val = any ? byZone : null;
+        this._sewerGeomCache = { key: key, val: val };
+        return val;
+    },
+
+    /**
+     * Длины выпусков одного типа приборов в зоне, м — по одной на прибор.
+     * С плана берём столько трасс, сколько приборов в расчёте; не хватило —
+     * остальные по норме. src: 'plan' | 'norm' | 'mix'.
+     */
+    sewerRuns: function (zoneName, type, count) {
+        const n = parseInt(count) || 0;
+        if (n <= 0) return { lens: [], src: 'norm', total: 0 };
+        const geo = this.sewerGeom();
+        const fromPlan = (geo && geo[String(zoneName || '').trim().toLowerCase()] || {})[type] || [];
+        const rise = this.SEWER_RISE_M[type] || 0;
+        const lens = [];
+        for (let i = 0; i < n; i++) {
+            lens.push(i < fromPlan.length ? fromPlan[i] + rise : (this.SEWER_FIX_M[type] || 1.0));
+        }
+        const used = Math.min(n, fromPlan.length);
+        const src = used === 0 ? 'norm' : (used === n ? 'plan' : 'mix');
+        return { lens: lens, src: src, total: lens.reduce((a, b) => a + b, 0) };
+    },
+
+    /**
+     * Магистраль D 110: стояк на каждый этаж по 3 м и лежак по площади дома —
+     * прежняя оценка сметы, только отдельными трассами, а не одной цифрой:
+     * стояк этажа — это одна труба 3 м, а не полторы по два.
+     */
+    sewerMainRuns: function () {
+        const floors = this.state.floors || 1;
+        const area = this.state.area || 150;
+        const lens = [];
+        for (let i = 0; i < floors; i++) lens.push(3);
+        const horiz = Math.ceil(Math.sqrt(area) * 1.2);
+        if (horiz > 0) lens.push(horiz);
+        return { lens: lens, total: lens.reduce((a, b) => a + b, 0), floors: floors };
+    },
+
+    /** Сумма выпусков D 58 по всем зонам, м — под хомуты */
+    sewerPipe58Total: function () {
+        let t = 0;
+        (this.state.waterZones || []).forEach(z => {
+            const f = z.fixtures || {};
+            ['bath', 'shower', 'basin', 'bidet', 'wash', 'dish'].forEach(k => {
+                t += this.sewerRuns(z.name, k, f[k]).total;
+            });
+        });
+        return t;
+    },
+
+    /**
+     * Нарезка трасс на отрезки труб: [{ item, qty }].
+     * Каждая трасса режется отдельно: пока длиннее трёх метров — берём 3 м,
+     * остаток закрываем самым коротким отрезком, который его перекрывает.
+     * Отрезки — из тех, что есть в каталоге; в режиме Comfort — только те, у
+     * которых есть позиция Comfort (у D 050 нет 1,5 и 3 м), иначе смета
+     * подставила бы в «Комфорт» бесшумную STOUT.
+     */
+    sewerPipePieces: function (d, lens) {
+        const ids = this.SEWER_PIPE_IDS[d] || {};
+        const comfort = this.state.sewerType === 'comfort';
+        const avail = Object.keys(ids).map(Number).sort((a, b) => a - b).map(mm => {
+            const it = (catalog.sewer_silent || []).find(x => x.id === ids[mm]);
+            return it && (!comfort || it.comfort) ? { mm: mm, item: it } : null;
+        }).filter(Boolean);
+        if (!avail.length) return [];
+        const max = avail[avail.length - 1];
+        const cnt = {};
+        (lens || []).forEach(L => {
+            let rem = Math.ceil(L * 100 - 1e-6) * 10;          // мм, с точностью до сантиметра
+            while (rem > max.mm) { cnt[max.mm] = (cnt[max.mm] || 0) + 1; rem -= max.mm; }
+            if (rem > 0) {
+                // Остаток закрываем одной трубой. Парой — только если она сберегает
+                // хотя бы полметра обрезков: выпуск 2,1 м — это 2 м + 0,25 м, а не
+                // 3 м с обрезком 0,9 м. Мелочь в 0,25 м лишний стык не оправдывает:
+                // 0,6 м у унитаза — одна труба 1 м. По цене не выбираем: короткие
+                // трубы у STOUT дешевле за метр, и стояк 3 м резался бы на две по
+                // 1,5 м — на 2 % дешевле и с лишним раструбом в стояке.
+                const single = avail.find(a => a.mm >= rem) || max;
+                let best = [single], bestWaste = single.mm - rem;
+                const cost = arr => arr.reduce((s, x) => s + (x.item.price || 0), 0);
+                avail.forEach(p1 => {
+                    if (p1.mm >= rem) return;
+                    const p2 = avail.find(a => a.mm >= rem - p1.mm);
+                    if (!p2) return;
+                    const w = p1.mm + p2.mm - rem;
+                    if ((single.mm - rem) - w < 500) return;
+                    if (w < bestWaste || (w === bestWaste && cost([p1, p2]) < cost(best))) {
+                        best = [p1, p2]; bestWaste = w;
+                    }
+                });
+                best.forEach(p => { cnt[p.mm] = (cnt[p.mm] || 0) + 1; });
+            }
+        });
+        return avail.filter(a => cnt[a.mm]).reverse().map(a => ({ item: a.item, qty: cnt[a.mm] }));
+    },
+
     // Средняя комната, на которые делится площадь этажа, когда планов и
     // помещений нет, и коэффициент периметра: у прямоугольника со сторонами
     // 1:1,4 P ≈ 4,2·√S (у квадрата было бы 4·√S).
@@ -56042,12 +56190,23 @@ const app = {
             case 'thermostat':
                 return `<span style="${styles}"><span style="${head}">Термостат</span><b>Зачем:</b> Измерение температуры воздуха в комнате.<br><b>Расчет:</b> 1 шт на одну независимую зону (комнату).</span>`;
 
-            case 'sewer_pipe_110':
-                return `<span style="${styles}"><span style="${head}">Труба бесшумная D110</span><b>Зачем:</b> Отвод стоков от унитаза (инсталляции).<br><b>Расчет:</b> По 1 м на каждый унитаз в помещении.</span>`;
+            case 'sewer_pipe_110': {
+                // val2 — длина выпусков, м; val3 — откуда она: 'plan' | 'mix' | 'norm'
+                const _src110 = val3 === 'plan' ? 'По трассе от унитаза до стояка на плане этажа.'
+                    : val3 === 'mix' ? 'По трассам на плане этажа; приборам без трассы — по 1 м.'
+                    : 'По 1 м на каждый унитаз в помещении (трассы на плане нет).';
+                const _len110 = val2 ? `<br><b>Длина:</b> ${(Math.round(val2 * 10) / 10).toString().replace('.', ',')} м.` : '';
+                return `<span style="${styles}"><span style="${head}">Труба бесшумная D110</span><b>Зачем:</b> Отвод стоков от унитаза (инсталляции).<br><b>Расчет:</b> ${_src110}${_len110}<br><b>Отрезки:</b> каждая трасса режется отдельно на трубы 0,25–3 м с наименьшим остатком.</span>`;
+            }
             case 'sewer_pipe_110_main':
-                return `<span style="${styles}"><span style="${head}">Труба бесшумная D110 (Магистраль)</span><b>Зачем:</b> Общие вертикальные стояки и горизонтальные лежаки дома.<br><b>Расчет:</b> По высоте этажей и площади дома.<br><b>Длина:</b> ${val1} м.</span>`;
-            case 'sewer_pipe_58':
-                return `<span style="${styles}"><span style="${head}">Труба бесшумная D58</span><b>Зачем:</b> Отвод стоков от раковины, ванны или душа.<br><b>Расчет:</b> По 1.5 м на каждый сантехприбор в помещении.<br><b>Длина:</b> ${val1} м.</span>`;
+                return `<span style="${styles}"><span style="${head}">Труба бесшумная D110 (Магистраль)</span><b>Зачем:</b> Общие вертикальные стояки и горизонтальные лежаки дома.<br><b>Расчет:</b> Стояк по 3 м на этаж, лежак по площади дома — укрупнённая оценка.<br><b>Длина:</b> ${val1} м.</span>`;
+            case 'sewer_pipe_58': {
+                // val1 — длина выпусков, м; val2 — откуда она
+                const _src58 = val2 === 'plan' ? 'По трассам от приборов до стояка на плане этажа; у раковины и машин +0,4 м на выпуск над полом.'
+                    : val2 === 'mix' ? 'По трассам на плане этажа; приборам без трассы — по норме (ванна и душ 1,5 м, остальные 1 м).'
+                    : 'По норме на прибор: ванна и душ 1,5 м, раковина и машины 1 м (трассы на плане нет).';
+                return `<span style="${styles}"><span style="${head}">Труба бесшумная D58</span><b>Зачем:</b> Отвод стоков от раковины, ванны или душа.<br><b>Расчет:</b> ${_src58}<br><b>Длина:</b> ${(Math.round((parseFloat(val1) || 0) * 10) / 10).toString().replace('.', ',')} м.<br><b>Отрезки:</b> каждый выпуск режется отдельно на трубы 0,25–3 м с наименьшим остатком.</span>`;
+            }
             case 'sewer_bend_110_45':
                 return `<span style="${styles}"><span style="${head}">Отвод бесшумный 110х45°</span><b>Зачем:</b> Плавное изменение направления стояка/лежака.<br><b>Расчет:</b> По 2 шт на стояк/лежак.</span>`;
             case 'sewer_bend_110_87':
@@ -63803,11 +63962,12 @@ const app = {
                     // 1. Для инсталляции (D110)
                     if (toiletsCount > 0) {
                         let grp = singleZone ? `8.${subSecIdx++}. Канализация: [Инсталляция]` : `8.${subSecIdx++}. Канализация: [Инсталляция] (${z.name})`;
-                        let pipe110_1 = catalog.sewer_silent.find(x => x.id === "SKB-0002-110100");
                         let bend110_87 = catalog.sewer_silent.find(x => x.id === "SKB-0012-011087");
                         let plug110 = catalog.sewer_silent.find(x => x.id === "SKB-0005-000110");
 
-                        addToBill(pipe110_1, toiletsCount, this.getDesc('sewer_pipe_110', toiletsCount), grp);
+                        let runT = this.sewerRuns(z.name, 'toilet', toiletsCount);
+                        this.sewerPipePieces(110, runT.lens).forEach(p =>
+                            addToBill(p.item, p.qty, this.getDesc('sewer_pipe_110', toiletsCount, runT.total, runT.src), grp));
                         addToBill(bend110_87, toiletsCount, this.getDesc('sewer_bend_110_87', toiletsCount), grp);
                         addToBill(plug110, toiletsCount, this.getDesc('sewer_plug_110'), grp);
                     }
@@ -63815,18 +63975,14 @@ const app = {
                     // 2. Для Ванны
                     if (bathCount > 0) {
                         let grp = singleZone ? `8.${subSecIdx++}. Канализация: [Ванная]` : `8.${subSecIdx++}. Канализация: [Ванная] (${z.name})`;
-                        let pipe58Len = bathCount * 1.5;
-                        let q2 = Math.floor(pipe58Len / 2);
-                        let q1 = Math.ceil(pipe58Len % 2);
-                        let pipe58_2 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058200");
-                        let pipe58_1 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058100");
+                        let run58 = this.sewerRuns(z.name, 'bath', bathCount);
                         let bend58_45 = catalog.sewer_silent.find(x => x.id === "SKB-0010-005845");
                         let bend58_87 = catalog.sewer_silent.find(x => x.id === "SKB-0012-005887");
                         let plug58 = catalog.sewer_silent.find(x => x.id === "SKB-0005-000058");
                         let tee110_58 = catalog.sewer_silent.find(x => x.id === "SKB-0016-115887") || catalog.sewer_silent.find(x => x.id === "SKB-0015-115845");
 
-                        if (q2 > 0) addToBill(pipe58_2, q2, this.getDesc('sewer_pipe_58', pipe58Len), grp);
-                        if (q1 > 0) addToBill(pipe58_1, q1, this.getDesc('sewer_pipe_58', pipe58Len), grp);
+                        this.sewerPipePieces(58, run58.lens).forEach(p =>
+                            addToBill(p.item, p.qty, this.getDesc('sewer_pipe_58', run58.total, run58.src), grp));
                         addToBill(bend58_45, bathCount * 2, this.getDesc('sewer_bend_58_45', bathCount * 2), grp);
                         addToBill(bend58_87, bathCount, this.getDesc('sewer_bend_58_87', bathCount), grp);
                         addToBill(plug58, bathCount, this.getDesc('sewer_plug_58'), grp);
@@ -63836,18 +63992,14 @@ const app = {
                     // 3. Для Душа
                     if (showerCount > 0) {
                         let grp = singleZone ? `8.${subSecIdx++}. Канализация: [Душ]` : `8.${subSecIdx++}. Канализация: [Душ] (${z.name})`;
-                        let pipe58Len = showerCount * 1.5;
-                        let q2 = Math.floor(pipe58Len / 2);
-                        let q1 = Math.ceil(pipe58Len % 2);
-                        let pipe58_2 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058200");
-                        let pipe58_1 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058100");
+                        let run58 = this.sewerRuns(z.name, 'shower', showerCount);
                         let bend58_45 = catalog.sewer_silent.find(x => x.id === "SKB-0010-005845");
                         let bend58_87 = catalog.sewer_silent.find(x => x.id === "SKB-0012-005887");
                         let plug58 = catalog.sewer_silent.find(x => x.id === "SKB-0005-000058");
                         let tee110_58 = catalog.sewer_silent.find(x => x.id === "SKB-0016-115887") || catalog.sewer_silent.find(x => x.id === "SKB-0015-115845");
 
-                        if (q2 > 0) addToBill(pipe58_2, q2, this.getDesc('sewer_pipe_58', pipe58Len), grp);
-                        if (q1 > 0) addToBill(pipe58_1, q1, this.getDesc('sewer_pipe_58', pipe58Len), grp);
+                        this.sewerPipePieces(58, run58.lens).forEach(p =>
+                            addToBill(p.item, p.qty, this.getDesc('sewer_pipe_58', run58.total, run58.src), grp));
                         addToBill(bend58_45, showerCount * 2, this.getDesc('sewer_bend_58_45', showerCount * 2), grp);
                         addToBill(bend58_87, showerCount, this.getDesc('sewer_bend_58_87', showerCount), grp);
                         addToBill(plug58, showerCount, this.getDesc('sewer_plug_58'), grp);
@@ -63866,9 +64018,7 @@ const app = {
                         let count = parseInt(f[fix.key]) || 0;
                         if (count > 0) {
                             let grp = singleZone ? `8.${subSecIdx++}. Канализация: [${fix.nameRu}]` : `8.${subSecIdx++}. Канализация: [${fix.nameRu}] (${z.name})`;
-                            let pipe58Len = count * 1.0;
-                            let q2 = Math.floor(pipe58Len / 2);
-                            let q1 = Math.ceil(pipe58Len % 2);
+                            let run58 = this.sewerRuns(z.name, fix.key, count);
 
                             let bend45Qty = count * 2;
                             let bend87Qty = count;
@@ -63877,15 +64027,13 @@ const app = {
                                 bend87Qty = 0;
                             }
 
-                            let pipe58_2 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058200");
-                            let pipe58_1 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058100");
                             let bend58_45 = catalog.sewer_silent.find(x => x.id === "SKB-0010-005845");
                             let bend58_87 = catalog.sewer_silent.find(x => x.id === "SKB-0012-005887");
                             let plug58 = catalog.sewer_silent.find(x => x.id === "SKB-0005-000058");
                             let tee110_58 = catalog.sewer_silent.find(x => x.id === "SKB-0016-115887") || catalog.sewer_silent.find(x => x.id === "SKB-0015-115845");
 
-                            if (q2 > 0) addToBill(pipe58_2, q2, this.getDesc('sewer_pipe_58', pipe58Len), grp);
-                            if (q1 > 0) addToBill(pipe58_1, q1, this.getDesc('sewer_pipe_58', pipe58Len), grp);
+                            this.sewerPipePieces(58, run58.lens).forEach(p =>
+                                addToBill(p.item, p.qty, this.getDesc('sewer_pipe_58', run58.total, run58.src), grp));
                             if (bend45Qty > 0) addToBill(bend58_45, bend45Qty, this.getDesc('sewer_bend_58_45', bend45Qty), grp);
                             if (bend87Qty > 0) addToBill(bend58_87, bend87Qty, this.getDesc('sewer_bend_58_87', bend87Qty), grp);
                             addToBill(plug58, count, this.getDesc('sewer_plug_58'), grp);
@@ -63898,17 +64046,13 @@ const app = {
                 if (totalSewerPoints > 0) {
                     let grpSewerMain = `8.${subSecIdx++}. Канализация: [Общие материалы и расходники]`;
                     let floors = this.state.floors || 1;
-                    let area = this.state.area || 150;
 
-                    let pipe110Len = (floors * 3) + Math.ceil(Math.sqrt(area) * 1.2);
-                    let q2 = Math.floor(pipe110Len / 2);
-                    let q1 = Math.ceil(pipe110Len % 2);
-                    let pipe110_2 = catalog.sewer_silent.find(x => x.id === "SKB-0002-110200");
-                    let pipe110_1 = catalog.sewer_silent.find(x => x.id === "SKB-0002-110100");
+                    let mainRun = this.sewerMainRuns();
+                    let pipe110Len = mainRun.total;
                     let bend110_45 = catalog.sewer_silent.find(x => x.id === "SKB-0010-011045");
 
-                    if (q2 > 0) addToBill(pipe110_2, q2, this.getDesc('sewer_pipe_110_main', pipe110Len), grpSewerMain);
-                    if (q1 > 0) addToBill(pipe110_1, q1, this.getDesc('sewer_pipe_110_main', pipe110Len), grpSewerMain);
+                    this.sewerPipePieces(110, mainRun.lens).forEach(p =>
+                        addToBill(p.item, p.qty, this.getDesc('sewer_pipe_110_main', pipe110Len), grpSewerMain));
 
                     addToBill(bend110_45, floors * 2, this.getDesc('sewer_bend_110_45'), grpSewerMain);
 
@@ -63926,16 +64070,8 @@ const app = {
                     addToBill(coupling110, floors, this.getDesc('sewer_coupling_110'), grpSewerMain);
 
                     // Добавление крепежной системы для канализации (Раздел 6)
-                    let totalPipe58 = 0;
-                    this.state.waterZones.forEach(z => {
-                        let f = z.fixtures;
-                        totalPipe58 += (parseInt(f.bath) || 0) * 1.5;
-                        totalPipe58 += (parseInt(f.shower) || 0) * 1.5;
-                        totalPipe58 += (parseInt(f.basin) || 0) * 1.0;
-                        totalPipe58 += (parseInt(f.bidet) || 0) * 1.0;
-                        totalPipe58 += (parseInt(f.wash) || 0) * 1.0;
-                        totalPipe58 += (parseInt(f.dish) || 0) * 1.0;
-                    });
+                    // Хомуты — по тем же длинам, по каким нарезаны трубы (с плана или по норме)
+                    let totalPipe58 = this.sewerPipe58Total();
                     let countClamps110 = floors + Math.ceil(Math.max(0, pipe110Len - floors * 3) / 1.5);
                     let countClamps58 = Math.ceil(totalPipe58 / 1.0);
 
@@ -64012,11 +64148,12 @@ const app = {
                     totalSewerPoints += toiletsCount + otherCount;
 
                     if (toiletsCount > 0) {
-                        let pipe110_1 = catalog.sewer_silent.find(x => x.id === "SKB-0002-110100");
                         let bend110_87 = catalog.sewer_silent.find(x => x.id === "SKB-0012-011087");
                         let plug110 = catalog.sewer_silent.find(x => x.id === "SKB-0005-000110");
 
-                        addSewerItem(pipe110_1, toiletsCount, this.getDesc('sewer_pipe_110', toiletsCount));
+                        let runT = this.sewerRuns(z.name, 'toilet', toiletsCount);
+                        this.sewerPipePieces(110, runT.lens).forEach(p =>
+                            addSewerItem(p.item, p.qty, this.getDesc('sewer_pipe_110', toiletsCount, runT.total, runT.src)));
                         addSewerItem(bend110_87, toiletsCount, this.getDesc('sewer_bend_110_87', toiletsCount));
                         addSewerItem(plug110, toiletsCount, this.getDesc('sewer_plug_110'));
                     }
@@ -64029,31 +64166,28 @@ const app = {
                         let washes = parseInt(f.wash) || 0;
                         let dishes = parseInt(f.dish) || 0;
 
-                        // Трубу D58 режем по каждому отводу к прибору отдельно и округляем ВВЕРХ
-                        // на каждый отвод — ровно так же, как в режиме группировки по потребителям
-                        // (ветка выше). Иначе агрегатное округление длины на всю зону давало другое
-                        // число труб, и ИТОГО сметы «плавало» при переключении тумблера «Группировать».
-                        let pipe58Len = (basins + bidets + washes + dishes) * 1.0 + (showers + baths) * 1.5;
-                        let q2 = 0, q1 = 0;
-                        [[baths, 1.5], [showers, 1.5], [basins, 1.0], [bidets, 1.0], [washes, 1.0], [dishes, 1.0]].forEach(fx => {
-                            let cnt = fx[0]; if (cnt <= 0) return;
-                            let len = cnt * fx[1];
-                            q2 += Math.floor(len / 2);
-                            q1 += Math.ceil(len % 2);
+                        // Трубу D58 режем по каждому выпуску к прибору отдельно — теми же
+                        // sewerRuns/sewerPipePieces, что и ветка с группировкой выше. Иначе
+                        // ИТОГО сметы «плавало» бы при переключении тумблера «Группировать».
+                        let runs58 = [], pipe58Len = 0, src58 = null;
+                        ['bath', 'shower', 'basin', 'bidet', 'wash', 'dish'].forEach(k => {
+                            let r = this.sewerRuns(z.name, k, f[k]);
+                            if (!r.lens.length) return;
+                            runs58 = runs58.concat(r.lens);
+                            pipe58Len += r.total;
+                            src58 = (src58 === null || src58 === r.src) ? r.src : 'mix';
                         });
 
                         let bend45Qty = (basins + bidets + showers + baths) * 2 + (washes + dishes) * 1;
                         let bend87Qty = (basins + bidets + showers + baths) * 1;
 
-                        let pipe58_2 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058200");
-                        let pipe58_1 = catalog.sewer_silent.find(x => x.id === "SKB-0001-058100");
                         let bend58_45 = catalog.sewer_silent.find(x => x.id === "SKB-0010-005845");
                         let bend58_87 = catalog.sewer_silent.find(x => x.id === "SKB-0012-005887");
                         let plug58 = catalog.sewer_silent.find(x => x.id === "SKB-0005-000058");
                         let tee110_58 = catalog.sewer_silent.find(x => x.id === "SKB-0016-115887") || catalog.sewer_silent.find(x => x.id === "SKB-0015-115845");
 
-                        if (q2 > 0) addSewerItem(pipe58_2, q2, this.getDesc('sewer_pipe_58', pipe58Len));
-                        if (q1 > 0) addSewerItem(pipe58_1, q1, this.getDesc('sewer_pipe_58', pipe58Len));
+                        this.sewerPipePieces(58, runs58).forEach(p =>
+                            addSewerItem(p.item, p.qty, this.getDesc('sewer_pipe_58', pipe58Len, src58 || 'norm')));
                         if (bend45Qty > 0) addSewerItem(bend58_45, bend45Qty, this.getDesc('sewer_bend_58_45', bend45Qty));
                         if (bend87Qty > 0) addSewerItem(bend58_87, bend87Qty, this.getDesc('sewer_bend_58_87', bend87Qty));
                         addSewerItem(plug58, otherCount, this.getDesc('sewer_plug_58'));
@@ -64063,17 +64197,13 @@ const app = {
 
                 if (totalSewerPoints > 0) {
                     let floors = this.state.floors || 1;
-                    let area = this.state.area || 150;
 
-                    let pipe110Len = (floors * 3) + Math.ceil(Math.sqrt(area) * 1.2);
-                    let q2 = Math.floor(pipe110Len / 2);
-                    let q1 = Math.ceil(pipe110Len % 2);
-                    let pipe110_2 = catalog.sewer_silent.find(x => x.id === "SKB-0002-110200");
-                    let pipe110_1 = catalog.sewer_silent.find(x => x.id === "SKB-0002-110100");
+                    let mainRun = this.sewerMainRuns();
+                    let pipe110Len = mainRun.total;
                     let bend110_45 = catalog.sewer_silent.find(x => x.id === "SKB-0010-011045");
 
-                    if (q2 > 0) addSewerItem(pipe110_2, q2, this.getDesc('sewer_pipe_110_main', pipe110Len));
-                    if (q1 > 0) addSewerItem(pipe110_1, q1, this.getDesc('sewer_pipe_110_main', pipe110Len));
+                    this.sewerPipePieces(110, mainRun.lens).forEach(p =>
+                        addSewerItem(p.item, p.qty, this.getDesc('sewer_pipe_110_main', pipe110Len)));
                     addSewerItem(bend110_45, floors * 2, this.getDesc('sewer_bend_110_45'));
 
                     let waterZonesWithToilets = this.state.waterZones.filter(z => z.fixtures.toilet > 0).length;
@@ -64090,16 +64220,7 @@ const app = {
                     addSewerItem(coupling110, floors, this.getDesc('sewer_coupling_110'));
 
                     // Добавление крепежной системы для канализации (Раздел 6) - общего списка
-                    let totalPipe58 = 0;
-                    this.state.waterZones.forEach(z => {
-                        let f = z.fixtures;
-                        totalPipe58 += (parseInt(f.bath) || 0) * 1.5;
-                        totalPipe58 += (parseInt(f.shower) || 0) * 1.5;
-                        totalPipe58 += (parseInt(f.basin) || 0) * 1.0;
-                        totalPipe58 += (parseInt(f.bidet) || 0) * 1.0;
-                        totalPipe58 += (parseInt(f.wash) || 0) * 1.0;
-                        totalPipe58 += (parseInt(f.dish) || 0) * 1.0;
-                    });
+                    let totalPipe58 = this.sewerPipe58Total();
                     let countClamps110 = floors + Math.ceil(Math.max(0, pipe110Len - floors * 3) / 1.5);
                     let countClamps58 = Math.ceil(totalPipe58 / 1.0);
 
