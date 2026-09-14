@@ -307,11 +307,23 @@ if (payload && payload.items && payload.items.length) {
   // ── О: отопление ─────────────────────────────────────────────────────
   // Порядок листов внутри раздела — как в проектах-образцах: этажами, а не
   // пачками. На каждом этаже: план напольного отопления, его объёмный вид,
-  // затем план радиаторного отопления (его объёмного вида у нас нет).
+  // затем план радиаторного отопления и его объёмный вид.
   // На этаж отведено четыре слота эталона: план напольного отопления, его
   // объёмный вид, план отопления, объёмный вид отопления. Пустой слот —
   // разрыв в нумерации и строка «нет» в списке листов.
   var oBody = [], oSlots = [];
+  // Для 3D вида отопления: схема разводки — из гидравлики сметы (там же, где
+  // она выбирала диаметры), высота прибора — из названия радиатора в
+  // спецификации («… 500 …», «… H=300 …»). Нет ни того ни другого — лучи и 500 мм.
+  var radTee = !!(payload.hydro && /тройник/i.test(payload.hydro.scheme || ''));
+  var radH = 500;
+  (itemsBy.o || []).some(function (i) {
+    var nm = String(i.name || '');
+    if (!/радиатор/i.test(nm) || /кронштейн|узел|кран|клапан|головк|трубк|полотенц/i.test(nm)) return false;
+    var m = /(?:^|[^\d])(200|300|350|500|600)(?:\s*мм)?(?!\d)/.exec(nm);
+    if (m) { radH = +m[1]; return true; }
+    return false;
+  });
   if (plans && window.projectPlans) {
     (plans.floors || []).forEach(function (_, i) {
       var fl = i + 1, base = 3 + i * 4, ttl = 'Этаж ' + pad2(fl);
@@ -328,7 +340,9 @@ if (payload && payload.items && payload.items.length) {
       put(base + 2, projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
         sheetStart: base + 2, only: ['floor'], floor: fl, num: numOf('o') })),
         ttl + '. План отопления');
-      oSlots.push([numOf('o')(base + 3), ttl + '. 3D вид отопления', 'лист не формируется']);
+      put(base + 3, projectPlans.iso3dSheets(plans, { kind: 'rad', code: MARK.o.code,
+        sheetStart: base + 3, rooms: expRooms, floor: fl, num: numOf('o'),
+        tee: radTee, radH: radH }), ttl + '. 3D вид отопления');
     });
   }
   // Узлы отопления: готовые листы проектов-образцов — ровно те, что смета
