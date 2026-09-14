@@ -47254,6 +47254,76 @@ const app = {
         return { t: kind ? kind.t : 22, kind: kind, manual: false };
     },
 
+    /**
+     * Периметр помещения и его наружная часть — по трём источникам, в порядке
+     * убывания достоверности:
+     *   1. указано в карточке помещения — доля периметра по числу стен;
+     *   2. нарисован план этажа — обмер зоны и её примыканий к контуру дома;
+     *   3. ничего нет — оценка: периметр 4·√S, наружу 0,6 от него (fallback).
+     * Ручной признак стоит выше плана намеренно: обводя зоны, монтажник о
+     * теплопотерях не думает, а выбирая «2 наружу» — думает именно о них.
+     * Уточнённые доли — для прямоугольника со сторонами 1:1,4: одна стена это
+     * от четверти до трети периметра, две смежные — чуть больше половины.
+     */
+    roomOuterGeom: function (r) {
+        var OUTER_SHARE = { 1: 0.30, 2: 0.55, 3: 0.75 };
+        var area = parseFloat(r.area) || 1;
+        var perim = 4 * Math.sqrt(area);
+        var out = { perim: perim, outerPerim: perim * 0.6, geoSrc: 'оценка по площади', pgRoom: null, fallback: true };
+        var pg = this.roomsPlanGeom();
+        var pgRoom = pg ? pg[String(r.name || '').trim().toLowerCase()] : null;
+        out.pgRoom = pgRoom;
+        if (OUTER_SHARE[r.outerWalls]) {
+            if (pgRoom && pgRoom.perim > 0) { out.perim = pgRoom.perim; out.geoSrc = 'план этажа и карточка помещения'; }
+            else out.geoSrc = 'карточка помещения';
+            out.outerPerim = out.perim * OUTER_SHARE[r.outerWalls];
+            out.fallback = false;
+        } else if (pgRoom && pgRoom.perim > 0
+            && (pgRoom.outer > 0 || !(r.windows || []).length)) {
+            // Ноль наружных стен при живом окне означает, что зона обведена с
+            // отступом от стен и до контура дома не достала. Верить такому обмеру
+            // нельзя — помещение осталось бы без наружной стены и получило бы
+            // радиатор в половину нужного; возвращаемся к оценке по площади.
+            out.perim = pgRoom.perim;
+            out.outerPerim = pgRoom.outer;
+            out.geoSrc = 'план этажа';
+            out.fallback = false;
+        }
+        return out;
+    },
+
+    /**
+     * Во сколько раз ужать оценочные наружные стены помещений этажа, чтобы в сумме
+     * с заданными (карточка, план) они не превышали наружный контур этажа. Контур
+     * дома — прямоугольник 1:1,4 по площади этажа: 4,06·√S, с запасом 10 % на
+     * выступы и эркеры. У квартиры наружу смотрит только фасад: длинная сторона
+     * того же прямоугольника, у угловой — плюс торец. Только ужимаем, никогда не
+     * растягиваем: оценка по площади и так не бывает меньше реального.
+     */
+    roomOuterFallbackScale: function (r) {
+        var s = this.state;
+        var fl = parseInt(r.floor) || 1;
+        var rooms = (s.rooms || []).filter(function (x) { return (parseInt(x.floor) || 1) === fl; });
+        var sFloor = 0, fixedOuter = 0, fallbackOuter = 0;
+        var self = this;
+        rooms.forEach(function (x) {
+            var a = parseFloat(x.area) || 0;
+            sFloor += a;
+            var g = self.roomOuterGeom(x);
+            if (g.fallback) fallbackOuter += g.outerPerim; else fixedOuter += g.outerPerim;
+        });
+        if (!(sFloor > 0) || !(fallbackOuter > 0)) return 1;
+        var contour;
+        if (this.isFlat()) {
+            var longSide = Math.sqrt(sFloor * 1.4), shortSide = Math.sqrt(sFloor / 1.4);
+            contour = longSide + (s.flatCorner ? shortSide : 0);
+        } else {
+            contour = 4.06 * Math.sqrt(sFloor) * 1.1;
+        }
+        var left = Math.max(0, contour - fixedOuter);
+        return Math.min(1, left / fallbackOuter);
+    },
+
     getRoomHeatLoss: function (r) {
         const s = this.state;
         // Без города — ступень по региону. Ступени согласованы с обратной
@@ -47320,25 +47390,21 @@ const app = {
         // теплопотерях не думает, а выбирая «2 наружу» — думает именно о них.
         // Уточнённые доли — для прямоугольника со сторонами 1:1,4: одна стена это
         // от четверти до трети периметра, две смежные — чуть больше половины.
-        var OUTER_SHARE = { 1: 0.30, 2: 0.55, 3: 0.75 };
-        var perim = 4 * Math.sqrt(area);
-        var outerPerim = perim * 0.6;
-        var geoSrc = 'оценка по площади';
-        var pg = this.roomsPlanGeom();
-        var pgRoom = pg ? pg[String(r.name || '').trim().toLowerCase()] : null;
-        if (OUTER_SHARE[r.outerWalls]) {
-            if (pgRoom && pgRoom.perim > 0) { perim = pgRoom.perim; geoSrc = 'план этажа и карточка помещения'; }
-            else geoSrc = 'карточка помещения';
-            outerPerim = perim * OUTER_SHARE[r.outerWalls];
-        } else if (pgRoom && pgRoom.perim > 0
-            && (pgRoom.outer > 0 || !(r.windows || []).length)) {
-            // Ноль наружных стен при живом окне означает, что зона обведена с
-            // отступом от стен и до контура дома не достала. Верить такому обмеру
-            // нельзя — помещение осталось бы без наружной стены и получило бы
-            // радиатор в половину нужного; возвращаемся к оценке по площади.
-            perim = pgRoom.perim;
-            outerPerim = pgRoom.outer;
-            geoSrc = 'план этажа';
+        var geo = this.roomOuterGeom(r);
+        var perim = geo.perim;
+        var outerPerim = geo.outerPerim;
+        var geoSrc = geo.geoSrc;
+        var pgRoom = geo.pgRoom;
+        if (geo.fallback) {
+            // Оценка 0,6·4√S даётся каждой комнате отдельно, и в сумме по этажу
+            // наружных стен выходило в полтора-два раза больше, чем у самого дома:
+            // 100 м² из семи комнат — 62 м при контуре около 40 м. Ужимаем оценки
+            // этажа так, чтобы вместе они не превышали его контур (см. roomOuterFallbackScale).
+            var kOuter = this.roomOuterFallbackScale(r);
+            if (kOuter < 0.999) {
+                outerPerim = outerPerim * kOuter;
+                geoSrc = 'оценка по площади, приведённая к контуру этажа';
+            }
         }
 
         var totalWinArea = 0;
