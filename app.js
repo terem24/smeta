@@ -50926,8 +50926,10 @@ const app = {
         // котельной нет, без радиаторов и тёплого пола выбирать нечего.
         {
             const _bsBlock = document.getElementById('blk_boiler_scheme');
-            const _bsOn = (this.state.objectType !== 'flat') && (hasRad || hasTp) &&
-                (this.state.fuels || []).length > 0;
+            // Только в подробном режиме — как перепад котлового контура: в
+            // быстром расчёте схему котельной калькулятор выбирает сам.
+            const _bsOn = this.state.detailedRooms && (this.state.objectType !== 'flat') &&
+                (hasRad || hasTp) && (this.state.fuels || []).length > 0;
             if (_bsBlock) _bsBlock.style.display = _bsOn ? 'block' : 'none';
             const _bs = this.boilerSchemeMode();
             ['auto', 'direct', 'hydro'].forEach(m => {
@@ -53759,6 +53761,11 @@ const app = {
      * отсутствия (см. «Нормативная база расчётов» в CLAUDE.md).
      */
     boilerSchemeMode: function () {
+        // Переключатель виден только в подробном режиме. В быстром выбор из
+        // подробного не действует: иначе скрытая настройка меняла бы смету, а
+        // вернуть её можно было бы, только уйдя обратно в подробный режим.
+        // Сам выбор в state сохраняется и вернётся вместе с подробным режимом.
+        if (!this.state.detailedRooms) return 'auto';
         const v = this.state.boilerScheme;
         return (v === 'direct' || v === 'hydro') ? v : 'auto';
     },
