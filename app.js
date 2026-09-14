@@ -31901,7 +31901,7 @@ const app = {
                 if (this.state.region === 130) regionName = "Сибирь";
                 if (this.state.region === 120) regionName = "Урал";
                 if (this.state.region === 100) regionName = "Центр";
-                if (this.state.region === 60) regionName = "Юг";
+                if (this.state.region === 78 || this.state.region === 60) regionName = "Юг";
             }
 
             let object_info = {
@@ -37301,7 +37301,7 @@ const app = {
             if (this.state.region === 130) regionName = "Сибирь";
             if (this.state.region === 120) regionName = "Урал";
             if (this.state.region === 100) regionName = "Центр";
-            if (this.state.region === 60) regionName = "Юг";
+            if (this.state.region === 78 || this.state.region === 60) regionName = "Юг";
         }
 
         let object_info = {
@@ -38470,7 +38470,7 @@ const app = {
                 regionName = "Центр";
                 if (this.state.region === 120) regionName = "Урал";
                 if (this.state.region === 100) regionName = "Центр";
-                if (this.state.region === 60) regionName = "Юг";
+                if (this.state.region === 78 || this.state.region === 60) regionName = "Юг";
                 if (this.state.region === 150) regionName = "Сибирь";
                 if (this.state.region === 130) regionName = "Сибирь";
             }
@@ -47218,11 +47218,11 @@ const app = {
         const s = this.state;
         // Без города — ступень по региону. Ступени согласованы с обратной
         // формулой t = 20 - 0.45 * region (той же, что в buildGeneralData):
-        // Сибирь 130 -> -38.5, Урал 120 -> -34, Центр 100 -> -25, Юг 60 -> -7.
-        // Для Юга оставлен запас (-10 вместо -7).
+        // Сибирь 130 -> -38.5, Урал 120 -> -34, Центр 100 -> -25, Юг 78 -> -15.
+        // Старые сметы с Югом 60 (-7) считаются с запасом по -10, как и раньше.
         const Tn = s.selectedCity && s.selectedCity.temp !== undefined
             ? s.selectedCity.temp
-            : (s.region >= 125 ? -38 : s.region >= 115 ? -34 : s.region >= 90 ? -25 : -10);
+            : (s.region >= 125 ? -38 : s.region >= 115 ? -34 : s.region >= 90 ? -25 : s.region >= 70 ? -15 : -10);
 
         // R стен из пирога или fallback по коэффициенту mat
         let R_wall = 1.8 / (s.mat || 1.0);
@@ -47474,7 +47474,7 @@ const app = {
     getDesignTemp: function () {
         const s = this.state;
         if (s.selectedCity && s.selectedCity.temp !== undefined) return s.selectedCity.temp;
-        return s.region >= 125 ? -38 : s.region >= 115 ? -34 : s.region >= 90 ? -25 : -10;
+        return s.region >= 125 ? -38 : s.region >= 115 ? -34 : s.region >= 90 ? -25 : s.region >= 70 ? -15 : -10;
     },
 
     /**
@@ -52726,7 +52726,7 @@ const app = {
         const ufhTabs = document.querySelectorAll('.ufh-tab'); ufhTabs.forEach(t => { t.className = 'tab ufh-tab'; if (t.dataset.type === this.state.ufhCtrl) t.classList.add('multi-active'); });
         const regTabs = document.getElementById('reg_tabs').children; for (let t of regTabs) t.classList.remove('active');
         if (!this.state.selectedCity) {
-            if (this.state.region === 130) regTabs[0].classList.add('active'); if (this.state.region === 120) regTabs[1].classList.add('active'); if (this.state.region === 100) regTabs[2].classList.add('active'); if (this.state.region === 60) regTabs[3].classList.add('active');
+            if (this.state.region === 130) regTabs[0].classList.add('active'); if (this.state.region === 120) regTabs[1].classList.add('active'); if (this.state.region === 100) regTabs[2].classList.add('active'); if (this.state.region === 78 || this.state.region === 60) regTabs[3].classList.add('active');
         }
         const cityInput = document.getElementById('city_search');
         if (cityInput) {
@@ -58023,7 +58023,7 @@ const app = {
             if (this.state.region === 130) regionName = "Сибирь";
             if (this.state.region === 120) regionName = "Урал";
             if (this.state.region === 100) regionName = "Центр";
-            if (this.state.region === 60) regionName = "Юг";
+            if (this.state.region === 78 || this.state.region === 60) regionName = "Юг";
         }
 
         // Строка «Теплопотери» в шапке. Пока снеготаяние не учитывается в мощности
