@@ -894,6 +894,213 @@
     return o.join('');
   }
 
+  // ─── 3D вид радиаторного отопления ─────────────────────────────────────
+  // В редакторе планов у радиатора есть только место под окном (x, y), длина
+  // и угол стены. Трасс радиаторных труб и места коллектора там нет — ни
+  // смета, ни гидравлика их из плана не берут. Поэтому вид строится так же,
+  // как в проектах-образцах читается глазом: коллектор в котельной, от него
+  // лучи вдоль осей плана к каждому прибору, у прибора подъём из пола.
+  // Трасса схематичная, о чём сказано на листе; длины лучей — по этой трассе.
+
+  var RAD_CONN_MM = 120;       // низ радиатора от чистого пола (образец: «не ниже 120 мм»)
+  var RAD_COLL_MM = [900, 750]; // гребёнки коллектора на стене: подача выше обратки
+  var RAD_OUTLET_MM = 50;      // шаг выходов коллектора
+  var RAD_PAIR_MM = 25;        // полразноса подачи и обратки одного луча
+
+  /** Где стоит коллектор радиаторов этажа: котельная → коллектор ТП → центр приборов */
+  function radCollector(f) {
+    var bz = (f.zones || []).filter(function (z) { return z.type === 'boiler'; })[0];
+    if (bz) { var c = centroid(bz.pts); return { x: c[0], y: c[1], src: 'boiler' }; }
+    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp' };
+    var sx = 0, sy = 0, rs = f.rads || [];
+    rs.forEach(function (r) { sx += r.x; sy += r.y; });
+    return { x: sx / (rs.length || 1), y: sy / (rs.length || 1), src: 'rads' };
+  }
+
+  /** Зона, к которой относится прибор: та, внутри которой он стоит, иначе ближайшая */
+  function zoneOfPoint(f, p) {
+    var zs = (f.zones || []).filter(function (z) { return z.pts && z.pts.length > 2; });
+    for (var i = 0; i < zs.length; i++) if (pip(p, zs[i].pts)) return zs[i];
+    // Радиатор ставят на стену, то есть на границу зоны — ray casting его
+    // часто не находит. Берём зону с ближайшей вершиной или серединой ребра.
+    var best = null, bd = 1e18;
+    zs.forEach(function (z) {
+      z.pts.forEach(function (a, k) {
+        var b = z.pts[(k + 1) % z.pts.length];
+        [a, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]].forEach(function (q) {
+          var d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+          if (d < bd) { bd = d; best = z; }
+        });
+      });
+    });
+    return best;
+  }
+
+  /** Вертикальный отрезок в изометрии: подъём трубы или спуск с коллектора */
+  function isoRise(o, t, p, z1, z2, col, w) {
+    var a = t.P(p[0], p[1], z1), b = t.P(p[0], p[1], z2);
+    o.push('<line x1="' + n(a[0]) + '" y1="' + n(a[1]) + '" x2="' + n(b[0]) + '" y2="' + n(b[1]) +
+      '" style="stroke:' + col + ';stroke-width:' + (w || 0.45) + '"/>');
+  }
+
+  /** Радиатор в изометрии: лицевая плоскость вдоль стены с рёбрами секций */
+  function isoRadiator(o, t, f, r, hMm) {
+    var ppm = f.pxPerM || 100, ang = (r.ang || 0) * Math.PI / 180;
+    var ux = Math.cos(ang), uy = Math.sin(ang), hw = (r.w || 0.8 * ppm) / 2;
+    var a = [r.x - ux * hw, r.y - uy * hw], b = [r.x + ux * hw, r.y + uy * hw];
+    var z1 = t.mm(RAD_CONN_MM), z2 = t.mm(RAD_CONN_MM + hMm);
+    var q = [t.P(a[0], a[1], z1), t.P(b[0], b[1], z1), t.P(b[0], b[1], z2), t.P(a[0], a[1], z2)];
+    o.push('<polygon points="' + q.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' ') +
+      // Цвет и прозрачность раздельно: rgba() в fill понимают не все
+      // растеризаторы PDF, и прибор уходил в сплошной чёрный.
+      '" style="fill:#d22222;fill-opacity:0.2;stroke:#d22222;stroke-width:0.35"/>');
+    var ribs = Math.max(3, Math.min(10, Math.round((2 * hw / ppm) / 0.12)));
+    for (var k = 1; k < ribs; k++) {
+      var s = k / ribs, px = a[0] + (b[0] - a[0]) * s, py = a[1] + (b[1] - a[1]) * s;
+      var p1 = t.P(px, py, z1), p2 = t.P(px, py, z2);
+      o.push('<line x1="' + n(p1[0]) + '" y1="' + n(p1[1]) + '" x2="' + n(p2[0]) + '" y2="' +
+        n(p2[1]) + '" style="stroke:#d22222;stroke-width:0.15"/>');
+    }
+    return { a: a, b: b };
+  }
+
+  /**
+   * Лист «Этаж N. 3D вид отопления».
+   * opts: { rooms, tee, radH } — tee: тройниковая схема (одна магистраль через
+   * приборы вместо лучей), radH — высота радиатора, мм.
+   */
+  function isoRadBody(f, num, opts) {
+    opts = opts || {};
+    var t = isoFit(f), o = [];
+    isoWalls(f, t, o);
+    isoSlab(f, t, o);
+    var ppm = f.pxPerM || 100, px = function (mm) { return mm / 1000 * ppm; };
+    var rooms = (opts.rooms || []).filter(function (r) { return (r.floor || 1) === num; });
+    var hMm = opts.radH || 500;
+    var C = radCollector(f);
+    var rads = (f.rads || []).slice();
+    var zC = [t.mm(RAD_COLL_MM[0]), t.mm(RAD_COLL_MM[1])];
+    var e = px(RAD_PAIR_MM);
+
+    // Порядок приборов: по часовой вокруг коллектора. Выходы гребёнки идут в
+    // том же порядке, и соседние лучи не перекрещиваются у коллектора.
+    rads.forEach(function (r) { r._a = Math.atan2(r.y - C.y, r.x - C.x); });
+    rads.sort(function (a, b) { return a._a - b._a; });
+
+    var cards = [], outlets = [];
+    if (!opts.tee) {
+      var N = rads.length, step = px(RAD_OUTLET_MM);
+      rads.forEach(function (r, i) {
+        var xi = C.x + (i - (N - 1) / 2) * step;
+        var sup = [[xi - e, C.y], [xi - e, r.y - e], [r.x, r.y - e]];
+        var ret = [[xi + e, C.y], [xi + e, r.y + e], [r.x, r.y + e]];
+        o.push('<path d="' + isoPath(sup, t) + '" style="fill:none;stroke:' + COL_SUP + ';stroke-width:0.45"/>');
+        o.push('<path d="' + isoPath(ret, t) + '" style="fill:none;stroke:' + COL_RET + ';stroke-width:0.45"/>');
+        // спуск от гребёнки к полу и подъём к прибору
+        isoRise(o, t, sup[0], 0, zC[0], COL_SUP);
+        isoRise(o, t, ret[0], 0, zC[1], COL_RET);
+        isoRise(o, t, sup[2], 0, t.mm(RAD_CONN_MM), COL_SUP);
+        isoRise(o, t, ret[2], 0, t.mm(RAD_CONN_MM), COL_RET);
+        outlets.push(xi);
+        // Длина луча в одну сторону: трасса по полу, спуск с гребёнки, подъём к прибору
+        var L = (lenPoly(sup) / ppm) + RAD_COLL_MM[0] / 1000 + RAD_CONN_MM / 1000;
+        r._L = Math.round(L * 10) / 10;
+      });
+    } else {
+      // Тройниковая: подача и обратка одной магистралью от коллектора через
+      // приборы по кратчайшему обходу, от магистрали — короткий подъём.
+      var left = rads.slice(), cur = [C.x, C.y], order = [];
+      while (left.length) {
+        var bi = 0, bd = 1e18;
+        left.forEach(function (r, k) {
+          var d = Math.abs(r.x - cur[0]) + Math.abs(r.y - cur[1]);
+          if (d < bd) { bd = d; bi = k; }
+        });
+        var nx = left.splice(bi, 1)[0];
+        order.push(nx); cur = [nx.x, nx.y];
+      }
+      rads = order;
+      var trunk = orthoPath([[C.x, C.y]].concat(rads.map(function (r) { return [r.x, r.y]; })));
+      var tSup = offsetOrtho(trunk, e) || trunk, tRet = offsetOrtho(trunk, -e) || trunk;
+      o.push('<path d="' + isoPath(tSup, t) + '" style="fill:none;stroke:' + COL_SUP + ';stroke-width:0.55"/>');
+      o.push('<path d="' + isoPath(tRet, t) + '" style="fill:none;stroke:' + COL_RET + ';stroke-width:0.55"/>');
+      isoRise(o, t, tSup[0], 0, zC[0], COL_SUP);
+      isoRise(o, t, tRet[0], 0, zC[1], COL_RET);
+      rads.forEach(function (r) {
+        isoRise(o, t, [r.x, r.y], 0, t.mm(RAD_CONN_MM), '#6b7280', 0.35);
+      });
+    }
+
+    // Коллектор: две гребёнки на стене котельной
+    var span = Math.max(px(200), (outlets.length ? outlets[outlets.length - 1] - outlets[0] : 0) + px(120));
+    [[zC[0], COL_SUP], [zC[1], COL_RET]].forEach(function (g) {
+      var a = t.P(C.x - span / 2, C.y, g[0]), b = t.P(C.x + span / 2, C.y, g[0]);
+      o.push('<line x1="' + n(a[0]) + '" y1="' + n(a[1]) + '" x2="' + n(b[0]) + '" y2="' + n(b[1]) +
+        '" style="stroke:' + g[1] + ';stroke-width:1.3;stroke-linecap:round"/>');
+    });
+    var cP = t.P(C.x + span / 2, C.y, zC[0]);
+    // Подложка прямоугольником, а не обводкой букв: paint-order при печати в
+    // PDF поддержан не везде, и белая обводка закрывала саму подпись.
+    var cLbl = opts.tee ? 'Подключение магистрали' : 'Коллектор радиаторов';
+    o.push('<rect x="' + n(cP[0] + 2.2) + '" y="' + n(cP[1] - 5.6) + '" width="' + n(cLbl.length * 1.62 + 1.6) +
+      '" height="4.6" rx="0.6" style="fill:#ffffff;fill-opacity:0.9;stroke:none"/>');
+    o.push(txt(cP[0] + 3, cP[1] - 2.2, cLbl, { size: 3.1 }));
+
+    // приборы и таблички
+    rads.forEach(function (r, i) {
+      isoRadiator(o, t, f, r, hMm);
+      var z = zoneOfPoint(f, [r.x, r.y]);
+      var room = z ? roomOf(z.name, rooms) : null;
+      var nm = room ? room.name : (z && z.name ? z.name : '');
+      var lines = ['Прибор ' + (i + 1)];
+      if (nm) lines.push(nm.length > 18 ? nm.slice(0, 17) + '…' : nm);
+      if (!opts.tee && r._L) lines.push('Луч ' + num1(r._L) + ' м');
+      else if (room && room.q > 0) lines.push('Пом. ' + Math.round(room.q) + ' Вт');
+      var top = t.P(r.x, r.y, t.mm(RAD_CONN_MM + hMm));
+      cards.push({ p: top, lines: lines, no: i + 1 });
+    });
+
+    // Таблички по краям листа, как на 3D виде тёплого пола. Не влезли по
+    // высоте — остаётся номер у самого прибора: он совпадает с табличкой,
+    // если её потом допишут руками.
+    var L2 = [], R2 = [];
+    cards.forEach(function (c) { (c.p[0] < (ISO_BOX.x0 + ISO_BOX.x1) / 2 ? L2 : R2).push(c); });
+    [[L2, 24, 1], [R2, 372, -1]].forEach(function (g) {
+      var arr = g[0], x = g[1], dir = g[2], y = 34;
+      arr.sort(function (a, b) { return a.p[1] - b.p[1]; });
+      arr.forEach(function (c) {
+        var h = 5.4 * c.lines.length;
+        if (y + h > 246) {
+          o.push('<rect x="' + n(c.p[0] - 2.4) + '" y="' + n(c.p[1] - 5) + '" width="4.8" height="4.4" rx="0.6"' +
+            ' style="fill:#ffffff;stroke:#000;stroke-width:0.2"/>');
+          o.push(txt(c.p[0], c.p[1] - 1.7, String(c.no), { size: 3.1, anchor: 'middle' }));
+          return;
+        }
+        isoCard(o, x, y, c.lines, 38);
+        var ax = dir > 0 ? x + 38 : x;
+        o.push('<line x1="' + n(ax) + '" y1="' + n(y + h / 2) + '" x2="' + n(c.p[0]) +
+          '" y2="' + n(c.p[1]) + '" style="stroke:#000;stroke-width:0.2"/>');
+        o.push('<circle cx="' + n(c.p[0]) + '" cy="' + n(c.p[1]) + '" r="0.6" style="fill:#000"/>');
+        y += h + 3.2;
+      });
+    });
+
+    o.push(txt(24, 252, 'Условные обозначения систем трубопроводов:', { size: 3.4 }));
+    o.push('<line x1="24" y1="256" x2="44" y2="256" style="stroke:' + COL_SUP + ';stroke-width:0.8"/>');
+    o.push(txt(46, 257.2, '— Т1, подающий трубопровод радиаторного отопления', { size: 3.2 }));
+    o.push('<line x1="24" y1="261" x2="44" y2="261" style="stroke:' + COL_RET + ';stroke-width:0.8"/>');
+    o.push(txt(46, 262.2, '— Т2, обратный трубопровод радиаторного отопления', { size: 3.2 }));
+    var notes = [
+      (opts.tee ? 'Схема тройниковая. ' : 'Схема коллекторная (лучевая). ') +
+        'Трассы показаны схематично, вдоль осей плана; фактическая прокладка — по месту.',
+      'Низ радиаторов — ' + RAD_CONN_MM + ' мм от чистого пола; трубы в теплоизоляции, соединения в стяжке не допускаются.'
+    ];
+    if (C.src === 'tp') notes.push('Котельной на этом этаже нет — коллектор радиаторов показан у коллектора тёплого пола.');
+    else if (C.src === 'rads') notes.push('Котельной на этом этаже нет — положение коллектора принято условно.');
+    notes.forEach(function (s, i) { o.push(txt(24, 268 + i * 4.4, s, { size: 3.0 })); });
+    return o.join('');
+  }
+
   /** Лист «Этаж N. 3D вид водоснабжения» либо «…канализации» */
   function isoPipeBody(f, num, kind) {
     var t = isoFit(f), o = [];
@@ -924,7 +1131,7 @@
 
   /**
    * Листы объёмных видов систем по этажам.
-   * opts.kind: 'tp' | 'water' | 'sewer'
+   * opts.kind: 'tp' | 'rad' | 'water' | 'sewer'
    */
   function iso3dSheets(plans, opts) {
     opts = opts || {};
@@ -940,6 +1147,10 @@
         if (!(f.zones || []).some(function (z) { return (z.type || 'tp') === 'tp'; })) return;
         ttl = 'Этаж 0' + (i + 1) + '. 3D вид напольного отопления';
         body = isoTpBody(f, i + 1, opts.stepMm || 150, opts.rooms);
+      } else if (kind === 'rad') {
+        if (!(f.rads || []).length) return;
+        ttl = 'Этаж 0' + (i + 1) + '. 3D вид отопления';
+        body = isoRadBody(f, i + 1, { rooms: opts.rooms, tee: !!opts.tee, radH: opts.radH });
       } else if (kind === 'sewer') {
         if (!(f.slines || []).length) return;
         ttl = 'Этаж 0' + (i + 1) + '. 3D вид канализации';
