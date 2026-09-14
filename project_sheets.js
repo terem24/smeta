@@ -1201,6 +1201,58 @@
     return sheets;
   }
 
+  /**
+   * Сведение одинаковых позиций спецификации.
+   *
+   * Смета раскладывает материал по назначению: трубу D 58 L 2000 считает
+   * отдельно под ванну, под душ, под раковину — и в спецификацию она
+   * приходила четырьмя строками с разными количествами. По ГОСТ 21.110-2013
+   * позиция в спецификации одна, с общим количеством: по ней заказывают.
+   *
+   * mapGroup(group) решает, в какой подраздел уходит позиция: вернёт одно и то
+   * же имя для нескольких подразделов — они сольются в один, и одинаковые
+   * позиции в нём сложатся. Слитый подраздел сортируется по наименованию, как
+   * в проектах-образцах; остальные сохраняют порядок сметы.
+   */
+  function mergeSpecItems(items, mapGroup) {
+    var out = [], byKey = {}, merged = {};
+    (items || []).forEach(function (i) {
+      var g = i.group ? mapGroup(i.group) : i.group;
+      if (g !== i.group) merged[g] = true;
+      var unit = i.unit === 'шт' ? 'шт.' : (i.unit || 'шт.');
+      var key = [i.sectionTitle || '', g || '', i.article || '', i.name || '', unit, i.isOpt ? 1 : 0].join('\u0001');
+      if (byKey[key]) {
+        byKey[key].q = Math.round((Number(byKey[key].q) + Number(i.q || 0)) * 100) / 100;
+        return;
+      }
+      var copy = {};
+      for (var k in i) copy[k] = i[k];
+      copy.group = g;
+      copy.q = Number(i.q || 0);
+      byKey[key] = copy;
+      out.push(copy);
+    });
+    // Слитые подразделы — по алфавиту с учётом чисел: «D 058 L 1000» раньше
+    // «D 058 L 2000», и та раньше «D 110 L 1000». Остальные строки не двигаем.
+    var coll = function (a, b) {
+      return String(a.name || '').localeCompare(String(b.name || ''), 'ru', { numeric: true });
+    };
+    var res = [], i2 = 0;
+    while (i2 < out.length) {
+      var it = out[i2];
+      if (!merged[it.group]) { res.push(it); i2++; continue; }
+      // все позиции этого слитого подраздела в этом разделе — одним блоком
+      var block = out.filter(function (x) {
+        return x.group === it.group && x.sectionTitle === it.sectionTitle && !x._taken;
+      });
+      block.forEach(function (x) { x._taken = true; });
+      block.sort(coll).forEach(function (x) { res.push(x); });
+      while (i2 < out.length && out[i2]._taken) i2++;
+    }
+    res.forEach(function (x) { delete x._taken; });
+    return res;
+  }
+
   // ─── Спецификация из сметы калькулятора ────────────────────────────────
   /**
    * items — currentEquipmentList из app.js (или его срез): нужны поля
@@ -1212,6 +1264,7 @@
   function fromEquipment(items, opts) {
     opts = opts || {};
     var rows = [], num = 0, lastSec = null, lastGroup = null;
+    if (typeof opts.merge === 'function') items = mergeSpecItems(items, opts.merge);
     (items || []).forEach(function (i) {
       if (i.sectionTitle && i.sectionTitle !== lastSec) {
         rows.push({ section: i.sectionTitle });

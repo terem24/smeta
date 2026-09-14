@@ -465,9 +465,16 @@ if (payload && payload.items && payload.items.length) {
     });
   }
   var kSpecStart = kNo;
+  // Трубы и фасонные части смета считает по приборам («Канализация: [Ванная]»,
+  // «[Душ]», «[Раковина]» …) — в спецификации это один подраздел, где
+  // одинаковые позиции сложены в строку с общим количеством (ГОСТ 21.110-2013).
+  // Инсталляции, трапы и прочее оборудование остаются своими подразделами.
   var kSpec = itemsBy.k.length ? projectSheets.fromEquipment(itemsBy.k, {
     title: 'Спецификация материалов и оборудования канализации',
-    code: MARK.k.code, sheetStart: kSpecStart, num: specNumOf('k')
+    code: MARK.k.code, sheetStart: kSpecStart, num: specNumOf('k'),
+    merge: function (g) {
+      return /Канализация:\s*\[/.test(String(g)) ? 'Трубы, фасонные части и материалы' : g;
+    }
   }) : [];
 
   // ── Сборка разделов ──────────────────────────────────────────────────
