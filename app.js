@@ -40100,8 +40100,8 @@ const app = {
         return out;
     },
 
-    // Мат нельзя укоротить, поэтому набирать можно только с перебором. Четверть
-    // — тот же допуск, что и у ручной замены: больше уже не влезет в комнату.
+    // Допуск ручной замены: в таблице замены показываем маты до +25 % к площади.
+    // Автоподбор с перебором не набирает — см. matPlanSeries.
     UFH_MAT_OVERSHOOT: 1.25,
     // Шаг сетки для перебора. Все типоразмеры каталога на 0,05 м² ложатся ровно
     // (1,2 / 2,7 / 3,85 / 5,25 / 10,2 — в том числе).
@@ -40116,10 +40116,15 @@ const app = {
      * метр, чем пара средних.
      */
     matPlanSeries: function (area, mats) {
+        // Мат нельзя укоротить, а уплотнять кабель, чтобы лишний мат уместить на
+        // полу, запрещают паспорта (перегрев). Поэтому набираем НЕ БОЛЬШЕ площади
+        // пола: раньше допуск был +25 %, и 8 м² получали 10 м² матов, которые
+        // физически не лягут. Из наборов не больше площади берём самый полный,
+        // при равной площади — самый дешёвый.
         const G = this.UFH_MAT_GRID;
-        const need = Math.round(area / G);
-        const cap = Math.floor(area * this.UFH_MAT_OVERSHOOT / G);
-        if (!(need > 0) || !mats || !mats.length || cap < need) return null;
+        const cap = Math.floor(area / G + 1e-9);
+        const need = 1;
+        if (!(cap > 0) || !mats || !mats.length) return null;
 
         const dp = new Float64Array(cap + 1).fill(Infinity);
         const via = new Int32Array(cap + 1).fill(-1);
@@ -40136,8 +40141,8 @@ const app = {
             }
         }
         let best = -1;
-        for (let j = need; j <= cap; j++) {
-            if (dp[j] !== Infinity && (best < 0 || dp[j] < dp[best])) best = j;
+        for (let j = cap; j >= need; j--) {
+            if (dp[j] !== Infinity) { best = j; break; }
         }
         if (best < 0) return null;
         const out = [];
@@ -40174,10 +40179,11 @@ const app = {
         Object.keys(bySeries).forEach(k => {
             const plan = this.matPlanSeries(area, bySeries[k]);
             if (!plan) return;
-            // При равной цене берём набор из меньшего числа матов: меньше
-            // стыков и меньше концов к терморегулятору.
-            if (!best || plan.cost < best.cost
-                || (plan.cost === best.cost && plan.mats.length < best.mats.length)) best = plan;
+            // Самый полный набор (ближе к площади пола), при равной площади — дешевле,
+            // при равной цене — из меньшего числа матов: меньше стыков и концов.
+            if (!best || plan.laid > best.laid + 1e-9
+                || (Math.abs(plan.laid - best.laid) < 1e-9 && (plan.cost < best.cost
+                    || (plan.cost === best.cost && plan.mats.length < best.mats.length)))) best = plan;
         });
 
         let out;
