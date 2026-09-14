@@ -9534,12 +9534,8 @@ const app = {
         msg.className = 'calc-dialog-message';
         msg.style.textAlign = 'left';
         msg.innerHTML =
-            '<p style="margin: 0 0 10px;">Ваш аккаунт создан через Google. По требованиям ' +
-            'российского законодательства авторизация пользователей из России через форму входа ' +
-            'Google больше не допускается — кнопка Google убрана, и войти этим способом ' +
-            'в следующий раз не получится.</p>' +
-            '<p style="margin: 0 0 12px;">Выберите замену — <b>аккаунт останется тот же</b>: ' +
-            'все сметы, настройки и тариф сохранятся.</p>';
+            '<p style="margin: 0 0 12px;">Вход через Google в России больше не работает. ' +
+            'Выберите другой способ — <b>аккаунт и сметы останутся те же</b>.</p>';
         card.appendChild(msg);
 
         // Вариант 1 — Яндекс ID
@@ -9561,7 +9557,7 @@ const app = {
         pwdWrap.style.paddingTop = '12px';
         pwdWrap.innerHTML =
             '<div style="font-size: 13px; color: var(--text-sec); margin-bottom: 8px;">' +
-            'Или задайте пароль, чтобы входить по e-mail' +
+            'Или придумайте пароль для входа по почте' +
             (this.state.tgUser && this.state.tgUser.email ? ' (' + this.state.tgUser.email + ')' : '') +
             ':</div>';
 
