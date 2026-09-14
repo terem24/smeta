@@ -41797,10 +41797,10 @@ const app = {
                 }
                 alt.unitM2 = alt.price;
                 alt.unitHead = 'Труба, за м';
-                alt.sysHead = 'Система, за м² пола';
-                alt.unitLabel = `петель: ${loops}`;
+                alt.sysHead = 'Система, за м²';
+                alt.unitLabel = `Петель: ${loops}`;
                 alt.price = (meters * alt.price + loops * _perLoop(p)) / area;
-                alt.note = `<div style="font-size:11px; font-weight:500; color:var(--text-sec); margin-top:2px;">Система: труба ${Math.round(meters / area * 10) / 10} м на м², на каждую петлю ${p.connName} ×2, фиксатор 90° ×2, втулки</div>`;
+                alt.sysText = `труба ${String(Math.round(meters / area * 10) / 10).replace('.', ',')} м на м², на каждую петлю ${p.connName} ×2, фиксатор 90° ×2, втулки`;
             });
         }
         else if (item.originalId && (item.originalId.endsWith('_water') || (item.originalId.startsWith('SPX-0001-') && !item.originalId.endsWith('_rad'))) && !item.originalId.startsWith('SMB-') && !item.originalId.startsWith('RMS-')) {
@@ -41851,15 +41851,14 @@ const app = {
                 + _pipePerM2 * 2.5 * (_xk[2]?.price || 0) / 25
                 + _sheetsM2 * 1.76 * 1.1 * (_xk[3]?.price || 0) / 50;
             const _fmtA = (a) => String(Math.round(a * 100) / 100).replace('.', ',');
-            const _sysNote = (t) => `<div style="font-size:11px; font-weight:500; color:var(--text-sec); margin-top:2px;">${t}</div>`;
             customAlts = [
                 { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT',
                   price: p_mat * 1.05 / _matArea, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
-                  note: _sysNote('Система: мат с запасом 5 %, трубу держат бобышки — крепёж не нужен'),
+                  sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен',
                   imgId: _matR ? _matR.id : _matCat?.id },
                 { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol',
                   price: _xpsSys, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
-                  note: _sysNote('Система: листы с запасом 5 %, подложка, дюбели, скобы, скотч'),
+                  sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч',
                   imgId: _xk[0]?.id }
             ];
         }
@@ -43362,20 +43361,20 @@ const app = {
         // Подписи колонок задаёт сам список вариантов (unitHead/sysHead).
         const _twoPrice = !!(customAlts && customAlts.some(a => a.unitM2 != null));
         const _twoHead = _twoPrice ? customAlts.find(a => a.unitM2 != null) : null;
+        // Отдельной колонки «Изм. цена» тут нет: процент стоит под каждой из двух цен.
         const _priceThs = _twoPrice
-            ? `<th style="text-align:right;width:120px;">${_twoHead.unitHead || 'Мат / лист, за м²'}</th>` +
-              `<th style="text-align:right;width:110px;${_sortStyle}" onclick="app.toggleSwapSort('price')">${_twoHead.sysHead || 'Система, за м²'}${_ssA('price')}</th>`
-            : _priceTh;
+            ? `<th class="col-two" style="text-align:right;width:130px;">${_twoHead.unitHead || 'Мат / лист, за м²'}</th>` +
+              `<th class="col-two" style="text-align:right;width:130px;${_sortStyle}" onclick="app.toggleSwapSort('price')">${_twoHead.sysHead || 'Система, за м²'}${_ssA('price')}</th>`
+            : `<th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>` + _priceTh;
 
         let html = _tankFiltersHtml + `
-            <table class="inv-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <table class="inv-table${_twoPrice ? ' swap-two' : ''}" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
                 <thead>
                     <tr>
                         <th class="col-idx" style="text-align: center; width: 40px;">#</th>
                         <th class="col-img" style="width: 65px; text-align: center;">Фото</th>
                         ${_nameTh}
                         <th class="col-brand" style="text-align: center; width: 90px;">Бренд</th>
-                        <th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>
                         ${_priceThs}
                     </tr>
                 </thead>
@@ -43455,6 +43454,15 @@ const app = {
             if (activeAlt) {
                 basePrice = activeAlt.price || 0;
             }
+            // Вторая цена (материал без системы) сравнивается со своей базой
+            const _baseUnit = activeAlt && activeAlt.unitM2 > 0 ? activeAlt.unitM2 : 0;
+            const _pct = (v, base, active) => {
+                if (active) return `<span class="two-pct" style="color: var(--text-sec);">0%</span>`;
+                if (!(base > 0 && v > 0)) return `<span class="two-pct" style="color: var(--text-sec);">—</span>`;
+                const d = Math.round((v - base) / base * 100);
+                const c = d > 0 ? '#ef4444' : (d < 0 ? '#16a34a' : 'var(--text-sec)');
+                return `<span class="two-pct" style="color: ${c};">${d > 0 ? '+' : ''}${d}%</span>`;
+            };
 
             if (!this.state.swapSortField) {
                 customAlts.sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -43468,12 +43476,29 @@ const app = {
                 let imgHtml = getImg(alt.imgId ? { ...alt, id: alt.imgId } : alt);
                 let diffHtml = getPriceDiffHtml(alt.price, isActive);
                 let priceText = alt.price > 0 ? this.formatPriceHtml(alt.price, true) : "-";
-                let unitTd = '';
                 if (_twoPrice) {
-                    unitTd = `<td style="text-align: right; font-size: 13px; white-space: nowrap;">` +
-                        (alt.unitM2 > 0 ? `<div style="font-weight: 700;">${this.formatPriceHtml(alt.unitM2, true)}</div>` +
-                            `<div style="font-size: 11px; color: var(--text-sec);">${alt.unitPrice > 0 ? this.formatPriceHtml(alt.unitPrice, true) + ' ' : ''}${alt.unitLabel || ''}</div>` : '—') +
-                        `</td>`;
+                    // Обе цены устроены одинаково: подпись (видна только на телефоне, где
+                    // шапки таблицы нет), сумма, процент к выбранному. Цена за штуку и
+                    // состав системы — мелкими строками под названием.
+                    const _cell = (cls, lbl, v, base) =>
+                        `<td class="col-two ${cls}"><span class="two-lbl">${lbl}</span>` +
+                        `<span class="two-val">${v > 0 ? this.formatPriceHtml(v, true) : '—'}</span>` +
+                        `${_pct(v, base, isActive)}</td>`;
+                    const _sub = [
+                        (alt.unitPrice > 0 ? this.formatPriceHtml(alt.unitPrice, true) + ' ' : '') + (alt.unitLabel || ''),
+                        alt.sysText ? 'Система: ' + alt.sysText : ''
+                    ].filter(Boolean).map(t => `<span class="two-sub">${t}</span>`).join('');
+                    html += `
+                    <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
+                        <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
+                        <td class="col-img">${imgHtml}</td>
+                        <td class="col-name two-name">${alt.name}${badgeHtml}${_sub}</td>
+                        <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
+                        ${_cell('col-two-u', (_twoHead.unitHead || 'Мат / лист, за м²'), alt.unitM2, _baseUnit)}
+                        ${_cell('col-two-s', (_twoHead.sysHead || 'Система, за м²'), alt.price, basePrice)}
+                    </tr>
+                `;
+                    return;
                 }
 
                 html += `
@@ -43483,7 +43508,6 @@ const app = {
                         <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}${badgeHtml}${alt.note || ''}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
-                        ${unitTd}
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
                     </tr>
                 `;
