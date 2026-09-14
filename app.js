@@ -46876,6 +46876,11 @@ const app = {
             if (chkDom) chkDom.checked = this.state.detailedRooms;
             return;
         }
+        // Теплопотери быстрого расчёта на момент перехода — чтобы в подробном режиме
+        // объяснить, почему мощность сдвинулась (см. плашку над разделом 1).
+        if (chk && !this.state.detailedRooms && this.state.area > 0) {
+            this.state.quickKwAtSwitch = parseFloat(this.getHouseHeatLoss()) || null;
+        }
         this.state.detailedRooms = chk;
         if (chk) {
             this.state.ventilationType = this.state.ventilationType || 'natural';
@@ -59943,6 +59948,23 @@ const app = {
                         `На участок выделено ${_limKw} кВт — котёл ${_elKw} кВт закрывает ${_pct} % теплопотерь (${_needKw.toFixed(1)} кВт).`, _det)
                     : this.noteBox('warn', 'Мощности котла не хватает.',
                         `${_elKw} кВт против ${_needKw.toFixed(1)} кВт теплопотерь — это ${_pct} %.`, _det);
+            }
+            // Переход «быстрый → подробный» сдвигает мощность на треть: быстрый считает
+            // 37 Вт/м³ с коэффициентом кнопки стены, подробный — сопротивление реального
+            // пирога. Без объяснения монтажник видит, что смета «похудела», и не знает
+            // почему. Синяя: это не ошибка, а смена метода.
+            const _qKw = parseFloat(this.state.quickKwAtSwitch) || 0;
+            if (this.state.detailedRooms && _qKw > 0 && _needKw > 0 && Math.abs(_needKw / _qKw - 1) > 0.15) {
+                const _d = Math.round((_needKw / _qKw - 1) * 100);
+                const _R = (this.state.wallLayers || []).reduce((acc, l) => {
+                    const m = (typeof WALL_MATERIALS_DB !== 'undefined') ? WALL_MATERIALS_DB.find(x => x.id === l.matId) : null;
+                    return m ? acc + (parseInt(l.thick || 0) / 1000) / m.lambda : acc;
+                }, 0.115 + 0.043);
+                boilerWarnHtml = (boilerWarnHtml || '') + this.noteBox('info',
+                    `Теплопотери ${_d > 0 ? 'выросли' : 'снизились'} на ${Math.abs(_d)} % после перехода к расчёту по помещениям.`,
+                    `Было ${_qKw.toFixed(1)} кВт, стало ${_needKw.toFixed(1)} кВт.`,
+                    `<div class="tip-p">Быстрый расчёт — укрупнённая оценка: 37 Вт/м³ объёма с поправкой на климат и тип стены по кнопке. По помещениям считается каждое ограждение: стена по заданному пирогу${(this.state.wallLayers || []).length ? ` (R = ${Number(_R).toFixed(2).replace('.', ',')} м²·°C/Вт)` : ''}, окна, кровля, пол и вентиляция — по СП 50.13330.2024.</div>` +
+                    `<div class="tip-p"><b>Проверьте:</b> совпадает ли пирог стены, кровли и пола с тем, что на объекте. Кнопка «Кирпич» в быстром режиме — это не кирпичная стена в подробном: там по умолчанию газобетон 300 мм.</div>`);
             }
         }
         flushBill("1. Котёл + водонагреватель", boilerWarnHtml);
