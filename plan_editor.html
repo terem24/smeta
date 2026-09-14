@@ -569,7 +569,7 @@ function applyPlanCanvas(c) {
   // Картинка новая — прежний файл на сервере к ней отношения не имеет;
   // имя появится заново после «Сохранить».
   f.imgFile = null;
-  f.w = c.width; f.h = c.height; f.pxPerM = 0; f.zones = [];
+  f.w = c.width; f.h = c.height; f.pxPerM = 0; f.zones = []; delete f.roomMask;
   delete imgFailed[cur];
   delete maskCache[cur];
   delete winCache[cur];
@@ -609,7 +609,14 @@ function getMask(fi) {
     var r = d[p], gg = d[p + 1], b = d[p + 2];
     var lum = (r * 3 + gg * 6 + b) / 10;
     // тёмное — стена/линия; красноватое (размерные цепочки) преградой не считаем
-    bar[i] = (lum < 165 && !(r > gg + 28 && r > b + 28)) ? 1 : 0;
+    var dark = lum < 165 && !(r > gg + 28 && r > b + 28);
+    // Стены, залитые жёлтым или охрой (брус, бревно на планах проектировщиков):
+    // светлые, по яркости в стены не проходили, а по «красноватости» ещё и
+    // принимались за размерную линию. Отличаем их насыщенностью: синего в
+    // них заметно меньше, чем красного и зелёного. Бледные заливки комнат
+    // (кремовый, светло-жёлтый) под это не попадают — синего в них много.
+    var ochre = r > 140 && gg > 120 && b < Math.min(r, gg) - 70 && gg > r * 0.62;
+    bar[i] = (dark || ochre) ? 1 : 0;
   }
   // Чистить маску от размерных линий здесь нельзя: на планах они заодно
   // перекрывают широкие проёмы, и без них заливка комнат утекает через
@@ -1073,12 +1080,10 @@ function computeGeom() {
   });
 }
 
-function labelRooms() {
-  var m = getMask(); if (!m) return null;
-  if (m.labels) return m;
-  var f = F(), ppm = (f.pxPerM || 100) * m.k;
-  var W = m.w, H = m.h, B = m.bar, N = W * H;
-  var d = new Int16Array(N), i, x, y, v;
+/** Карта расстояний (шахматная метрика, в клетках маски) до ближайшей
+ *  тёмной клетки. Та же, что считает labelRooms, — вынесена для чистки маски. */
+function chamferDist(B, W, H) {
+  var N = W * H, d = new Int16Array(N), i, x, y, v;
   for (i = 0; i < N; i++) d[i] = B[i] ? 0 : 30000;
   for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
     i = y * W + x; if (!d[i]) continue;
@@ -1102,6 +1107,34 @@ function labelRooms() {
     }
     d[i] = v;
   }
+  return d;
+}
+
+function labelRooms() {
+  var m = getMask(); if (!m) return null;
+  var f = F(), mode = f.roomMask === 'clean' ? 'clean' : 'raw';
+  if (m.labels && m.labMode === mode) return m;
+  var ppm = (f.pxPerM || 100) * m.k;
+  var W = m.w, H = m.h, N = W * H;
+  // Инженерный чертёж (планы ОВ/ВК) исчерчен внутри комнат: трубы, выноски,
+  // подписи, мебель. От каждой линии «ядро» комнаты отступает на 0,63 м, и
+  // при настоящем масштабе ядер почти не остаётся — подбор уходил в заведомо
+  // мелкий масштаб, где их больше. Режим 'clean' ищет комнаты по маске без
+  // тонкого (openThin): стена остаётся, трубы и текст уходят. Режим выбирает
+  // подбор масштаба (guessScale) и запоминает за этажом.
+  var B = m.bar;
+  if (mode === 'clean') {
+    var C0 = new Uint8Array(m.bar);
+    openThin(C0, W, H, ppm);
+    // Чистка стирает и остекление в оконных проёмах — тонкие линии между
+    // простенками, и комната «вытекает» через окно на улицу. Поэтому тонкое
+    // возвращаем, если оно у самой стены (ближе 0,35 м): остекление и откосы
+    // встают на место, а трубы и подписи посреди комнаты остаются стёртыми.
+    var dc = chamferDist(C0, W, H), near = Math.max(2, Math.round(0.35 * ppm));
+    B = new Uint8Array(N);
+    for (i = 0; i < N; i++) B[i] = (C0[i] || (m.bar[i] && dc[i] <= near)) ? 1 : 0;
+  }
+  var d = chamferDist(B, W, H), i, x, y;
   var r = Math.max(3, Math.round(0.63 * ppm));
   var lab = new Int32Array(N), q = new Int32Array(N), qt = 0, L = 0;
   for (i = 0; i < N; i++) {                       // ядра комнат
@@ -1135,7 +1168,7 @@ function labelRooms() {
     x = i % W; y = (i / W) | 0;
     if (x === 0 || y === 0 || x === W - 1 || y === H - 1) edge[Lx] = 1;
   }
-  m.labels = lab; m.labCnt = cnt; m.labEdge = edge; m.labMin = mn; m.labN = L;
+  m.labels = lab; m.labCnt = cnt; m.labEdge = edge; m.labMin = mn; m.labN = L; m.labMode = mode;
   return m;
 }
 
@@ -1587,14 +1620,16 @@ function median(a) {
  *  Сегментация сама зависит от масштаба — labelRooms отделяет комнаты по
  *  проёмам радиусом, заданным в метрах, — поэтому метки сбрасываются на
  *  каждый прогон, а прежний масштаб возвращается на место. */
-function roomAreasAt(ppmTry) {
-  var f = F(), was = f.pxPerM, out = [];
+function roomAreasAt(ppmTry, mode) {
+  var f = F(), was = f.pxPerM, wasMode = f.roomMask, out = [];
   if (!getMask()) return out;
   f.pxPerM = ppmTry;
+  if (mode === 'clean') f.roomMask = 'clean'; else delete f.roomMask;
   resetScaleCaches();
   try { out = enumerateRooms().map(function (r) { return r.m2; }); }
   catch (e) { console.error('[plan_editor] scale rooms:', e); }
   f.pxPerM = was;
+  if (wasMode) f.roomMask = wasMode; else delete f.roomMask;
   resetScaleCaches();
   return out;
 }
@@ -1640,6 +1675,17 @@ function agreeCount(measured, targets, ratio) {
   return ok;
 }
 
+/** Вес совпадений с расчётом с поправкой на число найденных кусков.
+ *
+ *  Когда стены плана читаются плохо, он рассыпается на десятки обрывков, и
+ *  среди них всегда находятся «подходящие» площади: на исчерченном трубами
+ *  инженерном плане 36 обрывков давали 8 совпадений из 8 при масштабе в два с
+ *  половиной раза меньше настоящего. Лишние куски сверх числа комнат расчёта
+ *  (с запасом 30 % на коридоры и гардеробные) снижают вес совпадений. */
+function matchScore(ok, found, nTargets) {
+  return ok * Math.min(1, nTargets * 1.3 / Math.max(1, found));
+}
+
 /** Масштаб по площадям комнат расчёта: сколько пикселей плана в метре.
  *
  *  Единственное число разметки, которого нет ни на чертеже, ни в расчёте, —
@@ -1656,26 +1702,40 @@ function guessScale() {
     return (+r.floor || 1) === cur + 1 && r.area > 0;
   }).map(function (r) { return r.area; });
   if (targets.length < 2) return null;
-  var best = null;
-  [40, 70, 110, 170, 260].forEach(function (ppmTry) {
-    var meas = roomAreasAt(ppmTry);
-    var ratio = fitAreaRatio(meas, targets);
-    if (!ratio) return;
-    var ppm = ppmTry / Math.sqrt(ratio), ok = agreeCount(meas, targets, ratio);
-    if (ppm < 10 || ppm > 600) return;
-    if (!best || ok > best.ok) best = { ppm: ppm, ok: ok };
-  });
+  // Подбор по одной маске: обычной ('raw') либо очищенной от тонкого ('clean')
+  var score = function (ok, n) { return matchScore(ok, n, targets.length); };
+  var fitMode = function (mode) {
+    var best = null;
+    [40, 70, 110, 170, 260].forEach(function (ppmTry) {
+      var meas = roomAreasAt(ppmTry, mode);
+      var ratio = fitAreaRatio(meas, targets);
+      if (!ratio) return;
+      var ppm = ppmTry / Math.sqrt(ratio), ok = agreeCount(meas, targets, ratio);
+      if (ppm < 10 || ppm > 600) return;
+      var sc = score(ok, meas.length);
+      if (!best || sc > best.sc) best = { ppm: ppm, ok: ok, sc: sc };
+    });
+    if (!best) return null;
+    for (var k = 0; k < 2; k++) {
+      var meas2 = roomAreasAt(best.ppm, mode);
+      var ratio2 = fitAreaRatio(meas2, targets);
+      if (!ratio2) break;
+      var ppm2 = best.ppm / Math.sqrt(ratio2), ok2 = agreeCount(meas2, targets, ratio2);
+      var sc2 = score(ok2, meas2.length);
+      if (ppm2 < 10 || ppm2 > 600 || sc2 < best.sc) break;
+      var settled = Math.abs(ppm2 - best.ppm) / best.ppm < 0.02;
+      best = { ppm: ppm2, ok: ok2, sc: sc2 };
+      if (settled) break;
+    }
+    best.mode = mode;
+    return best;
+  };
+  // Очищенная маска берётся, только если её оценка строго выше: на
+  // чистом архитектурном плане тонкие перегородки нарисованы линиями, и
+  // чистка их стёрла бы — там прежний режим обязан остаться.
+  var best = fitMode('raw'), alt = fitMode('clean');
+  if (alt && (!best || alt.sc > best.sc)) best = alt;
   if (!best) return null;
-  for (var k = 0; k < 2; k++) {
-    var meas2 = roomAreasAt(best.ppm);
-    var ratio2 = fitAreaRatio(meas2, targets);
-    if (!ratio2) break;
-    var ppm2 = best.ppm / Math.sqrt(ratio2), ok2 = agreeCount(meas2, targets, ratio2);
-    if (ppm2 < 10 || ppm2 > 600 || ok2 < best.ok) break;
-    var settled = Math.abs(ppm2 - best.ppm) / best.ppm < 0.02;
-    best = { ppm: ppm2, ok: ok2 };
-    if (settled) break;
-  }
   best.total = targets.length;
   // Три сошедшиеся комнаты (или все, если их всего две) — граница, ниже
   // которой это уже не подбор, а совпадение.
@@ -1712,6 +1772,16 @@ function autoScale(silent) {
   f.pxPerM = g.ppm; resetScaleCaches();
   var dw = doorWidthM();
   f.pxPerM = was; resetScaleCaches();
+  // Проёмов не нашлось вовсе — проверить нечем, и тогда подбор должен сойтись
+  // хотя бы по половине комнат этажа. Иначе на плане без читаемых стен
+  // «сходились» три случайные площади, и масштаб уезжал в разы (39 px/м
+  // вместо ~100 на инженерном плане второго этажа).
+  if (!dw && g.ok < Math.ceil(g.total / 2)) {
+    if (!silent) hint('Масштаб по расчёту не принят: по стенам плана сошлось только ' + g.ok +
+      ' комнат из ' + g.total + ', а дверных проёмов для проверки не нашлось. ' +
+      'Задайте масштаб кнопкой «Масштаб».');
+    return false;
+  }
   if (dw && (dw < 0.6 || dw > 1.3)) {
     if (!silent) hint('Масштаб по расчёту не принят: при нём дверные проёмы плана выходят ' +
       dw.toFixed(2).replace('.', ',') + ' м вместо обычных 0,8–0,9. Похоже, комнаты в ' +
@@ -1721,6 +1791,7 @@ function autoScale(silent) {
   // При загрузке отменять нечего: снимок 'plan' уже сделан и масштаб в нём.
   if (!silent) pushUndo('scale');
   f.pxPerM = g.ppm;
+  if (g.mode === 'clean') f.roomMask = 'clean'; else delete f.roomMask;
   resetScaleCaches();
   renderZones(); draw(); updateGuide();
   hint('<span class=ok>Масштаб подобран по площадям комнат расчёта: сошлось ' + g.ok +
@@ -1802,6 +1873,15 @@ function autoMarkAll() {
         var z0 = f.zones.length, r0 = (f.rads || []).length;
         autoRooms();
         autoRads();
+        // Комнаты с типом в расчёте есть, а зон не появилось — по площадям
+        // ничего не сошлось. Молча написать «Зон: 0» мало: монтажник должен
+        // знать, что обводить руками и на каком этаже.
+        if (f.zones.length === z0) {
+          var want = calcRooms.filter(function (r) {
+            return (+r.floor || 1) === fi + 1 && zoneKindsOfRoom(r).length;
+          }).map(function (r) { return r.name; });
+          if (want.length) bad.push(name + ' — комнаты не совпали по площади, обведите: ' + want.join(', '));
+        }
         zones += f.zones.length - z0;
         rads += (f.rads || []).length - r0;
         // Коллектор ТП ставим в котельную — там он и стоит. Котельной на
@@ -1875,6 +1955,22 @@ function autoRooms() {
   if (!F().pxPerM) { alert('Сначала задайте масштаб: кнопкой «Масштаб по расчёту» или «Масштаб».'); return; }
   var rooms = [];
   try { rooms = enumerateRooms(); } catch (e) { console.error('[plan_editor] rooms:', e); }
+  // Масштаб могли задать руками — тогда режим маски не выбирал никто.
+  // Пробуем и вторую маску: берём её, если по площадям с расчётом она
+  // сводит больше комнат (на исчерченном трубами плане так и бывает).
+  var calcT = calcRooms.filter(function (r) { return (+r.floor || 1) === cur + 1 && r.area > 0; })
+    .map(function (r) { return r.area; });
+  if (calcT.length >= 2) {
+    var fl0 = F(), mode0 = fl0.roomMask;
+    var ok0 = matchScore(agreeCount(rooms.map(function (r) { return r.m2; }), calcT, 1), rooms.length, calcT.length);
+    if (mode0 === 'clean') delete fl0.roomMask; else fl0.roomMask = 'clean';
+    resetScaleCaches();
+    var rooms1 = [];
+    try { rooms1 = enumerateRooms(); } catch (e) { rooms1 = []; }
+    var ok1 = matchScore(agreeCount(rooms1.map(function (r) { return r.m2; }), calcT, 1), rooms1.length, calcT.length);
+    if (ok1 > ok0) rooms = rooms1;
+    else { if (mode0) fl0.roomMask = mode0; else delete fl0.roomMask; resetScaleCaches(); }
+  }
   if (!rooms.length) {
     hint('Комнаты распознать не удалось (пёстрая подложка?) — обведите зоны вручную.');
     return;
@@ -1883,17 +1979,24 @@ function autoRooms() {
     var c = centroid(r.pts);
     return !F().zones.some(function (z) { return pip(c, z.pts); });
   });
+  // В сопоставлении участвуют ВСЕ комнаты этажа из расчёта, а зоны создаются
+  // только тем, у кого есть тип (котельная, санузел, тёплый пол). Раньше
+  // соревновались одни «типовые»: кусок плана размером с прихожую доставался
+  // котельной, потому что прихожей среди претендентов не было.
   var targets = calcRooms.filter(function (r) {
-    return (+r.floor || 1) === cur + 1 && zoneKindsOfRoom(r).length;
+    return (+r.floor || 1) === cur + 1 && r.area > 0;
   });
   pushUndo('zones');
   var made = 0, missed = [], cnt = {}, boiler = hasBoilerZone();
   if (targets.length) {
     var pairs = [];
     targets.forEach(function (t, ti) {
-      free.forEach(function (c, ci) { pairs.push([Math.abs(c.m2 - t.area), ti, ci]); });
+      var typed = zoneKindsOfRoom(t).length ? 0 : 1;
+      free.forEach(function (c, ci) { pairs.push([Math.abs(c.m2 - t.area), ti, ci, typed]); });
     });
-    pairs.sort(function (a, b) { return a[0] - b[0]; });
+    // При равной разнице площадей первыми выбирают комнаты, которым нужна
+    // зона: как было, пока в сопоставлении участвовали только они
+    pairs.sort(function (a, b) { return (a[0] - b[0]) || (a[3] - b[3]); });
     var tU = {}, cU = {};
     pairs.forEach(function (p) {
       if (tU[p[1]] || cU[p[2]]) return;
@@ -1911,9 +2014,12 @@ function autoRooms() {
         made++;
       });
     });
-    targets.forEach(function (t, ti) { if (!tU[ti]) missed.push(t.name); });
+    targets.forEach(function (t, ti) { if (!tU[ti] && zoneKindsOfRoom(t).length) missed.push(t.name); });
   }
-  if (!made) {
+  // Зоны ТП на все найденные комнаты — только когда расчёта по этажу нет вовсе
+  // (как и сказано в описании кнопки). Комнаты в расчёте есть, но типовые не
+  // сошлись — заливать весь этаж тёплым полом нельзя.
+  if (!made && !targets.length) {
     free.forEach(function (c) {
       F().zones.push({ type: 'tp', name: '', pts: simplifyZone(c.pts, F().pxPerM || 100) });
       made++;
@@ -2980,6 +3086,27 @@ function simplifyZone(pts, ppm) {
     var X0 = Math.min.apply(null, xs2), X1 = Math.max.apply(null, xs2);
     var Y0 = Math.min.apply(null, ys2), Y1 = Math.max.apply(null, ys2);
     out = [[X0, Y0], [X1, Y0], [X1, Y1], [X0, Y1]];
+  }
+  // Страховка: на рваном контуре (зубцы от штриховки и выносок) цепочка
+  // выпрямлений могла вывернуть многоугольник сам в себя — из комнаты 7,4 м²
+  // выходила зона 0,8 м². Площадь упрощённой зоны сверяем с исходным контуром;
+  // разошлась больше чем на треть — берём описанный прямоугольник, если он
+  // близок по площади, иначе контур, прорежённый без выпрямления.
+  var polyA = function (P) {
+    var s = 0;
+    for (var i6 = 0, j6 = P.length - 1; i6 < P.length; j6 = i6++)
+      s += (P[j6][0] + P[i6][0]) * (P[j6][1] - P[i6][1]);
+    return Math.abs(s / 2);
+  };
+  var a0 = polyA(pts), a1 = polyA(out);
+  if (a0 > 0 && Math.abs(a1 - a0) / a0 > 0.33) {
+    var bx = pts.map(function (q) { return q[0]; }), by = pts.map(function (q) { return q[1]; });
+    var bX0 = Math.min.apply(null, bx), bX1 = Math.max.apply(null, bx);
+    var bY0 = Math.min.apply(null, by), bY1 = Math.max.apply(null, by);
+    var boxA = (bX1 - bX0) * (bY1 - bY0);
+    out = (boxA - a0) / a0 <= 0.33
+      ? [[bX0, bY0], [bX1, bY0], [bX1, bY1], [bX0, bY1]]
+      : dpSimp(pts.slice(), Math.max(2, 0.06 * ppm));
   }
   return out.map(function (q) { return [Math.round(q[0]), Math.round(q[1])]; });
 }
