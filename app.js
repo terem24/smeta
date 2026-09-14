@@ -65445,19 +65445,29 @@ const app = {
             let floorsH = this.state.floors === 2 ? 3 : 0;
             let h = (this.state.wellDepth + (this.state.wellDist / 10) + floorsH + 30) * 1.1;
 
-            // Напор насоса в рабочей точке. В каталоге у насоса только h_max — напор при
-            // нулевом расходе — и q_max, а в названии серия и номинал: «2-81» — 81 м при
-            // 2 м³/ч, у RHS так же. Между ними кривая близка к параболе:
-            // H(Q) = h_max − (h_max − H_ном)·(Q / Q_ном)². Раньше требуемый напор сравнивался
-            // с h_max + 20, а номинал у линейки — лишь около 70 % от h_max: на скважине
-            // глубже 50 м вставал насос, который на расчётном расходе не дотягивал.
+            // Напор насоса в рабочей точке — по напорной характеристике из паспорта
+            // (catalog.well_pumps[].curve), линейно между точками таблицы. Раньше
+            // требуемый напор сравнивался с h_max + 20, а h_max — это напор при нулевом
+            // расходе: на расчётном расходе насос даёт на треть меньше, и на скважине
+            // глубже 50 м вставал насос, который не дотягивал. Правее последней точки
+            // паспорта насос не работает — напор 0.
             const pumpHeadAt = (p, flow) => {
-                const m = /(?:^|\s)(\d)-(\d{2,3})\b/.exec(p.name || '');
-                if (!m) return p.h_max * 0.7;
-                const qn = +m[1], hn = +m[2];
-                return Math.max(0, p.h_max - (p.h_max - hn) * Math.pow(Math.min(flow, p.q_max) / qn, 2));
+                const c = p.curve;
+                if (!c || !c.length) return 0;
+                if (flow <= c[0][0]) return c[0][1];
+                for (let i = 1; i < c.length; i++) {
+                    if (flow <= c[i][0]) {
+                        const [q0, h0] = c[i - 1], [q1, h1] = c[i];
+                        return h0 + (h1 - h0) * (flow - q0) / (q1 - q0);
+                    }
+                }
+                return 0;
             };
-            let validPumps = catalog.well_pumps.filter(p => p.q_max >= (q * 0.9) && pumpHeadAt(p, q) >= h);
+            // Из подходящих — самый дешёвый: массив идёт сериями (2-…, 3-…, 4-…, RHS),
+            // и первый по порядку часто оказывался дороже насоса соседней серии,
+            // который по паспорту тянет ту же точку.
+            let validPumps = catalog.well_pumps.filter(p => p.q_max >= (q * 0.9) && pumpHeadAt(p, q) >= h)
+                .sort((a, b) => (a.price || 0) - (b.price || 0));
             // Если не тянет ни один — самый напорный на этом расходе, а не последний
             // в массиве, и красная плашка над разделом.
             const strongestPump = catalog.well_pumps
@@ -65475,32 +65485,41 @@ const app = {
             const pumpHead = pumpHeadAt(pump, q);
 
             // Кабель насоса: от насоса до верха скважины, трасса до дома и ~5 м до
-            // автоматики. Длина штатного кабеля известна только у RHS («кабель 50 м»).
+            // автоматики. Длина и сечение штатного кабеля — из паспорта (cable, cable_mm2).
             const cableNeed = parseInt(this.state.wellDepth) + parseInt(this.state.wellDist) + 5;
-            const _cableM = /кабель\s+(\d+)\s*м/i.exec(pump.name || '');
-            const cableHave = _cableM ? +_cableM[1] : null;
+            const cableHave = pump.cable || 0;
+            const cableShort = cableHave > 0 && cableHave < cableNeed;
+            const cableMm2 = parseFloat(String(pump.cable_mm2 || '').replace(/^3×/, '').replace(',', '.')) || 0;
+            // Муфта STOUT по сечению жилы: 3×1,5–2,5 — до 2,5 мм² включительно (кабели
+            // 0,75–1,25 мм² тоньше её диапазона, но меньше у STOUT нет), выше — 3×4–6.
+            const shrink = cableShort
+                ? catalog.well_parts.find(x => x.id === (cableMm2 > 2.5 ? 'SAC-0010-034060' : 'SAC-0010-031525'))
+                : null;
 
             const wellWarns = [];
             if (pumpHead < h) {
                 wellWarns.push(this.noteBox('error', 'Насосу скважины не хватает напора.',
-                    `${pump.name}: около ${Math.round(pumpHead)} м на ${q.toFixed(1)} м³/ч, нужно ${Math.round(h)} м.`,
+                    `${pump.name}: ${Math.round(pumpHead)} м на ${q.toFixed(1)} м³/ч, нужно ${Math.round(h)} м.`,
                     '<div class="tip-p">Нужный напор = глубина установки насоса + трасса/10 + высота этажей + 30 м давления в доме, плюс 10 %. ' +
-                    'Напор насоса взят в рабочей точке, а не при нулевом расходе.</div>' +
+                    'Напор насоса — по его напорной характеристике из паспорта на расчётном расходе, а не максимальный.</div>' +
                     '<div class="tip-p"><b>Что делать:</b> выберите насос мощнее кнопкой замены или уточните глубину установки насоса — считается она, а не глубина скважины.</div>'));
             }
-            if (cableHave !== null && cableHave < cableNeed) {
-                wellWarns.push(this.noteBox('warn', 'Кабеля насоса не хватит.',
+            if (cableShort) {
+                wellWarns.push(this.noteBox('warn', 'Кабель насоса нужно нарастить.',
                     `Штатный ${cableHave} м, до автоматики нужно около ${cableNeed} м.`,
-                    `<div class="tip-p">Глубина ${this.state.wellDepth} м + трасса ${this.state.wellDist} м + 5 м до автоматики. Докупите погружной кабель того же сечения на ${cableNeed - cableHave} м и термоусадочную муфту для соединения — в смете их нет.</div>`));
+                    `<div class="tip-p">Глубина ${this.state.wellDepth} м + трасса ${this.state.wellDist} м + 5 м до автоматики. Термоусаживаемая муфта для соединения добавлена в смету; кабель ${pump.cable_mm2 || ''} мм² на ${cableNeed - cableHave} м докупите отдельно.</div>`));
             }
             const wellWarn = wellWarns.join('') || null;
 
-            const cableLine = cableHave !== null
-                ? `Штатный кабель ${cableHave} м, нужно около ${cableNeed} м (глубина + трасса + 5 м).`
-                : `Кабель нужен длиной около ${cableNeed} м (глубина + трасса + 5 м) — сверьте с паспортом насоса; если короче, докупите погружной кабель и термоусадочную муфту.`;
-            let pumpDesc = `<span style="font-size:11px; line-height:1.4;"><span style="font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);">Скважинный насос ROMMER</span><b>Расчет:</b> Потребность ${q.toFixed(1)} м³/ч, нужный напор ${Math.round(h)} м, насос на этом расходе даёт около ${Math.round(pumpHead)} м.<br><b>Формула напора:</b> Глубина (${this.state.wellDepth}м) + Трасса/10 + Высота этажей + 30м (Давление) + 10% запас.<br><b>Кабель:</b> ${cableLine}</span>`;
+            const cableLine = cableHave > 0
+                ? `штатный ${cableHave} м${pump.cable_mm2 ? ' (' + pump.cable_mm2 + ' мм²)' : ''}, нужно около ${cableNeed} м (глубина + трасса + 5 м)${cableShort ? ' — нарастить, муфта в смете' : ''}.`
+                : `нужен длиной около ${cableNeed} м (глубина + трасса + 5 м).`;
+            let pumpDesc = `<span style="font-size:11px; line-height:1.4;"><span style="font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);">Скважинный насос ROMMER</span><b>Расчет:</b> Потребность ${q.toFixed(1)} м³/ч, нужный напор ${Math.round(h)} м, насос на этом расходе даёт ${Math.round(pumpHead)} м (по паспорту).<br><b>Формула напора:</b> Глубина (${this.state.wellDepth}м) + Трасса/10 + Высота этажей + 30м (Давление) + 10% запас.<br><b>Кабель:</b> ${cableLine}</span>`;
 
             addToBill(pump, 1, pumpDesc, grpWell);
+            if (shrink) {
+                addToBill(shrink, 1, `<span style="font-size:11px; line-height:1.4;"><b>Зачем:</b> Штатного кабеля насоса (${cableHave} м, ${pump.cable_mm2} мм²) не хватает до автоматики — нужно около ${cableNeed} м. Муфта герметично соединяет кабель насоса с кабелем-удлинителем того же сечения.</span>`, grpWell);
+            }
             let grpWellTie = "7.1. Обвязка скважинного насоса";
 
             let activeAuto;
