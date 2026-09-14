@@ -27494,6 +27494,9 @@ const app = {
                 d.kind = 'boiler'; d.b = grp.getAttribute('data-hyd-b');
             } else if (p === 'load') d.kind = 'dhw';
             else if (p === 'hydro') d.kind = 'hydro';
+            // Пара от стрелки к отводам — вторичная сторона. Раньше падала в
+            // 'main', и на ней загорался котловой контур, а сама пара — нет.
+            else if (p === 'ssup' || p === 'sret') d.kind = 'sec';
             else d.kind = 'main';
         }
         return d;
@@ -27585,6 +27588,10 @@ const app = {
                     : boilers(null));
             }
             case 'main': return part('msup').concat(part('mret'), boilers(null), part('hydro'));
+            // Вторичная пара: от корпуса стрелки ко всем отводам — ими она и
+            // питается. Котловые стояки за стрелкой сюда не входят.
+            case 'sec': return part('ssup').concat(part('sret'),
+                part('hydro').filter(g => g.getAttribute('data-hyd-dir') === 'none'), part('tap'));
             case 'hydro': return part('hydro').concat(part('msup'), part('mret'), part('ssup'), part('sret'));
             default: return [];
         }
@@ -27739,6 +27746,7 @@ const app = {
                 : d.kind === 'dhw' ? 'Контур загрузки бойлера'
                     : d.kind === 'boiler' ? 'Котёл'
                     : d.kind === 'main' ? 'Гребёнка котельной'
+                    : d.kind === 'sec' ? 'Контуры за гидрострелкой'
                         : d.kind === 'hydro' ? 'Гидравлический разделитель' : '';
         let title, lines = [];
         if (d.sym) {
@@ -27809,6 +27817,10 @@ const app = {
             } else if (d.kind === 'main') {
                 lines.push('Гребёнка: сюда котлы отдают горячую воду, отсюда она расходится по контурам; ' +
                     'по нижней трубе остывшая возвращается к котлам. Общий расход ' + num(hyd.flow, 2, 'м³/ч') + '.');
+            } else if (d.kind === 'sec') {
+                lines.push('Из гидрострелки по верхней трубе горячая вода идёт к насосным группам, ' +
+                    'по нижней остывшая возвращается в стрелку. Воду гонят насосы групп; котловой ' +
+                    'контур сюда не заходит — он замыкается на стрелке.');
             } else if (d.kind === 'hydro' && !d.sym) {
                 lines.push(this._HYD_SYM_TEXT.hydro);
             }
@@ -28073,7 +28085,7 @@ const app = {
         else if (hyd && d.kind === 'trunk') body = this._hydCardTrunk(hyd, d.mark);
         else if (hyd && d.kind) body = this._hydCardBoiler(hyd);
         if (body && d.kind === 'main') body.title = 'Гребёнка и кольцо системы';
-        if (body && d.kind === 'hydro') body.title = 'Гидрострелка и кольцо системы';
+        if (body && (d.kind === 'hydro' || d.kind === 'sec')) body.title = 'Гидрострелка и кольцо системы';
         // Символ вне контуров (легенда, бак, бойлер): карточка — только что
         // это и зачем.
         if (!body && d.sym) body = { title: d.sym.name,
