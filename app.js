@@ -27534,9 +27534,13 @@ const app = {
                 // группы гоняет свою воду через стрелку и обратно, а котловой
                 // контур крутится своим кольцом. Тянуть подсветку до котла
                 // значит рисовать путь, которым эта вода не идёт.
+                // Из групп стрелки берём только корпус (dir="none"): остальные
+                // группы 'hydro' — котловые стояки и отводы справа от неё, это
+                // уже первичный контур.
                 const sep = part('hydro');
+                const sepBody = sep.filter(g => g.getAttribute('data-hyd-dir') === 'none');
                 return sep.length
-                    ? tap.concat(part('ssup'), part('sret'), sep)
+                    ? tap.concat(part('ssup'), part('sret'), sepBody)
                     : tap.concat(part('msup'), part('mret'), boilers(null));
             }
             // Загрузка бойлера: от котла по линии загрузки к змеевику и обратно.
