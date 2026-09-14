@@ -3575,7 +3575,38 @@
             }
         });
 
+        /**
+         * Итоги — по строкам, которые клиент видит в таблице.
+         *
+         * Ссылка везёт только артикул и количество, а цену строки страница берёт из
+         * текущего catalog.js. Итог же раньше показывался тот, что был при отправке:
+         * после ежемесячного обновления цен сумма строк расходилась с «Итого». Теперь
+         * итог пересчитывается из тех же строк — по оборудованию без вычеркнутых
+         * позиций, по работам только выводимые (с названием и ценой). Решение
+         * владельца 14.09.2026: клиент видит актуальную сумму, совпадающую со строками.
+         * Пересчёт кладём прямо в data.totals: из него же берут итог комментарий
+         * менеджеру и запись статуса в облако.
+         */
+        function recomputeTotalsFromLines(data) {
+            const items = (data && data.items) || {};
+            const eq = (items.equipment || []).reduce((a, i) => {
+                if (!i || i.isOpt) return a;
+                const s = (typeof i.sum === 'number' && isFinite(i.sum)) ? i.sum : Math.round((i.price || 0) * (i.q || 0));
+                return a + s;
+            }, 0);
+            const works = (items.works || []).reduce((a, w) => {
+                if (!w || !w.name || !String(w.name).trim() || !(w.price > 0) || !(w.sum > 0)) return a;
+                return a + w.sum;
+            }, 0);
+            data.totals = Object.assign({}, data.totals || {}, {
+                equipment: Math.round(eq),
+                works: Math.round(works),
+                grandTotal: Math.round(eq + works)
+            });
+        }
+
         function renderInvoice(data) {
+            recomputeTotalsFromLines(data);
             const urlParams = new URLSearchParams(window.location.search);
             const isManager = urlParams.has('manager') || urlParams.get('manager') === '1' || urlParams.get('view') === 'manager';
             const copyBtn = document.getElementById('btn_copy_1c');
