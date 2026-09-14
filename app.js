@@ -9994,7 +9994,7 @@ const app = {
             delete loadedState.customCompany;
             // Какая смета сейчас на экране — для разбора «Что изменилось» под плашкой
             this._loadedEstimateId = id;
-            this.state = { ...this.state, ...loadedState };
+            this.state = this.stateForLoadedEstimate(loadedState);
             this.migrateSnowPipeSwap();
             this.migrateBoilerSectionTitles();
             this.migrateBoilerAutoLevel(loadedState);
@@ -31883,7 +31883,7 @@ const app = {
             // Блокируем saveState() на время подмены — иначе чужой расчёт мог бы затереть
             // реальный проект администратора в localStorage/облаке.
             this._suppressSaveState = true;
-            this.state = { ...this.state, ...st };
+            this.state = this.stateForLoadedEstimate(st);
             this.migrateSnowPipeSwap();
             this.migrateBoilerSectionTitles();
             this.migrateBoilerAutoLevel(st);
@@ -38835,7 +38835,7 @@ const app = {
                     delete savedState.themeMode;
                     delete savedState.customCompany;
 
-                    this.state = { ...this.state, ...savedState };
+                    this.state = this.stateForLoadedEstimate(savedState);
                     this.migrateSnowPipeSwap();
                     this.migrateBoilerSectionTitles();
                     this.migrateBoilerAutoLevel(savedState);
@@ -38870,7 +38870,7 @@ const app = {
                 delete savedState.themeMode;
                 delete savedState.customCompany;
 
-                this.state = { ...this.state, ...savedState };
+                this.state = this.stateForLoadedEstimate(savedState);
                 this.migrateSnowPipeSwap();
                 this.migrateBoilerSectionTitles();
                 this.migrateBoilerAutoLevel(savedState);
@@ -38958,6 +38958,31 @@ const app = {
         // прежним файлом. Без вопроса — он уже подтверждён строкой выше.
         if (typeof RecognizeUI !== 'undefined' && RecognizeUI.resetAll) RecognizeUI.resetAll(true);
         this.resetAutosaveBaseline();
+    },
+
+    /**
+     * Состояние под открываемую смету.
+     *
+     * Раньше сохранённая смета ложилась прямо поверх открытой: всё, чего в ней
+     * не было, доставалось от предыдущего объекта. У смет без своего и
+     * распознанного оборудования ключа userAddedEq нет вовсе — и открытая
+     * следом смета Б получала позиции сметы А, а автосохранение записывало их
+     * в Б. Так же переезжали снеготаяние, режим радиаторов и номер расчёта.
+     *
+     * Теперь: учётка и настройки приложения из текущего состояния → исходные
+     * значения расчёта → сама смета. Тема и переключатель схем — настройки
+     * вида, их не сбрасываем (как и reset).
+     */
+    stateForLoadedEstimate: function (loaded) {
+        const src = loaded || {};
+        const base = JSON.parse(JSON.stringify(this._stateDefaults || {}));
+        ['darkMode', 'themeMode', 'showScheme'].forEach(k => { delete base[k]; });
+        const next = { ...this.state, ...base, userAddedEq: [], userAddedWorks: [], swapQtyRatios: {}, ...src };
+        // Метки конкретной сметы: нет в загружаемой — не должно остаться и от прежней
+        ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress'].forEach(k => {
+            if (!(k in src)) delete next[k];
+        });
+        return next;
     },
 
     resetAutosaveBaseline: function () {
@@ -41064,6 +41089,10 @@ const app = {
     },
 
     init: function () {
+        // Исходные значения расчёта — до того, как поверх лягут сохранение из
+        // localStorage и открытые сметы. По ним stateForLoadedEstimate собирает
+        // состояние под каждую открываемую смету.
+        if (!this._stateDefaults) this._stateDefaults = JSON.parse(JSON.stringify(this.state));
         // Global premium modal overrides
         window.alert = (msg) => app.alert(msg);
         window.confirm = (msg) => app.confirm(msg);
