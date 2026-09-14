@@ -27487,7 +27487,8 @@ const app = {
         } else if (grp) {
             const p = d.part;
             if (p === 'tap') {
-                d.kind = grp.getAttribute('data-hyd-kind') === 'tp' ? 'ufh' : 'trunk';
+                const hk = grp.getAttribute('data-hyd-kind');
+                d.kind = hk === 'tp' ? 'ufh' : hk === 'snow' ? 'snow' : 'trunk';
                 d.i = parseInt(grp.getAttribute('data-hyd-i'), 10) || 0;
                 d.mark = grp.getAttribute('data-hyd-mark') || '';
             } else if (p === 'bsup' || p === 'bret') {
@@ -27553,9 +27554,10 @@ const app = {
             (b == null || g.getAttribute('data-hyd-b') === b));
         switch (d.kind) {
             case 'boiler': return boilers(d.b).concat(part('msup'), part('mret'), part('hydro'));
-            case 'trunk': case 'ufh': {
+            case 'trunk': case 'ufh': case 'snow': {
+                const tapKind = { ufh: 'tp', trunk: 'rad', snow: 'snow' }[d.kind];
                 const tap = all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
-                    g.getAttribute('data-hyd-kind') === (d.kind === 'ufh' ? 'tp' : 'rad') &&
+                    g.getAttribute('data-hyd-kind') === tapKind &&
                     (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i);
                 // Со стрелкой контуры развязаны — в этом весь её смысл: насос
                 // группы гоняет свою воду через стрелку и обратно, а котловой
@@ -27582,6 +27584,12 @@ const app = {
             // время греет отопление, и подсвечивать его стояки незачем.
             case 'dhw': {
                 const load = part('load');
+                // Насосная группа загрузки на коллекторе за гидрострелкой: узла
+                // у котла нет (групп 'load' нет), воду группа берёт из стрелки —
+                // путь как у любого отвода: вторичная пара и корпус стрелки.
+                // Сами линии загрузки добавит hydHoverOn по цвету среды.
+                const sepBodyL = part('hydro').filter(g => g.getAttribute('data-hyd-dir') === 'none');
+                if (!load.length && sepBodyL.length) return part('ssup').concat(part('sret'), sepBodyL);
                 const own = load.map(g => g.getAttribute('data-hyd-b')).filter(v => v != null);
                 return load.concat(own.length
                     ? own.reduce((a, b) => a.concat(boilers(b)), [])
@@ -27744,6 +27752,7 @@ const app = {
         const contour = d.kind === 'trunk' ? 'Контур радиаторов' + (d.mark ? ' ' + d.mark : '')
             : d.kind === 'ufh' ? 'Контур тёплого пола' + (d.mark ? ' ' + d.mark : '')
                 : d.kind === 'dhw' ? 'Контур загрузки бойлера'
+                : d.kind === 'snow' ? 'Контур снеготаяния' + (d.mark ? ' ' + d.mark : '')
                     : d.kind === 'boiler' ? 'Котёл'
                     : d.kind === 'main' ? 'Гребёнка котельной'
                     : d.kind === 'sec' ? 'Контуры за гидрострелкой'
@@ -27788,8 +27797,11 @@ const app = {
                     (m.ok ? ' — хватает.' : ' — не хватает.'));
             } else if (d.kind === 'dhw' && hyd.dhw) {
                 const w = hyd.dhw;
-                lines.push('Пока греется бойлер, котёл гонит горячую воду в змеевик внутри бака ' +
-                    'и возвращает её остывшей. Вода из крана с теплоносителем не смешивается.');
+                lines.push((sep && cfg.loadPump)
+                    ? 'Насос группы загрузки берёт горячую воду из гидрострелки и гонит её в змеевик ' +
+                      'внутри бака, остывшая возвращается в стрелку. Вода из крана с теплоносителем не смешивается.'
+                    : 'Пока греется бойлер, котёл гонит горячую воду в змеевик внутри бака ' +
+                      'и возвращает её остывшей. Вода из крана с теплоносителем не смешивается.');
                 if (w.boilerKw > 0 && w.boilerKw < w.coilKw) {
                     lines.push('Змеевик рассчитан на ' + num(w.coilKw, 1, 'кВт') + ', но котёл даёт ' +
                         num(w.boilerKw, 1, 'кВт') + ' — контур считается по меньшему.');
@@ -27817,6 +27829,14 @@ const app = {
             } else if (d.kind === 'main') {
                 lines.push('Гребёнка: сюда котлы отдают горячую воду, отсюда она расходится по контурам; ' +
                     'по нижней трубе остывшая возвращается к котлам. Общий расход ' + num(hyd.flow, 2, 'м³/ч') + '.');
+            } else if (d.kind === 'snow') {
+                lines.push((sep
+                    ? 'Насос группы берёт воду из гидрострелки и гонит её через смесительный клапан ' +
+                      'к теплообменнику узла снеготаяния; остывшая возвращается по синему стояку в стрелку. ' +
+                      'Дальше стрелки контур не идёт.'
+                    : 'От гребёнки вода идёт через смесительный клапан к теплообменнику узла снеготаяния; ' +
+                      'остывшая возвращается по синему стояку.') +
+                    ' За теплообменником — свой контур на гликоле, он на схеме узла снеготаяния.');
             } else if (d.kind === 'sec') {
                 lines.push('Из гидрострелки по верхней трубе горячая вода идёт к насосным группам, ' +
                     'по нижней остывшая возвращается в стрелку. Воду гонят насосы групп; котловой ' +
@@ -27838,7 +27858,7 @@ const app = {
         }
         el.innerHTML = '<div class="hyd-hint__t">' + esc(title) + '</div>' +
             lines.map(l => '<div class="hyd-hint__l">' + l + '</div>').join('') +
-            (d.kind ? '<div class="hyd-hint__f">Нажмите — полная карточка с числами · плашку можно перетащить</div>' : '');
+            ((d.kind && (d.kind !== 'snow' || d.sym)) ? '<div class="hyd-hint__f">Нажмите — полная карточка с числами · плашку можно перетащить</div>' : '');
         this._hydDraggable(el, '_hydHintPos');
         this._hydHintPlace(d.svg);
     },
@@ -28083,7 +28103,9 @@ const app = {
         if (hyd && d.kind === 'dhw') body = this._hydCardDhw(hyd);
         else if (hyd && d.kind === 'ufh') body = this._hydCardUfh(hyd, d.mark, d.i);
         else if (hyd && d.kind === 'trunk') body = this._hydCardTrunk(hyd, d.mark);
-        else if (hyd && d.kind) body = this._hydCardBoiler(hyd);
+        // У снеготаяния чисел на этой схеме нет — они на схеме узла; карточка
+        // котла под его заголовком была бы про другое.
+        else if (hyd && d.kind && d.kind !== 'snow') body = this._hydCardBoiler(hyd);
         if (body && d.kind === 'main') body.title = 'Гребёнка и кольцо системы';
         if (body && (d.kind === 'hydro' || d.kind === 'sec')) body.title = 'Гидрострелка и кольцо системы';
         // Символ вне контуров (легенда, бак, бойлер): карточка — только что
