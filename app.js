@@ -8241,6 +8241,8 @@ const app = {
         // В разметку уходит порядковый номер, а не ключ: в ключе почта или
         // название компании, и кавычка в названии сломала бы onclick
         const groupById = {};
+        const headById = {};
+        const subByDist = {};
         groups.forEach((g, i) => { g.id = 'c' + i; groupById[g.id] = g; });
         groups.forEach(g => {
             const names = {};
@@ -8261,6 +8263,21 @@ const app = {
                 if (!ra !== !rb) return ra ? -1 : 1;
                 return ra.localeCompare(rb, 'ru');
             });
+            // Руководители направлений внутри компании: филиалы делятся по «Email
+            // директора». Уровень рисуется, только когда руководителей больше одного —
+            // иначе он просто повторял бы компанию.
+            const bySub = {};
+            g.dists.forEach(d => { const k = lc(d.director_email); (bySub[k] = bySub[k] || []).push(d); });
+            g.subs = Object.keys(bySub).map(k => ({ email: k, user: k ? (userByEmail[k] || null) : null, dists: bySub[k], group: g }))
+                .sort((a, b) => (!a.email - !b.email) || (b.dists.length - a.dists.length));
+            g.subs.forEach((s, i) => {
+                s.id = g.id + 'h' + i;
+                s.stats = statsFor(s.dists.map(d => String(d.id)));
+                s.label = s.user ? nameOf(s.user) : (s.email || 'Без руководителя');
+                headById[s.id] = s;
+                s.dists.forEach(d => { subByDist[String(d.id)] = s; });
+            });
+            g.layered = g.subs.length > 1;
         });
 
         const branchLabel = (d, g) => {
@@ -8284,6 +8301,7 @@ const app = {
         const nodeExists = (s) => {
             if (!s) return false;
             if (s.type === 'company') return !!groupById[s.id];
+            if (s.type === 'head') return !!headById[s.id];
             if (s.type === 'branch') return dists.some(d => String(d.id) === s.id);
             if (s.type === 'manager') return !!userById[s.id];
             return false;
@@ -8307,11 +8325,19 @@ const app = {
             { k: 'paid', label: 'Оплачено', color: '#F59E0B' }
         ];
 
+        const plural = n => n % 10 === 1 && n % 100 !== 11 ? 'филиал' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'филиала' : 'филиалов');
+        const sumsHtml = (st) => `<div class="brx-sum">
+                <span>📤 <b>${fmtN(st.invites)}</b> ссылок</span>
+                <span>👷 <b>${fmtN(st.joined)}</b> подключилось</span>
+                <span>📋 <b>${fmtN(st.estimates)}</b> смет</span>
+                <span>💰 <b>${fmtRub(st.paidSum)}</b> оплачено</span>
+            </div>`;
+
         const treeHtml = groups.map(g => {
             const bStats = {};
             g.dists.forEach(d => { bStats[d.id] = statsFor([d.id]); });
             const maxOf = k => Math.max(0, ...g.dists.map(d => bStats[d.id][k]));
-            const branchesHtml = g.dists.map(d => {
+            const branchCard = d => {
                 const s = bStats[d.id];
                 const mgrs = managersOf(d);
                 const mgrHtml = mgrs.length
@@ -8326,27 +8352,53 @@ const app = {
                         <div class="brx-mgrs">${mgrHtml}</div>
                     </div>
                 </div>`;
-            }).join('');
+            };
             const HEADS_SHOWN = 4;
-            const headsHtml = (g.heads.slice(0, HEADS_SHOWN).map(h => `<span class="brx-head" title="${esc(h.email || '')}">👤 ${esc(nameOf(h))}</span>`).join('')
-                + (g.heads.length > HEADS_SHOWN ? `<span class="brx-muted">и ещё ${g.heads.length - HEADS_SHOWN}</span>` : '')
-                + (g.directorEmail ? `<span class="brx-muted">Директор ${esc(g.directorEmail)} не зарегистрирован</span>` : ''))
-                || '<span class="brx-muted">Руководитель не назначен</span>';
+            // При уровне руководителей директора стоят в своих узлах — над компанией
+            // остаются только наблюдатели, чтобы имена не шли дважды
+            const subUserIds = new Set(g.subs.filter(s => s.user).map(s => String(s.user.id)));
+            const topHeads = g.layered ? g.heads.filter(h => !subUserIds.has(String(h.id))) : g.heads;
+            const headsHtml = (topHeads.slice(0, HEADS_SHOWN).map(h => `<span class="brx-head" title="${esc(h.email || '')}">👤 ${esc(nameOf(h))}</span>`).join('')
+                + (topHeads.length > HEADS_SHOWN ? `<span class="brx-muted">и ещё ${topHeads.length - HEADS_SHOWN}</span>` : '')
+                + (!g.layered && g.directorEmail ? `<span class="brx-muted">Директор ${esc(g.directorEmail)} не зарегистрирован</span>` : ''))
+                || (g.layered ? '' : '<span class="brx-muted">Руководитель не назначен</span>');
+
+            const below = g.layered
+                ? `<div class="brx-heads">${g.subs.map(s => `
+                    <div class="brx-hblock" style="flex:${s.dists.length} 1 ${Math.min(s.dists.length, 3) * 240}px;">
+                        <div class="brx-node brx-headnode${isSel('head', s.id) ? ' sel' : ''}" onclick="app.selectBranchNode('head','${s.id}')">
+                            <div class="brx-title">${s.email ? '👤' : '❔'} ${esc(s.label)} <span class="brx-muted" style="font-weight:600;">· ${s.dists.length} ${plural(s.dists.length)}</span></div>
+                            <div class="brx-muted" style="margin:2px 0 6px;">${s.email ? (s.user ? esc(s.email) : 'не зарегистрирован') : 'в карточках не указан «Email директора»'}</div>
+                            ${sumsHtml(s.stats)}
+                        </div>
+                        <div class="brx-stem"></div>
+                        <div class="brx-branches">${s.dists.map(branchCard).join('')}</div>
+                    </div>`).join('')}
+                </div>`
+                : `<div class="brx-branches">${g.dists.map(branchCard).join('')}</div>`;
+
             return `<div class="brx-group">
                 <div class="brx-node brx-company${isSel('company', g.id) ? ' sel' : ''}" onclick="app.selectBranchNode('company','${g.id}')">
-                    <div class="brx-title" style="font-size:15px;">🏢 ${esc(g.title)} <span class="brx-muted" style="font-weight:600;">· ${g.dists.length} ${g.dists.length === 1 ? 'филиал' : (g.dists.length < 5 ? 'филиала' : 'филиалов')}</span></div>
-                    <div style="margin:4px 0 8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">${headsHtml}</div>
-                    <div class="brx-sum">
-                        <span>📤 <b>${fmtN(g.stats.invites)}</b> ссылок</span>
-                        <span>👷 <b>${fmtN(g.stats.joined)}</b> подключилось</span>
-                        <span>📋 <b>${fmtN(g.stats.estimates)}</b> смет</span>
-                        <span>💰 <b>${fmtRub(g.stats.paidSum)}</b> оплачено</span>
-                    </div>
+                    <div class="brx-title" style="font-size:15px;">🏢 ${esc(g.title)} <span class="brx-muted" style="font-weight:600;">· ${g.dists.length} ${plural(g.dists.length)}${g.layered ? ` · ${g.subs.length} руковод.` : ''}</span></div>
+                    ${headsHtml ? `<div style="margin:4px 0 8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">${g.layered ? '<span class="brx-muted">Наблюдатели:</span>' : ''}${headsHtml}</div>` : '<div style="height:6px;"></div>'}
+                    ${sumsHtml(g.stats)}
                 </div>
                 <div class="brx-stem"></div>
-                <div class="brx-branches">${branchesHtml}</div>
+                ${below}
             </div>`;
         }).join('');
+
+        const branchTable = (list, g) => {
+            const rows = list.map(d => {
+                const s = statsFor([d.id]);
+                return `<tr onclick="app.selectBranchNode('branch','${d.id}')" style="cursor:pointer;">
+                    <td>${esc(branchLabel(d, g))}</td><td>${fmtN(s.invites)}</td><td>${fmtN(s.joined)}</td><td>${fmtN(s.estimates)}</td><td>${fmtN(s.paid)}</td><td style="white-space:nowrap;">${fmtRub(s.paidSum)}</td></tr>`;
+            }).join('');
+            return `<div class="brx-h">Сравнение филиалов</div>
+                <div style="overflow-x:auto;"><table class="brx-table">
+                    <thead><tr><th>Филиал</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Оплат</th><th>Сумма</th></tr></thead>
+                    <tbody>${rows}</tbody></table></div>`;
+        };
 
         // ── Панель выбранного узла ──
         let title = '', subtitle = '', stats = null, extraHtml = '', note = '';
@@ -8354,22 +8406,31 @@ const app = {
             const g = groupById[sel.id];
             stats = g.stats;
             title = '🏢 ' + g.title;
-            subtitle = `${g.dists.length} ${g.dists.length === 1 ? 'филиал' : (g.dists.length < 5 ? 'филиала' : 'филиалов')}` + (g.heads.length ? ' · руководитель ' + g.heads.map(nameOf).join(', ') : '');
-            const rows = g.dists.map(d => {
-                const s = statsFor([d.id]);
-                return `<tr onclick="app.selectBranchNode('branch','${d.id}')" style="cursor:pointer;">
-                    <td>${esc(branchLabel(d, g))}</td><td>${fmtN(s.invites)}</td><td>${fmtN(s.joined)}</td><td>${fmtN(s.estimates)}</td><td>${fmtN(s.paid)}</td><td style="white-space:nowrap;">${fmtRub(s.paidSum)}</td></tr>`;
-            }).join('');
-            extraHtml = `<div class="brx-h">Сравнение филиалов</div>
+            subtitle = `${g.dists.length} ${plural(g.dists.length)}` + (g.layered
+                ? ` · руководители: ${g.subs.map(s => s.label).join(', ')}`
+                : (g.heads.length ? ' · руководитель ' + g.heads.map(nameOf).join(', ') : ''));
+            const headsTable = !g.layered ? '' : `<div class="brx-h">Руководители</div>
                 <div style="overflow-x:auto;"><table class="brx-table">
-                    <thead><tr><th>Филиал</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Оплат</th><th>Сумма</th></tr></thead>
-                    <tbody>${rows}</tbody></table></div>`;
+                    <thead><tr><th>Руководитель</th><th>Филиалов</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Сумма</th></tr></thead>
+                    <tbody>${g.subs.map(s => `<tr onclick="app.selectBranchNode('head','${s.id}')" style="cursor:pointer;">
+                        <td>${esc(s.label)}</td><td>${fmtN(s.dists.length)}</td><td>${fmtN(s.stats.invites)}</td><td>${fmtN(s.stats.joined)}</td><td>${fmtN(s.stats.estimates)}</td><td style="white-space:nowrap;">${fmtRub(s.stats.paidSum)}</td></tr>`).join('')}</tbody>
+                </table></div>`;
+            extraHtml = headsTable + branchTable(g.dists, g);
+        } else if (sel.type === 'head') {
+            const s = headById[sel.id];
+            stats = s.stats;
+            title = (s.email ? '👤 ' : '❔ ') + s.label;
+            subtitle = [`Руководитель · ${s.group.title}`, `${s.dists.length} ${plural(s.dists.length)}`,
+                s.email ? (s.user ? s.email : s.email + ' — не зарегистрирован') : 'у карточек не указан «Email директора»'].join(' · ');
+            if (s.user) subtitle += ' · заходил: ' + visited(s.user.last_visited);
+            extraHtml = branchTable(s.dists, s.group);
         } else if (sel.type === 'branch') {
             const d = dists.find(x => String(x.id) === sel.id);
             const g = groups.find(x => x.dists.includes(d));
+            const sub = subByDist[String(d.id)];
             stats = statsFor([d.id]);
             title = '🏬 ' + branchLabel(d, g);
-            subtitle = `${g.title} · промокод ${String(d.promo_code || '—').toUpperCase()}`;
+            subtitle = `${g.title}${g.layered && sub ? ' · руководитель ' + sub.label : ''} · промокод ${String(d.promo_code || '—').toUpperCase()}`;
             const mgrs = managersOf(d);
             extraHtml = `<div class="brx-h">Менеджеры филиала</div>` + (mgrs.length
                 ? mgrs.map(u => {
@@ -8468,6 +8529,11 @@ const app = {
                 .brx-company .brx-sum, .brx-company > div { justify-content:center; }
                 .brx-stem { width:2px; height:18px; background:var(--border); margin:0 auto; }
                 .brx-branches { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:18px 14px; border-top:2px solid var(--border); padding-top:18px; }
+                .brx-heads { display:flex; flex-wrap:wrap; gap:22px 18px; align-items:flex-start; border-top:2px solid var(--border); padding-top:18px; }
+                .brx-hblock { position:relative; min-width:240px; }
+                .brx-hblock::before { content:''; position:absolute; left:50%; top:-18px; width:2px; height:18px; background:var(--border); }
+                .brx-headnode { max-width:420px; margin:0 auto; text-align:center; background:var(--surface-light); border-style:dashed; }
+                .brx-headnode .brx-sum { justify-content:center; }
                 .brx-bwrap { position:relative; }
                 .brx-bwrap::before { content:''; position:absolute; left:50%; top:-18px; width:2px; height:18px; background:var(--border); }
                 .brx-title { font-weight:800; color:var(--text-main); font-size:13.5px; overflow-wrap:anywhere; }
