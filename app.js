@@ -8056,7 +8056,7 @@ const app = {
         const data = { key: distIds.slice().sort().join(','), dists, people: [], staff: [], heads: [], estimates: [], events: [], activity: [], activityMissing: false };
         if (!distIds.length) return data;
 
-        const userCols = 'id, username, first_name, last_name, middle_name, email, account_type, distributor_id, distributor_assigned_at, last_visited';
+        const userCols = 'id, username, first_name, last_name, middle_name, email, account_type, distributor_id, distributor_assigned_at, last_visited, activity_types';
 
         // 1. Все, кто привязан к филиалам: монтажники и менеджеры с ролью
         for (const part of chunk(distIds, 60)) {
@@ -8185,10 +8185,24 @@ const app = {
         });
 
         // ── Подсчёт по набору филиалов (и, для менеджера, по его действиям) ──
+        // Продавец — тот, у кого в анкете сфера «продажа» без монтажа: то же правило,
+        // что isSellerOnly и счётчики «Пользователей». Отмечены обе сферы или анкета
+        // пустая — считаем монтажником.
+        const isSeller = u => {
+            const list = Array.isArray(u.activity_types) ? u.activity_types : [];
+            const has = w => list.some(a => String(a).toLowerCase().indexOf(w) !== -1);
+            return has('продав') && !has('монтаж');
+        };
         const statsFor = (distIdList, actorId) => {
             const ids = new Set(distIdList.map(String));
+            // inst — все клиенты филиала (монтажники и продавцы): сметы и счета
+            // считаются по всем, а люди — раздельно
             const inst = installers.filter(u => ids.has(String(u.distributor_id)));
             const instIds = new Set(inst.map(u => String(u.id)));
+            const sellers = inst.filter(isSeller);
+            const sellerIds = new Set(sellers.map(u => String(u.id)));
+            const fitters = inst.filter(u => !sellerIds.has(String(u.id)));
+            const joinedOf = list => from ? list.filter(u => inPeriod(u.distributor_assigned_at)).length : list.length;
             const act = D.activity.filter(a => inPeriod(a.created_at)
                 && (actorId ? String(a.actor_id) === String(actorId) : ids.has(String(a.distributor_id))));
             const est = D.estimates.filter(e => instIds.has(String(e.user_id)) && inPeriod(e.created_at));
@@ -8207,12 +8221,17 @@ const app = {
                 invites: act.filter(a => String(a.action).indexOf('invite_') === 0).length,
                 statuses: act.filter(a => a.action === 'status_change').length,
                 messages: act.filter(a => a.action === 'message').length,
-                installers: inst.length,
+                installers: fitters.length,
+                sellers: sellers.length,
                 // Отметки привязки нет у старых учёток — за «всё время» считаем их всех
-                joined: from ? inst.filter(u => inPeriod(u.distributor_assigned_at)).length : inst.length,
-                active30: inst.filter(u => u.last_visited && new Date(u.last_visited).getTime() > monthAgo).length,
-                calcUsers: new Set(est.map(e => String(e.user_id))).size,
+                joined: joinedOf(fitters),
+                joinedSellers: joinedOf(sellers),
+                active30: fitters.filter(u => u.last_visited && new Date(u.last_visited).getTime() > monthAgo).length,
+                active30Sellers: sellers.filter(u => u.last_visited && new Date(u.last_visited).getTime() > monthAgo).length,
+                calcUsers: new Set(est.filter(e => !sellerIds.has(String(e.user_id))).map(e => String(e.user_id))).size,
+                calcSellers: new Set(est.filter(e => sellerIds.has(String(e.user_id))).map(e => String(e.user_id))).size,
                 estimates: est.length,
+                estimatesSellers: est.filter(e => sellerIds.has(String(e.user_id))).length,
                 sent: evDistinct(['sent', 'printed']).size,
                 requested: evDistinct(['invoice_requested']).size,
                 issued: evDistinct(['invoice_issued']).size,
@@ -8324,7 +8343,8 @@ const app = {
         };
         const METRICS = [
             { k: 'invites', label: 'Ссылок', color: '#6366F1' },
-            { k: 'joined', label: 'Подключилось', color: '#10B981' },
+            { k: 'joined', label: 'Монтажников', color: '#10B981' },
+            { k: 'joinedSellers', label: 'Продавцов', color: '#EC4899' },
             { k: 'estimates', label: 'Смет', color: '#0EA5E9' },
             { k: 'paid', label: 'Оплачено', color: '#F59E0B' }
         ];
@@ -8332,7 +8352,8 @@ const app = {
         const plural = n => n % 10 === 1 && n % 100 !== 11 ? 'филиал' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'филиала' : 'филиалов');
         const sumsHtml = (st) => `<div class="brx-sum">
                 <span>📤 <b>${fmtN(st.invites)}</b> ссылок</span>
-                <span>👷 <b>${fmtN(st.joined)}</b> подключилось</span>
+                <span>👷 <b>${fmtN(st.joined)}</b> монтажников</span>
+                <span>🛒 <b>${fmtN(st.joinedSellers)}</b> продавцов</span>
                 <span>📋 <b>${fmtN(st.estimates)}</b> смет</span>
                 <span>💰 <b>${fmtRub(st.paidSum)}</b> оплачено</span>
             </div>`;
@@ -8351,7 +8372,7 @@ const app = {
                 return `<div class="brx-bwrap">
                     <div class="brx-node brx-branch${isSel('branch', d.id) ? ' sel' : ''}${d.is_active === false ? ' off' : ''}" onclick="app.selectBranchNode('branch','${d.id}')">
                         <div class="brx-title">🏬 ${esc(branchLabel(d, g))}</div>
-                        <div class="brx-muted" style="margin-bottom:8px;">Промокод <b>${esc(String(d.promo_code || '—').toUpperCase())}</b> · монтажников ${fmtN(s.installers)}${d.is_active === false ? ' · выключен' : ''}</div>
+                        <div class="brx-muted" style="margin-bottom:8px;">Промокод <b>${esc(String(d.promo_code || '—').toUpperCase())}</b> · монтажников ${fmtN(s.installers)} · продавцов ${fmtN(s.sellers)}${d.is_active === false ? ' · выключен' : ''}</div>
                         ${METRICS.map(m => `<div class="brx-metric"><span>${m.label}</span>${bar(s[m.k], maxOf(m.k), m.color)}<b>${fmtN(s[m.k])}</b></div>`).join('')}
                         <div class="brx-mgrs">${mgrHtml}</div>
                     </div>
@@ -8396,11 +8417,11 @@ const app = {
             const rows = list.map(d => {
                 const s = statsFor([d.id]);
                 return `<tr onclick="app.selectBranchNode('branch','${d.id}')" style="cursor:pointer;">
-                    <td>${esc(branchLabel(d, g))}</td><td>${fmtN(s.invites)}</td><td>${fmtN(s.joined)}</td><td>${fmtN(s.estimates)}</td><td>${fmtN(s.paid)}</td><td style="white-space:nowrap;">${fmtRub(s.paidSum)}</td></tr>`;
+                    <td>${esc(branchLabel(d, g))}</td><td>${fmtN(s.invites)}</td><td>${fmtN(s.joined)}</td><td>${fmtN(s.joinedSellers)}</td><td>${fmtN(s.estimates)}</td><td>${fmtN(s.paid)}</td><td style="white-space:nowrap;">${fmtRub(s.paidSum)}</td></tr>`;
             }).join('');
             return `<div class="brx-h">Сравнение филиалов</div>
                 <div style="overflow-x:auto;"><table class="brx-table">
-                    <thead><tr><th>Филиал</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Оплат</th><th>Сумма</th></tr></thead>
+                    <thead><tr><th>Филиал</th><th>Ссылок</th><th title="Подключилось монтажников">Монт.</th><th title="Подключилось продавцов">Прод.</th><th>Смет</th><th>Оплат</th><th>Сумма</th></tr></thead>
                     <tbody>${rows}</tbody></table></div>`;
         };
 
@@ -8415,9 +8436,9 @@ const app = {
                 : (g.heads.length ? ' · руководитель ' + g.heads.map(nameOf).join(', ') : ''));
             const headsTable = !g.layered ? '' : `<div class="brx-h">Руководители</div>
                 <div style="overflow-x:auto;"><table class="brx-table">
-                    <thead><tr><th>Руководитель</th><th>Филиалов</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Сумма</th></tr></thead>
+                    <thead><tr><th>Руководитель</th><th>Филиалов</th><th>Ссылок</th><th title="Подключилось монтажников">Монт.</th><th title="Подключилось продавцов">Прод.</th><th>Смет</th><th>Сумма</th></tr></thead>
                     <tbody>${g.subs.map(s => `<tr onclick="app.selectBranchNode('head','${s.id}')" style="cursor:pointer;">
-                        <td>${esc(s.label)}</td><td>${fmtN(s.dists.length)}</td><td>${fmtN(s.stats.invites)}</td><td>${fmtN(s.stats.joined)}</td><td>${fmtN(s.stats.estimates)}</td><td style="white-space:nowrap;">${fmtRub(s.stats.paidSum)}</td></tr>`).join('')}</tbody>
+                        <td>${esc(s.label)}</td><td>${fmtN(s.dists.length)}</td><td>${fmtN(s.stats.invites)}</td><td>${fmtN(s.stats.joined)}</td><td>${fmtN(s.stats.joinedSellers)}</td><td>${fmtN(s.stats.estimates)}</td><td style="white-space:nowrap;">${fmtRub(s.stats.paidSum)}</td></tr>`).join('')}</tbody>
                 </table></div>`;
             extraHtml = headsTable + branchTable(g.dists, g);
         } else if (sel.type === 'head') {
@@ -8465,16 +8486,19 @@ const app = {
         const conv = (a, b) => (b > 0 && a <= b) ? Math.round(a / b * 100) + '%' : '—';
         const tiles = [
             { label: 'Разослано ссылок', val: fmtN(stats.invites), sub: 'поделиться, ссылка, QR, печать' },
-            { label: 'Подключилось монтажников', val: fmtN(stats.joined), sub: 'из ссылок: ' + conv(stats.joined, stats.invites) },
-            { label: 'Активны за 30 дней', val: fmtN(stats.active30), sub: 'всего монтажников ' + fmtN(stats.installers) },
-            { label: 'Сметы', val: fmtN(stats.estimates), sub: 'считали ' + fmtN(stats.calcUsers) + ' монтажн.' },
+            { label: 'Подключилось монтажников', val: fmtN(stats.joined), sub: 'всего ' + fmtN(stats.installers) + ' · активны за 30 дн. ' + fmtN(stats.active30) },
+            { label: 'Подключилось продавцов', val: fmtN(stats.joinedSellers), sub: 'всего ' + fmtN(stats.sellers) + ' · активны за 30 дн. ' + fmtN(stats.active30Sellers) },
+            { label: 'Сметы', val: fmtN(stats.estimates), sub: 'монтажники ' + fmtN(stats.estimates - stats.estimatesSellers) + ' · продавцы ' + fmtN(stats.estimatesSellers)
+                + ' · из ссылок подключилось ' + conv(stats.joined + stats.joinedSellers, stats.invites) },
             { label: 'Отправлено клиентам', val: fmtN(stats.sent), sub: 'запрошено счетов ' + fmtN(stats.requested) },
             { label: 'Оплачено', val: fmtRub(stats.paidSum), sub: fmtN(stats.paid) + ' смет' }
         ];
         const funnel = [
             { label: 'Разослано ссылок', v: stats.invites },
             { label: 'Подключилось монтажников', v: stats.joined },
-            { label: 'Посчитали смету', v: stats.calcUsers },
+            { label: 'Подключилось продавцов', v: stats.joinedSellers },
+            { label: 'Считали сметы (монтажники)', v: stats.calcUsers },
+            { label: 'Считали сметы (продавцы)', v: stats.calcSellers },
             { label: 'Отправлено клиентам', v: stats.sent },
             { label: 'Запрошен счёт', v: stats.requested },
             { label: 'Счёт выставлен', v: stats.issued },
