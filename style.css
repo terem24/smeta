@@ -4990,7 +4990,20 @@ body.dark-mode .header-totals-block {
     .inv-table td.col-sum {
         white-space: nowrap;
     }
-}/* ========================================= */
+}
+
+/* Окно замены с двумя ценами (основание и труба тёплого пола): материал
+   отдельно и система целиком, под каждой ценой свой процент к выбранному.
+   Обе ячейки цены и строки под названием — одного кегля, чтобы колонки
+   читались ровно. Подпись .two-lbl нужна только телефону, где шапки нет. */
+.inv-table.swap-two td { vertical-align: middle; }
+.inv-table.swap-two td.two-name { font-size: 13px; font-weight: 600; text-align: left; line-height: 1.3; }
+.inv-table.swap-two .two-sub { display: block; margin-top: 3px; font-size: 11px; font-weight: 500; line-height: 1.35; color: var(--text-sec); }
+.inv-table.swap-two td.col-two { text-align: right; white-space: nowrap; }
+.inv-table.swap-two .two-lbl { display: none; }
+.inv-table.swap-two .two-val { display: block; font-size: 13px; font-weight: 700; line-height: 1.3; color: var(--text-main); }
+.inv-table.swap-two .two-pct { display: block; margin-top: 3px; font-size: 11px; font-weight: 700; line-height: 1.35; }
+/* ========================================= */
 /*       MOBILE APP OVERHAUL (BOTTOM NAV)      */
 /* ========================================= */
 @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
@@ -5268,6 +5281,43 @@ body.dark-mode .header-totals-block {
     }
     body.hide-images-mode .inv-table td.col-name {
         font-size: 12px !important;
+    }
+
+    /* Две цены в окне замены: название над ними на всю ширину, цены — двумя
+       плашками рядом, у каждой своя подпись, потому что шапка таблицы скрыта. */
+    .inv-table.swap-two tr:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) {
+        /* minmax(0, …): иначе подпись в одну строку не даёт колонке сжаться на 320px */
+        grid-template-columns: 64px minmax(0, 1fr) minmax(0, 1fr) !important;
+        grid-template-areas:
+            "img name name"
+            "img u s" !important;
+        gap: 6px 8px !important;
+    }
+    body.hide-images-mode .inv-table.swap-two tr:not(.row-sec):not(.group-header):not(.row-subtotal):not(.empty-state-row):not(.hide-custom-work-btn):not(.hide-custom-eq-btn):not(.scheme-row) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+        grid-template-areas:
+            "name name"
+            "u s" !important;
+    }
+    .inv-table.swap-two td.col-two {
+        display: block !important;
+        min-width: 0 !important;
+        text-align: left !important;
+        white-space: normal !important;
+        /* 12px по бокам — как у названия над плашками, чтобы текст шёл одной линией */
+        padding: 6px 12px !important;
+        border-radius: 8px !important;
+        background: var(--surface-light) !important;
+    }
+    .inv-table.swap-two td.col-two-u { grid-area: u !important; }
+    .inv-table.swap-two td.col-two-s { grid-area: s !important; }
+    /* Подпись в одну строку: перенос у одной плашки опускал бы её сумму ниже соседней */
+    .inv-table.swap-two .two-lbl { display: block; margin-bottom: 2px; font-size: 10.5px; font-weight: 600; line-height: 1.25; color: var(--text-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .inv-table.swap-two .two-val { font-size: 14px; }
+    /* Самые узкие экраны: в строку подпись уже не помещается и теряла бы «за м²».
+       Переносим, но держим две строки в обеих плашках — суммы остаются вровень. */
+    @media (max-width: 360px) {
+        .inv-table.swap-two .two-lbl { white-space: normal; overflow: visible; min-height: 2.5em; }
     }
 
     /* Compact wrappers on mobile */

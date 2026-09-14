@@ -1544,8 +1544,11 @@ const app = {
             + ` Магазин «${d.company_name || ''}»${d.manager_name ? ', ' + d.manager_name : ''}.`;
     },
 
+    // Карточка компании для кнопок приглашения: из панели управления или, у
+    // менеджера без роли, из раздела кабинета «Мои монтажники»
     findDist: function (id) {
-        return ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === String(id)) || null;
+        const pool = ((this.adminData && this.adminData.distributors) || []).concat(this._cabinetInviteDists || []);
+        return pool.find(d => String(d.id) === String(id)) || null;
     },
 
     // Занятые места и активные за 30 дней по компаниям — одним запросом.
@@ -1729,6 +1732,52 @@ const app = {
             <button type="button" style="${st}" onclick="app.printInviteSheet('${id}')" title="Лист А5 на кассу">🖨 Печать</button>`;
     },
 
+    // Карточка «Пригласить монтажника» по каждой компании: промокод, ссылка,
+    // кнопки раздачи и счётчик. Одна и та же у менеджера в панели управления и
+    // в разделе кабинета «Мои монтажники».
+    inviteCardsHtml: function (dists) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
+        return (dists || []).map(d => {
+            const code = String(d.promo_code || '').toUpperCase();
+            const months = Number(d.pro_months) || 0;
+            return `<div style="${box}">
+                <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:10px;">
+                    <div style="font-size:14px; font-weight:800; color:var(--text-main);">🏪 Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
+                    <div style="font-size:13px;">Приглашено: <span data-invite-used="${d.id}">…</span></div>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px;">
+                    <span style="font-size:12px; color:var(--text-sec);">Промокод</span>
+                    <b style="font-size:16px; letter-spacing:0.08em; color:var(--primary);">${esc(code)}</b>
+                    <span style="font-size:12px; color:var(--text-sec); word-break:break-all;">${esc(this.inviteLinkFor(code))}</span>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">${this.inviteButtonsHtml(d, false)}</div>
+                <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">
+                    Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
+                    Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
+                </div>
+            </div>`;
+        }).join('');
+    },
+
+    // Компании, где эта почта стоит менеджером, — для карточек приглашения в
+    // кабинете. Отбор тот же, что у resolveManagedInstallers. Выключенные
+    // компании не берём: их промокод всё равно не сработает.
+    loadCabinetInviteDists: async function (managerEmail) {
+        if (!managerEmail) { this._cabinetInviteDists = []; return []; }
+        try {
+            const { data, error } = await supabaseClient.from('distributors')
+                .select('id, company_name, manager_name, manager_phone, promo_code, pro_months, invite_limit, is_active')
+                .ilike('manager_email', managerEmail.trim());
+            if (error) throw error;
+            this._cabinetInviteDists = (data || []).filter(d => d.is_active !== false && d.promo_code);
+        } catch (e) {
+            console.warn('[приглашения] компании менеджера не прочитаны:', e.message || e);
+            this._cabinetInviteDists = [];
+        }
+        return this._cabinetInviteDists;
+    },
+
     // Блок над списком монтажников у менеджера и наблюдателя (вкладка
     // «Пользователи»). Менеджеру — карточка своего магазина со ссылкой и
     // счётчиком; наблюдателю — сводка по всем его магазинам. Администратору
@@ -1741,26 +1790,7 @@ const app = {
         const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
         let html;
         if (this.isManagerRole()) {
-            html = dists.map(d => {
-                const code = String(d.promo_code || '').toUpperCase();
-                const months = Number(d.pro_months) || 0;
-                return `<div style="${box}">
-                    <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px 16px; margin-bottom:10px;">
-                        <div style="font-size:14px; font-weight:800; color:var(--text-main);">🏪 Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
-                        <div style="font-size:13px;">Приглашено: <span data-invite-used="${d.id}">…</span></div>
-                    </div>
-                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-bottom:10px;">
-                        <span style="font-size:12px; color:var(--text-sec);">Промокод</span>
-                        <b style="font-size:16px; letter-spacing:0.08em; color:var(--primary);">${esc(code)}</b>
-                        <span style="font-size:12px; color:var(--text-sec); word-break:break-all;">${esc(this.inviteLinkFor(code))}</span>
-                    </div>
-                    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px;">${this.inviteButtonsHtml(d, false)}</div>
-                    <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">
-                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
-                        Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
-                    </div>
-                </div>`;
-            }).join('');
+            html = this.inviteCardsHtml(dists);
         } else {
             const rows = dists.map(d => `<tr>
                 <td><b>${esc(d.company_name)}</b></td>
@@ -6757,9 +6787,18 @@ const app = {
         const me = await this.resolveCurrentUserForChat();
         if (!me) { container.innerHTML = `<div class="lk-empty">Авторизуйтесь, чтобы увидеть список монтажников.</div>`; return; }
 
-        const installers = await this.resolveManagedInstallers(me.email);
+        const [installers, inviteDists] = await Promise.all([
+            this.resolveManagedInstallers(me.email),
+            this.loadCabinetInviteDists(me.email)
+        ]);
+        // Ссылка-приглашение сверху: без неё новому менеджеру некого было бы и
+        // увидеть в этом списке
+        const inviteHtml = this.inviteCardsHtml(inviteDists);
+        // Счётчик «Приглашено» дописывается в уже вставленную разметку
+        const fillInvites = () => { if (inviteDists.length) this.fillInviteStats(inviteDists.map(d => d.id)); };
         if (!installers.length) {
-            container.innerHTML = `<div class="lk-empty">У вас пока нет привязанных монтажников.</div>`;
+            container.innerHTML = inviteHtml + `<div class="lk-empty">У вас пока нет привязанных монтажников.${inviteDists.length ? ' Отправьте им ссылку-приглашение.' : ''}</div>`;
+            fillInvites();
             return;
         }
         this._managedInstallersCache = installers;
@@ -6804,7 +6843,8 @@ const app = {
         h += `</div><div id="manager_installer_chat_detail" style="margin-top:16px;"></div>`;
         // Сводка считается своим запросом и приезжает позже списка: список с
         // перепиской нужен сразу, а числа могут и подождать секунду.
-        container.innerHTML = `<div id="manager_summary_host"></div>` + h;
+        container.innerHTML = inviteHtml + `<div id="manager_summary_host"></div>` + h;
+        fillInvites();
         this.renderManagerSummary(installers);
     },
 
@@ -10865,17 +10905,23 @@ const app = {
 
     // Показывает вкладку «Мои монтажники» только тем, кто зарегистрировался под email,
     // совпадающим с manager_email хотя бы одного дистрибьютора — то есть реально является
-    // чьим-то менеджером. Остальным вкладка вообще не показывается.
+    // чьим-то менеджером (с монтажниками или хотя бы с действующим промокодом).
+    // Остальным вкладка вообще не показывается.
     refreshManagerTabVisibility: async function (email) {
         const tabBtn = document.querySelector('#profile_nav .lk-nav-item[data-tab="installers"]');
         if (!tabBtn) return;
         tabBtn.style.display = 'none';
         if (!email) return;
         try {
-            const installers = await this.resolveManagedInstallers(email);
-            if (installers && installers.length) {
+            // Раздел нужен и менеджеру, у которого монтажников ещё нет: в нём
+            // ссылка-приглашение, по которой он их и соберёт
+            const [installers, inviteDists] = await Promise.all([
+                this.resolveManagedInstallers(email),
+                this.loadCabinetInviteDists(email)
+            ]);
+            if ((installers && installers.length) || inviteDists.length) {
                 tabBtn.style.display = '';
-                this._managedInstallersCache = installers;
+                this._managedInstallersCache = installers || [];
             }
         } catch (e) {
             console.warn('[refreshManagerTabVisibility] Ошибка проверки роли менеджера:', e);
@@ -35944,6 +35990,9 @@ const app = {
             // тем же шагом, каким смета считала трубу, иначе длины разойдутся.
             // Раньше страница листов доставала одно число из названия позиции.
             ufhSteps: [this.state.ufhStep1 || 150, this.state.ufhStep2 || 150],
+            // Высота этажей, м: по ней на схеме К1 стояк идёт от пола до
+            // потолка с отметками. Отметки на схемах — от чистого пола этажа.
+            floorH: [parseFloat(this.state.h1) || 2.7, parseFloat(this.state.h2) || 2.7],
             // Подписи на титульном и в штампах: «Разработал» — монтажник из
             // личного кабинета, ГИП — по умолчанию; место под подпись между
             // должностью и фамилией остаётся пустым, как в проектах.
@@ -42075,6 +42124,45 @@ const app = {
                 { id: 'metal_plastic', name: 'Труба металлопластиковая 16x2.0', brand: b_mp, price: p_mp, imgId: mpItem?.id },
                 ...(stbItem ? [{ id: 'stable', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: isRommer ? 'ROMMER' : 'STOUT', price: (isRommer && stbItem.rommer ? stbItem.rommer.price : stbItem.price), imgId: stbItem.id }] : [])
             ];
+            // Две цены, как у основания пола: труба за метр и система за м² пола.
+            // Система — метраж трубы плюс то, что render() ставит на каждую петлю:
+            // два евроконуса под стенку этой трубы, два фиксатора 90° и пара втулок.
+            // Метраж от трубы не зависит, а число петель зависит: у стабильной
+            // внутренний диаметр меньше, петля по гидравлике короче, петель больше.
+            // Петли текущей трубы — из расчёта, у других пересчитаны пропорционально
+            // предельной длине петли (ufhLoopMax) на каждом этаже.
+            const _fc = (this._ufhFloorCalc || []).filter(f => f && f.m > 0);
+            const _stp = [parseInt(this.state.ufhStep1, 10) || 150, parseInt(this.state.ufhStep2, 10) || 150];
+            const _tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            const _curPipe = this.ufhPipe();
+            const _prc = (it) => it ? ((isRommer && it.rommer) ? it.rommer.price : it.price) || 0 : 0;
+            const _perLoop = (p) => 2 * _prc((catalog.parts || []).find(x => x.id === p.conn))
+                + 2 * _prc((catalog.parts || [])[2])
+                + _prc((catalog.protective_sleeves || [])[0]) + _prc((catalog.protective_sleeves || [])[1]);
+            customAlts.forEach(alt => {
+                const p = this.UFH_PIPES.find(x => x.material === alt.id);
+                if (!p) return;
+                let meters = 0, loops = 0, area = _tpArea;
+                if (_fc.length && _tpArea > 0) {
+                    (this._ufhFloorCalc || []).forEach((f, i) => {
+                        if (!f || !(f.m > 0)) return;
+                        meters += f.m;
+                        loops += (p.key === _curPipe.key) ? f.loops
+                            : Math.ceil(f.loops * this.ufhLoopMax(_stp[i], _curPipe) / this.ufhLoopMax(_stp[i], p));
+                    });
+                } else {
+                    // Площади ещё нет — считаем на условные 100 м² при шаге первого этажа
+                    area = 100;
+                    meters = area / (_stp[0] / 1000) * 1.1;
+                    loops = Math.ceil(meters / this.ufhLoopMax(_stp[0], p));
+                }
+                alt.unitM2 = alt.price;
+                alt.unitHead = 'Труба, за м';
+                alt.sysHead = 'Система, за м²';
+                alt.unitLabel = `Петель: ${loops}`;
+                alt.price = (meters * alt.price + loops * _perLoop(p)) / area;
+                alt.sysText = `труба ${String(Math.round(meters / area * 10) / 10).replace('.', ',')} м на м², на каждую петлю ${p.connName} ×2, фиксатор 90° ×2, втулки`;
+            });
         }
         else if (item.originalId && (item.originalId.endsWith('_water') || (item.originalId.startsWith('SPX-0001-') && !item.originalId.endsWith('_rad'))) && !item.originalId.startsWith('SMB-') && !item.originalId.startsWith('RMS-')) {
             let p_pex = 0, p_mp = 0;
@@ -42105,9 +42193,34 @@ const app = {
             let _matR = (String(item.brand || '').toUpperCase() === 'ROMMER' && _matCat && _matCat.rommer) ? _matCat.rommer : null;
             let p_mat = (_matR ? _matR.price : _matCat?.price) || 991;
             let p_xps = catalog.xps_kit ? catalog.xps_kit[0]?.price || 299 : 299;
+            // Мат продаётся штукой 0,88 м², лист XPS — 0,68 м², поэтому цены «за штуку»
+            // рядом не сравнить. Даём две цены за м²: самого мата или листа и всей
+            // системы — с тем, что render() докладывает к ней в раздел 4.2 (запас 5 %,
+            // у XPS ещё подложка, дюбели 5 шт/м², скобы 2,5 шт на метр трубы, скотч по
+            // швам). Демпферная лента нужна при любом основании и в сравнение не входит.
+            // % и сортировка идут по цене системы.
+            const _matArea = (_matR ? _matR.area : _matCat?.area) || 0.88;
+            const _xk = catalog.xps_kit || [];
+            const _xpsArea = _xk[0]?.area || 0.6844;
+            const _tpA = (Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0);
+            const _pipePerM2 = (_tpA > 0 && this.tpMeters > 0) ? this.tpMeters / _tpA : 6.7;
+            const _sheetsM2 = 1.05 / _xpsArea;
+            const _sub = catalog.ufh_mat && catalog.ufh_mat[0];
+            const _xpsSys = _sheetsM2 * p_xps
+                + (_sub && _sub.pack_m2 ? _sub.price / _sub.pack_m2 : 0)
+                + 5 * (_xk[1]?.price || 0) / 100
+                + _pipePerM2 * 2.5 * (_xk[2]?.price || 0) / 25
+                + _sheetsM2 * 1.76 * 1.1 * (_xk[3]?.price || 0) / 50;
+            const _fmtA = (a) => String(Math.round(a * 100) / 100).replace('.', ',');
             customAlts = [
-                { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT', price: p_mat, imgId: _matR ? _matR.id : _matCat?.id },
-                { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol', price: p_xps, imgId: catalog.xps_kit?.[0]?.id }
+                { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT',
+                  price: p_mat * 1.05 / _matArea, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
+                  sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен',
+                  imgId: _matR ? _matR.id : _matCat?.id },
+                { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol',
+                  price: _xpsSys, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
+                  sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч',
+                  imgId: _xk[0]?.id }
             ];
         }
         else if (item.originalId && item.originalId.startsWith('SCS-0001')) {
@@ -43605,17 +43718,25 @@ const app = {
         const _priceTh = _isTankItem
             ? `<th style="text-align:right;width:100px;${_sortStyle}" onclick="app.toggleTankSwapSort('price')">Цена${_priceArrow}</th>`
             : `<th style="text-align:right;width:100px;${_sortStyle}" onclick="app.toggleSwapSort('price')">Цена${_ssA('price')}</th>`;
+        // Основание и труба тёплого пола: цена самого материала отдельно и цена системы.
+        // Подписи колонок задаёт сам список вариантов (unitHead/sysHead).
+        const _twoPrice = !!(customAlts && customAlts.some(a => a.unitM2 != null));
+        const _twoHead = _twoPrice ? customAlts.find(a => a.unitM2 != null) : null;
+        // Отдельной колонки «Изм. цена» тут нет: процент стоит под каждой из двух цен.
+        const _priceThs = _twoPrice
+            ? `<th class="col-two" style="text-align:right;width:130px;">${_twoHead.unitHead || 'Мат / лист, за м²'}</th>` +
+              `<th class="col-two" style="text-align:right;width:130px;${_sortStyle}" onclick="app.toggleSwapSort('price')">${_twoHead.sysHead || 'Система, за м²'}${_ssA('price')}</th>`
+            : `<th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>` + _priceTh;
 
         let html = _tankFiltersHtml + `
-            <table class="inv-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <table class="inv-table${_twoPrice ? ' swap-two' : ''}" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
                 <thead>
                     <tr>
                         <th class="col-idx" style="text-align: center; width: 40px;">#</th>
                         <th class="col-img" style="width: 65px; text-align: center;">Фото</th>
                         ${_nameTh}
                         <th class="col-brand" style="text-align: center; width: 90px;">Бренд</th>
-                        <th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>
-                        ${_priceTh}
+                        ${_priceThs}
                     </tr>
                 </thead>
                 <tbody>
@@ -43694,6 +43815,15 @@ const app = {
             if (activeAlt) {
                 basePrice = activeAlt.price || 0;
             }
+            // Вторая цена (материал без системы) сравнивается со своей базой
+            const _baseUnit = activeAlt && activeAlt.unitM2 > 0 ? activeAlt.unitM2 : 0;
+            const _pct = (v, base, active) => {
+                if (active) return `<span class="two-pct" style="color: var(--text-sec);">0%</span>`;
+                if (!(base > 0 && v > 0)) return `<span class="two-pct" style="color: var(--text-sec);">—</span>`;
+                const d = Math.round((v - base) / base * 100);
+                const c = d > 0 ? '#ef4444' : (d < 0 ? '#16a34a' : 'var(--text-sec)');
+                return `<span class="two-pct" style="color: ${c};">${d > 0 ? '+' : ''}${d}%</span>`;
+            };
 
             if (!this.state.swapSortField) {
                 customAlts.sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -43707,6 +43837,30 @@ const app = {
                 let imgHtml = getImg(alt.imgId ? { ...alt, id: alt.imgId } : alt);
                 let diffHtml = getPriceDiffHtml(alt.price, isActive);
                 let priceText = alt.price > 0 ? this.formatPriceHtml(alt.price, true) : "-";
+                if (_twoPrice) {
+                    // Обе цены устроены одинаково: подпись (видна только на телефоне, где
+                    // шапки таблицы нет), сумма, процент к выбранному. Цена за штуку и
+                    // состав системы — мелкими строками под названием.
+                    const _cell = (cls, lbl, v, base) =>
+                        `<td class="col-two ${cls}"><span class="two-lbl">${lbl}</span>` +
+                        `<span class="two-val">${v > 0 ? this.formatPriceHtml(v, true) : '—'}</span>` +
+                        `${_pct(v, base, isActive)}</td>`;
+                    const _sub = [
+                        (alt.unitPrice > 0 ? this.formatPriceHtml(alt.unitPrice, true) + ' ' : '') + (alt.unitLabel || ''),
+                        alt.sysText ? 'Система: ' + alt.sysText : ''
+                    ].filter(Boolean).map(t => `<span class="two-sub">${t}</span>`).join('');
+                    html += `
+                    <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
+                        <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
+                        <td class="col-img">${imgHtml}</td>
+                        <td class="col-name two-name">${alt.name}${badgeHtml}${_sub}</td>
+                        <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
+                        ${_cell('col-two-u', (_twoHead.unitHead || 'Мат / лист, за м²'), alt.unitM2, _baseUnit)}
+                        ${_cell('col-two-s', (_twoHead.sysHead || 'Система, за м²'), alt.price, basePrice)}
+                    </tr>
+                `;
+                    return;
+                }
 
                 html += `
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">

@@ -59,7 +59,7 @@
 <script src="project_scheme.js?v=4.51"></script>
 <script src="boiler_wall.js?v=1.0"></script>
 <script src="project_layout.js?v=4.17"></script>
-<script src="project_plans.js?v=4.21"></script>
+<script src="project_plans.js?v=4.22"></script>
 <script src="project_nodes.js?v=4.14"></script>
 <!-- Узел коллектора ТП: рисуется вектором и берёт петли из project_plans.js,
      поэтому подключается после него. -->
@@ -423,7 +423,21 @@ if (payload && payload.items && payload.items.length) {
   // водорозеток и выпусков. Сразу за планами этажей, как в проектах-образцах.
   // Выпуски канализации тут же: монтажник собирает воду и канализацию зоны
   // по одному листу, а не сверяет два раздела.
-  var vZoneStart = itemsBy.v.length ? 3 + nFloors * 2 : 3;
+  // Аксонометрические схемы В1/Т3 по этажам — сразу за планами и 3D-видами.
+  // Труба подводок в примечании — из названия позиции сметы («16х2,2»).
+  var vAxoStart = itemsBy.v.length ? 3 + nFloors * 2 : 3;
+  var vPipeLabel = null;
+  (itemsBy.v || []).some(function (i) {
+    var m = /(PEX|PE-RT|PE-Xa|металлопласт\S*|полипропилен\S*)[^\d]{0,40}(\d{2})\s*[xх×]\s*(\d[.,]\d)/i.exec(String(i.name || ''));
+    if (m && /труб/i.test(i.name)) { vPipeLabel = m[1] + ' ' + m[2] + '×' + m[3].replace('.', ','); return true; }
+    return false;
+  });
+  var vAxo = (plans && window.projectPlans && projectPlans.axonoSheets && itemsBy.v.length)
+    ? projectPlans.axonoSheets(plans, { kind: 'water', code: MARK.v.code, sheetStart: vAxoStart,
+        num: numOf('v'), floorH: payload.floorH, pipeLabel: vPipeLabel,
+        recirc: !!(payload.scheme && payload.scheme.recirc) })
+    : [];
+  var vZoneStart = vAxoStart + vAxo.length;
   var vZones = (plans && window.projectPlans && projectPlans.wetZoneSheets && itemsBy.v.length)
     ? projectPlans.wetZoneSheets(plans, { code: MARK.v.code, sheetStart: vZoneStart,
         num: numOf('v'), recirc: !!(payload.scheme && payload.scheme.recirc) })
@@ -471,6 +485,11 @@ if (payload && payload.items && payload.items.length) {
         only: 'sewer', floor: fl, num: numOf('k') }));
       add(projectPlans.iso3dSheets(plans, { kind: 'sewer', code: MARK.k.code,
         sheetStart: kNo, floor: fl, num: numOf('k') }));
+      // Аксонометрическая схема К1 этажа — ГОСТ 21.601-2011 требует схем
+      // систем в составе раздела; 3D-вид с плитой их не заменяет.
+      if (projectPlans.axonoSheets)
+        add(projectPlans.axonoSheets(plans, { kind: 'sewer', code: MARK.k.code,
+          sheetStart: kNo, floor: fl, num: numOf('k'), floorH: payload.floorH }));
     });
   }
   var kSpecStart = kNo;
@@ -566,8 +585,8 @@ if (payload && payload.items && payload.items.length) {
       tmPipe.length + tmSpec.length : 0;
   var oTotal = (oBody.length + oNodes.length + oArt.length + oHydro.length + oUfhHydro.length + oSpec.length)
     ? 1 + oBody.length + oNodes.length + oArt.length + oHydro.length + oUfhHydro.length + oSpec.length : 0;
-  var vTotal = (vBody.length + vZones.length + vNodes.length + vSpec.length)
-    ? 1 + vBody.length + vZones.length + vNodes.length + vPipe.length + vSpec.length : 0;
+  var vTotal = (vBody.length + vAxo.length + vZones.length + vNodes.length + vSpec.length)
+    ? 1 + vBody.length + vAxo.length + vZones.length + vNodes.length + vPipe.length + vSpec.length : 0;
   var kTotal = (kBody.length + kSpec.length)
     ? 1 + kBody.length + kSpec.length : 0;
 
@@ -687,6 +706,7 @@ if (payload && payload.items && payload.items.length) {
   if (vTotal) {
     var vRows = [];
     vSlots.forEach(function (r) { vRows.push(r); });
+    vAxo.forEach(function (p, i) { vRows.push([numOf('v')(vAxoStart + i), p.title]); });
     vZones.forEach(function (p, i) { vRows.push([numOf('v')(vZoneStart + i), p.title]); });
     vNodes.forEach(function (p, i) { vRows.push([numOf('v')(vNodeStart + i), p.title]); });
     vPipe.forEach(function (p, i) { vRows.push([numOf('v')(vPipeNo + i), p.title]); });
@@ -697,6 +717,7 @@ if (payload && payload.items && payload.items.length) {
     var vNotes = (gdVk.notes && gdVk.notes.length) ? gdVk.notes
       : commonNotes('v', 'Титульный лист, общие данные' +
           (vBody.length ? ', планы водоснабжения (' + vBody.length + ' л.)' : '') +
+          (vAxo.length ? ', схемы систем (' + vAxo.length + ' л.)' : '') +
           (vZones.length ? ', мокрые зоны (' + vZones.length + ' л.)' : '') +
           (vNodes.length ? ', узел коллектора водоснабжения' : '') +
           ' и спецификация', vTotal);
@@ -706,6 +727,7 @@ if (payload && payload.items && payload.items.length) {
       // её место занимают условные обозначения систем и схема пола.
       { floorScheme: gdVk.floorScheme }));
     vBody.forEach(function (p) { svgs.push(p.svg); });
+    vAxo.forEach(function (p) { svgs.push(p.svg); });
     vZones.forEach(function (p) { svgs.push(p.svg); });
     vNodes.forEach(function (p) { svgs.push(p.svg); });
     vPipe.forEach(function (p) { svgs.push(p.svg); });
@@ -721,7 +743,7 @@ if (payload && payload.items && payload.items.length) {
     });
     var kNotes = (payload.gdK && payload.gdK.length) ? payload.gdK
       : commonNotes('k', 'Титульный лист, общие данные' +
-          (kBody.length ? ', планы канализации (' + kBody.length + ' л.)' : '') +
+          (kBody.length ? ', планы и схемы канализации (' + kBody.length + ' л.)' : '') +
           ' и спецификация', kTotal);
     svgs.push(titleOf('k'));
     svgs.push(gdOf('k', listOf('k', kRows), kNotes, kTotal));
