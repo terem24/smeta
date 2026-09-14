@@ -8382,7 +8382,22 @@ const app = {
             // При уровне руководителей директора стоят в своих узлах — над компанией
             // остаются только наблюдатели, чтобы имена не шли дважды
             const subUserIds = new Set(g.subs.filter(s => s.user).map(s => String(s.user.id)));
-            const topHeads = g.layered ? g.heads.filter(h => !subUserIds.has(String(h.id))) : g.heads;
+            // Наблюдатель стоит у того руководителя, чьи филиалы у него отмечены. Над
+            // компанией — только тот, у кого отмечены филиалы всех руководителей: иначе
+            // продавец с одной карточкой выглядел бы надзирающим за всей компанией.
+            const viewersOf = {};
+            let topHeads = g.heads;
+            if (g.layered) {
+                topHeads = [];
+                g.heads.filter(h => !subUserIds.has(String(h.id))).forEach(h => {
+                    const marked = new Set((Array.isArray(h.viewer_distributor_ids) ? h.viewer_distributor_ids : []).map(String));
+                    const hit = g.subs.filter(s => s.dists.some(d => marked.has(String(d.id))));
+                    if (!hit.length || hit.length === g.subs.length) { topHeads.push(h); return; }
+                    hit.forEach(s => { (viewersOf[s.id] = viewersOf[s.id] || []).push(h); });
+                });
+            }
+            const chipsOf = list => list.slice(0, HEADS_SHOWN).map(h => `<span class="brx-head" title="${esc(h.email || '')}">👤 ${esc(nameOf(h))}</span>`).join('')
+                + (list.length > HEADS_SHOWN ? `<span class="brx-muted">и ещё ${list.length - HEADS_SHOWN}</span>` : '');
             const headsHtml = (topHeads.slice(0, HEADS_SHOWN).map(h => `<span class="brx-head" title="${esc(h.email || '')}">👤 ${esc(nameOf(h))}</span>`).join('')
                 + (topHeads.length > HEADS_SHOWN ? `<span class="brx-muted">и ещё ${topHeads.length - HEADS_SHOWN}</span>` : '')
                 + (!g.layered && g.directorEmail ? `<span class="brx-muted">Директор ${esc(g.directorEmail)} не зарегистрирован</span>` : ''))
@@ -8394,6 +8409,7 @@ const app = {
                         <div class="brx-node brx-headnode${isSel('head', s.id) ? ' sel' : ''}" onclick="app.selectBranchNode('head','${s.id}')">
                             <div class="brx-title">${s.email ? '👤' : '❔'} ${esc(s.label)} <span class="brx-muted" style="font-weight:600;">· ${s.dists.length} ${plural(s.dists.length)}</span></div>
                             <div class="brx-muted" style="margin:2px 0 6px;">${s.email ? (s.user ? esc(s.email) : 'не зарегистрирован') : 'в карточках не указан «Email директора»'}</div>
+                            ${viewersOf[s.id] ? `<div style="margin:0 0 6px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center;"><span class="brx-muted">Наблюдатели:</span>${chipsOf(viewersOf[s.id])}</div>` : ''}
                             ${sumsHtml(s.stats)}
                         </div>
                         <div class="brx-stem"></div>
