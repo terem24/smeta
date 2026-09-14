@@ -45303,6 +45303,34 @@ const app = {
     },
 
     /**
+     * Выключены ли работы группы: сама группа или раздел оборудования, к которому
+     * она относится. Раньше пар было пять, и выключенные автоматика, электрический
+     * пол, снеготаяние, водонагреватель и квартирные разделы пропадали из сметы,
+     * а работы по ним оставались в итоге.
+     */
+    WORKS_BY_SECTION: {
+        "1.1 Монтаж котла и бойлера": "1. Котёл + водонагреватель",
+        "1.2 Монтаж обвязки котельной": "2. Обвязка котельной",
+        "1.5 Автоматика котельной": "2. Обвязка котельной",
+        "1.3 Монтаж радиаторного отопления": "3. Приборы отопления",
+        "1.3 Отопление квартиры": "3. Приборы отопления",
+        "1.4 Монтаж водяного теплого пола": "4. Водяной тёплый пол",
+        "1.4 Автоматика для теплого пола": "4. Водяной тёплый пол",
+        "1.4 Электрический тёплый пол": "4. Электрический тёплый пол",
+        "1.6 Монтаж снеготаяния": "4.4 Снеготаяние",
+        "1.7 Водонагреватель": "1. Водонагреватель",
+        "2.2 Монтаж узла ввода ХВС": "6. Узел ввода ХВС",
+        "2.4 Узел ввода воды в квартиру": "6. Узел ввода воды в квартиру"
+    },
+    worksGroupDisabled: function (g) {
+        const ds = this.state.disabledSections;
+        if (!ds || !ds.length) return false;
+        if (ds.includes(g)) return true;
+        const sec = this.WORKS_BY_SECTION[g];
+        return !!(sec && ds.includes(sec));
+    },
+
+    /**
      * Сколько теплопотерь дома остаётся радиаторам, кВт, когда есть тёплый пол.
      * Раньше — всегда 70 %, какой бы ни была площадь пола: при полу только в
      * санузле на 8 м² радиаторы недобирали четверть, при полу во весь дом — брали
@@ -59396,14 +59424,7 @@ const app = {
             let activeWorksBill = [];
             worksBill.forEach(w => {
                 let g = w.group || "Прочее";
-                const isDisabled = this.state.disabledSections && (
-                    this.state.disabledSections.includes(g) ||
-                    (g === "1.1 Монтаж котла и бойлера" && this.state.disabledSections.includes("1. Котёл + водонагреватель")) ||
-                    (g === "1.2 Монтаж обвязки котельной" && this.state.disabledSections.includes("2. Обвязка котельной")) ||
-                    (g === "1.3 Монтаж радиаторного отопления" && this.state.disabledSections.includes("3. Приборы отопления")) ||
-                    (g === "1.4 Монтаж водяного теплого пола" && this.state.disabledSections.includes("4. Водяной тёплый пол")) ||
-                    (g === "2.2 Монтаж узла ввода ХВС" && this.state.disabledSections.includes("6. Узел ввода ХВС"))
-                );
+                const isDisabled = this.worksGroupDisabled(g);
                 if (!isDisabled) {
                     activeWorksBill.push(w);
                 }
@@ -59444,14 +59465,7 @@ const app = {
                 let secTotal = 0;
                 worksByGroup[g].forEach(w => secTotal += w.sum);
 
-                const isDisabled = this.state.disabledSections && (
-                    this.state.disabledSections.includes(g) ||
-                    (g === "1.1 Монтаж котла и бойлера" && this.state.disabledSections.includes("1. Котёл + водонагреватель")) ||
-                    (g === "1.2 Монтаж обвязки котельной" && this.state.disabledSections.includes("2. Обвязка котельной")) ||
-                    (g === "1.3 Монтаж радиаторного отопления" && this.state.disabledSections.includes("3. Приборы отопления")) ||
-                    (g === "1.4 Монтаж водяного теплого пола" && this.state.disabledSections.includes("4. Водяной тёплый пол")) ||
-                    (g === "2.2 Монтаж узла ввода ХВС" && this.state.disabledSections.includes("6. Узел ввода ХВС"))
-                );
+                const isDisabled = this.worksGroupDisabled(g);
                 const isRevealed = this.state.revealedToggles && this.state.revealedToggles.includes(g);
 
                 if (isDisabled) {
