@@ -50357,10 +50357,10 @@ const app = {
         const w = b.worst;
         const n1 = v => v.toFixed(1).replace('.', ',');
         return `<br><br><b>Проверка по напору (самый тяжёлый коллектор — ${w.label}):</b><br>` +
-            `• Расход через узел: G = Q / (1,163 × ΔT) = <b>${w.flow.toFixed(2)} м³/ч</b> при перепаде ${b.dT} К.<br>` +
+            `• Расход через узел: G = Q / (1,163 × ΔT) = <b>${(w.nodeFlow || w.flow).toFixed(2)} м³/ч</b> при перепаде ${b.dT} К${w.nodeFlow ? " (узел один на все гребёнки — расход общий)" : ""}.<br>` +
             `• Самая длинная петля: ${n1(w.worstDp)} кПа.<br>` +
             `• Коллектор (расходомер, кран, сервопривод): ${this.UFH_MAN_DP} кПа.<br>` +
-            `• Смесительный клапан узла: (G / Kvs)² = (${w.flow.toFixed(2)} / ${b.kvs})² = ${n1(w.dpValve)} кПа.<br>` +
+            `• Смесительный клапан узла: (G / Kvs)² = (${(w.nodeFlow || w.flow).toFixed(2)} / ${b.kvs})² = ${n1(w.dpValve)} кПа.<br>` +
             (w.trDp > 0 ? `• Транзит до коллектора ${w.floor}-го этажа ${w.tr ? w.tr.label : ''}: ${n1(w.trDp)} кПа.<br>` : '') +
             `• Итого с запасом 15 %: <b>${n1(w.need)} м</b>. Насос ${b.pump.label} на этом расходе даёт ` +
             `<b>${n1(w.have)} м</b> — ${b.ok ? 'проходит' : '<b style="color:#EF4444;">не проходит</b>'}.` +
@@ -50684,6 +50684,14 @@ const app = {
                 const d = this.ufhFlowDrop(trFlow, grp[0].trM, calc.pipe, tr.dIn);
                 grp.forEach(m => { m.tr = tr; m.trV = d.v; m.trFlow = trFlow; m.trDp = d.dp; });
             });
+            // Узел подмеса std — один на весь пол, без коллектора котельной: если
+            // гребёнок две (два этажа), через его клапан и насос идёт их общий расход.
+            // Раньше каждая гребёнка проверялась со своим расходом, будто узлов два:
+            // 5,3 кПа на клапане вместо 21 и «проходит» там, где насос не тянет.
+            if (type === 'std' && mans.length > 1) {
+                const nodeFlow = mans.reduce((a, m) => a + m.flow, 0);
+                mans.forEach(m => { m.nodeFlow = nodeFlow; m.dpValve = Math.pow(nodeFlow / kvs, 2) * 100; });
+            }
             mans.forEach(m => {
                 m.trDp = m.trDp || 0;
                 // Запас 15 % — на грязь в петлях и на разброс паспортной кривой
@@ -50701,7 +50709,7 @@ const app = {
                 const mans = shapes[dT] || (shapes[dT] = shape(dT));
                 let ratio = 0, worst = null;
                 mans.forEach(m => {
-                    const have = this.ufhPumpHead(m.flow, pump);
+                    const have = this.ufhPumpHead(m.nodeFlow || m.flow, pump);
                     const k = m.need / Math.max(have, 0.01);
                     if (k > ratio) { ratio = k; worst = Object.assign({}, m, { have: have }); }
                 });
