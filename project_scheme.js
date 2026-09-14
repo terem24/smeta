@@ -958,9 +958,13 @@
     if (cfg.snow) {
       var snowN = Math.max(1, cfg.snow.nodes || 1);
       for (var si = 0; si < snowN; si++) {
-        taps.push({ mark: mk('Т22', si, snowN), color: COL.ret, from: 'ret', dir: 'up', mix: true, size: thread(cfg.snow.dn) });
+        // hyd: 'snow' — чтобы подсветка на экране знала контур. Зону карточки
+        // на него не заводим (см. taps.forEach у зон): чисел узла на этой схеме
+        // нет. Флаг t.snow не ставить — он включает старую ветку с HX_TOP.
+        taps.push({ mark: mk('Т22', si, snowN), color: COL.ret, from: 'ret', dir: 'up', mix: true, size: thread(cfg.snow.dn), hyd: 'snow', hydI: si });
         taps.push({
           mark: mk('Т12', si, snowN), color: COL.supply, from: 'supply', dir: 'down', pump: true, size: thread(cfg.snow.dn),
+          hyd: 'snow', hydI: si,
           note: snowN > 1 ? 'узел снеготаяния ' + (si + 1) + ' — см. схему' : 'узел снеготаяния — см. схему'
         });
       }
@@ -1811,7 +1815,7 @@
       // Уже делать нельзя: под сметой лист ужат до ~560 px, и на 5 мм полоса
       // выходила шириной в шесть пикселей — попасть в неё мышью не получалось.
       taps.forEach(function (t, i) {
-        if (!t.hyd || t.snow) return;
+        if (!t.hyd || t.snow || t.hyd === 'snow') return;
         var x = tapXs[i], y0 = srcY[t.from];
         if (x == null || y0 == null) return;
         o.push(zone(t.hyd === 'tp' ? 'ufh' : 'trunk', x - 4, y0 - 2, x + 4, 274,

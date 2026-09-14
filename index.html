@@ -162,7 +162,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=3.75">
+    <link rel="stylesheet" href="style.css?v=3.76">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.05" defer></script>
@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=8.21" defer></script>
+    <script src="app.js?v=8.27" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -203,7 +203,7 @@
          векторный композитор, что рисует лист схемы в проекте, поэтому нужен
          и движок листов (рамка/штамп из него не берутся, только текст). -->
     <script src="project_sheets.js?v=4.24" defer></script>
-    <script src="project_scheme.js?v=4.53" defer></script>
+    <script src="project_scheme.js?v=4.54" defer></script>
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
@@ -1366,15 +1366,15 @@
                         class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap"><i class="info-icon" tabindex="0"
                             role="button" aria-label="Подробнее">i</i>
                         <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
-                <div class="mode-selector-tabs" style="margin-bottom: 6px;">
-                    <div class="mode-tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')"
+                <div class="tabs" style="margin-bottom: 6px;">
+                    <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')"
                         title="Коаксиальный: «труба в трубе», по внутренней уходит дым, по внешней приходит воздух.">Коаксиальный</div>
-                    <div class="mode-tab" id="chim_sys_split" onclick="app.setChimneySystem('split')"
+                    <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')"
                         title="Раздельная система: две трубы Ø80 вместо «трубы в трубе». Нужна там, где коаксиал не проходит по длине.">Раздельный D80</div>
                 </div>
-                <div class="mode-selector-tabs" style="margin-bottom: 10px;">
-                    <div class="mode-tab" id="chim_exit_wall" onclick="app.setChimneyExit('wall')">Через стену</div>
-                    <div class="mode-tab" id="chim_exit_roof" onclick="app.setChimneyExit('roof')">Над кровлей</div>
+                <div class="tabs" style="margin-bottom: 10px;">
+                    <div class="tab" id="chim_exit_wall" onclick="app.setChimneyExit('wall')">Через стену</div>
+                    <div class="tab" id="chim_exit_roof" onclick="app.setChimneyExit('roof')">Над кровлей</div>
                 </div>
                 <div class="grid-2" id="blk_chim_fields" style="display:none;">
                     <div class="control-card"><span class="lbl" id="lbl_chim_len">Длина трассы</span>
@@ -3052,26 +3052,6 @@
 
                         <button type="button" class="lk-btn-sm" style="margin-top: 4px;" onclick="app.resetCompanyDetails()">Сбросить реквизиты по умолчанию</button>
                     </div>
-
-                    <!-- Срок действия счёта по ссылке клиенту. Значение по умолчанию для окна
-                         «Создание ссылки для клиента»; 0 или пусто — таймер выключен. -->
-                    <div class="lk-card" style="margin-top: 10px;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">⏳ Счёт по ссылке действителен, дней</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="number" id="profile_invoice_valid_days" class="auth-input" min="0" max="90" step="1" placeholder="2" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center;">
-                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">По умолчанию 2 дня. Поставьте 0 или очистите поле — таймера не будет. Перед каждой отправкой срок можно поменять прямо в окне ссылки.</span>
-                        </div>
-                    </div>
-
-                    <!-- Напоминание «КП ушло клиенту, счёт не выставлен». Отправляет база раз в сутки
-                         (supabase/migrations/20260914_kp_invoice_reminders.sql); 0 или пусто — выключено. -->
-                    <div class="lk-card" style="margin-top: 10px;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">🔔 Напомнить выставить счёт через, дней</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="number" id="profile_kp_reminder_days" class="auth-input" min="0" max="90" step="1" placeholder="10" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center;">
-                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней. Поставьте 0 или очистите поле — напоминаний не будет.</span>
-                        </div>
-                    </div>
             </div>
 
             <div id="profile_tab_subscription" style="display:none; text-align:left;"></div>
@@ -3083,6 +3063,33 @@
                     <h4>📁 Мои объекты</h4>
                     <button type="button" class="lk-btn-sm" onclick="app.setProfileTab('objects')">↻ Обновить</button>
                 </div>
+
+                <!-- Сроки по отправленным сметам. Кнопки «Сохранить» у этого раздела нет,
+                     поэтому поле пишет настройку сразу при изменении (setInvoiceValidDays и
+                     setKpReminderDays сами кладут её в localStorage и в облако), а затем
+                     показывает приведённое число. Заполняет поля app.fillCompanyDetailsForm. -->
+                <div class="lk-objects-settings" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 10px; margin-bottom: 10px;">
+                    <!-- Срок действия счёта по ссылке клиенту. Значение по умолчанию для окна
+                         «Создание ссылки для клиента»; 0 или пусто — таймер выключен. -->
+                    <div class="lk-card" style="margin: 0;">
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">⏳ Счёт по ссылке действителен, дней</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="profile_invoice_valid_days" class="auth-input" min="0" max="90" step="1" placeholder="2" onchange="app.setInvoiceValidDays(this.value.trim()); this.value = String(app.invoiceValidDaysDefault())" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center; flex-shrink: 0;">
+                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">По умолчанию 2 дня. Поставьте 0 или очистите поле — таймера не будет. Перед каждой отправкой срок можно поменять прямо в окне ссылки.</span>
+                        </div>
+                    </div>
+
+                    <!-- Напоминание «КП ушло клиенту, счёт не выставлен». Отправляет база раз в сутки
+                         (supabase/migrations/20260914_kp_invoice_reminders.sql); 0 или пусто — выключено. -->
+                    <div class="lk-card" style="margin: 0;">
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">🔔 Напомнить выставить счёт через, дней</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="profile_kp_reminder_days" class="auth-input" min="0" max="90" step="1" placeholder="10" onchange="app.setKpReminderDays(this.value.trim()); this.value = String(app.kpReminderDaysDefault())" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center; flex-shrink: 0;">
+                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней. Поставьте 0 или очистите поле — напоминаний не будет.</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div id="profile_cloud_list_content"></div>
             </div>
 
