@@ -118,6 +118,39 @@
     return txt(217.5, 14.8, s, { size: 7.36, anchor: 'middle' });
   }
 
+  /**
+   * Расстановка подписей без наложений. Занятые места — прямоугольники
+   * [x0, y0, x1, y1] в мм листа (значки, уже поставленные подписи).
+   * place(cands) берёт первый вариант, который ни с чем не пересекается, а если
+   * таких нет — тот, где перекрытие меньше всего, и сам его занимает.
+   */
+  function labelPlacer() {
+    var boxes = [];
+    var over = function (b) {
+      var s = 0;
+      boxes.forEach(function (c) {
+        var w = Math.min(b[2], c[2]) - Math.max(b[0], c[0]), h = Math.min(b[3], c[3]) - Math.max(b[1], c[1]);
+        if (w > 0 && h > 0) s += w * h;
+      });
+      return s;
+    };
+    return {
+      add: function (b) { boxes.push(b); },
+      place: function (cands) {
+        var best = null, bs = Infinity;
+        for (var i = 0; i < cands.length; i++) {
+          var s = over(cands[i]);
+          if (s === 0) { best = cands[i]; break; }
+          if (s < bs) { bs = s; best = cands[i]; }
+        }
+        if (best) boxes.push(best);
+        return best;
+      }
+    };
+  }
+  /** Габарит строки текста в мм листа: ширина по числу знаков, как в вёрстке */
+  function textW(s, size) { return String(s).length * size * 0.5; }
+
   /** Лист «План N этажа» */
   function floorBody(f, num) {
     var t = fit(f), o = [];
@@ -126,6 +159,11 @@
       ' patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="2.4"' +
       ' style="stroke:' + COLT.tp + ';stroke-width:0.45"/></pattern></defs>');
     var used = {};
+    // Подписи зон. У помещения бывает две зоны по одному контуру (котельная и
+    // радиаторы, санузел и радиаторы, тёплый пол и радиаторы), и две подписи
+    // в одной точке ложились друг на друга. Зоны с общим центром сводим в
+    // одну подпись со всеми типами; разные подписи разводим placer'ом.
+    var groups = [];
     (f.zones || []).forEach(function (z) {
       var col = COLT[z.type]; used[z.type] = 1;
       var fill = z.type === 'tp' ? 'url(#tpH' + num + ')'
@@ -133,12 +171,30 @@
       o.push('<polygon points="' + polyPts(z.pts, t.X, t.Y) + '" style="fill:' + fill +
         ';stroke:' + col + ';stroke-width:0.5' +
         (z.type === 'rad' ? ';stroke-dasharray:2.2,1.2' : '') + '"/>');
-      var c = centroid(z.pts);
-      var nm = (z.name && z.name !== NAMES[z.type]) ? z.name + ' — ' : '';
-      var label = nm + NAMES[z.type] + ', ' + areaM2(z, f).toFixed(1) + ' м²';
-      o.push('<rect x="' + n(t.X(c[0]) - label.length * 0.86) + '" y="' + n(t.Y(c[1]) - 2.6) +
-        '" width="' + n(label.length * 1.72) + '" height="4.6" rx="0.8" style="fill:#ffffff;fill-opacity:0.82"/>');
-      o.push(txt(t.X(c[0]), t.Y(c[1]) + 0.9, label, { size: 3.1, anchor: 'middle', fill: col }));
+      var c = centroid(z.pts), X = t.X(c[0]), Y = t.Y(c[1]), a = areaM2(z, f);
+      var g = null;
+      groups.forEach(function (q) {
+        if (!g && Math.hypot(q.X - X, q.Y - Y) < 3 && Math.abs(q.a - a) <= Math.max(0.3, 0.05 * a)) g = q;
+      });
+      if (!g) { g = { X: X, Y: Y, a: a, types: [], name: '' }; groups.push(g); }
+      if (g.types.indexOf(z.type) < 0) g.types.push(z.type);
+      if (z.name && z.name !== NAMES[z.type] && !g.name) g.name = z.name;
+    });
+    var PRI = { boiler: 0, wc: 1, tp: 2, rad: 3 };
+    var lp = labelPlacer();
+    groups.forEach(function (g) {
+      g.types.sort(function (p, q) { return (p in PRI ? PRI[p] : 9) - (q in PRI ? PRI[q] : 9); });
+      // имя совпадает с названием одного из типов («Котельная») — не повторяем
+      if (g.types.some(function (k) { return NAMES[k] === g.name; })) g.name = '';
+      var label = (g.name ? g.name + ' — ' : '') + g.types.map(function (k) { return NAMES[k]; }).join(', ') +
+        ', ' + g.a.toFixed(1) + ' м²';
+      var w = label.length * 1.72, col = COLT[g.types[0]];
+      var cands = [0, 5.4, -5.4, 10.8, -10.8].map(function (dy) {
+        var b = [g.X - w / 2, g.Y + dy - 2.6, g.X + w / 2, g.Y + dy + 2]; b.dy = dy; return b;
+      });
+      var b = lp.place(cands);
+      o.push('<rect x="' + n(b[0]) + '" y="' + n(b[1]) + '" width="' + n(w) + '" height="4.6" rx="0.8" style="fill:#ffffff;fill-opacity:0.82"/>');
+      o.push(txt(g.X, g.Y + b.dy + 0.9, label, { size: 3.1, anchor: 'middle', fill: col }));
     });
     // радиаторы — значки вдоль стен (точечные приборы, не зоны)
     (f.rads || []).forEach(function (r) {
@@ -1361,17 +1417,49 @@
     o.push(imageTag(f, t, 0.32));
     wcOutlines(f, t, o);
     var fx = f.fixtures || [];
+    var dl = [];
     (f.slines || []).forEach(function (s) {
       if (!s.pts || s.pts.length < 2) return;
       o.push('<path d="' + pathD(s.pts, t) + '" style="fill:none;stroke:' + COL_SEW +
         ';stroke-width:' + (s.d >= 110 ? 0.8 : 0.5) + '"/>');
-      var mid = s.pts[Math.floor(s.pts.length / 2)];
-      o.push(txt(t.X(mid[0]), t.Y(mid[1]) - 1.4, 'd' + s.d, { size: 2.8, fill: COL_SEW }));
+      dl.push(s);
       var q = fx[s.i];
       if (q) rows.push([rows.length + 1, (FIXT[q.t] || ['прибор'])[0], 'd' + s.d,
         s.d >= 110 ? '0,02' : '0,03']);
     });
     fx.forEach(function (q) { fixtureMark(q, t, f, o, q.t === 'riser' ? '#7a5c00' : COL_SEW); });
+    // Подписи диаметров — после значков приборов и в обход их и друг друга.
+    // Раньше «d110» и «d50» ставились в середину трассы: у стояка короткие
+    // выпуски сходятся в одну точку, и подписи ложились одна на другую.
+    var lp = labelPlacer(), ppmS = (f.pxPerM || 100) * t.s;
+    fx.forEach(function (q) {
+      var r = Math.max((q.w || (FIXT[q.t] || [])[2] || 500), (q.d || (FIXT[q.t] || [])[3] || 500)) / 2000 * ppmS;
+      r = Math.max(r, 2.2);                        // буква значка крупнее самого стояка
+      lp.add([t.X(q.x) - r, t.Y(q.y) - r, t.X(q.x) + r, t.Y(q.y) + r]);
+    });
+    dl.forEach(function (s) {
+      var lab = 'd' + s.d, w = textW(lab, 2.8), cands = [];
+      // точки вдоль трассы: сначала середины длинных участков
+      var segs = [];
+      for (var j = 1; j < s.pts.length; j++)
+        segs.push({ j: j, l: Math.hypot(s.pts[j][0] - s.pts[j - 1][0], s.pts[j][1] - s.pts[j - 1][1]) });
+      segs.sort(function (a, b) { return b.l - a.l; });
+      segs.forEach(function (sg) {
+        [0.5, 0.25, 0.75].forEach(function (u) {
+          var p = s.pts[sg.j - 1], q2 = s.pts[sg.j];
+          var X = t.X(p[0] + (q2[0] - p[0]) * u), Y = t.Y(p[1] + (q2[1] - p[1]) * u);
+          // рядом с линией, а если там значки — отступя (короткий выпуск у стояка)
+          [[0, -1.4], [0, 3.6], [1.2, 1], [-w - 1.2, 1],
+           [0, -5], [0, 7.2], [3, -5], [-w - 3, -5], [3, 7.2], [-w - 3, 7.2]].forEach(function (d) {
+            var b = [X + d[0], Y + d[1] - 2.4, X + d[0] + w, Y + d[1] + 0.4];
+            b.p = [X + d[0], Y + d[1]];
+            cands.push(b);
+          });
+        });
+      });
+      var b = lp.place(cands);
+      if (b) o.push(txt(b.p[0], b.p[1], lab, { size: 2.8, fill: COL_SEW }));
+    });
     vkTable(o, 'Выпуски канализации', ['№', 'Прибор', 'Ø, мм', 'Уклон'], rows, [8, 40, 16, 16]);
     var ly = 40 + (rows.length + 1) * 6.4 + 12;
     o.push(txt(22, ly, 'Условные обозначения', { size: 3.6 }));
@@ -2259,14 +2347,36 @@
     var byName = {};
     rooms.forEach(function (r) { byName[String(r.name || '').trim().toLowerCase()] = r; });
     var used = {};
+    // Рамка с данными помещения закрывала то, что стоит в его середине:
+    // значок и подпись коллектора ТП в котельной, букву прибора в санузле.
+    // Теперь они занимают место первыми, а рамка сдвигается в свободное.
+    var lp = labelPlacer(), ppmS = (f.pxPerM || 100) * t.s;
+    if (f.coll) {
+      var cw = Math.max(3.5, 0.55 * ppmS), cX = t.X(f.coll.x), cY = t.Y(f.coll.y);
+      var cl = Math.max(cw, textW('Коллектор ТП', 2.8)) / 2;
+      lp.add([cX - cl, cY - cw * 0.18 - 1.5, cX + cl, cY + cw * 0.18 + 4]);
+    }
+    (f.fixtures || []).forEach(function (q) {
+      var rr = Math.max((q.w || (FIXT[q.t] || [])[2] || 500), (q.d || (FIXT[q.t] || [])[3] || 500)) / 2000 * ppmS;
+      rr = Math.max(rr, 2);
+      lp.add([t.X(q.x) - rr, t.Y(q.y) - rr, t.X(q.x) + rr, t.Y(q.y) + rr]);
+    });
     (f.zones || []).forEach(function (z) {
       var key = String(z.name || '').trim().toLowerCase();
       var r = byName[key];
       if (!r || used[key]) return;
       used[key] = 1;
-      var c = centroid(z.pts), X = t.X(c[0]), Y = t.Y(c[1]);
+      var c = centroid(z.pts), X0 = t.X(c[0]), Y0 = t.Y(c[1]);
       var lines2 = ['[' + r.id + ']', r.name, Math.round(r.q) + ' Вт', r.area.toFixed(1) + ' м²'];
       var wBox = 20;
+      var cands = [];
+      [[0, 0], [0, -9], [0, 9], [-13, 0], [13, 0], [-13, -9], [13, -9], [-13, 9], [13, 9], [0, -16], [0, 16]]
+        .forEach(function (d) {
+          var X = X0 + d[0], Y = Y0 + d[1];
+          var b = [X - wBox / 2, Y - 7, X + wBox / 2, Y + 6.6]; b.p = [X, Y];
+          cands.push(b);
+        });
+      var b = lp.place(cands), X = b.p[0], Y = b.p[1];
       o.push('<rect x="' + n(X - wBox / 2) + '" y="' + n(Y - 7) + '" width="' + n(wBox) +
         '" height="13.6" rx="0.6" style="fill:#ffffff;fill-opacity:0.86;stroke:#000;stroke-width:0.2"/>');
       lines2.forEach(function (s2, i) {

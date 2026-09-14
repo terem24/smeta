@@ -823,6 +823,24 @@ function fixturesOfWcZone(f, z) {
   });
   if (!slots.length) slots.push({ e: edges[0], s: edges[0].L / 2 });
 
+  // полуразмеры прибора по осям плана с учётом поворота вдоль стены
+  var halfOf = function (q) {
+    var qw = (q.w || 500) / 2000 * ppm, qd = (q.d || 500) / 2000 * ppm;
+    var vert = Math.abs(((q.ang || 0) % 180 + 180) % 180 - 90) < 45;
+    return vert ? [qd, qw] : [qw, qd];
+  };
+  // площадь пересечения прибора-кандидата с уже поставленными (+ зазор)
+  var overlapWith = function (x, y, h, pad) {
+    var s = 0;
+    out.forEach(function (q) {
+      var hq = halfOf(q);
+      var ow = Math.min(x + h[0], q.x + hq[0]) - Math.max(x - h[0], q.x - hq[0]) + pad;
+      var oh = Math.min(y + h[1], q.y + hq[1]) - Math.max(y - h[1], q.y - hq[1]) + pad;
+      if (ow > 0 && oh > 0) s += ow * oh;
+    });
+    return s;
+  };
+
   list.forEach(function (t) {
     var W = (FIXT[t][2] || 500) / 1000 * ppm, D = (FIXT[t][3] || 500) / 1000 * ppm;
     var best = null;
@@ -835,18 +853,35 @@ function fixturesOfWcZone(f, z) {
       var x = Math.round(bx + e.nx * (D / 2 + 0.02 * ppm));
       var y = Math.round(by + e.ny * (D / 2 + 0.02 * ppm));
       if (!pip([x, y], z.pts)) continue;                     // центр должен быть внутри
-      var clash = out.some(function (q) {
-        var qW = (FIXT[q.t][2] || 500) / 1000 * ppm;
-        return Math.hypot(q.x - x, q.y - y) < (W + qW) / 2 + gap;
-      });
-      if (clash) continue;
+      // Столкновение — по прямоугольникам приборов, а не по расстоянию между
+      // центрами: у двух приборов на соседних стенах в углу центры далеко, а
+      // корпуса пересекаются.
+      if (overlapWith(x, y, halfOf({ w: FIXT[t][2], d: FIXT[t][3], ang: e.ang }), gap) > 0) continue;
       best = { x: x, y: y, t: t, ang: e.ang, w: FIXT[t][2], d: FIXT[t][3], a: 1, z: z.name || '' };
       break;
     }
-    // места у стен не нашлось (тесная зона или нет подложки) — ставим в центре
+    // Места у стен не нашлось (тесная зона или нет подложки). Раньше прибор
+    // вставал в центр зоны, и в тесном санузле душ ложился прямо на ванну.
+    // Теперь перебираем точки внутри зоны и берём ту, где прибор ни с чем не
+    // пересекается, а если такой нет — где перекрытие меньше всего.
     if (!best) {
       var c = centroid(z.pts);
-      best = { x: Math.round(c[0]), y: Math.round(c[1]), t: t, ang: 0,
+      var hw = W / 2, hd = D / 2;
+      var bbz = z.pts.reduce(function (acc, p) {
+        return [Math.min(acc[0], p[0]), Math.min(acc[1], p[1]), Math.max(acc[2], p[0]), Math.max(acc[3], p[1])];
+      }, [1e9, 1e9, -1e9, -1e9]);
+      var stepG = 0.1 * ppm, bestO = Infinity;
+      for (var gy = bbz[1] + hd; gy <= bbz[3] - hd + 0.5; gy += stepG) {
+        for (var gx = bbz[0] + hw; gx <= bbz[2] - hw + 0.5; gx += stepG) {
+          if (!pip([gx, gy], z.pts)) continue;
+          var ov = overlapWith(gx, gy, [hw, hd], 0);
+          // при равном перекрытии — ближе к середине зоны
+          var score = ov * 1e6 + Math.hypot(gx - c[0], gy - c[1]);
+          if (score < bestO) { bestO = score; best = { x: Math.round(gx), y: Math.round(gy) }; }
+        }
+      }
+      if (!best) best = { x: Math.round(c[0]), y: Math.round(c[1]) };
+      best = { x: best.x, y: best.y, t: t, ang: 0,
         w: FIXT[t][2], d: FIXT[t][3], a: 1, z: z.name || '' };
     }
     out.push(best);
