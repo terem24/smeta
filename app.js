@@ -51324,11 +51324,11 @@ const app = {
         let totalA = parseFloat(this.state.area) || 150;
         let floors = this.state.floors || 1;
         let roomsCount = 5;
-        if (totalA < 80) roomsCount = 5;
-        else if (totalA >= 81 && totalA <= 120) roomsCount = 7;
-        else if (totalA >= 121 && totalA <= 160) roomsCount = 9;
-        else if (totalA >= 161 && totalA <= 200) roomsCount = 11;
-        else if (totalA >= 201 && totalA <= 250) roomsCount = 14;
+        if (totalA <= 80) roomsCount = 5;
+        else if (totalA <= 120) roomsCount = 7;
+        else if (totalA <= 160) roomsCount = 9;
+        else if (totalA <= 200) roomsCount = 11;
+        else if (totalA <= 250) roomsCount = 14;
         else roomsCount = 17;
 
         if (floors === 2) {
@@ -51598,11 +51598,11 @@ const app = {
         let tpArea = (parseFloat(this.state.tp1) || 0) + (parseFloat(this.state.tp2) || 0);
         if (tpArea > 0) {
             let tpRoomsCount = 5;
-            if (tpArea < 80) tpRoomsCount = 5;
-            else if (tpArea >= 81 && tpArea <= 120) tpRoomsCount = 7;
-            else if (tpArea >= 121 && tpArea <= 160) tpRoomsCount = 9;
-            else if (tpArea >= 161 && tpArea <= 200) tpRoomsCount = 11;
-            else if (tpArea >= 201 && tpArea <= 250) tpRoomsCount = 14;
+            if (tpArea <= 80) tpRoomsCount = 5;
+            else if (tpArea <= 120) tpRoomsCount = 7;
+            else if (tpArea <= 160) tpRoomsCount = 9;
+            else if (tpArea <= 200) tpRoomsCount = 11;
+            else if (tpArea <= 250) tpRoomsCount = 14;
             else tpRoomsCount = 17;
 
             if (floors === 2) {
@@ -55095,11 +55095,11 @@ const app = {
                 let floors = this.state.floors || 1;
 
                 let roomsCount = 5;
-                if (totalA < 80) roomsCount = 5;
-                else if (totalA >= 81 && totalA <= 120) roomsCount = 7;
-                else if (totalA >= 121 && totalA <= 160) roomsCount = 9;
-                else if (totalA >= 161 && totalA <= 200) roomsCount = 11;
-                else if (totalA >= 201 && totalA <= 250) roomsCount = 14;
+                if (totalA <= 80) roomsCount = 5;
+                else if (totalA <= 120) roomsCount = 7;
+                else if (totalA <= 160) roomsCount = 9;
+                else if (totalA <= 200) roomsCount = 11;
+                else if (totalA <= 250) roomsCount = 14;
                 else roomsCount = 17;
 
                 if (floors === 2) {
