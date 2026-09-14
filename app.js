@@ -49422,12 +49422,19 @@ const app = {
     // подводка к коллектору «шумела» на любом объекте крупнее ста метров.
     RAD_REGIMES: {
         r8060: { label: '80/60', dt: 20, note: 'Перепад 20 K. Классическая схема с котлом: расход вдвое меньше, диаметры и насос скромнее.' },
-        r7565: { label: '75/65', dt: 10, note: 'Перепад 10 K — режим, в котором заявлена паспортная мощность радиаторов. Расход вдвое выше, расчёт идёт с запасом: калькулятор будет требовать больший диаметр подводки.' }
+        r7565: { label: '75/65', dt: 10, note: 'Перепад 10 K — режим, в котором заявлена паспортная мощность радиаторов. Расход вдвое выше, расчёт идёт с запасом: калькулятор будет требовать больший диаметр подводки.' },
+        // Низкотемпературные режимы — для конденсационного котла и теплового насоса:
+        // средняя температура воды ниже 70 °C, и прибор отдаёт меньше паспорта в долю
+        // ((tср − tв) / 50)^1,3 (ГОСТ 31311-2005). Приборы подбираются крупнее.
+        r7055: { label: '70/55', dt: 15, tMean: 62.5, note: 'Перепад 15 K, средняя температура воды 62,5 °C. Приборы отдают около 80 % паспортной мощности — подбираются крупнее. Режим для конденсационного котла.' },
+        r5545: { label: '55/45', dt: 10, tMean: 50, note: 'Перепад 10 K, средняя температура воды 50 °C. Приборы отдают около половины паспортной мощности — радиаторы почти вдвое крупнее. Режим для конденсационного котла с полной конденсацией и теплового насоса.' }
     },
     radRegime: function () {
         return this.RAD_REGIMES[this.state.radRegime] || this.RAD_REGIMES.r8060;
     },
     radDT: function () { return this.radRegime().dt; },
+    /** Средняя температура воды в приборе, °C: 70 у 80/60 и 75/65 — при ней дана паспортная мощность */
+    radTMean: function () { return this.radRegime().tMean || 70; },
     RAD_LOCAL_K: 1.3,        // местные сопротивления луча: отводы, переходы, узел подключения
     RAD_MAN_DP: 8,           // коллектор радиаторов: кран, расходомер — кПа
     RAD_GROUP_DP: 12,        // насосная группа и обвязка котельной — кПа
@@ -52461,7 +52468,7 @@ const app = {
     },
 
     setRadRegime: function (key) {
-        this.state.radRegime = (key === 'r7565') ? 'r7565' : 'r8060';
+        this.state.radRegime = this.RAD_REGIMES[key] ? key : 'r8060';
         this.syncUI();
         this.render();
         this.saveState();
@@ -52796,10 +52803,12 @@ const app = {
         const radRegLbl = document.getElementById('lbl_rad_regime');
         if (radRegBlock) radRegBlock.style.display = radSchemeOn ? 'block' : 'none';
         if (radRegLbl) radRegLbl.style.display = radSchemeOn ? 'block' : 'none';
-        const _rg = this.state.radRegime === 'r7565' ? 'r7565' : 'r8060';
+        const _rg = this.RAD_REGIMES[this.state.radRegime] ? this.state.radRegime : 'r8060';
         const _rgTab = (id, on) => { const e = document.getElementById(id); if (e) e.className = on ? 'tab active' : 'tab'; };
         _rgTab('rad_regime_8060', _rg === 'r8060');
         _rgTab('rad_regime_7565', _rg === 'r7565');
+        _rgTab('rad_regime_7055', _rg === 'r7055');
+        _rgTab('rad_regime_5545', _rg === 'r5545');
         const _rgNote = document.getElementById('lbl_rad_regime_note');
         if (_rgNote) _rgNote.textContent = this.RAD_REGIMES[_rg].note;
 
@@ -58049,7 +58058,7 @@ const app = {
 
                 let tvLine = "";
                 if (o.kTv && o.kTv < 0.995) {
-                    tvLine = `<span style="color:#9CA3AF; font-size:11px; display:block;">Помещение +${o.tv} °C: прибор отдаёт ${Math.round(o.kTv * 100)} % паспортной мощности — ((70 − ${o.tv}) / 50)^1,3, ГОСТ 31311-2005.</span>`;
+                    tvLine = `<span style="color:#9CA3AF; font-size:11px; display:block;">Помещение +${o.tv} °C, режим ${this.radRegime().label}: прибор отдаёт ${Math.round(o.kTv * 100)} % паспортной мощности — ((${String(this.radTMean()).replace('.', ',')} − ${o.tv}) / 50)^1,3, ГОСТ 31311-2005.</span>`;
                 }
 
                 let warnWin = "";
@@ -62551,13 +62560,16 @@ const app = {
                     let qUfhMax = r.area * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
 
                     // Паспортная мощность прибора дана при ΔT = 50 K: средняя температура воды
-                    // 70 °C (её дают оба режима, 80/60 и 75/65) при воздухе +20 °C. В помещении
-                    // теплее прибор отдаёт меньше — в долю ((70 − Tv) / 50)^1,3 (ГОСТ 31311-2005):
+                    // 70 °C (80/60 и 75/65) при воздухе +20 °C. Ниже вода (70/55, 55/45) или теплее
+                    // помещение — прибор отдаёт меньше, в долю ((tср − Tv) / 50)^1,3 (ГОСТ 31311-2005):
                     // ванная +25 °C — 0,87, жилая +22 °C — 0,95. Без поправки ванная получала
                     // «+2 % запаса» и недогрев 11 %. В помещении прохладнее +20 °C прибор отдал
                     // бы больше паспорта, но этот запас оставляем и прибор не уменьшаем.
                     const roomTv = roomLoss.Tv || 20;
-                    const kTv = Math.min(1, Math.pow(Math.max(1, 70 - roomTv) / 50, 1.3));
+                    // Ограничение сверху — только от прохладного помещения; режим воды ниже
+                    // паспортного уменьшает отдачу всегда.
+                    const _tMean = this.radTMean();
+                    const kTv = Math.min(Math.pow((_tMean - 20) / 50, 1.3), Math.pow(Math.max(1, _tMean - roomTv) / 50, 1.3));
 
                     // Прибор ставится под окно, но помещение без окон отапливать
                     // тоже нужно: гардеробная, кладовая, котельная. Раньше цикл по
