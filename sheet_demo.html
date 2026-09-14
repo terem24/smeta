@@ -614,13 +614,13 @@ if (payload && payload.items && payload.items.length) {
     var tmNotes = (gdTm.notes && gdTm.notes.length)
       ? gdTm.notes.concat([{ h: 'Состав раздела', lines: ['Титульный лист, общие указания' +
           (tmScheme.length ? ', принципиальная схема' : '') +
-          (tmLayout.length ? ', компоновка котельной и вид спереди' : '') +
+          (tmLayout.length ? ', компоновка и виды котельной' : '') +
           (tmNodes.length ? ', узлы обвязки (' + tmNodes.length + ' л.)' : '') +
           (tmArt.length ? ', схема автоматики' : '') +
           ' и спецификация — ' + tmTotal + ' листов формата А3.'].concat(otherLine('tm')) }])
       : commonNotes('tm', 'Титульный лист, общие указания' +
       (tmScheme.length ? ', принципиальная схема' : '') +
-      (tmLayout.length ? ', компоновка котельной и вид спереди' : '') +
+      (tmLayout.length ? ', компоновка и виды котельной' : '') +
       (tmNodes.length ? ', узлы обвязки (' + tmNodes.length + ' л.)' : '') +
       ' и спецификация', tmTotal);
     svgs.push(titleOf('tm'));

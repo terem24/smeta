@@ -613,14 +613,35 @@
     return o.join('');
   }
 
+  // ─── Геометрия помещения ───────────────────────────────────────────────
+  // Одна на план и на виды: где дверь, где узел ввода воды, какой глубины
+  // комната. Раньше эти числа жили прямо в planBody, и виды сбоку были бы
+  // обречены на свою копию — а значит, рано или поздно на расхождение.
+  var ROOM = {
+    H: 2200,                 // высота помещения на видах (как на виде спереди)
+    doorW: 800, doorH: 2000, doorFromRight: 150,
+    wiY: 900, wiH: 630,      // узел ввода воды на левой стене: от несущей стены и длина
+    wiZ0: 300, wiZ1: 1300,   // его низ и верх над полом — условно, по месту
+    wiD: 60,                 // выступ узла от стены
+    boilerZ: 1350,           // низ настенных котлов
+    railSup: 1050, railRet: 980,
+    hydroZ0: 850, hydroZ1: 1250,
+    wallTankZ: 1100          // низ настенного бойлера
+  };
+  function roomGeom(ctx, room) {
+    var B = planWall(ctx);
+    // помещение шире набора оборудования — растягиваем стену до реального
+    if (room && room.w > B.W) B.W = room.w;
+    var D = (room && room.d) ? room.d : 2000;
+    return { B: B, W: B.W, D: D, doorX: B.W - ROOM.doorW - ROOM.doorFromRight };
+  }
+
   // ─── Лист «Компоновка котельной» (план) ────────────────────────────────
   // room: реальные габариты помещения из зоны «Котельная» плана этажа (мм)
   function planBody(ctx, room) {
     var o = [];
-    var B = planWall(ctx);
-    // помещение шире набора оборудования — растягиваем стену до реального
-    if (room && room.w > B.W) B.W = room.w;
-    var ROOM_D = (room && room.d) ? room.d : 2000;  // глубина помещения, мм
+    var G = roomGeom(ctx, room), B = G.B;
+    var ROOM_D = G.D;                  // глубина помещения, мм
     var WALL = 200, PART = 100;        // несущая стена и перегородки
     var avail = { x0: 130, y0: 30, x1 : 400, y1: 262 };
     var s = Math.min(0.1, (avail.x1 - avail.x0 - 24) / (B.W + WALL * 2),
@@ -633,7 +654,7 @@
     o.push(rect(X(0) - PART * s, Y(0), PART * s, ROOM_D * s, COL.wallEnd));
     o.push(rect(X(B.W), Y(0), PART * s, ROOM_D * s, COL.wallEnd));
     // нижняя перегородка с дверным проёмом 800 у правого края
-    var doorW = 800, dwx = B.W - doorW - 150;
+    var doorW = ROOM.doorW, dwx = G.doorX;
     o.push(rect(X(0) - PART * s, Y(ROOM_D), (dwx + PART) * s, PART * s, COL.wallEnd));
     o.push(rect(X(dwx + doorW), Y(ROOM_D), (B.W - dwx - doorW + PART) * s, PART * s, COL.wallEnd));
     // окно в несущей стене — белый разрыв над зоной котлов
@@ -666,7 +687,7 @@
     o.push(rect(X(B.zone.x - 40), Y(10) + 2.6, (B.zone.w + 80) * s, 2.2, COL.ret));
 
     // узел ввода воды на левой стене
-    var wiY = 900, wiH = 630;
+    var wiY = ROOM.wiY, wiH = ROOM.wiH;
     o.push(rect(X(0), Y(wiY), 60 * s, wiH * s, '#e8e8e8', { stroke: '#8f8f8f', sw: 0.15 }));
     for (var kv = 0; kv < 4; kv++)
       o.push(line(X(70), Y(wiY + 80 + kv * 150), X(140), Y(wiY + 80 + kv * 150), { c: COL.valve, w: 0.9 }));
@@ -710,6 +731,262 @@
       ? 'Размеры помещения — по зоне «Котельная» плана этажа; расстановка уточняется по месту.'
       : 'Размеры помещения условные: планировка уточняется по месту монтажа.',
       { size: 3.0 }));
+    return o.join('');
+  }
+
+  // ─── Лист «Виды котельной слева, справа и сзади» ───────────────────────
+  // В проектах-образцах котельную показывают со всех сторон, с привязками по
+  // высоте и от стен. Компоновщик ставит оборудование на одну стену (несущую,
+  // напротив двери), узел ввода воды — на левую стену, дверь — в стену
+  // напротив. Отсюда три вида:
+  //   слева  — левая стена с узлом ввода; оборудование основной стены в профиле,
+  //            с глубиной корпусов — видно, сколько котёл занимает от стены;
+  //   справа — то же с другой стороны, без узла ввода на глазах;
+  //   сзади  — стена с дверью, взгляд от оборудования: проём и его привязка.
+  // Высоты те же, что на виде спереди (ROOM), глубины и места — те же, что на
+  // плане (roomGeom), поэтому три листа читаются вместе.
+
+  /**
+   * Предметы котельной в координатах помещения, мм:
+   *   x — вдоль основной стены от левой; y — от основной стены вглубь;
+   *   z — от пола. w/d/h — габарит, kind — чем рисовать, no — номер в легенде.
+   */
+  function roomItems(ctx, G) {
+    var B = G.B, it = [];
+    B.boilers.forEach(function (b) {
+      var d = b.gas ? ctx.boilerD : ctx.elD;
+      it.push({ key: b.gas ? 'gas' : 'el', kind: 'box', x: b.x, w: b.w, y: 30, d: d,
+        z: ROOM.boilerZ, h: b.h, fill: COL.body, stroke: '#8f8f8f' });
+    });
+    if (ctx.hydro && B.hydro)
+      it.push({ key: 'hydro', kind: 'box', x: B.hydro.x, w: B.hydro.w, y: 30, d: 90,
+        z: ROOM.hydroZ0, h: ROOM.hydroZ1 - ROOM.hydroZ0, fill: COL.body, stroke: '#8f8f8f' });
+    if (ctx.tankH && B.tankH)
+      it.push({ key: 'tankH', kind: 'tank', x: B.tankH.x, w: B.tankH.w, y: 40, d: ctx.tankH.d,
+        z: 0, h: ctx.tankH.h, fill: COL.tankHeat, stroke: '#7d211a' });
+    if (ctx.tankD && B.tankD)
+      it.push({ key: 'tankD', kind: 'tank', x: B.tankD.x, w: B.tankD.w, y: 40, d: ctx.tankD.d,
+        z: 0, h: ctx.tankD.h, fill: '#ffffff', stroke: '#9a9a9a' });
+    if (ctx.indirect && B.indirect)
+      it.push({ key: 'boiler', kind: 'tank', x: B.indirect.x, w: B.indirect.w, y: 40, d: ctx.indirect.d,
+        z: ctx.indirect.wall ? ROOM.wallTankZ : 0, h: ctx.indirect.h, fill: '#8a8a8a', stroke: '#5f5f5f' });
+    // узел ввода воды — на левой стене
+    it.push({ key: 'water', kind: 'box', x: 0, w: ROOM.wiD, y: ROOM.wiY, d: ROOM.wiH,
+      z: ROOM.wiZ0, h: ROOM.wiZ1 - ROOM.wiZ0, fill: '#e8e8e8', stroke: '#8f8f8f' });
+    return it;
+  }
+
+  /**
+   * Одна развёртка. view: 'left' | 'right' | 'back'.
+   * box — поле на листе; s — общий масштаб трёх видов (мм листа на мм натуры),
+   * чтобы одинаковые предметы на разных видах были одного размера.
+   */
+  function elevationBody(ctx, G, view, box, s, legendNo) {
+    var o = [], H = ROOM.H, SEC = 200 * s;
+    var items = roomItems(ctx, G);
+    // ось u — вдоль рассматриваемой стены слева направо для смотрящего
+    var L, uOf, uLen, near;
+    if (view === 'left') {
+      // смотрим на левую стену: основная стена справа, дверная — слева
+      L = G.D;
+      uOf = function (q) { return G.D - (q.y + q.d); }; uLen = function (q) { return q.d; };
+      near = function (q) { return q.x; };           // ближе к смотрящему — больший x
+    } else if (view === 'right') {
+      L = G.D;
+      uOf = function (q) { return q.y; }; uLen = function (q) { return q.d; };
+      near = function (q) { return -(q.x + q.w); };
+    } else {
+      // сзади: от основной стены на дверную; левая стена оказывается справа
+      L = G.W;
+      uOf = function (q) { return G.W - (q.x + q.w); }; uLen = function (q) { return q.w; };
+      near = function (q) { return q.y; };
+    }
+    // На виде сзади оборудование основной стены за спиной смотрящего — его нет
+    if (view === 'back') items = items.filter(function (q) { return q.key === 'water'; });
+
+    var bw = box.x1 - box.x0;
+    var X0 = box.x0 + (bw - L * s) / 2, Y0 = box.y1 - 14;
+    var X = function (u) { return X0 + u * s; };
+    var Y = function (z) { return Y0 - z * s; };
+
+    // стена, плитка, торцы разрезанных стен, пол
+    o.push(rect(X(0), Y(H), L * s, H * s, COL.wall));
+    var t;
+    for (t = 300; t < L; t += 300) o.push(line(X(t), Y(H), X(t), Y(0), { c: COL.tile, w: 0.08 }));
+    for (t = 300; t < H; t += 300) o.push(line(X(0), Y(t), X(L), Y(t), { c: COL.tile, w: 0.08 }));
+    o.push(rect(X(0) - SEC, Y(H), SEC, H * s + 4, COL.wallEnd));
+    o.push(rect(X(L), Y(H), SEC, H * s + 4, COL.wallEnd));
+    o.push(line(X(0), Y(0), X(L), Y(0), { w: 0.4 }));
+    o.push(rect(X(0) - SEC, Y(0), L * s + 2 * SEC, 3.2, COL.screed));
+    if (ctx.tp) o.push(rect(X(0), Y(0) + 1, L * s, 1.2, COL.warm));
+
+    // дверной проём на виде сзади
+    if (view === 'back') {
+      var du = G.W - (G.doorX + ROOM.doorW);
+      o.push(rect(X(du), Y(ROOM.doorH), ROOM.doorW * s, ROOM.doorH * s, '#ffffff',
+        { stroke: '#5f5f5f', sw: 0.3 }));
+      o.push(line(X(du), Y(ROOM.doorH), X(du + ROOM.doorW), Y(ROOM.doorH / 2), { c: '#9a9a9a', w: 0.15 }));
+      o.push(line(X(du + ROOM.doorW), Y(ROOM.doorH / 2), X(du), Y(0), { c: '#9a9a9a', w: 0.15 }));
+    }
+
+    // На видах сбоку — гребёнки в разрезе и стояки отводов у основной стены
+    if (view !== 'back' && ctx.loops && ctx.loops.length) {
+      var uWall = view === 'left' ? function (y) { return G.D - y; } : function (y) { return y; };
+      [[ROOM.railSup, 25, COL.supply], [ROOM.railRet, 60, COL.ret]].forEach(function (r) {
+        o.push(line(X(uWall(r[1])), Y(r[0]), X(uWall(r[1])), Y(0), { c: r[2], w: 0.35 }));
+        o.push(circle(X(uWall(r[1])), Y(r[0]), Math.max(0.9, 18 * s), r[2]));
+      });
+    }
+
+    // предметы: сначала дальние, ближние поверх
+    var drawn = items.slice().sort(function (a, b) { return near(a) - near(b); }).map(function (q) {
+      var u = uOf(q), len = uLen(q);
+      var r = { q: q, x: X(u), w: len * s, y: Y(q.z + q.h), h: q.h * s };
+      o.push(rect(r.x, r.y, r.w, r.h, q.fill,
+        { stroke: q.stroke, sw: 0.2, rx: q.kind === 'tank' ? Math.min(2.4, r.w / 3) : 0.5 }));
+      if (q.kind === 'tank' && q.z === 0) {
+        // опоры напольного бака
+        o.push(rect(r.x + r.w * 0.2, Y(0) - 0.8, r.w * 0.12, 0.8, '#4a4a4a'));
+        o.push(rect(r.x + r.w * 0.68, Y(0) - 0.8, r.w * 0.12, 0.8, '#4a4a4a'));
+      }
+      return r;
+    });
+    // Контуры, закрытые ближними предметами, — штриховой линией, как
+    // невидимый контур на чертеже: на видах сбоку баки стоят друг за другом,
+    // и без этого бак ГВС за бойлером просто исчезал с листа.
+    drawn.forEach(function (r) {
+      o.push('<rect x="' + n(r.x) + '" y="' + n(r.y) + '" width="' + n(r.w) + '" height="' + n(r.h) +
+        '" style="fill:none;stroke:#555;stroke-width:0.18;stroke-dasharray:1.2,0.8"/>');
+    });
+    // Номера — поверх всего, чтобы закрытый предмет не терял и номер.
+    // Одинаковые места слегка разводим по высоте.
+    var used = [];
+    drawn.forEach(function (r) {
+      var no = legendNo[r.q.key];
+      if (!no) return;
+      var cx = r.x + r.w / 2, cy = r.y + Math.min(r.h / 2, 4.5);
+      used.forEach(function (p) { if (Math.abs(p[0] - cx) < 4.8 && Math.abs(p[1] - cy) < 4.8) cy = p[1] + 5.2; });
+      used.push([cx, cy]);
+      o.push(circle(cx, cy, 2.3, '#ffffff', { stroke: '#000', sw: 0.2 }));
+      o.push(txt(cx, cy + 1.0, String(no), { size: 2.7, anchor: 'middle' }));
+    });
+
+    // ─── размеры ───
+    // по горизонтали: границы стен и предметов, что видны на этом виде
+    var cuts = [0, L];
+    items.forEach(function (q) { cuts.push(uOf(q)); cuts.push(uOf(q) + uLen(q)); });
+    if (view === 'back') {
+      var du2 = G.W - (G.doorX + ROOM.doorW);
+      cuts.push(du2); cuts.push(du2 + ROOM.doorW);
+    }
+    // На видах сбоку профили оборудования у стены перекрываются — из них в
+    // цепочку идёт только передняя грань самого глубокого: сколько места от
+    // стены занято. Иначе цепочка из чисел 30, 40, 350, 530 нечитаема.
+    if (view !== 'back') {
+      var main = items.filter(function (q) { return q.key !== 'water'; });
+      cuts = [0, L];
+      if (main.length) {
+        var depth = Math.max.apply(null, main.map(function (q) { return q.y + q.d; }));
+        cuts.push(view === 'left' ? G.D - depth : depth);
+      }
+      items.filter(function (q) { return q.key === 'water'; }).forEach(function (q) {
+        cuts.push(uOf(q)); cuts.push(uOf(q) + uLen(q));
+      });
+    }
+    cuts = cuts.map(function (v) { return Math.round(v); })
+      .filter(function (v, i, a) { return v >= 0 && v <= L && a.indexOf(v) === i; })
+      .sort(function (a, b) { return a - b; });
+    o.push(dimH(cuts.map(X), Y(0) + 9, { vals: cuts.slice(1).map(function (v, i) { return v - cuts[i]; }) }));
+
+    // По вертикали — только отметки, по которым монтируют: гребёнки, низ и
+    // верх котлов, верх напольного бойлера, узел ввода и дверь. Верх каждого
+    // бака в цепочку не идёт: при 1:25 цифры 110 и 100 ложились друг на друга.
+    // У отметки приоритет: при слиянии близких остаётся важная для монтажа —
+    // низ котла важнее верха бойлера, подача гребёнки важнее обратки.
+    var zs = [{ v: 0, p: 9 }, { v: H, p: 9 }];
+    var mark = function (v, p) { zs.push({ v: Math.round(v), p: p }); };
+    if (view !== 'back') {
+      if (ctx.loops && ctx.loops.length) { mark(ROOM.railRet, 1); mark(ROOM.railSup, 2); }
+      var bs = items.filter(function (q) { return q.key === 'gas' || q.key === 'el'; });
+      if (bs.length) {
+        mark(ROOM.boilerZ, 4);
+        mark(Math.max.apply(null, bs.map(function (q) { return q.z + q.h; })), 3);
+      }
+      items.filter(function (q) { return q.key === 'boiler'; }).forEach(function (q) {
+        if (q.z) mark(q.z, 2);
+        mark(q.z + q.h, 1);
+      });
+    }
+    if (view !== 'right') { mark(ROOM.wiZ0, 2); mark(ROOM.wiZ1, 2); }
+    if (view === 'back') mark(ROOM.doorH, 4);
+    zs = zs.filter(function (m) { return m.v >= 0 && m.v <= H; })
+      .sort(function (a, b) { return a.v - b.v || b.p - a.p; });
+    // Соседние отметки ближе, чем занимает подпись, сливаются — иначе цифры
+    // налезают. Из двух остаётся более важная; пол и потолок — всегда.
+    var minGap = Math.max(80, 3.4 / s);
+    var kept = [zs[0]];
+    zs.slice(1).forEach(function (m) {
+      var last = kept[kept.length - 1];
+      if (m.v === last.v) return;
+      if (m.v - last.v >= minGap) { kept.push(m); return; }
+      if (m.p > last.p && last.v !== 0) kept[kept.length - 1] = m;
+    });
+    // потолок мог выпасть при слиянии с верхней отметкой — возвращаем его
+    if (kept[kept.length - 1].v !== H) {
+      if (H - kept[kept.length - 1].v < minGap && kept.length > 1) kept.pop();
+      kept.push({ v: H, p: 9 });
+    }
+    var zz = kept.map(function (m) { return m.v; });
+    var xDim = view === 'left' ? X(0) - SEC - 6 : X(L) + SEC + 6;
+    o.push(dimV(zz.map(Y), xDim, { vals: zz.slice(1).map(function (v, i) { return v - zz[i]; }) }));
+    return o.join('');
+  }
+
+  function sideViewsBody(ctx, room) {
+    var G = roomGeom(ctx, room), o = [];
+    var H = ROOM.H;
+    // общий масштаб: два вида сбоку в верхнем ряду, вид сзади — в нижнем
+    var s = Math.min(0.05, 150 / (G.D + 400), 92 / (H + 300), 190 / (G.W + 400));
+    var boxL = { x0: 26, x1: 206, y1: 138 };
+    var boxR = { x0: 222, x1: 402, y1: 138 };
+    var boxB = { x0: 26, x1: 226, y1: 262 };
+
+    // легенда: номер у каждого предмета, что есть в котельной
+    var legendNo = {}, legendRows = [], no = 0;
+    var add = function (key, name) { legendNo[key] = ++no; legendRows.push([no, name]); };
+    if (ctx.gasCount) add('gas', ctx.names.gas);
+    if (ctx.elCount) add('el', ctx.names.el);
+    if (ctx.hydro) add('hydro', ctx.names.hydro);
+    if (ctx.tankH) add('tankH', ctx.names.tankH);
+    if (ctx.tankD) add('tankD', ctx.names.tankD);
+    if (ctx.indirect) add('boiler', ctx.names.boiler);
+    add('water', 'Узел ввода воды');
+
+    [['left', boxL, 'Вид слева — стена с узлом ввода воды'],
+     ['right', boxR, 'Вид справа'],
+     ['back', boxB, 'Вид сзади — стена с дверью']].forEach(function (v) {
+      o.push(txt((v[1].x0 + v[1].x1) / 2, v[1].y1 - H * s - 22, v[2], { size: 4.2, anchor: 'middle' }));
+      o.push(elevationBody(ctx, G, v[0], v[1], s, legendNo));
+    });
+
+    // таблица «Экспликация» справа от вида сзади
+    var LX = 244, LY = 160, W1 = 12, W2 = 150, rh = 6.4;
+    o.push(txt(LX + (W1 + W2) / 2, LY - 2.4, 'Экспликация оборудования', { size: 4.2, anchor: 'middle' }));
+    [['№', 'Наименование']].concat(legendRows).forEach(function (r, i) {
+      var y = LY + i * rh;
+      o.push(rect(LX, y, W1 + W2, rh, null, { stroke: '#000', sw: 0.2 }));
+      o.push(line(LX + W1, y, LX + W1, y + rh, { w: 0.18 }));
+      o.push(txt(LX + W1 / 2, y + rh / 2 + 1.2, String(r[0]), { size: 3.2, anchor: 'middle' }));
+      o.push(txt(LX + W1 + 2, y + rh / 2 + 1.2, r[1], { size: 3.2, maxW: W2 - 4 }));
+    });
+    var ny = LY + (legendRows.length + 1) * rh + 8;
+    [
+      'Высоты — те же, что на виде спереди; привязки от стен — по листу «Компоновка котельной».',
+      room ? 'Размеры помещения — по зоне «Котельная» плана этажа.'
+        : 'Размеры помещения условные: планировка уточняется по месту монтажа.',
+      'Высота узла ввода воды над полом принята условно, уточняется по месту.',
+      'Масштаб видов ~1:' + Math.round(1 / s) + '.'
+    ].forEach(function (s2, i) { o.push(txt(LX, ny + i * 4.6, s2, { size: 3.0, maxW: 166 })); });
     return o.join('');
   }
 
@@ -781,11 +1058,20 @@
         })
       });
     }
-    // Снимка нет (нет сети, нет WebGL) — лист просто не выпускается
+    // Виды слева, справа и сзади — сразу за фасадами, как в проектах-образцах
+    out.push({
+      title: 'Виды котельной слева, справа и сзади',
+      svg: window.projectSheets.sheet({
+        code: opts.code, sheet: fmt(start + out.length),
+        body: title('Виды котельной слева, справа и сзади') + sideViewsBody(ctx, opts.room || null)
+      })
+    });
+    // Снимка нет (нет сети, нет WebGL) — лист просто не выпускается.
+    // Номер — по месту в списке: с фасадом бойлера и видами «+2» занимал чужой.
     if (opts.photo) out.push({
       title: 'Общий вид котельной',
       svg: window.projectSheets.sheet({
-        code: opts.code, sheet: fmt(start + 2),
+        code: opts.code, sheet: fmt(start + out.length),
         body: title('Общий вид котельной') + viewBody(opts.photo, opts.photoRatio)
       })
     });
