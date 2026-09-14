@@ -362,7 +362,11 @@
 
     function isHidden(el) {
         if (!el) return true;
-        if (el.classList && (el.classList.contains('no-print') || el.classList.contains('hidden-col'))) return true;
+        // row-opt-out — позиция, вычеркнутая монтажником (✖): на экране и в печати её
+        // прячет CSS, а выгрузка читает разметку и раньше клала строку с суммой в файл,
+        // хотя «Итого» раздела её уже не включает.
+        if (el.classList && (el.classList.contains('no-print') || el.classList.contains('hidden-col')
+            || el.classList.contains('row-opt-out'))) return true;
         return !!(el.style && el.style.display === 'none');
     }
 
