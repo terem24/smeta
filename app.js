@@ -65762,7 +65762,7 @@ const app = {
                     }
 
                     let lubCount = Math.max(1, Math.ceil(totalSewerPoints / 10));
-                    let lub = catalog.sewer_silent.find(x => x.id === "sewer_lubricant");
+                    let lub = catalog.sewer_silent.find(x => x.id === "900003.R" || x.id === "sewer_lubricant"); // парсер цен сменил id на артикул Sinikon — старый оставлен на случай отката
                     addToBill(lub, lubCount, this.getDesc('sewer_lubricant'), grpSewerMain);
 
                     let coupling110 = catalog.sewer_silent.find(x => x.id === "SKB-0006-000110");
@@ -65912,7 +65912,7 @@ const app = {
                     }
 
                     let lubCount = Math.max(1, Math.ceil(totalSewerPoints / 10));
-                    let lub = catalog.sewer_silent.find(x => x.id === "sewer_lubricant");
+                    let lub = catalog.sewer_silent.find(x => x.id === "900003.R" || x.id === "sewer_lubricant"); // парсер цен сменил id на артикул Sinikon — старый оставлен на случай отката
                     addSewerItem(lub, lubCount, this.getDesc('sewer_lubricant'));
 
                     let coupling110 = catalog.sewer_silent.find(x => x.id === "SKB-0006-000110");
