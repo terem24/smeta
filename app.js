@@ -65062,6 +65062,10 @@ const app = {
         }
 
         currentSectionTitle = "5. Внутреннее водоснабжение";
+        // Для работ ниже: сколько коллекторов водоснабжения собрано (по линии на
+        // ХВС, ГВС и рециркуляцию) и сколько смесителей с горячей водой.
+        this._waterCollGroups = 0;
+        this._waterHotFixtures = 0;
         if (this.state.water && this.state.waterZones.length > 0) {
             let mainTitle = "5. Внутреннее водоснабжение";
             let collType = this.state.waterManifoldType || 'standard';
@@ -65150,6 +65154,7 @@ const app = {
                 let mix = f.basin + f.shower + (f.bath || 0) + (f.bidet || 0); // биде — как раковина (ХВС+ГВС)
                 let zoneCold = cw_only + mix;
                 let zoneHot = mix;
+                this._waterHotFixtures += zoneHot;
                 totalColdPoints += zoneCold;
                 totalPipeCold += (z.dist * zoneCold * 1.1);
                 if (recirc) {
@@ -65176,6 +65181,7 @@ const app = {
                 if (q2) addToBill(getWaterManifold(catalog.water_manifolds_cold[0]), q2, descColl, grpCold);
                 addEurocone(waterEurocone, totalColdPoints, this.getDesc('eurocone_water', totalColdPoints), grpCold);
                 _addManifoldEnd('ХВС', 'cw', grpCold);
+                this._waterCollGroups++;
                 // Крепление коллектора ХВС
                 let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");
                 if (clampItem) {
@@ -65251,6 +65257,7 @@ const app = {
                 if (q2) addToBill({ ...getWaterManifold(catalog.water_manifolds_hot[0]), sortRank: -1 }, q2, descColl, grpHot);
                 addEurocone(waterEurocone, totalHotPoints, this.getDesc('eurocone_water', totalHotPoints), grpHot);
                 _addManifoldEnd('ГВС', 'hw', grpHot);
+                this._waterCollGroups++;
                 // Крепление коллектора ГВС
                 let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");
                 if (clampItem) {
@@ -65325,6 +65332,7 @@ const app = {
                 if (q2) addToBill(getWaterManifold(catalog.water_manifolds_recirc[0]), q2, descColl, grpRecirc);
                 addEurocone(waterEurocone, totalHotPoints, this.getDesc('eurocone_water', totalHotPoints), grpRecirc);
                 addToBill(catalog.water_parts.find(x => x.id === "SFT-0024-000034"), 1, "Заглушка коллектора", grpRecirc);
+                this._waterCollGroups++;
                 // Крепление коллектора рециркуляции ГВС
                 let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");
                 if (clampItem) {
@@ -65475,9 +65483,15 @@ const app = {
                 // ==========================================
                 let wGroup2 = "2.3 Внутреннее водоснабжение";
                 if (totalColdPoints > 0) addToWorks("Точка присоединения ХВС (монтаж трубопроводов, водорозетки)", totalColdPoints, 3700, "точка", wGroup2);
-                if (totalHotPoints > 0) addToWorks("Точка присоединения ГВС (монтаж трубопроводов, водорозетки)", totalHotPoints, 4500, "точка", wGroup2);
+                // Точки ГВС — по смесителям. С рециркуляцией totalHotPoints считает петли
+                // (по одной на зону), и включённая рециркуляция делала работы дешевле:
+                // 5 смесителей в 2 зонах — 2 точки вместо 5.
+                const _hotFix = this._waterHotFixtures || totalHotPoints;
+                if (_hotFix > 0) addToWorks("Точка присоединения ГВС (монтаж трубопроводов, водорозетки)", _hotFix, 4500, "точка", wGroup2);
                 if (this.state.recirc && totalHotPoints > 0) addToWorks("Точка присоединения рециркуляции ГВС", totalHotPoints, 3700, "точка", wGroup2);
-                if (typeof collGroups !== 'undefined' && collGroups > 0) addToWorks("Установка и подключение коллектора системы водоснабжения", collGroups, 4500, "шт", wGroup2);
+                // Раньше условие смотрело на переменную collGroups, которой нигде не было, —
+                // работа по коллекторам не попадала в смету никогда.
+                if (this._waterCollGroups > 0) addToWorks("Установка и подключение коллектора системы водоснабжения", this._waterCollGroups, 4500, "шт", wGroup2);
                 // В квартире трубы прячут в штробы — отдельная и заметная работа,
                 // которой в доме нет: там они идут по перекрытию и в стяжке.
                 if (this.isFlat() && totalColdPoints > 0) {
