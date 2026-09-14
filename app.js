@@ -64512,10 +64512,15 @@ const app = {
                 const _manBase = _ufhManIdx;
                 for (let i = 0; i < n; i++) {
                     let sz = _szs[i];
-                    let stdM = catalog.manifolds.find(x => x.loops === sz);
+                    // Гребёнок меньше чем на 2 выхода не бывает: одна петля (ТП на 8 м² или
+                    // единственный санузел) садится на коллектор на 2 выхода, второй — резерв.
+                    // Раньше поиск ровно на 1 выход ничего не находил, и коллектор со шкафом
+                    // и обвязкой молча выпадали из сметы.
+                    const szCat = Math.max(2, sz);
+                    let stdM = catalog.manifolds.find(x => x.loops === szCat);
                     if (stdM) {
                         let swapVal = this.state.swaps && this.state.swaps[stdM.id];
-                        let defaultM = catalog.manifolds_full_kit.find(x => x.loops === sz) || catalog.manifolds_full_kit[catalog.manifolds_full_kit.length - 1];
+                        let defaultM = catalog.manifolds_full_kit.find(x => x.loops === szCat) || catalog.manifolds_full_kit[catalog.manifolds_full_kit.length - 1];
                         let mSel = (swapVal && this.findManifoldVariant(swapVal)) || defaultM || stdM;
                         let dispLoops = mSel.loops || sz;
                         // Первая гребёнка своей группы одинаковых несёт таблицу за всю группу
@@ -64525,7 +64530,7 @@ const app = {
                         // бухты трубы почти всегда дороже, и без ранга главная позиция узла
                         // уезжала вниз, под трубу и шкаф.
                         addToBill({ ...mSel, originalId: stdM.id, sortRank: -1, name: `Коллектор ТП ${dispLoops} вых (${lbl})` }, 1,
-                            this.getDesc('manifold', dispLoops, 'ufh') + (_same ? this.ufhFlowTableHtml(_same) : ''), grpPipe);
+                            this.getDesc('manifold', sz === 1 ? 1 : dispLoops, 'ufh') + (_same ? this.ufhFlowTableHtml(_same) : ''), grpPipe);
                         mans++;
 
                         _ufhCabIdx++;
@@ -64892,10 +64897,12 @@ const app = {
             });
             Object.keys(_mSizes).map(Number).sort((a, b) => b - a).forEach(sz => {
                 const qty = _mSizes[sz];
-                const _mBase = (catalog.manifolds || []).find(x => x.loops === sz);
-                const _mSel = (catalog.manifolds_full_kit || []).find(x => x.loops === sz) || _mBase;
+                // Одна петля — на гребёнку на 2 выхода: меньше в каталоге нет (см. тёплый пол)
+                const _szCat = Math.max(2, sz);
+                const _mBase = (catalog.manifolds || []).find(x => x.loops === _szCat);
+                const _mSel = (catalog.manifolds_full_kit || []).find(x => x.loops === _szCat) || _mBase;
                 if (!_mSel) return;
-                addToBill({ ..._mSel, originalId: _mBase ? _mBase.id : _mSel.id, name: `Коллектор снеготаяния ${sz} вых` }, qty,
+                addToBill({ ..._mSel, originalId: _mBase ? _mBase.id : _mSel.id, name: `Коллектор снеготаяния ${_szCat} вых` }, qty,
                     `<span style="font-size:11px;line-height:1.5;">` +
                     `<b>Зачем:</b> Раздаёт теплоноситель по петлям и позволяет их сбалансировать. Расходомеры здесь обязательны: петли разной длины, без настройки дальний участок не растает.<br>` +
                     `<b>Формула:</b> 1 выход на петлю, больше 12 петель на узле — вторая гребёнка. Узлы гребёнку не делят: у каждого свой теплообменник.<br>` +
