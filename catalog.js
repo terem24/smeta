@@ -3090,7 +3090,7 @@ const catalog = {
         { id: "SVB-0004-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1260, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 594, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
         { id: "SFT-0002-003420", name: "Удлинитель ВН/НР 3/4\" 20 мм", price: 432, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFT-0004-003434", name: "Ниппель 3/4\" НР", price: 224, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "VT.386.N.05", name: "Фильтр универсальный 3/4''", price: 7624, brand: "VALTEC", availability: "in_stock", price_date: "2026-07-12" },
+        { id: "SFW-0001-000020", name: "Фильтр сетчатый косой 3/4\"", price: 1074, brand: "STOUT", availability: "in_stock", price_date: "2026-09-14", rommer: { id: "RFW-0001-000020", name: "Фильтр грубой очистки косой 500 мкм 3/4\"", price: 573, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-14" } },
         { id: "SVC-0011-000020", name: "Клапан обратный 3/4’’ ВР", price: 1702, brand: "STOUT", rommer: { id: "RVC-0001-000020", name: "Клапан обратный 3/4\"", price: 641, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFT-0020-000034", name: "Тройник 3/4\" ВР", price: 545, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFT-0029-003412", name: "Футорка 3/4\" x 1/2\"", price: 168, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
