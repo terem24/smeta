@@ -45256,6 +45256,19 @@ const app = {
         const m = id.match(/^[A-Z]{3}-\d{4}-(\d{3})\d{3}/);
         return m ? parseInt(m[1], 10) * 10 : 500;
     },
+    /**
+     * Секционный радиатор на n секций, а если такого типоразмера в серии нет —
+     * ближайший больший. Раньше искали ровно n и при промахе брали последний в
+     * массиве: у серий только с чётными секциями (алюминий, Vega, Alpha, ROMMER
+     * Plus/Profi) нечётное n давало сразу максимум — 12 секций вместо 8.
+     */
+    radBySec: function (arr, n) {
+        const list = (arr || []).filter(x => x && x.sec > 0);
+        if (!list.length) return (arr || [])[0];
+        const up = list.filter(x => x.sec >= n).sort((a, b) => a.sec - b.sec)[0];
+        return up || list.reduce((a, b) => (b.sec > a.sec ? b : a));
+    },
+
     getPowerAtDt50: function (item) {
         if (item.power50) return item.power50;
         if (item.passportPower) return Math.round(item.passportPower * Math.pow(50 / 70, 1.3));
@@ -62647,20 +62660,20 @@ const app = {
                             } else {
                                 if (reqSecsSpace > 14) reqSecsSpace = 14;
                             }
-                            let itemSpace = catalog.rads.find(x => x.sec === reqSecsSpace) || catalog.rads[catalog.rads.length - 1];
+                            let itemSpace = this.radBySec(catalog.rads, reqSecsSpace);
 
                             let reqSecsTitan = Math.max(4, Math.max(Math.ceil(reqPwr / p50_titan), minSecsByW));
                             const minByPwrTitan = Math.max(4, Math.ceil(reqPwr / p50_titan));
                             if (reqSecsTitan > maxSecsByW && maxSecsByW >= minByPwrTitan) reqSecsTitan = maxSecsByW;
                             if (reqSecsTitan > 14) reqSecsTitan = 14;
-                            let itemTitan = titanRads.find(x => x.sec === reqSecsTitan) || titanRads[titanRads.length - 1];
+                            let itemTitan = this.radBySec(titanRads, reqSecsTitan);
 
                             // === Дополнительные серии радиаторов ===
                             const pickSect = (arr, p50, maxS) => {
                                 let n = Math.max(4, Math.max(Math.ceil(reqPwr / p50), minSecsByW));
                                 if (n > maxSecsByW && maxSecsByW >= Math.ceil(reqPwr / p50)) n = maxSecsByW;
                                 if (n > maxS) n = maxS;
-                                return arr.find(x => x.sec === n) || arr[arr.length - 1];
+                                return app.radBySec(arr, n);
                             };
                             const p50_spaceRu = isRommer ? (spaceRuRads[0]?.rommer?.power50 || 82) : (spaceRuRads[0]?.power50 || 116);
                             const p50_titanSide = isRommer ? (titanSideRads[0]?.rommer?.power50 || 91) : (titanSideRads[0]?.power50 || 126);
@@ -62950,12 +62963,12 @@ const app = {
                     if (secPerRadSpace % 2 !== 0) secPerRadSpace++;
                     if (secPerRadSpace > 12) secPerRadSpace = 12;
                 }
-                let itemSpace = catalog.rads.find(x => x.sec === secPerRadSpace) || catalog.rads[catalog.rads.length - 1];
+                let itemSpace = this.radBySec(catalog.rads, secPerRadSpace);
 
                 let totalSecTitan = Math.ceil(heatLoadTotal / p50_titan);
                 let countTitan = Math.max(win, Math.ceil(totalSecTitan / 14));
                 let secPerRadTitan = Math.max(4, Math.min(14, Math.ceil(totalSecTitan / countTitan)));
-                let itemTitan = titanRads.find(x => x.sec === secPerRadTitan) || titanRads[titanRads.length - 1];
+                let itemTitan = this.radBySec(titanRads, secPerRadTitan);
 
                 const defaultSteelRads = steelRads.filter(s => app.getRadHeightFromId(s.id) === 500);
                 let bestPanel = defaultSteelRads.find(s => s.power50 >= loadPerWindow) || defaultSteelRads[defaultSteelRads.length - 1];
@@ -62982,7 +62995,7 @@ const app = {
                     const cnt = Math.max(win, Math.ceil(totalSec / maxSecs));
                     let secPerRad = Math.max(4, Math.min(maxSecs, Math.ceil(totalSec / cnt)));
                     if (isRommer) { if (secPerRad % 2 !== 0) secPerRad++; if (secPerRad > 12) secPerRad = 12; }
-                    const item = arr.find(x => x.sec === secPerRad) || arr[arr.length - 1];
+                    const item = this.radBySec(arr, secPerRad);
                     return { item, count: cnt, factPower: item.sec * p50 * cnt };
                 };
 
