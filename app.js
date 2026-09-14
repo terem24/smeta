@@ -11437,6 +11437,21 @@ const app = {
         // «не смотрел» и «посмотрел и молчит»; разговор с клиентом в них
         // разный, поэтому и подпись разная.
         const DAY = 86400000, now = Date.now();
+        // Воронка хранит только ПЕРВОЕ событие каждого вида, а правку после
+        // отправки видно лишь по последнему сохранению. Без подписи
+        // пересохранённая смета выглядела так, будто с ней ничего не делали.
+        const lastSaved = {}, lastSent = {};
+        rows.forEach(r => {
+            const t = new Date(r && r.created_at).getTime();
+            if (!r || !r.calc_id || isNaN(t)) return;
+            const id = String(r.calc_id);
+            if (r.event === 'saved' && t > (lastSaved[id] || 0)) lastSaved[id] = t;
+            if ((r.event === 'sent' || r.event === 'printed') && t > (lastSent[id] || 0)) lastSent[id] = t;
+        });
+        const dayWord = (t) => {
+            const d = Math.round((new Date(now).setHours(0, 0, 0, 0) - new Date(t).setHours(0, 0, 0, 0)) / DAY);
+            return d <= 0 ? 'сегодня' : d === 1 ? 'вчера' : d + ' дн. назад';
+        };
         const stale = [];
         (inv.cards || []).forEach(c => {
             const sent = c.first.sent || c.first.printed || null;
@@ -11447,7 +11462,13 @@ const app = {
             const last = Math.max(sent || 0, opened || 0);
             const days = Math.floor((now - last) / DAY);
             if (days < this.INSTALLER_STALE_DAYS) return;
-            stale.push({ id: c.id, name: c.project || 'Без названия', days, opened: !!opened, sum: sumOfCalc[c.id] || 0 });
+            // Правка засчитывается, только если сохранили уже после того, как
+            // смета ушла клиенту: сохранения до отправки — обычная работа.
+            const saved = lastSaved[c.id] || 0;
+            const edited = saved > last
+                ? 'исправлена ' + dayWord(saved) + ((lastSent[c.id] || 0) > saved ? ', отправлена заново' : ', клиенту не отправлялась')
+                : '';
+            stale.push({ id: c.id, name: c.project || 'Без названия', days, opened: !!opened, sum: sumOfCalc[c.id] || 0, edited });
         });
         stale.sort((a, b) => b.days - a.days);
 
@@ -11482,7 +11503,8 @@ const app = {
                     <div style="min-width:0; flex:1;">
                         <b style="font-size:12.5px; color:var(--text-main);">${esc(x.name)}</b>
                         <br><small style="color:${x.opened ? '#F97316' : 'var(--text-sec)'};">${x.opened
-                            ? 'клиент открыл и молчит' : 'клиент так и не открыл'}${x.sum ? ' · ' + money(x.sum) : ''}</small>
+                            ? 'клиент открыл и молчит' : 'клиент так и не открыл'}${x.sum ? ' · ' + money(x.sum) : ''}</small>${x.edited
+                            ? `<br><small style="color:var(--primary);">✏️ ${x.edited}</small>` : ''}
                     </div>
                     <b style="flex:0 0 auto; font-size:12.5px; color:${x.days >= 14 ? '#EF4444' : '#F97316'};">${x.days} дн.</b>
                 </div>`).join('')

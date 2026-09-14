@@ -312,10 +312,13 @@ if (payload && payload.items && payload.items.length) {
   // Порядок листов внутри раздела — как в проектах-образцах: этажами, а не
   // пачками. На каждом этаже: план напольного отопления, его объёмный вид,
   // затем план радиаторного отопления и его объёмный вид.
-  // На этаж отведено четыре слота эталона: план напольного отопления, его
-  // объёмный вид, план отопления, объёмный вид отопления. Пустой слот —
-  // разрыв в нумерации и строка «нет» в списке листов.
-  var oBody = [], oSlots = [];
+  // На этаж отведено до четырёх слотов эталона: план напольного отопления, его
+  // объёмный вид, план отопления, объёмный вид отопления. Слот, лист которого
+  // должен быть, но не построился, — разрыв в нумерации и строка «лист не
+  // сформирован». А листа, которому на этаже неоткуда взяться (тёплого пола
+  // или радиаторов там нет), в списке нет вовсе: раньше на втором этаже без
+  // ТП висели две строки «не сформирован», будто лист потерялся.
+  var oBody = [], oSlots = [], oNo = 3;
   // Для 3D вида отопления: схема разводки — из гидравлики сметы (там же, где
   // она выбирала диаметры), высота прибора — из названия радиатора в
   // спецификации («… 500 …», «… H=300 …»). Нет ни того ни другого — лучи и 500 мм.
@@ -329,24 +332,29 @@ if (payload && payload.items && payload.items.length) {
     return false;
   });
   if (plans && window.projectPlans) {
-    (plans.floors || []).forEach(function (_, i) {
-      var fl = i + 1, base = 3 + i * 4, ttl = 'Этаж ' + pad2(fl);
-      var put = function (n, list, want) {
-        list.forEach(function (p) { oBody.push(p); oSlots.push([numOf('o')(n), p.title, '']); });
-        if (!list.length) oSlots.push([numOf('o')(n), want, 'лист не сформирован']);
+    (plans.floors || []).forEach(function (f, i) {
+      var fl = i + 1, ttl = 'Этаж ' + pad2(fl);
+      var zs = (f && f.zones) || [];
+      var hasTp = zs.some(function (z) { return (z.type || 'tp') === 'tp'; });
+      var hasRad = !!((f && f.rads || []).length || zs.some(function (z) { return z.type === 'rad'; }));
+      // make(n) строит листы с номера n; applicable — должен ли лист на этаже быть
+      var put = function (make, want, applicable) {
+        var list = make(oNo);
+        list.forEach(function (p) { oBody.push(p); oSlots.push([numOf('o')(oNo), p.title, '']); oNo++; });
+        if (!list.length && applicable) { oSlots.push([numOf('o')(oNo), want, 'лист не сформирован']); oNo++; }
       };
-      put(base, projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
-        sheetStart: base, only: ['tp'], floor: fl, num: numOf('o') })),
-        ttl + '. План напольного отопления');
-      put(base + 1, projectPlans.iso3dSheets(plans, { kind: 'tp', code: MARK.o.code,
-        sheetStart: base + 1, stepMm: tpStep, rooms: expRooms, floor: fl, num: numOf('o') }),
-        ttl + '. 3D вид напольного отопления');
-      put(base + 2, projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
-        sheetStart: base + 2, only: ['floor'], floor: fl, num: numOf('o') })),
-        ttl + '. План отопления');
-      put(base + 3, projectPlans.iso3dSheets(plans, { kind: 'rad', code: MARK.o.code,
-        sheetStart: base + 3, rooms: expRooms, floor: fl, num: numOf('o'),
-        tee: radTee, radH: radH }), ttl + '. 3D вид отопления');
+      put(function (n) { return projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
+        sheetStart: n, only: ['tp'], floor: fl, num: numOf('o') })); },
+        ttl + '. План напольного отопления', hasTp);
+      put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'tp', code: MARK.o.code,
+        sheetStart: n, stepMm: tpStep, rooms: expRooms, floor: fl, num: numOf('o') }); },
+        ttl + '. 3D вид напольного отопления', hasTp);
+      put(function (n) { return projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
+        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o') })); },
+        ttl + '. План отопления', true);
+      put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'rad', code: MARK.o.code,
+        sheetStart: n, rooms: expRooms, floor: fl, num: numOf('o'),
+        tee: radTee, radH: radH }); }, ttl + '. 3D вид отопления', hasRad);
     });
   }
   // Узлы отопления: готовые листы проектов-образцов — ровно те, что смета
@@ -354,7 +362,7 @@ if (payload && payload.items && payload.items.length) {
   // не рисуем: оформление проектного листа задано жёстко, и снимок отвечает
   // ему точнее любой перерисовки.
   var NS = payload.nodeSheets || null;
-  var oManStart = 3 + nFloors * 4;
+  var oManStart = oNo;
   var oNodes = [];
   if (NS) {
     var oDefs = [];
@@ -409,18 +417,22 @@ if (payload && payload.items && payload.items.length) {
 
   // ── В: водоснабжение ─────────────────────────────────────────────────
   // Этажами, как в эталоне: план водоснабжения этажа — сразу его объёмный вид.
-  var vBody = [], vSlots = [];
+  // Этаж без сантехприборов (жилой второй этаж) водоснабжения не несёт — его
+  // слотов в списке нет, как и у отопления.
+  var vBody = [], vSlots = [], vNo = 3;
   if (plans && window.projectPlans && itemsBy.v.length) {
-    (plans.floors || []).forEach(function (_, i) {
-      var fl = i + 1, base = 3 + i * 2, ttl = 'Этаж ' + pad2(fl);
-      var put = function (n, list, want) {
-        list.forEach(function (p) { vBody.push(p); vSlots.push([numOf('v')(n), p.title, '']); });
-        if (!list.length) vSlots.push([numOf('v')(n), want, 'лист не сформирован']);
+    (plans.floors || []).forEach(function (f, i) {
+      var fl = i + 1, ttl = 'Этаж ' + pad2(fl);
+      var hasFx = ((f && f.fixtures) || []).some(function (q) { return q.t !== 'riser'; });
+      var put = function (make, want) {
+        var list = make(vNo);
+        list.forEach(function (p) { vBody.push(p); vSlots.push([numOf('v')(vNo), p.title, '']); vNo++; });
+        if (!list.length && hasFx) { vSlots.push([numOf('v')(vNo), want, 'лист не сформирован']); vNo++; }
       };
-      put(base, projectPlans.waterSheets(plans, { code: MARK.v.code, sheetStart: base,
-        only: 'water', floor: fl, num: numOf('v') }), ttl + '. План водоснабжения');
-      put(base + 1, projectPlans.iso3dSheets(plans, { kind: 'water', code: MARK.v.code,
-        sheetStart: base + 1, floor: fl, num: numOf('v') }), ttl + '. 3D вид водоснабжения');
+      put(function (n) { return projectPlans.waterSheets(plans, { code: MARK.v.code, sheetStart: n,
+        only: 'water', floor: fl, num: numOf('v') }); }, ttl + '. План водоснабжения');
+      put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'water', code: MARK.v.code,
+        sheetStart: n, floor: fl, num: numOf('v') }); }, ttl + '. 3D вид водоснабжения');
     });
   }
   // Мокрые зоны крупно — санузлы, кухня, котельная: привязки приборов и высоты
@@ -429,7 +441,7 @@ if (payload && payload.items && payload.items.length) {
   // по одному листу, а не сверяет два раздела.
   // Аксонометрические схемы В1/Т3 по этажам — сразу за планами и 3D-видами.
   // Труба подводок в примечании — из названия позиции сметы («16х2,2»).
-  var vAxoStart = itemsBy.v.length ? 3 + nFloors * 2 : 3;
+  var vAxoStart = vNo;
   var vPipeLabel = null;
   (itemsBy.v || []).some(function (i) {
     var m = /(PEX|PE-RT|PE-Xa|металлопласт\S*|полипропилен\S*)[^\d]{0,40}(\d{2})\s*[xх×]\s*(\d[.,]\d)/i.exec(String(i.name || ''));
@@ -460,14 +472,32 @@ if (payload && payload.items && payload.items.length) {
   var vPipeNo = vNodeStart + vNodes.length;
   // Обвязка узла ввода ХВС: вид собран 3D-рендером, потому что на листах
   // проектов-образцов узел с редуктором и счётчиком не нарисован ни разу.
+  // Примечания — по тому, что реально стоит на виде узла (подписи деталей
+  // рендера). Раньше текст про счётчик и редуктор печатался всегда, даже у
+  // узла, где их нет ни на виде, ни в смете.
+  var hvsNotes = function (photo) {
+    var names = ((photo && photo.marks) || []).map(function (m) { return String(m.t || ''); }).join(' | ');
+    var meter = /сч[её]тчик/i.test(names), reducer = /редуктор/i.test(names);
+    var filter = /фильтр/i.test(names), check = /обратн/i.test(names);
+    var out = [];
+    if (filter && (meter || reducer)) {
+      out.push('Косой фильтр ставится раньше ' +
+        [meter ? 'счётчика' : '', reducer ? 'редуктора' : ''].filter(Boolean).join(' и ') +
+        ': песок и окалина из магистрали сажают ' +
+        [meter ? 'крыльчатку счётчика' : '', reducer ? 'седло редуктора' : ''].filter(Boolean).join(' и ') + '.');
+    } else if (filter) {
+      out.push('Фильтр ставится первым по ходу воды, сразу за вводным краном: песок и окалина ' +
+        'из магистрали оседают в нём, а не в арматуре узла.');
+    }
+    if (check && reducer) out.push('Обратный клапан — после редуктора; перед ним он отсекает редуктор ' +
+      'от магистрали, и настроить его нечем.');
+    out.push('После сборки провести гидравлическое испытание давлением 10 бар.');
+    return out;
+  };
   var vPipe = (window.projectNodeSheets && (payload.node3d || {}).hvs_in)
     ? [projectNodeSheets.piping({ code: MARK.v.code, sheet: numOf('v')(vPipeNo),
         title: 'Обвязка узла ввода ХВС', photo: payload.node3d.hvs_in,
-        notes: ['Косой фильтр ставится раньше счётчика и редуктора: песок и окалина ' +
-                  'из магистрали сажают крыльчатку счётчика и седло редуктора.',
-                'Обратный клапан — после редуктора; перед ним он отсекает редуктор ' +
-                  'от магистрали, и настроить его нечем.',
-                'После сборки провести гидравлическое испытание давлением 10 бар.'] })].filter(Boolean)
+        notes: hvsNotes(payload.node3d.hvs_in) })].filter(Boolean)
     : [];
   var vSpecStart = vPipeNo + vPipe.length;
   var vSpec = itemsBy.v.length ? projectSheets.fromEquipment(itemsBy.v, {
