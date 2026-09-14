@@ -1597,6 +1597,30 @@ const app = {
         });
     },
 
+    /**
+     * Запись в журнал действий сотрудников (таблица team_activity).
+     *
+     * По журналу руководитель видит работу менеджеров в разделе «Филиалы»:
+     * разосланные ссылки, смены статусов, переписку. Кто действовал, определяет
+     * сервер по сессии, поэтому здесь только что сделано и над чем. Филиал можно
+     * не знать — для монтажника его подставит сама функция базы.
+     *
+     * Ошибку не показываем: журнал вторичен, и сбой записи (например, миграция
+     * ещё не выполнена) не должен мешать разослать ссылку или сменить статус.
+     */
+    logTeamActivity: function (action, opts) {
+        const o = opts || {};
+        try {
+            supabaseClient.rpc('log_team_activity', {
+                p_action: action,
+                p_distributor: o.distId || null,
+                p_target_user: o.userId || null,
+                p_target: o.target != null ? String(o.target) : null,
+                p_meta: o.meta || null
+            }).then(({ error }) => { if (error) console.warn('[журнал действий]', action, error.message || error); });
+        } catch (e) { console.warn('[журнал действий]', action, e.message || e); }
+    },
+
     shareInvite: async function (distId) {
         const d = this.findDist(distId);
         if (!d) return;
@@ -1604,17 +1628,27 @@ const app = {
         // Системное меню «поделиться» есть на телефонах и в части настольных
         // браузеров; где его нет — кладём текст в буфер обмена
         if (navigator.share) {
-            try { await navigator.share({ title: 'Калькулятор HeatCalc', text: text }); return; }
+            try {
+                await navigator.share({ title: 'Калькулятор HeatCalc', text: text });
+                this.logTeamActivity('invite_share', { distId: d.id, target: d.promo_code });
+                return;
+            }
             catch (e) { if (e && e.name === 'AbortError') return; }
         }
         try {
             await this.copyToClipboard(text);
+            this.logTeamActivity('invite_share', { distId: d.id, target: d.promo_code });
             app.alert('Текст приглашения скопирован. Вставьте его в WhatsApp, Telegram или СМС.');
         } catch (e) { app.alert(text); }
     },
 
     copyInviteLink: async function (code) {
         const link = this.inviteLinkFor(code);
+        // Кнопка знает только промокод — компанию находим по нему
+        const want = String(code || '').trim().toUpperCase();
+        const pool = ((this.adminData && this.adminData.distributors) || []).concat(this._cabinetInviteDists || []);
+        const d = pool.find(x => String(x.promo_code || '').trim().toUpperCase() === want);
+        this.logTeamActivity('invite_link', { distId: d ? d.id : null, target: want });
         try { await this.copyToClipboard(link); app.alert('Ссылка скопирована:\n' + link); }
         catch (e) { app.alert(link); }
     },
@@ -1647,6 +1681,7 @@ const app = {
         const link = this.inviteLinkFor(d.promo_code);
         const src = await this.qrDataUrl(link, 260);
         if (!src) { app.alert('Не удалось нарисовать QR-код. Ссылка: ' + link); return; }
+        this.logTeamActivity('invite_qr', { distId: d.id, target: d.promo_code });
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
@@ -1687,6 +1722,7 @@ const app = {
         const logo = new URL('logo_hc_new.png', window.location.href).href;
         const w = window.open('', '_blank');
         if (!w) { app.alert('Браузер не дал открыть окно печати. Разрешите всплывающие окна для этого сайта.'); return; }
+        this.logTeamActivity('invite_print', { distId: d.id, target: d.promo_code });
         w.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8">
             <title>Приглашение — ${esc(d.company_name)}</title>
             <style>
@@ -7316,7 +7352,7 @@ const app = {
                             <input type="text" id="dist_regions" placeholder="Калининградская область, Москва" ${isViewer ? 'disabled' : ''} style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
                         </div>
                         <div style="grid-column: 1 / -1;">
-                            <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;">Email директора (необяз.) — получит скрытую копию писем менеджеру. Несколько менеджеров одной компании — это несколько промокодов с одинаковыми названием компании и email директора</label>
+                            <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; display: block; margin-bottom: 4px;">Email директора (необяз.) — руководитель филиалов: получит скрытую копию писем менеджеру, видит сметы и работу менеджеров всех филиалов с этим адресом и сам меняет статусы счетов. Филиал — это отдельная карточка со своим промокодом и тем же email директора</label>
                             <input type="email" id="dist_director_email" placeholder="director@teplokom.ru" ${isViewer ? 'disabled' : ''} style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text-main); font-size: 13px; box-sizing: border-box;">
                         </div>
                         <div>
@@ -7450,13 +7486,91 @@ const app = {
         return { rows: out, capped: true };
     },
 
-    renderAdminKanban: async function (skipFetch) {
+    /**
+     * Дочитка планировщика: только то, что появилось после прошлой загрузки.
+     *
+     * Полная загрузка — это вся история событий (на сентябрь 2026 — 180 КБ из
+     * 215 КБ всего открытия), и раньше она шла при каждом входе в раздел и после
+     * каждой смены статуса. Теперь полностью читаем раз в KANBAN_FULL_TTL (и по
+     * кнопке «Обновить»), а в промежутке берём новые события, новые сметы и
+     * учётки тех, кто появился в новых событиях. Чистка осиротевших событий и
+     * досоздание пропущенных — только при полной загрузке: им нужен весь список.
+     *
+     * Что может отстать до полной загрузки: сумма пересохранённой сметы и смена
+     * дистрибьютора у монтажника. Новые сметы и новые люди видны сразу.
+     */
+    KANBAN_FULL_TTL: 30 * 60 * 1000,
+
+    kanbanCacheOwner: function () {
+        const u = this._currentUserRow || this.state.tgUser || {};
+        return this.getAdminRole() + ':' + String(u.email || '').toLowerCase();
+    },
+
+    kanbanFetchIncrement: async function () {
+        const events = this._kanbanEvents || [];
+        const since = events.reduce((m, e) => (e.created_at && e.created_at > m ? e.created_at : m), '');
+        if (!since) return false;
+        // gte, а не gt: у событий одной секунды совпадает время, и строгое
+        // сравнение теряло бы соседнее. Повторы отсекаем по id.
+        const { rows: fresh } = await this.fetchAllRows('invoice_events', '*', { build: q => q.gte('created_at', since), order: 'created_at' });
+        const seen = new Set(events.map(e => String(e.id)));
+        const added = (fresh || []).filter(e => !seen.has(String(e.id)));
+        if (added.length) this._kanbanEvents = events.concat(added);
+
+        // Сметы, сохранённые после прошлой загрузки: их суммы и признак «живая смета»
+        const estSince = this._kanbanFullAtIso || since;
+        try {
+            const { rows: ests } = await this.fetchAllRows('estimates',
+                'id, created_at, share_id, total_sum, eq_sum, works_sum, calc_id:calc_data->>calc_id, from_recognition:calc_data->>from_recognition',
+                { build: q => q.gte('created_at', estSince), order: 'created_at' });
+            const live = new Set(this._kanbanLiveIds || []);
+            (ests || []).forEach(e => {
+                const sum = parseFloat(e.total_sum) || ((parseFloat(e.eq_sum) || 0) + (parseFloat(e.works_sum) || 0)) || 0;
+                [e.calc_id, e.share_id].filter(Boolean).map(String).forEach(cid => {
+                    live.add(cid);
+                    this._kanbanCalcSumMap[cid] = sum;
+                    if (e.from_recognition === 'true' || e.from_recognition === true) this._kanbanRecMap[cid] = true;
+                });
+            });
+            if (this._kanbanLiveIds) this._kanbanLiveIds = Array.from(live);
+        } catch (e) { console.warn('[планировщик] новые сметы не дочитаны:', e.message || e); }
+
+        // Учётки авторов новых событий, которых ещё нет в справочнике
+        const meta = this._kanbanUserMeta || (this._kanbanUserMeta = {});
+        const unknown = [...new Set(added.map(e => String(e.user_email || '').toLowerCase()).filter(m => m && !meta[m]))];
+        if (unknown.length) {
+            try {
+                const { data } = await supabaseClient.from('users').select('email, region, distributor_id').in('email', unknown.slice(0, 100));
+                (data || []).forEach(u => { if (u.email) meta[u.email.toLowerCase()] = { region: u.region || null, distributor_id: u.distributor_id || null }; });
+            } catch (e) { console.warn('[планировщик] новые учётки не дочитаны:', e.message || e); }
+        }
+        return true;
+    },
+
+    renderAdminKanban: async function (skipFetch, force) {
         const content = document.getElementById('admin_content');
         if (!content) return;
 
         const installerFilter = document.getElementById('kanban_installer_filter')?.value || 'all';
 
+        // Свежая полная загрузка есть и принадлежит этому же человеку — дочитываем
+        // только новое. Под другой учёткой кэш не годится: у менеджера и владельца
+        // разные права, и смешивать их данные нельзя.
+        const cacheOk = !!this._kanbanEvents && this._kanbanOwner === this.kanbanCacheOwner()
+            && this._kanbanFullAt && (Date.now() - this._kanbanFullAt < this.KANBAN_FULL_TTL);
+        if (!skipFetch && !force && cacheOk) {
+            try {
+                if (await this.kanbanFetchIncrement()) skipFetch = true;
+            } catch (e) {
+                console.warn('[планировщик] дочитка не удалась, читаем полностью:', e.message || e);
+            }
+        }
+        if (skipFetch && this._kanbanEvents && this._kanbanOwner && this._kanbanOwner !== this.kanbanCacheOwner()) skipFetch = false;
+
         if (!skipFetch || !this._kanbanEvents) {
+            // Отметку ставим до чтения: дочитка «с момента загрузки» не должна
+            // пропустить сметы, сохранённые, пока шла сама загрузка
+            const fullStartedIso = new Date().toISOString();
             content.innerHTML += `<div id="kanban_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка истории...</div>`;
             let events = null;
             let error = null;
@@ -7611,6 +7725,9 @@ const app = {
             // доведённого до дела: суммой это не проверить — сохранённая смета бывает
             // и нулевой. Список переживает skipFetch вместе с остальными картами.
             this._kanbanLiveIds = liveCalcIds ? Array.from(liveCalcIds) : null;
+            this._kanbanFullAt = Date.now();
+            this._kanbanFullAtIso = fullStartedIso;
+            this._kanbanOwner = this.kanbanCacheOwner();
         } else if (!document.getElementById('kanban_root')) {
             content.innerHTML += `<div id="kanban_root"></div>`;
         }
@@ -7636,13 +7753,20 @@ const app = {
                 p.currentMeta = e.meta || null;
                 p.lastAt = e.created_at;
             }
-            if (e.user_name) p.user_name = e.user_name;
-            if (e.user_email) p.user_email = e.user_email;
             if (e.project_name) p.project_name = e.project_name;
-            const meta = e.user_email ? userMeta[e.user_email.toLowerCase()] : null;
-            if (meta) {
-                p.region = meta.region;
-                p.distributor_id = meta.distributor_id;
+            // Событие сотрудника (статус поставил менеджер) не меняет автора карточки:
+            // иначе в карточке вместо монтажника стоял бы менеджер, а регион и
+            // дистрибьютор брались бы из его учётки. Старые записи «счёт выставлен»
+            // и «оплачено» без отметки by_staff — тоже всегда от менеджера.
+            const byStaff = (e.meta && e.meta.by_staff) || ['invoice_issued', 'paid', 'rejected'].includes(e.event);
+            if (!byStaff || !p.user_email) {
+                if (e.user_name) p.user_name = e.user_name;
+                if (e.user_email) p.user_email = e.user_email;
+                const meta = e.user_email ? userMeta[e.user_email.toLowerCase()] : null;
+                if (meta) {
+                    p.region = meta.region;
+                    p.distributor_id = meta.distributor_id;
+                }
             }
             p.totalSum = liveCalcMap[String(e.calc_id)] || 0;
             // Пометка «распознавание»: либо флаг в самой смете, либо meta события
@@ -7727,7 +7851,7 @@ const app = {
                                onchange="app.toggleKanbanAbandoned(this.checked)" style="cursor:pointer;">
                         Брошенные расчёты (${abandonedCount})
                     </label>
-                    <button class="btn-header-blue" onclick="app.renderAdminKanban()" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
+                    <button class="btn-header-blue" onclick="app.renderAdminKanban(false, true)" title="Перечитать всю историю заново" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
                 </div>
             </div>
         `;
@@ -7750,13 +7874,16 @@ const app = {
                </div>`
             : '';
 
+        // Кого можно перетаскивать: права те же, что у кнопок в карточке
+        const myEmail = await this.kanbanMyEmail();
+        const canDrag = (card) => this.kanbanCanManageDist(card.distributor_id, myEmail);
         const columnsHtml = `
             <div class="admin-kanban-cols" style="display:flex; gap:14px; align-items:start; overflow-x:auto; padding-bottom:12px; width:100%;">
                 ${STAGES.map(s => {
             const cards = filtered.filter(p => stageOf(p.current) === s).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
             const totalSum = cards.reduce((acc, c) => acc + (c.totalSum || 0), 0);
             return `
-                        <div style="border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
+                        <div ondragover="app.kanbanDragOver(event, this)" ondragleave="app.kanbanDragLeave(event, this)" ondrop="app.kanbanDrop(event, this, '${s.key}')" style="border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
                             <div style="background:${s.color}; color:#fff; padding:10px 12px; display:flex; flex-direction:column; gap:4px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.3px;">
                                     <span>${s.label}</span>
@@ -7773,7 +7900,7 @@ const app = {
                 const em = EVENT_META[c.current] || { label: c.current, color: '#94A3B8' };
                 const comment = c.currentMeta && c.currentMeta.comment ? c.currentMeta.comment : '';
                 return `
-                                    <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
+                                    <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" ${canDrag(c) ? `draggable="true" ondragstart="app.kanbanDragStart(event, '${c.calc_id}')" ondragend="app._kanbanDragId = null" title="Перетащите в другую колонку, чтобы сменить этап"` : ''} style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
                                         <div style="font-weight:700; color:var(--text-main); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.project_name || 'Без названия'}</div>
                                         ${c.fromRecognition ? `<div style="display:inline-block; background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; margin-bottom:6px; letter-spacing:0.02em;">🔍 РАСПОЗНАВАНИЕ</div>` : ''}
                                         <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
@@ -7874,6 +8001,500 @@ const app = {
         `;
     },
 
+    // ═══ Раздел «Филиалы» ═════════════════════════════════════════════════
+    // Схема компании для руководителя: компания → филиалы → менеджеры. Нажатие
+    // на узел открывает справа цифры за период (разосланные ссылки, подключённые
+    // монтажники, сметы, счета, оплаты) и ленту действий сотрудников.
+    //
+    // Компания здесь не отдельная сущность базы: филиалы одной компании — это
+    // карточки дистрибьюторов с одинаковым «Email директора» (а без него — с
+    // одинаковым названием). Так было заведено ещё при появлении поля директора.
+    //
+    // Данные читаются один раз за всё время и режутся по периоду в браузере:
+    // смена периода — частый щелчок, и гонять за ним базу незачем.
+    BRANCH_PERIODS: [
+        { key: '30', label: '30 дней', days: 30 },
+        { key: '90', label: '3 месяца', days: 90 },
+        { key: '365', label: 'Год', days: 365 },
+        { key: 'all', label: 'Всё время', days: 0 }
+    ],
+    BRANCH_ACTIONS: {
+        invite_share: { icon: '📤', label: 'разослал приглашение' },
+        invite_link: { icon: '🔗', label: 'скопировал ссылку-приглашение' },
+        invite_qr: { icon: '▦', label: 'показал QR-код приглашения' },
+        invite_print: { icon: '🖨', label: 'распечатал приглашение' },
+        status_change: { icon: '📋', label: 'сменил статус счёта' },
+        message: { icon: '💬', label: 'написал монтажнику' }
+    },
+    // События смет, по которым строится воронка. 'saved' нужен не воронке, а
+    // чтобы узнать автора сметы, если сама смета уже удалена из estimates.
+    BRANCH_EVENTS: ['saved', 'sent', 'printed', 'invoice_requested', 'invoice_issued', 'paid'],
+    _brPeriod: '90',
+    _brSel: null,
+    _brData: null,
+
+    setBranchPeriod: function (key) {
+        this._brPeriod = key;
+        this.renderAdminBranches(true);
+    },
+
+    selectBranchNode: function (type, id) {
+        this._brSel = { type: type, id: String(id) };
+        this.renderAdminBranches(true);
+        // На узком экране панель цифр стоит под схемой — подводим к ней
+        if (window.innerWidth < 1100) {
+            const el = document.getElementById('brx_detail');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    },
+
+    loadBranchData: async function () {
+        const dists = ((this.adminData && this.adminData.distributors) || []).slice();
+        const distIds = dists.map(d => String(d.id));
+        const chunk = (arr, n) => { const out = []; for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n)); return out; };
+        const STAFF = ['admin', 'viewer', 'manager'];
+        const data = { key: distIds.slice().sort().join(','), dists, people: [], staff: [], heads: [], estimates: [], events: [], activity: [], activityMissing: false };
+        if (!distIds.length) return data;
+
+        const userCols = 'id, username, first_name, last_name, middle_name, email, account_type, distributor_id, distributor_assigned_at, last_visited';
+
+        // 1. Все, кто привязан к филиалам: монтажники и менеджеры с ролью
+        for (const part of chunk(distIds, 60)) {
+            const { rows } = await this.fetchAllRows('users', userCols, { build: q => q.in('distributor_id', part), order: 'id' });
+            data.people.push(...rows);
+        }
+
+        // 2. Менеджеры и директора, вписанные в карточки почтой, но не привязанные полем
+        const known = new Set(data.people.map(u => String(u.email || '').trim().toLowerCase()).filter(Boolean));
+        const mails = new Set();
+        dists.forEach(d => [d.manager_email, d.director_email].forEach(m => {
+            const v = String(m || '').trim().toLowerCase();
+            if (v && !known.has(v)) mails.add(v);
+        }));
+        if (mails.size) {
+            try {
+                for (const part of chunk([...mails], 50)) {
+                    const { data: rows } = await supabaseClient.from('users').select(userCols).in('email', part);
+                    data.staff.push(...(rows || []));
+                }
+            } catch (e) { console.warn('[филиалы] менеджеры по почте не прочитаны:', e.message || e); }
+        }
+
+        // 3. Наблюдатели, которым назначены эти филиалы, — руководители на схеме
+        try {
+            const { data: rows, error } = await supabaseClient.from('users')
+                .select('id, username, first_name, last_name, middle_name, email, account_type, viewer_distributor_ids, last_visited')
+                .eq('account_type', 'viewer');
+            if (error) throw error;
+            const mine = new Set(distIds);
+            data.heads = (rows || []).filter(u => Array.isArray(u.viewer_distributor_ids) && u.viewer_distributor_ids.some(id => mine.has(String(id))));
+        } catch (e) { console.warn('[филиалы] наблюдатели не прочитаны:', e.message || e); }
+
+        // 4. Сметы монтажников филиалов
+        const installerIds = data.people.filter(u => !STAFF.includes(u.account_type || '')).map(u => String(u.id));
+        for (const part of chunk(installerIds, 100)) {
+            const { rows } = await this.fetchAllRows('estimates',
+                'id, user_id, created_at, total_sum, eq_sum, works_sum, share_id, project_name, calc_id:calc_data->>calc_id',
+                { build: q => q.in('user_id', part), order: 'created_at' });
+            data.estimates.push(...rows);
+        }
+
+        // 5. События смет для воронки (только нужные виды — без черновиков)
+        const evRes = await this.fetchAllRows('invoice_events', 'calc_id, event, user_id, user_email, project_name, created_at',
+            { build: q => q.in('event', this.BRANCH_EVENTS), order: 'created_at' });
+        data.events = evRes.rows;
+
+        // 6. Журнал действий сотрудников. Таблицы нет, пока миграция не выполнена —
+        // тогда раздел работает без ленты и говорит об этом.
+        try {
+            for (const part of chunk(distIds, 60)) {
+                const { data: rows, error } = await supabaseClient.from('team_activity')
+                    .select('*').in('distributor_id', part)
+                    .order('created_at', { ascending: false }).limit(3000);
+                if (error) throw error;
+                data.activity.push(...(rows || []));
+            }
+            data.activity.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        } catch (e) {
+            console.warn('[филиалы] журнал действий не прочитан:', e.message || e);
+            data.activityMissing = true;
+        }
+        return data;
+    },
+
+    renderAdminBranches: async function (skipFetch) {
+        const root = document.getElementById('branches_root');
+        if (!root) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const dists = (this.adminData && this.adminData.distributors) || [];
+        const curKey = dists.map(d => String(d.id)).sort().join(',');
+
+        if (!dists.length) {
+            root.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-sec); font-size:13px;">
+                Филиалов пока нет. Филиал — это карточка во вкладке «Дистрибьюторы»; у филиалов одной компании одинаковый «Email директора».</div>`;
+            return;
+        }
+
+        if (!skipFetch || !this._brData || this._brData.key !== curKey) {
+            root.innerHTML = `<div style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка филиалов…</div>`;
+            try {
+                this._brData = await this.loadBranchData();
+            } catch (e) {
+                console.error('[филиалы]', e);
+                root.innerHTML = `<div style="padding:20px; color:#EF4444;">Не удалось загрузить данные филиалов. Попробуйте обновить раздел.</div>`;
+                return;
+            }
+            // Пока грузили, могли уйти в другой раздел
+            if (!document.getElementById('branches_root')) return;
+        }
+        const D = this._brData;
+        const STAFF = ['admin', 'viewer', 'manager'];
+        const lc = v => String(v || '').trim().toLowerCase();
+        const nameOf = u => u ? this.getAdminUserDisplayName(u) : '—';
+
+        // ── Период ──
+        const period = this.BRANCH_PERIODS.find(p => p.key === this._brPeriod) || this.BRANCH_PERIODS[1];
+        const from = period.days ? new Date(Date.now() - period.days * 864e5) : null;
+        const inPeriod = ts => !from || (ts && new Date(ts) >= from);
+
+        // ── Справочники ──
+        const userById = {};
+        D.people.concat(D.staff, D.heads).forEach(u => { userById[String(u.id)] = u; });
+        const userByEmail = {};
+        D.people.concat(D.staff, D.heads).forEach(u => { if (u.email) userByEmail[lc(u.email)] = u; });
+        const installers = D.people.filter(u => !STAFF.includes(u.account_type || ''));
+        const installerById = {};
+        installers.forEach(u => { installerById[String(u.id)] = u; });
+
+        // Номер расчёта → монтажник: по смете, а если её уже нет — по событию
+        const calcOwner = {};
+        const calcSum = {};
+        D.estimates.forEach(e => {
+            const sum = parseFloat(e.total_sum) || ((parseFloat(e.eq_sum) || 0) + (parseFloat(e.works_sum) || 0)) || 0;
+            [e.calc_id, e.share_id].filter(Boolean).map(String).forEach(cid => { calcOwner[cid] = String(e.user_id); calcSum[cid] = sum; });
+        });
+        D.events.forEach(ev => {
+            const cid = String(ev.calc_id);
+            if (calcOwner[cid]) return;
+            if (ev.user_id && installerById[String(ev.user_id)]) calcOwner[cid] = String(ev.user_id);
+            else if (ev.user_email && userByEmail[lc(ev.user_email)] && installerById[String(userByEmail[lc(ev.user_email)].id)]) calcOwner[cid] = String(userByEmail[lc(ev.user_email)].id);
+        });
+
+        // ── Подсчёт по набору филиалов (и, для менеджера, по его действиям) ──
+        const statsFor = (distIdList, actorId) => {
+            const ids = new Set(distIdList.map(String));
+            const inst = installers.filter(u => ids.has(String(u.distributor_id)));
+            const instIds = new Set(inst.map(u => String(u.id)));
+            const act = D.activity.filter(a => inPeriod(a.created_at)
+                && (actorId ? String(a.actor_id) === String(actorId) : ids.has(String(a.distributor_id))));
+            const est = D.estimates.filter(e => instIds.has(String(e.user_id)) && inPeriod(e.created_at));
+            const evDistinct = (types) => {
+                const s = new Set();
+                D.events.forEach(ev => {
+                    if (!types.includes(ev.event) || !inPeriod(ev.created_at)) return;
+                    const owner = calcOwner[String(ev.calc_id)];
+                    if (owner && instIds.has(owner)) s.add(String(ev.calc_id));
+                });
+                return s;
+            };
+            const paidSet = evDistinct(['paid']);
+            const monthAgo = Date.now() - 30 * 864e5;
+            return {
+                invites: act.filter(a => String(a.action).indexOf('invite_') === 0).length,
+                statuses: act.filter(a => a.action === 'status_change').length,
+                messages: act.filter(a => a.action === 'message').length,
+                installers: inst.length,
+                // Отметки привязки нет у старых учёток — за «всё время» считаем их всех
+                joined: from ? inst.filter(u => inPeriod(u.distributor_assigned_at)).length : inst.length,
+                active30: inst.filter(u => u.last_visited && new Date(u.last_visited).getTime() > monthAgo).length,
+                calcUsers: new Set(est.map(e => String(e.user_id))).size,
+                estimates: est.length,
+                sent: evDistinct(['sent', 'printed']).size,
+                requested: evDistinct(['invoice_requested']).size,
+                issued: evDistinct(['invoice_issued']).size,
+                paid: paidSet.size,
+                paidSum: [...paidSet].reduce((acc, cid) => acc + (calcSum[cid] || 0), 0),
+                act: act
+            };
+        };
+
+        // ── Компании: филиалы с одним email директора, иначе с одним названием ──
+        const groups = [];
+        const groupByKey = {};
+        dists.forEach(d => {
+            const key = lc(d.director_email) ? 'dir:' + lc(d.director_email) : 'name:' + lc(d.company_name);
+            if (!groupByKey[key]) { groupByKey[key] = { key, dists: [] }; groups.push(groupByKey[key]); }
+            groupByKey[key].dists.push(d);
+        });
+        // В разметку уходит порядковый номер, а не ключ: в ключе почта или
+        // название компании, и кавычка в названии сломала бы onclick
+        const groupById = {};
+        groups.forEach((g, i) => { g.id = 'c' + i; groupById[g.id] = g; });
+        groups.forEach(g => {
+            const names = {};
+            g.dists.forEach(d => { const n = String(d.company_name || '').trim(); if (n) names[n] = (names[n] || 0) + 1; });
+            g.title = Object.keys(names).sort((a, b) => names[b] - names[a])[0] || 'Без названия';
+            const ids = new Set(g.dists.map(d => String(d.id)));
+            const heads = [];
+            const director = lc(g.dists[0].director_email) ? userByEmail[lc(g.dists[0].director_email)] : null;
+            if (director) heads.push(director);
+            D.heads.forEach(h => { if (h.viewer_distributor_ids.some(id => ids.has(String(id))) && !heads.some(x => String(x.id) === String(h.id))) heads.push(h); });
+            g.heads = heads;
+            g.directorEmail = g.dists[0].director_email || '';
+            g.stats = statsFor([...ids]);
+        });
+
+        const branchLabel = (d, g) => {
+            const sameName = g.dists.every(x => String(x.company_name || '').trim() === g.title);
+            if (!sameName || g.dists.length === 1) return String(d.company_name || '').trim() || 'Филиал';
+            const region = String((Array.isArray(d.regions) ? d.regions[0] : String(d.regions || '').split(',')[0]) || '').trim();
+            return region || d.manager_name || String(d.promo_code || '').toUpperCase() || 'Филиал';
+        };
+        const managersOf = (d) => {
+            const list = [];
+            D.people.filter(u => u.account_type === 'manager' && String(u.distributor_id) === String(d.id)).forEach(u => list.push(u));
+            const byMail = d.manager_email ? userByEmail[lc(d.manager_email)] : null;
+            if (byMail && !list.some(u => String(u.id) === String(byMail.id))) list.push(byMail);
+            return list;
+        };
+
+        // ── Выбор узла по умолчанию: первая компания ──
+        let sel = this._brSel;
+        const nodeExists = (s) => {
+            if (!s) return false;
+            if (s.type === 'company') return !!groupById[s.id];
+            if (s.type === 'branch') return dists.some(d => String(d.id) === s.id);
+            if (s.type === 'manager') return !!userById[s.id];
+            return false;
+        };
+        if (!nodeExists(sel)) sel = this._brSel = { type: 'company', id: groups[0].id };
+
+        const fmtN = n => Number(n || 0).toLocaleString('ru-RU');
+        const fmtRub = n => Math.round(n || 0).toLocaleString('ru-RU') + ' ₽';
+        const isSel = (type, id) => sel.type === type && sel.id === String(id);
+        const visited = ts => ts ? new Date(ts).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }) : 'не заходил';
+
+        // Полоски на карточках филиалов — относительно лучшего филиала компании
+        const bar = (val, max, color) => {
+            const pct = max > 0 ? Math.max(val > 0 ? 4 : 0, Math.round(val / max * 100)) : 0;
+            return `<div class="brx-bar"><i style="width:${pct}%; background:${color};"></i></div>`;
+        };
+        const METRICS = [
+            { k: 'invites', label: 'Ссылок', color: '#6366F1' },
+            { k: 'joined', label: 'Подключилось', color: '#10B981' },
+            { k: 'estimates', label: 'Смет', color: '#0EA5E9' },
+            { k: 'paid', label: 'Оплачено', color: '#F59E0B' }
+        ];
+
+        const treeHtml = groups.map(g => {
+            const bStats = {};
+            g.dists.forEach(d => { bStats[d.id] = statsFor([d.id]); });
+            const maxOf = k => Math.max(0, ...g.dists.map(d => bStats[d.id][k]));
+            const branchesHtml = g.dists.map(d => {
+                const s = bStats[d.id];
+                const mgrs = managersOf(d);
+                const mgrHtml = mgrs.length
+                    ? mgrs.map(u => `<button type="button" class="brx-chip${isSel('manager', u.id) ? ' sel' : ''}" onclick="event.stopPropagation(); app.selectBranchNode('manager','${u.id}')" title="${esc(u.email || '')}">
+                            <span class="brx-ava" style="background:${this.avatarColorFor(nameOf(u))};">${esc(nameOf(u).charAt(0).toUpperCase())}</span>${esc(nameOf(u))}</button>`).join('')
+                    : `<span class="brx-muted">${d.manager_name ? esc(d.manager_name) + ' — не зарегистрирован' : 'Менеджер не назначен'}</span>`;
+                return `<div class="brx-bwrap">
+                    <div class="brx-node brx-branch${isSel('branch', d.id) ? ' sel' : ''}${d.is_active === false ? ' off' : ''}" onclick="app.selectBranchNode('branch','${d.id}')">
+                        <div class="brx-title">🏬 ${esc(branchLabel(d, g))}</div>
+                        <div class="brx-muted" style="margin-bottom:8px;">Промокод <b>${esc(String(d.promo_code || '—').toUpperCase())}</b> · монтажников ${fmtN(s.installers)}${d.is_active === false ? ' · выключен' : ''}</div>
+                        ${METRICS.map(m => `<div class="brx-metric"><span>${m.label}</span>${bar(s[m.k], maxOf(m.k), m.color)}<b>${fmtN(s[m.k])}</b></div>`).join('')}
+                        <div class="brx-mgrs">${mgrHtml}</div>
+                    </div>
+                </div>`;
+            }).join('');
+            const headsHtml = g.heads.length
+                ? g.heads.map(h => `<span class="brx-head">👤 ${esc(nameOf(h))}</span>`).join('')
+                : `<span class="brx-muted">${g.directorEmail ? 'Директор ' + esc(g.directorEmail) + ' не зарегистрирован' : 'Руководитель не назначен'}</span>`;
+            return `<div class="brx-group">
+                <div class="brx-node brx-company${isSel('company', g.id) ? ' sel' : ''}" onclick="app.selectBranchNode('company','${g.id}')">
+                    <div class="brx-title" style="font-size:15px;">🏢 ${esc(g.title)} <span class="brx-muted" style="font-weight:600;">· ${g.dists.length} ${g.dists.length === 1 ? 'филиал' : (g.dists.length < 5 ? 'филиала' : 'филиалов')}</span></div>
+                    <div style="margin:4px 0 8px; display:flex; flex-wrap:wrap; gap:6px; align-items:center;">${headsHtml}</div>
+                    <div class="brx-sum">
+                        <span>📤 <b>${fmtN(g.stats.invites)}</b> ссылок</span>
+                        <span>👷 <b>${fmtN(g.stats.joined)}</b> подключилось</span>
+                        <span>📋 <b>${fmtN(g.stats.estimates)}</b> смет</span>
+                        <span>💰 <b>${fmtRub(g.stats.paidSum)}</b> оплачено</span>
+                    </div>
+                </div>
+                <div class="brx-stem"></div>
+                <div class="brx-branches">${branchesHtml}</div>
+            </div>`;
+        }).join('');
+
+        // ── Панель выбранного узла ──
+        let title = '', subtitle = '', stats = null, extraHtml = '', note = '';
+        if (sel.type === 'company') {
+            const g = groupById[sel.id];
+            stats = g.stats;
+            title = '🏢 ' + g.title;
+            subtitle = `${g.dists.length} ${g.dists.length === 1 ? 'филиал' : (g.dists.length < 5 ? 'филиала' : 'филиалов')}` + (g.heads.length ? ' · руководитель ' + g.heads.map(nameOf).join(', ') : '');
+            const rows = g.dists.map(d => {
+                const s = statsFor([d.id]);
+                return `<tr onclick="app.selectBranchNode('branch','${d.id}')" style="cursor:pointer;">
+                    <td>${esc(branchLabel(d, g))}</td><td>${fmtN(s.invites)}</td><td>${fmtN(s.joined)}</td><td>${fmtN(s.estimates)}</td><td>${fmtN(s.paid)}</td><td style="white-space:nowrap;">${fmtRub(s.paidSum)}</td></tr>`;
+            }).join('');
+            extraHtml = `<div class="brx-h">Сравнение филиалов</div>
+                <div style="overflow-x:auto;"><table class="brx-table">
+                    <thead><tr><th>Филиал</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Оплат</th><th>Сумма</th></tr></thead>
+                    <tbody>${rows}</tbody></table></div>`;
+        } else if (sel.type === 'branch') {
+            const d = dists.find(x => String(x.id) === sel.id);
+            const g = groups.find(x => x.dists.includes(d));
+            stats = statsFor([d.id]);
+            title = '🏬 ' + branchLabel(d, g);
+            subtitle = `${g.title} · промокод ${String(d.promo_code || '—').toUpperCase()}`;
+            const mgrs = managersOf(d);
+            extraHtml = `<div class="brx-h">Менеджеры филиала</div>` + (mgrs.length
+                ? mgrs.map(u => {
+                    const ms = statsFor([d.id], u.id);
+                    return `<div class="brx-row" onclick="app.selectBranchNode('manager','${u.id}')">
+                        <span class="brx-ava" style="background:${this.avatarColorFor(nameOf(u))};">${esc(nameOf(u).charAt(0).toUpperCase())}</span>
+                        <span style="flex:1; min-width:0;"><b>${esc(nameOf(u))}</b><br><span class="brx-muted">заходил: ${visited(u.last_visited)}</span></span>
+                        <span class="brx-muted" style="text-align:right; white-space:nowrap;">📤 ${fmtN(ms.invites)} · 📋 ${fmtN(ms.statuses)} · 💬 ${fmtN(ms.messages)}</span>
+                    </div>`;
+                }).join('')
+                : `<div class="brx-muted">${d.manager_name ? esc(d.manager_name) + ' ещё не зарегистрирован — его действия появятся после входа.' : 'Менеджер не назначен.'}</div>`);
+        } else {
+            const u = userById[sel.id];
+            const own = dists.filter(d => String(u.distributor_id) === String(d.id) || (lc(d.manager_email) && lc(d.manager_email) === lc(u.email)));
+            const ownIds = own.map(d => String(d.id));
+            const branchPart = statsFor(ownIds);
+            const mine = statsFor(ownIds, u.id);
+            // У менеджера свои только действия; монтажники и сметы — его филиала,
+            // потому что промокод один на карточку, а не на человека
+            stats = Object.assign({}, branchPart, { invites: mine.invites, statuses: mine.statuses, messages: mine.messages, act: mine.act });
+            title = '👤 ' + nameOf(u);
+            subtitle = [u.email, own.map(d => d.company_name).filter(Boolean).join(', '), 'заходил: ' + visited(u.last_visited)].filter(Boolean).join(' · ');
+            note = 'Ссылки, статусы и сообщения — лично этого менеджера. Подключившиеся монтажники и сметы — по его филиалу: промокод выдаётся на филиал, а не на человека.';
+        }
+
+        // Больше 100 % бывает, когда монтажники пришли до начала журнала или по
+        // промокоду, набранному руками, — такая доля ничего не говорит
+        const conv = (a, b) => (b > 0 && a <= b) ? Math.round(a / b * 100) + '%' : '—';
+        const tiles = [
+            { label: 'Разослано ссылок', val: fmtN(stats.invites), sub: 'поделиться, ссылка, QR, печать' },
+            { label: 'Подключилось монтажников', val: fmtN(stats.joined), sub: 'из ссылок: ' + conv(stats.joined, stats.invites) },
+            { label: 'Активны за 30 дней', val: fmtN(stats.active30), sub: 'всего монтажников ' + fmtN(stats.installers) },
+            { label: 'Сметы', val: fmtN(stats.estimates), sub: 'считали ' + fmtN(stats.calcUsers) + ' монтажн.' },
+            { label: 'Отправлено клиентам', val: fmtN(stats.sent), sub: 'запрошено счетов ' + fmtN(stats.requested) },
+            { label: 'Оплачено', val: fmtRub(stats.paidSum), sub: fmtN(stats.paid) + ' смет' }
+        ];
+        const funnel = [
+            { label: 'Разослано ссылок', v: stats.invites },
+            { label: 'Подключилось монтажников', v: stats.joined },
+            { label: 'Посчитали смету', v: stats.calcUsers },
+            { label: 'Отправлено клиентам', v: stats.sent },
+            { label: 'Запрошен счёт', v: stats.requested },
+            { label: 'Счёт выставлен', v: stats.issued },
+            { label: 'Оплачено', v: stats.paid }
+        ];
+        const fMax = Math.max(1, ...funnel.map(f => f.v));
+        const funnelHtml = funnel.map((f, i) => `<div class="brx-frow">
+                <span class="brx-flabel">${f.label}</span>
+                <span class="brx-fbar"><i style="width:${Math.max(f.v > 0 ? 3 : 0, Math.round(f.v / fMax * 100))}%; opacity:${1 - i * 0.09};"></i></span>
+                <b>${fmtN(f.v)}</b>
+            </div>`).join('');
+
+        const statusLabel = s => ((this.ADMIN_KANBAN_EVENT_META || {})[s] || {}).label || s;
+        const feed = (stats.act || []).slice(0, 30).map(a => {
+            const meta = this.BRANCH_ACTIONS[a.action] || { icon: '•', label: a.action };
+            let what = '';
+            if (a.action === 'status_change') what = `«${esc((a.meta && a.meta.project) || 'смета')}» → ${esc(statusLabel(a.meta && a.meta.status))}`;
+            else if (a.action === 'message') what = esc(nameOf(installerById[String(a.target_user_id)] || userById[String(a.target_user_id)]));
+            else if (a.target) what = 'промокод ' + esc(a.target);
+            const when = new Date(a.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            return `<div class="brx-feed">
+                <span class="brx-fic">${meta.icon}</span>
+                <span style="flex:1; min-width:0;"><b>${esc(a.actor_name || a.actor_email || '—')}</b> ${meta.label}${what ? ': ' + what : ''}</span>
+                <span class="brx-muted" style="white-space:nowrap;">${when}</span>
+            </div>`;
+        }).join('');
+        const feedHtml = D.activityMissing
+            ? `<div class="brx-warn">Журнал действий ещё не подключён: в базе нет таблицы team_activity. После её создания здесь появятся ссылки, смены статусов и переписка менеджеров.</div>`
+            : (feed || `<div class="brx-muted">За выбранный период действий нет. Журнал ведётся с момента выкладки этого раздела.</div>`);
+
+        const detailHtml = `
+            <div class="brx-title" style="font-size:16px;">${esc(title)}</div>
+            <div class="brx-muted" style="margin-bottom:12px;">${esc(subtitle)}</div>
+            <div class="brx-tiles">${tiles.map(t => `<div class="brx-tile"><div class="brx-muted">${t.label}</div><div class="brx-tval">${t.val}</div><div class="brx-muted" style="font-size:10.5px;">${t.sub}</div></div>`).join('')}</div>
+            ${note ? `<div class="brx-note">${note}</div>` : ''}
+            <div class="brx-h">Воронка: от ссылки до оплаты</div>
+            ${funnelHtml}
+            ${extraHtml}
+            <div class="brx-h">Действия сотрудников</div>
+            ${feedHtml}`;
+
+        root.innerHTML = `
+            <style>
+                .brx-top { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between; margin-bottom:14px; }
+                .brx-pills { display:flex; gap:4px; background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:3px; }
+                .brx-pill { font:inherit; font-size:12px; font-weight:700; border:0; border-radius:8px; padding:6px 12px; cursor:pointer; background:transparent; color:var(--text-sec); }
+                .brx-pill.on { background:var(--primary); color:#fff; }
+                .brx-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
+                @media (min-width:1100px) { .brx-layout { grid-template-columns:minmax(0,1.55fr) minmax(340px,1fr); } .brx-detail { position:sticky; top:0; max-height:calc(100vh - 160px); overflow-y:auto; } }
+                .brx-group { margin-bottom:26px; }
+                .brx-node { background:var(--surface); border:1.5px solid var(--border); border-radius:12px; padding:12px 14px; cursor:pointer; transition:border-color .15s, box-shadow .15s, transform .15s; }
+                .brx-node:hover { border-color:var(--primary); box-shadow:0 3px 12px rgba(0,0,0,.10); }
+                .brx-node.sel { border-color:var(--primary); box-shadow:0 0 0 3px color-mix(in srgb, var(--primary) 22%, transparent); }
+                .brx-node.off { opacity:.6; }
+                .brx-company { max-width:560px; margin:0 auto; text-align:center; background:var(--surface-light); }
+                .brx-company .brx-sum, .brx-company > div { justify-content:center; }
+                .brx-stem { width:2px; height:18px; background:var(--border); margin:0 auto; }
+                .brx-branches { display:grid; grid-template-columns:repeat(auto-fill, minmax(230px, 1fr)); gap:18px 14px; border-top:2px solid var(--border); padding-top:18px; }
+                .brx-bwrap { position:relative; }
+                .brx-bwrap::before { content:''; position:absolute; left:50%; top:-18px; width:2px; height:18px; background:var(--border); }
+                .brx-title { font-weight:800; color:var(--text-main); font-size:13.5px; overflow-wrap:anywhere; }
+                .brx-muted { color:var(--text-sec); font-size:11.5px; }
+                .brx-head { font-size:12px; font-weight:700; background:var(--surface); border:1px solid var(--border); border-radius:999px; padding:2px 10px; }
+                .brx-sum { display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--text-sec); }
+                .brx-sum b { color:var(--text-main); }
+                .brx-metric { display:grid; grid-template-columns:86px 1fr 34px; align-items:center; gap:8px; font-size:11.5px; color:var(--text-sec); margin:3px 0; }
+                .brx-metric b { text-align:right; color:var(--text-main); }
+                .brx-bar { height:7px; border-radius:4px; background:var(--surface-light); overflow:hidden; }
+                .brx-bar i { display:block; height:100%; border-radius:4px; transition:width .35s ease; }
+                .brx-mgrs { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; padding-top:8px; border-top:1px dashed var(--border); }
+                .brx-chip { font:inherit; font-size:11.5px; font-weight:700; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border); background:var(--surface-light); color:var(--text-main); border-radius:999px; padding:2px 10px 2px 2px; cursor:pointer; }
+                .brx-chip:hover, .brx-chip.sel { border-color:var(--primary); color:var(--primary); }
+                .brx-ava { width:20px; height:20px; border-radius:50%; color:#fff; font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+                .brx-detail { background:var(--surface-light); border:1px solid var(--border); border-radius:14px; padding:16px; }
+                .brx-tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; }
+                .brx-tile { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:9px 10px; }
+                .brx-tval { font-size:18px; font-weight:800; color:var(--text-main); margin:2px 0; font-variant-numeric:tabular-nums; }
+                .brx-h { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); margin:18px 0 8px; }
+                .brx-frow { display:grid; grid-template-columns:160px 1fr 44px; gap:8px; align-items:center; font-size:12px; color:var(--text-main); margin:4px 0; }
+                .brx-frow b { text-align:right; font-variant-numeric:tabular-nums; }
+                .brx-fbar { height:14px; background:var(--surface); border-radius:4px; overflow:hidden; }
+                .brx-fbar i { display:block; height:100%; background:var(--primary); border-radius:4px; transition:width .35s ease; }
+                .brx-table { width:100%; border-collapse:collapse; font-size:12px; }
+                .brx-table th { text-align:left; color:var(--text-sec); font-weight:600; padding:6px; border-bottom:1px solid var(--border); }
+                .brx-table td { padding:6px; border-bottom:1px solid var(--border); color:var(--text-main); }
+                .brx-table tbody tr:hover td { background:var(--surface); }
+                .brx-row { display:flex; gap:10px; align-items:center; padding:8px; border-radius:8px; cursor:pointer; font-size:12.5px; }
+                .brx-row:hover { background:var(--surface); }
+                .brx-feed { display:flex; gap:8px; align-items:flex-start; font-size:12px; color:var(--text-main); padding:6px 0; border-bottom:1px solid var(--border); }
+                .brx-fic { width:20px; text-align:center; flex-shrink:0; }
+                .brx-note { font-size:11.5px; color:var(--text-sec); background:var(--surface); border-left:3px solid var(--primary); border-radius:6px; padding:8px 10px; margin-top:10px; }
+                .brx-warn { font-size:12px; background:rgba(217,119,6,.12); border:1px solid #D97706; border-radius:8px; padding:9px 12px; color:var(--text-main); }
+                @media (max-width:560px) { .brx-frow { grid-template-columns:120px 1fr 36px; } }
+                @media (prefers-reduced-motion: reduce) { .brx-bar i, .brx-fbar i, .brx-node { transition:none; } }
+            </style>
+            <div class="brx-top">
+                <div class="brx-pills">${this.BRANCH_PERIODS.map(p => `<button type="button" class="brx-pill${p.key === period.key ? ' on' : ''}" onclick="app.setBranchPeriod('${p.key}')">${p.label}</button>`).join('')}</div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    <span class="brx-muted">Нажмите на компанию, филиал или менеджера</span>
+                    <button class="btn-header-blue" onclick="app.renderAdminBranches()" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
+                </div>
+            </div>
+            <div class="brx-layout">
+                <div>${treeHtml}</div>
+                <div class="brx-detail" id="brx_detail">${detailHtml}</div>
+            </div>`;
+    },
+
     // Карточка расчёта из канбана "Статусы смет" — номер расчёта и полная история
     // смены статусов (используется тот же кэш событий, что и для самого канбана)
     renderKanbanCardDetail: async function (calcId) {
@@ -7896,50 +8517,49 @@ const app = {
         const last = statusEvents.length ? statusEvents[statusEvents.length - 1] : events[events.length - 1];
         const distributorsById = {};
         ((this.adminData && this.adminData.distributors) || []).forEach(d => { distributorsById[String(d.id)] = d.company_name; });
-        const meta = last.user_email ? (this._kanbanUserMeta || {})[last.user_email.toLowerCase()] : null;
+        // Монтажник — автор сметы, а не автор последнего события: последним
+        // статус мог поставить менеджер
+        const author = events.find(e => (e.event === 'calculated' || e.event === 'saved') && e.user_email)
+            || events.find(e => e.user_email && !(e.meta && e.meta.by_staff) && !['invoice_issued', 'paid', 'rejected'].includes(e.event))
+            || last;
+        const meta = author.user_email ? (this._kanbanUserMeta || {})[author.user_email.toLowerCase()] : null;
         const regionLabel = meta && meta.region ? meta.region : '—';
         const distributorLabel = meta && meta.distributor_id ? (distributorsById[String(meta.distributor_id)] || '—') : '—';
 
         // Проверка прав для смены статуса (супер-админ или закрепленный менеджер)
-        const me = await this.resolveCurrentUserForChat();
-        const myEmail = me && me.email ? me.email.toLowerCase() : '';
-        const role = this.getAdminRole();
-        const isSuperAdmin = ['super_admin', 'admin'].includes(role);
-        const dist = meta && meta.distributor_id ? ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === String(meta.distributor_id)) : null;
-        const isAssignedManager = dist && (String(dist.manager_email).toLowerCase() === myEmail || String(dist.director_email).toLowerCase() === myEmail);
-        // Менеджер с ролью привязан к компании полем «Дистрибьютор» в своей карточке,
-        // а не только почтой в карточке компании — эту привязку тоже засчитываем.
-        const isScopedManager = this.isManagerRole() && meta && meta.distributor_id
-            && this.managerDistIds().map(String).includes(String(meta.distributor_id));
-        const canManage = isSuperAdmin || isAssignedManager || isScopedManager;
+        const myEmail = await this.kanbanMyEmail();
+        const canManage = this.kanbanCanManage(calcId, myEmail);
 
         let actionsHtml = '';
         // Оплату система не видит: платёжной интеграции нет, и единственный, кто
         // знает о деньгах, — менеджер. Поэтому «Оплачено» — такая же ручная
         // отметка, как «Счёт выставлен», и предлагается сразу после него.
         const canPay = last.event === 'invoice_issued';
-        if (last.event === 'invoice_requested' || canPay) {
-            if (canManage) {
-                const buttons = canPay
-                    ? `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#059669; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'paid')">💰 Оплачено</button>`
-                    : `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#10B981; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'invoice_issued')">✓ Счёт выставлен</button>
-                       <button class="auth-btn-base" style="margin:0; background:#EF4444; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'rejected')">✕ Отклонить запрос</button>`;
-                actionsHtml = `
-                    <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left;">
-                        <h4 style="margin-top:0; margin-bottom:12px; color:var(--text-main); font-size:14px;">🛠 Действия менеджера</h4>
-                        <div style="display:flex; gap:12px; flex-wrap:wrap;">${buttons}</div>
-                        ${canPay ? `<div style="font-size:12px; color:var(--text-sec); margin-top:10px;">
-                            Отметка об оплате ставится руками — по ней дашборд считает деньги, а не предложения.
-                        </div>` : ''}
+        const flowStep = last.event === 'invoice_requested' || canPay;
+        if (canManage) {
+            // Быстрые кнопки — для обычного хода сделки; «Сменить этап» — на любой
+            // статус в любой момент: сделка идёт не только так, как её ведёт сайт
+            // (клиент согласовал по телефону, счёт выставили без запроса).
+            const quick = !flowStep ? '' : (canPay
+                ? `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#059669; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'paid')">💰 Оплачено</button>`
+                : `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#10B981; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'invoice_issued')">✓ Счёт выставлен</button>
+                   <button class="auth-btn-base" style="margin:0; background:#EF4444; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'rejected')">✕ Отклонить запрос</button>`);
+            const moveBtn = `<button class="auth-btn-base" style="margin:0; background:var(--surface); color:var(--text-main); border:1px solid var(--border); height:34px; padding:0 16px; width:auto;" onclick="app.moveKanbanCard('${calcId}')">⇄ Сменить этап</button>`;
+            actionsHtml = `
+                <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left;">
+                    <h4 style="margin-top:0; margin-bottom:12px; color:var(--text-main); font-size:14px;">🛠 Действия менеджера</h4>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">${quick}${moveBtn}</div>
+                    <div style="font-size:12px; color:var(--text-sec); margin-top:10px;">
+                        ${canPay ? 'Отметка об оплате ставится руками — по ней дашборд считает деньги, а не предложения. ' : ''}На доске карточку можно перетащить мышью в другую колонку.
                     </div>
-                `;
-            } else {
-                actionsHtml = `
-                    <div style="background: var(--surface-light); padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left; font-size: 13px; color: var(--text-sec);">
-                        🔒 Менять статус (${canPay ? 'отметить оплату' : 'выставить счёт / отклонить'}) может только менеджер, закрепленный за данным монтажником (${distributorLabel}).
-                    </div>
-                `;
-            }
+                </div>
+            `;
+        } else if (flowStep) {
+            actionsHtml = `
+                <div style="background: var(--surface-light); padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left; font-size: 13px; color: var(--text-sec);">
+                    🔒 Менять статус (${canPay ? 'отметить оплату' : 'выставить счёт / отклонить'}) может только менеджер или директор филиала, за которым закреплён монтажник (${distributorLabel}).
+                </div>
+            `;
         }
 
         const historyHtml = this.renderInvoiceHistoryHtml(events);
@@ -7950,8 +8570,8 @@ const app = {
                 <h3 style="margin-top:0; color: var(--text-main);">📋 ${last.project_name || 'Без названия'}</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; font-size:13px;">
                     <div><b style="color:var(--text-sec);">№ расчёта:</b> <span style="color:var(--text-main); font-weight:600;">${calcId}</span></div>
-                    <div><b style="color:var(--text-sec);">Монтажник:</b> <span style="color:var(--text-main);">${last.user_name || '— (клиент)'}</span></div>
-                    <div><b style="color:var(--text-sec);">Email:</b> <span style="color:var(--text-main);">${last.user_email || '—'}</span></div>
+                    <div><b style="color:var(--text-sec);">Монтажник:</b> <span style="color:var(--text-main);">${author.user_name || '— (клиент)'}</span></div>
+                    <div><b style="color:var(--text-sec);">Email:</b> <span style="color:var(--text-main);">${author.user_email || '—'}</span></div>
                     <div><b style="color:var(--text-sec);">Регион:</b> <span style="color:var(--text-main);">${regionLabel}</span></div>
                     <div><b style="color:var(--text-sec);">Дистрибьютор:</b> <span style="color:var(--text-main);">${distributorLabel}</span></div>
                 </div>
@@ -7964,7 +8584,174 @@ const app = {
         `;
     },
 
-    setInvoiceStatus: async function (calcId, status) {
+    // ═══ Перенос карточки планировщика на любой этап ══════════════════════
+    // Статусы, которые менеджер может поставить руками. Черновик («Новый расчёт»),
+    // разбор документа и автоматические напоминания сюда не входят: их ставит сам
+    // сайт, и ручная отметка «напоминание отправлено» была бы неправдой.
+    KANBAN_MANUAL_STATUSES: {
+        draft: ['saved'],
+        review: ['sent', 'confirmed', 'needs_revision'],
+        payment: ['invoice_requested', 'invoice_issued', 'paid', 'rejected']
+    },
+    // Уведомление монтажнику шлём только о решениях менеджера. У остальных
+    // статусов в пуше стоял бы текст от лица клиента («Клиент согласовал смету»),
+    // хотя согласовал не клиент, а менеджер отметил руками.
+    KANBAN_NOTIFY_STATUSES: ['invoice_issued', 'paid', 'rejected'],
+
+    _kanbanMyEmail: null,
+    kanbanMyEmail: async function () {
+        const owner = this.kanbanCacheOwner();
+        if (this._kanbanMyEmail && this._kanbanMyEmailOwner === owner) return this._kanbanMyEmail;
+        const me = await this.resolveCurrentUserForChat();
+        this._kanbanMyEmail = me && me.email ? String(me.email).trim().toLowerCase() : '';
+        this._kanbanMyEmailOwner = owner;
+        return this._kanbanMyEmail;
+    },
+
+    /**
+     * Может ли текущий человек менять статус этой сметы.
+     *
+     * Одна проверка на доску (перетаскивание) и на карточку (кнопки): иначе
+     * карточка тянулась бы, а кнопки в ней были бы закрыты, или наоборот.
+     * Разрешено владельцу и администраторам, менеджеру филиала, за которым
+     * закреплён монтажник (полем в своей карточке или почтой в карточке
+     * филиала), и директору филиала.
+     */
+    kanbanCanManage: function (calcId, myEmail) {
+        const events = (this._kanbanEvents || []).filter(e => String(e.calc_id) === String(calcId));
+        const authorEv = events.find(e => (e.event === 'calculated' || e.event === 'saved') && e.user_email)
+            || events.find(e => e.user_email && !(e.meta && e.meta.by_staff) && !['invoice_issued', 'paid', 'rejected'].includes(e.event));
+        const meta = authorEv ? (this._kanbanUserMeta || {})[String(authorEv.user_email).toLowerCase()] : null;
+        return this.kanbanCanManageDist(meta && meta.distributor_id, myEmail);
+    },
+
+    // То же по уже известному филиалу монтажника — доска знает его у каждой
+    // карточки и не перебирает события заново ради каждой из сотен карточек
+    kanbanCanManageDist: function (distributorId, myEmail) {
+        if (['super_admin', 'admin'].includes(this.getAdminRole())) return true;
+        if (!distributorId) return false;
+        const distId = String(distributorId);
+        const dist = ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === distId);
+        const mail = String(myEmail || '').trim().toLowerCase();
+        const sameMail = (v) => !!mail && String(v || '').trim().toLowerCase() === mail;
+        if (dist && (sameMail(dist.manager_email) || sameMail(dist.director_email))) return true;
+        return this.isManagerRole() && this.managerDistIds().map(String).includes(distId);
+    },
+
+    /**
+     * Окно выбора статуса: список статусов (по колонке или все) и комментарий.
+     * Возвращает { status, comment } или null, если закрыли.
+     */
+    chooseKanbanStatus: function (currentEvent, stageKey, projectName) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const META = this.ADMIN_KANBAN_EVENT_META || {};
+        const stages = this.ADMIN_KANBAN_STAGES.filter(s => this.KANBAN_MANUAL_STATUSES[s.key] && (!stageKey || s.key === stageKey));
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'calc-dialog-overlay';
+            let firstFree = null;
+            const groupsHtml = stages.map(s => `
+                <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:${s.color}; margin:10px 0 4px;">${esc(s.label)}</div>
+                ${this.KANBAN_MANUAL_STATUSES[s.key].map(ev => {
+                    const cur = ev === currentEvent;
+                    if (!cur && !firstFree) firstFree = ev;
+                    return `<label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; cursor:${cur ? 'default' : 'pointer'}; font-size:13px; color:var(--text-main); ${cur ? 'opacity:.55;' : ''}">
+                        <input type="radio" name="kanban_status_pick" value="${ev}" ${cur ? 'disabled' : ''} ${ev === firstFree ? 'checked' : ''}>
+                        <span style="width:9px; height:9px; border-radius:50%; background:${(META[ev] || {}).color || '#94A3B8'}; flex-shrink:0;"></span>
+                        ${esc((META[ev] || {}).label || ev)}${cur ? ' — сейчас' : ''}
+                    </label>`;
+                }).join('')}`).join('');
+            overlay.innerHTML = `
+                <div class="calc-dialog-card" style="text-align:left; max-width:380px;">
+                    <h3 class="calc-dialog-title">Сменить этап</h3>
+                    ${projectName ? `<p class="calc-dialog-message" style="margin-bottom:4px;">${esc(projectName)}</p>` : ''}
+                    <div style="max-height:46vh; overflow-y:auto;">${groupsHtml}</div>
+                    <div style="font-size:12px; color:var(--text-sec); margin:12px 0 4px;">Комментарий (для «Отклонён» — обязательно)</div>
+                    <textarea data-role="comment" rows="2" style="width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); resize:vertical;"></textarea>
+                    <div class="calc-dialog-buttons">
+                        <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="cancel">Отмена</button>
+                        <button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" data-act="ok">Перенести</button>
+                    </div>
+                </div>`;
+            const close = (val) => {
+                overlay.classList.remove('active');
+                setTimeout(() => { overlay.remove(); resolve(val); }, 200);
+            };
+            overlay.addEventListener('click', (e) => {
+                const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+                if (act === 'cancel' || e.target === overlay) return close(null);
+                if (act !== 'ok') return;
+                const picked = overlay.querySelector('input[name="kanban_status_pick"]:checked');
+                const comment = String((overlay.querySelector('[data-role="comment"]') || {}).value || '').trim();
+                if (!picked) return;
+                if (picked.value === 'rejected' && !comment) {
+                    const ta = overlay.querySelector('[data-role="comment"]');
+                    if (ta) { ta.style.borderColor = '#EF4444'; ta.focus(); }
+                    return;
+                }
+                close({ status: picked.value, comment: comment });
+            });
+            document.body.appendChild(overlay);
+            setTimeout(() => overlay.classList.add('active'), 10);
+            if (!firstFree) {
+                const ok = overlay.querySelector('[data-act="ok"]');
+                if (ok) ok.disabled = true;
+            }
+        });
+    },
+
+    // Текущий статус карточки — последнее не техническое событие
+    kanbanCurrentEvent: function (calcId) {
+        const list = (this._kanbanEvents || []).filter(e => String(e.calc_id) === String(calcId) && !this.ADMIN_KANBAN_TECH_EVENTS.includes(e.event));
+        return list.length ? list[list.length - 1] : null;
+    },
+
+    // Кнопка «Сменить этап» в карточке и бросок карточки в колонку на доске.
+    // stageKey задан — предлагаем статусы только этой колонки.
+    moveKanbanCard: async function (calcId, stageKey) {
+        const myEmail = await this.kanbanMyEmail();
+        if (!this.kanbanCanManage(calcId, myEmail)) {
+            app.alert('Менять этап этой сметы может менеджер или директор филиала, за которым закреплён монтажник.');
+            return;
+        }
+        const cur = this.kanbanCurrentEvent(calcId);
+        if (stageKey && !this.KANBAN_MANUAL_STATUSES[stageKey]) {
+            app.alert('В эту колонку карточка попадает сама, когда монтажник разбирает документ. Руками сюда не переносится.');
+            return;
+        }
+        const stageOf = ev => this.ADMIN_KANBAN_STAGES.find(s => s.events.includes(ev));
+        if (stageKey && cur && stageOf(cur.event) && stageOf(cur.event).key === stageKey
+            && this.KANBAN_MANUAL_STATUSES[stageKey].length === 1) return; // бросили в свою же колонку
+        const pick = await this.chooseKanbanStatus(cur ? cur.event : null, stageKey || null, cur ? cur.project_name : '');
+        if (!pick) return;
+        await this.setInvoiceStatus(calcId, pick.status, { comment: pick.comment, stayOnBoard: !!stageKey });
+    },
+
+    // Перетаскивание на доске. Мышью: на телефоне HTML-перетаскивание не
+    // работает, там этап меняется кнопкой в карточке.
+    kanbanDragStart: function (ev, calcId) {
+        try { ev.dataTransfer.setData('text/plain', String(calcId)); ev.dataTransfer.effectAllowed = 'move'; } catch (e) { }
+        this._kanbanDragId = String(calcId);
+    },
+    kanbanDragOver: function (ev, el) {
+        if (!this._kanbanDragId) return;
+        ev.preventDefault();
+        el.style.outline = '2px dashed var(--primary)';
+        el.style.outlineOffset = '-2px';
+    },
+    kanbanDragLeave: function (ev, el) {
+        if (el.contains(ev.relatedTarget)) return;
+        el.style.outline = '';
+    },
+    kanbanDrop: function (ev, el, stageKey) {
+        ev.preventDefault();
+        el.style.outline = '';
+        const id = this._kanbanDragId || (ev.dataTransfer && ev.dataTransfer.getData('text/plain'));
+        this._kanbanDragId = null;
+        if (id) this.moveKanbanCard(id, stageKey);
+    },
+
+    setInvoiceStatus: async function (calcId, status, preset) {
         try {
             let myEmail = '';
             let myName = 'Менеджер';
@@ -8001,7 +8788,10 @@ const app = {
             const last = events[events.length - 1];
 
             let commentText = "";
-            if (status === 'invoice_issued') {
+            if (preset) {
+                // Статус и комментарий уже выбраны в окне «Сменить этап»
+                commentText = String(preset.comment || '').trim();
+            } else if (status === 'invoice_issued') {
                 if (!await app.confirm("Вы уверены, что хотите перевести смету в статус 'Счёт выставлен'?", "Подтверждение")) return;
                 const promptVal = await app.prompt("Введите комментарий к статусу (необязательно, например номер счета):", "", "Счёт выставлен");
                 if (promptVal === null) return; // cancel clicked
@@ -8031,25 +8821,51 @@ const app = {
                 user_name: myName,
                 user_email: myEmail,
                 project_name: last.project_name || null,
-                meta: commentText ? { comment: commentText } : null
+                // by_staff — событие записал сотрудник, а не монтажник или клиент:
+                // по этой отметке доска не подставляет менеджера на место монтажника.
+                // manual — этап выбран руками в окне «Сменить этап».
+                meta: Object.assign({ by_staff: true }, commentText ? { comment: commentText } : {}, preset ? { manual: true } : {})
             }]).select('id');
 
             if (error) throw error;
 
             const evId = (evRows && evRows[0] && evRows[0].id) ? String(evRows[0].id) : null;
-            if (evId && typeof appPush !== 'undefined') appPush.notify('invoice_event', evId);
+            if (evId && typeof appPush !== 'undefined' && this.KANBAN_NOTIFY_STATUSES.includes(status)) appPush.notify('invoice_event', evId);
+            // В журнал сотрудников: чей это монтажник, база найдёт по автору сметы
+            {
+                const authorEv = events.find(e => (e.event === 'calculated' || e.event === 'saved') && e.user_id) || null;
+                const authorMeta = authorEv && authorEv.user_email ? (this._kanbanUserMeta || {})[authorEv.user_email.toLowerCase()] : null;
+                const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                this.logTeamActivity('status_change', {
+                    distId: authorMeta && authorMeta.distributor_id ? authorMeta.distributor_id : null,
+                    userId: authorEv && uuidRe.test(String(authorEv.user_id)) ? authorEv.user_id : null,
+                    target: calcId,
+                    meta: { status: status, project: last.project_name || null }
+                });
+            }
             // Письмом — потому что пуши доходят только до установленного
             // приложения, а его пока нет ни у кого. Адрес монтажника берём из
             // события сметы: там он записан автором расчёта.
             this.mailInvoiceStatusToInstaller(status, last, commentText);
 
-            app.alert(status === 'invoice_issued' ? "✅ Статус изменен: Счёт выставлен"
-                : (status === 'paid' ? "💰 Статус изменен: Оплачено" : "❌ Статус изменен: Отклонен"));
+            if (!preset) {
+                app.alert(status === 'invoice_issued' ? "✅ Статус изменен: Счёт выставлен"
+                    : (status === 'paid' ? "💰 Статус изменен: Оплачено" : "❌ Статус изменен: Отклонен"));
+            }
 
-            // Перезагружаем данные канбана и карточки
-            this._kanbanEvents = null; // сбросить кэш, чтобы загрузить свежие данные
-            await this.renderAdminKanban();
-            await this.renderKanbanCardDetail(calcId);
+            // Перезагружаем данные канбана и карточки. Кэш не сбрасываем: доска
+            // дочитает только новые события, в том числе только что записанное,
+            // а не всю историю заново после каждого переноса карточки.
+            if (preset && preset.stayOnBoard) {
+                // Перенос с доски: остаёмся на доске. Она дописывает себя в конец
+                // раздела, поэтому старую убираем, а навигацию над ней не трогаем.
+                const root = document.getElementById('kanban_root');
+                if (root) root.remove();
+                await this.renderAdminKanban();
+            } else {
+                await this.renderAdminKanban();
+                await this.renderKanbanCardDetail(calcId);
+            }
 
         } catch (e) {
             console.error('[setInvoiceStatus] Ошибка:', e);
@@ -17012,6 +17828,7 @@ const app = {
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
+        { id: 'branches', icon: '🏬', label: 'Филиалы', hint: 'Схема компании: ссылки, монтажники, работа менеджеров' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
         { id: 'equipment', icon: '🧰', label: 'Своё оборудование', hint: 'Добавленное, удалённое, замены' },
         { id: 'successors', icon: '🔁', label: 'Замены позиций', hint: 'Снятые с поставки и чем заменить' },
@@ -17243,7 +18060,7 @@ const app = {
         { name: 'Ссылка-приглашение, QR и счётчик мест', hint: 'в «Пользователях»; лимит мест меняет администратор в карточке компании', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { name: 'Объявление для всех пользователей', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Удалить сообщение из переписки', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
-        { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
+        { name: 'Статус счёта в планировщике', hint: 'перенос карточки на любой этап; наблюдатель — если его почта стоит директором в карточке филиала', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { group: 'Уборка и настройки' },
         { name: 'Очистить планы этажей и архив распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Подтвердить замену снятой позиции каталога', hint: 'раздел «Замены позиций»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
@@ -17539,6 +18356,12 @@ const app = {
         if (this._adminTab === 'kanban') {
             content.innerHTML = navHtml;
             this.renderAdminKanban();
+            return;
+        }
+
+        if (this._adminTab === 'branches') {
+            content.innerHTML = navHtml + '<div id="branches_root"></div>';
+            this.renderAdminBranches();
             return;
         }
 
@@ -25971,6 +26794,12 @@ const app = {
             }
 
             if (error) throw error;
+
+            // Журнал сотрудников: личное письмо монтажнику. Объявления для всех не
+            // пишем — они не про работу филиала.
+            if (type === 'private' && recipientId) {
+                this.logTeamActivity('message', { userId: recipientId, target: inserted && inserted.id ? inserted.id : null });
+            }
 
             // Alert'а нет намеренно: отправленное сообщение само появляется в переписке
             if (textEl) textEl.value = '';
