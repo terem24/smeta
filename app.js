@@ -9426,7 +9426,9 @@ const app = {
     // Аккаунт уже переведён на e-mail/Яндекс, но человек снова жмёт Google.
     // Аккаунт живой — ничего не удаляем, просто не пускаем этим способом.
     refuseGoogleForMigratedRU: async function () {
-        try { await supabaseClient.auth.signOut(); } catch (e) { }
+        // Только эта вкладка: глобальный выход отзывал бы сессии на всех устройствах,
+        // в том числе ту, в которой человек как раз задаёт новый пароль
+        try { await supabaseClient.auth.signOut({ scope: 'local' }); } catch (e) { }
         delete this.state.tgUser;
         this.state.accountType = 'base';
         this._authHandling = false;
@@ -31097,7 +31099,9 @@ const app = {
                         await this.refuseGoogleForMigratedRU();
                         return;
                     }
-                    this._needRuLoginMigration = true;
+                    // Уже перешёл на пароль или Яндекс — предлагать переход нечего.
+                    // По ссылке сброса пароля хватает окна «Новый пароль».
+                    if (!meta.ru_login_migrated && !HC_PASSWORD_RECOVERY) this._needRuLoginMigration = true;
                 }
             }
 
