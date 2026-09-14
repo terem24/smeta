@@ -62918,7 +62918,7 @@ const app = {
                             factPower = Math.round(factPower * kTv);
 
                             if (factPower < reqReal) {
-                                app.tempWarns.push(`• ${app._warnRoomLabel(r.id, app.spotLabel(r, w, wIdx) + ':')} дефицит мощности радиатора ~${reqReal - factPower} Вт.`);
+                                app.tempWarns.push(`• ${app._warnRoomLabel(r.id, app.spotLabel(r, w, wIdx) + ':')} дефицит мощности радиатора ~${reqReal - factPower} Вт: самый крупный типоразмер серии под это окно не закрывает нагрузку — выберите серию мощнее (панель 22 или 33) кнопкой замены или поставьте второй прибор (количество в строке).`);
                             }
 
                             let devInfo = app.getDesc('rad_tooltip', {
