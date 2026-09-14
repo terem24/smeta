@@ -615,24 +615,36 @@
     // Условные обозначения систем трубопроводов: подчёркнутый заголовок и
     // цветные линии с расшифровкой — как на листе общих данных оригинала.
     if (opts.legend && opts.legend.length) {
-      var LGY = cy + 14, LGX = 88;
+      // Под легендой ещё встаёт картинка «Схема 1». Если по свободной высоте
+      // обеим не хватает (длинная таблица показателей у дома в два этажа),
+      // легенда сжимается: меньше отступ под заголовком и шаг строк.
+      var nLg = opts.legend.length;
+      var tight = !!(opts.floorScheme && opts.floorScheme.image) &&
+        cy + 26 + nLg * 6.4 + 6 + 40 > 234;
+      var lgGap = tight ? 9 : 14, lgHead = tight ? 6 : 12, lgStep = tight ? 5 : 6.4;
+      var LGY = cy + lgGap, LGX = 88;
       var lgTitle = 'Условные обозначения  систем  трубопроводов :';
       o.push(text(116, LGY, lgTitle, { anchor: 'middle' }));
       o.push(line(116 - lgTitle.length * SZ.body * 0.44 * WIDTH_F / 2, LGY + 1,
         116 + lgTitle.length * SZ.body * 0.44 * WIDTH_F / 2, LGY + 1, 0.2));
       opts.legend.forEach(function (g, i) {
-        var y = LGY + 12 + i * 6.4;
+        var y = LGY + lgHead + i * lgStep;
         o.push('<line x1="' + n(LGX) + '" y1="' + n(y) + '" x2="' + n(LGX + 40) +
           '" y2="' + n(y) + '" style="stroke:' + g.color + ';stroke-width:0.6"/>');
         o.push(text(LGX + 46, y + 1.2, '– ' + g.code + ' –  ' + g.text));
       });
-      cy = LGY + 12 + opts.legend.length * 6.4;
+      cy = tight ? LGY + lgHead + (nLg - 1) * lgStep + 2 : LGY + 12 + nLg * 6.4;
     }
 
     // Схема пирога пола: если задана картинка — ставим её на то же место и в
     // тот же размер, что в оригинале (74..200 мм по x, 163..230 по y).
     if (opts.floorScheme && opts.floorScheme.image) {
-      o.push('<image x="74" y="163" width="126" height="67"' +
+      // Место образца — y 163, но только если выше всё кончилось: у дома в
+      // два этажа таблица показателей длиннее, и картинка с белым фоном
+      // закрывала её строки «2 этаж» и «Итого». Тогда опускаем её под таблицу
+      // и при нужде ужимаем, чтобы не залезть на примечания внизу (y 236).
+      var imY = Math.max(163, cy + 4), imH = Math.min(67, 234 - imY);
+      if (imH >= 20) o.push('<image x="74" y="' + n(imY) + '" width="126" height="' + n(imH) + '"' +
         ' preserveAspectRatio="xMidYMid meet" href="' +
         String(opts.floorScheme.image).replace(/"/g, '&quot;') + '"/>');
     } else if (opts.floorScheme && opts.floorScheme.layers && opts.floorScheme.layers.length) {
@@ -668,13 +680,17 @@
     // Пока текст помещается, колонка одна и широкая, как было. Не помещается
     // (у котельной указаний много) — перевёрстываем в две узкие колонки, как
     // в проектах-образцах: иначе текст уезжал на штамп.
-    var NX = 223.5, LH = 4.75, NY0 = 20.8, NBOT = 270, NW = 96;
+    // Нижняя граница — верх штампа (stampBig: T = 237, от x = 230): колонка
+    // указаний стоит над ним. Раньше граница была 270, и хвост текста
+    // печатался поверх штампа (ТМ-1, В-1).
+    var NX = 223.5, LH = 4.75, NY0 = 20.8, NBOT = 234.5, NW = 96;
     o.push(text(311, 11.6, opts.notesTitle || 'Общие указания',
       { size: 5.47, anchor: 'middle' }));
     var secs = opts.notes || [];
+    var fz = 1;                                   // уменьшение шрифта, если не влезло и в две колонки
     // раскладка секций в строки: [x-сдвиг заголовка, текст, жирный?]
     var layout = function (cols) {
-      var rows = [], wide = cols === 1 ? 100 : 47;
+      var rows = [], wide = Math.floor((cols === 1 ? 100 : 47) / fz);
       secs.forEach(function (sec) {
         rows.push({ t: sec.h, b: true });
         (sec.lines || []).forEach(function (ln) {
@@ -691,19 +707,32 @@
       rows.forEach(function (r) { h += r.b ? LH * 2 : LH; });
       return h;
     };
-    var two = height(rows1) > (NBOT - NY0);
+    // Последняя базовая линия — на высоту строки выше конца текста
+    var two = height(rows1) - LH > (NBOT - NY0);
     var rows = two ? layout(2) : rows1;
     var perCol = two ? Math.ceil(height(rows) / 2 / LH) * LH : 1e9;
+    // Не влезло и в две колонки — мельчим шрифт и шаг строк, пока не влезет:
+    // лучше мелкий текст, чем текст поверх штампа
+    while (two && perCol + LH * 2 > (NBOT - NY0) && fz > 0.7) {
+      fz = Math.round((fz - 0.05) * 100) / 100;
+      LH = 4.75 * fz;
+      rows = layout(2);
+      perCol = Math.ceil(height(rows) / 2 / LH) * LH;
+    }
     var ny = NY0, cx = NX;
     rows.forEach(function (r) {
-      if (two && ny - NY0 >= perCol && cx === NX) { cx = NX + NW; ny = NY0; }
+      // заголовок раздела не оставляем последней строкой колонки — без текста
+      var headAtEnd = r.b && ny - NY0 + LH * 3 > perCol;
+      if (two && cx === NX && (ny - NY0 >= perCol || headAtEnd)) { cx = NX + NW; ny = NY0; }
       if (r.t) {
         var tx = cx + (r.b ? 2.7 : 0);
-        o.push(text(tx, ny, r.t, r.b ? { weight: 'bold' } : null));
+        var st = r.b ? { weight: 'bold' } : {};
+        if (fz < 1) st.size = SZ.body * fz;
+        o.push(text(tx, ny, r.t, st));
         // Заголовок раздела в оригинале подчёркнут — линия по ширине строки
         // на 1 мм ниже базовой линии.
         if (r.b) {
-          var uw = r.t.length * SZ.body * 0.44 * WIDTH_F;
+          var uw = r.t.length * SZ.body * fz * 0.44 * WIDTH_F;
           o.push(line(tx, ny + 1.0, tx + uw, ny + 1.0, 0.2));
         }
       }
@@ -999,7 +1028,13 @@
     if (d.hasGroup === false) notes.push('Насосной группы радиаторного контура в комплекте нет: ' +
       'циркуляцию обеспечивает встроенный насос котла, и ее сопротивление в кольцо не входит.');
     var ny = t1.bottom + 6.5;
-    notes.forEach(function (ln) { body.push(text(FR.l, ny, ln)); ny += LH; });
+    // Переносим по словам на ширину рамки, как на листе тёплого пола: строка
+    // про предел скорости не влезала в лист и обрезалась за рамкой
+    notes.forEach(function (ln) {
+      wrap(ln, Math.floor((FR.r - FR.l) / (SZ.body * 0.46))).forEach(function (s) {
+        body.push(text(FR.l, ny, s)); ny += LH;
+      });
+    });
 
     sheets.push(sheet({
       title: 'Гидравлический расчет системы отопления',

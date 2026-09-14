@@ -198,9 +198,19 @@
    * труба, и шаг, и допустимые потери. Лист и смета обязаны показывать одну и
    * ту же укладку, поэтому предел у них общий, а не свой у каждого.
    */
+  // Страница листов калькулятора не грузит — предел ей передаёт смета готовыми
+  // числами по шагу укладки (setLoopLimits). Без него лист делил петли по
+  // запасным 100 м, а смета по расчётному пределу: на листе 5 петель, в
+  // гидравлике и коллекторе 6.
+  var loopLimits = null;
+  function setLoopLimits(map) { loopLimits = map || null; }
+
   function loopLimit(stepMm) {
+    var st = parseInt(stepMm, 10) || 150;
+    if (loopLimits && loopLimits[st] > 0) return loopLimits[st];
     try {
-      if (window.app && typeof app.ufhLoopMax === 'function') return app.ufhLoopMax(stepMm);
+      // app объявлен через const — в window его нет, обращаемся по имени
+      if (typeof app !== 'undefined' && app && typeof app.ufhLoopMax === 'function') return app.ufhLoopMax(st);
     } catch (e) { /* расчёт ещё не поднялся — работаем по запасному значению */ }
     return MAX_LOOP_M;
   }
@@ -1300,18 +1310,30 @@
     o.push(imageTag(f, t, 0.32));
     wcOutlines(f, t, o);
     var fx = f.fixtures || [], step = Math.max(1.2, 0.09 * (f.pxPerM || 100) * t.s);
+    // Горячая вода — только тем приборам, которым она нужна (WET_H: у
+    // унитаза, стиральной и посудомоечной машин hw нет). Раньше Т3 рисовалась
+    // и вписывалась в таблицу всем подряд.
+    var hasHw = function (q) { return !!(q && (WET_H[q.t] || { hw: 1 }).hw); };
     (f.wlines || []).forEach(function (w) {
       if (!w.pts || w.pts.length < 2) return;
-      o.push('<path d="' + pathD(offsetPoly(w.pts, -step / 2), t) +
+      var hot = hasHw(fx[w.i]);
+      o.push('<path d="' + pathD(offsetPoly(w.pts, hot ? -step / 2 : 0), t) +
         '" style="fill:none;stroke:' + COL_CW + ';stroke-width:0.45"/>');
-      o.push('<path d="' + pathD(offsetPoly(w.pts, step / 2), t) +
+      if (hot) o.push('<path d="' + pathD(offsetPoly(w.pts, step / 2), t) +
         '" style="fill:none;stroke:' + COL_HW + ';stroke-width:0.45"/>');
     });
     fx.forEach(function (q, qi) {
       if (q.t === 'riser') return;
       fixtureMark(q, t, f, o, COL_CW);
-      rows.push([rows.length + 1, (FIXT[q.t] || ['прибор'])[0], 'В1 + Т3']);
+      rows.push([rows.length + 1, (FIXT[q.t] || ['прибор'])[0], hasHw(q) ? 'В1 + Т3' : 'В1']);
     });
+    // Этаж без котельной: вода приходит стояками с этажа, где коллекторы
+    if (f.wsrc && f.wsrc.kind === 'riser' && (f.wlines || []).length) {
+      var rx = t.X(f.wsrc.x) + 3.2, ry = t.Y(f.wsrc.y) - 3.2;
+      o.push('<circle cx="' + n(rx) + '" cy="' + n(ry) + '" r="2.2"' +
+        ' style="fill:#ffffff;stroke:' + COL_CW + ';stroke-width:0.5"/>');
+      o.push(txt(rx + 3.4, ry + 1, 'Ст. В1, Т3', { size: 2.8, fill: COL_CW }));
+    }
     (f.zones || []).forEach(function (z) {
       if (z.type !== 'boiler') return;
       var c = centroid(z.pts);
@@ -1748,6 +1770,10 @@
     });
     var risers = fx.filter(function (q) { return q.t === 'riser'; });
     if (kind === 'sewer') risers.forEach(function (r) { pts3.push([r.x, r.y, mm(H)]); pts3.push([r.x, r.y, -mm(600)]); });
+    // Этаж без котельной: подводки начинаются не от гребёнок на стене, а от
+    // стояков, пришедших снизу через перекрытие
+    var fromRiser = kind !== 'sewer' && !!(f.wsrc && f.wsrc.kind === 'riser');
+    if (fromRiser && lines.length) pts3.push([f.wsrc.x, f.wsrc.y, -mm(600)]);
     if (!pts3.length) return null;
     var t = axoFit(f, pts3);
     var step = mm(60);
@@ -1758,7 +1784,9 @@
       // Подводки лучевые: у каждого прибора своя пара труб от коллектора. На
       // плане они идут одним коридором и сливаются в линию, поэтому на схеме
       // каждый луч сдвинут на свою полосу — иначе не видно, сколько их.
-      var lane = mm(110), lanes = lines.length;
+      // От стояка полос нет: лучи начинаются в одной точке — у пары стояков,
+      // а не разбросаны по ширине гребёнки, которой на этом этаже нет.
+      var lane = fromRiser ? 0 : mm(110), lanes = lines.length;
       lines.forEach(function (L, li) {
         var q = fx[L.i], h = WET_H[q.t];
         var off = (li - (lanes - 1) / 2) * lane;
@@ -1767,7 +1795,8 @@
         sets.forEach(function (S) {
           var pl = offsetPoly(L.pts, S[1]);
           var end = pl[pl.length - 1], z = mm(h[S[0]]);
-          var p3 = [[pl[0][0], pl[0][1], mm(AXO_COLL_MM)]]
+          // от стояка подводка идёт сразу по полу; сам стояк рисуется ниже один
+          var p3 = (fromRiser ? [] : [[pl[0][0], pl[0][1], mm(AXO_COLL_MM)]])
             .concat(pl.map(function (p) { return [p[0], p[1], 0]; }))
             .concat([[end[0], end[1], z]]);
           o.push('<path d="' + axoPath(p3, t) + '" style="fill:none;stroke:' + S[2] + ';stroke-width:0.45"/>');
@@ -1781,7 +1810,19 @@
         });
         if (!collAt) collAt = L.pts;
       });
-      if (collAt) {
+      if (collAt && fromRiser) {
+        // Пара стояков из перекрытия в точке, откуда расходятся подводки
+        var sx0 = f.wsrc.x, sy0 = f.wsrc.y;
+        [[-step / 2, COL_CW], [step / 2, COL_HW]].forEach(function (S) {
+          var a = t.P(sx0 + S[0], sy0, -mm(600)), b = t.P(sx0 + S[0], sy0, 0);
+          o.push('<line x1="' + n(a[0]) + '" y1="' + n(a[1]) + '" x2="' + n(b[0]) + '" y2="' + n(b[1]) +
+            '" style="stroke:' + S[1] + ';stroke-width:0.8"/>');
+        });
+        var r0 = t.P(sx0, sy0, -mm(600));
+        o.push(txt(r0[0] + 2.5, r0[1] + 3.5, 'Ст. В1, Т3 — с нижнего этажа', { size: 3.0 }));
+        var r1 = t.P(sx0, sy0, 0);
+        axoLevel(o, r1[0] - 14, r1[1], 0);
+      } else if (collAt) {
         // Гребёнка — поперёк первого участка трассы: в эту же сторону
         // разнесены лучи (offsetPoly сдвигает на (−dy, dx)), и спуски
         // приходят ровно на неё.
@@ -2263,5 +2304,5 @@
     boilerRoom: boilerRoom, layZone: layZone, layZoneLoops: layZoneLoops,
     floorLoops: floorLoops, loopRows: loopRows, num1: num1,
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
-    MAX_LOOP_M: MAX_LOOP_M, loopLimit: loopLimit };
+    MAX_LOOP_M: MAX_LOOP_M, loopLimit: loopLimit, setLoopLimits: setLoopLimits };
 })();
