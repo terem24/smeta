@@ -1343,7 +1343,10 @@ const app = {
         try {
             const params = new URLSearchParams(window.location.search);
             const raw = params.get('ref') || params.get('promo') || '';
-            const code = raw.trim().toUpperCase().replace(/[^A-Z0-9_\-]/g, '');
+            // Промокоды магазинов бывают и кириллицей (КИТ, ПАРГОЛОВО): фильтр
+            // только по латинице превращал такой код в пустую строку, и ссылка
+            // не давала ни плашки, ни подстановки в форму.
+            const code = raw.trim().toUpperCase().replace(/[^A-ZА-ЯЁ0-9_\-]/g, '');
             if (code) localStorage.setItem(this.INVITE_KEY, code);
         } catch (e) { }
     },
@@ -1433,11 +1436,16 @@ const app = {
         this.switchAuthTab('register');
     },
 
-    // Окно регистрации по адресу ?reg=1. Вызывается только для гостя — проверку
+    // Окно регистрации по адресу ?reg=1 и по ссылке менеджера ?ref=КОД — второй
+    // приходит именно регистрироваться. Вызывается только для гостя — проверку
     // «вошёл или нет» делает вызывающий код в init.
     openRegistrationFromUrl: function () {
         let wants = false;
-        try { wants = new URLSearchParams(window.location.search).get('reg') === '1'; } catch (e) { }
+        try {
+            const params = new URLSearchParams(window.location.search);
+            wants = params.get('reg') === '1'
+                || (!!(params.get('ref') || params.get('promo')) && !!this.storedInviteCode());
+        } catch (e) { }
         if (!wants) return;
         this.showAuthModal();
         this.switchAuthTab('register');
