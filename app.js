@@ -36075,7 +36075,7 @@ const app = {
                 r: x.len > 0 ? x.dp * 1000 / (x.len * this.RAD_LOCAL_K) : null })),
             balance: bal ? bal.rows.map(r => ({
                 room: r.room, watt: r.watt, flow: r.flow, dp: r.dp,
-                kv: r.kv, turns: r.turns, full: !!r.full
+                kv: r.kv, turns: r.turns, full: !!r.full, noSvl: !!r.noSvl
             })) : []
         };
     },
@@ -50010,7 +50010,17 @@ const app = {
         const tbl = this.RAD_BAL_SVL[this.state.connectionType === 'angled' ? 'angled' : 'straight'];
         const openTurns = tbl.turns[tbl.turns.length - 1][0] + 0.5;   // дальше таблицы — «открыт»
         const dpMax = rows.reduce((a, r) => Math.max(a, r.dp), 0);
-        rows.forEach(r => {
+        rows.forEach((r, i) => {
+            // Таблица оборотов — клапана SVL, а он стоит только у приборов с боковым
+            // подключением (и у конвекторов). У нижнего подключения обратку держит
+            // узел SVH или встроенный клапан радиатора: их Kv в паспортах нет, и
+            // писать «обороты SVL» к ним нельзя — клапана такого в смете нет.
+            if (devices[i] && devices[i].bottom) {
+                const extraB = Math.max(0, dpMax - r.dp);
+                r.kv = (extraB >= 0.5 && r.flow > 0) ? r.flow / Math.sqrt(extraB / 100) : null;
+                r.turns = null; r.full = false; r.noSvl = true;
+                return;
+            }
             const extra = Math.max(0, dpMax - r.dp);          // кПа, добавить клапаном
             if (extra < 0.5 || !(r.flow > 0)) {
                 r.kv = null; r.turns = openTurns;             // самое тяжёлое кольцо — открыт
@@ -50029,7 +50039,7 @@ const app = {
             r.turns = best[0];
             r.full = false;
         });
-        rows.sort((a, b) => a.turns - b.turns);
+        rows.sort((a, b) => (a.noSvl ? 99 : a.turns) - (b.noSvl ? 99 : b.turns));
         return { rows: rows, dpMax: dpMax };
     },
 
@@ -57869,21 +57879,32 @@ const app = {
             // === 3. РАДИАТОРЫ ===
             case 'rad_item':
                 return `<span style="${styles}"><span style="${head}">Радиатор отопления</span><b>Зачем:</b> Компенсация теплопотерь через окна/стены.<br><b>Формула:</b> Теплопотери помещения / Теплоотдача секции.<br><b>Мощность:</b> ${val1} Вт.<br><b>Норматив:</b> ГОСТ 31311-2005.</span>`;
-            case 'rad_valves':
+            case 'rad_valves': {
+                // val1: 'bottom' — узел нижнего подключения, 'thermo' — термоклапан,
+                // 'svl' — запорно-балансировочный клапан обратки (обороты — только ему).
+                const _kind = val1 || 'bottom';
                 // Преднастройки: без них вода идёт коротким путём, ближние приборы
                 // разбирают расход, дальние стоят прохладными. Обороты берутся из
                 // паспортной таблицы клапана (RAD_BAL_SVL), а вот кольца считаются
                 // по оценённой длине луча — доводить на объекте всё равно придётся.
                 const _bal = app.radBalance();
                 let _balTxt = '';
-                if (_bal && _bal.rows.length > 1) {
-                    const _list = _bal.rows.slice(0, 6).map(r =>
+                const _svlRows = _bal ? _bal.rows.filter(r => !r.noSvl) : [];
+                if (_kind === 'svl' && _svlRows.length > 1) {
+                    const _list = _svlRows.slice(0, 6).map(r =>
                         `${r.room} — ${r.full ? 'открыт полностью' : r.turns.toFixed(1) + ' об.'}`).join('; ');
                     _balTxt = `<br><b>Преднастройка обратки:</b> ${_list}` +
-                        (_bal.rows.length > 6 ? ` и ещё ${_bal.rows.length - 6}` : '') +
+                        (_svlRows.length > 6 ? ` и ещё ${_svlRows.length - 6}` : '') +
                         `.<br><span style="opacity:.75;">Обороты от закрытого, по таблице пропускной способности из паспорта клапана. Самому мощному прибору клапан оставляют открытым, остальные зажимают на разницу колец. Длины лучей в расчёте оценочные — уточните настройку по манометру при пусконаладке.</span>`;
                 }
-                return `<span style="${styles}"><span style="${head}">Узел нижнего подключения</span><b>Зачем:</b> Эстетичное подключение труб из стены/пола.<br><b>Функция:</b> Позволяет перекрыть и снять радиатор без слива системы.${_balTxt}</span>`;
+                if (_kind === 'svl') {
+                    return `<span style="${styles}"><span style="${head}">Запорно-балансировочный клапан (обратка)</span><b>Зачем:</b> Перекрывает прибор и уравнивает кольца: ближним к коллектору приборам клапан зажимают, чтобы вода доходила до дальних.${_balTxt}</span>`;
+                }
+                if (_kind === 'thermo') {
+                    return `<span style="${styles}"><span style="${head}">Термостатический клапан (подача)</span><b>Зачем:</b> Под термоголовку: держит температуру в комнате, прикрывая подачу.<br><b>Балансировка:</b> преднастройкой запорно-балансировочного клапана на обратке — обороты в его строке.</span>`;
+                }
+                return `<span style="${styles}"><span style="${head}">Узел нижнего подключения</span><b>Зачем:</b> Эстетичное подключение труб из стены/пола.<br><b>Функция:</b> Позволяет перекрыть и снять радиатор без слива системы.<br><b>Балансировка:</b> встроенным клапаном узла по его паспорту; расчётный перепад на кольцо — на листе «Гидравлический расчёт».</span>`;
+            }
             case 'rad_head':
                 return `<span style="${styles}"><span style="${head}">Термоголовка</span><b>Зачем:</b> Климат-контроль в каждой комнате.<br><b>Экономия:</b> Снижает расход газа/электричества на 15-20% за счет отсутствия перетопа.</span>`;
             case 'rad_pipe':
@@ -62962,7 +62983,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad' });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom });
                         }
                     });
                     // === Проверка покрытия теплопотерь помещения ===
@@ -63095,6 +63116,7 @@ const app = {
                     const _isPanel = !!(_finalSeries && _finalSeries.isPanel);
                     const _isBottom = _finalSeries ? (_isPanel ? !!_classifyItem.bottom : !!_finalSeries.bottom) : true;
                     _quickRadIsBottom = _isBottom;
+                    app.radDevices.forEach(d => { if (d.kind === 'rad') d.bottom = _isBottom; });
                     if (_isBottom) { totalRadCountBottom += totalCount; if (_isPanel) totalRadCountBottomSteel += totalCount; } else totalRadCountSide += totalCount;
                     if (!_isPanel) { totalRadCountSectional += totalCount; if (!_classifyItem.kitIncluded && !_isBottom) radKitColorCounts[this._radKitColorFor(_classifyItem)] += totalCount; }
                 }
@@ -63137,7 +63159,7 @@ const app = {
                 // точечно на другую сторону подключения через свайп) получали правильную
                 // арматуру каждая на свою часть, а не одну арматуру на все радиаторы подряд.
                 if (totalRadCountBottom > 0) {
-                    let activeHValve = catalog.h_valves.find(v => v.type === this.state.connectionType) || catalog.h_valves[0]; activeHValve.alts = catalog.h_valves; addToBill(activeHValve, totalRadCountBottom, this.getDesc('rad_valves'), grp);
+                    let activeHValve = catalog.h_valves.find(v => v.type === this.state.connectionType) || catalog.h_valves[0]; activeHValve.alts = catalog.h_valves; addToBill(activeHValve, totalRadCountBottom, this.getDesc('rad_valves', 'bottom'), grp);
                     if (totalRadCountBottomSteel > 0) { addToBill(catalog.rad_kits[0], totalRadCountBottomSteel * 2, "Ниппель переходной.", grp); }
                     // Подключение к нижним выводам радиатора при трубах из пола: либо
                     // Г-образные трубки с гильзами и компрессионными фитингами, либо фиксаторы
@@ -63202,8 +63224,8 @@ const app = {
                     thermoAlts = [...radValves.filter(v => v.id.startsWith('SVT-')), ..._euroThermo, ...radValvesDesign.filter(v => v.kind === 'valve')];
                     lockshieldAlts = [...radValves.filter(v => v.id.startsWith('SVL-')), ..._euroLock, ...radValvesDesign.filter(v => v.kind === 'lockshield')];
                     thermoValve.alts = thermoAlts; lockshieldValve.alts = lockshieldAlts;
-                    addToBill(thermoValve, totalRadCountSide, this.getDesc('rad_valves'), grp);
-                    addToBill(lockshieldValve, totalRadCountSide, "Запорно-балансировочный клапан.", grp);
+                    addToBill(thermoValve, totalRadCountSide, this.getDesc('rad_valves', 'thermo'), grp);
+                    addToBill(lockshieldValve, totalRadCountSide, this.getDesc('rad_valves', 'svl'), grp);
                 }
                 let radEurocone = (this.state.pipeType === 'insulated_mp' || this.state.pipeType === 'split_mp') ? catalog.parts[3] : catalog.parts[1];
                 addEurocone(radEurocone, totalRadCount * 2, "Евроконус 16 (Рад).", grp); addToBill(catalog.parts[2], totalRadCount * 2, "Фиксатор 90°.", grp); addToBill(catalog.protective_sleeves[0], totalRadCount, "Втулка (под).", grp); addToBill(catalog.protective_sleeves[1], totalRadCount, "Втулка (обр).", grp); addToBill(catalog.label_kits[0], 1, "Наклейки.", grp);

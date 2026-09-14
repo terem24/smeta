@@ -1046,7 +1046,7 @@
     var devRows = (d.balance || []).map(function (r, i) {
       return [i + 1, r.room || 'Прибор ' + (i + 1), Math.round(r.watt), f2(r.flow),
         f1(r.dp), r.kv ? f2(r.kv) : '—',
-        r.full ? 'открыт' : f1(r.turns).replace(',0', '') + ' об.'];
+        r.noSvl ? 'узел, по паспорту' : r.full ? 'открыт' : f1(r.turns).replace(',0', '') + ' об.'];
     });
     if (devRows.length) {
       var perSheet = Math.floor((275 - BODY_TOP - 5.5 - 14) / ROW_H);
