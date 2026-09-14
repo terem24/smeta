@@ -58219,6 +58219,7 @@ const app = {
         // Подобранные приборы отопления с их фактической мощностью — из них
         // гидравлика берёт расходы (см. radHydraulics).
         app.radDevices = [];
+        app._radDevPerFloor = {};   // приборов на этаже — по нему выходы радиаторного коллектора
         // Чем подключены приборы — гидравлике нужно знать, чей клапан считать:
         // боковой SVT или узел SVH со встроенным клапаном (см. radValveKv).
         // Счётчики заполняет блок обвязки радиаторов ниже.
@@ -62699,6 +62700,7 @@ const app = {
                             // до типоразмера, но термоголовка держит комнату по
                             // теплопотерям, и лишние ватты в расход не идут.
                             app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv' });
+                            { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + 1; }
                         } else if (roomHasRad) {
                             let isRommer = (this.state.brandMode === 'rommer');
                             // reqReal — сколько месту нужно на самом деле, reqPwr — та же нагрузка,
@@ -63002,6 +63004,7 @@ const app = {
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
                             for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom });
+                            { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + _radQty; }
                         }
                     });
                     // === Проверка покрытия теплопотерь помещения ===
@@ -63301,9 +63304,29 @@ const app = {
             this.totalDevicesCount = totalDevicesCount;
             let pipeGrp = "3.3. Трубы отопления";
 
-            let reqLoops = (this.state.floors === 2 ? Math.ceil(totalDevicesCount / 2) : totalDevicesCount); if (reqLoops > 12) reqLoops = 12;
+            // Выходов — по самому загруженному этажу: коллекторы на этажах одного типоразмера,
+            // и меньший из них должен вместить свой этаж. Раньше делили приборы дома пополам:
+            // 10 на первом и 4 на втором давали два коллектора на 7, и трём приборам первого
+            // этажа выхода не хватало. Без помещений (быстрый режим) — прежнее пополам.
+            // Минимум — 2 выхода (меньше коллекторов в ряду нет), максимум — старший в ряду.
+            const _perFloor = app._radDevPerFloor || {};
+            const _floorMax = (this.state.detailedRooms && Object.keys(_perFloor).length)
+                ? (this.state.floors === 2 ? Math.max(_perFloor[1] || 0, _perFloor[2] || 0) : ((_perFloor[1] || 0) + (_perFloor[2] || 0)))
+                : (this.state.floors === 2 ? Math.ceil(totalDevicesCount / 2) : totalDevicesCount);
+            const _manRow = catalog.manifolds_rad.slice().sort((a, b) => a.loops - b.loops);
+            // 12 — предел сборки из хромированных блоков (assemblyMap ниже), держим его и для готовых коллекторов.
+            const _manMax = Math.min(12, _manRow.length ? _manRow[_manRow.length - 1].loops : 12);
+            let reqLoops = Math.max(2, Math.min(_floorMax, _manMax));
+            this._radLoopsShort = _floorMax > _manMax ? _floorMax - _manMax : 0;
             this.state.lastRadLoops = reqLoops;
-            let m = catalog.manifolds_rad.find(x => x.loops === reqLoops) || catalog.manifolds_rad[catalog.manifolds_rad.length - 1];
+            let m = _manRow.find(x => x.loops >= reqLoops) || _manRow[_manRow.length - 1];
+            if (this._radLoopsShort > 0 && this.state.radConnectionScheme !== 'tee') {
+                this.groupWarns = this.groupWarns || {};
+                this.groupWarns[pipeGrp] = this.noteBox('warn', 'Выходов коллектора не хватит.',
+                    `На этаже ${_floorMax} приборов, у коллектора — ${reqLoops} выходов.`,
+                    `<div class="tip-p">Коллектор на этаж собирается не больше чем на 12 выходов. ${this._radLoopsShort} ${this.plural(this._radLoopsShort, 'прибор', 'прибора', 'приборов')} подключить некуда.</div>` +
+                    `<div class="tip-p"><b>Что делать:</b> поставить на этаж второй коллектор (кнопка «Добавить своё оборудование») или перевести часть приборов на тройниковую разводку.</div>`);
+            }
 
             // Ряд диаметров магистралей — общий для двух мест, где труба несёт мощность
             // группы приборов, а не одного радиатора: магистраль тройниковой схемы и
