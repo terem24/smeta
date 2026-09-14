@@ -57083,17 +57083,25 @@ const app = {
                     (hCircuits > 2 ? '> 2 → 3-контурный коллектор.' : '≤ 2 → 2-контурный коллектор.');
 
                 // Расход через коллектор
-                let hFlowRad = hPwr > 0 ? (hPwr / (1.163 * 10)).toFixed(2) : '—';
-                let hFlowUfh = hTpArea > 0 ? ((hTpArea * 0.08) / (1.163 * 5)).toFixed(2) : '—';
+                // Перепад радиаторов — из выбранного режима (80/60 → 20 K, 75/65 → 10 K).
+                // Раньше в формуле стояло 10, а в тексте «× 20°C», и 40 кВт давали 3,44 м³/ч
+                // при подписи, из которой выходит 1,72.
+                let hDtRad = this.radDT();
+                let hFlowRadN = (hRQ > 0 && hPwr > 0) ? hPwr / (1.163 * hDtRad) : 0;
+                let hFlowUfhN = (hTQ > 0 && hTpArea > 0) ? (hTpArea * 0.08) / (1.163 * 5) : 0;
+                let hFlowRad = hFlowRadN > 0 ? hFlowRadN.toFixed(2) : '—';
+                let hFlowUfh = hFlowUfhN > 0 ? hFlowUfhN.toFixed(2) : '—';
+                let hFlowSum = hFlowRadN + hFlowUfhN;
 
                 return `<span style="${styles}"><span style="${head}">${hTitle}</span>` +
                     `<b>Зачем:</b> Гидравлическая развязка между котловым и распределительными контурами. Устраняет взаимное влияние насосов контуров друг на друга.<br><br>` +
                     `<b>Выбор DN:</b> ${hDnWhy}<br><br>` +
                     `<b>Выбор числа контуров:</b> ${hContWhy}<br><br>` +
                     `<b>Расчётные расходы по контурам:</b><br>` +
-                    (hRQ > 0 ? `• Радиаторы: G = ${hPwr} кВт / (1.163 × 20°C) = <b>${hFlowRad} м³/ч</b><br>` : '') +
-                    (hTQ > 0 ? `• Тёплый пол: G = ${hTpArea} м² × 80 Вт/м² / (1.163 × 5°C) = <b>${hFlowUfh} м³/ч</b><br><br>` : '<br>') +
-                    `<b>Паспортные данные:</b> Максимальный суммарный расход через коллектор — <b>3.0 м³/ч</b>.</span>`;
+                    (hRQ > 0 ? `• Радиаторы: G = ${hPwr} кВт / (1.163 × ${hDtRad}°C) = <b>${hFlowRad} м³/ч</b><br>` : '') +
+                    (hTQ > 0 ? `• Тёплый пол: G = ${hTpArea} м² × 80 Вт/м² / (1.163 × 5°C) = <b>${hFlowUfh} м³/ч</b><br>` : '') +
+                    (hFlowSum > 0 ? `• Суммарно: <b>${hFlowSum.toFixed(2)} м³/ч</b> — ${hFlowSum <= 3.0 ? '<b style="color:#10B981;">в пределах паспорта</b>' : '<b style="color:#EF4444;">больше паспортных 3,0 м³/ч</b>'}.<br>` : '') +
+                    `<br><b>Паспортные данные:</b> Максимальный суммарный расход через коллектор — <b>3.0 м³/ч</b>.</span>`;
             }
             case 'pump_group': {
                 let item = val1;
@@ -57123,7 +57131,8 @@ const app = {
                     // и всегда падала в ❌.
                     let grpQty = Math.max(1, parseInt(qty, 10) || 1);
                     let pwrPer = Math.round((inputVal / grpQty) * 10) / 10;
-                    let flow = parseFloat((pwrPer / (1.163 * 10)).toFixed(2));
+                    const dtRad = this.radDT();
+                    let flow = parseFloat((pwrPer / (1.163 * dtRad)).toFixed(2));
                     let perNote = (grpQty > 1) ? ' на группу' : '';
                     let checkResult = (flow <= maxFlow)
                         ? `<b style="color: #10B981;">✔ Проверка расхода пройдена:</b> расчетный расход ${flow} м³/ч${perNote} не превышает максимальный расход группы ${maxFlow} м³/ч.`
@@ -57132,8 +57141,8 @@ const app = {
                     calc = `<b>Подбор по тепловой нагрузке:</b><br>${limitText}<br>` +
                         (grpQty > 1 ? `<b>Нагрузка на одну группу:</b> групп ${grpQty} шт → Q = ${inputVal} / ${grpQty} = ${pwrPer} кВт.<br>` : '') +
                         `<b>Формула расхода:</b> G = Q / (c × ΔT)<br>` +
-                        `где Q = ${pwrPer} кВт, c = 1.163 Вт·ч/(кг·°C), ΔT = 10°C (радиаторы).<br>` +
-                        `<b>Расчётный расход${perNote}:</b> G = ${pwrPer} / (1.163 × 10) = ${flow.toFixed(2)} м³/ч.<br>` +
+                        `где Q = ${pwrPer} кВт, c = 1.163 Вт·ч/(кг·°C), ΔT = ${dtRad}°C (режим радиаторов ${this.radRegime().label}).<br>` +
+                        `<b>Расчётный расход${perNote}:</b> G = ${pwrPer} / (1.163 × ${dtRad}) = ${flow.toFixed(2)} м³/ч.<br>` +
                         `${checkResult}`;
 
                     // #7: почему групп именно столько — проверка «хватит ли одной на все этажи».
@@ -61008,6 +61017,19 @@ const app = {
             let circuits = rQ + tQ + (tankNeedsPumpGroup ? 1 : 0) + polisCircuits + snowCircuits;
             let idx = (circuits > 2) ? 1 : 0;
             let hCtx = { rQ, tQ, pwr, tpArea, snowN: snowCircuits };
+            {
+                const _gRad = (rQ > 0 && pwr > 0) ? pwr / (1.163 * this.radDT()) : 0;
+                const _gUfh = (tQ > 0 && tpArea > 0) ? (tpArea * 0.08) / (1.163 * 5) : 0;
+                const _gSum = _gRad + _gUfh;
+                if (_gSum > 3.0) {
+                    this.groupWarns = this.groupWarns || {};
+                    this.groupWarns[grpHydro] = this.noteBox('warn', 'Расход больше паспорта гидрострелки.',
+                        `${_gSum.toFixed(2).replace('.', ',')} м³/ч при пределе 3,0 м³/ч.`,
+                        `<div class="tip-p">Радиаторы ${_gRad.toFixed(2).replace('.', ',')} м³/ч (G = Q / (1,163 × ${this.radDT()} K))` +
+                        (_gUfh > 0 ? `, тёплый пол ${_gUfh.toFixed(2).replace('.', ',')} м³/ч` : '') + `. Выше паспортного расхода разделение контуров работает хуже и растёт шум.</div>` +
+                        `<div class="tip-p"><b>Что делать:</b> перейти на режим радиаторов 80/60 (перепад 20 K вдвое снижает расход) или заменить узел на гидрострелку большего типоразмера.</div>`);
+                }
+            }
             if (dn25) {
                 if (circuits > 3 && catalog.collectors_dn25) {
                     const _dn25CollectorByLoops = { 2: 'SDG-0016-004002', 3: 'SDG-0016-004003', 4: 'SDG-0016-004004', 5: 'SDG-0016-004005', 6: 'SDG-0016-004006' };
