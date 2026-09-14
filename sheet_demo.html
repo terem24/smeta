@@ -180,6 +180,10 @@ if (payload && payload.items && payload.items.length) {
     return false;
   });
   var tpSteps = payload.ufhSteps || [tpStep, tpStep];
+  // Предел длины петли — из сметы: иначе лист делит укладку по запасным 100 м
+  // и петель на нём выходит не столько, сколько выходов у коллектора в смете
+  if (payload.ufhLoopMax && window.projectPlans && projectPlans.setLoopLimits)
+    projectPlans.setLoopLimits(payload.ufhLoopMax);
   // Помещения для экспликации сводного плана: номер, имя, площадь и
   // теплопотери — те же, что на листе расчёта теплопотерь.
   var expRooms = [];

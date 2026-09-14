@@ -898,15 +898,37 @@ function routeBetween(m, a, b) {
  *  канализация — от прибора к ближайшему стояку. Считаются при сохранении,
  *  листы их только рисуют. Унитаз — выпуск 110 мм, остальное — 50 мм. */
 function computeVk() {
+  // Котельная с коллекторами водоснабжения стоит на одном этаже, а приборы
+  // есть и на других. Туда вода приходит стояком — раньше у такого этажа
+  // источника не было вовсе, и трассы не строились: пустые план, 3D и схема.
+  var boilerSomewhere = DATA.floors.some(function (f) {
+    return (f.zones || []).some(function (z) { return z.type === 'boiler'; });
+  });
   DATA.floors.forEach(function (f, fi) {
-    f.wlines = []; f.slines = [];
+    f.wlines = []; f.slines = []; delete f.wsrc;
     var fx = f.fixtures || [];
     if (!fx.length || !f.pxPerM) return;
     var m = getMask(fi);
-    var src = null;
-    (f.zones || []).forEach(function (z) { if (z.type === 'boiler') src = centroid(z.pts); });
-    if (!src && f.coll) src = [f.coll.x, f.coll.y];
+    var src = null, srcKind = null;
+    (f.zones || []).forEach(function (z) { if (z.type === 'boiler') { src = centroid(z.pts); srcKind = 'boiler'; } });
     var risers = fx.filter(function (q) { return q.t === 'riser'; });
+    if (!src && boilerSomewhere) {
+      // Стояки В1/Т3 ведут в той же шахте, что стояк канализации; его нет —
+      // в середине санузла этажа.
+      if (risers.length) { src = [risers[0].x, risers[0].y]; }
+      else {
+        var wz = (f.zones || []).filter(function (z) { return z.type === 'wc'; });
+        if (wz.length) src = centroid(wz[0].pts);
+        else {
+          var sx = 0, sy = 0;
+          fx.forEach(function (q) { sx += q.x; sy += q.y; });
+          src = [sx / fx.length, sy / fx.length];
+        }
+      }
+      srcKind = 'riser';
+    }
+    if (!src && f.coll) { src = [f.coll.x, f.coll.y]; srcKind = 'coll'; }
+    if (src) f.wsrc = { x: Math.round(src[0]), y: Math.round(src[1]), kind: srcKind };
     fx.forEach(function (q, qi) {
       if (q.t === 'riser') return;
       if (src) f.wlines.push({ i: qi, pts: routeBetween(m, src, [q.x, q.y]) });
