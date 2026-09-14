@@ -17042,6 +17042,7 @@ const app = {
             tariff: document.getElementById('admin_filter_tariff')?.value || 'all',
             expiry: document.getElementById('admin_filter_expiry')?.value || 'all',
             region: document.getElementById('admin_filter_region')?.value || '',
+            dist: document.getElementById('admin_filter_dist')?.value || 'all',
             activity: document.getElementById('admin_filter_activity')?.value || 'all',
             recog: document.getElementById('admin_filter_recog')?.value || 'all',
             idle: document.getElementById('admin_filter_idle')?.value || 'all',
@@ -17070,6 +17071,10 @@ const app = {
                 query = query.ilike('region', `%${regionFilter}%`);
             }
         }
+        // Дистрибьютор: 'none' — никому не назначен, иначе id компании
+        const distFilter = filters.dist || 'all';
+        if (distFilter === 'none') query = query.is('distributor_id', null);
+        else if (distFilter !== 'all') query = query.eq('distributor_id', distFilter);
         if (activityFilter !== 'all') query = query.contains('activity_types', [activityFilter]);
         // «Ходит, но не считает» — половину условия (3+ визита) знает сама база,
         // вторую половину (ни одного расчёта) досчитывает filterIdleVisitors.
@@ -17394,6 +17399,7 @@ const app = {
             tariff: document.getElementById('admin_filter_tariff')?.value || 'all',
             expiry: document.getElementById('admin_filter_expiry')?.value || 'all',
             region: document.getElementById('admin_filter_region')?.value || '',
+            dist: document.getElementById('admin_filter_dist')?.value || 'all',
             activity: document.getElementById('admin_filter_activity')?.value || 'all',
             recog: document.getElementById('admin_filter_recog')?.value || 'all',
             suspect: document.getElementById('admin_filter_suspect')?.value || 'all',
@@ -17681,7 +17687,8 @@ const app = {
             // повторить не может — там список уже посчитан на клиенте (_recogFilteredIds).
             const af = this._pendingAdminFilters || {};
             const anyFilter = (af.tariff && af.tariff !== 'all') || (af.expiry && af.expiry !== 'all') ||
-                !!(af.region || '').trim() || (af.activity && af.activity !== 'all') ||
+                !!(af.region || '').trim() || (af.dist && af.dist !== 'all') ||
+                (af.activity && af.activity !== 'all') ||
                 (af.recog && af.recog !== 'all') || (af.suspect && af.suspect !== 'all') ||
                 (af.idle && af.idle !== 'all') ||
                 !!(af.search || '').trim();
@@ -18522,6 +18529,7 @@ const app = {
             tariff: 'all',
             expiry: 'all',
             region: '',
+            dist: 'all',
             activity: 'all',
             recog: 'all',
             suspect: 'all',
@@ -18531,6 +18539,7 @@ const app = {
         const tariffFilter = filters.tariff;
         const expiryFilter = filters.expiry;
         const regionFilter = filters.region;
+        const distFilter = filters.dist || 'all';
         const activityFilter = filters.activity;
         const recogFilter = filters.recog || 'all';
         const suspectFilter = filters.suspect || 'all';
@@ -18583,6 +18592,11 @@ const app = {
                                         return '';
                                     }
                                 }).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru')).map(r => `<option value="${r}" ${regionFilter === r ? 'selected' : ''}>${r}</option>`).join('')}
+                            </select>
+                            <select id="admin_filter_dist" onchange="app.loadAdminData(0)" title="Дистрибьютор, к которому привязан пользователь" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box; max-width: 220px;">
+                                <option value="all" ${distFilter === 'all' ? 'selected' : ''}>Все дистрибьюторы</option>
+                                <option value="none" ${distFilter === 'none' ? 'selected' : ''}>Без дистрибьютора</option>
+                                ${(this.adminData.distributors || []).slice().sort((a, b) => String(a.company_name || '').localeCompare(String(b.company_name || ''), 'ru')).map(d => `<option value="${d.id}" ${distFilter === String(d.id) ? 'selected' : ''}>${d.company_name}</option>`).join('')}
                             </select>
                             <!-- Доступ к распознаванию — фильтр клиентский: он живёт не в базе,
                                  а в списках доступа на сервере (см. recognitionStateFor).
