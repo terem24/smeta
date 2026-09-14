@@ -60758,7 +60758,12 @@ const app = {
 
         // Коллектор нужен, если есть хотя бы одна насосная группа — включая насосную группу
         // загрузки бойлера (tankNeedsPumpGroup), она тоже висит на коллекторе котельной.
-        let needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup;
+        // Снеготаяние тоже садится на коллектор: смесительная группа его первичного
+        // контура (с насосом) — такой же контур, как радиаторы или тёплый пол. Раньше
+        // его в этом условии не было, и на доме без других групп в смете оказывалась
+        // группа снеготаяния, которую некуда подключить.
+        const _snowOnCollector = !!(snowCalc && !snowCalc.impossible);
+        let needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
         // «С гидрострелкой» при одном тёплом поле: коллектор нужен ради его группы,
         // а саму группу вместо узла подмеса поставит переключение ниже.
         if (_forceHydro && hasTp && tpArea > 0) needCollector = true;
@@ -60775,14 +60780,14 @@ const app = {
                 if (this.isUfhMixTypeCompatible(_type, tpArea, _brand, tpAreaPerMan)) {
                     this.state.ufhMixType = _type;
                     tQ = (estMans > 0 ? estMans : 1);
-                    needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup;
+                    needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
                     break;
                 }
             }
         }
         // Коллектор без единой группы — пустая железка: такое бывает, только если
         // «С гидрострелкой» попросили, а группу тёплого пола подобрать не из чего.
-        if (needCollector && (rQ + tQ) < 1 && !tankNeedsPumpGroup) needCollector = false;
+        if (needCollector && (rQ + tQ) < 1 && !tankNeedsPumpGroup && !_snowOnCollector) needCollector = false;
 
         // Балансировка: перепад, расход каждой петли и хватает ли напора самому
         // тяжёлому коллектору. Отсюда же берётся насос для строки сметы и таблица
