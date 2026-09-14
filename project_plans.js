@@ -123,6 +123,8 @@
    * [x0, y0, x1, y1] в мм листа (значки, уже поставленные подписи).
    * place(cands) берёт первый вариант, который ни с чем не пересекается, а если
    * таких нет — тот, где перекрытие меньше всего, и сам его занимает.
+   * У варианта может быть штраф b.pen (например, «вне своей комнаты»): он
+   * складывается с площадью перекрытия, и штрафной вариант берётся последним.
    */
   function labelPlacer() {
     var boxes = [];
@@ -139,7 +141,7 @@
       place: function (cands) {
         var best = null, bs = Infinity;
         for (var i = 0; i < cands.length; i++) {
-          var s = over(cands[i]);
+          var s = over(cands[i]) + (cands[i].pen || 0);
           if (s === 0) { best = cands[i]; break; }
           if (s < bs) { bs = s; best = cands[i]; }
         }
@@ -150,6 +152,19 @@
   }
   /** Габарит строки текста в мм листа: ширина по числу знаков, как в вёрстке */
   function textW(s, size) { return String(s).length * size * 0.5; }
+
+  /** Прямоугольник значка прибора на листе [x0,y0,x1,y1] — по его настоящим
+   *  размерам и повороту вдоль стены. Раньше под прибор занимался квадрат по
+   *  длинной стороне: вокруг ванны 1,7 × 0,7 м — квадрат 1,7 × 1,7, и подписи
+   *  рядом с трубами уходили далеко. minHalf — не меньше буквы значка. */
+  function fixtureBox(q, t, ppmS, minHalf) {
+    var W = (q.w || (FIXT[q.t] || [])[2] || 500) / 2000 * ppmS;
+    var D = (q.d || (FIXT[q.t] || [])[3] || 500) / 2000 * ppmS;
+    var a = ((q.ang || 0) % 180 + 180) % 180, c = Math.abs(Math.cos(a * Math.PI / 180)), s = Math.abs(Math.sin(a * Math.PI / 180));
+    var hx = Math.max(W * c + D * s, minHalf || 0), hy = Math.max(W * s + D * c, minHalf || 0);
+    var X = t.X(q.x), Y = t.Y(q.y);
+    return [X - hx, Y - hy, X + hx, Y + hy];
+  }
 
   /** Лист «План N этажа» */
   function floorBody(f, num) {
@@ -672,7 +687,7 @@
   }
 
   /** Значок коллектора ТП: короткая гребёнка с отводами */
-  function collectorMark(c, t, f, o) {
+  function collectorMark(c, t, f, o, noLabel) {
     var w = Math.max(3.5, 0.55 * (f.pxPerM || 100) * t.s), h = w * 0.36;
     var X = t.X(c.x), Y = t.Y(c.y);
     o.push('<rect x="' + n(X - w / 2) + '" y="' + n(Y - h / 2) + '" width="' + n(w) + '" height="' + n(h) +
@@ -682,7 +697,8 @@
       o.push('<line x1="' + n(xs) + '" y1="' + n(Y - h / 2 - 1.1) + '" x2="' + n(xs) + '" y2="' + n(Y - h / 2) +
         '" style="stroke:#b35900;stroke-width:0.45"/>');
     }
-    o.push(txt(X, Y + h / 2 + 3.1, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
+    // подпись могут поставить снаружи, в обход других подписей (сводный план)
+    if (!noLabel) o.push(txt(X, Y + h / 2 + 3.1, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
   }
 
   // Цвета петель — замер по эталону (растр листа «Сводный план сетей»):
@@ -1433,9 +1449,12 @@
     // выпуски сходятся в одну точку, и подписи ложились одна на другую.
     var lp = labelPlacer(), ppmS = (f.pxPerM || 100) * t.s;
     fx.forEach(function (q) {
-      var r = Math.max((q.w || (FIXT[q.t] || [])[2] || 500), (q.d || (FIXT[q.t] || [])[3] || 500)) / 2000 * ppmS;
-      r = Math.max(r, 2.2);                        // буква значка крупнее самого стояка
-      lp.add([t.X(q.x) - r, t.Y(q.y) - r, t.X(q.x) + r, t.Y(q.y) + r]);
+      lp.add(fixtureBox(q, t, ppmS, 2.2));         // буква значка крупнее самого стояка
+    });
+    (f.zones || []).forEach(function (z) {         // имена санузлов (wcOutlines)
+      if (z.type !== 'wc' || !z.name) return;
+      var c = centroid(z.pts), X = t.X(c[0]), Y = t.Y(c[1]) - 4, hw = textW(z.name, 3.0) / 2;
+      lp.add([X - hw, Y - 2.6, X + hw, Y + 0.6]);
     });
     dl.forEach(function (s) {
       var lab = 'd' + s.d, w = textW(lab, 2.8), cands = [];
@@ -2317,7 +2336,7 @@
           ';stroke-width:0.28;stroke-linejoin:round;stroke-linecap:round"/>');
       });
     });
-    if (f.coll) collectorMark(f.coll, t, f, o);
+    if (f.coll) collectorMark(f.coll, t, f, o, true);   // подпись — ниже, в обход рамок помещений
 
     // 2) радиаторы
     (f.rads || []).forEach(function (r) {
@@ -2348,19 +2367,19 @@
     rooms.forEach(function (r) { byName[String(r.name || '').trim().toLowerCase()] = r; });
     var used = {};
     // Рамка с данными помещения закрывала то, что стоит в его середине:
-    // значок и подпись коллектора ТП в котельной, букву прибора в санузле.
-    // Теперь они занимают место первыми, а рамка сдвигается в свободное.
+    // значок коллектора ТП в котельной, букву прибора в санузле. Значки
+    // занимают место первыми, рамка ищет свободное — но только внутри своего
+    // помещения: иначе в тесной котельной её выносило на стену. Подпись
+    // «Коллектор ТП» ставится последней, в обход рамок.
     var lp = labelPlacer(), ppmS = (f.pxPerM || 100) * t.s;
+    var cw = 0, cX = 0, cY = 0;
     if (f.coll) {
-      var cw = Math.max(3.5, 0.55 * ppmS), cX = t.X(f.coll.x), cY = t.Y(f.coll.y);
-      var cl = Math.max(cw, textW('Коллектор ТП', 2.8)) / 2;
-      lp.add([cX - cl, cY - cw * 0.18 - 1.5, cX + cl, cY + cw * 0.18 + 4]);
+      cw = Math.max(3.5, 0.55 * ppmS); cX = t.X(f.coll.x); cY = t.Y(f.coll.y);
+      lp.add([cX - cw / 2, cY - cw * 0.18 - 1.2, cX + cw / 2, cY + cw * 0.18]);
     }
-    (f.fixtures || []).forEach(function (q) {
-      var rr = Math.max((q.w || (FIXT[q.t] || [])[2] || 500), (q.d || (FIXT[q.t] || [])[3] || 500)) / 2000 * ppmS;
-      rr = Math.max(rr, 2);
-      lp.add([t.X(q.x) - rr, t.Y(q.y) - rr, t.X(q.x) + rr, t.Y(q.y) + rr]);
-    });
+    (f.fixtures || []).forEach(function (q) { lp.add(fixtureBox(q, t, ppmS, 2)); });
+    // точка листа → точка подложки (обратное к t.X / t.Y)
+    var toImg = function (X, Y) { return [(X - t.ox) / t.s, (Y - t.oy) / t.s]; };
     (f.zones || []).forEach(function (z) {
       var key = String(z.name || '').trim().toLowerCase();
       var r = byName[key];
@@ -2369,13 +2388,18 @@
       var c = centroid(z.pts), X0 = t.X(c[0]), Y0 = t.Y(c[1]);
       var lines2 = ['[' + r.id + ']', r.name, Math.round(r.q) + ' Вт', r.area.toFixed(1) + ' м²'];
       var wBox = 20;
-      var cands = [];
-      [[0, 0], [0, -9], [0, 9], [-13, 0], [13, 0], [-13, -9], [13, -9], [-13, 9], [13, 9], [0, -16], [0, 16]]
-        .forEach(function (d) {
-          var X = X0 + d[0], Y = Y0 + d[1];
-          var b = [X - wBox / 2, Y - 7, X + wBox / 2, Y + 6.6]; b.p = [X, Y];
-          cands.push(b);
-        });
+      var offs = [];
+      for (var ddx = -16; ddx <= 16; ddx += 4) for (var ddy = -12; ddy <= 12; ddy += 3) offs.push([ddx, ddy]);
+      offs.sort(function (a, b) { return Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]); });
+      var cands = offs.map(function (d) {
+        var X = X0 + d[0], Y = Y0 + d[1];
+        var b = [X - wBox / 2, Y - 7, X + wBox / 2, Y + 6.6]; b.p = [X, Y];
+        // углы рамки вне помещения — штраф: рамка на стене хуже, чем задетая буква
+        var out = [[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]]]
+          .filter(function (p) { return !pip(toImg(p[0], p[1]), z.pts); }).length;
+        b.pen = out * 400;
+        return b;
+      });
       var b = lp.place(cands), X = b.p[0], Y = b.p[1];
       o.push('<rect x="' + n(X - wBox / 2) + '" y="' + n(Y - 7) + '" width="' + n(wBox) +
         '" height="13.6" rx="0.6" style="fill:#ffffff;fill-opacity:0.86;stroke:#000;stroke-width:0.2"/>');
@@ -2383,6 +2407,15 @@
         o.push(txt(X, Y - 4 + i * 3.2, s2, { size: i ? 2.5 : 2.8, anchor: 'middle' }));
       });
     });
+    if (f.coll) {
+      var cLab = 'Коллектор ТП', cLw = textW(cLab, 2.8), ch = cw * 0.36;
+      var cb = lp.place([[0, ch / 2 + 3.1], [0, -ch / 2 - 2.6], [cw / 2 + 1.5 + cLw / 2, 1], [-cw / 2 - 1.5 - cLw / 2, 1],
+        [0, ch / 2 + 6.6], [0, -ch / 2 - 6]].map(function (d) {
+        var bx = [cX + d[0] - cLw / 2, cY + d[1] - 2.4, cX + d[0] + cLw / 2, cY + d[1] + 0.4]; bx.p = [cX + d[0], cY + d[1]];
+        return bx;
+      }));
+      o.push(txt(cb.p[0], cb.p[1], cLab, { size: 2.8, anchor: 'middle', fill: '#b35900' }));
+    }
 
     // 5) экспликация помещений справа
     var EX = SUM_TBL, EY = 26, W = [12, 46, 22, 24], rh = 5.6;
