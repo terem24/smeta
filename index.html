@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=8.11" defer></script>
+    <script src="app.js?v=8.12" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3055,6 +3055,16 @@
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="number" id="profile_invoice_valid_days" class="auth-input" min="0" max="90" step="1" placeholder="2" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center;">
                             <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">По умолчанию 2 дня. Поставьте 0 или очистите поле — таймера не будет. Перед каждой отправкой срок можно поменять прямо в окне ссылки.</span>
+                        </div>
+                    </div>
+
+                    <!-- Напоминание «КП ушло клиенту, счёт не выставлен». Отправляет база раз в сутки
+                         (supabase/migrations/20260914_kp_invoice_reminders.sql); 0 или пусто — выключено. -->
+                    <div class="lk-card" style="margin-top: 10px;">
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">🔔 Напомнить выставить счёт через, дней</label>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="number" id="profile_kp_reminder_days" class="auth-input" min="0" max="90" step="1" placeholder="10" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center;">
+                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней. Поставьте 0 или очистите поле — напоминаний не будет.</span>
                         </div>
                     </div>
             </div>
