@@ -65888,6 +65888,21 @@ const app = {
                     `Штатный ${cableHave} м, до автоматики нужно около ${cableNeed} м.`,
                     `<div class="tip-p">Глубина ${this.state.wellDepth} м + трасса ${this.state.wellDist} м + 5 м до автоматики. Термоусаживаемая муфта для соединения добавлена в смету; кабель ${pump.cable_mm2 || ''} мм² на ${cableNeed - cableHave} м докупите отдельно.</div>`));
             }
+            // Давление при закрытых кранах. Реле протока (BRIO, EPC-4, EPC-5) выключает
+            // насос по остановке потока, а не по давлению, и в доме встаёт напор насоса
+            // при нулевом расходе за вычетом подъёма воды. Предохранительный клапан
+            // бойлера в смете — на 6 бар: выше него он начнёт сбрасывать воду. Инвертор
+            // и автоматика по давлению (SIRIO, BRIO-TOP, EPC-12, EPC-2, реле КРС) держат
+            // заданное давление сами.
+            const _flowCtrl = !['sirio', 'top', 'relay_krs5', 'epc12auto', 'epc2'].includes(this.state.wellAutoType);
+            const _h0 = (pump.curve && pump.curve.length) ? pump.curve[0][1] : 0;
+            const _pShut = (_h0 - parseInt(this.state.wellDepth) - floorsH) / 10;
+            if (_flowCtrl && !this.state.waterReducer && _pShut > 6) {
+                wellWarns.push(this.noteBox('warn', 'Нужен редуктор давления.',
+                    `При закрытых кранах насос поднимет давление до ~${_pShut.toFixed(1).replace('.', ',')} бар.`,
+                    `<div class="tip-p">Автоматика по протоку выключает насос, когда вода перестала течь, а не по давлению. Напор насоса без расхода — ${_h0} м (паспорт), минус подъём ${parseInt(this.state.wellDepth) + floorsH} м — это около ${_pShut.toFixed(1).replace('.', ',')} бар. Предохранительный клапан бойлера рассчитан на 6 бар и будет сбрасывать воду, смесители и гибкие подводки работают на пределе.</div>` +
+                    `<div class="tip-p"><b>Что делать:</b> включить редуктор давления в узле ввода или выбрать автоматику по давлению (SIRIO, BRIO-TOP, EPC-12).</div>`));
+            }
             const wellWarn = wellWarns.join('') || null;
 
             const cableLine = cableHave > 0
