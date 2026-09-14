@@ -2110,9 +2110,29 @@ const app = {
         [/антеприм[а-я]*/i, 'anteprima'],
         [/альфа[а-я]*/i, 'alpha'],
         [/статус[а-я]*/i, 'status'],
+        // "полис" — бюджетная линейка электрокотлов POLIS (см. boilers_polis в catalog.js),
+        // в каталоге записана латиницей
+        [/полис[а-я]*/i, 'polis'],
         [/нувол[а-я]*/i, 'nuvola'],
         [/платинум[а-я]*/i, 'platinum'],
         [/оптибейз[а-я]*|оптибаз[а-я]*/i, 'optibase'],
+        // Дизайн-линейки электрических полотенцесушителей — добавлены в каталог позже,
+        // чем составлялась эта таблица, и в неё не попали (та же причина, что у POLIS выше)
+        [/новафлоу[а-я]*/i, 'novaflow'],
+        [/эллипс[а-я]*/i, 'ellipse'],
+        [/джаз[а-я]*/i, 'jazz'],
+        // "рок" без защиты от границы слова задел бы "с[рок]" — гарантийный срок и т.п.
+        [/(?<![а-я])рок[а-я]*/i, 'rock'],
+        [/гранж[а-я]*/i, 'grunge'],
+        // "неосоул" обязательно раньше "соул" — иначе "соул" откусит середину слова
+        [/неосоул[а-я]*/i, 'neosoul'],
+        [/соул[а-я]*/i, 'soul'],
+        // "техно" без защиты задел бы "техно[лог]ия"/"технологический"
+        [/техно(?!лог)[а-я]*/i, 'techno'],
+        [/форте[а-я]*/i, 'forte'],
+        [/пиано[а-я]*/i, 'piano'],
+        [/рубис[а-я]*/i, 'rubis'],
+        [/инокс[а-я]*/i, 'inox'],
         // Бренд-конкурент (не продаём) — ненавязчиво подсказываем эквивалент STOUT: у Henco
         // основной продукт — металлопластиковая труба PE-Xb/Al/PE-Xb, она есть у STOUT/ROMMER
         [/хенк[оа][а-я]*|henco[a-я]*/i, 'металлопластиковая']
@@ -2253,6 +2273,12 @@ const app = {
         if (typeof radValvesDesign !== 'undefined') extraArrays.push(['radValvesDesign', radValvesDesign]);
         if (typeof radManualValves !== 'undefined') extraArrays.push(['radManualValves', radManualValves]);
         if (typeof radAccessories !== 'undefined') extraArrays.push(['radAccessories', radAccessories]);
+        // Эти три массива были в catalog.js, но не попали в индекс поиска — товары из них
+        // не находились вообще, независимо от языка запроса (обнаружено при проверке линеек
+        // полотенцесушителей JAZZ/ROCK/FORTE и т.п., см. _SEARCH_SLANG выше)
+        if (typeof hValvesExtra !== 'undefined') extraArrays.push(['hValvesExtra', hValvesExtra]);
+        if (typeof radKitsExtra !== 'undefined') extraArrays.push(['radKitsExtra', radKitsExtra]);
+        if (typeof towelWarmersElectric !== 'undefined') extraArrays.push(['towelWarmersElectric', towelWarmersElectric]);
 
         // Для базового (не PRO) тарифа товары ROMMER полностью скрыты из поиска —
         // независимо от того, есть ли у них аналог STOUT в той же категории. PRO-аккаунты
