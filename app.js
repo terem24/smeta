@@ -41763,6 +41763,45 @@ const app = {
                 { id: 'metal_plastic', name: 'Труба металлопластиковая 16x2.0', brand: b_mp, price: p_mp, imgId: mpItem?.id },
                 ...(stbItem ? [{ id: 'stable', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: isRommer ? 'ROMMER' : 'STOUT', price: (isRommer && stbItem.rommer ? stbItem.rommer.price : stbItem.price), imgId: stbItem.id }] : [])
             ];
+            // Две цены, как у основания пола: труба за метр и система за м² пола.
+            // Система — метраж трубы плюс то, что render() ставит на каждую петлю:
+            // два евроконуса под стенку этой трубы, два фиксатора 90° и пара втулок.
+            // Метраж от трубы не зависит, а число петель зависит: у стабильной
+            // внутренний диаметр меньше, петля по гидравлике короче, петель больше.
+            // Петли текущей трубы — из расчёта, у других пересчитаны пропорционально
+            // предельной длине петли (ufhLoopMax) на каждом этаже.
+            const _fc = (this._ufhFloorCalc || []).filter(f => f && f.m > 0);
+            const _stp = [parseInt(this.state.ufhStep1, 10) || 150, parseInt(this.state.ufhStep2, 10) || 150];
+            const _tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            const _curPipe = this.ufhPipe();
+            const _prc = (it) => it ? ((isRommer && it.rommer) ? it.rommer.price : it.price) || 0 : 0;
+            const _perLoop = (p) => 2 * _prc((catalog.parts || []).find(x => x.id === p.conn))
+                + 2 * _prc((catalog.parts || [])[2])
+                + _prc((catalog.protective_sleeves || [])[0]) + _prc((catalog.protective_sleeves || [])[1]);
+            customAlts.forEach(alt => {
+                const p = this.UFH_PIPES.find(x => x.material === alt.id);
+                if (!p) return;
+                let meters = 0, loops = 0, area = _tpArea;
+                if (_fc.length && _tpArea > 0) {
+                    (this._ufhFloorCalc || []).forEach((f, i) => {
+                        if (!f || !(f.m > 0)) return;
+                        meters += f.m;
+                        loops += (p.key === _curPipe.key) ? f.loops
+                            : Math.ceil(f.loops * this.ufhLoopMax(_stp[i], _curPipe) / this.ufhLoopMax(_stp[i], p));
+                    });
+                } else {
+                    // Площади ещё нет — считаем на условные 100 м² при шаге первого этажа
+                    area = 100;
+                    meters = area / (_stp[0] / 1000) * 1.1;
+                    loops = Math.ceil(meters / this.ufhLoopMax(_stp[0], p));
+                }
+                alt.unitM2 = alt.price;
+                alt.unitHead = 'Труба, за м';
+                alt.sysHead = 'Система, за м² пола';
+                alt.unitLabel = `петель: ${loops}`;
+                alt.price = (meters * alt.price + loops * _perLoop(p)) / area;
+                alt.note = `<div style="font-size:11px; font-weight:500; color:var(--text-sec); margin-top:2px;">Система: труба ${Math.round(meters / area * 10) / 10} м на м², на каждую петлю ${p.connName} ×2, фиксатор 90° ×2, втулки</div>`;
+            });
         }
         else if (item.originalId && (item.originalId.endsWith('_water') || (item.originalId.startsWith('SPX-0001-') && !item.originalId.endsWith('_rad'))) && !item.originalId.startsWith('SMB-') && !item.originalId.startsWith('RMS-')) {
             let p_pex = 0, p_mp = 0;
@@ -43319,11 +43358,13 @@ const app = {
         const _priceTh = _isTankItem
             ? `<th style="text-align:right;width:100px;${_sortStyle}" onclick="app.toggleTankSwapSort('price')">Цена${_priceArrow}</th>`
             : `<th style="text-align:right;width:100px;${_sortStyle}" onclick="app.toggleSwapSort('price')">Цена${_ssA('price')}</th>`;
-        // Основание тёплого пола: цена мата/листа отдельно и цена системы, обе за м².
+        // Основание и труба тёплого пола: цена самого материала отдельно и цена системы.
+        // Подписи колонок задаёт сам список вариантов (unitHead/sysHead).
         const _twoPrice = !!(customAlts && customAlts.some(a => a.unitM2 != null));
+        const _twoHead = _twoPrice ? customAlts.find(a => a.unitM2 != null) : null;
         const _priceThs = _twoPrice
-            ? `<th style="text-align:right;width:120px;">Мат / лист, за м²</th>` +
-              `<th style="text-align:right;width:110px;${_sortStyle}" onclick="app.toggleSwapSort('price')">Система, за м²${_ssA('price')}</th>`
+            ? `<th style="text-align:right;width:120px;">${_twoHead.unitHead || 'Мат / лист, за м²'}</th>` +
+              `<th style="text-align:right;width:110px;${_sortStyle}" onclick="app.toggleSwapSort('price')">${_twoHead.sysHead || 'Система, за м²'}${_ssA('price')}</th>`
             : _priceTh;
 
         let html = _tankFiltersHtml + `
@@ -43431,7 +43472,7 @@ const app = {
                 if (_twoPrice) {
                     unitTd = `<td style="text-align: right; font-size: 13px; white-space: nowrap;">` +
                         (alt.unitM2 > 0 ? `<div style="font-weight: 700;">${this.formatPriceHtml(alt.unitM2, true)}</div>` +
-                            `<div style="font-size: 11px; color: var(--text-sec);">${this.formatPriceHtml(alt.unitPrice, true)} ${alt.unitLabel || ''}</div>` : '—') +
+                            `<div style="font-size: 11px; color: var(--text-sec);">${alt.unitPrice > 0 ? this.formatPriceHtml(alt.unitPrice, true) + ' ' : ''}${alt.unitLabel || ''}</div>` : '—') +
                         `</td>`;
                 }
 
