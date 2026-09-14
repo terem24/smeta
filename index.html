@@ -1405,20 +1405,22 @@
                  он и стоит по умолчанию. Только в подробном режиме: в быстром расчёте
                  менять его незачем. Это НЕ режим радиаторов (80/60 ↔ 75/65) — тот
                  живёт за гидрострелкой и настраивается отдельно, ниже. -->
-            <!-- Схема котельной: «Авто» решает сам (как было всегда), два других
-                 варианта — решение монтажника. «Без гидрострелки» — и котёл с
+            <!-- Схема котельной: схем две, поэтому и кнопок две. Пока монтажник
+                 не нажал ни одну, подсвечена та, которую подобрал калькулятор
+                 (state.boilerScheme = 'auto'); нажатие закрепляет выбор, ссылка
+                 «Вернуть автоподбор» снимает его. «Без гидрострелки» — и котёл с
                  пятью радиаторами, и лучевые коллекторы прямо на котле с узлом
                  подмеса тёплого пола. Что именно собрано и с какими оговорками —
                  плашка в шапке раздела «2. Обвязка котельной». -->
             <div class="control-item" id="blk_boiler_scheme" style="display:none; margin-bottom: 16px;">
                 <span class="lbl-sub" style="margin-bottom: 6px;">Схема котельной</span>
                 <div class="tabs" id="boiler_scheme_tabs">
-                    <div class="tab active" id="boiler_scheme_auto" onclick="app.setBoilerScheme('auto', event)" title="Гидрострелку и насосные группы калькулятор ставит сам: при площади больше 150 м², втором этаже, мощности выше 20 кВт, группе тёплого пола или бойлера.">Авто</div>
                     <div class="tab" id="boiler_scheme_direct" onclick="app.setBoilerScheme('direct', event)" title="Без гидрострелки. Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.">Без стрелки</div>
                     <div class="tab" id="boiler_scheme_hydro" onclick="app.setBoilerScheme('hydro', event)" title="С гидрострелкой. Гидрострелка и насосная группа на каждый контур — даже там, где хватило бы насоса котла.">Со стрелкой</div>
                 </div>
                 <div class="info-card" style="margin-top: 6px; font-size: 11px; line-height: 1.4;">
-                    <span id="lbl_boiler_scheme_note">Гидрострелку и насосные группы калькулятор ставит сам.</span>
+                    <span id="lbl_boiler_scheme_note">Схему калькулятор подбирает сам.</span>
+                    <a href="#" id="lnk_boiler_scheme_auto" hidden onclick="app.setBoilerScheme('auto', event); return false;">Вернуть автоподбор</a>
                 </div>
             </div>
 
