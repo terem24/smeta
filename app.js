@@ -65401,17 +65401,60 @@ const app = {
             let floorsH = this.state.floors === 2 ? 3 : 0;
             let h = (this.state.wellDepth + (this.state.wellDist / 10) + floorsH + 30) * 1.1;
 
-            let validPumps = catalog.well_pumps.filter(p => p.q_max >= (q * 0.9) && p.h_max >= (h + 20));
+            // Напор насоса в рабочей точке. В каталоге у насоса только h_max — напор при
+            // нулевом расходе — и q_max, а в названии серия и номинал: «2-81» — 81 м при
+            // 2 м³/ч, у RHS так же. Между ними кривая близка к параболе:
+            // H(Q) = h_max − (h_max − H_ном)·(Q / Q_ном)². Раньше требуемый напор сравнивался
+            // с h_max + 20, а номинал у линейки — лишь около 70 % от h_max: на скважине
+            // глубже 50 м вставал насос, который на расчётном расходе не дотягивал.
+            const pumpHeadAt = (p, flow) => {
+                const m = /(?:^|\s)(\d)-(\d{2,3})\b/.exec(p.name || '');
+                if (!m) return p.h_max * 0.7;
+                const qn = +m[1], hn = +m[2];
+                return Math.max(0, p.h_max - (p.h_max - hn) * Math.pow(Math.min(flow, p.q_max) / qn, 2));
+            };
+            let validPumps = catalog.well_pumps.filter(p => p.q_max >= (q * 0.9) && pumpHeadAt(p, q) >= h);
+            // Если не тянет ни один — самый напорный на этом расходе, а не последний
+            // в массиве, и красная плашка над разделом.
+            const strongestPump = catalog.well_pumps
+                .filter(p => p.q_max >= (q * 0.9))
+                .reduce((best, p) => (!best || pumpHeadAt(p, q) > pumpHeadAt(best, q)) ? p : best, null)
+                || catalog.well_pumps[catalog.well_pumps.length - 1];
             let _wellPumpSwapId = this.state.swaps && this.state.swaps['well_pump_auto'];
             let pump;
             if (_wellPumpSwapId) {
-                pump = catalog.well_pumps.find(p => p.id === _wellPumpSwapId) || validPumps[0] || catalog.well_pumps[catalog.well_pumps.length - 1];
+                pump = catalog.well_pumps.find(p => p.id === _wellPumpSwapId) || validPumps[0] || strongestPump;
             } else {
-                pump = validPumps.length > 0 ? validPumps[0] : catalog.well_pumps[catalog.well_pumps.length - 1];
+                pump = validPumps.length > 0 ? validPumps[0] : strongestPump;
             }
             pump = { ...pump, originalId: 'well_pump_auto', alts: catalog.well_pumps };
+            const pumpHead = pumpHeadAt(pump, q);
 
-            let pumpDesc = `<span style="font-size:11px; line-height:1.4;"><span style="font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);">Скважинный насос ROMMER</span><b>Расчет:</b> Потребность ${q.toFixed(1)} м³/ч, Напор ${Math.round(h)} м.<br><b>Формула напора:</b> Глубина (${this.state.wellDepth}м) + Трасса/10 + Высота этажей + 30м (Давление) + 10% запас.<br><i>*Насос включает кабель питания.</i></span>`;
+            // Кабель насоса: от насоса до верха скважины, трасса до дома и ~5 м до
+            // автоматики. Длина штатного кабеля известна только у RHS («кабель 50 м»).
+            const cableNeed = parseInt(this.state.wellDepth) + parseInt(this.state.wellDist) + 5;
+            const _cableM = /кабель\s+(\d+)\s*м/i.exec(pump.name || '');
+            const cableHave = _cableM ? +_cableM[1] : null;
+
+            const wellWarns = [];
+            if (pumpHead < h) {
+                wellWarns.push(this.noteBox('error', 'Насосу скважины не хватает напора.',
+                    `${pump.name}: около ${Math.round(pumpHead)} м на ${q.toFixed(1)} м³/ч, нужно ${Math.round(h)} м.`,
+                    '<div class="tip-p">Нужный напор = глубина установки насоса + трасса/10 + высота этажей + 30 м давления в доме, плюс 10 %. ' +
+                    'Напор насоса взят в рабочей точке, а не при нулевом расходе.</div>' +
+                    '<div class="tip-p"><b>Что делать:</b> выберите насос мощнее кнопкой замены или уточните глубину установки насоса — считается она, а не глубина скважины.</div>'));
+            }
+            if (cableHave !== null && cableHave < cableNeed) {
+                wellWarns.push(this.noteBox('warn', 'Кабеля насоса не хватит.',
+                    `Штатный ${cableHave} м, до автоматики нужно около ${cableNeed} м.`,
+                    `<div class="tip-p">Глубина ${this.state.wellDepth} м + трасса ${this.state.wellDist} м + 5 м до автоматики. Докупите погружной кабель того же сечения на ${cableNeed - cableHave} м и термоусадочную муфту для соединения — в смете их нет.</div>`));
+            }
+            const wellWarn = wellWarns.join('') || null;
+
+            const cableLine = cableHave !== null
+                ? `Штатный кабель ${cableHave} м, нужно около ${cableNeed} м (глубина + трасса + 5 м).`
+                : `Кабель нужен длиной около ${cableNeed} м (глубина + трасса + 5 м) — сверьте с паспортом насоса; если короче, докупите погружной кабель и термоусадочную муфту.`;
+            let pumpDesc = `<span style="font-size:11px; line-height:1.4;"><span style="font-weight:700; color:#93C5FD; display:block; margin-bottom:9px; padding-bottom:7px; border-bottom:1px solid rgba(255,255,255,0.15);">Скважинный насос ROMMER</span><b>Расчет:</b> Потребность ${q.toFixed(1)} м³/ч, нужный напор ${Math.round(h)} м, насос на этом расходе даёт около ${Math.round(pumpHead)} м.<br><b>Формула напора:</b> Глубина (${this.state.wellDepth}м) + Трасса/10 + Высота этажей + 30м (Давление) + 10% запас.<br><b>Кабель:</b> ${cableLine}</span>`;
 
             addToBill(pump, 1, pumpDesc, grpWell);
             let grpWellTie = "7.1. Обвязка скважинного насоса";
@@ -65505,7 +65548,7 @@ const app = {
             let thimbleDesc = `<span style="font-size:11px; line-height:1.4;"><b>Назначение:</b> Вставляется внутрь петли троса. Защищает трос от перетирания и излома в местах крепления к насосу и оголовку.</span>`;
             addToBill(catalog.well_parts[6], 2, thimbleDesc, grpWellTie);
 
-            flushBill(grpWell);
+            flushBill(grpWell, wellWarn);
             let grpWellTie7 = "7.1. Обвязка скважинного насоса";
             // (grpWellTie already used above — flush with correct name)
             flushBill(grpWellTie);
