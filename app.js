@@ -7672,13 +7672,20 @@ const app = {
                 p.currentMeta = e.meta || null;
                 p.lastAt = e.created_at;
             }
-            if (e.user_name) p.user_name = e.user_name;
-            if (e.user_email) p.user_email = e.user_email;
             if (e.project_name) p.project_name = e.project_name;
-            const meta = e.user_email ? userMeta[e.user_email.toLowerCase()] : null;
-            if (meta) {
-                p.region = meta.region;
-                p.distributor_id = meta.distributor_id;
+            // Событие сотрудника (статус поставил менеджер) не меняет автора карточки:
+            // иначе в карточке вместо монтажника стоял бы менеджер, а регион и
+            // дистрибьютор брались бы из его учётки. Старые записи «счёт выставлен»
+            // и «оплачено» без отметки by_staff — тоже всегда от менеджера.
+            const byStaff = (e.meta && e.meta.by_staff) || ['invoice_issued', 'paid', 'rejected'].includes(e.event);
+            if (!byStaff || !p.user_email) {
+                if (e.user_name) p.user_name = e.user_name;
+                if (e.user_email) p.user_email = e.user_email;
+                const meta = e.user_email ? userMeta[e.user_email.toLowerCase()] : null;
+                if (meta) {
+                    p.region = meta.region;
+                    p.distributor_id = meta.distributor_id;
+                }
             }
             p.totalSum = liveCalcMap[String(e.calc_id)] || 0;
             // Пометка «распознавание»: либо флаг в самой смете, либо meta события
@@ -7786,13 +7793,16 @@ const app = {
                </div>`
             : '';
 
+        // Кого можно перетаскивать: права те же, что у кнопок в карточке
+        const myEmail = await this.kanbanMyEmail();
+        const canDrag = (card) => this.kanbanCanManageDist(card.distributor_id, myEmail);
         const columnsHtml = `
             <div class="admin-kanban-cols" style="display:flex; gap:14px; align-items:start; overflow-x:auto; padding-bottom:12px; width:100%;">
                 ${STAGES.map(s => {
             const cards = filtered.filter(p => stageOf(p.current) === s).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
             const totalSum = cards.reduce((acc, c) => acc + (c.totalSum || 0), 0);
             return `
-                        <div style="border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
+                        <div ondragover="app.kanbanDragOver(event, this)" ondragleave="app.kanbanDragLeave(event, this)" ondrop="app.kanbanDrop(event, this, '${s.key}')" style="border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
                             <div style="background:${s.color}; color:#fff; padding:10px 12px; display:flex; flex-direction:column; gap:4px;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.3px;">
                                     <span>${s.label}</span>
@@ -7809,7 +7819,7 @@ const app = {
                 const em = EVENT_META[c.current] || { label: c.current, color: '#94A3B8' };
                 const comment = c.currentMeta && c.currentMeta.comment ? c.currentMeta.comment : '';
                 return `
-                                    <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
+                                    <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" ${canDrag(c) ? `draggable="true" ondragstart="app.kanbanDragStart(event, '${c.calc_id}')" ondragend="app._kanbanDragId = null" title="Перетащите в другую колонку, чтобы сменить этап"` : ''} style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
                                         <div style="font-weight:700; color:var(--text-main); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.project_name || 'Без названия'}</div>
                                         ${c.fromRecognition ? `<div style="display:inline-block; background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; margin-bottom:6px; letter-spacing:0.02em;">🔍 РАСПОЗНАВАНИЕ</div>` : ''}
                                         <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
@@ -8426,53 +8436,49 @@ const app = {
         const last = statusEvents.length ? statusEvents[statusEvents.length - 1] : events[events.length - 1];
         const distributorsById = {};
         ((this.adminData && this.adminData.distributors) || []).forEach(d => { distributorsById[String(d.id)] = d.company_name; });
-        const meta = last.user_email ? (this._kanbanUserMeta || {})[last.user_email.toLowerCase()] : null;
+        // Монтажник — автор сметы, а не автор последнего события: последним
+        // статус мог поставить менеджер
+        const author = events.find(e => (e.event === 'calculated' || e.event === 'saved') && e.user_email)
+            || events.find(e => e.user_email && !(e.meta && e.meta.by_staff) && !['invoice_issued', 'paid', 'rejected'].includes(e.event))
+            || last;
+        const meta = author.user_email ? (this._kanbanUserMeta || {})[author.user_email.toLowerCase()] : null;
         const regionLabel = meta && meta.region ? meta.region : '—';
         const distributorLabel = meta && meta.distributor_id ? (distributorsById[String(meta.distributor_id)] || '—') : '—';
 
         // Проверка прав для смены статуса (супер-админ или закрепленный менеджер)
-        const me = await this.resolveCurrentUserForChat();
-        const myEmail = me && me.email ? me.email.toLowerCase() : '';
-        const role = this.getAdminRole();
-        const isSuperAdmin = ['super_admin', 'admin'].includes(role);
-        const dist = meta && meta.distributor_id ? ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === String(meta.distributor_id)) : null;
-        // Директор филиала — руководитель компании: почта в карточке филиала даёт
-        // ему те же кнопки, что и менеджеру, даже при роли «Наблюдатель».
-        const sameMail = (v) => !!myEmail && String(v || '').trim().toLowerCase() === myEmail;
-        const isAssignedManager = dist && (sameMail(dist.manager_email) || sameMail(dist.director_email));
-        // Менеджер с ролью привязан к компании полем «Дистрибьютор» в своей карточке,
-        // а не только почтой в карточке компании — эту привязку тоже засчитываем.
-        const isScopedManager = this.isManagerRole() && meta && meta.distributor_id
-            && this.managerDistIds().map(String).includes(String(meta.distributor_id));
-        const canManage = isSuperAdmin || isAssignedManager || isScopedManager;
+        const myEmail = await this.kanbanMyEmail();
+        const canManage = this.kanbanCanManage(calcId, myEmail);
 
         let actionsHtml = '';
         // Оплату система не видит: платёжной интеграции нет, и единственный, кто
         // знает о деньгах, — менеджер. Поэтому «Оплачено» — такая же ручная
         // отметка, как «Счёт выставлен», и предлагается сразу после него.
         const canPay = last.event === 'invoice_issued';
-        if (last.event === 'invoice_requested' || canPay) {
-            if (canManage) {
-                const buttons = canPay
-                    ? `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#059669; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'paid')">💰 Оплачено</button>`
-                    : `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#10B981; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'invoice_issued')">✓ Счёт выставлен</button>
-                       <button class="auth-btn-base" style="margin:0; background:#EF4444; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'rejected')">✕ Отклонить запрос</button>`;
-                actionsHtml = `
-                    <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left;">
-                        <h4 style="margin-top:0; margin-bottom:12px; color:var(--text-main); font-size:14px;">🛠 Действия менеджера</h4>
-                        <div style="display:flex; gap:12px; flex-wrap:wrap;">${buttons}</div>
-                        ${canPay ? `<div style="font-size:12px; color:var(--text-sec); margin-top:10px;">
-                            Отметка об оплате ставится руками — по ней дашборд считает деньги, а не предложения.
-                        </div>` : ''}
+        const flowStep = last.event === 'invoice_requested' || canPay;
+        if (canManage) {
+            // Быстрые кнопки — для обычного хода сделки; «Сменить этап» — на любой
+            // статус в любой момент: сделка идёт не только так, как её ведёт сайт
+            // (клиент согласовал по телефону, счёт выставили без запроса).
+            const quick = !flowStep ? '' : (canPay
+                ? `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#059669; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'paid')">💰 Оплачено</button>`
+                : `<button class="auth-btn-base btn-header-blue" style="margin:0; background:#10B981; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'invoice_issued')">✓ Счёт выставлен</button>
+                   <button class="auth-btn-base" style="margin:0; background:#EF4444; color:#fff; border:none; height:34px; padding:0 16px; width:auto;" onclick="app.setInvoiceStatus('${calcId}', 'rejected')">✕ Отклонить запрос</button>`);
+            const moveBtn = `<button class="auth-btn-base" style="margin:0; background:var(--surface); color:var(--text-main); border:1px solid var(--border); height:34px; padding:0 16px; width:auto;" onclick="app.moveKanbanCard('${calcId}')">⇄ Сменить этап</button>`;
+            actionsHtml = `
+                <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left;">
+                    <h4 style="margin-top:0; margin-bottom:12px; color:var(--text-main); font-size:14px;">🛠 Действия менеджера</h4>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap;">${quick}${moveBtn}</div>
+                    <div style="font-size:12px; color:var(--text-sec); margin-top:10px;">
+                        ${canPay ? 'Отметка об оплате ставится руками — по ней дашборд считает деньги, а не предложения. ' : ''}На доске карточку можно перетащить мышью в другую колонку.
                     </div>
-                `;
-            } else {
-                actionsHtml = `
-                    <div style="background: var(--surface-light); padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left; font-size: 13px; color: var(--text-sec);">
-                        🔒 Менять статус (${canPay ? 'отметить оплату' : 'выставить счёт / отклонить'}) может только менеджер или директор филиала, за которым закреплён монтажник (${distributorLabel}).
-                    </div>
-                `;
-            }
+                </div>
+            `;
+        } else if (flowStep) {
+            actionsHtml = `
+                <div style="background: var(--surface-light); padding: 15px 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; text-align: left; font-size: 13px; color: var(--text-sec);">
+                    🔒 Менять статус (${canPay ? 'отметить оплату' : 'выставить счёт / отклонить'}) может только менеджер или директор филиала, за которым закреплён монтажник (${distributorLabel}).
+                </div>
+            `;
         }
 
         const historyHtml = this.renderInvoiceHistoryHtml(events);
@@ -8483,8 +8489,8 @@ const app = {
                 <h3 style="margin-top:0; color: var(--text-main);">📋 ${last.project_name || 'Без названия'}</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; font-size:13px;">
                     <div><b style="color:var(--text-sec);">№ расчёта:</b> <span style="color:var(--text-main); font-weight:600;">${calcId}</span></div>
-                    <div><b style="color:var(--text-sec);">Монтажник:</b> <span style="color:var(--text-main);">${last.user_name || '— (клиент)'}</span></div>
-                    <div><b style="color:var(--text-sec);">Email:</b> <span style="color:var(--text-main);">${last.user_email || '—'}</span></div>
+                    <div><b style="color:var(--text-sec);">Монтажник:</b> <span style="color:var(--text-main);">${author.user_name || '— (клиент)'}</span></div>
+                    <div><b style="color:var(--text-sec);">Email:</b> <span style="color:var(--text-main);">${author.user_email || '—'}</span></div>
                     <div><b style="color:var(--text-sec);">Регион:</b> <span style="color:var(--text-main);">${regionLabel}</span></div>
                     <div><b style="color:var(--text-sec);">Дистрибьютор:</b> <span style="color:var(--text-main);">${distributorLabel}</span></div>
                 </div>
@@ -8497,7 +8503,172 @@ const app = {
         `;
     },
 
-    setInvoiceStatus: async function (calcId, status) {
+    // ═══ Перенос карточки планировщика на любой этап ══════════════════════
+    // Статусы, которые менеджер может поставить руками. Черновик («Новый расчёт»),
+    // разбор документа и автоматические напоминания сюда не входят: их ставит сам
+    // сайт, и ручная отметка «напоминание отправлено» была бы неправдой.
+    KANBAN_MANUAL_STATUSES: {
+        draft: ['saved'],
+        review: ['sent', 'confirmed', 'needs_revision'],
+        payment: ['invoice_requested', 'invoice_issued', 'paid', 'rejected']
+    },
+    // Уведомление монтажнику шлём только о решениях менеджера. У остальных
+    // статусов в пуше стоял бы текст от лица клиента («Клиент согласовал смету»),
+    // хотя согласовал не клиент, а менеджер отметил руками.
+    KANBAN_NOTIFY_STATUSES: ['invoice_issued', 'paid', 'rejected'],
+
+    _kanbanMyEmail: null,
+    kanbanMyEmail: async function () {
+        if (this._kanbanMyEmail) return this._kanbanMyEmail;
+        const me = await this.resolveCurrentUserForChat();
+        this._kanbanMyEmail = me && me.email ? String(me.email).trim().toLowerCase() : '';
+        return this._kanbanMyEmail;
+    },
+
+    /**
+     * Может ли текущий человек менять статус этой сметы.
+     *
+     * Одна проверка на доску (перетаскивание) и на карточку (кнопки): иначе
+     * карточка тянулась бы, а кнопки в ней были бы закрыты, или наоборот.
+     * Разрешено владельцу и администраторам, менеджеру филиала, за которым
+     * закреплён монтажник (полем в своей карточке или почтой в карточке
+     * филиала), и директору филиала.
+     */
+    kanbanCanManage: function (calcId, myEmail) {
+        const events = (this._kanbanEvents || []).filter(e => String(e.calc_id) === String(calcId));
+        const authorEv = events.find(e => (e.event === 'calculated' || e.event === 'saved') && e.user_email)
+            || events.find(e => e.user_email && !(e.meta && e.meta.by_staff) && !['invoice_issued', 'paid', 'rejected'].includes(e.event));
+        const meta = authorEv ? (this._kanbanUserMeta || {})[String(authorEv.user_email).toLowerCase()] : null;
+        return this.kanbanCanManageDist(meta && meta.distributor_id, myEmail);
+    },
+
+    // То же по уже известному филиалу монтажника — доска знает его у каждой
+    // карточки и не перебирает события заново ради каждой из сотен карточек
+    kanbanCanManageDist: function (distributorId, myEmail) {
+        if (['super_admin', 'admin'].includes(this.getAdminRole())) return true;
+        if (!distributorId) return false;
+        const distId = String(distributorId);
+        const dist = ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === distId);
+        const mail = String(myEmail || '').trim().toLowerCase();
+        const sameMail = (v) => !!mail && String(v || '').trim().toLowerCase() === mail;
+        if (dist && (sameMail(dist.manager_email) || sameMail(dist.director_email))) return true;
+        return this.isManagerRole() && this.managerDistIds().map(String).includes(distId);
+    },
+
+    /**
+     * Окно выбора статуса: список статусов (по колонке или все) и комментарий.
+     * Возвращает { status, comment } или null, если закрыли.
+     */
+    chooseKanbanStatus: function (currentEvent, stageKey, projectName) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const META = this.ADMIN_KANBAN_EVENT_META || {};
+        const stages = this.ADMIN_KANBAN_STAGES.filter(s => this.KANBAN_MANUAL_STATUSES[s.key] && (!stageKey || s.key === stageKey));
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'calc-dialog-overlay';
+            let firstFree = null;
+            const groupsHtml = stages.map(s => `
+                <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:${s.color}; margin:10px 0 4px;">${esc(s.label)}</div>
+                ${this.KANBAN_MANUAL_STATUSES[s.key].map(ev => {
+                    const cur = ev === currentEvent;
+                    if (!cur && !firstFree) firstFree = ev;
+                    return `<label style="display:flex; align-items:center; gap:8px; padding:6px 8px; border-radius:8px; cursor:${cur ? 'default' : 'pointer'}; font-size:13px; color:var(--text-main); ${cur ? 'opacity:.55;' : ''}">
+                        <input type="radio" name="kanban_status_pick" value="${ev}" ${cur ? 'disabled' : ''} ${ev === firstFree ? 'checked' : ''}>
+                        <span style="width:9px; height:9px; border-radius:50%; background:${(META[ev] || {}).color || '#94A3B8'}; flex-shrink:0;"></span>
+                        ${esc((META[ev] || {}).label || ev)}${cur ? ' — сейчас' : ''}
+                    </label>`;
+                }).join('')}`).join('');
+            overlay.innerHTML = `
+                <div class="calc-dialog-card" style="text-align:left; max-width:380px;">
+                    <h3 class="calc-dialog-title">Сменить этап</h3>
+                    ${projectName ? `<p class="calc-dialog-message" style="margin-bottom:4px;">${esc(projectName)}</p>` : ''}
+                    <div style="max-height:46vh; overflow-y:auto;">${groupsHtml}</div>
+                    <div style="font-size:12px; color:var(--text-sec); margin:12px 0 4px;">Комментарий (для «Отклонён» — обязательно)</div>
+                    <textarea data-role="comment" rows="2" style="width:100%; box-sizing:border-box; font:inherit; font-size:13px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); resize:vertical;"></textarea>
+                    <div class="calc-dialog-buttons">
+                        <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="cancel">Отмена</button>
+                        <button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" data-act="ok">Перенести</button>
+                    </div>
+                </div>`;
+            const close = (val) => {
+                overlay.classList.remove('active');
+                setTimeout(() => { overlay.remove(); resolve(val); }, 200);
+            };
+            overlay.addEventListener('click', (e) => {
+                const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+                if (act === 'cancel' || e.target === overlay) return close(null);
+                if (act !== 'ok') return;
+                const picked = overlay.querySelector('input[name="kanban_status_pick"]:checked');
+                const comment = String((overlay.querySelector('[data-role="comment"]') || {}).value || '').trim();
+                if (!picked) return;
+                if (picked.value === 'rejected' && !comment) {
+                    const ta = overlay.querySelector('[data-role="comment"]');
+                    if (ta) { ta.style.borderColor = '#EF4444'; ta.focus(); }
+                    return;
+                }
+                close({ status: picked.value, comment: comment });
+            });
+            document.body.appendChild(overlay);
+            setTimeout(() => overlay.classList.add('active'), 10);
+            if (!firstFree) {
+                const ok = overlay.querySelector('[data-act="ok"]');
+                if (ok) ok.disabled = true;
+            }
+        });
+    },
+
+    // Текущий статус карточки — последнее не техническое событие
+    kanbanCurrentEvent: function (calcId) {
+        const list = (this._kanbanEvents || []).filter(e => String(e.calc_id) === String(calcId) && !this.ADMIN_KANBAN_TECH_EVENTS.includes(e.event));
+        return list.length ? list[list.length - 1] : null;
+    },
+
+    // Кнопка «Сменить этап» в карточке и бросок карточки в колонку на доске.
+    // stageKey задан — предлагаем статусы только этой колонки.
+    moveKanbanCard: async function (calcId, stageKey) {
+        const myEmail = await this.kanbanMyEmail();
+        if (!this.kanbanCanManage(calcId, myEmail)) {
+            app.alert('Менять этап этой сметы может менеджер или директор филиала, за которым закреплён монтажник.');
+            return;
+        }
+        const cur = this.kanbanCurrentEvent(calcId);
+        if (stageKey && !this.KANBAN_MANUAL_STATUSES[stageKey]) {
+            app.alert('В эту колонку карточка попадает сама, когда монтажник разбирает документ. Руками сюда не переносится.');
+            return;
+        }
+        const stageOf = ev => this.ADMIN_KANBAN_STAGES.find(s => s.events.includes(ev));
+        if (stageKey && cur && stageOf(cur.event) && stageOf(cur.event).key === stageKey
+            && this.KANBAN_MANUAL_STATUSES[stageKey].length === 1) return; // бросили в свою же колонку
+        const pick = await this.chooseKanbanStatus(cur ? cur.event : null, stageKey || null, cur ? cur.project_name : '');
+        if (!pick) return;
+        await this.setInvoiceStatus(calcId, pick.status, { comment: pick.comment, stayOnBoard: !!stageKey });
+    },
+
+    // Перетаскивание на доске. Мышью: на телефоне HTML-перетаскивание не
+    // работает, там этап меняется кнопкой в карточке.
+    kanbanDragStart: function (ev, calcId) {
+        try { ev.dataTransfer.setData('text/plain', String(calcId)); ev.dataTransfer.effectAllowed = 'move'; } catch (e) { }
+        this._kanbanDragId = String(calcId);
+    },
+    kanbanDragOver: function (ev, el) {
+        if (!this._kanbanDragId) return;
+        ev.preventDefault();
+        el.style.outline = '2px dashed var(--primary)';
+        el.style.outlineOffset = '-2px';
+    },
+    kanbanDragLeave: function (ev, el) {
+        if (el.contains(ev.relatedTarget)) return;
+        el.style.outline = '';
+    },
+    kanbanDrop: function (ev, el, stageKey) {
+        ev.preventDefault();
+        el.style.outline = '';
+        const id = this._kanbanDragId || (ev.dataTransfer && ev.dataTransfer.getData('text/plain'));
+        this._kanbanDragId = null;
+        if (id) this.moveKanbanCard(id, stageKey);
+    },
+
+    setInvoiceStatus: async function (calcId, status, preset) {
         try {
             let myEmail = '';
             let myName = 'Менеджер';
@@ -8534,7 +8705,10 @@ const app = {
             const last = events[events.length - 1];
 
             let commentText = "";
-            if (status === 'invoice_issued') {
+            if (preset) {
+                // Статус и комментарий уже выбраны в окне «Сменить этап»
+                commentText = String(preset.comment || '').trim();
+            } else if (status === 'invoice_issued') {
                 if (!await app.confirm("Вы уверены, что хотите перевести смету в статус 'Счёт выставлен'?", "Подтверждение")) return;
                 const promptVal = await app.prompt("Введите комментарий к статусу (необязательно, например номер счета):", "", "Счёт выставлен");
                 if (promptVal === null) return; // cancel clicked
@@ -8564,13 +8738,16 @@ const app = {
                 user_name: myName,
                 user_email: myEmail,
                 project_name: last.project_name || null,
-                meta: commentText ? { comment: commentText } : null
+                // by_staff — событие записал сотрудник, а не монтажник или клиент:
+                // по этой отметке доска не подставляет менеджера на место монтажника.
+                // manual — этап выбран руками в окне «Сменить этап».
+                meta: Object.assign({ by_staff: true }, commentText ? { comment: commentText } : {}, preset ? { manual: true } : {})
             }]).select('id');
 
             if (error) throw error;
 
             const evId = (evRows && evRows[0] && evRows[0].id) ? String(evRows[0].id) : null;
-            if (evId && typeof appPush !== 'undefined') appPush.notify('invoice_event', evId);
+            if (evId && typeof appPush !== 'undefined' && this.KANBAN_NOTIFY_STATUSES.includes(status)) appPush.notify('invoice_event', evId);
             // В журнал сотрудников: чей это монтажник, база найдёт по автору сметы
             {
                 const authorEv = events.find(e => (e.event === 'calculated' || e.event === 'saved') && e.user_id) || null;
@@ -8588,13 +8765,23 @@ const app = {
             // события сметы: там он записан автором расчёта.
             this.mailInvoiceStatusToInstaller(status, last, commentText);
 
-            app.alert(status === 'invoice_issued' ? "✅ Статус изменен: Счёт выставлен"
-                : (status === 'paid' ? "💰 Статус изменен: Оплачено" : "❌ Статус изменен: Отклонен"));
+            if (!preset) {
+                app.alert(status === 'invoice_issued' ? "✅ Статус изменен: Счёт выставлен"
+                    : (status === 'paid' ? "💰 Статус изменен: Оплачено" : "❌ Статус изменен: Отклонен"));
+            }
 
             // Перезагружаем данные канбана и карточки
             this._kanbanEvents = null; // сбросить кэш, чтобы загрузить свежие данные
-            await this.renderAdminKanban();
-            await this.renderKanbanCardDetail(calcId);
+            if (preset && preset.stayOnBoard) {
+                // Перенос с доски: остаёмся на доске. Она дописывает себя в конец
+                // раздела, поэтому старую убираем, а навигацию над ней не трогаем.
+                const root = document.getElementById('kanban_root');
+                if (root) root.remove();
+                await this.renderAdminKanban();
+            } else {
+                await this.renderAdminKanban();
+                await this.renderKanbanCardDetail(calcId);
+            }
 
         } catch (e) {
             console.error('[setInvoiceStatus] Ошибка:', e);
@@ -17767,7 +17954,7 @@ const app = {
         { name: 'Ссылка-приглашение, QR и счётчик мест', hint: 'в «Пользователях»; лимит мест меняет администратор в карточке компании', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { name: 'Объявление для всех пользователей', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Удалить сообщение из переписки', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
-        { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»; наблюдатель — если его почта стоит директором в карточке филиала', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
+        { name: 'Статус счёта в планировщике', hint: 'перенос карточки на любой этап; наблюдатель — если его почта стоит директором в карточке филиала', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { group: 'Уборка и настройки' },
         { name: 'Очистить планы этажей и архив распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Подтвердить замену снятой позиции каталога', hint: 'раздел «Замены позиций»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
