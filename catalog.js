@@ -3692,6 +3692,15 @@ const catalog = {
   price_date: '2026-09-09' }, comfort: { id: "528007K", article: "528007.K", name: "Муфта соед. D 110 Comfort", price: 251, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, price_date: "2026-09-10" },
+        // Ревизия стояка и аэратор — их требует лист «К» проекта (ревизия на первом и
+        // последнем этажах, вентвыпуск выше кровли или аэрационный клапан). Цены — из
+        // price_index.json: STOUT бесшумная ×0,87, Sinikon ×1,0, как у соседних позиций группы.
+        { id: "SKB-0014-000110", name: "Ревизия с крышкой D 110", price: 2194, brand: "STOUT", availability: "in_stock", rommer: { id: "516007R", article: "516007.R", name: "Ревизия с крышкой D 110 ПП", price: 329, brand: "Sinikon",
+  availability: 'in_stock',
+  price_date: '2026-09-14' }, comfort: { id: "516007K", article: "516007.K", name: "Ревизия с крышкой D 110 Comfort", price: 462, brand: "Sinikon",
+  availability: 'in_stock',
+  price_date: '2026-09-14' }, price_date: "2026-09-14" },
+        { id: "NO.1.110", article: "NO.1.110", name: "Аэратор канализационный D 110", price: 865, brand: "Sinikon", availability: "in_stock", price_date: "2026-09-14" },
         { id: "SKB-0007-000058", name: "Муфта ремонтная D 58", price: 469, brand: "STOUT", availability: "in_stock", rommer: { id: "526003R", article: "526003.R", name: "Муфта рем. D 050 ПП", price: 93, brand: "Sinikon",
   availability: 'in_stock',
   price_date: '2026-09-09' }, comfort: { id: "526003K", article: "526003.K", name: "Муфта рем. D 050 Comfort", price: 130, brand: "Sinikon",

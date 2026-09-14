@@ -66181,6 +66181,13 @@ const app = {
                     let coupling110 = catalog.sewer_silent.find(x => x.id === "SKB-0006-000110");
                     addToBill(coupling110, floors, this.getDesc('sewer_coupling_110'), grpSewerMain);
 
+                    // Ревизия и аэратор стояка: лист «К» их требует, в смете их не было
+                    const _revQty = floors >= 2 ? 2 : 1;
+                    const _rev110 = catalog.sewer_silent.find(x => x.id === "SKB-0014-000110");
+                    if (_rev110) addToBill(_rev110, _revQty, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Прочистка стояка без разборки. Ставится на первом и последнем этажах — так указано на листе «К» проекта.<br><b>Количество:</b> ${_revQty} шт. (этажей: ${floors}).</span>`, grpSewerMain);
+                    const _aer110 = catalog.sewer_silent.find(x => x.id === "NO.1.110");
+                    if (_aer110) addToBill(_aer110, 1, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Вентиляция стояка: пропускает воздух внутрь при сливе, чтобы не срывало гидрозатворы, и не выпускает запах. Ставится на верх стояка вместо вентвыпуска выше кровли (лист «К» проекта). Если стояк выводится на кровлю, аэратор из сметы уберите.</span>`, grpSewerMain);
+
                     // Добавление крепежной системы для канализации (Раздел 6)
                     // Хомуты — по тем же длинам, по каким нарезаны трубы (с плана или по норме)
                     let totalPipe58 = this.sewerPipe58Total();
@@ -66330,6 +66337,13 @@ const app = {
 
                     let coupling110 = catalog.sewer_silent.find(x => x.id === "SKB-0006-000110");
                     addSewerItem(coupling110, floors, this.getDesc('sewer_coupling_110'));
+
+                    // Ревизия и аэратор стояка: лист «К» их требует, в смете их не было
+                    const _revQty = floors >= 2 ? 2 : 1;
+                    const _rev110 = catalog.sewer_silent.find(x => x.id === "SKB-0014-000110");
+                    if (_rev110) addSewerItem(_rev110, _revQty, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Прочистка стояка без разборки. Ставится на первом и последнем этажах — так указано на листе «К» проекта.<br><b>Количество:</b> ${_revQty} шт. (этажей: ${floors}).</span>`);
+                    const _aer110 = catalog.sewer_silent.find(x => x.id === "NO.1.110");
+                    if (_aer110) addSewerItem(_aer110, 1, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Вентиляция стояка: пропускает воздух внутрь при сливе, чтобы не срывало гидрозатворы, и не выпускает запах. Ставится на верх стояка вместо вентвыпуска выше кровли (лист «К» проекта). Если стояк выводится на кровлю, аэратор из сметы уберите.</span>`);
 
                     // Добавление крепежной системы для канализации (Раздел 6) - общего списка
                     let totalPipe58 = this.sewerPipe58Total();
