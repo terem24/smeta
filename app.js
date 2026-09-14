@@ -66429,7 +66429,12 @@ const app = {
         if (this.state.userAddedEq && this.state.userAddedEq.length) {
             const pending = new Set();
             this.state.userAddedEq.forEach(eq => {
-                let sec = eq.section || '9. Дополнительные материалы';
+                // Раздел — тем же выражением, что в flushBill: при «Группировать»
+                // распознанная строка живёт в sectionAuto. Раньше здесь смотрели только
+                // section (у распознанного это всегда «9.»), и разделы 4, 5.x, 6, 8, 10
+                // не дофлашивались — их строки пропадали из таблицы, итога и ссылки.
+                let sec = (this.state.groupItems && eq.sectionAuto)
+                    ? eq.sectionAuto : (eq.section || '9. Дополнительные материалы');
                 if (sec === '9. Своё оборудование') sec = '9. Дополнительные материалы';
                 if (!_flushedSections.has(sec)) pending.add(sec);
             });
