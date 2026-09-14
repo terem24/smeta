@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=8.01" defer></script>
+    <script src="app.js?v=8.03" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1358,9 +1358,14 @@
                  трасса это готовый комплект, и «0,8 м» — его собственная длина, а
                  не то, что меряют на объекте. Раскрываются ссылкой ниже. -->
             <div class="control-item toggle-item" id="blk_chimney"
-                style="display:none; border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
-                <span class="lbl" style="display:block; margin-bottom: 6px;"
-                    title="Трасса дымохода: по ней подбираются удлинители, отводы и крепёж, а эквивалентная длина сверяется с пределом котла.">Дымоход</span>
+                style="display:none; position:relative; border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
+                <!-- Подпись о длине трассы спрятана под «i»: position:relative у блока
+                     нужен .tip-panel-wrap, иначе подсказка не появится. -->
+                <span class="lbl" style="display:flex; align-items:center; gap:4px; margin-bottom: 6px;"
+                    title="Трасса дымохода: по ней подбираются удлинители, отводы и крепёж, а эквивалентная длина сверяется с пределом котла.">Дымоход<span
+                        class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap"><i class="info-icon" tabindex="0"
+                            role="button" aria-label="Подробнее">i</i>
+                        <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
                 <div class="mode-selector-tabs" style="margin-bottom: 6px;">
                     <div class="mode-tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')"
                         title="Коаксиальный: «труба в трубе», по внутренней уходит дым, по внешней приходит воздух.">Коаксиальный</div>
@@ -1393,7 +1398,6 @@
                     <span onclick="app.toggleChimneyMore()" id="chim_more_link"
                         style="font-size: 11px; color: var(--primary); border-bottom: 1px dashed var(--primary); cursor: pointer;">Котёл стоит дальше от стены</span>
                 </div>
-                <div id="chim_note" style="font-size: 11px; line-height: 1.5; color: var(--text-sec); margin-top: 8px;"></div>
             </div>
 
             <!-- Перепад котлового контура. От него зависит расход через обвязку, а

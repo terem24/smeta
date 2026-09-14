@@ -1358,11 +1358,31 @@ const app = {
         this.closeInviteBanner();
     },
 
+    // Промокод латиницей монтажник нередко набирает русскими буквами: TEREM
+    // как «ТЕРЕМ». Если такой код не нашёлся, пробуем его транслитерацию.
+    // Пустая строка — транслитерировать нечего (кириллицы в коде нет).
+    inviteCodeLatin: function (code) {
+        const map = {
+            'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E', 'Ж': 'ZH', 'З': 'Z',
+            'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R',
+            'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'KH', 'Ц': 'TS', 'Ч': 'CH', 'Ш': 'SH',
+            'Щ': 'SCH', 'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'YU', 'Я': 'YA'
+        };
+        const src = String(code || '').trim().toUpperCase();
+        if (!/[А-ЯЁ]/.test(src)) return '';
+        return src.replace(/[А-ЯЁ]/g, ch => map[ch]);
+    },
+
     // Ответ базы как есть: { ok, reason, company_name, manager_name, pro_months, used, limit }
     checkInviteCode: async function (code) {
-        const { data, error } = await supabaseClient.rpc('check_invite_code', { code: String(code || '') });
-        if (error) throw error;
-        return data || { ok: false, reason: 'not_found' };
+        const ask = async (c) => {
+            const { data, error } = await supabaseClient.rpc('check_invite_code', { code: String(c || '') });
+            if (error) throw error;
+            return data || { ok: false, reason: 'not_found' };
+        };
+        const res = await ask(code);
+        const latin = res.reason === 'not_found' ? this.inviteCodeLatin(code) : '';
+        return latin ? await ask(latin) : res;
     },
 
     // Текст отказа для человека. Причины — из check_invite_code / apply_invite_code.
@@ -6036,9 +6056,16 @@ const app = {
     // лимит проскакивал. Возвращает ответ базы как есть; при успехе ещё и
     // обновляет состояние: компания, её цены, тариф.
     applyInviteInDb: async function (code) {
-        const { data, error } = await supabaseClient.rpc('apply_invite_code', { code: String(code || '').trim().toUpperCase() });
-        if (error) throw error;
-        const res = data || { ok: false, reason: 'not_found' };
+        const ask = async (c) => {
+            const { data, error } = await supabaseClient.rpc('apply_invite_code', { code: String(c || '').trim().toUpperCase() });
+            if (error) throw error;
+            return data || { ok: false, reason: 'not_found' };
+        };
+        let res = await ask(code);
+        // Код набран русскими буквами вместо латиницы («ТЕРЕМ» вместо TEREM).
+        // Отказ «не найден» ничего в базе не меняет, поэтому второй вызов безопасен.
+        const latin = res.reason === 'not_found' ? this.inviteCodeLatin(code) : '';
+        if (latin) res = await ask(latin);
         if (res.ok && res.distributor) {
             const dist = res.distributor;
             const proMonths = Number(res.pro_months) || 0;
@@ -40731,16 +40758,10 @@ const app = {
         return { max: def[dn] || def['60/100'] || 4, exact: false, src: null, kind: kind };
     },
 
-    // Фасадный выброс: СП 60.13330 п. 6.5.5 запрещает его для многоэтажных жилых
-    // зданий, а каталог STOUT ограничивает готовые комплекты одноэтажными домами.
-    // Частный дом в два этажа — не «многоэтажное здание», поэтому не запрещаем, а
-    // предупреждаем и по умолчанию предлагаем вывод над кровлей: решает монтажник,
-    // он видит объект.
-    // В быстром режиме трассу не задают: он всегда считает типовой комплект через
-    // стену, а переключить выход на кровлю там негде. Предупреждать о решении,
-    // которое монтажник в этом режиме принять не может, незачем — красный блок
-    // «трасса не проходит» висел над каждой быстрой сметой двухэтажного дома.
-    chimneyFacadeDoubtful: function () { return this.chimneyDetailed() && (this.state.floors || 1) > 1; },
+    // Этажность дома на вывод через стену не влияет. Раньше двухэтажный дом с
+    // фасадным дымоходом получал красное «трасса не проходит» со ссылкой на
+    // «СП 60.13330 п. 6.5.5» (взята из каталога дымоходов STOUT, табл. 15.12), но в
+    // СП 60.13330.2020 такого запрета нет — сверено 14.09.2026. Проверку сняли.
 
     // Дымоход настраивается только в подробном режиме. Быстрый — прикидка цены по
     // площади, и трассу там задавать не из чего: он считает типовой комплект через
@@ -40923,9 +40944,6 @@ const app = {
             notes.push(`Предел ${limit.max} м для раздельной системы взят по типу котла, а не из паспорта серии — сверьтесь с паспортом ${b && b.brand ? b.brand : ''} перед заказом.`);
         }
         notes.push(`Посчитано так: дымовой канал ${String(run).replace('.', ',')} м ${onRoof ? 'над кровлей' : 'на фасад'}, воздухозабор ${air} м через стену рядом с котельной. Если на объекте иначе, поправьте количество труб прямо в смете.`);
-        if (!onRoof && this.chimneyFacadeDoubtful()) {
-            warns.push('Дом выше одного этажа, а дым выходит на фасад: СП 60.13330 п. 6.5.5 запрещает фасадный выброс в многоэтажных жилых зданиях. Проверьте по объекту — обычно дымовой канал выводят над кровлей.');
-        }
         return { parts: parts, eqLen: eqLen, dn: 'D80', limit: limit, route: 'split', warns: warns, notes: notes };
     },
 
@@ -41062,9 +41080,6 @@ const app = {
         if (res.eqLen > limit.max) {
             warns.push(`Эквивалентная длина ${String(res.eqLen).replace('.', ',')} м больше предела ${limit.max} м${limit.exact ? '' : ' (ориентировочного)'} — котёл такую трассу не продавит. Сократите трассу, уберите отводы, возьмите котёл помощнее или переключите дымоход на «D80»: у раздельной системы запас длины в разы больше.`);
         }
-        if (route === 'wall' && this.chimneyFacadeDoubtful()) {
-            warns.push('Дом выше одного этажа: каталог STOUT допускает вывод коаксиала на фасад только в одноэтажных домах, а СП 60.13330 п. 6.5.5 прямо запрещает фасадный выброс в многоэтажных жилых зданиях. Проверьте по объекту — обычно такой дымоход выводят над кровлей.');
-        }
         // Справка о происхождении предела — под значок «i» дымохода, а не в
         // красный блок: он только для ошибок, которые надо исправить.
         const notes = [];
@@ -41162,8 +41177,11 @@ const app = {
 
         // Подпись под полями: чем занята трасса и остаётся ли запас до предела.
         // Считаем по первому газовому котлу сметы — в каскаде они одинаковые.
+        // Живёт под значком «i» у заголовка «Дымоход»; пустая — значок прячем.
         const note = document.getElementById('chim_note');
         if (!note) return;
+        const noteWrap = document.getElementById('chim_note_wrap');
+        if (noteWrap) noteWrap.style.display = '';
         // Ищем и по id, и по originalId: у подобранного автоматом котла
         // originalId служебный ('gas_boiler_auto'), а артикул лежит в id.
         const _pool = this.gasBoilerPool();
@@ -41172,7 +41190,7 @@ const app = {
             .find(Boolean);
         if (!boiler) { note.innerHTML = 'Длина считается эквивалентной: прямые участки плюс отводы (90° = 1 м, 45° = 0,5 м).'; return; }
         const r = this.buildChimney(boiler, this.chimneyKitFor(boiler));
-        if (!r) { note.innerHTML = ''; return; }
+        if (!r) { note.innerHTML = ''; if (noteWrap) noteWrap.style.display = 'none'; return; }
         const tight = r.eqLen > r.limit.max;
         // Первой строкой — что уже входит в комплект. Без неё поле «Доп. отводы: 0»
         // читается как «отводов нет вовсе», хотя отвод 90° лежит внутри готового
