@@ -5,6 +5,12 @@ on:
     - cron: '0 2 10 * *'
   workflow_dispatch:
 
+# Общая очередь всех, кто пишет catalog.js (см. apply-successors.yml): парсер
+# сохраняет каталог снимком от своего старта и затёр бы параллельную правку.
+concurrency:
+  group: catalog-js-writers
+  cancel-in-progress: false
+
 jobs:
   scrape:
     runs-on: ubuntu-latest

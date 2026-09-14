@@ -1030,7 +1030,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin' },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin' },
 
     lastSavedStateString: "",
 
@@ -2364,6 +2364,38 @@ const app = {
         return scored.slice(0, 10).map(s => s.it);
     },
 
+    // Поиск товара по свободной фразе в "Умном заполнении" — тот же поиск, что и в окне
+    // "Своё оборудование" (сперва строгий, затем ослабленный при пустом результате), но
+    // вызывается из чата, когда фраза не про параметры дома, а про конкретный товар
+    // ("нужен кран с накидной гайкой на дюйм").
+    _aiChatFindProducts: function (query) {
+        const strict = this.searchCatalog(query);
+        if (strict.length) return { list: strict, loose: false };
+        return { list: this.searchCatalogLoose(query), loose: true };
+    },
+
+    // Добавляет найденную по чату позицию каталога в текущую смету — тем же механизмом,
+    // что и ручное добавление через "Своё оборудование" (state.userAddedEq), поэтому дальше
+    // позиция живёт как обычная: правится, удаляется, попадает в печать и в счёт.
+    addFoundProductToBill: function (item, sectionTitle) {
+        if (!item) return;
+        sectionTitle = sectionTitle || '9. Дополнительные материалы';
+        const price = Math.round(item.price);
+        if (!this.state.userAddedEq) this.state.userAddedEq = [];
+        this.state.userAddedEq.push({
+            id: 'custom_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            name: item.name,
+            price: price,
+            q: 1,
+            brand: ' ', // Пробел обманывает дефолтную проверку, чтобы не писался STOUT
+            desc: `Добавлено из каталога (арт. ${item.article || item.id})`,
+            section: sectionTitle
+        });
+        this.addEquipmentToLibrary({ name: item.name, price: price, brand: ' ', section: sectionTitle });
+        this.saveState();
+        this.render();
+    },
+
     // Переиспользуемая кнопка голосового ввода (Web Speech API) — вызывающий код сам решает,
     // что делать с распознанным текстом через колбэк onTranscript
     _createVoiceMicButton: function (onTranscript) {
@@ -2548,7 +2580,7 @@ const app = {
         }
         // Проверяем ДО "проверки связи" — иначе "работает" в "как это работает" перетягивает на себя
         if (/что\s*ты\s*умеешь|как[а-я]*\s*это\s*работает|что\s*сказать|что\s*говорить|помоги[а-я]*|инструкц[а-я]*/i.test(t)) {
-            return { type: 'help', message: 'Я умею распознавать характеристики объекта из текста. Скажите площадь, этажность, отопление и остекление — расставлю галочки сам. Понимаю и остальное хозяйство: автоматику котельной, защиту от протечек, рециркуляцию, полотенцесушитель, узел ввода воды, снеготаяние дорожек, материал труб и выделенную мощность по электричеству.' };
+            return { type: 'help', message: 'Я умею распознавать характеристики объекта из текста. Скажите площадь, этажность, отопление и остекление — расставлю галочки сам. Понимаю и остальное хозяйство: автоматику котельной, защиту от протечек, рециркуляцию, полотенцесушитель, узел ввода воды, снеготаяние дорожек, материал труб и выделенную мощность по электричеству. А если назвать конкретный товар — найду его в каталоге и предложу сразу добавить в смету.' };
         }
         if (/тест[а-я]*|проверк[а-я]*\s*связ[а-я]*|раз\s*два\s*три|раз\s*раз|123|работает|слышно|(?<![а-я])ау(?![а-я])|ку-?ку|(?<![а-я])алло(?![а-я])/i.test(t)) {
             return { type: 'test', message: 'Слышу вас отлично! Проверка пройдена. Теперь расскажите про объект: какая площадь, сколько этажей, будут ли радиаторы?' };
@@ -3917,6 +3949,11 @@ const app = {
         };
         this.flushAiFillLogQueue();
 
+        // Догружаем расширенный прайс и общий прайс-лист ТЕРЕМ в фоне для поиска товаров —
+        // без ожидания: пока не пришли, поиск просто идёт по catalog.js (см. addCustomEqPrompt).
+        this._ensurePriceExtraLoaded();
+        this._ensurePriceIndexLoaded();
+
         const addBubble = (role, html) => {
             const b = document.createElement('div');
             b.className = 'ai-chat-bubble ai-chat-' + role;
@@ -3927,7 +3964,7 @@ const app = {
             return b;
         };
 
-        addBubble('assistant', 'Опишите объект простыми словами голосом или текстом — я распознаю параметры, а когда закончите, нажмите «Применить». Например: «150 квадратов, высота потолков 3 метра, везде тёплый пол и заливаем антифриз».');
+        addBubble('assistant', 'Опишите объект простыми словами голосом или текстом — я распознаю параметры, а когда закончите, нажмите «Применить». Например: «150 квадратов, высота потолков 3 метра, везде тёплый пол и заливаем антифриз». Можно также назвать нужный товар — например, «кран с накидной гайкой на дюйм» — я найду его в каталоге и предложу добавить в смету.');
 
         const inputWrap = document.createElement('div');
         inputWrap.className = 'eq-name-wrap ai-parse-input-wrap';
@@ -4111,6 +4148,40 @@ const app = {
             addBubble('assistant', topic.question);
         };
 
+        // Карточки товаров, найденных по свободной фразе (см. app._aiChatFindProducts) — с ценой,
+        // артикулом и кнопкой добавления прямо в смету, без отдельного окна "Своё оборудование".
+        const renderProductResults = (list, isLoose) => {
+            const title = isLoose ? 'Точного совпадения нет, возможно вы имели в виду:' : 'Нашёл в каталоге:';
+            const items = list.map((it, i) => `
+                <div class="ai-chat-product-item" data-idx="${i}">
+                    <img src="img/${it.id}.jpg" class="ai-chat-product-img" loading="lazy" decoding="async" onerror="this.style.display='none'">
+                    <div class="ai-chat-product-text">
+                        <span class="ai-chat-product-name">${escapeHtml(it.name)}</span>
+                        <span class="ai-chat-product-meta">${escapeHtml(it.article || it.id)}${it.brand ? ' · ' + escapeHtml(it.brand) : ''} · ${Math.round(it.price).toLocaleString('ru-RU')} ₽</span>
+                    </div>
+                    <button type="button" class="ai-chat-product-add">+ В смету</button>
+                </div>
+            `).join('');
+            return `<div class="ai-parse-preview-title">${title}</div><div class="ai-chat-product-list">${items}</div>`;
+        };
+
+        // После вставки пузырька с карточками — навешиваем добавление в смету по клику.
+        // Кнопку можно нажимать повторно (несколько единиц одной позиции).
+        const wireProductButtons = (bubbleEl, list) => {
+            Array.from(bubbleEl.querySelectorAll('.ai-chat-product-item')).forEach((el, i) => {
+                const item = list[i];
+                const btn = el.querySelector('.ai-chat-product-add');
+                if (!item || !btn) return;
+                let added = 0;
+                btn.onclick = () => {
+                    this.addFoundProductToBill(item);
+                    added++;
+                    btn.textContent = added > 1 ? `✓ Добавлено ×${added}` : '✓ Добавлено';
+                    btn.classList.add('ai-chat-product-added');
+                };
+            });
+        };
+
         const sendMessage = () => {
             const text = textInput.value.trim();
             if (!text) { textInput.focus(); return; }
@@ -4216,8 +4287,20 @@ const app = {
                 askFollowUp();
             } else {
                 const intent = this.detectSpecialIntent(text);
-                const msg = (intent && intent.message) ? intent.message : 'Не удалось ничего распознать — попробуйте описать подробнее: площадь, этажность, отопление, тёплый пол.';
-                addBubble('assistant', msg);
+                if (intent && intent.message) {
+                    addBubble('assistant', intent.message);
+                } else {
+                    // Ни один параметр дома не распознан и это не приветствие/тест/помощь —
+                    // пробуем понять фразу как название товара ("нужен кран с накидной гайкой").
+                    const found = this._aiChatFindProducts(text);
+                    if (found.list.length) {
+                        note('product', found.list.map(it => ({ label: 'Товар', display: it.name })));
+                        const bubble = addBubble('assistant', renderProductResults(found.list, found.loose));
+                        wireProductButtons(bubble, found.list);
+                    } else {
+                        addBubble('assistant', 'Не удалось ничего распознать — попробуйте описать подробнее: площадь, этажность, отопление, тёплый пол, либо назовите конкретный товар для поиска в каталоге.');
+                    }
+                }
             }
             textInput.focus();
         };
@@ -16583,6 +16666,7 @@ const app = {
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
         { id: 'equipment', icon: '🧰', label: 'Своё оборудование', hint: 'Добавленное, удалённое, замены' },
+        { id: 'successors', icon: '🔁', label: 'Замены позиций', hint: 'Снятые с поставки и чем заменить' },
         { id: 'recognition', icon: '🔍', label: 'Распознавание', hint: 'Архив смет и месячные лимиты' },
         { id: 'plans', icon: '📐', label: 'Планы этажей', hint: 'Подложки планов на сервере' },
         { id: 'projects', icon: '📁', label: 'Проекты', hint: 'Выпущенные комплекты листов' },
@@ -16599,7 +16683,9 @@ const app = {
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
     // платформы, и заводить его может только администратор.
-    ADMIN_ONLY_TABS: ['distributors'],
+    // «Замены позиций» — подтверждённая замена меняет позицию каталога у всех
+    // пользователей сразу, решать это наблюдателю или менеджеру нельзя.
+    ADMIN_ONLY_TABS: ['distributors', 'successors'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -16705,6 +16791,7 @@ const app = {
         { name: 'Статус счёта в планировщике', hint: '«Счёт выставлен», «Оплачено»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'own' },
         { group: 'Уборка и настройки' },
         { name: 'Очистить планы этажей и архив распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Подтвердить замену снятой позиции каталога', hint: 'раздел «Замены позиций»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Словарь марок в аналитике', hint: 'кандидаты, написания, марки графика', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' }
     ],
 
@@ -17033,6 +17120,12 @@ const app = {
         if (this._adminTab === 'projects') {
             content.innerHTML = navHtml;
             this.renderAdminProjects();
+            return;
+        }
+
+        if (this._adminTab === 'successors') {
+            content.innerHTML = navHtml;
+            this.renderAdminSuccessors();
             return;
         }
 
@@ -20833,7 +20926,7 @@ const app = {
             // Вопрос один: стали ли клиенты отвечать чаще и быстрее.
             {
                 const tm = invTimer;
-                const tHead = head('Таймер счёта', `ссылки клиентам за ${this.DASH_EV_DAYS} дней · со сроком действия против бессрочных`);
+                const tHead = head('Таймер счёта', `ссылки клиентам за ${this.DASH_TIMER_DAYS} дней · со сроком действия против бессрочных`);
                 if (!tm) {
                     B.inv_timer = card(tHead + `<div style="padding:16px 0; color:var(--text-sec); font-size:12.5px;">Читаем ссылки клиентам…</div>`);
                 } else if (tm.error) {
@@ -20848,7 +20941,10 @@ const app = {
                         return (h / 24).toFixed(1).replace('.', ',') + ' дн.';
                     };
                     const pct = (a, b) => b ? Math.round(a / b * 100) + '%' : '—';
-                    const better = (a, b, lowerIsBetter) => {
+                    // Цвет — только когда данных хватает (enough). На одной-двух
+                    // ссылках зелёный и красный говорят о случайности, а не о таймере.
+                    const better = (a, b, lowerIsBetter, enough) => {
+                        if (!enough) return '';
                         if (a === null || b === null || a === undefined || b === undefined) return '';
                         const good = lowerIsBetter ? a < b : a > b;
                         const same = a === b;
@@ -20856,13 +20952,16 @@ const app = {
                     };
                     const cell = (v, color) => `<td style="text-align:right; padding:6px 8px; font-size:13px; font-weight:700; color:${color || 'var(--text-main)'}; white-space:nowrap;">${v}</td>`;
                     const lbl = (t) => `<td style="padding:6px 0; font-size:12.5px; color:var(--text-main);">${t}</td>`;
+                    const sub = (t) => `<br><small style="color:var(--text-sec); font-weight:500;">${t}</small>`;
                     const g = tm.timer, z = tm.none;
+                    const share = (x, of) => of ? x / of : null;
                     const rowsHtml = [
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Ссылок отправлено')}${cell(num(g.n))}${cell(num(z.n))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент ответил (согласовал, вернул или запросил счёт)')}${cell(pct(g.answered, g.n), better(g.n ? g.answered / g.n : null, z.n ? z.answered / z.n : null, false))}${cell(pct(z.answered, z.n))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Из них согласовал')}${cell(pct(g.confirmed, g.n), better(g.n ? g.confirmed / g.n : null, z.n ? z.confirmed / z.n : null, false))}${cell(pct(z.confirmed, z.n))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Среднее время ответа заказчика')}${cell(hrs(g.avgHours), better(g.avgHours, z.avgHours, true))}${cell(hrs(z.avgHours))}</tr>`,
-                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Медиана времени ответа')}${cell(hrs(g.medHours), better(g.medHours, z.medHours, true))}${cell(hrs(z.medHours))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('С итогом: клиент ответил или срок уже прошёл' + sub(`остальные ещё ждут — в доли не входят`))}${cell(num(g.finished) + (g.pending ? sub(`ждут ${num(g.pending)}`) : ''))}${cell(num(z.finished) + (z.pending ? sub(`ждут ${num(z.pending)}`) : ''))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент ответил (согласовал, вернул или запросил счёт)')}${cell(pct(g.answered, g.finished), better(share(g.answered, g.finished), share(z.answered, z.finished), false, tm.enoughShare))}${cell(pct(z.answered, z.finished))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Из них согласовал')}${cell(pct(g.confirmed, g.finished), better(share(g.confirmed, g.finished), share(z.confirmed, z.finished), false, tm.enoughShare))}${cell(pct(z.confirmed, z.finished))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Среднее время ответа заказчика')}${cell(hrs(g.avgHours), better(g.avgHours, z.avgHours, true, tm.enoughTime))}${cell(hrs(z.avgHours))}</tr>`,
+                        `<tr style="border-bottom:1px solid var(--border);">${lbl('Медиана времени ответа')}${cell(hrs(g.medHours), better(g.medHours, z.medHours, true, tm.enoughTime))}${cell(hrs(z.medHours))}</tr>`,
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Ответил в срок, до конца таймера')}${cell(pct(g.answeredInTime, g.answered))}${cell('<span style="color:var(--text-sec); font-weight:500;">нет срока</span>')}</tr>`,
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Срок вышел без ответа')}${cell(num(g.expiredSilent), g.expiredSilent ? '#F97316' : '')}${cell('—')}</tr>`,
                         `<tr style="border-bottom:1px solid var(--border);">${lbl('Клиент просил обновить счёт')}${cell(g.refreshLinks ? `${num(g.refreshLinks)} ${this.plural(g.refreshLinks, 'ссылка', 'ссылки', 'ссылок')}${g.refreshTotal > g.refreshLinks ? `, ${num(g.refreshTotal)} раз` : ''}` : '0')}${cell('—')}</tr>`,
@@ -20875,9 +20974,21 @@ const app = {
                                 <th style="text-align:right; padding:4px 8px; font-size:11px; color:var(--text-sec); font-weight:700; white-space:nowrap;">⏳ с таймером</th>
                                 <th style="text-align:right; padding:4px 8px; font-size:11px; color:var(--text-sec); font-weight:700; white-space:nowrap;">без таймера</th>
                             </tr></thead><tbody>${rowsHtml}</tbody></table></div>`
+                        + (!tm.enoughShare
+                            ? `<div style="font-size:12px; color:#B45309; margin-top:10px; line-height:1.5; font-weight:600;">
+                                Мало данных для сравнения: нужно хотя бы по ${num(this.DASH_TIMER_MIN_LINKS)} ссылок с итогом в каждой колонке
+                                (сейчас ${num(g.finished)} с таймером и ${num(z.finished)} без). До тех пор цифры без цвета — выводы делать рано.
+                               </div>`
+                            : (!tm.enoughTime
+                                ? `<div style="font-size:12px; color:#B45309; margin-top:10px; line-height:1.5;">
+                                    Доли уже можно сравнивать, сроки ответа — ещё нет: мало ответов со временем.
+                                   </div>` : ''))
                         + `<div style="font-size:11.5px; color:var(--text-sec); margin-top:10px; line-height:1.55;">
-                            Время ответа — от первой отправки ссылки до нажатия клиентом любой кнопки. Зелёным — где таймер выиграл, красным — где проиграл.
-                            «Без таймера» включает и ссылки, отправленные до появления срока действия${tm.legacy ? ` (таких ${num(tm.legacy)})` : ''}: это и есть база для сравнения.
+                            Обе колонки — ссылки, впервые отправленные за последние ${num(this.DASH_TIMER_DAYS)} дней.
+                            Доли считаются только по ссылкам с итогом: клиент ответил, у таймера вышел срок, у бессрочной ссылки прошло ${num(this.INVOICE_VALID_DAYS_DEFAULT)} ${this.plural(this.INVOICE_VALID_DAYS_DEFAULT, 'день', 'дня', 'дней')} — столько же, сколько таймер по умолчанию.
+                            Время ответа — от первой отправки до нажатия клиентом любой кнопки. Зелёным — где таймер выиграл, красным — где проиграл.
+                            ${tm.tests ? `Не учтено ${num(tm.tests)} ${this.plural(tm.tests, 'ссылка', 'ссылки', 'ссылок')}: кнопку нажали в первые ${num(this.DASH_TIMER_TEST_MINUTES)} минут после отправки — это проверка самим монтажником, а не ответ заказчика.` : ''}
+                            ${tm.legacy ? `В колонке «без таймера» есть ссылки, отправленные до появления срока действия (${num(tm.legacy)}).` : ''}
                             Обновление после просьбы клиента считается по переотправке той же ссылки.
                            </div>`
                         + (tm.capped ? `<div style="font-size:11.5px; color:#F97316; margin-top:8px;">Список ссылок обрезан по потолку строк — числа неполные.</div>` : ''));
@@ -22651,7 +22762,9 @@ const app = {
         (async () => {
             const out = { rows: [], error: null, capped: false };
             try {
-                const since = new Date(Date.now() - this.DASH_EV_DAYS * 86400000).toISOString();
+                // Ссылка могла быть создана раньше периода и переотправлена в нём —
+                // берём с запасом, а в период отбирает buildInvoiceTimerStats по первой отправке.
+                const since = new Date(Date.now() - (this.DASH_TIMER_DAYS + 30) * 86400000).toISOString();
                 const res = await this.fetchAllRows('shared_invoices',
                     'id, created_at, email:manager_info->>email, status:object_info->>status, ' +
                     'sent_at:object_info->>sent_at, first_sent_at:object_info->>first_sent_at, ' +
@@ -22703,37 +22816,63 @@ const app = {
      * запросил счёт. Просьба обновить счёт ответом НЕ считается: это не решение
      * по смете, а сообщение «срок вышел, я ещё думаю».
      */
+    // Правила честного сравнения в блоке «Таймер счёта»:
+    // период одинаковый для обеих колонок, цветом сравниваем только при
+    // достаточном числе ссылок, нажатие в первые минуты после отправки — это
+    // проверка самим монтажником, а не ответ заказчика.
+    DASH_TIMER_DAYS: 90,
+    DASH_TIMER_MIN_LINKS: 10,
+    DASH_TIMER_TEST_MINUTES: 5,
+
     buildInvoiceTimerStats: function (rows, keep) {
-        const HOUR = 3600000, now = Date.now();
+        const HOUR = 3600000, DAY = 86400000, now = Date.now();
         const ANSWERED = { confirmed: 1, needs_revision: 1, invoice_requested: 1 };
-        const mk = () => ({ n: 0, answered: 0, confirmed: 0, hours: [], answeredInTime: 0, expiredSilent: 0,
+        const since = now - this.DASH_TIMER_DAYS * DAY;
+        const testMs = this.DASH_TIMER_TEST_MINUTES * 60000;
+        // Ссылка без таймера «завершена», когда прошло столько же, сколько
+        // длится таймер по умолчанию: иначе вчерашние бессрочные ссылки
+        // тянули бы долю ответивших вниз так же, как ещё идущие таймеры.
+        const noTimerWindow = (this.INVOICE_VALID_DAYS_DEFAULT || 2) * DAY;
+        const mk = () => ({ n: 0, finished: 0, pending: 0, answered: 0, confirmed: 0, hours: [], answeredInTime: 0, expiredSilent: 0,
             refreshLinks: 0, refreshTotal: 0, refreshed: 0, refreshHours: [] });
         const timer = mk(), none = mk();
-        let legacy = 0;
+        let legacy = 0, tests = 0;
         (rows || []).forEach(r => {
             if (!r) return;
             if (keep && !keep(r)) return;
+            const sentT = new Date(r.first_sent_at || r.sent_at || r.created_at).getTime();
+            if (!isFinite(sentT) || sentT < since) return;
             const days = Number(r.valid_days);
             const hasTimer = isFinite(days) && days > 0;
+            const st = String(r.status || 'sent');
+            const ansT = new Date(r.status_updated_at || '').getTime();
+            // Проверка монтажником: кнопку нажали через считаные минуты после
+            // последней отправки, и клиент ещё не просил обновить счёт. Такую
+            // ссылку не считаем ни в одну колонку — её итог ненастоящий.
+            const lastSentT = new Date(r.sent_at || r.first_sent_at || r.created_at).getTime();
+            if (ANSWERED[st] && isFinite(ansT) && isFinite(lastSentT) && ansT - lastSentT >= 0
+                && ansT - lastSentT < testMs && !(Number(r.refresh_count) > 0)) {
+                tests++;
+                return;
+            }
             if (r.valid_days === null || r.valid_days === undefined) legacy++;
             const g = hasTimer ? timer : none;
             g.n++;
-            const sentT = new Date(r.first_sent_at || r.sent_at || r.created_at).getTime();
-            const st = String(r.status || 'sent');
-            if (ANSWERED[st]) {
+            const vu = new Date(r.valid_until || '').getTime();
+            const answered = !!ANSWERED[st];
+            const finished = answered
+                || (hasTimer ? (st === 'refresh_requested' || (isFinite(vu) && vu < now)) : (now - sentT >= noTimerWindow));
+            if (!finished) { g.pending++; return; }
+            g.finished++;
+            if (answered) {
                 g.answered++;
                 if (st === 'confirmed') g.confirmed++;
-                const ansT = new Date(r.status_updated_at || '').getTime();
-                if (isFinite(sentT) && isFinite(ansT) && ansT >= sentT) {
+                if (isFinite(ansT) && ansT >= sentT) {
                     g.hours.push((ansT - sentT) / HOUR);
-                    if (hasTimer) {
-                        const vu = new Date(r.valid_until || '').getTime();
-                        if (isFinite(vu) && ansT <= vu) g.answeredInTime++;
-                    }
+                    if (hasTimer && isFinite(vu) && ansT <= vu) g.answeredInTime++;
                 }
             } else if (hasTimer) {
-                const vu = new Date(r.valid_until || '').getTime();
-                if (st === 'refresh_requested' || (st === 'sent' && isFinite(vu) && vu < now)) g.expiredSilent++;
+                g.expiredSilent++;
             }
             const rc = Number(r.refresh_count) || 0;
             if (rc > 0) {
@@ -22753,12 +22892,20 @@ const app = {
             return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
         };
         [timer, none].forEach(g => {
+            g.timed = g.hours.length;
             g.avgHours = avg(g.hours);
             g.medHours = median(g.hours);
             g.refreshAvgHours = avg(g.refreshHours);
             delete g.hours; delete g.refreshHours;
         });
-        return { timer, none, legacy, error: null, capped: false };
+        const minN = this.DASH_TIMER_MIN_LINKS;
+        return {
+            timer, none, legacy, tests, error: null, capped: false,
+            // Сравнивать доли можно, когда в обеих колонках есть по minN
+            // завершённых ссылок; сроки — когда по minN ответов со временем.
+            enoughShare: timer.finished >= minN && none.finished >= minN,
+            enoughTime: timer.timed >= minN && none.timed >= minN
+        };
     },
 
     ensureDashboardPositions: function () {
@@ -24073,6 +24220,212 @@ const app = {
 
         h += `</tbody></table></div>`;
         wrap.innerHTML = h;
+    },
+
+    /**
+     * Вкладка «Замены позиций»: снятые с поставки позиции каталога и чем их
+     * заменить.
+     *
+     * Пары находит парсер цен (AutoPrice.py, find_successor): позиция на
+     * teremonline «Под заказ», а во вкладке «Похожие» сайт ставит преемника того
+     * же бренда, в наличии и с ценой в пределах ±30 %. Здесь админ решает.
+     * Подтверждённое раз в сутки переносит в catalog.js AutoSuccessors.py
+     * (workflow apply-successors.yml): у позиции меняются артикул, название,
+     * цена и наличие, а id остаётся прежним — на нём держатся подбор, старые
+     * сметы и ссылки клиентам. Схема таблицы и прав — в миграции
+     * 20260913_catalog_successors.sql.
+     *
+     * Всё, что пришло с сайта (названия, ссылки), выводится через esc: строки
+     * в таблицу пишет функция по публичному ключу, и чужой текст не должен
+     * исполняться в админке.
+     */
+    renderAdminSuccessors: function () {
+        const content = document.getElementById('admin_content');
+        if (!content) return;
+
+        const wrap = document.createElement('div');
+        wrap.id = 'admin-successors-body';
+        content.appendChild(wrap);
+
+        if (this.adminData.successors == null) {
+            wrap.innerHTML = `<div style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка замен…</div>`;
+            if (!this._loadingSuccessors) {
+                this._loadingSuccessors = true;
+                (async () => {
+                    try {
+                        const { data, error } = await supabaseClient.from('catalog_successors')
+                            .select('id, old_article, new_article, catalog_name, new_name, apply_name, brand, old_site_price, new_site_price, catalog_price, new_price, old_url, new_url, status, found_at, seen_at, decided_at, decided_by')
+                            .order('found_at', { ascending: false })
+                            .limit(500);
+                        if (error) throw error;
+                        this.adminData.successors = data || [];
+                        this._successorsError = null;
+                    } catch (e) {
+                        // Чаще всего таблицы просто нет: миграцию
+                        // 20260913_catalog_successors.sql ещё не выполняли
+                        console.warn('Could not load catalog successors:', e.message || e);
+                        this.adminData.successors = [];
+                        this._successorsError = e.message || String(e);
+                    }
+                    this._loadingSuccessors = false;
+                    if (this._adminTab === 'successors') this.renderAdminMain();
+                })();
+            }
+            return;
+        }
+
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmt = n => (n == null || n === '') ? '—' : (Math.round(Number(n) * 100) / 100).toLocaleString('ru-RU');
+        const siteLink = (url, text) => {
+            const u = String(url || '');
+            if (!/^\/product\/[^"'<>\s]+$/.test(u) && !/^https:\/\/(www\.)?teremonline\.ru\/product\/[^"'<>\s]+$/.test(u)) return esc(text);
+            const href = u.startsWith('http') ? u : 'https://www.teremonline.ru' + u;
+            return `<a href="${esc(href)}" target="_blank" rel="noopener noreferrer" style="color:var(--primary);">${esc(text)}</a>`;
+        };
+        const when = iso => iso ? new Date(iso).toLocaleDateString('ru-RU') : '';
+
+        const rows = this.adminData.successors || [];
+        // Перенесена ли пара в каталог — видно по самому каталогу: позиция со
+        // старым id уже носит новый артикул. Отдельного статуса в базе нет,
+        // чтобы его не мог выставить никто, кроме факта в catalog.js.
+        // У цепочки («А → Б», потом «Б → В») позиция уже носит В, и первая пара
+        // тоже исполнена — показываем, чем её заменили дальше.
+        const catalogArticle = r => {
+            const it = this.findCatalogItemById(r.old_article);
+            return (it && it.article && it.article !== r.old_article) ? it.article : null;
+        };
+        const filter = this._successorsFilter || 'new';
+        const count = st => rows.filter(r => r.status === st).length;
+        const list = rows.filter(r => r.status === filter);
+
+        const chip = (id, label) => {
+            const on = filter === id;
+            return `<button class="admin-btn" style="background:${on ? 'var(--primary)' : 'var(--surface-light)'}; color:${on ? 'white' : 'var(--text-sec)'}; border:1px solid ${on ? 'var(--primary)' : 'var(--border)'};" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} · ${count(id)}</button>`;
+        };
+
+        let h = `
+            <div style="margin-bottom:20px;">
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+                    <h3 style="margin:0; color:var(--text-main);">🔁 Замены позиций</h3>
+                    <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
+                </div>
+                <p style="margin:0 0 14px; font-size:12.5px; color:var(--text-sec); line-height:1.55; max-width:900px;">
+                    Парсер цен находит позиции каталога, которые на сайте ТЕРЕМ стали «Под заказ», и товар, который сайт предлагает вместо них.
+                    Подтверждённая замена попадает в калькулятор в течение суток: у позиции меняются артикул, название, цена и наличие.
+                    Старые сметы и ссылки клиентам продолжают работать.
+                </p>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+                    ${chip('new', 'Новые')}${chip('approved', 'Подтверждённые')}${chip('rejected', 'Отклонённые')}
+                </div>`;
+
+        if (!list.length) {
+            const empty = this._successorsError
+                ? 'Список недоступен. Похоже, миграция supabase/migrations/20260913_catalog_successors.sql ещё не выполнена.'
+                : (filter === 'new'
+                    ? 'Новых замен нет. Список пополняет парсер цен: 10-го числа по STOUT и ROMMER, 20-го по остальным брендам.'
+                    : 'Здесь пока пусто.');
+            h += `<div style="padding:30px; text-align:center; color:var(--text-sec); background:var(--surface-light); border-radius:10px;">${empty}</div>`;
+        } else {
+            list.forEach(r => {
+                const id = Number(r.id);
+                const oldP = Number(r.catalog_price) || 0;
+                const newP = Number(r.new_price) || 0;
+                const pct = oldP ? Math.round((newP - oldP) / oldP * 100) : null;
+                const pctHtml = pct == null ? '' : `<span style="font-weight:700; color:${pct > 0 ? '#D97706' : '#10B981'};">${pct > 0 ? '+' : ''}${pct} %</span>`;
+                const nameValue = r.apply_name || r.catalog_name || '';
+
+                let actions;
+                if (r.status === 'new') {
+                    actions = `
+                        <button class="admin-btn" style="background:#10B981; color:white; border-color:#10B981;" onclick="app.adminSuccessorDecide(${id}, 'approved')">Подтвердить</button>
+                        <button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'rejected')">Отклонить</button>`;
+                } else if (r.status === 'approved' && catalogArticle(r) === r.new_article) {
+                    actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге</span>`;
+                } else if (r.status === 'approved' && catalogArticle(r)) {
+                    actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге, заменено дальше на ${esc(catalogArticle(r))}</span>`;
+                } else if (r.status === 'approved') {
+                    actions = `
+                        <span style="color:var(--text-sec); font-size:12.5px;">Ждёт переноса в каталог (раз в сутки)</span>
+                        <button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'new')">Отменить</button>`;
+                } else {
+                    actions = `<button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'new')">Вернуть в новые</button>`;
+                }
+
+                const decided = r.decided_at ? `<span>решено ${esc(when(r.decided_at))}${r.decided_by ? ' · ' + esc(r.decided_by) : ''}</span>` : '';
+
+                h += `
+                <div style="border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:12px; background:var(--surface);">
+                    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px 24px;">
+                        <div>
+                            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); margin-bottom:4px;">Снято · ${esc(r.brand || '')}</div>
+                            <div style="font-weight:800; color:var(--text-main);">${siteLink(r.old_url, r.old_article)}</div>
+                            <div style="font-size:13px; color:var(--text-main); margin:2px 0;">${esc(r.catalog_name || '')}</div>
+                            <div style="font-size:12px; color:var(--text-sec);">в каталоге ${fmt(r.catalog_price)} ₽ · на сайте ${fmt(r.old_site_price)} ₽, под заказ</div>
+                        </div>
+                        <div>
+                            <div style="font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--text-sec); margin-bottom:4px;">Предлагается</div>
+                            <div style="font-weight:800; color:var(--text-main);">${siteLink(r.new_url, r.new_article)}</div>
+                            <div style="font-size:13px; color:var(--text-main); margin:2px 0;">${esc(r.new_name || '')}</div>
+                            <div style="font-size:12px; color:var(--text-sec);">станет ${fmt(r.new_price)} ₽ ${pctHtml} · на сайте ${fmt(r.new_site_price)} ₽, в наличии</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px;">
+                        <label style="font-size:12px; color:var(--text-sec);" for="succ_name_${id}">Название в калькуляторе</label>
+                        <input id="succ_name_${id}" type="text" value="${esc(nameValue)}" ${r.status === 'new' ? '' : 'disabled'}
+                               style="flex:1 1 320px; min-width:0; padding:7px 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main); font-size:13px;">
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:10px;">
+                        ${actions}
+                        <span style="margin-left:auto; font-size:11.5px; color:var(--text-sec); display:flex; gap:12px; flex-wrap:wrap;">
+                            <span>найдено ${esc(when(r.found_at))}</span>${decided}
+                        </span>
+                    </div>
+                </div>`;
+            });
+        }
+
+        h += `</div>`;
+        wrap.innerHTML = h;
+    },
+
+    /**
+     * Решение по замене: 'approved', 'rejected' или 'new' (вернуть на
+     * рассмотрение). При подтверждении сохраняется название из поля карточки —
+     * его и поставит в каталог AutoSuccessors.py.
+     */
+    adminSuccessorDecide: async function (id, status) {
+        if (['approved', 'rejected', 'new'].indexOf(status) < 0) return;
+        const row = (this.adminData.successors || []).find(r => Number(r.id) === Number(id));
+        if (!row) return;
+
+        const patch = { status: status };
+        if (status === 'new') {
+            patch.decided_at = null;
+            patch.decided_by = null;
+        } else {
+            patch.decided_at = new Date().toISOString();
+            patch.decided_by = (this._currentUserRow && this._currentUserRow.email)
+                || (this.state && this.state.user && this.state.user.email) || null;
+        }
+        if (status === 'approved') {
+            const inp = document.getElementById('succ_name_' + Number(id));
+            const name = inp ? inp.value.trim() : '';
+            if (!name) { this.alert('Укажите название, под которым позиция будет в калькуляторе.'); return; }
+            patch.apply_name = name.slice(0, 300);
+        }
+
+        try {
+            const { data, error } = await supabaseClient.from('catalog_successors')
+                .update(patch).eq('id', Number(id)).select('id');
+            if (error) throw error;
+            // Без прав на строку Supabase не ругается, а просто ничего не обновляет
+            if (!data || !data.length) throw new Error('нет прав на изменение');
+            Object.assign(row, patch);
+            this.renderAdminMain();
+        } catch (e) {
+            console.warn('[adminSuccessorDecide]', e.message || e);
+            this.alert('Не удалось сохранить решение. Попробуйте ещё раз или обновите список.');
+        }
     },
 
     /**
@@ -27042,7 +27395,7 @@ const app = {
             // «Fugas»/«фугас» — прежнее название комплекта STOUT (снят с производства);
             // «3-х ход. клапана» — нынешний комплект BAXI. Ищем оба, иначе слой пропадёт
             // и на старых сметах, и на новых.
-            if ((s.tankLoadScheme || 'valve') === 'valve' && (hasItem("fugas") || hasItem("фугас") || hasItem("3-х ход. клапана"))) {
+            if (this.tankLoadSchemeEff() === 'valve' && (hasItem("fugas") || hasItem("фугас") || hasItem("3-х ход. клапана"))) {
                 if (hasGasBoiler) layers.push('fugas_gas.png');
                 if (hasElBoiler && !hasItem("POLIS")) layers.push('fugas_el.png');
             }
@@ -34936,7 +35289,7 @@ const app = {
         const tankDhw = spec.find(i => /расширительн\S*\s+бак/i.test(nameOf(i)) && /гвс/i.test(nameOf(i)));
 
         const power = Math.max(1, Math.round(this.getHouseHeatLoss() || 0));
-        const loadScheme = (s.tankLoadScheme || 'valve');
+        const loadScheme = this.tankLoadSchemeEff();
 
         // Насосные группы — по позициям сметы, как котлы выше. Раньше конфигурация
         // несла только флаги rad/tp, и схема рисовала ровно один радиаторный контур
@@ -37081,7 +37434,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: false, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
             accountType: currentAccType,
@@ -41228,7 +41581,7 @@ const app = {
             ];
             // Цену в шапке модалки берут у активного варианта ДО построчной простановки
             // isActive — без этой пометки там оказалась бы цена артикула из строки сметы.
-            const _curTankLoad = ((this.state.tankLoadScheme || 'valve') === 'pump') ? 'tankpump' : 'fugas';
+            const _curTankLoad = (this.tankLoadSchemeEff() === 'pump') ? 'tankpump' : 'fugas';
             customAlts.forEach(a => { a.isActive = (a.id === _curTankLoad); });
         }
         else if (item.originalId === 'SFA-0025-001650_bottom') {
@@ -44689,6 +45042,9 @@ const app = {
             // Схема загрузки бойлера живёт не в swaps, а в tankLoadScheme — том же поле,
             // что и переключатель в панели настроек.
             this.state.tankLoadScheme = (chosenId === 'tankpump') ? 'pump' : 'valve';
+            // Насосная группа бойлера садится на коллектор — без гидрострелки его
+            // нет, и выбор молча не сработал бы. Явный выбор группы сильнее.
+            if (chosenId === 'tankpump' && this.state.boilerScheme === 'direct') this.state.boilerScheme = 'auto';
             // Якорей два, и лежат они в разных разделах под разными originalId (клапан — в
             // обвязке котла, насосная группа — в гидравлике). Отметку о ручной правке снимаем
             // с обоих: после переключения одна из строк исчезает из сметы, и значок «Изменён»
@@ -50556,11 +50912,29 @@ const app = {
             _bdtTab('boiler_dt_20', _bdt === 20);
             _bdtTab('boiler_dt_10', _bdt === 10);
             const _bdtNote = document.getElementById('lbl_boiler_dt_note');
+            const _bdtLocked = this.boilerSchemeEff() === 'direct' && hasRad;
             if (_bdtNote) {
-                _bdtNote.textContent = (_bdt === 10)
+                _bdtNote.textContent = _bdtLocked
+                    ? `Без гидрострелки перепад котла равен режиму радиаторов — ${_bdt} K. Меняется в «Режиме системы».`
+                    : (_bdt === 10)
                     ? 'Перепад 10 K. Расход через котловой контур вдвое выше, чем в паспортном режиме, — обвязка считается по нему.'
                     : 'Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.';
             }
+        }
+
+        // Схема котельной — там, где есть что подключать к котлу. В квартире
+        // котельной нет, без радиаторов и тёплого пола выбирать нечего.
+        {
+            const _bsBlock = document.getElementById('blk_boiler_scheme');
+            const _bsOn = (this.state.objectType !== 'flat') && (hasRad || hasTp) &&
+                (this.state.fuels || []).length > 0;
+            if (_bsBlock) _bsBlock.style.display = _bsOn ? 'block' : 'none';
+            const _bs = this.boilerSchemeMode();
+            ['auto', 'direct', 'hydro'].forEach(m => {
+                const e = document.getElementById('boiler_scheme_' + m);
+                if (e) e.className = (_bs === m) ? 'tab active' : 'tab';
+            });
+            this.syncBoilerSchemeNote();
         }
         if (hasTp) {
             // Перепад контура — рядом с шагом укладки: обе настройки про то, как
@@ -50996,7 +51370,7 @@ const app = {
         }
         if (document.getElementById('chk_hw')) document.getElementById('chk_hw').checked = this.state.hotWater;
         if (document.getElementById('chk_recirc')) document.getElementById('chk_recirc').checked = this.state.recirc;
-        if (document.getElementById('chk_tank_pump')) document.getElementById('chk_tank_pump').checked = (this.state.tankLoadScheme === 'pump');
+        if (document.getElementById('chk_tank_pump')) document.getElementById('chk_tank_pump').checked = (this.tankLoadSchemeEff() === 'pump');
         if (document.getElementById('chk_water_input')) document.getElementById('chk_water_input').checked = this.state.waterInput;
         if (document.getElementById('blk_water_input_opts')) document.getElementById('blk_water_input_opts').style.display = this.state.waterInput ? 'flex' : 'none';
         if (document.getElementById('val_outdoor_faucet')) document.getElementById('val_outdoor_faucet').innerText = parseInt(this.state.outdoorFaucet) || 0;
@@ -52453,6 +52827,8 @@ const app = {
             return;
         }
         this.state.tankLoadScheme = chk ? 'pump' : 'valve';
+        // Группа бойлера живёт на коллекторе — см. тот же случай в таблице замены
+        if (chk && this.state.boilerScheme === 'direct') this.state.boilerScheme = 'auto';
         this.syncUI();
         this.render();
         this.saveState();
@@ -53356,7 +53732,107 @@ const app = {
     // в котором радиаторы отдают паспортную мощность, но расход через контур
     // вдвое выше, и диаметр обязан это увидеть.
     boilerDT: function () {
+        // Без гидрострелки котёл и радиаторы — одно кольцо: через теплообменник
+        // идёт тот же расход, что через приборы, и перепад у них общий. Свой
+        // перепад котловому контуру даёт только гидравлическое разделение, поэтому
+        // в режиме «Без гидрострелки» обвязка считается по режиму радиаторов.
+        if (this.boilerSchemeEff() === 'direct' && (this.state.systems || []).includes('rad'))
+            return this.radDT();
         return (this.state.boilerDT === 10) ? 10 : 20;
+    },
+
+    /**
+     * Схема котельной, выбранная монтажником: 'auto' | 'direct' | 'hydro'.
+     *
+     * 'auto'   — как было всегда: гидрострелку и насосные группы калькулятор
+     *            ставит сам (площадь больше 150 м², второй этаж, мощность выше
+     *            20 кВт, группа тёплого пола или бойлера).
+     * 'direct' — без гидрострелки. Радиаторы питает насос котла, тёплый пол —
+     *            свой узел подмеса, бойлер — трёхходовой клапан котла. Так собраны
+     *            и «котёл и пять радиаторов», и котельная с лучевыми коллекторами
+     *            прямо на котле.
+     * 'hydro'  — с гидрострелкой и насосными группами даже там, где авто
+     *            обошёлся бы без них.
+     *
+     * Условия схемы без гидрострелки — практика проектирования, а не пункт СП,
+     * и в подсказках так и сказано: ссылка на норму, где этого нет, хуже её
+     * отсутствия (см. «Нормативная база расчётов» в CLAUDE.md).
+     */
+    boilerSchemeMode: function () {
+        const v = this.state.boilerScheme;
+        return (v === 'direct' || v === 'hydro') ? v : 'auto';
+    },
+
+    /**
+     * «Без гидрострелки» выбрана, но не собирается: тёплый пол больше, чем тянет
+     * один узел подмеса. Считается по одному состоянию, без расчёта сметы, —
+     * потому что спрашивают об этом и до него: схема загрузки бойлера решается в
+     * render раньше, чем посчитан тёплый пол, и без этой проверки бойлер уходил
+     * на трёхходовой клапан, хотя котельная собиралась как в «Авто».
+     * У узла 'std' предел считается по всей площади (isUfhMixTypeCompatible).
+     */
+    boilerSchemeDirectBlocked: function () {
+        if (this.boilerSchemeMode() !== 'direct') return false;
+        const s = this.state;
+        if (!(s.systems || []).includes('tp')) return false;
+        const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
+        if (!(area > 0)) return false;
+        return !this.isUfhMixTypeCompatible('std', area, s.brandMode, area);
+    },
+
+    /** Схема, по которой смета собирается на самом деле: 'auto' | 'direct' | 'hydro'. */
+    boilerSchemeEff: function () {
+        const m = this.boilerSchemeMode();
+        return (m === 'direct' && this.boilerSchemeDirectBlocked()) ? 'auto' : m;
+    },
+
+    /**
+     * Схема загрузки бойлера с учётом схемы котельной. Насосная группа бойлера
+     * висит на коллекторе котельной, а без гидрострелки коллектора нет — бойлер
+     * тогда греется трёхходовым клапаном. Выбор монтажника в state не трогаем:
+     * вернёт схему «Авто» — вернётся и его насосная группа.
+     */
+    tankLoadSchemeEff: function () {
+        if (this.boilerSchemeEff() === 'direct') return 'valve';
+        return (this.state.tankLoadScheme === 'pump') ? 'pump' : 'valve';
+    },
+
+    /**
+     * Строка под переключателем схемы котельной. В «Авто» говорит, что
+     * калькулятор выбрал: по ней видно, нужен ли переключатель вообще. Зовётся
+     * и из syncUI, и из render — решение о гидрострелке известно только после
+     * расчёта, а syncUI идёт до него.
+     */
+    syncBoilerSchemeNote: function () {
+        const el = document.getElementById('lbl_boiler_scheme_note');
+        if (!el) return;
+        const bs = this.boilerSchemeMode(), had = this.needCollector, s = this.state;
+        // Перечисляем только то, что в расчёте есть: «тёплый пол — через узел
+        // подмеса» в доме без тёплого пола читается как ошибка калькулятора.
+        const parts = [];
+        if ((s.systems || []).includes('rad')) parts.push('радиаторы от насоса котла');
+        if ((s.systems || []).includes('tp')) parts.push('тёплый пол через узел подмеса');
+        if (s.hotWater) parts.push('бойлер через трёхходовой клапан');
+        el.textContent = (bs === 'direct' && this.boilerSchemeDirectBlocked())
+            ? 'Без гидрострелки не собрать: тёплый пол больше, чем тянет узел подмеса. Смета собрана как в «Авто».'
+            : (bs === 'direct')
+            ? (parts.length ? parts.join(', ').replace(/^./, c => c.toUpperCase()) + '. ' : '') +
+              'Оговорки — в шапке раздела «2. Обвязка котельной».'
+            : (bs === 'hydro')
+            ? 'Гидрострелка и насосная группа на каждый контур, даже если хватило бы насоса котла.'
+            : (had === true)
+            ? 'Сейчас калькулятор поставил гидрострелку и насосные группы.'
+            : (had === false)
+            ? 'Сейчас гидрострелка не нужна: систему тянет насос котла.'
+            : 'Гидрострелку и насосные группы калькулятор ставит сам.';
+    },
+
+    setBoilerScheme: function (mode, event) {
+        if (!this.checkAccess('pro', event)) { this.syncUI(); return; }
+        this.state.boilerScheme = (mode === 'direct' || mode === 'hydro') ? mode : 'auto';
+        this.syncUI();
+        this.render();
+        this.saveState();
     },
 
     // Расход котлового контура, м³/ч. G = Q / (1,163 × Δt) — та же формула, что в
@@ -57812,7 +58288,9 @@ const app = {
         // ни датчика бойлера. ГВС остаётся на основном газовом котле, POLIS держит только
         // отопление. Поэтому узел загрузки ему не ставим.
         let hasElSel = selBoilers.some(b => b.type !== 'gas' && !b.noPump) && !rigDropped('el');
-        let tankNeedsPumpGroup = !!this.state.hotWater && !rigDropped('dhw') && (this.state.tankLoadScheme || 'valve') === 'pump';
+        // tankLoadSchemeEff, а не state: при схеме котельной «Без гидрострелки»
+        // коллектора, на котором висела бы насосная группа бойлера, нет.
+        let tankNeedsPumpGroup = !!this.state.hotWater && !rigDropped('dhw') && this.tankLoadSchemeEff() === 'pump';
         if (!tankNeedsPumpGroup) {
             if (hasGasSel) addTankLoadingKit(gasBoilerGrp(0), selBoilers.find(b => b && b.type === 'gas'));
             if (hasElSel) addTankLoadingKit(elBoilerGrp(0));
@@ -58152,6 +58630,21 @@ const app = {
         // Эко-схема (локальные узлы) ставится, если нет радиаторов и коллекторов ТП не больше 2-х
         let useEco = (!hasRad && hasTp && estMans <= 2);
 
+        // Схема котельной, выбранная монтажником (boilerSchemeMode). «Без
+        // гидрострелки» собирается, только если тёплый пол проходит через один
+        // узел подмеса: групп тёплого пола на коллекторе у этой схемы нет. Не
+        // проходит — считаем как «Авто» и объясняем почему в шапке раздела 2:
+        // смета, которую нельзя смонтировать, хуже сметы с гидрострелкой.
+        const _bScheme = this.boilerSchemeMode();
+        // Та же проверка, по которой выше решалась загрузка бойлера
+        // (tankLoadSchemeEff) — одна функция, чтобы смета не разошлась сама с собой.
+        const _schemeBlockedUfh = this.boilerSchemeDirectBlocked();
+        if (_bScheme === 'direct' && !_schemeBlockedUfh && hasTp && tpArea > 0) {
+            this.state.ufhMixType = 'std';
+        }
+        const _forceDirect = (_bScheme === 'direct') && !_schemeBlockedUfh;
+        const _forceHydro = (_bScheme === 'hydro');
+
         // Логика расчета насосных групп
         let rQ = 0, tQ = 0;
         if (hasTp && tpArea > 0) {
@@ -58163,10 +58656,11 @@ const app = {
             }
         }
 
-        if (hasRad) {
+        if (hasRad && !_forceDirect) {
             // Встроенного насоса настенного котла хватает на радиаторы мощностью до 20 кВт (площадь до 150 м2)
             // Если требуется коллектор (из-за других насосных групп, т.е. tQ > 0), то на радиаторы также ставится группа.
-            if (this.state.area > 150 || this.state.floors === 2 || pwr > 20 || tQ > 0) {
+            // Схема «С гидрострелкой» ставит группу и там, где хватило бы насоса котла.
+            if (_forceHydro || this.state.area > 150 || this.state.floors === 2 || pwr > 20 || tQ > 0) {
                 // #7: на двухэтажном доме группа ставится на КАЖДЫЙ ЭТАЖ С РАДИАТОРАМИ, а не просто
                 // «две, раз дом двухэтажный». В подробном режиме мы точно знаем, где радиаторы: если
                 // они, например, только на 2-м этаже (1-й — чистый тёплый пол), нужна одна группа.
@@ -58185,6 +58679,9 @@ const app = {
         // Коллектор нужен, если есть хотя бы одна насосная группа — включая насосную группу
         // загрузки бойлера (tankNeedsPumpGroup), она тоже висит на коллекторе котельной.
         let needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup;
+        // «С гидрострелкой» при одном тёплом поле: коллектор нужен ради его группы,
+        // а саму группу вместо узла подмеса поставит переключение ниже.
+        if (_forceHydro && hasTp && tpArea > 0) needCollector = true;
 
         // Если коллектор нужен из-за радиаторов, но ТП выбран локальный узел подмеса (std) —
         // автоматически переключаем на централизованный узел в коллекторе (dn20/dn25).
@@ -58203,6 +58700,9 @@ const app = {
                 }
             }
         }
+        // Коллектор без единой группы — пустая железка: такое бывает, только если
+        // «С гидрострелкой» попросили, а группу тёплого пола подобрать не из чего.
+        if (needCollector && (rQ + tQ) < 1 && !tankNeedsPumpGroup) needCollector = false;
 
         // Балансировка: перепад, расход каждой петли и хватает ли напора самому
         // тяжёлому коллектору. Отсюда же берётся насос для строки сметы и таблица
@@ -58226,7 +58726,10 @@ const app = {
             const _order = ['std', _servo ? 'dn20_servo' : 'dn20', _servo ? 'dn25_servo' : 'dn25']
                 .concat(_brand === 'rommer' ? [] : ['dn32_servo']);   // DN32 у ROMMER нет
             const _at = _order.indexOf(_curType);
-            const _cands = (_at < 0) ? [_curType] : _order.slice(_at).filter(t =>
+            // Без гидрострелки узел подмеса поднимать некуда: следующий по Kvs —
+            // уже группа на коллекторе, а коллектора в этой схеме нет. Не хватит
+            // напора — скажет плашка тёплого пола, схему молча не меняем.
+            const _cands = (_forceDirect || _at < 0) ? [_curType] : _order.slice(_at).filter(t =>
                 t === _curType || this.isUfhMixTypeCompatible(t, tpArea, _brand, tpAreaPerMan));
             // Два круга: сначала весь ряд узлов на рабочих перепадах (5 и 7 К), и
             // только если не прошёл ни один — тот же ряд с крайними 10 К. Иначе
@@ -58300,6 +58803,7 @@ const app = {
         this.radMeters = radMeters;
         this.boilersVol = boilersVol;
         this.needCollector = needCollector;
+        this.syncBoilerSchemeNote();
         this.vSys = vSys;
         let reqExp = vSys * 0.12; let bltin = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { bltin += (b.exp !== undefined ? b.exp : 0); }); }
         let def = reqExp - bltin; if (def > 0) {
@@ -59941,6 +60445,48 @@ const app = {
                 app.chimneyWarns);
             hydroWarnHtml = hydroWarnHtml ? (hydroWarnHtml + _chBlock) : _chBlock;
         }
+
+        // Схема котельной, выбранная вручную (boilerSchemeMode): что собрано и
+        // какие оговорки. В «Авто» молчим — там всё решает калькулятор, и
+        // рассказывать о каждом решении значит завалить шапку раздела.
+        {
+            const _p = t => `<div class="tip-p">${t}</div>`;
+            let _sb = '';
+            if (_bScheme === 'direct' && _schemeBlockedUfh) {
+                const _lim = (this.state.brandMode === 'rommer') ? 100 : 120;
+                _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
+                    `Узел подмеса тянет тёплый пол до ${_lim} м², в расчёте ${Math.round(tpArea)} м² — котельная собрана как в режиме «Авто».`,
+                    _p('В схеме без гидрострелки тёплый пол питается от одного узла подмеса со своим насосом. ' +
+                        `Узел рассчитан на площадь до ${_lim} м²; больше — нужны группы на коллекторе, а коллектору нужна гидрострелка.`) +
+                    _p('<b>Что делать:</b> оставить схему как есть или уменьшить площадь тёплого пола.'));
+            } else if (_forceDirect) {
+                const _parts = [];
+                if (hasRad) _parts.push('радиаторы питает насос котла');
+                if (hasTp && tpArea > 0) _parts.push('тёплый пол — свой узел подмеса');
+                if (this.state.hotWater) _parts.push('бойлер — трёхходовой клапан котла');
+                const _lostTankPump = !!this.state.hotWater && this.state.tankLoadScheme === 'pump';
+                const _multi = selBoilers.length > 1;
+                let det = _p('Схема выбрана вручную. Котёл и потребители — одно кольцо: насос котла продавливает ' +
+                    'всю систему, поэтому его напор проверяет гидравлический расчёт радиаторов.') +
+                    _p('Такая котельная работает, когда котёл один, у потребителей не больше одного своего насоса ' +
+                        '(узел подмеса тёплого пола) и его расход меньше расхода котлового насоса. ' +
+                        'Это практика проектирования, а не требование норм.');
+                if (hasRad) det += _p(`Перепад котлового контура принят равным режиму радиаторов — ${this.radDT()} K: ` +
+                    'без разделения через теплообменник идёт тот же расход, что через приборы.');
+                if (_lostTankPump) det += _p('Насосную группу бойлера подключать некуда — её место на коллекторе котельной. ' +
+                    'В смете трёхходовой клапан; вернёте схему «Авто» — вернётся и группа.');
+                if (_multi) det += _p(`Котлов ${selBoilers.length}: без гидрострелки они работают поочерёдно, ` +
+                    'на выходе каждого нужен обратный клапан. Одновременная работа каскадом требует разделения потоков.');
+                _sb = this.noteBox((_lostTankPump || _multi) ? 'warn' : 'info',
+                    'Котельная без гидрострелки.',
+                    (_parts.length ? _parts.join(', ').replace(/^./, c => c.toUpperCase()) : 'Схема выбрана вручную') + '.',
+                    det);
+            } else if (_forceHydro && !needCollector && (hasRad || (hasTp && tpArea > 0))) {
+                _sb = this.noteBox('info', 'Гидрострелка не поставлена.',
+                    'Подключить к ней нечего: насосную группу тёплого пола для этой площади подобрать не из чего.');
+            }
+            if (_sb) hydroWarnHtml = hydroWarnHtml ? (_sb + hydroWarnHtml) : _sb;
+        }
         flushBill("2. Обвязка котельной", hydroWarnHtml);
 
 
@@ -61321,7 +61867,16 @@ const app = {
         }
         if (this.radHydro) {
             const h = this.radHydro;
-            if (!h.pump) {
+            if (!h.pump && !h.hasGroup) {
+                // Групп нет — качает насос котла (схема без гидрострелки, выбранная
+                // вручную или авто на маленьком доме). Ни веток, ни 25/80 здесь нет,
+                // и советовать их нечего: помогает насосная группа.
+                const _have = (h.pumps && h.pumps[0]) ? Math.max(0, h.pumps[0].avail) : 0;
+                app.tempWarns.push('• <b>Гидравлика:</b> насос котла не даёт напора на кольцо: нужно ' +
+                    h.head.toFixed(1) + ' м при расходе ' + h.flowBranch.toFixed(2) + ' м³/ч, есть около ' +
+                    _have.toFixed(1) + ' м (кривая принята по насосу 25/60 — паспортной кривой насоса котла у нас нет). ' +
+                    'Нужна насосная группа: выберите схему котельной «С гидрострелкой» или «Авто».');
+            } else if (!h.pump) {
                 // Ветки уже посчитаны и стоят в смете (см. radBranchesByHydraulics);
                 // если и на четырёх кольцо не проходит, дальше помогает не насос,
                 // а диаметр — об этом и говорим.
@@ -61406,14 +61961,19 @@ const app = {
             if (hydroWarns.length) {
                 // Красная — только когда кольцо не продавливает ни один насос
                 // каталога. Разбивка на ветки — решение, а не проблема.
-                const _hHard = hydroWarns.some(w => /не даёт даже насос/i.test(w));
+                // Насос котла без группы — тоже красная: смонтировать как есть нельзя,
+                // но причина другая, и строка на виду говорит о ней, а не о каталоге.
+                const _hBoiler = hydroWarns.some(w => /насос котла не даёт/i.test(w));
+                const _hHard = _hBoiler || hydroWarns.some(w => /не даёт даже насос/i.test(w));
                 const _hBr = (hydroWarns.join(' ').match(/разбита на (\d+)/) || [])[1];
                 // Строку на виду пишем сами: расчётная фраза здесь длинная и
                 // обрывать её многоточием хуже, чем сказать суть своими словами.
                 _blocks += this.noteBox(
                     _hHard ? 'error' : 'info',
                     _hHard ? 'Кольцу не хватает напора.' : 'Нагрузка разделена на ветки.',
-                    _hHard
+                    _hBoiler
+                        ? 'Насоса котла мало — нужна насосная группа.'
+                        : _hHard
                         ? 'Нужного напора не даёт ни один насос каталога.'
                         : (_hBr ? `Одна группа кольцо не продавливает — в смете их ${_hBr}.` : 'Одна насосная группа кольцо не продавливает.'),
                     hydroWarns.map(w => `<div class="tip-p">${w.replace(/^•\s*/, '').replace(/<b>Гидравлика:<\/b>\s*/i, '')}</div>`).join(''));
