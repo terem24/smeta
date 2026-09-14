@@ -2387,24 +2387,33 @@
       used[key] = 1;
       var c = centroid(z.pts), X0 = t.X(c[0]), Y0 = t.Y(c[1]);
       var lines2 = ['[' + r.id + ']', r.name, Math.round(r.q) + ' Вт', r.area.toFixed(1) + ' м²'];
-      var wBox = 20;
+      // Два размера рамки: обычная и компактная (мельче шрифт, уже и ниже).
+      // Компактная берётся, только когда обычной нет места внутри помещения
+      // без касания значков: в тесном санузле обычная рамка задевала ванну.
+      var SIZES = [
+        { w: 20, top: 7, bot: 6.6, h: 13.6, y0: 4, step: 3.2, f1: 2.8, f2: 2.5, pen: 0 },
+        { w: Math.max(15, textW(r.name, 1.9) + 1.6), top: 5.2, bot: 5.0, h: 10.2, y0: 2.9, step: 2.4, f1: 2.2, f2: 1.9, pen: 0.5 }
+      ];
       var offs = [];
-      for (var ddx = -16; ddx <= 16; ddx += 4) for (var ddy = -12; ddy <= 12; ddy += 3) offs.push([ddx, ddy]);
+      for (var ddx = -16; ddx <= 16; ddx += 2) for (var ddy = -12; ddy <= 12; ddy += 1.5) offs.push([ddx, ddy]);
       offs.sort(function (a, b) { return Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]); });
-      var cands = offs.map(function (d) {
-        var X = X0 + d[0], Y = Y0 + d[1];
-        var b = [X - wBox / 2, Y - 7, X + wBox / 2, Y + 6.6]; b.p = [X, Y];
-        // углы рамки вне помещения — штраф: рамка на стене хуже, чем задетая буква
-        var out = [[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]]]
-          .filter(function (p) { return !pip(toImg(p[0], p[1]), z.pts); }).length;
-        b.pen = out * 400;
-        return b;
+      var cands = [];
+      SIZES.forEach(function (S) {
+        offs.forEach(function (d) {
+          var X = X0 + d[0], Y = Y0 + d[1];
+          var b = [X - S.w / 2, Y - S.top, X + S.w / 2, Y + S.bot]; b.p = [X, Y]; b.S = S;
+          // углы рамки вне помещения — штраф: рамка на стене хуже, чем задетая буква
+          var out = [[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]]]
+            .filter(function (p) { return !pip(toImg(p[0], p[1]), z.pts); }).length;
+          b.pen = out * 400 + S.pen;
+          cands.push(b);
+        });
       });
-      var b = lp.place(cands), X = b.p[0], Y = b.p[1];
-      o.push('<rect x="' + n(X - wBox / 2) + '" y="' + n(Y - 7) + '" width="' + n(wBox) +
-        '" height="13.6" rx="0.6" style="fill:#ffffff;fill-opacity:0.86;stroke:#000;stroke-width:0.2"/>');
+      var b = lp.place(cands), X = b.p[0], Y = b.p[1], S = b.S;
+      o.push('<rect x="' + n(X - S.w / 2) + '" y="' + n(Y - S.top) + '" width="' + n(S.w) +
+        '" height="' + S.h + '" rx="0.6" style="fill:#ffffff;fill-opacity:0.86;stroke:#000;stroke-width:0.2"/>');
       lines2.forEach(function (s2, i) {
-        o.push(txt(X, Y - 4 + i * 3.2, s2, { size: i ? 2.5 : 2.8, anchor: 'middle' }));
+        o.push(txt(X, Y - S.y0 + i * S.step, s2, { size: i ? S.f2 : S.f1, anchor: 'middle' }));
       });
     });
     if (f.coll) {
