@@ -10071,11 +10071,62 @@ const app = {
                 // Без force_confirm Яндекс молча логинит в уже активный в браузере
                 // аккаунт, не давая выбрать другой (как prompt=select_account у Google)
                 + '&force_confirm=yes';
+            if (!linkMode) this.watchYandexLoginElsewhere();
             window.location.href = url;
         } catch (err) {
             console.error("Ошибка входа через Яндекс:", err);
             app.alert("Ошибка при входе через Яндекс: " + getFriendlyErrorMessage(err));
         }
+    },
+
+    // Кто сейчас записан в сохранённой сессии Supabase (id пользователя или null).
+    // Читаем localStorage напрямую, без SDK: запрос в сеть здесь не нужен.
+    storedAuthUserId: function () {
+        try {
+            const key = (supabaseClient.auth && supabaseClient.auth.storageKey)
+                || ('sb-' + new URL(supabaseUrl).hostname.split('.')[0] + '-auth-token');
+            const raw = JSON.parse(localStorage.getItem(key) || 'null');
+            const user = raw && (raw.user || (raw.currentSession && raw.currentSession.user));
+            return (user && user.id) || null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    // На айфоне Яндекс ID открывается отдельным окном поверх сайта (у сайта с экрана
+    // «Домой» — всегда). Возврат с кодом разбирает это окно: сессию сохраняет и
+    // закрывается, а страница под ним так и остаётся гостевой — вход был виден только
+    // после ручного обновления или сворачивания. Поэтому страница, с которой ушли на
+    // Яндекс, сама следит, не появилась ли в хранилище сессия другого пользователя,
+    // и перезагружается — ровно то, что человек делал руками.
+    // Если переход на Яндекс прошёл в той же вкладке, страница уходит и слежка
+    // умирает вместе с ней — там всё работает, как раньше.
+    watchYandexLoginElsewhere: function () {
+        if (this._yandexWatchTimer) return;
+        const before = this.storedAuthUserId();
+        const startedAt = Date.now();
+        const check = () => {
+            if (this._yandexExchanging) return;          // вход разбирает эта же страница
+            if (Date.now() - startedAt > 10 * 60 * 1000) { stop(); return; }
+            const now = this.storedAuthUserId();
+            if (now && now !== before) {
+                stop();
+                window.location.reload();
+            }
+        };
+        const stop = () => {
+            clearInterval(this._yandexWatchTimer);
+            this._yandexWatchTimer = null;
+            window.removeEventListener('storage', check);
+            window.removeEventListener('focus', check);
+            window.removeEventListener('pageshow', check);
+            document.removeEventListener('visibilitychange', check);
+        };
+        this._yandexWatchTimer = setInterval(check, 1000);
+        window.addEventListener('storage', check);
+        window.addEventListener('focus', check);
+        window.addEventListener('pageshow', check);
+        document.addEventListener('visibilitychange', check);
     },
 
     // Возврат с Яндекса: в адресе есть ?code=... Меняем код на сессию через
