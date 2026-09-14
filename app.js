@@ -41790,9 +41790,35 @@ const app = {
             let _matR = (String(item.brand || '').toUpperCase() === 'ROMMER' && _matCat && _matCat.rommer) ? _matCat.rommer : null;
             let p_mat = (_matR ? _matR.price : _matCat?.price) || 991;
             let p_xps = catalog.xps_kit ? catalog.xps_kit[0]?.price || 299 : 299;
+            // Мат продаётся штукой 0,88 м², лист XPS — 0,68 м², поэтому цены «за штуку»
+            // рядом не сравнить. Даём две цены за м²: самого мата или листа и всей
+            // системы — с тем, что render() докладывает к ней в раздел 4.2 (запас 5 %,
+            // у XPS ещё подложка, дюбели 5 шт/м², скобы 2,5 шт на метр трубы, скотч по
+            // швам). Демпферная лента нужна при любом основании и в сравнение не входит.
+            // % и сортировка идут по цене системы.
+            const _matArea = (_matR ? _matR.area : _matCat?.area) || 0.88;
+            const _xk = catalog.xps_kit || [];
+            const _xpsArea = _xk[0]?.area || 0.6844;
+            const _tpA = (Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0);
+            const _pipePerM2 = (_tpA > 0 && this.tpMeters > 0) ? this.tpMeters / _tpA : 6.7;
+            const _sheetsM2 = 1.05 / _xpsArea;
+            const _sub = catalog.ufh_mat && catalog.ufh_mat[0];
+            const _xpsSys = _sheetsM2 * p_xps
+                + (_sub && _sub.pack_m2 ? _sub.price / _sub.pack_m2 : 0)
+                + 5 * (_xk[1]?.price || 0) / 100
+                + _pipePerM2 * 2.5 * (_xk[2]?.price || 0) / 25
+                + _sheetsM2 * 1.76 * 1.1 * (_xk[3]?.price || 0) / 50;
+            const _fmtA = (a) => String(Math.round(a * 100) / 100).replace('.', ',');
+            const _sysNote = (t) => `<div style="font-size:11px; font-weight:500; color:var(--text-sec); margin-top:2px;">${t}</div>`;
             customAlts = [
-                { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT', price: p_mat, imgId: _matR ? _matR.id : _matCat?.id },
-                { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol', price: p_xps, imgId: catalog.xps_kit?.[0]?.id }
+                { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT',
+                  price: p_mat * 1.05 / _matArea, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
+                  note: _sysNote('Система: мат с запасом 5 %, трубу держат бобышки — крепёж не нужен'),
+                  imgId: _matR ? _matR.id : _matCat?.id },
+                { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol',
+                  price: _xpsSys, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
+                  note: _sysNote('Система: листы с запасом 5 %, подложка, дюбели, скобы, скотч'),
+                  imgId: _xk[0]?.id }
             ];
         }
         else if (item.originalId && item.originalId.startsWith('SCS-0001')) {
@@ -43290,6 +43316,12 @@ const app = {
         const _priceTh = _isTankItem
             ? `<th style="text-align:right;width:100px;${_sortStyle}" onclick="app.toggleTankSwapSort('price')">Цена${_priceArrow}</th>`
             : `<th style="text-align:right;width:100px;${_sortStyle}" onclick="app.toggleSwapSort('price')">Цена${_ssA('price')}</th>`;
+        // Основание тёплого пола: цена мата/листа отдельно и цена системы, обе за м².
+        const _twoPrice = !!(customAlts && customAlts.some(a => a.unitM2 != null));
+        const _priceThs = _twoPrice
+            ? `<th style="text-align:right;width:120px;">Мат / лист, за м²</th>` +
+              `<th style="text-align:right;width:110px;${_sortStyle}" onclick="app.toggleSwapSort('price')">Система, за м²${_ssA('price')}</th>`
+            : _priceTh;
 
         let html = _tankFiltersHtml + `
             <table class="inv-table" style="width: 100%; border-collapse: collapse; margin-top: 10px;">
@@ -43300,7 +43332,7 @@ const app = {
                         ${_nameTh}
                         <th class="col-brand" style="text-align: center; width: 90px;">Бренд</th>
                         <th class="col-pct" style="text-align: right; width: 110px;">Изм. цена (%)</th>
-                        ${_priceTh}
+                        ${_priceThs}
                     </tr>
                 </thead>
                 <tbody>
@@ -43392,6 +43424,13 @@ const app = {
                 let imgHtml = getImg(alt.imgId ? { ...alt, id: alt.imgId } : alt);
                 let diffHtml = getPriceDiffHtml(alt.price, isActive);
                 let priceText = alt.price > 0 ? this.formatPriceHtml(alt.price, true) : "-";
+                let unitTd = '';
+                if (_twoPrice) {
+                    unitTd = `<td style="text-align: right; font-size: 13px; white-space: nowrap;">` +
+                        (alt.unitM2 > 0 ? `<div style="font-weight: 700;">${this.formatPriceHtml(alt.unitM2, true)}</div>` +
+                            `<div style="font-size: 11px; color: var(--text-sec);">${this.formatPriceHtml(alt.unitPrice, true)} ${alt.unitLabel || ''}</div>` : '—') +
+                        `</td>`;
+                }
 
                 html += `
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
@@ -43400,6 +43439,7 @@ const app = {
                         <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}${badgeHtml}${alt.note || ''}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
+                        ${unitTd}
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
                     </tr>
                 `;
