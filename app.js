@@ -2233,7 +2233,7 @@ const app = {
                     const t = this._tokenizeSearchText(it.name + ' ' + brand);
                     // Для этого дозагружаемого прайса нет данных о категории каталога, поэтому
                     // для базового тарифа просто скрываем всё ROMMER (без проверки на "есть ли аналог")
-                    idx.push({ id: it.id, name: it.name, price: it.price, brand: brand, article: it.id, _words: t.words, _numbers: new Set(t.numbers), _abbrev: t.abbrev, _countedNumbers: t.countedNumbers, extra: true, _hideForBase: brand === 'ROMMER' });
+                    idx.push({ id: it.id, name: it.name, price: it.price, brand: brand, article: it.id, _words: t.words, _numbers: new Set(t.numbers), _abbrev: t.abbrev, _countedNumbers: t.countedNumbers, extra: true, _hideForBase: brand === 'ROMMER', _terem: brand !== 'ROMMER' && brand !== 'STOUT' });
                 });
             })
             .catch(() => { });
@@ -2299,7 +2299,9 @@ const app = {
                         article: (it.a && String(it.a).trim()) || '',
                         _words: t.words, _numbers: new Set(t.numbers), _abbrev: t.abbrev,
                         _countedNumbers: t.countedNumbers, extra: true,
-                        _hideForBase: brand === 'ROMMER'
+                        _hideForBase: brand === 'ROMMER',
+                        // Прочие марки прайса — столбец «ТЕРЕМ» таблицы тарифов
+                        _terem: brand !== 'ROMMER' && brand !== 'STOUT'
                     });
                 });
             })
@@ -2315,10 +2317,14 @@ const app = {
         const idx = this._buildCatalogSearchIndex();
         const qUpper = query.toUpperCase();
         const { words: qWords, numbers: qNumbers, countedNumbers: qCounted } = this._tokenizeSearchText(this._expandSlang(query));
-        const isPro = this.isPro();
+        // Кому что показывать — по таблице «Тарифы»: _hideForBase помечает ROMMER,
+        // _terem — прочие марки прайса ТЕРЕМ
+        const rommerOk = this.canUseBrand('ROMMER');
+        const teremOk = this.canUseBrand('TEREM');
 
         const results = idx.filter(it => {
-            if (it._hideForBase && !isPro) return false;
+            if (it._hideForBase && !rommerOk) return false;
+            if (it._terem && !teremOk) return false;
             if (it.article && it.article.toUpperCase().includes(qUpper)) return true;
             if (!qWords.length && !qNumbers.length) return false;
             const wordMatch = qWords.every(qw => it._words.some(w => this._stemEq(w, qw, it._abbrev)));
@@ -2375,7 +2381,8 @@ const app = {
         const idx = this._buildCatalogSearchIndex();
         const { words: qWords, numbers: qNumbers, countedNumbers: qCounted } = this._tokenizeSearchText(this._expandSlang(query));
         if (!qWords.length) return [];
-        const isPro = this.isPro();
+        const rommerOk = this.canUseBrand('ROMMER');
+        const teremOk = this.canUseBrand('TEREM');
 
         // Если в запросе было число (мощность, размер и т.п.) — им нельзя пренебрегать даже
         // в ослабленном поиске, иначе "24 квт" покажет вперемешку все мощности подряд
@@ -2383,7 +2390,8 @@ const app = {
 
         const scored = [];
         idx.forEach(it => {
-            if (it._hideForBase && !isPro) return;
+            if (it._hideForBase && !rommerOk) return;
+            if (it._terem && !teremOk) return;
             let matched = 0;
             qWords.forEach(qw => {
                 if (it._words.some(w => this._stemEq(w, qw, it._abbrev) || this._fuzzyWordMatch(w, qw))) matched++;
@@ -2856,7 +2864,7 @@ const app = {
         // PRO (как и ручной тумблер «Аналог»); на Базовом тарифе не показываем это в превью,
         // чтобы не обещать то, что не применится
         if (/р[оу]м+[еэ]р[а-я]*|\brommer\b/i.test(t)) {
-            if (this.isPro()) results.push({ field: 'brandMode', value: 'rommer', label: 'Бренд', display: 'ROMMER' });
+            if (this.canUseBrand('ROMMER')) results.push({ field: 'brandMode', value: 'rommer', label: 'Бренд', display: 'ROMMER' });
         } else if (/ст[ао]ут[а-я]*|\bstout\b/i.test(t)) {
             results.push({ field: 'brandMode', value: 'stout', label: 'Бренд', display: 'STOUT' });
         }
@@ -5649,9 +5657,12 @@ const app = {
         // Базовый (авторизованный, не PRO) тариф получил полный функционал — 'pro' теперь
         // требует только авторизации (уже проверена выше). Эксклюзивом PRO остаётся только
         // переключение бренда на ROMMER ('pro-brand' — см. setBrand/toggleSectionAnalog).
-        if (featureLvl === 'pro-brand' && !isPro) {
+        // Кому открыт ROMMER, решает таблица «Тарифы» (исходно — Профи).
+        if (featureLvl === 'pro-brand' && !this.canUseBrand('ROMMER')) {
             if (event) event.preventDefault();
-            this.showModal('pro');
+            // Окно тарифа — только когда Профи этой учётке ROMMER открывает
+            if (!isPro && this.tariffCell(this.tariffAccount(), 'pro', 'rommer') === 'on') this.showModal('pro');
+            else app.alert('Ассортимент ROMMER для вашей учётной записи не подключён.');
             return false;
         }
         return true;
@@ -12399,7 +12410,7 @@ const app = {
      * сделанное не разошлись: там же учтён предел ползунка.
      */
     applyWhatIfDiscount: async function (extra) {
-        if (!this.isPro()) { this.showModal('pro'); return; }
+        if (!this.canUseMoney()) { this.showModal('pro'); return; }
         extra = parseFloat(extra) || 0;
         if (extra <= 0) return;
         const rep = this.marginReport();
@@ -12447,7 +12458,7 @@ const app = {
      *   • бригаде платят от расценки до скидки — по той же причине.
      */
     marginReport: function () {
-        if (!this.isPro()) return null;
+        if (!this.canUseMoney()) return null;
         const m = this.marginSettings();
         if (!m) return null;
 
@@ -12557,9 +12568,11 @@ const app = {
     // авторизованному и Базовому открывала окно тарифов — но вкладка, которая на
     // нажатие отвечает «оплатите», это не витрина, а тупик: человек считает, что
     // раздел сломан. Нет тарифа — нет и вкладки.
+    // С 14.09.2026 кому она видна, решает таблица «Тарифы» (canUseMoney);
+    // исходные значения таблицы повторяют прежнее правило.
     syncMoneyTab: function () {
         const tab = document.getElementById('tab_money');
-        if (tab) tab.style.display = (this.state.tgUser && this.isPro() && !this.isSellerOnly()) ? '' : 'none';
+        if (tab) tab.style.display = this.canUseMoney() ? '' : 'none';
     },
 
     // ═══ Вкладки по сфере деятельности ═══════════════════════════════════
@@ -12627,7 +12640,7 @@ const app = {
         const tMoney = document.getElementById('tab_money');
         const tRec = document.getElementById('tab_recognize');
         if (tWk) tWk.style.display = seller ? 'none' : '';
-        if (seller && tMoney) tMoney.style.display = 'none';
+        if (tMoney && !this.canUseMoney()) tMoney.style.display = 'none';
         if (tRec) {
             const num = tRec.querySelector('.tab-num');
             if (num) num.textContent = seller ? '2.' : '3.';
@@ -12635,7 +12648,8 @@ const app = {
         // Открытой могла остаться уже скрытая вкладка: вид сметы лежит в
         // сохранённом состоянии и переживает и перезаход, и смену анкеты.
         // Флаг — от закольцовки: setViewMode тянет за собой render().
-        if (seller && (this.state.viewMode === 'works' || this.state.viewMode === 'money') && !this._sellerTabFix) {
+        const hiddenOpen = (seller && this.state.viewMode === 'works') || (this.state.viewMode === 'money' && !this.canUseMoney());
+        if (hiddenOpen && !this._sellerTabFix) {
             this._sellerTabFix = true;
             try { this.setViewMode('equipment'); } finally { this._sellerTabFix = false; }
         }
@@ -12680,8 +12694,8 @@ const app = {
                 ${hint ? `<div style="font-size: 11px; color: var(--text-sec); margin-top: 2px;">${hint}</div>` : ''}
             </div>`;
 
-        // Не ПРОФИ — показываем, ради чего вкладка, и уводим в окно тарифов.
-        if (!this.isPro()) {
+        // Вкладка не открыта таблицей «Тарифы» — показываем, ради чего она, и уводим в окно тарифов.
+        if (!this.canUseMoney()) {
             panel.innerHTML = `
                 <div style="max-width: 560px; margin: 30px auto; text-align: center;">
                     <div style="font-size: 32px;">💰</div>
@@ -15540,7 +15554,10 @@ const app = {
         if (!force && this._accessListsCheckedAt && now - this._accessListsCheckedAt < 60000) return;
         this._accessListsCheckedAt = now;
         this._accessListsPromise = null;            // сбрасываем запомненный ответ
-        await this.loadAccessLists(true);
+        // Таблица тарифов — тем же ходом: администратор мог поменять и её
+        await Promise.all([this.loadAccessLists(true), this.loadAppSettings(true)]);
+        this.syncRoleTabs();
+        this.syncMoneyTab();
         this.syncDesignUI();
         // Вкладка распознавания держит свою копию списков — обновляем и её.
         // Повторного запроса не будет: loadAccessLists уже отдаёт свежий ответ.
@@ -15563,6 +15580,11 @@ const app = {
         // и открытый доступ региону или компании
         const own = this.accessFlagFor(d && d.users, login);
         if (own !== undefined) return own;
+        // Дальше — таблица «Тарифы»: «Всем» и «Нет» решают сразу, «По доступу»
+        // (исходное значение) ведёт к прежним проверкам ниже
+        const cell = this.tariffAccess('design');
+        if (cell === 'on') return true;
+        if (cell === 'off') return false;
         if (this.hasFeatureRoleAccess()) return true;
         if (!d) return false;
         const dist = row.distributor_id || this.state.distributorId;
@@ -15591,6 +15613,181 @@ const app = {
         // всплывёт и в быстром расчёте, где планов нет.
         const planRow = document.getElementById('blk_plan_editor_row');
         if (planRow) planRow.style.display = (on && this.state.detailedRooms) ? '' : 'none';
+    },
+
+    // ═══ Тарифы: что открыто учётной записи на её тарифе ═════════════════
+    // Таблица во вкладке «Тарифы» панели управления. Строка — учётная запись
+    // (продавец, монтажник, менеджер, наблюдатель) на тарифе Базовый или Профи,
+    // столбец — ассортимент или функция. Лежит в базе (app_settings, ключ
+    // tariffs): читать может кто угодно, как режим регистрации, писать — только
+    // администратор, это держит политика is_admin() на самой таблице.
+    //
+    // Значение ячейки:
+    //   'on'   — открыто всем в этой строке;
+    //   'off'  — закрыто всем в этой строке;
+    //   'list' — «по доступу», только у распознавания и проекта: решают прежние
+    //            переключатели (компания, регион; администратору — должность).
+    // Личная отметка в карточке пользователя сильнее таблицы в обе стороны —
+    // так было и до неё (см. RecognizeUI.isAllowed, canUseDesign).
+    //
+    // Администратор и владелец отдельной строки не имеют и попадают в строку
+    // продавца или монтажника по своей анкете: исключений по должности нет,
+    // чтобы вид любой строки можно было проверить под своей учётной записью.
+    //
+    // Умолчания повторяют то, как сайт работал до таблицы: пока ничего не
+    // сохранено или база не ответила, ни у кого ничего не меняется.
+    TARIFF_ACCOUNTS: [
+        { id: 'seller', label: 'Продавец', hint: 'в анкете сфера «продажа» без монтажа' },
+        { id: 'installer', label: 'Монтажник', hint: 'все остальные, и гости без входа тоже' },
+        { id: 'manager', label: 'Менеджер', hint: 'роль «Менеджер дистрибьютора»' },
+        { id: 'viewer', label: 'Наблюдатель', hint: 'роль «Наблюдатель»' }
+    ],
+    TARIFF_PLANS: [
+        { id: 'base', label: 'Базовый' },
+        { id: 'pro', label: 'Профи' }
+    ],
+    TARIFF_FEATURES: [
+        { id: 'stout', group: 'Ассортимент', label: 'STOUT', locked: true, hint: 'Основа расчёта: без него смету не собрать, поэтому выключить нельзя' },
+        { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Переключатель «Аналог», замены позиций на ROMMER и ROMMER в поиске' },
+        { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
+        { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
+        { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
+        { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' }
+    ],
+
+    // Как было до таблицы: ROMMER и «Деньги» — Профи (продавцу «Деньги» не
+    // показывались вовсе), распознавание — Профи плюс доступ, проект — только
+    // по доступу, прайс ТЕРЕМ — всем.
+    //
+    // Одно расхождение: у менеджера и наблюдателя «Деньги» исходно закрыты и на
+    // Профи. Раньше их решала анкета, а таблица о ней не знает; менеджеры
+    // магазинов — продавцы, и вкладка про заработок бригады им не нужна.
+    tariffDefaultCell: function (account, plan, feature) {
+        const pro = plan === 'pro';
+        if (feature === 'stout' || feature === 'terem') return 'on';
+        if (feature === 'rommer') return pro ? 'on' : 'off';
+        if (feature === 'recognize') return pro ? 'list' : 'off';
+        if (feature === 'design') return 'list';
+        if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
+        return 'off';
+    },
+
+    tariffCell: function (account, plan, feature) {
+        const f = this.TARIFF_FEATURES.find(x => x.id === feature);
+        if (!f) return 'off';
+        if (f.locked) return 'on';
+        const t = this.appSettings && this.appSettings.tariffs;
+        const row = (t && t.cells && t.cells[account + '.' + plan]) || {};
+        const v = row[feature];
+        if (v === 'on' || v === 'off' || (v === 'list' && f.list)) return v;
+        return this.tariffDefaultCell(account, plan, feature);
+    },
+
+    tariffAccount: function () {
+        const role = this.getAdminRole();
+        if (role === 'manager') return 'manager';
+        if (role === 'viewer') return 'viewer';
+        return this.isSellerOnly() ? 'seller' : 'installer';
+    },
+    tariffPlan: function () { return this.isPro() ? 'pro' : 'base'; },
+    tariffAccess: function (feature) { return this.tariffCell(this.tariffAccount(), this.tariffPlan(), feature); },
+
+    // Позиции ROMMER — по столбцу ROMMER, прочие марки прайса ТЕРЕМ — по
+    // столбцу ТЕРЕМ, STOUT открыт всегда.
+    canUseBrand: function (brand) {
+        const b = String(brand || '').toUpperCase();
+        if (b === 'ROMMER') return this.tariffAccess('rommer') === 'on';
+        if (!b || b === 'STOUT') return true;
+        return this.tariffAccess('terem') === 'on';
+    },
+    canUseMoney: function () { return !!this.state.tgUser && this.tariffAccess('money') === 'on'; },
+
+    // Марка позиции прайс-листа ТЕРЕМ (price_index): лист называется по марке,
+    // а у части позиций марка стоит только в начале названия.
+    priceItemBrand: function (it) {
+        const sheet = String((it && it.s) || '');
+        const name = String((it && it.n) || '');
+        if (/rommer/i.test(sheet) || /^rommer\b/i.test(name)) return 'ROMMER';
+        if (/stout/i.test(sheet) || /^stout\b/i.test(name)) return 'STOUT';
+        return 'TEREM';
+    },
+    filterPriceItemsByTariff: function (items) {
+        return (items || []).filter(it => this.canUseBrand(this.priceItemBrand(it)));
+    },
+
+    // Таблица могла поменяться (загрузилась, её правит администратор) —
+    // пересобираем то, что от неё зависит, без перерисовки всей сметы.
+    syncTariffUI: function () {
+        this.syncRoleTabs();
+        this.syncMoneyTab();
+        this.syncDesignUI();
+        if (typeof RecognizeUI !== 'undefined') RecognizeUI.syncButton();
+    },
+
+    canEditTariffs: function () { return ['super_admin', 'admin'].includes(this.getAdminRole()); },
+
+    /**
+     * Запись одной ячейки. Сохраняем сразу, как переключатели доступа.
+     *
+     * Перед записью перечитываем таблицу из базы и меняем в ней одну ячейку:
+     * второй администратор мог сохранить свои ячейки, пока эта панель висела
+     * открытой, и запись целиком по памяти их бы затёрла. Нажатия выстроены в
+     * очередь — быстрые щелчки подряд иначе обгоняли бы друг друга.
+     */
+    setTariffCell: function (account, plan, feature, value) {
+        if (!this.canEditTariffs()) { app.alert('Менять тарифы может только администратор.'); return; }
+        const f = this.TARIFF_FEATURES.find(x => x.id === feature);
+        if (!f || f.locked) return;
+        if (!(value === 'on' || value === 'off' || (value === 'list' && f.list))) return;
+        if (!this.TARIFF_ACCOUNTS.some(a => a.id === account) || !this.TARIFF_PLANS.some(p => p.id === plan)) return;
+        const key = account + '.' + plan;
+        const patch = (t) => {
+            const cells = JSON.parse(JSON.stringify((t && t.cells) || {}));
+            cells[key] = Object.assign({}, cells[key], { [feature]: value });
+            return { v: 1, cells: cells };
+        };
+        // Сразу на экран, не дожидаясь базы
+        this.appSettings = Object.assign({}, this.appSettings, { tariffs: patch(this.appSettings.tariffs) });
+        this.renderAdminTariffs();
+        this.saveTariffsQueued(patch);
+    },
+
+    resetTariffs: async function () {
+        if (!this.canEditTariffs()) { app.alert('Менять тарифы может только администратор.'); return; }
+        if (!await app.confirm('Вернуть всю таблицу к исходным значениям — как сайт работал до неё?')) return;
+        this.appSettings = Object.assign({}, this.appSettings, { tariffs: { v: 1, cells: {} } });
+        this.renderAdminTariffs();
+        this.saveTariffsQueued(() => ({ v: 1, cells: {} }));
+    },
+
+    saveTariffsQueued: function (patch) {
+        this._tariffSaveChain = (this._tariffSaveChain || Promise.resolve()).then(async () => {
+            this._tariffSaving = true;
+            this.renderAdminTariffsStatus();
+            try {
+                const { data, error: readErr } = await supabaseClient.from('app_settings')
+                    .select('value').eq('key', 'tariffs').maybeSingle();
+                if (readErr) throw readErr;
+                const value = patch((data && data.value) || null);
+                const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+                const { error } = await supabaseClient.from('app_settings')
+                    .upsert({ key: 'tariffs', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+                if (error) throw error;
+                this.appSettings = Object.assign({}, this.appSettings, { tariffs: value });
+                this._tariffSaveError = null;
+            } catch (e) {
+                console.error('[тарифы] запись не прошла:', e);
+                this._tariffSaveError = e.message || String(e);
+                // На экране должно остаться то, что реально лежит в базе
+                await this.loadAppSettings(true);
+                app.alert('Не удалось сохранить таблицу тарифов: ' + this._tariffSaveError);
+            } finally {
+                this._tariffSaving = false;
+                this.syncTariffUI();
+                this.renderAdminTariffs();
+            }
+        });
+        return this._tariffSaveChain;
     },
 
     showAdminModal: function () {
@@ -16716,6 +16913,7 @@ const app = {
         { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
         { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
+        { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
         { id: 'equipment', icon: '🧰', label: 'Своё оборудование', hint: 'Добавленное, удалённое, замены' },
@@ -16738,7 +16936,8 @@ const app = {
     // платформы, и заводить его может только администратор.
     // «Замены позиций» — подтверждённая замена меняет позицию каталога у всех
     // пользователей сразу, решать это наблюдателю или менеджеру нельзя.
-    ADMIN_ONLY_TABS: ['distributors', 'successors'],
+    // «Тарифы» — что открыто каждой учётной записи на всей платформе.
+    ADMIN_ONLY_TABS: ['distributors', 'successors', 'tariffs'],
 
     // Вкладка «Аналитика» — только для владельца: там конкурентная разведка,
     // которой незачем светиться даже перед наблюдателями с доступом в админку.
@@ -16799,6 +16998,111 @@ const app = {
         return defs.map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
     },
 
+    // ═══ Вкладка «Тарифы» ════════════════════════════════════════════════
+    // Сама логика доступа — у tariffCell; здесь только таблица переключателей.
+    // Перерисовывается целиком на каждый щелчок: ячеек полсотни, дёшево.
+    renderAdminTariffs: function () {
+        const box = document.getElementById('admin_tariffs_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const canEdit = this.canEditTariffs();
+        const feats = this.TARIFF_FEATURES;
+        const groups = [];
+        feats.forEach(f => {
+            const g = groups[groups.length - 1];
+            if (g && g.name === f.group) g.span++;
+            else groups.push({ name: f.group, span: 1 });
+        });
+
+        const th = 'padding:8px 6px; text-align:center; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); background:var(--surface-light); border-bottom:1px solid var(--border); white-space:nowrap;';
+        const td = 'padding:8px 6px; text-align:center; border-bottom:1px solid var(--border); vertical-align:middle;';
+        const sep = 'border-left:1px solid var(--border);';
+        const firstOfGroup = new Set();
+        let i = 0;
+        groups.forEach(g => { firstOfGroup.add(feats[i].id); i += g.span; });
+
+        const head1 = `<tr><th style="${th}"></th>${groups.map(g => `<th colspan="${g.span}" style="${th} ${sep} color:var(--text-main);">${esc(g.name)}</th>`).join('')}</tr>`;
+        const head2 = `<tr><th style="${th} text-align:left; padding-left:12px;">Тариф</th>${feats.map(f => `<th title="${esc(f.hint || '')}" style="${th} ${firstOfGroup.has(f.id) ? sep : ''} cursor:help;">${esc(f.label)}</th>`).join('')}</tr>`;
+
+        const dis = canEdit ? '' : 'disabled';
+        const toggle = (a, p, f, v) => {
+            const on = v === 'on';
+            return `<button type="button" ${dis} role="switch" aria-checked="${on}" title="${on ? 'Открыто — нажмите, чтобы закрыть' : 'Закрыто — нажмите, чтобы открыть'}"
+                onclick="app.setTariffCell('${a}','${p}','${f}','${on ? 'off' : 'on'}')"
+                style="position:relative; width:40px; height:22px; border-radius:999px; border:none; padding:0; cursor:${canEdit ? 'pointer' : 'default'}; background:${on ? '#10B981' : 'var(--border)'}; transition:background .15s; vertical-align:middle;">
+                <span style="position:absolute; top:3px; left:${on ? '21px' : '3px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:left .15s;"></span>
+            </button>`;
+        };
+        const segment = (a, p, f, v) => {
+            const opts = [
+                { v: 'on', label: 'Всем', color: '#10B981' },
+                { v: 'list', label: 'По доступу', color: '#D97706' },
+                { v: 'off', label: 'Нет', color: '#64748B' }
+            ];
+            return `<span style="display:inline-flex; border:1px solid var(--border); border-radius:8px; overflow:hidden; vertical-align:middle;">${opts.map((o, k) => {
+                const cur = v === o.v;
+                return `<button type="button" ${dis} onclick="app.setTariffCell('${a}','${p}','${f}','${o.v}')"
+                    style="border:none; ${k ? 'border-left:1px solid var(--border);' : ''} margin:0; padding:4px 7px; font-size:11px; font-weight:${cur ? 700 : 500}; white-space:nowrap; cursor:${canEdit ? 'pointer' : 'default'}; background:${cur ? o.color : 'transparent'}; color:${cur ? '#fff' : 'var(--text-sec)'};">${o.label}</button>`;
+            }).join('')}</span>`;
+        };
+
+        const myAcc = this.tariffAccount(), myPlan = this.tariffPlan();
+        let body = '';
+        this.TARIFF_ACCOUNTS.forEach(a => {
+            body += `<tr><td colspan="${feats.length + 1}" style="padding:10px 12px 6px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface-light);">
+                    <b style="font-size:13px; color:var(--text-main);">${esc(a.label)}</b>
+                    <span style="font-size:11px; color:var(--text-sec); margin-left:6px;">${esc(a.hint)}</span></td></tr>`;
+            this.TARIFF_PLANS.forEach(p => {
+                const mine = a.id === myAcc && p.id === myPlan;
+                body += `<tr${mine ? ' style="background:rgba(37,99,235,.06);"' : ''}>
+                    <td style="${td} text-align:left; padding-left:12px; white-space:nowrap; font-size:12.5px; font-weight:600; color:var(--text-main);">${esc(p.label)}${mine ? ' <span title="Под эту строку сейчас попадаете вы" style="font-size:10px; font-weight:700; color:var(--primary);">● вы</span>' : ''}</td>
+                    ${feats.map(f => {
+                        const v = this.tariffCell(a.id, p.id, f.id);
+                        const changed = !f.locked && v !== this.tariffDefaultCell(a.id, p.id, f.id);
+                        const ctl = f.locked
+                            ? `<span title="${esc(f.hint)}" style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; background:rgba(16,185,129,.14); color:#0F8A5F;">всегда</span>`
+                            : (f.list ? segment(a.id, p.id, f.id, v) : toggle(a.id, p.id, f.id, v));
+                        return `<td style="${td} ${firstOfGroup.has(f.id) ? sep : ''}">${ctl}${changed ? '<div title="Отличается от исходного значения" style="font-size:9.5px; color:var(--primary); margin-top:2px;">изменено</div>' : ''}</td>`;
+                    }).join('')}
+                </tr>`;
+            });
+        });
+
+        const t = this.appSettings && this.appSettings.tariffs;
+        const hasSaved = !!(t && t.cells && Object.keys(t.cells).length);
+
+        box.innerHTML = `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
+                <h3 style="margin:0; color:var(--text-main);">🎚 Тарифы</h3>
+                <span id="admin_tariffs_status" style="font-size:12px;"></span>
+                <button class="admin-btn" style="margin-left:auto;" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetTariffs()">Вернуть исходные</button>
+            </div>
+            <p style="margin:0 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-sec); max-width:900px;">
+                Что открыто каждой учётной записи на её тарифе. Изменения сохраняются сразу и доходят до людей при следующем
+                открытии сайта или возвращении на вкладку. ${canEdit ? '' : '<b style="color:#D97706;">Менять таблицу может только администратор.</b>'}
+            </p>
+            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
+                <table style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
+            </div>
+            <div style="margin-top:14px; padding:12px 14px; background:var(--surface-light); border-left:3px solid var(--primary); border-radius:8px; font-size:12px; line-height:1.6; color:var(--text-sec); max-width:900px;">
+                <b style="color:var(--text-main);">Как читать таблицу</b><br>
+                <b>Всем</b> — открыто всем в строке. <b>Нет</b> — закрыто всем в строке.
+                <b>По доступу</b> — решают переключатели доступа, как раньше: компании в «Дистрибьюторах», региону в «Пользователях»; администратору открыто по должности.<br>
+                <b>Личная отметка</b> распознавания или проекта в карточке человека сильнее таблицы: включена — откроется, даже если в строке «Нет»; снята — закроется, даже если «Всем».<br>
+                <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
+                <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
+            </div>`;
+        this.renderAdminTariffsStatus();
+    },
+
+    renderAdminTariffsStatus: function () {
+        const el = document.getElementById('admin_tariffs_status');
+        if (!el) return;
+        if (this._tariffSaving) el.innerHTML = '<span style="color:var(--text-sec);">Сохраняю…</span>';
+        else if (this._tariffSaveError) el.innerHTML = '<span style="color:#EF4444;">Не сохранено</span>';
+        else el.innerHTML = '';
+    },
+
     // ═══ Справка «кто что видит» ═════════════════════════════════════════
     // Открывается значком «?» рядом с полем «Тип аккаунта / Роль» в карточке
     // пользователя — там, где вопрос и возникает.
@@ -16836,6 +17140,7 @@ const app = {
         { name: 'Назначить дистрибьютора', hint: 'поштучно и всем по фильтру', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Доступ к распознаванию и проектированию', hint: 'лично, компании, региону', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Таблица тарифов', hint: 'ассортимент и функции по учётке и тарифу', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { group: 'Работа с монтажниками' },
         { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { name: 'Ссылка-приглашение, QR и счётчик мест', hint: 'в «Пользователях»; лимит мест меняет администратор в карточке компании', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
@@ -17137,6 +17442,12 @@ const app = {
         if (this._adminTab === 'kanban') {
             content.innerHTML = navHtml;
             this.renderAdminKanban();
+            return;
+        }
+
+        if (this._adminTab === 'tariffs') {
+            content.innerHTML = navHtml + '<div id="admin_tariffs_box"></div>';
+            this.renderAdminTariffs();
             return;
         }
 
@@ -32270,13 +32581,16 @@ const app = {
     setViewMode: function (mode) {
         // Продавцу этих видов нет (см. syncRoleTabs) — вкладки скрыты, но
         // вызвать setViewMode можно и мимо них (сохранённый вид, ссылка).
-        if ((mode === 'works' || mode === 'money') && this.isSellerOnly()) mode = 'equipment';
+        if (mode === 'works' && this.isSellerOnly()) mode = 'equipment';
         if (mode === 'works' && !this.checkAccess('pro')) return;
-        // «Деньги» — единственная вкладка, которую Базовый тариф не открывает.
+        // «Деньги» открывает таблица «Тарифы» (canUseMoney).
         // checkAccess('pro') тут не годится: он давно означает «авторизован».
-        if (mode === 'money') {
+        if (mode === 'money' && !this.canUseMoney()) {
             if (!this.state.tgUser) { this.showAuthModal(); return; }
-            if (!this.isPro()) { this.showModal('pro'); return; }
+            // Окно тарифа — только если Профи этой же учётке вкладку открывает,
+            // иначе оно обещало бы то, чего оплата не даст
+            if (!this.isPro() && this.tariffCell(this.tariffAccount(), 'pro', 'money') === 'on') { this.showModal('pro'); return; }
+            mode = 'equipment';
         }
         this.state.viewMode = mode;
         // Куда человек ходит в калькуляторе — для разбора «заходит, но не считает»
@@ -39661,8 +39975,9 @@ const app = {
 
         this.captureUTM();
         this.captureInvite();
-        // Режим регистрации из базы — в фоне; кто ждёт, дождётся по промису
-        this.loadAppSettings();
+        // Режим регистрации и таблица тарифов из базы — в фоне; кто ждёт,
+        // дождётся по промису. Таблица доехала — пересобираем вкладки по ней.
+        this.loadAppSettings().then(() => { try { this.syncTariffUI(); } catch (e) { } });
         this.applyPricingCurrencyDisplay();
         if (localStorage.getItem('stout_save')) {
             try {
@@ -43583,7 +43898,7 @@ const app = {
                 // таблицы пропала бы текущая позиция. Позиции, у которых ROMMER —
                 // единственное исполнение (rommer_pumps и т. п.), это не трогает: они
                 // приходят сюда как displayItemStout со своим брендом.
-                const _rommerRowOk = this.isPro() || this.state.brandMode === 'rommer' ||
+                const _rommerRowOk = this.canUseBrand('ROMMER') || this.state.brandMode === 'rommer' ||
                     (displayItemRommer && displayItemRommer.id === item.id);
                 let candidates = [displayItemStout, _rommerRowOk ? displayItemRommer : null, displayItemComfort].filter(Boolean);
                 // При фильтре "ТЭН" исключаем GT-серию (без ТЭНа, RWH-2110-0xxx) из результатов
@@ -51556,7 +51871,7 @@ const app = {
         let chk = document.getElementById('chk_cheaper');
 
         if (cw && chk && sl) {
-            if (this.isPro()) {
+            if (this.canUseBrand('ROMMER')) {
                 cw.style.display = 'flex';
                 chk.checked = (this.state.brandMode === 'rommer');
             } else {
@@ -51896,7 +52211,7 @@ const app = {
                 // Базовый (авторизованный, но не PRO) тариф получил полный функционал —
                 // блокировка "pro" теперь актуальна только для гостей (нужен вход).
                 container.classList.add('locked-guest');
-            } else if (reqLvl === 'pro-brand' && !isPro) {
+            } else if (reqLvl === 'pro-brand' && !this.canUseBrand('ROMMER')) {
                 // Переключение бренда на ROMMER остаётся эксклюзивом PRO даже для
                 // авторизованного Базового тарифа — иначе он получит доступ к ассортименту ROMMER.
                 if (isGuest) container.classList.add('locked-guest');
@@ -64941,7 +65256,8 @@ const app = {
             // Маржа в шапке — только ПРОФИ и только когда закупка настроена.
             // Каркас пересобирается и при смене этого признака: иначе цифра либо
             // не появилась бы после настройки, либо осталась висеть после сброса.
-            const showHdrMargin = !!this.marginReport() && !this.isSellerOnly();
+            // Кому — решает таблица «Тарифы» внутри marginReport (canUseMoney).
+            const showHdrMargin = !!this.marginReport();
 
             // Строим HTML каркас только 1 раз (или при смене тарифа), чтобы не сбрасывать анимацию
             if (!headerTotals.innerHTML.includes('anim_eq_sum') || headerTotals.dataset.isPro !== String(showWorksTotal) || headerTotals.dataset.hasMargin !== String(showHdrMargin)) {

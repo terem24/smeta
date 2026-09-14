@@ -59,11 +59,17 @@ const RecognizeUI = {
             : undefined;
         if (own !== undefined) return own;
 
-        // Личной отметки нет — дальше распознавание работает как инструмент
-        // тарифа ПРОФИ. Доступ, выданный оптом компании или региону, сам по себе
-        // вкладку не открывает: иначе Базовый видел бы раздел, за который не
-        // платил, и упирался бы в окно подписки.
-        if (typeof app.isPro === 'function' && !app.isPro()) return false;
+        // Личной отметки нет — решает таблица «Тарифы» панели управления
+        // (app.tariffAccess): «Всем» и «Нет» сразу, «По доступу» — прежние
+        // проверки ниже. Исходно у Базового «Нет», у Профи «По доступу»: доступ,
+        // выданный оптом компании или региону, Базовому вкладку не открывает,
+        // иначе он видел бы раздел, за который не платил.
+        // Старый app.js без таблицы — прежнее правило: без Профи закрыто.
+        const cell = (typeof app.tariffAccess === 'function')
+            ? app.tariffAccess('recognize')
+            : ((typeof app.isPro === 'function' && !app.isPro()) ? 'off' : 'list');
+        if (cell === 'on') return true;
+        if (cell === 'off') return false;
 
         if (typeof app.hasFeatureRoleAccess === 'function' && app.hasFeatureRoleAccess()) return true;
 
@@ -282,8 +288,17 @@ const RecognizeUI = {
                 const idx = await r.json();
                 if (!idx.items || !idx.items.length) throw new Error('пустой индекс');
 
-                RecognizeMatch.setPriceIndex(idx.items);
-                this._priceItems = idx.items;
+                // Ассортимент по таблице «Тарифы»: закрытый ROMMER или прочие
+                // марки ТЕРЕМ в подбор не попадают. Таблицу дожидаемся — она
+                // грузится одним коротким запросом при открытии сайта.
+                let items = idx.items;
+                if (typeof app !== 'undefined' && typeof app.filterPriceItemsByTariff === 'function') {
+                    try { await app.loadAppSettings(); } catch (e) { /* без таблицы — исходные значения */ }
+                    items = app.filterPriceItemsByTariff(items);
+                }
+
+                RecognizeMatch.setPriceIndex(items);
+                this._priceItems = items;
                 this._priceVersion = idx.version || '';
                 this._catIndex = null;   // пул ручного поиска пересоберётся с прайсом
                 // Карта «артикул → позиция» строится из того же пула. Без
