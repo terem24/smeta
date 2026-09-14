@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=8.22" defer></script>
+    <script src="app.js?v=8.23" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1366,15 +1366,15 @@
                         class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap"><i class="info-icon" tabindex="0"
                             role="button" aria-label="Подробнее">i</i>
                         <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
-                <div class="mode-selector-tabs" style="margin-bottom: 6px;">
-                    <div class="mode-tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')"
+                <div class="tabs" style="margin-bottom: 6px;">
+                    <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')"
                         title="Коаксиальный: «труба в трубе», по внутренней уходит дым, по внешней приходит воздух.">Коаксиальный</div>
-                    <div class="mode-tab" id="chim_sys_split" onclick="app.setChimneySystem('split')"
+                    <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')"
                         title="Раздельная система: две трубы Ø80 вместо «трубы в трубе». Нужна там, где коаксиал не проходит по длине.">Раздельный D80</div>
                 </div>
-                <div class="mode-selector-tabs" style="margin-bottom: 10px;">
-                    <div class="mode-tab" id="chim_exit_wall" onclick="app.setChimneyExit('wall')">Через стену</div>
-                    <div class="mode-tab" id="chim_exit_roof" onclick="app.setChimneyExit('roof')">Над кровлей</div>
+                <div class="tabs" style="margin-bottom: 10px;">
+                    <div class="tab" id="chim_exit_wall" onclick="app.setChimneyExit('wall')">Через стену</div>
+                    <div class="tab" id="chim_exit_roof" onclick="app.setChimneyExit('roof')">Над кровлей</div>
                 </div>
                 <div class="grid-2" id="blk_chim_fields" style="display:none;">
                     <div class="control-card"><span class="lbl" id="lbl_chim_len">Длина трассы</span>

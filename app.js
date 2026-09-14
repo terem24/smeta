@@ -42598,7 +42598,7 @@ const app = {
         const exit = this.chimneyExit();
         const mark = (id, active) => {
             const el = document.getElementById(id);
-            if (el) el.className = 'mode-tab' + (active ? ' active' : '');
+            if (el) el.className = 'tab' + (active ? ' active' : '');
         };
         mark('chim_sys_coax', sys === 'coax');
         mark('chim_sys_split', sys === 'split');
