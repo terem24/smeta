@@ -63178,7 +63178,10 @@ const app = {
             }
             else {
                 // === Коллекторная схема (по умолчанию) ===
-                let avgRun = Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 1.1; let neededPipe = Math.ceil(totalMeters);
+                // × 2 — подача и обратка: к каждому прибору от коллектора идут две трубы.
+                // Так же считают подсказка трубы, гидравлика луча (radHydraulics) и объём
+                // теплоносителя для бака; без множителя смета клала трубы вдвое меньше.
+                let avgRun = Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
                 this.avgRun = avgRun;
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
