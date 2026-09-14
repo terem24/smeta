@@ -1358,11 +1358,31 @@ const app = {
         this.closeInviteBanner();
     },
 
+    // Промокод латиницей монтажник нередко набирает русскими буквами: TEREM
+    // как «ТЕРЕМ». Если такой код не нашёлся, пробуем его транслитерацию.
+    // Пустая строка — транслитерировать нечего (кириллицы в коде нет).
+    inviteCodeLatin: function (code) {
+        const map = {
+            'А': 'A', 'Б': 'B', 'В': 'V', 'Г': 'G', 'Д': 'D', 'Е': 'E', 'Ё': 'E', 'Ж': 'ZH', 'З': 'Z',
+            'И': 'I', 'Й': 'Y', 'К': 'K', 'Л': 'L', 'М': 'M', 'Н': 'N', 'О': 'O', 'П': 'P', 'Р': 'R',
+            'С': 'S', 'Т': 'T', 'У': 'U', 'Ф': 'F', 'Х': 'KH', 'Ц': 'TS', 'Ч': 'CH', 'Ш': 'SH',
+            'Щ': 'SCH', 'Ъ': '', 'Ы': 'Y', 'Ь': '', 'Э': 'E', 'Ю': 'YU', 'Я': 'YA'
+        };
+        const src = String(code || '').trim().toUpperCase();
+        if (!/[А-ЯЁ]/.test(src)) return '';
+        return src.replace(/[А-ЯЁ]/g, ch => map[ch]);
+    },
+
     // Ответ базы как есть: { ok, reason, company_name, manager_name, pro_months, used, limit }
     checkInviteCode: async function (code) {
-        const { data, error } = await supabaseClient.rpc('check_invite_code', { code: String(code || '') });
-        if (error) throw error;
-        return data || { ok: false, reason: 'not_found' };
+        const ask = async (c) => {
+            const { data, error } = await supabaseClient.rpc('check_invite_code', { code: String(c || '') });
+            if (error) throw error;
+            return data || { ok: false, reason: 'not_found' };
+        };
+        const res = await ask(code);
+        const latin = res.reason === 'not_found' ? this.inviteCodeLatin(code) : '';
+        return latin ? await ask(latin) : res;
     },
 
     // Текст отказа для человека. Причины — из check_invite_code / apply_invite_code.
@@ -6036,9 +6056,16 @@ const app = {
     // лимит проскакивал. Возвращает ответ базы как есть; при успехе ещё и
     // обновляет состояние: компания, её цены, тариф.
     applyInviteInDb: async function (code) {
-        const { data, error } = await supabaseClient.rpc('apply_invite_code', { code: String(code || '').trim().toUpperCase() });
-        if (error) throw error;
-        const res = data || { ok: false, reason: 'not_found' };
+        const ask = async (c) => {
+            const { data, error } = await supabaseClient.rpc('apply_invite_code', { code: String(c || '').trim().toUpperCase() });
+            if (error) throw error;
+            return data || { ok: false, reason: 'not_found' };
+        };
+        let res = await ask(code);
+        // Код набран русскими буквами вместо латиницы («ТЕРЕМ» вместо TEREM).
+        // Отказ «не найден» ничего в базе не меняет, поэтому второй вызов безопасен.
+        const latin = res.reason === 'not_found' ? this.inviteCodeLatin(code) : '';
+        if (latin) res = await ask(latin);
         if (res.ok && res.distributor) {
             const dist = res.distributor;
             const proMonths = Number(res.pro_months) || 0;
