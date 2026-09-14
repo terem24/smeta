@@ -42697,18 +42697,27 @@ const app = {
                 bs += (z.fixtures.basin || 0) + (z.fixtures.bidet || 0);
             }
         });
-        let raw_vol = (b * 120) + (sh * 50) + (bs * 10);
-        // 1. Коэффициент разбавления горячей воды 60°C холодной 10°C до комфортных 40°C составляет 0.6 (60% горячей воды)
-        let mixed_vol = raw_vol * 0.6;
-        // 2. Коэффициент одновременного использования (СП 30.13330.2020)
-        let k_sim = 1.0;
-        let totalFixtures = b + sh;
-        if (totalFixtures === 2) k_sim = 0.7;
-        else if (totalFixtures === 3) k_sim = 0.5;
-        else if (totalFixtures >= 4) k_sim = 0.4;
+        // 1. Разбавление: горячая 60 °C с холодной 10 °C до 40 °C — 60 % горячей воды
+        //    (физика смешения: (40 − 10) / (60 − 10) = 0,6).
+        // 2. Одновременность ванн и душей — по практике подбора: 2 прибора — 0,7,
+        //    3 — 0,5, от 4 — 0,4. В СП 30 таких коэффициентов нет, это не норма.
+        const kOf = n => (n >= 4 ? 0.4 : n === 3 ? 0.5 : n === 2 ? 0.7 : 1.0);
+        // Раньше коэффициент брали по всем приборам сразу, и объём падал, когда
+        // приборы добавляли: 2 ванны и 2 раковины — 109 л, а с двумя душами сверху — 89.
+        // Добавленный прибор не может уменьшить бак: берём наибольший объём среди
+        // «n самых ёмких приборов одновременно» для всех n.
+        const big = [].concat(Array(b).fill(120), Array(sh).fill(50));
+        let best = { vol: bs * 10 * 0.6, n: 0 };
+        let acc = 0;
+        big.forEach((v, i) => {
+            acc += v;
+            const n = i + 1;
+            const cand = (acc + bs * 10) * 0.6 * kOf(n);
+            if (cand > best.vol) best = { vol: cand, n: n };
+        });
         return {
-            vol: Math.round(mixed_vol * k_sim),
-            fixtures: { bath: b, shower: sh, basin: bs, kSim: k_sim }
+            vol: Math.round(best.vol),
+            fixtures: { bath: b, shower: sh, basin: bs, kSim: kOf(best.n || big.length), nSim: best.n }
         };
     },
 
@@ -57845,20 +57854,20 @@ const app = {
                             bs += (z.fixtures.basin || 0) + (z.fixtures.bidet || 0);
                         }
                     });
-                    let k_sim = 1.0;
-                    let totalFixtures = b + s;
-                    if (totalFixtures === 2) k_sim = 0.7;
-                    else if (totalFixtures === 3) k_sim = 0.5;
-                    else if (totalFixtures >= 4) k_sim = 0.4;
+                    const _fxv = this.dhwFixturesVolume().fixtures || {};
+                    const k_sim = _fxv.kSim || 1;
+                    const _nSim = _fxv.nSim || 0;
+                    const _bUse = Math.min(b, _nSim), _sUse = Math.max(0, _nSim - _bUse);
 
-                    calcStr = `<b>Расчёт по приборам:</b> Пиковый разбор санузлов с учётом коэффициентов.<br><b>Формула:</b> V = (${b} × 120л (ванна) + ${s} × 50л (душ) + ${bs} × 10л (раковина)) × 0.6 (разбавление до 40°C) × ${k_sim} (коэф. одновременности) = ${val3} л.`;
+                    calcStr = `<b>Расчёт по приборам:</b> Пиковый разбор санузлов с учётом коэффициентов.<br><b>Формула:</b> V = (${_bUse} × 120л (ванна) + ${_sUse} × 50л (душ) + ${bs} × 10л (раковина)) × 0.6 (разбавление до 40°C) × ${k_sim} (одновременность по практике) = ${val3} л.` +
+                        (_nSim < b + s ? `<br><i style="font-size:10.5px;">Считаются ${_nSim} самых ёмких прибора из ${b + s}: при всех сразу коэффициент одновременности ниже, и объём вышел бы меньше.</i>` : '');
                     if (volByRes > val3) {
                         calcStr += `<br><i style="color:#60A5FA; font-size:10.5px;">* Принят минимальный объем по жильцам (${volByRes} л) для комфортного последовательного разбора.</i>`;
                     }
                 } else {
-                    calcStr = `<b>Расчёт по жильцам:</b> Жильцы (${val1} чел) × 50 л = ${val1 * 50} л.`;
+                    calcStr = `<b>Расчёт по жильцам:</b> ${val1} чел. → ${volByRes} л (до 2 жильцов — 100 л, 3–4 — 150 л, 5–6 — 200 л, 7–9 — 300 л, от 10 — 500 л; по практике подбора).`;
                 }
-                return `<span style="${styles}"><span style="${head}">Бойлер косвенного нагрева</span><b>Зачем:</b> Комфортное ГВС (запас воды).<br><b>Метод подбора:</b> ${calcStr}<br><b>Подобранный объем бойлера:</b> ${val2} л.<br><b>Норматив:</b> СП 30.13330.2020.</span>`;
+                return `<span style="${styles}"><span style="${head}">Бойлер косвенного нагрева</span><b>Зачем:</b> Комфортное ГВС (запас воды).<br><b>Метод подбора:</b> ${calcStr}<br><b>Подобранный объем бойлера:</b> ${val2} л.</span>`;
             case 'chimney': {
                 // val1 — позиция дымохода: у конденсационного свой текст (пластик,
                 // конденсат), у Vaillant — почему именно родной комплект.
