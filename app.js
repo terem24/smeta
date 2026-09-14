@@ -50156,36 +50156,43 @@ const app = {
             `<b>${n1(w.have)} м</b> — ${b.ok ? 'проходит' : '<b style="color:#EF4444;">не проходит</b>'}.` +
             (b.notes && b.notes.length ? '<br>' + b.notes.map(x => '• ' + x).join('<br>') : '');
     },
-    /** Предельный тепловой поток пола при шаге укладки, Вт/м² (СП 60.13330.2020) */
+    /**
+     * Сколько пол отдаёт при шаге укладки и штатной воде (средняя 37,5 °C) в
+     * комнату +22, Вт/м². Укрупнённая оценка по практике проектирования: по ней
+     * считаются расход и длина петель. Предел по норме — в ufhQudForRoom.
+     */
     ufhQud: function (step) {
         const st = parseInt(step, 10) || 150;
         return st <= 100 ? 90 : (st >= 200 ? 50 : 70);
     },
     /**
-     * Тот же предельный поток пола, но для помещения со своей температурой.
+     * Сколько пол может отдать в конкретное помещение, Вт/м², — меньшее из двух:
      *
-     * Предел упирается в температуру поверхности (26 °C в жилых, 31 °C в
-     * ванных и краевых зонах), а отдаёт пол тем больше, чем холоднее воздух:
-     * q ~ (t_пов − t_возд)^1,1. Табличные 70 Вт/м² посчитаны для комнаты +22,
-     * и в гараже на +5 они занижают пол втрое — расчёт объявлял бы «тёплого
-     * пола недостаточно» там, где его с запасом хватает.
+     * 1. Предел по температуре поверхности, СП 60.13330.2020, п. 6.4.8: не выше
+     *    26 °C в помещениях с постоянным пребыванием людей (жилые, кухня) и 31 °C
+     *    с временным (санузлы, ванные, коридоры, подсобные, дорожки бассейнов).
+     *    Поток при такой поверхности — q = 8,92·(t_пов − t_в)^1,1 (EN 1264-2).
+     *    Комната +22: 41 Вт/м², а не 70 — прежняя таблица по шагу выдавалась за
+     *    предел по СП, и в комнатах с полом не добирались радиаторы.
+     * 2. Сколько успевает отдать вода при этом шаге: ufhQud для +22, пересчитанный
+     *    на напор средней температуры воды над воздухом. В холодном помещении
+     *    вода отдаёт больше; рост ограничен тройкой — дальше упирается стяжка.
      *
-     * Рост ограничен тройкой: выше упирается уже не поверхность, а подача и
-     * конструкция стяжки, которых эта формула не знает.
+     * kind — тип помещения из ROOM_KINDS (объект или id). Тип не узнали —
+     * временное пребывание признаём только по температуре от +24 (ванные).
      */
-    ufhQudForRoom: function (step, tv) {
+    ufhQudForRoom: function (step, tv, kind) {
         const base = this.ufhQud(step);
         const t = parseFloat(tv);
-        if (!(t > -30) || t === 22) return base;
-        // Предел температуры поверхности: 26 °C в жилых зонах и 31 °C во влажных.
-        // Влажную узнаём и по шагу 100, и по самой температуре — выше +24 держат
-        // только ванные и бассейны. Без второго признака ванная с шагом 150
-        // получала предел в 15 Вт/м² и объявлялась необогреваемой.
-        const surf = ((parseInt(step, 10) || 150) <= 100 || t >= 24) ? 31 : 26;
-        const dNow = surf - t, dBase = surf - 22;
-        if (!(dNow > 0) || !(dBase > 0)) return base;
-        const k = Math.min(3, Math.max(0.2, Math.pow(dNow / dBase, 1.1)));
-        return Math.round(base * k);
+        if (!(t > -30)) return base;
+        const kindId = (kind && typeof kind === 'object') ? kind.id : kind;
+        const surf = (kindId === 'living' || kindId === 'kitchen') ? 26
+            : kindId ? 31
+            : (t >= 24 ? 31 : 26);
+        const qSurf = surf > t ? 8.92 * Math.pow(surf - t, 1.1) : 0;
+        const tw = this.UFH_SUPPLY - this.UFH_DTS[0] / 2;
+        const kWater = tw > t ? Math.min(3, (tw - t) / (tw - 22)) : 0;
+        return Math.round(Math.min(base * kWater, qSurf));
     },
     /**
      * Потери участка: расход м³/ч, длина м → скорость и кПа. Формула та же, что
@@ -50303,7 +50310,9 @@ const app = {
                 const roomQud = (name) => {
                     const key = String(name || '').trim().toLowerCase();
                     const r = key ? rms.find(x => String(x.name || '').trim().toLowerCase() === key) : null;
-                    return r ? this.ufhQudForRoom(step, this.roomTempInfo(r).t) : qUd;
+                    if (!r) return qUd;
+                    const ti = this.roomTempInfo(r);
+                    return this.ufhQudForRoom(step, ti.t, ti.kind);
                 };
                 // Зона может быть поделена на несколько петель — мощность комнаты
                 // делим между ними поровну, как и её площадь.
@@ -50323,7 +50332,8 @@ const app = {
                         && (!r.sys || r.sys.includes('tp')) && (parseFloat(r.area) || 0) > 0)
                         .map(r => {
                             const a = parseFloat(r.area) || 0;
-                            const qUdR = this.ufhQudForRoom(step, this.roomTempInfo(r).t);
+                            const _ti = this.roomTempInfo(r);
+                            const qUdR = this.ufhQudForRoom(step, _ti.t, _ti.kind);
                             return { name: r.name || 'Помещение', area: a,
                                 Q: Math.min(this.getRoomHeatLoss(r).Q_sum, a * qUdR) };
                         })
@@ -62282,7 +62292,7 @@ const app = {
                     // Предел считается на температуру этого помещения: в прохладном
                     // пол отдаёт больше при той же поверхности (см. ufhQudForRoom).
                     let ufhStepVal = (r.floor === 2) ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
-                    let qUdeUfh = this.ufhQudForRoom(ufhStepVal, roomLoss.Tv);
+                    let qUdeUfh = this.ufhQudForRoom(ufhStepVal, roomLoss.Tv, roomLoss.tKind);
 
                     let qUfhMax = r.area * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
 
@@ -62341,7 +62351,7 @@ const app = {
                                 let deficitTotal = Math.round(roomLossTotal - qUfhMax);
                                 app.tempWarns = app.tempWarns || [];
                                 if (!app.tempWarns.some(x => x.includes(`«${r.name}» недостаточно`))) {
-                                    app.tempWarns.push(`• ${app._warnRoomLabel(r.id, r.name + ' (Только ТП):')} тёплого пола недостаточно для компенсации теплопотерь! Предельный тепловой поток по СП 60.13330.2020: ${Math.round(qUfhMax)} Вт. Нехватка мощности: <b>${deficitTotal} Вт</b>. Рекомендуется добавить радиатор или улучшить утепление стен.`);
+                                    app.tempWarns.push(`• ${app._warnRoomLabel(r.id, r.name + ' (Только ТП):')} тёплого пола недостаточно для компенсации теплопотерь! Пол отдаст не больше ${Math.round(qUfhMax)} Вт (${Math.round(qUdeUfh)} Вт/м²: температура поверхности не выше ${roomLoss.tKind && (roomLoss.tKind.id === 'living' || roomLoss.tKind.id === 'kitchen') ? 26 : (roomLoss.tKind || roomLoss.Tv >= 24 ? 31 : 26)} °C по СП 60.13330.2020, п. 6.4.8). Нехватка мощности: <b>${deficitTotal} Вт</b>. Рекомендуется добавить радиатор или улучшить утепление стен.`);
                                 }
                             }
                         } else {
@@ -64263,12 +64273,17 @@ const app = {
             let warn = null;
             if (!hasRad && tpArea > 0) {
                 let f = (pwr * 1000) / tpArea;
-                if (f > 75) {
+                // Предел — поток при поверхности +26 °C (СП 60.13330.2020, п. 6.4.8) и
+                // воздухе +21 °C, средней по дому из жилых +22 и подсобных +20:
+                // q = 8,92·(26 − 21)^1,1 ≈ 52 Вт/м² (EN 1264-2). Прежние 75 Вт/м² нормой
+                // не были: столько пол отдаёт при поверхности около +29 °C.
+                const fMax = Math.round(8.92 * Math.pow(26 - 21, 1.1));
+                if (f > fMax) {
                     // Красная: без радиаторов дом в мороз не вытянуть, а пол
                     // выше санитарной нормы греть нельзя — это не оговорка.
                     warn = this.noteBox('error', 'Одного тёплого пола не хватит.',
-                        `Нужно ${Math.round(f)} Вт/м² при комфортном пределе 75 Вт/м².`,
-                        `<div class="tip-p">Расчётная потребность — <b>${Math.round(f)} Вт/м²</b>, комфортный предел теплоотдачи пола <b>75 Вт/м²</b>.</div>` +
+                        `Нужно ${Math.round(f)} Вт/м² при пределе ${fMax} Вт/м².`,
+                        `<div class="tip-p">Расчётная потребность — <b>${Math.round(f)} Вт/м²</b>. Пол отдаёт не больше <b>${fMax} Вт/м²</b>: поверхность в жилых помещениях не теплее +26 °C (СП 60.13330.2020, п. 6.4.8), поток q = 8,92·(26 − 21)^1,1 (EN 1264-2).</div>` +
                         `<div class="tip-p">Чтобы покрыть такие теплопотери в сильные морозы, пол придётся нагревать выше санитарных норм: поверхность станет некомфортно горячей для ног.</div>` +
                         `<div class="tip-p"><b>Что делать:</b> добавить радиаторы отопления.</div>`);
                 }
