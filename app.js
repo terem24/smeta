@@ -49999,11 +49999,28 @@ const app = {
         // Расход тот же, что в radHydraulics, — по расчётной нагрузке прибора:
         // преднастройку выставляют на режим, в котором система работает.
         const wOf = d => ((d.load != null ? d.load : d.watt) || 0);
-        const rows = devices.map(d => {
+        // Тройниковая схема: лучей нет — прибор висит на отводе ~1,5 м от магистрали,
+        // а кольца различаются тем, сколько магистрали вода проходит до его тройника.
+        // Раньше сюда шёл «луч» длиной во всю магистраль (avgRun = trunkOneWay), и
+        // каждому прибору считалось по 50–60 м трубы Ø16 — обороты выходили неверные.
+        // Порядок приборов по магистрали нам не известен: берём их по порядку сметы,
+        // равномерно вдоль трассы, и доводку оставляем пусконаладке.
+        const tee = s.radConnectionScheme === 'tee';
+        let teeTrunkDp = 0;
+        if (tee) {
+            const hy = this.radHydraulics();
+            teeTrunkDp = hy ? (hy.parts || []).filter(p => p.tag === 'trunk' || p.tag === 'trunkFar')
+                .reduce((a, p) => a + (p.dp || 0), 0) : 0;
+        }
+        const nDev = devices.length;
+        const rows = devices.map((d, i) => {
             const flow = this.radFlowOf(wOf(d));
-            // Кольцо прибора: луч в обе стороны и его клапан на расчётной настройке.
-            const dp = this.radPipeDrop(flow, 16, len).dp
-                + Math.pow(flow / kvValve, 2) * 100;
+            // Кольцо прибора: луч в обе стороны (или отвод и часть магистрали у
+            // тройниковой) и его клапан на расчётной настройке.
+            const pipeDp = tee
+                ? teeTrunkDp * (i + 1) / nDev + this.radPipeDrop(flow, 16, 2 * 1.5).dp
+                : this.radPipeDrop(flow, 16, len).dp;
+            const dp = pipeDp + Math.pow(flow / kvValve, 2) * 100;
             return { room: d.room, watt: Math.round(wOf(d)), flow: flow, dp: dp };
         });
 
