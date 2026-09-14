@@ -46173,8 +46173,22 @@ const app = {
     detectRoomKind: function (name) {
         const n = String(name || '').trim().toLowerCase();
         if (!n) return null;
-        for (let i = 0; i < this.ROOM_KINDS.length; i++)
-            if (this.ROOM_KINDS[i].re.test(n)) return this.ROOM_KINDS[i].id;
+        for (let i = 0; i < this.ROOM_KINDS.length; i++) {
+            if (!this.ROOM_KINDS[i].re.test(n)) continue;
+            const id = this.ROOM_KINDS[i].id;
+            // «С/у» и «санузел» по имени не отличить от туалета, а по ГОСТ
+            // 30494-2011 совмещённый санузел — это 24–26 °C, туалет — 19–21.
+            // Подсказка есть в карточке санузла с тем же именем: стоит в нём
+            // ванна или душ — помещение совмещённое. Раньше такой С/у считался
+            // по +20 °C, хотя «Общие данные» для санузлов пишут +25.
+            if (id === 'wc') {
+                const z = (this.state.waterZones || []).find(w =>
+                    String(w.name || '').trim().toLowerCase() === n);
+                const fx = (z && z.fixtures) || {};
+                if ((fx.bath || 0) + (fx.shower || 0) > 0) return 'bath';
+            }
+            return id;
+        }
         return null;
     },
 

@@ -1774,6 +1774,8 @@
     // стояков, пришедших снизу через перекрытие
     var fromRiser = kind !== 'sewer' && !!(f.wsrc && f.wsrc.kind === 'riser');
     if (fromRiser && lines.length) pts3.push([f.wsrc.x, f.wsrc.y, -mm(600)]);
+    if (kind !== 'sewer' && !fromRiser && lines.length)
+      pts3.push([lines[0].pts[0][0], lines[0].pts[0][1], mm(AXO_COLL_MM + 400)]);   // верхняя гребёнка и отметка
     if (!pts3.length) return null;
     var t = axoFit(f, pts3);
     var step = mm(60);
@@ -1787,6 +1789,16 @@
       // От стояка полос нет: лучи начинаются в одной точке — у пары стояков,
       // а не разбросаны по ширине гребёнки, которой на этом этаже нет.
       var lane = fromRiser ? 0 : mm(110), lanes = lines.length;
+      // Гребёнки В1 и Т3 — одна над другой на стене котельной, поперёк первого
+      // участка трассы. Раньше вместо них стояла одна толстая чёрная черта, а
+      // спуски приходили каждый со своего сдвига и пересекали её посередине:
+      // сдвиг луча считался по его собственному первому участку, а они у
+      // лучей разные. Теперь верх каждого спуска стоит ровно на гребёнке.
+      var cA = lines.length ? lines[0].pts[0] : [0, 0], cB = lines.length ? lines[0].pts[1] : [1, 0];
+      var cdl = Math.hypot(cB[0] - cA[0], cB[1] - cA[1]) || 1;
+      var cnx = -(cB[1] - cA[1]) / cdl, cny = (cB[0] - cA[0]) / cdl;
+      var combZ = { cw: mm(AXO_COLL_MM), hw: mm(AXO_COLL_MM + 250) };
+      var combOff = { cw: [], hw: [] };
       lines.forEach(function (L, li) {
         var q = fx[L.i], h = WET_H[q.t];
         var off = (li - (lanes - 1) / 2) * lane;
@@ -1796,7 +1808,13 @@
           var pl = offsetPoly(L.pts, S[1]);
           var end = pl[pl.length - 1], z = mm(h[S[0]]);
           // от стояка подводка идёт сразу по полу; сам стояк рисуется ниже один
-          var p3 = (fromRiser ? [] : [[pl[0][0], pl[0][1], mm(AXO_COLL_MM)]])
+          var top = [];
+          if (!fromRiser) {
+            var cx0 = cA[0] + cnx * S[1], cy0 = cA[1] + cny * S[1];
+            combOff[S[0]].push(S[1]);
+            top = [[cx0, cy0, combZ[S[0]]], [cx0, cy0, 0]];
+          }
+          var p3 = top
             .concat(pl.map(function (p) { return [p[0], p[1], 0]; }))
             .concat([[end[0], end[1], z]]);
           o.push('<path d="' + axoPath(p3, t) + '" style="fill:none;stroke:' + S[2] + ';stroke-width:0.45"/>');
@@ -1823,20 +1841,83 @@
         var r1 = t.P(sx0, sy0, 0);
         axoLevel(o, r1[0] - 14, r1[1], 0);
       } else if (collAt) {
-        // Гребёнка — поперёк первого участка трассы: в эту же сторону
-        // разнесены лучи (offsetPoly сдвигает на (−dy, dx)), и спуски
-        // приходят ровно на неё.
-        var a0 = collAt[0], a1 = collAt[1];
-        var dx = a1[0] - a0[0], dy = a1[1] - a0[1], dl = Math.hypot(dx, dy) || 1;
-        var nx = -dy / dl, ny = dx / dl, half = (lanes - 1) / 2 * lane + mm(150);
-        var c0 = t.P(a0[0] - nx * half, a0[1] - ny * half, mm(AXO_COLL_MM));
-        var c1 = t.P(a0[0] + nx * half, a0[1] + ny * half, mm(AXO_COLL_MM));
-        o.push('<line x1="' + n(c0[0]) + '" y1="' + n(c0[1]) + '" x2="' + n(c1[0]) + '" y2="' + n(c1[1]) +
-          '" style="stroke:#000;stroke-width:1.2;stroke-linecap:round"/>');
-        o.push(txt(c1[0] + 2.5, c1[1] - 2.5, 'Коллекторы В1/Т3', { size: 3.0 }));
-        axoLevel(o, c0[0] - 14, c0[1], AXO_COLL_MM);
+        // Две гребёнки тонкими линиями своего цвета: от крайнего выхода до
+        // крайнего с запасом на заглушку и кран с каждой стороны
+        var ends = null;
+        [['cw', COL_CW, AXO_COLL_MM], ['hw', COL_HW, AXO_COLL_MM + 250]].forEach(function (G) {
+          var offs = combOff[G[0]];
+          if (!offs.length) return;
+          var lo = Math.min.apply(null, offs) - mm(120), hi = Math.max.apply(null, offs) + mm(120);
+          var c0 = t.P(cA[0] + cnx * lo, cA[1] + cny * lo, combZ[G[0]]);
+          var c1 = t.P(cA[0] + cnx * hi, cA[1] + cny * hi, combZ[G[0]]);
+          o.push('<line x1="' + n(c0[0]) + '" y1="' + n(c0[1]) + '" x2="' + n(c1[0]) + '" y2="' + n(c1[1]) +
+            '" style="stroke:' + G[1] + ';stroke-width:1.0;stroke-linecap:round"/>');
+          // отметка слева у холодной гребёнки, справа у горячей — не слипаются
+          if (G[0] === 'cw') axoLevel(o, Math.min(c0[0], c1[0]) - 15, (c0[0] < c1[0] ? c0 : c1)[1], G[2], COL_CW);
+          else axoLevel(o, Math.max(c0[0], c1[0]) + 1.5, (c0[0] > c1[0] ? c0 : c1)[1], G[2], COL_HW);
+          var mid = [(c0[0] + c1[0]) / 2, (c0[1] + c1[1]) / 2];
+          if (!ends || mid[1] < ends[1]) ends = mid;     // выноска — от верхней гребёнки
+        });
+        if (ends) {
+          // подпись на выноске, а не впритык к линии
+          var lx = ends[0] + 8, ly = ends[1] - 12;
+          o.push('<polyline points="' + n(ends[0]) + ',' + n(ends[1]) + ' ' + n(lx) + ',' + n(ly) + ' ' + n(lx + 27) + ',' + n(ly) +
+            '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+          o.push(txt(lx + 1, ly - 1, 'Коллекторы В1, Т3', { size: 3.0 }));
+        }
       }
     } else {
+      // Подписи на схеме К1 сходятся у основания стояка: там кончаются все
+      // выпуски, стоит отметка пола стояка, а у унитаза рядом свой выпуск с
+      // отметкой ±0,000 и подписью «d110, i=0,02». Раньше всё это ложилось
+      // одно на другое. Теперь каждая подпись занимает прямоугольник, и
+      // следующая ищет себе свободное место среди нескольких положений.
+      var boxes = [];
+      var hit = function (b) {
+        return boxes.some(function (c) { return b[0] < c[2] && b[2] > c[0] && b[1] < c[3] && b[3] > c[1]; });
+      };
+      var overlap = function (b) {
+        var s = 0;
+        boxes.forEach(function (c) {
+          var w = Math.min(b[2], c[2]) - Math.max(b[0], c[0]), h = Math.min(b[3], c[3]) - Math.max(b[1], c[1]);
+          if (w > 0 && h > 0) s += w * h;
+        });
+        return s;
+      };
+      var take = function (cands) {              // cands: [[x0,y0,x1,y1, payload]]
+        for (var ci = 0; ci < cands.length; ci++) if (!hit(cands[ci])) { boxes.push(cands[ci]); return cands[ci]; }
+        // свободного места нет — берём, где перекрытие меньше всего
+        var best = cands[0], bs = overlap(best);
+        cands.forEach(function (c) { var s = overlap(c); if (s < bs) { bs = s; best = c; } });
+        boxes.push(best);
+        return best;
+      };
+      // уровень «▽ +0,000»: значок в точке, текст до x + 14
+      var levelBox = function (x, y) { return [x - 1.4, y - 5.4, x + 14, y + 0.2]; };
+      var putLevel = function (px, py, val, col, pref) {
+        // pref: 'r' — сначала справа от точки, 'l' — слева
+        var R = [px + 1.2, py - 0.6], Lf = [px - 15, py - 0.6];
+        var pos = pref === 'l' ? [Lf, R, [Lf[0], Lf[1] - 5.5], [R[0], R[1] + 5.5]]
+                               : [R, Lf, [R[0], R[1] - 5.5], [Lf[0], Lf[1] + 5.5]];
+        var b = take(pos.map(function (p) { var bb = levelBox(p[0], p[1]); bb.p = p; return bb; }));
+        axoLevel(o, b.p[0], b.p[1], val, col);
+      };
+
+      // сначала стояки: их положение и подписи не двигаются
+      var riserDraw = risers.map(function (r, ri) {
+        var a = t.P(r.x, r.y, -mm(600)), b = t.P(r.x, r.y, mm(H));
+        o.push('<line x1="' + n(a[0]) + '" y1="' + n(a[1]) + '" x2="' + n(b[0]) + '" y2="' + n(b[1]) +
+          '" style="stroke:' + COL_SEW + ';stroke-width:1.0"/>');
+        var lbl = 'Ст. К1' + (risers.length > 1 ? '-' + (ri + 1) : '') + ' d110';
+        o.push(txt(b[0] + 2, b[1] + 3, lbl, { size: 3.0, fill: COL_SEW }));
+        boxes.push([b[0] + 2, b[1], b[0] + 2 + lbl.length * 1.55, b[1] + 3.6]);
+        boxes.push([Math.min(a[0], b[0]) - 0.6, Math.min(a[1], b[1]), Math.max(a[0], b[0]) + 0.6, Math.max(a[1], b[1])]);
+        axoLevel(o, b[0] - 14, b[1] + 2.2, H);
+        boxes.push(levelBox(b[0] - 14, b[1] + 2.2));
+        return r;
+      });
+
+      var dLabels = [];
       lines.forEach(function (L) {
         var q = fx[L.i], h = WET_H[q.t], d = L.d || h.d;
         var slope = d >= 110 ? 0.02 : 0.03;
@@ -1850,26 +1931,45 @@
         o.push('<path d="' + axoPath(p3, t) + '" style="fill:none;stroke:' + COL_SEW +
           ';stroke-width:' + (d >= 110 ? 0.8 : 0.5) + '"/>');
         var e = t.P(start[0], start[1], mm(h.sew));
-        axoLevel(o, e[0] + 1.2, e[1] - 0.6, h.sew, COL_SEW);
         marks.push({ p: e, t: q.t });
-        // подпись диаметра и уклона — на самом длинном участке
-        var bi = 1, bl = -1;
-        for (var j = 1; j < L.pts.length; j++) {
-          var sl = Math.hypot(L.pts[j][0] - L.pts[j - 1][0], L.pts[j][1] - L.pts[j - 1][1]);
-          if (sl > bl) { bl = sl; bi = j; }
-        }
-        var mA = t.P((L.pts[bi][0] + L.pts[bi - 1][0]) / 2, (L.pts[bi][1] + L.pts[bi - 1][1]) / 2, (zs[bi] + zs[bi - 1]) / 2);
-        o.push(txt(mA[0], mA[1] - 1.4, 'd' + d + ', i=' + String(slope).replace('.', ','), { size: 2.5, anchor: 'middle', fill: COL_SEW }));
+        boxes.push([e[0] - 5.2, e[1] - 4.6, e[0] - 0.8, e[1] - 0.2]);   // кружок с буквой прибора
+        dLabels.push({ L: L, zs: zs, d: d, slope: slope, e: e, sew: h.sew });
       });
-      risers.forEach(function (r, ri) {
-        var a = t.P(r.x, r.y, -mm(600)), b = t.P(r.x, r.y, mm(H));
-        o.push('<line x1="' + n(a[0]) + '" y1="' + n(a[1]) + '" x2="' + n(b[0]) + '" y2="' + n(b[1]) +
-          '" style="stroke:' + COL_SEW + ';stroke-width:1.0"/>');
-        var lbl = 'Ст. К1' + (risers.length > 1 ? '-' + (ri + 1) : '') + ' d110';
-        o.push(txt(b[0] + 2, b[1] + 3, lbl, { size: 3.0, fill: COL_SEW }));
+      // отметка пола у стояка — слева, выпуски приборов — справа от своего конца
+      riserDraw.forEach(function (r) {
         var fl = t.P(r.x, r.y, 0);
-        axoLevel(o, fl[0] - 14, fl[1], 0);
-        axoLevel(o, b[0] - 14, b[1] + 2.2, H);
+        putLevel(fl[0] - 14 - 1.2, fl[1] + 0.6, 0, null, 'r');
+      });
+      dLabels.forEach(function (D) { putLevel(D.e[0], D.e[1], D.sew, COL_SEW, 'r'); });
+      // подпись диаметра и уклона — на самом длинном участке, а если там
+      // занято — на соседних участках или над/под линией
+      dLabels.forEach(function (D) {
+        var L = D.L, s2 = 'd' + D.d + ', i=' + String(D.slope).replace('.', ',');
+        var w = s2.length * 1.3, segs = [];
+        for (var j = 1; j < L.pts.length; j++)
+          segs.push({ j: j, l: Math.hypot(L.pts[j][0] - L.pts[j - 1][0], L.pts[j][1] - L.pts[j - 1][1]) });
+        segs.sort(function (a, b) { return b.l - a.l; });
+        var cands = [];
+        segs.forEach(function (sg) {
+          var j = sg.j;
+          [0.5, 0.3, 0.7].forEach(function (u) {
+            var mA = t.P(L.pts[j - 1][0] + (L.pts[j][0] - L.pts[j - 1][0]) * u,
+              L.pts[j - 1][1] + (L.pts[j][1] - L.pts[j - 1][1]) * u,
+              D.zs[j - 1] + (D.zs[j] - D.zs[j - 1]) * u);
+            // над и под линией, дальше — со сдвигом вбок: короткий выпуск
+            // у стояка уже подписи, и по центру ей места нет
+            [[0, -1.4], [0, 4.2], [0, -5.6], [0, 8.4], [w / 2 + 2, -1.4], [-w / 2 - 2, -1.4],
+             [w / 2 + 2, 4.2], [-w / 2 - 2, 4.2]].forEach(function (dd) {
+              var cx = mA[0] + dd[0], cyy = mA[1] + dd[1];
+              var bb = [cx - w / 2, cyy - 2.6, cx + w / 2, cyy + 0.4];
+              bb.p = [cx, cyy];
+              cands.push(bb);
+            });
+          });
+        });
+        if (!cands.length) return;
+        var b = take(cands);
+        o.push(txt(b.p[0], b.p[1], s2, { size: 2.5, anchor: 'middle', fill: COL_SEW }));
       });
     }
 
@@ -2083,7 +2183,7 @@
   /** Компактный «пирог» конструкции с подписями слоёв */
   function pieBlock(o, x, y, w, title2, layers) {
     o.push(txt(x + w / 2, y - 1.6, title2, { size: 3.3, anchor: 'middle' }));
-    var yy = y, i;
+    var yy = y, i, labY = -1e9;
     for (i = 0; i < layers.length; i++) {
       var h = Math.max(1.8, Math.min(5, (layers[i].thick || 60) / 40));
       o.push('<rect x="' + n(x) + '" y="' + n(yy) + '" width="' + n(w) + '" height="' + n(h) +
@@ -2091,8 +2191,14 @@
       if (layers[i].hatch)
         for (var hx = x + 1.2; hx < x + w - 0.6; hx += 2.6)
           o.push(line(hx, yy + h, Math.min(hx + h, x + w), yy));
-      o.push(line(x + w, yy + h / 2, x + w + 3, yy + h / 2));
-      o.push(txt(x + w + 4, yy + h / 2 + 1, layers[i].name, { size: 2.7 }));
+      // Тонкие слои (стяжка, плёнка) тоньше строки подписи: подписи шли одна
+      // по другой. Держим шаг подписей не меньше 3,2 мм, выноска — ломаная.
+      var mid = yy + h / 2, ly2 = Math.max(mid, labY + 3.2);
+      o.push('<polyline points="' + n(x + w) + ',' + n(mid) + ' ' + n(x + w + 3) + ',' + n(mid) +
+        ' ' + n(x + w + 5) + ',' + n(ly2) + ' ' + n(x + w + 6) + ',' + n(ly2) +
+        '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+      o.push(txt(x + w + 7, ly2 + 1, layers[i].name, { size: 2.7 }));
+      labY = ly2;
       yy += h;
     }
     return yy;
@@ -2109,7 +2215,8 @@
     stepMm = stepMm || opts.stepMm || 150;
     var vec = wallsBody(f, t);
     o.push(vec || imageTag(f, t, 0.5));
-    if (vec) o.push(axesBody(f, t, SUM_PLAN));       // оси и размеры — по контурам стен
+    var axes = vec ? axesBody(f, t, SUM_PLAN) : '';  // оси и размеры — по контурам стен
+    o.push(axes);
 
     // 1) тёплый пол — та же укладка, что на профильном листе, но тоньше
     floorLoops(f, stepMm, loopLimit(stepMm)).forEach(function (Z) {
@@ -2192,8 +2299,11 @@
       });
     });
 
-    // 6) составы конструкций внизу
-    var cy = 216;
+    // 6) составы конструкций внизу. Под планом с осями стоят кружки осей
+    // (y1 + 10) и две размерные цепочки (y1 + 18, y1 + 25) — составы и
+    // масштаб опускаются ниже них, иначе «Состав пола» и подпись масштаба
+    // ложились прямо на цепочку и марку оси.
+    var cy = axes ? SUM_PLAN.y1 + 36 : 216;
     if (opts.floorLayers && opts.floorLayers.length)
       pieBlock(o, 108, cy, 44, 'Состав пола ' + num + ' этажа', opts.floorLayers);
     if (opts.wallLayers && opts.wallLayers.length)
@@ -2213,7 +2323,7 @@
         o.push(txt(SUM_TBL + 10, yy + 1, r[0], { size: 2.9 }));
       });
     var scale = f.pxPerM ? Math.round(1000 / (f.pxPerM * t.s)) : 0;
-    if (scale) o.push(txt(108, 208, 'Масштаб печати ~1:' + scale + ' (лист А3)', { size: 3.0 }));
+    if (scale) o.push(txt(108, axes ? 271 : 208, 'Масштаб печати ~1:' + scale + ' (лист А3)', { size: 3.0 }));
     o.push(txt(228, 273.8, 'Сети нанесены автоматически по смете и разметке планов heatcalc.ru.', { size: 3.0 }));
     return o.join('');
   }
