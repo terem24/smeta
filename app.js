@@ -7321,6 +7321,19 @@ const app = {
             ${designOk
                 ? row('📐', 'Листы проекта и редактор планов всем монтажникам этой компании', designOn, isViewer, 'design', 'dist_des_' + idSafe)
                 : `<span style="font-size:10px; color:#D97706;" title="Обновите recognize_archive.php на сервере">📐 нет на сервере</span>`}
+            ${(() => {
+                // Монтаж всей компании — хранится в базе (app_settings.works_access), не на сервере распознавания
+                const on = !!((this.worksAccess().dists || {})[d.id]);
+                return `<span class="admin-bulk-switch" title="Монтажные работы всем учёткам этой компании, в том числе продавцам. Выключено — решает таблица «Тарифы»">
+                    <span style="font-size:11px; color:var(--text-sec); width:14px;">🛠</span>
+                    <label class="switch">
+                        <input type="checkbox" ${on ? 'checked' : ''} ${this.canEditTariffs() ? '' : 'disabled'}
+                               onchange="app.toggleDistWorks('${d.id}', this.checked, this)">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="admin-bulk-cap" style="color:${on ? '#10B981' : 'var(--text-sec)'};">${on ? 'монтаж всем' : 'монтаж по тарифу'}</span>
+                </span>`;
+            })()}
         </div>`;
     },
 
@@ -16926,7 +16939,139 @@ const app = {
     },
 
     canUseDocs: function () { return this.tariffAccess('docs') === 'on'; },
-    canUseWorks: function () { return this.tariffAccess('works') === 'on'; },
+    // Монтаж решается в три слоя, сильнейший первым:
+    //   1) личная отметка в карточке пользователя (вкл или выкл);
+    //   2) «монтаж всей компании» в таблице «Дистрибьюторы» (только включает);
+    //   3) столбец «Монтаж» таблицы «Тарифы».
+    // Так продавцу одного дистрибьютора можно открыть монтаж, не открывая его
+    // всем продавцам платформы. Отметки лежат в app_settings.works_access:
+    // { users: { почта: true|false }, dists: { id: true } }.
+    canUseWorks: function () {
+        const row = this.accessUserRow();
+        if (!row.distributor_id && this.state.distributorId) row.distributor_id = this.state.distributorId;
+        return this.worksDecisionFor(row, this.tariffAccount(), this.tariffPlan()).on;
+    },
+
+    worksAccess: function () { return (this.appSettings && this.appSettings.works_access) || {}; },
+    worksUserKey: function (u) { return String((u && (u.email || u.username)) || '').trim().toLowerCase(); },
+
+    // Почему у человека монтаж есть или нет: { on, by: 'own' | 'dist' | 'tariff', own }
+    worksDecisionFor: function (u, account, plan) {
+        const acc = this.worksAccess();
+        const own = this.accessFlagFor(acc.users, this.worksUserKey(u));
+        if (own !== undefined) return { on: own, by: 'own', own: own };
+        const dist = u && u.distributor_id;
+        if (dist && (acc.dists || {})[dist]) return { on: true, by: 'dist' };
+        return { on: this.tariffCell(account, plan, 'works') === 'on', by: 'tariff' };
+    },
+
+    // Строка таблицы «Тарифы» для чужой учётки — по тем же признакам, что
+    // tariffAccount/isPro у себя: роль, анкета, тариф и срок пробного периода.
+    tariffAccountOfUser: function (u) {
+        const t = (u && u.account_type) || '';
+        if (t === 'manager' || t === 'viewer') return t;
+        const list = Array.isArray(u && (u.activity_types || u.activityTypes)) ? (u.activity_types || u.activityTypes) : [];
+        const has = (w) => list.some(a => String(a).toLowerCase().indexOf(w) !== -1);
+        return (has('продав') && !has('монтаж')) ? 'seller' : 'installer';
+    },
+    tariffPlanOfUser: function (u) {
+        const t = (u && u.account_type) || '';
+        const demoOk = u && u.demo_ends_at && new Date(u.demo_ends_at) >= new Date();
+        if (t === 'pro') return (u.demo_ends_at && !demoOk) ? 'base' : 'pro';
+        if (['admin', 'viewer', 'manager'].includes(t)) return demoOk ? 'pro' : 'base';
+        return 'base';
+    },
+
+    // Ячейка «Монтаж» в таблице пользователей: переключатель ставит личную
+    // отметку, «↺» её снимает — дальше решают компания и таблица тарифов.
+    worksAccessCell: function (u, isViewer) {
+        const key = this.worksUserKey(u);
+        if (!key) return `<span style="font-size:10px; color:var(--text-sec);" title="Нет email или логина — отметку ставить не к чему">—</span>`;
+        const d = this.worksDecisionFor(u, this.tariffAccountOfUser(u), this.tariffPlanOfUser(u));
+        const label = d.by === 'own' ? (d.on ? 'лично вкл' : 'лично выкл') : (d.by === 'dist' ? 'по компании' : (d.on ? 'по тарифу' : 'выключено'));
+        const title = d.by === 'own' ? 'Отметка поставлена лично — сильнее компании и таблицы «Тарифы». ↺ — снять отметку'
+            : d.by === 'dist' ? 'Монтаж открыт всей компании дистрибьютора. Переключатель поставит личную отметку'
+                : 'Решает столбец «Монтаж» таблицы «Тарифы». Переключатель поставит личную отметку';
+        const keyEsc = key.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        const idSafe = String(u.id).replace(/[^a-zA-Z0-9_-]/g, '');
+        return `<div style="display:flex; flex-direction:column; align-items:center; gap:3px;" title="${title}">
+            <label class="switch">
+                <input type="checkbox" ${d.on ? 'checked' : ''} ${isViewer ? 'disabled' : ''}
+                       onchange="app.setWorksUserFlag('${keyEsc}', this.checked)">
+                <span class="slider"></span>
+            </label>
+            <span id="works_acc_${idSafe}" style="font-size:9.5px; color:${d.on ? '#10B981' : 'var(--text-sec)'}; white-space:nowrap;">${label}${d.by === 'own' && !isViewer
+                ? ` <a href="#" onclick="event.preventDefault(); event.stopPropagation(); app.setWorksUserFlag('${keyEsc}', null);" style="color:var(--primary); text-decoration:none;" title="Снять личную отметку">↺</a>` : ''}</span>
+        </div>`;
+    },
+
+    // value: true / false — личная отметка, null — снять
+    setWorksUserFlag: function (key, value) {
+        if (!this.canEditTariffs()) { app.alert('Менять доступ к монтажу может только администратор.'); return; }
+        key = String(key || '').trim().toLowerCase();
+        if (!key) return;
+        this.saveWorksAccess(acc => {
+            acc.users = acc.users || {};
+            Object.keys(acc.users).forEach(k => { if (String(k).toLowerCase() === key) delete acc.users[k]; });
+            if (value === true || value === false) acc.users[key] = value;
+            return acc;
+        });
+    },
+
+    // Монтаж всей компании: включено — открыт всем её учёткам, выключено — решает таблица
+    toggleDistWorks: async function (distId, enabled, input) {
+        if (!this.canEditTariffs()) { if (input) input.checked = !enabled; app.alert('Менять доступ к монтажу может только администратор.'); return; }
+        const dist = ((this.adminData && this.adminData.distributors) || []).find(x => String(x.id) === String(distId));
+        const name = dist ? dist.company_name : distId;
+        const ask = enabled
+            ? `Открыть монтаж всем учёткам «${name}», в том числе продавцам?`
+            : `Снять «монтаж всей компании» у «${name}»? Дальше решит таблица «Тарифы» (личные отметки останутся).`;
+        if (!await this.confirm(ask)) { if (input) input.checked = !enabled; return; }
+        this.saveWorksAccess(acc => {
+            acc.dists = acc.dists || {};
+            if (enabled) acc.dists[distId] = true; else delete acc.dists[distId];
+            return acc;
+        });
+    },
+
+    // Запись отметок: перечитать строку, поменять своё, записать — очередью,
+    // как у таблицы тарифов, чтобы быстрые щелчки и второй админ не затирали друг друга.
+    saveWorksAccess: function (patch) {
+        const clone = (v) => JSON.parse(JSON.stringify(v || {}));
+        this.appSettings = Object.assign({}, this.appSettings, { works_access: patch(clone(this.worksAccess())) });
+        this.refreshWorksViews();
+        this._worksSaveChain = (this._worksSaveChain || Promise.resolve()).then(async () => {
+            try {
+                const { data, error: readErr } = await supabaseClient.from('app_settings')
+                    .select('value').eq('key', 'works_access').maybeSingle();
+                if (readErr) throw readErr;
+                const value = patch(clone(data && data.value));
+                const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+                const { error } = await supabaseClient.from('app_settings')
+                    .upsert({ key: 'works_access', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+                if (error) throw error;
+                this.appSettings = Object.assign({}, this.appSettings, { works_access: value });
+            } catch (e) {
+                console.error('[монтаж] отметка не сохранена:', e);
+                await this.loadAppSettings(true);
+                app.alert('Не удалось сохранить доступ к монтажу: ' + (e.message || e));
+            } finally {
+                this.refreshWorksViews();
+            }
+        });
+        return this._worksSaveChain;
+    },
+
+    // После смены отметок: свой интерфейс и открытая вкладка панели
+    refreshWorksViews: function () {
+        try { this.syncTariffUI(); } catch (e) { }
+        if (this._adminTab === 'stats' || this._adminTab === 'distributors') {
+            const c = document.getElementById('admin_content');
+            const top = c ? c.scrollTop : 0;
+            this.renderAdminMain();
+            if (c) c.scrollTop = top;
+        }
+    },
     // Переключатель «Аналог» уводит смету на ROMMER, поэтому нужен и столбец ROMMER.
     canUseAnalog: function () { return this.canUseBrand('ROMMER') && this.tariffAccess('analog') === 'on'; },
 
@@ -18545,6 +18690,7 @@ const app = {
                 <b>Всем</b> — открыто всем в строке. <b>Нет</b> — закрыто всем в строке.
                 <b>По доступу</b> — решают переключатели доступа, как раньше: компании в «Дистрибьюторах», региону в «Пользователях»; администратору открыто по должности.<br>
                 <b>Личная отметка</b> распознавания или проекта в карточке человека сильнее таблицы: включена — откроется, даже если в строке «Нет»; снята — закроется, даже если «Всем».<br>
+                <b>Монтаж</b> можно открыть поштучно: личной отметкой в столбце «Монтаж» раздела «Пользователи» или всей компании переключателем 🛠 в «Дистрибьюторах». Обе сильнее таблицы.<br>
                 <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
                 <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
             </div>
@@ -18636,6 +18782,7 @@ const app = {
         { name: 'Доступ к распознаванию и проектированию', hint: 'лично, компании, региону', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Таблица тарифов', hint: 'ассортимент и функции по учётке и тарифу', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Монтаж лично и всей компании', hint: 'столбец «Монтаж» в «Пользователях», переключатель в «Дистрибьюторах»', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Разделы панели по ролям', hint: 'вкладка «Тарифы», вторая таблица', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
         { group: 'Работа с монтажниками' },
         { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
@@ -19293,7 +19440,7 @@ const app = {
                     <!-- Ширины заданы явно и таблица фиксированной раскладки:
                          при авторазметке колонки прыгали от строки к строке,
                          а длинные названия дистрибьюторов рвали выравнивание. -->
-                    <table class="inv-table" style="margin-bottom: 30px; table-layout: fixed; width: 100%; min-width: 1195px;">
+                    <table class="inv-table" style="margin-bottom: 30px; table-layout: fixed; width: 100%; min-width: 1295px;">
                         <thead><tr>
                             <th style="width:30px;">#</th>
                             <th style="width:280px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('name')" title="Сортировать по имени">Имя / Контакты${sortArrow('name')}</th>
@@ -19302,6 +19449,7 @@ const app = {
                             <th style="width:205px;">Дистрибьютор</th>
                             <th style="width:100px; text-align:center;" title="Доступ монтажника к распознаванию смет">Распознавание</th>
                             <th style="width:100px; text-align:center;" title="Доступ к листам проекта и редактору планов">Проектирование</th>
+                            <th style="width:100px; text-align:center;" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы»">Монтаж</th>
                             <th style="text-align:right; cursor:pointer; user-select:none; width: 90px;" onclick="app.sortAdminColumn('login')" title="Сортировать по дате последнего входа">Вход${sortArrow('login')}</th>
                             <th style="text-align:center; width: 145px;">Действия</th>
                         </tr></thead>
@@ -19477,6 +19625,7 @@ const app = {
                         <td onclick="event.stopPropagation();">${distCell}</td>
                         <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${recCell}</td>
                         <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${desCell}</td>
+                        <td class="admin-cell-half" onclick="event.stopPropagation();" style="text-align:center;">${this.worksAccessCell(u, !this.canEditTariffs())}</td>
                         <td style="text-align:right; white-space:nowrap;" title="${lastVisTitle}">${lastVis}</td>
                         <td class="admin-cell-actions" onclick="event.stopPropagation();" style="text-align:center; white-space:nowrap;">
                             <div style="display:flex; gap:5px; justify-content:center; align-items:center;">
