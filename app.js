@@ -11377,7 +11377,7 @@ const app = {
                         ${historyRows ? `<details style="margin-top:2px;"><summary style="cursor:pointer; font-size:11.5px; color:var(--text-sec);">История статусов (${g.list.length})</summary><div style="margin-top:6px;">${historyRows}</div></details>` : ''}
                         <div style="display:flex; gap:6px; margin-top:4px;">
                             ${loc ? `<button class="btn-subscribe" onclick="app.loadRequestedEstimate(${loc.index})" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0;">Открыть смету</button>` : ''}
-                            <button class="btn-subscribe" onclick="app.lazy('docs').then(() => Docs.openForOrder('${esc(g.calcId)}', '${shareId || ''}'))" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border);">📄 Документы</button>
+                            ${this.canUseDocs() ? `<button class="btn-subscribe" onclick="app.lazy('docs').then(() => Docs.openForOrder('${esc(g.calcId)}', '${shareId || ''}'))"style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border);">📄 Документы</button>` : ''}
                         </div>
                      </div>`;
         });
@@ -16749,7 +16749,8 @@ const app = {
         { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
-        { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' }
+        { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
+        { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' }
     ],
 
     // Как было до таблицы: ROMMER и «Деньги» — Профи (продавцу «Деньги» не
@@ -16766,8 +16767,13 @@ const app = {
         if (feature === 'recognize') return pro ? 'list' : 'off';
         if (feature === 'design') return 'list';
         if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
+        // Договор подряда и акты — про монтаж: исходно только монтажнику, на
+        // любом тарифе. Продавцу, менеджеру и наблюдателю закрыто (15.09.2026).
+        if (feature === 'docs') return account === 'installer' ? 'on' : 'off';
         return 'off';
     },
+
+    canUseDocs: function () { return this.tariffAccess('docs') === 'on'; },
 
     tariffCell: function (account, plan, feature) {
         const f = this.TARIFF_FEATURES.find(x => x.id === feature);
