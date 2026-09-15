@@ -30339,6 +30339,14 @@ const app = {
             const { data, error } = await supabaseClient.rpc('inactivity_report');
             if (error) throw error;
             this._inactiveReport = data || [];
+            // Отчёт база отдаёт по всей платформе. Наблюдателю и менеджеру — только
+            // монтажники своих компаний (как во всех прочих разделах). Удалённых
+            // здесь не останется: их строки в users уже нет, компанию не определить.
+            if (this.isScopedAdmin()) {
+                const ids = new Set(this.scopeUserIds().map(String));
+                this._inactiveReport = this._inactiveReport.filter(r =>
+                    (r.user_id && ids.has(String(r.user_id))) || this.isScopeEmail(r.email));
+            }
         } catch (e) {
             const known = String(e.message || '').indexOf('inactivity_report') !== -1;
             if (root()) root().innerHTML = `<div style="color:#EF4444; padding:20px;">
