@@ -44322,7 +44322,8 @@ const app = {
             if (plan[0] > 0) chromeRommerPrice += b4.rommer.price * plan[0] * 2;
             if (plan[1] > 0) chromeRommerPrice += b3.rommer.price * plan[1] * 2;
             if (plan[2] > 0) chromeRommerPrice += b2.rommer.price * plan[2] * 2;
-            chromeRommerPrice += catalog.manifold_brackets.price; // кронштейны в смете при любых блоках
+            // Кронштейны своего бренда: у блоков ROMMER — 2 раздвижных RSP-1002 на коллектор.
+            chromeRommerPrice += catalog.manifold_brackets_rommer ? catalog.manifold_brackets_rommer.price * 2 : catalog.manifold_brackets.price;
 
             customAlts = [
                 { id: stdStout.id, name: `Коллектор радиаторный (Стандарт, ${stdStout.loops} вых.)`, brand: 'STOUT', price: stdStoutPrice }
@@ -65217,7 +65218,12 @@ const app = {
                     let multiplier = manifoldsCount * 2;
                     // sortRank: -1 — сборка из блоков это тот же радиаторный коллектор,
                     // поэтому и в хромированном исполнении он открывает подраздел.
-                    if (plan[0] > 0) addToBill({ ...b4, sortRank: -1 }, plan[0] * multiplier, `Блок 4 вых.`, pipeGrp); if (plan[1] > 0) addToBill({ ...b3, sortRank: -1 }, plan[1] * multiplier, `Блок 3 вых.`, pipeGrp); if (plan[2] > 0) addToBill({ ...b2, sortRank: -1 }, plan[2] * multiplier, `Блок 2 вых.`, pipeGrp); addToBill(catalog.manifold_brackets, manifoldsCount, "Кронштейны.", pipeGrp);
+                    if (plan[0] > 0) addToBill({ ...b4, sortRank: -1 }, plan[0] * multiplier, `Блок 4 вых.`, pipeGrp); if (plan[1] > 0) addToBill({ ...b3, sortRank: -1 }, plan[1] * multiplier, `Блок 3 вых.`, pipeGrp); if (plan[2] > 0) addToBill({ ...b2, sortRank: -1 }, plan[2] * multiplier, `Блок 2 вых.`, pipeGrp);
+                    // Кронштейны — того же бренда, что блоки (серию решил расчёт выше, _radManifoldKind):
+                    // у STOUT пара SMB-0002 на коллектор, у ROMMER раздвижной RSP-1002 поштучно, 2 шт.
+                    const _brR = this._radManifoldKind === 'rmb' && catalog.manifold_brackets_rommer;
+                    if (_brR) addToBill(_brR, manifoldsCount * 2, `Кронштейн раздвижной к блокам ROMMER RMB-0004 — 2 шт. на коллектор${manifoldsCount > 1 ? ` × ${manifoldsCount} коллектора` : ''}.`, pipeGrp);
+                    else addToBill(catalog.manifold_brackets, manifoldsCount, "Кронштейны.", pipeGrp);
                 }
 
                 // Шкаф под радиаторный коллектор. Узла подмеса тут не бывает, поэтому
