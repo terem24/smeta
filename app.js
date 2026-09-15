@@ -44260,7 +44260,10 @@ const app = {
                 let secAnalog = this.state.sectionAnalog && this.state.sectionAnalog['3. Приборы отопления'];
                 let isRommer = secAnalog !== undefined ? secAnalog : useRommer;
 
-                if (this.state.radManifoldType === 'chrome') {
+                // Блоки по умолчанию (render: этаж не влез в готовый коллектор) — всегда STOUT.
+                if (this._radManifoldAuto === 'chrome') {
+                    activeId = 'chrome';
+                } else if (this._radManifoldAuto !== 'standard' && this.state.radManifoldType === 'chrome') {
                     activeId = isRommer ? 'chrome_rommer' : 'chrome';
                 } else {
                     activeId = (isRommer && stdStout.rommer) ? stdStout.rommer.id : stdStout.id;
@@ -47375,9 +47378,15 @@ const app = {
             // числа выходов, а на 14–20 выходов блоков — старший в ряду.
             let stdStout = catalog.manifolds_rad.find(x => x.loops >= loops) || catalog.manifolds_rad[catalog.manifolds_rad.length - 1];
             let stdId = stdStout.id;
-            
-            delete this.state.swaps[stdId];
-            if (stdStout.rommer) delete this.state.swaps[stdStout.rommer.id];
+
+            // Выбор исполнения один на все радиаторные коллекторы: снимаем его со всех
+            // ключей ряда. render ищет замену под ключами нескольких раскладок (готовый /
+            // блоки / несколько коллекторов на этаж), и старый выбор под соседним ключом
+            // перебивал бы новый.
+            catalog.manifolds_rad.forEach(x => {
+                delete this.state.swaps[x.id];
+                if (x.rommer) delete this.state.swaps[x.rommer.id];
+            });
             
             this.state.swaps[stdId] = chosenId;
 
@@ -53334,7 +53343,8 @@ const app = {
         if (this.state.radConnectionScheme === 'tee') {
             this.state.swaps[m.id] = 'tee';
         } else {
-            delete this.state.swaps[m.id];
+            // Назад на коллекторную — исполнение по умолчанию, со всех ключей ряда (см. applySwap).
+            catalog.manifolds_rad.forEach(x => { delete this.state.swaps[x.id]; });
         }
         this.syncUI();
         this.render();
@@ -64354,7 +64364,7 @@ const app = {
             // и меньший из них должен вместить свой этаж. Раньше делили приборы дома пополам:
             // 10 на первом и 4 на втором давали два коллектора на 7, и трём приборам первого
             // этажа выхода не хватало. Без помещений (быстрый режим) — прежнее пополам.
-            // Минимум — 2 выхода (меньше коллекторов в ряду нет), максимум — старший в ряду.
+            // Минимум — 2 выхода (меньше коллекторов в ряду нет).
             const _perFloor = app._radDevPerFloor || {};
             const _floorMax = (this.state.detailedRooms && Object.keys(_perFloor).length)
                 ? (this.state.floors === 2 ? Math.max(_perFloor[1] || 0, _perFloor[2] || 0) : ((_perFloor[1] || 0) + (_perFloor[2] || 0)))
@@ -64371,27 +64381,58 @@ const app = {
             const _stdRow = _radRommer ? _manRow.filter(x => x.rommer) : _manRow;
             const _stdMax = _stdRow.length ? _stdRow[_stdRow.length - 1].loops : 2;
             const _chromeMax = this.radChromeBlocksMax();
-            const _loopsFor = max => Math.max(2, Math.min(_floorMax, max));
-            // Замена на блоки хранится в swaps под id готового коллектора того же числа
-            // выходов (applySwap), поэтому ищем её под обоими возможными ключами: у ROMMER
-            // готовый обрезан на 12, а блоки на тот же этаж собираются на 13 и больше.
-            const _isChromeSwap = x => x && this.state.swaps && (this.state.swaps[x.id] === 'chrome' || this.state.swaps[x.id] === 'chrome_rommer');
-            const _chromeKey = [_manKey(_loopsFor(_chromeMax)), _manKey(_loopsFor(_stdMax))].find(_isChromeSwap);
-            const _manMax = _chromeKey ? _chromeMax : _stdMax;
-            let reqLoops = _loopsFor(_manMax);
-            this._radLoopsShort = _floorMax > _manMax ? _floorMax - _manMax : 0;
+            // Каждому прибору — свой выход, без исключений по умолчанию:
+            //  • помещается в готовый коллектор — готовый;
+            //  • больше готового, но не больше предела блоков — сборка из блоков SMB-6850;
+            //  • больше предела блоков — на этаж второй (третий…) коллектор, приборы поровну,
+            //    и тип снова выбирается по числу выходов на один коллектор.
+            // Ручная замена в окне «Заменить» сильнее умолчания: выбран готовый — делим этаж
+            // под готовый, выбраны блоки — под блоки.
+            const _floorCounts = (this.state.detailedRooms && Object.keys(_perFloor).length)
+                ? (this.state.floors === 2 ? [_perFloor[1] || 0, _perFloor[2] || 0] : [(_perFloor[1] || 0) + (_perFloor[2] || 0)])
+                : (this.state.floors === 2 ? [_floorMax, _floorMax] : [_floorMax]);
+            const _split = cap => {
+                const ks = _floorCounts.map(n => Math.max(1, Math.ceil(n / cap)));
+                const per = Math.max(2, ..._floorCounts.map((n, i) => Math.ceil(n / ks[i])));
+                return { per, count: ks.reduce((s, k) => s + k, 0), perFloor: Math.max(...ks) };
+            };
+            const _swapAt = x => (x && this.state.swaps) ? this.state.swaps[x.id] : undefined;
+            const _isChromeVal = v => v === 'chrome' || v === 'chrome_rommer';
+            const _isStdVal = v => typeof v === 'string' && v !== 'tee' && !_isChromeVal(v);
+            // Замена хранится в swaps под id готового коллектора на число выходов из прошлого
+            // расчёта (applySwap берёт lastRadLoops), поэтому смотрим ключи всех трёх раскладок.
+            const _rowMaxOf = v => {
+                const row = String(v).startsWith('RMS-') ? _manRow.filter(x => x.rommer) : _manRow;
+                return row.length ? row[row.length - 1].loops : _stdMax;
+            };
+            const _swapKey = [_split(_stdMax), _split(_chromeMax)]
+                .map(s => _manKey(s.per)).find(x => _isChromeVal(_swapAt(x)) || _isStdVal(_swapAt(x)));
+            const _swapVal = _swapAt(_swapKey);
+            let _radMode, _layout;
+            if (_isChromeVal(_swapVal)) {
+                _radMode = 'chrome'; _layout = _split(_chromeMax);
+            } else if (_isStdVal(_swapVal)) {
+                _radMode = 'standard'; _layout = _split(_rowMaxOf(_swapVal));
+            } else if (_floorMax <= _stdMax) {
+                _radMode = 'standard'; _layout = _split(_stdMax);
+            } else {
+                _layout = _split(_chromeMax);
+                _radMode = _layout.per <= _stdMax ? 'standard' : 'chrome';
+            }
+            // Окно замены по этому флагу отмечает активный вариант, когда замены вручную нет.
+            this._radManifoldAuto = _swapVal === undefined ? _radMode : null;
+            let reqLoops = _layout.per;
             this.state.lastRadLoops = reqLoops;
-            let m = _chromeKey || _manKey(reqLoops);
-            if (this._radLoopsShort > 0 && this.state.radConnectionScheme !== 'tee') {
+            this._radManifoldsCount = _layout.count;
+            let m = (_swapKey && _isChromeVal(_swapVal)) ? _swapKey : _manKey(reqLoops);
+            if (_layout.perFloor > 1 && this.state.radConnectionScheme !== 'tee') {
                 this.groupWarns = this.groupWarns || {};
-                const _toBlocks = !_chromeKey && _floorMax <= _chromeMax
-                    ? ` заменить коллектор на регулировочные блоки — из них собирается до ${_chromeMax} выходов,` : '';
-                this.groupWarns[pipeGrp] = this.noteBox('warn', 'Выходов коллектора не хватит.',
-                    `На этаже ${_floorMax} приборов, у коллектора — ${reqLoops} выходов.`,
-                    `<div class="tip-p">${_chromeKey
-                        ? `Из регулировочных блоков коллектор собирается не больше чем на ${_chromeMax} выходов — под это число есть самый большой шкаф в каталоге.`
-                        : `Самый большой готовый коллектор ${_radRommer ? 'ROMMER' : 'STOUT'} в каталоге — на ${_stdMax} выходов.`} ${this._radLoopsShort} ${this.plural(this._radLoopsShort, 'прибор', 'прибора', 'приборов')} подключить некуда.</div>` +
-                    `<div class="tip-p"><b>Что делать:</b>${_toBlocks} поставить на этаж второй коллектор (кнопка «Добавить своё оборудование») или перевести часть приборов на тройниковую разводку.</div>`);
+                this.groupWarns[pipeGrp] = this.noteBox('info', 'На этаже несколько коллекторов.',
+                    `На этаже ${_floorMax} ${this.plural(_floorMax, 'прибор', 'прибора', 'приборов')} — ${_layout.perFloor} ${this.plural(_layout.perFloor, 'коллектор', 'коллектора', 'коллекторов')} по ${reqLoops} выходов.`,
+                    `<div class="tip-p">Каждому прибору нужен свой выход. ${_radMode === 'chrome'
+                        ? `Из регулировочных блоков коллектор собирается не больше чем на ${_chromeMax} выходов — это самый большой шкаф в каталоге.`
+                        : `Самый большой готовый коллектор в каталоге — на ${_rowMaxOf(_swapVal || (_radRommer ? 'RMS-' : 'SMS-'))} выходов.`} Поэтому приборы этажа разделены поровну между коллекторами.</div>` +
+                    `<div class="tip-p">Магистраль от котельной в смете и в гидравлике посчитана до одного коллектора — подводку к остальным добавьте по месту.</div>`);
             }
 
             // Ряд диаметров магистралей — общий для двух мест, где труба несёт мощность
@@ -64889,14 +64930,10 @@ const app = {
                     }
                 }
 
-                let manifoldsCount = (this.state.floors === 2) ? 2 : 1;
-                let radManifoldMode = 'standard';
-                if (m) {
-                    let swapVal = this.state.swaps && this.state.swaps[m.id];
-                    if (swapVal === 'chrome' || swapVal === 'chrome_rommer') {
-                        radManifoldMode = 'chrome';
-                    }
-                }
+                // Сколько коллекторов и какого исполнения — решено выше, при подборе выходов:
+                // по коллектору на этаж, а если этаж не влезает и в блоки — несколько.
+                let manifoldsCount = this._radManifoldsCount || ((this.state.floors === 2) ? 2 : 1);
+                let radManifoldMode = _radMode;
 
                 if (radManifoldMode === 'standard') {
                     if (m) {
@@ -64913,11 +64950,16 @@ const app = {
                         this.state.swaps[b4.id] = b4.rommer.id;
                         this.state.swaps[b3.id] = b3.rommer.id;
                         this.state.swaps[b2.id] = b2.rommer.id;
-                    } else if (m && this.state.swaps && this.state.swaps[m.id] === 'chrome') {
+                    } else if (this.state.swaps) {
+                        // Блоки STOUT — выбраны вручную или подставлены по умолчанию.
                         delete this.state.swaps[b4.id];
                         delete this.state.swaps[b3.id];
                         delete this.state.swaps[b2.id];
                     }
+                    // Без .rommer: у ROMMER в бренд-режиме блоки подменялись бы на его «аналоги»
+                    // (комплект кранов вместо блока на 3–4 выхода). Выход на 13+ у ROMMER даёт
+                    // только сборка из блоков STOUT, её и оставляем.
+                    if (!isRommerChrome) { b4 = { ...b4, rommer: undefined }; b3 = { ...b3, rommer: undefined }; b2 = { ...b2, rommer: undefined }; }
                     let multiplier = manifoldsCount * 2;
                     // sortRank: -1 — сборка из блоков это тот же радиаторный коллектор,
                     // поэтому и в хромированном исполнении он открывает подраздел.
