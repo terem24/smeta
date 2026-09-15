@@ -43776,6 +43776,21 @@ const app = {
                 ...(_stb16 ? [{ id: 'stable_16', name: _stb16.name, brand: 'STOUT', price: _stb16.price, imgId: _stb16.id }] : []),
                 ...(_stb16r ? [{ id: 'stable_16_r', name: _stb16r.name, brand: 'ROMMER', price: _stb16r.price, imgId: _stb16r.id }] : [])
             ];
+            // Две цены, как у трубы водоснабжения: труба за метр и система — труба
+            // с тем, что меняется вместе с ней (евроконусы, фитинги, изоляция).
+            const _rt = this.pipeOptionTotals('pipeType', customAlts.map(a => a.id));
+            const _rCur = _rt[this.state.pipeType] || 0;
+            customAlts = customAlts.map(a => {
+                const d = (_rt[a.id] || 0) - _rCur;
+                return {
+                    ...a,
+                    unitM2: a.price,
+                    unitHead: 'Труба, за м',
+                    sysHead: 'Система',
+                    price: _rt[a.id] || 0,
+                    sysText: (_rCur && d) ? `${d > 0 ? '+' : '−'}${Math.abs(d).toLocaleString('ru-RU')} ₽ к выбранной` : ''
+                };
+            });
         }
         // Транзит тёплого пола. Выбирается не только типоразмер, но и способ покупки:
         // бухта целиком или отрезок, отмеренный кратно 10 м. На 27 м трассы бухта 50 м
@@ -56808,27 +56823,26 @@ const app = {
     },
 
     /**
-     * Стоимость трубы водоснабжения вместе с фитингами под неё — для таблицы замены.
+     * Стоимость трубы вместе с фитингами под неё — для таблицы замены.
      *
-     * Смета пересчитывается под каждую трубу, и в сумму идут только строки, которые
-     * от выбора трубы меняются: сама труба (и подводка полотенцесушителя), евроконусы,
-     * водорозетки, гильзы, фиксаторы. Коллекторы, изоляция, крепёж и пробки
-     * одинаковы при любой трубе — на их фоне разница между трубами терялась бы.
+     * Смета пересчитывается под каждый вариант state[field], и в сумму идут только
+     * строки, которые от выбора трубы меняются: сама труба, евроконусы, водорозетки,
+     * гильзы, фиксаторы, у трубы без изоляции — трубки изоляции. Коллекторы, крепёж
+     * и пробки одинаковы при любой трубе — на их фоне разница между трубами терялась бы.
      */
-    waterPipeSystemTotals: function () {
-        const MATS = ['pex', 'metal_plastic'];
+    pipeOptionTotals: function (field, values) {
         const snapshot = JSON.parse(JSON.stringify(this.state));
         const runs = {};
         try {
-            MATS.forEach(m => {
-                this.state.waterPipeMaterial = m;
+            values.forEach(v => {
+                this.state[field] = v;
                 this.render(true);
                 const rows = {};
                 (this.currentEquipmentList || []).forEach(it => {
                     const k = (it.group || it.sectionTitle || '') + '|' + (it.originalId || '') + '|' + it.id;
                     rows[k] = (rows[k] || 0) + (it.price || 0) * (it.q || 1);
                 });
-                runs[m] = rows;
+                runs[v] = rows;
             });
         } finally {
             Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
@@ -56836,15 +56850,19 @@ const app = {
             this.render(true);
         }
         const keys = new Set();
-        MATS.forEach(m => Object.keys(runs[m] || {}).forEach(k => keys.add(k)));
-        const out = { pex: 0, metal_plastic: 0 };
+        values.forEach(v => Object.keys(runs[v] || {}).forEach(k => keys.add(k)));
+        const out = {};
+        values.forEach(v => { out[v] = 0; });
         keys.forEach(k => {
-            const vals = MATS.map(m => (runs[m] || {})[k] || 0);
-            if (Math.abs(vals[0] - vals[1]) < 0.5) return;
-            MATS.forEach((m, i) => { out[m] += vals[i]; });
+            const vals = values.map(v => (runs[v] || {})[k] || 0);
+            if (vals.every(x => Math.abs(x - vals[0]) < 0.5)) return;
+            values.forEach((v, i) => { out[v] += vals[i]; });
         });
-        MATS.forEach(m => { out[m] = Math.round(out[m]); });
+        values.forEach(v => { out[v] = Math.round(out[v]); });
         return out;
+    },
+    waterPipeSystemTotals: function () {
+        return this.pipeOptionTotals('waterPipeMaterial', ['pex', 'metal_plastic']);
     },
 
     /**
