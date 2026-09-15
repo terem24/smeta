@@ -36130,6 +36130,9 @@ const app = {
             flowBranch: h.flowBranch,
             dp: h.dp,
             head: h.head,
+            // Незамерзающий теплоноситель: напор уже с поправкой × 1,54 — на листе это
+            // надо подписать, иначе «потери кольца» и «напор» не сходятся делением на 9,81.
+            antifreeze: !!(h.coolantK && h.coolantK.on),
             vMax: h.vMax,
             // Предел — того участка, который и разогнался сильнее всех: у
             // магистрали и у луча они разные (СП 60.13330.2020, табл. И.1).
@@ -47833,6 +47836,18 @@ const app = {
      * теплоноситель на пропиленгликоле (паспорт WARME Eco PRO 30: «бак на 5–10 %
      * больше, чем для воды», верхняя граница).
      */
+    /**
+     * Поправка насоса на незамерзающий теплоноситель. Паспорт WARME Eco PRO 30: из-за
+     * большей вязкости «более мощных циркуляционных насосов (+10 % по расходу и
+     * + 54 % по напору)». Требуемый напор умножаем на head, а напор насоса берём на
+     * расходе × flow. Вода — без поправки. Контур снеготаяния сюда не относится: там
+     * гликоль посчитан свойствами жидкости напрямую (snowFluid).
+     */
+    coolantPumpK: function () {
+        const c = this.state.coolant || 'water';
+        return c === 'water' ? { flow: 1, head: 1, on: false } : { flow: 1.1, head: 1.54, on: true };
+    },
+
     expTankCoolantK: function () {
         const c = this.state.coolant || 'water';
         return c === 'water' ? 1 : 1.1;
@@ -49827,19 +49842,21 @@ const app = {
         }
         add('Теплообменник котла', this.RAD_BOILER_DP, { tag: 'boiler' });
 
-        const head = dp / 9.81;
+        const _kpL = this.coolantPumpK();
+        const head = dp / 9.81 * _kpL.head;
         // Кто гонит контур. При насосной группе — её насос из ряда RAD_PUMPS;
         // при клапане приоритета котёл переключает на змеевик свой контур
         // целиком, и работает его встроенный насос по паспортной кривой.
         let pump = null;
         if (L.pump) {
-            const pick = this.RAD_PUMPS.find(pm => pm.hMax * (1 - Math.pow(flow / pm.qMax, 2)) >= head)
+            const _qP = flow * _kpL.flow;
+            const pick = this.RAD_PUMPS.find(pm => pm.hMax * (1 - Math.pow(_qP / pm.qMax, 2)) >= head)
                 || this.RAD_PUMPS[this.RAD_PUMPS.length - 1];
-            const avail = pick.hMax * (1 - Math.pow(flow / pick.qMax, 2));
+            const avail = pick.hMax * (1 - Math.pow(_qP / pick.qMax, 2));
             pump = { label: pick.label, avail: Math.max(0, avail), builtin: false,
                 ok: avail >= head };
         } else if (L.pumpCurve) {
-            const avail = this.boilerPumpHead(L.pumpCurve, flow);
+            const avail = this.boilerPumpHead(L.pumpCurve, flow * _kpL.flow);
             if (avail != null) pump = { label: L.pumpCurve.label, avail: avail, builtin: true,
                 ok: avail >= head, unknown: L.pumpCurve.kind === 'unknown' };
         }
@@ -50368,7 +50385,9 @@ const app = {
         // клапанами прибора — меньше. Одно число на всю систему одновременно
         // завышало требование к магистрали и занижало к подводке.
         const loudParts = parts.filter(p => (p.v || 0) > (p.vLim || this.RAD_V_MAX));
-        const head = dp / 9.81;
+        // Антифриз: требуемый напор × 1,54, насос проверяется на расходе × 1,1 (coolantPumpK)
+        const _kp = this.coolantPumpK();
+        const head = dp / 9.81 * _kp.head;
         // Какой из насосов тянет посчитанное кольцо на рабочем расходе. Без
         // насосной группы качает встроенный насос котла: его паспортной кривой
         // у нас нет, поэтому берём младшую из группы (25/60) — у настенных
@@ -50377,7 +50396,7 @@ const app = {
         const pumps = hasGroup ? this.RAD_PUMPS : [this.RAD_PUMPS[0]];
         const pump = pumps.map(pm => ({
             label: hasGroup ? pm.label : 'встроенный насос котла (принят по кривой ' + pm.label + ')',
-            avail: pm.hMax * (1 - Math.pow(flowBranch / pm.qMax, 2))
+            avail: pm.hMax * (1 - Math.pow(flowBranch * _kp.flow / pm.qMax, 2))
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
 
@@ -50389,7 +50408,8 @@ const app = {
             branches: branches,
             flowWorst: flowWorst,      // м³/ч через самый мощный прибор
             worst: worst,
-            head: head,                // требуемый напор, м вод. ст.
+            head: head,                // требуемый напор, м вод. ст. (с поправкой на антифриз)
+            coolantK: _kp,
             dp: dp,                    // то же в кПа
             parts: parts,
             vMax: vMax,
@@ -50420,7 +50440,10 @@ const app = {
             (h.branches > 1 ? ` (по системе ${h.flow.toFixed(2)} м³/ч на ${h.branches} ветки)` : '') +
             `; самое тяжёлое кольцо теряет ${h.dp.toFixed(0)} кПа → требуемый напор ` +
             `<b>${h.head.toFixed(1)} м</b> при расчётном приборе «${h.worst.room || 'самый дальний'}» ` +
-            `(${Math.round(h.worstW)} Вт расчётной нагрузки).`;
+            `(${Math.round(h.worstW)} Вт расчётной нагрузки).` +
+            (h.coolantK && h.coolantK.on
+                ? ` Теплоноситель незамерзающий: напор × 1,54, насос проверен на расходе × 1,1 (паспорт WARME Eco PRO 30).`
+                : '');
         if (h.pump) {
             s += `<br>Насос ${h.pump.label} на этом расходе даёт ` +
                 `<b style="color:#10B981;">${h.pump.avail.toFixed(1)} м</b> — запас ` +
@@ -50861,7 +50884,8 @@ const app = {
             mans.forEach(m => {
                 m.trDp = m.trDp || 0;
                 // Запас 15 % — на грязь в петлях и на разброс паспортной кривой
-                m.need = (m.worstDp + this.UFH_MAN_DP + m.dpValve + m.trDp) * 1.15 / 9.81;   // м
+                // × head — поправка на антифриз (coolantPumpK), для воды 1
+                m.need = (m.worstDp + this.UFH_MAN_DP + m.dpValve + m.trDp) * 1.15 / 9.81 * this.coolantPumpK().head;   // м
             });
             return mans;
         };
@@ -50875,7 +50899,7 @@ const app = {
                 const mans = shapes[dT] || (shapes[dT] = shape(dT));
                 let ratio = 0, worst = null;
                 mans.forEach(m => {
-                    const have = this.ufhPumpHead(m.nodeFlow || m.flow, pump);
+                    const have = this.ufhPumpHead((m.nodeFlow || m.flow) * this.coolantPumpK().flow, pump);
                     const k = m.need / Math.max(have, 0.01);
                     if (k > ratio) { ratio = k; worst = Object.assign({}, m, { have: have }); }
                 });
@@ -61938,7 +61962,8 @@ const app = {
                                 ? `• У Navien кривая насоса не опубликована нигде: её нет ни в руководстве по эксплуатации, ни в техническом описании, ни в сервисном руководстве. Взять число неоткуда — запросите его у представительства или ведите контур через гидрострелку с отдельным насосом.<br>`
                                 : `• Возьмите остаточный напор из паспорта котла на расходе ${_q1.toFixed(2)} м³/ч и сравните с потерями выше: желательный запас — от ${this.RAD_PUMP_RESERVE}×.<br>`);
                     }
-                    const _h = this.boilerPumpHead(_pump, _q1);
+                    const _kpB = this.coolantPumpK();
+                    const _h = this.boilerPumpHead(_pump, _q1 * _kpB.flow);
                     if (_h === null) return ``;
                     const _kindNote = (_pump.kind === 'residual')
                         ? `Это ОСТАТОЧНЫЙ напор: сопротивление самого котла из него уже вычтено, всё остальное — бюджет на обвязку.`
@@ -61950,7 +61975,7 @@ const app = {
                         + `• ${_kindNote}<br>`;
 
                     if (_drop) {
-                        const _res = _drop.total > 0 ? (_h / _drop.total) : 0;
+                        const _res = _drop.total > 0 ? (_h / (_drop.total * _kpB.head)) : 0;
                         // Тот же запас, что требуется от насоса в разводке дома.
                         const _need = this.RAD_PUMP_RESERVE;
                         const _verdict = (_h <= 0 || _res < 1)
@@ -61958,7 +61983,7 @@ const app = {
                             : (_res < _need)
                                 ? `<b style="color:#F59E0B;">напора впритык</b> — запас ${_res.toFixed(1)}× при желаемых ${_need}×`
                                 : `<b style="color:#16A34A;">напора хватает</b> — запас ${_res.toFixed(1)}×`;
-                        _out += _dropLine + `• Итог: ${_verdict}.<br>`;
+                        _out += _dropLine + (_kpB.on ? `• Теплоноситель незамерзающий: потери × 1,54, насос на расходе × 1,1 (паспорт WARME Eco PRO 30).<br>` : '') + `• Итог: ${_verdict}.<br>`;
                         if (_pump.kind !== 'residual') {
                             _out += `• Вердикт опирается на непроверенную кривую (см. выше) — если её напор не остаточный, запас на деле меньше.<br>`;
                         }
