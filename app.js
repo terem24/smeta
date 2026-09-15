@@ -43602,6 +43602,13 @@ const app = {
             }
         }
         if (_swapWW) this.state.swapWindowWidth = _swapWW;
+        // Свободная высота под подоконником — у группы берём самое низкое окно, иначе
+        // выбранный на всю группу прибор не встанет хотя бы под одно из них
+        {
+            const _sm = this.swapWindowSillMap || {};
+            const _keys = [_origId0, ...(item.instanceKeys || [])].filter(k => _sm[k] != null);
+            this.swapSillMaxH = _keys.length ? Math.min(..._keys.map(k => _sm[k])) : null;
+        }
 
         // ── Секционные радиаторы → новый модал с табами высот ──
         {
@@ -46937,6 +46944,8 @@ const app = {
         // так не устанавливаются и почти всегда у́же 50% ширины окна — фильтр их отсеивал бы
         // целиком, поэтому в режиме "Дизайнерские" он не применяется.
         const winWidthM = isDesignMode ? null : (this.state.swapWindowWidth || null); // м
+        const sillMaxH = isDesignMode ? null : (this.swapSillMaxH || null); // мм, см. radMaxHeightUnderSill
+        let anyFailedSill = false;
         const panelTypeFilter = this.state.swapPanelType || 'all';
 
         let series = allSeries;
@@ -46970,6 +46979,7 @@ const app = {
                     if (connection === 'side' && panelItem.bottom) return;
                     if (connection === 'bottom' && !panelItem.bottom) return;
                     if (panelTypeFilter !== 'all' && !(panelItem.name && panelItem.name.includes(`Тип ${panelTypeFilter}`))) return;
+                    if (sillMaxH && this.radOverallHeight(s, panelItem) > sillMaxH) { anyFailedSill = true; return; }
                     maxPowerSeen = Math.max(maxPowerSeen, panelItem.power50 || 0);
                     if (panelItem.power50 < targetPower) return;
                     anyPassedPower = true;
@@ -46989,6 +46999,7 @@ const app = {
                     });
                 });
             } else {
+                if (sillMaxH && this.radOverallHeight(s) > sillMaxH) { anyFailedSill = true; return; }
                 const candidate = this.calculateNewSections(1, targetPower, s.arr);
                 if (candidate) {
                     const candPow = candidate.sec * candidate.power50;
@@ -47072,7 +47083,9 @@ const app = {
 
         if (!rows) {
             let emptyMsg;
-            if (series.length === 0) {
+            if (anyFailedSill && !anyPassedPower) {
+                emptyMsg = `Под подоконник помещается прибор высотой не больше ${sillMaxH} мм, а в выбранных фильтрах все выше. Расширьте диапазон высот, смените тип прибора — или отметьте окно панорамным (конвектор).`;
+            } else if (series.length === 0) {
                 emptyMsg = 'Нет серий, подходящих под выбранные фильтры (высота/цвет/подключение/тип прибора) — попробуйте расширить диапазон высот или изменить цвет/подключение.';
             } else if (!anyPassedPower) {
                 emptyMsg = `В выбранном диапазоне высот и фильтров нет варианта нужной мощности: требуется ≥${targetPower} Вт, максимум доступно ${maxPowerSeen} Вт. Расширьте диапазон высот, смените цвет/подключение — либо мощность для этой позиции нужно распределить на несколько приборов.`;
@@ -47086,7 +47099,7 @@ const app = {
 
         const priceArrow = sortField === 'price' ? (sortOrder === 'desc' ? ' ▼' : ' ▲') : '';
         const powerArrow = sortField === 'power' ? (sortOrder === 'desc' ? ' ▼' : ' ▲') : '';
-        const winNote = winWidthM ? `<div style="font-size:11px;color:var(--text-sec);margin-bottom:6px;">Ширина окна: <b>${winWidthM} м</b> → допустимая ширина радиатора: <b>${Math.round(winWidthM * 500)}–${Math.round(winWidthM * 900)} мм</b></div>` : '';
+        const winNote = (winWidthM || sillMaxH) ? `<div style="font-size:11px;color:var(--text-sec);margin-bottom:6px;">${winWidthM ? `Ширина окна: <b>${winWidthM} м</b> → допустимая ширина радиатора: <b>${Math.round(winWidthM * 500)}–${Math.round(winWidthM * 900)} мм</b>` : ''}${winWidthM && sillMaxH ? ' · ' : ''}${sillMaxH ? `под подоконник — высота прибора не больше <b>${sillMaxH} мм</b>` : ''}</div>` : '';
 
         return winNote + `<table class="inv-table" style="width:100%;border-collapse:collapse;">
             <thead><tr>
@@ -47113,6 +47126,19 @@ const app = {
         // молча слетал обратно на Space.
         const applyAsWholeProject = applyAll || !this.state.detailedRooms;
 
+        // Панель, выбранная для одного окна или группы, идёт в смету ровно той длины, что
+        // в строке таблицы. Без отметки render подбирает длину заново под мощность и ширину
+        // окна каждой комнаты — так нужно при замене на весь проект, иначе в маленькие
+        // комнаты встали бы панели, посчитанные по самой нагруженной. Ключ — хвост
+        // _r{комната}_w{окно}: артикул в начале ключа меняется вместе с серией.
+        if (!this.state.radSwapExact) this.state.radSwapExact = {};
+        const _markExact = (key, exact) => {
+            const m = String(key).match(/_r[^_]+_w\d+$/);
+            if (!m) return;
+            if (exact) this.state.radSwapExact[m[0]] = true;
+            else delete this.state.radSwapExact[m[0]];
+        };
+
         if (applyAsWholeProject) {
             // Apply to ALL radiators in the entire project!
             if (chosenSeries) {
@@ -47130,9 +47156,11 @@ const app = {
                     if (eq.instanceKeys && eq.instanceKeys.length > 0) {
                         eq.instanceKeys.forEach(ik => {
                             this.state.swaps[ik] = chosenId;
+                            _markExact(ik, false);
                         });
                     } else {
                         this.state.swaps[eqId] = chosenId;
+                        _markExact(eqId, false);
                     }
                 }
             });
@@ -47142,13 +47170,16 @@ const app = {
                 // Apply chosen item to every window in this group
                 item.instanceKeys.forEach(ik => {
                     this.state.swaps[ik] = chosenId;
+                    _markExact(ik, true);
                 });
             } else {
                 this.state.swaps[originalId] = chosenId;
+                _markExact(originalId, true);
             }
         } else {
             // Single instance replacement
             this.state.swaps[originalId] = chosenId;
+            _markExact(originalId, true);
         }
 
         this.logEquipmentSwap(originalId, chosenId);
@@ -52416,6 +52447,54 @@ const app = {
         if (h > 0) return h;
         return (w && w.isPan) ? 2.5 : 1.5;
     },
+    /**
+     * Высота подоконника от чистого пола, м. Пока не задана — 0,8 м, типовая для
+     * жилых комнат: под неё помещается и секционный 500, и панель 500, так что
+     * старые расчёты от появления поля не меняются.
+     */
+    winSill: function (w) {
+        const s = parseFloat(w && w.sill);
+        return s >= 0 ? s : 0.8;
+    },
+    /**
+     * Сколько миллиметров по высоте свободно под прибор у этого окна: от пола
+     * 100 мм и до подоконника 80 мм — по практике монтажа (снизу — уборка и подсос
+     * воздуха, сверху — выход тёплого потока к стеклу). У панорамного окна и места
+     * без окна подоконника нет — ограничения тоже.
+     */
+    radMaxHeightUnderSill: function (w) {
+        if (!w || w.isPan || w.noWin) return null;
+        return Math.round(this.winSill(w) * 1000) - 180;
+    },
+    /**
+     * Габаритная высота прибора, мм. У панели она и есть высота в каталоге. У
+     * секционного в каталоге межосевое, габарит на 60–80 мм больше (Space 500 —
+     * 565 мм, алюминий 500 — до 580), берём +70: с +80 серия 350 (габарит ~415 мм)
+     * не проходила бы под самый частый низкий подоконник 0,6 м. Межосевое читаем из артикула (…-050004 → 500):
+     * поле h у серии кое-где неверное (у ROMMER Plus 500 стоит 200). Дизайн-радиаторы
+     * вертикальные и под окном не ставятся — для них null, проверка не нужна.
+     */
+    radOverallHeight: function (series, item) {
+        if (!series || series.isDesign) return null;
+        if (series.isPanel) return (item && (item.height || this.getRadHeightFromId(item.id))) || null;
+        const m = String((series.arr && series.arr[0] && series.arr[0].id) || '').match(/^[A-Z]{3}-\d{4}-(\d{3})\d{3}/);
+        const axis = m ? parseInt(m[1], 10) * 10 : series.h;
+        return axis ? axis + 70 : null;
+    },
+    updWindowSill: function (roomId, winId, val) {
+        let r = this.state.rooms.find(x => x.id === roomId);
+        if (!r) return;
+        let w = r.windows.find(x => x.id === winId);
+        if (!w) return;
+        let s = parseFloat(String(val).replace(',', '.'));
+        if (!(s >= 0)) s = this.winSill(w);
+        w.sill = Math.round(Math.min(s, 3) * 100) / 100;
+        this.syncRoomsToState();
+        this.renderRoomsUI();
+        this.syncUI();
+        this.render();
+        this.saveState();
+    },
     updWindowHeight: function (roomId, winId, val, skipRender) {
         let r = this.state.rooms.find(x => x.id === roomId);
         if (!r) return;
@@ -53040,7 +53119,7 @@ const app = {
             const curH = Math.min(hB.hMax, Math.max(hB.hMin, r.customHeight || Math.round(hB.normalH * 2 * 10) / 10));
 
             let winRows = (r.windows || []).map((w, i) => `
-                        <div style="display:flex; align-items:center; gap:5px; padding:3px 0; border-bottom:1px dashed var(--border); font-size:11px;">
+                        <div style="display:flex; flex-wrap:wrap; align-items:center; gap:4px 5px; padding:3px 0; border-bottom:1px dashed var(--border); font-size:11px;">
                             <span style="color:var(--text-sec); width:10px;">${i + 1}</span>
                             <input type="number" class="room-num-input" style="${fInp} width:52px; height:24px;" step="0.01" min="0.3" max="6" value="${w.width}"
                                 onchange="app.updWindowWidthManual(${r.id}, ${w.id}, this.value, false)" title="Ширина окна, м">
@@ -53048,6 +53127,9 @@ const app = {
                             <input type="number" class="room-num-input" style="${fInp} width:52px; height:24px;" step="0.01" min="0.6" max="3" value="${this.winHeight(w)}"
                                 onchange="app.updWindowHeight(${r.id}, ${w.id}, this.value, false)" title="Высота окна, м">
                             <span style="color:var(--text-sec);">м</span>
+                            ${w.isPan ? '' : `<span style="color:var(--text-sec); margin-left:4px;" title="Высота подоконника от пола, м — по ней подбирается высота радиатора">подок.</span>
+                            <input type="number" class="room-num-input" style="${fInp} width:46px; height:24px;" step="0.05" min="0" max="3" value="${this.winSill(w)}"
+                                onchange="app.updWindowSill(${r.id}, ${w.id}, this.value)" title="Высота подоконника от пола, м — по ней подбирается высота радиатора">`}
                             <label style="display:flex; align-items:center; gap:3px; cursor:pointer; color:var(--text-sec); margin-left:auto; white-space:nowrap;">
                                 <input type="checkbox" ${w.isPan ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'isPan', this.checked)" style="margin:0; width:12px; height:12px;">
                                 панорамное
@@ -59522,6 +59604,7 @@ const app = {
         this._ufhTransitMeters = 0; // метраж транзита до коллектора ТП 2-го этажа (#18)
         this.currentSpec = []; // Список оборудования для генерации схемы
         this.swapWindowWidthMap = {}; // originalId → min ширина окна (м) для фильтра замен
+        this.swapWindowSillMap = {}; // originalId → свободная высота под подоконником (мм) для фильтра замен
         let trialUntil = parseInt(localStorage.getItem('pro_trial_until')) || 0;
         let isTrialActive = trialUntil > Date.now();
         let isPro = (this.state.accountType === 'pro' || isTrialActive);
@@ -64309,7 +64392,11 @@ const app = {
                                             else if (swappedRad.name.includes('Тип 33')) panelType = 'Тип 33';
 
                                             const filtered = targetSeries.arr.filter(p => this.getRadHeightFromId(p.id) === panelHeight && p.name && p.name.includes(panelType) && !!p.bottom === !!swappedRad.bottom);
-                                            if (filtered.length > 0) {
+                                            // Выбрана руками для этого окна или группы — ставим ровно её
+                                            // (см. radSwapExact в selectSwapRadiator)
+                                            if (this.state.radSwapExact && this.state.radSwapExact[`_r${r.id}_w${wIdx}`]) {
+                                                targetItem = swappedRad;
+                                            } else if (filtered.length > 0) {
                                                 // Сортируем по длине в мм по возрастанию
                                                 filtered.sort((a, b) => a.sec - b.sec);
                                                 targetItem = this.pickPanelForWindow(filtered, reqPwr, w.width);
@@ -64329,6 +64416,56 @@ const app = {
                                             const p50 = isRommer ? (targetSeries.arr[0]?.rommer?.power50 || targetSeries.arr[0]?.power50 || 100) : (targetSeries.arr[0]?.power50 || 100);
                                             factPower = activeItem.sec * p50;
                                         }
+                                    }
+                                }
+                            }
+
+                            // === Высота прибора под подоконник ===
+                            // Автоподбор берёт серию из state.radType, а она одна на весь дом.
+                            // Если у этого окна подоконник низкий и прибор не помещается, спускаемся
+                            // на серию ниже того же материала, подключения и цвета (Space 500 →
+                            // TITAN 350), у панели — на меньшую высоту того же подключения. Выбор
+                            // руками не трогаем: монтажник мог знать то, чего не знаем мы, — только
+                            // предупреждаем.
+                            const _sillMaxH = this.radMaxHeightUnderSill(w);
+                            let _sillNote = '';
+                            if (_sillMaxH != null) {
+                                this.swapWindowSillMap[instanceKey] = _sillMaxH;
+                                const _allSer = this._getSecRadSeries();
+                                const _curSer = _allSer.find(s => s.arr && s.arr.some(x => x.id === activeItem.id));
+                                const _curH = this.radOverallHeight(_curSer, activeItem);
+                                if (_curH != null && _curH > _sillMaxH) {
+                                    let _lowItem = null, _lowPower = 0;
+                                    if (!manualSwapId && _curSer.isPanel) {
+                                        const _ph = p => p.height || this.getRadHeightFromId(p.id);
+                                        const _sameConn = _curSer.arr.filter(p => !!p.bottom === !!activeItem.bottom && _ph(p) <= _sillMaxH);
+                                        const _bestH = _sameConn.reduce((m, p) => Math.max(m, _ph(p)), 0);
+                                        const _list = _sameConn.filter(p => _ph(p) === _bestH).sort((a, b) => a.sec - b.sec);
+                                        if (_list.length) {
+                                            _lowItem = this.pickPanelForWindow(_list, reqPwr, w.width);
+                                            _lowPower = _lowItem && _lowItem.power50;
+                                        }
+                                    } else if (!manualSwapId) {
+                                        const _low = _allSer
+                                            .filter(s => s.arr && s.arr.length && s.type && !s.isPanel && !s.isDesign
+                                                && this.radOverallHeight(s) <= _sillMaxH
+                                                && this._getRadMaterial(s) === this._getRadMaterial(_curSer)
+                                                && !!s.bottom === !!_curSer.bottom
+                                                && this._getColorOf(s) === this._getColorOf(_curSer))
+                                            .sort((a, b) => this.radOverallHeight(b) - this.radOverallHeight(a))[0];
+                                        if (_low) {
+                                            const _p50 = isRommer ? (_low.arr[0]?.rommer?.power50 || _low.arr[0]?.power50 || 100) : (_low.arr[0]?.power50 || 100);
+                                            _lowItem = pickSect(_low.arr, _p50, _low.arr[_low.arr.length - 1].sec);
+                                            _lowPower = _lowItem && _lowItem.sec * _p50;
+                                        }
+                                    }
+                                    const _sillTxt = String(this.winSill(w)).replace('.', ',');
+                                    if (_lowItem) {
+                                        activeItem = { ..._lowItem };
+                                        factPower = _lowPower;
+                                        _sillNote = ` | подоконник ${_sillTxt} м: прибор не выше ${_sillMaxH} мм`;
+                                    } else {
+                                        app.tempWarns.push(`• ${app._warnRoomLabel(r.id, app.spotLabel(r, w, wIdx) + ':')} прибор высотой около ${_curH} мм не помещается под подоконник ${_sillTxt} м — свободно ${_sillMaxH} мм (100 мм от пола и 80 мм до подоконника, по практике монтажа). ${manualSwapId ? 'Выберите прибор ниже кнопкой замены.' : 'Ниже серии того же типа нет — выберите прибор кнопкой замены или отметьте окно панорамным (конвектор).'}`);
                                     }
                                 }
                             }
@@ -64380,7 +64517,7 @@ const app = {
 
                             let margin = Math.round(((factPower - reqReal) / Math.max(1, reqReal)) * 100);
                             let marginColor = margin >= 0 ? '#10B981' : '#ef4444';
-                            let locInfo = `<span style="font-size:11px; line-height:1.2;">• <b>${app.spotLabel(r, w, wIdx)}</b>: ${w.noWin ? r.area + " м²" : w.width + "м"} | Требуются: <b>${reqReal} Вт</b>, подобран: <b>${factPower} Вт</b>, запас: <b style="color:${marginColor};">${margin}%</b></span>`;
+                            let locInfo = `<span style="font-size:11px; line-height:1.2;">• <b>${app.spotLabel(r, w, wIdx)}</b>: ${w.noWin ? r.area + " м²" : w.width + "м"} | Требуются: <b>${reqReal} Вт</b>, подобран: <b>${factPower} Вт</b>, запас: <b style="color:${marginColor};">${margin}%</b>${_sillNote}</span>`;
 
                             let wDesc = locInfo + "|||" + devInfo;
                             // Подпись стороны подключения в самом названии строки — чтобы монтажник
