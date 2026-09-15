@@ -384,50 +384,117 @@ async function withTimeout(promise, timeoutMs = 6000, errorMsg = 'Сервер �
     }
 }
 
-// Тот же приём, что и с supabaseProxyFetch выше: у части пользователей в РФ блокируется/
-// дросселируется доступ к api.emailjs.com напрямую ("Неизвестная ошибка" при отправке кода
-// подтверждения без VPN). Подменяем emailjs.send на прокси через тот же Beget-хостинг
-// (proxy.heatcalc.ru/emailjs_proxy.php), не трогая места вызова.
-if (typeof emailjs !== 'undefined') {
-    const DEFAULT_EMAILJS_KEY = "-m4N93pTqMlCfuBpT";
-    let _emailjsPublicKey = DEFAULT_EMAILJS_KEY;
-    const _origEmailjsInit = emailjs.init;
-    const _origEmailjsSend = emailjs.send;
+// Отправка писем: напрямую, а если прямой путь закрыт — через прокси на Beget.
+//
+// У части пользователей в РФ провайдер режет или душит api.emailjs.com. Библиотека
+// шлёт запрос через XMLHttpRequest без тайм-аута, и на заглохшем соединении промис
+// не завершается никогда: кнопка «Отправка кода...» при регистрации висела вечно,
+// человек не мог зарегистрироваться (15.09.2026).
+//
+// Перехват через прокси был с 11.07.2026, но не работал ни одного дня, и сломан
+// он был дважды:
+//   1. Ставился в теле файла по условию `typeof emailjs !== 'undefined'`. А
+//      email.min.js подключён в index.html с defer ПОСЛЕ app.js, отложенные
+//      скрипты выполняются по порядку — библиотеки к этому моменту ещё нет,
+//      условие всегда ложно.
+//   2. Даже сработай условие, присваивание `emailjs.send = …` ничего бы не дало:
+//      сборка библиотеки отдаёт send и init геттерами через Object.defineProperty,
+//      без сеттера, и вне строгого режима запись в них молча игнорируется.
+// Поэтому объект заменяется целиком (self.emailjs — обычное свойство окна), а
+// ставится на DOMContentLoaded, когда все defer-скрипты уже выполнены. Порядок тегов
+// в index.html больше не важен; попытка сразу — на случай, если библиотеку
+// когда-нибудь подключат раньше.
+//
+// Порядок путей — сначала прямой, потом прокси. Прямой сейчас работает у большинства,
+// а прокси ни разу не был в бою: 15.09.2026 он отвечал «API access in strict mode, but
+// no Private Key was provided» — аккаунт почты в строгом режиме, и серверному запросу
+// нужен приватный ключ (его подставляет emailjs_proxy.php). Ставить непроверенный
+// путь первым значило бы рискнуть регистрацией у всех ради части. На прокси уходим
+// только когда прямой не ответил: сетевая ошибка (status 0) или тайм-аут. Ответ самого
+// сервиса — неверный шаблон, лимит — не повторяем: второй путь получит то же самое.
+const EMAILJS_DEFAULT_KEY = "-m4N93pTqMlCfuBpT";
+const EMAILJS_DIRECT_TIMEOUT_MS = 12000;
+const EMAILJS_PROXY_TIMEOUT_MS = 20000;
+const EMAILJS_TIMEOUT_TEXT = 'Письмо не удалось отправить: сервер не ответил вовремя. Проверьте интернет-соединение и попробуйте ещё раз.';
 
-    emailjs.init = function (key, origin) {
-        _emailjsPublicKey = key;
-        return _origEmailjsInit(key, origin);
-    };
+function installEmailjsProxy() {
+    const lib = (typeof self !== 'undefined') ? self.emailjs : undefined;
+    if (!lib || lib.__heatcalc) return;
 
-    emailjs.send = function (serviceId, templateId, templateParams, publicKey) {
-        const host = window.location.hostname;
-        const canProxy = (host === 'heatcalc.ru' || host === 'www.heatcalc.ru');
-        if (!canProxy) {
-            return _origEmailjsSend(serviceId, templateId, templateParams, publicKey);
-        }
-        return fetch('https://proxy.heatcalc.ru/emailjs_proxy.php', {
+    const origSend = lib.send;
+    const origInit = lib.init;
+    let publicKey = EMAILJS_DEFAULT_KEY;
+
+    function viaProxy(serviceId, templateId, templateParams, key) {
+        const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        const request = fetch('https://proxy.heatcalc.ru/emailjs_proxy.php', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 service_id: serviceId,
                 template_id: templateId,
-                user_id: publicKey || _emailjsPublicKey,
+                user_id: key,
                 template_params: templateParams
-            })
+            }),
+            signal: ctrl ? ctrl.signal : undefined
         }).then(async (res) => {
             const text = await res.text();
             if (!res.ok) {
-                const err = new Error(text || 'EmailJS proxy error');
+                // Текст ответа сервиса — в журнал, человеку — понятная фраза без
+                // названий сервисов и режимов (403 «strict mode» на экране регистрации
+                // ничего не объясняет и пугает).
+                console.warn('[почта] прокси отказал:', res.status, text);
+                const err = new Error('Письмо не удалось отправить. Попробуйте ещё раз через пару минут или напишите в поддержку.');
                 err.status = res.status;
-                err.text = text;
                 throw err;
             }
             return { status: res.status, text: text || 'OK' };
         });
-    };
+        // Тайм-аут обрывает и сам запрос, а не только перестаёт его ждать.
+        return withTimeout(request, EMAILJS_PROXY_TIMEOUT_MS, EMAILJS_TIMEOUT_TEXT)
+            .catch((err) => { if (ctrl) ctrl.abort(); throw err; });
+    }
 
-    emailjs.init(DEFAULT_EMAILJS_KEY);
+    // Прямой путь не ответил, а не отказал: сетевая ошибка библиотеки приходит как
+    // { status: 0, text: 'Network Error' }, свой тайм-аут — как Error без status.
+    function directUnreachable(err) {
+        if (!err) return true;
+        if (err.status === 0) return true;
+        return err instanceof Error && err.status === undefined;
+    }
+
+    function send(serviceId, templateId, templateParams, key) {
+        const k = key || publicKey;
+        const direct = withTimeout(
+            Promise.resolve().then(() => origSend(serviceId, templateId, templateParams, k)),
+            EMAILJS_DIRECT_TIMEOUT_MS, EMAILJS_TIMEOUT_TEXT);
+
+        // Прокси живёт только для боевого домена — локально и на зеркале шлём напрямую.
+        const host = window.location.hostname;
+        if (host !== 'heatcalc.ru' && host !== 'www.heatcalc.ru') return direct;
+
+        return direct.catch((err) => {
+            if (!directUnreachable(err)) throw err;
+            console.warn('[почта] прямой путь не ответил, отправляем через прокси:', (err && (err.message || err.text)) || err);
+            return viaProxy(serviceId, templateId, templateParams, k);
+        });
+    }
+
+    self.emailjs = {
+        __heatcalc: true,
+        init: function (key, origin) {
+            publicKey = key;
+            return origInit(key, origin);
+        },
+        send: send,
+        sendForm: lib.sendForm,
+        default: lib.default
+    };
+    self.emailjs.init(EMAILJS_DEFAULT_KEY);
 }
+
+installEmailjsProxy();
+document.addEventListener('DOMContentLoaded', installEmailjsProxy);
 
 // Глобальный маппинг замен для кнопки "Аналог"
 const ANALOG_MAP = {

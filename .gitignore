@@ -31,3 +31,7 @@ img/nodes3d/
 
 # Кэш байткода Python от локальных запусков AutoPrice/AutoImage
 __pycache__/
+
+# Приватный ключ EmailJS для emailjs_proxy.php. Кладётся на Beget руками рядом с прокси,
+# в репозиторий не попадает никогда: репозиторий публичный (GitHub Pages).
+emailjs_secret.php
