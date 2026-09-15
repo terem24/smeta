@@ -9910,33 +9910,9 @@ const app = {
             }
             // ====================================================
 
-            // === РЕЗЕРВНАЯ КОПИЯ — ФИКСИРОВАННЫЙ EMAIL ДЛЯ ЛЮБОГО МОНТАЖНИКА ===
-            const RESERVE_MANAGER_EMAIL = 'd.ibatullin@teremopt.ru';
-            {
-                const reserveTemplateParams = {
-                    ...templateParams,
-                    to_email: RESERVE_MANAGER_EMAIL,
-                    email_subject: `[Резерв] Запрос счёта от ${tgUser.first_name || 'Монтажника'} — ${est.project_name || 'Проект'}`,
-                    equipment_list: `[Резервная копия]\nМонтажник: ${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\nРаботы: ${worksSum.toLocaleString('ru-RU')} ₽\nИТОГО: ${total.toLocaleString('ru-RU')} ₽`
-                };
-                const reserveJob = {
-                    id: "invoice_reserve_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
-                    stateData: est.calc_data,
-                    eqSum: eqSum,
-                    worksSum: worksSum,
-                    templateParams: reserveTemplateParams,
-                    serviceId: EMAILJS_SERVICE_ID,
-                    templateId: EMAILJS_TEMPLATE_ID,
-                    emailJsKey: EMAILJS_PUBLIC_KEY,
-                    retries: 0,
-                    status: "pending",
-                    created_at: Date.now() + 2
-                };
-                if (this.queue && typeof this.queue.addJob === 'function') {
-                    this.queue.addJob(reserveJob);
-                }
-            }
-            // ====================================================
+            // Резервной копии на фиксированный адрес больше нет: каждый запрос счёта тратил
+            // на неё лишнее письмо из месячного лимита почты, а сама заявка и так уходит
+            // менеджеру и дистрибьютору.
 
             // Фиксируем запрос счёта в истории статусов (та же таблица, что и для
             // клиентского запроса из invoice.html) — чтобы канбан/напоминания видели,
