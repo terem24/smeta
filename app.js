@@ -42485,7 +42485,7 @@ const app = {
      */
     radManifoldConnFor: function (id) {
         if (!id) return null;
-        const pools = [catalog.manifolds_rad, catalog.manifolds_chrome_blocks, catalog.manifolds_rad_rommer_bare];
+        const pools = [catalog.manifolds_rad, catalog.manifolds_chrome_blocks];
         for (const pool of pools) {
             for (const mf of (pool || [])) {
                 if (mf.id === id || (mf.rommer && mf.rommer.id === id)) {
@@ -44276,7 +44276,7 @@ const app = {
                 { id: 'pro', name: 'Гидравлический разделитель (Pro с накидными гайками)', brand: 'ROMMER', price: p1, imgId: 'RDG-1015-004003' }
             ];
         }
-        else if (_origId0.startsWith('SMS-0912') || (_origId0.startsWith('SMB-6850') && !_origId0.endsWith('_water')) || _origId0.startsWith('RMS-3210') || _origId0.startsWith('RMS-3200') || _origId0.startsWith('RMS-1210') || _origId0.startsWith('RMS-1001')) {
+        else if (_origId0.startsWith('SMS-0912') || (_origId0.startsWith('SMB-6850') && !_origId0.endsWith('_water')) || _origId0.startsWith('RMS-3210') || _origId0.startsWith('RMS-1210') || _origId0.startsWith('RMS-1001')) {
             let loops = 8;
             let baseItem = null;
             let lookupKey = item.originalId || item.id;
@@ -44289,7 +44289,7 @@ const app = {
             // У строки блока (SMB-6850) loops — выходы самого блока, а не собранного
             // коллектора: на 20 выходов в смете лежат блоки по 4. Число выходов коллектора
             // тогда берём из последнего расчёта.
-            if (baseItem && baseItem.loops && (baseItem.id.startsWith('SMS-0912') || baseItem.id.startsWith('RMS-3210') || baseItem.id.startsWith('RMS-3200'))) {
+            if (baseItem && baseItem.loops && (baseItem.id.startsWith('SMS-0912') || baseItem.id.startsWith('RMS-3210'))) {
                 loops = baseItem.loops;
             } else {
                 loops = this.state.lastRadLoops || 8;
@@ -44309,9 +44309,10 @@ const app = {
             if (plan[2] > 0) chromeStoutPrice += b2.price * plan[2] * 2;
             chromeStoutPrice += catalog.manifold_brackets.price;
             
-            // ROMMER-вариант «без обвязки» — коллектор RMS-3200 на то же число выходов
-            // (кронштейны в комплекте). Ряд кончается на 12: больше — варианта нет.
-            const bareRommer = (catalog.manifolds_rad_rommer_bare || []).find(x => x.loops === loops) || null;
+            let chromeRommerPrice = 0;
+            if (plan[0] > 0) chromeRommerPrice += b4.rommer.price * plan[0] * 2;
+            if (plan[1] > 0) chromeRommerPrice += b3.rommer.price * plan[1] * 2;
+            if (plan[2] > 0) chromeRommerPrice += b2.rommer.price * plan[2] * 2;
 
             customAlts = [
                 { id: stdStout.id, name: `Коллектор радиаторный (Стандарт, ${stdStout.loops} вых.)`, brand: 'STOUT', price: stdStoutPrice }
@@ -44320,8 +44321,8 @@ const app = {
                 customAlts.push({ id: stdStout.rommer.id, name: `Коллектор радиаторный (Стандарт, ${stdStout.loops} вых.)`, brand: 'ROMMER', price: stdRommerPrice });
             }
             customAlts.push({ id: 'chrome', name: `Регулировочные блоки (комплект на ${loops} вых.)`, brand: 'STOUT', price: chromeStoutPrice, imgId: b4.id });
-            if (bareRommer) {
-                customAlts.push({ id: 'chrome_rommer', name: `Коллектор с запорными клапанами, без кранов (${loops} вых.)`, brand: 'ROMMER', price: bareRommer.price, imgId: bareRommer.id });
+            if (b4.rommer || b3.rommer || b2.rommer) {
+                customAlts.push({ id: 'chrome_rommer', name: `Регулировочные блоки полностью укомплектован (${loops} вых.)`, brand: 'ROMMER', price: chromeRommerPrice, imgId: b4.rommer?.id });
             }
             // Тройниковую разводку в таблице замены не предлагаем. Своей цены у неё нет:
             // стоимость размазана по трубам и фитингам на трассе, и строка вставала в
@@ -45624,7 +45625,7 @@ const app = {
                 else if (alt.id === 'standard' || alt.id === 'pro') {
                     isActive = (alt.id === this.state.hydroArrowType);
                 }
-                else if (alt.id === 'chrome' || alt.id === 'chrome_rommer' || alt.id.startsWith('SMS-0912') || alt.id.startsWith('RMS-3210') || alt.id.startsWith('RMS-3200') || alt.id.startsWith('RMS-1210') || alt.id.startsWith('RMS-1001') || alt.id.startsWith('SMB-6850')) {
+                else if (alt.id === 'chrome' || alt.id === 'chrome_rommer' || alt.id.startsWith('SMS-0912') || alt.id.startsWith('RMS-3210') || alt.id.startsWith('RMS-1210') || alt.id.startsWith('RMS-1001') || alt.id.startsWith('SMB-6850')) {
                     isActive = alt.isActive;
                 }
                 else {
@@ -47432,7 +47433,7 @@ const app = {
             else if (chosenId === 'SDG-0018-002502' || chosenId === 'SDG-0018-002503') this.state.manualDnOverride = 'dn20';
             else if (chosenId === 'SDG-0018-004002' || chosenId === 'SDG-0018-004003') this.state.manualDnOverride = 'dn25';
         }
-        else if (originalId.startsWith('SMS-0912') || (originalId.startsWith('SMB-6850') && !originalId.endsWith('_water')) || originalId.startsWith('RMS-3210') || originalId.startsWith('RMS-3200') || originalId.startsWith('RMS-1210') || originalId.startsWith('RMS-1001')) {
+        else if (originalId.startsWith('SMS-0912') || (originalId.startsWith('SMB-6850') && !originalId.endsWith('_water')) || originalId.startsWith('RMS-3210') || originalId.startsWith('RMS-1210') || originalId.startsWith('RMS-1001')) {
             let loops = 8;
             let baseItem = null;
             for (let catKey in catalog) {
@@ -50313,8 +50314,7 @@ const app = {
             dpMax: 150, dpMaxRef: 'п. 3.2'
         },
         rms: {
-            label: 'ROMMER RMS',       // один паспорт на RMS-3210 и RMS-3200
-
+            label: 'ROMMER RMS-3210',
             src: 'паспорт ROMMER «Коллекторы распределительные, тип RMS»',
             els: [
                 { name: 'запорно-балансировочный клапан подачи (открыт на 4 оборота)', kv: 2.31, ref: 'п. 4.1' },
@@ -64626,17 +64626,12 @@ const app = {
                 const row = String(v).startsWith('RMS-') ? _manRow.filter(x => x.rommer) : _manRow;
                 return row.length ? row[row.length - 1].loops : _stdMax;
             };
-            // ROMMER-вариант замены «блоки» (chrome_rommer) — коллектор RMS-3200: ряд готовый,
-            // 2–12 выходов, собирать его больше нельзя.
-            const _bareRow = (catalog.manifolds_rad_rommer_bare || []).slice().sort((a, b) => a.loops - b.loops);
-            const _bareMax = _bareRow.length ? _bareRow[_bareRow.length - 1].loops : _stdMax;
-            const _swapKey = [_split(_stdMax), _split(_chromeMax), _split(_bareMax)]
+            const _swapKey = [_split(_stdMax), _split(_chromeMax)]
                 .map(s => _manKey(s.per)).find(x => _isChromeVal(_swapAt(x)) || _isStdVal(_swapAt(x)));
             const _swapVal = _swapAt(_swapKey);
-            const _rommerBare = _swapVal === 'chrome_rommer' && _bareRow.length > 0;
             let _radMode, _layout;
             if (_isChromeVal(_swapVal)) {
-                _radMode = 'chrome'; _layout = _split(_rommerBare ? _bareMax : _chromeMax);
+                _radMode = 'chrome'; _layout = _split(_chromeMax);
             } else if (_isStdVal(_swapVal)) {
                 _radMode = 'standard'; _layout = _split(_rowMaxOf(_swapVal));
             } else if (_floorMax <= _stdMax) {
@@ -64656,9 +64651,7 @@ const app = {
             {
                 const _mSv = (m && this.state.swaps) ? this.state.swaps[m.id] : undefined;
                 const _sv = typeof _mSv === 'string' ? _mSv : (typeof _swapVal === 'string' ? _swapVal : '');
-                // RMS-3200 — тот же паспорт ROMMER RMS, те же клапаны и штуцеры, что у RMS-3210.
-                this._radManifoldKind = _rommerBare ? 'rms'
-                    : _radMode === 'chrome' ? 'smb'
+                this._radManifoldKind = _radMode === 'chrome' ? 'smb'
                     : _sv.startsWith('RMS-') ? 'rms'
                     : _sv.startsWith('SMS-') ? 'sms'
                     : (_radRommer && m && m.rommer ? 'rms' : 'sms');
@@ -64667,9 +64660,7 @@ const app = {
                 this.groupWarns = this.groupWarns || {};
                 this.groupWarns[pipeGrp] = this.noteBox('info', 'На этаже несколько коллекторов.',
                     `На этаже ${_floorMax} ${this.plural(_floorMax, 'прибор', 'прибора', 'приборов')} — ${_layout.perFloor} ${this.plural(_layout.perFloor, 'коллектор', 'коллектора', 'коллекторов')} по ${reqLoops} выходов.`,
-                    `<div class="tip-p">Каждому прибору нужен свой выход. ${_rommerBare
-                        ? `Коллектор ROMMER с запорными клапанами (RMS-3200) выпускается не больше чем на ${_bareMax} выходов.`
-                        : _radMode === 'chrome'
+                    `<div class="tip-p">Каждому прибору нужен свой выход. ${_radMode === 'chrome'
                         ? `Из регулировочных блоков коллектор собирается не больше чем на ${_chromeMax} выходов — это самый большой шкаф в каталоге.`
                         : `Самый большой готовый коллектор в каталоге — на ${_rowMaxOf(_swapVal || (_radRommer ? 'RMS-' : 'SMS-'))} выходов.`} Поэтому приборы этажа разделены поровну между коллекторами.</div>` +
                     `<div class="tip-p">Магистраль от котельной в смете и в гидравлике посчитана до одного коллектора — подводку к остальным добавьте по месту.</div>`);
@@ -65185,27 +65176,25 @@ const app = {
                 }
                 else {
                     let plan = this.radChromeBlocksPlan(reqLoops); let b4 = catalog.manifolds_chrome_blocks[2]; let b3 = catalog.manifolds_chrome_blocks[1]; let b2 = catalog.manifolds_chrome_blocks[0];
-                    if (this.state.swaps) {
-                        // Замены на самих строках блоков остались от старого варианта «блоки
-                        // ROMMER», который писал сюда краны RMS-1001 и RMS-1210 на 2 выхода.
+                    let isRommerChrome = m && (this.state.swaps && this.state.swaps[m.id] === 'chrome_rommer');
+                    if (isRommerChrome) {
+                        this.state.swaps[b4.id] = b4.rommer.id;
+                        this.state.swaps[b3.id] = b3.rommer.id;
+                        this.state.swaps[b2.id] = b2.rommer.id;
+                    } else if (this.state.swaps) {
+                        // Блоки STOUT — выбраны вручную или подставлены по умолчанию.
                         delete this.state.swaps[b4.id];
                         delete this.state.swaps[b3.id];
                         delete this.state.swaps[b2.id];
                     }
-                    const _bare = _rommerBare ? _bareRow.find(x => x.loops >= reqLoops) : null;
-                    if (_bare) {
-                        // Вариант ROMMER: наборных блоков у бренда нет, ставим готовую гребёнку
-                        // RMS-3200 без кранов и концевых групп. Кронштейны у неё в комплекте.
-                        addToBill({ ..._bare, sortRank: -1, noCheapenAlts: true }, manifoldsCount,
-                            `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Распределяет теплоноситель по радиаторам — у каждого свой выход.<br>` +
-                            `<b>Состав:</b> подающая гребёнка с запорными вентилями, обратная с отсечными клапанами под электротермоприводы, 2 кронштейна. Шаровые краны и концевые группы — отдельно, в узле обвязки.<br>` +
-                            `<b>Подбор:</b> ${reqLoops} вых. на этаж` + (manifoldsCount > 1 ? `, ${manifoldsCount} шт.` : ``) + ` — берём ближайший ряда RMS-3200 (2–${_bareMax} вых.).</span>`, pipeGrp);
-                    } else {
-                        let multiplier = manifoldsCount * 2;
-                        // sortRank: -1 — сборка из блоков это тот же радиаторный коллектор,
-                        // поэтому и в хромированном исполнении он открывает подраздел.
-                        if (plan[0] > 0) addToBill({ ...b4, sortRank: -1 }, plan[0] * multiplier, `Блок 4 вых.`, pipeGrp); if (plan[1] > 0) addToBill({ ...b3, sortRank: -1 }, plan[1] * multiplier, `Блок 3 вых.`, pipeGrp); if (plan[2] > 0) addToBill({ ...b2, sortRank: -1 }, plan[2] * multiplier, `Блок 2 вых.`, pipeGrp); addToBill(catalog.manifold_brackets, manifoldsCount, "Кронштейны.", pipeGrp);
-                    }
+                    // Без .rommer: у ROMMER в бренд-режиме блоки подменялись бы на его «аналоги»
+                    // (комплект кранов вместо блока на 3–4 выхода). Выход на 13+ у ROMMER даёт
+                    // только сборка из блоков STOUT, её и оставляем.
+                    if (!isRommerChrome) { b4 = { ...b4, rommer: undefined }; b3 = { ...b3, rommer: undefined }; b2 = { ...b2, rommer: undefined }; }
+                    let multiplier = manifoldsCount * 2;
+                    // sortRank: -1 — сборка из блоков это тот же радиаторный коллектор,
+                    // поэтому и в хромированном исполнении он открывает подраздел.
+                    if (plan[0] > 0) addToBill({ ...b4, sortRank: -1 }, plan[0] * multiplier, `Блок 4 вых.`, pipeGrp); if (plan[1] > 0) addToBill({ ...b3, sortRank: -1 }, plan[1] * multiplier, `Блок 3 вых.`, pipeGrp); if (plan[2] > 0) addToBill({ ...b2, sortRank: -1 }, plan[2] * multiplier, `Блок 2 вых.`, pipeGrp); addToBill(catalog.manifold_brackets, manifoldsCount, "Кронштейны.", pipeGrp);
                 }
 
                 // Шкаф под радиаторный коллектор. Узла подмеса тут не бывает, поэтому
@@ -65237,9 +65226,7 @@ const app = {
                     // (chrome) — это набор голых блоков, у него концевых групп тем более нет.
                     const _mSwap = m && this.state.swaps && this.state.swaps[m.id];
                     const _mSelId = (radManifoldMode === 'chrome')
-                        ? (_rommerBare
-                            ? ((_bareRow.find(x => x.loops >= reqLoops) || {}).id)
-                            : ((catalog.manifolds_chrome_blocks[2] || {}).id))
+                        ? ((catalog.manifolds_chrome_blocks[2] || {}).id)
                         : ((_mSwap && _mSwap !== 'chrome' && _mSwap !== 'chrome_rommer') ? _mSwap : (m && m.id));
                     const _mConn = this.radManifoldConnFor(_mSelId);
                     const _mAttrs = _mSelId ? this.manifoldAttrsFor(_mSelId) : { airVent: 'none', drainValve: false };
@@ -65341,7 +65328,7 @@ const app = {
             // лежит в bill, а не в общем списке, в отличие от насосной группы раздела 2.
             const _manRow = [...(bill || []), ...(this.currentEquipmentList || [])].find(r => {
                 const id = String(r.originalId || r.id || '');
-                return !id.endsWith('_water') && /^(SMS-0912|RMS-3210|RMS-3200|SMB-6850)/.test(id);
+                return !id.endsWith('_water') && /^(SMS-0912|RMS-3210|SMB-6850)/.test(id);
             });
             // У строки bill описание в qtyTip, в общем списке — в desc (flushBill), а таблица
             // берёт qtyTip раньше desc: дописываем к тому, что есть, чтобы не затереть описание.
