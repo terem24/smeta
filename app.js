@@ -36236,7 +36236,8 @@ const app = {
         const sectionsText = sections.length > 0 ? " (" + sections.join(", ") + ")" : "";
         let safeName = objName.replace(/[\\\/:\*\?"<>\|]/g, "");
 
-        document.title = `КП ${safeName} - ${areaVal} м2${sectionsText}`;
+        const numText = this.state.calc_id ? ` №${this.state.calc_id}` : "";
+        document.title = `КП${numText} ${safeName} - ${areaVal} м2${sectionsText}`;
         console.log("[updateDocumentTitle] Updated title to:", document.title);
     },
     // Готовит список оборудования для клиентской ссылки/счёта с учётом свёрнутых подразделов
@@ -36353,6 +36354,12 @@ const app = {
         const chkTimer = document.getElementById('share_opt_timer');
         const daysTimer = document.getElementById('share_opt_timer_days');
         if (cardTimer) cardTimer.style.display = actionType === 'share' ? 'flex' : 'none';
+
+        // Вид файла Excel — только у выгрузки в Excel; каждый раз начинаем с разделов
+        const excelLayoutBlock = document.getElementById('excel_layout_block');
+        if (excelLayoutBlock) excelLayoutBlock.style.display = actionType === 'excel' ? 'block' : 'none';
+        this.setExcelLayout('sections');
+
         if (actionType === 'share') {
             const def = this.invoiceValidDaysDefault();
             if (chkTimer) chkTimer.checked = def > 0;
@@ -36405,6 +36412,17 @@ const app = {
     closeShareOptionsModal: function () {
         const overlay = document.getElementById('share_options_modal_overlay');
         if (overlay) overlay.style.display = 'none';
+    },
+
+    // Вид файла Excel: 'sections' — с разделами, как в смете; 'flat' — списком, как счёт
+    setExcelLayout: function (layout) {
+        this.excelLayout = layout === 'flat' ? 'flat' : 'sections';
+        ['sections', 'flat'].forEach(k => {
+            const radio = document.getElementById('excel_layout_' + k);
+            const card = document.getElementById('card_excel_layout_' + k);
+            if (radio) radio.checked = (k === this.excelLayout);
+            if (card) card.classList.toggle('selected', k === this.excelLayout);
+        });
     },
 
     toggleShareOption: function (option) {
@@ -36508,7 +36526,7 @@ const app = {
             }
             this.executeShareInvoice(showEq, showWorks, validDays);
         } else if (this.shareActionType === 'excel') {
-            this.executeExcelDownload(showEq, showWorks, showHeatLoss);
+            this.executeExcelDownload(showEq, showWorks, showHeatLoss, this.excelLayout === 'flat');
         } else {
             this.executeDownload(showEq, showWorks, showHeatLoss, showScheme);
         }
@@ -38283,7 +38301,7 @@ const app = {
                 await new Promise(resolve => setTimeout(resolve, 50));
                 await this.awaitPrintImages();
 
-                const safeName = (this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
+                const safeName = (document.title || this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
                 const opt = {
                     margin: 10,
                     filename: `${safeName}.pdf`,
@@ -38372,7 +38390,7 @@ const app = {
     // он читает уже готовую печатную вёрстку. За счёт этого в файл попадает та же
     // смета, что и в PDF: те же разделы, строки, скидки и группировки, без второй
     // копии логики сметы. В Excel не переносятся только фотографии и схема.
-    executeExcelDownload: async function (showEq, showWorks, showHeatLoss) {
+    executeExcelDownload: async function (showEq, showWorks, showHeatLoss, flat) {
         if (this.isSellerOnly()) showWorks = false; // у продавца работ нет
         if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
         if (!window.ExcelExport) {
@@ -38412,8 +38430,9 @@ const app = {
         prepareForPrint();
 
         try {
-            const safeName = (this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
-            ExcelExport.saveFromPrintBin(`${safeName}.xlsx`);
+            // Имя файла то же, что у PDF: заголовок страницы «КП №… объект - м2 (разделы)»
+            const safeName = (document.title || this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
+            ExcelExport.saveFromPrintBin(`${safeName}.xlsx`, { flat: !!flat });
             this.logPrintedEvent();
             GRM.trackAction('pdf', this.state.calc_id);  // геймификация: та же отметка, что и у PDF
         } catch (err) {

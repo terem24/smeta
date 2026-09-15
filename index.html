@@ -2807,6 +2807,26 @@
                 </div>
             </div>
 
+            <!-- Вид файла Excel: с разделами, как на экране, или списком, как обычный счёт.
+                 Показывается только при выгрузке в Excel (см. app.openShareOptionsModal). -->
+            <div id="excel_layout_block" style="display: none; margin-top: 14px;">
+                <div style="font-size: 12px; font-weight: 700; color: var(--text-sec); margin-bottom: 8px;">Как оформить файл</div>
+                <div class="share-option-card" id="card_excel_layout_sections" onclick="app.setExcelLayout('sections')">
+                    <input type="radio" name="excel_layout" id="excel_layout_sections" checked onclick="event.stopPropagation(); app.setExcelLayout('sections');" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">С разделами</span>
+                        <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">Как в смете: разделы, подразделы и итоги по ним</span>
+                    </div>
+                </div>
+                <div class="share-option-card" id="card_excel_layout_flat" onclick="app.setExcelLayout('flat')">
+                    <input type="radio" name="excel_layout" id="excel_layout_flat" onclick="event.stopPropagation(); app.setExcelLayout('flat');" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Списком, как счёт</span>
+                        <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">Одна таблица позиций без разделов, одинаковые позиции сложены</span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Таймер счёта: только для ссылки клиенту (см. app.openShareOptionsModal).
                  Срок по умолчанию берётся из кабинета монтажника («Реквизиты компании»),
                  здесь его можно поменять на одну отправку или снять галочку совсем. -->

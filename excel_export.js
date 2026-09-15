@@ -593,12 +593,81 @@
     }
 
     /**
+     * Смета «списком, как счёт»: без разделов, подразделов и промежуточных итогов,
+     * одна таблица позиций со сквозной нумерацией. Свёрнутый подраздел на экране
+     * стоит одной строкой-комплектом (сумма в заголовке группы) — он и остаётся
+     * позицией. Одинаковые позиции из разных разделов (тот же товар по той же
+     * цене) складываются в одну строку, как в обычном счёте.
+     */
+    function flattenRows(data) {
+        const cols = data.cols;
+        const at = {};
+        cols.forEach(function (c, i) { if (c.cls) at[c.cls] = i; });
+        const get = function (cells, cls) {
+            const i = at[cls];
+            return (i === undefined || !cells[i]) ? '' : cells[i].text;
+        };
+
+        const out = [];
+        const byKey = {};
+        data.rows.forEach(function (r) {
+            let cells;
+            if (r.kind === 'item') {
+                cells = r.cells;
+            } else if (r.kind === 'group' && num(get(r.cells, 'col-sum')) !== null) {
+                // Заголовок свёрнутой группы: название лежит в первой, безымянной ячейке
+                const title = (r.cells.find(function (c) { return c && !c.cls; }) || {}).text || '';
+                const sum = get(r.cells, 'col-sum');
+                cells = cols.map(function (c) {
+                    let text = '';
+                    if (c.cls === 'col-name') text = title;
+                    else if (c.cls === 'col-unit') text = get(r.cells, 'col-unit') || 'компл.';
+                    else if (c.cls === 'col-qty') text = get(r.cells, 'col-qty') || '1';
+                    else if (c.cls === 'col-price' || c.cls === 'col-sum') text = sum;
+                    return { text: text, span: 1, cls: c.cls };
+                });
+            } else {
+                return;                           // раздел, подраздел, «Итого»
+            }
+
+            const qty = num(get(cells, 'col-qty'));
+            const price = num(get(cells, 'col-price'));
+            const sum = num(get(cells, 'col-sum'));
+            const key = [get(cells, 'col-name'), get(cells, 'col-sku'), get(cells, 'col-brand'),
+                get(cells, 'col-unit'), get(cells, 'col-price')].join('');
+            const same = byKey[key];
+            if (same && qty !== null && same.qty !== null && price !== null) {
+                same.qty += qty;
+                same.sum = (same.sum !== null && sum !== null) ? same.sum + sum : null;
+                return;
+            }
+            const row = { kind: 'item', cells: cells.slice(), qty: qty, sum: sum };
+            byKey[key] = row;
+            out.push(row);
+        });
+
+        const fmt = function (v) { return String(Math.round(v * 1000) / 1000); };
+        out.forEach(function (row, n) {
+            const set = function (cls, text) {
+                const i = at[cls];
+                if (i === undefined) return;
+                row.cells[i] = Object.assign({}, row.cells[i] || { span: 1, cls: cls }, { text: text });
+            };
+            set('col-idx', String(n + 1));
+            if (row.qty !== null) set('col-qty', fmt(row.qty));
+            if (row.sum !== null) set('col-sum', fmt(Math.round(row.sum * 100) / 100));
+        });
+        return { cols: cols, rows: out };
+    }
+
+    /**
      * Один печатный лист (#print_eq_clone / #print_works_clone / таблица
      * теплопотерь) → один лист книги.
      */
-    function sheetFromNode(node, name) {
+    function sheetFromNode(node, name, opts) {
         const table = node.querySelector('.inv-table') || node.querySelector('table');
-        const data = table ? readTable(table) : null;
+        let data = table ? readTable(table) : null;
+        if (data && opts && opts.flat && node.id !== 'heat_loss_table_page') data = flattenRows(data);
         if (!data || !data.rows.length) return null;
 
         const cols = data.cols;
@@ -767,7 +836,7 @@
         };
     }
 
-    function collectSheets() {
+    function collectSheets(opts) {
         const bin = document.getElementById('print_bin');
         if (!bin) return [];
         const sheets = [];
@@ -777,7 +846,7 @@
             else if (node.id === 'print_works_clone') name = 'Монтажные работы';
             else if (node.id === 'heat_loss_table_page') name = 'Теплопотери';
             else return;                      // схема — только в PDF
-            const sheet = sheetFromNode(node, name);
+            const sheet = sheetFromNode(node, name, opts);
             if (sheet) sheets.push(sheet);
         });
         return sheets;
@@ -798,9 +867,12 @@
     }
 
     window.ExcelExport = {
-        /** Собирает книгу из уже подготовленного #print_bin и отдаёт её браузеру */
-        saveFromPrintBin: function (fileName) {
-            const sheets = collectSheets();
+        /**
+         * Собирает книгу из уже подготовленного #print_bin и отдаёт её браузеру.
+         * opts.flat — списком, как счёт, без разделов (см. flattenRows).
+         */
+        saveFromPrintBin: function (fileName, opts) {
+            const sheets = collectSheets(opts);
             if (!sheets.length) throw new Error('в смете нет разделов для выгрузки');
             saveBlob(buildWorkbook(sheets), fileName);
             return sheets.length;
