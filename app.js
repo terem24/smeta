@@ -43848,6 +43848,31 @@ const app = {
                     price: Math.round((p.price || 0) * _cutM),
                     isActive: _cutOn && p.id === item.id });
             });
+            // Две цены, как у трубы петель: труба за метр и система — то, что в смете
+            // меняется вместе с выбором: сама трасса (бухтой или отрезком) и фитинги
+            // присоединения к коллектору, которые идут за её типоразмером.
+            const _oid = item.originalId;
+            const _tt = this.stateOptionTotals(customAlts.map(a => a.id), id => {
+                const _c = String(id).startsWith('cut10:');
+                if (!this.state.swaps) this.state.swaps = {};
+                if (!this.state.ufhTransitCut) this.state.ufhTransitCut = {};
+                this.state.swaps[_oid] = _c ? String(id).slice(6) : id;
+                if (_c) this.state.ufhTransitCut[_oid] = true; else delete this.state.ufhTransitCut[_oid];
+            });
+            const _tActive = customAlts.find(a => a.isActive);
+            const _tCur = _tActive ? (_tt[_tActive.id] || 0) : 0;
+            customAlts = customAlts.map(a => {
+                const p = _trPool.find(x => x.id === a.imgId);
+                const d = (_tt[a.id] || 0) - _tCur;
+                return {
+                    ...a,
+                    unitM2: p ? (p.price || 0) : 0,
+                    unitHead: 'Труба, за м',
+                    sysHead: 'Система',
+                    price: _tt[a.id] || 0,
+                    sysText: (_tCur && d) ? `${d > 0 ? '+' : '−'}${Math.abs(d).toLocaleString('ru-RU')} ₽ к выбранной` : ''
+                };
+            });
         }
         else if (item.originalId && (item.originalId.endsWith('_ufh') || item.originalId.startsWith('SPX-0002-') || item.originalId.startsWith('SPM-0001-'))) {
             let p_pex = 0, p_mp = 0;
@@ -56975,11 +57000,16 @@ const app = {
      * и пробки одинаковы при любой трубе — на их фоне разница между трубами терялась бы.
      */
     pipeOptionTotals: function (field, values) {
+        return this.stateOptionTotals(values, v => { this.state[field] = v; });
+    },
+    // То же, но вариант задаётся функцией: у транзита ТП выбор — это и типоразмер
+    // в swaps, и флаг «отрезком», одним полем состояния его не описать.
+    stateOptionTotals: function (values, apply) {
         const snapshot = JSON.parse(JSON.stringify(this.state));
         const runs = {};
         try {
             values.forEach(v => {
-                this.state[field] = v;
+                apply(v);
                 this.render(true);
                 const rows = {};
                 (this.currentEquipmentList || []).forEach(it => {
