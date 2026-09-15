@@ -1302,7 +1302,10 @@ const app = {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
         this._appSettingsPromise = (async () => {
             try {
-                const { data, error } = await supabaseClient.from('app_settings').select('key, value');
+                // Реквизиты дистрибьюторов (с логотипами) общая загрузка не тянет:
+                // каждый забирает только своего (loadDistBrand)
+                const { data, error } = await supabaseClient.from('app_settings').select('key, value')
+                    .not('key', 'like', 'dist_brand:%');
                 if (error) throw error;
                 const merged = Object.assign({}, this.appSettings);
                 (data || []).forEach(row => { if (row && row.key) merged[row.key] = row.value || {}; });
@@ -1914,7 +1917,8 @@ const app = {
     },
 
     updateHeaderCompanyDetails: function () {
-        let cc = this.companyDetails();
+        // Итоговые реквизиты: свои → дистрибьютора → ТЕРЕМ (см. effectiveCompanyDetails)
+        let cc = this.effectiveCompanyDetails();
 
         let defName = "Общество с ограниченной ответственностью «ТЕРЕМ»";
         let defWeb = "www.teremopt.ru";
@@ -1973,9 +1977,10 @@ const app = {
     resetProfileLogo: function () {
         this.setCompanyDetails({ logo: "" });
         const imgPreview = document.getElementById('profile_logo_preview');
-        if (imgPreview) imgPreview.src = "img/logo.jpg";
+        const _b = this.distBrand();
+        if (imgPreview) imgPreview.src = (_b && _b.logo) || "img/logo.jpg";
         this.updateHeaderCompanyDetails();
-        app.alert("✅ Логотип сброшен на стандартный ТЕРЕМ!");
+        app.alert(_b && _b.logo ? "✅ Логотип сброшен на логотип вашего дистрибьютора." : "✅ Логотип сброшен на стандартный ТЕРЕМ!");
     },
 
     resetCompanyDetails: function () {
@@ -1984,10 +1989,9 @@ const app = {
         if (document.getElementById('profile_company_website')) document.getElementById('profile_company_website').value = "";
         if (document.getElementById('profile_company_address')) document.getElementById('profile_company_address').value = "";
         if (document.getElementById('profile_company_bank')) document.getElementById('profile_company_bank').value = "";
-        const imgPreview = document.getElementById('profile_logo_preview');
-        if (imgPreview) imgPreview.src = "img/logo.jpg";
         this.updateHeaderCompanyDetails();
-        app.alert("✅ Все реквизиты компании сброшены на стандартные!");
+        this.fillCompanyDetailsForm();
+        app.alert(this.distBrand() ? "✅ Реквизиты сброшены на реквизиты вашего дистрибьютора." : "✅ Все реквизиты компании сброшены на стандартные!");
     },
 
     // Реквизиты компании раскрывались кнопкой внутри профиля; теперь это отдельный
@@ -6489,6 +6493,8 @@ const app = {
             }
             if (dist) {
                 this.state.distributorInfo = dist;
+                // Логотип и реквизиты дистрибьютора для шапки, КП и ссылки клиенту
+                this.loadDistBrand();
                 // Личный выбор монтажника (админ мог переключить его на Терем)
                 const userId = this.state.tgUser && this.state.tgUser.id;
                 if (userId) {
@@ -7425,6 +7431,7 @@ const app = {
                     <td style="text-align:right;">
                         <div style="display:flex; gap:6px; justify-content:flex-end;">
                             <button class="admin-btn" style="height:28px; font-size:11px;" ${isViewer ? 'disabled' : ''} onclick="app.editDistributor('${d.id}')">✏️ Изменить</button>
+                            <button class="admin-btn" data-dist-brand="${d.id}" style="height:28px; font-size:11px;" ${isViewer ? 'disabled' : ''} title="Логотип и реквизиты в КП, ссылке клиенту и шапке — всем учёткам этой компании вместо ТЕРЕМ" onclick="app.openDistBrandModal('${d.id}')">🎨 Реквизиты</button>
                             <button class="admin-btn danger" style="height:28px; font-size:11px;" ${isViewer ? 'disabled' : ''} onclick="app.deleteDistributor('${d.id}')">🗑</button>
                         </div>
                     </td>
@@ -7540,6 +7547,8 @@ const app = {
         `;
         // Счётчики мест — отдельным запросом после отрисовки
         if (dists.length) this.fillInviteStats(dists.map(d => d.id));
+        // Отметить, у каких компаний уже заданы свои реквизиты
+        this.fillDistBrandMarks();
     },
 
     // Вкладка "Статусы смет" — CRM-канбан по жизненному циклу сметы, сгруппированный в 3 смысловых
@@ -13314,17 +13323,227 @@ const app = {
         // localStorage не резиновый.
         delete this.state.customCompany;
     },
+    // ── Реквизиты дистрибьютора по умолчанию ─────────────────────────────────
+    // Дистрибьютор (КИТ и т. п.) хочет, чтобы у всех его людей в КП, ссылке клиенту,
+    // на титульном листе и в шапке стояли его логотип и реквизиты, а не ТЕРЕМ.
+    // Порядок для каждого поля: своё, заполненное человеком в кабинете → реквизиты
+    // его дистрибьютора → ТЕРЕМ.
+    //
+    // Хранятся в app_settings под ключом dist_brand:<id дистрибьютора> — без миграции,
+    // запись только администратору (политика is_admin). Общая загрузка настроек эти
+    // ключи пропускает (в них логотипы), каждый забирает только своего дистрибьютора.
+    TEREM_COMPANY: {
+        name: 'Общество с ограниченной ответственностью «ТЕРЕМ»',
+        website: 'www.teremopt.ru',
+        address: 'Россия, 123100, г. Москва\nвн. тер.г. муниципального округа Пресненский, 2-я Звенигородская ул., д. 12, стр. 1, помещ. 16н\nтел.: +7 (495) 775-20-20, факс: +7 (495) 775-20-25',
+        bank: 'ИНН 7729646148\nР/сч. 40702810638110013275\nМосковский банк Сбербанка России ОАО г. Москва\nК/сч. 30101810400000000225',
+        logo: 'img/logo.jpg'
+    },
+    COMPANY_FIELDS: ['name', 'website', 'address', 'bank', 'logo'],
+    DIST_BRAND_PREFIX: 'dist_brand:',
+    _distBrand: null,
+
+    // Своё поле, если человек его действительно менял. Форма кабинета показывает
+    // значения по умолчанию прямо в полях, и «Сохранить» годами записывало ТЕРЕМ
+    // как собственные реквизиты — такие копии за свои не считаем.
+    ownCompanyField: function (cc, k) {
+        const v = cc && cc[k];
+        if (!v) return '';
+        const norm = s => String(s || '').replace(/\r/g, '').trim();
+        if (norm(v) === norm(this.TEREM_COMPANY[k])) return '';
+        const b = this.distBrand();
+        if (b && b[k] && norm(v) === norm(b[k])) return '';
+        return v;
+    },
+
+    // Реквизиты своего дистрибьютора, если они заданы и относятся к нему
+    distBrand: function () {
+        const dist = this.state && this.state.distributorId;
+        const b = this._distBrand;
+        return (dist && b && String(b.distId) === String(dist) && b.value) ? b.value : null;
+    },
+
+    // Итоговые реквизиты: поле за полем своё → дистрибьютора. Пустое поле значит
+    // «по умолчанию ТЕРЕМ» — так их понимают шапка, ссылка клиенту и печать.
+    effectiveCompanyDetails: function () {
+        const cc = this.companyDetails() || {};
+        const b = this.distBrand() || {};
+        const out = Object.assign({}, cc);
+        this.COMPANY_FIELDS.forEach(k => { out[k] = this.ownCompanyField(cc, k) || b[k] || ''; });
+        return out;
+    },
+
+    // Забрать реквизиты своего дистрибьютора. Сначала — из запомненной копии
+    // (шапка сразу правильная), потом сверка с базой по дате изменения: логотип
+    // тянем заново только когда его поменяли.
+    loadDistBrand: async function () {
+        const dist = this.state && this.state.distributorId;
+        if (!dist) { this._distBrand = null; return; }
+        let cached = null;
+        try { cached = JSON.parse(localStorage.getItem('dist_brand_cache') || 'null'); } catch (e) { }
+        if (cached && String(cached.distId) === String(dist)) this._distBrand = cached;
+        try {
+            const key = this.DIST_BRAND_PREFIX + dist;
+            const { data: meta, error } = await supabaseClient.from('app_settings').select('updated_at').eq('key', key).maybeSingle();
+            if (error) throw error;
+            if (!meta) {
+                this._distBrand = null;
+                try { localStorage.removeItem('dist_brand_cache'); } catch (e) { }
+            } else if (!cached || String(cached.distId) !== String(dist) || cached.updated_at !== meta.updated_at) {
+                const { data } = await supabaseClient.from('app_settings').select('value, updated_at').eq('key', key).maybeSingle();
+                this._distBrand = data ? { distId: dist, value: data.value || {}, updated_at: data.updated_at } : null;
+                try {
+                    if (this._distBrand) localStorage.setItem('dist_brand_cache', JSON.stringify(this._distBrand));
+                } catch (e) { /* логотип не влез в localStorage — обойдёмся без копии */ }
+            }
+        } catch (e) {
+            console.warn('[реквизиты дистрибьютора] не прочитаны:', e.message || e);
+        }
+        this.updateHeaderCompanyDetails();
+        this.syncTopLogo();
+    },
+
+    // ── Окно «Реквизиты дистрибьютора» в панели управления ───────────────────
+    fillDistBrandMarks: async function () {
+        try {
+            const { data, error } = await supabaseClient.from('app_settings').select('key').like('key', this.DIST_BRAND_PREFIX + '%');
+            if (error) throw error;
+            const set = new Set((data || []).map(r => String(r.key).slice(this.DIST_BRAND_PREFIX.length)));
+            document.querySelectorAll('[data-dist-brand]').forEach(el => {
+                const on = set.has(String(el.dataset.distBrand));
+                el.textContent = on ? '🎨 Реквизиты ✓' : '🎨 Реквизиты';
+                el.style.color = on ? '#10B981' : '';
+            });
+        } catch (e) { console.warn('[реквизиты дистрибьютора] список не прочитан:', e.message || e); }
+    },
+
+    openDistBrandModal: async function (distId) {
+        if (!this.canEditTariffs()) { app.alert('Реквизиты компании меняет только администратор.'); return; }
+        const dist = ((this.adminData && this.adminData.distributors) || []).find(x => String(x.id) === String(distId));
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        let value = {};
+        try {
+            const { data } = await supabaseClient.from('app_settings').select('value').eq('key', this.DIST_BRAND_PREFIX + distId).maybeSingle();
+            value = (data && data.value) || {};
+        } catch (e) { }
+        this._distBrandDraft = { distId: distId, logo: value.logo || '' };
+        const T = this.TEREM_COMPANY;
+        const field = (id, label, v, ph, rows) => `
+            <label style="display:block; font-size:11px; font-weight:600; color:var(--text-sec); margin:10px 0 4px;">${label}</label>
+            ${rows
+                ? `<textarea id="${id}" rows="${rows}" placeholder="${esc(ph)}" style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); font-size:12.5px; resize:vertical;">${esc(v)}</textarea>`
+                : `<input id="${id}" type="text" value="${esc(v)}" placeholder="${esc(ph)}" style="width:100%; box-sizing:border-box; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); font-size:12.5px;">`}`;
+        const old = document.getElementById('dist_brand_overlay');
+        if (old) old.remove();
+        const ov = document.createElement('div');
+        ov.id = 'dist_brand_overlay';
+        ov.style.cssText = 'position:fixed; inset:0; z-index:100000000; background:rgba(15,23,42,.55); display:flex; align-items:center; justify-content:center; padding:16px;';
+        ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+        ov.innerHTML = `
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:14px; width:100%; max-width:560px; max-height:90vh; overflow:auto; padding:18px 20px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <h3 style="margin:0; font-size:16px; color:var(--text-main);">🎨 Реквизиты: ${esc(dist ? dist.company_name : '')}</h3>
+                    <button class="admin-btn" style="margin-left:auto;" onclick="document.getElementById('dist_brand_overlay').remove()">✕</button>
+                </div>
+                <p style="margin:8px 0 0; font-size:12px; line-height:1.5; color:var(--text-sec);">
+                    Всем учёткам этой компании (монтажникам и продавцам) в шапке КП, ссылке клиенту, на титульном листе и в логотипе под оформлением «магазин»
+                    будут стоять эти данные вместо ТЕРЕМ. Если человек заполнил свои реквизиты в кабинете — его поля важнее.
+                    Пустое поле — берётся ТЕРЕМ.
+                </p>
+                <label style="display:block; font-size:11px; font-weight:600; color:var(--text-sec); margin:12px 0 4px;">Логотип (PNG, JPG или SVG, до 300 КБ)</label>
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <img id="dist_brand_logo_preview" src="${esc(value.logo || T.logo)}" alt="" style="max-width:140px; max-height:70px; border:1px solid var(--border); border-radius:8px; padding:4px; background:#fff;">
+                    <label class="admin-btn" style="cursor:pointer;">Загрузить<input type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style="display:none;" onchange="app.onDistBrandLogo(event)"></label>
+                    <button class="admin-btn" onclick="app.clearDistBrandLogo()">Убрать</button>
+                </div>
+                ${field('dist_brand_name', 'Название компании', value.name || '', T.name)}
+                ${field('dist_brand_website', 'Сайт', value.website || '', T.website)}
+                ${field('dist_brand_address', 'Адрес и телефоны (первая строка будет жирной)', value.address || '', T.address, 3)}
+                ${field('dist_brand_bank', 'Банковские реквизиты', value.bank || '', T.bank, 4)}
+                <div style="display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;">
+                    <button class="admin-btn" style="background:var(--primary); color:#fff; border-color:var(--primary);" onclick="app.saveDistBrand()">Сохранить</button>
+                    <button class="admin-btn danger" onclick="app.deleteDistBrand()">Удалить — вернуть ТЕРЕМ</button>
+                </div>
+            </div>`;
+        document.body.appendChild(ov);
+    },
+
+    onDistBrandLogo: function (event) {
+        const file = event.target.files && event.target.files[0];
+        if (!file) return;
+        // Логотип тянет каждый человек компании, поэтому держим его лёгким
+        if (file.size > 300 * 1024) { app.alert('Логотип больше 300 КБ. Уменьшите картинку и загрузите снова.'); event.target.value = ''; return; }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            this._distBrandDraft.logo = e.target.result;
+            const img = document.getElementById('dist_brand_logo_preview');
+            if (img) img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    clearDistBrandLogo: function () {
+        if (this._distBrandDraft) this._distBrandDraft.logo = '';
+        const img = document.getElementById('dist_brand_logo_preview');
+        if (img) img.src = this.TEREM_COMPANY.logo;
+    },
+
+    saveDistBrand: async function () {
+        const draft = this._distBrandDraft;
+        if (!draft || !this.canEditTariffs()) return;
+        const val = id => (document.getElementById(id) || {}).value || '';
+        const value = {
+            name: val('dist_brand_name').trim(),
+            website: val('dist_brand_website').trim(),
+            address: val('dist_brand_address').replace(/\r/g, '').trim(),
+            bank: val('dist_brand_bank').replace(/\r/g, '').trim(),
+            logo: draft.logo || ''
+        };
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: this.DIST_BRAND_PREFIX + draft.distId, value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            const ov = document.getElementById('dist_brand_overlay');
+            if (ov) ov.remove();
+            this.fillDistBrandMarks();
+            if (String(this.state.distributorId) === String(draft.distId)) this.loadDistBrand();
+            app.alert('✅ Реквизиты сохранены. Люди компании увидят их при следующем открытии сайта.');
+        } catch (e) {
+            app.alert('Не удалось сохранить реквизиты: ' + (e.message || e));
+        }
+    },
+
+    deleteDistBrand: async function () {
+        const draft = this._distBrandDraft;
+        if (!draft || !this.canEditTariffs()) return;
+        if (!await app.confirm('Удалить реквизиты компании? Её люди снова увидят ТЕРЕМ (свои реквизиты из кабинета останутся).')) return;
+        try {
+            const { error } = await supabaseClient.from('app_settings').delete().eq('key', this.DIST_BRAND_PREFIX + draft.distId);
+            if (error) throw error;
+            const ov = document.getElementById('dist_brand_overlay');
+            if (ov) ov.remove();
+            this.fillDistBrandMarks();
+            if (String(this.state.distributorId) === String(draft.distId)) this.loadDistBrand();
+        } catch (e) {
+            app.alert('Не удалось удалить реквизиты: ' + (e.message || e));
+        }
+    },
+
     // Состояние для отправки в облако: к обычному расчёту добавляем реквизиты автора,
     // чтобы сохранённая смета несла свою шапку (админский предпросмотр, печать).
+    // Реквизиты — итоговые: у человека дистрибьютора без своих данных клиент увидит
+    // шапку дистрибьютора.
     stateForCloud: function (base) {
-        return Object.assign({}, base || this.state, { customCompany: this.companyDetails() });
+        return Object.assign({}, base || this.state, { customCompany: this.effectiveCompanyDetails() });
     },
     // Заполняет поля раздела «Реквизиты компании». Вызывается при открытии кабинета и
     // ещё раз, когда настройки доехали из облака (вход с нового устройства).
     fillCompanyDetailsForm: function () {
         const compSec = document.getElementById('profile_tab_company');
         if (!compSec) return;
-        const cc = this.companyDetails() || {};
+        // В полях — итоговые реквизиты: свои, иначе дистрибьютора, иначе ТЕРЕМ
+        const cc = this.effectiveCompanyDetails();
         const defName = "Общество с ограниченной ответственностью «ТЕРЕМ»";
         const defWeb = "www.teremopt.ru";
         const defAddr = "Россия, 123100, г. Москва\nвн. тер.г. муниципального округа Пресненский, 2-я Звенигородская ул., д. 12, стр. 1, помещ. 16н\nтел.: +7 (495) 775-20-20, факс: +7 (495) 775-20-25";
@@ -13872,7 +14091,10 @@ const app = {
         const el = document.getElementById('top_left_logo');
         if (!el) return;
         let src, alt;
-        if (this.isShopTheme()) { src = 'img/terem_logo.svg'; alt = 'ТЕРЕМ'; }
+        // Под темой «магазин» — логотип дистрибьютора, если он задан, иначе ТЕРЕМ
+        const _brand = this.distBrand && this.distBrand();
+        if (this.isShopTheme() && _brand && _brand.logo) { src = _brand.logo; alt = _brand.name || 'Дистрибьютор'; }
+        else if (this.isShopTheme()) { src = 'img/terem_logo.svg'; alt = 'ТЕРЕМ'; }
         else if (this.state.brandMode === 'rommer') { src = 'img/rommer_logo.jpg'; alt = 'ROMMER'; }
         else { src = 'img/stout_logo.png'; alt = 'STOUT'; }
         if (el.getAttribute('src') !== src) { el.src = src; el.alt = alt; }
@@ -33493,6 +33715,8 @@ const app = {
                     // иначе они остались бы висеть из localStorage.
                     this.state.distributorId = null;
                     this.state.distributorInfo = null;
+                    this._distBrand = null;
+                    this.updateHeaderCompanyDetails();
                     if (this.applyDistributorPrices()) this.render();
                 }
 
@@ -33900,11 +34124,19 @@ const app = {
         // Реквизиты компании и логотип — доступны на любом тарифе. Это настройка
         // учётной записи, а не сметы: сохраняем в installerSettings, откуда их не
         // сможет затереть ни загрузка чужого расчёта, ни «Сбросить всё».
+        // Значение по умолчанию (реквизиты дистрибьютора или ТЕРЕМ) своим не считаем
+        // и не сохраняем: иначе смена реквизитов дистрибьютора до человека не дошла бы.
+        const _ownOrEmpty = (k, id) => {
+            const v = document.getElementById(id).value.trim();
+            const norm = x => String(x || '').replace(/\r/g, '').trim();
+            const b = this.distBrand() || {};
+            return (norm(v) === norm(this.TEREM_COMPANY[k]) || (b[k] && norm(v) === norm(b[k]))) ? '' : v;
+        };
         this.setCompanyDetails({
-            name: document.getElementById('profile_company_name').value.trim(),
-            website: document.getElementById('profile_company_website').value.trim(),
-            address: document.getElementById('profile_company_address').value.trim(),
-            bank: document.getElementById('profile_company_bank').value.trim()
+            name: _ownOrEmpty('name', 'profile_company_name'),
+            website: _ownOrEmpty('website', 'profile_company_website'),
+            address: _ownOrEmpty('address', 'profile_company_address'),
+            bank: _ownOrEmpty('bank', 'profile_company_bank')
         });
         // Срок действия счёта по ссылке — там же, в настройках учётной записи
         const validDaysEl = document.getElementById('profile_invoice_valid_days');
@@ -37700,7 +37932,7 @@ const app = {
         const region = this.formatProjectAddress(addr)
             || (this.state.selectedCity ? this.state.selectedCity.name : '');
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
-        const cc = this.companyDetails();
+        const cc = this.effectiveCompanyDetails();
         const payload = {
             title: 'Спецификация оборудования и материалов',
             // Шифр в штампы — как в проектах («2025 – 191 – О»). Марку раздела
@@ -38047,7 +38279,7 @@ const app = {
             phone: tgUser.phone || '',
             city: tgUser.city || '',
             email: (this.state.tgUser?.email || this.state.user?.email || localStorage.getItem('user_email') || ''),
-            customCompany: this.companyDetails()
+            customCompany: this.effectiveCompanyDetails()
         };
 
         // .alts (список товаров-аналогов для кнопки "Аналог" в смете) взаимно ссылается
@@ -39235,7 +39467,7 @@ const app = {
                     phone: tgUser.phone || '',
                     city: tgUser.city || '',
                     email: (this.state.tgUser?.email || this.state.user?.email || localStorage.getItem('user_email') || ''),
-                    customCompany: this.companyDetails()
+                    customCompany: this.effectiveCompanyDetails()
                 };
 
                 // .alts циклически ссылается на другие позиции каталога (см. комментарий в
@@ -41883,6 +42115,12 @@ const app = {
         // Реквизиты компании переехали из сметы в настройки аккаунта — забираем их
         // из последнего расчёта, пока он ещё лежит в state (разовая операция)
         this.migrateCompanyDetails();
+        // Реквизиты дистрибьютора из запомненной копии — чтобы шапка сразу была
+        // его, а не ТЕРЕМ до ответа базы (свежие подтянет loadDistributorInfo)
+        try {
+            const _db = JSON.parse(localStorage.getItem('dist_brand_cache') || 'null');
+            if (_db && this.state.distributorId && String(_db.distId) === String(this.state.distributorId)) this._distBrand = _db;
+        } catch (e) { }
         // Настройки аккаунта с сервера: на новом устройстве реквизиты и прайс-лист
         // монтажа должны появиться сами, без перезаполнения анкеты
         this.pullInstallerSettingsFromCloud();
