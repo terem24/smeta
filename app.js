@@ -2591,6 +2591,23 @@ const app = {
         return { list, loose };
     },
 
+    // Ссылка на страницу товара у производителя — паспорт, сертификат, чертежи. Не по
+    // прямому адресу: в URL у STOUT/ROMMER человекочитаемый слаг, а не артикул, угадать
+    // его нельзя. Вместо этого — поиск по артикулу на самом сайте (проверено вживую на
+    // нескольких разных позициях): у STOUT это сразу редирект на карточку товара, у ROMMER —
+    // страница результатов с ровно одной находкой. Оба ведут туда, где есть паспорт.
+    // Целиком на стороне клиента — ни одного обращения к Supabase.
+    // Только STOUT/ROMMER — для остальных поставщиков (ITAP, ProAqua и т.п.) такой поиск
+    // на сайте не проверялся, ссылку не строим, чтобы не давать то, что не сверено.
+    _brandPassportUrl: function (item) {
+        if (!item || !item.article) return null;
+        const brand = (item.brand || '').toUpperCase();
+        const q = encodeURIComponent(item.article);
+        if (brand === 'STOUT') return 'https://www.stout.ru/search/?q=' + q;
+        if (brand === 'ROMMER') return 'https://www.rommer.ru/search/?q=' + q;
+        return null;
+    },
+
     // Добавляет найденную по чату позицию каталога в текущую смету — тем же механизмом,
     // что и ручное добавление через "Своё оборудование" (state.userAddedEq), поэтому дальше
     // позиция живёт как обычная: правится, удаляется, попадает в печать и в счёт.
@@ -4374,16 +4391,20 @@ const app = {
             const byPower = list.length && list[0]._totalPower != null;
             const title = byPower ? 'Ближайшее по мощности из дизайнерских радиаторов:'
                 : (isLoose ? 'Точного совпадения нет, возможно вы имели в виду:' : 'Нашёл в каталоге:');
-            const items = list.map((it, i) => `
+            const items = list.map((it, i) => {
+                const passportUrl = this._brandPassportUrl(it);
+                return `
                 <div class="ai-chat-product-item" data-idx="${i}">
                     <img src="img/${it.id}.jpg" class="ai-chat-product-img" loading="lazy" decoding="async" onerror="this.style.display='none'">
                     <div class="ai-chat-product-text">
                         <span class="ai-chat-product-name">${escapeHtml(it.name)}</span>
                         <span class="ai-chat-product-meta">${escapeHtml(it.article || it.id)}${it.brand ? ' · ' + escapeHtml(it.brand) : ''}${it._totalPower != null ? ' · ' + it._totalPower + ' Вт' : ''} · ${Math.round(it.price).toLocaleString('ru-RU')} ₽</span>
+                        ${passportUrl ? `<a href="${passportUrl}" target="_blank" rel="noopener" class="ai-chat-product-passport">Паспорт на сайте ${escapeHtml(it.brand)} ↗</a>` : ''}
                     </div>
                     <button type="button" class="ai-chat-product-add">+ В смету</button>
                 </div>
-            `).join('');
+            `;
+            }).join('');
             return `<div class="ai-parse-preview-title">${title}</div><div class="ai-chat-product-list">${items}</div>`;
         };
 

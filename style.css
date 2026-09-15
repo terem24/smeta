@@ -8076,6 +8076,18 @@ body.dark-mode .ai-parse-preview-check {
     color: var(--text-sec);
 }
 
+.ai-chat-product-passport {
+    display: block;
+    font-size: 11px;
+    color: var(--primary);
+    text-decoration: none;
+    margin-top: 2px;
+}
+
+.ai-chat-product-passport:hover {
+    text-decoration: underline;
+}
+
 .ai-chat-product-add {
     flex-shrink: 0;
     border: none;
