@@ -44200,6 +44200,7 @@ const app = {
             const _val = (sys) => (_totals[sys] || {})[_bpScope] || 0;
             const _curVal = _val(this.boilerPipeSystem());
             const _bpIsPipe = this.bpRowKind(item.name) === 'pipe';
+            const _curDia = this.bpRowDia(item.name, this.boilerPipeSystem());
             const _delta = (sys) => {
                 const d = _val(sys) - _curVal;
                 if (!_curVal || d === 0) return '';
@@ -44214,6 +44215,9 @@ const app = {
                 `<span onclick="app.setSwapBpScope('pipe')" ${_bpB(_bpScope === 'pipe')}>Только трубы и фитинги</span>` +
                 `<span onclick="app.setSwapBpScope('rig')" ${_bpB(_bpScope === 'rig')}>С крепежом и теплоизоляцией</span>` +
                 `<span style="font-size:11px;color:var(--text-muted, #6B7280);margin-left:6px;">котёл, бойлер и насосы не в счёт — они одинаковы при любой трубе</span>` +
+                `<div style="flex-basis:100%;font-size:11px;color:var(--text-muted, #6B7280);line-height:1.4;">` +
+                `Диаметр у каждой системы свой: он подобран по скорости воды, а стенка у материалов разной толщины — ` +
+                `поэтому наружный размер отличается. Цены — по прайсу: «Эта позиция» — одна деталь, «Система» — все трубы и фитинги котельной.</div>` +
                 `</div>`;
             customAlts = [
                 { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
@@ -44245,6 +44249,10 @@ const app = {
                 const _row = _isCur
                     ? { name: item.name, price: item.price, unit: item.unit, len: this.bpRowLen(item) }
                     : this.bpCounterpartRow(item, (_totals[a.sys] || {}).rows);
+                // Диаметр линии, на которой стоит эта деталь, — в каждой системе свой.
+                // Без него «угольник 18» против «угольника 26» выглядел как ошибка.
+                const _dia = _row ? this.bpRowDia(_row.name, a.sys) : null;
+                const _diaTxt = (d) => `Ø${d.size}, внутри ${String(d.inner).replace('.', ',')} мм`;
                 return {
                     ...a,
                     price: _val(a.sys),
@@ -44252,6 +44260,9 @@ const app = {
                     unitHead: _bpIsPipe ? 'Труба, за м' : 'Эта позиция',
                     sysHead: 'Система',
                     unitLabel: _isCur ? '' : (_row ? ('Взамен: ' + _row.name) : 'Этой позиции в системе нет'),
+                    diaText: _dia
+                        ? ('Труба: ' + _diaTxt(_dia) + ((!_isCur && _curDia && _curDia.size !== _dia.size) ? ` (сейчас ${_diaTxt(_curDia)})` : ''))
+                        : '',
                     sysText: _delta(a.sys).replace(/<[^>]+>/g, '').replace(' к выбранной системе', ' к выбранной')
                 };
             });
@@ -45703,6 +45714,7 @@ const app = {
                         `${_pct(v, base, isActive)}</td>`;
                     const _sub = [
                         (alt.unitPrice > 0 ? this.formatPriceHtml(alt.unitPrice, true) + ' ' : '') + (alt.unitLabel || ''),
+                        alt.diaText || '',
                         alt.sysText ? 'Система: ' + alt.sysText : ''
                     ].filter(Boolean).map(t => `<span class="two-sub">${t}</span>`).join('');
                     html += `
@@ -57118,6 +57130,18 @@ const app = {
         if (n.indexOf('муфт') >= 0) return 'coupling';
         if (n.indexOf('угольник') >= 0 || n.indexOf('отвод') >= 0) return 'elbow';
         return 'other';
+    },
+    // Типоразмер линии по названию детали: первое число из ряда системы. Резьбу
+    // («3/4"», «R3/4») и угол («90°») пропускаем, иначе «3/4"х26» дал бы 3.
+    // Внутренний диаметр — из того же ряда, по которому подбирается труба.
+    bpRowDia: function (name, sys) {
+        const range = this.boilerPipeRange(sys) || [];
+        const nums = String(name || '').replace(/\d+\s*\/\s*\d+/g, ' ').replace(/\d+\s*°/g, ' ').match(/\d+/g) || [];
+        for (const n of nums) {
+            const r = range.find(x => x.size === parseInt(n, 10));
+            if (r) return r;
+        }
+        return null;
     },
     bpRowUnitPrice: function (row) {
         if (!row) return 0;
