@@ -16951,7 +16951,8 @@ const app = {
         const patch = (t) => {
             const cells = JSON.parse(JSON.stringify((t && t.cells) || {}));
             cells[key] = Object.assign({}, cells[key], { [feature]: value });
-            return { v: 1, cells: cells };
+            // Прочие ключи (tabs — разделы панели) переносим как есть
+            return Object.assign({}, t || {}, { v: 1, cells: cells });
         };
         // Сразу на экран, не дожидаясь базы
         this.appSettings = Object.assign({}, this.appSettings, { tariffs: patch(this.appSettings.tariffs) });
@@ -16962,9 +16963,11 @@ const app = {
     resetTariffs: async function () {
         if (!this.canEditTariffs()) { app.alert('Менять тарифы может только администратор.'); return; }
         if (!await app.confirm('Вернуть всю таблицу к исходным значениям — как сайт работал до неё?')) return;
-        this.appSettings = Object.assign({}, this.appSettings, { tariffs: { v: 1, cells: {} } });
+        // Только ячейки тарифов: разделы панели сбрасываются своей кнопкой
+        const patch = (t) => Object.assign({}, t || {}, { v: 1, cells: {} });
+        this.appSettings = Object.assign({}, this.appSettings, { tariffs: patch(this.appSettings.tariffs) });
         this.renderAdminTariffs();
-        this.saveTariffsQueued(() => ({ v: 1, cells: {} }));
+        this.saveTariffsQueued(patch);
     },
 
     saveTariffsQueued: function (patch) {
@@ -18198,17 +18201,204 @@ const app = {
      * isOwner отдельным доводом, а не выводится из role: права на разделы
      * владельца даёт личный адрес почты, а не запись в базе (isAnalyticsOwner).
      */
+    //
+    // С 15.09.2026 разделы администратора, наблюдателя и менеджера включаются
+    // переключателями во вкладке «Тарифы» (adminTabCell). Владельцу видно всё
+    // всегда, иначе он мог бы запереть панель сам от себя.
     tabVisibleFor: function (tabId, role, isOwner) {
+        if (isOwner && this.OWNER_ONLY_TABS.indexOf(tabId) >= 0) return true;
+        if (this.ADMIN_TAB_ROLES.some(r => r.id === role)) return this.adminTabCell(role, tabId) === 'on';
+        return this.adminTabDefault(tabId, role, isOwner);
+    },
+
+    // Как разделы были розданы до переключателей — исходные значения таблицы
+    adminTabDefault: function (tabId, role, isOwner) {
         if (this.OWNER_ONLY_TABS.indexOf(tabId) >= 0) return !!isOwner;
         if (this.ADMIN_ONLY_TABS.indexOf(tabId) >= 0) return role === 'super_admin' || role === 'admin';
         if (role === 'manager') return this.MANAGER_TABS.indexOf(tabId) >= 0;
         return true;
     },
 
+    // Роли, чьи разделы настраиваются. Владелец в таблице стоит «всегда».
+    ADMIN_TAB_ROLES: [
+        { id: 'admin', label: 'Администратор' },
+        { id: 'viewer', label: 'Наблюдатель' },
+        { id: 'manager', label: 'Менеджер' }
+    ],
+
+    // Хранится там же, где тарифы: app_settings.tariffs.tabs = { viewer: { distributors: 'on' } }
+    adminTabCell: function (role, tabId) {
+        const t = this.appSettings && this.appSettings.tariffs;
+        const v = t && t.tabs && t.tabs[role] && t.tabs[role][tabId];
+        if (v === 'on' || v === 'off') return v;
+        return this.adminTabDefault(tabId, role, false) ? 'on' : 'off';
+    },
+
+    // Разделы раздаёт только владелец: иначе администратор открыл бы себе
+    // «Аналитику» и прочие разделы владельца сам.
+    canEditAdminTabs: function () { return this.getAdminRole() === 'super_admin'; },
+
+    setAdminTabCell: function (role, tabId, value) {
+        if (!this.canEditAdminTabs()) { app.alert('Разделы панели раздаёт только владелец.'); return; }
+        if (!this.ADMIN_TAB_ROLES.some(r => r.id === role) || !this.ADMIN_TAB_DEFS.some(t => t.id === tabId)) return;
+        if (value !== 'on' && value !== 'off') return;
+        const patch = (t) => {
+            const tabs = JSON.parse(JSON.stringify((t && t.tabs) || {}));
+            tabs[role] = Object.assign({}, tabs[role], { [tabId]: value });
+            return Object.assign({}, t || {}, { v: 1, cells: (t && t.cells) || {}, tabs: tabs });
+        };
+        this.appSettings = Object.assign({}, this.appSettings, { tariffs: patch(this.appSettings.tariffs) });
+        this.renderAdminTariffs();
+        this.saveTariffsQueued(patch);
+    },
+
+    resetAdminTabs: async function () {
+        if (!this.canEditAdminTabs()) { app.alert('Разделы панели раздаёт только владелец.'); return; }
+        if (!await app.confirm('Вернуть разделы панели к исходной раздаче?')) return;
+        const patch = (t) => Object.assign({}, t || {}, { v: 1, cells: (t && t.cells) || {}, tabs: {} });
+        this.appSettings = Object.assign({}, this.appSettings, { tariffs: patch(this.appSettings.tariffs) });
+        this.renderAdminTariffs();
+        this.saveTariffsQueued(patch);
+    },
+
+    // ═══ Порядок вкладок панели ══════════════════════════════════════════
+    // Администратор перетаскивает вкладку в ряду — порядок общий для всех,
+    // лежит в базе (app_settings, ключ admin_tab_order: { order: [id, …] }).
+    // Раздел, которого в сохранённом списке нет (появился после сохранения),
+    // встаёт следом за своим соседом по исходному списку, а не в хвост.
+    orderedAdminTabDefs: function () {
+        const saved = (this.appSettings && this.appSettings.admin_tab_order && this.appSettings.admin_tab_order.order) || [];
+        const byId = {};
+        this.ADMIN_TAB_DEFS.forEach(t => { byId[t.id] = t; });
+        const ids = [];
+        saved.forEach(id => { if (byId[id] && ids.indexOf(id) < 0) ids.push(id); });
+        this.ADMIN_TAB_DEFS.forEach((t, i) => {
+            if (ids.indexOf(t.id) >= 0) return;
+            const prev = i > 0 ? this.ADMIN_TAB_DEFS[i - 1].id : null;
+            const at = prev ? ids.indexOf(prev) : -1;
+            ids.splice(at + 1, 0, t.id);
+        });
+        return ids.map(id => byId[id]);
+    },
+
+    canReorderAdminTabs: function () { return ['super_admin', 'admin'].includes(this.getAdminRole()); },
+
+    /**
+     * Сохранить новый порядок. visibleIds — вкладки в том порядке, как они
+     * стоят в ряду у этого администратора. Разделы, которых он не видит
+     * (у администратора нет «Аналитики» владельца), остаются на своих местах:
+     * видимые переставляются только между собой.
+     */
+    saveAdminTabOrder: async function (visibleIds) {
+        if (!this.canReorderAdminTabs()) return;
+        const full = this.orderedAdminTabDefs().map(t => t.id);
+        const visible = new Set(visibleIds);
+        const next = full.slice();
+        let k = 0;
+        full.forEach((id, slot) => { if (visible.has(id)) next[slot] = visibleIds[k++]; });
+        if (next.join() === full.join()) return;
+        const prev = this.appSettings.admin_tab_order;
+        this.appSettings = Object.assign({}, this.appSettings, { admin_tab_order: { order: next } });
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'admin_tab_order', value: { order: next }, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+        } catch (e) {
+            console.error('[порядок вкладок] запись не прошла:', e);
+            this.appSettings = Object.assign({}, this.appSettings, { admin_tab_order: prev });
+            app.alert('Не удалось сохранить порядок вкладок: ' + (e.message || e));
+            this.renderAdminMain();
+        }
+    },
+
+    /**
+     * Перетаскивание вкладок в ряду панели. Слушатель один, на #admin_content:
+     * ряд перерисовывается при каждом переходе, а контейнер остаётся.
+     *
+     * Своя реализация на pointer-событиях, а не HTML5 drag-and-drop: у кнопок
+     * тот в части браузеров не срабатывает, и пальцем на планшете не работает.
+     * Щелчок остаётся щелчком — перетаскивание начинается со сдвига на 6 px.
+     */
+    bindAdminTabDrag: function (root) {
+        if (!root || root._tabDragBound) return;
+        root._tabDragBound = true;
+
+        // Щелчок, которым закончилось перетаскивание, вкладку не переключает
+        root.addEventListener('click', (e) => {
+            if (this._adminTabDragJustEnded && e.target.closest('#admin_nav_tabs')) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
+
+        root.addEventListener('pointerdown', (e) => {
+            const btn = e.target.closest('#admin_nav_tabs .admin-tab-btn');
+            if (!btn || e.button !== 0 || !this.canReorderAdminTabs()) return;
+            const bar = btn.parentElement;
+            const x0 = e.clientX, y0 = e.clientY;
+            let dragging = false;
+
+            // Соседи съезжают плавно (FLIP): запоминаем места до перестановки
+            const flip = (mutate) => {
+                const items = [...bar.children];
+                const before = new Map(items.map(el => [el, el.getBoundingClientRect()]));
+                mutate();
+                items.forEach(el => {
+                    if (el === btn) return;
+                    const a = before.get(el), b = el.getBoundingClientRect();
+                    const dx = a.left - b.left, dy = a.top - b.top;
+                    if ((dx || dy) && el.animate) el.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: 160, easing: 'ease-out' });
+                });
+            };
+
+            const move = (ev) => {
+                if (!dragging) {
+                    if (Math.hypot(ev.clientX - x0, ev.clientY - y0) < 6) return;
+                    dragging = true;
+                    btn.style.opacity = '0.55';
+                    btn.style.cursor = 'grabbing';
+                    document.body.style.userSelect = 'none';
+                }
+                ev.preventDefault();
+                // Кнопка под указателем. Едущие в анимации пропускаем: их рамка
+                // ещё не на месте, и перестановка качалась бы туда-обратно.
+                const over = [...bar.querySelectorAll('.admin-tab-btn')].find(b => {
+                    if (b === btn || (b.getAnimations && b.getAnimations().length)) return false;
+                    const r = b.getBoundingClientRect();
+                    return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+                });
+                if (!over) return;
+                const r = over.getBoundingClientRect();
+                const ref = (ev.clientX > r.left + r.width / 2) ? over.nextElementSibling : over;
+                if (ref === btn || ref === btn.nextElementSibling) return;   // и так на этом месте
+                flip(() => bar.insertBefore(btn, ref));
+            };
+
+            const end = () => {
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', end);
+                window.removeEventListener('pointercancel', end);
+                if (!dragging) return;
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+                document.body.style.userSelect = '';
+                this._adminTabDragJustEnded = true;
+                setTimeout(() => { this._adminTabDragJustEnded = false; }, 60);
+                const ids = [...bar.querySelectorAll('.admin-tab-btn')].map(b => b.id.replace(/^admin_tab_/, ''));
+                this.saveAdminTabOrder(ids);
+            };
+
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', end);
+            window.addEventListener('pointercancel', end);
+        });
+    },
+
     adminTabDefs: function () {
         const role = this.getAdminRole();
         const owner = this.isAnalyticsOwner();
-        const defs = this.ADMIN_TAB_DEFS.filter(t => this.tabVisibleFor(t.id, role, owner));
+        const defs = this.orderedAdminTabDefs().filter(t => this.tabVisibleFor(t.id, role, owner));
         if (role !== 'manager') return defs;
         return defs.map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
     },
@@ -18306,8 +18496,47 @@ const app = {
                 <b>Личная отметка</b> распознавания или проекта в карточке человека сильнее таблицы: включена — откроется, даже если в строке «Нет»; снята — закроется, даже если «Всем».<br>
                 <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
                 <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
-            </div>`;
+            </div>
+            ${this.adminTabsTableHtml(esc, th, td, sep)}`;
         this.renderAdminTariffsStatus();
+    },
+
+    // Вторая таблица вкладки «Тарифы»: какие разделы панели видит каждая роль
+    adminTabsTableHtml: function (esc, th, td, sep) {
+        const canEdit = this.canEditAdminTabs();
+        const roles = this.ADMIN_TAB_ROLES;
+        const dis = canEdit ? '' : 'disabled';
+        const toggle = (role, tabId, on) => `<button type="button" ${dis} role="switch" aria-checked="${on}" title="${on ? 'Раздел виден — нажмите, чтобы скрыть' : 'Раздел скрыт — нажмите, чтобы показать'}"
+                onclick="app.setAdminTabCell('${role}','${tabId}','${on ? 'off' : 'on'}')"
+                style="position:relative; width:40px; height:22px; border-radius:999px; border:none; padding:0; cursor:${canEdit ? 'pointer' : 'default'}; background:${on ? '#10B981' : 'var(--border)'}; transition:background .15s; vertical-align:middle;">
+                <span style="position:absolute; top:3px; left:${on ? '21px' : '3px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:left .15s;"></span>
+            </button>`;
+        const always = `<span style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; background:rgba(16,185,129,.14); color:#0F8A5F;">всегда</span>`;
+        const head = `<tr><th style="${th} text-align:left; padding-left:12px;">Раздел</th><th style="${th} ${sep}">Владелец</th>${roles.map(r => `<th style="${th}">${esc(r.label)}</th>`).join('')}</tr>`;
+        const body = this.orderedAdminTabDefs().map(t => `<tr>
+                <td style="${td} text-align:left; padding-left:12px;"><div style="font-size:12.5px; font-weight:600; color:var(--text-main); white-space:nowrap;">${t.icon} ${esc(t.label)}</div><div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
+                <td style="${td} ${sep}">${always}</td>
+                ${roles.map(r => {
+                    const v = this.adminTabCell(r.id, t.id);
+                    const changed = (v === 'on') !== this.adminTabDefault(t.id, r.id, false);
+                    return `<td style="${td}">${toggle(r.id, t.id, v === 'on')}${changed ? '<div title="Отличается от исходного значения" style="font-size:9.5px; color:var(--primary); margin-top:2px;">изменено</div>' : ''}</td>`;
+                }).join('')}
+            </tr>`).join('');
+        const t = this.appSettings && this.appSettings.tariffs;
+        const hasSaved = !!(t && t.tabs && Object.keys(t.tabs).some(k => Object.keys(t.tabs[k] || {}).length));
+        return `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
+                <h3 style="margin:0; color:var(--text-main);">🗂 Разделы панели управления</h3>
+                <button class="admin-btn" style="margin-left:auto;" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetAdminTabs()">Вернуть исходные</button>
+            </div>
+            <p style="margin:0 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-sec); max-width:900px;">
+                Какие вкладки панели видит каждая роль. Выключенного раздела у человека нет вовсе — ни кнопки, ни пункта в меню.
+                Наблюдатель и менеджер и во включённых разделах видят только свои компании и ничего не меняют.
+                ${canEdit ? '' : '<b style="color:#D97706;">Раздавать разделы может только владелец.</b>'}
+            </p>
+            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
+                <table style="width:100%; min-width:620px; border-collapse:collapse;"><thead>${head}</thead><tbody>${body}</tbody></table>
+            </div>`;
     },
 
     renderAdminTariffsStatus: function () {
@@ -18356,6 +18585,7 @@ const app = {
         { name: 'Доступ к распознаванию и проектированию', hint: 'лично, компании, региону', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Месячный лимит распознаваний', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
         { name: 'Таблица тарифов', hint: 'ассортимент и функции по учётке и тарифу', super_admin: 'y', admin: 'y', viewer: 'n', manager: 'n' },
+        { name: 'Разделы панели по ролям', hint: 'вкладка «Тарифы», вторая таблица', super_admin: 'y', admin: 'n', viewer: 'n', manager: 'n' },
         { group: 'Работа с монтажниками' },
         { name: 'Написать монтажнику', hint: 'письма наблюдателя и менеджера подписаны именем', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
         { name: 'Ссылка-приглашение, QR и счётчик мест', hint: 'в «Пользователях»; лимит мест меняет администратор в карточке компании', super_admin: 'y', admin: 'y', viewer: 'own', manager: 'own' },
@@ -18391,7 +18621,7 @@ const app = {
             cols.map(c => `<th style="${th}">${c.label}<div style="font-family:monospace; font-size:9.5px; font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-sec);">${c.code}</div></th>`).join('')}</tr>`;
 
         // Разделы — из констант панели, поэтому таблица не может устареть
-        const tabRows = this.ADMIN_TAB_DEFS.map(t => `<tr>
+        const tabRows = this.orderedAdminTabDefs().map(t => `<tr>
                 <td style="${tdName}">${t.icon} ${esc(t.label)}<div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
                 ${cols.map(c => `<td style="${td}">${this.tabVisibleFor(t.id, c.role, c.owner)
                     ? (c.role === 'viewer' || c.role === 'manager' ? pill('part', 'свои') : pill('full', 'вся платформа'))
@@ -18587,6 +18817,11 @@ const app = {
         const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks, sellersCount, installersCount, estSellers, estInstallers, estWithWorks, estWithEq } = this.adminData;
 
         const ADMIN_TAB_DEFS = this.adminTabDefs();
+        // Все разделы роли выключены во вкладке «Тарифы» — показывать нечего
+        if (!ADMIN_TAB_DEFS.length) {
+            content.innerHTML = '<div style="padding:30px 20px; text-align:center; color:var(--text-sec); font-size:13px;">Для вашей роли не открыт ни один раздел панели. Разделы включает владелец.</div>';
+            return;
+        }
         // Раздел, закрытый для этой роли, мог остаться в памяти с прошлого входа
         // (или прийти из старой ссылки) — возвращаем к первому доступному.
         if (this._adminTab && !ADMIN_TAB_DEFS.some(t => t.id === this._adminTab)) {
@@ -18632,10 +18867,14 @@ const app = {
         // раздувались на пол-экрана каждая, а у владельца — четыре кнопки второй
         // строки до 340 px при своих законных 100. Сжимать (1 1 0) тоже нельзя:
         // тогда «Своё оборудование» режется многоточием, а короткие держат лишнее.
+        // Администратор может перетащить вкладку — порядок общий для всех (bindAdminTabDrag).
+        // touch-action: none — иначе палец на планшете вместо перетаскивания листал бы панель.
+        const canReorder = this.canReorderAdminTabs();
+        this.bindAdminTabDrag(content);
         navHtml = `
             <div id="admin_nav_tabs" style="display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-shrink: 0; width: 100%; flex-wrap: wrap;">
                 ${ADMIN_TAB_DEFS.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.label}" style="margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${t.icon}<span class="admin-tab-label"> ${t.label}</span></button>
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none; ' : ''}margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${t.icon}<span class="admin-tab-label"> ${t.label}</span></button>
                 `).join('')}
             </div>
         `;
