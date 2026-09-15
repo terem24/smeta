@@ -65195,11 +65195,18 @@ const app = {
         // (готового или первого из блоков: у сборки строк несколько, хватит одной).
         if (this.radHydro && this.radHydro.manifoldCheck) {
             const _manTip = this.radManifoldHydroTip(this.radHydro.manifoldCheck);
-            const _manRow = (this.currentEquipmentList || []).find(r => {
+            // Раздел «3. Приборы отопления» ещё не сброшен (flushBill ниже) — строка коллектора
+            // лежит в bill, а не в общем списке, в отличие от насосной группы раздела 2.
+            const _manRow = [...(bill || []), ...(this.currentEquipmentList || [])].find(r => {
                 const id = String(r.originalId || r.id || '');
                 return !id.endsWith('_water') && /^(SMS-0912|RMS-3210|SMB-6850)/.test(id);
             });
-            if (_manRow) _manRow.qtyTip = (_manRow.qtyTip ? _manRow.qtyTip + '<br><br>' : '') + _manTip;
+            // У строки bill описание в qtyTip, в общем списке — в desc (flushBill), а таблица
+            // берёт qtyTip раньше desc: дописываем к тому, что есть, чтобы не затереть описание.
+            if (_manRow) {
+                const _base = _manRow.qtyTip || _manRow.desc || '';
+                _manRow.qtyTip = (_base ? _base + '<br><br>' : '') + _manTip;
+            }
             if (!this.radHydro.manifoldCheck.ok) {
                 const c = this.radHydro.manifoldCheck;
                 app.tempWarns.push('• <b>Коллектор:</b> когда термоголовки закроют все лучи, насос даст на гребёнки до ' +
