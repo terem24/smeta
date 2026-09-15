@@ -44251,7 +44251,22 @@ const app = {
                     : this.bpCounterpartRow(item, (_totals[a.sys] || {}).rows);
                 // Диаметр линии, на которой стоит эта деталь, — в каждой системе свой.
                 // Без него «угольник 18» против «угольника 26» выглядел как ошибка.
-                const _dia = _row ? this.bpRowDia(_row.name, a.sys) : null;
+                // Пары детали в системе нет (у металлопластика нет угла 45° и т. п.) —
+                // берём трубу системы на той же по счёту линии: диаметры труб обеих
+                // систем по возрастанию, место текущего диаметра среди своих.
+                const _pipeSizes = (sys) => [...new Set(((_totals[sys] || {}).rows || [])
+                    .filter(r => this.bpRowKind(r.name) === 'pipe')
+                    .map(r => this.bpRowDia(r.name, sys)).filter(Boolean).map(d => d.size))].sort((x, y) => x - y);
+                const _lineDia = () => {
+                    if (!_curDia) return null;
+                    const mine = _pipeSizes(this.boilerPipeSystem()), theirs = _pipeSizes(a.sys);
+                    if (!theirs.length) return null;
+                    let k = mine.indexOf(_curDia.size);
+                    if (k < 0) k = mine.filter(s => s < _curDia.size).length;
+                    const size = theirs[Math.min(k, theirs.length - 1)];
+                    return (this.boilerPipeRange(a.sys) || []).find(x => x.size === size) || null;
+                };
+                const _dia = (_row ? this.bpRowDia(_row.name, a.sys) : null) || (_isCur ? null : _lineDia());
                 const _diaTxt = (d) => `Ø${d.size}, внутри ${String(d.inner).replace('.', ',')} мм`;
                 return {
                     ...a,
