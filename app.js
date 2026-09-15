@@ -16849,8 +16849,9 @@ const app = {
     ],
     TARIFF_FEATURES: [
         { id: 'stout', group: 'Ассортимент', label: 'STOUT', locked: true, hint: 'Основа расчёта: без него смету не собрать, поэтому выключить нельзя' },
-        { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Переключатель «Аналог», замены позиций на ROMMER и ROMMER в поиске' },
+        { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Замены позиций на ROMMER и ROMMER в поиске; без него нет и переключателя «Аналог»' },
         { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
+        { id: 'analog', group: 'Функции', label: 'Аналог', hint: 'Подбор аналога: переключатель «Аналог» в параметрах и в заголовках разделов сметы. Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
@@ -16868,6 +16869,8 @@ const app = {
         const pro = plan === 'pro';
         if (feature === 'stout' || feature === 'terem') return 'on';
         if (feature === 'rommer') return pro ? 'on' : 'off';
+        // «Аналог» раньше шёл вместе с ROMMER — исходно так же, Профи.
+        if (feature === 'analog') return pro ? 'on' : 'off';
         if (feature === 'recognize') return pro ? 'list' : 'off';
         if (feature === 'design') return 'list';
         if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
@@ -16878,6 +16881,8 @@ const app = {
     },
 
     canUseDocs: function () { return this.tariffAccess('docs') === 'on'; },
+    // Переключатель «Аналог» уводит смету на ROMMER, поэтому нужен и столбец ROMMER.
+    canUseAnalog: function () { return this.canUseBrand('ROMMER') && this.tariffAccess('analog') === 'on'; },
 
     tariffCell: function (account, plan, feature) {
         const f = this.TARIFF_FEATURES.find(x => x.id === feature);
@@ -44123,12 +44128,17 @@ const app = {
             customAlts = [
                 { id: 'ss304', sys: 'ss304', name: 'Нержавеющая сталь AISI 304, пресс', brand: 'ROMMER', imgId: 'RSS-1001-000022' },
                 { id: 'ss316', sys: 'ss316', name: 'Нержавеющая сталь AISI 316L, пресс', brand: 'STOUT', imgId: 'SSS-2001-000022' },
-                {
-                    id: 'bp_ppr', sys: 'ppr',
-                    name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6' : 'Полипропилен PP-RCT STABI PLUS',
-                    brand: _pprIsPA ? 'Pro Aqua' : 'Wavin Ekoplastik',
-                    imgId: _pprIsPA ? 'PA39012' : 'STRS032RCT'
-                },
+                // Полипропилен — марки прайса ТЕРЕМ, поэтому только при включённом
+                // столбце ТЕРЕМ в «Тарифах». Если ППР уже стоит в смете, строку
+                // оставляем: иначе пропала бы отметка «Выбран».
+                ...((this.tariffAccess('terem') === 'on' || this.boilerPipeSystem() === 'ppr')
+                    ? [{
+                        id: 'bp_ppr', sys: 'ppr',
+                        name: _pprIsPA ? 'Полипропилен PP-R DUO SDR 6' : 'Полипропилен PP-RCT STABI PLUS',
+                        brand: _pprIsPA ? 'Pro Aqua' : 'Wavin Ekoplastik',
+                        imgId: _pprIsPA ? 'PA39012' : 'STRS032RCT'
+                    }]
+                    : []),
                 { id: 'bp_mp', sys: 'mp', name: 'Металлопластик PE-Xb/Al/PE-Xb, пресс', brand: 'STOUT', imgId: 'SPM-0001-053230' },
                 { id: 'bp_stable', sys: 'stable', name: 'Стабильная PE-Xa/Al/PE-RT, аксиальные фитинги', brand: 'STOUT', imgId: 'SPS-0002-003247' },
                 // Та же система в номенклатуре ROMMER — только тариф ПРОФИ. Бренд ROMMER
@@ -54112,7 +54122,7 @@ const app = {
         let chk = document.getElementById('chk_cheaper');
 
         if (cw && chk && sl) {
-            if (this.canUseBrand('ROMMER')) {
+            if (this.canUseAnalog()) {
                 cw.style.display = 'flex';
                 chk.checked = (this.state.brandMode === 'rommer');
             } else {
@@ -60045,7 +60055,7 @@ const app = {
             const _secOverride = (this.state.sectionAnalog || {})[title];
             const _secAnalogActive = _secOverride !== undefined ? _secOverride : _globalAnalog;
             const _sewerSwapSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>`;
-            const _analogBadge = (sectionHasAnalogItems && isPro) ? `
+            const _analogBadge = (sectionHasAnalogItems && isPro && this.canUseAnalog()) ? `
                 <div class="row-sec-toggle-wrap sec-analog-badge${_secAnalogActive ? ' active' : ''} no-print" onclick="event.stopPropagation()" style="${isRevealed ? '' : 'display:none;'}">
                     <span class="sec-analog-label">АНАЛОГ</span>
                     <label class="switch">
