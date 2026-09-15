@@ -34451,8 +34451,60 @@ const app = {
      * оставляем; котельной вообще не будет — снимаем вместе с ним. Ответ
      * запоминается в state.rigOff и снимается сам, когда позицию возвращают.
      */
+    /**
+     * Ручная правка строки сметы (вычёркивание optItems, количество qtyOverrides).
+     *
+     * Раньше ключом был артикул (originalId || id), и одинаковый артикул в разных
+     * подразделах — ниппель в двух узлах, обратный клапан на входе и на подмесе —
+     * правился везде разом: вписал 3 в одну строку, стало 3 во всех. Теперь, если
+     * артикул стоит в смете больше чем одной строкой, ключ — «артикул@хэш
+     * подраздела». Одиночная строка хранится по-старому, под голым артикулом: его
+     * читают расчёты (радиаторы, переходники, коммутационная плата).
+     * Старые сохранённые правки под голым ключом действуют на все строки, пока
+     * строку не тронут; при первой правке они разносятся по строкам (_splitRowKey).
+     */
+    rowScopeHash: function (scope) {
+        const s = String(scope || '');
+        let h = 5381;
+        for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+        return (h >>> 0).toString(36);
+    },
+    rowScopedKey: function (base, scope) { return base + '@' + this.rowScopeHash(scope); },
+    // Значение правки строки: своя, иначе общая по артикулу (старый формат).
+    rowOv: function (map, base, scope) {
+        if (!map) return undefined;
+        const k = this.rowScopedKey(base, scope);
+        return Object.prototype.hasOwnProperty.call(map, k) ? map[k] : map[base];
+    },
+    // Ключ для кнопок строки — решается в момент нажатия, по уже собранной смете.
+    rowKey: function (base, hash) {
+        const n = (this.currentEquipmentList || []).filter(e => e.originalId === base).length;
+        return n > 1 ? base + '@' + hash : base;
+    },
+    _rowKeyValue: function (map, key) {
+        if (!map) return undefined;
+        if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+        const at = key.lastIndexOf('@');
+        return at > 0 ? map[key.slice(0, at)] : undefined;
+    },
+    _splitRowKey: function (key) {
+        const at = key.lastIndexOf('@');
+        if (at <= 0) return;
+        const base = key.slice(0, at);
+        ['optItems', 'qtyOverrides'].forEach(f => {
+            const m = this.state[f];
+            if (!m || !Object.prototype.hasOwnProperty.call(m, base)) return;
+            const v = m[base];
+            (this.currentEquipmentList || []).filter(e => e.originalId === base).forEach(e => {
+                const k = this.rowScopedKey(base, e.group || e.sectionTitle || '');
+                if (!Object.prototype.hasOwnProperty.call(m, k)) m[k] = v;
+            });
+            delete m[base];
+        });
+    },
     toggleOpt: async function (id) {
-        const willExclude = !this.state.optItems[id];
+        this._splitRowKey(id);
+        const willExclude = !this._rowKeyValue(this.state.optItems, id);
         const rigKind = (this._rigAnchors || {})[id];
         if (willExclude) {
             if (rigKind) {
@@ -34478,16 +34530,19 @@ const app = {
                 if (ans) delete this.state.rigOff[rigKind];
                 else this.state.rigOff[rigKind] = true;
             }
-            const item = (this.currentEquipmentList || []).find(eq => (eq.originalId || eq.id) === id);
+            const item = (this.currentEquipmentList || []).find(eq => (eq.originalId || eq.id) === id ||
+                this.rowScopedKey(eq.originalId || eq.id, eq.group || eq.sectionTitle || '') === id);
             if (item) this.logEquipmentDeletion(item.name, item.price, item.q || 1);
         } else if (rigKind && this.state.rigOff) {
             delete this.state.rigOff[rigKind];
         }
-        this.state.optItems[id] = !this.state.optItems[id];
+        if (willExclude) this.state.optItems[id] = true;
+        else delete this.state.optItems[id];
         this.saveState();
         this.render();
     },
     setQty: function (id, value) {
+        this._splitRowKey(id);
         if (value === '' || value === null || value === undefined) {
             // Поле очистили не введя цифру — отменяем редактирование, возвращаем расчётное количество
             if (this.state.qtyOverrides && this.state.qtyOverrides[id] !== undefined) {
@@ -34545,7 +34600,8 @@ const app = {
 
     stepQty: function (id, delta, currentQty) {
         this.revealQty(id);
-        let base = (this.state.qtyOverrides && this.state.qtyOverrides[id] !== undefined) ? this.state.qtyOverrides[id] : currentQty;
+        const _ov = this._rowKeyValue(this.state.qtyOverrides, id);
+        let base = (_ov !== undefined) ? _ov : currentQty;
         this.setQty(id, base + delta);
     },
     revealQty: function (id) {
@@ -36148,7 +36204,7 @@ const app = {
         const acc = {}; // group -> ссылка на строку-комплект в out
         list.forEach(i => {
             const g = i.group;
-            const isOpt = this.state.optItems[i.originalId || i.id];
+            const isOpt = i.isOpt;
             if (g && collapsed.includes(g)) {
                 if (isOpt) return; // исключённые позиции в подытог свёрнутого раздела не входят
                 if (!acc[g]) {
@@ -46912,6 +46968,12 @@ const app = {
         if (originalId && this.state.qtyOverrides && this.state.qtyOverrides[originalId] !== undefined) {
             delete this.state.qtyOverrides[originalId];
             changed = true;
+        }
+        // Количество, записанное на отдельные строки того же артикула (rowScopedKey)
+        if (originalId && this.state.qtyOverrides) {
+            Object.keys(this.state.qtyOverrides).forEach(k => {
+                if (k.startsWith(originalId + '@')) { delete this.state.qtyOverrides[k]; changed = true; }
+            });
         }
         if (changed) {
             this.saveState();
@@ -59676,7 +59738,7 @@ const app = {
             if (this.state.qtyOverrides) {
                 bill.forEach(entry => {
                     const ovKey = entry.originalId || entry.id;
-                    const _ov = this.state.qtyOverrides[ovKey];
+                    const _ov = this.rowOv(this.state.qtyOverrides, ovKey, entry.group || title);
                     if (_ov !== undefined && _ov !== entry.q) {
                         this.calcFinalTotal -= entry.price * (entry.q - _ov);
                         entry.q = _ov;
@@ -59690,7 +59752,7 @@ const app = {
             // копилась в addToBill, до проверки выключенного раздела и до ручного
             // количества, и при нулевой скидке расходилась с «Итого».
             bill.forEach(entry => {
-                if (this.state.optItems && this.state.optItems[entry.originalId || entry.id]) return;
+                if (this.rowOv(this.state.optItems, entry.originalId || entry.id, entry.group || title)) return;
                 const _bp = (entry.basePrice !== undefined ? entry.basePrice : entry.price) || 0;
                 app.originalEqSum = (app.originalEqSum || 0) + Math.round(_bp * (entry.q || 0));
             });
@@ -59747,7 +59809,7 @@ const app = {
                     sum: i.sum,
                     group: i.group,
                     sectionTitle: title,
-                    isOpt: !!this.state.optItems[i.originalId || i.id],
+                    isOpt: !!this.rowOv(this.state.optItems, i.originalId || i.id, i.group || title),
                     availability: i.availability,
                     desc: i.qtyTip || "",
                     alts: i.alts,
@@ -59764,7 +59826,7 @@ const app = {
             // Сортируем bill по группе, чтобы одинаковые группы шли подряд и не дублировались заголовки
             // Считаем сумму оборудования всегда
             let localSecTotal = 0;
-            bill.forEach(i => { let lookupId = i.originalId || i.id; if (!this.state.optItems[lookupId]) localSecTotal += i.sum; });
+            bill.forEach(i => { let lookupId = i.originalId || i.id; if (!this.rowOv(this.state.optItems, lookupId, i.group || title)) localSecTotal += i.sum; });
             app.lastEqSum += localSecTotal;
 
             // Но рендерим HTML только если мы на вкладке Оборудования
@@ -59814,7 +59876,10 @@ const app = {
             const _priceDateIdx = _showPriceDate ? this.catalogPriceDateIndex() : null;
             bill.forEach((i, arrIndex) => {
                 let lookupId = i.originalId || i.id;
-                let isOpt = this.state.optItems[lookupId];
+                // Правка строки — по артикулу и подразделу (см. rowScopeHash)
+                const _rowHash = this.rowScopeHash(i.group || title);
+                const _rowScoped = lookupId + '@' + _rowHash;
+                let isOpt = this.rowOv(this.state.optItems, lookupId, i.group || title);
                 if (!isOpt) secTotal += i.sum;
                 let isCollapsed = (!forceMerge && i.group && this.state.collapsedGroups.includes(i.group));
                 let isSubSection = (i.group && i.group.match(/^\d+\.\d+/));
@@ -59946,9 +60011,10 @@ const app = {
                         `;
                     });
                 }
-                let qtyOpen = !!(this._qtyOpenIds && this._qtyOpenIds[lookupId]);
-                let qtyEditable = `<span class="qty-step" onclick="event.stopPropagation(); app.stepQty('${lookupId}', -1, ${i.q})">−</span><input type="number" class="qty-num-input" min="0" value="${i.q}" onclick="event.stopPropagation(); app.revealQty('${lookupId}')" onchange="event.stopPropagation(); app.setQty('${lookupId}', this.value)" onkeydown="if(event.key==='Enter') this.blur();"><span class="qty-step" onclick="event.stopPropagation(); app.stepQty('${lookupId}', 1, ${i.q})">+</span>`;
-                let qHtml = `<div class="qty-wrap${qtyOpen ? ' qty-open' : ''}">${qtyEditable}${tipHtml} <span class="opt-btn" onclick="event.stopPropagation(); app.toggleOpt('${lookupId}')" title="${!isOpt ? 'Удалить позицию' : 'Добавить позицию'}">${!isOpt ? '<span style="color:#EF4444; font-weight:bold; font-size:14px; line-height:1;">✖</span>' : '➕'}</span></div>`;
+                let qtyOpen = !!(this._qtyOpenIds && (this._qtyOpenIds[lookupId] || this._qtyOpenIds[_rowScoped]));
+                const _rk = `app.rowKey('${lookupId}','${_rowHash}')`;
+                let qtyEditable = `<span class="qty-step" onclick="event.stopPropagation(); app.stepQty(${_rk}, -1, ${i.q})">−</span><input type="number" class="qty-num-input" min="0" value="${i.q}" onclick="event.stopPropagation(); app.revealQty(${_rk})" onchange="event.stopPropagation(); app.setQty(${_rk}, this.value)" onkeydown="if(event.key==='Enter') this.blur();"><span class="qty-step" onclick="event.stopPropagation(); app.stepQty(${_rk}, 1, ${i.q})">+</span>`;
+                let qHtml = `<div class="qty-wrap${qtyOpen ? ' qty-open' : ''}">${qtyEditable}${tipHtml} <span class="opt-btn" onclick="event.stopPropagation(); app.toggleOpt(${_rk})" title="${!isOpt ? 'Удалить позицию' : 'Добавить позицию'}">${!isOpt ? '<span style="color:#EF4444; font-weight:bold; font-size:14px; line-height:1;">✖</span>' : '➕'}</span></div>`;
                 // imgId — артикул каталога у позиций со служебным id (распознанное,
                 // своё оборудование). Файл фото лежит именно под артикулом.
                 let imgContent = getImg(i.imgId ? { ...i, id: i.imgId } : i);
@@ -59999,7 +60065,7 @@ const app = {
                     eqBadgeHtml = ` <span title="Добавлено вручную" style="font-size:10px; color:var(--primary); font-weight:700;">РУЧНОЕ</span> <span title="Удалить позицию" style="cursor:pointer; color:var(--text-sec); font-size:13px;" onclick="event.stopPropagation(); app.deleteEq('${i.id.replace(/'/g, "\\'")}')">↺</span>`;
                 } else {
                     const _isSwapped = this.state.swaps && ((i.instanceKeys && i.instanceKeys.some(k => this.state.swaps[k] !== undefined)) || (i.originalId && this.state.swaps[i.originalId] !== undefined));
-                    const _isQtyOverridden = this.state.qtyOverrides && this.state.qtyOverrides[lookupId] !== undefined;
+                    const _isQtyOverridden = this.rowOv(this.state.qtyOverrides, lookupId, i.group || title) !== undefined;
                     if (_isSwapped || _isQtyOverridden) {
                         // Двойные кавычки JSON.stringify ломают onclick-атрибут (сам в двойных
                         // кавычках) — заменяем на одинарные, ключи (артикулы) их не содержат.
