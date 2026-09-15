@@ -36729,8 +36729,9 @@ const app = {
                 'кроме трапов с сухим затвором заводского исполнения.',
             'Стояк оборудуется ревизией на первом и последнем этажах и вентиляционным выпуском ' +
                 'выше кровли либо аэрационным клапаном.',
-            'Крепление труб — хомутами с резиновой прокладкой: на стояке через 1,5 м, ' +
-                'на горизонтальных участках — через 0,5–0,8 м.'
+            'Крепление труб — хомутами с резиновой прокладкой, под раструбом (за раструб не крепить): ' +
+                'на вертикальных участках не реже 2,2 м для d110 и 1,2 м для d50, на горизонтальных — ' +
+                '1,1 м для d110 и 0,6 м для d50 (10 D и 20 D по паспорту STOUT на трубы SKB, разд. 5).'
         ]});
         notes.push({ h: '4. Испытания', lines: [
             'Смонтированную систему испытать проливом воды при одновременном открытии ' +
@@ -51337,16 +51338,41 @@ const app = {
         return { lens: lens, total: lens.reduce((a, b) => a + b, 0), floors: floors };
     },
 
-    /** Сумма выпусков D 58 по всем зонам, м — под хомуты */
-    sewerPipe58Total: function () {
-        let t = 0;
+    /**
+     * Хомуты канализации по паспорту STOUT «Трубы для систем внутренней канализации
+     * тип SKB» (ред. 2 от 20.04.2023, разд. 5): подвижные опоры не реже 10 D на
+     * горизонтали и 20 D на вертикали — D 58: 0,6 и 1,2 м; D 110: 1,1 и 2,2 м.
+     * Каждая трасса считается отдельно: ceil(L / шаг), второй конец опирается на
+     * стояк или прибор. Стояк этажа (3 м) — ceil(3 / 2,2) = 2 хомута: под раструбом и
+     * у тройника унитаза, как требует тот же раздел. Паспорт Sinikon Comfort не
+     * сверялся — для него принят тот же шаг.
+     */
+    SEWER_CLAMP_STEP: { h58: 0.6, v58: 1.2, h110: 1.1, v110: 2.2 },
+    sewerClampCounts: function () {
+        const st = this.SEWER_CLAMP_STEP;
+        const main = this.sewerMainRuns();
+        const riser = main.lens.slice(0, main.floors);
+        const horiz = main.lens.slice(main.floors);
+        const c110v = riser.reduce((s, L) => s + Math.ceil(L / st.v110), 0);
+        const c110h = horiz.reduce((s, L) => s + Math.ceil(L / st.h110), 0);
+        let len58 = 0, c58 = 0;
         (this.state.waterZones || []).forEach(z => {
             const f = z.fixtures || {};
             ['bath', 'shower', 'basin', 'bidet', 'wash', 'dish'].forEach(k => {
-                t += this.sewerRuns(z.name, k, f[k]).total;
+                this.sewerRuns(z.name, k, f[k]).lens.forEach(L => { len58 += L; c58 += Math.ceil(L / st.h58); });
             });
         });
-        return t;
+        return {
+            c110: c110v + c110h, c110v: c110v, c110h: c110h, c58: c58,
+            riserLen: riser.reduce((a, b) => a + b, 0), horizLen: horiz.reduce((a, b) => a + b, 0), len58: len58
+        };
+    },
+    sewerClampTip: function (cc, d) {
+        const f = n => String(n).replace('.', ',');
+        const src = 'паспорт STOUT «Трубы для систем внутренней канализации тип SKB», ред. 2 от 20.04.2023, разд. 5';
+        return d === 110
+            ? `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Крепление стояка и лежака D110. Хомуты с резиновой прокладкой: пластиковые защёлки для этих труб паспорт запрещает. Крепить под раструбом, за раструб нельзя.<br><b>Шаг:</b> на вертикали не реже 2,2 м (20 D), на горизонтали 1,1 м (10 D) — ${src}.<br><b>Количество:</b> стояк ${f(cc.riserLen)} м по этажам → ${cc.c110v} шт.; лежак ${f(cc.horizLen)} м / 1,1 → ${cc.c110h} шт.; всего ${cc.c110}.${this.state.sewerType === 'comfort' ? '<br>Для Sinikon Comfort принят тот же шаг: паспорт Sinikon не сверялся.' : ''}</span>`
+            : `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Крепление отводов D50/D58 от приборов. Хомуты с резиновой прокладкой.<br><b>Шаг:</b> на горизонтали не реже 0,6 м (10 D) — ${src}. Каждая трасса считается отдельно, второй конец опирается на стояк или прибор.<br><b>Количество:</b> трассы ${f(Math.round(cc.len58 * 10) / 10)} м → ${cc.c58} шт.${this.state.sewerType === 'comfort' ? '<br>Для Sinikon Comfort принят тот же шаг: паспорт Sinikon не сверялся.' : ''}</span>`;
     },
 
     /**
@@ -66698,21 +66724,22 @@ const app = {
 
                     // Добавление крепежной системы для канализации (Раздел 6)
                     // Хомуты — по тем же длинам, по каким нарезаны трубы (с плана или по норме)
-                    let totalPipe58 = this.sewerPipe58Total();
-                    let countClamps110 = floors + Math.ceil(Math.max(0, pipe110Len - floors * 3) / 1.5);
-                    let countClamps58 = Math.ceil(totalPipe58 / 1.0);
+                    // Шаг — по паспорту STOUT SKB (sewerClampCounts)
+                    const _cc = this.sewerClampCounts();
+                    let countClamps110 = _cc.c110;
+                    let countClamps58 = _cc.c58;
 
                     if (countClamps110 > 0) {
                         let clamp110 = catalog.mounting_system.find(x => x.id === "SAC-0020-010004");
                         if (clamp110) {
-                            addToBill(clamp110, countClamps110, "Крепление стояка канализации D110 (тяжелая серия).", grpSewerMain);
+                            addToBill(clamp110, countClamps110, this.sewerClampTip(_cc, 110), grpSewerMain);
                         }
                     }
 
                     if (countClamps58 > 0) {
                         let clamp58 = catalog.mounting_system.find(x => x.id === "SAC-0020-000002");
                         if (clamp58) {
-                            addToBill(clamp58, countClamps58, "Крепление отводов канализации D50/D58.", grpSewerMain);
+                            addToBill(clamp58, countClamps58, this.sewerClampTip(_cc, 58), grpSewerMain);
                         }
                     }
 
@@ -66854,21 +66881,22 @@ const app = {
                     if (_aer110) addSewerItem(_aer110, 1, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Вентиляция стояка: пропускает воздух внутрь при сливе, чтобы не срывало гидрозатворы, и не выпускает запах. Ставится на верх стояка вместо вентвыпуска выше кровли (лист «К» проекта). Если стояк выводится на кровлю, аэратор из сметы уберите.</span>`);
 
                     // Добавление крепежной системы для канализации (Раздел 6) - общего списка
-                    let totalPipe58 = this.sewerPipe58Total();
-                    let countClamps110 = floors + Math.ceil(Math.max(0, pipe110Len - floors * 3) / 1.5);
-                    let countClamps58 = Math.ceil(totalPipe58 / 1.0);
+                    // Шаг — по паспорту STOUT SKB (sewerClampCounts)
+                    const _cc = this.sewerClampCounts();
+                    let countClamps110 = _cc.c110;
+                    let countClamps58 = _cc.c58;
 
                     if (countClamps110 > 0) {
                         let clamp110 = catalog.mounting_system.find(x => x.id === "SAC-0020-010004");
                         if (clamp110) {
-                            addSewerItem(clamp110, countClamps110, "Крепление стояка канализации D110 (тяжелая серия).");
+                            addSewerItem(clamp110, countClamps110, this.sewerClampTip(_cc, 110));
                         }
                     }
 
                     if (countClamps58 > 0) {
                         let clamp58 = catalog.mounting_system.find(x => x.id === "SAC-0020-000002");
                         if (clamp58) {
-                            addSewerItem(clamp58, countClamps58, "Крепление отводов канализации D50/D58.");
+                            addSewerItem(clamp58, countClamps58, this.sewerClampTip(_cc, 58));
                         }
                     }
 
