@@ -44074,6 +44074,7 @@ const app = {
             const _bpScope = (this.state.swapBpScope === 'rig') ? 'rig' : 'pipe';
             const _val = (sys) => (_totals[sys] || {})[_bpScope] || 0;
             const _curVal = _val(this.boilerPipeSystem());
+            const _bpIsPipe = this.bpRowKind(item.name) === 'pipe';
             const _delta = (sys) => {
                 const d = _val(sys) - _curVal;
                 if (!_curVal || d === 0) return '';
@@ -44106,10 +44107,24 @@ const app = {
                 ...(this.isPro()
                     ? [{ id: 'bp_stable_r', sys: 'stable_r', name: 'Стабильная PE-Xa/Al/PE-RT, аксиальные фитинги', brand: 'ROMMER', imgId: 'RPS-0001-003247' }]
                     : [])
-            // Подпись отдельным полем, а не хвостом названия: значок «Выбран»
-            // рисуется сразу после имени, и подпись-блок утащила бы его на
-            // следующую строку.
-            ].map(a => ({ ...a, price: _val(a.sys), note: _delta(a.sys) }));
+            // Две цены, как у основания тёплого пола: сама позиция (та же деталь в
+            // этой системе) и система целиком, у каждой процент к выбранной.
+            // Под названием — какая именно деталь встанет на место этой.
+            ].map(a => {
+                const _isCur = (a.sys === this.boilerPipeSystem());
+                const _row = _isCur
+                    ? { name: item.name, price: item.price, unit: item.unit, len: this.bpRowLen(item) }
+                    : this.bpCounterpartRow(item, (_totals[a.sys] || {}).rows);
+                return {
+                    ...a,
+                    price: _val(a.sys),
+                    unitM2: _row ? Math.round(this.bpRowUnitPrice(_row)) : 0,
+                    unitHead: _bpIsPipe ? 'Труба, за м' : 'Эта позиция',
+                    sysHead: 'Система',
+                    unitLabel: _isCur ? '' : (_row ? ('Взамен: ' + _row.name) : 'Этой позиции в системе нет'),
+                    sysText: _delta(a.sys).replace(/<[^>]+>/g, '').replace(' к выбранной системе', ' к выбранной')
+                };
+            });
         }
         else if (item.originalId && this.isPprArticle(item.originalId)) {
             customAlts = [
@@ -45593,14 +45608,21 @@ const app = {
                             </td>
                         </tr>`;
                     _same.forEach(alt => {
+                        // Цена детали — в колонке «Эта позиция» с процентом к текущей;
+                        // система от замены одной детали не меняется, её колонка пустая.
+                        const _priceCells = _twoPrice
+                            ? `<td class="col-two col-two-u"><span class="two-lbl">${_twoHead.unitHead || ''}</span>` +
+                              `<span class="two-val">${alt.price > 0 ? this.formatPriceHtml(alt.price, true) : '—'}</span>${_pct(alt.price, item.price || 0, false)}</td>` +
+                              `<td class="col-two col-two-s"></td>`
+                            : `<td class="col-pct"></td>` +
+                              `<td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${alt.price > 0 ? this.formatPriceHtml(alt.price, true) : '—'}</td>`;
                         html += `
                             <tr style="cursor: pointer;" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                                 <td class="col-idx"></td>
                                 <td class="col-img">${getImg(alt)}</td>
                                 <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}</td>
                                 <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand}</td>
-                                <td class="col-pct"></td>
-                                <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${alt.price > 0 ? this.formatPriceHtml(alt.price, true) : '—'}</td>
+                                ${_priceCells}
                             </tr>`;
                     });
                 }
@@ -56752,7 +56774,12 @@ const app = {
                 this._boilerRangeCache = null;   // ряд зависит от системы и бренда ППР
                 this.render(true);
                 const r = sums();
-                out[sys] = { total: Math.round(r.total), pipe: Math.round(r.pipe), rig: Math.round(r.rig) };
+                // Строки обвязки этой системы — по ним таблица замены ищет «ту же
+                // позицию» в другой системе и показывает её цену рядом с ценой системы.
+                const rows = (this.currentEquipmentList || [])
+                    .filter(it => String(it.group || '').indexOf('2.') === 0 && this.isBoilerPipeRow(it))
+                    .map(it => ({ group: it.group, name: it.name, price: it.price || 0, unit: it.unit, len: this.bpRowLen(it), tip: it.desc || '' }));
+                out[sys] = { total: Math.round(r.total), pipe: Math.round(r.pipe), rig: Math.round(r.rig), rows: rows };
             });
         } finally {
             // Прогон мог тронуть не только boilerPipeSystem (render кое-где
@@ -56763,6 +56790,73 @@ const app = {
             this.render(true);
         }
         return out;
+    },
+
+    /**
+     * Та же позиция обвязки в другой системе: угольник — угольником, переход на
+     * резьбу — переходом, труба — трубой, в том же подразделе сметы.
+     *
+     * Артикулы у систем не пересекаются, а набор фитингов разный (у металлопластика
+     * нет углов 45°, у ППР на 40-й трубе добавляется переходная муфта), поэтому
+     * сопоставляем по виду детали из названия и по назначению из подсказки строки.
+     * Не нашли пары — null, в таблице будет прочерк: выдумывать цену хуже.
+     *
+     * Цена трубы приводится к метру: нержавейка в смете идёт штангой 4 м, а
+     * металлопластик бухтой 50 м, и сравнивать штангу с бухтой бессмысленно.
+     */
+    // Длина штанги или бухты. В сохранённой строке сметы (currentEquipmentList)
+    // поля len нет, поэтому берём его из каталога по артикулу.
+    bpRowLen: function (it) {
+        if (!it) return 0;
+        if (it.len > 0) return it.len;
+        const c = this.findCatalogItemById(it.originalId || it.id);
+        return (c && c.len > 0) ? c.len : 0;
+    },
+    bpRowKind: function (name) {
+        const n = String(name || '').toLowerCase();
+        const w = n.split(/[^а-яёa-z]+/);
+        if (n.indexOf('гильз') >= 0) return 'sleeve';
+        if (n.indexOf('труба') >= 0) return 'pipe';
+        if (n.indexOf('тройник') >= 0) return 'tee';
+        if (n.indexOf('резьб') >= 0 || n.indexOf('комбинир') >= 0 || n.indexOf('переходник') >= 0 || w.includes('нр') || w.includes('вр')) return 'thread';
+        if (n.indexOf('муфт') >= 0) return 'coupling';
+        if (n.indexOf('угольник') >= 0 || n.indexOf('отвод') >= 0) return 'elbow';
+        return 'other';
+    },
+    bpRowUnitPrice: function (row) {
+        if (!row) return 0;
+        const p = row.price || 0;
+        if (this.bpRowKind(row.name) !== 'pipe' || row.unit === 'м') return p;
+        return (row.len > 0) ? p / row.len : p;
+    },
+    bpCounterpartRow: function (item, rows) {
+        if (!item || !rows || !rows.length) return null;
+        const kind = this.bpRowKind(item.name);
+        const grp = String(item.group || '');
+        const words = (s) => String(s || '').toLowerCase()
+            .replace(/<[^>]+>/g, ' ').split(/требуется/)[0]
+            .split(/[^а-яё]+/).filter(x => x.length > 3);
+        const thSide = (s) => {
+            const t = String(s || '').toLowerCase(), w = t.split(/[^а-яё]+/);
+            if (t.indexOf('наружн') >= 0 || w.includes('нр')) return 'mi';
+            if (t.indexOf('внутренн') >= 0 || w.includes('вр')) return 'fi';
+            return '';
+        };
+        const angle = (s) => { const m = String(s || '').match(/(45|90)\s*°/); return m ? m[1] : ''; };
+        const myTip = item.desc || '';
+        const myWords = words(myTip);
+        const mySide = thSide(item.name + ' ' + myTip);
+        const myAngle = angle(item.name + ' ' + myTip);
+        let best = null, bestScore = -1;
+        rows.forEach(r => {
+            if (String(r.group || '') !== grp || this.bpRowKind(r.name) !== kind) return;
+            const rw = words(r.tip);
+            let score = myWords.filter(x => rw.includes(x)).length;
+            if (mySide && thSide(r.name + ' ' + r.tip) === mySide) score += 3;
+            if (myAngle && angle(r.name + ' ' + r.tip) === myAngle) score += 2;
+            if (score > bestScore) { best = r; bestScore = score; }
+        });
+        return best;
     },
 
     /**
