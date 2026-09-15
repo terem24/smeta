@@ -55890,7 +55890,7 @@ const app = {
 
     /**
      * «Без гидрострелки» выбрана, но не собирается: тёплый пол больше, чем тянет
-     * один узел подмеса. Считается по одному состоянию, без расчёта сметы, —
+     * один узел подмеса, или есть снеготаяние. Считается по одному состоянию, без расчёта сметы, —
      * потому что спрашивают об этом и до него: схема загрузки бойлера решается в
      * render раньше, чем посчитан тёплый пол, и без этой проверки бойлер уходил
      * на трёхходовой клапан, хотя котельная собиралась как в «Авто».
@@ -55906,11 +55906,33 @@ const app = {
      * нажатия, которое смета всё равно не выполнит.
      */
     boilerSchemeDirectImpossible: function () {
+        return !!this.boilerSchemeDirectWhy();
+    },
+
+    /**
+     * Почему «Без гидрострелки» не собрать: 'ufh' — тёплый пол больше, чем тянет
+     * один узел подмеса; 'snow' — снеготаяние (его смесительная группа садится
+     * только на коллектор, а коллектору нужна стрелка); '' — собирается.
+     * calcSnowMelt ничего не пишет в state, поэтому звать его здесь можно и до
+     * render — туда, где решается загрузка бойлера.
+     */
+    boilerSchemeDirectWhy: function () {
         const s = this.state;
-        if (!(s.systems || []).includes('tp')) return false;
-        const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
-        if (!(area > 0)) return false;
-        return !this.isUfhMixTypeCompatible('std', area, s.brandMode, area);
+        if ((s.systems || []).includes('tp')) {
+            const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
+            if (area > 0 && !this.isUfhMixTypeCompatible('std', area, s.brandMode, area)) return 'ufh';
+        }
+        const sn = this.calcSnowMelt();
+        if (sn && !sn.impossible) return 'snow';
+        return '';
+    },
+
+    /** Та же причина словами — для строки под кнопками и подсказки кнопки. */
+    boilerSchemeDirectWhyText: function () {
+        const w = this.boilerSchemeDirectWhy();
+        return w === 'ufh' ? 'тёплый пол больше, чем тянет узел подмеса'
+            : w === 'snow' ? 'группе снеготаяния нужен коллектор, а коллектору — гидрострелка'
+            : '';
     },
 
     /** Схема, по которой смета собирается на самом деле: 'auto' | 'direct' | 'hydro'. */
@@ -55944,7 +55966,7 @@ const app = {
         const bs = this.boilerSchemeMode(), had = this.needCollector, s = this.state;
         const blocked = this.boilerSchemeDirectBlocked();
         const impossible = this.boilerSchemeDirectImpossible();
-        const noDirectWhy = 'тёплый пол больше, чем тянет узел подмеса';
+        const noDirectWhy = this.boilerSchemeDirectWhyText();
 
         // Какая кнопка горит: выбранная вручную, а в автоподборе (и когда «Без
         // стрелки» не собрать) — та, по которой смета собрана на самом деле.
@@ -60929,23 +60951,26 @@ const app = {
             }
         }
 
+        // #7: на двухэтажном доме группа ставится на КАЖДЫЙ ЭТАЖ С РАДИАТОРАМИ, а не просто
+        // «две, раз дом двухэтажный». В подробном режиме мы точно знаем, где радиаторы: если
+        // они, например, только на 2-м этаже (1-й — чистый тёплый пол), нужна одна группа.
+        // В быстром режиме поэтажной раскладки нет — остаётся прежняя оценка по этажности.
+        const _radGroupsByFloors = () => {
+            let radFloorCount = (this.state.floors === 2) ? 2 : 1;
+            if (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0) {
+                const _rf = new Set(this.state.rooms
+                    .filter(r => (!r.sys || r.sys.includes('rad')))
+                    .map(r => r.floor || 1));
+                if (_rf.size > 0) radFloorCount = Math.min(_rf.size, (this.state.floors === 2) ? 2 : 1);
+            }
+            return Math.max(1, radFloorCount);
+        };
         if (hasRad && !_forceDirect) {
             // Встроенного насоса настенного котла хватает на радиаторы мощностью до 20 кВт (площадь до 150 м2)
             // Если требуется коллектор (из-за других насосных групп, т.е. tQ > 0), то на радиаторы также ставится группа.
             // Схема «С гидрострелкой» ставит группу и там, где хватило бы насоса котла.
             if (_forceHydro || this.state.area > 150 || this.state.floors === 2 || pwr > 20 || tQ > 0) {
-                // #7: на двухэтажном доме группа ставится на КАЖДЫЙ ЭТАЖ С РАДИАТОРАМИ, а не просто
-                // «две, раз дом двухэтажный». В подробном режиме мы точно знаем, где радиаторы: если
-                // они, например, только на 2-м этаже (1-й — чистый тёплый пол), нужна одна группа.
-                // В быстром режиме поэтажной раскладки нет — остаётся прежняя оценка по этажности.
-                let radFloorCount = (this.state.floors === 2) ? 2 : 1;
-                if (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0) {
-                    const _rf = new Set(this.state.rooms
-                        .filter(r => (!r.sys || r.sys.includes('rad')))
-                        .map(r => r.floor || 1));
-                    if (_rf.size > 0) radFloorCount = Math.min(_rf.size, (this.state.floors === 2) ? 2 : 1);
-                }
-                rQ = Math.max(1, radFloorCount);
+                rQ = _radGroupsByFloors();
             }
         }
 
@@ -61040,10 +61065,20 @@ const app = {
                 // Пересчитываем то же, что и переход с локального узла на группу выше:
                 // групп ставится по одной на коллектор, а от их числа зависит коллектор котельной.
                 tQ = (estMans > 0 ? estMans : 1);
-                needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup;
+                needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
             }
             this._ufhBal = _bal;
         }
+
+        // Группа радиаторов решалась в самом начале — по площади, этажам, мощности
+        // и по тому, есть ли уже группа тёплого пола. Но коллектор со стрелкой мог
+        // появиться позже: из-за снеготаяния, насосной группы бойлера или потому,
+        // что узел подмеса тёплого пола выше переехал в группу на коллекторе. За
+        // стрелкой насос котла радиаторы уже не питает, и без своей группы они
+        // остаются без воды. Раньше это чинил только следующий пересчёт — когда в
+        // state уже лежал новый тип узла тёплого пола, — и сразу после включения
+        // снеготаяния смета выходила без группы радиаторов.
+        if (hasRad && !_forceDirect && rQ < 1 && needCollector) rQ = _radGroupsByFloors();
 
         // Смесительным контуром при включённой автоматике котельной управляет
         // контроллер. Поворотный привод с накладным датчиком держит температуру
@@ -61092,6 +61127,7 @@ const app = {
             }
             if (tQ > 0) why.push('группа тёплого пола');
             if (tankNeedsPumpGroup) why.push('насосная группа бойлера');
+            if (_snowOnCollector) why.push('снеготаяние');
             this._bsAutoWhy = why;
         }
         this.syncBoilerSchemeNote();
@@ -62754,7 +62790,14 @@ const app = {
         {
             const _p = t => `<div class="tip-p">${t}</div>`;
             let _sb = '';
-            if (_bScheme === 'direct' && _schemeBlockedUfh) {
+            if (_bScheme === 'direct' && _schemeBlockedUfh && this.boilerSchemeDirectWhy() === 'snow') {
+                _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
+                    'В расчёте снеготаяние — котельная собрана по автоподбору.',
+                    _p('Первичный контур снеготаяния — смесительная группа со своим насосом. Она ставится на ' +
+                        'коллектор котельной, как группы радиаторов и тёплого пола, а коллектор без гидрострелки ' +
+                        'не работает: насосы групп и котла мешали бы друг другу. Это практика проектирования, а не требование норм.') +
+                    _p('<b>Что делать:</b> оставить схему как есть или выключить снеготаяние.'));
+            } else if (_bScheme === 'direct' && _schemeBlockedUfh) {
                 const _lim = (this.state.brandMode === 'rommer') ? 100 : 120;
                 _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
                     `Узел подмеса тянет тёплый пол до ${_lim} м², в расчёте ${Math.round(tpArea)} м² — котельная собрана по автоподбору.`,
