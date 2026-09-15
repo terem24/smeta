@@ -2519,6 +2519,16 @@ const app = {
         return /дизайнерск[а-я]*\s*радиатор|радиатор[а-я]*\s*дизайнерск[а-я]*/i.test(query || '');
     },
 
+    // "радиатор ... вт/квт" или "дизайнерский радиатор" — однозначно про КОНКРЕТНЫЙ товар,
+    // а не про выбор системы отопления для дома. Без этой проверки parseHouseQuery увидел бы
+    // то же слово "радиатор" как "система отопления — радиаторы" и перехватил бы сообщение
+    // раньше, чем оно дошло бы до поиска товара (см. использование в sendMessage ниже) —
+    // подбор дизайнерского радиатора иначе не срабатывал бы вообще ни на одном запросе.
+    _isRadiatorProductQuery: function (query) {
+        const powerW = this._parseRadiatorPowerQuery(query);
+        return (powerW != null && /радиатор[а-я]*/i.test(query || '')) || this._isDesignRadiatorQuery(query);
+    },
+
     // Подбор дизайнерского радиатора по мощности — обычный поиск (searchCatalog) ищет точное
     // число В ТЕКСТЕ названия, а у дизайнерских линеек (isDesignRad в catalog.js) мощность
     // посекционная (power50) и в названии не пишется вовсе, поэтому "радиатор 2000 вт" искал
@@ -2556,12 +2566,8 @@ const app = {
         let list = strict.length ? strict : this.searchCatalogLoose(query);
         let loose = !strict.length;
 
-        // Мощность одна на всё ("насос 90 вт", "котёл 9 квт") — без явного слова "радиатор"
-        // рядом это включило бы подбор радиаторов вместо того, что реально искали
-        const powerW = this._parseRadiatorPowerQuery(query);
-        const isRadiatorPowerQuery = powerW != null && /радиатор[а-я]*/i.test(query || '');
-        if (isRadiatorPowerQuery || this._isDesignRadiatorQuery(query)) {
-            const pool = this._findDesignRadiatorsByPower(query, powerW);
+        if (this._isRadiatorProductQuery(query)) {
+            const pool = this._findDesignRadiatorsByPower(query, this._parseRadiatorPowerQuery(query));
             if (pool.length) { list = pool; loose = true; } // "loose" здесь = "подобрано ближайшее", не точное совпадение
         }
         return { list, loose };
@@ -4475,7 +4481,12 @@ const app = {
                 parseText = 'снеготаяние ' + text;
             }
 
-            const results = this.parseHouseQuery(parseText);
+            // "радиатор 2000 вт" / "дизайнерский радиатор чёрный" — про конкретный товар, не
+            // про выбор системы отопления. Без этой проверки parseHouseQuery увидел бы слово
+            // "радиатор" само по себе и понял бы фразу как "система отопления — радиаторы",
+            // и подбор товара из _aiChatFindProducts не срабатывал бы вообще ни на одном
+            // запросе про радиатор — том самом слове, ради которого его и делали.
+            const results = this._isRadiatorProductQuery(parseText) ? [] : this.parseHouseQuery(parseText);
             if (results.length) {
                 note('parsed', results);
                 results.forEach(r => accumulated.set(r.field, r));
