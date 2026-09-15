@@ -2406,11 +2406,20 @@ const app = {
 
     // Поиск по каталогу: разбираем запрос на слова/числа и ищем совпадения независимо от порядка
     // ("Коллектор 5 выходов" находит "...х5 вых."), плюс отдельно — точное совпадение по артикулу.
+    // Артикул без пробелов/точек/дефисов/слэшей, заглавными — тот же приём, что и у подбора
+    // по артикулу в распознавании накладных (recognize_match.js, normArticle). Без неё "SEB
+    // 5101 000009" (через пробелы, как диктуют или печатают через пробел) не находил бы то
+    // же, что "SEB-5101-000009" (как артикул записан в каталоге) — а именно так, дефисами,
+    // его почти никто не вводит.
+    _normArticle: function (s) {
+        return String(s || '').replace(/[\s.\-\/]/g, '').toUpperCase();
+    },
+
     searchCatalog: function (query) {
         query = (query || '').trim();
         if (query.length < 2) return [];
         const idx = this._buildCatalogSearchIndex();
-        const qUpper = query.toUpperCase();
+        const qArtNorm = this._normArticle(query);
         const { words: qWords, numbers: qNumbers, countedNumbers: qCounted } = this._tokenizeSearchText(this._expandSlang(query));
         // Кому что показывать — по таблице «Тарифы»: _hideForBase помечает ROMMER,
         // _terem — прочие марки прайса ТЕРЕМ
@@ -2420,7 +2429,7 @@ const app = {
         const results = idx.filter(it => {
             if (it._hideForBase && !rommerOk) return false;
             if (it._terem && !teremOk) return false;
-            if (it.article && it.article.toUpperCase().includes(qUpper)) return true;
+            if (it.article && this._normArticle(it.article).includes(qArtNorm)) return true;
             if (!qWords.length && !qNumbers.length) return false;
             const wordMatch = qWords.every(qw => it._words.some(w => this._stemEq(w, qw, it._abbrev)));
             // Если в запросе число стоит перед "выходов"/"контуров" и т.п., ищем его именно там же
@@ -2430,8 +2439,8 @@ const app = {
         });
 
         results.sort((a, b) => {
-            const aArt = (a.article || a.id).toUpperCase().includes(qUpper) ? 0 : 1;
-            const bArt = (b.article || b.id).toUpperCase().includes(qUpper) ? 0 : 1;
+            const aArt = this._normArticle(a.article || a.id).includes(qArtNorm) ? 0 : 1;
+            const bArt = this._normArticle(b.article || b.id).includes(qArtNorm) ? 0 : 1;
             if (aArt !== bArt) return aArt - bArt;
             if (!!a.extra !== !!b.extra) return a.extra ? 1 : -1; // сначала проверенные позиции из catalog.js
             return a.name.length - b.name.length;
