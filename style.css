@@ -13283,6 +13283,12 @@ body.object-flat #blk_flat_hot_riser_row {
     display: flex !important;
 }
 
+/* Кухня на своих стояках — вопрос и быстрого режима: от него зависит второй
+   узел ввода со счётчиками, умолчанием его не угадать. */
+body.object-flat #blk_flat_kitchen_riser_row {
+    display: flex !important;
+}
+
 /* Тёплый пол квартиры: блок настроек виден только там */
 #blk_flat_ufh {
     display: none;

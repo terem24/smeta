@@ -40369,6 +40369,32 @@ const app = {
         this.saveState(); this.syncUI(); this.render();
     },
 
+    toggleFlatKitchenRiser: function (on) {
+        this.state.flatKitchenRiser = !!on;
+        this.saveState(); this.syncUI(); this.render();
+    },
+
+    /**
+     * Группы водопотребления квартиры по стоякам воды.
+     *
+     * В панельных домах кухня часто сидит на своих стояках ХВС и ГВС, отдельно от
+     * санузлов. Тогда у неё свой ввод целиком — кран, фильтр, счётчик, редуктор —
+     * и свой коллектор: вода со стояка санузла на кухню не идёт, а счётчики стоят
+     * на каждом стояке. Кухня — зона с «кухн» в названии (в быстром режиме она
+     * называется «Кухня»). В доме и при одном стояке — одна группа на всё.
+     */
+    waterRiserGroups: function () {
+        const zones = this.state.waterZones || [];
+        const isKitchen = z => /кухн/i.test(String((z && z.name) || ''));
+        if (this.isFlat() && this.state.flatKitchenRiser && zones.some(isKitchen) && zones.some(z => !isKitchen(z))) {
+            return [
+                { key: 'main', label: 'санузлов', zones: zones.filter(z => !isKitchen(z)) },
+                { key: 'kitchen', label: 'кухни', zones: zones.filter(isKitchen) }
+            ];
+        }
+        return [{ key: 'main', label: '', zones: zones }];
+    },
+
     // Канализация. В доме она идёт вместе с санузлами, в квартире включается
     // отдельно: бывает, что меняют только воду и приборы, а стояк с разводкой
     // не трогают вовсе.
@@ -41138,6 +41164,8 @@ const app = {
         if (corner) corner.checked = !!this.state.flatCorner;
         const riser = document.getElementById('chk_flat_hot_riser');
         if (riser) riser.checked = !!this.state.flatHotRiser;
+        const kRiser = document.getElementById('chk_flat_kitchen_riser');
+        if (kRiser) kRiser.checked = !!this.state.flatKitchenRiser;
         // В квартире вводов два — холодный и горячий, поэтому «ХВС» в подписи
         // было бы неправдой.
         const wLbl = document.getElementById('lbl_water_input');
@@ -66012,25 +66040,63 @@ const app = {
                 }
             });
 
-            if (totalColdPoints > 0) {
-                let needed = totalColdPoints, q4 = Math.floor(needed / 4), rem = needed % 4, q3 = 0, q2 = 0;
+            // Коллекторы — на каждый стояк воды свой (waterRiserGroups): кухня на своих
+            // стояках получает свою гребёнку. Стояку с одной точкой гребёнка не нужна —
+            // труба идёт от крана с американкой узла ввода через переходник 16×1/2" ВР.
+            const _riserPts = this.waterRiserGroups().map(g => {
+                let cold = 0, hot = 0;
+                g.zones.forEach(z => {
+                    const f = z.fixtures || {};
+                    const mix = (f.basin || 0) + (f.shower || 0) + (f.bath || 0) + (f.bidet || 0);
+                    cold += (f.toilet || 0) + (f.wash || 0) + (f.dish || 0) + mix;
+                    if (recirc) { if (mix > 0) hot++; } else hot += mix;
+                });
+                return { cold: cold, hot: hot };
+            });
+            const _riserSplit = _riserPts.length > 1;
+            // Без стояка ГВС горячую воду даёт свой водонагреватель — один на всю
+            // квартиру, и по стоякам её делить нечего: одна гребёнка на все точки.
+            const _hotSplit = _riserSplit && !!this.state.flatHotRiser;
+            const _qSplit = n => {
+                let q4 = Math.floor(n / 4), rem = n % 4, q3 = 0, q2 = 0;
                 if (rem === 3) q3 = 1; else if (rem === 2) q2 = 1; else if (rem === 1) { if (q4 > 0) { q4--; q3 = 1; q2 = 1 } else { q2 = 1 } }
-                let descColl = this.getDesc('manifold', totalColdPoints, 'cw');
-                if (q4) addToBill(getWaterManifold(catalog.water_manifolds_cold[2]), q4, descColl, grpCold);
-                if (q3) addToBill(getWaterManifold(catalog.water_manifolds_cold[1]), q3, descColl, grpCold);
-                if (q2) addToBill(getWaterManifold(catalog.water_manifolds_cold[0]), q2, descColl, grpCold);
-                addEurocone(waterEurocone, totalColdPoints, this.getDesc('eurocone_water', totalColdPoints), grpCold);
-                _addManifoldEnd('ХВС', 'cw', grpCold);
-                this._waterCollGroups++;
-                // Крепление коллектора ХВС
-                let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");
-                if (clampItem) {
-                    addToBill(clampItem, 2, "Хомут одновинтовой с гайкой M8 1\" для крепления коллектора водоснабжения (ХВС).", grpCold);
-                }
-                let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                if (studItem) {
-                    addToBill(studItem, 2, "Шпилька сантехническая M8x100 для крепления коллектора водоснабжения к стене (ХВС).", grpCold);
-                }
+                return { q4: q4, q3: q3, q2: q2 };
+            };
+            // Гребёнки линии по стоякам; возвращает число точек, подключённых без гребёнки
+            const _addLineManifolds = (line, suffix, pts, list, descKind, grp, rank) => {
+                let direct = 0;
+                pts.forEach(p => {
+                    if (p <= 0) return;
+                    if (pts.length > 1 && p === 1) { direct++; return; }
+                    const q = _qSplit(p);
+                    const descColl = this.getDesc('manifold', p, descKind);
+                    const mk = it => rank ? { ...getWaterManifold(it), sortRank: -1 } : getWaterManifold(it);
+                    if (q.q4) addToBill(mk(list[2]), q.q4, descColl, grp);
+                    if (q.q3) addToBill(mk(list[1]), q.q3, descColl, grp);
+                    if (q.q2) addToBill(mk(list[0]), q.q2, descColl, grp);
+                    _addManifoldEnd(line, suffix, grp);
+                    this._waterCollGroups++;
+                    let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");
+                    if (clampItem) addToBill(clampItem, 2, `Хомут одновинтовой с гайкой M8 1" для крепления коллектора водоснабжения (${line}).`, grp);
+                    let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
+                    if (studItem) addToBill(studItem, 2, `Шпилька сантехническая M8x100 для крепления коллектора водоснабжения к стене (${line}).`, grp);
+                });
+                return direct;
+            };
+            const _addDirect = (line, n, grp) => {
+                if (n <= 0) return;
+                const a = this.findCatalogItemById(_isMpWater ? 'SFP-0002-001216' : 'SFA-0002-001612');
+                if (a) addToBill({ ...a, originalId: a.id + '_riser_' + (line === 'ХВС' ? 'cw' : 'hw') }, n,
+                    `Переходник с внутренней резьбой 16×1/2" — стояк ${line} с одной точкой разбора: коллектор не нужен, труба навинчивается прямо на американку крана узла ввода.`, grp);
+                // Аксиальный переходник PEX держит трубу надвижной гильзой
+                if (!_isMpWater) addToBill(catalog.water_parts.find(x => x.id === "SFA-0020-000016"), n,
+                    `Монтажная гильза 16 для переходника на ${line} — 1 шт на переходник.`, grp);
+            };
+
+            if (totalColdPoints > 0) {
+                const _dirCold = _addLineManifolds('ХВС', 'cw', _riserPts.map(p => p.cold), catalog.water_manifolds_cold, 'cw', grpCold, false);
+                addEurocone(waterEurocone, totalColdPoints - _dirCold, this.getDesc('eurocone_water', totalColdPoints - _dirCold), grpCold);
+                _addDirect('ХВС', _dirCold, grpCold);
                 let pLen = Math.ceil(totalPipeCold);
                 addToBill(catalog.water_insulation[1], pLen, this.getDesc('ins_blue', pLen), grpCold);
 
@@ -66085,28 +66151,13 @@ const app = {
             }
 
             if (totalPipeHot > 0) {
-                let needed = totalHotPoints, q4 = Math.floor(needed / 4), rem = needed % 4, q3 = 0, q2 = 0;
-                if (rem === 3) q3 = 1; else if (rem === 2) q2 = 1; else if (rem === 1) { if (q4 > 0) { q4--; q3 = 1; q2 = 1 } else { q2 = 1 } }
-                let descColl = this.getDesc('manifold', totalHotPoints, recirc ? 'hw_recirc' : 'hw_std');
                 // sortRank: -1 — коллектор открывает подраздел независимо от суммы: трубы,
                 // изоляция и крепёж набегают дороже гребёнки, и без ранга главная позиция
                 // узла уезжала вниз. Гребёнок на ГВС бывает несколько (4+3+2 выхода) —
                 // ранг у всех, между собой они встают по сумме и идут подряд.
-                if (q4) addToBill({ ...getWaterManifold(catalog.water_manifolds_hot[2]), sortRank: -1 }, q4, descColl, grpHot);
-                if (q3) addToBill({ ...getWaterManifold(catalog.water_manifolds_hot[1]), sortRank: -1 }, q3, descColl, grpHot);
-                if (q2) addToBill({ ...getWaterManifold(catalog.water_manifolds_hot[0]), sortRank: -1 }, q2, descColl, grpHot);
-                addEurocone(waterEurocone, totalHotPoints, this.getDesc('eurocone_water', totalHotPoints), grpHot);
-                _addManifoldEnd('ГВС', 'hw', grpHot);
-                this._waterCollGroups++;
-                // Крепление коллектора ГВС
-                let clampItem = catalog.mounting_system.find(x => x.id === "SAC-0020-300001");
-                if (clampItem) {
-                    addToBill(clampItem, 2, "Хомут одновинтовой с гайкой M8 1\" для крепления коллектора водоснабжения (ГВС).", grpHot);
-                }
-                let studItem = catalog.mounting_system.find(x => x.id === "SAC-0020-400100");
-                if (studItem) {
-                    addToBill(studItem, 2, "Шпилька сантехническая M8x100 для крепления коллектора водоснабжения к стене (ГВС).", grpHot);
-                }
+                const _dirHot = _addLineManifolds('ГВС', 'hw', _hotSplit ? _riserPts.map(p => p.hot) : [totalHotPoints],catalog.water_manifolds_hot, recirc ? 'hw_recirc' : 'hw_std', grpHot, true);
+                addEurocone(waterEurocone, totalHotPoints - _dirHot, this.getDesc('eurocone_water', totalHotPoints - _dirHot), grpHot);
+                _addDirect('ГВС', _dirHot, grpHot);
                 let pLen = Math.ceil(recirc ? (totalPipeHot / 2) : totalPipeHot);
                 addToBill(catalog.water_insulation[0], pLen, this.getDesc('ins_red', pLen), grpHot);
 
@@ -66365,9 +66416,19 @@ const app = {
         if (this.isFlat() && this.state.waterInput) {
             currentSectionTitle = "6. Узел ввода воды в квартиру";
             const fi = catalog.flat_water_inlet || [];
+            // Ввод на каждый стояк: ХВС и ГВС, а если кухня на своих стояках —
+            // ещё пара для неё (waterRiserGroups). Подразделы первой пары прежние:
+            // по их именам в сохранённых сметах лежат свёрнутость и «Аналог».
+            const _kitchenRiser = this.waterRiserGroups().some(g => g.key === 'kitchen');
             const risers = [{ key: 'cold', grp: "6.1. Ввод ХВС от стояка", what: 'холодной' }];
             if (this.state.flatHotRiser) {
                 risers.push({ key: 'hot', grp: "6.2. Ввод ГВС от стояка", what: 'горячей' });
+            }
+            if (_kitchenRiser) {
+                risers.push({ key: 'cold_k', grp: "6.1.1 Ввод ХВС от кухонного стояка", what: 'холодной (кухня)' });
+                if (this.state.flatHotRiser) {
+                    risers.push({ key: 'hot_k', grp: "6.2.1 Ввод ГВС от кухонного стояка", what: 'горячей (кухня)' });
+                }
             }
             if (fi.length >= 8) risers.forEach(r => {
                 addToBill(fi[0], 1, this.autoTip(fi[0].name, [
@@ -66402,13 +66463,25 @@ const app = {
 
             if (this.state.waterLeakGuard) {
                 const grpL = "6.3. Защита от протечки";
-                (catalog.water_leak_protection || []).forEach(it => {
-                    addToBill(it, 1, this.autoTip(it.name, [
-                        `<b>Зачем:</b> Датчики на полу в санузлах и на кухне; поймав воду, система за несколько секунд закрывает краны с электроприводом на обоих вводах.`,
+                // Комплект Neptun Base Light — модуль, ОДИН кран и два датчика; модуль
+                // держит до 6 кранов. Кран нужен на каждом вводе, поэтому к комплекту
+                // добавляются краны на остальные вводы. Раньше комплект был один на
+                // два ввода (ХВС и ГВС), и горячий стояк оставался без отсечки.
+                const fl = catalog.flat_leak_protection || [];
+                const _inlets = risers.length;
+                const _extra = Math.min(5, Math.max(0, _inlets - 1));
+                if (fl.length >= 2) {
+                    addToBill(fl[0], 1, this.autoTip(fl[0].name, [
+                        `<b>Зачем:</b> Датчики на полу в санузлах и на кухне; поймав воду, система за несколько секунд закрывает краны с электроприводом на вводах.`,
+                        `<b>Что в комплекте:</b> модуль управления Neptun Base, один кран Bugatti Pro 220 В и два проводных датчика. К модулю подключается до 6 кранов и ещё 20 датчиков.`,
                         `<b>Почему в квартире важнее, чем в доме:</b> протечка уходит к соседям снизу, и ремонт их потолка обходится дороже всей системы.`,
                         `<b>Место:</b> краны сразу за вводными шаровыми, до счётчиков.`
                     ]), grpL);
-                });
+                    if (_extra > 0) addToBill(fl[1], _extra, this.autoTip(fl[1].name, [
+                        `<b>Зачем:</b> В комплекте один кран, а вводов в квартире ${_inlets}: ${risers.map(r => r.what).join(', ')}. Кран с приводом нужен на каждом, иначе протечка с оставшегося стояка продолжится.`,
+                        `<b>Количество:</b> ${_inlets} ввода − 1 кран из комплекта = ${_extra} шт. Та же серия, что в комплекте, — модуль Base держит до 6 кранов.`
+                    ]), grpL);
+                }
             }
 
             if (this.filterLevel() !== 'none') {
@@ -67401,7 +67474,8 @@ const app = {
         // по названию монтажник правит цену в своём прайс-листе.
         if (this.isFlat() && this.state.waterInput) {
             const gW = "2.4 Узел ввода воды в квартиру";
-            const risers = this.state.flatHotRiser ? 2 : 1;
+            // Вводов по стоякам: ХВС (+ГВС) и такая же пара у кухни на своих стояках
+            const risers = (this.state.flatHotRiser ? 2 : 1) * this.waterRiserGroups().length;
             // Одна строка на ввод: счётчик и редуктор — части ввода, а не работы
             // поверх него. Раньше шли тремя строками, и один ввод стоил 16 500.
             addToWorks("Монтаж ввода воды (кран, фильтр, счётчик, редуктор)", risers, 6000, "ввод", gW);
