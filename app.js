@@ -61342,7 +61342,18 @@ const app = {
             // 37 Вт/м³ с коэффициентом кнопки стены, подробный — сопротивление реального
             // пирога. Без объяснения монтажник видит, что смета «похудела», и не знает
             // почему. Синяя: это не ошибка, а смена метода.
-            const _qKw = parseFloat(this.state.quickKwAtSwitch) || 0;
+            // Быстрый расчёт пересчитываем для дома, какой он сейчас. Число, запомненное
+            // при переключении (quickKwAtSwitch), служит только признаком, что переход был:
+            // после него площадь и комнаты меняются, и сравнение с ним показывало рост
+            // дома, а не разницу методов.
+            let _qKw = 0;
+            if (this.state.detailedRooms && parseFloat(this.state.quickKwAtSwitch) > 0) {
+                const _h1 = this.state.h1 || 2.7, _h2 = this.state.h2 || 2.7;
+                const _avgH = (this.state.floors === 2) ? (_h1 + _h2) / 2 : _h1;
+                const _kFlat = this.isFlat() ? this.flatHeatLossFactor() : 1;
+                _qKw = (parseFloat(this.state.area) || 0) * _avgH * 37 * _kFlat
+                    * ((this.state.region || 0) / 100) * (this.state.lastQuickMat || 1.0) / 1000;
+            }
             if (this.state.detailedRooms && _qKw > 0 && _needKw > 0 && Math.abs(_needKw / _qKw - 1) > 0.15) {
                 const _d = Math.round((_needKw / _qKw - 1) * 100);
                 const _R = (this.state.wallLayers || []).reduce((acc, l) => {
@@ -61351,7 +61362,7 @@ const app = {
                 }, 0.115 + 0.043);
                 boilerWarnHtml = (boilerWarnHtml || '') + this.noteBox('info',
                     `Теплопотери ${_d > 0 ? 'выросли' : 'снизились'} на ${Math.abs(_d)} % после перехода к расчёту по помещениям.`,
-                    `Было ${_qKw.toFixed(1)} кВт, стало ${_needKw.toFixed(1)} кВт.`,
+                    `Быстрый расчёт для этого дома — ${_qKw.toFixed(1)} кВт, по помещениям — ${_needKw.toFixed(1)} кВт.`,
                     `<div class="tip-p">Быстрый расчёт — укрупнённая оценка: 37 Вт/м³ объёма с поправкой на климат и тип стены по кнопке. По помещениям считается каждое ограждение: стена по заданному пирогу${(this.state.wallLayers || []).length ? ` (R = ${Number(_R).toFixed(2).replace('.', ',')} м²·°C/Вт)` : ''}, окна, кровля, пол и вентиляция — по СП 50.13330.2024.</div>` +
                     `<div class="tip-p"><b>Проверьте:</b> совпадает ли пирог стены, кровли и пола с тем, что на объекте. Кнопка «Кирпич» в быстром режиме — это не кирпичная стена в подробном: там по умолчанию газобетон 300 мм.</div>`);
             }
