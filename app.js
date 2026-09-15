@@ -8149,7 +8149,7 @@ const app = {
         const data = { key: distIds.slice().sort().join(','), dists, people: [], staff: [], heads: [], estimates: [], events: [], activity: [], activityMissing: false };
         if (!distIds.length) return data;
 
-        const userCols = 'id, username, first_name, last_name, middle_name, email, account_type, distributor_id, distributor_assigned_at, last_visited';
+        const userCols = 'id, username, first_name, last_name, middle_name, email, account_type, distributor_id, distributor_assigned_at, last_visited, activity_types';
 
         // 1. Все, кто привязан к филиалам: монтажники и менеджеры с ролью
         for (const part of chunk(distIds, 60)) {
@@ -8278,10 +8278,24 @@ const app = {
         });
 
         // ── Подсчёт по набору филиалов (и, для менеджера, по его действиям) ──
+        // Продавец — тот, у кого в анкете сфера «продажа» без монтажа: то же правило,
+        // что isSellerOnly и счётчики «Пользователей». Отмечены обе сферы или анкета
+        // пустая — считаем монтажником.
+        const isSeller = u => {
+            const list = Array.isArray(u.activity_types) ? u.activity_types : [];
+            const has = w => list.some(a => String(a).toLowerCase().indexOf(w) !== -1);
+            return has('продав') && !has('монтаж');
+        };
         const statsFor = (distIdList, actorId) => {
             const ids = new Set(distIdList.map(String));
+            // inst — все клиенты филиала (монтажники и продавцы): сметы и счета
+            // считаются по всем, а люди — раздельно
             const inst = installers.filter(u => ids.has(String(u.distributor_id)));
             const instIds = new Set(inst.map(u => String(u.id)));
+            const sellers = inst.filter(isSeller);
+            const sellerIds = new Set(sellers.map(u => String(u.id)));
+            const fitters = inst.filter(u => !sellerIds.has(String(u.id)));
+            const joinedOf = list => from ? list.filter(u => inPeriod(u.distributor_assigned_at)).length : list.length;
             const act = D.activity.filter(a => inPeriod(a.created_at)
                 && (actorId ? String(a.actor_id) === String(actorId) : ids.has(String(a.distributor_id))));
             const est = D.estimates.filter(e => instIds.has(String(e.user_id)) && inPeriod(e.created_at));
@@ -8300,12 +8314,17 @@ const app = {
                 invites: act.filter(a => String(a.action).indexOf('invite_') === 0).length,
                 statuses: act.filter(a => a.action === 'status_change').length,
                 messages: act.filter(a => a.action === 'message').length,
-                installers: inst.length,
+                installers: fitters.length,
+                sellers: sellers.length,
                 // Отметки привязки нет у старых учёток — за «всё время» считаем их всех
-                joined: from ? inst.filter(u => inPeriod(u.distributor_assigned_at)).length : inst.length,
-                active30: inst.filter(u => u.last_visited && new Date(u.last_visited).getTime() > monthAgo).length,
-                calcUsers: new Set(est.map(e => String(e.user_id))).size,
+                joined: joinedOf(fitters),
+                joinedSellers: joinedOf(sellers),
+                active30: fitters.filter(u => u.last_visited && new Date(u.last_visited).getTime() > monthAgo).length,
+                active30Sellers: sellers.filter(u => u.last_visited && new Date(u.last_visited).getTime() > monthAgo).length,
+                calcUsers: new Set(est.filter(e => !sellerIds.has(String(e.user_id))).map(e => String(e.user_id))).size,
+                calcSellers: new Set(est.filter(e => sellerIds.has(String(e.user_id))).map(e => String(e.user_id))).size,
                 estimates: est.length,
+                estimatesSellers: est.filter(e => sellerIds.has(String(e.user_id))).length,
                 sent: evDistinct(['sent', 'printed']).size,
                 requested: evDistinct(['invoice_requested']).size,
                 issued: evDistinct(['invoice_issued']).size,
@@ -8417,7 +8436,8 @@ const app = {
         };
         const METRICS = [
             { k: 'invites', label: 'Ссылок', color: '#6366F1' },
-            { k: 'joined', label: 'Подключилось', color: '#10B981' },
+            { k: 'joined', label: 'Монтажников', color: '#10B981' },
+            { k: 'joinedSellers', label: 'Продавцов', color: '#EC4899' },
             { k: 'estimates', label: 'Смет', color: '#0EA5E9' },
             { k: 'paid', label: 'Оплачено', color: '#F59E0B' }
         ];
@@ -8425,7 +8445,8 @@ const app = {
         const plural = n => n % 10 === 1 && n % 100 !== 11 ? 'филиал' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'филиала' : 'филиалов');
         const sumsHtml = (st) => `<div class="brx-sum">
                 <span>📤 <b>${fmtN(st.invites)}</b> ссылок</span>
-                <span>👷 <b>${fmtN(st.joined)}</b> подключилось</span>
+                <span>👷 <b>${fmtN(st.joined)}</b> монтажников</span>
+                <span>🛒 <b>${fmtN(st.joinedSellers)}</b> продавцов</span>
                 <span>📋 <b>${fmtN(st.estimates)}</b> смет</span>
                 <span>💰 <b>${fmtRub(st.paidSum)}</b> оплачено</span>
             </div>`;
@@ -8444,7 +8465,7 @@ const app = {
                 return `<div class="brx-bwrap">
                     <div class="brx-node brx-branch${isSel('branch', d.id) ? ' sel' : ''}${d.is_active === false ? ' off' : ''}" onclick="app.selectBranchNode('branch','${d.id}')">
                         <div class="brx-title">🏬 ${esc(branchLabel(d, g))}</div>
-                        <div class="brx-muted" style="margin-bottom:8px;">Промокод <b>${esc(String(d.promo_code || '—').toUpperCase())}</b> · монтажников ${fmtN(s.installers)}${d.is_active === false ? ' · выключен' : ''}</div>
+                        <div class="brx-muted" style="margin-bottom:8px;">Промокод <b>${esc(String(d.promo_code || '—').toUpperCase())}</b> · монтажников ${fmtN(s.installers)} · продавцов ${fmtN(s.sellers)}${d.is_active === false ? ' · выключен' : ''}</div>
                         ${METRICS.map(m => `<div class="brx-metric"><span>${m.label}</span>${bar(s[m.k], maxOf(m.k), m.color)}<b>${fmtN(s[m.k])}</b></div>`).join('')}
                         <div class="brx-mgrs">${mgrHtml}</div>
                     </div>
@@ -8454,7 +8475,22 @@ const app = {
             // При уровне руководителей директора стоят в своих узлах — над компанией
             // остаются только наблюдатели, чтобы имена не шли дважды
             const subUserIds = new Set(g.subs.filter(s => s.user).map(s => String(s.user.id)));
-            const topHeads = g.layered ? g.heads.filter(h => !subUserIds.has(String(h.id))) : g.heads;
+            // Наблюдатель стоит у того руководителя, чьи филиалы у него отмечены. Над
+            // компанией — только тот, у кого отмечены филиалы всех руководителей: иначе
+            // продавец с одной карточкой выглядел бы надзирающим за всей компанией.
+            const viewersOf = {};
+            let topHeads = g.heads;
+            if (g.layered) {
+                topHeads = [];
+                g.heads.filter(h => !subUserIds.has(String(h.id))).forEach(h => {
+                    const marked = new Set((Array.isArray(h.viewer_distributor_ids) ? h.viewer_distributor_ids : []).map(String));
+                    const hit = g.subs.filter(s => s.dists.some(d => marked.has(String(d.id))));
+                    if (!hit.length || hit.length === g.subs.length) { topHeads.push(h); return; }
+                    hit.forEach(s => { (viewersOf[s.id] = viewersOf[s.id] || []).push(h); });
+                });
+            }
+            const chipsOf = list => list.slice(0, HEADS_SHOWN).map(h => `<span class="brx-head" title="${esc(h.email || '')}">👤 ${esc(nameOf(h))}</span>`).join('')
+                + (list.length > HEADS_SHOWN ? `<span class="brx-muted">и ещё ${list.length - HEADS_SHOWN}</span>` : '');
             const headsHtml = (topHeads.slice(0, HEADS_SHOWN).map(h => `<span class="brx-head" title="${esc(h.email || '')}">👤 ${esc(nameOf(h))}</span>`).join('')
                 + (topHeads.length > HEADS_SHOWN ? `<span class="brx-muted">и ещё ${topHeads.length - HEADS_SHOWN}</span>` : '')
                 + (!g.layered && g.directorEmail ? `<span class="brx-muted">Директор ${esc(g.directorEmail)} не зарегистрирован</span>` : ''))
@@ -8466,6 +8502,7 @@ const app = {
                         <div class="brx-node brx-headnode${isSel('head', s.id) ? ' sel' : ''}" onclick="app.selectBranchNode('head','${s.id}')">
                             <div class="brx-title">${s.email ? '👤' : '❔'} ${esc(s.label)} <span class="brx-muted" style="font-weight:600;">· ${s.dists.length} ${plural(s.dists.length)}</span></div>
                             <div class="brx-muted" style="margin:2px 0 6px;">${s.email ? (s.user ? esc(s.email) : 'не зарегистрирован') : 'в карточках не указан «Email директора»'}</div>
+                            ${viewersOf[s.id] ? `<div style="margin:0 0 6px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:center;"><span class="brx-muted">Наблюдатели:</span>${chipsOf(viewersOf[s.id])}</div>` : ''}
                             ${sumsHtml(s.stats)}
                         </div>
                         <div class="brx-stem"></div>
@@ -8489,11 +8526,11 @@ const app = {
             const rows = list.map(d => {
                 const s = statsFor([d.id]);
                 return `<tr onclick="app.selectBranchNode('branch','${d.id}')" style="cursor:pointer;">
-                    <td>${esc(branchLabel(d, g))}</td><td>${fmtN(s.invites)}</td><td>${fmtN(s.joined)}</td><td>${fmtN(s.estimates)}</td><td>${fmtN(s.paid)}</td><td style="white-space:nowrap;">${fmtRub(s.paidSum)}</td></tr>`;
+                    <td>${esc(branchLabel(d, g))}</td><td>${fmtN(s.invites)}</td><td>${fmtN(s.joined)}</td><td>${fmtN(s.joinedSellers)}</td><td>${fmtN(s.estimates)}</td><td>${fmtN(s.paid)}</td><td style="white-space:nowrap;">${fmtRub(s.paidSum)}</td></tr>`;
             }).join('');
             return `<div class="brx-h">Сравнение филиалов</div>
                 <div style="overflow-x:auto;"><table class="brx-table">
-                    <thead><tr><th>Филиал</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Оплат</th><th>Сумма</th></tr></thead>
+                    <thead><tr><th>Филиал</th><th>Ссылок</th><th title="Подключилось монтажников">Монт.</th><th title="Подключилось продавцов">Прод.</th><th>Смет</th><th>Оплат</th><th>Сумма</th></tr></thead>
                     <tbody>${rows}</tbody></table></div>`;
         };
 
@@ -8508,9 +8545,9 @@ const app = {
                 : (g.heads.length ? ' · руководитель ' + g.heads.map(nameOf).join(', ') : ''));
             const headsTable = !g.layered ? '' : `<div class="brx-h">Руководители</div>
                 <div style="overflow-x:auto;"><table class="brx-table">
-                    <thead><tr><th>Руководитель</th><th>Филиалов</th><th>Ссылок</th><th>Подкл.</th><th>Смет</th><th>Сумма</th></tr></thead>
+                    <thead><tr><th>Руководитель</th><th>Филиалов</th><th>Ссылок</th><th title="Подключилось монтажников">Монт.</th><th title="Подключилось продавцов">Прод.</th><th>Смет</th><th>Сумма</th></tr></thead>
                     <tbody>${g.subs.map(s => `<tr onclick="app.selectBranchNode('head','${s.id}')" style="cursor:pointer;">
-                        <td>${esc(s.label)}</td><td>${fmtN(s.dists.length)}</td><td>${fmtN(s.stats.invites)}</td><td>${fmtN(s.stats.joined)}</td><td>${fmtN(s.stats.estimates)}</td><td style="white-space:nowrap;">${fmtRub(s.stats.paidSum)}</td></tr>`).join('')}</tbody>
+                        <td>${esc(s.label)}</td><td>${fmtN(s.dists.length)}</td><td>${fmtN(s.stats.invites)}</td><td>${fmtN(s.stats.joined)}</td><td>${fmtN(s.stats.joinedSellers)}</td><td>${fmtN(s.stats.estimates)}</td><td style="white-space:nowrap;">${fmtRub(s.stats.paidSum)}</td></tr>`).join('')}</tbody>
                 </table></div>`;
             extraHtml = headsTable + branchTable(g.dists, g);
         } else if (sel.type === 'head') {
@@ -8558,16 +8595,19 @@ const app = {
         const conv = (a, b) => (b > 0 && a <= b) ? Math.round(a / b * 100) + '%' : '—';
         const tiles = [
             { label: 'Разослано ссылок', val: fmtN(stats.invites), sub: 'поделиться, ссылка, QR, печать' },
-            { label: 'Подключилось монтажников', val: fmtN(stats.joined), sub: 'из ссылок: ' + conv(stats.joined, stats.invites) },
-            { label: 'Активны за 30 дней', val: fmtN(stats.active30), sub: 'всего монтажников ' + fmtN(stats.installers) },
-            { label: 'Сметы', val: fmtN(stats.estimates), sub: 'считали ' + fmtN(stats.calcUsers) + ' монтажн.' },
+            { label: 'Подключилось монтажников', val: fmtN(stats.joined), sub: 'всего ' + fmtN(stats.installers) + ' · активны за 30 дн. ' + fmtN(stats.active30) },
+            { label: 'Подключилось продавцов', val: fmtN(stats.joinedSellers), sub: 'всего ' + fmtN(stats.sellers) + ' · активны за 30 дн. ' + fmtN(stats.active30Sellers) },
+            { label: 'Сметы', val: fmtN(stats.estimates), sub: 'монтажники ' + fmtN(stats.estimates - stats.estimatesSellers) + ' · продавцы ' + fmtN(stats.estimatesSellers)
+                + ' · из ссылок подключилось ' + conv(stats.joined + stats.joinedSellers, stats.invites) },
             { label: 'Отправлено клиентам', val: fmtN(stats.sent), sub: 'запрошено счетов ' + fmtN(stats.requested) },
             { label: 'Оплачено', val: fmtRub(stats.paidSum), sub: fmtN(stats.paid) + ' смет' }
         ];
         const funnel = [
             { label: 'Разослано ссылок', v: stats.invites },
             { label: 'Подключилось монтажников', v: stats.joined },
-            { label: 'Посчитали смету', v: stats.calcUsers },
+            { label: 'Подключилось продавцов', v: stats.joinedSellers },
+            { label: 'Считали сметы (монтажники)', v: stats.calcUsers },
+            { label: 'Считали сметы (продавцы)', v: stats.calcSellers },
             { label: 'Отправлено клиентам', v: stats.sent },
             { label: 'Запрошен счёт', v: stats.requested },
             { label: 'Счёт выставлен', v: stats.issued },
@@ -27556,13 +27596,17 @@ const app = {
         } else if (grp) {
             const p = d.part;
             if (p === 'tap') {
-                d.kind = grp.getAttribute('data-hyd-kind') === 'tp' ? 'ufh' : 'trunk';
+                const hk = grp.getAttribute('data-hyd-kind');
+                d.kind = hk === 'tp' ? 'ufh' : hk === 'snow' ? 'snow' : 'trunk';
                 d.i = parseInt(grp.getAttribute('data-hyd-i'), 10) || 0;
                 d.mark = grp.getAttribute('data-hyd-mark') || '';
             } else if (p === 'bsup' || p === 'bret') {
                 d.kind = 'boiler'; d.b = grp.getAttribute('data-hyd-b');
             } else if (p === 'load') d.kind = 'dhw';
             else if (p === 'hydro') d.kind = 'hydro';
+            // Пара от стрелки к отводам — вторичная сторона. Раньше падала в
+            // 'main', и на ней загорался котловой контур, а сама пара — нет.
+            else if (p === 'ssup' || p === 'sret') d.kind = 'sec';
             else d.kind = 'main';
         }
         return d;
@@ -27619,9 +27663,10 @@ const app = {
             (b == null || g.getAttribute('data-hyd-b') === b));
         switch (d.kind) {
             case 'boiler': return boilers(d.b).concat(part('msup'), part('mret'), part('hydro'));
-            case 'trunk': case 'ufh': {
+            case 'trunk': case 'ufh': case 'snow': {
+                const tapKind = { ufh: 'tp', trunk: 'rad', snow: 'snow' }[d.kind];
                 const tap = all.filter(g => g.getAttribute('data-hyd-part') === 'tap' &&
-                    g.getAttribute('data-hyd-kind') === (d.kind === 'ufh' ? 'tp' : 'rad') &&
+                    g.getAttribute('data-hyd-kind') === tapKind &&
                     (parseInt(g.getAttribute('data-hyd-i'), 10) || 0) === d.i);
                 // Со стрелкой контуры развязаны — в этом весь её смысл: насос
                 // группы гоняет свою воду через стрелку и обратно, а котловой
@@ -27648,12 +27693,22 @@ const app = {
             // время греет отопление, и подсвечивать его стояки незачем.
             case 'dhw': {
                 const load = part('load');
+                // Насосная группа загрузки на коллекторе за гидрострелкой: узла
+                // у котла нет (групп 'load' нет), воду группа берёт из стрелки —
+                // путь как у любого отвода: вторичная пара и корпус стрелки.
+                // Сами линии загрузки добавит hydHoverOn по цвету среды.
+                const sepBodyL = part('hydro').filter(g => g.getAttribute('data-hyd-dir') === 'none');
+                if (!load.length && sepBodyL.length) return part('ssup').concat(part('sret'), sepBodyL);
                 const own = load.map(g => g.getAttribute('data-hyd-b')).filter(v => v != null);
                 return load.concat(own.length
                     ? own.reduce((a, b) => a.concat(boilers(b)), [])
                     : boilers(null));
             }
             case 'main': return part('msup').concat(part('mret'), boilers(null), part('hydro'));
+            // Вторичная пара: от корпуса стрелки ко всем отводам — ими она и
+            // питается. Котловые стояки за стрелкой сюда не входят.
+            case 'sec': return part('ssup').concat(part('sret'),
+                part('hydro').filter(g => g.getAttribute('data-hyd-dir') === 'none'), part('tap'));
             case 'hydro': return part('hydro').concat(part('msup'), part('mret'), part('ssup'), part('sret'));
             default: return [];
         }
@@ -27806,8 +27861,10 @@ const app = {
         const contour = d.kind === 'trunk' ? 'Контур радиаторов' + (d.mark ? ' ' + d.mark : '')
             : d.kind === 'ufh' ? 'Контур тёплого пола' + (d.mark ? ' ' + d.mark : '')
                 : d.kind === 'dhw' ? 'Контур загрузки бойлера'
+                : d.kind === 'snow' ? 'Контур снеготаяния' + (d.mark ? ' ' + d.mark : '')
                     : d.kind === 'boiler' ? 'Котёл'
                     : d.kind === 'main' ? 'Гребёнка котельной'
+                    : d.kind === 'sec' ? 'Контуры за гидрострелкой'
                         : d.kind === 'hydro' ? 'Гидравлический разделитель' : '';
         let title, lines = [];
         if (d.sym) {
@@ -27849,8 +27906,11 @@ const app = {
                     (m.ok ? ' — хватает.' : ' — не хватает.'));
             } else if (d.kind === 'dhw' && hyd.dhw) {
                 const w = hyd.dhw;
-                lines.push('Пока греется бойлер, котёл гонит горячую воду в змеевик внутри бака ' +
-                    'и возвращает её остывшей. Вода из крана с теплоносителем не смешивается.');
+                lines.push((sep && cfg.loadPump)
+                    ? 'Насос группы загрузки берёт горячую воду из гидрострелки и гонит её в змеевик ' +
+                      'внутри бака, остывшая возвращается в стрелку. Вода из крана с теплоносителем не смешивается.'
+                    : 'Пока греется бойлер, котёл гонит горячую воду в змеевик внутри бака ' +
+                      'и возвращает её остывшей. Вода из крана с теплоносителем не смешивается.');
                 if (w.boilerKw > 0 && w.boilerKw < w.coilKw) {
                     lines.push('Змеевик рассчитан на ' + num(w.coilKw, 1, 'кВт') + ', но котёл даёт ' +
                         num(w.boilerKw, 1, 'кВт') + ' — контур считается по меньшему.');
@@ -27878,6 +27938,18 @@ const app = {
             } else if (d.kind === 'main') {
                 lines.push('Гребёнка: сюда котлы отдают горячую воду, отсюда она расходится по контурам; ' +
                     'по нижней трубе остывшая возвращается к котлам. Общий расход ' + num(hyd.flow, 2, 'м³/ч') + '.');
+            } else if (d.kind === 'snow') {
+                lines.push((sep
+                    ? 'Насос группы берёт воду из гидрострелки и гонит её через смесительный клапан ' +
+                      'к теплообменнику узла снеготаяния; остывшая возвращается по синему стояку в стрелку. ' +
+                      'Дальше стрелки контур не идёт.'
+                    : 'От гребёнки вода идёт через смесительный клапан к теплообменнику узла снеготаяния; ' +
+                      'остывшая возвращается по синему стояку.') +
+                    ' За теплообменником — свой контур на гликоле, он на схеме узла снеготаяния.');
+            } else if (d.kind === 'sec') {
+                lines.push('Из гидрострелки по верхней трубе горячая вода идёт к насосным группам, ' +
+                    'по нижней остывшая возвращается в стрелку. Воду гонят насосы групп; котловой ' +
+                    'контур сюда не заходит — он замыкается на стрелке.');
             } else if (d.kind === 'hydro' && !d.sym) {
                 lines.push(this._HYD_SYM_TEXT.hydro);
             }
@@ -27895,7 +27967,7 @@ const app = {
         }
         el.innerHTML = '<div class="hyd-hint__t">' + esc(title) + '</div>' +
             lines.map(l => '<div class="hyd-hint__l">' + l + '</div>').join('') +
-            (d.kind ? '<div class="hyd-hint__f">Нажмите — полная карточка с числами · плашку можно перетащить</div>' : '');
+            ((d.kind && (d.kind !== 'snow' || d.sym)) ? '<div class="hyd-hint__f">Нажмите — полная карточка с числами · плашку можно перетащить</div>' : '');
         this._hydDraggable(el, '_hydHintPos');
         this._hydHintPlace(d.svg);
     },
@@ -28140,9 +28212,11 @@ const app = {
         if (hyd && d.kind === 'dhw') body = this._hydCardDhw(hyd);
         else if (hyd && d.kind === 'ufh') body = this._hydCardUfh(hyd, d.mark, d.i);
         else if (hyd && d.kind === 'trunk') body = this._hydCardTrunk(hyd, d.mark);
-        else if (hyd && d.kind) body = this._hydCardBoiler(hyd);
+        // У снеготаяния чисел на этой схеме нет — они на схеме узла; карточка
+        // котла под его заголовком была бы про другое.
+        else if (hyd && d.kind && d.kind !== 'snow') body = this._hydCardBoiler(hyd);
         if (body && d.kind === 'main') body.title = 'Гребёнка и кольцо системы';
-        if (body && d.kind === 'hydro') body.title = 'Гидрострелка и кольцо системы';
+        if (body && (d.kind === 'hydro' || d.kind === 'sec')) body.title = 'Гидрострелка и кольцо системы';
         // Символ вне контуров (легенда, бак, бойлер): карточка — только что
         // это и зачем.
         if (!body && d.sym) body = { title: d.sym.name,
@@ -47796,16 +47870,14 @@ const app = {
      * Стоимость отопления электрокотлом за отопительный сезон, с разбивкой по
      * месяцам.
      *
-     * Считать месяцы напрямую не по чему: в CITIES_DB у города есть только
-     * расчётная зимняя температура, средних месячных температур там нет. Зато
-     * СП 131.13330 даёт на каждый город два числа — среднюю температуру
-     * отопительного периода t_от и его продолжительность z_от, и оба однозначно
-     * определяются расчётной температурой. Обе зависимости заданы таблицами
-     * реальных городов с линейной интерполяцией между узлами: прямой они не
-     * описываются — продолжительность на севере выходит на полку ~225 суток, а
-     * на юге падает круче любой прямой (Краснодар 145 суток при −17), средняя
-     * же температура наоборот круто уходит вниз за Полярным кругом (Якутск
-     * −20.6 при −52), и подогнанная по средней полосе прямая давала ему −14.6.
+     * Считать месяцы напрямую не по чему: средних месячных температур в
+     * CITIES_DB нет. Зато СП 131.13330 даёт на каждый пункт два числа — среднюю
+     * температуру отопительного периода t_от и его продолжительность z_от. У
+     * города, сопоставленного с таблицей 3.1, они лежат в CITIES_DB (zot / tot);
+     * без города берутся по расчётной температуре из таблиц EL_COST_ZOT /
+     * EL_COST_TOT, построенных по всем пунктам СП (см. heatingPeriodFor). Одной
+     * расчётной температурой они определяются лишь приблизительно: у Краснодара
+     * при −15 °C сезон 146 суток, а медиана пунктов с той же −15 — 166.
      *
      * Дальше всё держится на ГСОП = (20 − t_от) * z_от: сколько градусо-суток,
      * столько и тепла. Разбивка по месяцам — доля ГСОП, приходящаяся на месяц:
@@ -47832,14 +47904,31 @@ const app = {
         { name: 'Март', days: 31, share: 0.145 },
         { name: 'Апрель', days: 30, share: 0.089 }
     ],
-    // Продолжительность отопительного периода, суток, по расчётной зимней
-    // температуре. Тёплый край нужен не меньше холодного: у Сочи расчётная всего
-    // −2 °C и сезон 94 суток, а без этих узлов таблица выдавала бы ему московские 140.
-    EL_COST_ZOT: [[-2, 95], [-5, 105], [-10, 125], [-15, 140], [-20, 170], [-25, 205], [-30, 213], [-35, 218], [-40, 225], [-50, 250]],
-    // Средняя температура отопительного периода, °C. Узлы — паспортные пары
-    // «расчётная / средняя за период»: Сочи, Краснодар, Москва, Екатеринбург,
-    // Новосибирск, Якутск.
-    EL_COST_TOT: [[-2, 8.4], [-17, 2.0], [-25, -2.2], [-32, -5.4], [-39, -8.1], [-52, -20.6]],
+    // Продолжительность (сут) и средняя температура (°C) отопительного периода по
+    // расчётной зимней температуре — запасной путь, когда города нет (кнопки
+    // региона) или у него нет своей строки СП. У города из CITIES_DB берутся его
+    // собственные zot / tot (см. heatingPeriodFor).
+    //
+    // Пересчитано 15.09.2026 по СП 131.13330.2020 (ред. Изм. № 2), табл. 3.1, по
+    // всем 451 пункту: узел — медиана пунктов с расчётной температурой ±2 °C от
+    // узла, затем сглаживание, чтобы с похолоданием сезон не укорачивался, а
+    // средняя не росла. Прежние узлы стояли на старых температурах (Москва −25,
+    // Новосибирск −39) и после сверки городов с СП расходились с таблицей.
+    EL_COST_ZOT: [[-3, 110], [-8, 136], [-12, 166], [-15, 166], [-18, 168], [-21, 196], [-24, 204], [-27, 211], [-30, 224], [-33, 230], [-36, 230], [-39, 238], [-42, 256], [-45, 262], [-48, 264], [-52, 264]],
+    EL_COST_TOT: [[-3, 5.9], [-8, 4.0], [-12, 1.3], [-15, 0.9], [-18, 0.2], [-21, -2.2], [-24, -2.6], [-27, -3.6], [-30, -5.1], [-33, -6.2], [-36, -7.8], [-39, -8.5], [-42, -11.3], [-45, -12.8], [-48, -14.7], [-52, -18.6]],
+    /**
+     * t_от и z_от для объекта: у выбранного города — его строка СП 131 из
+     * CITIES_DB (у сметы в state лежит снимок города, поэтому ищем по названию в
+     * текущей базе), иначе — по таблицам выше от расчётной температуры.
+     */
+    heatingPeriodFor: function (tP) {
+        const sc = this.state.selectedCity;
+        if (sc && sc.name && typeof CITIES_DB !== 'undefined') {
+            const c = CITIES_DB.find(x => x.name === sc.name && (!sc.country || x.country === sc.country));
+            if (c && c.zot > 0 && typeof c.tot === 'number') return { tOt: c.tot, zOt: c.zot, bySp: true };
+        }
+        return { tOt: this.interpByTemp(this.EL_COST_TOT, tP), zOt: this.interpByTemp(this.EL_COST_ZOT, tP), bySp: false };
+    },
     // Ночная зона двухтарифного счётчика: 23:00–07:00, восемь часов.
     EL_NIGHT_HOURS: 8,
     // Половина суточной амплитуды температуры, °C: ночью на столько холоднее
@@ -47879,8 +47968,9 @@ const app = {
         const dTdesign = tIn - tP;
         if (!(dTdesign > 0)) return null;
 
-        const tOt = this.interpByTemp(this.EL_COST_TOT, tP);
-        const zOt = this.interpByTemp(this.EL_COST_ZOT, tP);
+        const _per = this.heatingPeriodFor(tP);
+        const tOt = _per.tOt;
+        const zOt = _per.zOt;
         const gsop = (tIn - tOt) * zOt;
         const kwhPerGsop = kw * 24 / dTdesign;
 
@@ -55893,7 +55983,7 @@ const app = {
 
     /**
      * «Без гидрострелки» выбрана, но не собирается: тёплый пол больше, чем тянет
-     * один узел подмеса. Считается по одному состоянию, без расчёта сметы, —
+     * один узел подмеса, или есть снеготаяние. Считается по одному состоянию, без расчёта сметы, —
      * потому что спрашивают об этом и до него: схема загрузки бойлера решается в
      * render раньше, чем посчитан тёплый пол, и без этой проверки бойлер уходил
      * на трёхходовой клапан, хотя котельная собиралась как в «Авто».
@@ -55909,11 +55999,33 @@ const app = {
      * нажатия, которое смета всё равно не выполнит.
      */
     boilerSchemeDirectImpossible: function () {
+        return !!this.boilerSchemeDirectWhy();
+    },
+
+    /**
+     * Почему «Без гидрострелки» не собрать: 'ufh' — тёплый пол больше, чем тянет
+     * один узел подмеса; 'snow' — снеготаяние (его смесительная группа садится
+     * только на коллектор, а коллектору нужна стрелка); '' — собирается.
+     * calcSnowMelt ничего не пишет в state, поэтому звать его здесь можно и до
+     * render — туда, где решается загрузка бойлера.
+     */
+    boilerSchemeDirectWhy: function () {
         const s = this.state;
-        if (!(s.systems || []).includes('tp')) return false;
-        const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
-        if (!(area > 0)) return false;
-        return !this.isUfhMixTypeCompatible('std', area, s.brandMode, area);
+        if ((s.systems || []).includes('tp')) {
+            const area = (parseFloat(s.tp1) || 0) + (s.floors === 2 ? (parseFloat(s.tp2) || 0) : 0);
+            if (area > 0 && !this.isUfhMixTypeCompatible('std', area, s.brandMode, area)) return 'ufh';
+        }
+        const sn = this.calcSnowMelt();
+        if (sn && !sn.impossible) return 'snow';
+        return '';
+    },
+
+    /** Та же причина словами — для строки под кнопками и подсказки кнопки. */
+    boilerSchemeDirectWhyText: function () {
+        const w = this.boilerSchemeDirectWhy();
+        return w === 'ufh' ? 'тёплый пол больше, чем тянет узел подмеса'
+            : w === 'snow' ? 'группе снеготаяния нужен коллектор, а коллектору — гидрострелка'
+            : '';
     },
 
     /** Схема, по которой смета собирается на самом деле: 'auto' | 'direct' | 'hydro'. */
@@ -55947,7 +56059,7 @@ const app = {
         const bs = this.boilerSchemeMode(), had = this.needCollector, s = this.state;
         const blocked = this.boilerSchemeDirectBlocked();
         const impossible = this.boilerSchemeDirectImpossible();
-        const noDirectWhy = 'тёплый пол больше, чем тянет узел подмеса';
+        const noDirectWhy = this.boilerSchemeDirectWhyText();
 
         // Какая кнопка горит: выбранная вручную, а в автоподборе (и когда «Без
         // стрелки» не собрать) — та, по которой смета собрана на самом деле.
@@ -60932,23 +61044,26 @@ const app = {
             }
         }
 
+        // #7: на двухэтажном доме группа ставится на КАЖДЫЙ ЭТАЖ С РАДИАТОРАМИ, а не просто
+        // «две, раз дом двухэтажный». В подробном режиме мы точно знаем, где радиаторы: если
+        // они, например, только на 2-м этаже (1-й — чистый тёплый пол), нужна одна группа.
+        // В быстром режиме поэтажной раскладки нет — остаётся прежняя оценка по этажности.
+        const _radGroupsByFloors = () => {
+            let radFloorCount = (this.state.floors === 2) ? 2 : 1;
+            if (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0) {
+                const _rf = new Set(this.state.rooms
+                    .filter(r => (!r.sys || r.sys.includes('rad')))
+                    .map(r => r.floor || 1));
+                if (_rf.size > 0) radFloorCount = Math.min(_rf.size, (this.state.floors === 2) ? 2 : 1);
+            }
+            return Math.max(1, radFloorCount);
+        };
         if (hasRad && !_forceDirect) {
             // Встроенного насоса настенного котла хватает на радиаторы мощностью до 20 кВт (площадь до 150 м2)
             // Если требуется коллектор (из-за других насосных групп, т.е. tQ > 0), то на радиаторы также ставится группа.
             // Схема «С гидрострелкой» ставит группу и там, где хватило бы насоса котла.
             if (_forceHydro || this.state.area > 150 || this.state.floors === 2 || pwr > 20 || tQ > 0) {
-                // #7: на двухэтажном доме группа ставится на КАЖДЫЙ ЭТАЖ С РАДИАТОРАМИ, а не просто
-                // «две, раз дом двухэтажный». В подробном режиме мы точно знаем, где радиаторы: если
-                // они, например, только на 2-м этаже (1-й — чистый тёплый пол), нужна одна группа.
-                // В быстром режиме поэтажной раскладки нет — остаётся прежняя оценка по этажности.
-                let radFloorCount = (this.state.floors === 2) ? 2 : 1;
-                if (this.state.detailedRooms && this.state.rooms && this.state.rooms.length > 0) {
-                    const _rf = new Set(this.state.rooms
-                        .filter(r => (!r.sys || r.sys.includes('rad')))
-                        .map(r => r.floor || 1));
-                    if (_rf.size > 0) radFloorCount = Math.min(_rf.size, (this.state.floors === 2) ? 2 : 1);
-                }
-                rQ = Math.max(1, radFloorCount);
+                rQ = _radGroupsByFloors();
             }
         }
 
@@ -61043,10 +61158,20 @@ const app = {
                 // Пересчитываем то же, что и переход с локального узла на группу выше:
                 // групп ставится по одной на коллектор, а от их числа зависит коллектор котельной.
                 tQ = (estMans > 0 ? estMans : 1);
-                needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup;
+                needCollector = (rQ + tQ) >= 1 || tankNeedsPumpGroup || _snowOnCollector;
             }
             this._ufhBal = _bal;
         }
+
+        // Группа радиаторов решалась в самом начале — по площади, этажам, мощности
+        // и по тому, есть ли уже группа тёплого пола. Но коллектор со стрелкой мог
+        // появиться позже: из-за снеготаяния, насосной группы бойлера или потому,
+        // что узел подмеса тёплого пола выше переехал в группу на коллекторе. За
+        // стрелкой насос котла радиаторы уже не питает, и без своей группы они
+        // остаются без воды. Раньше это чинил только следующий пересчёт — когда в
+        // state уже лежал новый тип узла тёплого пола, — и сразу после включения
+        // снеготаяния смета выходила без группы радиаторов.
+        if (hasRad && !_forceDirect && rQ < 1 && needCollector) rQ = _radGroupsByFloors();
 
         // Смесительным контуром при включённой автоматике котельной управляет
         // контроллер. Поворотный привод с накладным датчиком держит температуру
@@ -61095,6 +61220,7 @@ const app = {
             }
             if (tQ > 0) why.push('группа тёплого пола');
             if (tankNeedsPumpGroup) why.push('насосная группа бойлера');
+            if (_snowOnCollector) why.push('снеготаяние');
             this._bsAutoWhy = why;
         }
         this.syncBoilerSchemeNote();
@@ -62757,7 +62883,14 @@ const app = {
         {
             const _p = t => `<div class="tip-p">${t}</div>`;
             let _sb = '';
-            if (_bScheme === 'direct' && _schemeBlockedUfh) {
+            if (_bScheme === 'direct' && _schemeBlockedUfh && this.boilerSchemeDirectWhy() === 'snow') {
+                _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
+                    'В расчёте снеготаяние — котельная собрана по автоподбору.',
+                    _p('Первичный контур снеготаяния — смесительная группа со своим насосом. Она ставится на ' +
+                        'коллектор котельной, как группы радиаторов и тёплого пола, а коллектор без гидрострелки ' +
+                        'не работает: насосы групп и котла мешали бы друг другу. Это практика проектирования, а не требование норм.') +
+                    _p('<b>Что делать:</b> оставить схему как есть или выключить снеготаяние.'));
+            } else if (_bScheme === 'direct' && _schemeBlockedUfh) {
                 const _lim = (this.state.brandMode === 'rommer') ? 100 : 120;
                 _sb = this.noteBox('warn', 'Без гидрострелки не собрать.',
                     `Узел подмеса тянет тёплый пол до ${_lim} м², в расчёте ${Math.round(tpArea)} м² — котельная собрана по автоподбору.`,
