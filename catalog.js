@@ -2041,6 +2041,11 @@ const catalog = {
         { id: "SMB-6850-013404", name: "Коллекторный блок 1\" x 4 вых", loops: 4, inSize: "1", outSize: "3/4", connType: "ek", price: 6117, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMB-0004-013404", name: "Коллектор хромированный, запорно-регулирующие клапаны, отводы 90°, 1\"х3/4\"х4 вых.", price: 3784, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
     ],
     manifold_brackets: { id: "SMB-0002-000002", name: "Кронштейны для коллекторов (пара)", price: 797, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+    // Кронштейн к радиаторным блокам ROMMER RMB-0004 — вместо пары STOUT SMB-0002.
+    // Продаётся поштучно: 2 шт. на коллектор. Цена — РИЦ 01.09.2026 (прайс «ROMMER
+    // Коллекторы нерж.», раздел «Принадлежности») × 1,1, как у соседних позиций ROMMER.
+    // Выбран пользователем 15.09.2026: в паспорте RMB кронштейнов нет.
+    manifold_brackets_rommer: { id: "RSP-1002-000007", name: "Кронштейн раздвижной для коллектора 1\" (1 шт.)", price: 457, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-01" },
     // === КОЛЛЕКТОРНЫЕ ШКАФЫ ===
     // outs — паспортное число выходов, inner — ВНУТРЕННЯЯ ширина корпуса (мм).
     // Подбираем по inner, а не по outs: сноска в паспорте STOUT SCC (ред. 2026) гласит,
