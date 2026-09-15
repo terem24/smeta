@@ -43883,10 +43883,25 @@ const app = {
             let mpItem = catalog.water_pipes_mp ? catalog.water_pipes_mp[0] : null;
             p_mp = mpItem?.price || 151.51;
 
+            // Две цены, как у обвязки котельной: труба за метр и система целиком.
+            // Система — труба с фитингами под неё (евроконусы, водорозетки, гильзы,
+            // фиксаторы), то есть всё, что в смете меняется вместе с трубой.
+            const _wt = this.waterPipeSystemTotals();
+            const _wCur = _wt[this.state.waterPipeMaterial === 'metal_plastic' ? 'metal_plastic' : 'pex'] || 0;
             customAlts = [
                 { id: 'pex', name: 'Труба PEX-a (полиэтилен)', brand: b_pex, price: p_pex, imgId: isRommer ? pexItem?.rommer?.id : pexItem?.id },
                 { id: 'metal_plastic', name: 'Труба металлопластиковая', brand: b_mp, price: p_mp, imgId: mpItem?.id }
-            ];
+            ].map(a => {
+                const d = (_wt[a.id] || 0) - _wCur;
+                return {
+                    ...a,
+                    unitM2: a.price,
+                    unitHead: 'Труба, за м',
+                    sysHead: 'Система',
+                    price: _wt[a.id] || 0,
+                    sysText: (_wCur && d) ? `${d > 0 ? '+' : '−'}${Math.abs(d).toLocaleString('ru-RU')} ₽ к выбранной` : ''
+                };
+            });
         }
         else if (item.originalId && (item.originalId.startsWith('SMF-0001') || item.originalId === '418318')) {
             // В строке может стоять и мат ROMMER (его подставляет «Аналог») — тогда и в
@@ -56789,6 +56804,46 @@ const app = {
             this._boilerRangeCache = null;
             this.render(true);
         }
+        return out;
+    },
+
+    /**
+     * Стоимость трубы водоснабжения вместе с фитингами под неё — для таблицы замены.
+     *
+     * Смета пересчитывается под каждую трубу, и в сумму идут только строки, которые
+     * от выбора трубы меняются: сама труба (и подводка полотенцесушителя), евроконусы,
+     * водорозетки, гильзы, фиксаторы. Коллекторы, изоляция, крепёж и пробки
+     * одинаковы при любой трубе — на их фоне разница между трубами терялась бы.
+     */
+    waterPipeSystemTotals: function () {
+        const MATS = ['pex', 'metal_plastic'];
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        const runs = {};
+        try {
+            MATS.forEach(m => {
+                this.state.waterPipeMaterial = m;
+                this.render(true);
+                const rows = {};
+                (this.currentEquipmentList || []).forEach(it => {
+                    const k = (it.group || it.sectionTitle || '') + '|' + (it.originalId || '') + '|' + it.id;
+                    rows[k] = (rows[k] || 0) + (it.price || 0) * (it.q || 1);
+                });
+                runs[m] = rows;
+            });
+        } finally {
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this.render(true);
+        }
+        const keys = new Set();
+        MATS.forEach(m => Object.keys(runs[m] || {}).forEach(k => keys.add(k)));
+        const out = { pex: 0, metal_plastic: 0 };
+        keys.forEach(k => {
+            const vals = MATS.map(m => (runs[m] || {})[k] || 0);
+            if (Math.abs(vals[0] - vals[1]) < 0.5) return;
+            MATS.forEach((m, i) => { out[m] += vals[i]; });
+        });
+        MATS.forEach(m => { out[m] = Math.round(out[m]); });
         return out;
     },
 
