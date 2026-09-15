@@ -47773,11 +47773,11 @@ const app = {
             if (chkDom) chkDom.checked = this.state.detailedRooms;
             return;
         }
-        // Теплопотери быстрого расчёта на момент перехода — чтобы в подробном режиме
-        // объяснить, почему мощность сдвинулась (см. плашку над разделом 1).
-        if (chk && !this.state.detailedRooms && this.state.area > 0) {
-            this.state.quickKwAtSwitch = parseFloat(this.getHouseHeatLoss()) || null;
-        }
+        // Переход «быстрый → подробный» объясняем плашкой над разделом 1 — но только
+        // сразу после переключения. Сама отметка ставится ниже, перед render(), когда
+        // комнаты уже собраны и известны теплопотери подробного расчёта.
+        const _switchedToDetailed = chk && !this.state.detailedRooms && this.state.area > 0;
+        this._heatMethodNoteKw = null;
         this.state.detailedRooms = chk;
         if (chk) {
             this.state.ventilationType = this.state.ventilationType || 'natural';
@@ -47852,6 +47852,10 @@ const app = {
         this.syncRoomsToState();
         this.autoCalcZones();
         this.syncUI();
+        // Теплопотери подробного расчёта сразу после перехода. Хранятся не в state, а в
+        // памяти: после перезагрузки плашки нет, и пока расчёт выдаёт это же число,
+        // она держится; изменили площадь, стены, комнаты — пропадает.
+        if (_switchedToDetailed) this._heatMethodNoteKw = parseFloat(this.getHouseHeatLoss()) || null;
         this.render();
         // Масштаб колонки здесь НЕ пересчитываем. Наборы настроек в режимах разные,
         // и замер заново давал в «Подробном» свой размер шрифта, в «Быстром» — свой:
@@ -61342,12 +61346,14 @@ const app = {
             // 37 Вт/м³ с коэффициентом кнопки стены, подробный — сопротивление реального
             // пирога. Без объяснения монтажник видит, что смета «похудела», и не знает
             // почему. Синяя: это не ошибка, а смена метода.
-            // Быстрый расчёт пересчитываем для дома, какой он сейчас. Число, запомненное
-            // при переключении (quickKwAtSwitch), служит только признаком, что переход был:
-            // после него площадь и комнаты меняются, и сравнение с ним показывало рост
-            // дома, а не разницу методов.
+            // Показываем только сразу после переключения (_heatMethodNoteKw ставит
+            // toggleDetailedRooms): как только теплопотери стали другими, отметку снимаем,
+            // чтобы плашка не вернулась, если число случайно совпадёт снова.
+            // Быстрый расчёт пересчитываем для дома, какой он сейчас — сравнение с числом
+            // до правок площади показывало бы рост дома, а не разницу методов.
+            if (this._heatMethodNoteKw && Math.abs(_needKw - this._heatMethodNoteKw) > 0.05) this._heatMethodNoteKw = null;
             let _qKw = 0;
-            if (this.state.detailedRooms && parseFloat(this.state.quickKwAtSwitch) > 0) {
+            if (this.state.detailedRooms && this._heatMethodNoteKw) {
                 const _h1 = this.state.h1 || 2.7, _h2 = this.state.h2 || 2.7;
                 const _avgH = (this.state.floors === 2) ? (_h1 + _h2) / 2 : _h1;
                 const _kFlat = this.isFlat() ? this.flatHeatLossFactor() : 1;
