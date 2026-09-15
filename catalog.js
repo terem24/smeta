@@ -2030,10 +2030,15 @@ const catalog = {
   price_date: '2026-09-10' }, availability: "in_stock", price_date: "2026-09-10" },
         { id: "SMS-0912-000013", loops: 13, inSize: "1", outSize: "3/4", connType: "ek", price: 47058, name: "Коллектор радиаторный в сборе 13 вых.", availability: "in_stock", price_date: "2026-08-10" }
     ],
+    // .rommer — латунные блоки ROMMER RMB-0004 того же типоразмера: 1" корпус, 2/3/4 выхода
+    // 3/4" под евроконус, запорно-регулировочные клапаны 90°, Kvs отвода 2,5 и перепад 1 бар
+    // (паспорт RMB-0001(2)(3)(4)(5)(6), 2026) — те же цифры, что у SMB-6850. Цены — как у тех
+    // же артикулов в water_manifolds_rommer. Раньше тут стояли RMS-1210 на 2 выхода и
+    // комплект шаровых кранов RMS-1001: вариант «блоки ROMMER» клал в смету краны.
     manifolds_chrome_blocks: [
-        { id: "SMB-6850-013402", name: "Коллекторный блок 1\" x 2 вых", loops: 2, inSize: "1", outSize: "3/4", connType: "ek", price: 3311, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1210-000002", name: "Коллектор с расходомерами полностью укомплектован 2 вых.", price: 10678, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-        { id: "SMB-6850-013403", name: "Коллекторный блок 1\" x 3 вых", loops: 3, inSize: "1", outSize: "3/4", connType: "ek", price: 4628, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1001-030001", name: "Комплект прямых шаровых кранов с термометрами 1”", price: 6212, brand: "ROMMER", availability: "in_stock", price_date: "2026-06-27" } },
-        { id: "SMB-6850-013404", name: "Коллекторный блок 1\" x 4 вых", loops: 4, inSize: "1", outSize: "3/4", connType: "ek", price: 6117, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMS-1001-030001", name: "Комплект прямых шаровых кранов с термометрами 1”", price: 6212, brand: "ROMMER", availability: "in_stock", price_date: "2026-06-27" } }
+        { id: "SMB-6850-013402", name: "Коллекторный блок 1\" x 2 вых", loops: 2, inSize: "1", outSize: "3/4", connType: "ek", price: 3311, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMB-0004-013402", name: "Коллектор хромированный, запорно-регулирующие клапаны, отводы 90°, 1\"х3/4\"х2 вых.", price: 1962, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SMB-6850-013403", name: "Коллекторный блок 1\" x 3 вых", loops: 3, inSize: "1", outSize: "3/4", connType: "ek", price: 4628, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMB-0004-013403", name: "Коллектор хромированный, запорно-регулирующие клапаны, отводы 90°, 1\"х3/4\"х3 вых.", price: 2892, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
+        { id: "SMB-6850-013404", name: "Коллекторный блок 1\" x 4 вых", loops: 4, inSize: "1", outSize: "3/4", connType: "ek", price: 6117, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RMB-0004-013404", name: "Коллектор хромированный, запорно-регулирующие клапаны, отводы 90°, 1\"х3/4\"х4 вых.", price: 3784, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
     ],
     manifold_brackets: { id: "SMB-0002-000002", name: "Кронштейны для коллекторов (пара)", price: 797, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
     // === КОЛЛЕКТОРНЫЕ ШКАФЫ ===

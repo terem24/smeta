@@ -44313,6 +44313,7 @@ const app = {
             if (plan[0] > 0) chromeRommerPrice += b4.rommer.price * plan[0] * 2;
             if (plan[1] > 0) chromeRommerPrice += b3.rommer.price * plan[1] * 2;
             if (plan[2] > 0) chromeRommerPrice += b2.rommer.price * plan[2] * 2;
+            chromeRommerPrice += catalog.manifold_brackets.price; // кронштейны в смете при любых блоках
 
             customAlts = [
                 { id: stdStout.id, name: `Коллектор радиаторный (Стандарт, ${stdStout.loops} вых.)`, brand: 'STOUT', price: stdStoutPrice }
@@ -44322,7 +44323,7 @@ const app = {
             }
             customAlts.push({ id: 'chrome', name: `Регулировочные блоки (комплект на ${loops} вых.)`, brand: 'STOUT', price: chromeStoutPrice, imgId: b4.id });
             if (b4.rommer || b3.rommer || b2.rommer) {
-                customAlts.push({ id: 'chrome_rommer', name: `Регулировочные блоки полностью укомплектован (${loops} вых.)`, brand: 'ROMMER', price: chromeRommerPrice, imgId: b4.rommer?.id });
+                customAlts.push({ id: 'chrome_rommer', name: `Регулировочные блоки (комплект на ${loops} вых.)`, brand: 'ROMMER', price: chromeRommerPrice, imgId: b4.rommer?.id });
             }
             // Тройниковую разводку в таблице замены не предлагаем. Своей цены у неё нет:
             // стоимость размазана по трубам и фитингам на трассе, и строка вставала в
@@ -44341,9 +44342,9 @@ const app = {
                 let secAnalog = this.state.sectionAnalog && this.state.sectionAnalog['3. Приборы отопления'];
                 let isRommer = secAnalog !== undefined ? secAnalog : useRommer;
 
-                // Блоки по умолчанию (render: этаж не влез в готовый коллектор) — всегда STOUT.
+                // Блоки по умолчанию (render: этаж не влез в готовый коллектор) — бренда раздела.
                 if (this._radManifoldAuto === 'chrome') {
-                    activeId = 'chrome';
+                    activeId = isRommer ? 'chrome_rommer' : 'chrome';
                 } else if (this._radManifoldAuto !== 'standard' && this.state.radManifoldType === 'chrome') {
                     activeId = isRommer ? 'chrome_rommer' : 'chrome';
                 } else {
@@ -50327,6 +50328,14 @@ const app = {
             label: 'блоки STOUT SMB-6850',
             src: 'паспорт STOUT «Коллекторы распределительные с регулировочно-отсечными клапанами, тип SMB 6849(50)», ред. № 3 от 17.05.2021',
             // Выход блока под евроконус — сам отвод с клапаном, его Kvs уже включает штуцер.
+            els: [
+                { name: 'отвод блока с клапаном, подача и обратка', kv: 2.5, n: 2, ref: 'п. 3.2' }
+            ],
+            dpMax: 100, dpMaxRef: 'п. 3.2'
+        },
+        rmb: {
+            label: 'блоки ROMMER RMB-0004',
+            src: 'паспорт ROMMER «Коллектор распределительный с запорно-регулировочными клапанами 90°, тип RMB-0001(2)(3)(4)(5)(6)», 2026',
             els: [
                 { name: 'отвод блока с клапаном, подача и обратка', kv: 2.5, n: 2, ref: 'п. 3.2' }
             ],
@@ -64651,7 +64660,9 @@ const app = {
             {
                 const _mSv = (m && this.state.swaps) ? this.state.swaps[m.id] : undefined;
                 const _sv = typeof _mSv === 'string' ? _mSv : (typeof _swapVal === 'string' ? _swapVal : '');
-                this._radManifoldKind = _radMode === 'chrome' ? 'smb'
+                // Блоки: ROMMER RMB-0004 — выбраны вручную или по бренд-режиму без ручного выбора.
+                this._radManifoldKind = _radMode === 'chrome'
+                        ? ((_sv === 'chrome_rommer' || (!_sv && _radRommer)) ? 'rmb' : 'smb')
                     : _sv.startsWith('RMS-') ? 'rms'
                     : _sv.startsWith('SMS-') ? 'sms'
                     : (_radRommer && m && m.rommer ? 'rms' : 'sms');
@@ -65176,21 +65187,24 @@ const app = {
                 }
                 else {
                     let plan = this.radChromeBlocksPlan(reqLoops); let b4 = catalog.manifolds_chrome_blocks[2]; let b3 = catalog.manifolds_chrome_blocks[1]; let b2 = catalog.manifolds_chrome_blocks[0];
-                    let isRommerChrome = m && (this.state.swaps && this.state.swaps[m.id] === 'chrome_rommer');
-                    if (isRommerChrome) {
-                        this.state.swaps[b4.id] = b4.rommer.id;
-                        this.state.swaps[b3.id] = b3.rommer.id;
-                        this.state.swaps[b2.id] = b2.rommer.id;
-                    } else if (this.state.swaps) {
-                        // Блоки STOUT — выбраны вручную или подставлены по умолчанию.
+                    // Бренд блоков: выбран вручную в окне замены — как выбрали («блоки ROMMER»
+                    // RMB-0004 или «блоки STOUT» SMB-6850); подставлены по умолчанию (этаж не
+                    // влез в готовый коллектор) — по бренд-режиму раздела, через .rommer.
+                    const _blkSwap = m && this.state.swaps ? this.state.swaps[m.id] : undefined;
+                    let isRommerChrome = _blkSwap === 'chrome_rommer';
+                    if (this.state.swaps) {
                         delete this.state.swaps[b4.id];
                         delete this.state.swaps[b3.id];
                         delete this.state.swaps[b2.id];
                     }
-                    // Без .rommer: у ROMMER в бренд-режиме блоки подменялись бы на его «аналоги»
-                    // (комплект кранов вместо блока на 3–4 выхода). Выход на 13+ у ROMMER даёт
-                    // только сборка из блоков STOUT, её и оставляем.
-                    if (!isRommerChrome) { b4 = { ...b4, rommer: undefined }; b3 = { ...b3, rommer: undefined }; b2 = { ...b2, rommer: undefined }; }
+                    if (isRommerChrome) {
+                        this.state.swaps[b4.id] = b4.rommer.id;
+                        this.state.swaps[b3.id] = b3.rommer.id;
+                        this.state.swaps[b2.id] = b2.rommer.id;
+                    } else if (_blkSwap === 'chrome') {
+                        // Явно выбраны блоки STOUT — бренд-режим ROMMER их не подменяет.
+                        b4 = { ...b4, rommer: undefined }; b3 = { ...b3, rommer: undefined }; b2 = { ...b2, rommer: undefined };
+                    }
                     let multiplier = manifoldsCount * 2;
                     // sortRank: -1 — сборка из блоков это тот же радиаторный коллектор,
                     // поэтому и в хромированном исполнении он открывает подраздел.
