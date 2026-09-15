@@ -41982,10 +41982,16 @@ const app = {
                 // Loops 2-4 have direct chrome match; остальные собираются из блоков (radChromeBlocksPlan)
                 const hasChromeOption = chromeAlt || m.loops >= 2;
                 m.alts = hasChromeOption ? [chromeAlt || catalog.manifolds_chrome_blocks[0]] : [];
+                // В alts лежит блок на 2–4 выхода, а не тот же коллектор другого бренда:
+                // режим ROMMER выбирал из него по цене и ставил «RMS-1210 … 2 вых.» вместо
+                // RMS-3210 на 12 выходов (блок с его .rommer дешевле). Бренд меняется через
+                // .rommer самой позиции, блоки — только ручной заменой (openSwapModal).
+                m.noCheapenAlts = true;
             });
             catalog.manifolds_chrome_blocks.forEach(m => {
                 let stdAlt = catalog.manifolds_rad.find(x => x.loops === m.loops);
                 m.alts = stdAlt ? [stdAlt] : [];
+                m.noCheapenAlts = true; // та же причина в обратную сторону: блок ≠ готовый коллектор
             });
         }
         if (catalog.manifolds && catalog.manifolds_full_kit && catalog.manifolds_shutoff) {
