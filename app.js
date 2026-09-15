@@ -2110,9 +2110,29 @@ const app = {
         [/антеприм[а-я]*/i, 'anteprima'],
         [/альфа[а-я]*/i, 'alpha'],
         [/статус[а-я]*/i, 'status'],
+        // "полис" — бюджетная линейка электрокотлов POLIS (см. boilers_polis в catalog.js),
+        // в каталоге записана латиницей
+        [/полис[а-я]*/i, 'polis'],
         [/нувол[а-я]*/i, 'nuvola'],
         [/платинум[а-я]*/i, 'platinum'],
         [/оптибейз[а-я]*|оптибаз[а-я]*/i, 'optibase'],
+        // Дизайн-линейки электрических полотенцесушителей — добавлены в каталог позже,
+        // чем составлялась эта таблица, и в неё не попали (та же причина, что у POLIS выше)
+        [/новафлоу[а-я]*/i, 'novaflow'],
+        [/эллипс[а-я]*/i, 'ellipse'],
+        [/джаз[а-я]*/i, 'jazz'],
+        // "рок" без защиты от границы слова задел бы "с[рок]" — гарантийный срок и т.п.
+        [/(?<![а-я])рок[а-я]*/i, 'rock'],
+        [/гранж[а-я]*/i, 'grunge'],
+        // "неосоул" обязательно раньше "соул" — иначе "соул" откусит середину слова
+        [/неосоул[а-я]*/i, 'neosoul'],
+        [/соул[а-я]*/i, 'soul'],
+        // "техно" без защиты задел бы "техно[лог]ия"/"технологический"
+        [/техно(?!лог)[а-я]*/i, 'techno'],
+        [/форте[а-я]*/i, 'forte'],
+        [/пиано[а-я]*/i, 'piano'],
+        [/рубис[а-я]*/i, 'rubis'],
+        [/инокс[а-я]*/i, 'inox'],
         // Бренд-конкурент (не продаём) — ненавязчиво подсказываем эквивалент STOUT: у Henco
         // основной продукт — металлопластиковая труба PE-Xb/Al/PE-Xb, она есть у STOUT/ROMMER
         [/хенк[оа][а-я]*|henco[a-я]*/i, 'металлопластиковая']
@@ -2253,6 +2273,12 @@ const app = {
         if (typeof radValvesDesign !== 'undefined') extraArrays.push(['radValvesDesign', radValvesDesign]);
         if (typeof radManualValves !== 'undefined') extraArrays.push(['radManualValves', radManualValves]);
         if (typeof radAccessories !== 'undefined') extraArrays.push(['radAccessories', radAccessories]);
+        // Эти три массива были в catalog.js, но не попали в индекс поиска — товары из них
+        // не находились вообще, независимо от языка запроса (обнаружено при проверке линеек
+        // полотенцесушителей JAZZ/ROCK/FORTE и т.п., см. _SEARCH_SLANG выше)
+        if (typeof hValvesExtra !== 'undefined') extraArrays.push(['hValvesExtra', hValvesExtra]);
+        if (typeof radKitsExtra !== 'undefined') extraArrays.push(['radKitsExtra', radKitsExtra]);
+        if (typeof towelWarmersElectric !== 'undefined') extraArrays.push(['towelWarmersElectric', towelWarmersElectric]);
 
         // Для базового (не PRO) тарифа товары ROMMER полностью скрыты из поиска —
         // независимо от того, есть ли у них аналог STOUT в той же категории. PRO-аккаунты
@@ -2264,7 +2290,10 @@ const app = {
             const brand = it.brand || 'STOUT';
             const hideForBase = brand === 'ROMMER';
             const t = this._tokenizeSearchText(it.name + ' ' + brand + ' ' + this._boilerSearchKeywords(it));
-            idx.push({ id: it.id, name: it.name, price: it.price, brand: brand, article: it.article || it.id, _words: t.words, _numbers: new Set(t.numbers), _abbrev: t.abbrev, _countedNumbers: t.countedNumbers, _hideForBase: hideForBase });
+            // isDesignRad/power50/sec — нужны отдельному подбору дизайнерских радиаторов по
+            // мощности (см. _findDesignRadiatorsByPower): у них мощность посекционная и в
+            // самом названии не пишется, обычный поиск по числу из текста её не видит.
+            idx.push({ id: it.id, name: it.name, price: it.price, brand: brand, article: it.article || it.id, _words: t.words, _numbers: new Set(t.numbers), _abbrev: t.abbrev, _countedNumbers: t.countedNumbers, _hideForBase: hideForBase, isDesignRad: it.isDesignRad, power50: it.power50, sec: it.sec });
             if (it.rommer && it.rommer.id && it.rommer.name && !seen.has(it.rommer.id)) {
                 seen.add(it.rommer.id);
                 const rBrand = it.rommer.brand || 'ROMMER';
@@ -2469,14 +2498,73 @@ const app = {
         return scored.slice(0, 10).map(s => s.it);
     },
 
+    // Мощность запрошена в ваттах или киловаттах ("2000 вт", "2 квт", "1.5квт") — или null,
+    // если в запросе числа с единицей мощности нет.
+    _parseRadiatorPowerQuery: function (query) {
+        const t = this._numeralsToDigits((query || '').toLowerCase().replace(/ё/g, 'е'));
+        // (?![а-я]) вместо \b — \b не видит границу после кириллицы (кириллица не входит
+        // в \w), с ним regex никогда не матчился и мощность не распознавалась вовсе.
+        // кВт и Вт — разными шаблонами: киловатты называют и одной цифрой ("2 квт"), а для
+        // ватт одна-две цифры для радиатора бессмысленны (минимум сотни).
+        const mKw = t.match(/(\d{1,3}(?:[.,]\d+)?)\s*(?:квт\.?|kw)(?![а-я])/i);
+        if (mKw) return parseFloat(mKw[1].replace(',', '.')) * 1000 || null;
+        const mW = t.match(/(\d{2,5}(?:[.,]\d+)?)\s*(?:вт\.?|ватт[а-я]*|w)(?![а-я])/i);
+        if (mW) return parseFloat(mW[1].replace(',', '.')) || null;
+        return null;
+    },
+
+    // "дизайнерский радиатор" явным текстом — отдельный сигнал сузить подбор до линеек
+    // с isDesignRad (Oscar/Sebino/Tube/...), даже если мощность в запросе не названа.
+    _isDesignRadiatorQuery: function (query) {
+        return /дизайнерск[а-я]*\s*радиатор|радиатор[а-я]*\s*дизайнерск[а-я]*/i.test(query || '');
+    },
+
+    // Подбор дизайнерского радиатора по мощности — обычный поиск (searchCatalog) ищет точное
+    // число В ТЕКСТЕ названия, а у дизайнерских линеек (isDesignRad в catalog.js) мощность
+    // посекционная (power50) и в названии не пишется вовсе, поэтому "радиатор 2000 вт" искал
+    // бы буквально подстроку "2000" и ничего бы не находил. Здесь вместо точного совпадения —
+    // ближайшее по суммарной мощности (power50 × sec) среди ВСЕХ дизайнерских линеек (а не
+    // среди уже усечённой до 10 позиций обычной выдачи — иначе "ближайшее" считалось бы не по
+    // каталогу, а по случайной десятке), опционально суженное словами запроса (серия, цвет —
+    // они, в отличие от мощности, есть в названии текстом).
+    _findDesignRadiatorsByPower: function (query, powerW) {
+        const isPro = this.isPro();
+        const { words: qWords } = this._tokenizeSearchText(this._expandSlang(query));
+        const relevantWords = qWords.filter(w => w !== 'design' && w !== 'радиатор');
+        const base = this._buildCatalogSearchIndex().filter(it =>
+            it.isDesignRad && !(it._hideForBase && !isPro)
+            && typeof it.power50 === 'number' && typeof it.sec === 'number');
+        let pool = relevantWords.length
+            ? base.filter(it => relevantWords.some(qw => it._words.some(w => this._stemEq(w, qw, it._abbrev))))
+            : base;
+        // Слово (например, цвет) не нашло ни одной позиции — не молчим, предлагаем весь пул,
+        // а не проваливаемся в обычный поиск по "радиатор", который найдёт что попало
+        if (!pool.length) pool = base;
+        pool.forEach(it => { it._totalPower = Math.round(it.power50 * it.sec); });
+        if (powerW != null) pool.sort((a, b) => Math.abs(a._totalPower - powerW) - Math.abs(b._totalPower - powerW));
+        else pool.sort((a, b) => a._totalPower - b._totalPower);
+        return pool.slice(0, 10);
+    },
+
     // Поиск товара по свободной фразе в "Умном заполнении" — тот же поиск, что и в окне
     // "Своё оборудование" (сперва строгий, затем ослабленный при пустом результате), но
     // вызывается из чата, когда фраза не про параметры дома, а про конкретный товар
-    // ("нужен кран с накидной гайкой на дюйм").
+    // ("нужен кран с накидной гайкой на дюйм"). Отдельно — подбор дизайнерского радиатора
+    // по мощности, которую обычный текстовый поиск не видит (см. _findDesignRadiatorsByPower).
     _aiChatFindProducts: function (query) {
         const strict = this.searchCatalog(query);
-        if (strict.length) return { list: strict, loose: false };
-        return { list: this.searchCatalogLoose(query), loose: true };
+        let list = strict.length ? strict : this.searchCatalogLoose(query);
+        let loose = !strict.length;
+
+        // Мощность одна на всё ("насос 90 вт", "котёл 9 квт") — без явного слова "радиатор"
+        // рядом это включило бы подбор радиаторов вместо того, что реально искали
+        const powerW = this._parseRadiatorPowerQuery(query);
+        const isRadiatorPowerQuery = powerW != null && /радиатор[а-я]*/i.test(query || '');
+        if (isRadiatorPowerQuery || this._isDesignRadiatorQuery(query)) {
+            const pool = this._findDesignRadiatorsByPower(query, powerW);
+            if (pool.length) { list = pool; loose = true; } // "loose" здесь = "подобрано ближайшее", не точное совпадение
+        }
+        return { list, loose };
     },
 
     // Добавляет найденную по чату позицию каталога в текущую смету — тем же механизмом,
@@ -4256,13 +4344,18 @@ const app = {
         // Карточки товаров, найденных по свободной фразе (см. app._aiChatFindProducts) — с ценой,
         // артикулом и кнопкой добавления прямо в смету, без отдельного окна "Своё оборудование".
         const renderProductResults = (list, isLoose) => {
-            const title = isLoose ? 'Точного совпадения нет, возможно вы имели в виду:' : 'Нашёл в каталоге:';
+            // Подбор дизайнерского радиатора по мощности — не "похожие слова", а ближайшее
+            // по суммарной мощности (см. _findDesignRadiatorsByPower), заголовок должен об
+            // этом сказать, а не путать с обычным "возможно вы имели в виду"
+            const byPower = list.length && list[0]._totalPower != null;
+            const title = byPower ? 'Ближайшее по мощности из дизайнерских радиаторов:'
+                : (isLoose ? 'Точного совпадения нет, возможно вы имели в виду:' : 'Нашёл в каталоге:');
             const items = list.map((it, i) => `
                 <div class="ai-chat-product-item" data-idx="${i}">
                     <img src="img/${it.id}.jpg" class="ai-chat-product-img" loading="lazy" decoding="async" onerror="this.style.display='none'">
                     <div class="ai-chat-product-text">
                         <span class="ai-chat-product-name">${escapeHtml(it.name)}</span>
-                        <span class="ai-chat-product-meta">${escapeHtml(it.article || it.id)}${it.brand ? ' · ' + escapeHtml(it.brand) : ''} · ${Math.round(it.price).toLocaleString('ru-RU')} ₽</span>
+                        <span class="ai-chat-product-meta">${escapeHtml(it.article || it.id)}${it.brand ? ' · ' + escapeHtml(it.brand) : ''}${it._totalPower != null ? ' · ' + it._totalPower + ' Вт' : ''} · ${Math.round(it.price).toLocaleString('ru-RU')} ₽</span>
                     </div>
                     <button type="button" class="ai-chat-product-add">+ В смету</button>
                 </div>
@@ -11377,7 +11470,7 @@ const app = {
                         ${historyRows ? `<details style="margin-top:2px;"><summary style="cursor:pointer; font-size:11.5px; color:var(--text-sec);">История статусов (${g.list.length})</summary><div style="margin-top:6px;">${historyRows}</div></details>` : ''}
                         <div style="display:flex; gap:6px; margin-top:4px;">
                             ${loc ? `<button class="btn-subscribe" onclick="app.loadRequestedEstimate(${loc.index})" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0;">Открыть смету</button>` : ''}
-                            <button class="btn-subscribe" onclick="app.lazy('docs').then(() => Docs.openForOrder('${esc(g.calcId)}', '${shareId || ''}'))" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border);">📄 Документы</button>
+                            ${this.canUseDocs() ? `<button class="btn-subscribe" onclick="app.lazy('docs').then(() => Docs.openForOrder('${esc(g.calcId)}', '${shareId || ''}'))"style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border);">📄 Документы</button>` : ''}
                         </div>
                      </div>`;
         });
@@ -16749,7 +16842,8 @@ const app = {
         { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
-        { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' }
+        { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
+        { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' }
     ],
 
     // Как было до таблицы: ROMMER и «Деньги» — Профи (продавцу «Деньги» не
@@ -16766,8 +16860,13 @@ const app = {
         if (feature === 'recognize') return pro ? 'list' : 'off';
         if (feature === 'design') return 'list';
         if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
+        // Договор подряда и акты — про монтаж: исходно только монтажнику, на
+        // любом тарифе. Продавцу, менеджеру и наблюдателю закрыто (15.09.2026).
+        if (feature === 'docs') return account === 'installer' ? 'on' : 'off';
         return 'off';
     },
+
+    canUseDocs: function () { return this.tariffAccess('docs') === 'on'; },
 
     tariffCell: function (account, plan, feature) {
         const f = this.TARIFF_FEATURES.find(x => x.id === feature);

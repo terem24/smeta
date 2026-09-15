@@ -334,6 +334,10 @@ const Tour = {
 
     // Шаг целиком выпадает: у продавца нет того, о чём он рассказывает.
     skipped: function (s) {
+        // «Документы» закрыты таблицей тарифов в панели управления — кнопки нет
+        try {
+            if (s && s.key === 'docs' && typeof app !== 'undefined' && typeof app.canUseDocs === 'function' && !app.canUseDocs()) return true;
+        } catch (e) { }
         return !!(s && s.seller && s.seller.skip && this.isSeller());
     },
 
