@@ -50212,7 +50212,59 @@ const app = {
     /** Средняя температура воды в приборе, °C: 70 у 80/60 и 75/65 — при ней дана паспортная мощность */
     radTMean: function () { return this.radRegime().tMean || 70; },
     RAD_LOCAL_K: 1.3,        // местные сопротивления луча: отводы, переходы, узел подключения
-    RAD_MAN_DP: 8,           // коллектор радиаторов: кран, расходомер — кПа
+    // Коллектор радиаторов — по паспорту, а не одним числом. Раньше здесь стояли 8 кПа
+    // на любой коллектор, от 2 выходов до 20. Через луч вода проходит клапан подающей
+    // гребёнки, штуцер под евроконус на подаче и на обратке и штуцер клапана
+    // терморегулятора обратной гребёнки; у каждого паспорт даёт Kv, потери
+    // dp = (G/Kv)² · 100 кПа при расходе луча. Клапаны считаем полностью открытыми:
+    // луч расчётного прибора не дросселируют, дросселируют остальные.
+    // dpMax — «максимальный перепад давления между входами», предел гребёнки.
+    // Сопротивления корпуса гребёнки на проход паспорта не дают ни у одной серии —
+    // его и не считаем, чтобы не выдумывать цифру.
+    RAD_MANIFOLD_PASSPORT: {
+        sms: {
+            label: 'STOUT SMS-0912',
+            src: 'паспорт STOUT «Распределительные коллекторные блоки, тип SMS», ред. № 3 от 17.05.2021',
+            els: [
+                { name: 'запорно-балансировочный клапан подачи (открыт на 4 оборота)', kv: 1.65, ref: 'п. 4.1' },
+                { name: 'штуцер клапана терморегулятора обратки', kv: 2.98, ref: 'п. 4.3' },
+                { name: 'штуцер под евроконус, подача и обратка', kv: 5.1, n: 2, ref: 'п. 4.2' }
+            ],
+            dpMax: 150, dpMaxRef: 'п. 3.2'
+        },
+        rms: {
+            label: 'ROMMER RMS-3210',
+            src: 'паспорт ROMMER «Коллекторы распределительные, тип RMS»',
+            els: [
+                { name: 'запорно-балансировочный клапан подачи (открыт на 4 оборота)', kv: 2.31, ref: 'п. 4.1' },
+                { name: 'штуцер клапана терморегулятора обратки', kv: 2.74, ref: 'п. 4.4' },
+                { name: 'штуцер под евроконус, подача и обратка', kv: 5.1, n: 2, ref: 'п. 4.3' }
+            ],
+            dpMax: 150, dpMaxRef: 'п. 3.2'
+        },
+        smb: {
+            label: 'блоки STOUT SMB-6850',
+            src: 'паспорт STOUT «Коллекторы распределительные с регулировочно-отсечными клапанами, тип SMB 6849(50)», ред. № 3 от 17.05.2021',
+            // Выход блока под евроконус — сам отвод с клапаном, его Kvs уже включает штуцер.
+            els: [
+                { name: 'отвод блока с клапаном, подача и обратка', kv: 2.5, n: 2, ref: 'п. 3.2' }
+            ],
+            dpMax: 100, dpMaxRef: 'п. 3.2'
+        }
+    },
+    /**
+     * Потери в коллекторе на луче расчётного прибора, кПа, по паспорту той серии,
+     * что стоит в смете (render кладёт её в _radManifoldKind). До первого расчёта
+     * серии ещё нет — берём по бренд-режиму.
+     */
+    radManifoldDp: function (flow) {
+        const kind = this._radManifoldKind || (this.state.brandMode === 'rommer' ? 'rms' : 'sms');
+        const pp = this.RAD_MANIFOLD_PASSPORT[kind] || this.RAD_MANIFOLD_PASSPORT.sms;
+        const g = Math.max(0, flow || 0);
+        const rows = pp.els.map(e => ({ name: e.name, kv: e.kv, n: e.n || 1, ref: e.ref,
+            dp: (e.n || 1) * Math.pow(g / e.kv, 2) * 100 }));
+        return { kind: kind, passport: pp, rows: rows, dp: rows.reduce((s, r) => s + r.dp, 0) };
+    },
     RAD_GROUP_DP: 12,        // насосная группа и обвязка котельной — кПа
     RAD_BOILER_DP: 15,       // теплообменник котла — кПа
     // Предельная скорость — не одно число на всю систему. СП 60.13330.2020,
@@ -50713,7 +50765,7 @@ const app = {
             // Диаметр — по нагрузке участка, как его выберет смета; расход через
             // него — та же доля системы, что и в итоговом расчёте.
             const dTr = this.radPickDiam(span.kw / br);
-            const dp = this.radPipeDrop(flowBr * span.share, dTr, span.len).dp + this.RAD_MAN_DP
+            const dp = this.radPipeDrop(flowBr * span.share, dTr, span.len).dp + this.radManifoldDp(flowDev).dp
                 + dpLoop + this.RAD_GROUP_DP + this.RAD_BOILER_DP;
             // Насос проверяют по расходу через саму группу, а он равен доле всей
             // системы, а не расходу магистрального участка.
@@ -50938,7 +50990,9 @@ const app = {
                 ', ' + trLen.toFixed(0) + ' м', tr.dp,
                 { v: tr.v, vLim: this.RAD_V_MAX_TRUNK, len: trLen,
                     tag: 'trunk', d: dTr, flow: flowTr, riser: !!span.riser });
-            add('Коллектор', this.RAD_MAN_DP, { tag: 'manifold' });
+            const man = this.radManifoldDp(flowWorst);
+            add('Коллектор ' + man.passport.label, man.dp,
+                { tag: 'manifold', flow: flowWorst, manifold: man });
             const loop = this.radPipeDrop(flowWorst, 16, 2 * avgRun * 1.1);
             add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * avgRun * 1.1).toFixed(0) + ' м', loop.dp,
                 { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1,
@@ -50979,7 +51033,22 @@ const app = {
         }));
         const fit = pump.find(pm => pm.avail >= head) || null;
 
+        // Предел гребёнки по паспорту — перепад между подачей и обраткой. Самый большой
+        // он, когда термоголовки закрыли все лучи: расхода нет, и насос давит на коллектор
+        // полным напором своей кривой (hMax). Проверяем по насосу, который подобран, а
+        // если не тянет ни один — по самому напорному.
+        let manifoldCheck = null;
+        const manPart = parts.find(p => p.tag === 'manifold');
+        if (manPart && manPart.manifold) {
+            const pmCurve = pumps[fit ? pump.indexOf(fit) : pumps.length - 1];
+            const dpShut = pmCurve.hMax * 9.81;
+            manifoldCheck = { man: manPart.manifold, dp: manPart.dp, flow: flowWorst,
+                dpShut: dpShut, dpMax: manPart.manifold.passport.dpMax,
+                ok: dpShut <= manPart.manifold.passport.dpMax };
+        }
+
         return {
+            manifoldCheck: manifoldCheck, // коллектор по паспорту: потери луча и предел перепада
             pumps: pump,
             pump: fit,                 // подходящий насос или null, если не тянет ни один
             flow: flowTotal,           // м³/ч по системе
@@ -51012,6 +51081,29 @@ const app = {
      * строки собирается в момент добавления группы в смету, когда приборы ещё
      * не подобраны и расхода через них не существует.
      */
+    /**
+     * Подсказка строки радиаторного коллектора: из чего сложились потери луча через
+     * коллектор и выдерживает ли гребёнка перепад насоса — всё с пунктами паспорта.
+     */
+    radManifoldHydroTip: function (c) {
+        const n2 = v => v.toFixed(2).replace('.', ',');
+        const n1 = v => v.toFixed(1).replace('.', ',');
+        const pp = c.man.passport;
+        let s = `<b>Гидравлика коллектора (${pp.src}):</b><br>` +
+            `Луч расчётного прибора — G = ${n2(c.flow)} м³/ч; потери dp = (G/Kv)² × 100 кПа:<br>`;
+        c.man.rows.forEach(r => {
+            s += `• ${r.name}: Kv ${n2(r.kv)} (${r.ref})${r.n > 1 ? ' × ' + r.n : ''} — ${n1(r.dp)} кПа<br>`;
+        });
+        s += `Итого через коллектор <b>${n1(c.dp)} кПа</b>. Число выходов на эти потери не влияет: ` +
+            `через луч идёт расход одного прибора, а общий расход этажа — забота подводки и насоса.<br>`;
+        s += c.ok
+            ? `Перепад между гребёнками при закрытых лучах — до ${Math.round(c.dpShut)} кПа (полный напор насоса), ` +
+              `паспорт допускает ${pp.dpMax} кПа (${pp.dpMaxRef}) — <b style="color:#10B981;">в пределах</b>.`
+            : `<b style="color:#EF4444;">Перепад между гребёнками при закрытых лучах — до ${Math.round(c.dpShut)} кПа, ` +
+              `паспорт допускает ${pp.dpMax} кПа (${pp.dpMaxRef}).</b> Нужен перепускной клапан или насос с регулированием по перепаду.`;
+        s += `<br><i>Сопротивление корпуса гребёнки на проход паспорт не нормирует, в расчёт оно не входит.</i>`;
+        return `<span style="font-size:11px;line-height:1.5;">${s}</span>`;
+    },
     radGroupHydroTip: function () {
         const h = this.radHydro;
         if (!h) return '';
@@ -64425,6 +64517,16 @@ const app = {
             this.state.lastRadLoops = reqLoops;
             this._radManifoldsCount = _layout.count;
             let m = (_swapKey && _isChromeVal(_swapVal)) ? _swapKey : _manKey(reqLoops);
+            // Серия для гидравлики коллектора (radManifoldDp): у блоков, у STOUT SMS и у
+            // ROMMER RMS разные клапаны на выходах и разные Kv по паспорту.
+            {
+                const _mSv = (m && this.state.swaps) ? this.state.swaps[m.id] : undefined;
+                const _sv = typeof _mSv === 'string' ? _mSv : (typeof _swapVal === 'string' ? _swapVal : '');
+                this._radManifoldKind = _radMode === 'chrome' ? 'smb'
+                    : _sv.startsWith('RMS-') ? 'rms'
+                    : _sv.startsWith('SMS-') ? 'sms'
+                    : (_radRommer && m && m.rommer ? 'rms' : 'sms');
+            }
             if (_layout.perFloor > 1 && this.state.radConnectionScheme !== 'tee') {
                 this.groupWarns = this.groupWarns || {};
                 this.groupWarns[pipeGrp] = this.noteBox('info', 'На этаже несколько коллекторов.',
@@ -65088,6 +65190,22 @@ const app = {
                 if (r.originalId !== _grpId && r.id !== _grpId) return;
                 r.qtyTip = (r.qtyTip ? r.qtyTip + '<br><br>' : '') + _hyTip;
             });
+        }
+        // Проверка коллектора по паспорту — в подсказку строки самого коллектора
+        // (готового или первого из блоков: у сборки строк несколько, хватит одной).
+        if (this.radHydro && this.radHydro.manifoldCheck) {
+            const _manTip = this.radManifoldHydroTip(this.radHydro.manifoldCheck);
+            const _manRow = (this.currentEquipmentList || []).find(r => {
+                const id = String(r.originalId || r.id || '');
+                return !id.endsWith('_water') && /^(SMS-0912|RMS-3210|SMB-6850)/.test(id);
+            });
+            if (_manRow) _manRow.qtyTip = (_manRow.qtyTip ? _manRow.qtyTip + '<br><br>' : '') + _manTip;
+            if (!this.radHydro.manifoldCheck.ok) {
+                const c = this.radHydro.manifoldCheck;
+                app.tempWarns.push('• <b>Коллектор:</b> когда термоголовки закроют все лучи, насос даст на гребёнки до ' +
+                    c.dpShut.toFixed(0) + ' кПа, а паспорт ' + c.man.passport.label + ' допускает ' + c.dpMax + ' кПа (' +
+                    c.man.passport.dpMaxRef + '). Нужен перепускной клапан между подачей и обраткой или насос с регулированием по перепаду.');
+            }
         }
         if (this.radHydro) {
             const h = this.radHydro;
