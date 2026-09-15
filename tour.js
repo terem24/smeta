@@ -337,6 +337,8 @@ const Tour = {
         // «Документы» закрыты таблицей тарифов в панели управления — кнопки нет
         try {
             if (s && s.key === 'docs' && typeof app !== 'undefined' && typeof app.canUseDocs === 'function' && !app.canUseDocs()) return true;
+            // «Монтажные работы» закрыты столбцом «Монтаж» — вкладки нет
+            if (s && s.key === 'works' && typeof app !== 'undefined' && typeof app.canUseWorks === 'function' && !app.canUseWorks()) return true;
         } catch (e) { }
         return !!(s && s.seller && s.seller.skip && this.isSeller());
     },

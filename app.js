@@ -6155,7 +6155,7 @@ const app = {
             // спрашивали, поэтому в одной и той же смете works_sum зависел от того, какая
             // кнопка записала строку последней: 20 смет из 34 лежали с нулём.
             // Единственное исключение — продавец: монтаж он не делает (isSellerOnly).
-            let wk = this.isSellerOnly() ? 0 : (app.lastWorksSum || 0);
+            let wk = !this.canUseWorks() ? 0 : (app.lastWorksSum || 0);   // монтаж закрыт таблицей «Тарифы»
             const total = eq + wk;
 
             const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
@@ -11498,7 +11498,7 @@ const app = {
             // положен в meta события «отправлено» (см. logInvoiceEvent('sent')).
             const shareEv = g.list.find(ev => ev.meta && ev.meta.shared_invoice_id);
             const shareId = shareEv ? String(shareEv.meta.shared_invoice_id) : '';
-            const sums = loc ? `Оборудование: <b>${(loc.inv.eqSum || 0).toLocaleString('ru-RU')} ₽</b>${(loc.inv.worksSum > 0 && !this.isSellerOnly()) ? ` | Монтаж: <b>${(loc.inv.worksSum || 0).toLocaleString('ru-RU')} ₽</b>` : ''}` : '';
+            const sums = loc ? `Оборудование: <b>${(loc.inv.eqSum || 0).toLocaleString('ru-RU')} ₽</b>${(loc.inv.worksSum > 0 && this.canUseWorks()) ? ` | Монтаж: <b>${(loc.inv.worksSum || 0).toLocaleString('ru-RU')} ₽</b>` : ''}` : '';
 
             const historyRows = g.list.map(ev => {
                 const m = EVENT_META[ev.event] || { label: ev.event, color: '#94A3B8' };
@@ -13124,8 +13124,8 @@ const app = {
 
         // «Прайс» — свои расценки на монтаж. Продавцу про монтаж не показываем
         // ничего (по решению владельца 10.09.2026): ни пункт в колонке кабинета,
-        // ни его двойник в меню разделов.
-        const sellerNoWorks = this.isSellerOnly();
+        // ни его двойник в меню разделов. С 15.09.2026 решает столбец «Монтаж» таблицы «Тарифы».
+        const sellerNoWorks = !this.canUseWorks();
         const navWorkPrices = document.querySelector('#profile_nav .lk-nav-item[data-tab="workprices"]');
         const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
         if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
@@ -13875,7 +13875,8 @@ const app = {
      */
     syncRoleTabs: function () {
         this.syncShopTheme();
-        const seller = this.isSellerOnly();
+        // «Монтажные работы» — по столбцу «Монтаж» таблицы «Тарифы» (исходно: только монтажнику)
+        const seller = !this.canUseWorks();
         const tWk = document.getElementById('tab_works');
         const tMoney = document.getElementById('tab_money');
         const tRec = document.getElementById('tab_recognize');
@@ -16890,6 +16891,7 @@ const app = {
         { id: 'stout', group: 'Ассортимент', label: 'STOUT', locked: true, hint: 'Основа расчёта: без него смету не собрать, поэтому выключить нельзя' },
         { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Замены позиций на ROMMER и ROMMER в поиске; без него нет и переключателя «Аналог»' },
         { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
+        { id: 'works', group: 'Функции', label: 'Монтаж', hint: 'Монтажные работы: вкладка, сумма «Монтаж» в шапке, работы в печати, Excel, ссылке клиенту и счёте, расценки «Прайс» в кабинете' },
         { id: 'analog', group: 'Функции', label: 'Аналог', hint: 'Подбор аналога: переключатель «Аналог» в параметрах и в заголовках разделов сметы. Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
@@ -16916,10 +16918,15 @@ const app = {
         // Договор подряда и акты — про монтаж: исходно только монтажнику, на
         // любом тарифе. Продавцу, менеджеру и наблюдателю закрыто (15.09.2026).
         if (feature === 'docs') return account === 'installer' ? 'on' : 'off';
+        // Монтажные работы — раньше их прятала анкета продавца (isSellerOnly).
+        // Исходно только монтажнику; менеджер и наблюдатель по анкете не делятся,
+        // поэтому им тоже закрыто — включается в таблице (15.09.2026).
+        if (feature === 'works') return account === 'installer' ? 'on' : 'off';
         return 'off';
     },
 
     canUseDocs: function () { return this.tariffAccess('docs') === 'on'; },
+    canUseWorks: function () { return this.tariffAccess('works') === 'on'; },
     // Переключатель «Аналог» уводит смету на ROMMER, поэтому нужен и столбец ROMMER.
     canUseAnalog: function () { return this.canUseBrand('ROMMER') && this.tariffAccess('analog') === 'on'; },
 
@@ -34146,7 +34153,7 @@ const app = {
     setViewMode: function (mode) {
         // Продавцу этих видов нет (см. syncRoleTabs) — вкладки скрыты, но
         // вызвать setViewMode можно и мимо них (сохранённый вид, ссылка).
-        if (mode === 'works' && this.isSellerOnly()) mode = 'equipment';
+        if (mode === 'works' && !this.canUseWorks()) mode = 'equipment';
         if (mode === 'works' && !this.checkAccess('pro')) return;
         // «Деньги» открывает таблица «Тарифы» (canUseMoney).
         // checkAccess('pro') тут не годится: он давно означает «авторизован».
@@ -36326,7 +36333,7 @@ const app = {
         // экране, и наружу — в печать, Excel и ссылку клиенту — он тоже не
         // уходит. Карточку прячем, галку снимаем; сам флаг ещё раз гасится в
         // confirmShareOptions и в execute*, чтобы обходные вызовы не протащили.
-        const sellerNoWorks = this.isSellerOnly();
+        const sellerNoWorks = !this.canUseWorks();
         const cardWorksOpt = document.getElementById('card_opt_works');
         if (cardWorksOpt) cardWorksOpt.style.display = sellerNoWorks ? 'none' : '';
         if (sellerNoWorks && chkWorks) chkWorks.checked = false;
@@ -36501,7 +36508,7 @@ const app = {
         const cardScheme = document.getElementById('card_opt_scheme');
         const showEq = chkEq ? chkEq.checked : false;
         // У продавца работ нет (см. openShareOptionsModal)
-        const showWorks = (chkWorks && !this.isSellerOnly()) ? chkWorks.checked : false;
+        const showWorks = (chkWorks && this.canUseWorks()) ? chkWorks.checked : false;
         const heatLossVisible = !!(cardHeatLoss && cardHeatLoss.style.display !== 'none');
         const schemeVisible = !!(cardScheme && cardScheme.style.display !== 'none');
         const showHeatLoss = heatLossVisible && chkHeatLoss ? chkHeatLoss.checked : false;
@@ -37826,7 +37833,7 @@ const app = {
     executeShareInvoice: async function (showEq, showWorks, validDays) {
         // Продавцу работы в ссылку не идут ни при каком вызове (в том числе из
         // режима обучения, который зовёт эту функцию напрямую)
-        if (this.isSellerOnly()) showWorks = false;
+        if (!this.canUseWorks()) showWorks = false;
         // Срок действия счёта. Обходные вызовы (режим обучения, переотправка из
         // списка объектов) третьего аргумента не передают — берём настройку кабинета.
         if (validDays === undefined || validDays === null) validDays = this.invoiceValidDaysDefault();
@@ -38217,7 +38224,7 @@ const app = {
         return cssText;
     },
     executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme) {
-        if (this.isSellerOnly()) showWorks = false; // у продавца работ нет
+        if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
         this.printOptions = {
             eq: showEq,
             works: showWorks,
@@ -38391,7 +38398,7 @@ const app = {
     // смета, что и в PDF: те же разделы, строки, скидки и группировки, без второй
     // копии логики сметы. В Excel не переносятся только фотографии и схема.
     executeExcelDownload: async function (showEq, showWorks, showHeatLoss, flat) {
-        if (this.isSellerOnly()) showWorks = false; // у продавца работ нет
+        if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
         if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
         if (!window.ExcelExport) {
             app.alert('Выгрузка в Excel сейчас недоступна. Обновите страницу и попробуйте снова.');
@@ -38566,7 +38573,7 @@ const app = {
         // всех трёх сохранений, а не в каждом из них по отдельности. Решение
         // принимается сейчас, а не при отправке: задача может пролежать в очереди
         // до восстановления связи.
-        if (this.isSellerOnly()) worksSum = 0;
+        if (!this.canUseWorks()) worksSum = 0;
         this.queue.addJob({
             id: "savejob_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
             type: 'save_only',
@@ -39041,7 +39048,7 @@ const app = {
 
             const eqSum = app.lastEqSum || 0;
             // Продавец монтаж не делает — в счёт работы не идут (как в печати и ссылке)
-            const noWorks = this.isSellerOnly();
+            const noWorks = !this.canUseWorks();
             // Тариф здесь больше не спрашиваем: монтаж считают все, кроме продавца
             // (см. сохранение в облако — там та же причина).
             const worksSum = noWorks ? 0 : (app.lastWorksSum || 0);
@@ -39659,7 +39666,7 @@ const app = {
             const eq = app.lastEqSum || 0;
             // Автосохранение тоже пишет монтаж всем, кроме продавца: иначе оно раз в
             // 15 минут затирало нулём сумму, которую только что записала печать.
-            const wk = this.isSellerOnly() ? 0 : (app.lastWorksSum || 0);
+            const wk = !this.canUseWorks() ? 0 : (app.lastWorksSum || 0);
             const total = eq + wk;
 
             const autoData = {
@@ -68648,7 +68655,7 @@ const app = {
             // в шапке должна показываться и ему, не только PRO. Продавцу монтаж не
             // показываем вовсе: ни суммы, ни слова «Монтаж» (по решению владельца
             // 10.09.2026). Каркас пересобирается при смене признака (dataset.isPro).
-            let showWorksTotal = (isPro || !!this.state.tgUser) && !this.isSellerOnly();
+            let showWorksTotal = (isPro || !!this.state.tgUser) && this.canUseWorks();
 
             // Маржа в шапке — только ПРОФИ и только когда закупка настроена.
             // Каркас пересобирается и при смене этого признака: иначе цифра либо
@@ -68769,7 +68776,7 @@ const app = {
             let isPro = this.isPro();
             // Продавцу блок «Монтаж» не показываем вовсе (как в настольной шапке):
             // подпись и разделитель прячем, сумму не считаем
-            const sellerNoWorks = this.isSellerOnly();
+            const sellerNoWorks = !this.canUseWorks();
             let showWorksTotal = (isPro || !!this.state.tgUser) && !sellerNoWorks;
             mobileTotals.querySelectorAll('.m-total-work, .m-total-div').forEach(el => {
                 el.style.display = sellerNoWorks ? 'none' : '';

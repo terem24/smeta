@@ -163,7 +163,7 @@ window.IdleHint = {
         if (window.SessionTrack) SessionTrack.screen('hint:idle');
 
         // У продавца монтажных работ в смете нет — и обещать их незачем.
-        const seller = app.isSellerOnly && app.isSellerOnly();
+        const seller = typeof app.canUseWorks === 'function' ? !app.canUseWorks() : (app.isSellerOnly && app.isSellerOnly());
         const what = seller ? 'котёл, радиаторы и трубы' : 'оборудование и работы';
 
         // Разметка и классы — те же, что у окна быстрого старта (custom-modal-overlay /

@@ -197,7 +197,7 @@ const Docs = {
 
     worksList: function () {
         // Продавец монтаж не делает — работ в документах нет (как в печати и ссылке)
-        if (app.isSellerOnly && app.isSellerOnly()) return [];
+        if (typeof app.canUseWorks === 'function' ? !app.canUseWorks() : (app.isSellerOnly && app.isSellerOnly())) return [];
         const snap = this._ctx && this._ctx.snap;
         if (snap) return (snap.items && snap.items.works) || [];
         return this.withSnapPrices(app.currentWorksList || [], true);
@@ -484,7 +484,8 @@ const Docs = {
             return { eq: eq, works: works, total: eq + works };
         }
         const eq = Number(app.lastEqSum) || 0;
-        const works = (app.isSellerOnly && app.isSellerOnly()) ? 0 : (Number(app.lastWorksSum) || 0);
+        const noWorks = typeof app.canUseWorks === 'function' ? !app.canUseWorks() : (app.isSellerOnly && app.isSellerOnly());
+        const works = noWorks ? 0 : (Number(app.lastWorksSum) || 0);
         return { eq: eq, works: works, total: eq + works };
     },
 
