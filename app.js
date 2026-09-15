@@ -47828,6 +47828,16 @@ const app = {
      * CITIES_DB (у сметы в state лежит снимок города, поэтому ищем по названию в
      * текущей базе), иначе — по таблицам выше от расчётной температуры.
      */
+    /**
+     * Во сколько раз бак отопления больше, чем для воды: 1 — вода, 1,1 — незамерзающий
+     * теплоноситель на пропиленгликоле (паспорт WARME Eco PRO 30: «бак на 5–10 %
+     * больше, чем для воды», верхняя граница).
+     */
+    expTankCoolantK: function () {
+        const c = this.state.coolant || 'water';
+        return c === 'water' ? 1 : 1.1;
+    },
+
     heatingPeriodFor: function (tP) {
         const sc = this.state.selectedCity;
         if (sc && sc.name && typeof CITIES_DB !== 'undefined') {
@@ -48731,7 +48741,9 @@ const app = {
         const baseItem = (catalog.coolants || []).find(x => x.id === base.id) || null;
         const concentrate = vol * c / base.pct;
         const cans = baseItem ? Math.ceil(concentrate / (baseItem.vol || 18)) : 0;
-        const tankNeed = Math.max(5, Math.ceil(volNode * 0.1));
+        // Контур снеготаяния всегда на гликоле: бак на 10 % больше, чем для воды
+        // (паспорт WARME Eco PRO 30 — «на 5–10 % больше», верхняя граница).
+        const tankNeed = Math.max(5, Math.ceil(volNode * 0.1 * 1.1));
         const tankPool = (catalog.exp_heating || []).concat(catalog.exp_heating_alts || []).slice().sort((a, b) => a.vol - b.vol);
         const tank = tankPool.find(x => x.vol >= tankNeed) || tankPool[tankPool.length - 1] || null;
 
@@ -58096,13 +58108,14 @@ const app = {
                 // val1 — объём системы, val2 — объём бака, встроенного в котёл, val3 —
                 // литраж подобранного бака. Раньше в подсказке была одна формула без
                 // чисел, и по ней нельзя было понять, откуда взялся литраж.
-                const _ehReq = Number(val1 || 0) * 0.12;
+                const _ehK = this.expTankCoolantK();
+                const _ehReq = Number(val1 || 0) * 0.12 * _ehK;
                 const _ehBlt = Number(val2 || 0);
                 const _ehNeed = Math.max(0, _ehReq - _ehBlt);
                 const _ehBltLine = _ehBlt > 0
                     ? `<b>Встроенный в котёл:</b> ${_ehBlt.toFixed(1)} л → внешний нужен не менее ${_ehNeed.toFixed(1)} л.<br>`
                     : '';
-                return `<span style="${styles}"><span style="${head}">Расширительный бак (Отопление)</span><b>Зачем:</b> Компенсация расширения воды при нагреве.<br><b>Объём системы:</b> ${val1} л (котёл + приборы + трубы, с запасом 15%).<br><b>Требуемый объём бака:</b> ${val1} × 0.12 = ${_ehReq.toFixed(1)} л.<br>${_ehBltLine}<b>Подобран:</b> ${val3} л — ближайший больший в линейке.<br><b>Откуда 0,12:</b> по практике проектирования. Вода при нагреве с 10 до 90 °C расширяется на 3,6 % (плотность 999,7 → 965,3 кг/м³); полезная доля мембранного бака при заправке 1,5 бар и клапане 3 бар — 1 − (1,5 + 1)/(3 + 1) = 0,375; 0,036 / 0,375 ≈ 0,096, остальное — запас.</span>`;
+                return `<span style="${styles}"><span style="${head}">Расширительный бак (Отопление)</span><b>Зачем:</b> Компенсация расширения воды при нагреве.<br><b>Объём системы:</b> ${val1} л (котёл + приборы + трубы, с запасом 15%).<br><b>Требуемый объём бака:</b> ${val1} × 0.12${_ehK !== 1 ? ` × ${String(_ehK).replace('.', ',')}` : ''} = ${_ehReq.toFixed(1)} л.<br>${_ehBltLine}<b>Подобран:</b> ${val3} л — ближайший больший в линейке.<br><b>Откуда 0,12:</b> по практике проектирования. Вода при нагреве с 10 до 90 °C расширяется на 3,6 % (плотность 999,7 → 965,3 кг/м³); полезная доля мембранного бака при заправке 1,5 бар и клапане 3 бар — 1 − (1,5 + 1)/(3 + 1) = 0,375; 0,036 / 0,375 ≈ 0,096, остальное — запас (свойства воды — Ривкин С. Л., Александров А. А., «Теплофизические свойства воды и водяного пара»).${_ehK !== 1 ? `<br><b>Откуда ×${String(_ehK).replace('.', ',')}:</b> в системе незамерзающий теплоноситель на пропиленгликоле — он расширяется сильнее воды; паспорт WARME Eco PRO 30 требует бак на 5–10 % больше, чем для воды, взята верхняя граница.` : ''}</span>`;
             }
             case 'exp_d':
                 return `<span style="${styles}"><span style="${head}">Расширительный бак (ГВС)</span><b>Зачем:</b> Компенсация давления при нагреве бойлера.<br><b>Формула:</b> 10 % от объёма бойлера (${val1} л) — по практике${val1 * 0.1 > val2 ? `; ряд баков ГВС кончается на ${val2} л, поэтому проверено по расширению воды: V = ${val1} × 0,017 / (1 − 4/7) = ${(val1 * 0.017 / (1 - 4 / 7)).toFixed(1)} л (нагрев 10 → 60 °C, предварительное давление 3 бар, клапан бойлера 6 бар)` : ''}.<br><b>Расчет:</b> ${val2} л.</span>`;
@@ -61132,7 +61145,12 @@ const app = {
         }
         this.syncBoilerSchemeNote();
         this.vSys = vSys;
-        let reqExp = vSys * 0.12; let bltin = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { bltin += (b.exp !== undefined ? b.exp : 0); }); }
+        // Незамерзающий теплоноситель расширяется сильнее воды. Паспорт WARME Eco PRO 30
+        // (пропиленгликоль): «необходимо устанавливать расширительный бак на 5–10 % больше,
+        // чем для воды» — берём верхнюю границу. Справочник Ривкина — Александрова даёт
+        // свойства только воды, для гликолевых растворов данных в нём нет.
+        const expCoolantK = this.expTankCoolantK();
+        let reqExp = vSys * 0.12 * expCoolantK; let bltin = 0; if (selBoilers.length > 0) { selBoilers.forEach(b => { bltin += (b.exp !== undefined ? b.exp : 0); }); }
         let def = reqExp - bltin; if (def > 0) {
             let et = catalog.exp_heating.find(t => t.vol >= def) || catalog.exp_heating[4];
             // noCheapen — см. бак ГВС: другой литраж не является аналогом.
