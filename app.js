@@ -43848,7 +43848,7 @@ const app = {
                 { id: 'metal_plastic', name: 'Труба металлопластиковая 16x2.0', brand: b_mp, price: p_mp, imgId: mpItem?.id },
                 ...(stbItem ? [{ id: 'stable', name: 'Труба стабильная PE-Xa/Al/PE-RT 16.2x2.6', brand: isRommer ? 'ROMMER' : 'STOUT', price: (isRommer && stbItem.rommer ? stbItem.rommer.price : stbItem.price), imgId: stbItem.id }] : [])
             ];
-            // Две цены, как у основания пола: труба за метр и система за м² пола.
+            // Две цены: труба за метр и система целиком на весь пол.
             // Система — метраж трубы плюс то, что render() ставит на каждую петлю:
             // два евроконуса под стенку этой трубы, два фиксатора 90° и пара втулок.
             // Метраж от трубы не зависит, а число петель зависит: у стабильной
@@ -43882,10 +43882,11 @@ const app = {
                 }
                 alt.unitM2 = alt.price;
                 alt.unitHead = 'Труба, за м';
-                alt.sysHead = 'Система, за м²';
+                alt.sysHead = 'Система';
                 alt.unitLabel = `Петель: ${loops}`;
-                alt.price = (meters * alt.price + loops * _perLoop(p)) / area;
-                alt.sysText = `труба ${String(Math.round(meters / area * 10) / 10).replace('.', ',')} м на м², на каждую петлю ${p.connName} ×2, фиксатор 90° ×2, втулки`;
+                // Итог системы на весь пол, как у трубы водоснабжения и радиаторов
+                alt.price = Math.round(meters * alt.price + loops * _perLoop(p));
+                alt.sysText = `труба ${Math.round(meters)} м${area !== _tpArea ? ' (на условные 100 м²)' : ''}, на каждую петлю ${p.connName} ×2, фиксатор 90° ×2, втулки`;
             });
         }
         else if (item.originalId && (item.originalId.endsWith('_water') || (item.originalId.startsWith('SPX-0001-') && !item.originalId.endsWith('_rad'))) && !item.originalId.startsWith('SMB-') && !item.originalId.startsWith('RMS-')) {
