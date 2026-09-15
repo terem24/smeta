@@ -7337,7 +7337,7 @@ const app = {
                                onchange="app.toggleDistWorks('${d.id}', this.checked, this)">
                         <span class="slider"></span>
                     </label>
-                    <span class="admin-bulk-cap" style="color:${on ? '#10B981' : 'var(--text-sec)'};">${on ? 'монтаж всем' : 'монтаж по тарифу'}</span>
+                    <span class="admin-bulk-cap" style="color:${on ? '#10B981' : 'var(--text-sec)'};">${on ? 'включено' : 'выключено'}</span>
                 </span>`;
             })()}
         </div>`;
@@ -7428,11 +7428,12 @@ const app = {
                     <td style="text-align:center; font-size:12px;">${priceCell}</td>
                     <td style="text-align:center;">${this.renderDistAccessCell(d, isViewer)}</td>
                     <td>${statusBadge}</td>
-                    <td style="text-align:right;">
-                        <div style="display:flex; gap:6px; justify-content:flex-end;">
-                            <button class="admin-btn" style="height:28px; font-size:11px;" ${isViewer ? 'disabled' : ''} onclick="app.editDistributor('${d.id}')">✏️ Изменить</button>
-                            <button class="admin-btn" data-dist-brand="${d.id}" style="height:28px; font-size:11px;" ${isViewer ? 'disabled' : ''} title="Логотип и реквизиты в КП, ссылке клиенту и шапке — всем учёткам этой компании вместо ТЕРЕМ" onclick="app.openDistBrandModal('${d.id}')">🎨 Реквизиты</button>
-                            <button class="admin-btn danger" style="height:28px; font-size:11px;" ${isViewer ? 'disabled' : ''} onclick="app.deleteDistributor('${d.id}')">🗑</button>
+                    <td style="text-align:right; min-width:150px;">
+                        <!-- Две строки: три кнопки в одну не влезали и наезжали на «Статус» -->
+                        <div style="display:grid; grid-template-columns:1fr auto; gap:6px; justify-items:stretch;">
+                            <button class="admin-btn" style="height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} onclick="app.editDistributor('${d.id}')">✏️ Изменить</button>
+                            <button class="admin-btn danger" style="height:28px; font-size:11px; margin:0;" ${isViewer ? 'disabled' : ''} onclick="app.deleteDistributor('${d.id}')">🗑</button>
+                            <button class="admin-btn" data-dist-brand="${d.id}" style="grid-column:1 / -1; height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} title="Логотип и реквизиты в КП, ссылке клиенту и шапке — всем учёткам этой компании вместо ТЕРЕМ" onclick="app.openDistBrandModal('${d.id}')">🎨 Реквизиты</button>
                         </div>
                     </td>
                 </tr>`;
