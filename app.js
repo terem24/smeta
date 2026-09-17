@@ -43167,7 +43167,13 @@ const app = {
                 // позиций price — это цена за целиком купленную бухту (см. asCoilPrice), и она
                 // не сопоставима напрямую с ценой бухты другой длины. У обычных товаров
                 // (без .len) деление на 1 ничего не меняет.
-                let norm = opt.price / (opt.len || 1);
+                //
+                // Но за бухту цена только у того, что прошло asCoilPrice (coilPriced) — и у
+                // его ROMMER-пары, она скопирована из него же. Альтернатива из .alts лежит
+                // как в каталоге, цена за метр: делить её на len нельзя. Так утеплённая
+                // SPI-0001 по 199 ₽/м выходила «1,99 ₽/м» и в режиме ROMMER подменяла
+                // бухту металлопластика в трубах отопления — 398 ₽ за 200 м.
+                let norm = (item.coilPriced && !opt.coilPriced) ? opt.price : opt.price / (opt.len || 1);
                 if (cheapestNorm === null || norm < cheapestNorm) {
                     cheapest = opt;
                     cheapestNorm = norm;
@@ -60295,6 +60301,15 @@ const app = {
                             forceAnalog = true;
                         } else {
                             activeItem = { ...cheapest };
+                            // Бухтовая строка, а победила альтернатива с ценой за метр (см.
+                            // getCheapestAlternative) — переводим её в цену бухты, как asCoilPrice.
+                            if (item.coilPriced && !cheapest.coilPriced && cheapest.len) {
+                                const _L = cheapest.len;
+                                activeItem.price = (cheapest.price || 0) * _L;
+                                activeItem.coilPriced = true;
+                                if (Array.isArray(activeItem.rommer)) activeItem.rommer = activeItem.rommer.map(r => ({ ...r, price: (r.price || 0) * _L }));
+                                else if (activeItem.rommer) activeItem.rommer = { ...activeItem.rommer, price: (activeItem.rommer.price || 0) * _L };
+                            }
                             activeItem.originalId = lookupKey;
                             if ((!activeItem.alts || !activeItem.alts.length) && item.alts && item.alts.length) activeItem.alts = item.alts;
                         }
@@ -65604,27 +65619,31 @@ const app = {
                 this.avgRun = avgRun;
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
+                    // noCheapenAlts: в .alts у трубы — другой МАТЕРИАЛ (утеплённая ↔ голая),
+                    // список для ручной замены. Режим ROMMER выбирал из него по цене и
+                    // подменял утеплённую трубу голой (изоляция терялась), а голую — утеплённой.
+                    // Бренд меняет только собственная пара .rommer.
                     if (this.state.pipeType === 'insulated') {
                         let coils = Math.ceil(neededPipe / 100); let halfCoils = Math.ceil(coils / 2);
-                        let itemRed = asCoilPrice({ ...catalog.insulated_pipes[0], originalId: catalog.insulated_pipes[0].id + "_rad" }); itemRed.alts = catalog.rad_pipes_grey; addToBill(itemRed, halfCoils, this.getDesc('insulated_pipe_red', halfCoils, neededPipe), pipeGrp);
-                        let itemBlue = asCoilPrice({ ...catalog.insulated_pipes[1], originalId: catalog.insulated_pipes[1].id + "_rad" }); itemBlue.alts = catalog.rad_pipes_grey; addToBill(itemBlue, halfCoils, this.getDesc('insulated_pipe_blue', halfCoils, neededPipe), pipeGrp);
+                        let itemRed = asCoilPrice({ ...catalog.insulated_pipes[0], originalId: catalog.insulated_pipes[0].id + "_rad" }); itemRed.alts = catalog.rad_pipes_grey; itemRed.noCheapenAlts = true; addToBill(itemRed, halfCoils, this.getDesc('insulated_pipe_red', halfCoils, neededPipe), pipeGrp);
+                        let itemBlue = asCoilPrice({ ...catalog.insulated_pipes[1], originalId: catalog.insulated_pipes[1].id + "_rad" }); itemBlue.alts = catalog.rad_pipes_grey; itemBlue.noCheapenAlts = true; addToBill(itemBlue, halfCoils, this.getDesc('insulated_pipe_blue', halfCoils, neededPipe), pipeGrp);
                     } else if (this.state.pipeType === 'insulated_mp') {
                         let coils = Math.ceil(neededPipe / 100); let halfCoils = Math.ceil(coils / 2);
-                        let itemRed = asCoilPrice({ ...catalog.insulated_pipes_mp_red[0], originalId: catalog.insulated_pipes_mp_red[0].id + "_rad" }); itemRed.alts = catalog.metal_plastic_pipes; addToBill(itemRed, halfCoils, this.getDesc('insulated_pipe_red', halfCoils, neededPipe), pipeGrp);
-                        let itemBlue = asCoilPrice({ ...catalog.insulated_pipes_mp_blue[0], originalId: catalog.insulated_pipes_mp_blue[0].id + "_rad" }); itemBlue.alts = catalog.metal_plastic_pipes; addToBill(itemBlue, halfCoils, this.getDesc('insulated_pipe_blue', halfCoils, neededPipe), pipeGrp);
+                        let itemRed = asCoilPrice({ ...catalog.insulated_pipes_mp_red[0], originalId: catalog.insulated_pipes_mp_red[0].id + "_rad" }); itemRed.alts = catalog.metal_plastic_pipes; itemRed.noCheapenAlts = true; addToBill(itemRed, halfCoils, this.getDesc('insulated_pipe_red', halfCoils, neededPipe), pipeGrp);
+                        let itemBlue = asCoilPrice({ ...catalog.insulated_pipes_mp_blue[0], originalId: catalog.insulated_pipes_mp_blue[0].id + "_rad" }); itemBlue.alts = catalog.metal_plastic_pipes; itemBlue.noCheapenAlts = true; addToBill(itemBlue, halfCoils, this.getDesc('insulated_pipe_blue', halfCoils, neededPipe), pipeGrp);
                     } else if (this.state.pipeType === 'split_mp') {
-                        let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16') {
                         let coils = Math.ceil(neededPipe / 100);
-                        let stbItem = asCoilPrice({ ...catalog.stable_pipes[0], originalId: catalog.stable_pipes[0].id + "_rad" }); stbItem.alts = catalog.insulated_pipes; addToBill(stbItem, coils, this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        let stbItem = asCoilPrice({ ...catalog.stable_pipes[0], originalId: catalog.stable_pipes[0].id + "_rad" }); stbItem.alts = catalog.insulated_pipes; stbItem.noCheapenAlts = true; addToBill(stbItem, coils, this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16_r') {
                         let coils = Math.ceil(neededPipe / 100);
-                        let stbItem = asCoilPrice({ ...catalog.stable_pipes[0].rommer, originalId: catalog.stable_pipes[0].id + "_rad" }); stbItem.alts = catalog.insulated_pipes; addToBill(stbItem, coils, this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        let stbItem = asCoilPrice({ ...catalog.stable_pipes[0].rommer, originalId: catalog.stable_pipes[0].id + "_rad" }); stbItem.alts = catalog.insulated_pipes; stbItem.noCheapenAlts = true; addToBill(stbItem, coils, this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else { // 'split'
-                        let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.rad_pipes_grey[1] } : { ...catalog.rad_pipes_grey[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.rad_pipes_grey[1] } : { ...catalog.rad_pipes_grey[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     }
                     addToBill(catalog.water_fittings[8], neededPipe, this.getDesc('double_clip', neededPipe, 'radiators'), pipeGrp);
