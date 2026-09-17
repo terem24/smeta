@@ -44703,6 +44703,9 @@ const app = {
                 // и так единственный платный эксклюзив калькулятора, отдельного правила
                 // тут не заводим: не ПРОФИ — строки просто нет, как нет и кнопки бренда.
                 ...(this.isPro()
+                    ? [{ id: 'bp_mp_r', sys: 'mp_r', name: 'Металлопластик PE-RT II/Al/PE-RT II, пресс', brand: 'ROMMER-STOUT', imgId: 'SPM-0001-053230' }]
+                    : []),
+                ...(this.isPro()
                     ? [{ id: 'bp_stable_r', sys: 'stable_r', name: 'Стабильная PE-Xa/Al/PE-RT, аксиальные фитинги', brand: 'ROMMER', imgId: 'RPS-0001-003247' }]
                     : [])
             // Две цены, как у основания тёплого пола: сама позиция (та же деталь в
@@ -47774,7 +47777,7 @@ const app = {
             // Номенклатура ROMMER — платная, тем же уровнем, что и кнопка бренда.
             // Строку в таблице ПРОФИ и так не видит, но выбор мог прийти и из
             // сохранённой сметы, поэтому проверяем ещё раз здесь.
-            if (_bpChosen === 'stable_r' && !this.checkAccess('pro-brand')) return;
+            if ((_bpChosen === 'stable_r' || _bpChosen === 'mp_r') && !this.checkAccess('pro-brand')) return;
             this.state.boilerPipeSystem = _bpChosen;
             // Точечные замены прежней системы больше не к чему привязать: тех артикулов
             // в смете не осталось, а висящий ключ вернул бы чужую позицию при возврате.
@@ -56889,6 +56892,10 @@ const app = {
     //   'ss316' — нержавейка STOUT AISI 316L, пресс (SSS-20xx)
     //   'ppr'   — полипропилен PP-RCT / PP-R (Wavin либо Pro Aqua, см. pprSystemBrand)
     //   'mp'    — металлопластик PE-Xb/Al/PE-Xb STOUT, латунный пресс (SPM-0001 + SFP-xxxx)
+    //   'mp_r'  — «ROMMER-STOUT»: труба ROMMER PE-RT II/Al/PE-RT II (RPM-0002, поле .rommer
+    //            у SPM-0001) на тех же пресс-фитингах STOUT — своих ROMMER в каталоге нет,
+    //            а гарантию на соединение ROMMER даёт и с фитингами STOUT. Как и stable_r,
+    //            только на тарифе ПРОФИ.
     //   'stable'— стабильная труба PE-Xa/Al/PE-RT STOUT, аксиаль (SPS-0002 + SFA-xxxx)
     //   'stable_r' — то же самое в номенклатуре ROMMER (RPS-0001 + RFA-xxxx). Доступна
     //            только на тарифе ПРОФИ: переключение на бренд ROMMER — единственный
@@ -56903,7 +56910,12 @@ const app = {
     // null (монтажник не выбирал) — берём то же, что и раньше: посекционный тумблер
     // «Аналог» раздела 2, а если и он не тронут — режим бренда. Так поведение старых
     // смет не меняется от одного лишь появления линейки STOUT.
-    BOILER_PIPE_SYSTEMS: ['ss304', 'ss316', 'ppr', 'mp', 'stable', 'stable_r'],
+    BOILER_PIPE_SYSTEMS: ['ss304', 'ss316', 'ppr', 'mp', 'mp_r', 'stable', 'stable_r'],
+    // Металлопластик в двух номенклатурах трубы — одна система по геометрии и фитингам.
+    isMpSys: function (sys) {
+        const v = sys || this.boilerPipeSystem();
+        return v === 'mp' || v === 'mp_r';
+    },
     // Стабильная труба в обеих номенклатурах — одна система по геометрии: те же
     // наружные диаметры, те же узлы, то же аксиальное соединение. Различаются только
     // артикулы, поэтому везде, где решается «как считать», спрашиваем это, а не
@@ -57004,7 +57016,7 @@ const app = {
         // Иначе аксиальный фитинг SFA из другого раздела (розетки водоснабжения,
         // подводка коллектора) открыл бы выбор системы котельной.
         const sys = this.boilerPipeSystem();
-        if (sys === 'mp') return /^(boiler_pipe_mp_|SPM-|SFP-)/.test(id);
+        if (this.isMpSys(sys)) return /^(boiler_pipe_mp_|SPM-|RPM-|SFP-)/.test(id);
         if (this.isStableSys(sys)) return /^(boiler_pipe_stable_|SPS-|SFA-|RPS-|RFA-)/.test(id);
         if (sys === 'ppr') return this.isPprArticle(id);
         return false;
@@ -57482,7 +57494,7 @@ const app = {
         let rows = [];
         if (sys === 'ss304' || sys === 'ss316') {
             rows = (catalog.ss_pipe_4m || []).map(p => parse(p.name)).filter(Boolean);
-        } else if (sys === 'mp') {
+        } else if (this.isMpSys(sys)) {
             rows = (catalog.metal_plastic_pipes || []).map(p => parse(p.name)).filter(Boolean);
         } else if (this.isStableSys(sys)) {
             // У 16-й наружный записан дробью («16.2х2.6»), и общий разбор её не берёт:
@@ -61420,7 +61432,7 @@ const app = {
             //
             // BP_PAIR — наибольший из двух типоразмеров пары: подбор упёрся в него или
             // ниже, значит идёт «малый» (логические 22), иначе «большой» (28).
-            const BP_PAIR = { mp: 26, ppr: 32, stable: 25, stable_r: 25 };
+            const BP_PAIR = { mp: 26, mp_r: 26, ppr: 32, stable: 25, stable_r: 25 };
             if (BP_PAIR[sys]) {
                 const pick = this.boilerPickSize(sys, kw);
                 const toPair = (p) => (p && p.size <= BP_PAIR[sys]) ? 22 : 28;
@@ -62208,7 +62220,7 @@ const app = {
                         addToBill(itemCopy, 1, "Крепление расширительного бака ГВС (L-кронштейн или комплект STOUT).", grp);
                     }
                     addToBill({ ...catalog.tank_kit, sortRank: -1 }, 1, "Подключение расширительного бака ГВС.", grp);
-                } else if (this.boilerPipeSystem() === 'mp' || this.isStableSys()) {
+                } else if (this.isMpSys() || this.isStableSys()) {
                     // Подводка та же по смыслу, что и на нержавейке (хомут + жёсткая
                     // труба на фитингах), только типоразмер трубы 26 у металлопластика
                     // и 25 у стабильной, а не 22. Хомут 3/4" (25–29 мм) на обе один.
@@ -62792,7 +62804,7 @@ const app = {
                         addToBill(itemCopy, 1, "Крепление расширительного бака.");
                     }
                     addToBill(catalog.tank_kit, 1, "Подключение бака.");
-                } else if (this.boilerPipeSystem() === 'mp' || this.isStableSys()) {
+                } else if (this.isMpSys() || this.isStableSys()) {
                     // См. бак ГВС выше: та же подводка, типоразмер трубы 26 у
                     // металлопластика и 25 у стабильной вместо 22.
                     const _stb = this.isStableSys();
@@ -62924,7 +62936,7 @@ const app = {
                 } else {
                     clampId = (ppr_diam === 32) ? "SAC-0020-300001" : "SAC-0020-300114";
                 }
-            } else if (this.boilerPipeSystem() === 'mp' || this.isStableSys()) {
+            } else if (this.isMpSys() || this.isStableSys()) {
                 // Наружные диаметры 25/26 и 32 → хомуты 3/4" (25–28) и 1" (31–35).
                 // У стабильной средний шаг 25, и в тот же хомут 3/4" он попадает.
                 let mp_diam = (frameSsDiameter === 22) ? 26 : 32;
@@ -63317,7 +63329,8 @@ const app = {
         let _bpSystem = this.boilerPipeSystem();
         let isAnalog = (_bpSystem === 'ppr');
         let is316 = (_bpSystem === 'ss316');
-        let isMp = (_bpSystem === 'mp');
+        let isMp = this.isMpSys(_bpSystem);
+        let isMpR = (_bpSystem === 'mp_r');   // труба ROMMER, фитинги STOUT
         // Стабильная труба в двух номенклатурах: STOUT и ROMMER. Считаются они
         // одинаково — различаются только артикулы, поэтому ветка одна, а бренд
         // подставляется в mpItem/addPipesToBill.
@@ -63497,7 +63510,8 @@ const app = {
                       `• Соединение аксиальное, надвижной гильзой: на каждый конец трубы в смете идёт своя монтажная гильза ${isStableR ? 'RFA-0020' : 'SFA-0020'}. На 25 и 32 мм усилие большое — STOUT рекомендует электрический инструмент (техкаталог, стр. 70).<br>` + `• Линейки взаимозаменяемы: стабильная труба ROMMER испытана на герметичность соединения с аксиальным фитингом STOUT по ГОСТ Р 53630-2015 и ГОСТ 32415-2013 (презентация ROMMER «Стабильная труба», лист «Совместимость с фитингами»).<br>`
                     : isMp
                     ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер выбран по ней из пары 26 · 32: до ${_kwSmall} кВт идёт 26х3,0, дальше 32х3,0 (при Δt = ${dT} °C).<br>` +
-                      `• Больше 32 мм в линейке металлопластика STOUT нет: с ${_kwBig} кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>`
+                      `• Больше 32 мм в линейке металлопластика ${isMpR ? 'ROMMER' : 'STOUT'} нет: с ${_kwBig} кВт (там на Ø32 те же 1,2 м/с) обвязку надо вести нержавейкой или полипропиленом — переключите систему в строке трубы.<br>` +
+                      (isMpR ? `• Труба ROMMER PE-RT II/Al/PE-RT II, фитинги — латунный пресс STOUT: гарантию на соединение ROMMER даёт при винтовых и пресс-фитингах STOUT/ROMMER и соблюдении правил монтажа (листовка ROMMER, 2026).<br>` : '')
                     : isAnalog
                     ? `• Норма для жилых зданий — не более 1,2 м/с (СП 60.13330.2020, по шуму и износу). Типоразмер выбран по ней из пары 32 · 40: до ${_kwSmall} кВт идёт 32-я труба, дальше 40-я (при Δt = ${dT} °C). Границу считаем по внутреннему диаметру выбранного бренда — у STABI PLUS 32 он 23,2 мм, у DUO SDR 6 всего 21,3, и мощности выходят разные.<br>` +
                       `• Больше 40 мм в обвязке не ставим: с ${_kwBig} кВт (там на 40-й те же 1,2 м/с) обвязку надо вести нержавейкой — переключите систему в строке трубы.<br>`
@@ -63618,7 +63632,7 @@ const app = {
                 const _d = mpD(diam);
                 const _pool = isStable ? (catalog.stable_pipes || []) : (catalog.metal_plastic_pipes || []);
                 // Номенклатура ROMMER — та же позиция каталога, только её поле .rommer.
-                const _brand = (p) => (isStableR && p && p.rommer) ? { ...p.rommer } : p;
+                const _brand = (p) => ((isStableR || isMpR) && p && p.rommer) ? { ...p.rommer } : p;
                 // Позицию ищем по наружному диаметру в её же названии, а не по вбитому
                 // артикулу: у двух линеек они собраны по разным правилам, и одна
                 // таблица соответствий на обе неминуемо разошлась бы с каталогом.
@@ -63629,6 +63643,16 @@ const app = {
                 if (_base) {
                     const _pipe = _brand(_base);
                     const { len, ..._rest } = _pipe;
+                    // Металлопластик STOUT остаётся STOUT и в режиме ROMMER: труба ROMMER —
+                    // своя система «ROMMER-STOUT» (mp_r), иначе две строки таблицы
+                    // замены посчитались бы одинаково.
+                    if (isMp && !isMpR) delete _rest.rommer;
+                    // Замена ROMMER (.rommer) подставится в addToBill режимом бренда —
+                    // хвост «(50 м)» снимаем и у неё, иначе метраж назовётся бухтой.
+                    if (_rest.rommer && !Array.isArray(_rest.rommer)) {
+                        const { len: _rl, ..._rr } = _rest.rommer;
+                        _rest.rommer = { ..._rr, name: String(_rr.name).replace(/\s*\(\d+\s*м\)\s*$/, '') };
+                    }
                     addToBill({
                         ..._rest,
                         name: String(_pipe.name).replace(/\s*\(\d+\s*м\)\s*$/, ''),
@@ -64076,6 +64100,8 @@ const app = {
                     ? ((this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand) ? "Труба PP-R DUO SDR 6" : "Труба PP-RCT")
                     : isStable
                         ? "Труба стабильная PE-Xa/Al/PE-RT"
+                        : isMpR
+                        ? "Труба металлопластиковая PE-RT II/Al/PE-RT II"
                         : isMp
                         ? "Труба металлопластиковая PE-Xb/Al/PE-Xb"
                         : (is316 ? "Труба из нержавеющей стали AISI 316L" : "Труба из нержавеющей стали AISI 304");

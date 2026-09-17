@@ -2102,11 +2102,11 @@ const catalog = {
         { id: "SPX-0002-501620", name: "Труба 16x2.0 (500 м)", len: 500, price: 164, rommer: { id: "RPX-0002-501620", name: "Труба PEX-a 16x2.0 (500 м)", price: 90, brand: "ROMMER", availability: "on_order", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" }
     ],
     metal_plastic_pipes: [
-        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (100 м)", len: 100, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPM-0001-201620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (200 м)", len: 200, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0 (100 м)", len: 100, price: 266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0 (50 м)", len: 50, price: 483, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0 (50 м)", len: 50, price: 708, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (100 м)", len: 100, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0, 100 м (продаётся бухтой 200 м)", price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
+        { id: "SPM-0001-201620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0 (200 м)", len: 200, price: 157, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0 (200 м)", len: 200, price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
+        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0 (100 м)", len: 100, price: 266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0 (100 м)", len: 100, price: 147, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
+        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0 (50 м)", len: 50, price: 483, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0 (50 м)", len: 50, price: 259, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } },
+        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0 (50 м)", len: 50, price: 708, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-053230", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 32x3.0 (50 м)", len: 50, price: 371, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } }
     ],
     stable_pipes: [
         { id: "SPS-0002-001626", name: "Труба стабильная PE-Xa/Al/PE-RT 16.2х2.6 (100 м)", len: 100, price: 266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPS-0001-001626", name: "Труба стабильная PE-Xa/Al/PE-RT 16.2х2.6 (100 м)", len: 100, price: 195, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
@@ -2852,10 +2852,10 @@ const catalog = {
     // Цена стоит ЗА МЕТР: строка добавляется в смету метражом, без asCoilPrice, и поля
     // len здесь быть не должно — иначе метры превратятся в бухты.
     water_pipes_mp: [
-        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 157, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 266, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 483, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0", price: 708, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "SPM-0001-101620", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 16x2.0", price: 157, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0", price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
+        { id: "SPM-0001-102020", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 20x2.0", price: 266, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-102020", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 20x2.0", price: 147, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" } },
+        { id: "SPM-0001-052630", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 26x3.0", price: 483, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-052630", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 26x3.0", price: 259, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } },
+        { id: "SPM-0001-053230", name: "Труба металлопластиковая PE-Xb/Al/PE-Xb 32x3.0", price: 708, unit: "м", brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPM-0002-053230", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 32x3.0", price: 371, brand: "ROMMER", availability: "on_order", price_date: "2026-09-17" } }
     ],
     // Обе трубки — 18/6 SUPER PROTECT, красная на ГВС и синяя на ХВС.
     //
