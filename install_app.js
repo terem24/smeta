@@ -68,22 +68,22 @@
         var css = document.createElement('style');
         css.textContent = [
             '.hc-app-promo{position:fixed;left:12px;right:12px;z-index:1000000;',
-            'display:flex;align-items:center;gap:12px;padding:12px 14px;',
+            'display:flex;align-items:center;gap:10px;padding:11px 12px;',
             'background:#fff;color:#111827;border:1px solid #E5E7EB;border-radius:16px;',
             'box-shadow:0 10px 30px rgba(0,0,0,.16);font-family:inherit;',
             'transform:translateY(160%);transition:transform .42s cubic-bezier(.32,.72,0,1);}',
             '.hc-app-promo.open{transform:translateY(0);}',
             'body.dark-mode .hc-app-promo{background:#1E1E1E;color:#F3F4F6;border-color:#2A2A2A;',
             'box-shadow:0 10px 30px rgba(0,0,0,.5);}',
-            '.hc-app-promo-icon{flex:none;width:38px;height:38px;border-radius:10px;object-fit:contain;}',
-            '.hc-app-promo-text{flex:1;min-width:0;text-decoration:none;color:inherit;display:block;}',
-            '.hc-app-promo-text b{display:block;font-size:14px;font-weight:700;line-height:1.25;}',
-            '.hc-app-promo-text span{display:block;font-size:12px;line-height:1.35;opacity:.7;margin-top:2px;}',
+            '.hc-app-promo-icon{flex:none;width:34px;height:34px;border-radius:10px;object-fit:contain;}',
+            '.hc-app-promo-text{flex:1;min-width:0;padding-right:8px;text-decoration:none;color:inherit;display:block;}',
+            '.hc-app-promo-text b{display:block;font-size:13.5px;font-weight:700;line-height:1.25;}',
+            '.hc-app-promo-text span{display:block;font-size:11.5px;line-height:1.35;opacity:.7;margin-top:2px;}',
             '.hc-app-promo-go{flex:none;background:#2563EB;color:#fff;text-decoration:none;',
-            'font-size:13px;font-weight:700;padding:9px 14px;border-radius:10px;white-space:nowrap;}',
+            'font-size:12.5px;font-weight:700;padding:8px 12px;border-radius:10px;white-space:nowrap;}',
             '.hc-app-promo-go:active{transform:scale(.96);}',
-            '.hc-app-promo-close{flex:none;background:none;border:0;color:inherit;opacity:.45;',
-            'font-size:22px;line-height:1;padding:4px 2px;cursor:pointer;}',
+            '.hc-app-promo-close{position:absolute;top:4px;right:6px;background:none;border:0;',
+            'color:inherit;opacity:.35;font-size:18px;line-height:1;padding:2px 5px;cursor:pointer;}',
             '@media print{.hc-app-promo{display:none;}}'
         ].join('');
         document.head.appendChild(css);
@@ -109,8 +109,8 @@
         box.innerHTML =
             '<img class="hc-app-promo-icon" src="/img/logo_HC.png" alt="">' +
             '<a class="hc-app-promo-text" href="' + PAGE_URL + '">' +
-            '<b>Калькулятор в телефоне</b>' +
-            '<span>Считает смету и печатает PDF без интернета</span>' +
+            '<b>Приложение HeatCalc</b>' +
+            '<span>Смета и PDF без интернета</span>' +
             '</a>' +
             '<a class="hc-app-promo-go" href="' + STORE_URL + '" rel="noopener">Установить</a>' +
             '<button class="hc-app-promo-close" type="button" aria-label="Закрыть">&times;</button>';
