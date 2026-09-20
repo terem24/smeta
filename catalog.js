@@ -1357,36 +1357,36 @@ const catalog = {
         { id: "7814104", name: "ECO Life 24F", price: 62840, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         { id: "7813724", name: "ECO Life 31F", price: 86360, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         { id: "7814105", name: "ECO Life 1.24F", price: 62630, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "7814108", name: "ECO Life 1.31F", price: 85070, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "7814108", name: "ECO Life 1.31F", price: 85070, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         // LUNA 3
-        { id: "CSE45224366", name: "LUNA 3 240 i", price: 93120, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45624366", name: "LUNA 3 240 Fi", price: 106450, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45628366", name: "LUNA 3 280 Fi", price: 114930, power: 28, circuits: 2, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-08-20" },
-        { id: "CSE45631366", name: "LUNA 3 310 Fi", price: 117560, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45531366", name: "LUNA 3 1.310 Fi", price: 103100, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "CSE45224366", name: "LUNA 3 240 i", price: 93120, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE45624366", name: "LUNA 3 240 Fi", price: 106450, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE45628366", name: "LUNA 3 280 Fi", price: 114930, power: 28, circuits: 2, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "CSE45631366", name: "LUNA 3 310 Fi", price: 117560, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE45531366", name: "LUNA 3 1.310 Fi", price: 103100, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         // ECO Four
-        { id: "CSE46114354", name: "ECO Four 1.14", price: 62490, power: 14, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE46514354", name: "ECO Four 1.14 F", price: 74390, power: 14, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE46124354", name: "ECO Four 1.24", price: 70470, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE46524354", name: "ECO Four 1.24 F", price: 78590, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE46224354", name: "ECO Four 24", price: 81150, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE46624354", name: "ECO Four 24 F", price: 90490, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "CSE46114354", name: "ECO Four 1.14", price: 62490, power: 14, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE46514354", name: "ECO Four 1.14 F", price: 74390, power: 14, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE46124354", name: "ECO Four 1.24", price: 70470, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE46524354", name: "ECO Four 1.24 F", price: 78590, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE46224354", name: "ECO Four 24", price: 81150, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE46624354", name: "ECO Four 24 F", price: 90490, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         // LUNA 3 Comfort
-        { id: "CSE45224358", name: "LUNA 3 Comfort 240 i", price: 96190, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45624358", name: "LUNA 3 Comfort 240 Fi", price: 113220, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45124358", name: "LUNA 3 Comfort 1.240 i", price: 91060, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45524358", name: "LUNA 3 Comfort 1.240 Fi", price: 101960, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45631358", name: "LUNA 3 Comfort 310 Fi", price: 122550, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSE45531358", name: "LUNA 3 Comfort 1.310 Fi", price: 110370, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "CSE45224358", name: "LUNA 3 Comfort 240 i", price: 96190, power: 24, circuits: 2, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "CSE45624358", name: "LUNA 3 Comfort 240 Fi", price: 113220, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "CSE45124358", name: "LUNA 3 Comfort 1.240 i", price: 91060, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE45524358", name: "LUNA 3 Comfort 1.240 Fi", price: 101960, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE45631358", name: "LUNA 3 Comfort 310 Fi", price: 122550, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "CSE45531358", name: "LUNA 3 Comfort 1.310 Fi", price: 110370, power: 31, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         // NUVOLA 3 Comfort
-        { id: "CSB45424358", name: "NUVOLA 3 Comfort 240 i", price: 165370, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSB45428358", name: "NUVOLA 3 Comfort 280 i", price: 173920, power: 28, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSB45724358", name: "NUVOLA 3 Comfort 240 Fi", price: 180760, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSB45728358", name: "NUVOLA 3 Comfort 280 Fi", price: 186250, power: 28, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "CSB45732358", name: "NUVOLA 3 Comfort 320 Fi", price: 204560, power: 32, circuits: 1, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "CSB45424358", name: "NUVOLA 3 Comfort 240 i", price: 165370, power: 24, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "CSB45428358", name: "NUVOLA 3 Comfort 280 i", price: 173920, power: 28, circuits: 1, type: "gas", atmo: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "CSB45724358", name: "NUVOLA 3 Comfort 240 Fi", price: 180760, power: 24, circuits: 1, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "CSB45728358", name: "NUVOLA 3 Comfort 280 Fi", price: 186250, power: 28, circuits: 1, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "CSB45732358", name: "NUVOLA 3 Comfort 320 Fi", price: 204560, power: 32, circuits: 1, type: "gas", brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
         // NUVOLA Duo-tec+ (конденсационный, встроенный бойлер)
-        { id: "7219553", name: "NUVOLA Duo-tec+ 16", price: 201920, power: 16, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-08-20" },
-        { id: "7219554", name: "NUVOLA Duo-tec+ 24", price: 208050, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-08-20" },
+        { id: "7219553", name: "NUVOLA Duo-tec+ 16", price: 201920, power: 16, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
+        { id: "7219554", name: "NUVOLA Duo-tec+ 24", price: 208050, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
         { id: "7219555", name: "NUVOLA Duo-tec+ 33", price: 293645, power: 33, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         // LUNA Platinum+ (конденсационный)
         { id: "7219688", name: "LUNA Platinum+ 1.12 GA", price: 172425, power: 12, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
@@ -1397,17 +1397,17 @@ const catalog = {
         { id: "7219693", name: "LUNA Platinum+ 33 GA", price: 207195, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
         // LUNA Duo-tec E (конденсационный)
         { id: "A7720022", name: "LUNA Duo-tec E 1.12", price: 116990, power: 12, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
-        { id: "A7720023", name: "LUNA Duo-tec E 1.24", price: 116990, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "A7720024", name: "LUNA Duo-tec E 1.28", price: 126970, power: 28, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "A7720025", name: "LUNA Duo-tec E 24", price: 125260, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-08-20" },
+        { id: "A7720023", name: "LUNA Duo-tec E 1.24", price: 116990, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "A7720024", name: "LUNA Duo-tec E 1.28", price: 126970, power: 28, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "A7720025", name: "LUNA Duo-tec E 24", price: 125260, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "on_order", price_date: "2026-09-20" },
         { id: "A7720026", name: "LUNA Duo-tec E 28", price: 116990, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
         { id: "A7720027", name: "LUNA Duo-tec E 33", price: 116990, power: 33, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
-        { id: "A7720028", name: "LUNA Duo-tec E 40", price: 151190, power: 40, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "A7720028", name: "LUNA Duo-tec E 40", price: 151190, power: 40, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         // LUNA Duo-tec MP (конденсационный)
-        { id: "7106815", name: "LUNA Duo-tec MP 1.35", price: 229920, power: 35, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "7106815", name: "LUNA Duo-tec MP 1.35", price: 229920, power: 35, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         // Duo-tec Compact (конденсационный)
-        { id: "A7722037", name: "Duo-tec Compact 1.24", price: 97400, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "A7722038", name: "Duo-tec Compact 24", price: 105170, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "A7722037", name: "Duo-tec Compact 1.24", price: 97400, power: 24, circuits: 1, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "A7722038", name: "Duo-tec Compact 24", price: 105170, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         { id: "A7722039", name: "Duo-tec Compact 28", price: 97400, power: 28, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-07-13" },
         // LUNA AIR / IN Plus (конденсационный, уличный/внутренний)
         { id: "A7810404", name: "LUNA AIR 24", price: 191330, power: 24, circuits: 2, type: "gas", cond: true, brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
@@ -1432,18 +1432,18 @@ const catalog = {
     // dhw — производительность ГВС, л/мин; dhwDt — при каком ΔT (у Vaillant 30 °C, без поля — 25 °C).
     boilers_vaillant: [
         // Традиционные (закрытая камера), двухконтурные
-        { id: "0010020901", name: "turboFIT VUW 242/5-2", price: 94548, power: 24, circuits: 2, dhw: 11, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-08-20" },
-        { id: "0010015249", name: "turboTEC pro VUW 242/5-3", price: 136827, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-08-20" },
-        { id: "0010015263", name: "turboTEC plus VUW 242/5-5", price: 170531, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "0010015264", name: "turboTEC plus VUW 282/5-5", price: 187858, power: 28, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-08-20" },
+        { id: "0010020901", name: "turboFIT VUW 242/5-2", price: 100221, power: 24, circuits: 2, dhw: 11, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-09-20" },
+        { id: "0010015249", name: "turboTEC pro VUW 242/5-3", price: 145037, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "0010015263", name: "turboTEC plus VUW 242/5-5", price: 180763, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "0010015264", name: "turboTEC plus VUW 282/5-5", price: 199129, power: 28, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-09-20" },
         // Традиционные, одноконтурные VU — клапан бойлера встроен
-        { id: "0010015254", name: "turboTEC plus VU 202/5-5", price: 139659, power: 20, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "0010015255", name: "turboTEC plus VU 242/5-5", price: 153341, power: 24, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "0010015256", name: "turboTEC plus VU 282/5-5", price: 168317, power: 28, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "0010020413", name: "turboTEC plus VU 322/5-5", price: 177044, power: 32, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "0010015254", name: "turboTEC plus VU 202/5-5", price: 148039, power: 20, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "0010015255", name: "turboTEC plus VU 242/5-5", price: 162541, power: 24, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "0010015256", name: "turboTEC plus VU 282/5-5", price: 178416, power: 28, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "0010020413", name: "turboTEC plus VU 322/5-5", price: 187667, power: 32, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-20" },
         // Конденсационные, двухконтурные (60/100 PP)
-        { id: "0010026102", name: "ecoTEC intro VUW 18/24 AS/1-1 (H-RU)", price: 151188, power: 18, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-20" },
-        { id: "0010026103", name: "ecoTEC intro VUW 24/28 AS/1-1 (H-RU)", price: 158654, power: 24, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-20" },
+        { id: "0010026102", name: "ecoTEC intro VUW 18/24 AS/1-1 (H-RU)", price: 160259, power: 18, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-20" },
+        { id: "0010026103", name: "ecoTEC intro VUW 24/28 AS/1-1 (H-RU)", price: 168173, power: 24, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-20" },
         // Конденсационные, одноконтурные VU (60/100 PP) — клапан бойлера встроен
         { id: "0010043977", name: "ecoTEC plus VU 20CS/1-5 (N-INT4)", price: 206801, power: 20, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
         { id: "0010043979", name: "ecoTEC plus VU 25CS/1-5 (N-INT4)", price: 218102, power: 25, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
@@ -1478,27 +1478,27 @@ const catalog = {
     // без dhwSensor). dhw — л/мин при ΔT 25 °C (из прайса).
     boilers_navien: [
         // Deluxe C Plus 2026 — двухконтурные, панель на корпусе, OpenTherm, режим ТП
-        { id: "PNGB3520016L002", name: "Deluxe C Plus 2026 -16k", price: 52940, power: 16, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB3520020L002", name: "Deluxe C Plus 2026 -20k", price: 53777, power: 20, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB3520024L002", name: "Deluxe C Plus 2026 -24k", price: 54091, power: 24, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB3520030L002", name: "Deluxe C Plus 2026 -30k", price: 62775, power: 30, circuits: 2, dhw: 17.2, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
+        { id: "PNGB3520016L002", name: "Deluxe C Plus 2026 -16k", price: 52940, power: 16, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-20" },
+        { id: "PNGB3520020L002", name: "Deluxe C Plus 2026 -20k", price: 53777, power: 20, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-20" },
+        { id: "PNGB3520024L002", name: "Deluxe C Plus 2026 -24k", price: 54091, power: 24, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB3520030L002", name: "Deluxe C Plus 2026 -30k", price: 62775, power: 30, circuits: 2, dhw: 17.2, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-20" },
         // Deluxe One 2026 — одноконтурные, клапан встроен, датчик бойлера в комплекте
-        { id: "PNGB3500024L006", name: "Deluxe One 2026 -24k", price: 54614, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB3500030L010", name: "Deluxe One 2026 -30k", price: 63088, power: 30, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB3500035L010", name: "Deluxe One 2026 -35k", price: 64867, power: 35, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB3500040L006", name: "Deluxe One 2026 -40k", price: 68006, power: 40, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "PNGB3500024L006", name: "Deluxe One 2026 -24k", price: 54614, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-20" },
+        { id: "PNGB3500030L010", name: "Deluxe One 2026 -30k", price: 63088, power: 30, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB3500035L010", name: "Deluxe One 2026 -35k", price: 64867, power: 35, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB3500040L006", name: "Deluxe One 2026 -40k", price: 68006, power: 40, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
         // NGB210 — бюджетные двухконтурные
-        { id: "PNGB2100013L001", name: "NGB210-13K", price: 37382, power: 13, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "PNGB2100016L001", name: "NGB210-16K", price: 37853, power: 16, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB2100024L001", name: "NGB210-24K", price: 38324, power: 24, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB2100032L002", name: "NGB210-32K", price: 45009, power: 32, circuits: 2, dhw: 18, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "PNGB2100013L001", name: "NGB210-13K", price: 37382, power: 13, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB2100016L001", name: "NGB210-16K", price: 37853, power: 16, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB2100024L001", name: "NGB210-24K", price: 38324, power: 24, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB2100032L002", name: "NGB210-32K", price: 45009, power: 32, circuits: 2, dhw: 18, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
         // NGB210 SYS — бюджетные одноконтурные, клапан встроен, датчик в комплекте
-        { id: "PNGB2100020L002", name: "NGB210 SYS-20H", price: 40772, power: 20, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNGB2100024L002", name: "NGB210 SYS-24H", price: 42655, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "PNGB2100032L001", name: "NGB210 SYS-32H", price: 48399, power: 32, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "PNGB2100020L002", name: "NGB210 SYS-20H", price: 40772, power: 20, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB2100024L002", name: "NGB210 SYS-24H", price: 42655, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "PNGB2100032L001", name: "NGB210 SYS-32H", price: 48399, power: 32, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-20" },
         // NCB700 — конденсационные двухконтурные (дымоход — универсальный ROMMER для конденсационных)
-        { id: "PNCB7000028L001", name: "NCB700-24K", price: 84512, power: 24, circuits: 2, dhw: 16.1, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-08-20" },
-        { id: "PNCB7000041L001", name: "NCB700-35K", price: 95579, power: 35, circuits: 2, dhw: 22.9, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-08-20" }
+        { id: "PNCB7000028L001", name: "NCB700-24K", price: 84512, power: 24, circuits: 2, dhw: 16.1, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-09-20" },
+        { id: "PNCB7000041L001", name: "NCB700-35K", price: 95579, power: 35, circuits: 2, dhw: 22.9, type: "gas", cond: true, brand: "Navien", availability: "on_order", price_date: "2026-09-20" }
     ],
     // PLUS СНЯТ С ПРОИЗВОДСТВА. Из подбора и из таблицы замен убран — см. app.init()
     // (alts гасятся) и render() (серия читается как STATUS). Массив оставлен НАМЕРЕННО:
@@ -1692,7 +1692,7 @@ const catalog = {
     ],
     valves: [
         // STOUT SFB-0001-000001 (комплект Fugas) снят с производства — заменён на комплект BAXI.
-        { id: "BX4991100069", name: "Комплект 3-х ход. клапана", price: 7630, brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" }
+        { id: "BX4991100069", name: "Комплект 3-х ход. клапана", price: 7630, brand: "BAXI", availability: "on_order", price_date: "2026-09-20" }
     ],
     tanks_optibase: [
         { id: "SWH-3110-000100", name: "Бойлер напольный 100л", ports: { cold: '3/4"', dhw: '3/4"', coil: '1"', recirc: '3/4"' }, vol: 100, price: 57183, rommer: { id: "RWH-2110-000150", name: "Бойлер напольный GT 150 л", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, price: 45265, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
@@ -1864,7 +1864,7 @@ const catalog = {
         { id: "SFA-0020-000016", name: "Монтажная гильза 16", price: 122, brand: "STOUT", unit: "шт", rommer: { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
         { id: "RFA-0020-000016", name: "Монтажная гильза 16", price: 94, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFA-0001-001612", name: "Переходник 16xR 1/2\" НР", price: 324, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "703102", name: "Настенный регулятор Vartronic, цвет белый", price: 10942, brand: "Varmann", unit: "шт", availability: "in_stock", price_date: "2026-08-20" }
+        { id: "703102", name: "Настенный регулятор Vartronic, цвет белый", price: 10942, brand: "Varmann", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     rad_tube_set: [
         { id: "SFA-0025-001650", name: "Трубка Г-образная 16/500 мм (для радиат.)", price: 3206, brand: "STOUT", rommer: { id: "RFA-0025-001650", name: "Трубка Г-образная для подключения радиатора 16/500", price: 1417, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
@@ -2375,7 +2375,7 @@ const catalog = {
     // Цена розничная, с карточки ТЕРЕМ: в прайсе (price_index.json) этого артикула нет,
     // так что AutoPrice её не пересчитывает — обновлять руками.
     gbm_nodes: [
-        { id: "ASKON-MU-25M", article: "МУ-25М", name: "Многофункциональный узел для быстрого монтажа", price: 8588, unit: "шт", brand: "Askon", availability: "in_stock", price_date: "2026-08-20" }
+        { id: "ASKON-MU-25M", article: "МУ-25М", name: "Многофункциональный узел для быстрого монтажа", price: 8588, unit: "шт", brand: "Askon", availability: "in_stock", price_date: "2026-09-20" }
     ],
     // Насосные группы с пластинчатым теплообменником: разделяют первичный контур
     // (вода котельной) и вторичный, залитый другой средой. Отсюда и применение в
@@ -2753,8 +2753,8 @@ const catalog = {
              blue: { id: "RIC-0001-280602", name: "Трубка ПРОТЕКТ ПРО 28/6, 2м (синяя)",   dn: 28, thick: 6, len: 2, price: 36, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
         // K-FLEX цветовой разбивки не имеет — одна позиция на подачу и обратку.
         // Цена за трубку 2 м, поэтому unit «шт», а не «м», как у ПРОТЕКТ ПРО.
-        35: { red: { id: "R09035215508", name: "Трубка K-FLEX ST 35/9, 2м", dn: 35, thick: 9, len: 2, price: 223, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-08-20" } },
-        42: { red: { id: "R09042215508", name: "Трубка K-FLEX ST 42/9, 2м", dn: 42, thick: 9, len: 2, price: 254, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-08-20" } }
+        35: { red: { id: "R09035215508", name: "Трубка K-FLEX ST 35/9, 2м", dn: 35, thick: 9, len: 2, price: 223, unit: "шт", brand: "K-FLEX", availability: "on_order", price_date: "2026-09-20" } },
+        42: { red: { id: "R09042215508", name: "Трубка K-FLEX ST 42/9, 2м", dn: 42, thick: 9, len: 2, price: 254, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-09-20" } }
     },
     nipple_34: { id: "SFT-0003-003434", name: "Ниппель НН 3/4\"", price: 216, availability: "in_stock", price_date: "2026-09-10" },
     // Переходные муфты (проставки) между патрубками котла 1" и группой быстрого монтажа —
@@ -5313,28 +5313,28 @@ const catalog = {
     ],
     ppr_ekoplastik_elbow90: [
         { id: "SKO02090RCT", article: "SKO02090RCT", name: "Угольник 90° PP-RCT 20х90°", price: 48, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "SKO02590RCT", article: "SKO02590RCT", name: "Угольник 90° PP-RCT 25х90°", price: 63, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "SKO03290RCT", article: "SKO03290RCT", name: "Угольник 90° PP-RCT 32х90°", price: 98, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
-        { id: "SKO04090RCT", article: "SKO04090RCT", name: "Угольник 90° PP-RCT 40х90°", price: 216, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "SKO05090RCT", article: "SKO05090RCT", name: "Угольник 90° PP-RCT 50х90°", price: 460, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "SKO06390RCT", article: "SKO06390RCT", name: "Угольник 90° PP-RCT 63x90°", price: 818, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+  price_date: '2026-09-20' },
+        { id: "SKO04090RCT", article: "SKO04090RCT", name: "Угольник 90° PP-RCT 40х90°", price: 216, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SKO05090RCT", article: "SKO05090RCT", name: "Угольник 90° PP-RCT 50х90°", price: 460, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SKO06390RCT", article: "SKO06390RCT", name: "Угольник 90° PP-RCT 63x90°", price: 818, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SKO12045RCT", article: "SKO12045RCT", name: "Угольник 90° PP-RCT 20x45°", price: 100, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
-        { id: "SKO12545XRCT", article: "SKO12545XRCT", name: "Угольник 90° PP-RCT 25x45°", price: 256, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+  price_date: '2026-09-20' },
+        { id: "SKO12545XRCT", article: "SKO12545XRCT", name: "Угольник 90° PP-RCT 25x45°", price: 256, brand: "Wavin", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
         { id: "SKO120RCTX", article: "SKO120RCTX", name: "Угольник 90° PP-RCT 20x90°", price: 58, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "SKO125RCTX", article: "SKO125RCTX", name: "Угольник 90° PP-RCT 25x90°", price: 88, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
-        { id: "SKO132RCTX", article: "SKO132RCTX", name: "Угольник 90° PP-RCT 32x90°", price: 251, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" }
+  price_date: '2026-09-20' },
+        { id: "SKO132RCTX", article: "SKO132RCTX", name: "Угольник 90° PP-RCT 32x90°", price: 251, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ppr_ekoplastik_elbow45: [
         { id: "SKO02045RCT", article: "SKO02045RCT", name: "Угольник 45° PP-RCT 20х45°", price: 65, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "SKO02545RCT", article: "SKO02545RCT", name: "Угольник 45° PP-RCT 25х45°", price: 97, brand: "Wavin", unit: "шт", availability: "in_stock",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "SKO03245RCT", article: "SKO03245RCT", name: "Угольник 45° PP-RCT 32x45°", price: 150, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
         { id: "SKO04045RCT", article: "SKO04045RCT", name: "Угольник 45° PP-RCT 40x45°", price: 266, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
         { id: "SKO05045RCT", article: "SKO05045RCT", name: "Угольник 45° PP-RCT 50x45°", price: 520, brand: "Wavin", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
