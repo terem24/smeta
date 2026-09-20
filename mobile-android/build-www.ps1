@@ -37,6 +37,7 @@ $files = @(
     'gas_tariffs.js',
     'gamification.js',
     'install_app.js',
+    'rate_app.js',
     'push.js',
     'email.min.js',
     'qrcode.min.js',
