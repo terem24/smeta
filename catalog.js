@@ -2127,8 +2127,8 @@ const catalog = {
         { id: "SPI-0002-053230", name: "Труба металлопластиковая в теплоизоляции (синяя) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     insulated_pipes: [
-        { id: "SPI-0003-001622", name: "Труба 16x2.2 в теплоизоляции (красная)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }], availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SPI-0004-001622", name: "Труба 16x2.2 в теплоизоляции (синяя)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }], availability: "in_stock", price_date: "2026-09-10" }
+        { id: "SPI-0003-001622", name: "Труба 16x2.2 в теплоизоляции (красная)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" }], availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0004-001622", name: "Труба 16x2.2 в теплоизоляции (синяя)", len: 100, price: 220, rommer: [{ id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2 (серая)", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" }], availability: "in_stock", price_date: "2026-09-10" }
     ],
     rad_pipes_grey: [
         { id: "SPX-0001-001622", name: "Труба PEX-a/EVOH серая 16x2.2 (100м)", len: 100, price: 190, rommer: { id: "RPX-0001-001622", name: "Труба PEX-a 16x2.2", price: 96, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
@@ -2788,12 +2788,12 @@ const catalog = {
         { id: "RPW-1012-3703110", name: "Насос скважинный RHS 3-110, кабель 70 м", q_max: 7.9, h_max: 128, curve: [[0, 128], [1, 125], [2, 120], [3, 115], [4, 107], [5, 95], [6, 80], [7, 63], [8, 35]], cable: 70, cable_mm2: "3×4,0", watt: 2200, price: 89612, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
     ],
     well_parts: [
-        { id: "10011032", name: "Труба ПНД 32х3.0 питьевая (кратно 5м)", price: 117.8, brand: "CYKLON", unit: "м", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "10011032", name: "Труба ПНД 32х3.0 питьевая (кратно 5м)", price: 117.8, brand: "CYKLON", unit: "м", availability: "in_stock", price_date: "2026-09-20" },
         { id: "75618", name: "Трос 4 мм нерж.сталь (кратно 10м)", price: 70, brand: "UNIPUMP", unit: "м", availability: "in_stock", price_date: "2026-06-06" },
         { id: "39023", name: "Зажим (хомут) для троса 4-5 мм", price: 36, brand: "UNIPUMP", unit: "шт" },
-        { id: "83652", name: "Оголовок скважинный 133-152/32", price: 3828, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "83652", name: "Оголовок скважинный 133-152/32", price: 3828, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SVC-0011-000032", name: "Клапан обратный с металлическим седлом, 1 1/4\"", price: 3870, brand: "STOUT", unit: "шт", rommer: { id: "RVC-0001-000032", name: "Клапан обратный с метал. седлом 1 1/4\"", price: 1575, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }, availability: "in_stock", price_date: "2026-09-10" },
-        { id: "53003214", name: "Муфта ПНД 32х1 1/4\" НР", price: 108, brand: "Политэк", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "53003214", name: "Муфта ПНД 32х1 1/4\" НР", price: 108, brand: "Политэк", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "31852", name: "Коуш для крепления троса до 5 мм", price: 21, brand: "UNIPUMP", unit: "шт" },
         { id: "STW-0001-000024", name: "Расширительный бак гидроаккумулятор 24 л (синий)", price: 3442, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "STW-0002-000050", name: "Гидроаккумулятор STOUT 50 л (для водоснабжения)", price: 9648, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
@@ -2871,8 +2871,8 @@ const catalog = {
     // артикулом EFXT018092SUPRS, которого у поставщика не существует — цена по
     // ней не обновлялась, и купить строку по коду монтажник не смог бы.
     water_insulation: [
-        { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" }
     ],
     insulation_pro: [
         { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
@@ -3100,12 +3100,12 @@ const catalog = {
         { id: "RMB-0016-011203", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х3 вых.", price: 1779, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RMB-0016-011204", name: "Коллектор с запорными клапанами, отводы 135°, 1\"х1/2\"х4 вых.", price: 2296, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "flat", series: "shutoff", availability: "in_stock", price_date: "2026-09-10" },
         // С шаровыми кранами, макс. 95°C / 10 бар
-        { id: "RMB-0007CF-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 974, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0007CF-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1305, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0007CF-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1738, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0008CF-011202", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х2 вых.", price: 1165, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0008CF-011203", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х3 вых.", price: 1542, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RMB-0008CF-011204", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х4 вых.", price: 2023, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "RMB-0007CF-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 1071, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RMB-0007CF-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1436, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RMB-0007CF-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1912, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RMB-0008CF-011202", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х2 вых.", price: 1282, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 2, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RMB-0008CF-011203", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х3 вых.", price: 1696, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 3, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RMB-0008CF-011204", name: "Коллектор с шаровыми кранами, 1\"/1/2\"х4 вых.", price: 2225, brand: "ROMMER", inSize: "1", outSize: "1/2", loops: 4, connType: "compression", series: "ball", availability: "in_stock", price_date: "2026-09-20" },
         { id: "RMB-0007-341202", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х2 вых.", price: 1077, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 2, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
         { id: "RMB-0007-341203", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х3 вых.", price: 1443, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 3, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
         { id: "RMB-0007-341204", name: "Коллектор с шаровыми кранами, 3/4\"/1/2\"х4 вых.", price: 1922, brand: "ROMMER", inSize: "3/4", outSize: "1/2", loops: 4, connType: "flat", series: "ball", availability: "on_order", price_date: "2026-09-10" },
@@ -3134,9 +3134,9 @@ const catalog = {
     water_input_node: [
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "VTr.136.N.0504", name: "Тройник косой для гильзы под погружной датчик температуры 3/4'' х 1/2''", price: 561, brand: "VALTEC", availability: "in_stock", price_date: "2026-07-12" },
-        { id: "CBL 10-4", name: "Греющий кабель для водопровода, 4 м", price: 7829, brand: "SelfTec DW", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "CBL 10-4", name: "Греющий кабель для водопровода, 4 м", price: 7829, brand: "SelfTec DW", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SFT-0029-000134", name: "Переходник ВР-НР 1\" х 3/4\"", price: 255, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "6395", name: "Пятивыводной штуцер", price: 836, brand: "Aquario", availability: "on_order", price_date: "2026-09-09" },
+        { id: "6395", name: "Пятивыводной штуцер", price: 836, brand: "Aquario", availability: "on_order", price_date: "2026-09-20" },
         { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SVB-0004-200020", name: "Кран шаровой ВН-НР 3/4\"", price: 1260, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0001-2110320", name: "Кран шаровой ВР/ВР, ручка рычаг 3/4\"", price: 594, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
         { id: "SFT-0002-003420", name: "Удлинитель ВН/НР 3/4\" 20 мм", price: 432, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
@@ -3156,18 +3156,18 @@ const catalog = {
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     outdoor_faucets: [
-        { id: "RVFF-0001-1520150", name: "Кран незамерзающий, длина 150 мм", price: 2123, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520200", name: "Кран незамерзающий, длина 200 мм", price: 2251, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520250", name: "Кран незамерзающий, длина 250 мм", price: 2386, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520300", name: "Кран незамерзающий, длина 300 мм", price: 2529, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520350", name: "Кран незамерзающий, длина 350 мм", price: 2680, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520400", name: "Кран незамерзающий, длина 400 мм", price: 2841, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520450", name: "Кран незамерзающий, длина 450 мм", price: 3012, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520500", name: "Кран незамерзающий, длина 500 мм", price: 3192, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "RVFF-0001-1520550", name: "Кран незамерзающий, длина 550 мм", price: 3384, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-09" }
+        { id: "RVFF-0001-1520150", name: "Кран незамерзающий, длина 150 мм", price: 2335, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520200", name: "Кран незамерзающий, длина 200 мм", price: 2476, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520250", name: "Кран незамерзающий, длина 250 мм", price: 2625, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520300", name: "Кран незамерзающий, длина 300 мм", price: 2782, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520350", name: "Кран незамерзающий, длина 350 мм", price: 2948, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520400", name: "Кран незамерзающий, длина 400 мм", price: 3125, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520450", name: "Кран незамерзающий, длина 450 мм", price: 3313, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520500", name: "Кран незамерзающий, длина 500 мм", price: 3511, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RVFF-0001-1520550", name: "Кран незамерзающий, длина 550 мм", price: 3722, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
     ],
     filter_big_blue: [
-        { id: "75185", name: "Колба Big Blue 20'", price: 3745, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "75185", name: "Колба Big Blue 20'", price: 4531, brand: "UNIPUMP", availability: "on_order", price_date: "2026-09-20" },
         // Артикул поставщика у этого картриджа — просто «ВП-20» (АКВАБРАЙТ,
         // пористость 20 мкм, Big Blue 20, 770 ₽ — сверено 10.09.2026). В поле
         // article его не ставим: под кодом «ВП-20» у поставщика лежат сразу три
@@ -3203,14 +3203,14 @@ const catalog = {
     // галочка по умолчанию снята. ВСКМ-20 — крыльчатый, 3/4", под горизонтальную
     // установку; сгоны разъёмные, чтобы снять счётчик на поверку не разбирая узел.
     water_meter: [
-        { id: "72-20-243", name: "Счётчик воды ВСКМ-20 крыльчатый, 3/4\"", price: 2509, brand: "Декаст", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "72-20-243", name: "Счётчик воды ВСКМ-20 крыльчатый, 3/4\"", price: 2509, brand: "Декаст", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     // Вторая ступень фильтрации («Премиум»): к колбе с картриджем 20 мкм добавляется
     // вторая на 5 мкм. Первая снимает песок и окалину, вторая — взвесь, из-за которой
     // текут буксы смесителей и залипают картриджи термостатов.
     filter_big_blue_stage2: [
-        { id: "75185", name: "Колба Big Blue 20'", price: 3745, brand: "UNIPUMP", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "75185", name: "Колба Big Blue 20'", price: 4531, brand: "UNIPUMP", availability: "on_order", price_date: "2026-09-20" },
         { id: "ВП-5 М-20 ББ", name: "Картридж Big Blue 20 тонкой очистки, 5 мкм", price: 770, brand: "АКВАБРАЙТ", availability: "in_stock", price_date: "2026-07-29" },
         { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SFT-0045-000034", name: "Сгон прямой 3/4\" ВР-НР", price: 629, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
@@ -4447,7 +4447,7 @@ const catalog = {
         { id: "SVB-1007-200015", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 1110, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RBV-0005-0510215", name: "Кран шаровой с американкой ВР/НР 1/2\"", price: 358, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
     ],
     water_leak_protection: [
-        { id: "100035512000", name: "Система защиты от протечки воды", price: 17990, brand: "Neptun", availability: "on_order", price_date: "2026-09-09" }
+        { id: "100035512000", name: "Система защиты от протечки воды", price: 17990, brand: "Neptun", availability: "on_order", price_date: "2026-09-20" }
     ],
     // Квартира: вводы от стояков 1/2". Комплект Neptun Base Light — модуль управления
     // Base, ОДИН кран Bugatti Pro 220 В и два датчика SW005; к модулю подключается до
@@ -4455,8 +4455,8 @@ const catalog = {
     // отдельный кран той же серии. Цены — прайс-индекс с тем же коэффициентом, что у
     // комплекта 3/4" выше (17990 / 33731 = 0,533).
     flat_leak_protection: [
-        { id: "100035511900", name: "Система защиты от протечки воды Neptun Base Light 1/2\" (модуль, кран, 2 датчика)", price: 17990, brand: "Neptun", availability: "on_order", price_date: "2026-09-09" },
-        { id: "100035632400", name: "Кран с электроприводом Neptun Bugatti Pro 220В 1/2\"", price: 9457, brand: "Neptun", availability: "on_order", price_date: "2026-09-09" }
+        { id: "100035511900", name: "Система защиты от протечки воды Neptun Base Light 1/2\" (модуль, кран, 2 датчика)", price: 17990, brand: "Neptun", availability: "on_order", price_date: "2026-09-20" },
+        { id: "100035632400", name: "Кран с электроприводом Neptun Bugatti Pro 220В 1/2\"", price: 9990, brand: "Neptun", availability: "in_stock", price_date: "2026-09-20" }
     ],
     // Сборка узла на щите, а не «по месту на стене»: две сантехнические шины по 1,2 м
     // на анкерах, приборы садятся на них хомутами. Так узел снимается и обслуживается
@@ -4578,24 +4578,24 @@ const catalog = {
     sewer_silent: [
         { id: "SKB-0002-110100", name: "Труба канализационная бесшумная D 110 L 1000", price: 2044, brand: "STOUT", availability: "in_stock", rommer: { id: "500089", article: "500089", name: "Труба кан. ПП D 110 L 1000", price: 588, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "500089K", article: "500089.K", name: "Труба кан. D 110 L 1000 Comfort", price: 940, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "500089K", article: "500089.K", name: "Труба кан. D 110 L 1000 Comfort", price: 940, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0002-110200", name: "Труба канализационная бесшумная D 110 L 2000", price: 3770, brand: "STOUT", availability: "in_stock", rommer: { id: "500093", article: "500093", name: "Труба кан. ПП D 110 L 2000", price: 934, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "500093K", article: "500093.K", name: "Труба кан. D 110 L 2000 Comfort", price: 1550, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "500093K", article: "500093.K", name: "Труба кан. D 110 L 2000 Comfort", price: 1550, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0001-058100", name: "Труба канализационная бесшумная D 058 L 1000", price: 745, brand: "STOUT", availability: "in_stock", rommer: { id: "500049", article: "500049", name: "Труба кан. ПП D 050 L 1000", price: 227, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "500049K", article: "500049.K", name: "Труба кан. D 050 L 1000 Comfort", price: 356, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "500049K", article: "500049.K", name: "Труба кан. D 050 L 1000 Comfort", price: 356, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0001-058200", name: "Труба канализационная бесшумная D 058 L 2000", price: 1549, brand: "STOUT", availability: "in_stock", rommer: { id: "500053", article: "500053", name: "Труба кан. ПП D 050 L 2000", price: 390, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "500053K", article: "500053.K", name: "Труба кан. D 050 L 2000 Comfort", price: 611, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "500053K", article: "500053.K", name: "Труба кан. D 050 L 2000 Comfort", price: 611, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         // Остальные длины бесшумных труб (0,25 / 0,5 / 1,5 / 3 м). Смета режет трассу
         // на отрезки из всего ряда, а не только из 1 и 2 м: у ванны 1,5 м — одна труба,
         // а не две по метру. Цены из прайс-индекса с коэффициентом группы (STOUT 0,87,
@@ -4638,64 +4638,64 @@ const catalog = {
   price_date: '2026-09-14' }, price_date: "2026-09-14" },
         { id: "SKB-0010-011045", name: "Отвод бесшумный 45° D 110", price: 1074, brand: "STOUT", availability: "in_stock", rommer: { id: "504053R", article: "504053.R", name: "Отвод 45° D 110 ПП", price: 166, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "504053K", article: "504053.K", name: "Отвод 45° D 110 Comfort", price: 233, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "504053K", article: "504053.K", name: "Отвод 45° D 110 Comfort", price: 233, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0012-011087", name: "Отвод бесшумный 87° D 110", price: 1074, brand: "STOUT", availability: "in_stock", rommer: { id: "504059R", article: "504059.R", name: "Отвод 87° D 110 ПП", price: 166, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "504059K", article: "504059.K", name: "Отвод 87° D 110 Comfort", price: 233, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "504059K", article: "504059.K", name: "Отвод 87° D 110 Comfort", price: 233, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0010-005845", name: "Отвод бесшумный 45° D 058", price: 359, brand: "STOUT", availability: "in_stock", rommer: { id: "504029R", article: "504029.R", name: "Отвод 45° D 050 ПП", price: 54, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "504029K", article: "504029.K", name: "Отвод 45° D 050 Comfort", price: 77, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "504029K", article: "504029.K", name: "Отвод 45° D 050 Comfort", price: 77, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0012-005887", name: "Отвод бесшумный 87° D 058", price: 359, brand: "STOUT", availability: "in_stock", rommer: { id: "504035R", article: "504035.R", name: "Отвод 87° D 050 ПП", price: 54, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "504035K", article: "504035.K", name: "Отвод 87° D 050 Comfort", price: 77, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "504035K", article: "504035.K", name: "Отвод 87° D 050 Comfort", price: 77, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0015-115845", name: "Тройник бесшумный 45° D 110 x 058", price: 1262, brand: "STOUT", availability: "in_stock", rommer: { id: "510031R", article: "510031.R", name: "Тройник 45° D 110 x 050 ПП", price: 222, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "510031K", article: "510031.K", name: "Тройник 45° D 110 x 050 Comfort", price: 312, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "510031K", article: "510031.K", name: "Тройник 45° D 110 x 050 Comfort", price: 312, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0015-111145", name: "Тройник бесшумный 45° D 110 x 110", price: 1857, brand: "STOUT", availability: "in_stock", rommer: { id: "508025R", article: "508025.R", name: "Тройник 45° D 110 x 110 ПП", price: 302, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "508025K", article: "508025.K", name: "Тройник 45° D 110 x 110 Comfort", price: 424, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "508025K", article: "508025.K", name: "Тройник 45° D 110 x 110 Comfort", price: 424, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0016-115887", name: "Тройник бесшумный 87° D 110 x 058", price: 1262, brand: "STOUT", availability: "in_stock", rommer: { id: "510035R", article: "510035.R", name: "Тройник 87° D 110 x 050 ПП", price: 222, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "510035K", article: "510035.K", name: "Тройник 87° D 110 x 050 Comfort", price: 312, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "510035K", article: "510035.K", name: "Тройник 87° D 110 x 050 Comfort", price: 312, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0013-011058", name: "Переход эксцентрический бесшумный D 110 х 58", price: 611, brand: "STOUT", availability: "in_stock", rommer: { id: "514009R", article: "514009.R", name: "Переход эксц. D 110 x 050 ПП", price: 130, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "514009R", article: "514009.R", name: "Переход эксц. D 110 x 050 ПП", price: 130, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "514009R", article: "514009.R", name: "Переход эксц. D 110 x 050 ПП", price: 130, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0005-000058", name: "Заглушка D 058", price: 147, brand: "STOUT", availability: "in_stock", rommer: { id: "524003R", article: "524003.R", name: "Заглушка D 050 ПП", price: 32, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "524003K", article: "524003.K", name: "Заглушка D 050 Comfort", price: 45, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "524003K", article: "524003.K", name: "Заглушка D 050 Comfort", price: 45, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0005-000110", name: "Заглушка D 110", price: 339, brand: "STOUT", availability: "in_stock", rommer: { id: "524007R", article: "524007.R", name: "Заглушка D 110 ПП", price: 58, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "524007K", article: "524007.K", name: "Заглушка D 110 Comfort", price: 82, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "524007K", article: "524007.K", name: "Заглушка D 110 Comfort", price: 82, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0006-000058", name: "Муфта соединительная двухраструбная D 58", price: 465, brand: "STOUT", availability: "in_stock", rommer: { id: "528003R", article: "528003.R", name: "Муфта соед. D 050 ПП", price: 93, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "528003K", article: "528003.K", name: "Муфта соед. D 050 Comfort", price: 130, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "528003K", article: "528003.K", name: "Муфта соед. D 050 Comfort", price: 130, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0006-000110", name: "Муфта соединительная двухраструбная D 110", price: 1110, brand: "STOUT", availability: "in_stock", rommer: { id: "528007R", article: "528007.R", name: "Муфта соед. D 110 ПП", price: 179, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "528007K", article: "528007.K", name: "Муфта соед. D 110 Comfort", price: 251, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "528007K", article: "528007.K", name: "Муфта соед. D 110 Comfort", price: 251, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         // Ревизия стояка и аэратор — их требует лист «К» проекта (ревизия на первом и
         // последнем этажах, вентвыпуск выше кровли или аэрационный клапан). Цены — из
         // price_index.json: STOUT бесшумная ×0,87, Sinikon ×1,0, как у соседних позиций группы.
@@ -4707,15 +4707,15 @@ const catalog = {
         { id: "NO.1.110", article: "NO.1.110", name: "Аэратор канализационный D 110", price: 865, brand: "Sinikon", availability: "in_stock", price_date: "2026-09-14" },
         { id: "SKB-0007-000058", name: "Муфта ремонтная D 58", price: 469, brand: "STOUT", availability: "in_stock", rommer: { id: "526003R", article: "526003.R", name: "Муфта рем. D 050 ПП", price: 93, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "526003K", article: "526003.K", name: "Муфта рем. D 050 Comfort", price: 130, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "526003K", article: "526003.K", name: "Муфта рем. D 050 Comfort", price: 130, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
         { id: "SKB-0007-000110", name: "Муфта ремонтная D 110", price: 1121, brand: "STOUT", availability: "in_stock", rommer: { id: "526007R", article: "526007.R", name: "Муфта рем. D 110 ПП", price: 179, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, comfort: { id: "526007K", article: "526007.K", name: "Муфта рем. D 110 Comfort", price: 251, brand: "Sinikon",
+  price_date: '2026-09-20' }, comfort: { id: "526007K", article: "526007.K", name: "Муфта рем. D 110 Comfort", price: 251, brand: "Sinikon",
   availability: 'in_stock',
-  price_date: '2026-09-09' }, price_date: "2026-09-10" },
-        { id: "900003.R", article: "900003.R", name: "Смазка силиконовая", price: 313, brand: "Sinikon", availability: "in_stock", price_date: "2026-09-09" }
+  price_date: '2026-09-20' }, price_date: "2026-09-10" },
+        { id: "900003.R", article: "900003.R", name: "Смазка силиконовая", price: 313, brand: "Sinikon", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_pipe_4m: [
         { id: "RSS-1001-000015", name: "Труба нерж. 304, штанга 4м 15х1", price: 300, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-08-10" },
@@ -6013,13 +6013,13 @@ const catalog = {
         { id: "MB5030300200", article: "MB5030300200", name: "Лён сантехнический Mr.Bond, 200 г", price: 985, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "MB5030500100", article: "MB5030500100", name: "Лён сантехнический коса Mr.Bond, 100 г", price: 535, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "MB5030500200", article: "MB5030500200", name: "Лён сантехнический коса Mr.Bond, 200 г", price: 985, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "MB5050500070", article: "MB5050500070", name: "Паста для пропитки льна Mr.Bond, 70 г", price: 277.55, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
-        { id: "MB5050500250", article: "MB5050500250", name: "Паста для пропитки льна Mr.Bond, 250 г", price: 444.28, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
+        { id: "MB5050500070", article: "MB5050500070", name: "Паста для пропитки льна Mr.Bond, 70 г", price: 295, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "MB5050500250", article: "MB5050500250", name: "Паста для пропитки льна Mr.Bond, 250 г", price: 496, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "4040", article: "4040", name: "Паста уплотнительная Aquaflax nano, 30 г", price: 94, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
         { id: "4041", article: "4041", name: "Паста уплотнительная Aquaflax nano, 80 г", price: 175, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
         { id: "4042", article: "4042", name: "Паста уплотнительная Aquaflax nano, 270 г", price: 464.5, brand: "Aquaflax", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
         { id: "4062", article: "4062", name: "Нить сантехническая уплотнительная SPRINT", price: 266, brand: "SPRINT", unit: "шт", availability: "in_stock", price_date: "2026-09-07" },
-        { id: "MB402700650", article: "MB402700650", name: "Обезжириватель резьбы Mr.Bond, 650 мл", price: 808.25, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-07" }
+        { id: "MB402700650", article: "MB402700650", name: "Обезжириватель резьбы Mr.Bond, 650 мл", price: 935, brand: "Mr.Bond", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
 
     mounting_system: [
@@ -6274,16 +6274,16 @@ const catalog = {
         // Энергофлекс Super Protect 22мм красная» из счёта не находила в базе
         // ничего, при том что 18-я того же ряда находилась.
         // Цены — колонка рублёвой цены сентябрьского прайса.
-        { id: "EFXT0150411SUPRK", name: "Теплоизоляция 15/4 Super Протект (Красная), бухта 11 м", price: 24.82, unit: "м", brand: "Energoflex", availability: "on_order", price_date: "2026-09-09" },
-        { id: "EFXT0150411SUPRS", name: "Теплоизоляция 15/4 Super Протект (Синяя), бухта 11 м", price: 24.82, unit: "м", brand: "Energoflex", availability: "on_order", price_date: "2026-09-09" },
-        { id: "EFXT0180411SUPRK", name: "Теплоизоляция 18/4 Super Протект (Красная), бухта 11 м", price: 26.45, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT0180411SUPRS", name: "Теплоизоляция 18/4 Super Протект (Синяя), бухта 11 м", price: 26.45, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT0220411SUPRK", name: "Теплоизоляция 22/4 Super Протект (Красная), бухта 11 м", price: 28.64, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT0220411SUPRS", name: "Теплоизоляция 22/4 Super Протект (Синяя), бухта 11 м", price: 28.64, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT0280411SUPRK", name: "Теплоизоляция 28/4 Super Протект (Красная), бухта 11 м", price: 36, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT0280411SUPRS", name: "Теплоизоляция 28/4 Super Протект (Синяя), бухта 11 м", price: 36, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT0350411SUPRK", name: "Теплоизоляция 35/4 Super Протект (Красная), бухта 11 м", price: 45.55, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "EFXT0350411SUPRS", name: "Теплоизоляция 35/4 Super Протект (Синяя), бухта 11 м", price: 45.55, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "EFXT0150411SUPRK", name: "Теплоизоляция 15/4 Super Протект (Красная), бухта 11 м", price: 24.82, unit: "м", brand: "Energoflex", availability: "on_order", price_date: "2026-09-20" },
+        { id: "EFXT0150411SUPRS", name: "Теплоизоляция 15/4 Super Протект (Синяя), бухта 11 м", price: 24.82, unit: "м", brand: "Energoflex", availability: "on_order", price_date: "2026-09-20" },
+        { id: "EFXT0180411SUPRK", name: "Теплоизоляция 18/4 Super Протект (Красная), бухта 11 м", price: 26.45, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT0180411SUPRS", name: "Теплоизоляция 18/4 Super Протект (Синяя), бухта 11 м", price: 26.45, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT0220411SUPRK", name: "Теплоизоляция 22/4 Super Протект (Красная), бухта 11 м", price: 28.64, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT0220411SUPRS", name: "Теплоизоляция 22/4 Super Протект (Синяя), бухта 11 м", price: 28.64, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT0280411SUPRK", name: "Теплоизоляция 28/4 Super Протект (Красная), бухта 11 м", price: 36, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT0280411SUPRS", name: "Теплоизоляция 28/4 Super Протект (Синяя), бухта 11 м", price: 36, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT0350411SUPRK", name: "Теплоизоляция 35/4 Super Протект (Красная), бухта 11 м", price: 45.55, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT0350411SUPRS", name: "Теплоизоляция 35/4 Super Протект (Синяя), бухта 11 м", price: 45.55, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
 
         // Гофрированная защитная труба ПНД. В прайсе название состоит из одного
         // размера («28 (трубы до 20Ø)»), слова «гофра» там нет вовсе — поэтому
