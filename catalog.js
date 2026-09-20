@@ -2372,13 +2372,13 @@ const catalog = {
         { id: "SPS-0002-003247", name: "Труба стабильная PE-Xa/Al/PE-RT II 32х4.7 (50 м)",    len: 50,  price: 1008, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RPS-0001-003247", name: "Труба стабильная PE-Xa/Al/PE-RT II 32х4.7 (50 м)",    len: 50,  price: 737, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
     ],
     insulated_pipes_mp_red: [
-        { id: "SPI-0001-101620", name: "Труба металлопластиковая в теплоизоляции (красная) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", rommer: [{ id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0", price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" }, { id: "RIC-0002-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (красная)", price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }], availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0001-101620", name: "Труба металлопластиковая в теплоизоляции (красная) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SPI-0001-102020", name: "Труба металлопластиковая в теплоизоляции (красная) 20x2.0 (100 м)", len: 100, price: 314, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SPI-0001-052630", name: "Труба металлопластиковая в теплоизоляции (красная) 26x3.0 (50 м)", len: 50, price: 531, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SPI-0001-053230", name: "Труба металлопластиковая в теплоизоляции (красная) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
     ],
     insulated_pipes_mp_blue: [
-        { id: "SPI-0002-101620", name: "Труба металлопластиковая в теплоизоляции (синяя) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", rommer: [{ id: "RPM-0002-201620", name: "Труба металлопластиковая PE-RT II/Al/PE-RT II 16x2.0", price: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-17" }, { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)", price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }], availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SPI-0002-101620", name: "Труба металлопластиковая в теплоизоляции (синяя) 16x2.0 (100 м)", len: 100, price: 199, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SPI-0002-102020", name: "Труба металлопластиковая в теплоизоляции (синяя) 20x2.0 (100 м)", len: 100, price: 314, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SPI-0002-052630", name: "Труба металлопластиковая в теплоизоляции (синяя) 26x3.0 (50 м)", len: 50, price: 531, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SPI-0002-053230", name: "Труба металлопластиковая в теплоизоляции (синяя) 32x3.0 (50 м)", len: 50, price: 749, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
