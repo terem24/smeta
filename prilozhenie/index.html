@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Приложение для расчёта отопления на Android — HeatCalc в RuStore</title>
+    <meta name="description" content="Калькулятор отопления в телефоне: расчёт теплопотерь, подбор котла и оборудования, готовая смета и печать в PDF. Работает без интернета на объекте. Android 7.0 и новее, бесплатно, установка из RuStore.">
+    <link rel="canonical" href="https://heatcalc.ru/prilozhenie/">
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <!-- Тот же шрифт, что в калькуляторе. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js?v=1.1" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/prilozhenie/">
+    <meta property="og:title" content="Приложение HeatCalc для Android — расчёт отопления и смета в телефоне">
+    <meta property="og:description" content="Теплопотери, подбор оборудования, смета и PDF — без интернета на объекте. Android 7.0 и новее, установка из RuStore.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="HeatCalc.ru — калькулятор отопления частного дома">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Микроразметка: карточка приложения, хлебные крошки и блок вопрос-ответ.
+         Вопросы и ответы здесь обязаны дословно совпадать с видимым текстом
+         внизу страницы — за расхождение Яндекс и Google снимают разметку.
+         Оценку (aggregateRating) не ставим: отзывов в магазине пока нет,
+         а выдуманный рейтинг — прямой повод снять разметку целиком. -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebPage",
+          "@id": "https://heatcalc.ru/prilozhenie/#webpage",
+          "url": "https://heatcalc.ru/prilozhenie/",
+          "name": "Приложение HeatCalc для Android: расчёт отопления и смета в телефоне",
+          "description": "Мобильное приложение калькулятора отопления: расчёт теплопотерь, подбор оборудования, смета и печать в PDF без интернета. Установка из RuStore.",
+          "inLanguage": "ru-RU",
+          "isPartOf": { "@id": "https://heatcalc.ru/#website" },
+          "about": { "@type": "Thing", "name": "Мобильное приложение для расчёта отопления" }
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "HeatCalc: расчёт отопления и смета",
+          "operatingSystem": "Android 7.0+",
+          "applicationCategory": "BusinessApplication",
+          "softwareVersion": "1.2",
+          "url": "https://heatcalc.ru/prilozhenie/",
+          "installUrl": "https://www.rustore.ru/catalog/app/ru.heatcalc.app",
+          "inLanguage": "ru-RU",
+          "author": { "@type": "Person", "name": "Ибатуллин Дмитрий" },
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "RUB" }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [
+            { "@type": "ListItem", "position": 1, "name": "Калькулятор отопления", "item": "https://heatcalc.ru/" },
+            { "@type": "ListItem", "position": 2, "name": "Приложение для Android", "item": "https://heatcalc.ru/prilozhenie/" }
+          ]
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Работает ли приложение без интернета?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Да. Расчёт теплопотерь, подбор котла и оборудования, сборка сметы и печать в PDF лежат внутри приложения и считаются в самолёте и в подвале без связи. Интернет нужен для того, что физически не помещается в телефон или живёт на сервере: фотографии товаров, 3D-модели, свежий прайс поставщика, распознавание чужих смет и сохранение проектов в облаке."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Сколько стоит приложение?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Установка и сам расчёт бесплатны. Часть возможностей — сохранение проектов в облаке, свой логотип и реквизиты в документах, работа с ценами — открывается по тарифу, ровно как на сайте. Отдельной платы за мобильную версию нет: аккаунт и тариф общие, оплачивать второй раз ничего не нужно."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Чем приложение отличается от сайта?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Расчёт один и тот же — это тот же калькулятор, а не урезанная версия. Отличия в мелочах, из которых складывается работа на объекте: запускается с иконки и без браузера, считает без связи, готовые PDF и Excel попадают в «Загрузки» телефона и уходят заказчику системной кнопкой «Поделиться». Аккаунт общий: смета, начатая на компьютере, открывается в телефоне и наоборот."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Есть ли версия для iPhone?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Пока нет, приложение выпущено только для Android. На айфоне калькулятор работает в Safari и его можно положить на экран «Домой»: кнопка «Поделиться» внизу браузера, затем «На экран Домой». Получится иконка, которая открывает калькулятор без адресной строки, но расчёт при этом требует связи."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Какие телефоны поддерживаются?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Android 7.0 и новее, то есть практически любой аппарат, выпущенный после 2016 года. Установочный файл занимает около 8 МБ. Планшеты поддерживаются, на них раскладка та же, что на большом экране: параметры дома слева, смета справа."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+
+    <style>
+        /* Три витринных снимка в ряд. На телефоне ряд превращается в ленту
+           с прокруткой вбок — три картинки столбиком выталкивают весь текст
+           страницы вниз, и до описания никто не доскроллит. */
+        .shots {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin: 0 0 24px;
+        }
+
+        .shots img {
+            width: 100%;
+            height: auto;
+            display: block;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+        }
+
+        @media (max-width: 640px) {
+            .shots {
+                display: flex;
+                overflow-x: auto;
+                scroll-snap-type: x mandatory;
+                -webkit-overflow-scrolling: touch;
+                margin: 0 -16px 24px;
+                padding: 0 16px;
+            }
+
+            .shots img {
+                flex: 0 0 62%;
+                scroll-snap-align: center;
+            }
+        }
+
+        /* Блок установки: слева кнопка и шаги, справа QR для тех,
+           кто читает страницу с компьютера. */
+        .install {
+            display: flex;
+            gap: 22px;
+            align-items: center;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 20px;
+            margin: 0 0 24px;
+        }
+
+        .install-text {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .install .cta {
+            margin: 0;
+        }
+
+        .install-req {
+            font-size: 13px;
+            color: var(--text-sec);
+            margin: 10px 0 0;
+        }
+
+        #app_qr {
+            flex: none;
+            width: 140px;
+            text-align: center;
+        }
+
+        #app_qr img,
+        #app_qr canvas {
+            width: 140px;
+            height: 140px;
+            display: block;
+            border-radius: 8px;
+        }
+
+        #app_qr p {
+            font-size: 12px;
+            color: var(--text-sec);
+            margin: 8px 0 0;
+            line-height: 1.4;
+        }
+
+        /* QR рисуется скриптом и только на широком экране: с телефона
+           наводить камеру на собственный телефон незачем. */
+        @media (max-width: 720px) {
+            #app_qr { display: none; }
+            .install { padding: 16px; }
+        }
+
+        @media print {
+            .shots, .install { display: none; }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Приложение для Android</nav>
+
+        <h1>Приложение HeatCalc: расчёт отопления и смета в телефоне</h1>
+
+        <p class="lead">
+            Тот же калькулятор, что на сайте, только с иконки и без связи. На объекте,
+            где интернета нет и не будет, приложение посчитает теплопотери дома,
+            подберёт котёл и оборудование, соберёт смету и напечатает её в PDF.
+            Android 7.0 и новее, около 8 МБ, установка бесплатная.
+        </p>
+
+        <div class="shots">
+            <img src="/img/app/01_raschet.jpg" width="540" height="960" loading="lazy" alt="Экран параметров дома: площадь, регион, материал стен, тип котла">
+            <img src="/img/app/02_smeta.jpg" width="540" height="960" loading="lazy" alt="Готовая смета с позициями оборудования, ценами и итогом">
+            <img src="/img/app/03_obiekty.jpg" width="540" height="960" loading="lazy" alt="Список объектов: сохранённые сметы и коммерческие предложения">
+        </div>
+
+        <div class="install">
+            <div class="install-text">
+                <a class="cta" href="https://www.rustore.ru/catalog/app/ru.heatcalc.app" rel="noopener" onclick="if(window.ym)ym(109490947,'reachGoal','app_install_click');">
+                    Установить из RuStore
+                    <small>Бесплатно, версия 1.2, около 8 МБ</small>
+                </a>
+                <p class="install-req">
+                    Android 7.0 и новее. Если RuStore на телефоне ещё не стоит,
+                    страница магазина сама предложит его скачать — это российский
+                    магазин приложений, установка занимает минуту.
+                </p>
+            </div>
+            <div id="app_qr" aria-hidden="true"></div>
+        </div>
+
+        <h2>Зачем оно, если есть сайт</h2>
+
+        <p>
+            Расчёт в приложении и на сайте одинаковый — это буквально один и тот же
+            калькулятор, а не урезанная мобильная версия. Разница в том, где вы им
+            пользуетесь. Сайту нужна связь, а монтажник приходит замерять дом там, где
+            её нет: цоколь, котельная, посёлок в двадцати километрах от вышки. Приложение
+            держит расчёт, каталог и печать внутри телефона и в связи не нуждается.
+        </p>
+
+        <div class="callout">
+            <p>
+                <strong>Без интернета работают:</strong> расчёт теплопотерь по
+                ограждениям, подбор мощности котла, подбор оборудования по каталогу,
+                гидравлика, сборка сметы, печать в PDF и выгрузка в Excel.
+            </p>
+            <p>
+                <strong>Связь нужна для:</strong> фотографий товаров и 3D-моделей
+                (135 МБ, в телефон их не кладут), свежего прайса поставщика,
+                распознавания чужих смет, сохранения проектов в облаке и отправки
+                сметы заказчику по ссылке.
+            </p>
+        </div>
+
+        <p>
+            Второе отличие — работа с файлами. Готовая смета, счёт и договор попадают
+            в «Загрузки» телефона и уходят заказчику системной кнопкой «Поделиться»:
+            в WhatsApp, Telegram или на почту, не пересылая себе ссылку с компьютера.
+        </p>
+
+        <h2>Что умеет</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr>
+                    <th>Раздел</th>
+                    <th>Что делает</th>
+                </tr>
+                <tr>
+                    <td>Теплопотери</td>
+                    <td>По ограждениям: пирог стены, кровля, пол, остекление, вентиляция,
+                        ориентация по сторонам света. Расчётная зима — по городу,
+                        в базе 887 городов</td>
+                </tr>
+                <tr>
+                    <td>Котельная</td>
+                    <td>Мощность и модель котла, бойлер ГВС, расширительный бак, насосы,
+                        дымоход, обвязка и автоматика</td>
+                </tr>
+                <tr>
+                    <td>Отопление</td>
+                    <td>Радиаторы по комнатам, тёплый пол с длиной петель, коллекторы
+                        и шкафы, диаметры труб по скорости воды</td>
+                </tr>
+                <tr>
+                    <td>Смета</td>
+                    <td>Оборудование и работы по разделам, цены поставщика, своя наценка,
+                        печать в PDF, выгрузка в Excel</td>
+                </tr>
+                <tr>
+                    <td>Документы</td>
+                    <td>Коммерческое предложение, счёт, договор монтажа с приложениями
+                        и актами</td>
+                </tr>
+                <tr>
+                    <td>Объекты</td>
+                    <td>Список расчётов с историей: вернуться к смете прошлой недели
+                        и пересчитать её по новым ценам</td>
+                </tr>
+            </table>
+        </div>
+
+        <p class="note">Полный перечень возможностей одинаков с сайтом и не зависит от того, откуда вы вошли — с телефона, планшета или компьютера.</p>
+
+        <h2>Как установить</h2>
+
+        <p>
+            Откройте карточку приложения в RuStore — с телефона по кнопке выше,
+            с компьютера наведите камеру на QR-код рядом с ней. Дальше «Установить»,
+            и на экране появится иконка. При первом запуске войдите тем же логином,
+            что на сайте: все ваши объекты, сметы и настройки окажутся на месте.
+            Если аккаунта ещё нет, его можно завести прямо в приложении.
+        </p>
+
+        <a class="cta" href="https://www.rustore.ru/catalog/app/ru.heatcalc.app" rel="noopener" onclick="if(window.ym)ym(109490947,'reachGoal','app_install_click');">
+            Открыть карточку в RuStore
+            <small>HeatCalc: расчёт отопления и смета</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5a7 7 0 0 1 14 0"/><path d="M2 8.5a11 11 0 0 1 20 0"/><circle cx="12" cy="18" r="2"/></svg><span class="faq-q">Работает ли приложение без интернета?</span></summary>
+            <div class="answer">
+                <p>Да. Расчёт теплопотерь, подбор котла и оборудования, сборка сметы
+                    и печать в PDF лежат внутри приложения и считаются в самолёте
+                    и в подвале без связи. Интернет нужен для того, что физически
+                    не помещается в телефон или живёт на сервере: фотографии товаров,
+                    3D-модели, свежий прайс поставщика, распознавание чужих смет
+                    и сохранение проектов в облаке.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M14.5 9.5a2.5 2.5 0 0 0-5 0c0 3 5 1.5 5 4.5a2.5 2.5 0 0 1-5 0"/></svg><span class="faq-q">Сколько стоит приложение?</span></summary>
+            <div class="answer">
+                <p>Установка и сам расчёт бесплатны. Часть возможностей — сохранение
+                    проектов в облаке, свой логотип и реквизиты в документах, работа
+                    с ценами — открывается по тарифу, ровно как на сайте. Отдельной
+                    платы за мобильную версию нет: аккаунт и тариф общие, оплачивать
+                    второй раз ничего не нужно.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.5"/><path d="M10.5 18.5h3"/></svg><span class="faq-q">Чем приложение отличается от сайта?</span></summary>
+            <div class="answer">
+                <p>Расчёт один и тот же — это тот же калькулятор, а не урезанная
+                    версия. Отличия в мелочах, из которых складывается работа
+                    на объекте: запускается с иконки и без браузера, считает без связи,
+                    готовые PDF и Excel попадают в «Загрузки» телефона и уходят
+                    заказчику системной кнопкой «Поделиться». Аккаунт общий: смета, начатая
+                    на компьютере, открывается в телефоне и наоборот.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M5 6l1 14h12l1-14"/></svg><span class="faq-q">Есть ли версия для iPhone?</span></summary>
+            <div class="answer">
+                <p>Пока нет, приложение выпущено только для Android. На айфоне
+                    калькулятор работает в Safari и его можно положить на экран «Домой»:
+                    кнопка «Поделиться» внизу браузера, затем «На экран Домой».
+                    Получится иконка, которая открывает калькулятор без адресной
+                    строки, но расчёт при этом требует связи.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16.5V20"/></svg><span class="faq-q">Какие телефоны поддерживаются?</span></summary>
+            <div class="answer">
+                <p>Android 7.0 и новее, то есть практически любой аппарат, выпущенный
+                    после 2016 года. Установочный файл занимает около 8 МБ. Планшеты
+                    поддерживаются, на них раскладка та же, что на большом экране:
+                    параметры дома слева, смета справа.</p>
+            </div>
+        </details>
+
+        <h2>Что дальше</h2>
+        <p>
+            Как устроен расчёт, который приложение считает без связи — на странице
+            о <a href="/raschet-teplopoter/">расчёте теплопотерь</a>. Из чего
+            собирается смета и что в неё входит — <a href="/smeta/">здесь</a>,
+            цена работ — в <a href="/rascenki-na-montazh-otopleniya/">прайсе
+            на монтаж</a>. Расчёт уходит заказчику
+            <a href="/kommercheskoe-predlozhenie/">коммерческим предложением
+            по ссылке</a>, а после согласования превращается
+            в <a href="/dogovor-na-montazh-otopleniya/">договор с приложениями
+            и актами</a>. Расчётная зима у каждого города своя — она есть
+            в <a href="/goroda/">списке городов</a>.
+        </p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/goroda/">Все города</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/dogovor-na-montazh-otopleniya/">Договор и акты</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="/privacy-policy.html">Конфиденциальность</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+    <!-- QR на карточку магазина. Рисуем своей библиотекой, а не картинкой
+         с чужого сервиса: сторонний генератор — это внешний запрос с адресом
+         страницы, и он же отваливается вместе с чужим сайтом.
+         Грузим скрипт только на широком экране, телефону он не нужен. -->
+    <script>
+        (function () {
+            if (window.innerWidth < 721) return;
+            var s = document.createElement('script');
+            s.src = '/qrcode.min.js';
+            s.onload = function () {
+                var box = document.getElementById('app_qr');
+                if (!box || typeof QRCode === 'undefined') return;
+                new QRCode(box, {
+                    text: 'https://www.rustore.ru/catalog/app/ru.heatcalc.app',
+                    width: 140,
+                    height: 140,
+                    colorDark: '#000000',
+                    colorLight: '#ffffff',
+                    correctLevel: QRCode.CorrectLevel.M
+                });
+                var cap = document.createElement('p');
+                cap.textContent = 'Наведите камеру телефона';
+                box.appendChild(cap);
+            };
+            document.head.appendChild(s);
+        })();
+    </script>
+
+</body>
+
+</html>
