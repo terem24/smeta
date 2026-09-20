@@ -5713,148 +5713,148 @@ const catalog = {
         { id: "PA12522P", article: "PA12522P", price: 26, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 40х32", unit: "шт",
   price_date: '2026-09-20' },
         { id: "PA12524P", article: "PA12524P", price: 36, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х20", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12526P", article: "PA12526P", price: 37, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х25", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12528P", article: "PA12528P", price: 41, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х32", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12530P", article: "PA12530P", price: 49, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х40", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12531", article: "PA12531", price: 63, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х20", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12532P", article: "PA12532P", price: 62, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х25", unit: "шт",
-  price_date: '2026-08-20' },
-        { id: "PA12534P", article: "PA12534P", price: 65, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х32", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
+        { id: "PA12534P", article: "PA12534P", price: 65, brand: "ProAqua", availability: "on_order", name: "Муфта переходная PP-R 63х32", unit: "шт",
+  price_date: '2026-09-20' },
         { id: "PA12536P", article: "PA12536P", price: 68, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х40", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12538P", article: "PA12538P", price: 84, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х50", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12540P", article: "PA12540P", price: 152, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 75х50", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12542P", article: "PA12542P", price: 192, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 75х63", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12544P", article: "PA12544P", price: 235, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 90х63", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12546P", article: "PA12546P", price: 314, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 90х75", unit: "шт",
-  price_date: '2026-08-20' },
+  price_date: '2026-09-20' },
         { id: "PA12547P", article: "PA12547P", price: 175, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 110х75", unit: "шт",
   price_date: '2026-07-12' },
         { id: "PA12548P", article: "PA12548P", price: 420, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 110х90", unit: "шт",
-  price_date: '2026-08-20' }
+  price_date: '2026-09-20' }
     ],
     // Позиции PRO AQUA, которых не хватало распознаванию: резьбовые углы
     // и тройники, американки, клипсы и опоры. Взяты из прайса
     // Prays_list_07.2026.xlsx, лист «Pro Aqua PPR».
     ppr_proaqua_elbow_mi: [
-        { id: "PA27008P", article: "PA27008P", price: 136, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA27010P", article: "PA27010P", price: 208, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 20х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA27012P", article: "PA27012P", price: 151, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 25х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA27014P", article: "PA27014P", price: 198, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA27015", article: "PA27015", price: 198, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 32х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA27016P", article: "PA27016P", price: 219, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 32х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA27018P", article: "PA27018P", price: 419, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 32х1", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA27008P", article: "PA27008P", price: 136, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA27010P", article: "PA27010P", price: 208, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 20х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA27012P", article: "PA27012P", price: 151, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 25х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA27014P", article: "PA27014P", price: 198, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA27015", article: "PA27015", price: 198, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 32х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA27016P", article: "PA27016P", price: 219, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 32х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA27018P", article: "PA27018P", price: 419, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный НР PP-R 32х1", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_elbow_fi: [
-        { id: "PA26008P", article: "PA26008P", price: 100, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA26010P", article: "PA26010P", price: 155, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 20х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA26012P", article: "PA26012P", price: 111, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 25х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA26014P", article: "PA26014P", price: 153, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA26015", article: "PA26015", price: 154, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 32х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA26016P", article: "PA26016P", price: 164, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 32х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA26018P", article: "PA26018P", price: 267, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 32х1", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA26008P", article: "PA26008P", price: 100, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA26010P", article: "PA26010P", price: 155, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 20х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA26012P", article: "PA26012P", price: 111, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 25х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA26014P", article: "PA26014P", price: 153, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA26015", article: "PA26015", price: 154, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 32х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA26016P", article: "PA26016P", price: 164, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 32х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA26018P", article: "PA26018P", price: 267, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° комбинированный ВР PP-R 32х1", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_tee_mi: [
-        { id: "PA25008P", article: "PA25008P", price: 147, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA25010P", article: "PA25010P", price: 226, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 20х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA25014P", article: "PA25014P", price: 219, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA25012P", article: "PA25012P", price: 161, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 25х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA25015", article: "PA25015", price: 220, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 32х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA25016P", article: "PA25016P", price: 239, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 32х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA25018P", article: "PA25018P", price: 379, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 32х1", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA25008P", article: "PA25008P", price: 147, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA25010P", article: "PA25010P", price: 226, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 20х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA25014P", article: "PA25014P", price: 219, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA25012P", article: "PA25012P", price: 161, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 25х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA25015", article: "PA25015", price: 220, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 32х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA25016P", article: "PA25016P", price: 239, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 32х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA25018P", article: "PA25018P", price: 379, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный НР PP-R 32х1", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_tee_fi: [
-        { id: "PA24008P", article: "PA24008P", price: 105, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA24010P", article: "PA24010P", price: 175, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 20х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA24012P", article: "PA24012P", price: 117, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 25х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA24014P", article: "PA24014P", price: 164, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA24015", article: "PA24015", price: 163, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 32х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA24016P", article: "PA24016P", price: 173, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 32х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA24018P", article: "PA24018P", price: 281, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 32х1", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA24008P", article: "PA24008P", price: 105, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA24010P", article: "PA24010P", price: 175, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 20х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA24012P", article: "PA24012P", price: 117, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 25х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA24014P", article: "PA24014P", price: 164, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA24015", article: "PA24015", price: 163, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 32х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA24016P", article: "PA24016P", price: 173, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 32х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA24018P", article: "PA24018P", price: 281, brand: "ProAqua", availability: "in_stock", name: "Тройник комбинированный ВР PP-R 32х1", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_union_fi: [
-        { id: "PA20008", article: "PA20008", price: 245, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20010", article: "PA20010", price: 261, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 20х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20011", article: "PA20011", price: 438, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 20х1", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20012", article: "PA20012", price: 372, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 25х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20014", article: "PA20014", price: 376, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20015", article: "PA20015", price: 411, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 25х1", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20016", article: "PA20016", price: 488, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 32х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20018", article: "PA20018", price: 490, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 32х1", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20019", article: "PA20019", price: 540, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 32х1.1/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20020", article: "PA20020", price: 691, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 40х1.1/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20021", article: "PA20021", price: 1060, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 40х1.1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20022", article: "PA20022", price: 1271, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 50х1.1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20023", article: "PA20023", price: 1555, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 50х2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20024", article: "PA20024", price: 1910, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 63х2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA20026", article: "PA20026", price: 6902, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 75х2.1/2", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA20008", article: "PA20008", price: 245, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20010", article: "PA20010", price: 261, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 20х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20011", article: "PA20011", price: 438, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 20х1", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20012", article: "PA20012", price: 372, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 25х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20014", article: "PA20014", price: 376, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20015", article: "PA20015", price: 411, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 25х1", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20016", article: "PA20016", price: 488, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 32х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20018", article: "PA20018", price: 490, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 32х1", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20019", article: "PA20019", price: 540, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 32х1.1/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20020", article: "PA20020", price: 691, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 40х1.1/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20021", article: "PA20021", price: 1060, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 40х1.1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20022", article: "PA20022", price: 1271, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 50х1.1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20023", article: "PA20023", price: 1555, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 50х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20024", article: "PA20024", price: 1910, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) ВР PP-R 63х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA20026", article: "PA20026", price: 6902, brand: "ProAqua", availability: "on_order", name: "Муфта разъемная (американка) ВР PP-R 75х2.1/2", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_union_mi: [
-        { id: "PA21008", article: "PA21008", price: 275, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21010", article: "PA21010", price: 310, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 20х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21011", article: "PA21011", price: 505, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 20х1", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21012", article: "PA21012", price: 403, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 25х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21014", article: "PA21014", price: 420, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21015", article: "PA21015", price: 493, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 25х1", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21016", article: "PA21016", price: 527, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 32х3/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21018", article: "PA21018", price: 610, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 32х1", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21019", article: "PA21019", price: 686, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 32х1.1/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21020", article: "PA21020", price: 905, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 40х1.1/4", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21021", article: "PA21021", price: 1443, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 40х1.1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21022", article: "PA21022", price: 1526, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 50х1.1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21023", article: "PA21023", price: 2208, brand: "ProAqua", availability: "on_order", name: "Муфта разъемная (американка) НР PP-R 50х2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21024", article: "PA21024", price: 2282, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 63х2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA21026", article: "PA21026", price: 7024, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 75х2.1/2", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA21008", article: "PA21008", price: 275, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21010", article: "PA21010", price: 310, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 20х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21011", article: "PA21011", price: 505, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 20х1", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21012", article: "PA21012", price: 403, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 25х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21014", article: "PA21014", price: 420, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21015", article: "PA21015", price: 493, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 25х1", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21016", article: "PA21016", price: 527, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 32х3/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21018", article: "PA21018", price: 610, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 32х1", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21019", article: "PA21019", price: 686, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 32х1.1/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21020", article: "PA21020", price: 905, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 40х1.1/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21021", article: "PA21021", price: 1443, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 40х1.1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21022", article: "PA21022", price: 1526, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 50х1.1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21023", article: "PA21023", price: 2208, brand: "ProAqua", availability: "on_order", name: "Муфта разъемная (американка) НР PP-R 50х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21024", article: "PA21024", price: 2282, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 63х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA21026", article: "PA21026", price: 7024, brand: "ProAqua", availability: "in_stock", name: "Муфта разъемная (американка) НР PP-R 75х2.1/2", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_clip: [
-        { id: "PA18006P", article: "PA18006P", price: 3, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 16", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18008P", article: "PA18008P", price: 4, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 20", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18010P", article: "PA18010P", price: 5, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 25", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18012P", article: "PA18012P", price: 6, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 32", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18014P", article: "PA18014P", price: 12, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 40", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18016P", article: "PA18016P", price: 21, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 50", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18018P", article: "PA18018P", price: 27, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 63", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA18006P", article: "PA18006P", price: 3, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 16", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18008P", article: "PA18008P", price: 4, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 20", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18010P", article: "PA18010P", price: 5, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 25", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18012P", article: "PA18012P", price: 6, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 32", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18014P", article: "PA18014P", price: 12, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 40", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18016P", article: "PA18016P", price: 21, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 50", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18018P", article: "PA18018P", price: 27, brand: "ProAqua", availability: "in_stock", name: "Клипса одинарная PP-R 63", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_support: [
-        { id: "PA18908", article: "PA18908", price: 6, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 20", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18910", article: "PA18910", price: 8, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 25", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18912", article: "PA18912", price: 11, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 32", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18914", article: "PA18914", price: 12, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 40", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18916", article: "PA18916", price: 15, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 50", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA18918", article: "PA18918", price: 33, brand: "ProAqua", availability: "on_order", name: "Опора с защелкой PP-R 63", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA18908", article: "PA18908", price: 6, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 20", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18910", article: "PA18910", price: 8, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 25", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18912", article: "PA18912", price: 11, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 32", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18914", article: "PA18914", price: 12, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 40", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18916", article: "PA18916", price: 15, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 50", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA18918", article: "PA18918", price: 33, brand: "ProAqua", availability: "in_stock", name: "Опора с защелкой PP-R 63", unit: "шт", price_date: "2026-09-20" }
     ],
 
     // Полипропиленовая запорная арматура (прайс Pro Aqua PPR, 07.2026).
     // В рукописных сметах это «кран ппр»: приваривается в трубу, отдельной
     // латунной арматурой не заменяется.
     ppr_proaqua_valve: [
-        { id: "PA40008", article: "PA40008", price: 375, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 20", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA40010", article: "PA40010", price: 514, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 25", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA40012", article: "PA40012", price: 971, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 32", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA40014", article: "PA40014", price: 1262, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 40", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA40016", article: "PA40016", price: 2241, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 50", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA40018", article: "PA40018", price: 3425, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 63", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA40020", article: "PA40020", price: 4143, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 75", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA40008", article: "PA40008", price: 375, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 20", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA40010", article: "PA40010", price: 514, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 25", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA40012", article: "PA40012", price: 971, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 32", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA40014", article: "PA40014", price: 1262, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 40", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA40016", article: "PA40016", price: 2241, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 50", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA40018", article: "PA40018", price: 3425, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 63", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA40020", article: "PA40020", price: 4143, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран полнопроходной Ultra PP-R 75", unit: "шт", price_date: "2026-09-20" }
     ],
     // Радиаторные краны с накидной гайкой — те самые «краны с американкой».
     // Прямой и угловой разнесены, потому что в смете их различают («уг»).
     ppr_proaqua_valve_rad: [
-        { id: "PA41008", article: "PA41008", price: 601, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора прямой PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA41010", article: "PA41010", price: 886, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора прямой PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA41008", article: "PA41008", price: 601, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора прямой PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA41010", article: "PA41010", price: 886, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора прямой PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_valve_rad_angle: [
-        { id: "PA42108", article: "PA42108", price: 587, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора угловой PP-R 20х1/2", unit: "шт", price_date: "2026-08-20" },
-        { id: "PA42110", article: "PA42110", price: 873, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора угловой PP-R 25х3/4", unit: "шт", price_date: "2026-08-20" }
+        { id: "PA42108", article: "PA42108", price: 587, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора угловой PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA42110", article: "PA42110", price: 873, brand: "ProAqua", availability: "in_stock", name: "Шаровой кран для радиатора угловой PP-R 25х3/4", unit: "шт", price_date: "2026-09-20" }
     ],
     /**
      * Водорозетка — настенный угольник с креплением, в него вкручивают
@@ -6084,13 +6084,13 @@ const catalog = {
         // Блоки расширения контуров по шине RS-485. EX-108 даёт +3 контура и
         // питается от контроллера, EX-77 даёт +2, но требует отдельный БП 12 В.
         { id: "ML00007406", name: "Блок расширения EX-108 (+3 контура отопления)", price: 27900, brand: "ZONT", unit: "шт", circuits: 3, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "ML00004766", name: "Блок расширения EX-77 (+2 контура отопления)", price: 16100, brand: "ZONT", unit: "шт", circuits: 2, availability: "in_stock", price_date: "2026-08-20" },
-        { id: "ML13968", name: "Блок питания 12 Вт / 12–24 В на DIN-рейку", price: 2700, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "ML00004766", name: "Блок расширения EX-77 (+2 контура отопления)", price: 16100, brand: "ZONT", unit: "шт", circuits: 2, availability: "in_stock", price_date: "2026-09-20" },
+        { id: "ML13968", name: "Блок питания 12 Вт / 12–24 В на DIN-рейку", price: 2700, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         // Датчик давления на аналоговый вход. Автоподпиткой контроллер не
         // управляет (такой функции у него нет), но по порогам этого датчика
         // шлёт оповещение — только так и вскрывается утечка, которую
         // автоподпиточный клапан иначе доливает молча.
-        { id: "ML00005517", name: "Датчик давления MLD-10.01, нерж. сталь, 0–10 бар", price: 6360, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "ML00005517", name: "Датчик давления MLD-10.01, нерж. сталь, 0–10 бар", price: 6360, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         // Тот же датчик с токовым выходом 4–20 мА. В сметах он встречается чаще
         // цифрового: его берут к контроллерам с аналоговым входом, и в копилке
         // промахов «преобразователь давления 4…20 мА» стоял шесть раз, пока в
