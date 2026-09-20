@@ -12280,6 +12280,13 @@ const app = {
             this.openRatingPanel();
             return;
         }
+        // Приложение — отдельная страница сайта, не раздел кабинета. Открываем
+        // новой вкладкой: у человека в этот момент несохранённая смета на экране,
+        // и уводить его со страницы нельзя.
+        if (section === 'app') {
+            window.open('/prilozhenie/', '_blank', 'noopener');
+            return;
+        }
         if (section === 'admin') {
             this.closeOtherRailPlaces('admin_modal_overlay');
             this._adminOpenedFrom = 'admin';
@@ -13201,6 +13208,11 @@ const app = {
         const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
         if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
         if (railWorkPrices) railWorkPrices.style.display = sellerNoWorks ? 'none' : '';
+
+        // «Приложение» — только тем, кто сидит в браузере. Внутри самого
+        // приложения метку __HC_NATIVE__ ставит native-ui.js.
+        const railApp = rail.querySelector('.lk-rail-item[data-rail="app"]');
+        if (railApp) railApp.style.display = window.__HC_NATIVE__ ? 'none' : 'flex';
 
         // Число непрочитанных берём готовым из бейджа конверта в шапке: считает его
         // loadNotifications, второй раз считать незачем
