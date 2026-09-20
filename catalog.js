@@ -1339,8 +1339,8 @@ const catalog = {
     ],
     boilers_baxi: [
         // ECO Nova
-        { id: "100023936", name: "ECO Nova 10F", price: 77330, power: 10, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
-        { id: "100023937", name: "ECO Nova 14F", price: 77805, power: 14, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-06-30" },
+        { id: "100023936", name: "ECO Nova 10F", price: 58000, power: 10, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "100023937", name: "ECO Nova 14F", price: 58350, power: 14, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-09-20" },
         { id: "100023938", name: "ECO Nova 18F", price: 59140, power: 18, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
         { id: "100023939", name: "ECO Nova 24F", price: 59920, power: 24, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
         { id: "100023940", name: "ECO Nova 31F", price: 82220, power: 31, circuits: 2, type: "gas", brand: "BAXI", availability: "in_stock", price_date: "2026-08-20" },
