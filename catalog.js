@@ -1555,12 +1555,12 @@ const catalog = {
     // второй — «базовый» (state.chimneyType), первый cond без forBrand — для
     // конденсационного котла. Поэтому SCR-8610 (60/100) стоит раньше 80/125.
     chimneys: [
-        { id: "SCR-6010-251000", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1000", price: 3055, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCR-6010-251250", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1250", price: 3595, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCR-8610-251000", name: "Комплект дымохода универсальный конденсац. коакс. D60/100, L1000 (хомут, фланец, втулка, рабочая длина 680 мм)", price: 9076, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "60/100", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCR-8125-251000", name: "Комплект дымохода универсальный традиц. коакс. D80/125, L1000", price: 8625, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "80/125", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCR-8012-251000", name: "Комплект дымохода универсальный конденсац. коакс. D80/125, L1000", price: 9076, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "80/125", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCR-1116-251250", name: "Комплект дымохода универсальный конденсац. коакс. D110/160, L1250", price: 31667, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "110/160", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-251000", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1000", price: 3540, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SCR-6010-251250", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1250", price: 4166, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SCR-8610-251000", name: "Комплект дымохода универсальный конденсац. коакс. D60/100, L1000 (хомут, фланец, втулка, рабочая длина 680 мм)", price: 10517, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "60/100", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SCR-8125-251000", name: "Комплект дымохода универсальный традиц. коакс. D80/125, L1000", price: 9994, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "80/125", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SCR-8012-251000", name: "Комплект дымохода универсальный конденсац. коакс. D80/125, L1000", price: 10517, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "80/125", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SCR-1116-251250", name: "Комплект дымохода универсальный конденсац. коакс. D110/160, L1250", price: 36694, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "110/160", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCA-6010-210850", name: "Дымоход коаксиальный 60/100", price: 6298, brand: "STOUT", chimType: "trad", rommer: { id: "RCA-6010-251220", name: "Дымоход коаксиальный 60/100", price: 3358, brand: "ROMMER",
   availability: 'in_stock',
   price_date: '2026-09-10' }, availability: "on_order", price_date: "2026-09-10" },
@@ -1726,9 +1726,9 @@ const catalog = {
     // было не из чего — цены уточняются прогоном AutoPrice.py по сайту ТЕРЕМ.
 
     chimney_trad_60100_stout: [
-        { id: "SCR-6010-250100", name: "Адаптер подключения 90° универсальный традиц. коакс. D60(м-м)/100(п-м) (хомут, фланец, втулка, адаптер)", price: 1802, brand: "STOUT", role: "start_wall", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCR-6010-250200", name: "Адаптер подключения универсальный вертик. традиц. коакс. D60(м-м)/100(п-м) (хомут, фланец, втулка, адаптер)", price: 1216, brand: "STOUT", role: "start_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
-        { id: "SCR-6010-001001", name: "Горизонтальный проход через стену с наконечником АНТИЛЁД традиц. коакс. D60(п)/100(п)", price: 2021, brand: "STOUT", role: "term_wall", dn: "60/100", kind: "trad", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-250100", name: "Адаптер подключения 90° универсальный традиц. коакс. D60(м-м)/100(п-м) (хомут, фланец, втулка, адаптер)", price: 2089, brand: "STOUT", role: "start_wall", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SCR-6010-250200", name: "Адаптер подключения универсальный вертик. традиц. коакс. D60(м-м)/100(п-м) (хомут, фланец, втулка, адаптер)", price: 1410, brand: "STOUT", role: "start_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SCR-6010-001001", name: "Горизонтальный проход через стену с наконечником АНТИЛЁД традиц. коакс. D60(п)/100(п)", price: 2342, brand: "STOUT", role: "term_wall", dn: "60/100", kind: "trad", len_m: 1, availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCR-6010-000751", name: "Горизонтальный проход через стену с наконечником АНТИЛЁД традиц. коакс. D60(п)/100(п)", price: 1665, brand: "STOUT", role: "term_wall", dn: "60/100", kind: "trad", len_m: 0.75, availability: "in_stock", price_date: "2026-09-09" },
         { id: "SCR-6010-800002", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D60(п)/100(п) белый узкий", price: 3420, brand: "STOUT", role: "term_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
         { id: "SCR-6010-000250", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L250", price: 822, brand: "STOUT", role: "ext", dn: "60/100", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-09-09" },
@@ -2302,7 +2302,7 @@ const catalog = {
     // Продаётся поштучно: 2 шт. на коллектор. Цена — РИЦ 01.09.2026 (прайс «ROMMER
     // Коллекторы нерж.», раздел «Принадлежности») × 1,1, как у соседних позиций ROMMER.
     // Выбран пользователем 15.09.2026: в паспорте RMB кронштейнов нет.
-    manifold_brackets_rommer: { id: "RSP-1002-000007", name: "Кронштейн раздвижной для коллектора 1\" (1 шт.)", price: 457, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-01" },
+    manifold_brackets_rommer: { id: "RSP-1002-000007", name: "Кронштейн раздвижной для коллектора 1\" (1 шт.)", price: 458, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
     // === КОЛЛЕКТОРНЫЕ ШКАФЫ ===
     // outs — паспортное число выходов, inner — ВНУТРЕННЯЯ ширина корпуса (мм).
     // Подбираем по inner, а не по outs: сноска в паспорте STOUT SCC (ред. 2026) гласит,
@@ -7653,8 +7653,8 @@ const rommerProfiAlRads = [
 // ROMMER Optima Bm (RBM-0210-050) 500мм, power50=82 Вт/сек
 const rommerOptimaBmRads = [
     { id: "RBM-0210-050004", name: "Радиатор Optima Bm 4 секций",  sec: 4,  price: 3021, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-0210-050006", name: "Радиатор Optima Bm 6 секций",  sec: 6,  price: 4530, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" },
-    { id: "RBM-0210-050008", name: "Радиатор Optima Bm 8 секций",  sec: 8,  price: 6040, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" },
+    { id: "RBM-0210-050006", name: "Радиатор Optima Bm 6 секций",  sec: 6,  price: 4984, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "RBM-0210-050008", name: "Радиатор Optima Bm 8 секций",  sec: 8,  price: 6644, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
     { id: "RBM-0210-050010", name: "Радиатор Optima Bm 10 секций", sec: 10, price: 7551, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
     { id: "RBM-0210-050012", name: "Радиатор Optima Bm 12 секций", sec: 12, price: 9062, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }
 ];
