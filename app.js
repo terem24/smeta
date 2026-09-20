@@ -34491,7 +34491,13 @@ const app = {
         else if (/Android/i.test(ua)) os = "Android";
         else if (/Linux/i.test(ua)) os = "Linux";
         let browser = "Браузер";
-        if (/YaBrowser/i.test(ua)) browser = "Yandex";
+        // Внутри Android-приложения встроенный браузер — тот же Chrome, и по строке
+        // агента приложение от мобильного сайта не отличить. Метку window.__HC_NATIVE__
+        // ставит native-ui.js, он подключён только в APK. Отсюда значение уходит в
+        // users.last_device и в записи визитов (session_track.js): без этой строки
+        // пользователь приложения в админке выглядит как обычный Chrome на телефоне.
+        if (window.__HC_NATIVE__) browser = "Приложение";
+        else if (/YaBrowser/i.test(ua)) browser = "Yandex";
         else if (/Edg/i.test(ua)) browser = "Edge";
         else if (/Chrome/i.test(ua)) browser = "Chrome";
         else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
