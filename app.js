@@ -65768,7 +65768,13 @@ const app = {
                         let itemRed = asCoilPrice({ ...catalog.insulated_pipes_mp_red[0], originalId: catalog.insulated_pipes_mp_red[0].id + "_rad" }); itemRed.alts = catalog.metal_plastic_pipes; itemRed.noCheapenAlts = true; addToBill(itemRed, halfCoils, this.getDesc('insulated_pipe_red', halfCoils, neededPipe), pipeGrp);
                         let itemBlue = asCoilPrice({ ...catalog.insulated_pipes_mp_blue[0], originalId: catalog.insulated_pipes_mp_blue[0].id + "_rad" }); itemBlue.alts = catalog.metal_plastic_pipes; itemBlue.noCheapenAlts = true; addToBill(itemBlue, halfCoils, this.getDesc('insulated_pipe_blue', halfCoils, neededPipe), pipeGrp);
                     } else if (this.state.pipeType === 'split_mp') {
-                        let grayItem = asCoilPrice((neededPipe > 200) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
+                        // Бухта 100 м есть только у STOUT: у ROMMER 16-я труба идёт
+                        // двухсотками. Считая сотнями, смета брала бы 100 м по цене 100 м,
+                        // а на объект приезжала бы бухта 200. Условие замены — как у мата
+                        // ROMMER в тёплом полу: решает addToBill, здесь повторяем.
+                        const _mpSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
+                        const _mpRommer = (_mpSecAn !== undefined) ? _mpSecAn : (this.state.brandMode === 'rommer');
+                        let grayItem = asCoilPrice((neededPipe > 200 || _mpRommer) ? { ...catalog.metal_plastic_pipes[1] } : { ...catalog.metal_plastic_pipes[0] }); grayItem.originalId = grayItem.id + "_rad"; grayItem.alts = catalog.insulated_pipes_mp_red; grayItem.noCheapenAlts = true; addToBill(grayItem, Math.ceil(neededPipe / grayItem.len), this.getDesc('rad_pipe', neededPipe), pipeGrp);
                         let insLen = Math.ceil(neededPipe / 2); if (insLen % 2 !== 0) insLen++; addToBill(catalog.insulation[0], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы подачи (красная) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp); addToBill(catalog.insulation[1], insLen, `<span style="font-size:11px;line-height:1.5;"><b>Зачем:</b> Теплоизоляция трубы обратки (синяя) — защита от теплопотерь и конденсата.<br><b>Формула:</b> общая трасса ÷ 2, округление вверх до чётного числа.<br><b>Расчёт:</b> ${neededPipe} м ÷ 2 = ${insLen} м.</span>`, pipeGrp);
                     } else if (this.state.pipeType === 'stable_16') {
                         let coils = Math.ceil(neededPipe / 100);
@@ -66587,7 +66593,16 @@ const app = {
             // Труба петли: типоразмер выбран в таблице замены, бухты тянутся за ним.
             // Набираем длинными бухтами, остаток — сотнями; у стабильной бухта одна.
             const _up = this.ufhPipe();
-            const _coils = _up.coils.map(id => this._ufhCoil(id)).filter(Boolean)
+            // У ROMMER металлопластик 16 мм идёт ТОЛЬКО бухтой 200 м, сотен у него нет.
+            // Набор STOUT «три по 200 + две по 100» превратился бы в пять двухсоток —
+            // 200 лишних метров в смете. Условие замены то же, что у мата ROMMER ниже:
+            // решение принимает addToBill, здесь его повторяем.
+            const _upSecAn = (this.state.sectionAnalog || {})[currentSectionTitle];
+            const _upRommer = (_upSecAn !== undefined) ? _upSecAn : (this.state.brandMode === 'rommer');
+            const _upCoilIds = (_upRommer && _up.material === 'metal_plastic')
+                ? _up.coils.filter(id => id === 'SPM-0001-201620')
+                : _up.coils;
+            const _coils = _upCoilIds.map(id => this._ufhCoil(id)).filter(Boolean)
                 .sort((a, b) => (b.len || 100) - (a.len || 100));
             const _upAlts = this._ufhPipeAlts(_up);
             let _left = tpMeters;
@@ -66598,7 +66613,12 @@ const app = {
                 if (!(_q > 0)) return;
                 _left -= _q * _len;
                 const _it = asCoilPrice({ ...c, originalId: c.id + "_ufh" });
+                // noCheapenAlts: в .alts — выбор МАТЕРИАЛА и типоразмера петли (PEX-a,
+                // металлопластик, стабильная), список для таблицы замены. Режим ROMMER
+                // выбирал из него по цене и подменял металлопластик трубой PEX-a: она
+                // дешевле на рубль за метр. Бренд меняет только собственная пара .rommer.
                 _it.alts = _upAlts;
+                _it.noCheapenAlts = true;
                 addToBill(_it, _q, this.getDesc('ufh_pipe', tpMeters), grpPipe);
             });
             // #18: ТРАНЗИТНАЯ ТРАССА от котельной до коллектора тёплого пола.
@@ -66628,6 +66648,8 @@ const app = {
                     (catalog.metal_plastic_pipes || []).find(x => x.id === 'SPM-0001-102020'),
                     (catalog.metal_plastic_pipes || []).find(x => x.id === 'SPM-0001-053230')
                 ].filter(Boolean);
+                // См. петлю выше: .alts здесь — типоразмеры и материал трассы, не бренд.
+                _trItem.noCheapenAlts = true;
                 addToBill(_trItem, _cut ? g.cutM : _trCoils,
                     `<span style="font-size:11px;line-height:1.5;">` +
                     `<b>Зачем:</b> Транзитная трасса от котельной (насосной группы) до коллектора тёплого пола ${g.parts.map(t => t.fl + '-го').join(' и ')} этажа. Петли ТП считаются отдельно (по площади обогрева либо по укладке с планов) и подводку к самому коллектору в себя не включают.<br>` +
