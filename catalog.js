@@ -5240,51 +5240,51 @@ const catalog = {
         { id: "RSS-1024-002234", name: "Вставка переходная НПр-НР 22х3/4", price: 420, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "RSS-1024-000221", name: "Вставка переходная НПр-НР 22х1", price: 413, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         { id: "RSS-1024-002834", name: "Вставка переходная НПр-НР 28х3/4", price: 484, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
-        { id: "RSS-1024-000281", name: "Вставка переходная НПр-НР 28х1", price: 625, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1024-035114", name: "Вставка переходная НПр-НР 35х11/4", price: 865, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1024-042112", name: "Вставка переходная НПр-НР 42х11/2", price: 1363, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1024-000542", name: "Вставка переходная НПр-НР 54х2", price: 1833, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "RSS-1024-000281", name: "Вставка переходная НПр-НР 28х1", price: 625, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1024-035114", name: "Вставка переходная НПр-НР 35х11/4", price: 865, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1024-042112", name: "Вставка переходная НПр-НР 42х11/2", price: 1363, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1024-000542", name: "Вставка переходная НПр-НР 54х2", price: 1833, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_plug: [
-        { id: "RSS-1025-000015", name: "Заглушка ВПр 15", price: 161, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1025-000018", name: "Заглушка ВПр 18", price: 207, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1025-000022", name: "Заглушка ВПр 22", price: 256, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1025-000028", name: "Заглушка ВПр 28", price: 334, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1025-000035", name: "Заглушка ВПр 35", price: 450, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1025-000042", name: "Заглушка ВПр 42", price: 667, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1025-000054", name: "Заглушка ВПр 54", price: 855, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "RSS-1025-000015", name: "Заглушка ВПр 15", price: 161, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1025-000018", name: "Заглушка ВПр 18", price: 207, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1025-000022", name: "Заглушка ВПр 22", price: 256, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1025-000028", name: "Заглушка ВПр 28", price: 334, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1025-000035", name: "Заглушка ВПр 35", price: 450, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1025-000042", name: "Заглушка ВПр 42", price: 667, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1025-000054", name: "Заглушка ВПр 54", price: 855, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_union_fi: [
-        { id: "RSS-1026-001512", name: "Переходник с накидной гайкой ВПр-ВР 15х1/2", price: 558, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1026-001534", name: "Переходник с накидной гайкой ВПр-ВР 15х3/4", price: 585, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-001812", name: "Переходник с накидной гайкой ВПр-ВР 18х1/2", price: 600, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-001834", name: "Переходник с накидной гайкой ВПр-ВР 18х3/4", price: 554, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-002212", name: "Переходник с накидной гайкой ВПр-ВР 22х1/2", price: 521, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-002234", name: "Переходник с накидной гайкой ВПр-ВР 22х3/4", price: 554, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-002834", name: "Переходник с накидной гайкой ВПр-ВР 28х3/4", price: 663, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-000281", name: "Переходник с накидной гайкой ВПр-ВР 28х1", price: 662, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-000351", name: "Переходник с накидной гайкой ВПр-ВР 35х1", price: 997, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-035114", name: "Переходник с накидной гайкой ВПр-ВР 35х11/4", price: 1121, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1026-042112", name: "Переходник с накидной гайкой ВПр-ВР 42х11/2", price: 1636, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1026-000542", name: "Переходник с накидной гайкой ВПр-ВР 54х2", price: 2299, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "RSS-1026-001512", name: "Переходник с накидной гайкой ВПр-ВР 15х1/2", price: 558, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-001534", name: "Переходник с накидной гайкой ВПр-ВР 15х3/4", price: 585, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-001812", name: "Переходник с накидной гайкой ВПр-ВР 18х1/2", price: 600, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-001834", name: "Переходник с накидной гайкой ВПр-ВР 18х3/4", price: 554, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-002212", name: "Переходник с накидной гайкой ВПр-ВР 22х1/2", price: 521, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-002234", name: "Переходник с накидной гайкой ВПр-ВР 22х3/4", price: 554, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-002834", name: "Переходник с накидной гайкой ВПр-ВР 28х3/4", price: 663, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-000281", name: "Переходник с накидной гайкой ВПр-ВР 28х1", price: 662, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-000351", name: "Переходник с накидной гайкой ВПр-ВР 35х1", price: 997, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-035114", name: "Переходник с накидной гайкой ВПр-ВР 35х11/4", price: 1121, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1026-042112", name: "Переходник с накидной гайкой ВПр-ВР 42х11/2", price: 1636, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1026-000542", name: "Переходник с накидной гайкой ВПр-ВР 54х2", price: 2299, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_oring_epdm: [
-        { id: "RSS-1027-000015", name: "Уплотнительное кольцо EPDM 15", price: 11, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1027-000018", name: "Уплотнительное кольцо EPDM 18", price: 11, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1027-000022", name: "Уплотнительное кольцо EPDM 22", price: 23, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1027-000028", name: "Уплотнительное кольцо EPDM 28", price: 25, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1027-000035", name: "Уплотнительное кольцо EPDM 35", price: 30, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1027-000042", name: "Уплотнительное кольцо EPDM 42", price: 53, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1027-000054", name: "Уплотнительное кольцо EPDM 54", price: 73, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "RSS-1027-000015", name: "Уплотнительное кольцо EPDM 15", price: 11, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1027-000018", name: "Уплотнительное кольцо EPDM 18", price: 11, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1027-000022", name: "Уплотнительное кольцо EPDM 22", price: 23, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1027-000028", name: "Уплотнительное кольцо EPDM 28", price: 25, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1027-000035", name: "Уплотнительное кольцо EPDM 35", price: 30, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1027-000042", name: "Уплотнительное кольцо EPDM 42", price: 53, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1027-000054", name: "Уплотнительное кольцо EPDM 54", price: 73, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_oring_fpm: [
-        { id: "RSS-1028-000015", name: "Уплотнительное кольцо FPM 15", price: 21, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "RSS-1028-000018", name: "Уплотнительное кольцо FPM 18", price: 23, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1028-000022", name: "Уплотнительное кольцо FPM 22", price: 36, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1028-000028", name: "Уплотнительное кольцо FPM 28", price: 45, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1028-000035", name: "Уплотнительное кольцо FPM 35", price: 59, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1028-000042", name: "Уплотнительное кольцо FPM 42", price: 109, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "RSS-1028-000054", name: "Уплотнительное кольцо FPM 54", price: 139, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "RSS-1028-000015", name: "Уплотнительное кольцо FPM 15", price: 21, brand: "ROMMER", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "RSS-1028-000018", name: "Уплотнительное кольцо FPM 18", price: 23, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1028-000022", name: "Уплотнительное кольцо FPM 22", price: 36, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1028-000028", name: "Уплотнительное кольцо FPM 28", price: 45, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1028-000035", name: "Уплотнительное кольцо FPM 35", price: 59, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1028-000042", name: "Уплотнительное кольцо FPM 42", price: 109, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "RSS-1028-000054", name: "Уплотнительное кольцо FPM 54", price: 139, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     // === STOUT, нержавеющая сталь AISI 316L, пресс (SSS-20xx) ===
     // Альтернатива нержавейке ROMMER AISI 304 (RSS-10xx) в обвязке котельной.
@@ -5301,60 +5301,60 @@ const catalog = {
         { id: "SSS-2001-000054", name: "Труба нерж. 316L, штанга 4м 54х1.5", price: 3673, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" }
     ],
     ss_elbow90_316: [
-        { id: "SSS-2002-000015", name: "Угольник 90° ВПр-НПр 15", price: 312, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2002-000018", name: "Угольник 90° ВПр-НПр 18", price: 373, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2002-000022", name: "Угольник 90° ВПр-НПр 22", price: 466, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2002-000028", name: "Угольник 90° ВПр-НПр 28", price: 584, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2002-000035", name: "Угольник 90° ВПр-НПр 35", price: 834, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2002-000042", name: "Угольник 90° ВПр-НПр 42", price: 1207, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2002-000054", name: "Угольник 90° ВПр-НПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "SSS-2002-000015", name: "Угольник 90° ВПр-НПр 15", price: 312, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2002-000018", name: "Угольник 90° ВПр-НПр 18", price: 373, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2002-000022", name: "Угольник 90° ВПр-НПр 22", price: 466, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2002-000028", name: "Угольник 90° ВПр-НПр 28", price: 584, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2002-000035", name: "Угольник 90° ВПр-НПр 35", price: 834, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2002-000042", name: "Угольник 90° ВПр-НПр 42", price: 1207, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2002-000054", name: "Угольник 90° ВПр-НПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_elbow90_ff_316: [
-        { id: "SSS-2003-000015", name: "Угольник 90° ВПр-ВПр 15", price: 273, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2003-000018", name: "Угольник 90° ВПр-ВПр 18", price: 317, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2003-000022", name: "Угольник 90° ВПр-ВПр 22", price: 468, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2003-000028", name: "Угольник 90° ВПр-ВПр 28", price: 579, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2003-000035", name: "Угольник 90° ВПр-ВПр 35", price: 881, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2003-000042", name: "Угольник 90° ВПр-ВПр 42", price: 1209, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2003-000054", name: "Угольник 90° ВПр-ВПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "SSS-2003-000015", name: "Угольник 90° ВПр-ВПр 15", price: 273, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2003-000018", name: "Угольник 90° ВПр-ВПр 18", price: 317, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2003-000022", name: "Угольник 90° ВПр-ВПр 22", price: 468, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2003-000028", name: "Угольник 90° ВПр-ВПр 28", price: 579, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2003-000035", name: "Угольник 90° ВПр-ВПр 35", price: 881, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2003-000042", name: "Угольник 90° ВПр-ВПр 42", price: 1209, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2003-000054", name: "Угольник 90° ВПр-ВПр 54", price: 1815, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_elbow45_316: [
-        { id: "SSS-2004-000015", name: "Угольник 45° ВПр-НПр 15", price: 314, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2004-000018", name: "Угольник 45° ВПр-НПр 18", price: 355, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2004-000022", name: "Угольник 45° ВПр-НПр 22", price: 440, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2004-000028", name: "Угольник 45° ВПр-НПр 28", price: 582, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2004-000035", name: "Угольник 45° ВПр-НПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2004-000042", name: "Угольник 45° ВПр-НПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2004-000054", name: "Угольник 45° ВПр-НПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" }
+        { id: "SSS-2004-000015", name: "Угольник 45° ВПр-НПр 15", price: 314, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2004-000018", name: "Угольник 45° ВПр-НПр 18", price: 355, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2004-000022", name: "Угольник 45° ВПр-НПр 22", price: 440, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2004-000028", name: "Угольник 45° ВПр-НПр 28", price: 582, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2004-000035", name: "Угольник 45° ВПр-НПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2004-000042", name: "Угольник 45° ВПр-НПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2004-000054", name: "Угольник 45° ВПр-НПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
     ],
     ss_elbow45_ff_316: [
-        { id: "SSS-2005-000015", name: "Угольник 45° ВПр-ВПр 15", price: 293, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2005-000018", name: "Угольник 45° ВПр-ВПр 18", price: 358, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2005-000022", name: "Угольник 45° ВПр-ВПр 22", price: 447, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2005-000028", name: "Угольник 45° ВПр-ВПр 28", price: 589, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2005-000035", name: "Угольник 45° ВПр-ВПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2005-000042", name: "Угольник 45° ВПр-ВПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2005-000054", name: "Угольник 45° ВПр-ВПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
+        { id: "SSS-2005-000015", name: "Угольник 45° ВПр-ВПр 15", price: 293, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2005-000018", name: "Угольник 45° ВПр-ВПр 18", price: 358, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2005-000022", name: "Угольник 45° ВПр-ВПр 22", price: 447, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2005-000028", name: "Угольник 45° ВПр-ВПр 28", price: 589, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2005-000035", name: "Угольник 45° ВПр-ВПр 35", price: 709, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2005-000042", name: "Угольник 45° ВПр-ВПр 42", price: 1028, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2005-000054", name: "Угольник 45° ВПр-ВПр 54", price: 1389, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" }
     ],
     ss_bypass_ff_316: [
-        { id: "SSS-2006-000015", name: "Обвод ВПр-ВПр 15", price: 395, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2006-000018", name: "Обвод ВПр-ВПр 18", price: 464, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2006-000022", name: "Обвод ВПр-ВПр 22", price: 577, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2006-000028", name: "Обвод ВПр-ВПр 28", price: 887, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
+        { id: "SSS-2006-000015", name: "Обвод ВПр-ВПр 15", price: 395, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2006-000018", name: "Обвод ВПр-ВПр 18", price: 464, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2006-000022", name: "Обвод ВПр-ВПр 22", price: 577, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2006-000028", name: "Обвод ВПр-ВПр 28", price: 887, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" }
     ],
     ss_bypass_316: [
-        { id: "SSS-2007-000015", name: "Обвод ВПр-НПр 15", price: 663, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2007-000018", name: "Обвод ВПр-НПр 18", price: 775, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
-        { id: "SSS-2007-000022", name: "Обвод ВПр-НПр 22", price: 1099, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
+        { id: "SSS-2007-000015", name: "Обвод ВПр-НПр 15", price: 663, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2007-000018", name: "Обвод ВПр-НПр 18", price: 775, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+        { id: "SSS-2007-000022", name: "Обвод ВПр-НПр 22", price: 1099, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" }
     ],
     ss_bend90_316: [
-        { id: "SSS-2008-001570", name: "Отвод безраструбный 90° 15х70х160", price: 471, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2008-015100", name: "Отвод безраструбный 90° 15х100х600", price: 1495, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" }
+        { id: "SSS-2008-001570", name: "Отвод безраструбный 90° 15х70х160", price: 471, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2008-015100", name: "Отвод безраструбный 90° 15х100х600", price: 1495, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" }
     ],
     ss_elbow_fi_316: [
-        { id: "SSS-2009-001512", name: "Угольник-переходник ВПр-ВР 15х1/2", price: 802, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2009-001812", name: "Угольник-переходник ВПр-ВР 18х1/2", price: 842, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2009-001834", name: "Угольник-переходник ВПр-ВР 18х3/4", price: 1061, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-10" },
+        { id: "SSS-2009-001512", name: "Угольник-переходник ВПр-ВР 15х1/2", price: 802, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2009-001812", name: "Угольник-переходник ВПр-ВР 18х1/2", price: 842, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SSS-2009-001834", name: "Угольник-переходник ВПр-ВР 18х3/4", price: 1061, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
         { id: "SSS-2009-002212", name: "Угольник-переходник ВПр-ВР 22х1/2", price: 935, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SSS-2009-002234", name: "Угольник-переходник ВПр-ВР 22х3/4", price: 1091, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SSS-2009-002834", name: "Угольник-переходник ВПр-ВР 28х3/4", price: 1981, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
