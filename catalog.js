@@ -1543,7 +1543,24 @@ const catalog = {
         { id: "SEB-5101-000012", name: "Котёл электрический POLIS (12 кВт)", power: 12, price: 39027, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-09-10" },
         { id: "SEB-5101-000015", name: "Котёл электрический POLIS (15 кВт)", power: 15, price: 39580, type: "el", exp: 0, vol: 5, noPump: true, noBus: true, volt: "380", desc: "POLIS: бюджетный. Без насоса и бака — монтируется на ГБМ. Только 380 В.", availability: "in_stock", price_date: "2026-09-10" }
     ],
+    // Готовые настенные комплекты. Позиции с brandKey "stout" — российская
+    // линейка SCR, из них подбирает app.chimneyKitFor в режиме STOUT.
+    // Позиции БЕЗ brandKey — прежний список; он целиком и в том же порядке
+    // работает в режиме ROMMER, чтобы там смета не изменилась ни на рубль
+    // (умолчание там по-прежнему подменяется на .rommer первой позиции).
+    // Комплекты Vaillant (forBrand) видны в обоих режимах: у конденсационных
+    // Vaillant гарантия требует родную систему, какой бы бренд ни был выбран.
+    //
+    // ВНИМАНИЕ: порядок внутри каждой группы значим: первый — «стандарт»,
+    // второй — «базовый» (state.chimneyType), первый cond без forBrand — для
+    // конденсационного котла. Поэтому SCR-8610 (60/100) стоит раньше 80/125.
     chimneys: [
+        { id: "SCR-6010-251000", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1000", price: 3055, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-251250", name: "Комплект дымохода АНТИЛЁД универсальный традиц. коакс. D60/100, L1250", price: 3595, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "60/100", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-251000", name: "Комплект дымохода универсальный конденсац. коакс. D60/100, L1000 (хомут, фланец, втулка, рабочая длина 680 мм)", price: 9076, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "60/100", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-251000", name: "Комплект дымохода универсальный традиц. коакс. D80/125, L1000", price: 8625, brand: "STOUT", brandKey: "stout", chimType: "trad", dn: "80/125", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-251000", name: "Комплект дымохода универсальный конденсац. коакс. D80/125, L1000", price: 9076, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "80/125", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-1116-251250", name: "Комплект дымохода универсальный конденсац. коакс. D110/160, L1250", price: 31667, brand: "STOUT", brandKey: "stout", chimType: "cond", dn: "110/160", availability: "in_stock", price_date: "2026-09-09" },
         { id: "SCA-6010-210850", name: "Дымоход коаксиальный 60/100", price: 6298, brand: "STOUT", chimType: "trad", rommer: { id: "RCA-6010-251220", name: "Дымоход коаксиальный 60/100", price: 3358, brand: "ROMMER",
   availability: 'in_stock',
   price_date: '2026-09-10' }, availability: "on_order", price_date: "2026-09-10" },
@@ -1683,6 +1700,246 @@ const catalog = {
         { id: "RCA-0080-010007", name: "Хомут стальной D80", price: 118, brand: "ROMMER", role: "clamp", kind: "any", availability: "in_stock", price_date: "2026-07-29" },
         { id: "RCA-0080-010080", name: "Уплотнение силиконовое D80", price: 219, brand: "ROMMER", role: "seal", kind: "trad", availability: "in_stock", price_date: "2026-09-10" },
         { id: "RCA-0808-000102", name: "Уплотнение Ø80 для конденсационных труб", price: 344, brand: "ROMMER", role: "seal", kind: "cond", availability: "in_stock", price_date: "2026-09-10" },
+    ],
+
+    // ═══════════════ Элементы дымохода STOUT (РФ) ═══════════════
+    //
+    // Линейка SCR-* — российское производство, лист прайса «STOUT Дымоходы (РФ)»,
+    // 210 позиций. Заведена целиком 20.09.2026 взамен итальянского SCA-6010-210850,
+    // который стоял умолчанием и не поставляется.
+    //
+    // Наборы повторяют строение ROMMER-овских выше: те же роли, та же сборка
+    // трассы (app.buildChimney). Какой набор берётся — решает app.chimneyPool по
+    // режиму бренда: в режиме STOUT — SCR, в режиме ROMMER — прежние RCA.
+    //
+    // ПОРЯДОК В МАССИВЕ ЗНАЧИМ: buildChimney берёт ПЕРВЫЙ элемент с нужной
+    // ролью. Поэтому вверху рабочее ядро с role, ниже — варианты без роли
+    // (цветные удлинители, широкие и цветные оголовки, утеплённые трубы D80,
+    // Т-образные ревизии, стабилизаторы тяги, запчасти) — они только в замене.
+    //
+    // У раздельной D80 роли clamp нет намеренно: элементы STOUT соединяются
+    // раструбом с силиконовым кольцом (role "seal"), отдельного хомута на стык
+    // в линейке нет, и ставить вместо него «адаптер соединительный» нельзя.
+    //
+    // ЦЕНЫ — РРЦ прайс-индекса от 09.09.2026 × 0,8 (обычная скидка ТЕРЕМ на
+    // STOUT). Соседей по этой прайс-группе в каталоге не было, вывести коэффициент
+    // было не из чего — цены уточняются прогоном AutoPrice.py по сайту ТЕРЕМ.
+
+    chimney_trad_60100_stout: [
+        { id: "SCR-6010-250100", name: "Адаптер подключения 90° универсальный традиц. коакс. D60(м-м)/100(п-м) (хомут, фланец, втулка, адаптер)", price: 1802, brand: "STOUT", role: "start_wall", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-250200", name: "Адаптер подключения универсальный вертик. традиц. коакс. D60(м-м)/100(п-м) (хомут, фланец, втулка, адаптер)", price: 1216, brand: "STOUT", role: "start_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-001001", name: "Горизонтальный проход через стену с наконечником АНТИЛЁД традиц. коакс. D60(п)/100(п)", price: 2021, brand: "STOUT", role: "term_wall", dn: "60/100", kind: "trad", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000751", name: "Горизонтальный проход через стену с наконечником АНТИЛЁД традиц. коакс. D60(п)/100(п)", price: 1665, brand: "STOUT", role: "term_wall", dn: "60/100", kind: "trad", len_m: 0.75, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800002", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D60(п)/100(п) белый узкий", price: 3420, brand: "STOUT", role: "term_roof", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000250", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L250", price: 822, brand: "STOUT", role: "ext", dn: "60/100", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000500", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L500", price: 1183, brand: "STOUT", role: "ext", dn: "60/100", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-001000", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L1000", price: 1914, brand: "STOUT", role: "ext", dn: "60/100", kind: "trad", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-001500", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L1500", price: 3856, brand: "STOUT", role: "ext", dn: "60/100", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-002000", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L2000", price: 5383, brand: "STOUT", role: "ext", dn: "60/100", kind: "trad", len_m: 2, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000090", name: "Отвод 90° традиц. коакс. D60(п-м)/100(п-м)", price: 1614, brand: "STOUT", role: "bend90", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000045", name: "Отвод 45° традиц. коакс. D60(п-м)/100(п-м)", price: 1534, brand: "STOUT", role: "bend45", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000020", name: "Конденсатоотводчик универсальный традиц. коакс. D60(п-м)/100(п-м)", price: 2719, brand: "STOUT", role: "drain", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000017", name: "Накладка декоративная D100", price: 156, brand: "STOUT", role: "rosette", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000018", name: "Крепление к стене D100 (Хомут)", price: 331, brand: "STOUT", role: "bracket", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000008", name: "Хомут комплект D100 (уплотнение под хомут, хомут стальной гнутый, саморезы)", price: 214, brand: "STOUT", role: "clamp", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000007", name: "Адаптер соединительный традиц. коакс. D60(п-п)/100(п-п) (втулка)", price: 434, brand: "STOUT", role: "adapter", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000001", name: "Адаптер соединительный традиц. D60(п-п) (втулка)", price: 161, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000002", name: "Адаптер соединительный традиц. D60(п-м)", price: 405, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000003", name: "Адаптер соединительный традиц. D60(м-м)", price: 463, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000004", name: "Адаптер соединительный традиц. D100(п-п) (втулка)", price: 279, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000005", name: "Адаптер соединительный традиц. D100(п-м)", price: 688, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000006", name: "Адаптер соединительный традиц. D100(м-м)", price: 780, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000009", name: "Уплотнение под хомут D100", price: 145, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000010", name: "Хомут стальной гнутый D100", price: 131, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000011", name: "Фланец комплект D100 (прокладка фланца, фланец пластиковый, саморезы)", price: 289, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000012", name: "Прокладка фланца D100", price: 179, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000013", name: "Фланец пластиковый D100", price: 179, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000014", name: "Адаптер Immergas комплект (фланец пластиковый, втулка, уплотнение, саморезы)", price: 865, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000015", name: "Уплотнение силиконовое D60", price: 133, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000016", name: "Уплотнение силиконовое D100", price: 298, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000021", name: "Конденсатоотводчик Т-образный традиц. коакс. D60(п-м)/100(п-м) с заглушкой и патрубком", price: 5688, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000022", name: "Ревизионный элемент Т-образный традиц. коакс. D60(п-м)/100(п-м) с заглушкой", price: 5436, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000023", name: "Стабилизатор тяги традиц. коакс. D60(п-м)/100(п-м)", price: 2386, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000024", name: "Стабилизатор тяги традиц. коакс. D60(п-м)/100(п-м) без задвижки", price: 1792, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000145", name: "Отвод 45° традиц. коакс. D60(м-м)/100(м-м)", price: 1753, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000190", name: "Отвод 90° традиц. коакс. D60(м-м)/100(м-м)", price: 1695, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000332", name: "Наконечник АНТИЛЁД традиц. D60(м)", price: 842, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000333", name: "Наконечник АНТИЛЁД традиц. коакс. D60(п)/100(п)", price: 1012, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-250300", name: "Адаптер подключения универсальный c конденсатоотв. вертик. традиц. коакс. D60(м-м)/100(п-м)", price: 2717, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-600250", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L250, чёрный", price: 1027, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-600500", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L500, чёрный", price: 1490, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-601000", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L1000, чёрный", price: 2458, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-700250", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L250, коричневый", price: 1027, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-700500", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L500, коричневый", price: 1490, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-701000", name: "Удлинитель дымохода традиц. коакс. D60(п-м)/100(п-м), L1000, коричневый", price: 2458, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800001", name: "Оголовок вертикальный традиц. коакс. D60(п)/100(п) белый узкий", price: 3382, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800003", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D60(п)/100(п) белый широкий", price: 4315, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800011", name: "Оголовок вертикальный традиц. коакс. D60(п)/100(п) чёрный узкий", price: 4491, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800012", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D60(п)/100(п) чёрный узкий", price: 4529, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800013", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D60(п)/100(п) чёрный широкий", price: 5320, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800021", name: "Оголовок вертикальный традиц. коакс. D60(п)/100(п) коричневый узкий", price: 5600, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800022", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D60(п)/100(п) коричневый узкий", price: 5638, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-800023", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D60(п)/100(п) коричневый широкий", price: 5320, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" }
+    ],
+    chimney_cond_60100_stout: [
+        { id: "SCR-8610-000001", name: "Адаптер подключения к котлу конденсац. D60(м)/100(м)", price: 2504, brand: "STOUT", role: "start_roof", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000851", name: "Горизонтальный проход через стену с наконечником конденсац. коакс. D60(п)/100(п)", price: 3252, brand: "STOUT", role: "term_wall", dn: "60/100", kind: "cond", len_m: 0.85, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-800001", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D60(п)/100(п) белый узкий", price: 7941, brand: "STOUT", role: "term_roof", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000250", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L250", price: 1693, brand: "STOUT", role: "ext", dn: "60/100", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000500", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L500", price: 2613, brand: "STOUT", role: "ext", dn: "60/100", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-001000", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L1000", price: 4147, brand: "STOUT", role: "ext", dn: "60/100", kind: "cond", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-001500", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L1500", price: 6395, brand: "STOUT", role: "ext", dn: "60/100", kind: "cond", len_m: 1.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-002000", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L2000", price: 6331, brand: "STOUT", role: "ext", dn: "60/100", kind: "cond", len_m: 2, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000090", name: "Отвод 90° конденсац. коакс. D60(п-м)/100(п-м)", price: 1786, brand: "STOUT", role: "bend90", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000045", name: "Отвод 45° конденсац. коакс. D60(п-м)/100(п-м)", price: 1965, brand: "STOUT", role: "bend45", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000004", name: "Адаптер соединительный конденсац. D60(п-м)", price: 948, brand: "STOUT", role: "adapter", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000002", name: "Адаптер соединительный конденсац. D60(п-п)", price: 679, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-000003", name: "Адаптер соединительный конденсац. D60(м-м)", price: 797, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-600250", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L250, чёрный", price: 1879, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-600500", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L500, чёрный", price: 2888, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-601000", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L1000, чёрный", price: 4642, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-700250", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L250, коричневый", price: 1879, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-700500", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L500, коричневый", price: 2888, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-701000", name: "Удлинитель дымохода конденсац. коакс. D60(п-м)/100(п-м), L1000, коричневый", price: 4642, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-800002", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D60(п)/100(п) белый широкий", price: 8899, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-800011", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D60(п)/100(п) чёрный узкий", price: 8949, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-800012", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D60(п)/100(п) чёрный широкий", price: 10445, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-800021", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D60(п)/100(п) коричневый узкий", price: 8949, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8610-800022", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D60(п)/100(п) коричневый широкий", price: 10445, brand: "STOUT", dn: "60/100", kind: "cond", availability: "in_stock", price_date: "2026-09-09" }
+    ],
+    chimney_trad_80125_stout: [
+        { id: "SCR-8125-250001", name: "Адаптер подключения 90° традиц. коакс. D80(п-м)/125(п-м) (хомут, накладки декоративные)", price: 3306, brand: "STOUT", role: "start_wall", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000751", name: "Горизонтальный проход через стену с наконечником традиц. коакс. D80(п)/125(п)", price: 5779, brand: "STOUT", role: "term_wall", dn: "80/125", kind: "trad", len_m: 0.75, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-800001", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D80(п)/125(п) белый узкий", price: 7419, brand: "STOUT", role: "term_roof", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000250", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L250", price: 1694, brand: "STOUT", role: "ext", dn: "80/125", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000500", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L500", price: 3195, brand: "STOUT", role: "ext", dn: "80/125", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-001000", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L1000", price: 5593, brand: "STOUT", role: "ext", dn: "80/125", kind: "trad", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-001500", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L1500", price: 9298, brand: "STOUT", role: "ext", dn: "80/125", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-002000", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L2000", price: 9259, brand: "STOUT", role: "ext", dn: "80/125", kind: "trad", len_m: 2, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000090", name: "Отвод 90° традиц. коакс. D80(п-м)/125(п-м)", price: 3195, brand: "STOUT", role: "bend90", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000045", name: "Отвод 45° традиц. коакс. D80(п-м)/125(п-м)", price: 3383, brand: "STOUT", role: "bend45", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000001", name: "Конденсатоотводчик универсальный традиц. коакс. D80(п-м)/125(п-м)", price: 4692, brand: "STOUT", role: "drain", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000004", name: "Хомут комплект D125 (резиновый хомут, хомут стальн. гнутый, саморезы 2 шт.)", price: 1133, brand: "STOUT", role: "clamp", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000005", name: "Адаптер соединительный традиц. переход с D60(п)/100(п) на D80(м)/125(м)", price: 2288, brand: "STOUT", role: "adapter", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000002", name: "Конденсатоотводчик Т-образный традиц. коакс. D80(п-м)/125(п-м) с заглушкой и патрубком", price: 6698, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000003", name: "Ревизионный элемент Т-образный традиц. коакс. D80(п-м)/125(п-м) с заглушкой", price: 6680, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000006", name: "Адаптер соединительный традиц. переход с D100(п) на D125(п)", price: 1203, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000007", name: "Адаптер соединительный традиц. переход с D100(м) на D125(п)", price: 1559, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000008", name: "Адаптер соединительный традиц. переход с D100(п) на D125(м)", price: 1783, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-000009", name: "Адаптер соединительный традиц. переход с D100(м) на D125(м)", price: 1969, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-600250", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L250, чёрный", price: 2089, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-600500", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L500, чёрный", price: 3651, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-601000", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L1000, чёрный", price: 6177, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-700250", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L250, коричневый", price: 2089, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-700500", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L500, коричневый", price: 3651, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-701000", name: "Удлинитель дымохода традиц. коакс. D80(п-м)/125(п-м), L1000, коричневый", price: 6177, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-800002", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D80(п)/125(п) белый широкий", price: 8627, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-800011", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D80(п)/125(п) чёрный узкий", price: 8187, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-800012", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D80(п)/125(п) чёрный широкий", price: 10091, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-800021", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D80(п)/125(п) коричневый узкий", price: 8187, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8125-800022", name: "Оголовок вертикальный с ветрозащитой традиц. коакс. D80(п)/125(п) коричневый широкий", price: 10091, brand: "STOUT", dn: "80/125", kind: "trad", availability: "in_stock", price_date: "2026-09-09" }
+    ],
+    chimney_cond_80125_stout: [
+        { id: "SCR-8012-000751", name: "Горизонтальный проход через стену с наконечником конденсац. коакс. D80(п)/125(п), L750 (рабочая длина 680мм)", price: 6565, brand: "STOUT", role: "term_wall", dn: "80/125", kind: "cond", len_m: 0.75, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-800001", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D80(п)/125(п) белый узкий", price: 7269, brand: "STOUT", role: "term_roof", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-000250", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L250", price: 1741, brand: "STOUT", role: "ext", dn: "80/125", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-000500", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L500", price: 3339, brand: "STOUT", role: "ext", dn: "80/125", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-001000", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L1000", price: 5784, brand: "STOUT", role: "ext", dn: "80/125", kind: "cond", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-000090", name: "Отвод 90° конденсац. коакс. D80(п-м)/125(п-м)", price: 3157, brand: "STOUT", role: "bend90", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-000045", name: "Отвод 45° конденсац. коакс. D80(п-м)/125(п-м)", price: 3474, brand: "STOUT", role: "bend45", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-000001", name: "Адаптер соединительный конденсац. переход с D60(п)/100(п) на D80(м)/125(м)", price: 2288, brand: "STOUT", role: "adapter", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-250001", name: "Адаптер моноблочный для перех. на двухтрубную систему конденсац. c D80(п)/125(п) на D80(м)/80(м)", price: 6191, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-600250", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L250, чёрный", price: 2391, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-600500", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L500, чёрный", price: 3973, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-601000", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L1000, чёрный", price: 6507, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-700250", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L250, коричневый", price: 2391, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-700500", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L500, коричневый", price: 3973, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-701000", name: "Удлинитель дымохода конденсац. коакс. D80(п-м)/125(п-м), L1000, коричневый", price: 6507, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-800002", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D80(п)/125(п) белый широкий", price: 8495, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-800011", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D80(п)/125(п) чёрный узкий", price: 8277, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-800012", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D80(п)/125(п) чёрный широкий", price: 9977, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-800021", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D80(п)/125(п) коричневый узкий", price: 8277, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8012-800022", name: "Оголовок вертикальный с ветрозащитой конденсац. коакс. D80(п)/125(п) коричневый широкий", price: 10985, brand: "STOUT", dn: "80/125", kind: "cond", availability: "in_stock", price_date: "2026-09-09" }
+    ],
+    chimney_cond_110160_stout: [
+        { id: "SCR-1116-000751", name: "Горизонтальный проход через стену с наконечником конденсац. коакс. D110(п)/160(п)", price: 18034, brand: "STOUT", role: "term_wall", dn: "110/160", kind: "cond", len_m: 0.75, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-1116-000500", name: "Удлинитель дымохода конденсац. коакс. D110(п-м)/160(п-м), L500", price: 7829, brand: "STOUT", role: "ext", dn: "110/160", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-1116-001000", name: "Удлинитель дымохода конденсац. коакс. D110(п-м)/160(п-м), L1000", price: 12732, brand: "STOUT", role: "ext", dn: "110/160", kind: "cond", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-1116-000090", name: "Отвод 90° конденсац. коакс. D110(п-м)/160(п-м)", price: 15279, brand: "STOUT", role: "bend90", dn: "110/160", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-1116-000001", name: "Адаптер соединительный конденсац. переход с D100(п)/150(п) на D110(м)/160(м)", price: 6209, brand: "STOUT", role: "adapter", dn: "110/160", kind: "cond", availability: "in_stock", price_date: "2026-09-09" }
+    ],
+    chimney_split_d80_stout: [
+        { id: "SCR-0080-250001", name: "Адаптер моноблочный универсальный для перех. на двухтрубную систему традиц. с D60(м)/100(п) на D80(м)/80(м)", price: 2617, brand: "STOUT", role: "adapter_d80", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-250001", name: "Адаптер моноблочный для перех. на двухтрубную систему конденсац. c D60(п)/100(п) на D80(м)/80(м)", price: 4969, brand: "STOUT", role: "adapter_d80", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-800001", name: "Оголовок вертикальный с ветрозащитой сварной традиц. D80(п) белый узкий", price: 1738, brand: "STOUT", role: "term_flue_roof", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-800001", name: "Оголовок вертикальный с ветрозащитой конденсац. D80(п) белый узкий", price: 1947, brand: "STOUT", role: "term_flue_roof", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000001", name: "Наконечник c боковыми отверстиями D80(м)", price: 731, brand: "STOUT", role: "term_flue_wall", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000002", name: "Наконечник-решетка D80(м)", price: 380, brand: "STOUT", role: "term_air", dn: "D80", kind: "any", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000250", name: "Удлинитель дымохода традиц. D80(п-м), L250", price: 545, brand: "STOUT", role: "ext", dn: "D80", kind: "trad", len_m: 0.25, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000250", name: "Удлинитель дымохода конденсац. D80(п-м), L250", price: 945, brand: "STOUT", role: "ext", dn: "D80", kind: "cond", len_m: 0.25, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000500", name: "Удлинитель дымохода традиц. D80(п-м), L500", price: 794, brand: "STOUT", role: "ext", dn: "D80", kind: "trad", len_m: 0.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000500", name: "Удлинитель дымохода конденсац. D80(п-м), L500", price: 1527, brand: "STOUT", role: "ext", dn: "D80", kind: "cond", len_m: 0.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-001000", name: "Удлинитель дымохода традиц. D80(п-м), L1000", price: 1250, brand: "STOUT", role: "ext", dn: "D80", kind: "trad", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-001000", name: "Удлинитель дымохода конденсац. D80(п-м), L1000", price: 2429, brand: "STOUT", role: "ext", dn: "D80", kind: "cond", len_m: 1, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-001500", name: "Удлинитель дымохода традиц. D80(п-м), L1500", price: 2051, brand: "STOUT", role: "ext", dn: "D80", kind: "trad", len_m: 1.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-001500", name: "Удлинитель дымохода конденсац. D80(п-м), L1500", price: 3641, brand: "STOUT", role: "ext", dn: "D80", kind: "cond", len_m: 1.5, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-002000", name: "Удлинитель дымохода традиц. D80(п-м), L2000", price: 2778, brand: "STOUT", role: "ext", dn: "D80", kind: "trad", len_m: 2, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-002000", name: "Удлинитель дымохода конденсац. D80(п-м), L2000", price: 4722, brand: "STOUT", role: "ext", dn: "D80", kind: "cond", len_m: 2, availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000090", name: "Отвод 90° традиц. D80(п-м) сварной", price: 910, brand: "STOUT", role: "bend90", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000090", name: "Отвод 90° конденсац. D80(п-м)", price: 1229, brand: "STOUT", role: "bend90", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000045", name: "Отвод 45° традиц. D80(п-м) литой", price: 913, brand: "STOUT", role: "bend45", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000045", name: "Отвод 45° конденсац. D80(п-м)", price: 1229, brand: "STOUT", role: "bend45", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000013", name: "Конденсатоотводчик универсальный традиц. D80(п-м)", price: 2038, brand: "STOUT", role: "drain", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000012", name: "Накладка декоративная D80", price: 151, brand: "STOUT", role: "rosette", dn: "D80", kind: "any", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000003", name: "Крепление к стене D80 (хомут)", price: 317, brand: "STOUT", role: "bracket", dn: "D80", kind: "any", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000011", name: "Уплотнение силиконовое D80", price: 235, brand: "STOUT", role: "seal", dn: "D80", kind: "any", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000004", name: "Адаптер соединительный традиц. D80(п-п) (втулка)", price: 222, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000005", name: "Адаптер соединительный традиц. D80(п-м)", price: 553, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000006", name: "Адаптер соединительный традиц. D80(м-м)", price: 780, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000007", name: "Адаптер соединительный традиц. переход с D60(п) на D80(п)", price: 730, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000008", name: "Адаптер соединительный традиц. переход с D60(м) на D80(п)", price: 775, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000009", name: "Адаптер соединительный традиц. переход с D60(п) на D80(м)", price: 833, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000010", name: "Адаптер соединительный традиц. переход с D60(м) на D80(м)", price: 1151, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000014", name: "Конденсатоотводчик Т-образный традиц. D80(п-м)с заглушкой и патрубком", price: 2307, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000145", name: "Отвод 45° традиц. D80(п-м) сварной", price: 911, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000190", name: "Отвод 90° традиц. D80(п-м) литой", price: 910, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-000290", name: "Отвод 90° традиц. D80(м-м) сварной", price: 1299, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-250002", name: "Адаптер моноблочный универсальный Т-образный для перех. на двухтрубную систему традиц. с D60(м)/100(п)", price: 1865, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-250008", name: "Адаптер моноблочный традиц. для перех. с D60(м)/100(п) на D80(м)", price: 2202, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-600250", name: "Удлинитель дымохода традиц. D80(п-м), L250, чёрный", price: 704, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-600500", name: "Удлинитель дымохода традиц. D80(п-м), L500, чёрный", price: 1001, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-601000", name: "Удлинитель дымохода традиц. D80(п-м), L1000, чёрный", price: 1556, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-700250", name: "Удлинитель дымохода традиц. D80(п-м), L250, коричневый", price: 704, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-700500", name: "Удлинитель дымохода традиц. D80(п-м), L500, коричневый", price: 1001, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-701000", name: "Удлинитель дымохода традиц. D80(п-м), L1000, коричневый", price: 1556, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-800002", name: "Оголовок вертикальный с ветрозащитой традиц. D80(п) белый широкий", price: 2132, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-800011", name: "Оголовок вертикальный с ветрозащитой сварной традиц. D80(п) чёрный узкий", price: 2318, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-800012", name: "Оголовок вертикальный с ветрозащитой традиц. D80(п) чёрный широкий", price: 2899, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-800021", name: "Оголовок вертикальный с ветрозащитой сварной традиц. D80(п) коричневый узкий", price: 2318, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-800022", name: "Оголовок вертикальный с ветрозащитой традиц. D80(п) коричневый широкий", price: 2849, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-800090", name: "Отвод 90° утепленный традиц. D80(п-м)", price: 2324, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-810250", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L250 (воздуховод до 105 градусов)", price: 1149, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-810500", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L500 (воздуховод до 105 градусов)", price: 1861, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-811000", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L1000 (воздуховод до 105 градусов)", price: 3286, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-811500", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L1500 (воздуховод до 105 градусов)", price: 5981, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-812000", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L2000 (воздуховод до 105 градусов)", price: 7755, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-820250", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L250 (газоход до 185 градусов)", price: 1560, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-820500", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L500 (газоход до 185 градусов)", price: 2701, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-821000", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L1000 (газоход до 185 градусов)", price: 4869, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-821500", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L1500 (газоход до 185 градусов)", price: 9132, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-822000", name: "Удлинитель дымохода утепленный традиц. D80(п-м), L2000 (газоход до 185 градусов)", price: 12369, brand: "STOUT", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000002", name: "Адаптер соединительный конденсац. переход с D60(п) на D80(п)", price: 1093, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000003", name: "Адаптер соединительный конденсац. переход с D60(п) на D80(м)", price: 1288, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000004", name: "Адаптер соединительный конденсац. переход с D60(м) на D80(п)", price: 1519, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000005", name: "Адаптер соединительный конденсац. переход с D60(м) на D80(м)", price: 1593, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000006", name: "Адаптер соединительный конденсац. D80(п) - D80(п)", price: 1086, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000007", name: "Адаптер соединительный конденсац. D80(м) - D80(м)", price: 1122, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-000008", name: "Адаптер соединительный конденсац. D80(м) - D80(п)", price: 1295, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-800002", name: "Оголовок вертикальный с ветрозащитой конденсац. D80(п) белый широкий", price: 2399, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-800011", name: "Оголовок вертикальный с ветрозащитой конденсац. D80(п) чёрный узкий", price: 2614, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-800012", name: "Оголовок вертикальный с ветрозащитой конденсац. D80(п) чёрный широкий", price: 3223, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-800021", name: "Оголовок вертикальный с ветрозащитой конденсац. D80(п) коричневый узкий", price: 2614, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-8080-800022", name: "Оголовок вертикальный с ветрозащитой конденсац. D80(п) коричневый широкий", price: 3223, brand: "STOUT", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-09" }
     ],
 
     stabs: [
@@ -2870,9 +3127,12 @@ const catalog = {
     // До 09.09.2026 здесь стояли 18/9: красная под заказ и синяя с выдуманным
     // артикулом EFXT018092SUPRS, которого у поставщика не существует — цена по
     // ней не обновлялась, и купить строку по коду монтажник не смог бы.
+    // len — длина одного отрезка трубки, 2 м. Цена в прайсе приведена к метру, но
+    // режут трубку не по метру: Energoflex Super Protect идёт палками по 2 м, как и
+    // ПРОТЕКТ ПРО в boiler_insulation. Метраж в смете округляется до кратного len.
     water_insulation: [
-        { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "EFXT018062SUPRK-400", name: "Теплоизоляция 18/6 (Красная)", price: 27.5, len: 2, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "EFXT018062SUPRS-400", name: "Теплоизоляция 18/6 (Синяя)", price: 27.5, len: 2, unit: "м", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" }
     ],
     insulation_pro: [
         { id: "RIC-0001-180602", name: "Трубка ПРОТЕКТ ПРО 18/6, 2м (синяя)",  dn: 18, thick: 6, len: 2, pack: 184, price: 27, unit: "м", brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },

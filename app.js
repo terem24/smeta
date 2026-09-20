@@ -64,7 +64,10 @@ const CONTEST_CATS_2026 = [
     { key: 'manifold_heat',  label: 'Коллектор отопл.',   pts: 7,  emoji: '🔀', test: (id)       => id.startsWith('SMS-09') || id.startsWith('SMB-6850-') },
     { key: 'rad_conv',       label: 'Радиаторы/конвект.', pts: 6,  emoji: '🏠', test: (id)       => (id.startsWith('SRB-0') || id.startsWith('SCQ-') || id.startsWith('SCN-')) },
     { key: 'automation',     label: 'Автоматика',          pts: 6,  emoji: '🎛️', test: (id, name) => id.startsWith('STE-') || id.startsWith('SHT-') || name.includes('термостат') || name.includes('терморегулятор') || name.includes('сервопривод') || name.includes('контроллер') },
-    { key: 'chimney',        label: 'Дымоход',             pts: 5,  emoji: '🏭', test: (id)       => id.startsWith('SCA-') },
+    // SCA — итальянская линейка (снята с умолчания 20.09.2026), SCR — российская
+    // STOUT, RCA — ROMMER. Проверять один SCA значило бы, что после смены
+    // умолчания баллы за дымоход не начисляются никому.
+    { key: 'chimney',        label: 'Дымоход',             pts: 5,  emoji: '🏭', test: (id)       => /^(SCA|SCR|RCA)-/.test(id) },
     { key: 'pump',           label: 'Насос',               pts: 4,  emoji: '💧', test: (id)       => id.startsWith('SPC-') },
     { key: 'tank_exp',       label: 'Бак мембранный',      pts: 4,  emoji: '🛢️', test: (id)       => id.startsWith('STH-') || id.startsWith('STW-') },
     { key: 'manifold_water', label: 'Коллектор воды',      pts: 3,  emoji: '🚿', test: (id, name, item) => (id.startsWith('SMB-6851-') || name.includes('3/4')) && (item && (item.group === '5.1. Внутреннее водоснабжение' || (item.group === '5. Внутреннее водоснабжение' && item.desc && (item.desc.includes('ХВС') || item.desc.includes('Холодная вода'))))) },
@@ -12615,10 +12618,12 @@ const app = {
             // onclick, и без этой проверки «занятым» оказывался любой щелчок
             const hit = ev.target.closest(this.GRIP_CONTROLS);
             if (hit && hit !== host && host.contains(hit)) return;
-            // Панель прокручена — хват остался наверху, вне видимой части, и
-            // показывать его молча бессмысленно. Возвращаем к началу: у щелчка
-            // по пустому месту всё равно нет другого смысла.
-            if (host.scrollTop > 4) host.scrollTo({ top: 0, behavior: 'smooth' });
+            // Прокрутку НЕ трогаем. До 20.09.2026 щелчок по пустому месту
+            // возвращал панель к началу — чтобы показать хват, который остался
+            // наверху. На деле человек в этот момент заполняет параметры где-то
+            // посередине списка, и его без спроса выбрасывало в самое начало.
+            // Потеря места в длинной панели дороже, чем подсказка про хват: до
+            // хвата и так можно доехать вверх руками.
             this.revealGrip(host);
         });
     },
@@ -35584,6 +35589,18 @@ const app = {
         }
         if (panel) panel.scrollTop = savedTop;
     },
+    /**
+     * Метраж теплоизоляции → целое число отрезков, пересчитанное обратно в метры.
+     *
+     * Трубка идёт палками по 2 м (поле len в каталоге), поштучно её не делят —
+     * цена просто приведена к метру. Значит 9 м в смете купить нельзя, нужно 10.
+     * В разводке отопления это округление было с самого начала, в котельной и
+     * водоснабжении его забыли — добавлено 20.09.2026.
+     */
+    insLen: function (meters, item) {
+        const stick = (item && item.len) || 2;
+        return Math.ceil(Math.ceil(meters) / stick) * stick;
+    },
     /** Русское склонение по числу: 1 петля, 2 петли, 5 петель. */
     plural: function (n, one, few, many) {
         const d = n % 10, dd = n % 100;
@@ -42384,6 +42401,10 @@ const app = {
             // noCheapenAlts — коллектор подбирается по числу контуров (см. render()), и брать
             // из ряда самый дешёвый значит поставить коллектор на 2 группы под четыре контура.
             collectorAlts.forEach(c => { c.alts = collectorAlts; c.noCheapenAlts = true; });
+            // Полный список кладём на каталог: render() у части коллекторов сужает
+            // .alts до своего ряда, и обратной дороги к коллектору-гидрострелке из
+            // обычного коллектора после этого не остаётся.
+            catalog.collectorAltsAll = collectorAlts;
         }
         // Евроконус 16 → аксиальный переходник. Два способа посадить трубу 16 на выход
         // коллектора: компрессионный евроконус (накидная гайка + обжимное кольцо) и
@@ -42557,6 +42578,16 @@ const app = {
         }
         if (catalog.convectors_scq && catalog.convectors_scn) { let convAlts = [catalog.convectors_scq[0], catalog.convectors_scn[0]]; catalog.convectors_scq.forEach(c => { c.alts = convAlts; }); catalog.convectors_scn.forEach(c => { c.alts = convAlts; }); }
         if (catalog.chimneys) { let chimneyAlts = catalog.chimneys; catalog.chimneys.forEach(c => { c.alts = chimneyAlts; }); }
+        // Элементы трассы тоже получают таблицу замены — свой набор целиком.
+        // Без этого цветные удлинители, широкие и цветные оголовки, утеплённые трубы
+        // и ревизии лежали бы в каталоге мёртвым грузом: автоподбор их не ставит
+        // (у них нет role), а руками выбрать было нечем. noCheapenAlts — в наборе
+        // разные диаметры и длины, и «самый дешёвый» значил бы удлинитель 250 мм
+        // вместо оголовка.
+        ['chimney_trad_60100', 'chimney_cond_60100', 'chimney_cond_80125', 'chimney_split_d80',
+         'chimney_trad_60100_stout', 'chimney_cond_60100_stout', 'chimney_trad_80125_stout',
+         'chimney_cond_80125_stout', 'chimney_cond_110160_stout', 'chimney_split_d80_stout']
+            .forEach(k => { const pool = catalog[k]; if (pool && pool.length) pool.forEach(x => { x.alts = pool; x.noCheapenAlts = true; }); });
         if (catalog.well_parts) {
             let muftaOld = catalog.well_parts.find(x => x.id === '53003214');
             let muftaNew = catalog.well_parts.find(x => x.id === 'SFH-0002-032114');
@@ -42902,7 +42933,7 @@ const app = {
         else if (originalId.startsWith('SCS-0001')) { if (this.state.wellAutoType === 'sirio') this.state.wellAutoType = 'top'; else if (this.state.wellAutoType === 'top') this.state.wellAutoType = 'base'; else this.state.wellAutoType = 'sirio'; }
         else if (originalId.startsWith('SCQ') || originalId.startsWith('SCN')) { this.state.convectorType = (this.state.convectorType === 'scq') ? 'scn' : 'scq'; }
         else if (originalId.startsWith('SVT') || originalId.startsWith('SVL')) { this.state.convConnectionType = (this.state.convConnectionType === 'straight') ? 'angled' : 'straight'; }
-        else if (originalId.startsWith('SCA-') || originalId.startsWith('RCA-')) { this.state.chimneyType = (this.state.chimneyType === 'standard') ? 'basic' : 'standard'; }
+        else if (this.isChimneyKitRow(originalId)) { this.state.chimneyType = (this.state.chimneyType === 'standard') ? 'basic' : 'standard'; }
         else if (originalId.startsWith('PA') || originalId.includes('RCT')) {
             this.state.pprSystemBrand = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand) ? 'wavin' : 'proaqua';
         }
@@ -43236,14 +43267,66 @@ const app = {
     // Готовый настенный комплект под котёл — тот же выбор, что делала обвязка
     // (chimneyFor в render). Одно место на всех, иначе подпись под полями трассы
     // считала бы по одному комплекту, а в смету попадал другой.
+    /**
+     * Список готовых комплектов, из которого выбирает подбор — по режиму бренда.
+     *
+     * До 20.09.2026 список был один на всех, и первым в нём стоял итальянский
+     * STOUT SCA-6010-210850: он не поставляется, а уезжал в смету по умолчанию.
+     * Теперь у STOUT своя российская линейка SCR, и она же умолчание.
+     *
+     * В режиме ROMMER список остаётся РОВНО прежним — позиции без brandKey, в том
+     * же порядке. Умолчание там по-прежнему подменяется на .rommer первой позиции,
+     * то есть смета в режиме ROMMER не меняется ни на рубль.
+     *
+     * Комплекты Vaillant (forBrand) видны в обоих режимах: у конденсационных
+     * Vaillant гарантия требует родную сертифицированную систему.
+     */
+    /**
+     * Строка сметы — готовый комплект дымохода, а не элемент трассы.
+     *
+     * Раньше «дымоходом» считался любой артикул SCA-/RCA-, и под это правило
+     * попадали все 37 элементов трассы ROMMER: удлинители, отводы, хомуты. Пока у
+     * них не было таблицы замены, это ничем не кончалось. Теперь замена есть у
+     * всего ассортимента (см. init), и отличать комплект от трубы обязательно:
+     * у комплекта своя таблица со всеми комплектами, у элемента — свой набор.
+     */
+    isChimneyKitRow: function (id) {
+        if (!id) return false;
+        return (catalog.chimneys || []).some(c => c.id === id || (c.rommer && c.rommer.id === id));
+    },
+
+    chimneyKitList: function () {
+        const all = catalog.chimneys || [];
+        if (this.state.brandMode === 'rommer') {
+            const old = all.filter(c => !c.brandKey);
+            if (old.length) return old;
+        }
+        const own = all.filter(c => c.brandKey === 'stout' || c.forBrand);
+        return own.length ? own : all;
+    },
+
     chimneyKitFor: function (b) {
-        const list = catalog.chimneys || [];
+        const list = this.chimneyKitList();
         if (b && b.cond) {
             const own = b.brand && list.find(c => c.chimType === 'cond' && c.forBrand === b.brand);
             const uni = list.find(c => c.chimType === 'cond' && !c.forBrand);
             if (own || uni) return own || uni;
         }
-        return (this.state.chimneyType === 'basic') ? list[1] : list[0];
+        return ((this.state.chimneyType === 'basic') ? list[1] : list[0]) || list[0];
+    },
+
+    /**
+     * Набор элементов трассы — по режиму бренда. В режиме STOUT берётся
+     * российский набор `<ключ>_stout` (артикулы SCR), в режиме ROMMER — прежний
+     * ROMMER-овский. Строение наборов одинаковое (роли, dn, kind), поэтому
+     * app.buildChimney об этом различии ничего не знает.
+     */
+    chimneyPool: function (key) {
+        if (this.state.brandMode !== 'rommer') {
+            const own = catalog[key + '_stout'];
+            if (own && own.length) return own;
+        }
+        return catalog[key] || [];
     },
 
     // Группа присоединения: у ROMMER начальные участки разные для
@@ -43319,7 +43402,7 @@ const app = {
     // прайса прочитать не удалось, берём универсальный: он подходит всему, кроме
     // Immergas, которого в каталоге нет.
     chimneyD80Adapter: function (b) {
-        const list = catalog.chimney_split_d80 || [];
+        const list = this.chimneyPool('chimney_split_d80');
         const kind = this.chimneyKind(b);
         if (kind === 'cond') return list.find(x => x.role === 'adapter_d80' && x.kind === 'cond') || null;
         const brand = String((b && b.brand) || '').toLowerCase();
@@ -43395,7 +43478,7 @@ const app = {
         const run = this.chimneyRunLen();
         const air = this.CHIMNEY_AIR_RUN;
         const bends = this.chimneyBends();
-        const list = catalog.chimney_split_d80 || [];
+        const list = this.chimneyPool('chimney_split_d80');
         if (!list.length) return null;
 
         const fit = (x) => x.kind === 'any' || x.kind === kind;
@@ -43476,9 +43559,9 @@ const app = {
         const group = this.chimneyStartGroup(b);
 
         const pools = {
-            trad: catalog.chimney_trad_60100 || [],
-            cond: catalog.chimney_cond_60100 || [],
-            wide: catalog.chimney_cond_80125 || []
+            trad: this.chimneyPool('chimney_trad_60100'),
+            cond: this.chimneyPool('chimney_cond_60100'),
+            wide: this.chimneyPool('chimney_cond_80125')
         };
         // Конденсационному удлинители нужны свои (полипропилен), но накладки,
         // кронштейны и хомуты общие — они лежат в традиционном наборе.
@@ -43585,11 +43668,11 @@ const app = {
 
         // Не влезли в предел — у конденсационного есть выход: тот же котёл на
         // 80/125 тянет вдвое дальше. У традиционного такого запаса нет.
-        if (res.eqLen > limit.max && kind === 'cond' && (catalog.chimney_cond_80125 || []).length) {
+        if (res.eqLen > limit.max && kind === 'cond' && this.chimneyPool('chimney_cond_80125').length) {
             const wide = assemble('80/125');
             const wideLimit = this.chimneyLimitFor(b, '80/125');
             if (wide.eqLen <= wideLimit.max) {
-                const adapter = (catalog.chimney_cond_80125 || []).find(x => x.role === 'adapter');
+                const adapter = this.chimneyPool('chimney_cond_80125').find(x => x.role === 'adapter');
                 if (adapter) wide.parts.unshift({ item: adapter, qty: 1, tip: 'Переход с выхода котла 60/100 на 80/125.' });
                 res = wide;
                 limit = wideLimit;
@@ -43732,10 +43815,10 @@ const app = {
     // менять и здесь, иначе подбор начнёт сравнивать не то, что попадёт в смету.
     gasRigCost: function (b, cascade) {
         const p = x => (x && x.price) || 0;
-        const list = catalog.chimneys || [];
+        const list = this.chimneyKitList();
         // Дымоход берём тот же, что поставит обвязка: конденсационному нужен свой
         // комплект — родной у Vaillant, универсальный у остальных.
-        let ch = (this.state.chimneyType === 'basic') ? list[1] : list[0];
+        let ch = ((this.state.chimneyType === 'basic') ? list[1] : list[0]) || list[0];
         if (b && b.cond) {
             ch = (b.brand && list.find(c => c.chimType === 'cond' && c.forBrand === b.brand)) ||
                 list.find(c => c.chimType === 'cond' && !c.forBrand) || ch;
@@ -44648,13 +44731,21 @@ const app = {
                 { id: 'angled', name: 'Угловое подключение конвектора', brand: isRommer ? 'ROMMER' : 'STOUT', price: angledPrice, imgId: angledImgId }
             ];
         }
-        else if (item.originalId && (item.originalId.startsWith('SCA-') || item.originalId.startsWith('RCA-') || (catalog.chimneys || []).some(c => c.id === item.originalId))) {
-            let p0 = isRommer ? (catalog.chimneys[0].rommer?.price || catalog.chimneys[0].price) : catalog.chimneys[0].price;
-            let name0 = isRommer ? (catalog.chimneys[0].rommer?.name || catalog.chimneys[0].name) : catalog.chimneys[0].name;
-            let imgId0 = isRommer ? (catalog.chimneys[0].rommer?.id || catalog.chimneys[0].id) : catalog.chimneys[0].id;
+        else if (this.isChimneyKitRow(item.originalId)) {
+            // «Стандарт» — это первый комплект СВОЕГО режима (см. chimneyKitList),
+            // а не chimneys[0]: с появлением российской линейки первым в массиве
+            // стоит SCR, у которого .rommer нет, и в режиме ROMMER строка замены
+            // показывала бы не то, что на самом деле стоит в смете.
+            const _kits = this.chimneyKitList();
+            const _k0 = _kits[0] || catalog.chimneys[0];
+            let p0 = isRommer ? (_k0.rommer?.price || _k0.price) : _k0.price;
+            let name0 = isRommer ? (_k0.rommer?.name || _k0.name) : _k0.name;
+            let imgId0 = isRommer ? (_k0.rommer?.id || _k0.id) : _k0.id;
             customAlts = [
                 { id: 'standard', name: name0, brand: isRommer ? 'ROMMER' : 'STOUT', price: p0, imgId: imgId0 },
-                ...catalog.chimneys.slice(1).map(c => ({ id: c.id, name: c.name, brand: c.brand || 'ROMMER', price: c.price }))
+                // В замене — ВЕСЬ ассортимент комплектов, обоих брендов.
+                ...catalog.chimneys.filter(c => c.id !== _k0.id)
+                    .map(c => ({ id: c.id, name: c.name, brand: c.brand || 'ROMMER', price: c.price }))
             ];
         }
         // Обвязка котельной: в таблице замены не отдельная позиция, а система целиком.
@@ -45572,7 +45663,7 @@ const app = {
             if (_at !== 'all') alts = alts.filter(x => !x.ctrlType || x.ctrlType === _at);
             if (_ac !== 'all') alts = alts.filter(x => !x.color || x.color === _ac);
         // Дымоходы Vaillant (артикулы без префикса SCA-/RCA-) узнаём по самому каталогу.
-        } else if (item.originalId && (item.originalId.startsWith('SCA-') || item.originalId.startsWith('RCA-') || (catalog.chimneys || []).some(c => c.id === item.originalId))) {
+        } else if (this.isChimneyKitRow(item.originalId)) {
             const _cht = this.state.chimneySwapType || 'all';
             const _b = (active) => `style="cursor:pointer;padding:3px 10px;border-radius:5px;font-size:12px;border:1px solid var(--primary);background:${active?'var(--primary)':'transparent'};color:${active?'#fff':'var(--primary)'};font-weight:${active?700:400};margin:2px;"`;
             _tankFiltersHtml =
@@ -47998,7 +48089,12 @@ const app = {
                 if (k.startsWith('SEB-')) delete this.state.swaps[k];
             });
         }
-        else if (originalId === 'SDG-0018-002502' || originalId === 'SDG-0018-002503' || originalId === 'SDG-0016-002502' || originalId === 'SDG-0016-002503') {
+        // Узел гидроразделения: SDG-0018 — коллектор со встроенной гидрострелкой,
+        // SDG-0016 — обычный распределительный коллектор без неё. Раньше здесь
+        // стояли только четыре артикула DN20, и замена узла DN25 (SDG-0018-0040xx)
+        // мимо hydroType проходила молча: в смете оставался голый коллектор без
+        // гидрострелки. Теперь ловим весь ряд обоих семейств — DN20, DN25 и DN32.
+        else if (originalId.startsWith('SDG-0018-') || originalId.startsWith('SDG-0016-')) {
             if (chosenId.startsWith("SDG-0018") || chosenId.startsWith("RDG-0018")) this.state.hydroType = 'combo';
             else this.state.hydroType = 'modular';
             if (catalog.collectors_dn20 && catalog.collectors_dn20.some(c => c.id === chosenId)) this.state.manualDnOverride = 'dn20';
@@ -48193,7 +48289,7 @@ const app = {
             if (chosenId.startsWith("SVT") || chosenId === 'straight') this.state.convConnectionType = 'straight';
             else this.state.convConnectionType = 'angled';
         }
-        else if (originalId.startsWith('SCA-') || originalId.startsWith('RCA-')) {
+        else if (this.isChimneyKitRow(originalId)) {
             if (chosenId.includes("standard") || chosenId === 'standard') this.state.chimneyType = 'standard';
             else this.state.chimneyType = 'basic';
         }
@@ -59492,7 +59588,7 @@ const app = {
                     `• Труба: ${pipeLabel} → трубка ${it.dn}/${it.thick}.<br>` +
                     `• Общая длина трубопроводов котельной: ${total.toFixed(1)} м.<br>` +
                     (line
-                        ? `• На ${line}: ${qty} м (половина метража, округление вверх).<br>`
+                        ? `• На ${line}: ${qty} м (половина метража, округление вверх до кратного ${it.len} м — трубка идёт отрезками по ${it.len} м, поштучно её не делят).<br>`
                         : `• Трубками по ${it.len} м: ${qty} шт.<br>`) +
                     `<br><b>Как ставить:</b> Стыки проклеивать, а не оставлять враспор — через открытый шов уходит заметная часть эффекта. На отводах и арматуре изоляцию не разрывать: краны и фитинги отдают тепло не меньше прямых участков.<br><br>` +
                     `<b style="color:#F59E0B;">Не нужна на объекте?</b> Весь раздел «2.9» выключается одним переключателем в его заголовке — построчно удалять не придётся.</span>`;
@@ -59903,9 +59999,9 @@ const app = {
             case 'pipe_hw':
                 return `<span style="${styles}"><span style="${head}">Труба PEX-a (ГВС)</span><b>Зачем:</b> Горячая вода (до 95°C).<br><b>Расчет:</b> Трассы подачи + подъемы.<br><b>Всего:</b> ${val1} м.</span>`;
             case 'ins_blue':
-                return `<span style="${styles}"><span style="${head}">Изоляция (Синяя)</span><b>Зачем:</b> Защита от конденсата (чтобы труба не "потела").<br><b>Расчет:</b> По длине трубы ХВС (${val1} м).<br><b>Норматив:</b> СП 61.13330.2012.</span>`;
+                return `<span style="${styles}"><span style="${head}">Изоляция (Синяя)</span><b>Зачем:</b> Защита от конденсата (чтобы труба не "потела").<br><b>Расчет:</b> По длине трубы ХВС, округлённой вверх до целой трубки 2 м: ${val1} м.<br><b>Норматив:</b> СП 61.13330.2012.</span>`;
             case 'ins_red':
-                return `<span style="${styles}"><span style="${head}">Изоляция (Красная)</span><b>Зачем:</b> Снижение теплопотерь (чтобы вода не остывала).<br><b>Расчет:</b> По длине трубы ГВС (${val1} м).</span>`;
+                return `<span style="${styles}"><span style="${head}">Изоляция (Красная)</span><b>Зачем:</b> Снижение теплопотерь (чтобы вода не остывала).<br><b>Расчет:</b> По длине трубы ГВС, округлённой вверх до целой трубки 2 м: ${val1} м.</span>`;
             case 'socket':
                 return `<span style="${styles}"><span style="${head}">Водорозетка</span><b>Зачем:</b> Жесткая фиксация выхода для смесителя.<br><b>Тип:</b> ${val1}.<br><b>Кол-во:</b> ${val2} шт.</span>`;
             case 'sleeve':
@@ -63092,13 +63188,24 @@ const app = {
                 }
             }
             if (dn25) {
-                if (circuits > 3 && catalog.collectors_dn25) {
+                // Модульная схема DN25 — коллектор БЕЗ встроенного разделителя, и
+                // тогда гидрострелка обязана идти отдельной строкой. Так собирается
+                // и при числе контуров больше трёх (совмещённого узла на столько просто
+                // нет), и когда монтажник сам поменял коллектор-гидрострелку на
+                // обычный коллектор: до 20.09.2026 на DN25 такая замена оставляла
+                // котельную вовсе без гидроразделения — hydroType здесь не читался.
+                const _dn25Modular = (circuits > 3 || this.state.hydroType === 'modular');
+                if (_dn25Modular && catalog.collectors_dn25) {
                     const _dn25CollectorByLoops = { 2: 'SDG-0016-004002', 3: 'SDG-0016-004003', 4: 'SDG-0016-004004', 5: 'SDG-0016-004005', 6: 'SDG-0016-004006' };
-                    let clampedCircuits = Math.min(circuits, 6);
+                    let clampedCircuits = Math.max(2, Math.min(circuits, 6));
                     let collItem = catalog.collectors_dn25.find(c => c.id === _dn25CollectorByLoops[clampedCircuits]) || catalog.collectors_dn25[catalog.collectors_dn25.length - 1];
-                    collItem.alts = catalog.collectors_dn25;
+                    // До 3 контуров совмещённый узел существует, и вернуться к нему
+                    // из обычного коллектора надо иметь чем — оставляем полный список
+                    // замены. Выше трёх коллектора-гидрострелки в линейке нет, там
+                    // список сужается до ряда обычных коллекторов DN25.
+                    collItem.alts = (circuits > 3) ? catalog.collectors_dn25 : (catalog.collectorAltsAll || catalog.collectors_dn25);
                     addToBill({ ...collItem, sortRank: -3 }, 1, this.getDesc('hydro_collector', true, circuits, 'dn25', hCtx), grpHydro);
-                    addToBill({ ...catalog.hydro_arrow, sortRank: -3 }, 1, `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Применяется при количестве контуров > 3 (модульная схема: коллектор + стрелка раздельно). Макс. расход: 3.0 м³/ч.`, grpHydro);
+                    addToBill({ ...catalog.hydro_arrow, sortRank: -3 }, 1, `Гидрострелка — выравнивает давление между котловым и распределительными контурами. Применяется в модульной схеме: коллектор и стрелка раздельно. Макс. расход: 3.0 м³/ч.`, grpHydro);
                 } else {
                     let item = catalog.hydro_dn25[idx];
                     addToBill({ ...item, sortRank: -3 }, 1, this.getDesc('hydro_collector', true, circuits, 'dn25', hCtx), grpHydro);
@@ -64198,7 +64305,14 @@ const app = {
                         : `нержавейка Ø${diam} мм`;
                 if (_set.blue) {
                     // Половина метража на подачу, половина на обратку — как в разводке.
-                    const _half = Math.ceil(_len / 2);
+                    //
+                    // И округление вверх ДО ЧЁТНОГО: трубка идёт отрезками по 2 м
+                    // (поле len), поштучно её не продают, цена в каталоге просто
+                    // приведена к метру. До 20.09.2026 тут стоял голый Math.ceil,
+                    // и в смету попадали 9 м, которых в природе не купить, — то же
+                    // округление в разводке отопления давно есть, в котельной его
+                    // забыли.
+                    const _half = this.insLen(_len / 2, _set.red);
                     addToBill(_set.red, _half, this.getDesc('boiler_ins', _set.red, _half, _len, _pipeLabel, 'подача'), grpIns);
                     addToBill(_set.blue, _half, this.getDesc('boiler_ins', _set.blue, _half, _len, _pipeLabel, 'обратка'), grpIns);
                 } else {
@@ -67295,8 +67409,12 @@ const app = {
                 const _dirCold = _addLineManifolds('ХВС', 'cw', _riserPts.map(p => p.cold), catalog.water_manifolds_cold, 'cw', grpCold, false);
                 addEurocone(waterEurocone, totalColdPoints - _dirCold, this.getDesc('eurocone_water', totalColdPoints - _dirCold), grpCold);
                 _addDirect('ХВС', _dirCold, grpCold);
+                // pLen — ДЛИНА ТРУБЫ: по ней ниже считается крепёж. Изоляцию берём
+                // отдельным числом — она округляется до целой трубки 2 м (app.insLen),
+                // и считать по ней дюбели значило бы набивать крепёж на пустом месте.
                 let pLen = Math.ceil(totalPipeCold);
-                addToBill(catalog.water_insulation[1], pLen, this.getDesc('ins_blue', pLen), grpCold);
+                const _insCold = this.insLen(totalPipeCold, catalog.water_insulation[1]);
+                addToBill(catalog.water_insulation[1], _insCold, this.getDesc('ins_blue', _insCold), grpCold);
 
                 // Крепление трубопровода ХВС
                 if (this.state.pipeMountType === 'hidden') {
@@ -67356,8 +67474,12 @@ const app = {
                 const _dirHot = _addLineManifolds('ГВС', 'hw', _hotSplit ? _riserPts.map(p => p.hot) : [totalHotPoints],catalog.water_manifolds_hot, recirc ? 'hw_recirc' : 'hw_std', grpHot, true);
                 addEurocone(waterEurocone, totalHotPoints - _dirHot, this.getDesc('eurocone_water', totalHotPoints - _dirHot), grpHot);
                 _addDirect('ГВС', _dirHot, grpHot);
+                // pLen — ДЛИНА ТРУБЫ: по ней ниже считается крепёж. Изоляцию берём
+                // отдельным числом — она округляется до целой трубки 2 м (app.insLen),
+                // и считать по ней дюбели значило бы набивать крепёж на пустом месте.
                 let pLen = Math.ceil(recirc ? (totalPipeHot / 2) : totalPipeHot);
-                addToBill(catalog.water_insulation[0], pLen, this.getDesc('ins_red', pLen), grpHot);
+                const _insHot = this.insLen(recirc ? (totalPipeHot / 2) : totalPipeHot, catalog.water_insulation[0]);
+                addToBill(catalog.water_insulation[0], _insHot, this.getDesc('ins_red', _insHot), grpHot);
 
                 // Крепление трубопровода ГВС
                 if (this.state.pipeMountType === 'hidden') {
@@ -67431,8 +67553,12 @@ const app = {
                 if (studItem) {
                     addToBill(studItem, 2, "Шпилька сантехническая M8x100 для крепления коллектора водоснабжения к стене (Рециркуляция).", grpRecirc);
                 }
+                // pLen — ДЛИНА ТРУБЫ: по ней ниже считается крепёж. Изоляцию берём
+                // отдельным числом — она округляется до целой трубки 2 м (app.insLen),
+                // и считать по ней дюбели значило бы набивать крепёж на пустом месте.
                 let pLen = Math.ceil(totalPipeHot / 2);
-                addToBill(catalog.water_insulation[0], pLen, this.getDesc('ins_red', pLen), grpRecirc);
+                const _insRec = this.insLen(totalPipeHot / 2, catalog.water_insulation[0]);
+                addToBill(catalog.water_insulation[0], _insRec, this.getDesc('ins_red', _insRec), grpRecirc);
 
                 // Крепление трубопровода рециркуляции ГВС
                 if (this.state.pipeMountType === 'hidden') {
