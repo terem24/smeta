@@ -5644,12 +5644,12 @@ const catalog = {
         // Крупные размеры — серия «под ключ»: обычной комбинированной муфты
         // больше дюйма у Pro Aqua нет. Без них магистраль 40–63 мм оставалась
         // без артикула, а подбор по названию уводил её в фитинги ПНД.
-        { id: "PA22520P", article: "PA22520P", price: 666.5, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 40х1 1/4", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA22521P", article: "PA22521P", price: 877.34, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 40х1 1/2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA22522P", article: "PA22522P", price: 890.99, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 50х1 1/2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA22523P", article: "PA22523P", price: 1283.09, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 50х2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA22524P", article: "PA22524P", price: 1285.14, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 63х2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA22528", article: "PA22528", price: 4279.6, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ ВР PP-R 90х3", unit: "шт", price_date: "2026-09-07" }
+        { id: "PA22520P", article: "PA22520P", price: 666, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 40х1 1/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA22521P", article: "PA22521P", price: 877, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 40х1 1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA22522P", article: "PA22522P", price: 890, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 50х1 1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA22523P", article: "PA22523P", price: 1283, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 50х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA22524P", article: "PA22524P", price: 1285, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 63х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA22528", article: "PA22528", price: 4279, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ ВР PP-R 90х3", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_adapter_mi: [
         { id: "PA23008P", article: "PA23008P", price: 130, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 20х1/2", unit: "шт",
@@ -5671,13 +5671,13 @@ const catalog = {
         { id: "PA23020", article: "PA23020", price: 436, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 40х1", unit: "шт",
   price_date: '2026-09-20' },
         // То же для наружной резьбы, см. соседнюю группу.
-        { id: "PA23520P", article: "PA23520P", price: 915.72, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 40х1 1/4", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA23521P", article: "PA23521P", price: 1272.18, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 40х1 1/2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA23522P", article: "PA23522P", price: 1274.74, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 50х1 1/2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA23523P", article: "PA23523P", price: 2064.76, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 50х2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA23524P", article: "PA23524P", price: 2104.21, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 63х2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA23526", article: "PA23526", price: 4229.76, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ НР PP-R 75х2 1/2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA23528", article: "PA23528", price: 5667.72, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ НР PP-R 90х3", unit: "шт", price_date: "2026-09-07" }
+        { id: "PA23520P", article: "PA23520P", price: 915, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 40х1 1/4", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA23521P", article: "PA23521P", price: 1272, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 40х1 1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA23522P", article: "PA23522P", price: 1274, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 50х1 1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA23523P", article: "PA23523P", price: 2064, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 50х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA23524P", article: "PA23524P", price: 2104, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная НР PP-R 63х2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA23526", article: "PA23526", price: 4229, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ НР PP-R 75х2 1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA23528", article: "PA23528", price: 5667, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ НР PP-R 90х3", unit: "шт", price_date: "2026-09-20" }
     ],
     ppr_proaqua_coupling: [
         { id: "PA12008P", article: "PA12008P", price: 6, brand: "ProAqua", availability: "in_stock", name: "Муфта соединительная PP-R 20 мм", unit: "шт",
@@ -5868,8 +5868,8 @@ const catalog = {
      * ВР/НР подбор внутри группы не различает.
      */
     ppr_proaqua_wall_elbow: [
-        { id: "PA28008P", article: "PA28008P", price: 100.3, brand: "ProAqua", availability: "in_stock", name: "Угольник настенный с креплением ВР PP-R 20х1/2", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA28012P", article: "PA28012P", price: 119.21, brand: "ProAqua", availability: "in_stock", name: "Угольник настенный с креплением ВР PP-R 25х1/2", unit: "шт", price_date: "2026-09-07" }
+        { id: "PA28008P", article: "PA28008P", price: 100, brand: "ProAqua", availability: "in_stock", name: "Угольник настенный с креплением ВР PP-R 20х1/2", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA28012P", article: "PA28012P", price: 119, brand: "ProAqua", availability: "in_stock", name: "Угольник настенный с креплением ВР PP-R 25х1/2", unit: "шт", price_date: "2026-09-20" }
     ],
 
     /**
@@ -5889,19 +5889,19 @@ const catalog = {
      * дальше их ведёт AutoPrice прогоном --others.
      */
     ppr_proaqua_extra: [
-        { id: "PA1261008", article: "PA1261008", price: 11.59, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 25х20", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA1261208", article: "PA1261208", price: 17.46, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 32х20", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA1261210", article: "PA1261210", price: 18.68, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 32х25", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12614008", article: "PA12614008", price: 29.86, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 40х20", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12614010", article: "PA12614010", price: 31.67, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 40х25", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12614012", article: "PA12614012", price: 33.62, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 40х32", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12616008", article: "PA12616008", price: 51.74, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х20", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12616010", article: "PA12616010", price: 53.52, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х25", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12616012", article: "PA12616012", price: 50.29, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х32", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12616014", article: "PA12616014", price: 60.88, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х40", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12618010", article: "PA12618010", price: 103.15, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х25", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12618012", article: "PA12618012", price: 108.1, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х32", unit: "шт", price_date: "2026-09-07" },
-        { id: "PA12618014", article: "PA12618014", price: 109.99, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х40", unit: "шт", price_date: "2026-09-07" },
+        { id: "PA1261008", article: "PA1261008", price: 11, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 25х20", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA1261208", article: "PA1261208", price: 17, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 32х20", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA1261210", article: "PA1261210", price: 18, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 32х25", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12614008", article: "PA12614008", price: 29, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 40х20", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12614010", article: "PA12614010", price: 31, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 40х25", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12614012", article: "PA12614012", price: 33, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 40х32", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12616008", article: "PA12616008", price: 51, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х20", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12616010", article: "PA12616010", price: 53, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х25", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12616012", article: "PA12616012", price: 50, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х32", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12616014", article: "PA12616014", price: 60, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 50х40", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12618010", article: "PA12618010", price: 103, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х25", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12618012", article: "PA12618012", price: 108, brand: "ProAqua", availability: "on_order", name: "Муфта переходная PP-R 63х32", unit: "шт", price_date: "2026-09-20" },
+        { id: "PA12618014", article: "PA12618014", price: 109, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х40", unit: "шт", price_date: "2026-09-20" },
         { id: "PA12618016", article: "PA12618016", price: 121.28, brand: "ProAqua", availability: "in_stock", name: "Муфта переходная PP-R 63х50", unit: "шт", price_date: "2026-09-07" },
         { id: "PA13608P", article: "PA13608P", price: 13.28, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° переходной Н-В PP-R 20 мм", unit: "шт", price_date: "2026-09-07" },
         { id: "PA13610P", article: "PA13610P", price: 21.26, brand: "ProAqua", availability: "in_stock", name: "Угольник 90° переходной Н-В PP-R 25 мм", unit: "шт", price_date: "2026-09-07" },
@@ -6102,9 +6102,9 @@ const catalog = {
         // Поддерживаемые протоколы (OpenTherm, E-Bus, BridgeNet, Navien, BSB,
         // WOLF, Kiturami) плата определяет сама — в названии их не перечисляем,
         // они есть в подсказке к позиции.
-        { id: "ML00005842", name: "Плата цифровых шин универсальная", price: 4500, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "ML00005842", name: "Плата цифровых шин универсальная", price: 4500, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         // Выносная панель ручного управления, до 3 шт на контроллер.
-        { id: "ML00004742", name: "Панель ручного управления МЛ-753 (RS-485)", price: 8990, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "ML00004742", name: "Панель ручного управления МЛ-753 (RS-485)", price: 8990, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
 
         // --- Базовый уровень: STOUT Thermatic 1002 (sys: 'basic') ---
         //
@@ -6167,10 +6167,10 @@ const catalog = {
     // kind: 'sensor' — только датчик; 'thermostat' — датчик со своей уставкой
     //                  и экраном в помещении.
     air_sensors: [
-        { id: "ML00005143", name: "Датчик температуры комнатный МЛ-778 (RS-485)", price: 3100, brand: "ZONT", unit: "шт", kind: "sensor", link: "wired", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "ML00004436", name: "Радиодатчик температуры комнатный МЛ-740 (868 МГц)", price: 3450, brand: "ZONT", unit: "шт", kind: "sensor", link: "radio", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "ML00006088", name: "Комнатный термостат МЛ-232 (RS-485)", price: 6100, brand: "ZONT", unit: "шт", kind: "thermostat", link: "wired", availability: "in_stock", price_date: "2026-08-20" },
-        { id: "ML00006557", name: "Комнатный термостат МЛ-332 (868 МГц)", price: 6900, brand: "ZONT", unit: "шт", kind: "thermostat", link: "radio", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "ML00005143", name: "Датчик температуры комнатный МЛ-778 (RS-485)", price: 3100, brand: "ZONT", unit: "шт", kind: "sensor", link: "wired", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "ML00004436", name: "Радиодатчик температуры комнатный МЛ-740 (868 МГц)", price: 3450, brand: "ZONT", unit: "шт", kind: "sensor", link: "radio", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "ML00006088", name: "Комнатный термостат МЛ-232 (RS-485)", price: 6100, brand: "ZONT", unit: "шт", kind: "thermostat", link: "wired", availability: "in_stock", price_date: "2026-09-20" },
+        { id: "ML00006557", name: "Комнатный термостат МЛ-332 (868 МГц)", price: 6900, brand: "ZONT", unit: "шт", kind: "thermostat", link: "radio", availability: "in_stock", price_date: "2026-09-20" },
         // Двухпозиционные термостаты STOUT (3 А, ON/OFF). Подключаются иначе —
         // не по шине, а сухим контактом на клеммы «Входы термостатов», которых
         // у контроллера ровно 3. Меняется и способ регулирования: контур
@@ -6210,7 +6210,7 @@ const catalog = {
         { id: "SMH-0002-010800", name: "Термостат комнатный беспроводной, LoRa", price: 6990, brand: "STOUT", unit: "шт", kind: "thermostat", link: "radio", sys: "basic", availability: "in_stock", price_date: "2026-09-10" }
     ],
     radio_modules: [
-        { id: "ML00004741", name: "Радиомодуль МЛ-590 (868 МГц)", price: 3720, brand: "ZONT", unit: "шт", capacity: 40, availability: "in_stock", price_date: "2026-08-20" }
+        { id: "ML00004741", name: "Радиомодуль МЛ-590 (868 МГц)", price: 3720, brand: "ZONT", unit: "шт", capacity: 40, availability: "in_stock", price_date: "2026-09-20" }
     ],
 
     // Защита от протечки. Работает только в связке с контроллером: он
@@ -6218,7 +6218,7 @@ const catalog = {
     // релейный выход 1. Обратно кран открывается только вручную из
     // приложения, автоматически — никогда.
     leak_sensors: [
-        { id: "ML11025", name: "Датчик протечки воды АСТРА-361, проводной", price: 1140, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "ML11025", name: "Датчик протечки воды АСТРА-361, проводной", price: 1140, brand: "ZONT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
         // Для Thermatic 1002 берём извещатель из его же линейки: шлейф у него
         // свой (вход Д1), и разветвители к нему идут из того же комплекта.
         { id: "SMH-0002-010060", name: "Датчик протечки воды проводной", price: 1490, brand: "STOUT", unit: "шт", sys: "basic", availability: "in_stock", price_date: "2026-09-10" }
@@ -6262,7 +6262,7 @@ const catalog = {
     extra_items: [
         // Артикул у Джилекса тот же, что у коллектора MEIBES в прайсе, поэтому
         // в каталоге он с приставкой — иначе поиск по id даст чужой товар.
-        { id: "JLX-9059", article: "9059", name: "Корпус для картриджного фильтра Джилекс 1 М 20\"", price: 5550, brand: "Джилекс", unit: "шт", availability: "on_order", price_date: "2026-08-20" },
+        { id: "JLX-9059", article: "9059", name: "Корпус для картриджного фильтра Джилекс 1 М 20\"", price: 5550, brand: "Джилекс", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
 
         // Энергофлекс 18/4: в прайсе эти позиции лежат без названия — в поле
         // наименования стоит сам артикул, поэтому по названию их не найти.
@@ -6302,7 +6302,7 @@ const catalog = {
 
         // Лента армированная: в прайсе лежит на листе «Энергофлекс», но строка
         // собирается без слова «лента», поэтому по названию не находится.
-        { id: "EPRL04825ARSKRDC", name: "Лента армированная самоклеящаяся Энергофлекс ENERGOPRO 48 мм х 25 м, красная", price: 545, unit: "шт", brand: "Energoflex", availability: "in_stock", price_date: "2026-08-20" },
+        { id: "EPRL04825ARSKRDC", name: "Лента армированная самоклеящаяся Энергофлекс ENERGOPRO 48 мм х 25 м, красная", price: 545, unit: "шт", brand: "Energoflex", availability: "in_stock", price_date: "2026-09-20" },
         // Гель уплотнительный: в прайс-листе его нет, цена с сайта ТЕРЕМ.
         { id: "6103", article: "6103", name: "Гель уплотнительный СантехМастерГель Синий, тюбик 60 г, блистер", price: 717, unit: "шт", brand: "СантехМастер", availability: "in_stock", price_date: "2026-07-28" }
     ]
@@ -7660,36 +7660,36 @@ const radValves = [
 // Радиаторная арматура STOUT Design — хром/белый/чёрный, прямое/угловое подключение.
 // Источник: sheet "Радиаторная арматура Design", прайс 07.2026.
 const radValvesDesign = [
-    { id: "SVTDK-0002-000015C", name: "Комплект клапанов термостатических STOUT Design хром, угловой 1/2\"", price: 6916, kind: "set", color: "chrome", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTDK-0002-000015W", name: "Комплект клапанов термостатических STOUT Design белый, угловой 1/2\"", price: 6522, kind: "set", color: "white", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTDK-0002-000015B", name: "Комплект клапанов термостатических STOUT Design черный, угловой 1/2\"", price: 8315, kind: "set", color: "black", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTDK-0001-000015C", name: "Комплект клапанов термостатических STOUT Design хром, прямой 1/2\"", price: 7265, kind: "set", color: "chrome", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTDK-0001-000015W", name: "Комплект клапанов термостатических STOUT Design белый, прямой 1/2\"", price: 6857, kind: "set", color: "white", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTDK-0001-000015B", name: "Комплект клапанов термостатических STOUT Design черный, прямой 1/2\"", price: 8651, kind: "set", color: "black", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTD-0002-000015C", name: "Клапан термостатический STOUT Design хром, угловой 1/2\"", price: 2648, kind: "valve", color: "chrome", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTD-0002-000015W", name: "Клапан термостатический STOUT Design белый, угловой 1/2\"", price: 2584, kind: "valve", color: "white", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTD-0002-000015B", name: "Клапан термостатический STOUT Design черный, угловой 1/2\"", price: 2832, kind: "valve", color: "black", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTD-0001-000015C", name: "Клапан термостатический STOUT Design хром, прямой 1/2\"", price: 2832, kind: "valve", color: "chrome", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTD-0001-000015W", name: "Клапан термостатический STOUT Design белый, прямой 1/2\"", price: 2793, kind: "valve", color: "white", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVTD-0001-000015B", name: "Клапан термостатический STOUT Design черный, прямой 1/2\"", price: 3015, kind: "valve", color: "black", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVLD-0002-000015C", name: "Клапан запорно-балансировочный STOUT Design хром, угловой 1/2\"", price: 2402, kind: "lockshield", color: "chrome", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVLD-0002-000015W", name: "Клапан запорно-балансировочный STOUT Design белый, угловой 1/2\"", price: 2390, kind: "lockshield", color: "white", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVLD-0002-000015B", name: "Клапан запорно-балансировочный STOUT Design черный, угловой 1/2\"", price: 2757, kind: "lockshield", color: "black", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVLD-0001-000015C", name: "Клапан запорно-балансировочный STOUT Design хром, прямой 1/2\"", price: 2574, kind: "lockshield", color: "chrome", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVLD-0001-000015W", name: "Клапан запорно-балансировочный STOUT Design белый, прямой 1/2\"", price: 2550, kind: "lockshield", color: "white", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVLD-0001-000015B", name: "Клапан запорно-балансировочный STOUT Design черный, прямой 1/2\"", price: 2942, kind: "lockshield", color: "black", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHTD-0002-003015C", name: "Головка термостатическая STOUT Design хром, жидкостная M30x1,5", price: 2238, kind: "head", color: "chrome", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHTD-0002-003015W", name: "Головка термостатическая STOUT Design белая, жидкостная M30x1,5", price: 1886, kind: "head", color: "white", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHTD-0002-003015B", name: "Головка термостатическая STOUT Design черная, жидкостная M30x1,5", price: 3071, kind: "head", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" }
+    { id: "SVTDK-0002-000015C", name: "Комплект клапанов термостатических STOUT Design хром, угловой 1/2\"", price: 6916, kind: "set", color: "chrome", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTDK-0002-000015W", name: "Комплект клапанов термостатических STOUT Design белый, угловой 1/2\"", price: 6522, kind: "set", color: "white", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTDK-0002-000015B", name: "Комплект клапанов термостатических STOUT Design черный, угловой 1/2\"", price: 8315, kind: "set", color: "black", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTDK-0001-000015C", name: "Комплект клапанов термостатических STOUT Design хром, прямой 1/2\"", price: 7265, kind: "set", color: "chrome", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTDK-0001-000015W", name: "Комплект клапанов термостатических STOUT Design белый, прямой 1/2\"", price: 6857, kind: "set", color: "white", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTDK-0001-000015B", name: "Комплект клапанов термостатических STOUT Design черный, прямой 1/2\"", price: 8651, kind: "set", color: "black", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTD-0002-000015C", name: "Клапан термостатический STOUT Design хром, угловой 1/2\"", price: 2648, kind: "valve", color: "chrome", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTD-0002-000015W", name: "Клапан термостатический STOUT Design белый, угловой 1/2\"", price: 2584, kind: "valve", color: "white", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTD-0002-000015B", name: "Клапан термостатический STOUT Design черный, угловой 1/2\"", price: 2832, kind: "valve", color: "black", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTD-0001-000015C", name: "Клапан термостатический STOUT Design хром, прямой 1/2\"", price: 2832, kind: "valve", color: "chrome", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTD-0001-000015W", name: "Клапан термостатический STOUT Design белый, прямой 1/2\"", price: 2793, kind: "valve", color: "white", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVTD-0001-000015B", name: "Клапан термостатический STOUT Design черный, прямой 1/2\"", price: 3015, kind: "valve", color: "black", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVLD-0002-000015C", name: "Клапан запорно-балансировочный STOUT Design хром, угловой 1/2\"", price: 2402, kind: "lockshield", color: "chrome", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVLD-0002-000015W", name: "Клапан запорно-балансировочный STOUT Design белый, угловой 1/2\"", price: 2390, kind: "lockshield", color: "white", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVLD-0002-000015B", name: "Клапан запорно-балансировочный STOUT Design черный, угловой 1/2\"", price: 2757, kind: "lockshield", color: "black", type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVLD-0001-000015C", name: "Клапан запорно-балансировочный STOUT Design хром, прямой 1/2\"", price: 2574, kind: "lockshield", color: "chrome", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVLD-0001-000015W", name: "Клапан запорно-балансировочный STOUT Design белый, прямой 1/2\"", price: 2550, kind: "lockshield", color: "white", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVLD-0001-000015B", name: "Клапан запорно-балансировочный STOUT Design черный, прямой 1/2\"", price: 2942, kind: "lockshield", color: "black", type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHTD-0002-003015C", name: "Головка термостатическая STOUT Design хром, жидкостная M30x1,5", price: 2238, kind: "head", color: "chrome", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHTD-0002-003015W", name: "Головка термостатическая STOUT Design белая, жидкостная M30x1,5", price: 1886, kind: "head", color: "white", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHTD-0002-003015B", name: "Головка термостатическая STOUT Design черная, жидкостная M30x1,5", price: 3071, kind: "head", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
 ];
 
 // Ручные (нетермостатические) клапаны и евроконус-варианты STOUT — для ручного добавления монтажником,
 // в автообвязку не входят. Источник: sheet "STOUT Радиаторная арматура", прайс 07.2026.
 const radManualValves = [
-    { id: "SVRS-1172-000015", name: "Клапан ручной с неподъемным шпинделем, прямой 1/2\"", price: 783, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVRS-1172-000020", name: "Клапан ручной с неподъемным шпинделем, прямой 3/4\"", price: 1128, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVRS-1152-000015", name: "Клапан ручной с неподъемным шпинделем, угловой 1/2\"", price: 725, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SVRS-1152-000020", name: "Клапан ручной с неподъемным шпинделем, угловой 3/4\"", price: 1077, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+    { id: "SVRS-1172-000015", name: "Клапан ручной с неподъемным шпинделем, прямой 1/2\"", price: 878, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVRS-1172-000020", name: "Клапан ручной с неподъемным шпинделем, прямой 3/4\"", price: 1263, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVRS-1152-000015", name: "Клапан ручной с неподъемным шпинделем, угловой 1/2\"", price: 812, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SVRS-1152-000020", name: "Клапан ручной с неподъемным шпинделем, угловой 3/4\"", price: 1206, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
     { id: "SVR-2122-000015", name: "Клапан ручной с закрытием \"металл по металлу\", прямой 1/2\"", price: 783, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
     { id: "SVR-2122-000020", name: "Клапан ручной с закрытием \"металл по металлу\", прямой 3/4\"", price: 1126, type: "straight", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
     { id: "SVR-2102-000015", name: "Клапан ручной с закрытием \"металл по металлу\", угловой 1/2\"", price: 722, type: "angled", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-10" },
@@ -7748,34 +7748,34 @@ const radAccessories = [
 // shape (round/quadro), size (В×Ш, см). Цвета: polished (Полированный), black (Чёрный матовый),
 // gunmetal (Оружейная сталь), graphite (Графит), gold (Золотой хром 585).
 const towelWarmersElectric = [
-    { id: "SHQ-J1RR-008050", name: "Полотенцесушитель эл. JAZZ round 80×50, Полированный", price: 14994, series: "JAZZ", shape: "round", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J2RR-008050", name: "Полотенцесушитель эл. JAZZ round 80×50, Чёрный матовый", price: 13974, series: "JAZZ", shape: "round", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J1RR-F08050", name: "Полотенцесушитель эл. JAZZ round 80×50, Полированный (с полкой)", price: 16932, series: "JAZZ", shape: "round", size: "80×50", color: "polished", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J2RR-F08050", name: "Полотенцесушитель эл. JAZZ round 80×50, Чёрный матовый (с полкой)", price: 14586, series: "JAZZ", shape: "round", size: "80×50", color: "black", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-R1R0-012008", name: "Полотенцесушитель эл. ROCK round 120×08, Полированный (2 опоры)", price: 11832, series: "ROCK", shape: "round", size: "120×08", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-R2R0-012008", name: "Полотенцесушитель эл. ROCK round 120×08, Чёрный матовый (2 опоры)", price: 10812, series: "ROCK", shape: "round", size: "120×08", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-R2R0-012012", name: "Полотенцесушитель эл. ROCK round 120×12, Чёрный матовый (3 опоры)", price: 13464, series: "ROCK", shape: "round", size: "120×12", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-R1Q0-012008", name: "Полотенцесушитель эл. ROCK quadro 120×08, Полированный (2 опоры)", price: 14178, series: "ROCK", shape: "quadro", size: "120×08", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-R2Q0-012008", name: "Полотенцесушитель эл. ROCK quadro 120×08, Чёрный матовый (2 опоры)", price: 11832, series: "ROCK", shape: "quadro", size: "120×08", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-R2Q0-012012", name: "Полотенцесушитель эл. ROCK quadro 120×12, Чёрный матовый (2 опоры)", price: 14994, series: "ROCK", shape: "quadro", size: "120×12", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J1QQ-008050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Полированный", price: 18156, series: "JAZZ", shape: "quadro", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J2QQ-008050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Чёрный матовый", price: 14484, series: "JAZZ", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J1QQ-F08050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Полированный (с полкой)", price: 19074, series: "JAZZ", shape: "quadro", size: "80×50", color: "polished", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J2QQ-F08050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Чёрный матовый (с полкой)", price: 14994, series: "JAZZ", shape: "quadro", size: "80×50", color: "black", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-F1QQ-008050", name: "Полотенцесушитель эл. FORTE quadro 80×50, Полированный", price: 20502, series: "FORTE", shape: "quadro", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-F2QQ-008050", name: "Полотенцесушитель эл. FORTE quadro 80×50, Чёрный матовый", price: 15096, series: "FORTE", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-P2QR-008050", name: "Полотенцесушитель эл. PIANO quadro 80×50, Чёрный матовый", price: 14892, series: "PIANO", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-P1QR-008050", name: "Полотенцесушитель эл. PIANO quadro 80×50, Полированный", price: 17850, series: "PIANO", shape: "quadro", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
+    { id: "SHQ-J1RR-008050", name: "Полотенцесушитель эл. JAZZ round 80×50, Полированный", price: 14994, series: "JAZZ", shape: "round", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J2RR-008050", name: "Полотенцесушитель эл. JAZZ round 80×50, Чёрный матовый", price: 13974, series: "JAZZ", shape: "round", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J1RR-F08050", name: "Полотенцесушитель эл. JAZZ round 80×50, Полированный (с полкой)", price: 16932, series: "JAZZ", shape: "round", size: "80×50", color: "polished", shelf: true, brand: "STOUT", unit: "шт", availability: "on_order", price_date: "2026-09-20" },
+    { id: "SHQ-J2RR-F08050", name: "Полотенцесушитель эл. JAZZ round 80×50, Чёрный матовый (с полкой)", price: 14586, series: "JAZZ", shape: "round", size: "80×50", color: "black", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-R1R0-012008", name: "Полотенцесушитель эл. ROCK round 120×08, Полированный (2 опоры)", price: 11832, series: "ROCK", shape: "round", size: "120×08", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-R2R0-012008", name: "Полотенцесушитель эл. ROCK round 120×08, Чёрный матовый (2 опоры)", price: 10812, series: "ROCK", shape: "round", size: "120×08", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-R2R0-012012", name: "Полотенцесушитель эл. ROCK round 120×12, Чёрный матовый (3 опоры)", price: 13464, series: "ROCK", shape: "round", size: "120×12", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-R1Q0-012008", name: "Полотенцесушитель эл. ROCK quadro 120×08, Полированный (2 опоры)", price: 14178, series: "ROCK", shape: "quadro", size: "120×08", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-R2Q0-012008", name: "Полотенцесушитель эл. ROCK quadro 120×08, Чёрный матовый (2 опоры)", price: 11832, series: "ROCK", shape: "quadro", size: "120×08", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-R2Q0-012012", name: "Полотенцесушитель эл. ROCK quadro 120×12, Чёрный матовый (2 опоры)", price: 14994, series: "ROCK", shape: "quadro", size: "120×12", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J1QQ-008050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Полированный", price: 18156, series: "JAZZ", shape: "quadro", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J2QQ-008050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Чёрный матовый", price: 14484, series: "JAZZ", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J1QQ-F08050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Полированный (с полкой)", price: 19074, series: "JAZZ", shape: "quadro", size: "80×50", color: "polished", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J2QQ-F08050", name: "Полотенцесушитель эл. JAZZ quadro 80×50, Чёрный матовый (с полкой)", price: 14994, series: "JAZZ", shape: "quadro", size: "80×50", color: "black", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-F1QQ-008050", name: "Полотенцесушитель эл. FORTE quadro 80×50, Полированный", price: 20502, series: "FORTE", shape: "quadro", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-F2QQ-008050", name: "Полотенцесушитель эл. FORTE quadro 80×50, Чёрный матовый", price: 15096, series: "FORTE", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-P2QR-008050", name: "Полотенцесушитель эл. PIANO quadro 80×50, Чёрный матовый", price: 14892, series: "PIANO", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-P1QR-008050", name: "Полотенцесушитель эл. PIANO quadro 80×50, Полированный", price: 17850, series: "PIANO", shape: "quadro", size: "80×50", color: "polished", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
     { id: "SHQ-S3QQ-008050", name: "Полотенцесушитель эл. SOUL quadro 80×50, Оружейная сталь", price: 44627, series: "SOUL", shape: "quadro", size: "80×50", color: "gunmetal", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-07-24" },
-    { id: "SHQ-T2QQ-008050", name: "Полотенцесушитель эл. TECHNO quadro 80×50, Чёрный матовый", price: 15606, series: "TECHNO", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-G4QQ-008050", name: "Полотенцесушитель эл. GRUNGE quadro 80×50, Графит", price: 18768, series: "GRUNGE", shape: "quadro", size: "80×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-N4QQ-007050", name: "Полотенцесушитель эл. NEOSOUL quadro 70×50, Графит", price: 17646, series: "NEOSOUL", shape: "quadro", size: "70×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-N2QQ-007050", name: "Полотенцесушитель эл. NEOSOUL quadro 70×50, Чёрный матовый", price: 16422, series: "NEOSOUL", shape: "quadro", size: "70×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-N2QQ-010050", name: "Полотенцесушитель эл. NEOSOUL quadro 100×50, Чёрный матовый", price: 20400, series: "NEOSOUL", shape: "quadro", size: "100×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-N4QQ-010050", name: "Полотенцесушитель эл. NEOSOUL quadro 100×50, Графит", price: 21420, series: "NEOSOUL", shape: "quadro", size: "100×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J8RR-008050", name: "Полотенцесушитель эл. JAZZ round 80×50, Золотой хром", price: 18360, series: "JAZZ", shape: "round", size: "80×50", color: "gold", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-J8RR-F08050", name: "Полотенцесушитель эл. JAZZ round 80×50, Золотой хром (с полкой)", price: 21420, series: "JAZZ", shape: "round", size: "80×50", color: "gold", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" },
-    { id: "SHQ-R8R0-012008", name: "Полотенцесушитель эл. ROCK round 120×08, Золотой хром (2 опоры)", price: 17340, series: "ROCK", shape: "round", size: "120×08", color: "gold", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-08-20" }
+    { id: "SHQ-T2QQ-008050", name: "Полотенцесушитель эл. TECHNO quadro 80×50, Чёрный матовый", price: 15606, series: "TECHNO", shape: "quadro", size: "80×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-G4QQ-008050", name: "Полотенцесушитель эл. GRUNGE quadro 80×50, Графит", price: 18768, series: "GRUNGE", shape: "quadro", size: "80×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-N4QQ-007050", name: "Полотенцесушитель эл. NEOSOUL quadro 70×50, Графит", price: 17646, series: "NEOSOUL", shape: "quadro", size: "70×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-N2QQ-007050", name: "Полотенцесушитель эл. NEOSOUL quadro 70×50, Чёрный матовый", price: 16422, series: "NEOSOUL", shape: "quadro", size: "70×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-N2QQ-010050", name: "Полотенцесушитель эл. NEOSOUL quadro 100×50, Чёрный матовый", price: 20400, series: "NEOSOUL", shape: "quadro", size: "100×50", color: "black", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-N4QQ-010050", name: "Полотенцесушитель эл. NEOSOUL quadro 100×50, Графит", price: 21420, series: "NEOSOUL", shape: "quadro", size: "100×50", color: "graphite", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J8RR-008050", name: "Полотенцесушитель эл. JAZZ round 80×50, Золотой хром", price: 18360, series: "JAZZ", shape: "round", size: "80×50", color: "gold", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-J8RR-F08050", name: "Полотенцесушитель эл. JAZZ round 80×50, Золотой хром (с полкой)", price: 21420, series: "JAZZ", shape: "round", size: "80×50", color: "gold", shelf: true, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
+    { id: "SHQ-R8R0-012008", name: "Полотенцесушитель эл. ROCK round 120×08, Золотой хром (2 опоры)", price: 17340, series: "ROCK", shape: "round", size: "120×08", color: "gold", brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" }
 ];
 
 // Город → регион для автоподстановки в анкете (app.autofillRegionByCity).
