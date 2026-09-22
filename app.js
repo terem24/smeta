@@ -9606,6 +9606,8 @@ const app = {
                     <div><b style="color:var(--text-sec);">Регион:</b> <span style="color:var(--text-main);">${regionLabel}</span></div>
                     <div><b style="color:var(--text-sec);">Дистрибьютор:</b> <span style="color:var(--text-main);">${distributorLabel}</span></div>
                 </div>
+                <!-- Счёт делается в карточке сметы (блоки «Счёт по этой смете» и «Версии КП») — ведём прямо туда -->
+                <button class="btn-header-blue" style="margin-top:14px; height:34px; padding:0 16px; width:fit-content;" onclick="app.openEstimateByCalc('${calcId}').then(() => { const b = document.getElementById('admin_invoice_block'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); })" title="Карточка сметы: копирование для 1С, номер КП, счёт по нужной версии">📄 Открыть смету для счёта</button>
             </div>
             ${actionsHtml}
             <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
