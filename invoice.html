@@ -2787,7 +2787,9 @@
                 if (item.isOpt) return;
                 const sku = realSku(item.displaySku || item.id);
                 if (sku) {
-                    text += `${sku}|${item.q}\n`;
+                    // Табуляция, а не «|»: вставка в Excel сама разложит
+                    // артикул и количество по двум столбцам
+                    text += `${sku}\t${item.q}\n`;
                 } else {
                     noSkuCount++;
                 }
