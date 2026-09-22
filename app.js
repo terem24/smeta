@@ -5754,12 +5754,13 @@ const app = {
      * клиента). По нему раздел «Заказы и счета» собирает договор и акты: состав и цены
      * берутся из того, что видел клиент, а не пересчитываются по сегодняшнему каталогу.
      */
-    logPrintedEvent: function () {
+    logPrintedEvent: function (channel) {
         if (window.SessionTrack) SessionTrack.screen('share');
         const shareId = this.state.shared_invoice_id;
         this.capturePriceSnapshot();
-        const kpVersion = this.stampKpVersion('print');
+        const kpVersion = this.stampKpVersion(channel || 'print');
         const meta = {};
+        if (channel) meta.channel = channel;       // 'pdf' | 'excel'
         if (shareId) meta.shared_invoice_id = shareId;
         if (kpVersion) meta.kp_version = kpVersion;
         this.logInvoiceEvent('printed', Object.keys(meta).length ? meta : null);
@@ -5848,7 +5849,8 @@ const app = {
      */
     KP_VERSIONS_KEEP: 20,
     KP_VERSIONS_KEEP_ITEMS: 8,
-    KP_CHANNEL_LABELS: { link: 'ссылка клиенту', print: 'печать или Excel', invoice: 'запрос счёта' },
+    // print — у версий до разделения PDF и Excel
+    KP_CHANNEL_LABELS: { link: 'ссылка клиенту', pdf: 'PDF', excel: 'Excel', print: 'PDF или Excel', invoice: 'запрос счёта' },
 
     // Версии текущего объекта (или переданного состояния — для админки)
     kpVersionsOf: function (st) {
@@ -5895,7 +5897,7 @@ const app = {
 
     /**
      * Ставит версию на отправку. Возвращает номер версии (1, 2, 3…).
-     * channel: 'link' | 'print' | 'invoice'.
+     * channel: 'link' | 'pdf' | 'excel' | 'invoice' (у старых версий — 'print').
      */
     stampKpVersion: function (channel) {
         try {
@@ -7247,7 +7249,7 @@ const app = {
                 </div>
                 <div class="lk-list" style="max-height:260px; overflow-y:auto;">`;
             events.forEach(e => {
-                const em = EVENT_META[e.event] || { label: e.event, color: '#94A3B8' };
+                const em = this.kanbanEventView(e.event, e.meta);
                 const dt = new Date(e.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const comment = e.meta && e.meta.comment ? e.meta.comment : '';
                 h += `
@@ -8242,6 +8244,22 @@ const app = {
     // а не по колонкам канбана.
     ADMIN_KANBAN_TECH_EVENTS: ['offline_link', 'opened', 'kp_reminder_sent'],
     /**
+     * Подпись и цвет события с учётом способа отправки. «Отправлено клиенту» —
+     * одна колонка канбана, но в истории и в текущем статусе видно, чем ушло:
+     * ссылкой, PDF или Excel (meta.channel). У старых отметок печати способа нет —
+     * тогда «PDF или Excel».
+     */
+    kanbanEventView: function (ev, meta) {
+        const base = this.ADMIN_KANBAN_EVENT_META[ev] || { label: ev, color: '#94A3B8' };
+        const ch = meta && meta.channel;
+        if (ev === 'sent' && ch === 'link') return Object.assign({}, base, { label: 'Отправлено: ссылка' });
+        if (ev === 'printed') {
+            const label = ch === 'pdf' ? 'Отправлено: PDF' : ch === 'excel' ? 'Отправлено: Excel' : 'Отправлено: PDF или Excel';
+            return Object.assign({}, base, { label: label });
+        }
+        return base;
+    },
+    /**
      * Показывать ли на доске брошенные расчёты.
      *
      * Живёт только в памяти вкладки: это взгляд на доску, а не настройка аккаунта,
@@ -8713,7 +8731,7 @@ const app = {
                             <div style="background:var(--surface-light); padding:10px 12px 12px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; flex:1;">
                                 ${cards.length ? cards.map(c => {
                 const initial = (c.user_name || '?').trim().charAt(0).toUpperCase();
-                const em = EVENT_META[c.current] || { label: c.current, color: '#94A3B8' };
+                const em = this.kanbanEventView(c.current, c.currentMeta);
                 const comment = c.currentMeta && c.currentMeta.comment ? c.currentMeta.comment : '';
                 // Номер КП с версией. Если текущий статус (одобрено, запрошен счёт)
                 // относится к более ранней версии — подпись, по какой именно.
@@ -9897,7 +9915,7 @@ const app = {
     renderInvoiceHistoryHtml: function (events) {
         const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
         return events.slice().reverse().map(e => {
-            const em = EVENT_META[e.event] || { label: e.event, color: '#94A3B8' };
+            const em = this.kanbanEventView(e.event, e.meta);
             const dt = new Date(e.created_at).toLocaleString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             const comment = e.meta && e.meta.comment ? e.meta.comment : '';
             // По какой версии КП было событие (есть у отметок, записанных после появления версий)
@@ -12232,7 +12250,7 @@ const app = {
 
         let html = '';
         cards.forEach(g => {
-            const meta = EVENT_META[g.statusEv.event] || { label: g.statusEv.event, color: '#94A3B8' };
+            const meta = this.kanbanEventView(g.statusEv.event, g.statusEv.meta);
             const loc = localByCalc[g.calcId];
             // Снимок сметы, ушедшей клиенту: по нему собираются документы. Его номер
             // положен в meta события «отправлено» (см. logInvoiceEvent('sent')).
@@ -33237,7 +33255,7 @@ const app = {
                     if (statusEvents.length) {
                         const last = statusEvents[statusEvents.length - 1];
                         const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
-                        const em = EVENT_META[last.event] || { label: last.event, color: '#94A3B8' };
+                        const em = this.kanbanEventView(last.event, last.meta);
                         const dt = new Date(last.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                         if (statusContainer) {
                             statusContainer.innerHTML = `
@@ -39457,7 +39475,7 @@ const app = {
         this.ensureCalcId(true);
         // Версия КП — до сохранения в облако (чтобы версия доехала до базы) и до
         // заголовка страницы: он же имя файла, «КП №452712-3 …»
-        this.stampKpVersion('print');
+        this.stampKpVersion('pdf');
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
@@ -39544,7 +39562,7 @@ const app = {
                 };
                 await this.lazy('html2pdf');
                 await html2pdf().set(opt).from(printBin).save();
-                this.logPrintedEvent();
+                this.logPrintedEvent('pdf');
                 GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
                 // Документ на руках — момент, когда в приложении уместно
                 // попросить оценку (rate_app.js слушает это событие).
@@ -39580,7 +39598,7 @@ const app = {
         } finally {
             app._printBinReady = false;
         }
-        this.logPrintedEvent();
+        this.logPrintedEvent('pdf');
         GRM.trackAction('pdf', this.state.calc_id);  // геймификация: +5 XP + значки PDF
         document.dispatchEvent(new CustomEvent('hc:pdf-done'));
 
@@ -39642,7 +39660,7 @@ const app = {
         this.ensureCalcId(true);
         // Версия КП — до сохранения в облако (чтобы версия доехала до базы) и до
         // заголовка страницы: он же имя файла, «КП №452712-3 …»
-        this.stampKpVersion('print');
+        this.stampKpVersion('excel');
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
@@ -39668,7 +39686,7 @@ const app = {
             // Имя файла то же, что у PDF: заголовок страницы «КП №… объект - м2 (разделы)»
             const safeName = (document.title || this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
             ExcelExport.saveFromPrintBin(`${safeName}.xlsx`, { flat: !!flat });
-            this.logPrintedEvent();
+            this.logPrintedEvent('excel');
             GRM.trackAction('pdf', this.state.calc_id);  // геймификация: та же отметка, что и у PDF
         } catch (err) {
             console.error('[executeExcelDownload] Ошибка формирования Excel:', err);
