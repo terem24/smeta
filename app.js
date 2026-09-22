@@ -39976,7 +39976,6 @@ const app = {
         if (!stateData.calc_id) stateData.calc_id = String(Math.floor(100000 + Math.random() * 900000));
         try {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
             let dbUserId = null;
             const tgUser = stateData.tgUser;
@@ -39996,8 +39995,12 @@ const app = {
                 }
             }
 
-            if (!dbUserId && !isLocal) {
-                console.warn("[saveJobToCloud] Профиль пользователя не найден в БД. Сохраняем расчет без привязки к user_id.");
+            // Без входа смету в облако не пишем: строка без автора никому не видна
+            // в «Моих объектах», а в админке висит «Неизвестным» (КП 397740, 22.09.2026).
+            // Возвращаем true — задача выполнена, иначе save_only уйдёт в повторы.
+            if (!dbUserId) {
+                console.log("[saveJobToCloud] Вход не выполнен — смету в облако не сохраняем.");
+                return true;
             }
 
             const insertData = {
