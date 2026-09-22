@@ -9450,6 +9450,12 @@ body.dark-mode .sec-analog-badge.active .sec-analog-label {
     -webkit-overflow-scrolling: touch;
 }
 
+/* Окно — flex-колонка: без этого при нехватке высоты браузер сжимает кнопку
+   «Скачать Excel» до полоски вместо того, чтобы включить прокрутку. */
+#share_options_modal_overlay .auth-modal-content > * {
+    flex-shrink: 0;
+}
+
 .share-option-card {
     display: flex;
     align-items: center;

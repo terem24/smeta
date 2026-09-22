@@ -456,6 +456,9 @@
 
         const rows = [];
         Array.from(table.querySelectorAll('tbody tr')).forEach(function (tr) {
+            // Строки вложенных таблиц (петли тёплого пола в подсказке позиции) —
+            // не позиции сметы
+            if (tr.closest('table') !== table) return;
             if (isHidden(tr)) return;
             if (tr.classList.contains('group-warn-row') || tr.classList.contains('empty-state-row')
                 || tr.classList.contains('scheme-row')) return;
@@ -633,7 +636,11 @@
             const qty = num(get(cells, 'col-qty'));
             const price = num(get(cells, 'col-price'));
             const sum = num(get(cells, 'col-sum'));
-            const key = [get(cells, 'col-name'), get(cells, 'col-sku'), get(cells, 'col-brand'),
+            // Один артикул — одна строка, даже если в разделах название написано
+            // по-разному («Кран шаровой ВР/НР 3/4"» и «Кран шаровой ВН-НР 3/4"»):
+            // остаётся название первой встречи. Без артикула сравниваем по названию.
+            const sku = get(cells, 'col-sku').trim();
+            const key = [sku && sku !== '—' ? sku : get(cells, 'col-name'), get(cells, 'col-brand'),
                 get(cells, 'col-unit'), get(cells, 'col-price')].join('');
             const same = byKey[key];
             if (same && qty !== null && same.qty !== null && price !== null) {
