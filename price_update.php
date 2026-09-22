@@ -2,7 +2,9 @@
 /**
  * Ежемесячная пересборка индекса прайс-листа ТЕРЕМ.
  *
- * Запускается планировщиком Beget раз в месяц. Что делает:
+ * Запускается планировщиком Beget раз в сутки: прайс ТЕРЕМ бывает перевыложен
+ * посреди месяца под тем же именем. Лишний запуск стоит один короткий запрос —
+ * если файл на сервере ТЕРЕМ не менялся, сборщик сразу выходит. Что делает:
  *   1. Открывает страницу списка прайсов и находит свежую ссылку. Прямой
  *      адрес файла предсказать нельзя — в нём случайный хеш, который
  *      меняется при каждой публикации, поэтому ссылку каждый раз ищем.
@@ -84,6 +86,26 @@ function httpGet($url, $toFile = null) {
 }
 
 /**
+ * Дата и размер файла на сервере ТЕРЕМ — без скачивания (запрос HEAD).
+ * Пустая строка, если сервер их не сообщил: тогда решаем по подписи месяца.
+ */
+function httpStamp($url) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_NOBODY, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 HeatCalc price updater');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FILETIME, true);
+    $ok = curl_exec($ch);
+    $time = curl_getinfo($ch, CURLINFO_FILETIME);
+    $size = curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
+    curl_close($ch);
+    if ($ok === false || $time <= 0) return '';
+    return gmdate('Y-m-d H:i:s', $time) . ' / ' . ($size > 0 ? (int)$size : '?');
+}
+
+/**
  * Дата сборщика — в первой же строке журнала.
  *
  * Файл выкладывается на Beget руками, и понять, доехала правка или на сервере
@@ -91,7 +113,7 @@ function httpGet($url, $toFile = null) {
  * это стоило лишней пересборки — новый индекс молча заменился старым. Теперь
  * версия видна сразу, до всякой сверки.
  */
-logmsg('--- запуск обновления прайса (сборщик от 09.09.2026) ---');
+logmsg('--- запуск обновления прайса (сборщик от 22.09.2026) ---');
 
 // Чистка архива распознанных смет. Делаем на каждом запуске (в том числе в
 // дни, когда прайс не менялся), чтобы папка не росла бесконечно. Удаляем
@@ -137,11 +159,32 @@ logmsg("найден прайс версии $version");
  * рядом как price_index.prev.json, чтобы можно было вернуться.
  */
 $force = !$isCli && ($_GET['force'] ?? '') === '1';
+
+/**
+ * Подписи месяца мало: ТЕРЕМ перевыкладывает прайс посреди месяца под тем же
+ * именем. 21.09.2026 так вышли новые цены на 3 900 позиций (+3…14 %), а сборщик
+ * увидел знакомое «09.2026» и до конца месяца отдавал старые. Поэтому сверяем
+ * ещё дату и размер самого файла на сервере ТЕРЕМ: они меняются при каждой
+ * перевыкладке, а узнать их можно без скачивания 95 МБ.
+ */
+$stamp = httpStamp($link);
+logmsg('файл на сервере ТЕРЕМ: ' . ($stamp !== '' ? $stamp : 'дата не сообщается'));
+
 if (file_exists($OUT_FILE)) {
     $cur = json_decode(@file_get_contents($OUT_FILE), true);
-    if (($cur['version'] ?? '') === $version && !$force) {
-        logmsg("индекс версии $version уже собран, выходим");
+    $curStamp = $cur['source'] ?? '';
+    // Индекс, собранный до этой правки, отметки не хранит — сравниваем тогда
+    // день сборки с днём файла: собран не раньше выкладки — значит, из него.
+    $sameFile = ($stamp === '')
+        || ($curStamp !== '' ? $curStamp === $stamp
+            : (($cur['built'] ?? '') !== '' && $cur['built'] >= substr($stamp, 0, 10)));
+    if (($cur['version'] ?? '') === $version && $sameFile && !$force) {
+        logmsg("индекс версии $version уже собран из этого же файла, выходим");
         exit(0);
+    }
+    if (($cur['version'] ?? '') === $version && !$sameFile) {
+        logmsg("прайс $version перевыложен (было: " . ($curStamp !== '' ? $curStamp : 'собран ' . ($cur['built'] ?? '?')) . '), пересобираю');
+        @copy($OUT_FILE, __DIR__ . '/price_index.prev.json');
     }
     if ($force) {
         @copy($OUT_FILE, __DIR__ . '/price_index.prev.json');
@@ -998,7 +1041,7 @@ if ($prevCount > 0 && count($uniq) < $prevCount * 0.75) {
 }
 
 $json = json_encode(
-    ['version' => $version, 'built' => date('Y-m-d'), 'items' => $uniq],
+    ['version' => $version, 'built' => date('Y-m-d'), 'source' => $stamp, 'items' => $uniq],
     JSON_UNESCAPED_UNICODE
 );
 
