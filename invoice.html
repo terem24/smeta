@@ -2685,7 +2685,7 @@
                     <button class="btn-copy-spec" id="btn_copy_1c" onclick="copySpecFor1C()"
                         title="Скопировать смету в буфер обмена в формате Артикул|Количество"
                         style="display: none; background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.2s ease;">
-                        📋 Копировать для 1С
+                        📋 Копировать артикулы
                     </button>
                     <label class="switch-control" title="Скрыть изображения оборудования для компактности">
                         <span class="switch-label">Картинки</span>
@@ -2720,7 +2720,7 @@
         <!-- Счёт для 1С: скидка от прайса ТЕРЕМ по строкам. Виден сотруднику по
              столбцу «Скидка 1С» таблицы «Тарифы», в печать не идёт. -->
         <div id="c1_container" class="no-print" style="display: none;">
-            <h2 class="sec-title">Счёт для 1С</h2>
+            <h2 class="sec-title">Скидки от прайса ТЕРЕМ</h2>
             <div id="c1_body"></div>
         </div>
 
@@ -3051,7 +3051,7 @@
                 // Отрицательная скидка — цена КП выше прайса; больше 50 % — почти
                 // всегда другая единица (упаковка против штуки). Минус до 1 % —
                 // это каталог округлил цену до рубля вверх (341 при 340,43), не подсвечиваем.
-                r.flag = r.disc < -1 ? 'Цена КП выше прайса — в 1С получится наценка'
+                r.flag = r.disc < -1 ? 'Цена КП выше прайса — в счёте получится наценка'
                     : r.disc > 50 ? 'Скидка больше 50 % — проверьте единицу измерения' : '';
                 inPrice.push(r);
             });
@@ -3078,13 +3078,13 @@
                         <td class="c1-num"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
                 });
                 html += `</tbody></table></div>
-                    <div class="c1-total">Итого по КП: <b>${money1c(sumKp)}</b> · в 1С со скидками выйдет ≈ <b>${money1c(sum1c)}</b></div>`;
+                    <div class="c1-total">Итого по КП: <b>${money1c(sumKp)}</b> · по прайсу со скидками выйдет ≈ <b>${money1c(sum1c)}</b></div>`;
             }
             if (missing.length) {
                 const missSum = missing.reduce((a, r) => a + r.sum, 0);
                 html += `<div class="c1-head c1-miss-head"><b>Не найдены в прайс-листе ТЕРЕМ: ${missing.length} поз. на ${money1c(missSum)}</b>
                     <button class="btn-copy-spec c1-btn" onclick="copy1cRows('missing', this)">📋 Копировать список</button></div>
-                    <div class="c1-note">Скидку от прайса для них посчитать не из чего. Часть может продаваться в ТЕРЕМ вне прайс-листа (как узел ASKON МУ-25М) — проверьте в 1С, остальное заказать в другом месте.</div>
+                    <div class="c1-note">Скидку от прайса для них посчитать не из чего. Часть может продаваться в ТЕРЕМ вне прайс-листа (как узел ASKON МУ-25М) — проверьте наличие, остальное заказать в другом месте.</div>
                     <div class="table-responsive"><table class="c1-table"><thead><tr>
                     <th>#</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена КП</th><th>Сумма КП</th>
                     </tr></thead><tbody>`;
@@ -3154,7 +3154,7 @@
             }
 
             const btn = document.querySelector('.btn-copy-spec');
-            const oldText = btn ? btn.innerHTML : "📋 Копировать для 1С";
+            const oldText = btn ? btn.innerHTML : "📋 Копировать артикулы";
 
             let p;
             if (navigator.clipboard && window.isSecureContext) {
