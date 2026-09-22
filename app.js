@@ -38867,6 +38867,11 @@ const app = {
                 });
             }
 
+            // Отметка «отправлена клиенту» с версией КП. Раньше ссылка события не
+            // писала вовсе: канбан узнавал об отправке, только когда клиент откроет
+            // ссылку, а напоминание «КП без счёта» не видело отправок ссылкой.
+            this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'link', kp_version: kpVersion || null });
+
             GRM.trackAction('share', shareId);  // геймификация: +10 XP + значки ссылок (шаринг ссылки клиенту)
 
             const validNote = object_info.valid_until
