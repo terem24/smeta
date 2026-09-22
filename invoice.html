@@ -2896,6 +2896,17 @@
             'WARME-ECO30-20': 'ecopro.30.20',
             'WARME-PRO65-20': 'ecopro.65.20'
         };
+        // Строки прайса без артикула: штанги нержавейки ROMMER 2 м и российские 4 м
+        // в прайсе ТЕРЕМ есть, но колонка артикула у них пустая. Связываем по названию
+        // строки прайса (сверено 22.09.2026). В 1С тогда уходит артикул калькулятора.
+        const PRICE_NAME_ALIAS_1C = {};
+        [['15', '15х1'], ['18', '18х1'], ['22', '22х1.2'], ['28', '28х1.2'], ['35', '35х1.5'], ['42', '42х1.5'], ['54', '54х1.5']].forEach(([d, size]) => {
+            PRICE_NAME_ALIAS_1C['RSS-1001-2000' + d] = 'Трубы в штангах из нержавеющей стали 304, 2 метра ' + size;
+            if (['18', '22', '28', '35'].includes(d)) {
+                PRICE_NAME_ALIAS_1C['RSS-2001-0000' + d] = 'Трубы в штангах из нержавеющей стали 304, 4 метра Россия ' + size;
+            }
+        });
+
         function priceKeys1c(sku) {
             const s = String(sku || '').trim();
             const out = [s];
@@ -2919,8 +2930,9 @@
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     const idx = await r.json();
                     if (!idx.items || !idx.items.length) throw new Error('пустой индекс');
-                    const exact = {}, loose = {};
+                    const exact = {}, loose = {}, byName = {};
                     idx.items.forEach(it => {
+                        if (it && !it.a && it.n && it.p > 0 && !byName[it.n.trim()]) byName[it.n.trim()] = it;
                         if (!it || !it.a || !(it.p > 0)) return;
                         const a = String(it.a).trim().toUpperCase();
                         if (!exact[a]) exact[a] = it;
@@ -2934,7 +2946,8 @@
                         version: idx.version || '',
                         get: sku => {
                             for (const k of priceKeys1c(sku)) { const it = find(k); if (it) return it; }
-                            return null;
+                            const nm = PRICE_NAME_ALIAS_1C[String(sku || '').trim()];
+                            return (nm && byName[nm]) || null;
                         }
                     };
                     return _priceMap1c;
@@ -3030,7 +3043,8 @@
                 if (!pl) { missing.push(r); return; }
                 r.pl = pl.p;
                 // Артикул, под которым позиция стоит в прайсе, — он же в 1С
-                r.plA = String(pl.a).trim();
+                r.plA = String(pl.a || '').trim() || r.sku;
+                r.plName = pl.a ? '' : pl.n;
                 // Скидка с двумя знаками: прайс × (1 − скидка) даёт цену КП до копеек
                 r.disc = Math.round((1 - r.price / pl.p) * 10000) / 100;
                 // Отрицательная скидка — цена КП выше прайса; больше 50 % — почти
@@ -3057,7 +3071,7 @@
                 inPrice.forEach((r, n) => {
                     html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
                         <td>${n + 1}</td><td class="c1-sku">${esc1c(r.plA)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в КП: ${esc1c(r.sku)}</div>` : ''}</td>
-                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
+                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.plName ? `<div class="c1-sub">в прайсе без артикула: «${esc1c(r.plName)}» — в 1С искать по названию</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
                         <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
                         <td class="c1-num">${money1c(r.pl)}</td><td class="c1-num">${money1c(r.price)}</td>
                         <td class="c1-num"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
