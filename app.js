@@ -6084,16 +6084,27 @@ const app = {
                 <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:8px;">🧾 Счёт по этой смете</div>
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
                     <button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px;" onclick="app.viewAdminEstimateInvoice('${estId}')" title="Смета, как её видит клиент, с контактами монтажника и кнопкой «Копировать для 1С»">📄 Открыть смету для счёта</button>
+                    ${calc ? `<button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px; background:transparent; color:var(--primary);" onclick="app.copyKpNumber('${this.kpNumber(st)}')" title="Скопировать «Счёт по КП № …» — вставить в комментарий счёта в 1С">📋 Номер КП</button>` : ''}
                     ${canMark ? `<button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px; background:#10B981; border-color:#10B981;" onclick="app.markKpInvoiceIssued()">✓ Счёт выставлен</button>` : ''}
                 </div>
                 <div style="font-size:11.5px; color:var(--text-sec); line-height:1.5;">
-                    1. «Открыть смету для счёта» — в новой вкладке откроется КП; кнопкой «Копировать для 1С» заберите артикулы и количество (два столбца) и вставьте в 1С или Excel.<br>
+                    1. «Открыть смету для счёта» — в новой вкладке откроется КП; кнопкой «Копировать для 1С» заберите артикулы и количество (два столбца) и вставьте в 1С или Excel. «📋 Номер КП» — строка для комментария счёта в 1С.<br>
                     2. Выставив счёт, нажмите «Счёт выставлен» — монтажник получит уведомление, карточка в «Статусах смет» перейдёт в «В оплату».<br>
                     ${hasVersions
                         ? '<b>У сметы есть версии КП</b> — чтобы выставить счёт именно на тот вариант, что одобрил клиент, нажмите «📄 Счёт по этой версии» у нужной версии ниже.'
                         : 'Версий КП у сметы пока нет: смету отправляли клиенту до их появления. Открывается смета по сегодняшним ценам каталога.'}
                 </div>
             </div>`;
+    },
+
+    // Строка для комментария счёта в 1С: по ней счёт потом находят по номеру КП,
+    // а номер версии говорит, на какой вариант сметы он выставлен
+    copyKpNumber: function (kp) {
+        if (!kp) return;
+        const text = `Счёт по КП № ${kp}`;
+        this.copyToClipboard(text)
+            .then(() => app.alert(`Скопировано: «${text}». Вставьте в комментарий счёта в 1С.`))
+            .catch(() => app.prompt('Скопируйте вручную:', text));
     },
 
     // «Счёт выставлен» из карточки сметы (без версии). Права — как у кнопок канбана.
@@ -6338,6 +6349,7 @@ const app = {
                     </div>
                 </div>
                 <div class="calc-dialog-buttons" style="flex-wrap:wrap; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="copynum" title="Скопировать «Счёт по КП № …» — вставить в комментарий счёта в 1С">📋 Номер КП</button>
                     <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="copy" title="Артикул и количество в два столбца — вставляется в Excel и 1С">📋 Копировать для 1С</button>
                     <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="print">🖨 Печать</button>
                     ${canIssue ? `<button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" data-act="issue" style="background:#10B981;">✓ Счёт выставлен по версии ${verNo}</button>` : ''}
@@ -6347,6 +6359,7 @@ const app = {
         overlay.addEventListener('click', async (e) => {
             const act = e.target && e.target.closest && e.target.closest('[data-act]') ? e.target.closest('[data-act]').getAttribute('data-act') : null;
             if (e.target === overlay || act === 'close') return close();
+            if (act === 'copynum') { this.copyKpNumber(kpNum); return; }
             if (act === 'copy') {
                 const lines = [];
                 let noSku = 0;

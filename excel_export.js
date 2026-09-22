@@ -727,7 +727,10 @@
         // --- заголовок документа: «Смета № … от …», как «Счет на оплату № … от …» ---
         const titleEl = node.querySelector('#project_name_edit');
         const projectName = readText(titleEl) || (window.app && app.state ? app.state.projectName : '') || 'Смета';
-        const calcId = (window.app && app.state && app.state.calc_id) ? app.state.calc_id : '';
+        // Номер КП с версией («452712-3»): выгрузка ставит версию до сборки файла
+        // (app.stampKpVersion), поэтому номер совпадает с тем, что уходит клиенту
+        const calcId = (window.app && typeof app.kpNumber === 'function') ? app.kpNumber()
+            : ((window.app && app.state && app.state.calc_id) ? app.state.calc_id : '');
         const today = new Date().toLocaleDateString('ru-RU');
         rows.push({
             h: 24,
