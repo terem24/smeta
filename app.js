@@ -9607,7 +9607,7 @@ const app = {
                     <div><b style="color:var(--text-sec);">Дистрибьютор:</b> <span style="color:var(--text-main);">${distributorLabel}</span></div>
                 </div>
                 <!-- Счёт делается в карточке сметы (блоки «Счёт по этой смете» и «Версии КП») — ведём прямо туда -->
-                <button class="btn-header-blue" style="margin-top:14px; height:34px; padding:0 16px; width:fit-content;" onclick="app.openEstimateByCalc('${calcId}').then(() => { const b = document.getElementById('admin_invoice_block'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); })" title="Карточка сметы: копирование для 1С, номер КП, счёт по нужной версии">📄 Открыть смету для счёта</button>
+                <button class="btn-header-blue" style="margin-top:14px; height:34px; padding:0 16px; width:fit-content;" onclick="app._estBackKanbanCalc = '${calcId}'; app.openEstimateByCalc('${calcId}').then(() => { const b = document.getElementById('admin_invoice_block'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'start' }); })" title="Карточка сметы: копирование для 1С, номер КП, счёт по нужной версии">📄 Открыть смету для счёта</button>
             </div>
             ${actionsHtml}
             <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border);">
@@ -20986,6 +20986,7 @@ const app = {
         // консоли или старой ссылки обязан упереться в ту же проверку, что и вёрстка.
         if (!this.tabVisibleFor(tab, this.getAdminRole(), this.isAnalyticsOwner())) return;
         this._adminTab = tab;
+        this._estBackKanbanCalc = null;
         // Данные раздела грузим при переходе в него, а не все сразу при открытии
         // панели. Что уже загружено — не перезапрашиваем: «Пользователей» отмечает
         // сам набор users, переписку — массив messages.
@@ -33274,6 +33275,15 @@ const app = {
             container.innerHTML = `<div style="color:var(--text-sec); font-size:12px;">Переписки нет — либо не назначен зарегистрированный менеджер, либо пользователь не является менеджером ни для кого.</div>`;
         }
     },
+    // «Назад» из карточки сметы: пришли из карточки планировщика кнопкой
+    // «Открыть смету для счёта» — туда и возвращаемся, иначе к текущему разделу
+    adminEstimateBack: function () {
+        const calc = this._estBackKanbanCalc;
+        this._estBackKanbanCalc = null;
+        if (calc && this._adminTab === 'kanban') return this.renderKanbanCardDetail(calc);
+        this.renderAdminMain();
+    },
+
     viewAdminEstimate: async function (estId) {
         try {
             // Кэш списков (adminData.userEstimates/recentEstimates) хранит только лёгкие
@@ -33343,7 +33353,7 @@ const app = {
                 : `<span style="color: var(--text-sec);">${email}</span>`;
 
             let h = `
-                        <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminMain()">← Назад</button>
+                        <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.adminEstimateBack()">← Назад</button>
                         <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
                             <h3 style="margin-top:0; color: var(--text-main);">📋 ${est.project_name || 'Без названия'}${st && st.calc_id ? ` <span style="font-size:14px; font-weight:700; color:var(--text-sec); font-family:monospace;">КП № ${this.kpNumber(st)}</span>` : ''}</h3>
                             
