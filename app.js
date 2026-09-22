@@ -20009,7 +20009,7 @@ const app = {
             // Доступ приостановлен за долгое отсутствие. Отдельно от блокировки:
             // тут никто ничего не нарушал, и снимается это другой кнопкой.
             if (u.frozen_at) {
-                const delOn = new Date(new Date(u.frozen_at).getTime() + 45 * 864e5);
+                const delOn = new Date(new Date(u.frozen_at).getTime() + 10 * 864e5);
                 badge += `<br><span title="Приостановлен ${new Date(u.frozen_at).toLocaleDateString('ru-RU')} за долгое отсутствие. Удаление ${delOn.toLocaleDateString('ru-RU')}, если не вернуть доступ." style="color:#fff; background:#0EA5E9; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px; cursor:help;">🧊 ЗАМОРОЖЕН</span>`;
             }
             let name = this.getAdminUserDisplayName(u);
@@ -30334,8 +30334,8 @@ const app = {
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
                             ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
-                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 45 дней.
-                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 45 * 864e5).toLocaleDateString('ru-RU')}.
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 25 дней.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 10 * 864e5).toLocaleDateString('ru-RU')}.
                                 <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
                             </div>` : ''}
                             ${(() => {
@@ -31094,8 +31094,9 @@ const app = {
                 <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
             </div>
             <div style="font-size:12px; color:var(--text-sec); margin-bottom:16px; line-height:1.5;">
-                Письмо уходит после 30 дней молчания, доступ приостанавливается на 45-й день,
-                учётка удаляется через 45 дней заморозки. Проверка идёт каждую ночь.
+                Письмо уходит после 20 дней молчания, доступ приостанавливается на 25-й день,
+                учётка удаляется через 10 дней заморозки. Пока действует Профи, счётчик стоит
+                и считается заново от дня окончания тарифа. Проверка идёт каждую ночь.
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
                 <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
@@ -31123,7 +31124,7 @@ const app = {
 
         if (!rows.length) {
             h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
-                Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 30 дней.
+                Пока никому не отправляли. Первые письма уйдут ближайшей ночью — тем, кто не заходил больше 20 дней.
             </div>`;
             root.innerHTML = h;
             return;
@@ -31143,13 +31144,18 @@ const app = {
             // Итог по-русски, а не кодом этапа: ради этой колонки отчёт и нужен.
             let outcome, color;
             if (r.stage === 'deleted') {
-                outcome = 'Удалён' + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
+                outcome = 'Удалён' + (r.deleted_at ? ' ' + dt(r.deleted_at) : '') + (r.frozen_at ? ' (был заморожен ' + dt(r.frozen_at) + ')' : '');
+                // Год после удаления заново зарегистрироваться нельзя, пока не разрешат
+                // (20260922_deleted_users_reg_block.sql).
+                const regTill = r.deleted_at ? new Date(new Date(r.deleted_at).getTime() + 365 * 864e5) : null;
+                if (r.reg_allowed_at) outcome += ' · регистрация разрешена ' + dt(r.reg_allowed_at);
+                else if (regTill && regTill > new Date()) outcome += ' · регистрация закрыта до ' + regTill.toLocaleDateString('ru-RU');
                 color = '#EF4444';
             } else if (r.returned_at) {
                 outcome = 'Вернулся ' + dt(r.returned_at);
                 color = '#10B981';
             } else if (r.stage === 'frozen') {
-                const delOn = new Date(new Date(r.frozen_at).getTime() + 45 * 864e5);
+                const delOn = new Date(new Date(r.frozen_at).getTime() + 10 * 864e5);
                 outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
                 color = '#0EA5E9';
             } else {
@@ -31173,6 +31179,10 @@ const app = {
                         : ''}
                     ${r.stage !== 'deleted'
                         ? `<button class="admin-action-btn btn-msg" onclick="app.viewAdminUser('${r.user_id}')">Карточка</button>`
+                        : ''}
+                    ${r.stage === 'deleted' && r.deleted_id && !r.reg_allowed_at && !isViewer
+                        && new Date(r.deleted_at).getTime() + 365 * 864e5 > Date.now()
+                        ? `<button class="admin-action-btn btn-obj" onclick="app.allowReregistration('${r.deleted_id}')">Разрешить регистрацию</button>`
                         : ''}
                 </td>
             </tr>`;
@@ -33394,6 +33404,21 @@ const app = {
                 return;
             }
 
+            // Учётку с этой почтой удалили за неактивность — год заново не регистрируем,
+            // пока администратор не разрешит (20260922_deleted_users_reg_block.sql).
+            // Спрашиваем до письма с кодом, чтобы не тратить лимит почты. Сбой проверки
+            // не повод отказывать: запрет всё равно сработает в базе при первом входе.
+            try {
+                const { data: blockTill } = await supabaseClient.rpc('reg_block_until', { p_email: email });
+                if (blockTill) {
+                    const msg = this.regBlockedText(blockTill);
+                    if (authErrEl) { authErrEl.innerText = msg; authErrEl.style.display = 'block'; }
+                    else app.alert(msg);
+                    if (btn) { btn.disabled = false; btn.innerText = 'Зарегистрироваться'; }
+                    return;
+                }
+            } catch (blockErr) { console.warn('[регистрация] запрет не проверен:', blockErr.message || blockErr); }
+
             // Промокод проверяем ДО письма: у почты месячный лимит, и опечатка в
             // коде не должна его тратить. Ошибка проверки (сеть, база) — не повод
             // отказывать в регистрации: код ещё раз проверится при первом входе.
@@ -33821,6 +33846,21 @@ const app = {
                 .from('users')
                 .upsert(upsertObj, { onConflict: 'auth_user_id', ignoreDuplicates: false })
                 .select(adminSelectCols);
+
+            // Новая учётка с почтой или телефоном удалённого за неактивность — база её
+            // не создаёт (users_block_deleted_reregistration). Запасная вставка ниже
+            // упрётся в тот же запрет, поэтому выходим сразу и объясняем почему.
+            if (upsertError && /REG_BLOCKED_INACTIVE/.test(upsertError.message || '')) {
+                const till = (String(upsertError.message).match(/(\d{2})\.(\d{2})\.(\d{4})/) || []);
+                await supabaseClient.auth.signOut();
+                delete this.state.tgUser;
+                this.state.accountType = 'base';
+                this.saveState();
+                this.syncUI();
+                this.render();
+                app.alert(this.regBlockedText(till[0] ? `${till[3]}-${till[2]}-${till[1]}` : null));
+                return;
+            }
 
             if (upsertError) {
                 console.warn('Upsert по auth_user_id не удался, используем fallback:', upsertError.message);
@@ -34284,6 +34324,29 @@ const app = {
     // того, кого закрыли за дело. Отсчёт молчания при этом начинается заново
     // (unfreeze_user двигает last_visited), иначе ночной проход заморозил бы
     // человека той же ночью.
+    // Текст для удалённого за неактивность, который пробует зарегистрироваться снова.
+    regBlockedText: function (till) {
+        const d = till ? new Date(till) : null;
+        const when = (d && !isNaN(d)) ? ' до ' + d.toLocaleDateString('ru-RU') : '';
+        return 'Учётная запись с этими данными была удалена за долгое отсутствие, повторная регистрация закрыта' + when +
+            '. Чтобы открыть её раньше, напишите на dima24ba@gmail.com.';
+    },
+    // Снимает годовой запрет на повторную регистрацию удалённого за неактивность.
+    allowReregistration: async function (recordId) {
+        if (this.isReadOnlyAdmin()) {
+            app.alert('Режим просмотра. Изменение доступа запрещено.');
+            return;
+        }
+        if (!await app.confirm('Разрешить этому человеку зарегистрироваться заново, не дожидаясь года?')) return;
+        try {
+            const { error } = await supabaseClient.rpc('allow_deleted_reregistration', { record_id: recordId });
+            if (error) throw error;
+            app.alert('✅ Регистрация разрешена.');
+            this.renderAdminMain();
+        } catch (e) {
+            app.alert('Не удалось разрешить регистрацию: ' + (e.message || e));
+        }
+    },
     unfreezeUser: async function (userId) {
         if (this.isReadOnlyAdmin()) {
             app.alert('Режим просмотра. Изменение доступа запрещено.');
