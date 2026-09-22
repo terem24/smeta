@@ -3042,9 +3042,10 @@
                 const pl = r.sku ? pm.get(r.sku) : null;
                 if (!pl) { missing.push(r); return; }
                 r.pl = pl.p;
-                // Артикул, под которым позиция стоит в прайсе, — он же в 1С
+                // Артикул, под которым позиция стоит в прайсе, — только для справки.
+                // В 1С уходит артикул из КП: 1С знает артикулы калькулятора
+                // (нержавейка RSS-10…, а не прайсовый RSS-00…) — сверено 22.09.2026.
                 r.plA = String(pl.a || '').trim() || r.sku;
-                r.plName = pl.a ? '' : pl.n;
                 // Скидка с двумя знаками: прайс × (1 − скидка) даёт цену КП до копеек
                 r.disc = Math.round((1 - r.price / pl.p) * 10000) / 100;
                 // Отрицательная скидка — цена КП выше прайса; больше 50 % — почти
@@ -3070,8 +3071,8 @@
                     </tr></thead><tbody>`;
                 inPrice.forEach((r, n) => {
                     html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
-                        <td>${n + 1}</td><td class="c1-sku">${esc1c(r.plA)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в КП: ${esc1c(r.sku)}</div>` : ''}</td>
-                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.plName ? `<div class="c1-sub">в прайсе без артикула: «${esc1c(r.plName)}» — в 1С искать по названию</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
+                        <td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>` : ''}</td>
+                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
                         <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
                         <td class="c1-num">${money1c(r.pl)}</td><td class="c1-num">${money1c(r.price)}</td>
                         <td class="c1-num"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
@@ -3101,7 +3102,7 @@
             let text = '';
             if (which === 'price') {
                 // Табуляция: вставка в 1С или Excel сама разложит по столбцам
-                _rows1c.inPrice.forEach(r => { text += `${r.plA}\t${num1c(r.qty, 3)}\t${num1c(r.disc, 2)}\n`; });
+                _rows1c.inPrice.forEach(r => { text += `${r.sku}\t${num1c(r.qty, 3)}\t${num1c(r.disc, 2)}\n`; });
             } else {
                 _rows1c.missing.forEach(r => { text += `${r.sku || ''}\t${r.name}\t${num1c(r.qty, 3)}\t${r.unit}\n`; });
             }
