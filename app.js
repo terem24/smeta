@@ -9740,6 +9740,14 @@ const app = {
             // По какой версии КП было событие (есть у отметок, записанных после появления версий)
             const kpVer = e.meta && Number(e.meta.kp_version);
             const kpTag = kpVer && e.calc_id ? ` <span style="font-weight:600; color:var(--text-sec); font-size:11.5px; font-family:monospace;">КП № ${e.calc_id}-${kpVer}</span>` : '';
+            // Кто сделал: одну смету по номеру КП может загрузить и сохранить не только
+            // её автор — без имени в истории не отличить действия монтажника от чужих.
+            // Отметки клиента (открыл, одобрил) пишутся без имени — подписываем «клиент».
+            const escW = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+            const CLIENT_SIDE = ['opened', 'confirmed', 'needs_revision', 'invoice_requested', 'refresh_requested'];
+            const who = e.user_name || e.user_email
+                ? '👤 ' + escW(e.user_name || '') + (e.user_email ? ` <span style="opacity:.8;">(${escW(e.user_email)})</span>` : '')
+                : (CLIENT_SIDE.includes(e.event) ? '👤 клиент' : '');
             return `
                 <div style="display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border);">
                     <div style="width:10px; height:10px; border-radius:50%; background:${em.color}; margin-top:5px; flex-shrink:0;"></div>
@@ -9748,6 +9756,7 @@ const app = {
                             <span style="font-weight:700; color:var(--text-main); font-size:13px;">${em.label}${kpTag}</span>
                             <span style="color:var(--text-sec); font-size:11px; white-space:nowrap;">${dt}</span>
                         </div>
+                        ${who ? `<div style="color:var(--text-sec); font-size:11.5px; margin-top:2px;">${who}</div>` : ''}
                         ${comment ? `<div style="color:var(--text-main); font-size:12px; margin-top:4px; white-space:pre-wrap;">${comment.replace(/</g, '&lt;')}</div>` : ''}
                     </div>
                 </div>
