@@ -146,6 +146,30 @@ const Docs = {
         return isNaN(dt) ? '' : dt.toISOString().slice(0, 10);
     },
 
+    /**
+     * Номер КП с версией, по которому составлены документы: «452712-3».
+     * У заказа из кабинета — из снимка, ушедшего клиенту (там записана версия,
+     * которую он видел); у открытого расчёта — последняя отправленная версия.
+     * Версии нет (смету отправляли до их появления) — просто номер расчёта.
+     */
+    kpNumber: function () {
+        const snap = this._ctx && this._ctx.snap;
+        if (snap) {
+            const o = snap.object_info || {};
+            const calc = String(o.sequence_id || this._ctx.calcId || '');
+            if (!calc) return '';
+            return o.kp_version ? calc + '-' + o.kp_version : calc;
+        }
+        if (typeof app.kpNumber === 'function') return app.kpNumber() || '';
+        return app.state.calc_id ? String(app.state.calc_id) : '';
+    },
+
+    // Строка «Коммерческое предложение № …» для шапок приложений и актов
+    kpLine: function () {
+        const kp = this.kpNumber();
+        return kp ? '<p class="n">Коммерческое предложение № ' + this.esc(kp) + '</p>' : '';
+    },
+
     save: function (patch) {
         const next = Object.assign({}, this.data(), patch || {});
         const key = this.storeKey();
@@ -525,7 +549,7 @@ const Docs = {
                 <div class="custom-modal-text" style="margin-bottom:14px;">
                     Договор бытового подряда, спецификация, смета работ и акт сдачи-приёмки.
                     ${this._ctx
-                        ? 'Состав и цены взяты из сметы № ' + this.esc(this._ctx.calcId) + ', отправленной клиенту.'
+                        ? 'Состав и цены взяты из КП № ' + this.esc(this.kpNumber() || this._ctx.calcId) + ', отправленного клиенту.'
                         : 'Заполните данные один раз — они сохранятся вместе с расчётом.'}
                 </div>
 
@@ -1009,7 +1033,8 @@ const Docs = {
         для выполнения работ, принять их результат и уплатить обусловленную цену.</p>
         <p class="n">1.2. Перечень оборудования и материалов определён Спецификацией (Приложение № 1),
         состав и объём работ — Сметой на работы (Приложение № 2). Приложения являются
-        неотъемлемой частью настоящего Договора.</p>
+        неотъемлемой частью настоящего Договора.${this.kpNumber() ? ` Приложения составлены по коммерческому
+        предложению № ${e(this.kpNumber())}.` : ''}</p>
         <p class="n">1.3. Работы выполняются из материалов ${mats}.</p>
         <p class="n">1.4. Работы выполняются для личных, семейных, домашних нужд Заказчика, не связанных
         с осуществлением предпринимательской деятельности. К отношениям Сторон применяются
@@ -1146,6 +1171,7 @@ const Docs = {
             <h1>Приложение № 1 к Договору № ${e(d.number) || '____'} от ${this.dateRu(d.date)}</h1>
             <h1 style="margin-bottom:5mm;">СПЕЦИФИКАЦИЯ ОБОРУДОВАНИЯ И МАТЕРИАЛОВ</h1>
             <p class="n">Объект: ${e(d.objectAddress)}</p>
+            ${this.kpLine()}
             ${this.priceDateNote()}
             <table>
                 <tr><th>№</th><th>Наименование</th><th>Артикул</th><th>Бренд</th><th>Ед.</th>
@@ -1189,6 +1215,7 @@ const Docs = {
             <h1>Приложение № 2 к Договору № ${e(d.number) || '____'} от ${this.dateRu(d.date)}</h1>
             <h1 style="margin-bottom:5mm;">СМЕТА НА РАБОТЫ</h1>
             <p class="n">Объект: ${e(d.objectAddress)}</p>
+            ${this.kpLine()}
             <table>
                 <tr><th>№</th><th>Наименование работ</th><th>Ед.</th>
                     <th class="num">Кол-во</th><th class="num">Цена</th><th class="num">Сумма</th></tr>
@@ -1605,6 +1632,7 @@ const Docs = {
         const c = this.contractor();
         return `<h1>${title}</h1>
         <div class="head"><span>Объект: ${e(t.objectAddress)}</span><span>${this.dateRu(t.techDate)}</span></div>
+        ${this.kpLine()}
         <p class="n">Комиссия в составе представителя Подрядчика ${e(t.signer || c.fio || c.name)}
         и Заказчика ${e(t.clientName)} составила настоящий акт о нижеследующем.</p>`;
     },
@@ -1758,7 +1786,7 @@ const Docs = {
 
         <p class="n">1. Подрядчик выполнил, а Заказчик принял работы по монтажу ${e(this.subject())}
         на объекте по адресу: ${e(d.objectAddress)}, в объёме, предусмотренном Приложениями № 1 и № 2
-        к Договору.</p>
+        к Договору${this.kpNumber() ? ` (коммерческое предложение № ${e(this.kpNumber())})` : ''}.</p>
 
         <table>
             <tr><th>№</th><th>Наименование</th><th class="num">Сумма</th></tr>
