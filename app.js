@@ -6825,6 +6825,13 @@ const app = {
             let wk = !this.canUseWorks() ? 0 : (app.lastWorksSum || 0);   // монтаж закрыт таблицей «Тарифы»
             const total = eq + wk;
 
+            // Смета на 0 ₽ — пустой объект: в «Моих объектах» и в админке это мусорная
+            // строка без единой позиции (КП 878937, 22.09.2026). Не пишем.
+            if (!(total > 0)) {
+                if (!silent) app.alert("Смета пустая — сохранять нечего. Добавьте оборудование или работы.");
+                return false;
+            }
+
             const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
 
             let dbUserId = null;
@@ -40003,6 +40010,12 @@ const app = {
                 return true;
             }
 
+            // Пустую смету (0 ₽) не пишем — см. saveToCloud. true: задача выполнена, без повторов.
+            if (!((eqSum || 0) + (worksSum || 0) > 0)) {
+                console.log("[saveJobToCloud] Смета на 0 ₽ — в облако не сохраняем.");
+                return true;
+            }
+
             const insertData = {
                 project_name: stateData.projectName || "Новый объект",
                 share_id: stateData.calc_id || null,
@@ -41269,6 +41282,11 @@ const app = {
             // 15 минут затирало нулём сумму, которую только что записала печать.
             const wk = !this.canUseWorks() ? 0 : (app.lastWorksSum || 0);
             const total = eq + wk;
+            // Пустую смету (0 ₽) не пишем — см. saveToCloud
+            if (!(total > 0)) {
+                console.log("[runAutoSave] Skipped: zero cost.");
+                return;
+            }
 
             const autoData = {
                 project_name: autoName,
