@@ -12384,12 +12384,21 @@ const app = {
             const shareId = shareEv ? String(shareEv.meta.shared_invoice_id) : '';
             const sums = loc ? `Оборудование: <b>${(loc.inv.eqSum || 0).toLocaleString('ru-RU')} ₽</b>${(loc.inv.worksSum > 0 && this.canUseWorks()) ? ` | Монтаж: <b>${(loc.inv.worksSum || 0).toLocaleString('ru-RU')} ₽</b>` : ''}` : '';
 
+            // Номер КП с версией: последняя известная версия по событиям объекта.
+            // Если текущий статус (одобрено, счёт) относится к более ранней версии —
+            // подписываем, к какой: монтажник мог после одобрения отправить правки.
+            const kpMaxV = g.list.reduce((mx, ev) => Math.max(mx, (ev.meta && Number(ev.meta.kp_version)) || 0), 0);
+            const kpCurV = g.statusEv && g.statusEv.meta ? Number(g.statusEv.meta.kp_version) || 0 : 0;
+            const kpLabel = `КП № ${esc(g.calcId)}${kpMaxV ? '-' + kpMaxV : ''}`
+                + (kpCurV && kpMaxV && kpCurV < kpMaxV ? ` <span style="color:#D97706;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${kpCurV}</span>` : '');
+
             const historyRows = g.list.map(ev => {
                 const m = EVENT_META[ev.event] || { label: ev.event, color: '#94A3B8' };
                 const comment = ev.meta && ev.meta.comment ? ev.meta.comment : '';
+                const evV = ev.meta && Number(ev.meta.kp_version);
                 return `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:4px 0; border-bottom:1px dashed var(--border);">
                             <span style="display:inline-block; background:${m.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${m.label}</span>
-                            <span style="flex:1; font-size:11px; color:var(--text-main);">${esc(comment)}</span>
+                            <span style="flex:1; font-size:11px; color:var(--text-main);">${evV ? `<span style="font-family:monospace; color:var(--text-sec);">КП № ${esc(g.calcId)}-${evV}</span>${comment ? ' · ' : ''}` : ''}${esc(comment)}</span>
                             <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${fmt(ev.created_at)}</span>
                         </div>`;
             }).join('');
@@ -12399,7 +12408,7 @@ const app = {
                             <strong style="font-size:13.5px; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(g.name || 'Без названия')}</strong>
                             <span style="background:${meta.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${meta.label}</span>
                         </div>
-                        <div style="font-size:11px; color:var(--text-sec); font-weight:500;">№ расчёта: ${esc(g.calcId)}${g.last ? ` · ${fmt(g.last.created_at)}` : ''}</div>
+                        <div style="font-size:11px; color:var(--text-sec); font-weight:500;">${kpLabel}${g.last ? ` · ${fmt(g.last.created_at)}` : ''}</div>
                         ${sums ? `<div style="font-size:11.5px; color:var(--text-sec); border-top:1px dashed var(--border); padding-top:6px;">${sums}</div>` : ''}
                         ${historyRows ? `<details style="margin-top:2px;"><summary style="cursor:pointer; font-size:11.5px; color:var(--text-sec);">История статусов (${g.list.length})</summary><div style="margin-top:6px;">${historyRows}</div></details>` : ''}
                         <div style="display:flex; gap:6px; margin-top:4px;">
