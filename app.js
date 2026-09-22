@@ -6133,6 +6133,107 @@ const app = {
         }
     },
 
+    /**
+     * Связка оригинала и копий в карточке сметы админки.
+     *
+     * Копия — смета, которую кто-то (монтажник, менеджер, наблюдатель) загрузил
+     * по чужому номеру КП и сохранил у себя. Она живёт под своим номером, а в
+     * calc_data.copiedFrom помнит оригинал (см. detachLoadedEstimate). У копии
+     * показываем плашку «Копия КП № …» со ссылкой на оригинал; у оригинала — все
+     * снятые с него копии, включая копии копий (по root), с суммой и счётом.
+     */
+    openEstimateByCalc: async function (calc) {
+        try {
+            const { data } = await supabaseClient.from('estimates').select('id')
+                .eq('share_id', String(calc)).order('created_at', { ascending: true }).limit(1);
+            if (data && data[0]) return this.viewAdminEstimate(data[0].id);
+            app.alert(`Смета КП № ${calc} не найдена — возможно, удалена.`);
+        } catch (e) {
+            app.alert('Не удалось открыть смету: ' + (e.message || e));
+        }
+    },
+
+    fillKpCopiesBlock: async function (st, est) {
+        const box = document.getElementById('admin_kp_copies_container');
+        if (!box || !st) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const fmt = n => Math.round(n || 0).toLocaleString('ru-RU');
+        const dt = iso => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        let html = '';
+
+        // Эта смета — копия
+        const cf = st.copiedFrom;
+        if (cf && cf.calc) {
+            const root = cf.root && cf.root.calc && String(cf.root.calc) !== String(cf.calc) ? cf.root : null;
+            html += `
+                <div style="background:rgba(124,58,237,0.07); border:1px solid rgba(124,58,237,0.3); border-radius:10px; padding:10px 14px; margin-top:12px; font-size:12.5px; color:var(--text-main);">
+                    <div style="font-weight:700; color:#7C3AED; margin-bottom:4px;">📎 Это копия чужой сметы</div>
+                    Снята с <b>КП № ${esc(cf.calc)}${cf.ver ? '-' + cf.ver : ''}</b>${cf.author ? ` (автор: ${esc(cf.author)})` : ''}
+                    ${cf.by ? ` — копию сделал(а) ${esc(cf.by)}` : ''}, ${dt(cf.at)}.
+                    ${root ? `<br>Первоначальная смета цепочки: <b>КП № ${esc(root.calc)}</b>${root.author ? ` (${esc(root.author)})` : ''}.` : ''}
+                    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button class="btn-header-blue" style="height:28px; padding:0 12px; font-size:11.5px;" onclick="app.openEstimateByCalc('${esc(cf.calc)}')">Открыть оригинал КП № ${esc(cf.calc)}</button>
+                        ${root ? `<button class="btn-header-blue" style="height:28px; padding:0 12px; font-size:11.5px;" onclick="app.openEstimateByCalc('${esc(root.calc)}')">Открыть первоначальную КП № ${esc(root.calc)}</button>` : ''}
+                    </div>
+                </div>`;
+        }
+
+        // Копии, снятые с этой сметы (и с её копий)
+        const calc = st.calc_id ? String(st.calc_id) : '';
+        if (calc) {
+            try {
+                const { data: copies, error } = await supabaseClient.from('estimates')
+                    .select('id, project_name, total_sum, created_at, users(username, account_type), calc_id:calc_data->>calc_id, cf:calc_data->copiedFrom')
+                    .or(`calc_data->copiedFrom->>calc.eq.${calc},calc_data->copiedFrom->root->>calc.eq.${calc}`)
+                    .order('created_at', { ascending: true });
+                if (error) throw error;
+                if (copies && copies.length) {
+                    // Выставлен ли по копии счёт — по событиям её номера
+                    const ids = copies.map(c => c.calc_id).filter(Boolean);
+                    let issued = {};
+                    if (ids.length) {
+                        const { data: evs } = await supabaseClient.from('invoice_events').select('calc_id, event')
+                            .in('calc_id', ids).in('event', ['invoice_requested', 'invoice_issued', 'paid']);
+                        (evs || []).forEach(e => {
+                            const rank = { invoice_requested: 1, invoice_issued: 2, paid: 3 };
+                            if (!issued[e.calc_id] || rank[e.event] > rank[issued[e.calc_id]]) issued[e.calc_id] = e.event;
+                        });
+                    }
+                    const ROLE = { admin: 'админ', viewer: 'наблюдатель', manager: 'менеджер', pro: 'монтажник', base: 'монтажник', seller: 'продавец' };
+                    const INV = { invoice_requested: '🟠 запрошен счёт', invoice_issued: '🟢 счёт выставлен', paid: '💰 оплачено' };
+                    const base = Number(est && est.total_sum) || 0;
+                    const rows = copies.map(c => {
+                        const u = Array.isArray(c.users) ? c.users[0] : c.users;
+                        const f = c.cf || {};
+                        const viaCopy = f.calc && String(f.calc) !== calc;
+                        const diff = (Number(c.total_sum) || 0) - base;
+                        return `
+                            <tr class="active-row" style="cursor:pointer;" onclick="app.viewAdminEstimate('${c.id}')">
+                                <td style="font-family:monospace; font-weight:700;">${esc(c.calc_id || '—')}</td>
+                                <td>${esc(u ? u.username : '—')}<div style="font-size:10.5px; color:var(--text-sec);">${esc(u ? (ROLE[u.account_type] || u.account_type || '') : '')}${viaCopy ? ` · с копии ${esc(f.calc)}` : ''}</div></td>
+                                <td>${esc(c.project_name || '')}</td>
+                                <td style="white-space:nowrap;">${fmt(c.total_sum)} ₽${base && diff ? `<div style="font-size:10.5px; color:${diff > 0 ? '#EF4444' : '#10B981'};">${diff > 0 ? '+' : '−'}${fmt(Math.abs(diff))} ₽</div>` : ''}</td>
+                                <td style="font-size:11.5px;">${issued[c.calc_id] ? INV[issued[c.calc_id]] : '<span style="color:var(--text-sec);">счёта нет</span>'}</td>
+                                <td style="font-size:11px; color:var(--text-sec); white-space:nowrap;">${dt(c.created_at)}</td>
+                            </tr>`;
+                    }).join('');
+                    html += `
+                        <div style="margin-top:14px;">
+                            <h4 style="margin:0 0 6px; color:var(--text-main); font-size:13px;">📎 Копии этой сметы (${copies.length})</h4>
+                            <div style="font-size:11.5px; color:var(--text-sec); margin-bottom:6px;">Сметы, которые другие пользователи загрузили по этому номеру КП и сохранили у себя. У каждой свой номер; разница в сумме — против этой сметы.</div>
+                            <table class="inv-table" style="font-size:12px;">
+                                <thead><tr><th>№ КП копии</th><th>Кто снял</th><th>Название</th><th>Сумма</th><th>Счёт</th><th>Дата</th></tr></thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>`;
+                }
+            } catch (e) {
+                console.warn('[fillKpCopiesBlock] копии не прочитались:', e);
+            }
+        }
+        box.innerHTML = html;
+    },
+
     kpVersionRows: function (cur, prev) {
         const rows = [];
         const a = (prev && prev.items) || null;
@@ -6331,6 +6432,9 @@ const app = {
         // Пришёл к расчёту через подсказку «Смета за минуту» (idle_hint.js) — по этой
         // метке видно, работает ли подсказка, а не только сколько раз она висела.
         if (this._idleHintUsed) calcMeta = Object.assign(calcMeta || {}, { via: 'idle_hint' });
+        // Копия чужой сметы: канбан по этой отметке подписывает карточку «копия …»
+        const cf = this.state.copiedFrom;
+        if (cf && cf.calc) calcMeta = Object.assign(calcMeta || {}, { copied_from: cf.calc, copied_root: (cf.root && cf.root.calc) || cf.calc });
         this.logInvoiceEvent('calculated', calcMeta);
     },
 
@@ -8457,6 +8561,7 @@ const app = {
             // Последняя известная версия КП — наибольшая из отметок в событиях
             const kpV = e.meta && Number(e.meta.kp_version);
             if (kpV && kpV > (p.kpVersion || 0)) p.kpVersion = kpV;
+            if (e.meta && e.meta.copied_from) p.copiedFrom = String(e.meta.copied_from);
             // Технические отметки не двигают карточку и не меняют дату последнего
             // изменения — иначе смета уехала бы из своей колонки в никуда.
             if (!this.ADMIN_KANBAN_TECH_EVENTS.includes(e.event)) {
@@ -8613,7 +8718,7 @@ const app = {
                 // Номер КП с версией. Если текущий статус (одобрено, запрошен счёт)
                 // относится к более ранней версии — подпись, по какой именно.
                 const curV = c.currentMeta && Number(c.currentMeta.kp_version);
-                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
+                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${c.copiedFrom ? ` <span style="color:#7C3AED; font-family:inherit;" title="Копия чужой сметы, а не новый заказ">· 📎 копия ${c.copiedFrom}</span>` : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
                 return `
                                     <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" ${canDrag(c) ? `draggable="true" ondragstart="app.kanbanDragStart(event, '${c.calc_id}')" ondragend="app._kanbanDragId = null" title="Перетащите в другую колонку, чтобы сменить этап"` : ''} style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
                                         <div style="font-weight:700; color:var(--text-main); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.project_name || 'Без названия'}</div>
@@ -10050,7 +10155,7 @@ const app = {
             // Список "Мои сметы" не читает калькулятор целиком (для этого есть отдельный
             // loadSingleEstimate по клику) — тянем только shared_invoice_id/calc_id точечно
             // через JSON-путь, а не весь calc_data (десятки КБ на смету).
-            let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, kp_ver:calc_data->>kpVersion').order('created_at', { ascending: false }).limit(50);
+            let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc').order('created_at', { ascending: false }).limit(50);
 
             const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
             // «Мои объекты» в личном кабинете — всегда только свои сметы, даже у админа:
@@ -10160,7 +10265,7 @@ const app = {
 
             h += `
                 <tr class="active-row" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
-                    <td style="font-weight:600;">${item.project_name}${item.calc_id ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${item.calc_id}${Number(item.kp_ver) ? '-' + Number(item.kp_ver) : ''}</div>` : ''}</td>
+                    <td style="font-weight:600;">${item.project_name}${item.calc_id ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${item.calc_id}${Number(item.kp_ver) ? '-' + Number(item.kp_ver) : ''}${item.cf_calc ? ` <span style="color:#7C3AED;" title="Копия чужой сметы — оригинал КП № ${item.cf_calc}">· 📎 копия ${item.cf_calc}</span>` : ''}</div>` : ''}</td>
                     <td style="color:var(--primary); font-weight:bold;">${sum}</td>
                     <td>${statusBadge}</td>
                     <td style="color:var(--text-sec); font-size:12px;">${date}</td>
@@ -10772,7 +10877,7 @@ const app = {
             // список позиций собирается заново по сегодняшнему каталогу, и сравнить
             // «было / стало» можно только с суммой, записанной в момент сохранения.
             let query = supabaseClient.from('estimates')
-                .select('calc_data, user_id, eq_sum, created_at').eq('id', id);
+                .select('calc_data, user_id, eq_sum, created_at, users(username)').eq('id', id);
 
             // Если мы не в режиме разработки, добавляем фильтр по текущему пользователю
             // (даже если RLS настроен, лишняя проверка на фронте не помешает)
@@ -10804,7 +10909,8 @@ const app = {
                 const myId = await this._resolveInstallerCloudUserId();
                 if (!myId || String(myId) !== String(data.user_id)) {
                     copyOf = loadedState.calc_id || '—';
-                    this.detachLoadedEstimate(loadedState);
+                    const au = Array.isArray(data.users) ? data.users[0] : data.users;
+                    this.detachLoadedEstimate(loadedState, { estId: id, authorName: au ? au.username : '' });
                 }
             }
             // Какая смета сейчас на экране — для разбора «Что изменилось» под плашкой
@@ -18857,7 +18963,7 @@ const app = {
                 // JSON-путь PostgREST и восстанавливаем прежнюю форму e.calc_data.xxx на клиенте,
                 // чтобы не переписывать весь код рендера ниже.
                 let { data: uEsts, error: errUE } = await supabaseClient.from('estimates')
-                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion')
+                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc')
                     .in('user_id', userIds);
                 if (errUE) throw errUE;
                 userEsts = (uEsts || []).map(e => ({ ...e, calc_data: { calc_id: e.calc_id, shared_invoice_id: e.shared_invoice_id, area: e.area } }));
@@ -30540,7 +30646,7 @@ const app = {
             const { data: freshUser, error: userErr } = await supabaseClient.from('users').select('*').eq('id', userId).maybeSingle();
             if (userErr || !freshUser) { app.alert('Пользователь не найден.'); return; }
             user = freshUser;
-            const { data: freshEst } = await supabaseClient.from('estimates').select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, area:calc_data->>area, calc_id:calc_data->>calc_id, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion').eq('user_id', userId);
+            const { data: freshEst } = await supabaseClient.from('estimates').select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, area:calc_data->>area, calc_id:calc_data->>calc_id, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion, cf_calc:calc_data->copiedFrom->>calc').eq('user_id', userId);
             userEstimates = (freshEst || []).map(e => ({ ...e, calc_data: { area: e.area, calc_id: e.calc_id, from_recognition: e.from_recognition } }));
         }
 
@@ -30876,6 +30982,7 @@ const app = {
                 const kpCell = eCalc
                     ? `<span style="font-family:monospace; font-weight:700; color:var(--text-main);">${eCalc}${eVer ? '-' + eVer : ''}</span>`
                       + (eVer > 1 ? `<div style="font-size:10.5px; color:var(--text-sec);">версий: ${eVer}</div>` : '')
+                      + (e.cf_calc ? `<div style="font-size:10.5px; color:#7C3AED; font-weight:600;" title="Копия чужой сметы — оригинал КП № ${e.cf_calc}">📎 копия ${e.cf_calc}</div>` : '')
                     : '<span style="color:var(--text-sec);">—</span>';
                 h += `<tr class="active-row" style="cursor: pointer; transition: 0.2s;" onclick="app.viewAdminEstimate('${e.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
                             <td style="color:var(--text-sec);">${i + 1}</td>
@@ -33015,6 +33122,8 @@ const app = {
             let objArea = st && st.area ? st.area + ' м²' : 'Не указана';
             // Для «Счёт по этой версии» в блоке «Версии КП» (openKpVersionInvoice)
             this._kpCard = { st: st, estId: est.id, userId: est.user_id, name: est.project_name || '' };
+            // Связка «оригинал ↔ копии» дочитывается отдельно, после отрисовки карточки
+            setTimeout(() => this.fillKpCopiesBlock(st, est), 0);
 
             let exportState = {};
             if (st && typeof st === 'object') {
@@ -33075,6 +33184,7 @@ const app = {
                                     <div style="color: var(--text-sec); font-size: 12px;">Загрузка статуса предложения...</div>
                                 </div>
                                 <div id="admin_kp_versions_container" style="grid-column: span 2;">${this.renderKpVersionsHtml(st, [])}</div>
+                                <div id="admin_kp_copies_container" style="grid-column: span 2;"></div>
                             </div>
                             <div style="font-size:12px; color:var(--text-sec); margin-bottom: 15px; line-height: 1.4;">
                                 <i>* Код ниже загружает смету в ваш калькулятор копией под новым номером (иконка 📥 «Загрузить код») — смету автора это не затрагивает. Для счёта код не нужен: есть кнопка «Открыть смету для счёта» выше.</i>
@@ -40516,7 +40626,7 @@ const app = {
                 // .single() на двух строках падал с «не найдено».
                 const { data: rows, error } = await supabaseClient
                     .from('estimates')
-                    .select('calc_data, user_id')
+                    .select('id, calc_data, user_id, users(username)')
                     .eq('share_id', code)
                     .order('created_at', { ascending: true })
                     .limit(1);
@@ -40531,7 +40641,10 @@ const app = {
                     // Чужая смета — грузим копией под новым номером (см. detachLoadedEstimate)
                     const myId = await this._resolveInstallerCloudUserId();
                     const isCopy = !myId || String(myId) !== String(data.user_id);
-                    if (isCopy) this.detachLoadedEstimate(savedState);
+                    if (isCopy) {
+                        const au = Array.isArray(data.users) ? data.users[0] : data.users;
+                        this.detachLoadedEstimate(savedState, { estId: data.id, authorName: au ? au.username : '' });
+                    }
 
                     // Удаляем чужие личные данные перед загрузкой. Реквизиты компании
                     // тоже личные: в смете лежит снимок шапки автора, подставлять его
@@ -40707,8 +40820,28 @@ const app = {
      * в историю под номером автора. В карточке сметы это выглядело как действия
      * самого монтажника. Номер копии выдаёт ensureCalcId сразу после загрузки.
      */
-    detachLoadedEstimate: function (st) {
+    detachLoadedEstimate: function (st, src) {
         if (!st) return st;
+        // Связь с оригиналом: откуда снята копия, какая версия КП была у оригинала,
+        // чья смета и кто снял. root — первая смета цепочки: у копии копии это не
+        // промежуточная копия, а исходная смета монтажника. По этой отметке админка
+        // показывает связку «оригинал ↔ копии» (renderKpCopiesHtml).
+        if (st.calc_id) {
+            src = src || {};
+            const me = this.state.tgUser || {};
+            const author = src.authorName || (st.tgUser ? (this.formatShortName(st.tgUser) || st.tgUser.first_name || '') : '');
+            const prevCf = st.copiedFrom || null;
+            st.copiedFrom = {
+                calc: String(st.calc_id),
+                ver: Number(st.kpVersion) || 0,
+                estId: src.estId || null,
+                author: author || '',
+                by: this.formatShortName(me) || me.first_name || me.email || '',
+                byEmail: me.email || '',
+                at: new Date().toISOString(),
+                root: prevCf ? (prevCf.root || { calc: prevCf.calc, author: prevCf.author || '' }) : { calc: String(st.calc_id), author: author || '' }
+            };
+        }
         ['calc_id', 'shared_invoice_id', 'kpVersions', 'kpVersion', 'priceSnapshot'].forEach(k => { delete st[k]; });
         return st;
     },
@@ -40719,7 +40852,7 @@ const app = {
         ['darkMode', 'themeMode', 'showScheme'].forEach(k => { delete base[k]; });
         const next = { ...this.state, ...base, userAddedEq: [], userAddedWorks: [], swapQtyRatios: {}, ...src };
         // Метки конкретной сметы: нет в загружаемой — не должно остаться и от прежней
-        ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress', 'kpVersions', 'kpVersion', 'priceSnapshot'].forEach(k => {
+        ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress', 'kpVersions', 'kpVersion', 'priceSnapshot', 'copiedFrom'].forEach(k => {
             if (!(k in src)) delete next[k];
         });
         return next;
