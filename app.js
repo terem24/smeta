@@ -7274,7 +7274,7 @@ const app = {
                             <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${dt}</span>
                         </div>
                         ${e.project_name ? `<div style="margin-top:4px; color:var(--text-main); font-weight:600;">${e.project_name}</div>` : ''}
-                        ${e.calc_id ? `<div style="color:var(--text-sec); font-size:10.5px;">№ расчёта: ${e.calc_id}</div>` : ''}
+                        ${e.calc_id ? `<div style="color:var(--text-sec); font-size:10.5px;">КП № ${e.calc_id}${e.meta && Number(e.meta.kp_version) ? '-' + Number(e.meta.kp_version) : ''}</div>` : ''}
                         ${comment ? `<div style="color:var(--text-main); font-size:11px; margin-top:4px; white-space:pre-wrap;">${comment.replace(/</g, '&lt;')}</div>` : ''}
                     </div>
                 `;
