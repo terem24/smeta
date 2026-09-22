@@ -678,9 +678,67 @@ foreach ($sheets as $s) {
             }
         }
 
+        /**
+         * Несколько таблиц В ОДНОЙ СТРОКЕ («дорожки»).
+         *
+         * Лист «Энергофлекс» подписан так: «4 мм | Цвет | Артикул | Цена | Цена
+         * со скидкой | 6 мм | Цвет | Артикул | Цена | Цена со скидкой», а ниже,
+         * у трубок 2 м, дорожек три (9, 13 и 20 мм). Разбор видел только первый
+         * «Артикул», поэтому вся изоляция толщиной 6 мм в индекс не попадала —
+         * в том числе EFXT018062SUPRS-400, из-за чего счёт не находил её в
+         * прайсе. Цену при этом он брал ПОСЛЕДНЮЮ рублёвую в строке, то есть
+         * чужую: у 18/4-11 стояло 27,66 ₽ вместо 26,54 ₽.
+         *
+         * Поэтому, когда в шапке несколько колонок «Артикул» и у каждой своя
+         * цена, собираем дорожки: артикул, его цена и левая граница описания.
+         * Хоть одной цены не нашлось — значит это не дорожки (у нержавейки
+         * ROMMER две колонки артикулов на одну цену), и разбор идёт по-старому.
+         */
+        $lanes = null;
+        $artHdr = [];
+        foreach ($hdr as $col => $v) {
+            if (preg_match($reArt, trim((string)$v))) $artHdr[] = $col;
+        }
+        if (count($artHdr) >= 2) {
+            $byCol = static function ($x, $y) { return colNum($x) - colNum($y); };
+            usort($artHdr, $byCol);
+            $cols = array_keys($hdr);
+            usort($cols, $byCol);
+            $lanes = [];
+            $prevPrice = null;
+            foreach ($artHdr as $k => $ac) {
+                $next = $artHdr[$k + 1] ?? null;
+                $lp = null;
+                foreach ($cols as $col) {
+                    if (colNum($col) <= colNum($ac)) continue;
+                    if ($next !== null && colNum($col) >= colNum($next)) break;
+                    $t = trim((string)$hdr[$col]);
+                    if (!preg_match($rePrice, $t) || $isDiscount($t)) continue;
+                    if ($lp === null) $lp = $col;
+                    if (preg_match('/руб/ui', $t)) { $lp = $col; break; }
+                }
+                if ($lp === null) { $lanes = null; break; }
+                // Левая граница дорожки: первая после цены предыдущей колонка,
+                // ценой не подписанная, — с неё начинается описание этого товара.
+                $from = 0;
+                if ($prevPrice !== null) {
+                    $from = colNum($prevPrice) + 1;
+                    foreach ($cols as $col) {
+                        if (colNum($col) <= colNum($prevPrice)) continue;
+                        if (preg_match($rePrice, trim((string)$hdr[$col]))) continue;
+                        $from = colNum($col);
+                        break;
+                    }
+                }
+                $lanes[] = ['art' => $ac, 'price' => $lp, 'from' => $from];
+                $prevPrice = $lp;
+            }
+            if ($lanes !== null && count($lanes) < 2) $lanes = null;
+        }
+
         return [
             'art' => $cArt, 'art2' => $cArt2, 'name' => $cName, 'size' => $cSize,
-            'price' => $cPrice, 'eur' => $cEur,
+            'price' => $cPrice, 'eur' => $cEur, 'lanes' => $lanes,
             'eurOnly' => $eurOnly,
         ];
     };
@@ -736,14 +794,39 @@ foreach ($sheets as $s) {
             continue;
         }
 
-        $cPrice = $map['price'];
-        $cArt   = $map['art'];
         $cName  = $map['name'];
         $cSize  = $map['size'];
 
+        // Дорожки — несколько товаров в одной строке (см. mapCols). Обычная
+        // таблица — одна дорожка, и всё ниже работает как прежде.
+        $lanes = $map['lanes'] ?? null;
+        $steps = $lanes ? $lanes : [['art' => $map['art'], 'price' => $map['price'], 'from' => 0]];
+        // Цена есть хоть в одной дорожке — строка товарная, и заголовком
+        // раздела её считать нельзя, даже если соседняя дорожка пуста.
+        $rowHasPrice = false;
+        foreach ($steps as $st) {
+            if (is_numeric($r[$st['price']] ?? null)) { $rowHasPrice = true; break; }
+        }
+
+        foreach ($steps as $lane) {
+        $cPrice = $lane['price'];
+        $cArt   = $lane['art'];
+        $fromNo = $lane['from'] ?? 0;
+
         $price = $r[$cPrice] ?? null;
         $art = $canonize($r[$cArt] ?? '');
-        if ($art === '' && ($map['art2'] ?? null) !== null) $art = $canonize($r[$map['art2']] ?? '');
+        if ($art === '' && !$lanes && ($map['art2'] ?? null) !== null) $art = $canonize($r[$map['art2']] ?? '');
+
+        /**
+         * В дорожках артикул обязан быть словом, а не числом.
+         *
+         * Ниже по тому же листу «Энергофлекс» идут таблицы вовсе без артикулов
+         * («Упаковка | Цена | Цена со скидкой» на три толщины), и шапкой они не
+         * опознаются — значит, к их строкам применяется раскладка предыдущей
+         * таблицы. В колонке артикула тогда лежит цена, и в индекс уходили
+         * строки вида «артикул 340.0872, наименование „РУБ 1 м.“».
+         */
+        if ($lanes && !preg_match('/\p{L}/u', $art)) continue;
 
         /**
          * Курс евро берём из самой книги, а не из настроек.
@@ -763,6 +846,9 @@ foreach ($sheets as $s) {
         }
 
         if (!is_numeric($price)) {
+            // Пустая дорожка товарной строки: у этой толщины изоляции такого
+            // диаметра просто нет. Разделом такую строку объявлять нельзя.
+            if ($rowHasPrice) continue;
             // Заголовок раздела: короткая строка без двоеточий и техописаний.
             $first = trim((string)($r[$cArt] ?? ($r['A'] ?? ($r['B'] ?? ''))));
             $clean = trim(preg_replace('/\s+/u', ' ', $first));
@@ -854,6 +940,7 @@ foreach ($sheets as $s) {
             $artNo = colNum($cArt);
             $mine = [];
             foreach ($r as $col => $v) {
+                if (colNum($col) < $fromNo) continue;   // слева стоит соседняя дорожка
                 if (colNum($col) >= $artNo) break;      // дальше идёт чужой блок
                 $t = $squash($v);
                 if ($t === '' || $t === $art) { $mine = []; continue; }   // пустая ячейка разделяет блоки
@@ -885,6 +972,7 @@ foreach ($sheets as $s) {
                 usort($cols, function ($x, $y) { return colNum($x) - colNum($y); });
                 $filled = [];
                 foreach ($cols as $col) {
+                    if (colNum($col) < $fromNo) continue;
                     if (colNum($col) >= $artNo) break;
                     $t = $squash($r[$col] ?? '');
                     if ($t === '') $t = $squash($prev[$col] ?? '');
@@ -977,6 +1065,7 @@ foreach ($sheets as $s) {
         $items[] = ['a' => utf8Clean($art), 'n' => utf8Clean(mb_substr($name, 0, 110)),
             'p' => $p, 's' => utf8Clean($s['name'])];
         if ($map['eurOnly']) $eurIdx[] = count($items) - 1;
+        }
     }
     if (count($items) === $before) $emptySheets[] = $s['name'];
     unset($rows);
