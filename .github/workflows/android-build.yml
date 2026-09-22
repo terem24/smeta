@@ -31,8 +31,15 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # packages задан явно: по умолчанию действие ставит «tools platform-tools»,
+      # а пакета «tools» в репозитории Android SDK больше нет. С 15.09.2026 на
+      # серверах GitHub стоит cmdline-tools 16.0, и sdkmanager падал на
+      # «Failed to find package 'tools'» — сборка не доходила даже до Gradle.
+      # Платформу и build-tools Gradle докачает сам.
       - name: Поставить Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
 
       - name: Поставить Node
         uses: actions/setup-node@v4
