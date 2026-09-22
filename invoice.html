@@ -2477,7 +2477,10 @@
         }
 
         /* Счёт для 1С (виден только сотруднику) */
-        #c1_container { margin-top: 28px; }
+        #c1_container { margin-top: 48px; padding: 18px 20px 20px; border: 2px dashed var(--primary); border-radius: 12px; background: var(--primary-light); }
+        .c1-panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 14px; margin-bottom: 10px; }
+        .c1-panel-tag { font-size: 11px; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.3px; }
+        #c1_container .table-responsive { background: var(--surface, #fff); border-radius: 8px; }
         .c1-note { font-size: 12px; color: var(--text-sec); margin: 0 0 12px; line-height: 1.5; }
         .c1-warn, .c1-warn-t { color: #B45309; }
         .c1-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 8px; font-size: 13px; color: var(--text-main); }
@@ -2719,13 +2722,6 @@
             </div>
         </div>
 
-        <!-- Счёт для 1С: скидка от прайса ТЕРЕМ по строкам. Виден сотруднику по
-             столбцу «Скидка 1С» таблицы «Тарифы», в печать не идёт. -->
-        <div id="c1_container" class="no-print" style="display: none;">
-            <h2 class="sec-title">Скидки от прайса ТЕРЕМ</h2>
-            <div id="c1_body"></div>
-        </div>
-
         <!-- Works Section -->
         <div id="works_container" style="display: none;">
             <h2 class="sec-title">Монтажные и пусконаладочные работы</h2>
@@ -2766,6 +2762,17 @@
                 <span class="sum-val" id="grand_total">0 ₽</span>
             </div>
         </section>
+
+        <!-- Скидки от прайса ТЕРЕМ по строкам. Виден сотруднику по столбцу «Скидки КП»
+             таблицы «Тарифы», в печать не идёт. Стоит после итогов КП отдельной
+             панелью: между «Оборудованием» и «Работами» он сливался с самим КП. -->
+        <div id="c1_container" class="no-print" style="display: none;">
+            <div class="c1-panel-head">
+                <h2 class="sec-title">Скидки от прайса ТЕРЕМ</h2>
+                <span class="c1-panel-tag">только для сотрудника · клиент и печать этого не видят</span>
+            </div>
+            <div id="c1_body"></div>
+        </div>
     </div>
 
     <script src="catalog.js"></script>
