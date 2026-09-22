@@ -15205,8 +15205,17 @@ const app = {
             m.overheadPct ? m.overheadPct + ' % от суммы — ' + fmt(ohPctSum) : ''
         ].filter(Boolean).join(' + ');
 
+        // Номер КП с версией: деньги считаются по открытой смете, и по номеру видно,
+        // тот ли это вариант, что ушёл клиенту (после отправки версия растёт)
+        const kpNo = this.kpNumber();
+        const kpHead = kpNo
+            ? `<div style="font-size: 12px; color: var(--text-sec); margin-bottom: 10px;">
+                   <span style="font-family: monospace; font-weight: 700; color: var(--text-main);">КП № ${this._mgEsc(kpNo)}</span>${this.state.projectName ? ` · ${this._mgEsc(this.state.projectName)}` : ''}
+               </div>`
+            : '';
         panel.innerHTML = `
             <div style="max-width: 860px; margin: 6px auto 30px;">
+                ${kpHead}
                 <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
                     ${card('Клиенту', fmt(rep.client), 'var(--text-main)', 'оборудование и монтаж')}
                     ${card('Себе', fmt(rep.cost), 'var(--text-main)', 'закупка, бригада, накладные')}
