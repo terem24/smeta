@@ -10711,6 +10711,16 @@ const app = {
             // старого объекта возвращало бы шапку к тому, что было тогда (а у смет,
             // сохранённых до заполнения реквизитов, — к ТЕРЕМ).
             delete loadedState.customCompany;
+            // Админ открыл из «Сохранённых смет» чужую смету — это копия под новым
+            // номером, иначе его действия попадут в историю автора (см. detachLoadedEstimate)
+            let copyOf = '';
+            if (isUserAdmin) {
+                const myId = await this._resolveInstallerCloudUserId();
+                if (!myId || String(myId) !== String(data.user_id)) {
+                    copyOf = loadedState.calc_id || '—';
+                    this.detachLoadedEstimate(loadedState);
+                }
+            }
             // Какая смета сейчас на экране — для разбора «Что изменилось» под плашкой
             this._loadedEstimateId = id;
             this.state = this.stateForLoadedEstimate(loadedState);
@@ -10718,7 +10728,9 @@ const app = {
             this.migrateBoilerSectionTitles();
             this.migrateBoilerAutoLevel(loadedState);
             this.adoptPlans(loadedState);
+            if (copyOf) this.ensureCalcId(true);
             this.saveState(); this.syncUI(); this.render();
+            if (copyOf) app.alert(`Это смета другого пользователя (КП № ${copyOf}) — открыта копия под номером ${this.state.calc_id}. Изменения, сохранение и отправка не затронут смету автора.`);
 
             this.lastSavedStateString = this.getStateSignature();
             this.hasUnsavedChanges = false;
@@ -40410,11 +40422,16 @@ const app = {
         // 1. ПОИСК ПО КОРОТКОМУ КОДУ В БАЗЕ (HC-... или 6-значный код)
         if (code.startsWith('HC-') || /^\d{6}$/.test(code)) {
             try {
-                const { data, error } = await supabaseClient
+                // Самая ранняя строка с этим номером — смета автора. Позже под тем же
+                // номером могли появиться копии тех, кто грузил КП до этой правки, и
+                // .single() на двух строках падал с «не найдено».
+                const { data: rows, error } = await supabaseClient
                     .from('estimates')
-                    .select('calc_data')
+                    .select('calc_data, user_id')
                     .eq('share_id', code)
-                    .single();
+                    .order('created_at', { ascending: true })
+                    .limit(1);
+                const data = rows && rows[0];
 
                 if (error || !data) {
                     throw new Error("Расчет с таким кодом не найден в базе данных.");
@@ -40422,6 +40439,10 @@ const app = {
 
                 if (data.calc_data) {
                     let savedState = data.calc_data;
+                    // Чужая смета — грузим копией под новым номером (см. detachLoadedEstimate)
+                    const myId = await this._resolveInstallerCloudUserId();
+                    const isCopy = !myId || String(myId) !== String(data.user_id);
+                    if (isCopy) this.detachLoadedEstimate(savedState);
 
                     // Удаляем чужие личные данные перед загрузкой. Реквизиты компании
                     // тоже личные: в смете лежит снимок шапки автора, подставлять его
@@ -40440,7 +40461,14 @@ const app = {
                     this.adoptPlans(savedState);
                     this.syncUI();
                     this.render();
-                    app.alert("✅ Расчет успешно загружен по коду!");
+                    if (isCopy) {
+                        this.ensureCalcId(true);
+                        this.saveState();
+                        this.syncUI();
+                        app.alert(`✅ Загружена копия КП № ${code}.\n\nУ копии свой номер — ${this.state.calc_id}. Ваши изменения, сохранение и отправка не затронут смету автора.`);
+                    } else {
+                        app.alert("✅ Расчет успешно загружен по коду!");
+                    }
                     return;
                 }
             } catch (err) {
@@ -40461,6 +40489,10 @@ const app = {
             }
 
             if (savedState) {
+                // Код из карточки сметы в админке — это всегда чужая смета: грузим
+                // копией под новым номером, как и по номеру КП
+                const srcCalc = savedState.calc_id || '';
+                this.detachLoadedEstimate(savedState);
                 delete savedState.tgUser;
                 delete savedState.accountType;
                 delete savedState.demoUsed;
@@ -40475,6 +40507,12 @@ const app = {
                 this.adoptPlans(savedState);
                 this.syncUI();
                 this.render();
+                if (srcCalc) {
+                    this.ensureCalcId(true);
+                    this.saveState();
+                    this.syncUI();
+                    app.alert(`✅ Загружена копия КП № ${srcCalc}.\n\nУ копии свой номер — ${this.state.calc_id}. Ваши изменения, сохранение и отправка не затронут смету автора.`);
+                }
             }
         } catch (e) {
             console.error("Ошибка десериализации:", e);
@@ -40571,13 +40609,28 @@ const app = {
      * значения расчёта → сама смета. Тема и переключатель схем — настройки
      * вида, их не сбрасываем (как и reset).
      */
+    /**
+     * Чужая смета, загруженная по номеру КП или коду из админки, становится
+     * копией: без номера расчёта, ссылки клиента и версий КП автора.
+     *
+     * Раньше номер оставался прежним, и всё, что делал загрузивший (менеджер,
+     * наблюдатель, другой монтажник) — сохранение, печать, отправка, — писалось
+     * в историю под номером автора. В карточке сметы это выглядело как действия
+     * самого монтажника. Номер копии выдаёт ensureCalcId сразу после загрузки.
+     */
+    detachLoadedEstimate: function (st) {
+        if (!st) return st;
+        ['calc_id', 'shared_invoice_id', 'kpVersions', 'kpVersion', 'priceSnapshot'].forEach(k => { delete st[k]; });
+        return st;
+    },
+
     stateForLoadedEstimate: function (loaded) {
         const src = loaded || {};
         const base = JSON.parse(JSON.stringify(this._stateDefaults || {}));
         ['darkMode', 'themeMode', 'showScheme'].forEach(k => { delete base[k]; });
         const next = { ...this.state, ...base, userAddedEq: [], userAddedWorks: [], swapQtyRatios: {}, ...src };
         // Метки конкретной сметы: нет в загружаемой — не должно остаться и от прежней
-        ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress'].forEach(k => {
+        ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress', 'kpVersions', 'kpVersion', 'priceSnapshot'].forEach(k => {
             if (!(k in src)) delete next[k];
         });
         return next;
