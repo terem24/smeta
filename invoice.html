@@ -2475,6 +2475,22 @@
                 --track: #E5E7EB;
                 --track-hover: #D1D5DB;
         }
+
+        /* Счёт для 1С (виден только сотруднику) */
+        #c1_container { margin-top: 28px; }
+        .c1-note { font-size: 12px; color: var(--text-sec); margin: 0 0 12px; line-height: 1.5; }
+        .c1-warn, .c1-warn-t { color: #B45309; }
+        .c1-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 14px 0 8px; font-size: 13px; color: var(--text-main); }
+        .c1-miss-head { margin-top: 26px; }
+        .c1-btn { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .c1-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--text-main); }
+        .c1-table th { text-align: left; font-size: 11px; color: var(--text-sec); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+        .c1-table td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+        .c1-num { text-align: right; white-space: nowrap; }
+        .c1-sku { white-space: nowrap; font-family: monospace; font-size: 11.5px; }
+        .c1-sub { font-size: 10.5px; color: var(--text-sec); margin-top: 2px; }
+        .c1-flag td { background: rgba(250, 204, 21, 0.16); }
+        .c1-total { text-align: right; font-size: 12.5px; margin-top: 8px; color: var(--text-main); }
     </style>
 </head>
 
@@ -2701,6 +2717,13 @@
             </div>
         </div>
 
+        <!-- Счёт для 1С: скидка от прайса ТЕРЕМ по строкам. Виден сотруднику по
+             столбцу «Скидка 1С» таблицы «Тарифы», в печать не идёт. -->
+        <div id="c1_container" class="no-print" style="display: none;">
+            <h2 class="sec-title">Счёт для 1С</h2>
+            <div id="c1_body"></div>
+        </div>
+
         <!-- Works Section -->
         <div id="works_container" style="display: none;">
             <h2 class="sec-title">Монтажные и пусконаладочные работы</h2>
@@ -2776,6 +2799,286 @@
             img.src = 'img/favicon.png';
         }
 
+        // ═══ Счёт для 1С ═══════════════════════════════════════════════════
+        // КП показывает цены РИЦ, а счёт в 1С выставляется от прайс-листа ТЕРЕМ
+        // со скидкой. Чтобы счёт совпал с КП, скидка нужна своя у каждой строки:
+        // у марок и групп она разная, у части позиций цена КП даже выше прайса.
+        //
+        // Вторая ловушка — трубы в бухтах. В КП строка «2 шт» по цене бухты
+        // означает две бухты по 100 м, а прайс и 1С считают метрами. Прежняя
+        // кнопка отдавала в 1С «2» — отсюда расхождение по количеству.
+
+        // Сколько метров в одной «штуке» строки. Цену трубы в смете калькулятор
+        // домножает на длину бухты (asCoilPrice в app.js), но в саму строку ни
+        // длину, ни метку не кладёт — узнаём по цене: какая длина объясняет
+        // цену строки лучше, 1 или длина бухты из каталога. У конвекторов len —
+        // длина прибора (1,25–3 м), цена у них за штуку, и проверка по цене
+        // их не путает. У ROMMER-замены длины часто нет, а цену калькулятор
+        // считает по длине STOUT-позиции, поэтому пробуем обе.
+        function coilLenOf(item) {
+            const sku = realSku(item.displaySku || item.id);
+            const price = Number(item.price) || 0;
+            if (!sku || typeof catalog === 'undefined' || price <= 0) return 1;
+            let base = null, lens = [];
+            for (const key in catalog) {
+                const list = catalog[key];
+                if (!Array.isArray(list)) continue;
+                for (const it of list) {
+                    if (!it) continue;
+                    if (it.id === sku || it.article === sku) { base = it; lens = [it.len]; break; }
+                    const rs = it.rommer ? [].concat(it.rommer) : [];
+                    const r = rs.find(x => x && x.id === sku);
+                    if (r) { base = r; lens = [it.len, r.len]; break; }
+                }
+                if (base) break;
+            }
+            if (!base || !(base.price > 0)) return 1;
+            const ratio = price / base.price;
+            let best = 1, bestErr = Math.abs(Math.log(ratio));
+            lens.forEach(L => {
+                L = Number(L) || 0;
+                if (L < 10) return;
+                const err = Math.abs(Math.log(ratio / L));
+                if (err < bestErr) { best = L; bestErr = err; }
+            });
+            return best;
+        }
+
+        // Строки для 1С: вычеркнутые пропущены, бухты переведены в метры,
+        // один артикул из разных разделов сметы сложен в одну строку.
+        function build1cRows(eqList) {
+            const rows = [];
+            const byKey = {};
+            (eqList || []).forEach(i => {
+                if (!i || i.isOpt) return;
+                const q = Number(i.q) || 0;
+                if (q <= 0) return;
+                const sku = realSku(i.displaySku || i.id);
+                const L = coilLenOf(i);
+                const sum = (typeof i.sum === 'number' && isFinite(i.sum)) ? i.sum : Math.round((i.price || 0) * q);
+                const key = sku || ('name:' + (i.name || ''));
+                let row = byKey[key];
+                if (!row) {
+                    row = byKey[key] = { sku: sku, name: i.name || '', unit: L > 1 ? 'м' : (i.unit || 'шт'), coil: L > 1 ? L : 0, qty: 0, sum: 0 };
+                    rows.push(row);
+                }
+                row.qty += q * L;
+                row.sum += sum;
+            });
+            rows.forEach(r => { r.qty = Math.round(r.qty * 1000) / 1000; r.price = r.qty > 0 ? r.sum / r.qty : 0; });
+            return rows;
+        }
+
+        // Число для вставки в 1С: русская запятая, без лишних нулей
+        function num1c(v, digits) {
+            const k = Math.pow(10, digits);
+            return String(Math.round(v * k) / k).replace('.', ',');
+        }
+        function esc1c(s) {
+            return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+        }
+        function money1c(v) {
+            return (Math.round(v * 100) / 100).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ₽';
+        }
+
+        // Прайс-лист ТЕРЕМ: тот же индекс, что у распознавания (сначала сервер,
+        // он пересобирается каждый месяц, потом файл в проекте). Поля: a — артикул,
+        // n — название, p — цена, s — лист.
+        let _priceMap1c = null;
+        async function loadPriceMap1c() {
+            if (_priceMap1c) return _priceMap1c;
+            const norm = s => String(s || '').toUpperCase().replace(/[^0-9A-ZА-ЯЁ]/g, '');
+            for (const url of ['https://proxy.heatcalc.ru/price_index.php', 'price_index.json']) {
+                try {
+                    const r = await fetch(url);
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    const idx = await r.json();
+                    if (!idx.items || !idx.items.length) throw new Error('пустой индекс');
+                    const exact = {}, loose = {};
+                    idx.items.forEach(it => {
+                        if (!it || !it.a || !(it.p > 0)) return;
+                        const a = String(it.a).trim().toUpperCase();
+                        if (!exact[a]) exact[a] = it;
+                        const n = norm(a);
+                        if (n && !loose[n]) loose[n] = it;
+                    });
+                    // Артикул в прайсе бывает записан через пробел или точку
+                    // («SMS 0907 000002», «500089.K») — второй проход без них.
+                    _priceMap1c = { version: idx.version || '', get: sku => exact[String(sku).trim().toUpperCase()] || loose[norm(sku)] || null };
+                    return _priceMap1c;
+                } catch (e) {
+                    console.warn('[счёт 1С] прайс не загружен из ' + url + ':', e.message);
+                }
+            }
+            return null;
+        }
+
+        // Кому показывать скидку: администратору всегда, остальным — по столбцу
+        // «Скидка 1С» таблицы «Тарифы» (app_settings.tariffs). Строка таблицы
+        // определяется так же, как tariffAccountOfUser / tariffPlanOfUser в app.js.
+        // Разделение клиентское, как и вся таблица тарифов.
+        const SUPER_ADMIN_EMAILS_1C = ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'];
+        async function invoice1cAllowed() {
+            const host = window.location.hostname;
+            if (host === 'localhost' || host === '127.0.0.1') return true;
+            try {
+                let authId = null, email = '';
+                try {
+                    const { data } = await supabaseClient.auth.getSession();
+                    const u = data && data.session && data.session.user;
+                    if (u) { authId = u.id; email = u.email || ''; }
+                } catch (e) { }
+                // Вход через Telegram живёт без сессии Supabase — берём профиль калькулятора
+                if (!authId && !email) {
+                    try {
+                        const st = JSON.parse(localStorage.getItem('stout_save') || '{}');
+                        const tg = st && st.tgUser;
+                        if (tg) { authId = tg.authUserId || null; email = tg.email || ''; }
+                    } catch (e) { }
+                }
+                if (!authId && !email) return false;
+                if (email && SUPER_ADMIN_EMAILS_1C.includes(email.toLowerCase())) return true;
+
+                let row = null;
+                if (authId) {
+                    const { data } = await supabaseClient.from('users').select('*').eq('auth_user_id', authId).maybeSingle();
+                    row = data;
+                }
+                if (!row && email) {
+                    const { data } = await supabaseClient.from('users').select('*').eq('email', email).maybeSingle();
+                    row = data;
+                }
+                if (!row) return false;
+                if (row.email && SUPER_ADMIN_EMAILS_1C.includes(String(row.email).toLowerCase())) return true;
+                const t = row.account_type || '';
+                if (t === 'admin') return true;
+
+                let account;
+                if (t === 'manager' || t === 'viewer') account = t;
+                else {
+                    const list = Array.isArray(row.activity_types) ? row.activity_types : [];
+                    const has = w => list.some(a => String(a).toLowerCase().indexOf(w) !== -1);
+                    account = (has('продав') && !has('монтаж')) ? 'seller' : 'installer';
+                }
+                const demoOk = row.demo_ends_at && new Date(row.demo_ends_at) >= new Date();
+                let plan = 'base';
+                if (t === 'pro') plan = (row.demo_ends_at && !demoOk) ? 'base' : 'pro';
+                else if (t === 'viewer' || t === 'manager') plan = demoOk ? 'pro' : 'base';
+
+                const { data: s } = await supabaseClient.from('app_settings').select('value').eq('key', 'tariffs').maybeSingle();
+                const cell = s && s.value && s.value.cells && s.value.cells[account + '.' + plan];
+                return !!(cell && cell.disc1c === 'on');
+            } catch (e) {
+                console.warn('[счёт 1С] доступ не проверен:', e.message || e);
+                return false;
+            }
+        }
+
+        let _rows1c = null;
+        async function render1cBlock(data) {
+            const box = document.getElementById('c1_container');
+            if (!box) return;
+            if (!(await invoice1cAllowed())) return;
+            const eqList = (data && data.items && data.items.equipment) || [];
+            if (!eqList.length) return;
+
+            box.style.display = 'block';
+            const body = document.getElementById('c1_body');
+            body.innerHTML = '<div class="c1-note">Загружаю прайс-лист ТЕРЕМ…</div>';
+            const pm = await loadPriceMap1c();
+            if (!pm) {
+                body.innerHTML = '<div class="c1-note c1-warn">Прайс-лист ТЕРЕМ сейчас недоступен — скидку посчитать не из чего. Обновите страницу позже.</div>';
+                return;
+            }
+
+            const all = build1cRows(eqList);
+            const inPrice = [], missing = [];
+            all.forEach(r => {
+                const pl = r.sku ? pm.get(r.sku) : null;
+                if (!pl) { missing.push(r); return; }
+                r.pl = pl.p;
+                // Скидка с двумя знаками: прайс × (1 − скидка) даёт цену КП до копеек
+                r.disc = Math.round((1 - r.price / pl.p) * 10000) / 100;
+                // Отрицательная скидка — цена КП выше прайса; больше 50 % — почти
+                // всегда другая единица (упаковка против штуки)
+                r.flag = r.disc < 0 ? 'Цена КП выше прайса — в 1С получится наценка'
+                    : r.disc > 50 ? 'Скидка больше 50 % — проверьте единицу измерения' : '';
+                inPrice.push(r);
+            });
+            _rows1c = { inPrice, missing };
+
+            const sumKp = inPrice.reduce((a, r) => a + r.sum, 0);
+            const sum1c = inPrice.reduce((a, r) => a + Math.round(r.pl * (1 - r.disc / 100) * 100) / 100 * r.qty, 0);
+            const flagged = inPrice.filter(r => r.flag).length;
+
+            let html = `<div class="c1-note">Прайс ТЕРЕМ ${esc1c(pm.version)}. Бухты труб переведены в метры, одинаковые артикулы из разных разделов сложены.
+                ${flagged ? `<b class="c1-warn-t">Проверьте строк: ${flagged}</b> (выделены жёлтым).` : ''}</div>`;
+            if (inPrice.length) {
+                html += `<div class="c1-head"><b>Есть в ТЕРЕМ — ${inPrice.length} поз.</b>
+                    <button class="btn-copy-spec c1-btn" onclick="copy1cRows('price', this)">📋 Артикул · кол-во · скидка %</button></div>
+                    <div class="table-responsive"><table class="c1-table"><thead><tr>
+                    <th>#</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена прайса</th><th>Цена КП</th><th>Скидка</th><th>Сумма КП</th>
+                    </tr></thead><tbody>`;
+                inPrice.forEach((r, n) => {
+                    html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
+                        <td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}</td>
+                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">бухта ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
+                        <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
+                        <td class="c1-num">${money1c(r.pl)}</td><td class="c1-num">${money1c(r.price)}</td>
+                        <td class="c1-num"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
+                });
+                html += `</tbody></table></div>
+                    <div class="c1-total">Итого по КП: <b>${money1c(sumKp)}</b> · в 1С со скидками выйдет ≈ <b>${money1c(sum1c)}</b></div>`;
+            }
+            if (missing.length) {
+                const missSum = missing.reduce((a, r) => a + r.sum, 0);
+                html += `<div class="c1-head c1-miss-head"><b>Нет в прайсе ТЕРЕМ — заказать в другом месте: ${missing.length} поз. на ${money1c(missSum)}</b>
+                    <button class="btn-copy-spec c1-btn" onclick="copy1cRows('missing', this)">📋 Копировать список</button></div>
+                    <div class="table-responsive"><table class="c1-table"><thead><tr>
+                    <th>#</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена КП</th><th>Сумма КП</th>
+                    </tr></thead><tbody>`;
+                missing.forEach((r, n) => {
+                    html += `<tr><td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku || 'нет')}</td><td>${esc1c(r.name)}</td>
+                        <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td><td class="c1-num">${money1c(r.price)}</td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
+                });
+                html += `</tbody></table></div>`;
+            }
+            body.innerHTML = html;
+        }
+
+        function copy1cRows(which, btn) {
+            if (!_rows1c) return;
+            let text = '';
+            if (which === 'price') {
+                // Табуляция: вставка в 1С или Excel сама разложит по столбцам
+                _rows1c.inPrice.forEach(r => { text += `${r.sku}\t${num1c(r.qty, 3)}\t${num1c(r.disc, 2)}\n`; });
+            } else {
+                _rows1c.missing.forEach(r => { text += `${r.sku || ''}\t${r.name}\t${num1c(r.qty, 3)}\t${r.unit}\n`; });
+            }
+            copyText1c(text, btn);
+        }
+
+        function copyText1c(text, btn) {
+            const done = () => {
+                if (!btn) return;
+                const old = btn.innerHTML;
+                btn.innerHTML = '✅ Скопировано!';
+                setTimeout(() => { btn.innerHTML = old; }, 2000);
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(done).catch(() => alert('Не удалось скопировать.'));
+                return;
+            }
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); done(); } catch (e) { alert('Не удалось скопировать.'); }
+            document.body.removeChild(ta);
+        }
+
         function copySpecFor1C() {
             if (!invoiceData || !invoiceData.items || !invoiceData.items.equipment) {
                 alert("Данные сметы не найдены");
@@ -2783,13 +3086,12 @@
             }
             let text = "";
             let noSkuCount = 0;
-            invoiceData.items.equipment.forEach(item => {
-                if (item.isOpt) return;
-                const sku = realSku(item.displaySku || item.id);
-                if (sku) {
+            // Бухты — в метрах, одинаковые артикулы сложены (build1cRows)
+            build1cRows(invoiceData.items.equipment).forEach(r => {
+                if (r.sku) {
                     // Табуляция, а не «|»: вставка в Excel сама разложит
                     // артикул и количество по двум столбцам
-                    text += `${sku}\t${item.q}\n`;
+                    text += `${r.sku}\t${num1c(r.qty, 3)}\n`;
                 } else {
                     noSkuCount++;
                 }
@@ -3616,6 +3918,8 @@
             if (copyBtn) {
                 copyBtn.style.display = isManager ? 'inline-block' : 'none';
             }
+            // Блок «Счёт для 1С» — только сотруднику и только по таблице «Тарифы»
+            if (isManager) render1cBlock(data);
 
             // 0. Determine if SKU should be shown
             const obj = data.object_info || {};
