@@ -2485,11 +2485,13 @@
         .c1-btn { background: var(--primary-light); color: var(--primary); border: 1px solid var(--primary); padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
         .c1-table { width: 100%; border-collapse: collapse; font-size: 12px; color: var(--text-main); }
         .c1-table th { text-align: left; font-size: 11px; color: var(--text-sec); font-weight: 600; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-        .c1-table td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+        .c1-table td { padding: 6px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: baseline; }
+        .c1-table th.c1-num { text-align: right; }
         .c1-num { text-align: right; white-space: nowrap; }
         .c1-sku { white-space: nowrap; font-family: monospace; font-size: 11.5px; }
         .c1-sub { font-size: 10.5px; color: var(--text-sec); margin-top: 2px; }
         .c1-flag td { background: rgba(250, 204, 21, 0.16); }
+        .c1-sec td { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-sec); background: var(--line-soft); padding-top: 8px; }
         .c1-total { text-align: right; font-size: 12.5px; margin-top: 8px; color: var(--text-main); }
     </style>
 </head>
@@ -2850,6 +2852,9 @@
         function build1cRows(eqList) {
             const rows = [];
             const byKey = {};
+            // Разделы — в порядке КП (как группирует таблица оборудования ниже).
+            // Артикул из нескольких разделов складывается в раздел, где встретился первым.
+            const secOrder = {};
             (eqList || []).forEach(i => {
                 if (!i || i.isOpt) return;
                 const q = Number(i.q) || 0;
@@ -2860,7 +2865,9 @@
                 const key = sku || ('name:' + (i.name || ''));
                 let row = byKey[key];
                 if (!row) {
-                    row = byKey[key] = { sku: sku, name: i.name || '', unit: L > 1 ? 'м' : (i.unit || 'шт'), coil: L > 1 ? L : 0, qty: 0, sum: 0 };
+                    const sec = i.sectionTitle || 'Общие материалы';
+                    if (!(sec in secOrder)) secOrder[sec] = Object.keys(secOrder).length;
+                    row = byKey[key] = { sku: sku, name: i.name || '', unit: L > 1 ? 'м' : (i.unit || 'шт'), coil: L > 1 ? L : 0, qty: 0, sum: 0, sec: sec };
                     if (L > 1 && L < 10) row.stick = true;
                     rows.push(row);
                 }
@@ -2868,6 +2875,8 @@
                 row.sum += sum;
             });
             rows.forEach(r => { r.qty = Math.round(r.qty * 1000) / 1000; r.price = r.qty > 0 ? r.sum / r.qty : 0; });
+            // sort устойчивый: внутри раздела строки остаются в порядке КП
+            rows.sort((a, b) => secOrder[a.sec] - secOrder[b.sec]);
             return rows;
         }
 
@@ -3067,9 +3076,10 @@
                 html += `<div class="c1-head"><b>Есть в ТЕРЕМ — ${inPrice.length} поз.</b>
                     <button class="btn-copy-spec c1-btn" onclick="copy1cRows('price', this)">📋 Артикул · кол-во · скидка %</button></div>
                     <div class="table-responsive"><table class="c1-table"><thead><tr>
-                    <th>#</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена прайса</th><th>Цена КП</th><th>Скидка</th><th>Сумма КП</th>
+                    <th>#</th><th>Артикул</th><th>Наименование</th><th class="c1-num">Кол-во</th><th class="c1-num">Цена прайса</th><th class="c1-num">Цена КП</th><th class="c1-num">Скидка</th><th class="c1-num">Сумма КП</th>
                     </tr></thead><tbody>`;
                 inPrice.forEach((r, n) => {
+                    if (!n || inPrice[n - 1].sec !== r.sec) html += `<tr class="c1-sec"><td colspan="8">${esc1c(r.sec)}</td></tr>`;
                     html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
                         <td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>` : ''}</td>
                         <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
@@ -3086,9 +3096,10 @@
                     <button class="btn-copy-spec c1-btn" onclick="copy1cRows('missing', this)">📋 Копировать список</button></div>
                     <div class="c1-note">Скидку от прайса для них посчитать не из чего. Часть может продаваться в ТЕРЕМ вне прайс-листа (как узел ASKON МУ-25М) — проверьте наличие, остальное заказать в другом месте.</div>
                     <div class="table-responsive"><table class="c1-table"><thead><tr>
-                    <th>#</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена КП</th><th>Сумма КП</th>
+                    <th>#</th><th>Артикул</th><th>Наименование</th><th class="c1-num">Кол-во</th><th class="c1-num">Цена КП</th><th class="c1-num">Сумма КП</th>
                     </tr></thead><tbody>`;
                 missing.forEach((r, n) => {
+                    if (!n || missing[n - 1].sec !== r.sec) html += `<tr class="c1-sec"><td colspan="6">${esc1c(r.sec)}</td></tr>`;
                     html += `<tr><td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku || 'нет')}</td><td>${esc1c(r.name)}</td>
                         <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td><td class="c1-num">${money1c(r.price)}</td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
                 });
