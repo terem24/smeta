@@ -27692,6 +27692,7 @@ const app = {
         } else {
             sortedEstimates.forEach((e, i) => {
                 let date = new Date(e.created_at).toLocaleDateString();
+                const time = new Date(e.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                 const rawSum = parseFloat(e.total_sum) || ((parseFloat(e.eq_sum) || 0) + (parseFloat(e.works_sum) || 0));
                 let sum = rawSum ? rawSum.toLocaleString('ru-RU') + ' ₽' : '0 ₽';
                 let author = e.users ? (e.users.username || 'Без имени') : 'Неизвестен';
@@ -27732,7 +27733,7 @@ const app = {
                             <td>${adminStatusBadge}</td>
                             <td style="text-align:right;">
                                 <div style="display:flex; align-items:center; justify-content:flex-end; gap:10px;">
-                                    <span style="color:var(--text-sec); font-size:12px;">${date}</span>
+                                    <span style="color:var(--text-sec); font-size:12px; white-space:nowrap;">${date} ${time}</span>
                                     <button class="row-icon-btn" onclick="event.stopPropagation(); app.viewAdminEstimateInvoice('${e.id}')" title="Посмотреть объект (как видит клиент, с контактами монтажника)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                     </button>
@@ -33313,7 +33314,7 @@ const app = {
             let author = uObj ? (uObj.username || 'Без имени') : 'Неизвестен';
             let phone = uObj ? (uObj.phone || 'Не указан') : '—';
             let email = uObj ? (uObj.email || 'Не указан') : '—';
-            let date = est.created_at ? new Date(est.created_at).toLocaleDateString() : '—';
+            let date = est.created_at ? new Date(est.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
             // Parse calc_data safely
             let st = est.calc_data || {};
