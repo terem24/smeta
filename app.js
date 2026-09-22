@@ -8209,6 +8209,9 @@ const app = {
             if (!projects[e.calc_id]) projects[e.calc_id] = { calc_id: e.calc_id, history: [] };
             const p = projects[e.calc_id];
             p.history.push(e);
+            // Последняя известная версия КП — наибольшая из отметок в событиях
+            const kpV = e.meta && Number(e.meta.kp_version);
+            if (kpV && kpV > (p.kpVersion || 0)) p.kpVersion = kpV;
             // Технические отметки не двигают карточку и не меняют дату последнего
             // изменения — иначе смета уехала бы из своей колонки в никуда.
             if (!this.ADMIN_KANBAN_TECH_EVENTS.includes(e.event)) {
@@ -8362,9 +8365,14 @@ const app = {
                 const initial = (c.user_name || '?').trim().charAt(0).toUpperCase();
                 const em = EVENT_META[c.current] || { label: c.current, color: '#94A3B8' };
                 const comment = c.currentMeta && c.currentMeta.comment ? c.currentMeta.comment : '';
+                // Номер КП с версией. Если текущий статус (одобрено, запрошен счёт)
+                // относится к более ранней версии — подпись, по какой именно.
+                const curV = c.currentMeta && Number(c.currentMeta.kp_version);
+                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
                 return `
                                     <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" ${canDrag(c) ? `draggable="true" ondragstart="app.kanbanDragStart(event, '${c.calc_id}')" ondragend="app._kanbanDragId = null" title="Перетащите в другую колонку, чтобы сменить этап"` : ''} style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
                                         <div style="font-weight:700; color:var(--text-main); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.project_name || 'Без названия'}</div>
+                                        ${kpLine}
                                         ${c.fromRecognition ? `<div style="display:inline-block; background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; margin-bottom:6px; letter-spacing:0.02em;">🔍 РАСПОЗНАВАНИЕ</div>` : ''}
                                         <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
                                             <div style="width:20px; height:20px; border-radius:50%; background:${this.avatarColorFor(c.user_name || '?')}; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
@@ -9159,13 +9167,15 @@ const app = {
         }
 
         const historyHtml = this.renderInvoiceHistoryHtml(events);
+        // Последняя известная версия КП — наибольшая из отметок в событиях
+        const kpMaxV = events.reduce((m, e) => Math.max(m, (e.meta && Number(e.meta.kp_version)) || 0), 0);
 
         content.innerHTML = `
             <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminKanban(true)">← Назад к канбану</button>
             <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
                 <h3 style="margin-top:0; color: var(--text-main);">📋 ${last.project_name || 'Без названия'}</h3>
                 <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; font-size:13px;">
-                    <div><b style="color:var(--text-sec);">№ расчёта:</b> <span style="color:var(--text-main); font-weight:600;">${calcId}</span></div>
+                    <div><b style="color:var(--text-sec);">№ КП:</b> <span style="color:var(--text-main); font-weight:600;">${calcId}${kpMaxV ? '-' + kpMaxV : ''}</span></div>
                     <div><b style="color:var(--text-sec);">Монтажник:</b> <span style="color:var(--text-main);">${author.user_name || '— (клиент)'}</span></div>
                     <div><b style="color:var(--text-sec);">Email:</b> <span style="color:var(--text-main);">${author.user_email || '—'}</span></div>
                     <div><b style="color:var(--text-sec);">Регион:</b> <span style="color:var(--text-main);">${regionLabel}</span></div>
