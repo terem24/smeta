@@ -217,6 +217,7 @@ function compactPayload(data) {
             s: data.object_info.showSku ? 1 : 0,
             c: data.object_info.eqDiscount || 0,
             q: data.object_info.sequence_id || '',
+            v: data.object_info.kp_version || 0,
             // Прайс-лист дистрибьютора. У обычных позиций в ссылку уходит только
             // артикул, а цену invoice.html берёт из каталога сам — без этого ключа
             // клиент увидел бы цены Терема, а итог в шапке был бы посчитан по ценам
@@ -5749,7 +5750,11 @@ const app = {
         if (window.SessionTrack) SessionTrack.screen('share');
         const shareId = this.state.shared_invoice_id;
         this.capturePriceSnapshot();
-        this.logInvoiceEvent('printed', shareId ? { shared_invoice_id: shareId } : null);
+        const kpVersion = this.stampKpVersion('print');
+        const meta = {};
+        if (shareId) meta.shared_invoice_id = shareId;
+        if (kpVersion) meta.kp_version = kpVersion;
+        this.logInvoiceEvent('printed', Object.keys(meta).length ? meta : null);
     },
 
     /**
@@ -5813,6 +5818,220 @@ const app = {
         } catch (e) {
             console.warn('[capturePriceSnapshot]', e);
         }
+    },
+
+    /**
+     * Версии КП: номер расчёта + номер версии, «452712-3».
+     *
+     * Зачем. Номер расчёта у объекта один на всю жизнь, и повторная отправка
+     * клиенту молча подменяла содержимое под той же ссылкой. Клиент одобрил
+     * вариант в понедельник, во вторник монтажник поправил смету и заказал
+     * счёт — и уже не понять, на какой вариант выставлять счёт, какой последний
+     * и что в нём поменялось.
+     *
+     * Версия растёт в момент, когда смета уходит наружу (ссылка, печать, Excel,
+     * запрос счёта), и только если состав или цены отличаются от прошлой
+     * отправки: та же смета, отправленная второй раз, остаётся той же версией.
+     * Каждая версия хранит свой короткий список позиций — по нему карточка
+     * сметы в админке показывает, что изменилось.
+     *
+     * Версии привязаны к номеру расчёта (поле calc): новый объект, заведённый
+     * поверх старого состояния, начинает счёт заново, а не продолжает чужой.
+     */
+    KP_VERSIONS_KEEP: 20,
+    KP_VERSIONS_KEEP_ITEMS: 8,
+    KP_CHANNEL_LABELS: { link: 'ссылка клиенту', print: 'печать или Excel', invoice: 'запрос счёта' },
+
+    // Версии текущего объекта (или переданного состояния — для админки)
+    kpVersionsOf: function (st) {
+        st = st || this.state;
+        const calc = st && st.calc_id ? String(st.calc_id) : '';
+        if (!calc) return [];
+        return (Array.isArray(st.kpVersions) ? st.kpVersions : []).filter(v => v && String(v.calc) === calc);
+    },
+
+    // «452712-3»; без отправленных версий — просто номер расчёта
+    kpNumber: function (st, v) {
+        st = st || this.state;
+        const calc = st && st.calc_id ? String(st.calc_id) : '';
+        if (!calc) return '';
+        if (v === undefined) {
+            const list = this.kpVersionsOf(st);
+            v = list.length ? list[list.length - 1].v : 0;
+        }
+        return v ? calc + '-' + v : calc;
+    },
+
+    // Состав сметы в коротком виде: ключ → [название, количество, цена за единицу]
+    kpItemsNow: function () {
+        const items = {};
+        (this.currentEquipmentList || []).forEach(it => {
+            if (!it || !it.name) return;
+            const key = String(it.originalId || it.id || ('n:' + it.name));
+            const q = Number(it.q) || 1;
+            const p = Math.round(Number(it.price) || 0);
+            if (items[key]) { items[key][1] += q; return; }
+            items[key] = [String(it.name).slice(0, 70), q, p];
+        });
+        if (this.canUseWorks()) {
+            (this.currentWorksList || []).forEach(w => {
+                if (!w || !w.name) return;
+                const key = 'w:' + w.name;
+                const q = Number(w.q) || 1;
+                if (items[key]) { items[key][1] += q; return; }
+                items[key] = [String(w.name).slice(0, 70), q, Math.round(Number(w.price) || 0)];
+            });
+        }
+        return items;
+    },
+
+    /**
+     * Ставит версию на отправку. Возвращает номер версии (1, 2, 3…).
+     * channel: 'link' | 'print' | 'invoice'.
+     */
+    stampKpVersion: function (channel) {
+        try {
+            if (!this.state.calc_id) return 0;
+            const calc = String(this.state.calc_id);
+            const items = this.kpItemsNow();
+            const eq = Math.round(this.lastEqSum || 0);
+            const wk = this.canUseWorks() ? Math.round(this.lastWorksSum || 0) : 0;
+            const sig = JSON.stringify(Object.keys(items).sort().map(k => [k, items[k][1], items[k][2]])) + '|' + eq + '|' + wk;
+            const all = Array.isArray(this.state.kpVersions) ? this.state.kpVersions.filter(v => v && String(v.calc) === calc) : [];
+            const last = all[all.length - 1];
+            const now = new Date().toISOString();
+            let ver;
+            if (last && last.sig === sig) {
+                ver = last;
+                ver.last_at = now;
+            } else {
+                ver = { calc: calc, v: last ? last.v + 1 : 1, at: now, sig: sig, eq: eq, wk: wk, ch: [], items: items };
+                all.push(ver);
+            }
+            if (channel && ver.ch.indexOf(channel) < 0) ver.ch.push(channel);
+            // Хвост храним целиком, у старых версий список позиций снимаем — остаётся
+            // дата и сумма. Иначе смета, отправленная тридцать раз, распухнет в базе.
+            const trimmed = all.slice(-this.KP_VERSIONS_KEEP);
+            trimmed.forEach((v, i) => { if (i < trimmed.length - this.KP_VERSIONS_KEEP_ITEMS) delete v.items; });
+            this.state.kpVersions = trimmed;
+            // Отдельным полем — чтобы списки в админке брали номер точечно, не таща
+            // весь массив версий с позициями.
+            this.state.kpVersion = ver.v;
+            this.saveState();
+            return ver.v;
+        } catch (e) {
+            console.warn('[stampKpVersion]', e);
+            return 0;
+        }
+    },
+
+    // Что изменилось между двумя версиями — строки для карточки
+    kpVersionDiff: function (prev, cur) {
+        if (!prev || !cur || !prev.items || !cur.items) return null;
+        const fmt = n => Math.round(n).toLocaleString('ru-RU');
+        const lines = [];
+        const a = prev.items, b = cur.items;
+        Object.keys(b).forEach(k => {
+            const [name, q, p] = b[k];
+            if (!a[k]) { lines.push({ t: 'add', s: `${name} — ${q} шт` }); return; }
+            const [, q0, p0] = a[k];
+            if (q0 !== q) lines.push({ t: 'chg', s: `${name}: ${q0} → ${q} шт` });
+            if (p0 !== p) lines.push({ t: 'chg', s: `${name}: цена ${fmt(p0)} → ${fmt(p)} ₽` });
+        });
+        Object.keys(a).forEach(k => {
+            if (!b[k]) lines.push({ t: 'del', s: `${a[k][0]} — ${a[k][1]} шт` });
+        });
+        return lines;
+    },
+
+    /**
+     * Блок «Версии КП» для карточки сметы в админке. events — invoice_events
+     * этого расчёта: по отметке kp_version в них видно, какую версию клиент
+     * открыл, одобрил и по какой запрошен счёт.
+     */
+    renderKpVersionsHtml: function (st, events) {
+        const list = this.kpVersionsOf(st);
+        if (!list.length) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const fmt = n => Math.round(n || 0).toLocaleString('ru-RU');
+        const dt = iso => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        const calc = String(st.calc_id);
+        const latest = list[list.length - 1].v;
+
+        // Отметки клиента и счёта по версиям
+        const CLIENT_EVENTS = { opened: 'клиент открыл', confirmed: 'клиент одобрил', needs_revision: 'клиент просит правки', invoice_requested: 'клиент запросил счёт' };
+        const marks = {};
+        let invoiceVer = 0, approvedVer = 0;
+        (events || []).forEach(e => {
+            const v = e && e.meta && Number(e.meta.kp_version);
+            if (!v) return;
+            const label = CLIENT_EVENTS[e.event];
+            if (label) {
+                marks[v] = marks[v] || {};
+                marks[v][label] = e.created_at;
+            }
+            if (e.event === 'invoice_requested' || (e.event === 'sent' && e.meta.channel === 'invoice')) invoiceVer = Math.max(invoiceVer, v);
+            if (e.event === 'confirmed') approvedVer = Math.max(approvedVer, v);
+        });
+        list.forEach(v => { if (v.ch && v.ch.indexOf('invoice') >= 0) invoiceVer = Math.max(invoiceVer, v.v); });
+
+        let warn = '';
+        if (invoiceVer && invoiceVer < latest) {
+            warn = `⚠️ Счёт запрошен по версии <b>${calc}-${invoiceVer}</b>, а последняя отправленная — <b>${calc}-${latest}</b>. Сверьте, на какую выставлять.`;
+        } else if (approvedVer && approvedVer < latest) {
+            warn = `⚠️ Клиент одобрил версию <b>${calc}-${approvedVer}</b>, после неё отправлена <b>${calc}-${latest}</b> — её клиент ещё не одобрял.`;
+        }
+
+        const rows = list.slice().reverse().map((v, idx, arr) => {
+            const prev = list[list.indexOf(v) - 1];
+            const diff = prev ? this.kpVersionDiff(prev, v) : null;
+            const total = (v.eq || 0) + (v.wk || 0);
+            const prevTotal = prev ? (prev.eq || 0) + (prev.wk || 0) : null;
+            const delta = prevTotal !== null ? total - prevTotal : 0;
+            const chs = (v.ch || []).map(c => this.KP_CHANNEL_LABELS[c] || c).join(', ');
+            const badges = [];
+            if (v.v === latest) badges.push(`<span style="background:#2563EB; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">последняя</span>`);
+            if (v.v === invoiceVer) badges.push(`<span style="background:#F97316; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">по ней счёт</span>`);
+            if (v.v === approvedVer) badges.push(`<span style="background:#10B981; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">одобрена</span>`);
+            const mk = marks[v.v] ? Object.keys(marks[v.v]).map(l => `${l} ${dt(marks[v.v][l])}`).join(' · ') : '';
+
+            let diffHtml = '';
+            if (!prev) {
+                diffHtml = `<div style="color:var(--text-sec); font-size:11.5px;">Первая версия.</div>`;
+            } else if (diff === null) {
+                diffHtml = `<div style="color:var(--text-sec); font-size:11.5px;">Состав прошлой версии не сохранился — видна только разница в сумме.</div>`;
+            } else if (!diff.length) {
+                diffHtml = `<div style="color:var(--text-sec); font-size:11.5px;">Позиции те же — изменились только итоги (скидка или работы).</div>`;
+            } else {
+                const COLORS = { add: '#10B981', del: '#EF4444', chg: '#F59E0B' };
+                const SIGNS = { add: '+', del: '−', chg: '~' };
+                const shown = diff.slice(0, 15);
+                diffHtml = shown.map(d => `<div style="font-size:11.5px; color:var(--text-main);"><b style="color:${COLORS[d.t]}; display:inline-block; width:12px;">${SIGNS[d.t]}</b>${esc(d.s)}</div>`).join('')
+                    + (diff.length > shown.length ? `<div style="font-size:11.5px; color:var(--text-sec);">…и ещё ${diff.length - shown.length}</div>` : '');
+            }
+
+            return `
+                <div style="padding:10px 0; border-bottom:1px solid var(--border);">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <b style="color:var(--text-main); font-size:13px;">КП № ${calc}-${v.v}</b>${badges.join('')}
+                        </div>
+                        <span style="color:var(--text-sec); font-size:11px;">${dt(v.at)}</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--text-sec); margin:3px 0 5px;">
+                        Сумма <b style="color:var(--primary);">${fmt(total)} ₽</b>${prev && delta ? ` <span style="color:${delta > 0 ? '#EF4444' : '#10B981'}; font-weight:700;">(${delta > 0 ? '+' : '−'}${fmt(Math.abs(delta))} ₽)</span>` : ''}${chs ? ` · ${esc(chs)}` : ''}
+                    </div>
+                    ${mk ? `<div style="font-size:11.5px; color:#10B981; margin-bottom:4px;">${esc(mk)}</div>` : ''}
+                    ${diffHtml}
+                </div>`;
+        }).join('');
+
+        return `
+            <div style="margin-top: 14px;">
+                <h4 style="margin: 0 0 6px; color: var(--text-main); font-size: 13px;">🗂 Версии КП (${list.length})</h4>
+                ${warn ? `<div style="background:rgba(245,158,11,0.08); border-left:4px solid #F59E0B; padding:8px 12px; border-radius:6px; font-size:12px; color:var(--text-main); margin-bottom:6px;">${warn}</div>` : ''}
+                ${rows}
+            </div>`;
     },
 
     // Смета собрана распознаванием, а не подбором по параметрам объекта: хотя бы одна
@@ -9301,12 +9520,15 @@ const app = {
             const em = EVENT_META[e.event] || { label: e.event, color: '#94A3B8' };
             const dt = new Date(e.created_at).toLocaleString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             const comment = e.meta && e.meta.comment ? e.meta.comment : '';
+            // По какой версии КП было событие (есть у отметок, записанных после появления версий)
+            const kpVer = e.meta && Number(e.meta.kp_version);
+            const kpTag = kpVer && e.calc_id ? ` <span style="font-weight:600; color:var(--text-sec); font-size:11.5px; font-family:monospace;">КП № ${e.calc_id}-${kpVer}</span>` : '';
             return `
                 <div style="display:flex; gap:12px; padding:10px 0; border-bottom:1px solid var(--border);">
                     <div style="width:10px; height:10px; border-radius:50%; background:${em.color}; margin-top:5px; flex-shrink:0;"></div>
                     <div style="flex:1; min-width:0;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-                            <span style="font-weight:700; color:var(--text-main); font-size:13px;">${em.label}</span>
+                            <span style="font-weight:700; color:var(--text-main); font-size:13px;">${em.label}${kpTag}</span>
                             <span style="color:var(--text-sec); font-size:11px; white-space:nowrap;">${dt}</span>
                         </div>
                         ${comment ? `<div style="color:var(--text-main); font-size:12px; margin-top:4px; white-space:pre-wrap;">${comment.replace(/</g, '&lt;')}</div>` : ''}
@@ -18290,7 +18512,7 @@ const app = {
                 // JSON-путь PostgREST и восстанавливаем прежнюю форму e.calc_data.xxx на клиенте,
                 // чтобы не переписывать весь код рендера ниже.
                 let { data: uEsts, error: errUE } = await supabaseClient.from('estimates')
-                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition')
+                    .select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion')
                     .in('user_id', userIds);
                 if (errUE) throw errUE;
                 userEsts = (uEsts || []).map(e => ({ ...e, calc_data: { calc_id: e.calc_id, shared_invoice_id: e.shared_invoice_id, area: e.area } }));
@@ -29973,7 +30195,7 @@ const app = {
             const { data: freshUser, error: userErr } = await supabaseClient.from('users').select('*').eq('id', userId).maybeSingle();
             if (userErr || !freshUser) { app.alert('Пользователь не найден.'); return; }
             user = freshUser;
-            const { data: freshEst } = await supabaseClient.from('estimates').select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, area:calc_data->>area, calc_id:calc_data->>calc_id, from_recognition:calc_data->>from_recognition').eq('user_id', userId);
+            const { data: freshEst } = await supabaseClient.from('estimates').select('id, user_id, project_name, eq_sum, works_sum, total_sum, created_at, share_id, area:calc_data->>area, calc_id:calc_data->>calc_id, from_recognition:calc_data->>from_recognition, kp_ver:calc_data->>kpVersion').eq('user_id', userId);
             userEstimates = (freshEst || []).map(e => ({ ...e, calc_data: { area: e.area, calc_id: e.calc_id, from_recognition: e.from_recognition } }));
         }
 
@@ -30289,7 +30511,7 @@ const app = {
         h += `
                     <h4 style="margin:0 0 15px 10px; color:var(--text-main);">📋 Сметы пользователя (${userEstimates.length})</h4>
                     <table class="inv-table">
-                        <thead><tr><th style="width:30px;">#</th><th>Название объекта</th><th>Сумма</th><th style="text-align:right;">Дата / Опции</th></tr></thead>
+                        <thead><tr><th style="width:30px;">#</th><th style="width:110px;">№ КП</th><th>Название объекта</th><th>Сумма</th><th style="text-align:right;">Дата / Опции</th></tr></thead>
                         <tbody>
                 `;
         if (userEstimates.length > 0) {
@@ -30302,8 +30524,17 @@ const app = {
                     : '—';
                 let esum = e.total_sum ? e.total_sum.toLocaleString() + ' ₽' : '0 ₽';
                 let projName = e.project_name || e.name || 'Без названия';
+                // Номер КП с версией: «452712-3». Без версии (смету ещё не отправляли
+                // клиенту или отправили до появления версий) — просто номер расчёта.
+                const eCalc = e.calc_id || (e.calc_data && e.calc_data.calc_id) || '';
+                const eVer = Number(e.kp_ver) || 0;
+                const kpCell = eCalc
+                    ? `<span style="font-family:monospace; font-weight:700; color:var(--text-main);">${eCalc}${eVer ? '-' + eVer : ''}</span>`
+                      + (eVer > 1 ? `<div style="font-size:10.5px; color:var(--text-sec);">версий: ${eVer}</div>` : '')
+                    : '<span style="color:var(--text-sec);">—</span>';
                 h += `<tr class="active-row" style="cursor: pointer; transition: 0.2s;" onclick="app.viewAdminEstimate('${e.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
                             <td style="color:var(--text-sec);">${i + 1}</td>
+                            <td>${kpCell}</td>
                             <td style="font-weight:600;">${projName}</td>
                             <td style="color:var(--primary); font-weight:bold;">${esum}</td>
                             <td style="text-align:right;">
@@ -30317,7 +30548,7 @@ const app = {
                         </tr>`;
             });
         } else {
-            h += `<tr><td colspan="3" style="text-align:center; padding:30px; color:var(--text-sec);">Пользователь еще не сохранял сметы</td></tr>`;
+            h += `<tr><td colspan="5" style="text-align:center; padding:30px; color:var(--text-sec);">Пользователь еще не сохранял сметы</td></tr>`;
         }
         h += `</tbody></table>`;
         h += `<div id="admin_user_extras" style="margin-top:20px;"></div>`;
@@ -32457,7 +32688,7 @@ const app = {
             let h = `
                         <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminMain()">← Назад</button>
                         <div style="background: var(--surface-light); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;">
-                            <h3 style="margin-top:0; color: var(--text-main);">📋 ${est.project_name || 'Без названия'}</h3>
+                            <h3 style="margin-top:0; color: var(--text-main);">📋 ${est.project_name || 'Без названия'}${st && st.calc_id ? ` <span style="font-size:14px; font-weight:700; color:var(--text-sec); font-family:monospace;">КП № ${this.kpNumber(st)}</span>` : ''}</h3>
                             
                             <div style="background: rgba(37, 99, 235, 0.04); border: 1px solid rgba(37, 99, 235, 0.12); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;">
                                 <div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-sec); font-weight: 700; margin-bottom: 10px;">👷 Монтажник</div>
@@ -32484,6 +32715,7 @@ const app = {
                                 <div id="admin_shared_status_container" style="grid-column: span 2;">
                                     <div style="color: var(--text-sec); font-size: 12px;">Загрузка статуса предложения...</div>
                                 </div>
+                                <div id="admin_kp_versions_container" style="grid-column: span 2;">${this.renderKpVersionsHtml(st, [])}</div>
                             </div>
                             <div style="font-size:12px; color:var(--text-sec); margin-bottom: 15px; line-height: 1.4;">
                                 <i>* В базе данных сохраняются только общие суммы.<br>Чтобы посмотреть детальную спецификацию по позициям, скопируйте код ниже, закройте окно и нажмите иконку 📥 (Загрузить код).</i>
@@ -32526,6 +32758,10 @@ const app = {
                         .order('created_at', { ascending: true });
 
                     if (evError) throw evError;
+
+                    // Версии КП — теперь с отметками клиента: какую открыл, одобрил, по какой счёт
+                    const kpBox = document.getElementById('admin_kp_versions_container');
+                    if (kpBox) kpBox.innerHTML = this.renderKpVersionsHtml(st, events || []);
 
                     // Технические отметки в «Текущий статус» не попадают (см. ADMIN_KANBAN_TECH_EVENTS)
                     const statusEvents = (events || []).filter(e => !this.ADMIN_KANBAN_TECH_EVENTS.includes(e.event));
@@ -36691,7 +36927,7 @@ const app = {
         const sectionsText = sections.length > 0 ? " (" + sections.join(", ") + ")" : "";
         let safeName = objName.replace(/[\\\/:\*\?"<>\|]/g, "");
 
-        const numText = this.state.calc_id ? ` №${this.state.calc_id}` : "";
+        const numText = this.state.calc_id ? ` №${this.kpNumber()}` : "";
         document.title = `КП${numText} ${safeName} - ${areaVal} м2${sectionsText}`;
         console.log("[updateDocumentTitle] Updated title to:", document.title);
     },
@@ -38302,6 +38538,9 @@ const app = {
         }
 
         this.render();
+        // Версия КП: клиент увидит «№ 452712-3», его одобрение и запрос счёта
+        // запишутся с этой версией
+        const kpVersion = this.stampKpVersion('link');
 
         let pwr = this.getHouseHeatLoss();
         let regionName = "";
@@ -38327,6 +38566,7 @@ const app = {
             date: new Date().toLocaleDateString('ru-RU'),
             showSku: !!this.state.showSku,
             sequence_id: this.state.calc_id,
+            kp_version: kpVersion || null,
             eqDiscount: this.state.eqDiscount || 0,
             priceListKey: this.activeDistPriceKey()
         };
@@ -38685,6 +38925,9 @@ const app = {
         // Номер присваиваем безусловно: строку в базе следующая же строка заведёт в любом
         // случае, а без номера её потом не с чем сличить — каждая печать плодила бы копию.
         this.ensureCalcId(true);
+        // Версия КП — до сохранения в облако (чтобы версия доехала до базы) и до
+        // заголовка страницы: он же имя файла, «КП №452712-3 …»
+        this.stampKpVersion('print');
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
@@ -38867,6 +39110,9 @@ const app = {
         // Как и при печати: смета должна попасть в базу, даже если сейчас нет связи,
         // и так же безусловно получает номер — иначе выгрузка заведёт лишнюю строку.
         this.ensureCalcId(true);
+        // Версия КП — до сохранения в облако (чтобы версия доехала до базы) и до
+        // заголовка страницы: он же имя файла, «КП №452712-3 …»
+        this.stampKpVersion('print');
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
@@ -39134,11 +39380,19 @@ const app = {
                         // просьбе (когда и сколько раз) оставляем: по ним дашборд считает,
                         // как таймер повлиял на ответы клиентов.
                         const wasRefreshAsked = ex.status === 'refresh_requested';
+                        // Под той же ссылкой ушла новая версия КП — одобрение клиента
+                        // относилось к прошлой, переносить его на новую нельзя: клиент
+                        // увидел бы «одобрено» на смете, которую ещё не видел. Статус
+                        // снова «отправлен», а что и по какой версии он отмечал, остаётся
+                        // в истории (invoice_events хранят номер версии).
+                        const newVersion = !!(job.object_info.kp_version && ex.kp_version
+                            && Number(job.object_info.kp_version) !== Number(ex.kp_version));
+                        const resetStatus = wasRefreshAsked || newVersion;
                         objectInfo = {
                             ...job.object_info,
-                            status: wasRefreshAsked ? (job.object_info.status || 'sent') : (ex.status || job.object_info.status),
-                            client_comment: ex.client_comment || null,
-                            status_updated_at: wasRefreshAsked ? null : (ex.status_updated_at || null),
+                            status: resetStatus ? (job.object_info.status || 'sent') : (ex.status || job.object_info.status),
+                            client_comment: newVersion ? null : (ex.client_comment || null),
+                            status_updated_at: resetStatus ? null : (ex.status_updated_at || null),
                             refresh_requested_at: ex.refresh_requested_at || null,
                             refresh_count: ex.refresh_count || 0,
                             refreshed_at: wasRefreshAsked ? new Date().toISOString() : (ex.refreshed_at || null),
@@ -39498,6 +39752,11 @@ const app = {
             if (this.state.fuels && this.state.fuels.includes('gas')) fuelArr.push('Газ');
             if (fuelArr.length > 0) boilerName = fuelArr.join(' / ');
 
+            // Версия КП, по которой запрошен счёт: в письме и в карточке сметы
+            // будет «КП №452712-3», и видно, на какой вариант выставлять счёт
+            const kpVersion = this.stampKpVersion('invoice');
+            const kpNum = this.kpNumber();
+
             const eqSum = app.lastEqSum || 0;
             // Продавец монтаж не делает — в счёт работы не идут (как в печати и ссылке)
             const noWorks = !this.canUseWorks();
@@ -39530,6 +39789,7 @@ const app = {
                     client_comment: null,
                     status_updated_at: null,
                     sequence_id: this.state.calc_id,
+                    kp_version: kpVersion || null,
                     priceListKey: this.activeDistPriceKey()
                 };
 
@@ -39652,7 +39912,7 @@ const app = {
                 this.state.shared_invoice_id = shareId;
                 this.saveState();
                 this.capturePriceSnapshot();
-                this.logInvoiceEvent('sent', { shared_invoice_id: shareId });
+                this.logInvoiceEvent('sent', { shared_invoice_id: shareId, channel: 'invoice', kp_version: kpVersion || null });
                 GRM.trackAction('invoice', shareId);  // геймификация: +15 XP + значки счетов (запрос счёта у дистрибьютора)
 
                 viewUrl = `${baseOrigin}/invoice.html?id=${shareId}`;
@@ -39694,9 +39954,9 @@ const app = {
                 // Шаблон EmailJS теперь маршрутизирует по {{to_email}} — явно задаём
                 // адрес админа, чтобы поведение основного письма не изменилось
                 to_email: 'kovdor24@yandex.ru',
-                email_subject: `Запрос счёта: ${pName} (КП №${this.state.calc_id})`,
+                email_subject: `Запрос счёта: ${pName} (КП №${kpNum})`,
                 project_name: pName,
-                calc_id: this.state.calc_id,
+                calc_id: kpNum,
                 user_name: authorName,
                 user_phone: tgUser.phone || "Не указан",
                 user_email: (this.state.tgUser?.email || this.state.user?.email || 'Не указан'),
@@ -39754,7 +40014,7 @@ const app = {
                     // Скрытая копия директору дистрибьютора — требует, чтобы в шаблоне
                     // EmailJS (template_lg1zol9) поле Bcc было настроено на {{bcc_email}}
                     bcc_email: directorEmail,
-                    email_subject: `[Дистрибьютор] Запрос счёта от ${authorName} — ${pName}`,
+                    email_subject: `[Дистрибьютор] Запрос счёта от ${authorName} — ${pName} (КП №${kpNum})`,
                     equipment_list: `[Копия для дистрибьютора ${distCompany}]\n${equipmentText}`
                 };
 
@@ -39809,7 +40069,7 @@ const app = {
             const managerName = (this.state.distributorInfo && this.state.distributorInfo.manager_name)
                 ? `${this.state.distributorInfo.manager_name} (${this.state.distributorInfo.company_name || 'Дистрибьютор'})`
                 : 'Менеджер HeatCalc';
-            this.showEmailSuccessModal({ projectName: pName, calcId: this.state.calc_id, managerName });
+            this.showEmailSuccessModal({ projectName: pName, calcId: kpNum, managerName });
 
         } catch (error) {
             console.error("[sendEmail] Ошибка при подготовке к отправке:", error);
@@ -60228,7 +60488,7 @@ const app = {
             : `<span class="param-item">🏠 Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
             <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`;
         document.getElementById('doc_summary').innerHTML = `
-            <span class="param-item">🔖 № КП: <b>${this.state.calc_id || '—'}</b></span>
+            <span class="param-item">🔖 № КП: <b>${this.kpNumber() || '—'}</b></span>
             ${_objChip}
             <span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>
             <span class="param-item">📍 Регион: <b>${regionName}</b></span>

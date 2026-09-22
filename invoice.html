@@ -3352,7 +3352,8 @@
                     date: compact.o.d,
                     showSku: compact.o.s === 1,
                     eqDiscount: discountPercent,
-                    sequence_id: compact.o.q || ''
+                    sequence_id: compact.o.q || '',
+                    kp_version: compact.o.v || null
                 },
                 manager_info: {
                     name: compact.m.n,
@@ -3687,6 +3688,9 @@
             } else {
                 sequenceNum = '0001';
             }
+            // Версия КП: после правок монтажник отправляет ту же ссылку заново, и номер
+            // становится 452712-2, 452712-3 — клиент видит, какой вариант перед ним
+            if (obj.kp_version) sequenceNum = `${sequenceNum}-${obj.kp_version}`;
             document.getElementById('proposal_title').textContent = `КОММЕРЧЕСКОЕ ПРЕДЛОЖЕНИЕ № ${sequenceNum}`;
             document.getElementById('obj_area').textContent = `${obj.area || 0} м²`;
             document.getElementById('obj_floors').textContent = obj.floors || '1';
@@ -4211,6 +4215,13 @@
         // Возвращает id записанной строки (или null): по нему потом просят
         // разбудить телефон монтажника — send-push принимает только вид события
         // и id, а текст и адресата берёт из базы сам.
+        // Номер КП для писем монтажнику: «452712-3», без версии — просто номер расчёта
+        function kpNumberText() {
+            const o = invoiceData?.object_info || {};
+            if (!o.sequence_id) return null;
+            return o.kp_version ? `${o.sequence_id}-${o.kp_version}` : String(o.sequence_id);
+        }
+
         async function logInvoiceEventDirect(event, comment) {
             const calcId = invoiceData?.object_info?.sequence_id;
             if (!calcId || !supabaseClient) return null;
@@ -4219,7 +4230,9 @@
                     calc_id: String(calcId),
                     event: event,
                     project_name: invoiceData?.object_info?.projectName || 'Без названия',
-                    meta: { comment: comment || '' }
+                    // Версия КП, которую клиент видел: по ней в карточке сметы видно,
+                    // какой вариант одобрен и по какому запрошен счёт
+                    meta: { comment: comment || '', kp_version: invoiceData?.object_info?.kp_version || null }
                 }]).select('id');
                 if (error) {
                     console.error('[logInvoiceEventDirect] Ошибка записи:', error);
@@ -4483,7 +4496,7 @@
                         statusText: statusText,
                         comment: comment || '',
                         invoiceUrl: invoiceUrl,
-                        calcId: invoiceData?.object_info?.sequence_id || null,
+                        calcId: kpNumberText(),
                         event: status
                     })
                 });
@@ -4707,7 +4720,7 @@
                         statusText: statusText,
                         comment: comment,
                         invoiceUrl: invoiceUrl,
-                        calcId: invoiceData?.object_info?.sequence_id || null,
+                        calcId: kpNumberText(),
                         event: 'invoice_requested'
                     })
                 });
