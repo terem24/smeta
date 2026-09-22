@@ -10133,15 +10133,34 @@ const app = {
             const total = eqSum + worksSum;
 
             const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
-            const viewUrl = `${baseOrigin}/invoice.html?id=${estimateId}`;
+            // Ссылка — на КП, которое одобрил клиент (строка shared_invoices). Раньше
+            // сюда шёл номер строки сметы из estimates: страница КП ищет по номеру
+            // ссылки, и дистрибьютор получал «смета не найдена».
+            const sharedId = est.calc_data.shared_invoice_id || est.shared_invoice_id || '';
+            const viewUrl = `${baseOrigin}/invoice.html?id=${sharedId || estimateId}`;
             const managerViewUrl = `${viewUrl}&manager=1`;
+
+            // Номер КП с версией — той, что одобрил клиент: она записана в самом КП.
+            // Не прочиталось — последняя отправленная версия сметы.
+            let kpVer = Number(est.kp_ver || est.calc_data.kpVersion) || 0;
+            if (sharedId) {
+                try {
+                    const { data: sh } = await withTimeout(
+                        supabaseClient.from('shared_invoices').select('object_info').eq('id', sharedId).maybeSingle(), 4000);
+                    const v = sh && sh.object_info && Number(sh.object_info.kp_version);
+                    if (v) kpVer = v;
+                } catch (e) { console.warn('[sendEstimateInvoiceToManager] Версию КП прочитать не удалось:', e); }
+            }
+            const calcId = est.calc_data.calc_id || est.calc_id || '';
+            const kpNum = calcId ? (kpVer ? `${calcId}-${kpVer}` : String(calcId)) : 'N/A';
 
             const templateParams = {
                 // Шаблон EmailJS теперь маршрутизирует по {{to_email}} — явно задаём
                 // адрес админа, чтобы поведение основного письма не изменилось
                 to_email: 'kovdor24@yandex.ru',
+                email_subject: `Запрос счёта: ${est.project_name || 'Без названия'} (КП №${kpNum})`,
                 project_name: est.project_name || "Без названия",
-                calc_id: est.calc_data.calc_id || 'N/A',
+                calc_id: kpNum,
                 user_name: tgUser.first_name || tgUser.username || "Монтажник",
                 user_phone: tgUser.phone || "Не указан",
                 user_email: tgUser.email || 'Не указан',
@@ -10151,7 +10170,7 @@ const app = {
                 region: est.calc_data.region || 100,
                 boiler_type: "—",
                 total_sum: eqSum.toLocaleString('ru-RU') + " ₽",
-                equipment_list: `[Запрос счёта для согласованной сметы]\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\nРаботы: ${worksSum.toLocaleString('ru-RU')} ₽\nИТОГО: ${total.toLocaleString('ru-RU')} ₽`,
+                equipment_list: `[Запрос счёта для согласованной сметы]\nКП №${kpNum}\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\nРаботы: ${worksSum.toLocaleString('ru-RU')} ₽\nИТОГО: ${total.toLocaleString('ru-RU')} ₽`,
                 view_url: managerViewUrl
             };
 
@@ -10185,8 +10204,8 @@ const app = {
                     // Скрытая копия директору дистрибьютора — требует, чтобы в шаблоне
                     // EmailJS (template_lg1zol9) поле Bcc было настроено на {{bcc_email}}
                     bcc_email: directorEmail,
-                    email_subject: `[Дистрибьютор] Запрос счёта от ${tgUser.first_name || 'Монтажника'} — ${est.project_name || 'Проект'}`,
-                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nМонтажник: ${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\nРаботы: ${worksSum.toLocaleString('ru-RU')} ₽\nИТОГО: ${total.toLocaleString('ru-RU')} ₽`
+                    email_subject: `[Дистрибьютор] Запрос счёта от ${tgUser.first_name || 'Монтажника'} — ${est.project_name || 'Проект'} (КП №${kpNum})`,
+                    equipment_list: `[Копия для дистрибьютора ${distCompany}]\nКП №${kpNum}\nМонтажник: ${tgUser.first_name || ''} ${tgUser.phone || ''} (${tgUser.email || ''})\nОборудование: ${eqSum.toLocaleString('ru-RU')} ₽\nРаботы: ${worksSum.toLocaleString('ru-RU')} ₽\nИТОГО: ${total.toLocaleString('ru-RU')} ₽`
                 };
 
                 const distJob = {
