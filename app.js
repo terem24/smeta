@@ -9766,7 +9766,7 @@ const app = {
             // Список "Мои сметы" не читает калькулятор целиком (для этого есть отдельный
             // loadSingleEstimate по клику) — тянем только shared_invoice_id/calc_id точечно
             // через JSON-путь, а не весь calc_data (десятки КБ на смету).
-            let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id').order('created_at', { ascending: false }).limit(50);
+            let query = supabaseClient.from('estimates').select('id, project_name, total_sum, created_at, user_id, calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, kp_ver:calc_data->>kpVersion').order('created_at', { ascending: false }).limit(50);
 
             const isAdmin = (uRow.email && ['kovdorekb@gmail.com', 'kovdor24@yandex.ru', 'dima24ba@gmail.com'].includes(uRow.email.toLowerCase())) || ['admin', 'viewer'].includes(uRow.account_type);
             // «Мои объекты» в личном кабинете — всегда только свои сметы, даже у админа:
@@ -9876,7 +9876,7 @@ const app = {
 
             h += `
                 <tr class="active-row" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
-                    <td style="font-weight:600;">${item.project_name}</td>
+                    <td style="font-weight:600;">${item.project_name}${item.calc_id ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${item.calc_id}${Number(item.kp_ver) ? '-' + Number(item.kp_ver) : ''}</div>` : ''}</td>
                     <td style="color:var(--primary); font-weight:bold;">${sum}</td>
                     <td>${statusBadge}</td>
                     <td style="color:var(--text-sec); font-size:12px;">${date}</td>
