@@ -10507,16 +10507,44 @@ const app = {
                 ...(this._cloudEstimates || []),
             ];
             const found = source.find(e => String(e.id) === String(id));
-            const calcId = found && found.calc_data ? found.calc_data.calc_id : null;
+            let calcId = found ? (found.calc_id || (found.calc_data && found.calc_data.calc_id) || null) : null;
+            // Номер и почта автора — из самой строки: в кэше списков их может не быть
+            let authorEmail = '';
+            try {
+                const { data: own } = await supabaseClient.from('estimates')
+                    .select('calc_id:calc_data->>calc_id, users(email)').eq('id', id).maybeSingle();
+                if (own) {
+                    if (!calcId && own.calc_id) calcId = own.calc_id;
+                    const u = Array.isArray(own.users) ? own.users[0] : own.users;
+                    authorEmail = u && u.email ? String(u.email).toLowerCase() : '';
+                }
+            } catch (e) { console.warn('[deleteEstimate] автор сметы:', e); }
 
             const { error } = await supabaseClient.from('estimates').delete().eq('id', id);
             if (error) throw error;
 
             if (calcId) {
-                const { error: evError } = await supabaseClient.from('invoice_events').delete().eq('calc_id', String(calcId));
-                if (evError) console.error("Ошибка синхронной очистки invoice_events:", evError);
-                if (this._kanbanEvents) this._kanbanEvents = this._kanbanEvents.filter(e => String(e.calc_id) !== String(calcId));
-                if (this._adminTab === 'kanban') this.renderAdminKanban(true);
+                // Под тем же номером могут остаться другие сметы: копия, сохранённая
+                // тем, кто загрузил КП по номеру, или просто совпавший случайный номер.
+                // Тогда историю номера целиком стирать нельзя — это история автора.
+                // Убираем только события удалённой сметы (по почте её автора), а если
+                // автор неизвестен — не трогаем ничего.
+                let othersLeft = 1;
+                try {
+                    const { count } = await supabaseClient.from('estimates')
+                        .select('id', { count: 'exact', head: true }).eq('share_id', String(calcId));
+                    othersLeft = count || 0;
+                } catch (e) { console.warn('[deleteEstimate] проверка других смет с номером:', e); }
+                let evQuery = null;
+                if (!othersLeft) evQuery = supabaseClient.from('invoice_events').delete().eq('calc_id', String(calcId));
+                else if (authorEmail) evQuery = supabaseClient.from('invoice_events').delete().eq('calc_id', String(calcId)).ilike('user_email', authorEmail);
+                if (evQuery) {
+                    const { error: evError } = await evQuery;
+                    if (evError) console.error("Ошибка синхронной очистки invoice_events:", evError);
+                    if (this._kanbanEvents) this._kanbanEvents = this._kanbanEvents.filter(e => String(e.calc_id) !== String(calcId)
+                        || (othersLeft && String(e.user_email || '').toLowerCase() !== authorEmail));
+                    if (this._adminTab === 'kanban') this.renderAdminKanban(true);
+                }
             }
 
             // Optimistic Update
