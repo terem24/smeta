@@ -6063,6 +6063,76 @@ const app = {
      *
      * Карточку сметы (состояние, автор) запоминает viewAdminEstimate в _kpCard.
      */
+    /**
+     * Блок «Счёт» в карточке сметы админки — ответ на «как сделать счёт из КП».
+     *
+     * Всегда: открыть смету так, как её видит клиент, с кнопкой «Копировать для 1С»
+     * (предпросмотр пересчитывает смету по сегодняшним ценам), и отметить «Счёт
+     * выставлен». Есть версии КП — подсказываем, что счёт по конкретной версии
+     * делается кнопкой у версии ниже: там состав ровно того варианта, что видел клиент.
+     */
+    renderKpInvoiceBlockHtml: function (st, estId) {
+        const calc = st && st.calc_id ? String(st.calc_id) : '';
+        const hasVersions = this.kpVersionsOf(st || {}).some(v => v.items);
+        const canMark = !this.isReadOnlyAdmin() && !!calc;
+        return `
+            <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.25); border-radius:10px; padding:12px 14px;">
+                <div style="font-weight:700; color:var(--text-main); font-size:13px; margin-bottom:8px;">🧾 Счёт по этой смете</div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+                    <button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px;" onclick="app.viewAdminEstimateInvoice('${estId}')" title="Смета, как её видит клиент, с контактами монтажника и кнопкой «Копировать для 1С»">📄 Открыть смету для счёта</button>
+                    ${canMark ? `<button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px; background:#10B981; border-color:#10B981;" onclick="app.markKpInvoiceIssued()">✓ Счёт выставлен</button>` : ''}
+                </div>
+                <div style="font-size:11.5px; color:var(--text-sec); line-height:1.5;">
+                    1. «Открыть смету для счёта» — в новой вкладке откроется КП; кнопкой «Копировать для 1С» заберите артикулы и количество (два столбца) и вставьте в 1С или Excel.<br>
+                    2. Выставив счёт, нажмите «Счёт выставлен» — монтажник получит уведомление, карточка в «Статусах смет» перейдёт в «В оплату».<br>
+                    ${hasVersions
+                        ? '<b>У сметы есть версии КП</b> — чтобы выставить счёт именно на тот вариант, что одобрил клиент, нажмите «📄 Счёт по этой версии» у нужной версии ниже.'
+                        : 'Версий КП у сметы пока нет: смету отправляли клиенту до их появления. Открывается смета по сегодняшним ценам каталога.'}
+                </div>
+            </div>`;
+    },
+
+    // «Счёт выставлен» из карточки сметы (без версии). Права — как у кнопок канбана.
+    markKpInvoiceIssued: async function () {
+        const card = this._kpCard;
+        const calc = card && card.st && card.st.calc_id ? String(card.st.calc_id) : '';
+        if (!calc) return;
+        if (!await this.kpCardCanIssue()) {
+            app.alert('Отметить счёт может менеджер или директор филиала, за которым закреплён монтажник.');
+            return;
+        }
+        const note = await app.prompt(`Счёт выставлен по КП № ${this.kpNumber(card.st)}. Комментарий (необязательно, например номер счёта):`, '', 'Счёт выставлен');
+        if (note === null) return;
+        const lastV = this.kpVersionsOf(card.st).slice(-1)[0];
+        await this.setInvoiceStatus(calc, 'invoice_issued', {
+            comment: note.trim(),
+            kpVersion: lastV ? lastV.v : undefined,
+            onDone: async () => {
+                app.alert(`✅ Счёт выставлен по КП № ${this.kpNumber(card.st)}`);
+                if (card.estId) await this.viewAdminEstimate(card.estId);
+            }
+        });
+    },
+
+    // Может ли смотрящий отметить счёт по смете из карточки: админ или менеджер филиала автора
+    kpCardCanIssue: async function () {
+        const card = this._kpCard;
+        if (!card || this.isReadOnlyAdmin()) return false;
+        try {
+            const myEmail = await this.kanbanMyEmail();
+            let distId = card.distributorId;
+            if (distId === undefined && card.userId) {
+                const { data: u } = await supabaseClient.from('users').select('distributor_id').eq('id', card.userId).maybeSingle();
+                distId = u ? u.distributor_id : null;
+                card.distributorId = distId;
+            }
+            return this.kanbanCanManageDist(distId, myEmail);
+        } catch (e) {
+            console.warn('[kpCardCanIssue]', e);
+            return false;
+        }
+    },
+
     kpVersionRows: function (cur, prev) {
         const rows = [];
         const a = (prev && prev.items) || null;
@@ -6107,19 +6177,7 @@ const app = {
         const eqSum = sumOf(eqRows), wkSum = sumOf(wkRows);
 
         // Права на отметку — как у кнопок канбана: админ или менеджер филиала монтажника
-        let canIssue = false;
-        if (!this.isReadOnlyAdmin()) {
-            try {
-                const myEmail = await this.kanbanMyEmail();
-                let distId = card.distributorId;
-                if (distId === undefined && card.userId) {
-                    const { data: u } = await supabaseClient.from('users').select('distributor_id').eq('id', card.userId).maybeSingle();
-                    distId = u ? u.distributor_id : null;
-                    card.distributorId = distId;
-                }
-                canIssue = this.kanbanCanManageDist(distId, myEmail);
-            } catch (e) { console.warn('[openKpVersionInvoice] права:', e); }
-        }
+        const canIssue = await this.kpCardCanIssue();
 
         const MARK = {
             add: { bg: 'rgba(16,185,129,0.10)', tag: '<span style="color:#10B981; font-weight:700;">добавлено</span>' },
@@ -33011,13 +33069,15 @@ const app = {
                                 
                                 <div style="grid-column: span 2; height: 1px; background: var(--border); margin: 5px 0;"></div>
                                 
+                                <div id="admin_invoice_block" style="grid-column: span 2;">${this.renderKpInvoiceBlockHtml(st, est.id)}</div>
+                                <div style="grid-column: span 2; height: 1px; background: var(--border); margin: 5px 0;"></div>
                                 <div id="admin_shared_status_container" style="grid-column: span 2;">
                                     <div style="color: var(--text-sec); font-size: 12px;">Загрузка статуса предложения...</div>
                                 </div>
                                 <div id="admin_kp_versions_container" style="grid-column: span 2;">${this.renderKpVersionsHtml(st, [])}</div>
                             </div>
                             <div style="font-size:12px; color:var(--text-sec); margin-bottom: 15px; line-height: 1.4;">
-                                <i>* В базе данных сохраняются только общие суммы.<br>Чтобы посмотреть детальную спецификацию по позициям, скопируйте код ниже, закройте окно и нажмите иконку 📥 (Загрузить код).</i>
+                                <i>* Код ниже загружает смету в ваш калькулятор копией под новым номером (иконка 📥 «Загрузить код») — смету автора это не затрагивает. Для счёта код не нужен: есть кнопка «Открыть смету для счёта» выше.</i>
                             </div>
                             <div style="margin-top: 15px; margin-bottom: 10px;">
                                 <div style="font-weight: 700; font-size: 12px; color: var(--text-sec); margin-bottom: 6px;">Код сметы для загрузки:</div>
@@ -33402,7 +33462,8 @@ const app = {
                         }),
                         10000
                     );
-                    if (isSaved) shortUrl = `${baseOrigin}/invoice.html?id=${estId}&preview=1`;
+                    // manager=1 — кнопка «Копировать для 1С»: предпросмотр открывает только сотрудник
+                    if (isSaved) shortUrl = `${baseOrigin}/invoice.html?id=${estId}&preview=1&manager=1`;
                 } catch (saveErr) {
                     console.warn('[loadAdminEstimatePreview] Короткая ссылка не получилась, уходим на длинную:', saveErr);
                 }
@@ -33414,8 +33475,8 @@ const app = {
             }
 
             const url = await this.generateLocalShareLink(object_info, manager_info, items, totals);
-            const longUrl = url.replace('/invoice.html#', '/invoice.html?preview=1#');
-            window.location.replace(autoPrint ? longUrl.replace('?preview=1#', '?preview=1&print=1#') : longUrl);
+            const longUrl = url.replace('/invoice.html#', '/invoice.html?preview=1&manager=1#');
+            window.location.replace(autoPrint ? longUrl.replace('?preview=1&manager=1#', '?preview=1&manager=1&print=1#') : longUrl);
         } catch (err) {
             console.error('[loadAdminEstimatePreview] Ошибка:', err);
             document.body.innerHTML = '<div style="text-align:center; padding:80px 20px; font-family:Arial, sans-serif; color:#374151;"><h2>⚠️ Не удалось загрузить смету</h2><p>' + (err.message || 'Неизвестная ошибка') + '</p></div>';
