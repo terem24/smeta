@@ -4749,6 +4749,7 @@ const app = {
         const revealFields = () => { fieldsWrap.style.display = ''; };
 
         let selectedArticle = null;
+        let selectedBrand = null;
         let searchTimer = null;
         let lastResults = [];
 
@@ -4811,6 +4812,7 @@ const app = {
                     nameInput.value = found.name;
                     priceInput.value = Math.round(found.price);
                     selectedArticle = found.article || found.id;
+                    selectedBrand = found.brand || null;
                     closeResults();
                     revealFields();
                     priceInput.focus();
@@ -4867,11 +4869,17 @@ const app = {
                 name: name,
                 price: price,
                 q: qty,
-                brand: " ", // Пробел обманывает дефолтную проверку, чтобы не писался STOUT
+                // Пробел обманывает дефолтную проверку, чтобы не писался STOUT
+                brand: (selectedArticle && selectedBrand) || " ",
+                // Выбрано из подсказок — артикул кладём в саму строку, а не только в текст
+                // подсказки: по нему flushBill находит позицию каталога, и у строки
+                // появляются фото, артикул и кнопка замены. Раньше строка оставалась
+                // «голой», хотя товар в базе был.
+                article: selectedArticle || undefined,
                 desc: selectedArticle ? `Добавлено из каталога (арт. ${selectedArticle})` : "Добавлено самостоятельно в ручном режиме",
                 section: sectionTitle
             });
-            app.addEquipmentToLibrary({ name: name, price: price, brand: " ", section: sectionTitle });
+            app.addEquipmentToLibrary({ name: name, price: price, brand: (selectedArticle && selectedBrand) || " ", article: selectedArticle || undefined, section: sectionTitle });
             app.saveState();
             closeModal();
             app.render();
@@ -14745,6 +14753,7 @@ const app = {
             name: entry.name,
             price: entry.price,
             brand: entry.brand || ' ',
+            article: entry.article || undefined,
             // Раздел, куда позицию добавили в первый раз — он же предлагается
             // по умолчанию при повторном добавлении (askBillSection)
             section: entry.section || null,
@@ -14777,6 +14786,7 @@ const app = {
             price: entry.price,
             q: 1,
             brand: entry.brand || ' ',
+            article: entry.article || undefined,
             desc: 'Добавлено из своего оборудования',
             section: section
         });
