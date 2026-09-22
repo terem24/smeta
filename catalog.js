@@ -4988,15 +4988,16 @@ const catalog = {
     ],
     // Цена — ЗА МЕТР, как у штанг 4 м: смета домножает её на len (asCoilPrice).
     // 10.09.2026 автообновление записало сюда цену целой штанги, и в КП штанга 2 м
-    // вышла вдвое дороже. Сверка 22.09.2026: прайс ТЕРЕМ «за метр» × 0,911.
+    // вышла вдвое дороже. Сверка 22.09.2026: цена за метр с карточки teremonline
+    // (там «цена за 2 м» = 1254, а за метр 627 — брать метровую).
     ss_pipe_2m: [
-        { id: "RSS-1001-200015", name: "Труба нерж. 304, штанга 2м 15х1", price: 309, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RSS-1001-200018", name: "Труба нерж. 304, штанга 2м 18х1", price: 421, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RSS-1001-200022", name: "Труба нерж. 304, штанга 2м 22х1.2", price: 570, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RSS-1001-200028", name: "Труба нерж. 304, штанга 2м 28х1.2", price: 736, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RSS-1001-200035", name: "Труба нерж. 304, штанга 2м 35х1.5", price: 1153, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RSS-1001-200042", name: "Труба нерж. 304, штанга 2м 42х1.5", price: 1685, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
-        { id: "RSS-1001-200054", name: "Труба нерж. 304, штанга 2м 54х1.5", price: 2177, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" }
+        { id: "RSS-1001-200015", name: "Труба нерж. 304, штанга 2м 15х1", price: 340, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
+        { id: "RSS-1001-200018", name: "Труба нерж. 304, штанга 2м 18х1", price: 463, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
+        { id: "RSS-1001-200022", name: "Труба нерж. 304, штанга 2м 22х1.2", price: 627, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
+        { id: "RSS-1001-200028", name: "Труба нерж. 304, штанга 2м 28х1.2", price: 810, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
+        { id: "RSS-1001-200035", name: "Труба нерж. 304, штанга 2м 35х1.5", price: 1268, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
+        { id: "RSS-1001-200042", name: "Труба нерж. 304, штанга 2м 42х1.5", price: 1854, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" },
+        { id: "RSS-1001-200054", name: "Труба нерж. 304, штанга 2м 54х1.5", price: 2395, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" }
     ],
     ss_pipe_4m_ru: [
         { id: "RSS-2001-000018", name: "Труба нерж. 304, штанга 4м (Россия) 18х1", price: 322, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock",
