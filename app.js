@@ -37945,7 +37945,9 @@ const app = {
     // renderScheme собирает слои старой PNG-схемы. Возвращает null, если в
     // смете нет котла (тогда лист схемы в комплект не входит).
     buildSchemeConfig: function () {
-        const spec = this.currentEquipmentList || [];
+        // Вычеркнутые кнопкой ✖ позиции (isOpt) на схему не идут: монтажник убрал
+        // расчётные котлы и добавил свои — схема рисовала и те и другие, четыре котла.
+        const spec = (this.currentEquipmentList || []).filter(i => !i.isOpt);
         const nameOf = i => (i && i.name ? String(i.name) : '');
         const has = re => spec.some(i => re.test(nameOf(i)));
         const s = this.state;
@@ -67797,18 +67799,25 @@ const app = {
                 let totalMixers = 0;
                 this.state.waterZones.forEach(z => totalMixers += (z.fixtures.basin + z.fixtures.shower + (z.fixtures.bath || 0) + (z.fixtures.bidet || 0)));
                 if (totalMixers > 0) {
-                    // #10: проточный угольник рециркуляции — только аксиальный (бронза), поэтому при
-                    // металлопластике на пресс переводится лишь тупиковая водорозетка.
-                    let socketItem = recirc ? catalog.water_fittings[1] : _waterSocket();
-                    let sName = recirc ? "Угольник проточный (Бронза)" : (_isMpWater ? "Пресс, угольник с ВР" : "Водорозетка тупиковая");
+                    // #10: проточного настенного угольника в пресс-линейке STOUT нет (SFA-0039/0040 —
+                    // только аксиальные). Поэтому у металлопластика с рециркуляцией точка собирается
+                    // из пресс-тройника 16х16х16 в кольце и того же угольника с ВР, что и у тупиковой
+                    // точки. Аксиальные гильзы и фиксаторы поворота (оснастка PEX-a) не нужны вовсе.
+                    const _mpRecirc = recirc && _isMpWater;
+                    let socketItem = (recirc && !_isMpWater) ? catalog.water_fittings[1] : _waterSocket();
+                    let sName = (recirc && !_isMpWater) ? "Угольник проточный (Бронза)" : (_isMpWater ? "Пресс, угольник с ВР" : "Водорозетка тупиковая");
                     let sCount = recirc ? 2 : 1;
                     addToBill(socketItem, totalMixers, this.getDesc('socket', sName, totalMixers), grpHot);
-                    if (!_isMpWater || recirc) {
+                    if (_mpRecirc) {
+                        const _tee = (catalog.water_fittings_press_mp || []).find(x => x.id === 'SFP-0006-161616');
+                        if (_tee) addToBill(_tee, totalMixers, "Пресс-тройник 16х16х16 в кольце рециркуляции: подача и обратка проходят насквозь, отвод — на угольник с ВР под смеситель (1 шт на точку). Проточного настенного угольника под пресс у STOUT нет.", grpHot);
+                    }
+                    if (!_isMpWater) {
                         addToBill(catalog.water_parts.find(x => x.id === "SFA-0020-000016"), totalMixers * sCount, this.getDesc('sleeve', `${sCount} шт на розетку`), grpHot);
                     }
                     addToBill(catalog.water_fittings[5], totalMixers, "Пробка красная (опрессовка)", grpHot);
                     let fixCount = recirc ? totalMixers * 2 : totalMixers;
-                    if (!_isMpWater || recirc) addToBill(catalog.water_fittings[6], fixCount, "Фиксатор 90°", grpHot);
+                    if (!_isMpWater) addToBill(catalog.water_fittings[6], fixCount, "Фиксатор 90°", grpHot);
                 }
             }
 
