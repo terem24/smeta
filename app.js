@@ -18900,7 +18900,7 @@ const app = {
         // Точечные JSON-поля вместо полного calc_data: в нём лежит вся смета
         // целиком, а таблице нужны номер расчёта, счёт, площадь и адрес
         let recentQuery = supabaseClient.from('estimates')
-            .select('id, project_name, eq_sum, works_sum, total_sum, created_at, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition, addr:calc_data->projectAddress, share_id')
+            .select('id, project_name, eq_sum, works_sum, total_sum, created_at, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition, addr:calc_data->projectAddress, share_id, kp_ver:calc_data->>kpVersion')
             .order('created_at', { ascending: false })
             .limit(50);
         recentQuery = this.scopeQueryToManager(recentQuery, 'user_id');
@@ -27667,7 +27667,7 @@ const app = {
             <div style="margin-bottom: 20px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                     <h3 style="margin: 0; color: var(--text-main);">📋 Все расчёты (сметы)</h3>
-                    <input type="text" id="admin_est_search_input" placeholder="🔍 Поиск по названию или монтажнику..." value="${searchInputBefore.replace(/"/g, '&quot;')}" style="width: 100%; max-width: 400px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 13px; outline: none;" onkeyup="app.filterAdminEstimatesTable(this.value)">
+                    <input type="text" id="admin_est_search_input" placeholder="🔍 Поиск по названию, монтажнику или № КП..." value="${searchInputBefore.replace(/"/g, '&quot;')}" style="width: 100%; max-width: 400px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 13px; outline: none;" onkeyup="app.filterAdminEstimatesTable(this.value)">
                 </div>
 
                 <table class="inv-table">
@@ -27693,9 +27693,10 @@ const app = {
                 let sum = rawSum ? rawSum.toLocaleString('ru-RU') + ' ₽' : '0 ₽';
                 let author = e.users ? (e.users.username || 'Без имени') : 'Неизвестен';
                 let projName = e.project_name || e.name || 'Без названия';
-                let estSearchStr = `${projName} ${author} ${sum}`.toLowerCase();
-
                 const calcId = e.calc_data?.calc_id;
+                // Номер КП с версией — по нему менеджер ищет смету, на которую выставлять счёт
+                const kpNum = calcId ? String(calcId) + (Number(e.kp_ver) ? '-' + Number(e.kp_ver) : '') : '';
+                let estSearchStr = `${projName} ${author} ${sum} ${kpNum}`.toLowerCase();
                 const sharedInvoiceId = e.calc_data?.shared_invoice_id;
                 
                 let eventStatus = null;
@@ -27722,7 +27723,7 @@ const app = {
 
                 h += `<tr class="active-row admin-estimate-row" data-search="${estSearchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.viewAdminEstimate('${e.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
                             <td style="color:var(--text-sec);">${i + 1}</td>
-                            <td><b>${projName}</b>${e.from_recognition === 'true' || e.from_recognition === true ? ` <span title="Смета собрана распознаванием файла" style="background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; white-space:nowrap;">🔍 РАСПОЗНАВАНИЕ</span>` : ''}</td>
+                            <td><b>${projName}</b>${e.from_recognition === 'true' || e.from_recognition === true ? ` <span title="Смета собрана распознаванием файла" style="background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; white-space:nowrap;">🔍 РАСПОЗНАВАНИЕ</span>` : ''}${kpNum ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${kpNum}</div>` : ''}</td>
                             <td>${author}</td>
                             <td style="font-weight:bold; color:var(--primary);">${sum}</td>
                             <td>${adminStatusBadge}</td>
