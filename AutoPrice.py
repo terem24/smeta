@@ -157,6 +157,7 @@ def collect_catalog_items(content):
     """
     items = []
     processed_starts = set()
+    arrays = catalog_arrays(content)
     for match in re.finditer(r'(["\']?price["\']?\s*:\s*)(\d+(?:\.\d+)?)', content, re.IGNORECASE):
         start_idx, end_idx = get_enclosing_object(content, match.start())
         if start_idx == -1 or end_idx == -1 or start_idx in processed_starts: continue
@@ -181,7 +182,10 @@ def collect_catalog_items(content):
         len_m = re.search(r'\blen\s*:\s*(\d+(?:\.\d+)?)', own_text)
         own_len = float(len_m.group(1)) if len_m else None
         has_len = own_len is not None
-        items.append({'sku': sku, 'old_price': old_price, 'match': match, 'start_idx': start_idx, 'end_idx': end_idx, 'obj_text': obj_text, 'price_date': price_date, 'brand': brand, 'unit': unit, 'coil_family': has_len, 'own_len': own_len})
+        # Штанга нержавейки: unit "шт", а цена за метр (см. PER_METER_ARRAYS).
+        array_key = array_of(arrays, start_idx)
+        meter_stick = has_len and bool(array_key and PER_METER_ARRAYS.match(array_key))
+        items.append({'sku': sku, 'old_price': old_price, 'match': match, 'start_idx': start_idx, 'end_idx': end_idx, 'obj_text': obj_text, 'price_date': price_date, 'brand': brand, 'unit': unit, 'coil_family': has_len, 'own_len': own_len, 'meter_stick': meter_stick})
 
     # «Бухтовое» семейство: у позиции или у объекта, в который она вложена, есть
     # поле len — длина бухты. Калькулятор (asCoilPrice в app.js) умножает на неё
@@ -233,6 +237,44 @@ def collect_catalog_items(content):
 # 100 м. Нет ни того, ни другого — позиция остаётся ручной, цену не трогаем.
 PER_METER_UNITS = ('м', 'м.', 'метр', 'п.м', 'п.м.')
 
+# Массивы каталога, где у позиции unit "шт" (смета считает строку штангами), а
+# цена всё равно ЗА МЕТР: addPipesToBill в app.js домножает её на len через
+# asCoilPrice. Это штанги нержавейки ROMMER 2 и 4 м и STOUT 316L. По одному
+# unit "шт" + len их не отличить: так же записаны конвекторы (len — длина
+# прибора) и трубки K-FLEX 2 м, у которых цена за штуку.
+#
+# Без этой отметки штанга считалась штучной, и цена карточки («цена за 2 м»)
+# писалась как есть: 10.09.2026 (26e402c7) штанга 2 м 22х1,2 получила 1254 ₽
+# вместо 570 ₽/м, и в КП ушла вдвое дороже. Прошло это через коридор ±200 %
+# (×2,2); штанги 4 м (×4,4) и 316L (×4,0) коридор отбил — уцелели случайно.
+PER_METER_ARRAYS = re.compile(r'^ss_pipe_')
+
+
+def catalog_arrays(content):
+    """Массивы `ключ: [ ... ]` в catalog.js -> [(ключ, начало, конец)]."""
+    out = []
+    for m in re.finditer(r'\b([A-Za-z_]\w*)\s*:\s*\[', content):
+        depth = 0
+        for i in range(m.end() - 1, len(content)):
+            c = content[i]
+            if c == '[':
+                depth += 1
+            elif c == ']':
+                depth -= 1
+                if depth == 0:
+                    out.append((m.group(1), m.end() - 1, i))
+                    break
+    return out
+
+
+def array_of(arrays, pos):
+    """Ключ самого внутреннего массива, внутри которого лежит pos."""
+    best = None
+    for key, start, end in arrays:
+        if start < pos < end and (best is None or start > best[1]):
+            best = (key, start)
+    return best[0] if best else None
+
 # «цена за 100 м», «цена за 2 м», «цена за шт.»
 PRICE_RATIO_RE = re.compile(r'цена\s+за\s+(?:(\d+(?:[.,]\d+)?)\s*)?(метр\w*|м|шт\w*)', re.IGNORECASE)
 
@@ -240,6 +282,8 @@ PRICE_RATIO_RE = re.compile(r'цена\s+за\s+(?:(\d+(?:[.,]\d+)?)\s*)?(мет
 def is_per_meter(item):
     """Цена позиции в каталоге записана за метр, а не за штуку или бухту."""
     item = item or {}
+    if item.get('meter_stick'):
+        return True
     unit = (item.get('unit') or '').strip().lower()
     if unit in PER_METER_UNITS:
         return True
