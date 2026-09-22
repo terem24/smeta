@@ -10477,6 +10477,19 @@ const app = {
             timerLine = `<div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">Без срока действия.</div>`;
         }
         const resendLabel = (asked || expired) ? 'Обновить счёт по сегодняшним ценам' : 'Отправить заново по сегодняшним ценам';
+        // Готовое сообщение клиенту — с номером той версии КП, что лежит по ссылке
+        {
+            const me = this.state.tgUser || {};
+            const kp = info.sequence_id ? (info.kp_version ? `${info.sequence_id}-${info.kp_version}` : String(info.sequence_id)) : '';
+            this._shareMsg = {
+                url: url,
+                msg: this.clientShareMessage({
+                    kp: kp, project: info.projectName, url: url,
+                    validUntil: (info.status === 'sent' && info.valid_until && new Date(info.valid_until).getTime() > Date.now()) ? info.valid_until : null,
+                    name: this.formatShortName(me) || '', phone: me.phone || ''
+                })
+            };
+        }
 
         this.showPlainModal('Ссылка клиенту',
             `<div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:12px;">
@@ -10489,10 +10502,11 @@ const app = {
              </div>
              <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" class="custom-modal-btn" style="flex:1 1 160px; width:auto;"
+                    onclick="app.copyShareMsg('msg')" title="Номер КП, объект, ссылка, срок действия и ваша подпись">📋 Скопировать сообщение</button>
+                <button type="button" class="custom-modal-btn" style="flex:1 1 120px; width:auto; background:transparent; color:var(--primary); border:1px solid var(--primary);"
+                    onclick="app.copyShareMsg('url')">🔗 Только ссылку</button>
+                <button type="button" class="custom-modal-btn" style="flex:1 1 100px; width:auto; background:transparent; color:var(--text-main); border:1px solid var(--border);"
                     onclick="window.open('${esc(url)}', '_blank')">Открыть</button>
-                <button type="button" class="custom-modal-btn" style="flex:1 1 160px; width:auto;"
-                    onclick="app.copyToClipboard('${esc(url)}').then(() => app.showInAppNotification('Скопировано', 'Ссылка в буфере обмена', '🔗'))">
-                    Скопировать</button>
              </div>
              <p style="font-size:11px; color:var(--text-sec); margin-top:12px; line-height:1.5;">
                 По этой ссылке клиент видит смету такой, какой её отправили: состав, цены и дата того дня.
@@ -10912,6 +10926,50 @@ const app = {
      * Простое окно с заголовком и произвольной разметкой. Своё, а не showModal:
      * тот собран под фиксированные тексты тарифов и гостевого доступа.
      */
+    /**
+     * Готовое сообщение клиенту вместо голой ссылки.
+     *
+     * Ссылку монтажник пересылает сам — в мессенджер или письмом. Голый адрес
+     * ничего не говорит клиенту до открытия, а по номеру КП потом сверяют, какой
+     * вариант он одобрил и по какому выставлен счёт. Поэтому копируем текст:
+     * номер КП с версией, объект, ссылка, срок действия и подпись.
+     */
+    clientShareMessage: function (o) {
+        o = o || {};
+        const lines = [];
+        lines.push(`Коммерческое предложение${o.kp ? ' № ' + o.kp : ''}${o.project ? ' по объекту «' + o.project + '»' : ''}.`);
+        lines.push(`Смета: ${o.url}`);
+        if (o.validUntil) lines.push(`Действительно до ${this.formatValidUntil(o.validUntil)}.`);
+        const sign = [o.name, o.phone].filter(Boolean).join(', ');
+        if (sign) lines.push(sign);
+        return lines.join('\n');
+    },
+
+    // Окно «сообщение для клиента»: текст целиком и отдельно голая ссылка
+    showClientShareMessage: function (title, intro, msg, url) {
+        this._shareMsg = { msg: msg, url: url };
+        const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        this.showPlainModal(title, `
+            ${intro || ''}
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:6px;">Сообщение для клиента — вставьте в мессенджер или письмо:</div>
+            <textarea readonly rows="5" onclick="this.select()"
+                style="width:100%; box-sizing:border-box; font:inherit; font-size:13px; line-height:1.45; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); resize:vertical;">${esc(msg)}</textarea>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                <button type="button" class="custom-modal-btn" style="flex:1 1 180px; width:auto;" onclick="app.copyShareMsg('msg')">📋 Скопировать сообщение</button>
+                <button type="button" class="custom-modal-btn" style="flex:1 1 140px; width:auto; background:transparent; color:var(--primary); border:1px solid var(--primary);" onclick="app.copyShareMsg('url')">🔗 Только ссылку</button>
+                <button type="button" class="custom-modal-btn" style="flex:1 1 100px; width:auto; background:transparent; color:var(--text-main); border:1px solid var(--border);" onclick="window.open(app._shareMsg.url, '_blank')">Открыть</button>
+            </div>`);
+    },
+
+    copyShareMsg: function (what) {
+        const m = this._shareMsg || {};
+        const text = what === 'url' ? m.url : m.msg;
+        if (!text) return;
+        this.copyToClipboard(text)
+            .then(() => this.showInAppNotification('Скопировано', what === 'url' ? 'Ссылка в буфере обмена' : 'Сообщение для клиента в буфере обмена', what === 'url' ? '🔗' : '📋'))
+            .catch(() => app.prompt('Скопируйте вручную:', text));
+    },
+
     showPlainModal: function (title, html) {
         const old = document.getElementById('plain_modal_overlay');
         if (old) old.remove();
@@ -39464,14 +39522,20 @@ const app = {
 
             GRM.trackAction('share', shareId);  // геймификация: +10 XP + значки ссылок (шаринг ссылки клиенту)
 
-            const validNote = object_info.valid_until
-                ? ` Счёт действителен до ${this.formatValidUntil(object_info.valid_until)}.`
-                : '';
-            app.copyToClipboard(shareUrl).then(() => {
-                app.prompt("✅ Ссылка создана и скопирована! Отправьте её клиенту." + validNote, shareUrl);
+            // Копируем готовое сообщение с номером КП, а не голую ссылку
+            const shareMsg = this.clientShareMessage({
+                kp: this.kpNumber(),
+                project: object_info.projectName,
+                url: shareUrl,
+                validUntil: object_info.valid_until,
+                name: manager_info.name,
+                phone: manager_info.phone
+            });
+            app.copyToClipboard(shareMsg).then(() => {
+                this.showClientShareMessage('✅ Ссылка создана', '<p style="font-size:13px; color:var(--text-main); margin:0 0 10px;">Сообщение с номером КП уже скопировано — отправьте его клиенту.</p>', shareMsg, shareUrl);
             }).catch(err => {
                 console.error('Ошибка копирования:', err);
-                app.prompt("✅ Ссылка создана! Скопируйте и отправьте клиенту." + validNote, shareUrl);
+                this.showClientShareMessage('✅ Ссылка создана', '<p style="font-size:13px; color:var(--text-main); margin:0 0 10px;">Скопируйте сообщение и отправьте его клиенту.</p>', shareMsg, shareUrl);
             });
         } catch (err) {
             console.error('[shareInvoice] Ошибка генерации ссылки:', err);
