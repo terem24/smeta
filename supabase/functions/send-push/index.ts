@@ -300,7 +300,7 @@ Deno.serve(async (req) => {
       payload.open = "messages";
     } else if (reason === "invoice_event") {
       const rows = await get(
-        `invoice_events?id=eq.${encodeURIComponent(rowId)}&select=calc_id,event,project_name,created_at&limit=1`,
+        `invoice_events?id=eq.${encodeURIComponent(rowId)}&select=calc_id,event,project_name,created_at,meta&limit=1`,
       );
       const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
       if (!row) return json({ error: "Событие не найдено" }, 404);
@@ -353,9 +353,13 @@ Deno.serve(async (req) => {
       // что стоит в карточке заказа и в самой ссылке.
       const objectName = String(row.project_name || "").trim();
       const calcNo = String(row.calc_id || "").trim();
+      // Номер КП с версией («452712-3»): сайт пишет версию в meta события —
+      // по ней видно, какой вариант клиент открыл, одобрил, по какому счёт
+      const kpVer = Number(row.meta && row.meta.kp_version) || 0;
+      const kpNo = calcNo ? (kpVer ? `${calcNo}-${kpVer}` : calcNo) : "";
       const whatOpened = [
         objectName && objectName !== "Без названия" ? `Объект: ${objectName}` : "",
-        calcNo ? `расчёт № ${calcNo}` : "",
+        kpNo ? `КП № ${kpNo}` : "",
       ].filter(Boolean).join(" · ");
 
       if (TO_MANAGER.has(event)) {
@@ -438,7 +442,15 @@ Deno.serve(async (req) => {
         ? (Array.isArray(row.manager_ids) ? row.manager_ids.map((id: unknown) => String(id)) : [])
         : (row.installer_id ? [String(row.installer_id)] : []);
       title = toManager ? "Счёт по КП не выставлен" : "Напоминание: выставить счёт";
-      text = `КП ушло клиенту ${row.days} дн. назад, счёт не запрошен · расчёт № ${row.calc_id}`;
+      // Версии в журнале напоминаний нет — берём её из последней отправки КП
+      let kpNo = String(row.calc_id);
+      const lastSent = await get(
+        `invoice_events?calc_id=eq.${encodeURIComponent(String(row.calc_id))}` +
+        `&event=in.(sent,printed)&select=meta&order=created_at.desc&limit=1`,
+      );
+      const sentVer = Array.isArray(lastSent) && lastSent[0] && lastSent[0].meta ? Number(lastSent[0].meta.kp_version) || 0 : 0;
+      if (sentVer) kpNo = `${row.calc_id}-${sentVer}`;
+      text = `КП ушло клиенту ${row.days} дн. назад, счёт не запрошен · КП № ${kpNo}`;
       payload.open = "messages";
       payload.calcId = String(row.calc_id);
     } else if (reason === "shared_invoice") {
@@ -469,9 +481,11 @@ Deno.serve(async (req) => {
       // прежних версий записи и встречаются в старых строках.
       const objectName = String(info.projectName || info.project_name || info.object_name || "").trim();
       const calcNo = String(info.sequence_id || "").trim();
+      // Версия КП, лежащая по ссылке, — на неё клиент и ответил
+      const kpNo = calcNo ? (Number(info.kp_version) ? `${calcNo}-${Number(info.kp_version)}` : calcNo) : "";
       text = [
         objectName && objectName !== "Без названия" ? `Объект: ${objectName}` : "",
-        calcNo ? `расчёт № ${calcNo}` : "",
+        kpNo ? `КП № ${kpNo}` : "",
       ].filter(Boolean).join(" · ") || "Откройте смету, чтобы посмотреть ответ";
       payload.open = "orders";
       if (calcNo) payload.calcId = calcNo;

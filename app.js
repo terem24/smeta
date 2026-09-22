@@ -9888,7 +9888,10 @@ const app = {
             // Письмом — потому что пуши доходят только до установленного
             // приложения, а его пока нет ни у кого. Адрес монтажника берём из
             // события сметы: там он записан автором расчёта.
-            this.mailInvoiceStatusToInstaller(status, last, commentText);
+            // Версия КП: выбранная в «Счёт по этой версии», иначе последняя известная по событиям
+            const mailKpV = (preset && preset.kpVersion)
+                || events.reduce((m, e) => Math.max(m, (e.meta && Number(e.meta.kp_version)) || 0), 0);
+            this.mailInvoiceStatusToInstaller(status, last, commentText, mailKpV, events);
 
             if (!preset) {
                 app.alert(status === 'invoice_issued' ? "✅ Статус изменен: Счёт выставлен"
@@ -9935,13 +9938,15 @@ const app = {
         rejected: 'Запрос счёта отклонён'
     },
 
-    mailInvoiceStatusToInstaller: async function (status, lastEvent, commentText) {
+    mailInvoiceStatusToInstaller: async function (status, lastEvent, commentText, kpVersion, allEvents) {
         try {
             const title = this.INVOICE_MAIL_TITLES[status];
             if (!title) return;
             // Ищем среди событий сметы того, кто её считал: у выставления счёта в
-            // user_email стоит менеджер, и письмо ушло бы ему самому.
-            const events = (this._kanbanEvents || []).filter(e => String(e.calc_id) === String(lastEvent && lastEvent.calc_id));
+            // user_email стоит менеджер, и письмо ушло бы ему самому. События берём
+            // переданные (карточка сметы вне канбана их дочитывает сама).
+            const events = (allEvents && allEvents.length ? allEvents : (this._kanbanEvents || []))
+                .filter(e => String(e.calc_id) === String(lastEvent && lastEvent.calc_id));
             const authorEv = events.find(e => (e.event === 'calculated' || e.event === 'saved') && e.user_email)
                 || events.find(e => e.user_email);
             const to = (authorEv && authorEv.user_email) || (lastEvent && lastEvent.user_email) || '';
@@ -9950,6 +9955,11 @@ const app = {
             const projectName = (lastEvent && lastEvent.project_name) || 'Без названия';
             const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
                 ? window.location.origin : 'https://heatcalc.ru';
+            const calc = String((lastEvent && lastEvent.calc_id) || '');
+            // Ссылка — на КП клиента (номер снимка из события «отправлено»). Номер
+            // расчёта в ?id= страница не находит: у свежих смет это разные числа.
+            const shareEv = events.slice().reverse().find(e => e.meta && e.meta.shared_invoice_id);
+            const linkId = shareEv ? shareEv.meta.shared_invoice_id : calc;
             await supabaseProxyFetch(supabaseUrl + '/functions/v1/mail-status', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -9958,8 +9968,8 @@ const app = {
                     projectName: projectName,
                     statusText: title,
                     comment: commentText || '',
-                    invoiceUrl: baseOrigin + '/invoice.html?id=' + encodeURIComponent(String(lastEvent && lastEvent.calc_id || '')),
-                    calcId: String((lastEvent && lastEvent.calc_id) || ''),
+                    invoiceUrl: baseOrigin + '/invoice.html?id=' + encodeURIComponent(String(linkId || '')),
+                    calcId: calc ? (kpVersion ? `${calc}-${kpVersion}` : calc) : '',
                     event: status
                 })
             });
@@ -15691,6 +15701,10 @@ const app = {
                         sharedList.forEach(item => {
                             const objInfo = item.object_info || {};
                             const status = objInfo.status || 'sent';
+                            // Номер КП той версии, что лежит по ссылке и на которую ответил клиент
+                            const kpNum = objInfo.sequence_id
+                                ? String(objInfo.sequence_id) + (objInfo.kp_version ? '-' + objInfo.kp_version : '')
+                                : '';
                             if (status === 'confirmed' || status === 'needs_revision') {
                                 const est = sharedMap[item.id];
                                 if (est) {
@@ -15700,6 +15714,7 @@ const app = {
                                         projectName: est.project_name,
                                         totalSum: est.total_sum,
                                         status: status,
+                                        kpNum: kpNum,
                                         comment: objInfo.client_comment || '',
                                         time: objInfo.status_updated_at || item.created_at,
                                         isRead: readIds.includes(item.id)
@@ -15720,6 +15735,7 @@ const app = {
                                         projectName: est.project_name,
                                         totalSum: est.total_sum,
                                         status: status,
+                                        kpNum: kpNum,
                                         refreshCount: Number(objInfo.refresh_count) || 1,
                                         comment: '',
                                         time: objInfo.refresh_requested_at || objInfo.status_updated_at || item.created_at,
@@ -15850,7 +15866,7 @@ const app = {
                     if (calcIds.length > 0) {
                         const { data: reminderEvents } = await supabaseClient
                             .from('invoice_events')
-                            .select('calc_id, event, created_at')
+                            .select('calc_id, event, created_at, meta')
                             .in('calc_id', calcIds)
                             .order('created_at', { ascending: true });
 
@@ -15865,11 +15881,13 @@ const app = {
 
                             for (const calcId of Object.keys(byCalc)) {
                                 let confirmedAt = null;
+                                let confirmedVer = 0;
                                 let stop = false;
                                 let remindersSince = [];
                                 byCalc[calcId].forEach(ev => {
                                     if (ev.event === 'confirmed') {
                                         confirmedAt = new Date(ev.created_at).getTime();
+                                        confirmedVer = (ev.meta && Number(ev.meta.kp_version)) || 0;
                                         stop = false;
                                         remindersSince = [];
                                     } else if (confirmedAt && STOP_EVENTS.includes(ev.event)) {
@@ -15903,6 +15921,7 @@ const app = {
                                     id: notifId,
                                     type: 'invoice_reminder',
                                     calcId: calcId,
+                                    kpNum: confirmedVer ? `${calcId}-${confirmedVer}` : calcId,
                                     estimateId: est ? est.id : null,
                                     projectName: est ? est.project_name : 'Объект',
                                     attempt: attempt,
@@ -16621,7 +16640,7 @@ const app = {
                                 <span onclick="event.stopPropagation(); app.dismissNotification('${n.id}', event)" title="Удалить уведомление" style="cursor:pointer; color:var(--text-sec); font-size:13px; line-height:1; padding:2px;">✕</span>
                             </div>
                         </div>
-                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>${n.kpNum ? `<div style="font-size: 11px; font-weight: 600; color: var(--text-sec); font-family: monospace;">КП № ${n.kpNum}</div>` : ''}
                         <div style="font-size: 12px; color: ${labelCol}; margin: 2px 0 4px;">Смета одобрена заказчиком. Выставить счёт?</div>
                         <div style="display:flex; align-items:center; gap:10px; margin-top: 2px;">
                             <button class="auth-btn-base btn-email-submit" style="margin: 0; width: auto; padding: 0 14px; height: 30px; font-size: 11.5px; font-weight: bold; background: #10B981; border-color: #10B981;" onclick="app.respondInvoiceReminder('${n.id}', '${n.calcId}', ${n.estimateId ? `'${n.estimateId}'` : 'null'}, 'accept', this)">📄 Выставить счёт</button>
@@ -16645,7 +16664,7 @@ const app = {
                                 <span onclick="event.stopPropagation(); app.dismissNotification('${n.id}', event)" title="Удалить уведомление" style="cursor:pointer; color:var(--text-sec); font-size:13px; line-height:1; padding:2px;">✕</span>
                             </div>
                         </div>
-                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>${n.kpNum ? `<div style="font-size: 11px; font-weight: 600; color: var(--text-sec); font-family: monospace;">КП № ${n.kpNum}</div>` : ''}
                         <div style="font-size: 12px; color: #9A3412; margin: 2px 0 4px;">Срок действия счёта вышел, клиент видит смету без цен и просит обновить${n.refreshCount > 1 ? ` (уже ${n.refreshCount}-й раз)` : ''}. Ссылка у него останется прежней.</div>
                         <div style="display:flex; align-items:center; gap:10px; margin-top: 2px; flex-wrap: wrap;">
                             <button class="auth-btn-base btn-email-submit" style="margin: 0; width: auto; padding: 0 14px; height: 30px; font-size: 11.5px; font-weight: bold; background: #F97316; border-color: #F97316;" onclick="event.stopPropagation(); app.refreshSharedFromNotification('${n.id}', ${estArg}, this)">🔄 Обновить счёт</button>
@@ -16669,7 +16688,7 @@ const app = {
                                 <span onclick="event.stopPropagation(); app.dismissNotification('${n.id}', event)" title="Удалить уведомление" style="cursor:pointer; color:var(--text-sec); font-size:13px; line-height:1; padding:2px;">✕</span>
                             </div>
                         </div>
-                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>
+                        <div style="font-size: 12.5px; font-weight: 700; color: var(--text-main); line-height: 1.3;">Смета «${n.projectName}»</div>${n.kpNum ? `<div style="font-size: 11px; font-weight: 600; color: var(--text-sec); font-family: monospace;">КП № ${n.kpNum}</div>` : ''}
                         ${n.status === 'confirmed'
                         ? `<div style="font-size: 12px; color: #10B981; font-weight: bold; margin: 4px 0;">🎉 Поздравляем! Смета одобрена заказчиком!</div><div style="font-size: 11px; color: var(--text-sec);">Сумма сметы: <b>${n.totalSum.toLocaleString()} ₽</b>. ${n.comment ? `<br><b>Комментарий:</b> "${n.comment}"` : ''}</div>`
                         : `<div style="font-size: 12px; color: #EF4444; font-weight: bold; margin: 4px 0;">⚠️ Смета отклонена (требует доработки)</div><div style="font-size: 11px; color: var(--text-sec); font-style: italic; background: rgba(239,68,68,0.02); border-radius: 6px; padding: 6px; border: 1px dashed rgba(239,68,68,0.15); word-break: break-word;"><b>Замечания:</b> "${n.comment}"</div>`
@@ -17205,7 +17224,7 @@ const app = {
         const title = isChat ? (n.senderName || 'Новое сообщение') : (n.projectName || 'Уведомление');
         const bodyText = isChat
             ? (n.lastText || n.comment || 'Новое сообщение')
-            : (n.comment || (n.projectName ? `Смета «${n.projectName}»` : ''));
+            : (n.comment || (n.projectName ? `Смета «${n.projectName}»${n.kpNum ? ', КП № ' + n.kpNum : ''}` : ''));
         const timeStr = new Date(n.lastTime || n.time).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 
         const toast = document.createElement('div');
@@ -41744,9 +41763,11 @@ const app = {
                     const estInfo = estimates.find(e => e.shared_invoice_id === item.id);
                     const projectName = estInfo?.project_name || 'Объект';
                     const statusInfo = statusLabels[currentStatus] || { label: currentStatus, icon: '🔔' };
+                    const oi = item.object_info || {};
+                    const kpNum = oi.sequence_id ? String(oi.sequence_id) + (oi.kp_version ? '-' + oi.kp_version : '') : '';
 
                     this.showInAppNotification(
-                        `Смета «${projectName}»`,
+                        `Смета «${projectName}»${kpNum ? ' · КП № ' + kpNum : ''}`,
                         statusInfo.label,
                         statusInfo.icon
                     );
