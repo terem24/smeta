@@ -2837,7 +2837,8 @@
             let best = 1, bestErr = Math.abs(Math.log(ratio));
             lens.forEach(L => {
                 L = Number(L) || 0;
-                if (L < 10) return;
+                // Штанга нержавейки — 2 и 4 м, поэтому любая длина больше метра
+                if (!(L > 1)) return;
                 const err = Math.abs(Math.log(ratio / L));
                 if (err < bestErr) { best = L; bestErr = err; }
             });
@@ -2860,6 +2861,7 @@
                 let row = byKey[key];
                 if (!row) {
                     row = byKey[key] = { sku: sku, name: i.name || '', unit: L > 1 ? 'м' : (i.unit || 'шт'), coil: L > 1 ? L : 0, qty: 0, sum: 0 };
+                    if (L > 1 && L < 10) row.stick = true;
                     rows.push(row);
                 }
                 row.qty += q * L;
@@ -2884,6 +2886,29 @@
         // Прайс-лист ТЕРЕМ: тот же индекс, что у распознавания (сначала сервер,
         // он пересобирается каждый месяц, потом файл в проекте). Поля: a — артикул,
         // n — название, p — цена, s — лист.
+        // Один товар — два артикула: в каталоге калькулятора свой, в прайсе ТЕРЕМ свой.
+        //  · нержавейка ROMMER: RSS-10xx в каталоге, RSS-00xx в прайсе (тот же товар и
+        //    та же цена — см. applyDistributorPrices в app.js, там такая же подстановка);
+        //  · сторонние марки: в каталоге с приставкой марки (WARME-HYDRO-20), в прайсе
+        //    без неё (hydro.20) — пробуем артикул без приставки;
+        //  · где и так не сходится — явная таблица, сверено по цене до рубля 22.09.2026.
+        const PRICE_ALIAS_1C = {
+            'WARME-ECO30-20': 'ecopro.30.20',
+            'WARME-PRO65-20': 'ecopro.65.20'
+        };
+        function priceKeys1c(sku) {
+            const s = String(sku || '').trim();
+            const out = [s];
+            if (PRICE_ALIAS_1C[s]) out.push(PRICE_ALIAS_1C[s]);
+            const rss = /^RSS-10(\d\d-.+)$/i.exec(s);
+            if (rss) out.push('RSS-00' + rss[1]);
+            // Приставку снимаем, только если после неё остаются буквы: у «SPX-0002-101620»
+            // одни цифры, и без приставки он совпал бы с чем угодно.
+            const br = /^[A-Za-z]+-(.*[A-Za-z].*)$/.exec(s);
+            if (br) out.push(br[1]);
+            return out;
+        }
+
         let _priceMap1c = null;
         async function loadPriceMap1c() {
             if (_priceMap1c) return _priceMap1c;
@@ -2904,7 +2929,14 @@
                     });
                     // Артикул в прайсе бывает записан через пробел или точку
                     // («SMS 0907 000002», «500089.K») — второй проход без них.
-                    _priceMap1c = { version: idx.version || '', get: sku => exact[String(sku).trim().toUpperCase()] || loose[norm(sku)] || null };
+                    const find = k => exact[String(k).trim().toUpperCase()] || loose[norm(k)] || null;
+                    _priceMap1c = {
+                        version: idx.version || '',
+                        get: sku => {
+                            for (const k of priceKeys1c(sku)) { const it = find(k); if (it) return it; }
+                            return null;
+                        }
+                    };
                     return _priceMap1c;
                 } catch (e) {
                     console.warn('[счёт 1С] прайс не загружен из ' + url + ':', e.message);
@@ -2997,11 +3029,14 @@
                 const pl = r.sku ? pm.get(r.sku) : null;
                 if (!pl) { missing.push(r); return; }
                 r.pl = pl.p;
+                // Артикул, под которым позиция стоит в прайсе, — он же в 1С
+                r.plA = String(pl.a).trim();
                 // Скидка с двумя знаками: прайс × (1 − скидка) даёт цену КП до копеек
                 r.disc = Math.round((1 - r.price / pl.p) * 10000) / 100;
                 // Отрицательная скидка — цена КП выше прайса; больше 50 % — почти
-                // всегда другая единица (упаковка против штуки)
-                r.flag = r.disc < 0 ? 'Цена КП выше прайса — в 1С получится наценка'
+                // всегда другая единица (упаковка против штуки). Минус до 1 % —
+                // это каталог округлил цену до рубля вверх (341 при 340,43), не подсвечиваем.
+                r.flag = r.disc < -1 ? 'Цена КП выше прайса — в 1С получится наценка'
                     : r.disc > 50 ? 'Скидка больше 50 % — проверьте единицу измерения' : '';
                 inPrice.push(r);
             });
@@ -3021,8 +3056,8 @@
                     </tr></thead><tbody>`;
                 inPrice.forEach((r, n) => {
                     html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
-                        <td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}</td>
-                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">бухта ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
+                        <td>${n + 1}</td><td class="c1-sku">${esc1c(r.plA)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в КП: ${esc1c(r.sku)}</div>` : ''}</td>
+                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
                         <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
                         <td class="c1-num">${money1c(r.pl)}</td><td class="c1-num">${money1c(r.price)}</td>
                         <td class="c1-num"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
@@ -3032,8 +3067,9 @@
             }
             if (missing.length) {
                 const missSum = missing.reduce((a, r) => a + r.sum, 0);
-                html += `<div class="c1-head c1-miss-head"><b>Нет в прайсе ТЕРЕМ — заказать в другом месте: ${missing.length} поз. на ${money1c(missSum)}</b>
+                html += `<div class="c1-head c1-miss-head"><b>Не найдены в прайс-листе ТЕРЕМ: ${missing.length} поз. на ${money1c(missSum)}</b>
                     <button class="btn-copy-spec c1-btn" onclick="copy1cRows('missing', this)">📋 Копировать список</button></div>
+                    <div class="c1-note">Скидку от прайса для них посчитать не из чего. Часть может продаваться в ТЕРЕМ вне прайс-листа (как узел ASKON МУ-25М) — проверьте в 1С, остальное заказать в другом месте.</div>
                     <div class="table-responsive"><table class="c1-table"><thead><tr>
                     <th>#</th><th>Артикул</th><th>Наименование</th><th>Кол-во</th><th>Цена КП</th><th>Сумма КП</th>
                     </tr></thead><tbody>`;
@@ -3051,7 +3087,7 @@
             let text = '';
             if (which === 'price') {
                 // Табуляция: вставка в 1С или Excel сама разложит по столбцам
-                _rows1c.inPrice.forEach(r => { text += `${r.sku}\t${num1c(r.qty, 3)}\t${num1c(r.disc, 2)}\n`; });
+                _rows1c.inPrice.forEach(r => { text += `${r.plA}\t${num1c(r.qty, 3)}\t${num1c(r.disc, 2)}\n`; });
             } else {
                 _rows1c.missing.forEach(r => { text += `${r.sku || ''}\t${r.name}\t${num1c(r.qty, 3)}\t${r.unit}\n`; });
             }
