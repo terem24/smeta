@@ -39804,13 +39804,15 @@ const app = {
             });
             equipmentText += "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
-            // 2. Формируем таблицу для легкого импорта в 1С (Артикул|Количество)
+            // 2. Таблица для вставки в Excel/1С: артикул и количество через табуляцию —
+            // при вставке в Excel сами расходятся по двум столбцам (как кнопка
+            // «Копировать для 1С» на странице КП)
             let copyTableText = "";
             let noSkuCount = 0;
             (this.currentSpec || []).forEach(item => {
                 const sku = skuOf(item);
                 if (sku) {
-                    copyTableText += `${sku}|${item.q}\n`;
+                    copyTableText += `${sku}\t${item.q}\n`;
                 } else {
                     noSkuCount++;
                 }
