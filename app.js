@@ -1874,11 +1874,13 @@ const app = {
     // кабинете. Отбор тот же, что у resolveManagedInstallers. Выключенные
     // компании не берём: их промокод всё равно не сработает.
     loadCabinetInviteDists: async function (managerEmail) {
-        if (!managerEmail) { this._cabinetInviteDists = []; return []; }
+        const emails = (Array.isArray(managerEmail) ? managerEmail : [managerEmail])
+            .map(e => String(e || '').trim()).filter(Boolean);
+        if (!emails.length) { this._cabinetInviteDists = []; return []; }
         try {
             const { data, error } = await supabaseClient.from('distributors')
                 .select('id, company_name, manager_name, manager_phone, promo_code, pro_months, invite_limit, is_active')
-                .ilike('manager_email', managerEmail.trim());
+                .or(this.emailsOrFilter('manager_email', emails));
             if (error) throw error;
             this._cabinetInviteDists = (data || []).filter(d => d.is_active !== false && d.promo_code);
         } catch (e) {
@@ -7331,23 +7333,60 @@ const app = {
 
     // Зарегистрированный пользователь с данным email (менеджер дистрибьютора) — или null,
     // если такой email ещё никто не занял (менеджер не зарегистрировался)
+    // Адрес ищется и в основной почте учётки, и в рабочей (users.work_email):
+    // менеджер мог войти личной почтой, а в карточке компании стоит рабочая.
     resolveManagerUserByEmail: async function (email) {
-        if (!email) return null;
+        const mail = String(email || '').trim().toLowerCase();
+        if (!mail) return null;
         try {
-            const { data } = await supabaseClient.from('users').select('id, auth_user_id, email').ilike('email', email.trim()).maybeSingle();
-            return data || null;
+            const { data } = await supabaseClient.from('users').select('id, auth_user_id, email, work_email')
+                .or(this.emailsOrFilter('email', [mail]) + ',' + this.emailsOrFilter('work_email', [mail])).limit(5);
+            const rows = data || [];
+            return rows.find(u => String(u.email || '').trim().toLowerCase() === mail) || rows[0] || null;
         } catch (e) {
             console.warn('[resolveManagerUserByEmail] Ошибка:', e);
             return null;
         }
     },
 
+    // Почты одного человека: которой он входит и рабочая, вписанная владельцем в его
+    // карточку. В карточке дистрибьютора менеджер обычно стоит рабочим адресом, а входит
+    // через Яндекс ID или личной почтой — сверять с карточками надо обе.
+    userEmails: function (row) {
+        const out = [];
+        [row && row.email, row && row.work_email].forEach(v => {
+            const m = String(v || '').trim().toLowerCase();
+            if (m && !out.includes(m)) out.push(m);
+        });
+        return out;
+    },
+
+    // Рабочая почта того, кто сейчас вошёл. Спрашивается у базы один раз за страницу.
+    loadMyWorkEmail: async function () {
+        // Заполняет fetchScopeRow; без входа строки нет — тогда и не кэшируем
+        if (this._myWorkEmail === undefined) await this.fetchScopeRow();
+        return this._myWorkEmail || '';
+    },
+
+    // Мои почты: переданная (или из профиля) плюс рабочая
+    myEmails: async function (email) {
+        const work = await this.loadMyWorkEmail();
+        return this.userEmails({ email: email || (this.state.tgUser || {}).email, work_email: work });
+    },
+
+    // or-фильтр PostgREST: поле без учёта регистра совпадает с любым из адресов
+    emailsOrFilter: function (field, emails) {
+        return emails.map(e => `${field}.ilike."${String(e).replace(/["\\]/g, '')}"`).join(',');
+    },
+
     // Все монтажники, привязанные к дистрибьюторам, у которых manager_email совпадает
-    // с переданным адресом — то есть «мои монтажники» для залогиненного менеджера
+    // с переданным адресом (или любым из списка) — «мои монтажники» для менеджера
     resolveManagedInstallers: async function (managerEmail) {
-        if (!managerEmail) return [];
+        const emails = (Array.isArray(managerEmail) ? managerEmail : [managerEmail])
+            .map(e => String(e || '').trim()).filter(Boolean);
+        if (!emails.length) return [];
         try {
-            const { data: dists } = await supabaseClient.from('distributors').select('id').ilike('manager_email', managerEmail.trim());
+            const { data: dists } = await supabaseClient.from('distributors').select('id').or(this.emailsOrFilter('manager_email', emails));
             const distIds = (dists || []).map(d => d.id);
             if (!distIds.length) return [];
             const { data: installers } = await supabaseClient.from('users')
@@ -7514,9 +7553,10 @@ const app = {
         const me = await this.resolveCurrentUserForChat();
         if (!me) { container.innerHTML = `<div class="lk-empty">Авторизуйтесь, чтобы увидеть список монтажников.</div>`; return; }
 
+        const myMails = await this.myEmails(me.email);
         const [installers, inviteDists] = await Promise.all([
-            this.resolveManagedInstallers(me.email),
-            this.loadCabinetInviteDists(me.email)
+            this.resolveManagedInstallers(myMails),
+            this.loadCabinetInviteDists(myMails)
         ]);
         // Ссылка-приглашение сверху: без неё новому менеджеру некого было бы и
         // увидеть в этом списке
@@ -8772,7 +8812,7 @@ const app = {
         const data = { key: distIds.slice().sort().join(','), dists, people: [], staff: [], heads: [], estimates: [], events: [], activity: [], activityMissing: false };
         if (!distIds.length) return data;
 
-        const userCols = 'id, username, first_name, last_name, middle_name, email, account_type, distributor_id, distributor_assigned_at, last_visited, activity_types';
+        const userCols = 'id, username, first_name, last_name, middle_name, email, work_email, account_type, distributor_id, distributor_assigned_at, last_visited, activity_types';
 
         // 1. Все, кто привязан к филиалам: монтажники и менеджеры с ролью
         for (const part of chunk(distIds, 60)) {
@@ -8781,7 +8821,7 @@ const app = {
         }
 
         // 2. Менеджеры и директора, вписанные в карточки почтой, но не привязанные полем
-        const known = new Set(data.people.map(u => String(u.email || '').trim().toLowerCase()).filter(Boolean));
+        const known = new Set(data.people.flatMap(u => this.userEmails(u)));
         // Ищем и как записано в карточке, и в нижнем регистре: сравнение в базе
         // чувствительно к регистру, а «I.Dorohovich@…» в карточке и «i.dorohovich@…»
         // в учётке — один человек
@@ -8793,9 +8833,13 @@ const app = {
         }));
         if (mails.size) {
             try {
+                // Входит человек нередко другой почтой, а в карточке стоит рабочая
+                const seen = new Set();
                 for (const part of chunk([...mails], 50)) {
-                    const { data: rows } = await supabaseClient.from('users').select(userCols).in('email', part);
-                    data.staff.push(...(rows || []));
+                    for (const field of ['email', 'work_email']) {
+                        const { data: rows } = await supabaseClient.from('users').select(userCols).in(field, part);
+                        (rows || []).forEach(r => { if (!seen.has(String(r.id))) { seen.add(String(r.id)); data.staff.push(r); } });
+                    }
                 }
             } catch (e) { console.warn('[филиалы] менеджеры по почте не прочитаны:', e.message || e); }
         }
@@ -8881,7 +8925,7 @@ const app = {
         const userById = {};
         D.people.concat(D.staff, D.heads).forEach(u => { userById[String(u.id)] = u; });
         const userByEmail = {};
-        D.people.concat(D.staff, D.heads).forEach(u => { if (u.email) userByEmail[lc(u.email)] = u; });
+        D.people.concat(D.staff, D.heads).forEach(u => this.userEmails(u).forEach(m => { if (!userByEmail[m]) userByEmail[m] = u; }));
         const installers = D.people.filter(u => !STAFF.includes(u.account_type || ''));
         const installerById = {};
         installers.forEach(u => { installerById[String(u.id)] = u; });
@@ -9201,7 +9245,7 @@ const app = {
                 : `<div class="brx-muted">${d.manager_name ? esc(d.manager_name) + ' ещё не зарегистрирован — его действия появятся после входа.' : 'Менеджер не назначен.'}</div>`);
         } else {
             const u = userById[sel.id];
-            const own = dists.filter(d => String(u.distributor_id) === String(d.id) || (lc(d.manager_email) && lc(d.manager_email) === lc(u.email)));
+            const own = dists.filter(d => String(u.distributor_id) === String(d.id) || (lc(d.manager_email) && this.userEmails(u).includes(lc(d.manager_email))));
             const ownIds = own.map(d => String(d.id));
             const branchPart = statsFor(ownIds);
             const mine = statsFor(ownIds, u.id);
@@ -9483,8 +9527,9 @@ const app = {
         if (!distributorId) return false;
         const distId = String(distributorId);
         const dist = ((this.adminData && this.adminData.distributors) || []).find(d => String(d.id) === distId);
-        const mail = String(myEmail || '').trim().toLowerCase();
-        const sameMail = (v) => !!mail && String(v || '').trim().toLowerCase() === mail;
+        // Рабочую почту к этому времени уже прочитал resolveAdminScope при загрузке панели
+        const mails = this.userEmails({ email: myEmail, work_email: this._myWorkEmail });
+        const sameMail = (v) => mails.includes(String(v || '').trim().toLowerCase());
         if (dist && (sameMail(dist.manager_email) || sameMail(dist.director_email))) return true;
         return this.isManagerRole() && this.managerDistIds().map(String).includes(distId);
     },
@@ -12717,9 +12762,10 @@ const app = {
         try {
             // Раздел нужен и менеджеру, у которого монтажников ещё нет: в нём
             // ссылка-приглашение, по которой он их и соберёт
+            const myMails = await this.myEmails(email);
             const [installers, inviteDists] = await Promise.all([
-                this.resolveManagedInstallers(email),
-                this.loadCabinetInviteDists(email)
+                this.resolveManagedInstallers(myMails),
+                this.loadCabinetInviteDists(myMails)
             ]);
             if ((installers && installers.length) || inviteDists.length) {
                 tabBtn.style.display = '';
@@ -15874,7 +15920,7 @@ const app = {
 
                     // Как менеджер — суммарно непрочитанные от всех «своих» монтажников
                     if (uRow.email) {
-                        const managed = await this.resolveManagedInstallers(uRow.email);
+                        const managed = await this.resolveManagedInstallers(await this.myEmails(uRow.email));
                         if (managed.length) {
                             const { data: unreadRows } = await supabaseClient.from('manager_chat_messages')
                                 .select('id, text, sender_name, created_at, installer_user_id, installer_auth_user_id')
@@ -17378,8 +17424,9 @@ const app = {
                 || (this.state.tgUser && this.state.tgUser.authUserId);
             if (!authId) return null;
             const { data } = await supabaseClient.from('users')
-                .select('id, email, distributor_id, viewer_distributor_ids, account_type')
+                .select('id, email, work_email, distributor_id, viewer_distributor_ids, account_type')
                 .eq('auth_user_id', authId).maybeSingle();
+            if (data) this._myWorkEmail = String(data.work_email || '').trim().toLowerCase();
             return data || null;
         } catch (e) {
             console.warn('[область видимости] своя строка не прочитана:', e.message || e);
@@ -17421,14 +17468,14 @@ const app = {
             if (own) ids.add(String(own));
         }
 
-        const email = String(row.email || '').trim().toLowerCase();
-        if (email) {
+        const emails = this.userEmails(row);
+        if (emails.length) {
             try {
                 const { data } = await supabaseClient.from('distributors').select('id, manager_email, director_email');
                 (data || []).forEach(d => {
                     const m = String(d.manager_email || '').trim().toLowerCase();
                     const dir = String(d.director_email || '').trim().toLowerCase();
-                    if ((m && m === email) || (dir && dir === email)) ids.add(String(d.id));
+                    if ((m && emails.includes(m)) || (dir && emails.includes(dir))) ids.add(String(d.id));
                 });
             } catch (e) { console.warn('[область видимости] Не удалось прочитать дистрибьюторов:', e); }
         }
@@ -30777,6 +30824,14 @@ const app = {
                                     <span style="color:var(--text-sec);">На сайте:</span> <span title="${sessCard.title}" style="color:${sessCard.color === 'inherit' ? 'var(--text-main)' : sessCard.color}; font-weight:600; cursor:help;">${sessCard.text.replace('На сайте: ', '')}</span>
                                     <span style="color:var(--text-sec);">Был:</span> <span style="color:var(--text-main); font-weight:600; line-height:1.5;">${sessCard.screensHtml}</span>
                                     <span style="color:var(--text-sec);">Email:</span> <span style="color:var(--text-main); font-weight:600;">${user.email || '—'}</span>
+                                    <span style="color:var(--text-sec);" title="Если в карточке дистрибьютора человек записан другим адресом, чем тот, которым входит, — впишите его сюда. Сверка с карточками пойдёт по обоим адресам.">Рабочая почта:</span>
+                                    <span>
+                                        <span style="display:flex; gap:6px;">
+                                            <input type="email" id="admin_edit_work_email" placeholder="name@company.ru" ${isViewer ? 'disabled' : ''} style="flex:1; min-width:0; padding:5px 8px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
+                                            ${isViewer ? '' : `<button class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:28px; padding:0 10px; font-size:12px;" onclick="app.saveAdminUserWorkEmail('${user.id}')">💾</button>`}
+                                        </span>
+                                        <span id="admin_work_email_info" style="display:block; margin-top:4px; font-size:11px; color:var(--text-sec); line-height:1.4;"></span>
+                                    </span>
                                     <span style="color:var(--text-sec);">Пароль:</span>
                                     <span id="admin_pwd_cell" style="color:var(--text-main); font-weight:600;">${
                                         (isViewer || !user.email)
@@ -30805,6 +30860,7 @@ const app = {
         setTimeout(() => {
             // Подпись под списком компаний наблюдателя — сразу, а не только после клика
             this.updateViewerDistsHint();
+            this.fillAdminUserWorkEmail(user);
             const tariffSel = document.getElementById('admin_edit_tariff');
             const subSel = document.getElementById('admin_edit_subtype');
             const subWrap = document.getElementById('admin_edit_subtype_wrapper');
@@ -32937,7 +32993,7 @@ const app = {
 
         if (user.email) {
             try {
-                const installers = await this.resolveManagedInstallers(user.email);
+                const installers = await this.resolveManagedInstallers(this.userEmails(user));
                 if (installers.length) {
                     const { data: allThreads } = await supabaseClient.from('manager_chat_messages')
                         .select('*').eq('manager_user_id', user.id).order('created_at', { ascending: true });
@@ -34446,6 +34502,67 @@ const app = {
             setTimeout(() => { this._authHandling = false; }, 2000);
         }
     },
+    // Рабочая почта в карточке пользователя: читаем отдельным запросом, а не в общем
+    // списке — список не должен ломаться, если поля в базе ещё нет.
+    fillAdminUserWorkEmail: async function (user) {
+        const input = document.getElementById('admin_edit_work_email');
+        if (!input || !user) return;
+        try {
+            const { data, error } = await supabaseClient.from('users').select('work_email').eq('id', user.id).maybeSingle();
+            if (error) throw error;
+            user.work_email = data ? (data.work_email || '') : '';
+            input.value = user.work_email;
+        } catch (e) {
+            console.warn('[рабочая почта] не прочитана:', e.message || e);
+        }
+        this.updateWorkEmailDistsHint(user);
+    },
+
+    // Под полем — в каких карточках дистрибьюторов стоит любой из двух адресов
+    updateWorkEmailDistsHint: function (user) {
+        const info = document.getElementById('admin_work_email_info');
+        if (!info || !user) return;
+        const emails = this.userEmails(user);
+        const esc = (s) => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const hits = [];
+        ((this.adminData && this.adminData.distributors) || []).forEach(d => {
+            const m = String(d.manager_email || '').trim().toLowerCase();
+            const dir = String(d.director_email || '').trim().toLowerCase();
+            if (m && emails.includes(m)) hits.push(`${esc(d.company_name)} — менеджер (${esc(m)})`);
+            if (dir && emails.includes(dir)) hits.push(`${esc(d.company_name)} — директор (${esc(dir)})`);
+        });
+        info.innerHTML = hits.length
+            ? 'Указан в карточках:<br>' + hits.join('<br>')
+            : 'Ни в одной карточке дистрибьютора этих адресов нет.';
+    },
+
+    saveAdminUserWorkEmail: async function (userId) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Изменения запрещены.'); return; }
+        const input = document.getElementById('admin_edit_work_email');
+        if (!input) return;
+        const val = input.value.trim().toLowerCase();
+        const user = (this.adminData.users || []).find(u => String(u.id) === String(userId)) || { id: userId };
+        if (val && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) { app.alert('Проверьте адрес: похоже, в нём ошибка.'); return; }
+        if (val && val === String(user.email || '').trim().toLowerCase()) { app.alert('Это та же почта, которой человек входит. Рабочую вписывают, только если она другая.'); return; }
+        try {
+            if (val) {
+                // Один адрес — один человек: иначе менеджером компании окажутся двое
+                const { data: taken } = await supabaseClient.from('users').select('id, email')
+                    .or(this.emailsOrFilter('email', [val]) + ',' + this.emailsOrFilter('work_email', [val])).neq('id', userId).limit(1);
+                if (taken && taken.length) { app.alert(`Этот адрес уже занят учёткой ${taken[0].email || ''}.`); return; }
+            }
+            const { error } = await supabaseClient.from('users').update({ work_email: val || null }).eq('id', userId);
+            if (error) throw error;
+            user.work_email = val;
+            input.value = val;
+            this.updateWorkEmailDistsHint(user);
+            app.alert(val ? '✅ Рабочая почта сохранена. Сверка с карточками дистрибьюторов идёт по обоим адресам.' : '✅ Рабочая почта удалена.');
+        } catch (e) {
+            console.error('[рабочая почта] не сохранена:', e);
+            app.alert(/work_email/.test(e.message || '') ? 'В базе ещё нет поля для рабочей почты — нужна миграция 20260922_users_work_email.sql.' : 'Не удалось сохранить: ' + e.message);
+        }
+    },
+
     updateAdminUserTariff: async function (userId) {
         if (this.isReadOnlyAdmin()) {
             app.alert('Режим просмотра. Изменение тарифов запрещено.');

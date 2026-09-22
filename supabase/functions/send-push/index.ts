@@ -377,7 +377,8 @@ Deno.serve(async (req) => {
 
         // Адрес в базе может быть записан с заглавными буквами, поэтому ищем
         // регистронезависимо: in.() такого не умеет, а or=(...) умеет.
-        const orExpr = emails.map((e) => `email.ilike.${e}`).join(",");
+        // Сверяем и с рабочей почтой учётки: входит менеджер нередко другой.
+        const orExpr = emails.flatMap((e) => [`email.ilike.${e}`, `work_email.ilike.${e}`]).join(",");
         const mgrRows = await get(`users?or=(${encodeURIComponent(orExpr)})&select=id`);
         const mgrIds = Array.isArray(mgrRows) ? mgrRows.map((r) => String(r.id)) : [];
         if (!mgrIds.length) return json({ status: "skipped", reason: "manager-not-registered" });
