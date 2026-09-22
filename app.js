@@ -5967,9 +5967,10 @@ const app = {
         const latest = list[list.length - 1].v;
 
         // Отметки клиента и счёта по версиям
-        const CLIENT_EVENTS = { opened: 'клиент открыл', confirmed: 'клиент одобрил', needs_revision: 'клиент просит правки', invoice_requested: 'клиент запросил счёт' };
+        const CLIENT_EVENTS = { opened: 'клиент открыл', confirmed: 'клиент одобрил', needs_revision: 'клиент просит правки', invoice_requested: 'клиент запросил счёт', invoice_issued: 'счёт выставлен' };
         const marks = {};
-        let invoiceVer = 0, approvedVer = 0;
+        let invoiceVer = 0, approvedVer = 0, issuedVer = 0;
+        (events || []).forEach(e => { const v = e && e.meta && Number(e.meta.kp_version); if (v && e.event === 'invoice_issued') issuedVer = v; });
         (events || []).forEach(e => {
             const v = e && e.meta && Number(e.meta.kp_version);
             if (!v) return;
@@ -5984,7 +5985,11 @@ const app = {
         list.forEach(v => { if (v.ch && v.ch.indexOf('invoice') >= 0) invoiceVer = Math.max(invoiceVer, v.v); });
 
         let warn = '';
-        if (invoiceVer && invoiceVer < latest) {
+        if (issuedVer) {
+            warn = issuedVer < latest
+                ? `⚠️ Счёт выставлен по версии <b>${calc}-${issuedVer}</b>, а последняя отправленная — <b>${calc}-${latest}</b>.`
+                : '';
+        } else if (invoiceVer && invoiceVer < latest) {
             warn = `⚠️ Счёт запрошен по версии <b>${calc}-${invoiceVer}</b>, а последняя отправленная — <b>${calc}-${latest}</b>. Сверьте, на какую выставлять.`;
         } else if (approvedVer && approvedVer < latest) {
             warn = `⚠️ Клиент одобрил версию <b>${calc}-${approvedVer}</b>, после неё отправлена <b>${calc}-${latest}</b> — её клиент ещё не одобрял.`;
@@ -6001,6 +6006,11 @@ const app = {
             if (v.v === latest) badges.push(`<span style="background:#2563EB; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">последняя</span>`);
             if (v.v === invoiceVer) badges.push(`<span style="background:#F97316; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">по ней счёт</span>`);
             if (v.v === approvedVer) badges.push(`<span style="background:#10B981; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">одобрена</span>`);
+            if (v.v === issuedVer) badges.push(`<span style="background:#059669; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">счёт выставлен</span>`);
+            // Счёт по этой версии — только пока у версии сохранился список позиций
+            const invBtn = v.items
+                ? `<button class="lk-btn-sm" style="margin-left:4px;" onclick="app.openKpVersionInvoice(${v.v})" title="Спецификация этой версии: копирование для 1С, печать, отметка «Счёт выставлен»">📄 Счёт по этой версии</button>`
+                : '';
             const mk = marks[v.v] ? Object.keys(marks[v.v]).map(l => `${l} ${dt(marks[v.v][l])}`).join(' · ') : '';
 
             let diffHtml = '';
@@ -6022,7 +6032,7 @@ const app = {
                 <div style="padding:10px 0; border-bottom:1px solid var(--border);">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
                         <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                            <b style="color:var(--text-main); font-size:13px;">КП № ${calc}-${v.v}</b>${badges.join('')}
+                            <b style="color:var(--text-main); font-size:13px;">КП № ${calc}-${v.v}</b>${badges.join('')}${invBtn}
                         </div>
                         <span style="color:var(--text-sec); font-size:11px;">${dt(v.at)}</span>
                     </div>
@@ -6040,6 +6050,183 @@ const app = {
                 ${warn ? `<div style="background:rgba(245,158,11,0.08); border-left:4px solid #F59E0B; padding:8px 12px; border-radius:6px; font-size:12px; color:var(--text-main); margin-bottom:6px;">${warn}</div>` : ''}
                 ${rows}
             </div>`;
+    },
+
+    /**
+     * «Счёт по этой версии» из блока «Версии КП» в карточке сметы админки.
+     *
+     * Менеджеру нужен состав именно того варианта, на который выставляется
+     * счёт, а не последнего сохранённого: клиент мог одобрить -2, а монтажник
+     * после этого отправить -3. Показываем позиции версии с пометками, что
+     * добавлено, удалено и изменено против прошлой, копирование для 1С,
+     * печать и отметку «Счёт выставлен по версии N» в канбан.
+     *
+     * Карточку сметы (состояние, автор) запоминает viewAdminEstimate в _kpCard.
+     */
+    kpVersionRows: function (cur, prev) {
+        const rows = [];
+        const a = (prev && prev.items) || null;
+        const b = cur.items || {};
+        Object.keys(b).forEach(k => {
+            const [name, q, p] = b[k];
+            const old = a ? a[k] : null;
+            const mark = !a ? '' : (!old ? 'add' : (old[1] !== q || old[2] !== p ? 'chg' : ''));
+            rows.push({ key: k, name, q, p, mark, oldQ: old ? old[1] : null, oldP: old ? old[2] : null });
+        });
+        if (a) Object.keys(a).forEach(k => {
+            if (!b[k]) rows.push({ key: k, name: a[k][0], q: a[k][1], p: a[k][2], mark: 'del' });
+        });
+        return rows;
+    },
+
+    // Артикул позиции версии: у своих строк без артикула ключ служебный
+    kpVersionArticle: function (key) {
+        const k = String(key || '');
+        if (!k || /^(n:|w:|custom)/.test(k)) return '';
+        return k;
+    },
+
+    openKpVersionInvoice: async function (verNo) {
+        const card = this._kpCard;
+        if (!card || !card.st) return;
+        const list = this.kpVersionsOf(card.st);
+        const idx = list.findIndex(v => v.v === verNo);
+        const cur = list[idx];
+        if (!cur || !cur.items) { app.alert('Список позиций этой версии не сохранился.'); return; }
+        const prev = idx > 0 ? list[idx - 1] : null;
+        const calc = String(card.st.calc_id);
+        const kpNum = `${calc}-${verNo}`;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const fmt = n => Math.round(n || 0).toLocaleString('ru-RU');
+
+        const rows = this.kpVersionRows(cur, prev);
+        const eqRows = rows.filter(r => r.key.indexOf('w:') !== 0);
+        const wkRows = rows.filter(r => r.key.indexOf('w:') === 0);
+        const live = r => r.mark !== 'del';
+        const sumOf = rs => rs.filter(live).reduce((s, r) => s + r.q * r.p, 0);
+        const eqSum = sumOf(eqRows), wkSum = sumOf(wkRows);
+
+        // Права на отметку — как у кнопок канбана: админ или менеджер филиала монтажника
+        let canIssue = false;
+        if (!this.isReadOnlyAdmin()) {
+            try {
+                const myEmail = await this.kanbanMyEmail();
+                let distId = card.distributorId;
+                if (distId === undefined && card.userId) {
+                    const { data: u } = await supabaseClient.from('users').select('distributor_id').eq('id', card.userId).maybeSingle();
+                    distId = u ? u.distributor_id : null;
+                    card.distributorId = distId;
+                }
+                canIssue = this.kanbanCanManageDist(distId, myEmail);
+            } catch (e) { console.warn('[openKpVersionInvoice] права:', e); }
+        }
+
+        const MARK = {
+            add: { bg: 'rgba(16,185,129,0.10)', tag: '<span style="color:#10B981; font-weight:700;">добавлено</span>' },
+            del: { bg: 'rgba(239,68,68,0.08)', tag: '<span style="color:#EF4444; font-weight:700;">удалено</span>' },
+            chg: { bg: 'rgba(245,158,11,0.10)', tag: '<span style="color:#D97706; font-weight:700;">изменено</span>' }
+        };
+        const tableHtml = (rs, title) => !rs.length ? '' : `
+            <div style="font-size:12px; font-weight:800; text-transform:uppercase; color:var(--text-sec); margin:12px 0 6px;">${title}</div>
+            <table class="inv-table" style="font-size:12px;">
+                <thead><tr><th style="width:26px;">#</th><th>Артикул</th><th>Наименование</th><th style="text-align:right;">Кол-во</th><th style="text-align:right;">Цена</th><th style="text-align:right;">Сумма</th><th></th></tr></thead>
+                <tbody>${rs.map((r, i) => {
+                    const m = MARK[r.mark];
+                    const strike = r.mark === 'del' ? 'text-decoration:line-through; color:var(--text-sec);' : '';
+                    const qTxt = r.mark === 'chg' && r.oldQ !== r.q ? `<span style="color:var(--text-sec); text-decoration:line-through;">${r.oldQ}</span> ${r.q}` : r.q;
+                    const pTxt = r.mark === 'chg' && r.oldP !== r.p ? `<span style="color:var(--text-sec); text-decoration:line-through;">${fmt(r.oldP)}</span> ${fmt(r.p)}` : fmt(r.p);
+                    return `<tr style="${m ? 'background:' + m.bg + ';' : ''}">
+                        <td style="color:var(--text-sec);">${i + 1}</td>
+                        <td style="font-family:monospace; ${strike}">${esc(this.kpVersionArticle(r.key)) || '—'}</td>
+                        <td style="${strike}">${esc(r.name)}</td>
+                        <td style="text-align:right; white-space:nowrap; ${strike}">${qTxt}</td>
+                        <td style="text-align:right; white-space:nowrap; ${strike}">${pTxt}</td>
+                        <td style="text-align:right; white-space:nowrap; font-weight:600; ${strike}">${fmt(r.q * r.p)}</td>
+                        <td style="white-space:nowrap; font-size:11px;">${m ? m.tag : ''}</td>
+                    </tr>`;
+                }).join('')}</tbody>
+            </table>`;
+
+        const counts = { add: 0, del: 0, chg: 0 };
+        rows.forEach(r => { if (r.mark) counts[r.mark]++; });
+        const summary = prev
+            ? `Против версии ${calc}-${prev.v}: добавлено ${counts.add}, удалено ${counts.del}, изменено ${counts.chg}.`
+            : 'Первая версия — сравнивать не с чем.';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card" style="text-align:left; max-width:900px; width:calc(100vw - 32px); max-height:90vh; display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                    <div>
+                        <h3 class="calc-dialog-title" style="margin-bottom:2px;">Счёт по КП № ${kpNum}</h3>
+                        <div style="font-size:12px; color:var(--text-sec);">${esc(card.name || '')} · версия от ${new Date(cur.at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                        <div style="font-size:12px; color:var(--text-main); margin-top:4px;">${summary} Удалённые строки показаны для сверки и в счёт не входят.</div>
+                    </div>
+                    <button type="button" data-act="close" class="delete-icon-btn" title="Закрыть" style="font-size:18px;">✕</button>
+                </div>
+                <div style="overflow:auto; flex:1; margin-top:8px;">
+                    ${tableHtml(eqRows, 'Оборудование и материалы')}
+                    ${tableHtml(wkRows, 'Монтажные работы')}
+                    <div style="text-align:right; font-size:13px; margin-top:10px; line-height:1.6;">
+                        ${eqRows.length ? `Оборудование: <b>${fmt(eqSum)} ₽</b><br>` : ''}
+                        ${wkRows.length ? `Работы: <b>${fmt(wkSum)} ₽</b><br>` : ''}
+                        <span style="font-size:15px;">Итого: <b style="color:var(--primary);">${fmt(eqSum + wkSum)} ₽</b></span>
+                    </div>
+                </div>
+                <div class="calc-dialog-buttons" style="flex-wrap:wrap; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="copy" title="Артикул и количество в два столбца — вставляется в Excel и 1С">📋 Копировать для 1С</button>
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" data-act="print">🖨 Печать</button>
+                    ${canIssue ? `<button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" data-act="issue" style="background:#10B981;">✓ Счёт выставлен по версии ${verNo}</button>` : ''}
+                </div>
+            </div>`;
+        const close = () => { overlay.classList.remove('active'); setTimeout(() => overlay.remove(), 200); };
+        overlay.addEventListener('click', async (e) => {
+            const act = e.target && e.target.closest && e.target.closest('[data-act]') ? e.target.closest('[data-act]').getAttribute('data-act') : null;
+            if (e.target === overlay || act === 'close') return close();
+            if (act === 'copy') {
+                const lines = [];
+                let noSku = 0;
+                eqRows.filter(live).forEach(r => {
+                    const art = this.kpVersionArticle(r.key);
+                    if (art) lines.push(`${art}\t${r.q}`); else noSku++;
+                });
+                let text = lines.join('\n') + '\n';
+                if (noSku) text += `\nПозиций без артикула: ${noSku} — их надо подобрать по названию из счёта.\n`;
+                this.copyToClipboard(text).then(() => app.alert(`Скопировано позиций: ${lines.length}. Вставьте в Excel или 1С.`))
+                    .catch(() => app.prompt('Скопируйте вручную:', text));
+                return;
+            }
+            if (act === 'print') {
+                const w = window.open('', '_blank');
+                if (!w) { app.alert('Браузер не дал открыть окно печати. Разрешите всплывающие окна для сайта.'); return; }
+                const body = overlay.querySelector('.calc-dialog-card').cloneNode(true);
+                body.querySelectorAll('[data-act]').forEach(b => b.remove());
+                w.document.write(`<html><head><title>Счёт по КП № ${kpNum}</title><style>
+                    body{font-family:Arial,sans-serif;font-size:12px;color:#111;margin:20px;}
+                    table{width:100%;border-collapse:collapse;} th,td{border:1px solid #ccc;padding:4px 6px;text-align:left;}
+                    th{background:#f3f4f6;} h3{margin:0 0 4px;}
+                </style></head><body>${body.innerHTML}<script>window.onload=function(){window.print();}<\/script></body></html>`);
+                w.document.close();
+                return;
+            }
+            if (act === 'issue') {
+                const note = await app.prompt(`Счёт выставлен по КП № ${kpNum}. Комментарий (необязательно, например номер счёта):`, '', 'Счёт выставлен');
+                if (note === null) return;
+                close();
+                const comment = `По КП № ${kpNum}${note.trim() ? '. ' + note.trim() : ''}`;
+                await this.setInvoiceStatus(calc, 'invoice_issued', {
+                    comment: comment,
+                    kpVersion: verNo,
+                    onDone: async () => {
+                        app.alert(`✅ Счёт выставлен по КП № ${kpNum}`);
+                        if (card.estId) await this.viewAdminEstimate(card.estId);
+                    }
+                });
+            }
+        });
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
     },
 
     // Смета собрана распознаванием, а не подбором по параметрам объекта: хотя бы одна
@@ -9386,7 +9573,14 @@ const app = {
                 return;
             }
 
-            const events = (this._kanbanEvents || []).filter(e => String(e.calc_id) === String(calcId));
+            let events = (this._kanbanEvents || []).filter(e => String(e.calc_id) === String(calcId));
+            // Вызов не с доски (карточка сметы, «Счёт по версии КП»): история
+            // канбана могла не загружаться — дочитываем события этого расчёта
+            if (!events.length) {
+                const { data: evs } = await supabaseClient.from('invoice_events').select('*')
+                    .eq('calc_id', String(calcId)).order('created_at', { ascending: true });
+                events = evs || [];
+            }
             if (!events.length) {
                 app.alert("Ошибка: сметный расчет не найден.");
                 return;
@@ -9430,7 +9624,10 @@ const app = {
                 // by_staff — событие записал сотрудник, а не монтажник или клиент:
                 // по этой отметке доска не подставляет менеджера на место монтажника.
                 // manual — этап выбран руками в окне «Сменить этап».
-                meta: Object.assign({ by_staff: true }, commentText ? { comment: commentText } : {}, preset ? { manual: true } : {})
+                // kp_version — по какой версии КП выставлен счёт (кнопка «Счёт выставлен по версии»)
+                meta: Object.assign({ by_staff: true }, commentText ? { comment: commentText } : {},
+                    preset && !preset.kpVersion ? { manual: true } : {},
+                    preset && preset.kpVersion ? { kp_version: preset.kpVersion } : {})
             }]).select('id');
 
             if (error) throw error;
@@ -9462,7 +9659,9 @@ const app = {
             // Перезагружаем данные канбана и карточки. Кэш не сбрасываем: доска
             // дочитает только новые события, в том числе только что записанное,
             // а не всю историю заново после каждого переноса карточки.
-            if (preset && preset.stayOnBoard) {
+            if (preset && typeof preset.onDone === 'function') {
+                await preset.onDone();
+            } else if (preset && preset.stayOnBoard) {
                 // Перенос с доски: остаёмся на доске. Она дописывает себя в конец
                 // раздела, поэтому старую убираем, а навигацию над ней не трогаем.
                 const root = document.getElementById('kanban_root');
@@ -32707,6 +32906,8 @@ const app = {
                 try { st = JSON.parse(st); } catch (e) { console.error("Error parsing calc_data:", e); }
             }
             let objArea = st && st.area ? st.area + ' м²' : 'Не указана';
+            // Для «Счёт по этой версии» в блоке «Версии КП» (openKpVersionInvoice)
+            this._kpCard = { st: st, estId: est.id, userId: est.user_id, name: est.project_name || '' };
 
             let exportState = {};
             if (st && typeof st === 'object') {
