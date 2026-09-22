@@ -33653,14 +33653,19 @@ const app = {
             let shortUrl = '';
             if (this.isValidUUID(estId)) {
                 try {
+                    // Строку предпросмотра заводим своя у каждого смотрящего: номер — хэш от
+                    // id сметы и auth-id сотрудника. Обновлять строку shared_invoices может только
+                    // её владелец, и под общим id сметы второй же сотрудник (или монтажник, который
+                    // открыл её раньше) получал отказ 42501 и уходил на длинную ссылку.
+                    const previewId = await this.previewShareId(estId);
                     const isSaved = await withTimeout(
                         this.saveSharedInvoiceJobToCloud({
-                            shareId: estId, object_info, manager_info, items, totals, tgUser
+                            shareId: previewId, object_info, manager_info, items, totals, tgUser
                         }),
                         10000
                     );
                     // manager=1 — кнопка «Копировать для 1С»: предпросмотр открывает только сотрудник
-                    if (isSaved) shortUrl = `${baseOrigin}/invoice.html?id=${estId}&preview=1&manager=1`;
+                    if (isSaved) shortUrl = `${baseOrigin}/invoice.html?id=${previewId}&preview=1&manager=1`;
                 } catch (saveErr) {
                     console.warn('[loadAdminEstimatePreview] Короткая ссылка не получилась, уходим на длинную:', saveErr);
                 }
@@ -33677,6 +33682,22 @@ const app = {
         } catch (err) {
             console.error('[loadAdminEstimatePreview] Ошибка:', err);
             document.body.innerHTML = '<div style="text-align:center; padding:80px 20px; font-family:Arial, sans-serif; color:#374151;"><h2>⚠️ Не удалось загрузить смету</h2><p>' + (err.message || 'Неизвестная ошибка') + '</p></div>';
+        }
+    },
+    // Номер строки shared_invoices для админского предпросмотра: SHA-256 от «id сметы:auth-id
+    // смотрящего», оформленный как UUID. Повторный просмотр тем же сотрудником попадает в ту же
+    // строку, разные сотрудники — в разные. Без сессии или без crypto.subtle — прежний id сметы.
+    previewShareId: async function (estId) {
+        try {
+            const { data } = await supabaseClient.auth.getSession();
+            const viewerId = data && data.session && data.session.user && data.session.user.id;
+            if (!viewerId || !(window.crypto && crypto.subtle)) return estId;
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${estId}:${viewerId}`));
+            const h = Array.from(new Uint8Array(buf).slice(0, 16), b => b.toString(16).padStart(2, '0')).join('');
+            // версия 4 и вариант 10xx — чтобы номер проходил isValidUUID и проверку типа uuid в базе
+            return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-${(8 + (parseInt(h[16], 16) & 3)).toString(16)}${h.slice(17, 20)}-${h.slice(20, 32)}`;
+        } catch (e) {
+            return estId;
         }
     },
     switchAuthTab: function (tab) {
