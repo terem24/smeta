@@ -9238,33 +9238,15 @@ body.dark-mode .automation-scheme svg {
 @media print { #scheme_zoom_overlay { display: none !important; } }
 
 /* === СХЕМА КОТЕЛЬНОЙ (ЭКРАННЫЕ СТИЛИ) === */
+/* Схема — векторный лист (app.js, _renderSchemeVector), размеры и обрезку он
+   задаёт сам. Правила высоты 70vh и слоёв <img> под старые PNG-картинки
+   (img/scheme) убраны вместе с ними 23.09.2026. */
 #dynamic_scheme {
     position: relative;
     width: 100%;
-    height: 70vh;
-    min-height: 400px;
-    max-height: 800px;
     background: transparent;
-    overflow: hidden;
     border-radius: 8px;
     margin-bottom: 20px;
-}
-#dynamic_scheme img,
-#printed_dynamic_scheme img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    mix-blend-mode: multiply;
-    transition: filter 0.3s ease, opacity 0.3s ease;
-}
-body.dark-mode #dynamic_scheme img,
-body.dark-mode #printed_dynamic_scheme img {
-    filter: invert(1) hue-rotate(180deg);
-    mix-blend-mode: screen;
-    opacity: 0.85;
 }
 
 /* === СХЕМА И ТАБЛИЦА ТЕПЛОПОТЕРЬ (ПЕЧАТНЫЕ СТИЛИ) === */
@@ -9276,27 +9258,7 @@ body.dark-mode #printed_dynamic_scheme img {
         size: A4 landscape; 
         margin: 8mm; 
     }
-    #printed_dynamic_scheme {
-        page: scheme-page !important;
-        page-break-before: always !important;
-        break-before: page !important;
-        page-break-after: avoid !important;
-        break-after: avoid !important;
-        height: 170mm !important;
-        min-height: 170mm !important;
-        max-height: 170mm !important;
-        margin: 0 auto !important;
-        padding: 0 !important;
-        overflow: hidden !important;
-        position: relative !important;
-        width: 100% !important;
-        display: block !important;
-    }
-    #printed_dynamic_scheme img {
-        object-fit: contain !important;
-        object-position: center center !important;
-    }
-    
+
     @page heat-loss-page {
         size: A4 landscape;
         margin: 8mm 10mm;

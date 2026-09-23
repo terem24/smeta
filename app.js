@@ -28899,26 +28899,30 @@ const app = {
     // Схема котельной под переключателем «Схема». Рисуется тем же векторным
     // композитором, что и лист «Принципиальная схема» в проекте
     // (project_scheme.js): УГО, арматура, диаметры и объёмы собираются из
-    // конфигурации по текущей смете. Старые PNG-слои оставлены запасным
-    // вариантом — на случай, если движок листов не подключился, и для смет
-    // без котла, для которых конфигурации не существует.
+    // конфигурации по текущей смете. Запасных PNG-слоёв (img/scheme) больше
+    // нет: они включались только когда конфигурации не было — то есть без
+    // котла в смете — и рисовали котёл, которого в смете нет (23.09.2026).
+    // Нет конфигурации — нет и схемы.
     renderScheme: function () {
         // В квартире котельной нет, а эта схема — именно тепломеханическая схема
         // котельной: котёл, гидрострелка, насосные группы, расширительный бак.
         // Своя схема квартиры (стояк — узел ввода — приборы) ещё не сделана;
         // пока лучше не показывать никакой, чем чужую.
         if (this.isFlat()) return '';
-        const spec = this.currentSpec || [];
-        // Объект не заполнен — схемы нет вовсе. Раньше на пустой смете
-        // показывалась PNG-подложка старой схемы (рамка с легендой и пустым
-        // полем), и она читалась как готовая схема несуществующей котельной.
+        // Вычеркнутые кнопкой ✖ позиции в currentSpec остаются (признака isOpt у
+        // них нет — он считается при отрисовке строк), поэтому отсеиваем их здесь
+        // тем же правилом, что и строки сметы: пустая после отсева смета — это
+        // пустая смета, схемы у неё нет.
+        const spec = (this.currentSpec || []).filter(i =>
+            !this.rowOv(this.state.optItems, i.originalId || i.id, i.group));
         if (!spec.length) return '';
+        // Конфигурации нет без котла в смете (buildSchemeConfig) или если
+        // project_scheme.js не загрузился — тогда не работают и листы проекта.
         const cfg = (window.projectScheme && window.projectSheets)
             ? this.buildSchemeConfig() : null;
-        // Панель «Подобранное оборудование» под векторным листом не выводится:
-        // модели и количества монтажник видит в смете сразу под схемой.
-        // У PNG-запаски панель остаётся — там конкретику больше взять неоткуда.
-        return cfg ? this._renderSchemeVector(cfg) : this._renderSchemeLayers(spec);
+        // Панель «Подобранное оборудование» под схемой не выводится: модели и
+        // количества монтажник видит в смете сразу под ней.
+        return cfg ? this._renderSchemeVector(cfg) : '';
     },
     _renderSchemeVector: function (cfg) {
         // Карточкам нужен тот же cfg, по которому нарисована схема: рендер
@@ -30552,237 +30556,6 @@ const app = {
         safe('o', 'Схема подключения автоматики напольного отопления', this.ufhSchemeArt);
         safe('o', 'Схема узла снеготаяния', this.snowSchemeArt);
         return out;
-    },
-    _renderSchemeLayers: function (spec) {
-        const s = this.state;
-        const basePath = 'img/scheme/';
-        const layers = [];
-
-        // Вспомогательные функции для поиска оборудования в спецификации
-        const hasItem = (namePart) => spec.some(i => i.name.toLowerCase().includes(namePart.toLowerCase()));
-        const hasCat = (catPart) => spec.some(i => i.id && i.id.toLowerCase().includes(catPart.toLowerCase()));
-
-        // 1. Базовый слой (всегда виден)
-        layers.push('bg_frame.png');
-
-        // 2. Расширительный бак отопления (только если есть в смете)
-        if (spec.some(i => i.name.toLowerCase().includes("бак") && (i.name.toLowerCase().includes("отопл") || (i.group && i.group.toLowerCase().includes("котельн"))) && !i.name.toLowerCase().includes("гвс"))) {
-            layers.push('tank_heating.png');
-        }
-
-        // 3. Блок Котлов и магистралей
-        const hasGasBoiler = hasItem("Газовый") || hasCat("gas");
-        const hasElBoiler = hasItem("Электрический") || hasCat("se-") || hasCat("seb-");
-
-        if (hasGasBoiler) {
-            layers.push('boiler_gas.png');
-            layers.push('piping_gas.png');
-        }
-        if (hasElBoiler) {
-            layers.push('boiler_el.png');
-            layers.push('piping_el.png');
-        }
-
-        // Общая магистраль
-        const boilerCount = (hasGasBoiler ? 1 : 0) + (hasElBoiler ? 1 : 0);
-        if (boilerCount >= 2 || s.hotWater || s.systems.length > 0) {
-            layers.push('podacha_obratka.png');
-        }
-
-        // 4. Блок Бойлера (ГВС)
-        if (s.hotWater && (hasItem("Бойлер") || hasItem("Водонагреватель"))) {
-            layers.push('bkn_tank.png');
-
-            // Бак ГВС (синий)
-            if (spec.some(i => (i.name.toLowerCase().includes("бак") && i.name.toLowerCase().includes("гвс")) || hasCat("exp_dhw"))) {
-                layers.push('tank_water.png');
-            }
-
-            // Комплекты Fugas (при схеме загрузки бойлера насосной группой отдельного слоя
-            // на схеме нет — узел виден в текстовой панели подобранного оборудования)
-            // POLIS бойлер не загружает (нет автоматики под клапан) — его фугаса в смете нет,
-            // и слой у электрокотла рисовать нельзя, иначе схема покажет несуществующий узел.
-            // «Fugas»/«фугас» — прежнее название комплекта STOUT (снят с производства);
-            // «3-х ход. клапана» — нынешний комплект BAXI. Ищем оба, иначе слой пропадёт
-            // и на старых сметах, и на новых.
-            if (this.tankLoadSchemeEff() === 'valve' && (hasItem("fugas") || hasItem("фугас") || hasItem("3-х ход. клапана"))) {
-                if (hasGasBoiler) layers.push('fugas_gas.png');
-                if (hasElBoiler && !hasItem("POLIS")) layers.push('fugas_el.png');
-            }
-
-            // Рециркуляция
-            if (s.recirc) {
-                layers.push('recirc_loop.png');
-            }
-        }
-
-        // 5. Ввод холодной воды
-        if (s.water) {
-            layers.push('water_input.png');
-        }
-
-        // 6. Распределение и Потребители
-        if (hasItem("Гидрострелка") || hasItem("разделитель") || hasCat("hydro_")) {
-            layers.push('hydro_manifold.png');
-        }
-        if (hasItem("Радиатор") && hasItem("группа")) {
-            layers.push('system_rad.png');
-        }
-        if (hasItem("пол") && hasItem("группа")) {
-            layers.push('system_tp.png');
-        }
-
-        // Генерация HTML с CSS-правилами для ночного режима и ПЕЧАТИ
-        let html = `
-                <style>
-                    #dynamic_scheme {
-                        position: relative; width: 100%; height: 70vh; min-height: 400px; max-height: 800px;
-                        background: transparent; overflow: hidden; border-radius: 8px; margin-bottom: 20px;
-                    }
-                    #dynamic_scheme img {
-                        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-                        object-fit: contain; mix-blend-mode: multiply; transition: filter 0.3s ease, opacity 0.3s ease;
-                    }
-                    body.dark-mode #dynamic_scheme img {
-                        filter: invert(1) hue-rotate(180deg); mix-blend-mode: screen; opacity: 0.85;
-                    }
-                    /* #14: панель с подобранным оборудованием поверх схемы. Слои-картинки
-                       показывают только наличие узлов, подписи — конкретные модели и количества. */
-                    #dynamic_scheme .scheme-labels {
-                        position: absolute; left: 10px; bottom: 10px; z-index: 5;
-                        max-width: 46%; box-sizing: border-box;
-                        background: rgba(255,255,255,0.92); border: 1px solid #E2E8F0;
-                        border-radius: 8px; padding: 10px 12px;
-                        font-size: 11px; line-height: 1.35; color: #0F172A;
-                        box-shadow: 0 2px 8px rgba(15,23,42,0.06);
-                    }
-                    body.dark-mode #dynamic_scheme .scheme-labels {
-                        background: rgba(15,23,42,0.92); border-color: #334155; color: #E2E8F0;
-                    }
-                    body.dark-mode #dynamic_scheme .scheme-labels span { color: #E2E8F0 !important; }
-                    body.dark-mode #dynamic_scheme .scheme-labels div { color: #E2E8F0 !important; }
-
-                    /* === ЖЕСТКИЕ ПРАВИЛА ДЛЯ ИДЕАЛЬНОЙ ПЕЧАТИ === */
-            /* Правила для вывода на отдельный альбомный лист */
-            @media print {
-                @page scheme-page {
-                    size: A4 landscape;
-                    margin: 10mm;
-                }
-                /* Разрыв страницы перед схемой нужен, только если перед ней уже что-то
-                   напечатано (класс .print-page-break навешивает prepareForPrint в app.js) —
-                   иначе, если схема оказывается первым/единственным разделом печати, разрыв
-                   форсировал пустую первую страницу. */
-                #dynamic_scheme.print-page-break {
-                    page-break-before: always !important;
-                    break-before: page !important;
-                }
-                #dynamic_scheme {
-                    page: scheme-page !important;
-                    page-break-after: avoid !important;
-                    break-after: avoid !important;
-                    height: 170mm !important; /* Оптимизировано, чтобы не вызывать пустой лист */
-                    min-height: 170mm !important;
-                    max-height: 170mm !important;
-                    margin: 0 !important;
-                    padding: 0 !important;
-                    overflow: hidden !important;
-                }
-                #dynamic_scheme img {
-                    object-fit: contain !important;
-                    object-position: center center !important;
-                }
-                /* #14: подписи печатаем вместе со схемой — без прозрачности и теней */
-                #dynamic_scheme .scheme-labels {
-                    background: #fff !important;
-                    border: 1px solid #94A3B8 !important;
-                    box-shadow: none !important;
-                    color: #000 !important;
-                    font-size: 9pt !important;
-                    -webkit-print-color-adjust: exact !important;
-                    print-color-adjust: exact !important;
-                }
-            }
-                </style>
-                <div id="dynamic_scheme">`;
-
-        layers.forEach(layer => {
-            // Текст прижимаем влево, оборудование - вправо
-            let position = (layer === 'bg_frame.png') ? 'left center' : 'right center';
-            html += `<img src="${basePath}${layer}" alt="${layer}" style="object-position: ${position};" onerror="this.style.display='none'">`;
-        });
-
-        html += this._renderSchemeLabels(spec);
-        html += `</div>`;
-        return html;
-    },
-    // #14: подписи к схеме котельной. Сами слои-картинки показывают только НАЛИЧИЕ узлов
-    // (котёл, бойлер, стрелка, контуры), но не отражают, какое именно оборудование подобрано —
-    // из-за этого схема выглядела одинаковой для разных смет. Панель ниже собирается из
-    // фактической спецификации: модели, мощности, объёмы и количества.
-    _renderSchemeLabels: function (spec) {
-        spec = spec || [];
-        const s = this.state;
-        const rows = [];
-        const find = (re, excl) => spec.filter(i => re.test(i.name || '') && (!excl || !excl.test(i.name || '')));
-        const qtySuffix = (arr) => {
-            const n = arr.reduce((a, x) => a + (x.q || 0), 0);
-            return n > 1 ? ` × ${n}` : '';
-        };
-        const push = (label, value) => { if (value) rows.push([label, value]); };
-
-        // Котлы — модель и мощность прямо из наименования позиции
-        const boilers = find(/котёл|котел/i);
-        if (boilers.length) push('Котёл', boilers.map(b => b.name + ((b.q || 1) > 1 ? ` × ${b.q}` : '')).join('<br>'));
-
-        // Бойлер ГВС (объём указан в наименовании)
-        const dhw = find(/бойлер|водонагреватель/i);
-        if (dhw.length) push('Бойлер ГВС', dhw[0].name);
-
-        // Схема загрузки бойлера от одноконтурного котла: клапан Fugas или насосная группа
-        if (find(/(загрузка|для) бойлера/i).length) push('Загрузка бойлера', 'Насосная группа');
-        else if (find(/fugas|фугас|3-х ход\. клапана/i).length) push('Загрузка бойлера', 'Трёхходовой клапан');
-
-        // Расширительные баки: отопления и ГВС. Исключаем обвязку/крепёж бака (комплект
-        // подключения, кронштейн, хомут) — это не сам бак и в подписи не нужно.
-        const _tankExcl = /комплект|подключени|кронштейн|хомут|крепл|шпильк/i;
-        const expDhw = spec.filter(i => /бак/i.test(i.name || '') && /гвс/i.test(i.name || '') && !_tankExcl.test(i.name || ''));
-        const expHeat = spec.filter(i => /бак/i.test(i.name || '') && !/гвс/i.test(i.name || '') && !_tankExcl.test(i.name || ''));
-        if (expHeat.length) push('Расш. бак отопления', expHeat[0].name);
-        if (expDhw.length) push('Расш. бак ГВС', expDhw[0].name);
-
-        // Гидравлика: стрелка / коллектор котельной
-        const hydro = find(/гидрострелк|гидравлическ(ая|ий) (стрелка|разделитель)|коллектор-гидрострелка|распр\. коллектор/i);
-        if (hydro.length) push('Гидравлика', hydro[0].name);
-
-        // Насосные группы — главное, чего схема не показывала: сколько и каких
-        // Второй аргумент — исключение: группу загрузки бойлера в «Группы на радиаторы» не
-        // пишем. Старое «загрузка бойлера» оставлено для смет, сохранённых до переименования.
-        const grpDirect = find(/группа насосная.*прямая|насосная группа.*прямая/i, /(загрузка|для) бойлера/i);
-        const grpMix = find(/группа насосная|насосная группа/i).filter(i => !/прямая/i.test(i.name));
-        if (grpDirect.length) push('Группы на радиаторы', grpDirect[0].name.replace(/\s*\(для.*/, '') + qtySuffix(grpDirect));
-        if (grpMix.length) push('Группы на тёплый пол', grpMix[0].name.replace(/\s*\(для.*/, '') + qtySuffix(grpMix));
-
-        // Контуры тёплого пола
-        const ufhMans = find(/коллектор ТП/i);
-        if (ufhMans.length) push('Коллекторы ТП', ufhMans.map(m => m.name + ((m.q || 1) > 1 ? ` × ${m.q}` : '')).join('<br>'));
-
-        // Полотенцесушитель (#5) — на слоях схемы его нет, но в котельной он влияет на обвязку ГВС
-        const tw = this.getTowelWarmer ? this.getTowelWarmer() : null;
-        const twCount = this.getTowelWarmerCount ? this.getTowelWarmerCount() : 0;
-        if (tw && twCount > 0) push('Полотенцесушитель', (tw.type === 'water' ? 'Водяной' : 'Электрический') + ` × ${twCount}`);
-
-        if (s.recirc) push('Рециркуляция ГВС', 'Есть');
-
-        if (!rows.length) return '';
-        const body = rows.map(r =>
-            `<div style="display:flex; gap:6px; align-items:baseline; margin-bottom:3px;">` +
-            `<span style="flex:0 0 auto; color:#64748B; font-weight:600;">${r[0]}:</span>` +
-            `<span style="flex:1 1 auto; color:#0F172A; font-weight:500;">${r[1]}</span>` +
-            `</div>`).join('');
-        return `<div class="scheme-labels">` +
-            `<div style="font-weight:800; margin-bottom:6px; color:#0F172A;">Подобранное оборудование</div>` +
-            body + `</div>`;
     },
     exportAdminToExcel: function () {
         let users = this.adminData.users;
