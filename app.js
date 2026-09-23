@@ -222,7 +222,14 @@ function compactPayload(data) {
             // артикул, а цену invoice.html берёт из каталога сам — без этого ключа
             // клиент увидел бы цены Терема, а итог в шапке был бы посчитан по ценам
             // дистрибьютора, и строки со сметой не сошлись бы.
-            k: data.object_info.priceListKey || ''
+            k: data.object_info.priceListKey || '',
+            // Срок действия счёта. Без этих полей длинная офлайн-ссылка (её
+            // получает монтажник, когда Supabase не ответил за отведённое время)
+            // открывалась без отсчёта: страница читает срок из ссылки, а строка
+            // shared_invoices появляется позже, из очереди, и не проверяется.
+            sa: data.object_info.sent_at || '',
+            vd: data.object_info.valid_days == null ? undefined : data.object_info.valid_days,
+            vu: data.object_info.valid_until || ''
         },
         m: {
             n: data.manager_info.name || '',

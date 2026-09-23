@@ -1034,6 +1034,26 @@
             box-shadow: none !important;
         }
 
+        /* «Позвонить» рядом с «Обновить счёт»: та же форма кнопки, синий
+           вместо оранжевого — это другой путь, а не второй запрос */
+        .btn-call-manager {
+            background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
+            text-decoration: none !important;
+            margin-left: 10px;
+        }
+
+        .btn-call-manager:hover {
+            background: linear-gradient(135deg, #1D4ED8 0%, #1E40AF 100%) !important;
+        }
+
+        @media (max-width: 600px) {
+            .btn-call-manager {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+        }
+
         .fab-refresh {
             background-color: #F97316;
         }
@@ -2676,6 +2696,9 @@
                 <button class="btn-get-invoice-client btn-refresh-invoice" id="btn_refresh_invoice" onclick="requestInvoiceRefresh()">
                     🔄 Обновить счёт
                 </button>
+                <!-- Второй путь: позвонить тому, кто считал смету. Номер и href
+                     подставляет applyInvoiceTimer из manager_info.phone. -->
+                <a class="btn-get-invoice-client btn-call-manager" id="btn_call_manager" href="#" style="display: none;"></a>
                 <div id="refresh_hint" style="font-size: 12px; color: #6B7280; margin-top: 10px; line-height: 1.45; max-width: 520px; margin-left: auto; margin-right: auto;"></div>
             </div>
             <div id="get_invoice_container" class="no-print"
@@ -3791,7 +3814,12 @@
                     showSku: compact.o.s === 1,
                     eqDiscount: discountPercent,
                     sequence_id: compact.o.q || '',
-                    kp_version: compact.o.v || null
+                    kp_version: compact.o.v || null,
+                    // Срок действия счёта из ссылки (ссылки до 23.09.2026 его не везли —
+                    // тогда полей нет, и таймер не показывается)
+                    sent_at: compact.o.sa || null,
+                    valid_days: compact.o.vd == null ? undefined : compact.o.vd,
+                    valid_until: compact.o.vu || null
                 },
                 manager_info: {
                     name: compact.m.n,
@@ -3939,6 +3967,10 @@
                     }, 300);
                     maybeAutoPrint(urlParams);
                     logInvoiceOpened();
+                    // Ссылка с данными внутри ничего не знает о том, что было после
+                    // отправки: клиент уже просил обновить, монтажник переотправил с
+                    // новым сроком. Если строка в базе есть — статус и срок берём из неё.
+                    syncStatusFromCloud(id);
                     return;
                 } catch (decodeErr) {
                     console.error('[LoadSharedInvoice] Local payload decode error:', decodeErr);
@@ -4531,6 +4563,42 @@
         //   asked   — клиент уже нажал «Обновить счёт», ждём монтажника.
         let invoiceTimerInterval = null;
 
+        // Длинная ссылка (#data=) рисуется из своих данных, но в базе к этому
+        // моменту уже может лежать строка того же ?id=: очередь монтажника её
+        // досохранила, клиент раньше просил обновить, монтажник переотправил с
+        // новым сроком. Статус и срок из базы главнее того, что зашито в ссылку.
+        // Ошибки глотаем: без сети страница остаётся такой, какой открылась.
+        async function syncStatusFromCloud(id) {
+            if (!id || !supabaseClient || !invoiceData) return;
+            if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return;
+            try {
+                const req = supabaseClient.from('shared_invoices').select('object_info').eq('id', id).maybeSingle();
+                const { data } = await Promise.race([
+                    req,
+                    new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+                ]);
+                const ex = data && data.object_info;
+                if (!ex) return;
+                const merged = { ...(invoiceData.object_info || {}) };
+                if (ex.status) {
+                    merged.status = ex.status;
+                    merged.client_comment = ex.client_comment || null;
+                    merged.status_updated_at = ex.status_updated_at || null;
+                    merged.refresh_requested_at = ex.refresh_requested_at || null;
+                    merged.refresh_count = ex.refresh_count || 0;
+                }
+                if (Object.prototype.hasOwnProperty.call(ex, 'valid_days')) {
+                    merged.sent_at = ex.sent_at || null;
+                    merged.valid_days = ex.valid_days;
+                    merged.valid_until = ex.valid_until || null;
+                }
+                invoiceData.object_info = merged;
+                renderStatusBadge(merged);
+            } catch (e) {
+                console.warn('[syncStatusFromCloud] статус из базы не получен:', e);
+            }
+        }
+
         function invoiceTimerState(obj) {
             if (!obj) return 'none';
             if (obj.status === 'refresh_requested') return 'asked';
@@ -4564,6 +4632,7 @@
             const refreshBox = document.getElementById('refresh_container');
             const refreshBtn = document.getElementById('btn_refresh_invoice');
             const refreshHint = document.getElementById('refresh_hint');
+            const callBtn = document.getElementById('btn_call_manager');
             const fabRefresh = document.getElementById('fab_refresh');
             const confirmBtn = document.querySelector('.fab-confirm');
             const reviseBtn = document.querySelector('.fab-revise');
@@ -4578,6 +4647,19 @@
             document.body.classList.toggle('invoice-expired', state === 'expired' || state === 'asked');
             if (refreshBox) refreshBox.style.display = showRefresh ? 'block' : 'none';
             if (fabRefresh) fabRefresh.style.display = showRefresh ? '' : 'none';
+
+            // «Позвонить» — рядом с «Обновить счёт», пока номер монтажника известен
+            if (callBtn) {
+                const phone = String((invoiceData && invoiceData.manager_info && invoiceData.manager_info.phone) || '').trim();
+                const digits = phone.replace(/[^\d+]/g, '');
+                if (showRefresh && digits.replace(/\D/g, '').length >= 10) {
+                    callBtn.href = 'tel:' + digits;
+                    callBtn.textContent = '📞 Позвонить ' + phone;
+                    callBtn.style.display = 'inline-flex';
+                } else {
+                    callBtn.style.display = 'none';
+                }
+            }
 
             if (state === 'expired' || state === 'asked') {
                 // Цен нет — согласовывать и запрашивать счёт нечего
@@ -4614,7 +4696,7 @@
             if (state === 'expired') {
                 bar.innerHTML = `<span class="timer-text">⌛ Срок действия счёта вышел<span class="timer-until-sep"> </span><span class="timer-until">${until}</span></span>`;
                 if (refreshBtn) { refreshBtn.disabled = false; refreshBtn.textContent = '🔄 Обновить счёт'; }
-                if (refreshHint) refreshHint.textContent = 'Цены могли измениться, поэтому они скрыты. Нажмите «Обновить счёт» — монтажник пересчитает смету по сегодняшним ценам, и она появится по этой же ссылке.';
+                if (refreshHint) refreshHint.textContent = 'Цены могли измениться, поэтому они скрыты. Нажмите «Обновить счёт» — тот, кто прислал вам смету, получит запрос, пересчитает её по сегодняшним ценам, и она появится по этой же ссылке. Или позвоните ему напрямую.';
             } else {
                 const askedAt = obj.refresh_requested_at ? fmtValidUntil(obj.refresh_requested_at) : '';
                 bar.innerHTML = `<span class="timer-text">⌛ Срок действия вышел<span class="timer-until-sep"> · </span><span class="timer-until">запрос на обновление отправлен${askedAt ? ' ' + askedAt : ''}</span></span>`;
