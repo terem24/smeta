@@ -7624,88 +7624,88 @@ const titanSide200Rads = [
     { id: "SRB-3310-020011", name: "Радиатор TITAN 200 (бок.) 11 секций", sec: 11, price: 13090, power50: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RBM-3210-020012", name: "Радиатор Plus Bm 200 12 секций", price: 9993, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
     { id: "SRB-3310-020012", name: "Радиатор TITAN 200 (бок.) 12 секций", sec: 12, price: 14280, power50: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RBM-3210-020012", name: "Радиатор Plus Bm 200 12 секций", price: 9993, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
     { id: "SRB-3310-020013", name: "Радиатор TITAN 200 (бок.) 13 секций", sec: 13, price: 15470, power50: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RBM-3210-020014", name: "Радиатор Plus Bm 200 14 секций", price: 11658, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
-    { id: "SRB-3310-020014", name: "Радиатор TITAN 200 (бок.) 14 секций", sec: 14, price: 16660, power50: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RBM-3210-020014", name: "Радиатор Plus Bm 200 14 секций", price: 10597, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
+    { id: "SRB-3310-020014", name: "Радиатор TITAN 200 (бок.) 14 секций", sec: 14, price: 16660, power50: 66, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RBM-3210-020014", name: "Радиатор Plus Bm 200 14 секций", price: 11658, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } }
 ];
 
 // Алюминиевые (боковое, 500мм) SRA-2310-050, power50=107 Вт/сек
 const aluminumRads = [
-    { id: "SRA-2310-050004", name: "Радиатор алюм. 4 секций",  sec: 4,  price: 3560,  power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-050004", name: "Радиатор Profi 4 секций",  price: 3943, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-050006", name: "Радиатор алюм. 6 секций",  sec: 6,  price: 5340,  power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-050006", name: "Радиатор Profi 6 секций",  price: 5914, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-050008", name: "Радиатор алюм. 8 секций",  sec: 8,  price: 7120,  power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-050008", name: "Радиатор Profi 8 секций",  price: 7887, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-050010", name: "Радиатор алюм. 10 секций", sec: 10, price: 8900, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-050010", name: "Радиатор Profi 10 секций", price: 9859, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-050012", name: "Радиатор алюм. 12 секций", sec: 12, price: 10680, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-050012", name: "Радиатор Profi 12 секций", price: 11830, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
+    { id: "SRA-2310-050004", name: "Радиатор алюм. 4 секций",  sec: 4,  price: 3560,  power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-050004", name: "Радиатор Profi 4 секций",  price: 3943, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-050006", name: "Радиатор алюм. 6 секций",  sec: 6,  price: 5340,  power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-050006", name: "Радиатор Profi 6 секций",  price: 5914, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-050008", name: "Радиатор алюм. 8 секций",  sec: 8,  price: 7120,  power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-050008", name: "Радиатор Profi 8 секций",  price: 7887, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-050010", name: "Радиатор алюм. 10 секций", sec: 10, price: 8900, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-050010", name: "Радиатор Profi 10 секций", price: 9859, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-050012", name: "Радиатор алюм. 12 секций", sec: 12, price: 10680, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-050012", name: "Радиатор Profi 12 секций", price: 11830, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } }
 ];
 
 // Алюминиевые (боковое, 350мм) SRA-2310-035, power50=83 Вт/сек
 const aluminum350Rads = [
-    { id: "SRA-2310-035004", name: "Радиатор алюм. 350 4 секций",  sec: 4,  price: 3460,  power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-035004", name: "Радиатор Profi 350 4 секций",  price: 3693, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-035006", name: "Радиатор алюм. 350 6 секций",  sec: 6,  price: 5190,  power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-035006", name: "Радиатор Profi 350 6 секций",  price: 5540, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-035008", name: "Радиатор алюм. 350 8 секций",  sec: 8,  price: 6920,  power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-035008", name: "Радиатор Profi 350 8 секций",  price: 7383, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-035010", name: "Радиатор алюм. 350 10 секций", sec: 10, price: 8650, power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-035010", name: "Радиатор Profi 350 10 секций", price: 9229, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } },
-    { id: "SRA-2310-035012", name: "Радиатор алюм. 350 12 секций", sec: 12, price: 10380, power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", rommer: { id: "RAL-1210-035012", name: "Радиатор Profi 350 12 секций", price: 11077, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" } }
+    { id: "SRA-2310-035004", name: "Радиатор алюм. 350 4 секций",  sec: 4,  price: 3460,  power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-035004", name: "Радиатор Profi 350 4 секций",  price: 3693, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-035006", name: "Радиатор алюм. 350 6 секций",  sec: 6,  price: 5190,  power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-035006", name: "Радиатор Profi 350 6 секций",  price: 5540, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-035008", name: "Радиатор алюм. 350 8 секций",  sec: 8,  price: 6920,  power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-035008", name: "Радиатор Profi 350 8 секций",  price: 7383, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-035010", name: "Радиатор алюм. 350 10 секций", sec: 10, price: 8650, power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-035010", name: "Радиатор Profi 350 10 секций", price: 9229, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+    { id: "SRA-2310-035012", name: "Радиатор алюм. 350 12 секций", sec: 12, price: 10380, power50: 83, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RAL-1210-035012", name: "Радиатор Profi 350 12 секций", price: 11077, power50: 74, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } }
 ];
 
 // ROMMER Profi Al (RAL-1210-050) 500мм, power50=100 Вт/сек
 const rommerProfiAlRads = [
-    { id: "RAL-1210-050004", name: "Радиатор Profi 4 секций",  sec: 4,  price: 3943, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-1210-050006", name: "Радиатор Profi 6 секций",  sec: 6,  price: 5914, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-1210-050008", name: "Радиатор Profi 8 секций",  sec: 8,  price: 7887, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-1210-050010", name: "Радиатор Profi 10 секций", sec: 10, price: 9859, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-1210-050012", name: "Радиатор Profi 12 секций", sec: 12, price: 11830, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "RAL-1210-050004", name: "Радиатор Profi 4 секций",  sec: 4,  price: 3943, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-1210-050006", name: "Радиатор Profi 6 секций",  sec: 6,  price: 5914, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-1210-050008", name: "Радиатор Profi 8 секций",  sec: 8,  price: 7887, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-1210-050010", name: "Радиатор Profi 10 секций", sec: 10, price: 9859, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-1210-050012", name: "Радиатор Profi 12 секций", sec: 12, price: 11830, power50: 100, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // ROMMER Optima Bm (RBM-0210-050) 500мм, power50=82 Вт/сек
 const rommerOptimaBmRads = [
-    { id: "RBM-0210-050004", name: "Радиатор Optima Bm 4 секций",  sec: 4,  price: 3021, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+    { id: "RBM-0210-050004", name: "Радиатор Optima Bm 4 секций",  sec: 4,  price: 3323, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
     { id: "RBM-0210-050006", name: "Радиатор Optima Bm 6 секций",  sec: 6,  price: 4984, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
     { id: "RBM-0210-050008", name: "Радиатор Optima Bm 8 секций",  sec: 8,  price: 6644, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RBM-0210-050010", name: "Радиатор Optima Bm 10 секций", sec: 10, price: 7551, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
+    { id: "RBM-0210-050010", name: "Радиатор Optima Bm 10 секций", sec: 10, price: 8307, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
     { id: "RBM-0210-050012", name: "Радиатор Optima Bm 12 секций", sec: 12, price: 9062, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // ROMMER Profi Bm (RBM-1210-050) 500мм, power50=91 Вт/сек
 const rommerProfiBmRads = [
-    { id: "RBM-1210-050004", name: "Радиатор Profi Bm 4 секций",  sec: 4,  price: 3680,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-1210-050006", name: "Радиатор Profi Bm 6 секций",  sec: 6,  price: 5523,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-1210-050008", name: "Радиатор Profi Bm 8 секций",  sec: 8,  price: 7363,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-1210-050010", name: "Радиатор Profi Bm 10 секций", sec: 10, price: 9203,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-1210-050012", name: "Радиатор Profi Bm 12 секций", sec: 12, price: 11045, power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "RBM-1210-050004", name: "Радиатор Profi Bm 4 секций",  sec: 4,  price: 4049,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-1210-050006", name: "Радиатор Profi Bm 6 секций",  sec: 6,  price: 6076,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-1210-050008", name: "Радиатор Profi Bm 8 секций",  sec: 8,  price: 8100,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-1210-050010", name: "Радиатор Profi Bm 10 секций", sec: 10, price: 10124,  power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-1210-050012", name: "Радиатор Profi Bm 12 секций", sec: 12, price: 12150, power50: 91, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // ROMMER Plus Bm (RBM-3210-050) 500мм, power50=90 Вт/сек
 const rommerPlusBmRads = [
-    { id: "RBM-3210-050004", name: "Радиатор Plus Bm 4 секций",  sec: 4,  price: 3336, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-3210-050006", name: "Радиатор Plus Bm 6 секций",  sec: 6,  price: 5004, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-3210-050008", name: "Радиатор Plus Bm 8 секций",  sec: 8,  price: 6672, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-3210-050010", name: "Радиатор Plus Bm 10 секций", sec: 10, price: 8340, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-3210-050012", name: "Радиатор Plus Bm 12 секций", sec: 12, price: 10007, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "RBM-3210-050004", name: "Радиатор Plus Bm 4 секций",  sec: 4,  price: 3670, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-050006", name: "Радиатор Plus Bm 6 секций",  sec: 6,  price: 5505, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-050008", name: "Радиатор Plus Bm 8 секций",  sec: 8,  price: 7339, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-050010", name: "Радиатор Plus Bm 10 секций", sec: 10, price: 9174, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-050012", name: "Радиатор Plus Bm 12 секций", sec: 12, price: 11009, power50: 90, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // ROMMER Plus 200 Al (500мм) RAL-3210-050, power50=117 Вт/сек
 const rommerPlusAlRads = [
-    { id: "RAL-3210-050004", name: "Радиатор Plus 200 4 секций",  sec: 4,  price: 3376, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-3210-050006", name: "Радиатор Plus 200 6 секций",  sec: 6,  price: 5066, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-3210-050008", name: "Радиатор Plus 200 8 секций",  sec: 8,  price: 6754, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-3210-050010", name: "Радиатор Plus 200 10 секций", sec: 10, price: 8443, power50: 117, brand: "ROMMER", availability: "on_order", price_date: "2026-09-10" },
-    { id: "RAL-3210-050012", name: "Радиатор Plus 200 12 секций", sec: 12, price: 10133, power50: 117, brand: "ROMMER", availability: "on_order", price_date: "2026-09-10" }
+    { id: "RAL-3210-050004", name: "Радиатор Plus 200 4 секций",  sec: 4,  price: 3376, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-050006", name: "Радиатор Plus 200 6 секций",  sec: 6,  price: 5066, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-050008", name: "Радиатор Plus 200 8 секций",  sec: 8,  price: 6754, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-050010", name: "Радиатор Plus 200 10 секций", sec: 10, price: 8443, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-050012", name: "Радиатор Plus 200 12 секций", sec: 12, price: 10133, power50: 117, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // ROMMER Plus 200 Al (200мм) RAL-3210-020, power50=72 Вт/сек
 const rommerPlusAl200Rads = [
-    { id: "RAL-3210-020006", name: "Радиатор Plus 200 (200мм) 6 секций",  sec: 6,  price: 4843, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-3210-020008", name: "Радиатор Plus 200 (200мм) 8 секций",  sec: 8,  price: 6458, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-3210-020010", name: "Радиатор Plus 200 (200мм) 10 секций", sec: 10, price: 8073, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-3210-020012", name: "Радиатор Plus 200 (200мм) 12 секций", sec: 12, price: 9688, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RAL-3210-020014", name: "Радиатор Plus 200 (200мм) 14 секций", sec: 14, price: 11300, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "RAL-3210-020006", name: "Радиатор Plus 200 (200мм) 6 секций",  sec: 6,  price: 4843, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-020008", name: "Радиатор Plus 200 (200мм) 8 секций",  sec: 8,  price: 6458, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-020010", name: "Радиатор Plus 200 (200мм) 10 секций", sec: 10, price: 8073, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-020012", name: "Радиатор Plus 200 (200мм) 12 секций", sec: 12, price: 9688, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RAL-3210-020014", name: "Радиатор Plus 200 (200мм) 14 секций", sec: 14, price: 11300, power50: 72, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // ROMMER Plus Bm 200 (200мм) RBM-3210-020, power50=66 Вт/сек
 const rommerPlusBm200Rads = [
-    { id: "RBM-3210-020006", name: "Радиатор Plus Bm 200 6 секций",  sec: 6,  price: 4542, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-3210-020008", name: "Радиатор Plus Bm 200 8 секций",  sec: 8,  price: 6056, power50: 66, brand: "ROMMER", availability: "on_order", price_date: "2026-09-10" },
-    { id: "RBM-3210-020010", name: "Радиатор Plus Bm 200 10 секций", sec: 10, price: 7569, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-3210-020012", name: "Радиатор Plus Bm 200 12 секций", sec: 12, price: 9084, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-3210-020014", name: "Радиатор Plus Bm 200 14 секций", sec: 14, price: 10597, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "RBM-3210-020006", name: "Радиатор Plus Bm 200 6 секций",  sec: 6,  price: 4997, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-020008", name: "Радиатор Plus Bm 200 8 секций",  sec: 8,  price: 6662, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-020010", name: "Радиатор Plus Bm 200 10 секций", sec: 10, price: 8327, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-020012", name: "Радиатор Plus Bm 200 12 секций", sec: 12, price: 9993, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RBM-3210-020014", name: "Радиатор Plus Bm 200 14 секций", sec: 14, price: 11658, power50: 66, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 
@@ -7716,90 +7716,90 @@ const rommerPlusBm200Rads = [
 
 // STOUT VEGA BM, биметалл, боковое подключение. SRB-1310-05/035/020. Прайс 07.2026.
 const vegaBmRads = [
-    { id: "SRB-1310-050004", name: "Радиатор VEGA BM (500мм, бок.) 4 секций", sec: 4, price: 4640, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-050006", name: "Радиатор VEGA BM (500мм, бок.) 6 секций", sec: 6, price: 6960, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-050008", name: "Радиатор VEGA BM (500мм, бок.) 8 секций", sec: 8, price: 9280, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-050010", name: "Радиатор VEGA BM (500мм, бок.) 10 секций", sec: 10, price: 11600, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-050012", name: "Радиатор VEGA BM (500мм, бок.) 12 секций", sec: 12, price: 13920, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-035004", name: "Радиатор VEGA BM (350мм, бок.) 4 секций", sec: 4, price: 4480, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-035006", name: "Радиатор VEGA BM (350мм, бок.) 6 секций", sec: 6, price: 6720, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-035008", name: "Радиатор VEGA BM (350мм, бок.) 8 секций", sec: 8, price: 8960, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-035010", name: "Радиатор VEGA BM (350мм, бок.) 10 секций", sec: 10, price: 11200, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-035012", name: "Радиатор VEGA BM (350мм, бок.) 12 секций", sec: 12, price: 13440, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-020004", name: "Радиатор VEGA BM (200мм, бок.) 4 секций", sec: 4, price: 4160, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-020006", name: "Радиатор VEGA BM (200мм, бок.) 6 секций", sec: 6, price: 6240, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-020008", name: "Радиатор VEGA BM (200мм, бок.) 8 секций", sec: 8, price: 8320, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-020010", name: "Радиатор VEGA BM (200мм, бок.) 10 секций", sec: 10, price: 10400, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-1310-020012", name: "Радиатор VEGA BM (200мм, бок.) 12 секций", sec: 12, price: 12480, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "SRB-1310-050004", name: "Радиатор VEGA BM (500мм, бок.) 4 секций", sec: 4, price: 4640, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-050006", name: "Радиатор VEGA BM (500мм, бок.) 6 секций", sec: 6, price: 6960, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-050008", name: "Радиатор VEGA BM (500мм, бок.) 8 секций", sec: 8, price: 9280, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-050010", name: "Радиатор VEGA BM (500мм, бок.) 10 секций", sec: 10, price: 11600, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-050012", name: "Радиатор VEGA BM (500мм, бок.) 12 секций", sec: 12, price: 13920, power50: 119, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-035004", name: "Радиатор VEGA BM (350мм, бок.) 4 секций", sec: 4, price: 4480, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-035006", name: "Радиатор VEGA BM (350мм, бок.) 6 секций", sec: 6, price: 6720, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-035008", name: "Радиатор VEGA BM (350мм, бок.) 8 секций", sec: 8, price: 8960, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-035010", name: "Радиатор VEGA BM (350мм, бок.) 10 секций", sec: 10, price: 11200, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-035012", name: "Радиатор VEGA BM (350мм, бок.) 12 секций", sec: 12, price: 13440, power50: 87, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-020004", name: "Радиатор VEGA BM (200мм, бок.) 4 секций", sec: 4, price: 4160, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-020006", name: "Радиатор VEGA BM (200мм, бок.) 6 секций", sec: 6, price: 6240, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-020008", name: "Радиатор VEGA BM (200мм, бок.) 8 секций", sec: 8, price: 8320, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-020010", name: "Радиатор VEGA BM (200мм, бок.) 10 секций", sec: 10, price: 10400, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-1310-020012", name: "Радиатор VEGA BM (200мм, бок.) 12 секций", sec: 12, price: 12480, power50: 61, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // STOUT ALPHA, биметалл, боковое подключение (не путать с алюминиевым ALPHA SRA-2310). SRB-2310-05/035. Прайс 07.2026.
 const alphaBmRads = [
-    { id: "SRB-2310-050004", name: "Радиатор ALPHA биметалл (500мм, бок.) 4 секций", sec: 4, price: 4000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-050006", name: "Радиатор ALPHA биметалл (500мм, бок.) 6 секций", sec: 6, price: 6000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-050008", name: "Радиатор ALPHA биметалл (500мм, бок.) 8 секций", sec: 8, price: 8000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-050010", name: "Радиатор ALPHA биметалл (500мм, бок.) 10 секций", sec: 10, price: 10000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-050012", name: "Радиатор ALPHA биметалл (500мм, бок.) 12 секций", sec: 12, price: 12000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-035004", name: "Радиатор ALPHA биметалл (350мм, бок.) 4 секций", sec: 4, price: 3960, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-035006", name: "Радиатор ALPHA биметалл (350мм, бок.) 6 секций", sec: 6, price: 5940, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-035008", name: "Радиатор ALPHA биметалл (350мм, бок.) 8 секций", sec: 8, price: 7920, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-035010", name: "Радиатор ALPHA биметалл (350мм, бок.) 10 секций", sec: 10, price: 9900, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-2310-035012", name: "Радиатор ALPHA биметалл (350мм, бок.) 12 секций", sec: 12, price: 11880, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "SRB-2310-050004", name: "Радиатор ALPHA биметалл (500мм, бок.) 4 секций", sec: 4, price: 4000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-050006", name: "Радиатор ALPHA биметалл (500мм, бок.) 6 секций", sec: 6, price: 6000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-050008", name: "Радиатор ALPHA биметалл (500мм, бок.) 8 секций", sec: 8, price: 8000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-050010", name: "Радиатор ALPHA биметалл (500мм, бок.) 10 секций", sec: 10, price: 10000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-050012", name: "Радиатор ALPHA биметалл (500мм, бок.) 12 секций", sec: 12, price: 12000, power50: 107, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-035004", name: "Радиатор ALPHA биметалл (350мм, бок.) 4 секций", sec: 4, price: 3960, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-035006", name: "Радиатор ALPHA биметалл (350мм, бок.) 6 секций", sec: 6, price: 5940, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-035008", name: "Радиатор ALPHA биметалл (350мм, бок.) 8 секций", sec: 8, price: 7920, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-035010", name: "Радиатор ALPHA биметалл (350мм, бок.) 10 секций", sec: 10, price: 9900, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-2310-035012", name: "Радиатор ALPHA биметалл (350мм, бок.) 12 секций", sec: 12, price: 11880, power50: 79, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // STOUT TITAN, нижнее подключение, 350мм (компаньон titanRads-500мм). SRB-3320-035. Прайс 07.2026.
 const titanBottom350Rads = [
-    { id: "SRB-3320-035004", name: "Радиатор TITAN 350 (нижн.) 4 секций", sec: 4, price: 7310, power50: 106, brand: "STOUT", availability: "on_order", price_date: "2026-09-10" },
-    { id: "SRB-3320-035005", name: "Радиатор TITAN 350 (нижн.) 5 секций", sec: 5, price: 8520, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035006", name: "Радиатор TITAN 350 (нижн.) 6 секций", sec: 6, price: 9730, power50: 106, brand: "STOUT", availability: "on_order", price_date: "2026-09-10" },
-    { id: "SRB-3320-035007", name: "Радиатор TITAN 350 (нижн.) 7 секций", sec: 7, price: 10940, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035008", name: "Радиатор TITAN 350 (нижн.) 8 секций", sec: 8, price: 12150, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035009", name: "Радиатор TITAN 350 (нижн.) 9 секций", sec: 9, price: 13360, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035010", name: "Радиатор TITAN 350 (нижн.) 10 секций", sec: 10, price: 14570, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035011", name: "Радиатор TITAN 350 (нижн.) 11 секций", sec: 11, price: 15780, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035012", name: "Радиатор TITAN 350 (нижн.) 12 секций", sec: 12, price: 16990, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035013", name: "Радиатор TITAN 350 (нижн.) 13 секций", sec: 13, price: 18200, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRB-3320-035014", name: "Радиатор TITAN 350 (нижн.) 14 секций", sec: 14, price: 19410, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "SRB-3320-035004", name: "Радиатор TITAN 350 (нижн.) 4 секций", sec: 4, price: 7310, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035005", name: "Радиатор TITAN 350 (нижн.) 5 секций", sec: 5, price: 8520, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035006", name: "Радиатор TITAN 350 (нижн.) 6 секций", sec: 6, price: 9730, power50: 106, brand: "STOUT", availability: "on_order", price_date: "2026-09-23" },
+    { id: "SRB-3320-035007", name: "Радиатор TITAN 350 (нижн.) 7 секций", sec: 7, price: 10940, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035008", name: "Радиатор TITAN 350 (нижн.) 8 секций", sec: 8, price: 12150, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035009", name: "Радиатор TITAN 350 (нижн.) 9 секций", sec: 9, price: 13360, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035010", name: "Радиатор TITAN 350 (нижн.) 10 секций", sec: 10, price: 14570, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035011", name: "Радиатор TITAN 350 (нижн.) 11 секций", sec: 11, price: 15780, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035012", name: "Радиатор TITAN 350 (нижн.) 12 секций", sec: 12, price: 16990, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035013", name: "Радиатор TITAN 350 (нижн.) 13 секций", sec: 13, price: 18200, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRB-3320-035014", name: "Радиатор TITAN 350 (нижн.) 14 секций", sec: 14, price: 19410, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // STOUT TITAN, нижнее подключение, цвет графит RAL7024. SRB-3320-05/035 7024. Прайс 07.2026.
 const titanGraphiteRads = [
-    { id: "SRB-3320-050004-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 4 секций", sec: 4, price: 8000, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-050006-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 6 секций", sec: 6, price: 10700, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-050008-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 8 секций", sec: 8, price: 13400, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-050010-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 10 секций", sec: 10, price: 16100, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-050012-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 12 секций", sec: 12, price: 18800, power50: 128, brand: "STOUT", availability: "on_order", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-050014-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 14 секций", sec: 14, price: 21500, power50: 128, brand: "STOUT", availability: "on_order", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-035004-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 4 секций", sec: 4, price: 7800, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-035006-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 6 секций", sec: 6, price: 10400, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-035008-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 8 секций", sec: 8, price: 13000, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-035010-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 10 секций", sec: 10, price: 15600, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-035012-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 12 секций", sec: 12, price: 18200, power50: 106, brand: "STOUT", availability: "on_order", price_date: "2026-09-10", color: "graphite" },
-    { id: "SRB-3320-035014-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 14 секций", sec: 14, price: 20800, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10", color: "graphite" }
+    { id: "SRB-3320-050004-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 4 секций", sec: 4, price: 8000, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-050006-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 6 секций", sec: 6, price: 10700, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-050008-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 8 секций", sec: 8, price: 13400, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-050010-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 10 секций", sec: 10, price: 16100, power50: 128, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-050012-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 12 секций", sec: 12, price: 18800, power50: 128, brand: "STOUT", availability: "on_order", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-050014-7024", name: "Радиатор TITAN Графит RAL7024 (500мм, нижн.) 14 секций", sec: 14, price: 21500, power50: 128, brand: "STOUT", availability: "on_order", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-035004-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 4 секций", sec: 4, price: 7800, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-035006-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 6 секций", sec: 6, price: 10400, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-035008-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 8 секций", sec: 8, price: 13000, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-035010-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 10 секций", sec: 10, price: 15600, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-035012-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 12 секций", sec: 12, price: 18200, power50: 106, brand: "STOUT", availability: "on_order", price_date: "2026-09-23", color: "graphite" },
+    { id: "SRB-3320-035014-7024", name: "Радиатор TITAN Графит RAL7024 (350мм, нижн.) 14 секций", sec: 14, price: 20800, power50: 106, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", color: "graphite" }
 ];
 
 // STOUT VEGA 500 AL, алюминий, боковое подключение. SRA-1310-05. Прайс 07.2026.
 const vega500AlRads = [
-    { id: "SRA-1310-050004", name: "Радиатор VEGA 500 AL (бок.) 4 секций", sec: 4, price: 3980, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-1310-050006", name: "Радиатор VEGA 500 AL (бок.) 6 секций", sec: 6, price: 5970, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-1310-050008", name: "Радиатор VEGA 500 AL (бок.) 8 секций", sec: 8, price: 7960, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-1310-050010", name: "Радиатор VEGA 500 AL (бок.) 10 секций", sec: 10, price: 9950, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-1310-050012", name: "Радиатор VEGA 500 AL (бок.) 12 секций", sec: 12, price: 11940, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" }
+    { id: "SRA-1310-050004", name: "Радиатор VEGA 500 AL (бок.) 4 секций", sec: 4, price: 3980, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-1310-050006", name: "Радиатор VEGA 500 AL (бок.) 6 секций", sec: 6, price: 5970, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-1310-050008", name: "Радиатор VEGA 500 AL (бок.) 8 секций", sec: 8, price: 7960, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-1310-050010", name: "Радиатор VEGA 500 AL (бок.) 10 секций", sec: 10, price: 9950, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-1310-050012", name: "Радиатор VEGA 500 AL (бок.) 12 секций", sec: 12, price: 11940, power50: 121, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // STOUT OSCAR (Италия), дизайн-радиатор, боковое подключение, 1800/2000мм, 3 цвета. SRA-0110-*. Прайс 07.2026.
 const oscarRads = [
-    { id: "SRA-0110-180003", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 3 секций", sec: 3, price: 30415, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-180004", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 4 секций", sec: 4, price: 40550, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-180005", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 5 секций", sec: 5, price: 50695, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-180006", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 6 секций", sec: 6, price: 60830, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-18000703", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 3 секций", sec: 3, price: 39547, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-18000704", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 4 секций", sec: 4, price: 52722, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-18000705", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 5 секций", sec: 5, price: 65909, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-18000706", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 6 секций", sec: 6, price: 79084, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-18000803", name: "Радиатор STOUT OSCAR 1800мм 2676 серый 3 секций", sec: 3, price: 39547, power50: 302, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-18000804", name: "Радиатор STOUT OSCAR 1800мм 2676 серый 4 секций", sec: 4, price: 52722, power50: 302, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "SRA-0110-18000805", name: "Радиатор STOUT OSCAR 1800мм 2676 серый 5 секций", sec: 5, price: 65909, power50: 302, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+    { id: "SRA-0110-180003", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 3 секций", sec: 3, price: 30415, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-180004", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 4 секций", sec: 4, price: 40550, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-180005", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 5 секций", sec: 5, price: 50695, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-180006", name: "Радиатор STOUT OSCAR 1800мм RAL9010 белый 6 секций", sec: 6, price: 60830, power50: 302, height: 1800, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-18000703", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 3 секций", sec: 3, price: 39547, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-18000704", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 4 секций", sec: 4, price: 52722, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-18000705", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 5 секций", sec: 5, price: 65909, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-18000706", name: "Радиатор STOUT OSCAR 1800мм 2748 черный 6 секций", sec: 6, price: 79084, power50: 302, height: 1800, color: "black", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-18000803", name: "Радиатор STOUT OSCAR 1800мм 2676 серый 3 секций", sec: 3, price: 39547, power50: 302, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-18000804", name: "Радиатор STOUT OSCAR 1800мм 2676 серый 4 секций", sec: 4, price: 52722, power50: 302, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    { id: "SRA-0110-18000805", name: "Радиатор STOUT OSCAR 1800мм 2676 серый 5 секций", sec: 5, price: 65909, power50: 302, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
     { id: "SRA-0110-18000806", name: "Радиатор STOUT OSCAR 1800мм 2676 серый 6 секций", sec: 6, price: 79084, power50: 302, height: 1800, color: "gray", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
     { id: "SRA-0110-200003", name: "Радиатор STOUT OSCAR 2000мм RAL9010 белый 3 секций", sec: 3, price: 33742, power50: 327, height: 2000, color: "white", isDesignRad: true, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
     { id: "SRA-0110-200004", name: "Радиатор STOUT OSCAR 2000мм RAL9010 белый 4 секций", sec: 4, price: 44990, power50: 327, height: 2000, color: "white", isDesignRad: true, brand: "STOUT", availability: "on_order", price_date: "2026-09-10" },
