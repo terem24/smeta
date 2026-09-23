@@ -2495,6 +2495,40 @@
         .c1-sub { font-size: 10.5px; color: var(--text-sec); margin-top: 2px; }
         .c1-flag td { background: rgba(250, 204, 21, 0.16); }
         .c1-sec td { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-sec); background: var(--line-soft); padding-top: 8px; }
+
+        /*
+         * Телефон: таблица в восемь колонок в экран не влезает никак — она
+         * уезжала в свою прокрутку, названия резались, а плавающие кнопки
+         * печати и согласования ложились поверх строк. Поэтому на узком экране
+         * строка становится карточкой: сверху артикул и наименование, ниже
+         * числа парами «подпись — значение» (подпись берётся из data-l).
+         */
+        @media (max-width: 560px) {
+            #c1_container { padding: 14px 12px 16px; }
+            #c1_container .table-responsive { overflow: visible; background: transparent; }
+            .c1-table, .c1-table tbody, .c1-table tr, .c1-table td { display: block; width: auto; }
+            .c1-table thead { display: none; }
+            .c1-table tr { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; position: relative; }
+            .c1-table td { border: none; padding: 2px 0; }
+            .c1-table td.c1-idx { position: absolute; top: 10px; right: 12px; font-size: 11px; color: var(--text-sec); padding: 0; }
+            .c1-table td.c1-sku { font-size: 12px; font-weight: 700; padding-right: 26px; }
+            .c1-table td.c1-name { font-size: 12.5px; margin-bottom: 4px; }
+            /* Числа прижаты ВЛЕВО, а не растянуты по ширине карточки: столбец
+               плавающих кнопок (печать, согласование) висит у правого края и
+               накрывал бы как раз значения — цену и сумму. */
+            .c1-table td.c1-num { display: flex; justify-content: flex-start; gap: 8px; text-align: left; font-size: 12.5px; border-top: 1px dashed var(--line-soft); padding: 4px 0 0; }
+            .c1-table td.c1-num::before { content: attr(data-l); color: var(--text-sec); font-size: 11.5px; font-weight: 600; text-align: left; flex: 0 0 92px; }
+            .c1-table td.c1-name, .c1-table td.c1-sku { padding-right: 26px; }
+            /* Заголовок раздела карточкой не становится — он остаётся полосой */
+            .c1-table tr.c1-sec { background: var(--line-soft); border: none; border-radius: 6px; padding: 6px 10px; margin: 14px 0 8px; }
+            .c1-table tr.c1-sec td { padding: 0; background: transparent; }
+            .c1-flag td { background: transparent; }
+            .c1-table tr.c1-flag { background: rgba(250, 204, 21, 0.16); }
+            /* Кнопки печати и согласования висят в правом нижнем углу поверх
+               страницы — без запаса снизу они накрывают последние строки. */
+            #c1_container { margin-bottom: 96px; }
+            .c1-total { font-size: 12.5px; }
+        }
         .c1-total { text-align: right; font-size: 12.5px; margin-top: 8px; color: var(--text-main); }
     </style>
 </head>
@@ -3088,11 +3122,11 @@
                 inPrice.forEach((r, n) => {
                     if (!n || inPrice[n - 1].sec !== r.sec) html += `<tr class="c1-sec"><td colspan="8">${esc1c(r.sec)}</td></tr>`;
                     html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
-                        <td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>` : ''}</td>
-                        <td>${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
-                        <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
-                        <td class="c1-num">${money1c(r.pl)}</td><td class="c1-num">${money1c(r.price)}</td>
-                        <td class="c1-num"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
+                        <td class="c1-idx">${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>` : ''}</td>
+                        <td class="c1-name">${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
+                        <td class="c1-num" data-l="Кол-во">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
+                        <td class="c1-num" data-l="Цена прайса">${money1c(r.pl)}</td><td class="c1-num" data-l="Цена КП">${money1c(r.price)}</td>
+                        <td class="c1-num" data-l="Скидка"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num" data-l="Сумма КП">${money1c(r.sum)}</td></tr>`;
                 });
                 html += `</tbody></table></div>
                     <div class="c1-total">Итого по КП: <b>${money1c(sumKp)}</b> · по прайсу со скидками выйдет ≈ <b>${money1c(sum1c)}</b></div>`;
@@ -3107,8 +3141,8 @@
                     </tr></thead><tbody>`;
                 missing.forEach((r, n) => {
                     if (!n || missing[n - 1].sec !== r.sec) html += `<tr class="c1-sec"><td colspan="6">${esc1c(r.sec)}</td></tr>`;
-                    html += `<tr><td>${n + 1}</td><td class="c1-sku">${esc1c(r.sku || 'нет')}</td><td>${esc1c(r.name)}</td>
-                        <td class="c1-num">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td><td class="c1-num">${money1c(r.price)}</td><td class="c1-num">${money1c(r.sum)}</td></tr>`;
+                    html += `<tr><td class="c1-idx">${n + 1}</td><td class="c1-sku">${esc1c(r.sku || 'нет')}</td><td class="c1-name">${esc1c(r.name)}</td>
+                        <td class="c1-num" data-l="Кол-во">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td><td class="c1-num" data-l="Цена КП">${money1c(r.price)}</td><td class="c1-num" data-l="Сумма КП">${money1c(r.sum)}</td></tr>`;
                 });
                 html += `</tbody></table></div>`;
             }
