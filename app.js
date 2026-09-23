@@ -3959,6 +3959,8 @@ const app = {
         const mobHide = this.isMobileLayout() && (this.state.mobTab || 'inputs') !== 'inputs';
         const hide = !this.state.tgUser || (this.state.viewMode || 'equipment') !== 'equipment' || mobHide;
         btn.style.display = hide ? 'none' : 'flex';
+        // Лист сметы на десктопе освобождает под кнопку правое поле (style.css, .ai-fab-visible)
+        document.body.classList.toggle('ai-fab-visible', !hide);
         if (!hide) this.applyAiFabCollapsedState();
     },
     // Ниже 0.8 колонку не ужимаем: мельче текст уже не прочитать, там ей
@@ -11959,7 +11961,7 @@ const app = {
     // Список городов для подсказки в поле «Ваш город» — из того же CITIES_DB,
     // по которому считается расчётная зимняя температура
     fillCitySuggestions: function () {
-        const list = document.getElementById('city_suggestions');
+        const list = document.getElementById('profile_city_list');
         if (!list || list.children.length || typeof CITIES_DB === 'undefined') return;
         list.innerHTML = CITIES_DB.map(c => `<option value="${c.name}"></option>`).join('');
     },
