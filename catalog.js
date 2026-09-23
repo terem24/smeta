@@ -2483,72 +2483,72 @@ const catalog = {
   price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000004", loops: 4, price: 13622, rommer: { id: "RMS-1200-000004", name: "Коллектор с расходомерами 1\"x4 вых.", price: 7652, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000005", loops: 5, price: 16309, rommer: { id: "RMS-1200-000005", name: "Коллектор с расходомерами 1\"x5 вых.", price: 8776, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000006", loops: 6, price: 18685, rommer: { id: "RMS-1200-000006", name: "Коллектор с расходомерами 1\"x6 вых.", price: 9997, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000007", loops: 7, price: 21871, rommer: { id: "RMS-1200-000007", name: "Коллектор с расходомерами 1\"x7 вых.", price: 11453, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000008", loops: 8, price: 24650, rommer: { id: "RMS-1200-000008", name: "Коллектор с расходомерами 1\"x8 вых.", price: 12759, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000009", loops: 9, price: 27167, rommer: { id: "RMS-1200-000009", name: "Коллектор с расходомерами 1\"x9 вых.", price: 14311, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000010", loops: 10, price: 29904, rommer: { id: "RMS-1200-000010", name: "Коллектор с расходомерами 1\"x10 вых.", price: 17827, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000011", loops: 11, price: 32407, rommer: { id: "RMS-1200-000011", name: "Коллектор с расходомерами 1\"x11 вых.", price: 19219, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SMS-0917-000012", loops: 12, price: 34871, rommer: { id: "RMS-1200-000012", name: "Коллектор с расходомерами 1\"x12 вых.", price: 20661, brand: "ROMMER",
   availability: 'in_stock',
-  price_date: '2026-09-20' }, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SMS-0917-000013", loops: 13, price: 38842, availability: "in_stock", price_date: "2026-09-20" }
+  price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SMS-0917-000013", loops: 13, price: 38842, availability: "in_stock", price_date: "2026-09-23" }
     ],
     manifolds_full_kit: [
-        { id: "SMS-0907-000002", loops: 2, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 20818, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000002", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 10678, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000003", loops: 3, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 23459, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000003", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 12444, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000004", loops: 4, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 26520, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000004", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 14216, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000005", loops: 5, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 28966, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000005", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 15983, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000006", loops: 6, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 32958, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000006", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 17751, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000007", loops: 7, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 37105, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000007", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 19546, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000008", loops: 8, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 42048, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000008", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 21204, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000009", loops: 9, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 47272, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000009", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 22893, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000010", loops: 10, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 50164, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000010", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 24550, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000011", loops: 11, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 55328, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000011", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 26274, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0907-000012", loops: 12, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 59507, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1210-000012", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 27931, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
+        { id: "SMS-0907-000002", loops: 2, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 20818, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000002", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x2", price: 10678, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000003", loops: 3, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 23459, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000003", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x3", price: 12444, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000004", loops: 4, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 26520, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000004", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x4", price: 14216, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000005", loops: 5, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 28966, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000005", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x5", price: 15983, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000006", loops: 6, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 32958, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000006", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x6", price: 17751, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000007", loops: 7, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 37105, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000007", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x7", price: 19546, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000008", loops: 8, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 42048, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000008", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x8", price: 21204, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000009", loops: 9, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 47272, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000009", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x9", price: 22893, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000010", loops: 10, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 50164, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000010", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x10", price: 24550, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000011", loops: 11, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 55328, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000011", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x11", price: 26274, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0907-000012", loops: 12, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 59507, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1210-000012", name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x12", price: 27931, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
         { id: "SMS-0907-000013", loops: 13, name: "Коллектор с расходомерами полностью укомплектован 1\"/3/4\"x13", price: 35337, availability: "in_stock", price_date: "2026-09-23" }
     ],
     manifolds_shutoff: [
-        { id: "SMS-0927-000002", loops: 2, name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 12040, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000002", name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 6091, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000003", loops: 3, name: "Коллектор с запорными клапанами 1\"/3/4\"x3", price: 13544, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000003", name: "Коллектор с запорными клапанами 1\"/3/4\"x3", price: 6430, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000004", loops: 4, name: "Коллектор с запорными клапанами 1\"/3/4\"x4", price: 16303, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000004", name: "Коллектор с запорными клапанами 1\"/3/4\"x4", price: 7684, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000005", loops: 5, name: "Коллектор с запорными клапанами 1\"/3/4\"x5", price: 19565, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000005", name: "Коллектор с запорными клапанами 1\"/3/4\"x5", price: 8833, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000006", loops: 6, name: "Коллектор с запорными клапанами 1\"/3/4\"x6", price: 23703, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000006", name: "Коллектор с запорными клапанами 1\"/3/4\"x6", price: 10035, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000007", loops: 7, name: "Коллектор с запорными клапанами 1\"/3/4\"x7", price: 27215, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000007", name: "Коллектор с запорными клапанами 1\"/3/4\"x7", price: 11499, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000008", loops: 8, name: "Коллектор с запорными клапанами 1\"/3/4\"x8", price: 31353, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000008", name: "Коллектор с запорными клапанами 1\"/3/4\"x8", price: 12805, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000009", loops: 9, name: "Коллектор с запорными клапанами 1\"/3/4\"x9", price: 33609, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000009", name: "Коллектор с запорными клапанами 1\"/3/4\"x9", price: 14374, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000010", loops: 10, name: "Коллектор с запорными клапанами 1\"/3/4\"x10", price: 37371, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000010", name: "Коллектор с запорными клапанами 1\"/3/4\"x10", price: 17900, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000011", loops: 11, name: "Коллектор с запорными клапанами 1\"/3/4\"x11", price: 40257, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000011", name: "Коллектор с запорными клапанами 1\"/3/4\"x11", price: 19548, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
-        { id: "SMS-0927-000012", loops: 12, name: "Коллектор с запорными клапанами 1\"/3/4\"x12", price: 44143, availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RMS-1201-000012", name: "Коллектор с запорными клапанами 1\"/3/4\"x12", price: 20956, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } }
+        { id: "SMS-0927-000002", loops: 2, name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 12040, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000002", name: "Коллектор с запорными клапанами 1\"/3/4\"x2", price: 6091, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000003", loops: 3, name: "Коллектор с запорными клапанами 1\"/3/4\"x3", price: 13544, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000003", name: "Коллектор с запорными клапанами 1\"/3/4\"x3", price: 6430, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000004", loops: 4, name: "Коллектор с запорными клапанами 1\"/3/4\"x4", price: 16303, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000004", name: "Коллектор с запорными клапанами 1\"/3/4\"x4", price: 7684, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000005", loops: 5, name: "Коллектор с запорными клапанами 1\"/3/4\"x5", price: 19565, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000005", name: "Коллектор с запорными клапанами 1\"/3/4\"x5", price: 8833, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000006", loops: 6, name: "Коллектор с запорными клапанами 1\"/3/4\"x6", price: 23703, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000006", name: "Коллектор с запорными клапанами 1\"/3/4\"x6", price: 10035, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000007", loops: 7, name: "Коллектор с запорными клапанами 1\"/3/4\"x7", price: 27215, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000007", name: "Коллектор с запорными клапанами 1\"/3/4\"x7", price: 11499, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000008", loops: 8, name: "Коллектор с запорными клапанами 1\"/3/4\"x8", price: 31353, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000008", name: "Коллектор с запорными клапанами 1\"/3/4\"x8", price: 12805, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000009", loops: 9, name: "Коллектор с запорными клапанами 1\"/3/4\"x9", price: 33609, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000009", name: "Коллектор с запорными клапанами 1\"/3/4\"x9", price: 14374, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000010", loops: 10, name: "Коллектор с запорными клапанами 1\"/3/4\"x10", price: 37371, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000010", name: "Коллектор с запорными клапанами 1\"/3/4\"x10", price: 17900, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000011", loops: 11, name: "Коллектор с запорными клапанами 1\"/3/4\"x11", price: 40257, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000011", name: "Коллектор с запорными клапанами 1\"/3/4\"x11", price: 19548, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
+        { id: "SMS-0927-000012", loops: 12, name: "Коллектор с запорными клапанами 1\"/3/4\"x12", price: 44143, availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RMS-1201-000012", name: "Коллектор с запорными клапанами 1\"/3/4\"x12", price: 20956, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } }
     ],
     manifolds_shutoff_auto: [
-        { id: "RMS-1202-000002", loops: 2, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x2", price: 6639, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000003", loops: 3, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x3", price: 7007, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000004", loops: 4, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x4", price: 8374, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000005", loops: 5, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x5", price: 9627, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000006", loops: 6, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x6", price: 10937, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000007", loops: 7, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x7", price: 12533, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000008", loops: 8, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x8", price: 13957, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000009", loops: 9, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x9", price: 15667, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000010", loops: 10, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x10", price: 19512, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000011", loops: 11, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x11", price: 21307, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RMS-1202-000012", loops: 12, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x12", price: 22843, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "RMS-1202-000002", loops: 2, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x2", price: 6639, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000003", loops: 3, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x3", price: 7007, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000004", loops: 4, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x4", price: 8374, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000005", loops: 5, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x5", price: 9627, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000006", loops: 6, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x6", price: 10937, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000007", loops: 7, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x7", price: 12533, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000008", loops: 8, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x8", price: 13957, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000009", loops: 9, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x9", price: 15667, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000010", loops: 10, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x10", price: 19512, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000011", loops: 11, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x11", price: 21307, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RMS-1202-000012", loops: 12, name: "Коллектор с запорными клапанами (раздвижные кронштейны) 1\"/3/4\"x12", price: 22843, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
     ],
     // Обвязка коллектора тёплого пола со стороны трассы — лист О-11 проекта-образца
     // 2025-148. В комплектацию гребёнки эти позиции не входят ни у одной из серий:
@@ -2557,25 +2557,25 @@ const catalog = {
     // Краны продублированы из ball_valves намеренно: под трассу Ø32 металлопластика
     // переходника на 3/4" в линейке нет, и узел там собирается целиком на 1".
     ufh_node_parts: [
-        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SVB-0007-200020", name: "Кран шаровой с американкой 3/4\" ВР/НР (Бабочка)", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 576, brand: "ROMMER", availability: "on_order", price_date: "2026-09-20" } },
-        { id: "SVB-0007-200025", name: "Кран шаровой с американкой 1\" ВР/НР (Бабочка)", price: 2617, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RBV-0005-0510225", name: "Кран шаровой с американкой ВР/НР 1\"", price: 1234, brand: "ROMMER", availability: "on_order", price_date: "2026-09-20" } },
-        { id: "SFT-0014-000034", name: "Угольник 90° 3/4\" ВР", price: 499, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SFT-0014-000001", name: "Угольник 90° 1\" ВР", price: 849, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SFT-0004-000134", name: "Ниппель 1\" х 3/4\" НР", price: 378, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SVB-0007-200020", name: "Кран шаровой с американкой 3/4\" ВР/НР (Бабочка)", price: 1681, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RBV-0005-0510220", name: "Кран шаровой с американкой ВР/НР 3/4\"", price: 576, brand: "ROMMER", availability: "on_order", price_date: "2026-09-23" } },
+        { id: "SVB-0007-200025", name: "Кран шаровой с американкой 1\" ВР/НР (Бабочка)", price: 2617, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RBV-0005-0510225", name: "Кран шаровой с американкой ВР/НР 1\"", price: 1234, brand: "ROMMER", availability: "on_order", price_date: "2026-09-23" } },
+        { id: "SFT-0014-000034", name: "Угольник 90° 3/4\" ВР", price: 499, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SFT-0014-000001", name: "Угольник 90° 1\" ВР", price: 849, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" }
     ],
     parts: [
-        { id: "SMS-1000-010001", name: "Концевой фитинг", price: 2563, rommer: { id: "RMS-1001-010001", name: "Группа концевая для коллектора Rommer", price: 2093, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SFC-0020-001622", name: "Евроконус 16x2.2", price: 411, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SFA-0029-000016", name: "Фиксатор 90", price: 137, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SFC-0020-001620", name: "Евроконус 16x2.0", price: 406, rommer: { id: "RFC-1020-001620", name: "Евроконус 16x2.0", price: 212, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SFC-0020-002020", name: "Евроконус 20x2.0", price: 401, availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SMS-1000-010001", name: "Концевой фитинг", price: 2563, rommer: { id: "RMS-1001-010001", name: "Группа концевая для коллектора Rommer", price: 2093, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SFC-0020-001622", name: "Евроконус 16x2.2", price: 411, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SFA-0029-000016", name: "Фиксатор 90", price: 137, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SFC-0020-001620", name: "Евроконус 16x2.0", price: 406, rommer: { id: "RFC-1020-001620", name: "Евроконус 16x2.0", price: 212, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SFC-0020-002020", name: "Евроконус 20x2.0", price: 401, availability: "in_stock", price_date: "2026-09-23" },
         // Аксиальный вариант подключения к коллектору вместо компрессионного евроконуса:
         // надвижная гильза вместо накидной гайки с обжимным кольцом. Ставится в паре с
         // монтажной гильзой SFA-0020-000016 — она входит в комплектацию, а не опция
         // (без гильзы соединение не собирается). Отсюда noCheapen в таблице замены.
-        { id: "SFA-0034-001634", name: "Переходник с накидной гайкой (евроконус) 16xG3/4\" (аксиальный)", price: 589, brand: "STOUT", rommer: { id: "RFA-0034-001634", name: "Переходник с накидной гайкой (евроконус) 16xG3/4\"", price: 304, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RDG-0120-100000", name: "Термостат для смесительного узла RDG-0120-005010", price: 1231, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RDG-0120-100025", name: "Сдвоенный ниппель (комплект 2 шт.)", price: 1355, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SFA-0034-001634", name: "Переходник с накидной гайкой (евроконус) 16xG3/4\" (аксиальный)", price: 589, brand: "STOUT", rommer: { id: "RFA-0034-001634", name: "Переходник с накидной гайкой (евроконус) 16xG3/4\"", price: 304, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RDG-0120-100000", name: "Термостат для смесительного узла RDG-0120-005010", price: 1231, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RDG-0120-100025", name: "Сдвоенный ниппель (комплект 2 шт.)", price: 1355, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
     ],
     // Концевая группа с РУЧНЫМ воздухоотводчиком — та же серия SMS-1000, что и parts[0],
     // но с краном Маевского вместо автоматического воздухоотводчика. Именно её рисует лист
@@ -2590,16 +2590,16 @@ const catalog = {
     // выводится из уже размеченных позиций той же группы (44193/52839,47 = 0,8364).
     // availability: наличие не проверено, у AutoPrice эта позиция ещё не проходила —
     // ставим осторожное «под заказ», первый же прогон парсера перепишет фактическим.
-    end_fitting_manual: { id: "SMS-1000-020001", name: "Концевой фитинг с дренажным клапаном и ручным воздухоотводчиком", price: 1880, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
+    end_fitting_manual: { id: "SMS-1000-020001", name: "Концевой фитинг с дренажным клапаном и ручным воздухоотводчиком", price: 1880, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
     mixing_units: [
-        { id: "SDG-0120-001000", name: "Узел подмеса (7 кВт)", price: 27225, rommer: { id: "RDG-0120-008100", name: "Узел подмеса с термоголовкой (6 кВт)", price: 18076, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RDG-0120-008000", name: "Узел подмеса с термоголовкой, перепускным клапаном и байпасом (10 кВт)", price: 29167, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RDG-0120-009000", name: "Узел подмеса с термостатической головкой (9 кВт)", price: 9691, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RDG-0120-009001", name: "Узел подмеса с термостатической головкой, без кронштейна (9 кВт)", price: 9691, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "RDG-0120-005010", name: "Узел подмеса с термостатическим клапаном 20-55°C (6 кВт)", price: 13153, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }
+        { id: "SDG-0120-001000", name: "Узел подмеса (7 кВт)", price: 27225, rommer: { id: "RDG-0120-008100", name: "Узел подмеса с термоголовкой (6 кВт)", price: 18076, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RDG-0120-008000", name: "Узел подмеса с термоголовкой, перепускным клапаном и байпасом (10 кВт)", price: 29167, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RDG-0120-009000", name: "Узел подмеса с термостатической головкой (9 кВт)", price: 9691, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RDG-0120-009001", name: "Узел подмеса с термостатической головкой, без кронштейна (9 кВт)", price: 9691, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RDG-0120-005010", name: "Узел подмеса с термостатическим клапаном 20-55°C (6 кВт)", price: 13153, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
     ],
     groups_dn20: [
-        { id: "SDG-0001-002001", name: "Группа насосная DN20 (Прямая) - для радиаторов до 10 кВт", price: 17217, rommer: { id: "RDG-1001-002501", name: "Группа насосная DN25 (Прямая) - для радиаторов до 23 кВт", price: 12087, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" },
+        { id: "SDG-0001-002001", name: "Группа насосная DN20 (Прямая) - для радиаторов до 10 кВт", price: 17217, rommer: { id: "RDG-1001-002501", name: "Группа насосная DN25 (Прямая) - для радиаторов до 23 кВт", price: 12087, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SDG-0002-002001", name: "Группа насосная DN20 (Смес.) - для радиаторов до 10 кВт, для тёплого пола до 5 кВт", price: 31364, rommer: { id: "RDG-1002-002501", name: "Насосная группа DN25 (термостатический клапан) - для радиаторов до 23 кВт, для тёплого пола до 9 кВт", price: 14245, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" },
         { id: "SDG-0003-002001", name: "Группа насосная DN20 (под сервопривод) - для радиаторов до 10 кВт, для тёплого пола до 5 кВт", price: 16243, rommer: { id: "RDG-1003-002501", name: "Группа насосная DN25 (под сервопривод) - для радиаторов до 23 кВт, для тёплого пола до 9 кВт", price: 14606, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-06-06" },
         { id: "SDG-0007-002001", name: "Группа насосная DN20 (3-х ход. приводной смеситель) - для радиаторов до 10 кВт, для тёплого пола до 5 кВт", price: 24785, rommer: { id: "RDG-1003-002501", name: "Группа насосная DN25 (под сервопривод) - для радиаторов до 23 кВт, для тёплого пола до 9 кВт", price: 14606, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" }
