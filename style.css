@@ -1774,17 +1774,39 @@ body.menu-open .mobile-menu-backdrop {
         display: none !important;
     }
 
+    /* Четыре вкладки сметы — сеткой два на два, а не столбиком: столбиком они
+       занимали полэкрана телефона, и до первой строки сметы приходилось листать */
     .main-view-tabs {
-        flex-direction: column !important;
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
         height: auto !important;
-        gap: 10px;
+        gap: 8px;
         margin-top: 20px;
     }
 
     .main-view-tabs .tab {
         width: 100%;
-        padding: 14px !important;
-        font-size: 15px !important;
+        box-sizing: border-box;
+        padding: 12px 6px !important;
+        font-size: 13px !important;
+        text-align: center;
+        white-space: normal;
+    }
+
+    /* Цели для пальца: иконка замены позиции у названия была 10 px, кнопки
+       «Скидка/Наценка» — 23 px по высоте (размеры кнопок заданы инлайном) */
+    body.hide-images-mode .swap-inline-btn {
+        /* 36, а не 28: список на телефоне отрисован в zoom 0.8, на экране выходит 29 px */
+        min-width: 36px;
+        min-height: 36px;
+        justify-content: center;
+        margin-left: 2px;
+    }
+
+    #eq_discount_mode_discount,
+    #eq_discount_mode_markup {
+        padding: 8px 12px !important;
+        min-height: 36px;
     }
 
     /* 2. РџСЂРµРІСЂР°С‰Р°РµРј С‚Р°Р±Р»РёС†Сѓ РІ Р±Р»РѕС‡РЅС‹Рµ РєР°СЂС‚РѕС‡РєРё */
@@ -14448,16 +14470,20 @@ body.dark-mode #hyd_card .hyd-card__p {
    полям ужиматься (по умолчанию flex не даёт им уйти ниже своей ширины по
    содержимому — у select это самый длинный пункт списка, «Срок Профи: по
    возрастанию»), а полю поиска — забирать весь остаток строки.
-   Порог 1200px, а не 900: девять полей в одну строку на экране поуже
+   Порог 1400px, а не 900: девять полей в одну строку на экране поуже
    ужимаются до нечитаемых огрызков, и перенос там честнее. Ниже 900px
    действует сетка в две колонки, туда это не вмешивается.
+   min-width: 0 у самого ряда обязателен: без него ряд как flex-элемент не
+   ужимается ниже суммы ширин полей по содержимому, и на 1280 px он уходил за
+   край панели на 300 px (аудит 23.09.2026), хотя поля ужиматься умели.
 
    !important тут не украшение: и перенос у контейнера, и ширина поля поиска
    заданы инлайном прямо в разметке, а инлайн сильнее любого правила из файла.
    Без него первая попытка этой правки просто не подействовала. */
-@media screen and (min-width: 1200px) {
+@media screen and (min-width: 1400px) {
     #admin_content .admin-users-filters {
         flex-wrap: nowrap !important;
+        min-width: 0;
     }
     #admin_content .admin-users-filters > select {
         min-width: 0;
