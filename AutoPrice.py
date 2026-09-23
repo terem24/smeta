@@ -104,6 +104,63 @@ def get_enclosing_object(text, match_start):
                 break
     return start_idx, end_idx
 
+# ---------------------------------------------------------------------------
+# Наличие из прайс-листа ТЕРЕМ — запасной источник для позиций, которых нет на сайте
+# ---------------------------------------------------------------------------
+#
+# Карточки на teremonline есть не у всего каталога: часть артикулов парсер не
+# находит (NOT_FOUND), и тогда у позиции не обновляется ничего — ни цена, ни
+# наличие. В каталоге годами висит «в наличии», подтверждённое неизвестно когда.
+#
+# В прайс-листе ТЕРЕМ такие позиции обычно есть, и «под заказ» помечено там
+# звёздочкой у артикула: SFT-0062-001240*, **SFA-0039-001612 (подтверждено
+# владельцем 23.09.2026, таких строк в прайсе 323). Индекс прайса собирает
+# price_update.php на Beget, звёздочку он сохраняет как есть.
+#
+# Берём отсюда ТОЛЬКО наличие и дату. Цену — нет: в каталоге она своя, со
+# скидкой дистрибьютора, и подмена прайсовой задрала бы её на 10-25 %.
+PRICE_INDEX_URL = 'https://proxy.heatcalc.ru/price_index.php'
+_price_index = None
+
+def _norm_sku(v):
+    return re.sub(r'[^0-9A-ZА-ЯЁ]', '', str(v or '').upper())
+
+def load_price_index():
+    """{нормализованный артикул: True если «под заказ»}. Пусто — значит индекс
+    не дочитался; тогда ветка «наличие из прайса» просто не сработает."""
+    global _price_index
+    if _price_index is not None:
+        return _price_index
+    _price_index = {}
+    try:
+        import json, urllib.request
+        with urllib.request.urlopen(PRICE_INDEX_URL, timeout=120) as r:
+            data = json.loads(r.read().decode('utf-8'))
+        for it in data.get('items') or []:
+            a = str(it.get('a') or '').strip()
+            if not a:
+                continue
+            key = _norm_sku(a)
+            if key and key not in _price_index:
+                _price_index[key] = ('*' in a)
+        print(f"Прайс-лист ТЕРЕМ {data.get('version', '?')}: {len(_price_index)} артикулов, "
+              f"«под заказ» помечено {sum(1 for v in _price_index.values() if v)}")
+    except Exception as e:
+        print(f"[!] Прайс-лист не прочитан ({e}) — наличие ненайденных позиций не трогаем")
+    return _price_index
+
+
+def status_from_price_list(sku):
+    """'on_order' / 'in_stock' / None — если артикула в прайсе нет."""
+    idx = load_price_index()
+    if not idx:
+        return None
+    hit = idx.get(_norm_sku(sku))
+    if hit is None:
+        return None
+    return 'on_order' if hit else 'in_stock'
+
+
 # Наличие, как его пишет teremonline: <span class="sar-stock green|yellow|blue">.
 #
 # «Ожидается» — третий статус, о котором парсер не знал: товар в пути, сегодня
@@ -1123,6 +1180,8 @@ def update_catalog_prices():
     # окажется большим, значит на сайте поменялась разметка статуса, и весь
     # каталог поехал в «Под заказ» — по логу это будет видно сразу.
     unknown_status_count = 0
+    # Позиции, наличие которых взято из прайс-листа, а не с карточки сайта.
+    from_price_list_count = 0
     last_checkpoint_ts = time.time()
     for i, item in enumerate(items_to_process):
         sku, old_price, match = item['sku'], item['old_price'], item['match']
@@ -1149,6 +1208,24 @@ def update_catalog_prices():
 
         if isinstance(res, str) and res == "NOT_FOUND":
             not_found_streak += 1
+            # Карточки на сайте нет — спрашиваем прайс-лист. Пишем только
+            # наличие и дату: цена позиции остаётся прежней, каталожной.
+            pl_status = status_from_price_list(sku)
+            if pl_status:
+                import datetime
+                edits = apply_price_status(
+                    obj_text, start_idx,
+                    match.start(2) - start_idx,
+                    match.end(2) - start_idx,
+                    old_price, old_price, pl_status,
+                    datetime.datetime.now().strftime('%Y-%m-%d'))
+                if edits:
+                    replacements.extend(edits)
+                    from_price_list_count += 1
+                # Не continue: иначе пропускается промежуточное сохранение в
+                # конце цикла, а подряд идущих «нет на сайте» бывает много.
+                res = ("нет на сайте, по прайсу: " +
+                       ("Под заказ" if pl_status == 'on_order' else "В наличии"))
         elif not (isinstance(res, str) and res.startswith("ERR")):
             not_found_streak = 0
             
@@ -1223,6 +1300,8 @@ def update_catalog_prices():
         print(f"\nУспешно обновлено цен: {updated_count}")
         if unknown_status_count:
             print(f"Наличие не прочитано (записано «Под заказ»): {unknown_status_count}")
+        if from_price_list_count:
+            print(f"Наличие взято из прайс-листа (на сайте позиции нет): {from_price_list_count}")
     else: print("\nИзменений не требуется.")
     if successors_found:
         print(f"\nЗамены с сайта (раздел админки «Замены позиций»), {len(successors_found)}:")
