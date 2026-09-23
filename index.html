@@ -3021,7 +3021,7 @@
                         <div class="profile-2col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
                             <div>
                                 <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Ваш город (для смет)</label>
-                                <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="city_suggestions" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
+                                <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="profile_city_list" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
                             </div>
                             <div>
                                 <!-- Регион подставляется по городу (app.autofillRegionByCity); как только
@@ -3050,8 +3050,10 @@
             <!-- Способ входа в аккаунт и привязка Яндекс ID — заполняет app.renderProfileLoginMethod -->
             <div id="profile_login_method"></div>
 
-            <!-- Подсказки городов для поля «Ваш город»: заполняет app.fillCitySuggestions из CITIES_DB -->
-            <datalist id="city_suggestions"></datalist>
+            <!-- Подсказки городов для поля «Ваш город»: заполняет app.fillCitySuggestions из CITIES_DB.
+                 Имя своё, не city_suggestions: так уже зовётся выпадающий список города объекта
+                 в левой панели, и getElementById находил его, а не этот datalist -->
+            <datalist id="profile_city_list"></datalist>
             </div>
 
             <!-- Реквизиты компании — отдельный раздел меню (раньше открывались кнопкой-
