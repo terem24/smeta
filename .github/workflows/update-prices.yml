@@ -17,6 +17,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Взять свежий main
+        # Задача закреплена за той версией файлов, что была в момент ЗАПУСКА, а не
+        # старта. 22.09.2026 из-за этого прогон «другие бренды» отстоял очередь и
+        # переписал catalog.js своей копией трёхчасовой давности — 1481 обновление
+        # соседнего прогона откатилось. Перед работой берём текущий main.
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
