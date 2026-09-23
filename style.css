@@ -6611,6 +6611,13 @@ body.dark-mode .mobile-sidebar .footer-btns {
     text-decoration-color: rgba(107, 114, 128, 0.5);
 }
 
+/* Запрошен счёт (событие журнала, ссылка или файл — без разницы) */
+.status-cabinet-invoice {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #B45309;
+    border-color: rgba(245, 158, 11, 0.25);
+}
+
 /* Клиент просит обновить просроченный счёт */
 .status-cabinet-refresh {
     background-color: rgba(249, 115, 22, 0.1);
@@ -6647,6 +6654,12 @@ body.dark-mode .status-cabinet-expired {
     background-color: rgba(156, 163, 175, 0.1);
     color: #9CA3AF;
     border-color: rgba(156, 163, 175, 0.2);
+}
+
+body.dark-mode .status-cabinet-invoice {
+    background-color: rgba(251, 191, 36, 0.14);
+    color: #FBBF24;
+    border-color: rgba(251, 191, 36, 0.25);
 }
 
 body.dark-mode .status-cabinet-refresh {

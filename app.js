@@ -5750,7 +5750,7 @@ const app = {
                 user_id: tgUser.id ? String(tgUser.id) : null,
                 user_name: tgUser.first_name || tgUser.username || null,
                 user_email: tgUser.email || null,
-                project_name: this.state.projectName || null,
+                project_name: this.state.projectName || this.projectObjectTitle('') || null,
                 meta: extra || null
             }]).then(({ error }) => { if (error) console.warn('[logInvoiceEvent] Ошибка записи:', error); });
         } catch (e) {
@@ -6813,9 +6813,13 @@ const app = {
                 return false;
             }
 
-            // Получаем имя проекта
+            // Имя проекта. Пока объект не назвали руками, в шапке сметы стоит
+            // название по расчёту («Жилой дом, 260 м²») — под ним же смета должна
+            // лечь и в «Мои объекты», иначе монтажник не узнаёт только что
+            // сохранённый расчёт: раньше тут подставлялось безликое «Мой проект».
             let pName = this.state.projectName ||
                 document.getElementById('project_name_input')?.value?.trim() ||
+                this.projectObjectTitle('') ||
                 'Мой проект';
 
             // Проверка наличия города
@@ -10297,15 +10301,59 @@ const app = {
                 }
             }
 
+            // Текущий статус сделки — из журнала invoice_events, того же, по которому
+            // строится раздел «Заказы и счета» и канбан админки. Одно поле
+            // object_info.status в shared_invoices знает только про отправку ссылкой:
+            // отправка PDF/Excel и «запрошен счёт» пишутся только в журнал, и без него
+            // такая смета в списке значилась «Сохранена», а в «Заказах» — «Отправлено».
+            // Берём последнее «заказное» событие по каждому номеру КП; черновые
+            // отметки (calculated/saved) не нужны — их сотни, а статус они не меняют.
+            let eventStatuses = {};
+            const calcIds = estimates.map(e => e.calc_id).filter(Boolean).map(String);
+            if (calcIds.length > 0) {
+                try {
+                    const { data: evList, error: evError } = await supabaseClient
+                        .from('invoice_events')
+                        .select('calc_id, event, meta, created_at')
+                        .in('calc_id', calcIds)
+                        .in('event', this.ORDER_EVENT_KEYS)
+                        .order('created_at', { ascending: false })
+                        .limit(500);
+                    if (!evError && evList) {
+                        evList.forEach(ev => {
+                            const key = String(ev.calc_id || '');
+                            if (key && !eventStatuses[key]) eventStatuses[key] = ev;
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error fetching invoice events for cloud list:", e);
+                }
+            }
+
             this._cloudEstimates = estimates;
+            this._cloudSharedStatuses = sharedStatuses;
+            this._cloudEventStatuses = eventStatuses;
             this._currentUserRow = uRow;
-            this.renderCloudList(this._cloudEstimates, sharedStatuses);
+            this.renderCloudList(this._cloudEstimates, sharedStatuses, eventStatuses);
         } catch (error) {
             if (hostEl) hostEl.innerHTML = `<div style="padding:20px; color:#EF4444;">Ошибка: ${error.message}</div>`;
         }
     },
 
-    renderCloudList: function (data, sharedStatuses = {}) {
+    // Класс бейджа списка «Мои объекты» по событию журнала: цвета те же, что в канбане
+    // (ADMIN_KANBAN_EVENT_META), но через классы .status-cabinet-*, у которых есть
+    // тёмная тема. Подпись даёт kanbanEventView — с каналом отправки (ссылка/PDF/Excel),
+    // чтобы совпадало с разделом «Заказы и счета».
+    CLOUD_STATUS_CLASS_BY_EVENT: {
+        sent: 'sent', printed: 'sent',
+        invoice_requested: 'invoice', invoice_reminder_sent: 'invoice',
+        confirmed: 'confirmed', invoice_issued: 'confirmed', paid: 'confirmed',
+        needs_revision: 'revision', rejected: 'revision',
+        refresh_requested: 'refresh',
+        invoice_reminder_declined: 'saved',
+    },
+
+    renderCloudList: function (data, sharedStatuses = {}, eventStatuses = {}) {
         const content = document.getElementById(this._cloudListHostId || 'cloud_list_content');
         if (!content) return;
         if (!data || data.length === 0) {
@@ -10333,14 +10381,28 @@ const app = {
         `;
 
         data.forEach(item => {
-            const date = new Date(item.created_at).toLocaleDateString();
+            // Дата с временем: за день монтажник сохраняет несколько смет, и по одной
+            // дате их не отличить
+            const date = new Date(item.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
             const sum = item.total_sum ? item.total_sum.toLocaleString() + " ₽" : "0 ₽";
             const canDelete = isAdmin || (currentUserId && String(item.user_id) === String(currentUserId));
 
             const sharedInvoiceId = item.calc_data?.shared_invoice_id;
+            const sharedSt = sharedInvoiceId ? sharedStatuses[sharedInvoiceId] : null;
+            const lastEv = item.calc_id ? eventStatuses[String(item.calc_id)] : null;
             let statusBadge = `<span class="status-badge-cabinet status-cabinet-saved">Сохранена</span>`;
-            if (sharedInvoiceId) {
-                const status = sharedStatuses[sharedInvoiceId];
+            if (lastEv && sharedSt === 'expired' && (lastEv.event === 'sent' || lastEv.event === 'printed')) {
+                // Истёкший таймер ссылки события в журнале не оставляет — только shared_invoices
+                statusBadge = `<span class="status-badge-cabinet status-cabinet-expired" title="Срок действия счёта вышел: клиент видит смету без цен">Срок истёк</span>`;
+            } else if (lastEv) {
+                const view = this.kanbanEventView(lastEv.event, lastEv.meta);
+                const cls = this.CLOUD_STATUS_CLASS_BY_EVENT[lastEv.event] || 'saved';
+                const when = lastEv.created_at ? new Date(lastEv.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+                statusBadge = `<span class="status-badge-cabinet status-cabinet-${cls}" title="${when ? 'Последнее событие: ' + when + '. ' : ''}Полная история — в разделе «Заказы и счета»">${view.label}</span>`;
+            } else if (sharedInvoiceId) {
+                // Старые сметы, отправленные до появления журнала событий: единственное
+                // известное о них — поле статуса ссылки
+                const status = sharedSt;
                 if (status === 'confirmed') {
                     statusBadge = `<span class="status-badge-cabinet status-cabinet-confirmed" title="Смета согласована клиентом">Одобрена</span>`;
                 } else if (status === 'needs_revision') {
@@ -10836,7 +10898,7 @@ const app = {
             }
             if (this._cloudEstimates) {
                 this._cloudEstimates = this._cloudEstimates.filter(e => String(e.id) !== String(id));
-                this.renderCloudList(this._cloudEstimates);
+                this.renderCloudList(this._cloudEstimates, this._cloudSharedStatuses || {}, this._cloudEventStatuses || {});
             }
 
             const row = document.querySelector(`tr[onclick*="${id}"]`);
@@ -39929,7 +39991,7 @@ const app = {
                     user_id: tgUser.id ? String(tgUser.id) : null,
                     user_name: tgUser.first_name || tgUser.username || null,
                     user_email: tgUser.email || null,
-                    project_name: this.state.projectName || null,
+                    project_name: this.state.projectName || this.projectObjectTitle('') || null,
                     meta: extra || null
                 },
                 retries: 0,
