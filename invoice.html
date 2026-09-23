@@ -2493,6 +2493,7 @@
         .c1-num { text-align: right; white-space: nowrap; }
         .c1-sku { white-space: nowrap; font-family: monospace; font-size: 11.5px; }
         .c1-sub { font-size: 10.5px; color: var(--text-sec); margin-top: 2px; }
+        .c1-order { display: inline-block; margin-top: 3px; font-family: inherit; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2px; color: #B45309; background: rgba(245, 158, 11, 0.14); border-radius: 5px; padding: 1px 6px; }
         .c1-flag td { background: rgba(250, 204, 21, 0.16); }
         .c1-sec td { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--text-sec); background: var(--line-soft); padding-top: 8px; }
 
@@ -3121,6 +3122,9 @@
                 // В 1С уходит артикул из КП: 1С знает артикулы калькулятора
                 // (нержавейка RSS-10…, а не прайсовый RSS-00…) — сверено 22.09.2026.
                 r.plA = String(pl.a || '').trim() || r.sku;
+                // Звёздочка у артикула в прайсе ТЕРЕМ означает «под заказ»
+                // (подтверждено владельцем 23.09.2026). Таких строк в прайсе 323.
+                r.order = r.plA.indexOf('*') !== -1;
                 // Скидка с двумя знаками: прайс × (1 − скидка) даёт цену КП до копеек
                 r.disc = Math.round((1 - r.price / pl.p) * 10000) / 100;
                 // Отрицательная скидка — цена КП выше прайса; больше 50 % — почти
@@ -3136,8 +3140,10 @@
             const sum1c = inPrice.reduce((a, r) => a + Math.round(r.pl * (1 - r.disc / 100) * 100) / 100 * r.qty, 0);
             const flagged = inPrice.filter(r => r.flag).length;
 
+            const onOrder = inPrice.filter(r => r.order).length;
             let html = `<div class="c1-note">Прайс ТЕРЕМ ${esc1c(pm.version)}. Бухты труб переведены в метры, одинаковые артикулы из разных разделов сложены.
-                ${flagged ? `<b class="c1-warn-t">Проверьте строк: ${flagged}</b> (выделены жёлтым).` : ''}</div>`;
+                ${flagged ? `<b class="c1-warn-t">Проверьте строк: ${flagged}</b> (выделены жёлтым).` : ''}
+                ${onOrder ? `<b>Под заказ: ${onOrder} поз.</b> — в прайсе помечены звёздочкой, на складе их может не быть.` : ''}</div>`;
             if (inPrice.length) {
                 html += `<div class="c1-head"><b>Есть в ТЕРЕМ — ${inPrice.length} поз.</b>
                     <button class="btn-copy-spec c1-btn" onclick="copy1cRows('price', this)">📋 Артикул · кол-во · скидка %</button></div>
@@ -3147,7 +3153,7 @@
                 inPrice.forEach((r, n) => {
                     if (!n || inPrice[n - 1].sec !== r.sec) html += `<tr class="c1-sec"><td colspan="8">${esc1c(r.sec)}</td></tr>`;
                     html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
-                        <td class="c1-idx">${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${sameSku1c(r.plA, r.sku) ? '' : `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>`}</td>
+                        <td class="c1-idx">${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${r.order ? '<div class="c1-order">под заказ</div>' : ''}${sameSku1c(r.plA, r.sku) ? '' : `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>`}</td>
                         <td class="c1-name">${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
                         <td class="c1-num" data-l="Кол-во">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
                         <td class="c1-num" data-l="Цена прайса">${moneyInt1c(r.pl)}</td><td class="c1-num" data-l="Цена КП">${money1c(r.price)}</td>
