@@ -1141,13 +1141,6 @@ const WORK_PRICE_CATALOG = [
     { name: "Монтаж разветвителя контактных датчиков", unit: "шт", price: 1500, group: "1.5 Автоматика котельной" },
     { name: "Пусконаладка автоматики отопления (котёл, ГВС, ПЗА)", unit: "компл", price: 5000, group: "1.5 Автоматика котельной" },
 
-    // 1.6 Монтаж снеготаяния — названия и цены те же, что в render() (grpSnowWork),
-    // иначе персональная цена монтажника к строке сметы не привяжется
-    { name: "Укладка трубы снеготаяния с креплением к армированию", unit: "м", price: 190, group: "1.6 Монтаж снеготаяния" },
-    { name: "Монтаж узла с теплообменником (первичка, вторичка, бак, обвязка)", unit: "компл", price: 24000, group: "1.6 Монтаж снеготаяния" },
-    { name: "Монтаж и балансировка коллектора снеготаяния", unit: "шт", price: 9000, group: "1.6 Монтаж снеготаяния" },
-    { name: "Заполнение гликолем, опрессовка и пусконаладка контура", unit: "компл", price: 12000, group: "1.6 Монтаж снеготаяния" },
-
     // 1.4 Автоматика для теплого пола
     { name: "Монтаж коммутационного блока", unit: "шт", price: 5000, group: "1.4 Автоматика для теплого пола" },
     { name: "Монтаж сервоприводов", unit: "шт", price: 1000, group: "1.4 Автоматика для теплого пола" },
@@ -1767,7 +1760,7 @@ const catalog = {
         { id: "SCR-6010-000021", name: "Конденсатоотводчик Т-образный традиц. коакс. D60(п-м)/100(п-м) с заглушкой и патрубком", price: 6591, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCR-6010-000022", name: "Ревизионный элемент Т-образный традиц. коакс. D60(п-м)/100(п-м) с заглушкой", price: 6300, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCR-6010-000023", name: "Стабилизатор тяги традиц. коакс. D60(п-м)/100(п-м)", price: 2764, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SCR-6010-000024", name: "Стабилизатор тяги традиц. коакс. D60(п-м)/100(п-м) без задвижки", price: 1792, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-6010-000024", name: "Стабилизатор тяги традиц. коакс. D60(п-м)/100(п-м) без задвижки", price: 1792, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SCR-6010-000145", name: "Отвод 45° традиц. коакс. D60(м-м)/100(м-м)", price: 2032, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCR-6010-000190", name: "Отвод 90° традиц. коакс. D60(м-м)/100(м-м)", price: 1964, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCR-6010-000332", name: "Наконечник АНТИЛЁД традиц. D60(м)", price: 976, brand: "STOUT", dn: "60/100", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
@@ -1876,7 +1869,7 @@ const catalog = {
         { id: "SCR-1116-000001", name: "Адаптер соединительный конденсац. переход с D100(п)/150(п) на D110(м)/160(м)", price: 7195, brand: "STOUT", role: "adapter", dn: "110/160", kind: "cond", availability: "in_stock", price_date: "2026-09-20" }
     ],
     chimney_split_d80_stout: [
-        { id: "SCR-0080-250001", name: "Адаптер моноблочный универсальный для перех. на двухтрубную систему традиц. с D60(м)/100(п) на D80(м)/80(м)", price: 2617, brand: "STOUT", role: "adapter_d80", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-09" },
+        { id: "SCR-0080-250001", name: "Адаптер моноблочный универсальный для перех. на двухтрубную систему традиц. с D60(м)/100(п) на D80(м)/80(м)", price: 2617, brand: "STOUT", role: "adapter_d80", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SCR-8080-250001", name: "Адаптер моноблочный для перех. на двухтрубную систему конденсац. c D60(п)/100(п) на D80(м)/80(м)", price: 5759, brand: "STOUT", role: "adapter_d80", dn: "D80", kind: "cond", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCR-0080-800001", name: "Оголовок вертикальный с ветрозащитой сварной традиц. D80(п) белый узкий", price: 2015, brand: "STOUT", role: "term_flue_roof", dn: "D80", kind: "trad", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SCR-8080-800001", name: "Оголовок вертикальный с ветрозащитой конденсац. D80(п) белый узкий", price: 2256, brand: "STOUT", role: "term_flue_roof", dn: "D80", kind: "cond", availability: "on_order", price_date: "2026-09-20" },
@@ -2017,7 +2010,7 @@ const catalog = {
         { id: "STH-0006-000200", name: "Расширительный бак для отопления 200л", vol: 200, color: "red", conn: "1", price: 27280, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
         { id: "STH-0006-000300", name: "Расширительный бак для отопления 300л", vol: 300, color: "red", conn: "1", price: 35486, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" }
     ],
-    tank_mount: { id: "SAC-0030-000825", name: "Крепление для бака", price: 1266, availability: "in_stock", price_date: "2026-09-10" },
+    tank_mount: { id: "SAC-0030-000825", name: "Крепление для бака", price: 1266, availability: "in_stock", price_date: "2026-09-23" },
     tank_kit: { id: "SVS-0008-012020", name: "Комплект подключения мембранного бака", price: 1990, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20", rommer: { id: "RVS-0008-002020", name: "Комплект подключения мембранного бака", price: 1580, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" } },
     rads: [
         { id: "SRB-0320-050004", name: "Радиатор Space 4 секций", sec: 4, price: 6457, power50: 117, rommer: { id: "RAL-0210-050004", name: "Радиатор Optima 4 секций", price: 3344, brand: "ROMMER", power50: 117, availability: "in_stock", price_date: "2026-09-20" }, availability: "in_stock", price_date: "2026-09-20" },
@@ -4729,7 +4722,7 @@ const catalog = {
     // на анкерах, приборы садятся на них хомутами. Так узел снимается и обслуживается
     // целиком, а не выковыривается из штукатурки.
     water_input_frame: [
-        { id: "SAC-0020-503120", name: "Шина сантехническая (монтажный профиль) 50x3x1200 мм", price: 1404, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SAC-0020-503120", name: "Шина сантехническая (монтажный профиль) 50x3x1200 мм", price: 1404, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SAC-0020-411040", name: "Анкер забивной стальной M10х12х40 мм", price: 26, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SAC-0020-000034", name: "Хомут для труб с гайкой 3/4\" (25–29 мм)", price: 54, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" }
     ],
@@ -4988,10 +4981,10 @@ const catalog = {
         { id: "RSS-1001-000015", name: "Труба нерж. 304, штанга 4м 15х1", price: 330, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
         { id: "RSS-1001-000018", name: "Труба нерж. 304, штанга 4м 18х1", price: 450, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
         { id: "RSS-1001-000022", name: "Труба нерж. 304, штанга 4м 22х1.2", price: 608, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
-        { id: "RSS-1001-000028", name: "Труба нерж. 304, штанга 4м 28х1.2", price: 715, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RSS-1001-000035", name: "Труба нерж. 304, штанга 4м 35х1.5", price: 1119, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RSS-1001-000042", name: "Труба нерж. 304, штанга 4м 42х1.5", price: 1636, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-08-10" },
-        { id: "RSS-1001-000054", name: "Труба нерж. 304, штанга 4м 54х1.5", price: 2113, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-08-10" }
+        { id: "RSS-1001-000028", name: "Труба нерж. 304, штанга 4м 28х1.2", price: 787, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RSS-1001-000035", name: "Труба нерж. 304, штанга 4м 35х1.5", price: 1231, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RSS-1001-000042", name: "Труба нерж. 304, штанга 4м 42х1.5", price: 1800, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "RSS-1001-000054", name: "Труба нерж. 304, штанга 4м 54х1.5", price: 2324, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" }
     ],
     // Цена — ЗА МЕТР, как у штанг 4 м: смета домножает её на len (asCoilPrice).
     // 10.09.2026 автообновление записало сюда цену целой штанги, и в КП штанга 2 м
@@ -5007,14 +5000,14 @@ const catalog = {
         { id: "RSS-1001-200054", name: "Труба нерж. 304, штанга 2м 54х1.5", price: 2395, brand: "ROMMER", unit: "шт", len: 2, availability: "in_stock", price_date: "2026-09-22" }
     ],
     ss_pipe_4m_ru: [
-        { id: "RSS-2001-000018", name: "Труба нерж. 304, штанга 4м (Россия) 18х1", price: 322, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock",
-  price_date: '2026-08-10' },
-        { id: "RSS-2001-000022", name: "Труба нерж. 304, штанга 4м (Россия) 22х1.2", price: 475, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock",
-  price_date: '2026-08-10' },
-        { id: "RSS-2001-000028", name: "Труба нерж. 304, штанга 4м (Россия) 28х1.2", price: 609, brand: "ROMMER", unit: "шт", len: 4, availability: "on_order",
-  price_date: '2026-08-10' },
-        { id: "RSS-2001-000035", name: "Труба нерж. 304, штанга 4м (Россия) 35х1.5", price: 947, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock",
-  price_date: '2026-08-10' }
+        { id: "RSS-2001-000018", name: "Труба нерж. 304, штанга 4м (Россия) 18х1", price: 367, brand: "ROMMER", unit: "шт", len: 4, availability: "in_stock",
+  price_date: '2026-09-23' },
+        { id: "RSS-2001-000022", name: "Труба нерж. 304, штанга 4м (Россия) 22х1.2", price: 542, brand: "ROMMER", unit: "шт", len: 4, availability: "on_order",
+  price_date: '2026-09-23' },
+        { id: "RSS-2001-000028", name: "Труба нерж. 304, штанга 4м (Россия) 28х1.2", price: 694, brand: "ROMMER", unit: "шт", len: 4, availability: "on_order",
+  price_date: '2026-09-23' },
+        { id: "RSS-2001-000035", name: "Труба нерж. 304, штанга 4м (Россия) 35х1.5", price: 1080, brand: "ROMMER", unit: "шт", len: 4, availability: "on_order",
+  price_date: '2026-09-23' }
     ],
     ss_elbow90: [
         { id: "RSS-1002-000015", name: "Угольник 90° ВПр-НПр 15", price: 188, brand: "ROMMER", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
@@ -5303,13 +5296,13 @@ const catalog = {
     // делается заменой префикса (см. ssItem в app.js), а не таблицей соответствий.
     // Цена — за метр (как у ROMMER), Терем даёт ровно −15% от РРЦ.
     ss_pipe_4m_316: [
-        { id: "SSS-2001-000015", name: "Труба нерж. 316L, штанга 4м 15х1", price: 712, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2001-000018", name: "Труба нерж. 316L, штанга 4м 18х1", price: 909, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2001-000022", name: "Труба нерж. 316L, штанга 4м 22х1.2", price: 1250, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2001-000028", name: "Труба нерж. 316L, штанга 4м 28х1.2", price: 1525, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2001-000035", name: "Труба нерж. 316L, штанга 4м 35х1.5", price: 2230, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2001-000042", name: "Труба нерж. 316L, штанга 4м 42х1.5", price: 2838, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SSS-2001-000054", name: "Труба нерж. 316L, штанга 4м 54х1.5", price: 3673, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-10" }
+        { id: "SSS-2001-000015", name: "Труба нерж. 316L, штанга 4м 15х1", price: 712, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SSS-2001-000018", name: "Труба нерж. 316L, штанга 4м 18х1", price: 909, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SSS-2001-000022", name: "Труба нерж. 316L, штанга 4м 22х1.2", price: 1250, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SSS-2001-000028", name: "Труба нерж. 316L, штанга 4м 28х1.2", price: 1525, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SSS-2001-000035", name: "Труба нерж. 316L, штанга 4м 35х1.5", price: 2230, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SSS-2001-000042", name: "Труба нерж. 316L, штанга 4м 42х1.5", price: 2838, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SSS-2001-000054", name: "Труба нерж. 316L, штанга 4м 54х1.5", price: 3673, brand: "STOUT", unit: "шт", len: 4, availability: "in_stock", price_date: "2026-09-23" }
     ],
     ss_elbow90_316: [
         { id: "SSS-2002-000015", name: "Угольник 90° ВПр-НПр 15", price: 312, brand: "STOUT", unit: "шт", availability: "in_stock", price_date: "2026-09-20" },
@@ -6320,8 +6313,8 @@ const catalog = {
         { id: "SAC-0020-300038", name: "Хомут для труб одновинтовой с гайкой M8 3/8\" (16–19 мм)", price: 56, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SAC-0021-281530", name: "Консоль монтажная перфорированная 28х15х300 мм", price: 995, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SAC-0022-283020", name: "Профиль монтажный перфорированный С-образный 28х30х2000 мм", price: 2087, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
-        { id: "SAC-0030-000825", name: "Комплект крепления мембранных расширительных баков 8–25 л", price: 1266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
-        { id: "SAC-0020-503120", name: "Шина сантехническая (монтажный профиль) 50x3x1200 мм", price: 1404, brand: "STOUT", availability: "in_stock", price_date: "2026-09-10" },
+        { id: "SAC-0030-000825", name: "Комплект крепления мембранных расширительных баков 8–25 л", price: 1266, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SAC-0020-503120", name: "Шина сантехническая (монтажный профиль) 50x3x1200 мм", price: 1404, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SAC-0020-503200", name: "Шина сантехническая (монтажный профиль) 50x3x2000 мм", price: 2037, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
         { id: "SAC-0020-400100", name: "Шпилька сантехническая M8x100 в комплекте с дюбелем M10x50", price: 24, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
         // Резьбовая шпилька метражом — «штанга М8 1000 мм» из чужих смет. Была
@@ -7113,35 +7106,35 @@ const steelRads = [
     { id: "RRS-2010-223040", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 400, isPanel: true, price: 4859, brand: "ROMMER", power50: 426, passportPower: 660, availability: "in_stock", price_date: "2026-09-20" },
     { id: "RRS-2020-223040", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 400, isPanel: true, bottom: true, price: 6831, brand: "ROMMER", power50: 426, passportPower: 660, availability: "in_stock", price_date: "2026-09-20" },
     { id: "RRS-2010-223050", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 500, isPanel: true, price: 5370, brand: "ROMMER", power50: 515, passportPower: 798, availability: "in_stock", price_date: "2026-09-20" },
-    { id: "RRS-2020-223050", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 500, isPanel: true, bottom: true, price: 7292, brand: "ROMMER", power50: 515, passportPower: 798, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223060", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 600, isPanel: true, price: 5934, brand: "ROMMER", power50: 594, passportPower: 920, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223060", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 600, isPanel: true, bottom: true, price: 7936, brand: "ROMMER", power50: 594, passportPower: 920, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223070", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 700, isPanel: true, price: 6441, brand: "ROMMER", power50: 678, passportPower: 1050, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223070", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 700, isPanel: true, bottom: true, price: 8408, brand: "ROMMER", power50: 678, passportPower: 1050, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223080", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 800, isPanel: true, price: 7020, brand: "ROMMER", power50: 762, passportPower: 1180, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223080", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 800, isPanel: true, bottom: true, price: 9007, brand: "ROMMER", power50: 762, passportPower: 1180, availability: "on_order", price_date: "2026-09-10" },
-    { id: "RRS-2010-223090", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 900, isPanel: true, price: 7557, brand: "ROMMER", power50: 847, passportPower: 1311, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223090", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 900, isPanel: true, bottom: true, price: 9552, brand: "ROMMER", power50: 847, passportPower: 1311, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223100", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1000, isPanel: true, price: 8181, brand: "ROMMER", power50: 930, passportPower: 1441, availability: "on_order", price_date: "2026-09-10" },
-    { id: "RRS-2020-223100", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1000, isPanel: true, bottom: true, price: 10204, brand: "ROMMER", power50: 930, passportPower: 1441, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223110", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1100, isPanel: true, price: 9084, brand: "ROMMER", power50: 1014, passportPower: 1571, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223110", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1100, isPanel: true, bottom: true, price: 11114, brand: "ROMMER", power50: 1014, passportPower: 1571, availability: "on_order", price_date: "2026-09-10" },
-    { id: "RRS-2010-223120", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1200, isPanel: true, price: 9651, brand: "ROMMER", power50: 1098, passportPower: 1701, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223120", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1200, isPanel: true, bottom: true, price: 11699, brand: "ROMMER", power50: 1098, passportPower: 1701, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223130", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1300, isPanel: true, price: 10234, brand: "ROMMER", power50: 1208, passportPower: 1871, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223130", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1300, isPanel: true, bottom: true, price: 12284, brand: "ROMMER", power50: 1208, passportPower: 1871, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223140", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1400, isPanel: true, price: 10900, brand: "ROMMER", power50: 1301, passportPower: 2015, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223140", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1400, isPanel: true, bottom: true, price: 12934, brand: "ROMMER", power50: 1301, passportPower: 2015, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223150", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1500, isPanel: true, price: 11465, brand: "ROMMER", power50: 1394, passportPower: 2159, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223150", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1500, isPanel: true, bottom: true, price: 13519, brand: "ROMMER", power50: 1394, passportPower: 2159, availability: "on_order", price_date: "2026-09-10" },
-    { id: "RRS-2010-223160", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1600, isPanel: true, price: 12250, brand: "ROMMER", power50: 1487, passportPower: 2303, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223160", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1600, isPanel: true, bottom: true, price: 14315, brand: "ROMMER", power50: 1487, passportPower: 2303, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223170", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1700, isPanel: true, price: 13552, brand: "ROMMER", power50: 1579, passportPower: 2446, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223170", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1700, isPanel: true, bottom: true, price: 15695, brand: "ROMMER", power50: 1579, passportPower: 2446, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223180", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1800, isPanel: true, price: 14174, brand: "ROMMER", power50: 1672, passportPower: 2590, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2020-223180", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1800, isPanel: true, bottom: true, price: 16703, brand: "ROMMER", power50: 1672, passportPower: 2590, availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RRS-2010-223190", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1900, isPanel: true, price: 14797, brand: "ROMMER", power50: 1765, passportPower: 2734, availability: "on_order", price_date: "2026-09-10" },
-    { id: "RRS-2020-223190", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1900, isPanel: true, bottom: true, price: 17435, brand: "ROMMER", power50: 1765, passportPower: 2734, availability: "on_order", price_date: "2026-09-10" },
+    { id: "RRS-2020-223050", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 500, isPanel: true, bottom: true, price: 7292, brand: "ROMMER", power50: 515, passportPower: 798, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223060", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 600, isPanel: true, price: 5934, brand: "ROMMER", power50: 594, passportPower: 920, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223060", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 600, isPanel: true, bottom: true, price: 7936, brand: "ROMMER", power50: 594, passportPower: 920, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223070", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 700, isPanel: true, price: 6441, brand: "ROMMER", power50: 678, passportPower: 1050, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223070", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 700, isPanel: true, bottom: true, price: 8408, brand: "ROMMER", power50: 678, passportPower: 1050, availability: "on_order", price_date: "2026-09-23" },
+    { id: "RRS-2010-223080", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 800, isPanel: true, price: 7020, brand: "ROMMER", power50: 762, passportPower: 1180, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223080", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 800, isPanel: true, bottom: true, price: 9007, brand: "ROMMER", power50: 762, passportPower: 1180, availability: "on_order", price_date: "2026-09-23" },
+    { id: "RRS-2010-223090", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 900, isPanel: true, price: 7557, brand: "ROMMER", power50: 847, passportPower: 1311, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223090", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 900, isPanel: true, bottom: true, price: 9552, brand: "ROMMER", power50: 847, passportPower: 1311, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223100", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1000, isPanel: true, price: 8181, brand: "ROMMER", power50: 930, passportPower: 1441, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223100", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1000, isPanel: true, bottom: true, price: 10204, brand: "ROMMER", power50: 930, passportPower: 1441, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223110", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1100, isPanel: true, price: 9084, brand: "ROMMER", power50: 1014, passportPower: 1571, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223110", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1100, isPanel: true, bottom: true, price: 11114, brand: "ROMMER", power50: 1014, passportPower: 1571, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223120", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1200, isPanel: true, price: 9651, brand: "ROMMER", power50: 1098, passportPower: 1701, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223120", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1200, isPanel: true, bottom: true, price: 11699, brand: "ROMMER", power50: 1098, passportPower: 1701, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223130", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1300, isPanel: true, price: 10234, brand: "ROMMER", power50: 1208, passportPower: 1871, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223130", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1300, isPanel: true, bottom: true, price: 12284, brand: "ROMMER", power50: 1208, passportPower: 1871, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223140", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1400, isPanel: true, price: 10900, brand: "ROMMER", power50: 1301, passportPower: 2015, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223140", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1400, isPanel: true, bottom: true, price: 12934, brand: "ROMMER", power50: 1301, passportPower: 2015, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223150", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1500, isPanel: true, price: 11465, brand: "ROMMER", power50: 1394, passportPower: 2159, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223150", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1500, isPanel: true, bottom: true, price: 13519, brand: "ROMMER", power50: 1394, passportPower: 2159, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223160", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1600, isPanel: true, price: 12250, brand: "ROMMER", power50: 1487, passportPower: 2303, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223160", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1600, isPanel: true, bottom: true, price: 14315, brand: "ROMMER", power50: 1487, passportPower: 2303, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223170", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1700, isPanel: true, price: 13552, brand: "ROMMER", power50: 1579, passportPower: 2446, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223170", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1700, isPanel: true, bottom: true, price: 15695, brand: "ROMMER", power50: 1579, passportPower: 2446, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223180", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1800, isPanel: true, price: 14174, brand: "ROMMER", power50: 1672, passportPower: 2590, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2020-223180", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1800, isPanel: true, bottom: true, price: 16703, brand: "ROMMER", power50: 1672, passportPower: 2590, availability: "in_stock", price_date: "2026-09-23" },
+    { id: "RRS-2010-223190", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 1900, isPanel: true, price: 14797, brand: "ROMMER", power50: 1765, passportPower: 2734, availability: "on_order", price_date: "2026-09-23" },
+    { id: "RRS-2020-223190", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 1900, isPanel: true, bottom: true, price: 17435, brand: "ROMMER", power50: 1765, passportPower: 2734, availability: "on_order", price_date: "2026-09-23" },
     { id: "RRS-2010-223200", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 2000, isPanel: true, price: 16040, brand: "ROMMER", power50: 1859, passportPower: 2879, availability: "in_stock", price_date: "2026-09-10" },
     { id: "RRS-2020-223200", name: "Стальной панельный Ventil (Тип 22)", height: 300, sec: 2000, isPanel: true, bottom: true, price: 18614, brand: "ROMMER", power50: 1859, passportPower: 2879, availability: "in_stock", price_date: "2026-09-10" },
     { id: "RRS-2010-223210", name: "Стальной панельный Compact (Тип 22)", height: 300, sec: 2100, isPanel: true, price: 16646, brand: "ROMMER", power50: 1952, passportPower: 3023, availability: "on_order", price_date: "2026-09-10" },
@@ -7667,7 +7660,7 @@ const rommerOptimaBmRads = [
     { id: "RBM-0210-050006", name: "Радиатор Optima Bm 6 секций",  sec: 6,  price: 4984, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
     { id: "RBM-0210-050008", name: "Радиатор Optima Bm 8 секций",  sec: 8,  price: 6644, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-20" },
     { id: "RBM-0210-050010", name: "Радиатор Optima Bm 10 секций", sec: 10, price: 7551, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-10" },
-    { id: "RBM-0210-050012", name: "Радиатор Optima Bm 12 секций", sec: 12, price: 9062, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-08-10" }
+    { id: "RBM-0210-050012", name: "Радиатор Optima Bm 12 секций", sec: 12, price: 9062, power50: 82, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
 ];
 
 // ROMMER Profi Bm (RBM-1210-050) 500мм, power50=91 Вт/сек
