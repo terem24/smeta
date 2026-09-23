@@ -2932,6 +2932,31 @@
         function money1c(v) {
             return (Math.round(v * 100) / 100).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' ₽';
         }
+        /**
+         * Цена прайса — целыми рублями.
+         *
+         * В прайсе она с копейками (63 464,4 ₽), и в таблице этот хвост только
+         * мешает сравнивать с ценой КП, которая всегда круглая. Скидка при этом
+         * считается от ТОЧНОЙ цены прайса: округляем лишь то, что видно.
+         */
+        /**
+         * Тот же это артикул или другой.
+         *
+         * В прайсе ТЕРЕМ часть кодов помечена звёздочкой-сноской
+         * (SVS-1011-000015*) — это тот же товар, и подсказка «в прайсе: …» над
+         * таким кодом сбивает с толку: кажется, что подобралась чужая позиция.
+         * Сравниваем без звёздочек, пробелов и регистра; показываем подсказку
+         * только там, где код в прайсе действительно другой (RSS-0001 у
+         * нержавейки ROMMER, hydro.20 у теплоносителя WARME).
+         */
+        function sameSku1c(a, b) {
+            const norm = v => String(v || '').toUpperCase().replace(/[\s*]/g, '');
+            return norm(a) === norm(b);
+        }
+
+        function moneyInt1c(v) {
+            return Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        }
 
         // Прайс-лист ТЕРЕМ: тот же индекс, что у распознавания (сначала сервер,
         // он пересобирается каждый месяц, потом файл в проекте). Поля: a — артикул,
@@ -3122,10 +3147,10 @@
                 inPrice.forEach((r, n) => {
                     if (!n || inPrice[n - 1].sec !== r.sec) html += `<tr class="c1-sec"><td colspan="8">${esc1c(r.sec)}</td></tr>`;
                     html += `<tr class="${r.flag ? 'c1-flag' : ''}" ${r.flag ? `title="${esc1c(r.flag)}"` : ''}>
-                        <td class="c1-idx">${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${r.plA.toUpperCase() !== String(r.sku).toUpperCase() ? `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>` : ''}</td>
+                        <td class="c1-idx">${n + 1}</td><td class="c1-sku">${esc1c(r.sku)}${sameSku1c(r.plA, r.sku) ? '' : `<div class="c1-sub">в прайсе: ${esc1c(r.plA)}</div>`}</td>
                         <td class="c1-name">${esc1c(r.name)}${r.coil ? `<div class="c1-sub">${r.stick ? 'штанга' : 'бухта'} ${r.coil} м → метры</div>` : ''}${r.flag ? `<div class="c1-sub c1-warn-t">${esc1c(r.flag)}</div>` : ''}</td>
                         <td class="c1-num" data-l="Кол-во">${num1c(r.qty, 3)} ${esc1c(r.unit)}</td>
-                        <td class="c1-num" data-l="Цена прайса">${money1c(r.pl)}</td><td class="c1-num" data-l="Цена КП">${money1c(r.price)}</td>
+                        <td class="c1-num" data-l="Цена прайса">${moneyInt1c(r.pl)}</td><td class="c1-num" data-l="Цена КП">${money1c(r.price)}</td>
                         <td class="c1-num" data-l="Скидка"><b>${num1c(r.disc, 2)} %</b></td><td class="c1-num" data-l="Сумма КП">${money1c(r.sum)}</td></tr>`;
                 });
                 html += `</tbody></table></div>
