@@ -17,6 +17,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Взять свежий main
+        # См. тот же шаг в update-prices.yml: 22.09.2026 этот прогон затёр
+        # catalog.js копией, снятой в момент запуска задачи, а не её старта.
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
       - name: Setup Python
         uses: actions/setup-python@v4
         with:

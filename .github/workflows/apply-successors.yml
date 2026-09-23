@@ -28,6 +28,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+      - name: Взять свежий main
+        # См. тот же шаг в update-prices.yml: без него задача работает с копией
+        # catalog.js на момент запуска и откатывает чужие правки, сделанные позже.
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
