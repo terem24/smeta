@@ -11610,6 +11610,10 @@ const app = {
     verifySavedLogin: async function () {
         if (!this.state.tgUser) return;
         if (this._yandexExchanging) return;
+        // На localhost вход подставной (см. «ОБХОД АВТОРИЗАЦИИ» в init): сессии у него
+        // нет и быть не может, и проверка снимала бы его при каждой загрузке с окном
+        // «Нужно войти заново» — локальная проверка платной части становилась невозможной.
+        if (this.isLocalhost()) return;
         // Возврат от провайдера: сессия ещё в адресной строке, SDK её только разбирает
         const href = window.location.href;
         if (href.indexOf('access_token') >= 0 || href.indexOf('code=') >= 0) return;
