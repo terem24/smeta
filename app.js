@@ -5675,7 +5675,7 @@ const app = {
             + rbtn('seller', 'Продавец', role === 'seller', "app.setLocalRole('seller')", 'Сфера: продажа без монтажа — включает оформление «магазин» (повторное нажатие — как в базе)')
             + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы: панель управления в виде менеджера')
             + `<span style="opacity:.35; margin: 0 2px;">|</span>`
-            + rbtn('yandex', 'Яндекс', this.isYandexTheme(), 'app.toggleLocalYandexTheme()', 'Пробное оформление по образцу ya.ru — только на этой машине, общую настройку в админке не трогает');
+            + rbtn('yandex', 'Тема Профи', (() => { try { return localStorage.getItem('local_yandex_theme') === '1'; } catch (e) { return false; } })(), 'app.toggleLocalYandexTheme()', 'Оформление «Профи» (по образцу ya.ru) принудительно — только на этой машине, общую настройку в админке не трогает. Кнопка «Профи» слева включает её сама, как настоящий тариф');
     },
 
     setLocalRole: function (val) {
@@ -15044,19 +15044,26 @@ const app = {
         this.syncYandexTheme();
     },
 
-    // ═══════════════ Тема «Яндекс» (пробная) ═══════════════
-    // Оформление по образцу ya.ru: шрифт, серые плашки, значки в кружках,
-    // кнопки-пилюли, логотип HeatCalc вместо брендов; светлая и ночная.
-    // Включается только из панели управления, вкладка «Тарифы», блок
-    // «Оформление „Яндекс“»: администратор отмечает, каким группам её показывать —
-    // администраторам, монтажникам, продавцам, менеджерам. По умолчанию никому
-    // (24.09.2026, решение владельца: «пока только у админа», кнопки в шапке не
-    // надо). Общая настройка app_settings.ui_theme.yandex = { admins, installers,
-    // sellers, managers }. Только стили: класс theme-yandex на body, правила в
-    // style.css (блок «ТЕМА „ЯНДЕКС“»). Ночная тема работает поверх.
-    // Локально (localhost) без базы — кнопка «Яндекс» в панели тарифа
-    // (localStorage local_yandex_theme), включает тему на этой машине.
+    // ═══════════════ Тема «Профи» (оформление по образцу ya.ru) ═══════════════
+    // Шрифт Arial, серые плашки, кнопки-пилюли, тонкие значки, логотип HeatCalc
+    // вместо брендов; светлая и ночная (ночная по умолчанию). В коде тема
+    // по-прежнему называется yandex (класс theme-yandex, ключ настройки) — так она
+    // задумывалась; для людей она «Профи» (владелец 24.09.2026: «переименуем в
+    // Профи и будем показывать тем, у кого тариф Профи, неважно — продавцы,
+    // монтажники, администраторы»).
+    // Кому показывается: всем на тарифе «Профи» (isPro — оплаченный или пробный
+    // период, любая роль) — по умолчанию включено, администратор может выключить;
+    // плюс отдельные группы по переключателям в панели управления, вкладка
+    // «Тарифы», блок «Оформление „Профи“» (администраторы, монтажники, продавцы,
+    // менеджеры — по умолчанию выключены). Общая настройка
+    // app_settings.ui_theme.yandex = { pro, admins, installers, sellers, managers }.
+    // Кнопок в шапке нет намеренно. Только стили: класс theme-yandex на body,
+    // правила в style.css (блок «ТЕМА „ЯНДЕКС“ / „ПРОФИ“»). Ночная тема поверх.
+    // Локально (localhost) без базы — кнопка «Тема Профи» в панели тарифа
+    // (localStorage local_yandex_theme); кнопка «Профи» той же панели включает
+    // тему сама, как и настоящий тариф.
     YANDEX_THEME_GROUPS: [
+        { key: 'pro', label: 'Тариф «Профи»', hint: 'все на тарифе «Профи» (оплаченный или пробный период), любая роль — включено по умолчанию', def: true },
         { key: 'admins', label: 'Администраторы', hint: 'владелец и администраторы панели управления' },
         { key: 'installers', label: 'Монтажники', hint: 'все вошедшие монтажники (сфера «монтаж»)' },
         { key: 'sellers', label: 'Продавцы', hint: 'сфера «продажа» без монтажа — вместо оформления магазина' },
@@ -15078,12 +15085,24 @@ const app = {
         return this.isSellerOnly() ? 'sellers' : 'installers';
     },
 
+    // Включена ли группа: у «Профи» умолчание — включено (выключает только явное false)
+    yandexThemeGroupOn: function (key) {
+        const cfg = this.yandexThemeConfig();
+        const g = this.YANDEX_THEME_GROUPS.find(x => x.key === key);
+        if (g && g.def) return cfg[key] !== false;
+        return cfg[key] === true;
+    },
+
     isYandexTheme: function () {
         if (this.isLocalhost()) {
             try { if (localStorage.getItem('local_yandex_theme') === '1') return true; } catch (e) { }
         }
+        const u = this.state.tgUser || this.state.user;
+        if (!u) return false;
+        // Тариф «Профи» — любая роль
+        if (this.yandexThemeGroupOn('pro') && this.isPro()) return true;
         const g = this.yandexThemeGroupOfMe();
-        return !!(g && this.yandexThemeConfig()[g] === true);
+        return !!(g && this.yandexThemeGroupOn(g));
     },
 
     syncYandexTheme: function () {
@@ -15148,9 +15167,9 @@ const app = {
         const canEdit = this.canEditTariffs();
         const cfg = this.yandexThemeConfig();
         const rows = this.YANDEX_THEME_GROUPS.map(g => {
-            const on = cfg[g.key] === true;
+            const on = this.yandexThemeGroupOn(g.key);
             return `<div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-top:1px solid var(--border);">
-                <label class="switch" title="${on ? 'Включено — нажмите, чтобы вернуть этой группе обычное оформление' : 'Выключено — нажмите, чтобы показать этой группе тему «Яндекс»'}">
+                <label class="switch" title="${on ? 'Включено — нажмите, чтобы вернуть этой группе обычное оформление' : 'Выключено — нажмите, чтобы показать этой группе тему «Профи»'}">
                     <input type="checkbox" ${on ? 'checked' : ''} ${canEdit ? '' : 'disabled'} onchange="app.setYandexThemeGroup('${g.key}', this.checked)">
                     <span class="slider"></span>
                 </label>
@@ -15160,12 +15179,13 @@ const app = {
         }).join('');
         return `
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
-                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление «Яндекс»</h3>
+                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление «Профи»</h3>
             </div>
             <div style="padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg); max-width:900px;">
                 <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec); margin-bottom:6px;">
-                    Пробная тема по образцу ya.ru: шрифт, серые плашки, значки в кружках, кнопки-пилюли, логотип HeatCalc вместо брендов;
-                    ночная тема работает поверх. Отметьте, кому её показывать. Ничего не отмечено — у всех обычное оформление.
+                    Тема тарифа «Профи»: шрифт и серые плашки в духе ya.ru, кнопки-пилюли, тонкие значки, логотип HeatCalc вместо брендов;
+                    по умолчанию ночная, светлую и авто человек выбирает сам кнопкой в шапке. Показывается всем на тарифе «Профи» — первый
+                    переключатель; остальные открывают тему группам целиком, независимо от тарифа. Всё выключено — у всех обычное оформление.
                     ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
                 </div>
                 ${rows}
