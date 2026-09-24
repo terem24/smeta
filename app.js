@@ -5076,8 +5076,13 @@ const app = {
          */
         this.state.groupItems = false;
 
+        // Монтаж закрыт (таблица «Тарифы», у продавца исходно) — работы из
+        // распознавания не добавляем вовсе: на экране их всё равно прячут, а в
+        // облако смета уезжала бы с работами, которых пользователь не видит.
+        const worksOn = this.canUseWorks();
+
         const stamp = Date.now();
-        let eqCount = 0, workCount = 0, noPrice = 0, skippedNoQty = 0, docPriced = 0;
+        let eqCount = 0, workCount = 0, noPrice = 0, skippedNoQty = 0, docPriced = 0, worksOff = 0;
 
         rows.forEach((r, i) => {
             const qty = (Number(r.qty) || 0) + (Number(r.qtyExtra) || 0);
@@ -5113,6 +5118,9 @@ const app = {
             if (!price) noPrice++;
 
             if (r.kind === 'work') {
+                // Монтаж отключён — строки работ из документа не переносим,
+                // но считаем: о пропуске надо сказать в сводке, а не молчать.
+                if (!worksOn) { worksOff++; return; }
                 /**
                  * Работа, сопоставленная с нашим прайсом монтажа (см. вкладку
                  * «Монтажные работы» на экране проверки), уезжает под НАШИМ
@@ -5235,7 +5243,7 @@ const app = {
          * количеств, а не сумму.
          */
         let hintCount = 0;
-        for (const w of (opts && opts.addWorks) || []) {
+        for (const w of (worksOn && opts && opts.addWorks) || []) {
             if (!w || !w.name || !(w.q > 0)) continue;
             const same = this.state.userAddedWorks.find(x => x.name === w.name && x.group === w.group);
             if (same) { same.q = Math.max(Number(same.q) || 0, w.q); continue; }
@@ -5251,7 +5259,7 @@ const app = {
         this.saveState();
         this.render();
 
-        return { eq: eqCount, works: workCount, hintWorks: hintCount, noPrice: noPrice, skippedNoQty: skippedNoQty, docPriced: docPriced };
+        return { eq: eqCount, works: workCount, hintWorks: hintCount, noPrice: noPrice, skippedNoQty: skippedNoQty, docPriced: docPriced, worksOff: worksOff };
     },
 
     /** Откат последнего применения распознавания одним действием. */
@@ -30663,7 +30671,7 @@ const app = {
             // Диаметр петли — тот, что выбран в панели (20х2.0 или 20х2.8).
             dia: 'Ø' + (sc.pipe ? sc.pipe.label.replace('×', 'х') : '20х2,8').replace('.', ',') + ' мм',
             step: (sc.rows && sc.rows[0]) ? sc.rows[0].step : 250,
-            supplyT: this.SNOW_SUPPLY,
+            supplyT: sc.supply || this.SNOW_SUPPLY,
             // Смеситель ведёт контроллер — значит на схеме сервопривод, а не
             // термоголовка. Без автоматики котельной узел регулируется вручную;
             // базовый уровень смесителем тоже не управляет.
@@ -37604,6 +37612,43 @@ const app = {
         document.querySelectorAll('.zone-rad-tab').forEach(t => t.classList.toggle('active', t.dataset.mode === z.radMode));
         document.querySelectorAll('.zone-link-tab').forEach(t => t.classList.toggle('active', t.dataset.link === z.link));
         if ($('blk_zone_ctrl_type')) $('blk_zone_ctrl_type').style.display = z.link === 'wired' ? 'block' : 'none';
+    },
+    /**
+     * Пояснение к разделу 4.5 для клиента: как подобрано и как будет работать.
+     * Печатается в КП (класс sec-explain, не плашка), без марок и артикулов —
+     * они и так в строках сметы.
+     */
+    zoneAutoExplainHtml: function (zk) {
+        const z = this.za();
+        const p = (n, a, b, c) => `${n} ${this.plural(n, a, b, c)}`;
+        let how;
+        if (zk.house) {
+            const h = zk.house;
+            const parts = [`привод на каждый выход коллектора (тёплый пол ${h.loops}${z.radMode === 'servo' ? `, радиаторы ${h.devs}` : ''})`];
+            if (zk.wiredAll + zk.radioAll > 0) parts.push(`термостат в каждую комнату (${zk.wiredAll + zk.radioAll}${zk.radioAll ? ', радио' : ', проводные'})`);
+            if (zk.heads > 0) parts.push(`головка на каждый прибор (${zk.heads})`);
+            how = `из подобранного: ${parts.join('; ')}.`;
+        } else {
+            const parts = [];
+            if (zk.wired) parts.push(p(zk.wired, 'проводной термостат', 'проводных термостата', 'проводных термостатов'));
+            if (zk.radio) parts.push(p(zk.radio, 'радиотермостат', 'радиотермостата', 'радиотермостатов'));
+            if (zk.heads) parts.push(p(zk.heads, 'радиоголовка', 'радиоголовки', 'радиоголовок'));
+            if (zk.servos) parts.push(p(zk.servos, 'сервопривод', 'сервопривода', 'сервоприводов'));
+            how = `по заявке: ${parts.join(', ')}.`;
+        }
+        how += ` ${this.plural(zk.bars, 'Планка', 'Планки', 'Планок')} ${zk.bars} — по числу зон и приводов.`;
+        let works;
+        if (zk.sys === 'stout') {
+            works = `термостат в комнате замыкает контакт на планке, планка открывает сервоприводы петель этой комнаты и включает насос; когда все зоны прогреты, насос останавливается.` +
+                (zk.heads > 0 ? ` Радиоголовки держат температуру радиаторов по своей уставке и управляются со смартфона через шлюз.` : '');
+        } else {
+            works = `проводные термостаты подключены к планке кабелем, радиотермостаты — по радио напрямую, без интернета; по сигналу термостата планка открывает приводы контуров комнаты и даёт котлу команду греть.` +
+                (zk.heads > 0 ? ` Радиоголовки держат температуру радиаторов по уставке своего радиотермостата (до 6 головок на один) и управляются с телефона через шлюз.` : '');
+        }
+        const note = zk.fromReq
+            ? ` <b>Уточнить у заказчика:</b> в каких комнатах стоят термостаты и головки${zk.heads > 0 && zk.radioAll > 0 ? ' — головки должны быть в тех же комнатах, что и радиотермостаты' : ''}.`
+            : '';
+        return `<div class="sec-explain"><b>Как подобрано:</b> ${how} <b>Как работает:</b> ${works}${note}</div>`;
     },
     /** Сводка состава под тумблером — тем же приёмом, что у автоматики котельной. */
     renderZoneAutoInfo: function () {
@@ -51351,6 +51396,25 @@ const app = {
     SNOW_HX_DP_MAX: 50,     // паспортное сопротивление вторички на предельном расходе, кПа
     SNOW_NODE_DP: 12,       // коллектор с расходомерами, краны, узел — кПа
     SNOW_NODE_VOL: 6,       // теплоноситель в теплообменнике и обвязке, л
+    // ── Тепловой путь петли (snowLoopMeanTemp) ───────────────────────────────
+    // Уставка 40 °C — отправная точка: если из-за ламинарной плёнки у стенки
+    // плита не выходит на расчётные Вт/м², расчёт поднимает её сам, но не выше
+    // SNOW_SUPPLY_MAX. 55 °C — практика проектирования снеготаяния: выше
+    // начинает трещать сама плита от термонапряжений, PE-Xa при этом ещё далёк
+    // от предела.
+    SNOW_SUPPLY_MAX: 55,
+    SNOW_SURF_T: 3,         // температура тающей поверхности с запасом, °C (практика)
+    SNOW_PIPE_DOUT: 0.02,   // наружный диаметр обеих труб петли, м
+    SNOW_LAMBDA_PEX: 0.38,  // теплопроводность PE-Xa, Вт/(м·К) — паспорт трубы
+    SNOW_LAMBDA_SLAB: 1.74, // бетон на гравии 2400 кг/м³, условия Б — СП 50.13330, прил. Т
+    SNOW_PIPE_COVER: 0.05,  // бетон над верхом трубы, м — типовая уличная плита
+    // Длина прямого участка змейки между U-поворотами, м. Ламинарный поток
+    // термически «разгоняется» десятки метров (l ≈ 0,05·Re·Pr·d — это за 30 м),
+    // а поворот перемешивает слои и запускает разгон заново, поэтому средний
+    // Nu считается по Хаузену для участка такой длины, а не по бесконечной
+    // трубе. 6 м — консервативно длинный прямой участок: реальные прямые короче
+    // ширины площадки, а чем короче, тем теплоотдача лучше.
+    SNOW_SEG_L: 6,
 
     /**
      * Расчётная зимняя температура объекта, °C. Выбирается так же, как в
@@ -51982,9 +52046,12 @@ const app = {
      * кДж/(кг·К), динамическая вязкость Па·с. Вязкость — аппроксимация по трём
      * точкам справочника (30 % → 1,8 мПа·с, 40 % → 2,6, 50 % → 3,8). Именно она
      * решает, хватит ли штатного насоса, поэтому подставлять сюда воду нельзя.
+     * Теплопроводность k, Вт/(м·К) — та же линейная аппроксимация по точкам
+     * справочника (30 % → 0,44, 40 % → 0,41, 50 % → 0,39); годится в рабочем
+     * диапазоне 30–63 %, к чистой воде её не тянуть.
      */
     snowFluid: function (c) {
-        return { c: c, rho: 1000 + c, cp: 4.19 - 0.0125 * c, mu: 5.86e-4 * Math.exp(0.0374 * c) };
+        return { c: c, rho: 1000 + c, cp: 4.19 - 0.0125 * c, mu: 5.86e-4 * Math.exp(0.0374 * c), k: 0.51 - 0.0024 * c };
     },
     /**
      * Удельные потери в трубе, Па/м. При малых расходах на гликоле течение
@@ -51998,6 +52065,50 @@ const app = {
         const Re = v * d * f.rho / f.mu;
         const lam = Re < 2300 ? 64 / Math.max(Re, 1) : 0.3164 / Math.pow(Re, 0.25);
         return { v: v, Re: Re, R: lam / d * f.rho * v * v / 2 };
+    },
+    /**
+     * Тепловой путь петли: какая СРЕДНЯЯ температура теплоносителя нужна, чтобы
+     * поверхность участка отдала расчётные qz Вт/м².
+     *
+     * Гликоль вязкий, и при штатном расходе поток в петле ламинарный (Re < 2300):
+     * жидкость движется слоями, тепло к стенке идёт через них только
+     * теплопроводностью, и плёнка у стенки съедает свои градусы точно так же,
+     * как бетон над трубой. Раньше расчёт про это только предупреждал — теперь
+     * считает цепочку целиком и отдаёт подбору, чтобы тот компенсировал
+     * уставкой подачи.
+     *
+     * Цепочка от жидкости к поверхности, последовательно:
+     *   1) плёнка у стенки: Nu по Хаузену для участка SNOW_SEG_L между
+     *      поворотами (ламинарный участковый разгон), при Re > 2300 — обычная
+     *      турбулентная теплоотдача, между ними линейная сшивка;
+     *   2) стенка PE-Xa (паспортная теплопроводность 0,38);
+     *   3) бетон: слой над трубой плюс растекание от трубы к плоской
+     *      поверхности при шаге s (классическое ln(s/πd) линейного источника).
+     *
+     * @param {number} qz       расчётный поток с поверхности, Вт/м² (уже с kT)
+     * @param {number} stepMm   шаг укладки, мм
+     * @param {number} flowLoop расход одной петли, м³/ч
+     * @returns {{Re:number, tm:number}} tm — требуемая средняя температура, °C
+     */
+    snowLoopMeanTemp: function (qz, stepMm, flowLoop, pipe, fluid) {
+        const s = Math.max(0.1, stepMm / 1000);
+        const qm = qz * s;                                  // Вт на метр трубы
+        const d = this.snowPipeDrop(flowLoop, pipe.dIn, fluid);
+        const Pr = fluid.mu * fluid.cp * 1000 / fluid.k;
+        const nuLam = re => {
+            const gz = Math.max(1, re) * Pr * pipe.dIn / this.SNOW_SEG_L;
+            return 3.66 + 0.0668 * gz / (1 + 0.04 * Math.pow(gz, 2 / 3));
+        };
+        const nuTurb = re => 0.023 * Math.pow(re, 0.8) * Math.pow(Pr, 0.4);
+        let Nu;
+        if (d.Re < 2300) Nu = nuLam(d.Re);
+        else if (d.Re >= 6000) Nu = nuTurb(d.Re);
+        else Nu = nuLam(2300) + (nuTurb(6000) - nuLam(2300)) * (d.Re - 2300) / 3700;
+        const rFilm = 1 / (Nu * fluid.k / pipe.dIn * Math.PI * pipe.dIn);  // (м·К)/Вт
+        const rWall = Math.log(this.SNOW_PIPE_DOUT / pipe.dIn) / (2 * Math.PI * this.SNOW_LAMBDA_PEX);
+        const rSlab = this.SNOW_PIPE_COVER / this.SNOW_LAMBDA_SLAB +
+            s * Math.max(0, Math.log(s / (Math.PI * this.SNOW_PIPE_DOUT))) / (2 * Math.PI * this.SNOW_LAMBDA_SLAB);
+        return { Re: d.Re, tm: this.SNOW_SURF_T + qz * rSlab + qm * (rFilm + rWall) };
     },
     /**
      * Насосы вторичного контура снеготаяния — от слабого к сильному, в порядке
@@ -52158,9 +52269,9 @@ const app = {
      * нагрузки мал, и это надо показать монтажнику, а не молча выдать состав,
      * который на объекте не заработает.
      */
-    snowPrimaryTemp: function (Q, ua, dT) {
+    snowPrimaryTemp: function (Q, ua, dT, supply) {
         const need = Q / Math.max(ua, 0.01);
-        const t2o = this.SNOW_SUPPLY, t2i = t2o - dT;
+        const t2o = supply || this.SNOW_SUPPLY, t2i = t2o - dT;
         let lo = t2o + 0.5, hi = 95;
         for (let i = 0; i < 50; i++) {
             const m = (lo + hi) / 2;
@@ -52322,11 +52433,46 @@ const app = {
             loopsPerNode.push(Math.floor(best.loops / best.nodes) + (i < best.loops % best.nodes ? 1 : 0));
         }
 
-        // 3. Проверка по теплу: хватает ли поверхности при этом расходе и какая
-        //    подача нужна из котельной. Считаем по одному узлу — теплообменник
-        //    у каждого свой и берёт на себя свою долю нагрузки.
-        const ua = best.hx.ua * Math.pow(best.V / best.hx.maxFlow, 0.77);
-        const t1 = this.snowPrimaryTemp(Q / best.nodes, ua, best.dT);
+        // 3. Проверка по теплу — в две ступени.
+        //
+        //    Сначала тепловой путь петли (snowLoopMeanTemp): ламинарная плёнка у
+        //    стенки, стенка PE-Xa и бетон над трубой съедают свои градусы, и
+        //    средняя температура теплоносителя обязана их покрыть. Не покрывает
+        //    штатная уставка 40 °C — расчёт поднимает её сам, до предела 55 °C:
+        //    это не стоит ни рубля, гидравлика от уставки не зависит (расход
+        //    задан нагрузкой и перепадом). Проверка — по самой нагруженной зоне,
+        //    Re — по самой медленной петле.
+        let reMin = Infinity, tmReq = 0;
+        (best.rows || []).forEach(r => {
+            if (!(r.loops > 0)) return;
+            const zoneFlow = r.Q * 3600 / (fluid.cp * fluid.rho * best.dT);
+            const hp = this.snowLoopMeanTemp(r.q * kT, r.step, zoneFlow / r.loops, pipe, fluid);
+            if (hp.Re > 0 && hp.Re < reMin) reMin = hp.Re;
+            if (hp.tm > tmReq) tmReq = hp.tm;
+        });
+        const supplyReq = Math.ceil(tmReq + best.dT / 2);
+        const supply = Math.min(this.SNOW_SUPPLY_MAX, Math.max(this.SNOW_SUPPLY, supplyReq));
+
+        //    Затем теплообменник: хватает ли поверхности при этом расходе и
+        //    какая подача нужна из котельной. Считаем по одному узлу — у каждого
+        //    свой теплообменник и своя доля нагрузки. Поднятая уставка вторички
+        //    требует более горячей первички, и если типоразмеру, прошедшему по
+        //    расходу, нужна подача выше 75 °C, расчёт сам берёт следующий —
+        //    больше пластин означает меньший нужный перепад между контурами
+        //    (раньше здесь было предупреждение «возьмите следующий типоразмер»,
+        //    теперь оно остаётся только когда следующего нет).
+        const _uaOf = hx => hx.ua * Math.pow(best.V / hx.maxFlow, 0.77);
+        const hx0 = best.hx;
+        let ua = _uaOf(best.hx);
+        let t1 = this.snowPrimaryTemp(Q / best.nodes, ua, best.dT, supply);
+        for (let i = list.indexOf(best.hx) + 1; t1 > 75 && i < list.length; i++) {
+            if (!list[i].maxFlow || list[i].maxFlow < best.V * 1.15) continue;
+            best.hx = list[i];
+            best.dpHx = this.SNOW_HX_DP_MAX * Math.pow(best.V / best.hx.maxFlow, 2);
+            best.head = (best.dpHx + best.worstDp + this.SNOW_NODE_DP) * 1.15 / 9.81;
+            ua = _uaOf(best.hx);
+            t1 = this.snowPrimaryTemp(Q / best.nodes, ua, best.dT, supply);
+        }
 
         // 4. Объём контура, теплоноситель и бак. Труба делится между узлами
         //    вместе с петлями, а обвязка с теплообменником своя у каждого —
@@ -52385,9 +52531,27 @@ const app = {
                 'к лишним петлям и выходы коллектора, это дешевле второго теплообменника.' });
         }
         if (best.dT > 10) {
-            notes.push({ to: 'hx', html: 'Перепад вторичного контура поднят до <b>' + best.dT + ' К</b> (подача ' + this.SNOW_SUPPLY +
-                ' / обратка ' + (this.SNOW_SUPPLY - best.dT) + '): при перепаде 10 К расход выше и напора насоса не хватает. ' +
+            notes.push({ to: 'hx', html: 'Перепад вторичного контура поднят до <b>' + best.dT + ' К</b> (подача ' + supply +
+                ' / обратка ' + (supply - best.dT) + '): при перепаде 10 К расход выше и напора насоса не хватает. ' +
                 'Дальний конец петли при этом тает медленнее — учитывайте при балансировке.' });
+        }
+        if (supply > this.SNOW_SUPPLY) {
+            // Решение принято и уже учтено (t1 считался от новой уставки) — это
+            // объяснение, а не предупреждение. Живёт у смесительной группы
+            // первички: уставка — её сервопривода.
+            notes.push({ to: 'prim', html: 'Уставка вторичного контура поднята с ' + this.SNOW_SUPPLY + ' до <b>' + supply +
+                ' °C</b>. Течение в петлях ламинарное (Re ≈ ' + Math.round(reMin) + ' при границе 2300): вязкий гликоль движется ' +
+                'в трубе слоями, тепло к стенке идёт через них только теплопроводностью, и плёнка у стенки съедает свои градусы ' +
+                'так же, как бетон над трубой. При подаче ' + this.SNOW_SUPPLY + ' °C поверхность не вышла бы на расчётные ' +
+                'Вт/м² — подъём уставки это компенсирует' + (supplyReq > supply ? ' (здесь — частично: нужно около ' + supplyReq +
+                ' °C, выше ' + this.SNOW_SUPPLY_MAX + ' не идём, чтобы не рвать плиту термонапряжениями)' : '') +
+                ' и денег не стоит: расход и напор от неё не зависят, а нужная ' +
+                'температура первички уже посчитана от новой уставки.' });
+        }
+        if (best.hx !== hx0) {
+            notes.push({ to: 'hx', html: 'Теплообменник взят на <b>' + best.hx.plates + ' пластин</b>, хотя по расходу проходил ' +
+                hx0.plates + ': типоразмеру поменьше при уставке вторички ' + supply + ' °C нужна подача из котельной выше 75 °C. ' +
+                'Больше пластин — больше поверхность, и та же мощность передаётся при меньшей разнице температур между контурами.' });
         }
 
         // 6. Предупреждения — всё, что монтажник обязан увидеть до заказа.
@@ -52401,21 +52565,22 @@ const app = {
             warnings.push('Теплообменнику на ' + best.hx.plates + ' пластин при таком расходе нужна подача из котельной <b>' + Math.ceil(t1) +
                 ' °C</b>. Возьмите следующий типоразмер или поднимите перепад вторичного контура.');
         }
-        // Режим течения в петле. Гликоль вязкий, и при штатном расходе поток в трубе
-        // легко становится ламинарным (Re < 2300): коэффициент теплоотдачи от
-        // жидкости к стенке падает в разы, и петля не отдаёт расчётную мощность,
-        // хотя по расходу и напору всё сходится. Проверка — по самой медленной петле.
-        {
-            let reMin = Infinity;
-            (best.rows || []).forEach(r => {
-                if (!(r.loops > 0)) return;
-                const zoneFlow = r.Q * 3600 / (fluid.cp * fluid.rho * best.dT);
-                const d = this.snowPipeDrop(zoneFlow / r.loops, pipe.dIn, fluid);
-                if (d.Re > 0 && d.Re < reMin) reMin = d.Re;
-            });
-            if (reMin < 2300) {
-                warnings.push('Течение в петлях ламинарное (Re ≈ ' + Math.round(reMin) + ' при границе 2300): при такой вязкости теплоносителя петля отдаёт заметно меньше расчётной мощности. ' +
-                    'Поднять Re можно трубой с меньшим внутренним диаметром (скорость выше при том же расходе) или меньшим перепадом вторичного контура (расход на петлю больше).');
+        // Ламинарное течение само по себе больше не предупреждение: тепловой
+        // путь петли посчитан честно, и плёнку у стенки компенсирует уставка
+        // (см. supply выше — заметка to:'prim'). Предупреждать осталось только
+        // когда компенсировать нечем: даже предельная уставка не покрывает
+        // требуемую среднюю температуру. Недобор до 5 % не показываем — это
+        // меньше точности самой модели, а янтарная плашка из-за пары градусов
+        // приучает её не читать.
+        if (supplyReq > this.SNOW_SUPPLY_MAX) {
+            const frac = Math.max(0, Math.min(100, Math.round(100 *
+                (this.SNOW_SUPPLY_MAX - best.dT / 2 - this.SNOW_SURF_T) / Math.max(0.1, tmReq - this.SNOW_SURF_T))));
+            if (frac < 95) {
+                warnings.push('Поверхность не выйдет на расчётные Вт/м² даже при предельной подаче ' + this.SNOW_SUPPLY_MAX +
+                    ' °C — тепловому пути петли (ламинарная плёнка у стенки при Re ≈ ' + Math.round(reMin) +
+                    ', стенка трубы, бетон над трубой) нужна подача около ' + supplyReq + ' °C. Система выдаст примерно <b>' + frac +
+                    ' %</b> расчётной мощности: площадка растает, но медленнее. Быстрее — уменьшить шаг укладки: труба чаще, ' +
+                    'метр трубы отдаёт меньше, и плёнка съедает меньше градусов.');
             }
         }
         // Дежурный подогрев остаётся, но как удобство, а не как условие выживания
@@ -52424,6 +52589,8 @@ const app = {
         return {
             Tn: Tn, kT: kT, glycol: c, freeze: this.snowFreezeTemp(c), burst: this.snowBurstTemp(c), fluid: fluid,
             Q: Q, area: area, dT: best.dT,
+            // Уставка подачи вторички: 40 или поднятая тепловым путём петли.
+            supply: supply, supplyReq: supplyReq, reMin: reMin,
             // V — расход ОДНОГО узла: именно с ним сверяется паспорт
             // теплообменника и кривая насоса. Общий расход контура — Vtot.
             V: best.V, Vtot: best.Vtot,
@@ -62827,13 +62994,18 @@ const app = {
         const _objChip = _flatSum
             ? `<span class="param-item">🏢 Квартира: <b>${this.state.area} м²</b> (${this.flatPositionName()}${this.state.flatCorner ? ', угловая' : ''})</span>
             <span class="param-item">🚪 Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
-            : `<span class="param-item">🏠 Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
-            <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`;
+            : (parseFloat(this.state.area) > 0
+                ? `<span class="param-item">🏠 Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
+            <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`
+                // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
+                // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
+                : `<span class="param-item">📋 Объект: <b>по заявке</b></span>`);
+        const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
             <span class="param-item">🔖 № КП: <b>${this.kpNumber() || '—'}</b></span>
             ${this.cheapModeOn() ? '<span class="param-item">💡 Вариант: <b>подешевле</b></span>' : ''}
             ${_objChip}
-            <span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>
+            ${_hasArea ? `<span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>` : ''}
             <span class="param-item">📍 Регион: <b>${regionName}</b></span>
             <span class="param-item param-date calculation-date">📅 Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
         `;
@@ -64028,7 +64200,8 @@ const app = {
                     let headStyle = `style="background:var(--surface-light); border: ${dashStyle}; color:var(--text-main);"`;
                     if (!isCollapsed) headStyle = `style="background:var(--surface-light); border: ${dashStyle}; border-bottom: none; color:var(--text-main);"`;
 
-                    rows += `<tr class="group-header" ${headStyle} onclick="app.toggleGroup('${groupId}')" title="Свернуть/Развернуть"><td colspan="${titleColSpan}" style="text-align:left; padding-left:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><b>${arrow} ${icon} Детализация</b></td><td class="col-unit" style="color:#9CA3AF; font-size:10px;">${txtUnit}</td><td class="col-qty" style="font-weight:700;">${txtQty}</td><td class="col-price"></td><td class="col-sum">${txtSum}</td></tr>`;
+                    // works-detail: строка-кнопка «свернуть/развернуть», в печати ей делать нечего.
+                    rows += `<tr class="group-header works-detail" ${headStyle} onclick="app.toggleGroup('${groupId}')" title="Свернуть/Развернуть"><td colspan="${titleColSpan}" style="text-align:left; padding-left:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><b>${arrow} ${icon} Детализация</b></td><td class="col-unit" style="color:#9CA3AF; font-size:10px;">${txtUnit}</td><td class="col-qty" style="font-weight:700;">${txtQty}</td><td class="col-price"></td><td class="col-sum">${txtSum}</td></tr>`;
                 }
 
                 // Рендер самих строк
@@ -69768,7 +69941,8 @@ const app = {
                 }, _snowNodes,
                     `<span style="font-size:11px;line-height:1.5;">` +
                     `<b>Зачем:</b> Держит подачу в теплообменник на расчётной температуре. У насосной группы с теплообменником своего регулирования нет, и без этого узла вторичный контур нагреется до котловой температуры — уличная стяжка такого не переживает.<br>` +
-                    `<b>Управление:</b> сервопривод по команде контроллера, датчик — накладной на подаче вторичного контура, уставка ${this.SNOW_SUPPLY} °C.` +
+                    `<b>Управление:</b> сервопривод по команде контроллера, датчик — накладной на подаче вторичного контура, уставка ${sc.supply || this.SNOW_SUPPLY} °C.<br>` +
+                    _snowNote('prim') +
                     `</span>`, grpPrim);
             }
             if (_primPump) {
@@ -69976,9 +70150,10 @@ const app = {
             this.renderZoneAutoInfo();
             zk.rows.forEach(r => addToBill(r.item, r.qty, r.tip, r.group));
             if (zk.rows.length) {
-                // Янтарная: комплект подобран, это оговорки к нему.
-                const _zWarn = this.noteFromList('warn', `Автоматика ${this.ZONE_AUTO_SYS_NAMES[zk.sys]} — на что смотреть.`, zk.warns);
-                flushBill("4.5 Автоматика отопления", _zWarn || null);
+                // Пояснение для клиента печатается в КП; янтарная плашка — оговорки,
+                // только на экране (в печати плашки скрыты).
+                const _zWarn = this.noteFromList('warn', `Автоматика — на что смотреть.`, zk.warns);
+                flushBill("4.5 Автоматика отопления", this.zoneAutoExplainHtml(zk) + (_zWarn || ''));
             } else {
                 flushBill("4.5 Автоматика отопления",
                     this.noteBox('info', 'Автоматика включена, состав пуст.', 'Задайте в панели число термостатов, сервоприводов или радиоголовок.'));

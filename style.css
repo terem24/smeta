@@ -2315,6 +2315,34 @@ body.menu-open .mobile-menu-backdrop {
     margin-top: 4px;
 }
 
+/* Пояснение к разделу для клиента: как подобрано и как работает. В отличие от
+   плашек (.note-box) печатается в КП — hide-warns-print его не трогает. */
+.sec-explain {
+    display: block;
+    margin-top: 6px;
+    padding: 7px 10px;
+    border-left: 3px solid var(--primary);
+    background: var(--primary-light);
+    border-radius: 0 6px 6px 0;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-main);
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    white-space: normal;
+    cursor: default;
+}
+
+.sec-explain b {
+    font-weight: 700;
+}
+
+body.dark-mode .sec-explain {
+    background: #161616;
+}
+
 .note-box .note-ico {
     flex-shrink: 0;
     font-size: 12px;
@@ -2708,13 +2736,24 @@ body.html2pdf-printing .note-box .note-tip .tooltip-content b { color: inherit !
     }
 
 
+    /* !important: базовое правило .price-edit объявлено ниже по файлу и без него
+       перебивало печатное — цены работ уходили в PDF с пунктиром. */
     .price-edit {
-        border-bottom: none;
-        color: #000;
+        border-bottom: none !important;
+        color: #000 !important;
     }
 
-    .print-hide {
+    .print-hide,
+    .hc-cookie-banner,
+    .inv-table tr.works-detail,
+    tr.works-detail {
         display: none !important;
+    }
+
+    .sec-explain {
+        background: #f3f3f3 !important;
+        border-left-color: #000 !important;
+        color: #000 !important;
     }
 
     .doc-footer {
@@ -4606,6 +4645,46 @@ body.modal-over-banner .hc-cookie-banner {
         max-height: calc(100dvh - 24px) !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Автоподстройка окна входа/регистрации под невысокие экраны (ноутбук с масштабом
+   Windows 150 % даёт видимую высоту ≈ 590 px, окно в полэкрана — ещё меньше):
+   вкладка «Регистрация» была выше страховочного max-height 95vh (ставит switchAuthTab)
+   и внутри окна появлялась прокрутка. Ужимаем отступы и высоты, чтобы обе вкладки
+   помещались целиком. На обычных экранах (выше 700 px) окно не меняется.
+   !important — потому что отступы полей и блоков заданы инлайн в index.html.
+   min-width 601px — чтобы не пересекаться с телефонным блоком выше (там прокрутка
+   внутри окна — ожидаемый компромисс). */
+@media screen and (min-width: 601px) and (max-height: 700px) {
+    #auth_modal_overlay .auth-modal-content {
+        padding: 16px 26px 18px;
+    }
+    #auth_modal_overlay .auth-tabs {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+    #auth_modal_overlay .auth-input,
+    #auth_modal_overlay .auth-btn-base {
+        height: 40px;
+    }
+    #auth_modal_overlay .auth-input {
+        margin-bottom: 8px !important;
+    }
+    #auth_modal_overlay #auth_terms_wrapper {
+        margin: 2px 0 8px !important;
+    }
+    #auth_modal_overlay #auth_terms_note {
+        margin-top: 6px !important;
+    }
+    #auth_modal_overlay #auth_forgot_link {
+        margin-top: 8px !important;
+    }
+    #auth_modal_overlay .auth-divider {
+        margin: 10px auto;
+    }
+    #auth_modal_overlay .social-btn-wrapper {
+        gap: 8px;
     }
 }
 
@@ -15143,6 +15222,9 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
 .cheaper-print { display: none; }
 @media print {
     .cheaper-print { display: block; page-break-before: always; padding-top: 12px; font-size: 11px; color: #000; }
+    /* Пустой блок (режим «Подешевле» выключен) печататься не должен: с разрывом
+       страницы перед собой он уносил «Итого» и QR на отдельный лист. */
+    .cheaper-print:empty { display: none !important; break-before: auto !important; page-break-before: auto !important; }
     .cheaper-print .cr-scheme { border-left-color: #000; background: #f3f3f3; }
     .cheaper-print .cr-table th, .cheaper-print .cr-table td { border-bottom: 1px solid #ccc; }
     .cheaper-print .cr-table tr.cr-sec td { background: #eee; }
