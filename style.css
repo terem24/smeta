@@ -4605,6 +4605,46 @@ body.modal-over-banner .hc-cookie-banner {
     }
 }
 
+/* Автоподстройка окна входа/регистрации под невысокие экраны (ноутбук с масштабом
+   Windows 150 % даёт видимую высоту ≈ 590 px, окно в полэкрана — ещё меньше):
+   вкладка «Регистрация» была выше страховочного max-height 95vh (ставит switchAuthTab)
+   и внутри окна появлялась прокрутка. Ужимаем отступы и высоты, чтобы обе вкладки
+   помещались целиком. На обычных экранах (выше 700 px) окно не меняется.
+   !important — потому что отступы полей и блоков заданы инлайн в index.html.
+   min-width 601px — чтобы не пересекаться с телефонным блоком выше (там прокрутка
+   внутри окна — ожидаемый компромисс). */
+@media screen and (min-width: 601px) and (max-height: 700px) {
+    #auth_modal_overlay .auth-modal-content {
+        padding: 16px 26px 18px;
+    }
+    #auth_modal_overlay .auth-tabs {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+    #auth_modal_overlay .auth-input,
+    #auth_modal_overlay .auth-btn-base {
+        height: 40px;
+    }
+    #auth_modal_overlay .auth-input {
+        margin-bottom: 8px !important;
+    }
+    #auth_modal_overlay #auth_terms_wrapper {
+        margin: 2px 0 8px !important;
+    }
+    #auth_modal_overlay #auth_terms_note {
+        margin-top: 6px !important;
+    }
+    #auth_modal_overlay #auth_forgot_link {
+        margin-top: 8px !important;
+    }
+    #auth_modal_overlay .auth-divider {
+        margin: 10px auto;
+    }
+    #auth_modal_overlay .social-btn-wrapper {
+        gap: 8px;
+    }
+}
+
 /* Email Submit Button */
 .btn-email-submit {
     background: #3B82F6;
