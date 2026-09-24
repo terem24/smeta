@@ -56703,7 +56703,7 @@ const app = {
                 }
             });
         }
-        document.getElementById('chk_hw').checked = this.state.hotWater; document.getElementById('blk_res').style.display = this.state.hotWater ? 'flex' : 'none'; document.getElementById('val_res').innerText = this.state.res; document.getElementById('val_zones').innerText = this.state.ufhZones; this.syncTowelWarmerUI();
+        document.getElementById('chk_hw').checked = this.state.hotWater; document.getElementById('blk_res').style.display = this.state.hotWater ? 'flex' : 'none'; document.getElementById('val_res').innerText = this.state.res; this.syncTowelWarmerUI();
         const ufhTabs = document.querySelectorAll('.ufh-tab'); ufhTabs.forEach(t => { t.className = 'tab ufh-tab'; if (t.dataset.type === this.state.ufhCtrl) t.classList.add('multi-active'); });
         const regTabs = document.getElementById('reg_tabs').children; for (let t of regTabs) t.classList.remove('active');
         if (!this.state.selectedCity) {
