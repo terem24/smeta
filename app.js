@@ -15150,20 +15150,52 @@ const app = {
     // обратно (24.09.2026, решение владельца). Локально: кнопка «Тема бренда»
     // в панели тарифа (localStorage local_brand_theme) включает её на этой
     // машине, даже если в базе выключено.
+    // ═══ Настройки оформления (app_settings.ui_theme) ═══
+    // Умолчания — только здесь, одним объектом. Правило чтения одно на все
+    // ключи: явное значение в базе сильнее умолчания. Раньше у каждого ключа
+    // была своя логика (installer_brand и yandex.pro — «включено, пока явно не
+    // выключили», остальные группы — «выключено, пока явно не включили»), и
+    // держать это в голове было невозможно. При записи в базу уходят явные
+    // значения всех известных ключей (см. setBrandThemeEnabled /
+    // setYandexThemeGroup), так что после первого сохранения в app_settings
+    // видно всю картину целиком, а не только тронутые ключи.
+    UI_THEME_DEFAULTS: {
+        installer_brand: true,   // тема бренда у монтажников
+        yandex: {
+            pro: true,           // обладателям тарифа «Профи» разрешён выбор темы в кабинете
+            admins: false,       // принудительное включение темы «Профи» группам
+            installers: false,
+            sellers: false,
+            managers: false
+        }
+    },
+
+    // Настройки оформления с подставленными умолчаниями. Незнакомые ключи,
+    // если появятся в базе, здесь не теряются только в yandex (слив поверх);
+    // верхний уровень собирается по известным ключам.
+    uiThemeSettings: function () {
+        const d = this.UI_THEME_DEFAULTS;
+        const ui = (this.appSettings && this.appSettings.ui_theme) || {};
+        return {
+            installer_brand: typeof ui.installer_brand === 'boolean' ? ui.installer_brand : d.installer_brand,
+            yandex: Object.assign({}, d.yandex, (ui.yandex && typeof ui.yandex === 'object') ? ui.yandex : {})
+        };
+    },
+
     brandThemeEnabled: function () {
         if (this.isLocalhost()) {
             try { if (localStorage.getItem('local_brand_theme') === '1') return true; } catch (e) { }
         }
-        const ui = this.appSettings && this.appSettings.ui_theme;
-        return !(ui && ui.installer_brand === false);
+        return this.uiThemeSettings().installer_brand;
     },
 
     setBrandThemeEnabled: async function (on) {
         if (!this.canEditTariffs()) { app.alert('Менять оформление может только администратор.'); return; }
-        // Сливаем поверх прежнего ui_theme: раньше здесь писался объект из одного
-        // ключа, и тумблер бренда молча стирал настройки групп темы «Профи»
-        // (ui_theme.yandex) — обе настройки живут в одной строке app_settings.
-        const value = Object.assign({}, (this.appSettings && this.appSettings.ui_theme) || {}, { installer_brand: !!on });
+        // Пишем полную картину: сохранённые в базе незнакомые ключи — поверх них
+        // явные значения всех известных (умолчания уже подставлены), поверх —
+        // сам тумблер. Раньше здесь писался объект из одного ключа, и тумблер
+        // бренда молча стирал настройки групп темы «Профи» (ui_theme.yandex).
+        const value = Object.assign({}, (this.appSettings && this.appSettings.ui_theme) || {}, this.uiThemeSettings(), { installer_brand: !!on });
         // Сразу на экран, не дожидаясь базы
         this.appSettings = Object.assign({}, this.appSettings, { ui_theme: value });
         this.syncBrandTheme();
@@ -15247,17 +15279,12 @@ const app = {
     // (localStorage local_yandex_theme); кнопка «Профи» той же панели включает
     // тему сама, как и настоящий тариф.
     YANDEX_THEME_GROUPS: [
-        { key: 'pro', label: 'Тариф «Профи»', hint: 'разрешает обладателям тарифа «Профи» (оплаченный или пробный период, любая роль) включать тему в кабинете; сама тема при этом не включается — включено по умолчанию', def: true },
+        { key: 'pro', label: 'Тариф «Профи»', hint: 'разрешает обладателям тарифа «Профи» (оплаченный или пробный период, любая роль) включать тему в кабинете; сама тема при этом не включается — включено по умолчанию' },
         { key: 'admins', label: 'Администраторы', hint: 'владелец и администраторы панели управления' },
         { key: 'installers', label: 'Монтажники', hint: 'все вошедшие монтажники (сфера «монтаж»)' },
         { key: 'sellers', label: 'Продавцы', hint: 'сфера «продажа» без монтажа — вместо оформления магазина' },
         { key: 'managers', label: 'Менеджеры и наблюдатели', hint: 'менеджеры дистрибьюторов и наблюдатели панели' }
     ],
-
-    yandexThemeConfig: function () {
-        const ui = this.appSettings && this.appSettings.ui_theme;
-        return (ui && ui.yandex && typeof ui.yandex === 'object') ? ui.yandex : {};
-    },
 
     // К какой группе настройки относится текущий человек; без входа — ни к какой
     yandexThemeGroupOfMe: function () {
@@ -15269,12 +15296,10 @@ const app = {
         return this.isSellerOnly() ? 'sellers' : 'installers';
     },
 
-    // Включена ли группа: у «Профи» умолчание — включено (выключает только явное false)
+    // Включена ли группа. Умолчания и правило чтения — в uiThemeSettings:
+    // явное значение в базе сильнее, никакой своей логики у ключей больше нет
     yandexThemeGroupOn: function (key) {
-        const cfg = this.yandexThemeConfig();
-        const g = this.YANDEX_THEME_GROUPS.find(x => x.key === key);
-        if (g && g.def) return cfg[key] !== false;
-        return cfg[key] === true;
+        return this.uiThemeSettings().yandex[key] === true;
     },
 
     isYandexTheme: function () {
@@ -15410,13 +15435,15 @@ const app = {
         box.style.display = '';
     },
 
-    // Переключатель группы в блоке «Оформление „Яндекс“» вкладки «Тарифы».
-    // Остальные ключи ui_theme (если появятся) не трогаем — сливаем поверх.
+    // Переключатель группы в блоке «Оформление» вкладки «Тарифы». Пишем полную
+    // картину с явными значениями всех известных ключей (как setBrandThemeEnabled);
+    // незнакомые ключи базы, если появятся, не трогаем — сливаем поверх.
     setYandexThemeGroup: async function (key, on) {
         if (!this.canEditTariffs()) { app.alert('Менять оформление может только администратор.'); return; }
         if (!this.YANDEX_THEME_GROUPS.some(g => g.key === key)) return;
-        const ui = Object.assign({}, (this.appSettings && this.appSettings.ui_theme) || {});
-        ui.yandex = Object.assign({}, this.yandexThemeConfig(), { [key]: !!on });
+        const cur = this.uiThemeSettings();
+        const ui = Object.assign({}, (this.appSettings && this.appSettings.ui_theme) || {}, cur);
+        ui.yandex = Object.assign({}, cur.yandex, { [key]: !!on });
         // Сразу на экран, не дожидаясь базы
         this.appSettings = Object.assign({}, this.appSettings, { ui_theme: ui });
         this.syncShopTheme();
@@ -15456,7 +15483,7 @@ const app = {
 
         // Тумблер показывает значение настройки, а не brandThemeEnabled():
         // локальная кнопка «Тема бренда» перекрывает базу только на этой машине
-        const uiBrand = !((this.appSettings && this.appSettings.ui_theme) && this.appSettings.ui_theme.installer_brand === false);
+        const uiBrand = this.uiThemeSettings().installer_brand;
         const proOn = this.yandexThemeGroupOn('pro');
 
         const brandRow = row(
