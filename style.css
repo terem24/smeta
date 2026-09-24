@@ -605,6 +605,41 @@ input:checked+.slider:before {
     box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2);
 }
 
+/* Вкладка «Обоснование» появляется только при включённом «Подешевле», и без
+   подсказки было не видно, что она про него. Поэтому она в цвете плашки
+   «Дешевле на N %» (#10B981) — тем же зелёным, что и сама экономия, — а не в
+   цвете остальных вкладок. Тёмная тема и темы бренда ниже используют те же
+   зелёные, чтобы связка «плашка ↔ вкладка» читалась везде одинаково. */
+.tab.tab-cheaper {
+    color: #059669;
+    background: #ECFDF5;
+    box-shadow: inset 0 0 0 1px #A7F3D0;
+    margin-left: 3px;
+}
+
+.tab.tab-cheaper:hover {
+    color: #047857;
+}
+
+.tab.tab-cheaper.active {
+    background: #10B981;
+    color: #fff;
+    box-shadow: 0 1px 3px rgba(16, 185, 129, 0.35);
+}
+
+body.dark-mode .tab.tab-cheaper {
+    background: #052E22;
+    color: #6EE7B7;
+    border: none;
+    box-shadow: inset 0 0 0 1px #065F46;
+}
+
+body.dark-mode .tab.tab-cheaper.active {
+    background: #059669;
+    color: #fff;
+    border: none;
+}
+
 .info-card {
     background: var(--primary-light);
     border-radius: 6px;
@@ -6387,10 +6422,11 @@ body.menu-open .mobile-menu-backdrop {
         text-overflow: ellipsis;
     }
     .m-total-eq { color: var(--text-sec); }
-    .m-total-eq span { color: var(--primary); font-size: 13.5px; font-weight: 700; margin-left: 2px; }
+    .m-total-eq span { color: #153C69; font-size: 13.5px; font-weight: 700; margin-left: 2px; }
+    body.mode-rommer .m-total-eq span { color: #AF1F17; }
     .m-total-div { color: var(--border); margin: 0 5px; }
     .m-total-work { color: var(--text-sec); }
-    .m-total-work span { color: #ea580c; font-size: 13.5px; font-weight: 700; margin-left: 2px; }
+    .m-total-work span { color: #D97706; font-size: 13.5px; font-weight: 700; margin-left: 2px; }
 
     /* Адаптивность для узких мобильных экранов */
     @media screen and (max-width: 480px) {
@@ -10227,6 +10263,18 @@ body.dark-mode .cw-status-promo {
     display: flex;
     align-items: center;
 }
+
+/* Суммы в шапке — в цветах логотипов. Оборудование: синий STOUT (#153C69) или
+   красный ROMMER (#AF1F17) по классу body.mode-rommer, который ставит
+   app.syncTopLogo вместе со сменой логотипа (в любой теме). Монтаж — янтарный,
+   как плашка «ПРОФИ» у имени, при обоих брендах. В тёмной теме тона светлее,
+   иначе тёмно-синий на тёмном фоне не читается. */
+#anim_eq_sum { color: #153C69; }
+body.mode-rommer #anim_eq_sum { color: #AF1F17; }
+#anim_works_sum { color: #D97706; }
+body.dark-mode #anim_eq_sum, body.dark-mode .m-total-eq span { color: #6FA3E8; }
+body.dark-mode.mode-rommer #anim_eq_sum, body.dark-mode.mode-rommer .m-total-eq span { color: #D14343; }
+body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E0B; }
 
 .fill-pct-row {
     margin-top: 1px;
@@ -14517,4 +14565,514 @@ body.dark-mode #hyd_card .hyd-card__p {
         flex: 0 0 auto;
         white-space: nowrap;
     }
+}
+
+
+/* ================== ТЕМА БРЕНДА (монтажники): STOUT / ROMMER ==================
+   Включается классом body.theme-brand из app.js (syncBrandTheme), когда человек
+   вошёл под учёткой монтажника (см. isBrandTheme). Продавцов не касается: у них
+   своя тема «магазин» (блок выше), она главнее. Второй класс выбирает бренд по
+   переключателю «Аналог»: brand-stout (по умолчанию) или brand-rommer.
+
+   Только шрифты и цвета. Форма — скругления, тени, вкладки, кнопки, полосы
+   таблицы — остаётся штатной: первый вариант с плоским «сайтовым» видом
+   (прямые углы, без теней) владелец отверг 24.09.2026 как «примитивный»,
+   договорились о компромиссе: шрифты и палитра с сайта, всё остальное как было.
+   Поэтому здесь переопределяются переменные (--primary, --bg, --surface…) и
+   те цвета, что в базовом файле прописаны числом; ни одного border-radius,
+   box-shadow, padding или font-size в блоке нет, и добавлять их не надо.
+   Тёмная тема работает поверх: body.theme-brand.dark-mode переопределяет
+   переменные и числовые цвета тёмной темы (#161616, #1E1E1E, #6366F1).
+   Печать и PDF не затронуты: весь блок только для экрана.
+
+   Откуда цифры (сняты с сайтов 24.09.2026, вычисленные стили в браузере):
+   stout.ru — Roboto 14 px, текст #2C2E35, тёмно-синий #203F6F (кнопки, активные
+   пункты, счётчики), при наведении голубой #4B9FDC, значки #3F9DE1, серые блоки
+   #F5F5F5 / #F9F9F9, рамки #EDEDED, второстепенный текст #999; заголовки —
+   Eurostile Condensed Heavy.
+   rommer.ru — Suisse Int'l 15 px, текст #3E3D40, красный #A92028 (логотип,
+   наведение, активные пункты), тёмные кнопки #3E3D40 → красные при наведении,
+   серые блоки #F7F7F7, рамки #E3E3E5, второстепенный #B7B7B7; заголовки —
+   Geometria Medium.
+   Шрифты сайтов (Eurostile, Suisse Int'l, Geometria) платные, класть их в
+   репозиторий нельзя. Замены со свободной лицензией (OFL): Roboto Condensed
+   вместо Eurostile Cond, Inter (уже подключён) вместо Suisse Int'l, Jost вместо
+   Geometria. Файлы в fonts/, браузер качает их только при включённой теме. */
+
+@font-face {
+    font-family: 'Roboto Condensed';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('fonts/roboto-condensed-cyrillic.woff2?v=1') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+    font-family: 'Roboto Condensed';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('fonts/roboto-condensed-latin.woff2?v=1') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Jost';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('fonts/jost-cyrillic.woff2?v=1') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+    font-family: 'Jost';
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url('fonts/jost-latin.woff2?v=1') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@media screen {
+    /* ---------- STOUT: светлая ---------- */
+    body.brand-stout {
+        --primary: #203F6F;
+        --primary-light: #EEF3F9;
+        --bg: #F5F5F5;
+        --surface: #FFFFFF;
+        --surface-light: #F9F9F9;
+        --text-main: #2C2E35;
+        --text-sec: #6B6F78;
+        --border: #E6E6E6;
+        --warn-bg: #FFF4F4;
+        --warn-text: #B3261E;
+        --warn-border: #F0A8A4;
+        --note-warn-bg: #FFF8EC;
+        --note-warn-text: #A2661B;
+        --note-warn-border: #E0A64C;
+        --note-info-bg: #EEF3F9;
+        --note-info-text: #203F6F;
+        --note-info-border: #A9C1DE;
+        --bt-font: 'Roboto', 'Segoe UI', Arial, sans-serif;
+        --bt-head-font: 'Roboto Condensed', 'Arial Narrow', 'Roboto', sans-serif;
+        --bt-head-weight: 800;
+        --bt-head-spacing: 0.01em;
+        --bt-primary-hover: #4B9FDC;
+        --bt-accent: #3F9DE1;
+        --bt-nav-active: #203F6F;
+        --bt-fill: linear-gradient(90deg, #4B9FDC, #203F6F);
+        --bt-danger: #E5484D;
+    }
+
+    /* ---------- STOUT: тёмная ----------
+       Фон и панели — классический чёрный обычной ночной темы (#000 / #121212 /
+       #1E1E1E), без синих оттенков: владелец 24.09.2026 попросил оставить
+       чёрный, как на heatcalc.ru. Цвет бренда только у кнопок, вкладок и акцентов. */
+    body.brand-stout.dark-mode {
+        /* Заливки — ровно фирменный #203F6F (см. правило ниже). Текстовые
+           акценты (название сметы, цифры инфостроки, активная вкладка,
+           ползунки, заголовки разделов) — нейтральный светлый: кобальт #4A7CC2
+           на всём этом давал «слишком много синего», владелец 24.09.2026
+           попросил настоящую чёрную тему. Синий остаётся у залитых элементов,
+           значков-счётчиков и суммы оборудования в шапке.
+           Панели темнее обычной ночной темы (#0D0D0D / #171717 вместо
+           #121212 / #1E1E1E) — по той же просьбе. */
+        --primary: #E4E4E7;
+        --primary-light: #232326;
+        --bg: #000000;
+        --surface: #0D0D0D;
+        --surface-light: #171717;
+        --text-main: #F3F4F6;
+        --text-sec: #9CA3AF;
+        --border: #222222;
+        --warn-bg: #2D1B1B;
+        --warn-text: #F87171;
+        --warn-border: rgba(248, 113, 113, 0.35);
+        --note-warn-bg: #2A2113;
+        --note-warn-text: #FBBF24;
+        --note-warn-border: rgba(251, 191, 36, 0.35);
+        --note-info-bg: #16233A;
+        --note-info-text: #93C5FD;
+        --note-info-border: rgba(147, 197, 253, 0.35);
+        --bt-primary-hover: #2B5391;
+        --bt-accent: #4A7CC2;
+        --bt-nav-active: #E4E4E7;
+        --bt-fill: linear-gradient(90deg, #203F6F, #4A7CC2);
+        --bt-danger: #F87171;
+    }
+
+    /* Залитые элементы STOUT ночью — фирменный тёмно-синий с белым текстом
+       (белое на #203F6F — 8:1), как кнопки и активные пункты на stout.ru */
+    body.brand-stout.dark-mode .tab.multi-active,
+    body.brand-stout.dark-mode .mode-tab.active,
+    body.brand-stout.dark-mode input:checked + .slider,
+    body.brand-stout.dark-mode .footer-btns .btn-primary-action,
+    body.brand-stout.dark-mode .lk-rail-item.active,
+    body.brand-stout.dark-mode .btn-ctrl.is-on,
+    body.brand-stout.dark-mode .btn-ctrl.is-on:hover,
+    body.brand-stout.dark-mode .custom-modal-btn,
+    body.brand-stout.dark-mode .calc-dialog-btn-confirm,
+    body.brand-stout.dark-mode .btn-tg,
+    body.brand-stout.dark-mode .btn-share,
+    body.brand-stout.dark-mode .rec-beta {
+        background-color: #203F6F;
+        border-color: #203F6F;
+        color: #fff;
+    }
+
+    body.brand-stout.dark-mode .lk-rail-item.active svg {
+        color: #fff;
+    }
+
+    /* ---------- ROMMER: светлая ---------- */
+    body.brand-rommer {
+        --primary: #3E3D40;
+        --primary-light: #F1F1F2;
+        --bg: #F7F7F7;
+        --surface: #FFFFFF;
+        --surface-light: #F7F7F7;
+        --text-main: #3E3D40;
+        --text-sec: #6D6D6D;
+        --border: #E3E3E5;
+        --warn-bg: #FBEDEE;
+        --warn-text: #A92028;
+        --warn-border: #E7A6AA;
+        --note-warn-bg: #FFF8EC;
+        --note-warn-text: #A2661B;
+        --note-warn-border: #E0A64C;
+        --note-info-bg: #F1F1F2;
+        --note-info-text: #3E3D40;
+        --note-info-border: #D9D9DC;
+        /* Основной шрифт тот же, что у STOUT (Roboto): у Inter другая ширина
+           букв, и при переключении «Аналога» вся разметка чуть съезжала —
+           владелец 24.09.2026 попросил убрать это «перелистывание». Suisse
+           Int'l с rommer.ru к Roboto по пропорциям не дальше, чем к Inter. */
+        --bt-font: 'Roboto', 'Segoe UI', Arial, sans-serif;
+        --bt-head-font: 'Jost', 'Montserrat', 'Inter', sans-serif;
+        --bt-head-weight: 600;
+        --bt-head-spacing: -0.005em;
+        --bt-primary-hover: #A92028;
+        --bt-accent: #A92028;
+        --bt-nav-active: #A92028;
+        --bt-fill: linear-gradient(90deg, #E3E3E5, #A92028);
+        --bt-danger: #A92028;
+    }
+
+    /* ---------- ROMMER: тёмная ---------- тот же чёрный, что у STOUT */
+    body.brand-rommer.dark-mode {
+        /* Заливки — ровно фирменный #A92028 (правило ниже). Текстовые акценты
+           (название сметы, цифры инфостроки, активная вкладка, ползунки,
+           заголовки разделов) — нейтральный светлый, не красный: когда всё это
+           было #B8262F, красного на экране оказалось слишком много, владелец
+           24.09.2026 попросил приглушить. Красный остаётся у залитых элементов
+           и у суммы оборудования в шапке. Розовые оттенки (#C4343D / #E0505A)
+           отвергнуты ещё раньше. */
+        --primary: #E4E4E7;
+        --primary-light: #232326;
+        --bg: #000000;
+        --surface: #0D0D0D;
+        --surface-light: #171717;
+        --text-main: #F3F4F6;
+        --text-sec: #9CA3AF;
+        --border: #222222;
+        --warn-bg: #2D1B1B;
+        --warn-text: #F87171;
+        --warn-border: rgba(248, 113, 113, 0.35);
+        --note-warn-bg: #2A2113;
+        --note-warn-text: #FBBF24;
+        --note-warn-border: rgba(251, 191, 36, 0.35);
+        --note-info-bg: #232326;
+        --note-info-text: #D5D5D8;
+        --note-info-border: #3A3A3F;
+        --bt-primary-hover: #C42A33;
+        --bt-accent: #A92028;
+        --bt-nav-active: #E4E4E7;
+        --bt-fill: linear-gradient(90deg, #4A4A4F, #A92028);
+        --bt-danger: #F87171;
+    }
+
+    /* Залитые элементы ROMMER ночью — фирменный красный с белым текстом */
+    body.brand-rommer.dark-mode .tab.multi-active,
+    body.brand-rommer.dark-mode .mode-tab.active,
+    body.brand-rommer.dark-mode input:checked + .slider,
+    body.brand-rommer.dark-mode .footer-btns .btn-primary-action,
+    body.brand-rommer.dark-mode .lk-rail-item.active,
+    body.brand-rommer.dark-mode .btn-ctrl.is-on,
+    body.brand-rommer.dark-mode .btn-ctrl.is-on:hover,
+    body.brand-rommer.dark-mode .custom-modal-btn,
+    body.brand-rommer.dark-mode .calc-dialog-btn-confirm,
+    body.brand-rommer.dark-mode .btn-tg,
+    body.brand-rommer.dark-mode .btn-share,
+    body.brand-rommer.dark-mode .rec-beta {
+        background-color: #A92028;
+        border-color: #A92028;
+        color: #fff;
+    }
+
+    body.brand-rommer.dark-mode .lk-rail-item.active svg {
+        color: #fff;
+    }
+
+    /* ======================================================================
+       ШРИФТЫ
+       ====================================================================== */
+    body.theme-brand {
+        background: var(--bg);
+        color: var(--text-main);
+    }
+
+    /* Inter прописан в style.css жёстко в нескольких местах — перекрываем их
+       поимённо. Листы проекта (ГОСТ-шрифты) задают семейство инлайн, их общий
+       селектор не трогает. У ROMMER основной шрифт — тот же Inter, правило
+       ничего не меняет; у STOUT — Roboto (файлы уже в fonts/, см. тему «магазин»). */
+    body.theme-brand,
+    body.theme-brand input,
+    body.theme-brand select,
+    body.theme-brand textarea,
+    body.theme-brand button,
+    body.theme-brand .step-val,
+    body.theme-brand .ai-parse-fab,
+    body.theme-brand .desktop-feedback-btn,
+    body.theme-brand .feedback-input,
+    body.theme-brand .feedback-textarea,
+    body.theme-brand .custom-dropdown-options,
+    body.theme-brand .custom-dropdown-options *,
+    body.theme-brand .city-search-input,
+    body.theme-brand .city-suggestions-dropdown,
+    body.theme-brand .city-suggestion-item {
+        font-family: var(--bt-font) !important;
+    }
+
+    /* Заголовки — акцидентный шрифт бренда (Roboto Condensed у STOUT, Jost у
+       ROMMER). Только название сметы, заголовки правой панели и окон: строки
+       таблицы, суммы в шапке и левую панель не трогаем — у двух шрифтов
+       разная высота строки и ширина, и при переключении бренда разметка
+       дёргалась. Название сметы стоит в своей строке с фиксированной
+       высотой строки, соседей не двигает. Кегли штатные. */
+    body.theme-brand .doc-title,
+    body.theme-brand .output-panel h2,
+    body.theme-brand .output-panel h3,
+    body.theme-brand .auth-modal-title,
+    body.theme-brand .lk-section-head h4 {
+        font-family: var(--bt-head-font) !important;
+        font-weight: var(--bt-head-weight);
+        letter-spacing: var(--bt-head-spacing);
+    }
+
+    /* ======================================================================
+       ЦВЕТА, ПРОПИСАННЫЕ В БАЗЕ ЧИСЛОМ — переводим на переменные бренда.
+       Форма (радиусы, тени, рамки, отступы) не трогается.
+       ====================================================================== */
+    body.theme-brand .control-card,
+    body.theme-brand .tabs,
+    body.theme-brand .mode-selector-tabs,
+    body.theme-brand .stepper {
+        background-color: var(--surface-light);
+    }
+
+    body.theme-brand .zone-card {
+        background: var(--surface);
+        border-color: var(--border);
+    }
+
+    body.theme-brand .btn-ctrl {
+        color: var(--text-sec);
+    }
+
+    /* Заголовки разделов сметы: в базе синие #EFF6FF / #1e3a8a под старый акцент */
+    body.theme-brand .group-header td {
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+
+    body.theme-brand .group-header td[style*="9CA3AF"] {
+        color: var(--text-sec) !important;
+    }
+
+    body.theme-brand .header-fill-bar-fill {
+        background: var(--bt-fill);
+    }
+
+    body.theme-brand .footer-btns .btn-primary-action:hover {
+        background-color: var(--bt-primary-hover);
+        border-color: var(--bt-primary-hover);
+        filter: none;
+    }
+
+    body.theme-brand .lk-rail-badge,
+    body.theme-brand .notif-tab-badge,
+    body.theme-brand .admin-chat-badge {
+        background: var(--bt-accent);
+    }
+
+    body.theme-brand .lk-nav-logout,
+    body.theme-brand .lk-nav-logout:hover {
+        color: var(--bt-danger);
+    }
+
+    /* Телефон: активный пункт нижней навигации — синий у STOUT, красный у
+       ROMMER (как «Продукция» в шапке rommer.ru) */
+    body.theme-brand .mob-nav-item.active {
+        color: var(--bt-nav-active);
+    }
+
+    body.theme-brand .mob-nav-item.active svg {
+        stroke: var(--bt-nav-active);
+    }
+
+    /* ======================================================================
+       ТЁМНАЯ ТЕМА ПОВЕРХ БРЕНДА — база тёмной темы пишет цвета числом
+       (#121212, #161616, #1E1E1E, #6366F1) с !important; возвращаем их к
+       переменным, чтобы синий STOUT и красный ROMMER жили и ночью.
+       ====================================================================== */
+    body.theme-brand.dark-mode {
+        scrollbar-color: var(--border) var(--bg);
+    }
+
+    body.theme-brand.dark-mode *::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    body.theme-brand.dark-mode *::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-color: var(--bg);
+    }
+
+    body.theme-brand.dark-mode .site-header {
+        background: var(--surface);
+        border-color: var(--border);
+    }
+
+    body.theme-brand.dark-mode .header-auth-block div[style*="border-right"] {
+        border-color: var(--border) !important;
+    }
+
+    body.theme-brand.dark-mode .control-card,
+    body.theme-brand.dark-mode .tabs,
+    body.theme-brand.dark-mode .doc-summary,
+    body.theme-brand.dark-mode .zone-card {
+        background: var(--surface-light) !important;
+        border-color: var(--border) !important;
+    }
+
+    body.theme-brand.dark-mode .tab.active,
+    body.theme-brand.dark-mode .stepper,
+    body.theme-brand.dark-mode .step-btn,
+    body.theme-brand.dark-mode .step-val,
+    body.theme-brand.dark-mode input[type="number"],
+    body.theme-brand.dark-mode .zone-input {
+        background: var(--surface);
+        color: var(--text-main);
+        border-color: var(--border);
+    }
+
+    body.theme-brand.dark-mode .tab.active {
+        color: var(--primary);
+    }
+
+    body.theme-brand.dark-mode .row-sec td {
+        background: var(--primary-light) !important;
+        color: var(--primary);
+        border-top-color: var(--border);
+    }
+
+    body.theme-brand.dark-mode .group-header td {
+        background-color: var(--surface-light) !important;
+        color: var(--primary);
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-brand.dark-mode .inv-table th {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-brand.dark-mode .inv-table td {
+        border-bottom-color: var(--surface-light);
+    }
+
+    body.theme-brand.dark-mode .info-card {
+        background: var(--primary-light);
+    }
+
+    body.theme-brand.dark-mode .mobile-bottom-nav {
+        background: var(--surface);
+        background: color-mix(in srgb, var(--surface) 82%, transparent);
+        border-top-color: var(--border);
+    }
+}
+
+/* ================== ПОДСКАЗКА «ИЗ ЧЕГО ЭКОНОМИЯ» ==================
+   Открывается кликом по плашке «Экономия N%» у переключателя «Аналог»
+   (app.toggleSavingsPopover), живёт внутри #cheaper_wrapper — он
+   position: relative. Цвета через переменные, тёмная тема сама. */
+.savings-pop {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    width: min(380px, calc(100vw - 24px));
+    z-index: 1200;
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    padding: 12px 14px;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.45;
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+    white-space: normal;
+    cursor: default;
+}
+
+.savings-pop .sp-head { font-size: 14px; font-weight: 800; margin-bottom: 2px; }
+.savings-pop .sp-sub { color: var(--text-sec); font-size: 11px; margin-bottom: 8px; }
+.savings-pop .sp-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 5px 0; border-top: 1px solid var(--border); }
+.savings-pop .sp-n { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 5px; border-radius: 9px; background: var(--surface-light); color: var(--text-sec); font-size: 10px; font-weight: 700; text-align: center; }
+.savings-pop .sp-save { color: #16A34A; white-space: nowrap; }
+.savings-pop .sp-cost { color: #DC2626; white-space: nowrap; }
+.savings-pop .sp-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-sec); font-weight: 700; margin: 10px 0 4px; }
+.savings-pop .sp-item { padding: 5px 0; border-top: 1px dashed var(--border); }
+.savings-pop .sp-from { font-weight: 600; }
+.savings-pop .sp-to { color: var(--text-sec); }
+.savings-pop .sp-sum { font-size: 11px; color: var(--text-sec); margin-top: 1px; }
+.savings-pop .sp-note { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: var(--note-info-bg, #EFF6FF); color: var(--note-info-text, #1E3A8A); font-size: 11px; line-height: 1.45; }
+.savings-pop .sp-foot { margin-top: 8px; font-size: 10.5px; color: var(--text-sec); }
+@media print { .savings-pop { display: none !important; } }
+
+/* ================== «ПОДЕШЕВЛЕ»: ВКЛАДКА «ОБОСНОВАНИЕ» И ПЕЧАТЬ ==================
+   Панель #panel_cheaper (app.renderCheaperPanel) и блок #cheaper_print — тот же
+   отчёт в компактном виде, на экране скрыт, печатается последней страницей КП
+   в варианте «Подешевле». Цвета через переменные, тёмная тема сама. */
+.cheaper-panel { font-size: 12.5px; line-height: 1.5; color: var(--text-main); }
+.cr-cards { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.cr-card { flex: 1 1 160px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.cr-card .cr-l { font-size: 11px; color: var(--text-sec); text-transform: uppercase; letter-spacing: .4px; }
+.cr-card .cr-v { font-size: 22px; font-weight: 800; margin-top: 4px; }
+.cr-card .cr-s { font-size: 11px; color: var(--text-sec); margin-top: 2px; }
+.cr-h { font-size: 13px; font-weight: 800; margin: 16px 0 6px; }
+.cr-title { font-size: 15px; font-weight: 800; margin: 0 0 8px; }
+.cr-line { font-size: 12px; margin-bottom: 6px; }
+.cr-scheme { padding: 10px 12px; border-left: 3px solid var(--primary); background: var(--surface-light); border-radius: 8px; margin-bottom: 8px; font-size: 12px; line-height: 1.5; }
+.cr-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cr-table th { text-align: left; font-size: 10.5px; text-transform: uppercase; letter-spacing: .03em; color: var(--text-sec); padding: 6px 8px; border-bottom: 1px solid var(--border); }
+.cr-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.cr-table tr.cr-sec td { background: var(--surface-light); font-weight: 700; }
+/* Артикул в столбцах «Было / Стало»: ссылка на поиск по сайту, на печати — текст */
+.cr-sku { display: inline-block; font-family: ui-monospace, Consolas, 'Roboto Mono', monospace; font-size: 11px; color: var(--text-sec); border: 1px solid var(--border); border-radius: 4px; padding: 0 5px; margin: 2px 0 0; text-decoration: none; white-space: nowrap; }
+a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
+.cr-save { color: #16A34A; white-space: nowrap; font-weight: 700; }
+.cr-cost { color: #DC2626; white-space: nowrap; font-weight: 700; }
+.cr-note { font-size: 11.5px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
+.cheaper-print { display: none; }
+@media print {
+    .cheaper-print { display: block; page-break-before: always; padding-top: 12px; font-size: 11px; color: #000; }
+    .cheaper-print .cr-scheme { border-left-color: #000; background: #f3f3f3; }
+    .cheaper-print .cr-table th, .cheaper-print .cr-table td { border-bottom: 1px solid #ccc; }
+    .cheaper-print .cr-table tr.cr-sec td { background: #eee; }
+    .cheaper-print .cr-note { color: #333; }
 }
