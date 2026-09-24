@@ -15328,16 +15328,15 @@ const app = {
         // --lk-scale, подобранный под обычное оформление, перестаёт годиться,
         // и нижние разделы («Админка», «Выйти») уходили за экран
         if (was !== on && this.fitRailToViewport) this.fitRailToViewport();
-        // Первое включение темы у этого человека — сразу ночной режим, даже если
-        // раньше он выбирал «авто» или «светлая» (владелец 24.09.2026: «по умолчанию
-        // чтобы всегда стояла сразу тёмная»). Дальше режим меняется руками как обычно;
-        // отметка в состоянии — чтобы не сбрасывать его выбор при каждой загрузке.
-        if (was !== on && on && !this.state.yandexDarkApplied) {
-            this.state.yandexDarkApplied = true;
-            this.state.themeMode = 'dark';
-            this.saveState();
-            this.applyTheme();
-        }
+        // Режим день/ночь тема не навязывает (25.09.2026; раньше первое
+        // включение записывало themeMode='dark' поверх выбора человека —
+        // метка yandexDarkApplied, убрана). Ночная по умолчанию осталась:
+        // пока человек сам ничего не выбирал, themeMode() под темой отдаёт
+        // 'dark'; явный выбор — «светлая», «авто» — уважается как есть.
+        // Прогоняем applyTheme, чтобы класс dark-mode пересчитался под новое
+        // умолчание сразу, без перезагрузки (рекурсия гаснет: повторный вызов
+        // syncYandexTheme придёт уже с was === on).
+        if (was !== on) this.applyTheme();
         // Цвет строки состояния на телефоне (PWA, вкладка Android)
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', !on ? '#2563EB' : (document.body.classList.contains('dark-mode') ? '#18181A' : '#FFFFFF'));
@@ -41848,7 +41847,7 @@ const app = {
     stateForLoadedEstimate: function (loaded) {
         const src = loaded || {};
         const base = JSON.parse(JSON.stringify(this._stateDefaults || {}));
-        ['darkMode', 'themeMode', 'uiTheme', 'yandexDarkApplied', 'showScheme'].forEach(k => { delete base[k]; });
+        ['darkMode', 'themeMode', 'uiTheme', 'showScheme'].forEach(k => { delete base[k]; });
         const next = { ...this.state, ...base, userAddedEq: [], userAddedWorks: [], swapQtyRatios: {}, ...src };
         // Метки конкретной сметы: нет в загружаемой — не должно остаться и от прежней
         ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress', 'kpVersions', 'kpVersion', 'priceSnapshot', 'copiedFrom'].forEach(k => {
@@ -42587,7 +42586,7 @@ const app = {
      * и оформление экрана. Всё остальное — параметры объекта, и они у дома и у
      * квартиры свои.
      */
-    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'uiTheme', 'yandexDarkApplied', 'tgUser', 'accountType',
+    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'uiTheme', 'tgUser', 'accountType',
                      'distributorId', 'distributorInfo', 'priceSource', 'showScheme'],
 
     /**
