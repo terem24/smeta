@@ -1751,6 +1751,96 @@
                 </div>
             </div>
 
+            <!-- Зональная автоматика по заявке: планка, термостаты проводные и радио,
+                 радиоголовки, сервоприводы и датчик улицы под уже стоящий контроллер
+                 котла. К тёплому полу не привязана — монтажник приносит список, а
+                 не дом. Состав считает app.getZoneAutoKit(), рамка — как у бойлера. -->
+            <div class="control-item toggle-item" id="blk_zone_auto_item">
+                <div class="label-row">
+                    <span class="lbl"
+                        title="Список по заявке: планка, термостаты проводные и радио, радиоголовки на радиаторы, сервоприводы на коллектор, датчик улицы в контроллер котла. STOUT по умолчанию; ENGO — когда нужны радиотермостаты к планке.">Зональная автоматика (по заявке)</span>
+                    <label class="switch"><input type="checkbox" id="chk_zone_auto"
+                            onchange="app.toggleZoneAuto(this.checked, event)"><span class="slider"></span></label>
+                </div>
+                <div id="blk_zone_auto_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div>
+                        <span class="lbl-sub" style="margin-bottom:6px;">Система</span>
+                        <div class="tabs" style="font-size:11px;">
+                            <div class="tab zone-sys-tab active" data-sys="auto" id="tab_zone_sys_auto" onclick="app.setZoneAutoSys('auto')">Авто: STOUT</div>
+                            <div class="tab zone-sys-tab" data-sys="stout" onclick="app.setZoneAutoSys('stout')">STOUT</div>
+                            <div class="tab zone-sys-tab" data-sys="engo" onclick="app.setZoneAutoSys('engo')">ENGO</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Термостаты проводные</span>
+                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('wired', -1)">−</button>
+                            <div class="step-val editable-val" id="val_zone_wired" contenteditable="true"
+                                onblur="app.setZoneAutoQty('wired', this.innerText)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
+                            <button class="step-btn" onclick="app.updZoneAutoQty('wired', 1)">+</button>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;" title="К планке по радио. У STOUT таких нет — система переключится на ENGO.">Термостаты радио</span>
+                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('radio', -1)">−</button>
+                            <div class="step-val editable-val" id="val_zone_radio" contenteditable="true"
+                                onblur="app.setZoneAutoQty('radio', this.innerText)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
+                            <button class="step-btn" onclick="app.updZoneAutoQty('radio', 1)">+</button>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;" title="Радиоголовки на радиаторные клапаны M30x1,5.">Радиоголовки на радиаторы</span>
+                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('heads', -1)">−</button>
+                            <div class="step-val editable-val" id="val_zone_heads" contenteditable="true"
+                                onblur="app.setZoneAutoQty('heads', this.innerText)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
+                            <button class="step-btn" onclick="app.updZoneAutoQty('heads', 1)">+</button>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;" title="Термоэлектрические приводы 230 В NC на клапаны коллектора.">Сервоприводы на коллектор</span>
+                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('servos', -1)">−</button>
+                            <div class="step-val editable-val" id="val_zone_servos" contenteditable="true"
+                                onblur="app.setZoneAutoQty('servos', this.innerText)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
+                            <button class="step-btn" onclick="app.updZoneAutoQty('servos', 1)">+</button>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;"
+                            title="Подключается к контроллеру котла, который уже стоит у клиента, а не к планке.">Датчик наружного воздуха</span>
+                        <label class="switch" style="transform:scale(0.8); transform-origin:right;">
+                            <input type="checkbox" id="chk_zone_outdoor" onchange="app.toggleZoneAutoFlag('outdoor', this.checked)"><span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="blk_zone_ctrl" style="display:none;">
+                        <span class="lbl-sub" style="margin-bottom:6px;">Контроллер котла у клиента</span>
+                        <div class="tabs" style="font-size:11px;">
+                            <div class="tab zone-ctrl-tab active" data-ctrl="myheat" onclick="app.setZoneAutoCtrl('myheat')">MyHeat</div>
+                            <div class="tab zone-ctrl-tab" data-ctrl="thermatic" onclick="app.setZoneAutoCtrl('thermatic')">Thermatic</div>
+                            <div class="tab zone-ctrl-tab" data-ctrl="other" onclick="app.setZoneAutoCtrl('other')">Другой</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;"
+                            title="ENGO: шлюз EGATEZB и приложение ENGO Smart. STOUT: в телефон выходят только Zigbee-головки через свой шлюз.">Управление с телефона</span>
+                        <label class="switch" style="transform:scale(0.8); transform-origin:right;">
+                            <input type="checkbox" id="chk_zone_phone" onchange="app.toggleZoneAutoFlag('phone', this.checked)"><span class="slider"></span>
+                        </label>
+                    </div>
+                    <div>
+                        <span class="lbl-sub" style="margin-bottom:6px;">Цвет приборов</span>
+                        <div class="tabs" style="font-size:11px;">
+                            <div class="tab zone-color-tab active" data-color="white" onclick="app.setZoneAutoColor('white')">Белый</div>
+                            <div class="tab zone-color-tab" data-color="black" onclick="app.setZoneAutoColor('black')">Чёрный</div>
+                        </div>
+                    </div>
+                    <div id="blk_zone_auto_info" style="display:none; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
+                </div>
+            </div>
+
             <div class="control-item toggle-item" id="blk_hw_wrap">
                 <div class="label-row" id="blk_hw_row"><span class="lbl" id="lbl_hw">Горячая вода (Бойлер)</span><label class="switch"><input
                             type="checkbox" id="chk_hw" onchange="app.toggleHW(this.checked, event)"><span

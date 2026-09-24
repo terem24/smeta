@@ -1150,6 +1150,19 @@ const WORK_PRICE_CATALOG = [
     { name: "Монтаж закладной для датчика пола", unit: "шт", price: 1000, group: "1.4 Автоматика для теплого пола" },
     { name: "Прокладка провода на термостаты", unit: "м.п.", price: 100, group: "1.4 Автоматика для теплого пола" },
 
+    // 1.8 Зональная автоматика по заявке (раздел 4.5 сметы). Своя группа, а не
+    // «1.4 Автоматика для теплого пола»: та считает сервоприводы и головки по
+    // всей смете, и общие имена дали бы двойной счёт.
+    { name: "Монтаж планки зональной автоматики", unit: "шт", price: 5000, group: "1.8 Зональная автоматика" },
+    { name: "Монтаж проводного термостата", unit: "шт", price: 4500, group: "1.8 Зональная автоматика" },
+    { name: "Монтаж радиотермостата", unit: "шт", price: 2500, group: "1.8 Зональная автоматика" },
+    { name: "Монтаж радиоголовки на радиатор", unit: "шт", price: 1000, group: "1.8 Зональная автоматика" },
+    { name: "Монтаж сервопривода на коллектор", unit: "шт", price: 1000, group: "1.8 Зональная автоматика" },
+    { name: "Монтаж и настройка шлюза Zigbee", unit: "шт", price: 2500, group: "1.8 Зональная автоматика" },
+    { name: "Монтаж датчика наружной температуры", unit: "шт", price: 2500, group: "1.8 Зональная автоматика" },
+    { name: "Прокладка провода к проводным термостатам", unit: "м.п.", price: 100, group: "1.8 Зональная автоматика" },
+    { name: "Пусконаладка зональной автоматики", unit: "компл", price: 6000, group: "1.8 Зональная автоматика" },
+
     // 1.4 Электрический тёплый пол (квартирный расчёт)
     { name: "Монтаж нагревательного мата", unit: "м²", price: 900, group: "1.4 Электрический тёплый пол" },
     { name: "Установка терморегулятора тёплого пола", unit: "шт", price: 2500, group: "1.4 Электрический тёплый пол" },
@@ -2199,6 +2212,52 @@ const catalog = {
         { id: "RTE-0020-230001", name: "Сервопривод с поворотным фиксатором штока НЗ, 230В", price: 1163, brand: "ROMMER", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-09-23" }
     ],
     wiring_center: { id: "STE-3050-650522", name: "Проводной контроллер", price: 8191, availability: "in_stock", price_date: "2026-09-23" },
+    // Зональная автоматика по заявке (раздел 4.5, app.getZoneAutoKit): планка,
+    // термостаты, радиоголовки, сервоприводы, датчик улицы — то, что монтажник
+    // просит списком под уже стоящий контроллер котла. STOUT идёт по умолчанию,
+    // но радиотермостата к планке у него нет: STE-3050 только проводная, а
+    // Zigbee-головки живут со своим шлюзом и телефоном. Поэтому вторая система —
+    // ENGO (лист ENGO прайса ТЕРЕМ, цены 09.09.2026, в прайсе STOUT её нет).
+    // TECH под артикулами STE-0101 снят с поставок — в подбор не берём.
+    // Что с чем стыкуется (документация ENGO, сверено 24.09.2026):
+    //   ECB62-ZB — 2 проводные зоны (любой термостат 230 В или сухой контакт) и
+    //   6 зон Zigbee только под E25/EONE; до 50 приводов 230 В NC, до 6 на зону;
+    //   термостаты привязываются к планке напрямую, шлюз нужен телефону.
+    //   ETRV — только в паре с E25 (до 6 голов на один) и только через шлюз EGATEZB.
+    zone_engo: {
+        bar: { id: "ECB62-ZB", name: "Центр коммутации ENGO ECB62-ZB: 6 зон Zigbee + 2 проводные, 230 В", price: 34500, brand: "ENGO", unit: "шт", zonesWired: 2, zonesRadio: 6, maxActuators: 50, availability: "in_stock", price_date: "2026-09-09" },
+        gateway: { id: "EGATEZB", name: "Шлюз интернет Zigbee ENGO EGATEZB", price: 33925, brand: "ENGO", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        repeater: { id: "EREPEATER", name: "Репитер Zigbee ENGO (вилка)", price: 5800, brand: "ENGO", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        wired: [
+            { id: "ESIMPLE-230W", name: "Терморегулятор проводной ENGO SIMPLE, 230 В, белый", price: 7500, brand: "ENGO", unit: "шт", color: "white", prog: false, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "ESIMPLE-230B", name: "Терморегулятор проводной ENGO SIMPLE, 230 В, чёрный", price: 7500, brand: "ENGO", unit: "шт", color: "black", prog: false, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "EASY-230W", name: "Терморегулятор проводной программируемый ENGO EASY, 230 В, белый", price: 11500, brand: "ENGO", unit: "шт", color: "white", prog: true, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "EASY-230B", name: "Терморегулятор проводной программируемый ENGO EASY, 230 В, чёрный", price: 11500, brand: "ENGO", unit: "шт", color: "black", prog: true, availability: "in_stock", price_date: "2026-09-09" }
+        ],
+        // heads: true — термостат умеет быть хозяином радиоголовок ETRV (только E25).
+        radio: [
+            { id: "E25-BATW", name: "Терморегулятор беспроводной ENGO E25 Zigbee, батарейки, белый", price: 19300, brand: "ENGO", unit: "шт", color: "white", power: "bat", heads: true, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "E25-BATB", name: "Терморегулятор беспроводной ENGO E25 Zigbee, батарейки, чёрный", price: 19300, brand: "ENGO", unit: "шт", color: "black", power: "bat", heads: true, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "E25-230W", name: "Терморегулятор беспроводной ENGO E25 Zigbee, 230 В, белый", price: 19300, brand: "ENGO", unit: "шт", color: "white", power: "230", heads: true, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "E25-230B", name: "Терморегулятор беспроводной ENGO E25 Zigbee, 230 В, чёрный", price: 19300, brand: "ENGO", unit: "шт", color: "black", power: "230", heads: true, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "EONE-BATW", name: "Терморегулятор беспроводной ENGO ONE Zigbee, аккумулятор, датчик влажности, белый", price: 27200, brand: "ENGO", unit: "шт", color: "white", power: "bat", heads: false, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "EONE-BATB", name: "Терморегулятор беспроводной ENGO ONE Zigbee, аккумулятор, датчик влажности, чёрный", price: 27200, brand: "ENGO", unit: "шт", color: "black", power: "bat", heads: false, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "EONE-230W", name: "Терморегулятор ENGO ONE Zigbee, 230 В, датчик влажности, белый", price: 27200, brand: "ENGO", unit: "шт", color: "white", power: "230", heads: false, availability: "in_stock", price_date: "2026-09-09" },
+            { id: "EONE-230B", name: "Терморегулятор ENGO ONE Zigbee, 230 В, датчик влажности, чёрный", price: 27200, brand: "ENGO", unit: "шт", color: "black", power: "230", heads: false, availability: "in_stock", price_date: "2026-09-09" }
+        ],
+        heads: [
+            { id: "ETRV-M30", name: "Радиоголовка термостатическая ENGO ETRV Zigbee, M30x1,5, батарейки, белая", price: 10800, brand: "ENGO", unit: "шт", thread: "M30", availability: "in_stock", price_date: "2026-09-09" },
+            { id: "ETRV-M28", name: "Радиоголовка термостатическая ENGO ETRV Zigbee, M28x1,5, батарейки, белая", price: 10800, brand: "ENGO", unit: "шт", thread: "M28", availability: "in_stock", price_date: "2026-09-09" }
+        ],
+        actuator: { id: "E30NC-230", name: "Сервопривод термоэлектрический ENGO, NC, M30x1,5, 230 В", price: 3950, brand: "ENGO", unit: "шт", type: "nc", voltage: 230, availability: "in_stock", price_date: "2026-09-09" }
+    },
+    // Датчик наружной температуры для контроллера котла, который уже стоит у
+    // клиента. У STOUT такого нет: датчики SMH-… работают только с Thermatic.
+    // MyHeat — лист MY HEAT прайса ТЕРЕМ (09.09.2026).
+    zone_outdoor: {
+        myheat: { id: "6275", name: "Радиодатчик температуры уличный MyHeat", price: 5890, brand: "MyHeat", unit: "шт", availability: "in_stock", price_date: "2026-09-09" },
+        myheat_wired: { id: "6320", name: "Датчик температуры проводной MyHeat NTC 10K, в колбе", price: 3190, brand: "MyHeat", unit: "шт", availability: "in_stock", price_date: "2026-09-09" }
+    },
     // Кабель к автоматике тёплого пола. В прайсе STOUT его нет — это
     // электромонтажный материал, цены ориентировочные и подлежат уточнению
     // у поставщика. Отдельная позиция на каждое назначение: одна и та же
