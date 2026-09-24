@@ -43411,7 +43411,9 @@ const app = {
         if (kRiser) kRiser.checked = !!this.state.flatKitchenRiser;
         // В квартире вводов два — холодный и горячий, поэтому «ХВС» в подписи
         // было бы неправдой.
-        const wLbl = document.getElementById('lbl_water_input');
+        // Пишем в текстовый span внутри подписи: у самой подписи есть значок «i»,
+        // и textContent на ней стирал бы его.
+        const wLbl = document.getElementById('lbl_water_input_txt') || document.getElementById('lbl_water_input');
         if (wLbl) wLbl.textContent = (type === 'flat') ? 'Узел ввода воды' : 'Узел ввода ХВС';
         // Этаж один — «1 этаж» в подписи площади тёплого пола было бы лишним
         const tpLbl = document.getElementById('lbl_tp1');
@@ -45744,9 +45746,12 @@ const app = {
         const boiler = (this.currentSpec || [])
             .map(i => _pool.find(b => b.id === i.id) || _pool.find(b => b.id === i.originalId))
             .find(Boolean);
-        if (!boiler) { note.innerHTML = 'Длина считается эквивалентной: прямые участки плюс отводы (90° = 1 м, 45° = 0,5 м).'; return; }
+        // Описания систем — в той же подсказке: у кнопок своих подсказок нет.
+        const sysTip = `<div class="tip-p"><b>Коаксиальный.</b> «Труба в трубе»: по внутренней уходит дым, по внешней приходит воздух.</div>` +
+            `<div class="tip-p"><b>Раздельный D80.</b> Две трубы Ø80 вместо «трубы в трубе». Нужен там, где коаксиал не проходит по длине.</div>`;
+        if (!boiler) { note.innerHTML = 'Длина считается эквивалентной: прямые участки плюс отводы (90° = 1 м, 45° = 0,5 м).' + sysTip; return; }
         const r = this.buildChimney(boiler, this.chimneyKitFor(boiler));
-        if (!r) { note.innerHTML = ''; if (noteWrap) noteWrap.style.display = 'none'; return; }
+        if (!r) { note.innerHTML = sysTip; return; }
         const tight = r.eqLen > r.limit.max;
         // Первой строкой — что уже входит в комплект. Без неё поле «Доп. отводы: 0»
         // читается как «отводов нет вовсе», хотя отвод 90° лежит внутри готового
@@ -45758,7 +45763,8 @@ const app = {
             `Эквивалентная длина <b>${String(r.eqLen).replace('.', ',')} м</b> при пределе <b>${r.limit.max} м</b>` +
             (r.limit.exact ? '' : ' (по типу котла, сверьтесь с паспортом)') +
             `, дымоход ${r.dn}.` +
-            (tight ? ` <span style="color:#EF4444; font-weight:700;">Не проходит.</span>` : '');
+            (tight ? ` <span style="color:#EF4444; font-weight:700;">Не проходит.</span>` : '') +
+            sysTip;
     },
     // Стоимость обвязки одного газового котла: дымоход, стабилизатор, фильтр,
     // американки, краны, а в каскаде ещё и обратный клапан. Нужна подбору — каждый
@@ -56325,7 +56331,13 @@ const app = {
     // строки (быстрый режим, нет радиаторов, нет пола) — иначе висел бы пустой
     // заголовок.
     FINE_TUNE_KEY: 'heatcalc_fine_tune',
-    FINE_TUNE_ROWS: { boiler: ['blk_boiler_dt'], rad: ['lbl_rad_regime', 'blk_rad_regime'], ufh: ['blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'] },
+    FINE_TUNE_ROWS: {
+        boiler: ['blk_boiler_dt'],
+        rad: ['lbl_rad_regime', 'blk_rad_regime'],
+        ufh: ['blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'],
+        hw: ['blk_tank_pump_wrap'],
+        snow: ['blk_snow_pipe_row']
+    },
     fineTuneOpen: function () {
         try { return JSON.parse(localStorage.getItem(this.FINE_TUNE_KEY) || '{}') || {}; } catch (e) { return {}; }
     },
@@ -56344,6 +56356,8 @@ const app = {
             const two = s.floors === 2 && (parseFloat(s.tp2) || 0) > 0 && s.ufhStep2 !== s.ufhStep1;
             return `шаг ${two ? `${s.ufhStep1}/${s.ufhStep2}` : s.ufhStep1} мм, перепад ${dt ? dt + ' K' : 'авто'}`;
         }
+        if (key === 'hw') return this.tankLoadSchemeEff() === 'pump' ? 'загрузка насосной группой' : 'загрузка 3-ходовым клапаном';
+        if (key === 'snow') return s.snowPipe === 'thick' ? 'труба 20×2.8' : 'труба 20×2.0';
         return '';
     },
     syncFineTune: function () {

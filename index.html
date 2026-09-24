@@ -162,7 +162,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=3.97">
+    <link rel="stylesheet" href="style.css?v=3.98">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.21" defer></script>
@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.35" defer></script>
+    <script src="app.js?v=9.36" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1157,182 +1157,6 @@
                 </div>
             </div>
 
-            <!-- Во сколько обойдётся отопление электричеством. Условия те же, что
-                 у ограничения мощности: подробный режим и включённый электрокотёл
-                 (app.syncUI). Таблицу собирает app.renderElCostUI(). -->
-            <div class="control-item" id="blk_el_cost" style="display:none;">
-                <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления ⚡<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Один тариф.</b> Один тариф круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночная зона 23:00–07:00 по своей цене.</div></div></span></span>
-                    <label class="switch"><input type="checkbox" id="chk_el_cost"
-                            onchange="app.toggleElCost(this.checked)"><span class="slider"></span></label>
-                </div>
-                <!-- Тарифы и таблица — подпункты тумблера, как у «Автоматики котельной»:
-                     пока прогноз выключен, в панели остаётся одна строка. -->
-                <div id="blk_el_cost_box"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div class="tabs" style="font-size:11px;">
-                        <div class="tab el-tariff-mode-tab" data-tmode="single"
-                            onclick="app.setElTariffMode('single')">Один тариф</div>
-                        <div class="tab el-tariff-mode-tab" data-tmode="day_night"
-                            onclick="app.setElTariffMode('day_night')">День-ночь</div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;" id="lbl_el_tariff_day">Тариф, ₽/кВт·ч</span>
-                        <div style="position:relative; display:inline-flex; align-items:center;">
-                            <!-- 124px, а не 110: в тарифах четыре знака («26.0»), и в
-                                 стандартную ширину степпера значение не влезает — переносится
-                                 на вторую строку. -->
-                            <div class="stepper" style="width:124px;">
-                                <button class="step-btn" onclick="app.updElTariff(-1)">−</button>
-                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff"
-                                    contenteditable="true"
-                                    onfocus="app.showElTariffSlider('day', event)"
-                                    onclick="app.showElTariffSlider('day', event)"
-                                    onblur="app.setElTariff(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">6.0</div>
-                                <button class="step-btn" onclick="app.updElTariff(1)">+</button>
-                            </div>
-                            <div class="el-tariff-slider-container" id="el_tariff_slider_box"
-                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                onclick="event.stopPropagation();">
-                                <input type="range" id="inp_el_tariff" min="1" max="20" step="0.1" value="6"
-                                    oninput="app.setElTariff(this.value, true)"
-                                    onchange="app.setElTariff(this.value)"
-                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                <span
-                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                    onclick="document.getElementById('el_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="blk_el_tariff_night"
-                        style="display:none; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;">Ночь (23–07), ₽/кВт·ч</span>
-                        <div style="position:relative; display:inline-flex; align-items:center;">
-                            <div class="stepper" style="width:124px;">
-                                <button class="step-btn" onclick="app.updElTariffNight(-1)">−</button>
-                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff_night"
-                                    contenteditable="true"
-                                    onfocus="app.showElTariffSlider('night', event)"
-                                    onclick="app.showElTariffSlider('night', event)"
-                                    onblur="app.setElTariffNight(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">3.0</div>
-                                <button class="step-btn" onclick="app.updElTariffNight(1)">+</button>
-                            </div>
-                            <div class="el-tariff-slider-container" id="el_tariff_night_slider_box"
-                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                onclick="event.stopPropagation();">
-                                <input type="range" id="inp_el_tariff_night" min="1" max="20" step="0.1" value="3"
-                                    oninput="app.setElTariffNight(this.value, true)"
-                                    onchange="app.setElTariffNight(this.value)"
-                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                <span
-                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                    onclick="document.getElementById('el_tariff_night_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Видно только когда тариф правили руками: иначе кнопка сброса
-                         ничего не сбрасывает и только путает. Та же логика, что у газа. -->
-                    <div id="el_tariff_region_row" style="display:none; text-align:right;">
-                        <span onclick="app.resetElTariff()"
-                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
-                            тариф региона</span>
-                    </div>
-
-                    <div id="el_cost_body"></div>
-                </div>
-            </div>
-                </div>
-            </div>
-
-            <!-- Стоимость отопления газом. Устроено как блок по электричеству, но
-                 переключатель другой: магистральный газ считается по тарифу региона
-                 (GAS_TARIFF_RU в catalog.js, подставляется по выбранному городу),
-                 сжиженный тарифом не регулируется и задаётся руками. -->
-            <div class="control-item toggle-item" id="blk_gas_cost" style="display:none;">
-                <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления 🔥<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход в кубометрах или литрах и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов. Тарифом не регулируется — цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы. Тариф устанавливает регион, подставляется по выбранному городу.</div></div></span></span>
-                    <label class="switch"><input type="checkbox" id="chk_gas_cost"
-                            onchange="app.toggleGasCost(this.checked)"><span class="slider"></span></label>
-                </div>
-                <div id="blk_gas_cost_box"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div class="tabs" style="font-size:11px;">
-                        <div class="tab gas-tariff-mode-tab" data-gmode="lpg"
-                            onclick="app.setGasTariffMode('lpg')">Сжиженный</div>
-                        <div class="tab gas-tariff-mode-tab" data-gmode="main"
-                            onclick="app.setGasTariffMode('main')">Магистральный</div>
-                    </div>
-
-                    <div id="blk_gas_tariff_main" style="flex-direction:column; gap:4px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;">Тариф, ₽/м³</span>
-                            <div style="position:relative; display:inline-flex; align-items:center;">
-                                <div class="stepper" style="width:124px;">
-                                    <button class="step-btn" onclick="app.updGasTariff(-1)">−</button>
-                                    <div class="step-val editable-val gas-tariff-val" id="val_gas_tariff"
-                                        contenteditable="true"
-                                        onfocus="app.showGasTariffSlider('main', event)"
-                                        onclick="app.showGasTariffSlider('main', event)"
-                                        onblur="app.setGasTariff(this.innerText)"
-                                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">8.50</div>
-                                    <button class="step-btn" onclick="app.updGasTariff(1)">+</button>
-                                </div>
-                                <div class="gas-tariff-slider-container" id="gas_tariff_slider_box"
-                                    style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                    onclick="event.stopPropagation();">
-                                    <input type="range" id="inp_gas_tariff" min="3" max="20" step="0.01" value="8.5"
-                                        oninput="app.setGasTariff(this.value, true)"
-                                        onchange="app.setGasTariff(this.value)"
-                                        style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                    <span
-                                        style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                        onclick="document.getElementById('gas_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Видно только когда тариф правили руками: иначе кнопка сброса
-                             ничего не сбрасывает и только путает. -->
-                        <div id="gas_tariff_region_row" style="display:none; text-align:right;">
-                            <span onclick="app.resetGasTariff()"
-                                style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
-                                тариф региона</span>
-                        </div>
-                    </div>
-
-                    <div id="blk_gas_tariff_lpg" style="display:none; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;">Цена, ₽/л</span>
-                        <div style="position:relative; display:inline-flex; align-items:center;">
-                            <div class="stepper" style="width:124px;">
-                                <button class="step-btn" onclick="app.updLpgTariff(-1)">−</button>
-                                <div class="step-val editable-val gas-tariff-val" id="val_gas_lpg" contenteditable="true"
-                                    onfocus="app.showGasTariffSlider('lpg', event)"
-                                    onclick="app.showGasTariffSlider('lpg', event)"
-                                    onblur="app.setLpgTariff(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">26.0</div>
-                                <button class="step-btn" onclick="app.updLpgTariff(1)">+</button>
-                            </div>
-                            <div class="gas-tariff-slider-container" id="gas_lpg_slider_box"
-                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                onclick="event.stopPropagation();">
-                                <input type="range" id="inp_gas_lpg" min="10" max="60" step="0.5" value="26"
-                                    oninput="app.setLpgTariff(this.value, true)"
-                                    onchange="app.setLpgTariff(this.value)"
-                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                <span
-                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                    onclick="document.getElementById('gas_lpg_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="gas_cost_body"></div>
                 </div>
             </div>
 
@@ -1351,16 +1175,13 @@
                 style="display:none; position:relative; border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
                 <!-- Подпись о длине трассы спрятана под «i»: position:relative у блока
                      нужен .tip-panel-wrap, иначе подсказка не появится. -->
-                <span class="lbl" style="display:flex; align-items:center; gap:4px; margin-bottom: 6px;"
-                    title="Трасса дымохода: по ней подбираются удлинители, отводы и крепёж, а эквивалентная длина сверяется с пределом котла.">Дымоход<span
+                <span class="lbl" style="display:flex; align-items:center; gap:4px; margin-bottom: 6px;">Дымоход<span
                         class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap"><i class="info-icon" tabindex="0"
                             role="button" aria-label="Подробнее">i</i>
                         <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
                 <div class="tabs" style="margin-bottom: 6px;">
-                    <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')"
-                        title="Коаксиальный: «труба в трубе», по внутренней уходит дым, по внешней приходит воздух.">Коаксиальный</div>
-                    <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')"
-                        title="Раздельная система: две трубы Ø80 вместо «трубы в трубе». Нужна там, где коаксиал не проходит по длине.">Раздельный D80</div>
+                    <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')">Коаксиальный</div>
+                    <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')">Раздельный D80</div>
                 </div>
                 <div class="tabs" style="margin-bottom: 10px;">
                     <div class="tab" id="chim_exit_wall" onclick="app.setChimneyExit('wall')">Через стену</div>
@@ -1662,13 +1483,22 @@
                             </div>
                         </div>
                     </div>
-                    <div id="blk_tank_pump_wrap" style="border-top:1px solid #E5E7EB; padding-top:8px;">
-                        <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Загрузка
-                                бойлера насосной группой<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">По умолчанию бойлер греется через переключающий 3-х ходовой клапан Fugas (на время нагрева бойлера отопление отключается). Насосная группа греет бойлер параллельно с отоплением, не отключая его.</div></span></span><label class="switch"
-                                style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
-                                    id="chk_tank_pump" onchange="app.toggleTankLoadScheme(this.checked, event)"><span
-                                    class="slider"></span></label>
+                    <div class="fine-tune" id="ft_hw">
+                        <div class="fine-tune-head" onclick="app.toggleFineTune('hw')" role="button" tabindex="0">
+                            <span class="fine-tune-title">Тонкая настройка</span>
+                            <span class="fine-tune-sum" id="ft_hw_sum"></span>
+                            <span class="fine-tune-arrow">▸</span>
+                        </div>
+                        <div class="fine-tune-body" id="ft_hw_body" style="display:none;">
+                        <div id="blk_tank_pump_wrap" style="padding-top:2px;">
+                            <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Загрузка
+                                    бойлера насосной группой<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">По умолчанию бойлер греется через переключающий 3-х ходовой клапан Fugas (на время нагрева бойлера отопление отключается). Насосная группа греет бойлер параллельно с отоплением, не отключая его.</div></span></span><label class="switch"
+                                    style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
+                                        id="chk_tank_pump" onchange="app.toggleTankLoadScheme(this.checked, event)"><span
+                                        class="slider"></span></label>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -1735,8 +1565,8 @@
             </div>
 
             <div class="control-item toggle-item">
-                <div class="label-row" id="blk_water_input_row">
-                    <span class="lbl" id="lbl_water_input">Узел ввода ХВС</span>
+                <div class="label-row" id="blk_water_input_row" style="position:relative;">
+                    <span class="lbl" id="lbl_water_input" style="display:flex; align-items:center; gap:4px;"><span id="lbl_water_input_txt">Узел ввода ХВС</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Что входит в узел и за что отвечает каждый переключатель.<div class="tip-p"><b>Редуктор давления.</b> Держит в доме постоянное давление 3–4 бара независимо от магистрали. Ночные скачки выше 6 бар рвут гибкую подводку.</div><div class="tip-p"><b>Счётчик воды.</b> Учёт воды из городской сети. На скважине не нужен.</div><div class="tip-p"><b>Защита от протечки.</b> Датчики на полу плюс краны с электроприводом на вводе: поймав воду, система перекрывает её за несколько секунд.</div><div class="tip-p"><b>Монтажный каркас.</b> Узел собирается на двух сантехнических шинах, а не по месту на стене: снимается и обслуживается целиком.</div><div class="tip-p"><b>Подпитка отопления.</b> <b>Ручная.</b> Кран с заглушкой: доливать давление вручную.<div class="tip-p"><b>Авто.</b> Автоматический подпиточный клапан: держит заданное давление сам. Если в смете есть контроллер отопления, к нему добавится датчик давления с оповещением.</div></div></div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_water_input"
                         onchange="app.toggleWaterInput(this.checked, event)"><span class="slider"></span></label>
                 </div>
@@ -1783,7 +1613,7 @@
                         </div>
                     </div>
                     <div id="blk_water_reducer_row" style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Редуктор давления<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Держит в доме постоянное давление 3–4 бара независимо от магистрали. Ночные скачки выше 6 бар рвут гибкую подводку.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Редуктор давления</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_reducer" onchange="app.toggleState('waterReducer', this.checked)">
                             <span class="slider"></span>
@@ -1791,14 +1621,14 @@
                     </div>
                     <div id="blk_water_meter_row"
                         style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Счётчик воды<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Учёт воды из городской сети. На скважине не нужен.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Счётчик воды</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_meter" onchange="app.toggleState('waterMeter', this.checked)">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Защита от протечки<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Датчики на полу плюс краны с электроприводом на вводе: поймав воду, система перекрывает её за несколько секунд.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Защита от протечки</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_leak_guard" onchange="app.toggleState('waterLeakGuard', this.checked)">
                             <span class="slider"></span>
@@ -1806,7 +1636,7 @@
                     </div>
                     <div id="blk_water_frame_row"
                         style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Монтажный каркас<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Узел собирается на двух сантехнических шинах, а не по месту на стене: снимается и обслуживается целиком.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Монтажный каркас</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_frame" onchange="app.toggleState('waterFrame', this.checked)">
                             <span class="slider"></span>
@@ -1814,7 +1644,7 @@
                     </div>
                     <div id="blk_heating_feed_row" style="padding:6px 0; border-top:1px solid var(--border);">
                         <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Подпитка отопления<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Ручная.</b> Кран с заглушкой: доливать давление вручную.<div class="tip-p"><b>Авто.</b> Автоматический подпиточный клапан: держит заданное давление сам. Если в смете есть контроллер отопления, к нему добавится датчик давления с оповещением.</div></div></span></span>
+                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Подпитка отопления</span>
                             <label class="switch">
                                 <input type="checkbox" id="chk_heating_feed" onchange="app.toggleState('heatingFeed', this.checked)">
                                 <span class="slider"></span>
@@ -1890,13 +1720,15 @@
                 <!-- Заголовок без тумблера: свой был лишним — он только показывал два
                      тумблера ниже, а в смете ничего не менял (замечание владельца 24.09.2026). -->
                 <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Контроллер котельной STOUT Thermatic и зональная автоматика: планка, термостаты, сервоприводы, радиоголовки. Включается, когда системы дома уже заданы.</div></span></span>
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Автоматизация уже подобранных систем: контроллер котельной и зональное управление радиаторами и тёплым полом.</div></span></span>
                 </div>
-                <div id="blk_auto_box" style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
-                <div class="control-item toggle-item" id="blk_boiler_auto_item">
-                    <div class="label-row" style="position:relative;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика
-                            котельной<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Контроллер STOUT Thermatic: держит температуру по погоде, управляет котлами, бойлером и рециркуляцией, доступен с телефона через интернет. Прибор — 1002 или 3001 — выбирается ниже, по составу котельной.</div></span></span>
+                <!-- Подпункты — вложенные строки под заголовком «Автоматика»: без своих
+                     пунктиров и отступов пункта панели, с левой линией и короткими
+                     подписями, чтобы слово «Автоматика» не повторялось трижды. -->
+                <div id="blk_auto_box" style="display:flex; flex-direction:column; gap:10px; margin-top:8px; padding-left:12px; border-left:2px solid #E5E7EB;">
+                <div class="control-item" id="blk_boiler_auto_item" style="margin-bottom:0;">
+                    <div class="label-row" style="position:relative; margin-bottom:0;">
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Котельная<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Контроллер котельной: держит температуру по погоде, управляет котлами, бойлером и рециркуляцией, доступен с телефона. Модель подбирается по составу котельной.</div></span></span>
                         <label class="switch"><input type="checkbox" id="chk_boiler_auto"
                                 onchange="app.toggleBoilerAuto(this.checked, event)"><span class="slider"></span></label>
                     </div>
@@ -1915,7 +1747,7 @@
                                  висела бы по верхнему краю рамки. Так же и в блоке
                                  «Горячая вода»: разделители идут только между пунктами. -->
                             <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
-                                <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Протечка через контроллер<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Не путать с защитой в узле ввода ХВС: там автономный блок, здесь датчик протечки на вход контроллера и шаровой зональный кран STOUT с сервоприводом на вводе. Сработал датчик — вода перекрыта, ушло оповещение.</div></span></span>
+                                <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Протечка через контроллер<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Не путать с защитой в узле ввода ХВС: там автономный блок, здесь датчик протечки на вход контроллера и шаровой кран с электроприводом на вводе. Сработал датчик — вода перекрыта, ушло оповещение.</div></span></span>
                                 <label class="switch" style="transform:scale(0.8); transform-origin:right;">
                                     <input type="checkbox" id="chk_leak_protect" onchange="app.toggleLeakProtect(this.checked, event)"><span class="slider"></span>
                                 </label>
@@ -1984,9 +1816,9 @@
                      сервоприводы на коллектор, радиоголовки на радиаторы. При тёплом
                      поле термостаты и приводы считаются из дома и правятся руками,
                      без пола вводятся руками или из заявки. Состав — app.getZoneAutoKit(). -->
-                <div class="control-item toggle-item" id="blk_zone_auto_item">
-                    <div class="label-row" style="position:relative;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика радиаторов и тёплого пола<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Считается из подобранного: сервоприводы по выходам коллекторов тёплого пола и радиаторов, термостат в каждую комнату, головки по приборам. STOUT по умолчанию; радио даёт ENGO, вернуть STOUT можно заменой на строке планки.</div></span></span>
+                <div class="control-item" id="blk_zone_auto_item" style="margin-bottom:0; border-top:1px solid #E5E7EB; padding-top:10px;">
+                    <div class="label-row" style="position:relative; margin-bottom:0;">
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Радиаторы и тёплый пол<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Считается из подобранного: привод на каждый выход коллекторов тёплого пола и радиаторов, термостат в каждую комнату, головка на каждый прибор. Комплект подбирается под выбранную связь термостатов; сменить его можно заменой на строке планки.</div></span></span>
                         <label class="switch"><input type="checkbox" id="chk_ufh_auto"
                                 onchange="app.toggleUfhAuto(this.checked, event)"><span class="slider"></span></label>
                     </div>
@@ -2004,7 +1836,7 @@
                             </div>
                         </div>
                         <div>
-                            <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom:6px;">Связь термостатов<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Проводные считаются на STOUT. Радио — планка ENGO, у STOUT радио к планке нет.</div></span></span>
+                            <span class="lbl-sub" style="display:flex; align-items:center; gap:4px; position:relative; margin-bottom:6px;">Связь термостатов<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Проводные: термостаты подключаются к планке кабелем. Радио: связь без проводов, планка и термостаты из радиокомплекта — дороже.</div></span></span>
                             <div class="tabs" style="font-size:11px;">
                                 <div class="tab zone-link-tab active" data-link="wired" onclick="app.setZoneLink('wired')">Проводные</div>
                                 <div class="tab zone-link-tab" data-link="radio" onclick="app.setZoneLink('radio')">Радио</div>
@@ -2071,35 +1903,41 @@
                         <div class="tabs" id="snow_ctrl_tabs" style="font-size:11px;">
                             <div class="tab active" id="snow_ctrl_sensor" onclick="app.setSnowCtrl('sensor')">Датчик
                                 осадков</div>
-                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')"
-                                title="Датчик осадков в смету не попадает. Снеготаяние включается вручную — из приложения контроллера или выключателем.">Ручной</div>
+                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')">Ручной</div>
                         </div>
                     </div>
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
-                        <span class="lbl"
-                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
-                            петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
-                                    role="button" aria-label="Подробнее">i</i>
-                                <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Внутренний диаметр
-                                    16 мм. Потери в петле примерно на треть ниже, метр дешевле, петля выходит
-                                    длиннее — а значит меньше петель, меньше выходов коллектора и реже приходится
-                                    делить снеготаяние на два узла. Теплоносителя в контуре на 15 % больше.<br><br>
-                                    <b>20х2.8 (серая).</b> Внутренний 14,4 мм. Толстая стенка — запас на механику
-                                    там, где за петлю страшно: тяжёлый проезд, работы поверх готовой стяжки. За это
-                                    платите гидравликой: петля короче, петель больше, узлов может понадобиться
-                                    больше.<br><br>
-                                    <b>Общее у обеих.</b> PE-Xa/EVOH, обе переживают замерзание теплоносителя
-                                    (металлопластик в этом месте расслаивается по алюминию), обе на аксиальном
-                                    соединении. Различается только монтажная гильза — она обжимает трубу по стенке.
-                                </div>
-                            </span></span>
-                        <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
-                            <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')"
-                                title="PE-Xa/EVOH 20х2.0, внутренний 16 мм. Потери в петле ниже — петель и узлов нужно меньше.">
-                                20×2.0</div>
-                            <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')"
-                                title="PE-Xa/EVOH 20х2.8, внутренний 14,4 мм. Толстая стенка под тяжёлый проезд, но петля короче.">
-                                20×2.8</div>
+                    <div class="fine-tune" id="ft_snow">
+                        <div class="fine-tune-head" onclick="app.toggleFineTune('snow')" role="button" tabindex="0">
+                            <span class="fine-tune-title">Тонкая настройка</span>
+                            <span class="fine-tune-sum" id="ft_snow_sum"></span>
+                            <span class="fine-tune-arrow">▸</span>
+                        </div>
+                        <div class="fine-tune-body" id="ft_snow_body" style="display:none;">
+                        <div id="blk_snow_pipe_row" style="position:relative;">
+                            <span class="lbl"
+                                style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
+                                петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
+                                        role="button" aria-label="Подробнее">i</i>
+                                    <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Внутренний диаметр
+                                        16 мм. Потери в петле примерно на треть ниже, метр дешевле, петля выходит
+                                        длиннее — а значит меньше петель, меньше выходов коллектора и реже приходится
+                                        делить снеготаяние на два узла. Теплоносителя в контуре на 15 % больше.<br><br>
+                                        <b>20х2.8 (серая).</b> Внутренний 14,4 мм. Толстая стенка — запас на механику
+                                        там, где за петлю страшно: тяжёлый проезд, работы поверх готовой стяжки. За это
+                                        платите гидравликой: петля короче, петель больше, узлов может понадобиться
+                                        больше.<br><br>
+                                        <b>Общее у обеих.</b> PE-Xa/EVOH, обе переживают замерзание теплоносителя
+                                        (металлопластик в этом месте расслаивается по алюминию), обе на аксиальном
+                                        соединении. Различается только монтажная гильза — она обжимает трубу по стенке.
+                                    </div>
+                                </span></span>
+                            <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
+                                <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')">
+                                    20×2.0</div>
+                                <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')">
+                                    20×2.8</div>
+                            </div>
+                        </div>
                         </div>
                     </div>
                     <div
@@ -2110,6 +1948,183 @@
                                 id="chk_snow_boiler" onchange="app.toggleSnowBoilerPower(this.checked)"><span
                                 class="slider"></span></label>
                     </div>
+                </div>
+            </div>
+
+            <!-- Во сколько обойдётся отопление электричеством. Условия те же, что
+                 у ограничения мощности: подробный режим и включённый электрокотёл
+                 (app.syncUI). Таблицу собирает app.renderElCostUI(). -->
+            <div class="control-item toggle-item" id="blk_el_cost" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
+                        отопления ⚡<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Один тариф.</b> Один тариф круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночная зона 23:00–07:00 по своей цене.</div></div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_el_cost"
+                            onchange="app.toggleElCost(this.checked)"><span class="slider"></span></label>
+                </div>
+                <!-- Тарифы и таблица — подпункты тумблера, как у «Автоматики котельной»:
+                     пока прогноз выключен, в панели остаётся одна строка. -->
+                <div id="blk_el_cost_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div class="tabs" style="font-size:11px;">
+                        <div class="tab el-tariff-mode-tab" data-tmode="single"
+                            onclick="app.setElTariffMode('single')">Один тариф</div>
+                        <div class="tab el-tariff-mode-tab" data-tmode="day_night"
+                            onclick="app.setElTariffMode('day_night')">День-ночь</div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;" id="lbl_el_tariff_day">Тариф, ₽/кВт·ч</span>
+                        <div style="position:relative; display:inline-flex; align-items:center;">
+                            <!-- 124px, а не 110: в тарифах четыре знака («26.0»), и в
+                                 стандартную ширину степпера значение не влезает — переносится
+                                 на вторую строку. -->
+                            <div class="stepper" style="width:124px;">
+                                <button class="step-btn" onclick="app.updElTariff(-1)">−</button>
+                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff"
+                                    contenteditable="true"
+                                    onfocus="app.showElTariffSlider('day', event)"
+                                    onclick="app.showElTariffSlider('day', event)"
+                                    onblur="app.setElTariff(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">6.0</div>
+                                <button class="step-btn" onclick="app.updElTariff(1)">+</button>
+                            </div>
+                            <div class="el-tariff-slider-container" id="el_tariff_slider_box"
+                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                onclick="event.stopPropagation();">
+                                <input type="range" id="inp_el_tariff" min="1" max="20" step="0.1" value="6"
+                                    oninput="app.setElTariff(this.value, true)"
+                                    onchange="app.setElTariff(this.value)"
+                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                <span
+                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                    onclick="document.getElementById('el_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="blk_el_tariff_night"
+                        style="display:none; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Ночь (23–07), ₽/кВт·ч</span>
+                        <div style="position:relative; display:inline-flex; align-items:center;">
+                            <div class="stepper" style="width:124px;">
+                                <button class="step-btn" onclick="app.updElTariffNight(-1)">−</button>
+                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff_night"
+                                    contenteditable="true"
+                                    onfocus="app.showElTariffSlider('night', event)"
+                                    onclick="app.showElTariffSlider('night', event)"
+                                    onblur="app.setElTariffNight(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">3.0</div>
+                                <button class="step-btn" onclick="app.updElTariffNight(1)">+</button>
+                            </div>
+                            <div class="el-tariff-slider-container" id="el_tariff_night_slider_box"
+                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                onclick="event.stopPropagation();">
+                                <input type="range" id="inp_el_tariff_night" min="1" max="20" step="0.1" value="3"
+                                    oninput="app.setElTariffNight(this.value, true)"
+                                    onchange="app.setElTariffNight(this.value)"
+                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                <span
+                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                    onclick="document.getElementById('el_tariff_night_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Видно только когда тариф правили руками: иначе кнопка сброса
+                         ничего не сбрасывает и только путает. Та же логика, что у газа. -->
+                    <div id="el_tariff_region_row" style="display:none; text-align:right;">
+                        <span onclick="app.resetElTariff()"
+                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
+                            тариф региона</span>
+                    </div>
+
+                    <div id="el_cost_body"></div>
+                </div>
+            </div>
+
+            <!-- Стоимость отопления газом. Устроено как блок по электричеству, но
+                 переключатель другой: магистральный газ считается по тарифу региона
+                 (GAS_TARIFF_RU в catalog.js, подставляется по выбранному городу),
+                 сжиженный тарифом не регулируется и задаётся руками. -->
+            <div class="control-item toggle-item" id="blk_gas_cost" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
+                        отопления 🔥<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход в кубометрах или литрах и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов. Тарифом не регулируется — цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы. Тариф устанавливает регион, подставляется по выбранному городу.</div></div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_gas_cost"
+                            onchange="app.toggleGasCost(this.checked)"><span class="slider"></span></label>
+                </div>
+                <div id="blk_gas_cost_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div class="tabs" style="font-size:11px;">
+                        <div class="tab gas-tariff-mode-tab" data-gmode="lpg"
+                            onclick="app.setGasTariffMode('lpg')">Сжиженный</div>
+                        <div class="tab gas-tariff-mode-tab" data-gmode="main"
+                            onclick="app.setGasTariffMode('main')">Магистральный</div>
+                    </div>
+
+                    <div id="blk_gas_tariff_main" style="flex-direction:column; gap:4px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="lbl" style="font-size:12px;">Тариф, ₽/м³</span>
+                            <div style="position:relative; display:inline-flex; align-items:center;">
+                                <div class="stepper" style="width:124px;">
+                                    <button class="step-btn" onclick="app.updGasTariff(-1)">−</button>
+                                    <div class="step-val editable-val gas-tariff-val" id="val_gas_tariff"
+                                        contenteditable="true"
+                                        onfocus="app.showGasTariffSlider('main', event)"
+                                        onclick="app.showGasTariffSlider('main', event)"
+                                        onblur="app.setGasTariff(this.innerText)"
+                                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">8.50</div>
+                                    <button class="step-btn" onclick="app.updGasTariff(1)">+</button>
+                                </div>
+                                <div class="gas-tariff-slider-container" id="gas_tariff_slider_box"
+                                    style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                    onclick="event.stopPropagation();">
+                                    <input type="range" id="inp_gas_tariff" min="3" max="20" step="0.01" value="8.5"
+                                        oninput="app.setGasTariff(this.value, true)"
+                                        onchange="app.setGasTariff(this.value)"
+                                        style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                    <span
+                                        style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                        onclick="document.getElementById('gas_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Видно только когда тариф правили руками: иначе кнопка сброса
+                             ничего не сбрасывает и только путает. -->
+                        <div id="gas_tariff_region_row" style="display:none; text-align:right;">
+                            <span onclick="app.resetGasTariff()"
+                                style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
+                                тариф региона</span>
+                        </div>
+                    </div>
+
+                    <div id="blk_gas_tariff_lpg" style="display:none; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Цена, ₽/л</span>
+                        <div style="position:relative; display:inline-flex; align-items:center;">
+                            <div class="stepper" style="width:124px;">
+                                <button class="step-btn" onclick="app.updLpgTariff(-1)">−</button>
+                                <div class="step-val editable-val gas-tariff-val" id="val_gas_lpg" contenteditable="true"
+                                    onfocus="app.showGasTariffSlider('lpg', event)"
+                                    onclick="app.showGasTariffSlider('lpg', event)"
+                                    onblur="app.setLpgTariff(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">26.0</div>
+                                <button class="step-btn" onclick="app.updLpgTariff(1)">+</button>
+                            </div>
+                            <div class="gas-tariff-slider-container" id="gas_lpg_slider_box"
+                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                onclick="event.stopPropagation();">
+                                <input type="range" id="inp_gas_lpg" min="10" max="60" step="0.5" value="26"
+                                    oninput="app.setLpgTariff(this.value, true)"
+                                    onchange="app.setLpgTariff(this.value)"
+                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                <span
+                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                    onclick="document.getElementById('gas_lpg_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="gas_cost_body"></div>
                 </div>
             </div>
         </div>
