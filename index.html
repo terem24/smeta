@@ -2099,53 +2099,33 @@
                 <div class="control-item toggle-item" id="blk_zone_auto_item">
                     <div class="label-row">
                         <span class="lbl"
-                            title="Планка, термостаты проводные и радио, сервоприводы на коллектор, радиоголовки на радиаторы. STOUT по умолчанию; ENGO — когда есть радиотермостаты, вернуть STOUT можно заменой на строке планки.">Автоматика радиаторов и тёплого пола</span>
+                            title="Считается из подобранного: сервоприводы по выходам коллекторов тёплого пола и радиаторов, термостат в каждую комнату, головки по приборам. STOUT по умолчанию; радио даёт ENGO, вернуть STOUT можно заменой на строке планки.">Автоматика радиаторов и тёплого пола</span>
                         <label class="switch"><input type="checkbox" id="chk_ufh_auto"
                                 onchange="app.toggleUfhAuto(this.checked, event)"><span class="slider"></span></label>
                     </div>
                     <div id="blk_zone_auto_box"
                         style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;"
-                                title="При тёплом поле — по комнатам с полом, можно править.">Термостаты проводные</span>
-                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZones(-1)">−</button>
-                                <div class="step-val editable-val" id="val_zones" contenteditable="true"
-                                    onblur="app.setZones(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">1</div>
-                                <button class="step-btn" onclick="app.updZones(1)">+</button>
+                        <!-- Числа не вводятся: тёплый пол — привод на каждый выход
+                             коллектора ТП и термостат в каждую комнату с полом; радиаторы —
+                             по выбору ниже. Сводка — в blk_zone_auto_info. -->
+                        <div id="blk_zone_rad_row" style="display:none;">
+                            <span class="lbl-sub" style="margin-bottom:6px;"
+                                title="Сервоприводы — привод на каждый выход радиаторного коллектора и термостат в каждую комнату с радиаторами. Головки — на каждый прибор, термостаты не нужны.">Радиаторы</span>
+                            <div class="tabs" style="font-size:11px;">
+                                <div class="tab zone-rad-tab active" data-mode="none" onclick="app.setZoneRadMode('none')">Нет</div>
+                                <div class="tab zone-rad-tab" data-mode="servo" onclick="app.setZoneRadMode('servo')">Сервоприводы на коллекторе</div>
+                                <div class="tab zone-rad-tab" data-mode="heads" onclick="app.setZoneRadMode('heads')">Головки на приборах</div>
                             </div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;"
-                                title="К планке по радио. У STOUT таких нет — раздел соберётся на ENGO.">Термостаты радио</span>
-                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('radio', -1)">−</button>
-                                <div class="step-val editable-val" id="val_zone_radio" contenteditable="true"
-                                    onblur="app.setZoneAutoQty('radio', this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
-                                <button class="step-btn" onclick="app.updZoneAutoQty('radio', 1)">+</button>
+                        <div>
+                            <span class="lbl-sub" style="margin-bottom:6px;"
+                                title="Проводные считаются на STOUT. Радио — планка ENGO, у STOUT радио к планке нет.">Связь термостатов</span>
+                            <div class="tabs" style="font-size:11px;">
+                                <div class="tab zone-link-tab active" data-link="wired" onclick="app.setZoneLink('wired')">Проводные</div>
+                                <div class="tab zone-link-tab" data-link="radio" onclick="app.setZoneLink('radio')">Радио</div>
                             </div>
                         </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;"
-                                title="Термоэлектрические приводы 230 В NC на клапаны коллектора. При тёплом поле — по числу петель, можно править.">Сервоприводы на коллектор</span>
-                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('servos', -1)">−</button>
-                                <div class="step-val editable-val" id="val_zone_servos" contenteditable="true"
-                                    onblur="app.setZoneAutoQty('servos', this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
-                                <button class="step-btn" onclick="app.updZoneAutoQty('servos', 1)">+</button>
-                            </div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;"
-                                title="Радиоголовки на радиаторные клапаны M30x1,5.">Радиоголовки на радиаторы</span>
-                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('heads', -1)">−</button>
-                                <div class="step-val editable-val" id="val_zone_heads" contenteditable="true"
-                                    onblur="app.setZoneAutoQty('heads', this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
-                                <button class="step-btn" onclick="app.updZoneAutoQty('heads', 1)">+</button>
-                            </div>
-                        </div>
-                        <div style="border-top:1px solid #E5E7EB; padding-top:8px;">
+                        <div id="blk_zone_ctrl_type" style="border-top:1px solid #E5E7EB; padding-top:8px;">
                             <span class="lbl-sub" style="margin-bottom:6px;">Тип проводного термостата</span>
                             <div class="tabs" style="font-size:11px;">
                                 <div class="tab ufh-tab active" data-type="mech" onclick="app.setUfhCtrl('mech')">Механический</div>
