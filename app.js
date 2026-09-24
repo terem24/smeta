@@ -5761,7 +5761,10 @@ const app = {
             + `<span style="opacity:.35; margin: 0 2px;">|</span>`
             + rbtn('installer', 'Монтажник', role === 'installer', "app.setLocalRole('installer')", 'Сфера: монтаж (повторное нажатие — как в базе)')
             + rbtn('seller', 'Продавец', role === 'seller', "app.setLocalRole('seller')", 'Сфера: продажа без монтажа — включает оформление «магазин» (повторное нажатие — как в базе)')
-            + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы: панель управления в виде менеджера');
+            + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы: панель управления в виде менеджера')
+            + `<span style="opacity:.35; margin: 0 2px;">|</span>`
+            + rbtn('brand', 'Тема бренда', (() => { try { return localStorage.getItem('local_brand_theme') === '1'; } catch (e) { return false; } })(), 'app.toggleLocalBrandTheme()', 'Оформление под stout.ru / rommer.ru для монтажников — только на этой машине, общий выключатель в админке не трогает')
+            + rbtn('yandex', 'Тема Профи', (() => { try { return localStorage.getItem('local_yandex_theme') === '1'; } catch (e) { return false; } })(), 'app.toggleLocalYandexTheme()', 'Оформление «Профи» (по образцу ya.ru) принудительно — только на этой машине, общую настройку в админке не трогает. Кнопка «Профи» слева включает её сама, как настоящий тариф');;
     },
 
     setLocalRole: function (val) {
@@ -6014,7 +6017,10 @@ const app = {
                 ver = last;
                 ver.last_at = now;
             } else {
-                ver = { calc: calc, v: last ? last.v + 1 : 1, at: now, sig: sig, eq: eq, wk: wk, ch: [], items: items };
+                // variant — версия собрана в режиме «Подешевле»: карточка сметы
+                // и заголовок КП показывают это словами, чтобы две версии одного
+                // объекта не путали (24.09.2026)
+                ver = { calc: calc, v: last ? last.v + 1 : 1, at: now, sig: sig, eq: eq, wk: wk, ch: [], items: items, ...(this.cheapModeOn() ? { variant: 'cheap' } : {}) };
                 all.push(ver);
             }
             if (channel && ver.ch.indexOf(channel) < 0) ver.ch.push(channel);
@@ -6105,6 +6111,7 @@ const app = {
             const chs = (v.ch || []).map(c => this.KP_CHANNEL_LABELS[c] || c).join(', ');
             const badges = [];
             if (v.v === latest) badges.push(`<span style="background:#2563EB; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">последняя</span>`);
+            if (v.variant === 'cheap') badges.push(`<span style="background:#7C3AED; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;" title="Версия собрана в режиме «Подешевле»">подешевле</span>`);
             if (v.v === invoiceVer) badges.push(`<span style="background:#F97316; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">по ней счёт</span>`);
             if (v.v === approvedVer) badges.push(`<span style="background:#10B981; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">одобрена</span>`);
             if (v.v === issuedVer) badges.push(`<span style="background:#059669; color:#fff; border-radius:8px; padding:1px 8px; font-size:10.5px; font-weight:700;">счёт выставлен</span>`);
@@ -15128,6 +15135,239 @@ const app = {
         document.body.classList.toggle('theme-shop', on);
         if (on) document.body.classList.remove('dark-mode');
         this.syncTopLogo();
+        this.syncBrandTheme();
+        this.syncYandexTheme();
+    },
+
+    // Оформление под сайт бренда — для монтажников. Кто монтажник: тот же
+    // признак, что в тарифах (tariffAccountOfUser) — вошёл, не продавец без
+    // монтажа (у продавцов своя тема «магазин», она главнее) и не менеджер /
+    // наблюдатель. Без входа — обычное оформление. Локально включается кнопкой
+    // «Монтажник» той же панели, что и тариф (localRole).
+    // Какой бренд — по переключателю «Аналог»: brandMode 'rommer' → rommer.ru,
+    // иначе stout.ru. Только стили: классы на body, правила в style.css
+    // (блок «ТЕМА БРЕНДА»). Тёмная тема поверх работает: у каждого бренда свой
+    // набор переменных для body.dark-mode.
+    // Общий выключатель — app_settings.ui_theme = { installer_brand: true|false }.
+    // По умолчанию включено: у монтажников тема бренда сразу, обычное
+    // оформление пока остаётся только у администраторов (см. isBrandTheme).
+    // Администратор может выключить тему всем во вкладке «Тарифы» и включить
+    // обратно (24.09.2026, решение владельца). Локально: кнопка «Тема бренда»
+    // в панели тарифа (localStorage local_brand_theme) включает её на этой
+    // машине, даже если в базе выключено.
+    brandThemeEnabled: function () {
+        if (this.isLocalhost()) {
+            try { if (localStorage.getItem('local_brand_theme') === '1') return true; } catch (e) { }
+        }
+        const ui = this.appSettings && this.appSettings.ui_theme;
+        return !(ui && ui.installer_brand === false);
+    },
+
+    setBrandThemeEnabled: async function (on) {
+        if (!this.canEditTariffs()) { app.alert('Менять оформление может только администратор.'); return; }
+        const value = { installer_brand: !!on };
+        // Сразу на экран, не дожидаясь базы
+        this.appSettings = Object.assign({}, this.appSettings, { ui_theme: value });
+        this.syncBrandTheme();
+        this.renderAdminTariffs();
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'ui_theme', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+        } catch (e) {
+            console.error('[оформление] запись не прошла:', e);
+            await this.loadAppSettings(true);
+            this.syncBrandTheme();
+            this.renderAdminTariffs();
+            app.alert('Не удалось сохранить оформление: ' + (e.message || e));
+        }
+    },
+
+    toggleLocalBrandTheme: function () {
+        if (!this.isLocalhost()) return;
+        try {
+            if (localStorage.getItem('local_brand_theme') === '1') localStorage.removeItem('local_brand_theme');
+            else localStorage.setItem('local_brand_theme', '1');
+        } catch (e) { }
+        this.mountLocalTariffSwitch();
+        this.syncBrandTheme();
+    },
+
+    isBrandTheme: function () {
+        if (!this.brandThemeEnabled()) return false;
+        // Тема «Профи» (ya.ru) главнее темы бренда: у кого она включена, бренд не накладываем
+        if (this.isYandexTheme && this.isYandexTheme()) return false;
+        if (this.isShopTheme()) return false;
+        // Локальная кнопка «Монтажник» — как монтажник, даже под учёткой админа
+        if (this.localRole() === 'installer') return true;
+        const u = this.state.tgUser || this.state.user;
+        if (!u) return false;
+        // Администраторы пока остаются на обычном оформлении (24.09.2026)
+        const role = this.getAdminRole && this.getAdminRole();
+        if (role === 'super_admin' || role === 'admin') return false;
+        const acc = String(u.account_type || this.state.accountType || '');
+        return acc !== 'manager' && acc !== 'viewer';
+    },
+
+    syncBrandTheme: function () {
+        const on = this.isBrandTheme();
+        const rommer = on && this.state.brandMode === 'rommer';
+        const cl = document.body.classList;
+        cl.toggle('theme-brand', on);
+        cl.toggle('brand-stout', on && !rommer);
+        cl.toggle('brand-rommer', rommer);
+        // Цвет строки состояния на телефоне (PWA, вкладка Android) — под бренд
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', !on ? '#2563EB' : (rommer ? '#A92028' : '#203F6F'));
+    },
+
+    // ═══════════════ Тема «Профи» (оформление по образцу ya.ru) ═══════════════
+    // Шрифт Arial, серые плашки, кнопки-пилюли, тонкие значки, логотип HeatCalc
+    // вместо брендов; светлая и ночная (ночная по умолчанию). В коде тема
+    // по-прежнему называется yandex (класс theme-yandex, ключ настройки) — так она
+    // задумывалась; для людей она «Профи» (владелец 24.09.2026: «переименуем в
+    // Профи и будем показывать тем, у кого тариф Профи, неважно — продавцы,
+    // монтажники, администраторы»).
+    // Кому показывается: всем на тарифе «Профи» (isPro — оплаченный или пробный
+    // период, любая роль) — по умолчанию включено, администратор может выключить;
+    // плюс отдельные группы по переключателям в панели управления, вкладка
+    // «Тарифы», блок «Оформление „Профи“» (администраторы, монтажники, продавцы,
+    // менеджеры — по умолчанию выключены). Общая настройка
+    // app_settings.ui_theme.yandex = { pro, admins, installers, sellers, managers }.
+    // Кнопок в шапке нет намеренно. Только стили: класс theme-yandex на body,
+    // правила в style.css (блок «ТЕМА „ЯНДЕКС“ / „ПРОФИ“»). Ночная тема поверх.
+    // Локально (localhost) без базы — кнопка «Тема Профи» в панели тарифа
+    // (localStorage local_yandex_theme); кнопка «Профи» той же панели включает
+    // тему сама, как и настоящий тариф.
+    YANDEX_THEME_GROUPS: [
+        { key: 'pro', label: 'Тариф «Профи»', hint: 'все на тарифе «Профи» (оплаченный или пробный период), любая роль — включено по умолчанию', def: true },
+        { key: 'admins', label: 'Администраторы', hint: 'владелец и администраторы панели управления' },
+        { key: 'installers', label: 'Монтажники', hint: 'все вошедшие монтажники (сфера «монтаж»)' },
+        { key: 'sellers', label: 'Продавцы', hint: 'сфера «продажа» без монтажа — вместо оформления магазина' },
+        { key: 'managers', label: 'Менеджеры и наблюдатели', hint: 'менеджеры дистрибьюторов и наблюдатели панели' }
+    ],
+
+    yandexThemeConfig: function () {
+        const ui = this.appSettings && this.appSettings.ui_theme;
+        return (ui && ui.yandex && typeof ui.yandex === 'object') ? ui.yandex : {};
+    },
+
+    // К какой группе настройки относится текущий человек; без входа — ни к какой
+    yandexThemeGroupOfMe: function () {
+        const u = this.state.tgUser || this.state.user;
+        if (!u) return null;
+        const role = this.getAdminRole();
+        if (role === 'super_admin' || role === 'admin') return 'admins';
+        if (role === 'manager' || role === 'viewer') return 'managers';
+        return this.isSellerOnly() ? 'sellers' : 'installers';
+    },
+
+    // Включена ли группа: у «Профи» умолчание — включено (выключает только явное false)
+    yandexThemeGroupOn: function (key) {
+        const cfg = this.yandexThemeConfig();
+        const g = this.YANDEX_THEME_GROUPS.find(x => x.key === key);
+        if (g && g.def) return cfg[key] !== false;
+        return cfg[key] === true;
+    },
+
+    isYandexTheme: function () {
+        if (this.isLocalhost()) {
+            try { if (localStorage.getItem('local_yandex_theme') === '1') return true; } catch (e) { }
+        }
+        const u = this.state.tgUser || this.state.user;
+        if (!u) return false;
+        // Тариф «Профи» — любая роль
+        if (this.yandexThemeGroupOn('pro') && this.isPro()) return true;
+        const g = this.yandexThemeGroupOfMe();
+        return !!(g && this.yandexThemeGroupOn(g));
+    },
+
+    syncYandexTheme: function () {
+        const on = this.isYandexTheme();
+        const was = document.body.classList.contains('theme-yandex');
+        document.body.classList.toggle('theme-yandex', on);
+        // Под темой разделы меню кабинета выше (значки в кружках): множитель
+        // --lk-scale, подобранный под обычное оформление, перестаёт годиться,
+        // и нижние разделы («Админка», «Выйти») уходили за экран
+        if (was !== on && this.fitRailToViewport) this.fitRailToViewport();
+        // Первое включение темы у этого человека — сразу ночной режим, даже если
+        // раньше он выбирал «авто» или «светлая» (владелец 24.09.2026: «по умолчанию
+        // чтобы всегда стояла сразу тёмная»). Дальше режим меняется руками как обычно;
+        // отметка в состоянии — чтобы не сбрасывать его выбор при каждой загрузке.
+        if (was !== on && on && !this.state.yandexDarkApplied) {
+            this.state.yandexDarkApplied = true;
+            this.state.themeMode = 'dark';
+            this.saveState();
+            this.applyTheme();
+        }
+        // Цвет строки состояния на телефоне (PWA, вкладка Android)
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', !on ? '#2563EB' : (document.body.classList.contains('dark-mode') ? '#18181A' : '#FFFFFF'));
+    },
+
+    toggleLocalYandexTheme: function () {
+        if (!this.isLocalhost()) return;
+        try {
+            if (localStorage.getItem('local_yandex_theme') === '1') localStorage.removeItem('local_yandex_theme');
+            else localStorage.setItem('local_yandex_theme', '1');
+        } catch (e) { }
+        this.mountLocalTariffSwitch();
+        this.syncShopTheme();
+    },
+
+    // Переключатель группы в блоке «Оформление „Яндекс“» вкладки «Тарифы».
+    // Остальные ключи ui_theme (если появятся) не трогаем — сливаем поверх.
+    setYandexThemeGroup: async function (key, on) {
+        if (!this.canEditTariffs()) { app.alert('Менять оформление может только администратор.'); return; }
+        if (!this.YANDEX_THEME_GROUPS.some(g => g.key === key)) return;
+        const ui = Object.assign({}, (this.appSettings && this.appSettings.ui_theme) || {});
+        ui.yandex = Object.assign({}, this.yandexThemeConfig(), { [key]: !!on });
+        // Сразу на экран, не дожидаясь базы
+        this.appSettings = Object.assign({}, this.appSettings, { ui_theme: ui });
+        this.syncShopTheme();
+        this.renderAdminTariffs();
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'ui_theme', value: ui, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+        } catch (e) {
+            console.error('[оформление] запись не прошла:', e);
+            await this.loadAppSettings(true);
+            this.syncShopTheme();
+            this.renderAdminTariffs();
+            app.alert('Не удалось сохранить оформление: ' + (e.message || e));
+        }
+    },
+
+    adminYandexThemeBlockHtml: function () {
+        const canEdit = this.canEditTariffs();
+        const cfg = this.yandexThemeConfig();
+        const rows = this.YANDEX_THEME_GROUPS.map(g => {
+            const on = this.yandexThemeGroupOn(g.key);
+            return `<div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-top:1px solid var(--border);">
+                <label class="switch" title="${on ? 'Включено — нажмите, чтобы вернуть этой группе обычное оформление' : 'Выключено — нажмите, чтобы показать этой группе тему «Профи»'}">
+                    <input type="checkbox" ${on ? 'checked' : ''} ${canEdit ? '' : 'disabled'} onchange="app.setYandexThemeGroup('${g.key}', this.checked)">
+                    <span class="slider"></span>
+                </label>
+                <div style="font-size:12.5px; line-height:1.4;"><b style="color:var(--text-main);">${g.label}</b>
+                    <span style="color:var(--text-sec);"> — ${g.hint}</span></div>
+            </div>`;
+        }).join('');
+        return `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
+                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление «Профи»</h3>
+            </div>
+            <div style="padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg); max-width:900px;">
+                <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec); margin-bottom:6px;">
+                    Тема тарифа «Профи»: шрифт и серые плашки в духе ya.ru, кнопки-пилюли, тонкие значки, логотип HeatCalc вместо брендов;
+                    по умолчанию ночная, светлую и авто человек выбирает сам кнопкой в шапке. Показывается всем на тарифе «Профи» — первый
+                    переключатель; остальные открывают тему группам целиком, независимо от тарифа. Всё выключено — у всех обычное оформление.
+                    ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
+                </div>
+                ${rows}
+            </div>`;
     },
 
     // Логотип в левом углу шапки. Обычно — по бренду (STOUT / ROMMER), под
@@ -15141,11 +15381,18 @@ const app = {
         let src, alt;
         // Под темой «магазин» — логотип дистрибьютора, если он задан, иначе ТЕРЕМ
         const _brand = this.distBrand && this.distBrand();
-        if (this.isShopTheme() && _brand && _brand.logo) { src = _brand.logo; alt = _brand.name || 'Дистрибьютор'; }
+        // Под темой «Яндекс» — пламя HeatCalc (подпись «HeatCalc.ru» дорисовывает style.css),
+        // без брендов: владелец 24.09.2026 — «STOUT и ROMMER не используй, ТЕРЕМ оставляй»
+        if (this.isYandexTheme()) { src = 'img/logo_hc_flame.png'; alt = 'HeatCalc.ru'; }
+        else if (this.isShopTheme() && _brand && _brand.logo) { src = _brand.logo; alt = _brand.name || 'Дистрибьютор'; }
         else if (this.isShopTheme()) { src = 'img/terem_logo.svg'; alt = 'ТЕРЕМ'; }
         else if (this.state.brandMode === 'rommer') { src = 'img/rommer_logo.jpg'; alt = 'ROMMER'; }
         else { src = 'img/stout_logo.png'; alt = 'STOUT'; }
         if (el.getAttribute('src') !== src) { el.src = src; el.alt = alt; }
+        // Признак бренда на body независимо от темы: по нему style.css красит сумму
+        // оборудования в шапке в цвет логотипа (STOUT — синий, ROMMER — красный).
+        // Не путать с brand-rommer: тот класс ставит syncBrandTheme только под темой бренда.
+        document.body.classList.toggle('mode-rommer', this.state.brandMode === 'rommer');
     },
 
     /**
@@ -15750,9 +15997,9 @@ const app = {
         }
 
         html += `<div class="lk-subhead">История замен</div>`;
-        html += `<p class="lk-hint">Чем вы заменяли позиции кнопкой «Аналог» — просто история.</p>`;
+        html += `<p class="lk-hint">Чем вы заменяли позиции в таблице замены — просто история.</p>`;
         if (!swaps.length) {
-            html += `<div class="lk-empty">Пока нет замен оборудования через кнопку «Аналог».</div>`;
+            html += `<div class="lk-empty">Пока нет замен оборудования через таблицу замены.</div>`;
         } else {
             html += `<div class="lk-list" style="margin-bottom:18px;">`;
             swaps.slice(0, 50).forEach(s => {
@@ -18193,10 +18440,10 @@ const app = {
     ],
     TARIFF_FEATURES: [
         { id: 'stout', group: 'Ассортимент', label: 'STOUT', locked: true, hint: 'Основа расчёта: без него смету не собрать, поэтому выключить нельзя' },
-        { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Замены позиций на ROMMER и ROMMER в поиске; без него нет и переключателя «Аналог»' },
+        { id: 'rommer', group: 'Ассортимент', label: 'ROMMER', hint: 'Замены позиций на ROMMER и ROMMER в поиске; без него нет и переключателя «Подешевле»' },
         { id: 'terem', group: 'Ассортимент', label: 'ТЕРЕМ', hint: 'Прочие марки прайс-листа ТЕРЕМ: поиск при ручном добавлении и распознавание. Оборудование, которое подбирает сам расчёт, не затрагивается' },
         { id: 'works', group: 'Функции', label: 'Монтаж', hint: 'Монтажные работы: вкладка, сумма «Монтаж» в шапке, работы в печати, Excel, ссылке клиенту и счёте, расценки «Прайс» в кабинете' },
-        { id: 'analog', group: 'Функции', label: 'Аналог', hint: 'Подбор аналога: переключатель «Аналог» в параметрах и в заголовках разделов сметы. Выключен — переключателя не видно' },
+        { id: 'analog', group: 'Функции', label: 'Подешевле', hint: 'Вторая смета подешевле: переключатель «Подешевле» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
@@ -19991,8 +20238,35 @@ const app = {
                 <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
                 <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
             </div>
+            ${this.adminThemeBlockHtml()}
+            ${this.adminYandexThemeBlockHtml()}
             ${this.adminTabsTableHtml(esc, th, td, sep)}`;
         this.renderAdminTariffsStatus();
+    },
+
+    // Блок «Оформление» вкладки «Тарифы»: общий выключатель темы бренда для
+    // монтажников (см. brandThemeEnabled). Один тумблер на всех, как режим
+    // регистрации в «Дистрибьюторах».
+    adminThemeBlockHtml: function () {
+        const canEdit = this.canEditTariffs();
+        const ui = this.appSettings && this.appSettings.ui_theme;
+        const on = !(ui && ui.installer_brand === false);
+        return `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
+                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление</h3>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg); max-width:900px;">
+                <button type="button" ${canEdit ? '' : 'disabled'} role="switch" aria-checked="${on}" title="${on ? 'Включено — нажмите, чтобы вернуть обычное оформление' : 'Выключено — нажмите, чтобы включить тему бренда'}"
+                    onclick="app.setBrandThemeEnabled(${on ? 'false' : 'true'})"
+                    style="position:relative; flex:0 0 auto; width:40px; height:22px; border-radius:999px; border:none; padding:0; cursor:${canEdit ? 'pointer' : 'default'}; background:${on ? '#10B981' : 'var(--border)'}; transition:background .15s;">
+                    <span style="position:absolute; top:3px; left:${on ? '21px' : '3px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:left .15s;"></span>
+                </button>
+                <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec);">
+                    <b style="color:var(--text-main);">Тема бренда для монтажников</b> — шрифты и цвета stout.ru, при включённом «Подешевле» — rommer.ru; ночная тема работает.
+                    Продавцов не касается: у них оформление магазина. Администраторы пока остаются на обычном оформлении. Выключено — у всех обычное оформление калькулятора.
+                    ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
+                </div>
+            </div>`;
     },
 
     // Вторая таблица вкладки «Тарифы»: какие разделы панели видит каждая роль
@@ -35579,6 +35853,8 @@ const app = {
         // вызвать setViewMode можно и мимо них (сохранённый вид, ссылка).
         if (mode === 'works' && !this.canUseWorks()) mode = 'equipment';
         if (mode === 'works' && !this.checkAccess('pro')) return;
+        // «Обоснование» есть только в режиме «Подешевле»
+        if (mode === 'cheaper' && !this.cheapModeOn()) mode = 'equipment';
         // «Деньги» открывает таблица «Тарифы» (canUseMoney).
         // checkAccess('pro') тут не годится: он давно означает «авторизован».
         if (mode === 'money' && !this.canUseMoney()) {
@@ -35669,6 +35945,27 @@ const app = {
             const _scheme = document.getElementById('dynamic_scheme');
             if (_scheme) _scheme.remove();
             if (panelMoney) panelMoney.style.display = 'block';
+            this.render();
+            return;
+        }
+
+        // «Обоснование» варианта «Подешевле» — свой вид, как «Деньги»
+        const panelCheaper = document.getElementById('panel_cheaper');
+        if (panelCheaper && mode !== 'cheaper') panelCheaper.style.display = 'none';
+        const tCheaper = document.getElementById('tab_cheaper');
+        if (tCheaper) tCheaper.classList.toggle('active', mode === 'cheaper');
+        if (mode === 'cheaper') {
+            if (tableResponsive) tableResponsive.style.display = 'none';
+            if (docFooter) docFooter.style.display = 'none';
+            if (discountBlock) discountBlock.style.display = 'none';
+            if (footerBtns) footerBtns.style.display = 'none';
+            if (panel3d) {
+                panel3d.style.display = 'none';
+                if (window.Boiler3D) window.Boiler3D.dispose();
+            }
+            const _sch = document.getElementById('dynamic_scheme');
+            if (_sch) _sch.remove();
+            if (panelCheaper) panelCheaper.style.display = 'block';
             this.render();
             return;
         }
@@ -35832,7 +36129,7 @@ const app = {
                 // Показываем тот прибор, что подобран: секционный или панельный.
                 // Мощность и размеры на виде могут отличаться от проектных —
                 // так же оговорено и в проектах-образцах.
-                const rad = spec.find(i => /радиатор|конвектор/i.test(String(i.name || '')) &&
+                const rad = spec.find(i => (i.isPanel || /радиатор|конвектор|панельн/i.test(String(i.name || ''))) &&
                     (i.sec > 0 || i.isPanel || i.power50 > 0));
                 const nm = rad ? String(rad.name) : '';
                 const panel = !!(rad && rad.isPanel) || /панельн|конвектор/i.test(nm);
@@ -36127,6 +36424,9 @@ const app = {
     themeMode: function () {
         const m = this.state.themeMode;
         if (this.THEME_ORDER.includes(m)) return m;
+        // Под темой «Яндекс» умолчание — ночная, а не «авто» (владелец,
+        // 24.09.2026): человек сам может переключить на светлую или авто.
+        if (this.isYandexTheme && this.isYandexTheme()) return 'dark';
         return this.state.darkMode ? 'dark' : 'auto';
     },
 
@@ -36205,6 +36505,8 @@ const app = {
         this.state.darkMode = dark;
         document.body.classList.toggle('dark-mode', dark && !this.isShopTheme());
         this.updateThemeButton(mode);
+        // Тема «Яндекс» живёт поверх: ей нужно знать, ночь сейчас или день (цвет строки состояния)
+        if (this.syncYandexTheme) this.syncYandexTheme();
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
         // раз в минуту, и писать состояние каждый раз незачем.
         if (changed) this.saveState();
@@ -41379,7 +41681,7 @@ const app = {
     stateForLoadedEstimate: function (loaded) {
         const src = loaded || {};
         const base = JSON.parse(JSON.stringify(this._stateDefaults || {}));
-        ['darkMode', 'themeMode', 'showScheme'].forEach(k => { delete base[k]; });
+        ['darkMode', 'themeMode', 'yandexDarkApplied', 'showScheme'].forEach(k => { delete base[k]; });
         const next = { ...this.state, ...base, userAddedEq: [], userAddedWorks: [], swapQtyRatios: {}, ...src };
         // Метки конкретной сметы: нет в загружаемой — не должно остаться и от прежней
         ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress', 'kpVersions', 'kpVersion', 'priceSnapshot', 'copiedFrom'].forEach(k => {
@@ -42113,7 +42415,7 @@ const app = {
      * и оформление экрана. Всё остальное — параметры объекта, и они у дома и у
      * квартиры свои.
      */
-    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'tgUser', 'accountType',
+    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'yandexDarkApplied', 'tgUser', 'accountType',
                      'distributorId', 'distributorInfo', 'priceSource', 'showScheme'],
 
     /**
@@ -43564,7 +43866,7 @@ const app = {
         // setViewMode (там же проверяется тариф), а сохранённый viewMode ничего не
         // открывает — получилась бы смета без подвала и без панели. Тариф к тому же
         // мог кончиться между сеансами.
-        if (this.state.viewMode === 'money') this.state.viewMode = 'equipment';
+        if (this.state.viewMode === 'money' || this.state.viewMode === 'cheaper') this.state.viewMode = 'equipment';
         this.migrateSnowPipeSwap();
         this.migrateElCostDefaultOff();
         this.migrateBoilerSectionTitles();
@@ -44526,17 +44828,252 @@ const app = {
         if (cab.id && cab.id.startsWith('SCC-1003')) s += `<b style="color:#F59E0B;">Проверьте ввод труб:</b> у SCC-1003 нет боковой перфорации — подключение только снизу.<br>`;
         return s + `</span>`;
     },
+    // ═══ «Подешевле»: техническая эквивалентность кандидата ═══════════════
+    // До 24.09.2026 режим (тогда «Аналог») брал из списка замен позиции самую
+    // дешёвую — только по цене. Так в смету попадал котёл 13 кВт вместо 24 и
+    // комплект дымохода другой длины. Теперь кандидат из .alts проходит проверку:
+    // сравниваются те параметры, что есть у обеих позиций — резьба и тип
+    // присоединения, DN, диаметр трубы, типоразмер насоса, число выходов
+    // коллектора, секции и теплоотдача радиатора, объём бака, Kv, мощность и
+    // контуры котла. Параметры читаются из полей карточки, а где их нет — из
+    // названия (в каталоге размер почти всегда записан в имени). Совпало всё,
+    // что можно сравнить, — кандидат допускается, и причина пишется в журнал
+    // обоснований (см. _savingsLog и вкладку «Обоснование»).
+    // Пара ROMMER (.rommer) заведена в каталоге вручную, по артикульному ряду —
+    // её не отбраковываем, но параметры сверяем и расхождение пишем в консоль.
+    analogSpec: function (it) {
+        if (!it) return {};
+        const n = String(it.name || '');
+        const s = {};
+        const num = v => { const x = parseFloat(String(v).replace(',', '.')); return isNaN(x) ? null : x; };
+        // Резьба: 1/2", 3/4", 1", 1 1/4", 1 1/2", 2"
+        const th = n.match(/(\d\s\d\/\d|\d\/\d|\b[12])\s?["″]/);
+        if (th) s.thread = th[1].replace(/\s+/g, ' ');
+        else if (it.size && /["″]/.test(String(it.size))) s.thread = String(it.size).replace(/["″]/g, '').trim();
+        // Присоединение: ВР/НР, ВР/ВР, НР/НР
+        const cn = n.match(/(ВР|НР)\s?[\/x×]\s?(ВР|НР)/i);
+        if (cn) s.conn = (cn[1] + '/' + cn[2]).toUpperCase();
+        // DN / Ду и диаметр коаксиального дымохода
+        if (it.dn != null) s.dn = String(it.dn);
+        else { const dn = n.match(/(?:DN|Ду)\s?(\d+(?:\/\d+)?)/i); if (dn) s.dn = dn[1]; }
+        const co = n.match(/\b(60\/100|80\/125|110\/160)\b/);
+        if (co) s.dn = co[1];
+        // Труба: наружный диаметр × стенка
+        const pp = n.match(/(\d{2,3})\s?[xх×]\s?(\d+[.,]\d+)/);
+        if (pp) s.pipe = pp[1] + 'x' + pp[2].replace(',', '.');
+        // Насос: DN/напор-длина (25/60-180)
+        const pm = n.match(/\b(\d{2})\/(\d{2,3})(?:-(\d{3}))?\b/);
+        if (pm && /насос/i.test(n)) s.pump = pm[1] + '/' + pm[2] + (pm[3] ? '-' + pm[3] : '');
+        // Коллектор: число выходов
+        const out = n.match(/[xх×]\s?(\d{1,2})\s*(?:вых|$|\s|,)/) || n.match(/(\d{1,2})\s?(?:вых|конт)/i);
+        if (out && /коллектор|блок/i.test(n)) s.outlets = num(out[1]);
+        // Радиаторы и конвекторы. Секции, объём и мощность — сначала из названия:
+        // пара ROMMER собирается поверх карточки STOUT и наследует её поля, а
+        // название у неё своё (бойлер «GT 150 л» с полем vol: 100 от STOUT-овских
+        // 100 л). Поле — когда в названии цифры нет.
+        const sc = n.match(/(\d{1,2})\s?секц/i);
+        if (sc) s.sec = num(sc[1]);
+        else if (it.sec != null) s.sec = num(it.sec);
+        if (it.power50 != null) s.power50 = num(it.power50);
+        if (it.power70 != null) s.power70 = num(it.power70);
+        // Объём, Kv, мощность и контуры
+        // \b после кириллицы не работает (граница слова в JS — только латиница и
+        // цифры), поэтому «не буква дальше» проверяется явно
+        const vl = n.match(/(\d{2,4})\s?л(?![а-яё])/i);
+        if (vl) s.vol = num(vl[1]);
+        else if (it.vol != null) s.vol = num(it.vol);
+        if (it.kv != null) s.kv = num(it.kv);
+        // У самого насоса «кВт» нет — типоразмер 25/60; у насосной группы
+        // «до 24 кВт» — это её предел, сравниваем с потребной мощностью
+        const kw = n.match(/(\d+[.,]?\d*)\s?кВт/i);
+        if (kw && !s.pump) s.power = num(kw[1]);
+        else if (it.power != null) s.power = num(it.power);
+        if (it.circuits != null) s.circuits = num(it.circuits);
+        if (it.type) s.type = String(it.type);
+        if (it.chimType) s.chimType = String(it.chimType);
+        return s;
+    },
+
+    /**
+     * Годится ли кандидат на замену позиции. Возвращает { ok, why }: why — уже
+     * готовая фраза для журнала («та же резьба 3/4", ВР/НР; Kv 1,8 ≥ 1,6»).
+     * Сравниваем только то, что есть у обеих позиций; если сравнить нечего —
+     * кандидат допускается как «равнозначная замена из каталога» (списки .alts
+     * составлены под назначение позиции, типоразмерные ряды закрыты
+     * noCheapenAlts).
+     * @param {number} [needKw] — потребная мощность котла (для котлов)
+     * @param {boolean} [strict] — кандидат из списка .alts: без единого
+     *        сравнимого параметра не допускается («раздельный» узел подключения
+     *        вместо H-узла — другая конструкция, а цифр для сверки нет).
+     *        Пара ROMMER (.rommer) идёт без strict: она заведена по ряду.
+     */
+    analogEquivalent: function (item, cand, needKw, strict) {
+        const a = this.analogSpec(item), b = this.analogSpec(cand);
+        const why = [];
+        const fmt = v => String(v).replace('.', ',');
+        const both = k => a[k] != null && b[k] != null;
+        if (both('type') && a.type !== b.type) return { ok: false, why: 'другой тип' };
+        if (both('circuits')) {
+            if (a.circuits !== b.circuits) return { ok: false, why: 'другое число контуров' };
+            why.push(b.circuits === 1 ? 'одноконтурный' : 'двухконтурный');
+        }
+        if (both('chimType') && a.chimType !== b.chimType) return { ok: false, why: 'другой тип дымохода' };
+        if (both('power')) {
+            const need = needKw != null ? needKw : a.power;
+            if (b.power < need - 0.05) return { ok: false, why: `мощность ${fmt(b.power)} кВт ниже потребных ${fmt(need)}` };
+            if (b.power > a.power * 1.3 + 0.5) return { ok: false, why: 'мощность заметно выше нужной' };
+            why.push(`мощность ${fmt(b.power)} кВт при потребности ${fmt(need)}`);
+        }
+        if (both('thread')) {
+            if (a.thread !== b.thread) return { ok: false, why: `другая резьба ${b.thread}"` };
+            why.push(`та же резьба ${a.thread}"`);
+        }
+        if (both('conn')) {
+            if (a.conn !== b.conn) return { ok: false, why: `другое присоединение ${b.conn}` };
+            why.push(a.conn);
+        }
+        if (both('dn')) {
+            if (a.dn !== b.dn) return { ok: false, why: `другой диаметр ${b.dn}` };
+            why.push(`тот же диаметр ${a.dn}`);
+        }
+        if (both('pipe')) {
+            if (a.pipe !== b.pipe) return { ok: false, why: `другая труба ${b.pipe}` };
+            why.push(`та же труба ${fmt(a.pipe)}`);
+        }
+        if (both('pump')) {
+            if (a.pump !== b.pump) return { ok: false, why: `другой типоразмер насоса ${b.pump}` };
+            why.push(`тот же типоразмер ${a.pump}`);
+        }
+        if (both('outlets')) {
+            if (a.outlets !== b.outlets) return { ok: false, why: `другое число выходов (${b.outlets})` };
+            why.push(`те же ${a.outlets} выходов`);
+        }
+        if (both('sec')) {
+            if (a.sec !== b.sec) return { ok: false, why: `другое число секций (${b.sec})` };
+            why.push(`те же ${a.sec} секций`);
+        }
+        if (both('power50')) {
+            if (b.power50 < a.power50 * 0.97) return { ok: false, why: `теплоотдача ${b.power50} Вт ниже ${a.power50}` };
+            why.push(`теплоотдача ${b.power50} Вт/секцию ≥ ${a.power50}`);
+        }
+        if (both('power70')) {
+            if (b.power70 < a.power70 * 0.97) return { ok: false, why: `теплоотдача ${b.power70} Вт ниже ${a.power70}` };
+            why.push(`теплоотдача ${b.power70} Вт ≥ ${a.power70}`);
+        }
+        if (both('vol')) {
+            if (b.vol < a.vol) return { ok: false, why: `объём ${b.vol} л меньше ${a.vol}` };
+            why.push(b.vol === a.vol ? `тот же объём ${a.vol} л` : `объём ${b.vol} л ≥ ${a.vol}`);
+        }
+        if (both('kv')) {
+            if (b.kv < a.kv * 0.9) return { ok: false, why: `Kv ${fmt(b.kv)} ниже ${fmt(a.kv)}` };
+            why.push(`Kv ${fmt(b.kv)} ≥ ${fmt(a.kv)}`);
+        }
+        if (!why.length && strict) return { ok: false, why: 'нет параметров для сверки' };
+        return { ok: true, why: why.length ? why.join(', ') : 'равнозначная замена из каталога' };
+    },
+
+    /**
+     * Короткое техническое обоснование замены для вкладки «Почему дешевле»:
+     * не перечень совпавших цифр, а что именно эти цифры значат для системы
+     * («объём 150 л — тот же запас горячей воды и та же нагрузка на котёл»).
+     * Читает его человек, который решает, равноценна ли замена, поэтому
+     * фраза одна, по типу позиции; параметр называется только когда он есть у
+     * обеих позиций и совпал (analogEquivalent уже это проверил). Если по типу
+     * сказать нечего — перечень совпавших параметров из eq.why.
+     */
+    analogTechWhy: function (item, cand, eq) {
+        const a = this.analogSpec(item), b = this.analogSpec(cand || {});
+        const n = String((item && item.name) || '');
+        const f = v => String(v).replace('.', ',');
+        const same = k => (a[k] != null && b[k] != null && String(a[k]) === String(b[k])) ? b[k] : null;
+        const is = re => re.test(n);
+        const need = this._cheapNeedKw != null ? this._cheapNeedKw : a.power;
+        const parts = [];
+        if (is(/котёл|котел/i)) {
+            if (b.power != null && need != null) parts.push(`мощность ${f(b.power)} кВт при потребности ${f(need)} кВт`);
+            if (same('circuits') != null) parts.push(b.circuits === 1 ? 'одноконтурный, как исходный' : 'двухконтурный, как исходный');
+            parts.push('обвязка и дымоход остаются те же');
+        } else if (is(/бойлер|водонагреват/i)) {
+            const v = b.vol != null ? b.vol : a.vol;
+            if (v != null) parts.push(`косвенный нагрев от котла, объём ${f(v)} л${a.vol != null && b.vol != null && b.vol > a.vol ? ` (не меньше ${f(a.vol)})` : ''}: тот же запас горячей воды и та же нагрузка на котёл`);
+            parts.push('подключение к контуру и место установки не меняются');
+        } else if (is(/дымоход|коаксиал/i)) {
+            const dn = same('dn');
+            parts.push(`${dn ? `диаметр ${dn} стыкуется с патрубком котла, ` : ''}сечение и предел эквивалентной длины те же`);
+        } else if (is(/группа насосн|насосн\w* группа|группа быстрого монтажа|узел подмеса/i)) {
+            const dn = same('dn'), pm = same('pump');
+            if (dn) parts.push(`DN${dn}`);
+            if (pm) parts.push(`насос ${pm}`);
+            if (b.power != null && need != null) parts.push(`до ${f(b.power)} кВт при потребности ${f(need)} кВт`);
+            parts.push('расход и напор контура не меняются, ставится на тот же коллектор');
+        } else if (is(/насос/i)) {
+            const pm = same('pump');
+            parts.push(`${pm ? `типоразмер ${pm}: ` : ''}напор, монтажная длина и присоединение те же, рабочая точка не меняется`);
+        } else if (is(/радиатор|конвектор/i)) {
+            const sc = same('sec');
+            if (b.power70 != null && a.power70 != null) parts.push(`теплоотдача ${b.power70} Вт не ниже ${a.power70} Вт исходного`);
+            else if (b.power50 != null && a.power50 != null) parts.push(`теплоотдача ${b.power50} Вт/секцию не ниже ${a.power50}`);
+            if (sc != null) parts.push(`${sc} секций, как в расчёте`);
+            parts.push('подключение и место под окном те же');
+        } else if (is(/коллектор/i)) {
+            const o = same('outlets'), dn = same('dn');
+            if (o != null) parts.push(`${o} ${o === 1 ? 'контур' : o < 5 ? 'контура' : 'контуров'}: схема контуров та же`);
+            if (dn) parts.push(`DN${dn}: расход через узел тот же`);
+            if (b.kv != null && a.kv != null) parts.push(`Kv ${f(b.kv)} не ниже ${f(a.kv)}: сопротивление узла не выше`);
+            parts.push('присоединения те же');
+        } else if (is(/гидрострелк|сепаратор|грязевик/i)) {
+            const dn = same('dn'), th = same('thread');
+            parts.push(`${dn ? `DN${dn}` : th ? `резьба ${th}"` : 'типоразмер тот же'}: сечение и расход через узел те же`);
+        } else if (is(/термоголов|головка термостат/i)) {
+            const m30 = /3015/.test(String((cand && cand.id) || '')) && /3015/.test(String((item && item.id) || ''));
+            parts.push(`${m30 ? 'резьба M30×1,5: ' : ''}ставится на тот же термостатический клапан, диапазон настройки и ход штока те же`);
+        } else if (is(/бак/i)) {
+            const v = b.vol != null ? b.vol : a.vol;
+            parts.push(`мембранный${v != null ? `, объём ${f(v)} л не меньше расчётного` : ''}, давление предзарядки то же`);
+        } else if (is(/труб/i)) {
+            const pp = same('pipe');
+            parts.push(`${pp ? `${f(pp)}: ` : ''}диаметр и стенка те же, скорость воды и потери по расчёту не меняются`);
+        } else if (same('thread') || same('conn') || (b.kv != null && a.kv != null)) {
+            const th = same('thread'), cn = same('conn');
+            if (th) parts.push(`резьба ${th}"${cn ? ' ' + cn : ''}: встаёт на то же место без переходников, проходное сечение то же`);
+            else if (cn) parts.push(`присоединение ${cn}: встаёт на то же место без переходников, проходное сечение то же`);
+            if (b.kv != null && a.kv != null) parts.push(b.kv === a.kv ? `Kv ${f(b.kv)} тот же: сопротивление не меняется` : `Kv ${f(b.kv)} не ниже ${f(a.kv)}: сопротивление не выше`);
+        }
+        if (!parts.length) {
+            const w = eq && eq.why && eq.why !== 'равнозначная замена из каталога' ? eq.why : '';
+            parts.push(w ? `${w}: то же назначение и типоразмер` : 'то же назначение и типоразмер, параметры по каталогу совпадают');
+        }
+        return parts.join('; ');
+    },
+
+    // Фраза журнала для пары ROMMER: техническое обоснование по типу позиции,
+    // а в скобках — откуда пара (заведена в каталоге по артикульному ряду, так
+    // что сверка параметров здесь — контроль каталога, а не отбор)
+    analogPairWhy: function (item, pair) {
+        // Мощность сверяем с потребной, а не с номиналом STOUT: насосная группа
+        // «до 23 кВт» вместо «до 24» при доме на 19 кВт — годится
+        const eq = this.analogEquivalent(item, pair, this._cheapNeedKw);
+        if (!eq.ok) console.warn('[подешевле] пара ROMMER не сходится по параметрам:', item && item.name, '→', pair && pair.name, eq.why);
+        let why = this.analogTechWhy(item, pair, eq) + ' (пара ROMMER того же ряда)';
+        // Канализация: пара к малошумной серии — обычный полипропилен. Диаметр тот
+        // же, но тише не будет, и в обосновании это должно быть сказано прямо
+        const quiet = s => /comfort|малошум|бесшум/i.test(String((s && s.name) || ''));
+        if (quiet(item) && !quiet(pair)) why += '; обычный полипропилен вместо малошумной серии: тот же диаметр, но без шумопоглощения';
+        return why;
+    },
+
     getCheapestAlternative: function (item) {
         if (!item) return null;
         let options = [];
 
-        let addCandidate = (cand) => {
+        // why — чем кандидат обоснован; попадает в журнал «Обоснование»
+        let addCandidate = (cand, why) => {
             if (!cand) return;
             if (options.some(x => x.id === cand.id)) return;
-            options.push(cand);
+            options.push(why ? { ...cand, _why: why } : cand);
 
             if (cand.comfort) {
-                addCandidate(cand.comfort);
+                addCandidate(cand.comfort, 'вариант той же позиции (малошумная канализация)');
             }
 
             let analog = cand.rommer;
@@ -44560,7 +45097,7 @@ const app = {
                         brand: "ROMMER"
                     };
                     if (analog[0].article) finalAnalog.article = analog[0].article;
-                    addCandidate(finalAnalog);
+                    addCandidate(finalAnalog, this.analogPairWhy(cand, finalAnalog));
                 } else {
                     let finalAnalog = {
                         ...cand,
@@ -44570,7 +45107,7 @@ const app = {
                         brand: analog.brand || "ROMMER"
                     };
                     if (analog.article) finalAnalog.article = analog.article;
-                    addCandidate(finalAnalog);
+                    addCandidate(finalAnalog, this.analogPairWhy(cand, finalAnalog));
                 }
             }
         };
@@ -44590,8 +45127,12 @@ const app = {
             // noCheapen — альтернатива не равнозначна позиции, а меняет саму комплектацию
             // (заглушка вместо компенсатора гидроудара). Она есть в модалке замены, но режим
             // «Аналог» не вправе подставить её сам: это дешевле не потому, что другой бренд.
-            if (alt && alt.noCheapen) return;
-            addCandidate(alt);
+            if (!alt || alt.noCheapen) return;
+            // Техническая проверка: не прошёл — в кандидаты не попадает, как бы
+            // дёшев ни был (см. analogEquivalent)
+            const _eq = this.analogEquivalent(item, alt, this._cheapNeedKw, true);
+            if (!_eq.ok) return;
+            addCandidate(alt, this.analogTechWhy(item, alt, _eq) + ' (вариант того же назначения из каталога)');
         });
 
         let cheapest = null;
@@ -48038,6 +48579,63 @@ const app = {
      * 3) мощности хватает — самый короткий, чтобы как можно меньше выйти за окно;
      * 4) не хватает ни одной — самая мощная.
      */
+    /**
+     * «Подешевле»: стальной панельный ROMMER вместо секционного прибора — с тем
+     * же подключением (нижнее у Space/TITAN, боковое у боковых серий; по
+     * умолчанию серия Space, то есть нижнее), высотой 500 мм, подобранный по
+     * требуемой мощности и ширине окна тем же pickPanelForWindow, что и
+     * автоподбор панелей. Под низкий подоконник — меньшая высота того же
+     * подключения. Дизайн-радиаторы и ручной выбор не трогаем (решает вызывающий).
+     * Возвращает копию позиции с обоснованием (_why) и исходником (_from) или null.
+     */
+    cheapPanelFor: function (activeItem, reqPwr, winW, sillMaxH, fromItem) {
+        if (!activeItem || activeItem.isPanel || typeof steelRads === 'undefined') return null;
+        const ser = this._getSecRadSeries().find(s => s.arr && s.arr.some(x => x.id === activeItem.id));
+        if (ser && ser.isDesign) return null;
+        const wantBottom = ser ? !!ser.bottom : true;
+        const h = p => p.height || this.getRadHeightFromId(p.id);
+        let cands = steelRads.filter(p => !!p.bottom === wantBottom && h(p) === 500 && (sillMaxH == null || h(p) <= sillMaxH));
+        if (!cands.length && sillMaxH != null) {
+            const fit = steelRads.filter(p => !!p.bottom === wantBottom && h(p) <= sillMaxH);
+            const best = fit.reduce((m, p) => Math.max(m, h(p)), 0);
+            cands = fit.filter(p => h(p) === best);
+        }
+        // Из всех панелей, закрывающих нагрузку, — самая дешёвая; ширина как у
+        // автоподбора: 50–90 % окна, если таких нет — не шире 90 %, дальше любая.
+        // (pickPanelForWindow берёт первую подходящую по ширине, а тип 33 на 800 мм
+        // выходит дороже типа 22 на 1000 при той же теплоотдаче.)
+        const ok = cands.filter(p => p.power50 > 0 && p.price > 0 && p.power50 >= reqPwr);
+        if (!ok.length) return null;
+        const W = parseFloat(winW) || 0;
+        const len = p => (p.sec || 0) / 1000;
+        const cheapest = arr => arr.reduce((a, b) => (b.price < a.price ? b : a));
+        let pool = W > 0 ? ok.filter(p => len(p) >= W * 0.5 && len(p) <= W * 0.9) : [];
+        if (!pool.length && W > 0) pool = ok.filter(p => len(p) <= W * 0.9);
+        if (!pool.length) pool = ok;
+        const panel = cheapest(pool);
+        const type = (String(panel.name).match(/Тип\s?\d+/) || [''])[0];
+        const wTxt = W > 0 ? `, ширина ${panel.sec} мм под окно ${String(winW).replace('.', ',')} м` : '';
+        const why = `стальной панельный ROMMER ${type}, ${h(panel)}×${panel.sec} мм: теплоотдача ${panel.power50} Вт ≥ ${Math.round(reqPwr)} Вт при ΔT 50 °C, ${wantBottom ? 'нижнее' : 'боковое'} подключение как у исходного прибора${wTxt}; самый дешёвый из подходящих`;
+        const src = fromItem || activeItem;
+        return {
+            ...panel, noCheapenAlts: true, _why: why,
+            _from: { name: src.name, brand: src.brand || 'STOUT', price: src.price || 0, sku: src.article || realSku(src.id) }
+        };
+    },
+
+    /**
+     * Надбавка к расценке «Монтаж утеплителя для укладки ТП» по основанию,
+     * которое реально легло в смету (раздел 4.2): { k, label }.
+     * Мат STOUT — 1; мат ROMMER — 1,1; XPS с подложкой и крепежом — 1,3.
+     */
+    ufhBaseWorkFactor: function () {
+        const rows = (this.currentEquipmentList || []).filter(x => String(x.group || '').startsWith('4.2'));
+        const nm = x => String(x.name || '').toLowerCase();
+        if (rows.some(x => /xps|пенополистирол/.test(nm(x)))) return { k: 1.3, label: 'XPS с подложкой, дюбелями и скобами — монтаж утеплителя +30 %' };
+        if (rows.some(x => /мат с бобышками/.test(nm(x)) && /rommer/i.test(String(x.brand || '')))) return { k: 1.1, label: 'маты ROMMER (полезных 0,72 м² против 0,88 у STOUT, стыков больше) — монтаж утеплителя +10 %' };
+        return { k: 1, label: '' };
+    },
+
     pickPanelForWindow: function (list, reqPwr, winW) {
         const arr = (list || []).filter(x => x && x.power50 > 0);
         if (!arr.length) return (list || [])[0];
@@ -61550,11 +62148,24 @@ const app = {
         this.updateHeaderCompanyDetails();
         this.updateDocumentTitle();
 
+        // «Подешевле»: честная разница — та же смета без режима считается
+        // отдельным тихим прогоном (см. computeCheapBaseline), а не по позициям.
+        if (!computeOnly && !this._cheapComparing) {
+            if (this.cheapModeOn()) this.computeCheapBaseline();
+            else this._cheapBase = null;
+        }
+
         // Update top left logo based on brandMode
         this.syncTopLogo();
+        // Оформление под бренд следует за переключателем «Аналог» (brandMode)
+        this.syncBrandTheme();
 
         this.calcBaseTotal = 0;
         this.calcFinalTotal = 0;
+        // Из чего складывается «Экономия N%»: каждая позиция, у которой цена в
+        // смете отличается от цены исходного подбора (замена на ROMMER, более
+        // выгодный вариант, ручная замена). Читает savingsPopoverHtml.
+        this._savingsLog = [];
         app.lastEqSum = 0;
         app.lastWorksSum = 0;
         app.originalEqSum = 0;
@@ -61612,6 +62223,8 @@ const app = {
         // него "16.4" + 17.325 склеивалось в "16.417.325" — котёл подбирался на
         // 16.4 кВт, то есть тумблер «Учесть в мощности котла» не делал ничего.
         const pwrBoiler = parseFloat(pwr) + snowQ;
+        // Потребная мощность источника — для проверки кандидатов «Подешевле»
+        this._cheapNeedKw = pwrBoiler;
 
         let regionName = "";
         if (this.state.selectedCity) {
@@ -61649,6 +62262,7 @@ const app = {
             <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`;
         document.getElementById('doc_summary').innerHTML = `
             <span class="param-item">🔖 № КП: <b>${this.kpNumber() || '—'}</b></span>
+            ${this.cheapModeOn() ? '<span class="param-item">💡 Вариант: <b>подешевле</b></span>' : ''}
             ${_objChip}
             <span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>
             <span class="param-item">📍 Регион: <b>${regionName}</b></span>
@@ -61915,6 +62529,16 @@ const app = {
                 itemsToAdd.push({ itm: finalItem, q: qty });
             }
 
+            // Для подсказки «из чего экономия»: цена исходного подбора против того,
+            // что реально легло в смету за этот вызов (см. _savingsLog в render)
+            // _from — позиция уже подменена до addToBill (панельный радиатор в
+            // «Подешевле»): «было» берём из неё, иначе журнал показал бы панель
+            // вместо секционного
+            const _svFrom = item._from || null;
+            const _svBase = Math.round((((_svFrom && _svFrom.price) || item.price) || 0) * qty);
+            let _svFinal = 0;
+            const _svNames = [];
+
             // Добавляем все сформированные позиции в смету
             itemsToAdd.forEach(entry => {
                 let finalItem = entry.itm;
@@ -62014,6 +62638,8 @@ const app = {
                 // туда позицию. Поэтому суммы такого раздела копим отдельно и
                 // отдаём в общий итог только когда он и правда вышел.
                 const _origAdd = Math.round(originalPrice * finalQty);
+                _svFinal += _origAdd;
+                if (_svNames.length < 3) _svNames.push({ name: finalItem.name, brand: finalItem.brand || '', sku: finalItem.article || realSku(finalItem.id) });
                 // «Рекомендованная цена» (originalEqSum) здесь больше не копится: строка
                 // ещё может уйти в выключенный раздел или сменить количество руками.
                 // Её считает flushBill по итоговым строкам — см. там.
@@ -62077,6 +62703,32 @@ const app = {
                     bill.push({ ...finalItem, sortRank: item.sortRank || 0, q: finalQty, sum: Math.round(finalItem.price * finalQty), basePrice: originalPrice, displaySku: finalItem.displaySku || finalItem.article || realSku(finalItem.id) || 'нет', qtyTip: finalTip || "", group: itemGroup, originalId: finalItem.originalId || item.id });
                 }
             });
+
+            // Журнал для подсказки «из чего экономия». Пишем только когда цена
+            // изменилась: kind — почему. rommer — пара ROMMER или ANALOG_MAP;
+            // alt — более выгодный вариант того же назначения (getCheapestAlternative,
+            // бренд может быть любой); manual — замена руками в таблице.
+            const _svChanged = _svNames.length && (_svBase !== _svFinal || _svFrom || _svNames.some(t => t.name !== item.name));
+            if (_svChanged && this._savingsLog && (manualSwapId || useAnalogOutput || activeItem._why || _svFrom)) {
+                const _kind = manualSwapId ? 'manual' : (useAnalogOutput ? 'rommer' : 'alt');
+                // why — обоснование для вкладки: у пары ROMMER и кандидата из
+                // списка его даёт analogEquivalent, у ручной замены — сам факт
+                let _why = activeItem._why || '';
+                if (_kind === 'manual') _why = 'выбрано вручную в таблице замены';
+                else if (!_why && _kind === 'rommer' && itemsToAdd[0]) _why = this.analogPairWhy(item, itemsToAdd[0].itm);
+                // major — основное оборудование: в обоснование идёт построчно,
+                // фитинги и крепёж — одной строкой с суммой
+                const _nm = String((_svFrom && _svFrom.name) || item.name || '');
+                const _major = (_svBase >= 3000)
+                    || (/котёл|котел|бойлер|водонагреват|насос|коллектор|группа|гидрострелк|радиатор|конвектор|дымоход|бак |бак$|стабилизатор|клапан|фильтр|сепаратор|шкаф|узел|термостат|термоголов/i.test(_nm)
+                        && !/фитинг|угольник|тройник|муфта|ниппель|переходник|хомут|шпильк|гильз|евроконус|втулк|кольц|заглушк|пробк|кран шаров/i.test(_nm));
+                this._savingsLog.push({
+                    kind: _kind, section: secTitle, base: _svBase, final: _svFinal,
+                    from: (_svFrom && _svFrom.name) || item.name, fromBrand: (_svFrom && _svFrom.brand) || item.brand || 'STOUT', to: _svNames,
+                    fromSku: (_svFrom && _svFrom.sku) || item.article || realSku(item.id),
+                    why: _why, major: _major
+                });
+            }
         };
         // Евроконус 16 к коллектору: компрессионный (по умолчанию) или аксиальный переходник
         // SFA-0034-001634, выбранный в таблице замены. У аксиального соединения обжимного
@@ -62109,7 +62761,11 @@ const app = {
             return out;
         };
         let worksBill = [];
-        const addToWorks = (name, qty, basePrice, unit, group = null) => {
+        // factor — надбавка к расценке за более трудоёмкое исполнение той же
+        // работы (утеплитель ТП: маты ROMMER +10 %, XPS с крепежом +30 %).
+        // Накладывается ПОСЛЕ своей цены монтажника: он правит базовую расценку
+        // в прайсе, а надбавка — свойство выбранного материала, не прайса.
+        const addToWorks = (name, qty, basePrice, unit, group = null, factor = 1) => {
             if (qty <= 0) return;
             // Работы коллекторной разводки: в квартире со стояками их нет.
             if (this.onRiser() && this.RISER_SKIP_WORKS.includes(name)) return;
@@ -62123,7 +62779,7 @@ const app = {
             if (this.state.deletedWorks && this.state.deletedWorks.includes(name)) return;
             // Проверяем, есть ли ручная цена
             let price = (this.state.customWorks && this.state.customWorks[name] !== undefined) ? this.state.customWorks[name] : this.wp(name, basePrice);
-            price = Math.round(price || 0);
+            price = Math.round((price || 0) * (factor > 0 ? factor : 1));
             // Цена до скидки нужна строкой «Рекомендованная цена» и остаётся тем,
             // что монтажник правит в поле цены работы: скидка накладывается сверху,
             // а не запекается в его прайс-лист.
@@ -62410,7 +63066,7 @@ const app = {
             const _sewerSwapSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"></path><path d="M16 21h5v-5"></path></svg>`;
             const _analogBadge = (sectionHasAnalogItems && isPro && this.canUseAnalog()) ? `
                 <div class="row-sec-toggle-wrap sec-analog-badge${_secAnalogActive ? ' active' : ''} no-print" onclick="event.stopPropagation()" style="${isRevealed ? '' : 'display:none;'}">
-                    <span class="sec-analog-label">АНАЛОГ</span>
+                    <span class="sec-analog-label">ПОДЕШЕВЛЕ</span>
                     <label class="switch">
                         <input type="checkbox" ${_secAnalogActive ? 'checked' : ''}
                             onchange="app.toggleSectionAnalog('${title.replace(/'/g, "\\'")}', this.checked)">
@@ -63057,6 +63713,20 @@ const app = {
                 let db = (ft === 'gas')
                     ? catalog.boilers_gas
                     : (elSeries === 'polis' ? catalog.boilers_polis : catalog.boilers_status);
+                // POLIS встал по режиму «Подешевле» (а не по ручному выбору серии) —
+                // в журнал обоснований нужны «было» (STATUS той же мощности) и «почему»:
+                // строка котла идёт через addToBill, и без этих полей замена в
+                // обосновании не видна (24.09.2026)
+                if (ft === 'el' && elSeries === 'polis' && !this.state.boilerSeriesManual && useAnalogSec1) {
+                    db = db.map(x => {
+                        const st = catalog.boilers_status.find(s => s.power >= x.power) || catalog.boilers_status[catalog.boilers_status.length - 1];
+                        return {
+                            ...x, noCheapenAlts: true,
+                            _from: st ? { name: st.name, brand: st.brand || 'STOUT', price: st.price || 0 } : null,
+                            _why: `резерв при газовом котле: STOUT POLIS ${x.power} кВт вместо STATUS ${st ? st.power : x.power} кВт, мощность не ниже; насос, расширительный бак и группа безопасности — отдельными позициями обвязки (комплект POLIS), погодозависимая автоматика — от газового котла`
+                        };
+                    });
+                }
                 // Выделенная на участок электрическая мощность: котлы мощнее неё
                 // из линейки убираем совсем — сеть такой не потянет, и подбор
                 // упирается в потолок вместо расчётной мощности. Лимит живёт
@@ -63282,7 +63952,13 @@ const app = {
                             power: _gbSingleAlt.boiler.power,
                             extra: Math.round(_gbSingleAlt.extra || 0)
                         } : null;
-                        gasBoiler = { ...gasBoiler, sortRank: -1, name: `Котёл газовый, ${_gbCircStr} (${gasBoiler.power} кВт)`, originalId: 'gas_boiler_auto', alts: this.gasBoilerPool(), ...(_gbAlt ? { gasSingleAlt: _gbAlt } : {}) };
+                        // noCheapenAlts: .alts — весь пул котлов четырёх марок для ручной
+                        // замены, а не «тот же котёл другого бренда». Без флага режим
+                        // «Аналог» брал из него самый дешёвый: Navien 13 кВт двухконтурный
+                        // вместо Haier 24 кВт одноконтурного при теплопотерях 19 кВт и
+                        // бойлере (24.09.2026). Котёл подбирается по мощности и контурам,
+                        // удешевлять его по одной цене нельзя.
+                        gasBoiler = { ...gasBoiler, sortRank: -1, name: `Котёл газовый, ${_gbCircStr} (${gasBoiler.power} кВт)`, originalId: 'gas_boiler_auto', alts: this.gasBoilerPool(), noCheapenAlts: true, ...(_gbAlt ? { gasSingleAlt: _gbAlt } : {}) };
                         addToBill(gasBoiler, qty, this.getDesc('boiler_gas', parseFloat(pwrBoiler), gasBoiler.power, qty, _gbSrc, _gbBeyondHaier, _gbNeed));
                         markRigAnchor('gas', 'gas_boiler_auto');
                         for (let k = 0; k < qty; k++) selBoilers.push(gasBoiler);
@@ -63533,9 +64209,13 @@ const app = {
                 let ch = chimneyFor(b);
                 // Дымоход всегда открывает обвязку котла: по нему монтажник опознаёт,
                 // чья это обвязка, а по цене он не всегда оказывался наверху.
-                // noCheapenAlts у конденсационного: в .alts лежат и обычные дымоходы, и
-                // режим «Аналог» иначе подставил бы конденсационному котлу дешёвый
-                // традиционный 60/100. Ручной замене список остаётся.
+                // noCheapenAlts у готового комплекта, любого: в .alts лежат комплекты
+                // разной длины и комплектности (INOX Line L1000 с рабочей длиной 700 мм,
+                // конденсационные, бренд-специфичные), и режим «Аналог» брал из них
+                // самый дешёвый — традиционному 60/100 подставлял L1000 (24.09.2026),
+                // а конденсационному — обычный. Пара ROMMER (.rommer) по-прежнему
+                // работает: getCheapestAlternative смотрит её у самой позиции, флаг
+                // закрывает только список .alts. Ручной замене список остаётся.
                 //
                 // Трасса собирается по заданным монтажником «куда / сколько метров /
                 // сколько отводов» (см. buildChimney). Через стену основой остаётся
@@ -63554,7 +64234,7 @@ const app = {
                         let _desc = _isKit ? this.getDesc('chimney', ch) : (p.tip || null);
                         if (_i === 0 && _chNote) _desc = _desc ? (_desc + '<br>' + _chNote) : _chNote;
                         addToBill(
-                            { ...p.item, sortRank: _i === 0 ? -1 : -0.5, ...(_isKit && ch.chimType === 'cond' ? { noCheapenAlts: true } : {}) },
+                            { ...p.item, sortRank: _i === 0 ? -1 : -0.5, ...(_isKit ? { noCheapenAlts: true } : {}) },
                             p.qty,
                             _desc,
                             grp
@@ -66498,6 +67178,17 @@ const app = {
                                 }
                             }
 
+                            // «Подешевле»: стальной панельный с тем же подключением (cheapPanelFor).
+                            // После подоконника — панель тоже должна под него встать.
+                            {
+                                const _soRad = (this.state.sectionAnalog || {})['3. Приборы отопления'];
+                                const _cheapRadOn = _soRad !== undefined ? !!_soRad : (this.state.brandMode === 'rommer');
+                                if (_cheapRadOn && !manualSwapId) {
+                                    const _cp = this.cheapPanelFor(activeItem, reqPwr, w.width, _sillMaxH);
+                                    if (_cp) { activeItem = _cp; factPower = _cp.power50; }
+                                }
+                            }
+
                             // Определяем сторону подключения ИМЕННО этого радиатора (а не общий
                             // state.radType) — для правильного разнесения обвязки ниже по коду,
                             // корректно даже при точечной замене на другую серию для одного окна.
@@ -66668,6 +67359,28 @@ const app = {
                     }
                 }
                 totalRadCount = totalCount;
+
+                // «Подешевле»: стальной панельный с тем же подключением, по нагрузке на
+                // один прибор (cheapPanelFor). originalId оставляем от секционного, чтобы
+                // правка количества руками (qtyOverrides) не потерялась при смене режима.
+                {
+                    const _soRad = (this.state.sectionAnalog || {})['3. Приборы отопления'];
+                    const _cheapRadOn = _soRad !== undefined ? !!_soRad : (this.state.brandMode === 'rommer');
+                    const _radKey0 = activeItem.originalId || activeItem.id;
+                    if (_cheapRadOn && !(this.state.swaps && this.state.swaps[_radKey0])) {
+                        const _perRad = totalCount > 0 ? heatLoadTotal / totalCount : heatLoadTotal;
+                        // «Было» для обоснования — прибор основной сметы: у ROMMER секции
+                        // округляются до чётных (11 → 12), и без этого в журнале стоял бы
+                        // не тот Space, что в основной смете
+                        let _fromRad = activeItem;
+                        if (this.state.radType === 'space' || !this.state.radType) {
+                            const _secStout = Math.max(4, Math.min(14, Math.ceil(totalSecSpace / countSpace)));
+                            _fromRad = this.radBySec(catalog.rads, _secStout) || activeItem;
+                        }
+                        const _cp = this.cheapPanelFor(activeItem, _perRad, this.getDefaultWindowWidth((parseFloat(this.state.area) || 0) / Math.max(1, win)), null, _fromRad);
+                        if (_cp) { activeItem = { ..._cp, originalId: _radKey0 }; factPowerTotal = _cp.power50 * totalCount; }
+                    }
+                }
 
                 // Та же поимённая логика бокового/нижнего подключения, что и в detailedRooms —
                 // в режиме "весь дом" один агрегированный радиатор, поэтому весь totalCount
@@ -70179,6 +70892,15 @@ const app = {
         if (arrowCount > 0) {
             addToWorks("Монтаж гидравлической стрелки", arrowCount, 6500, "шт", obvyazkaGroup);
         }
+        // Совмещённый узел STOUT «Коллектор-гидрострелка DN20/DN25»: раньше работы на
+        // него не было вовсе, и вариант «Подешевле» (пара ROMMER — коллектор +
+        // стрелка отдельно, 5 500 + 6 500) выходил по работам дороже основной сметы.
+        // Расценка 6 500 — по слову владельца 24.09.2026. По названию, как у стрелки:
+        // «гидравлическая стрелка» в нём не встречается, двойного счёта нет.
+        let comboCount = this.currentEquipmentList.filter(x => (x.name || '').toLowerCase().includes("коллектор-гидрострелка")).reduce((sum, x) => sum + x.q, 0);
+        if (comboCount > 0) {
+            addToWorks("Монтаж коллектора-гидрострелки", comboCount, 6500, "шт", obvyazkaGroup);
+        }
 
         // Подсчет и монтаж распределительных коллекторов котельной (стальных) (Обвязка котельной)
         // Название в фильтре было сокращённым — «стальной распр. коллектор», —
@@ -70207,9 +70929,12 @@ const app = {
             }
         }
         if (this.onRiser()) {
+            // «панельн» — стальные панельные: в их названии слова «радиатор» нет
+            // («Стальной панельный Ventil (Тип 11), 600 мм»), и в квартире с ними
+            // работы по замене приборов обнулялись (24.09.2026, режим «Подешевле»)
             const _dev = this.currentEquipmentList
                 .filter(x => !x.group || !/^\d+\.\d+/.test(String(x.group)))
-                .filter(x => /радиатор|конвектор/i.test(String(x.name || '')))
+                .filter(x => x.isPanel || /радиатор|конвектор|панельн/i.test(String(x.name || '')))
                 .reduce((s, x) => s + (x.q || 0), 0);
             if (_dev > 0) {
                 const gR = "1.3 Отопление квартиры";
@@ -70319,8 +71044,12 @@ const app = {
         // нет вовсе — проверка typeof гасила ВЕСЬ блок, и четыре расценки внутри
         // (термоголовки, узлы нижнего подключения, Г-образные трубки, Vartronic)
         // не начислялись никогда. Открываем блок по числу радиаторов из сметы.
+        // Стальные панельные («Стальной панельный Ventil (Тип 22), 900 мм») словом
+        // «радиатор» не начинаются — без них блок гас, и в смете со стальными
+        // панелями (серия «стальной» или режим «Подешевле») пропадали работы по
+        // термоголовкам и узлам подключения (24.09.2026)
         const _radQty = this.currentEquipmentList
-            .filter(x => String(x.group || '').startsWith("3.") && /^радиатор|^конвектор/i.test(x.name || ''))
+            .filter(x => String(x.group || '').startsWith("3.") && (x.isPanel || /^радиатор|^конвектор|^стальной панельн/i.test(x.name || '')))
             .reduce((sum, x) => sum + x.q, 0);
         if (this.state.systems.includes('rad') && _radQty > 0) {
             // Расценки «Монтаж трубопроводов PEX-a… и подключение радиатора»
@@ -70384,7 +71113,14 @@ const app = {
         if (this.state.systems.includes('tp') && typeof tpArea !== 'undefined' && tpArea > 0
             && !this.usesElectricUfh()) {
             addToWorks("Монтаж труб водяного тёплого пола", tpArea, 750, "м²", tpGroup);
-            addToWorks("Монтаж утеплителя для укладки ТП", tpArea, 350, "м²", tpGroup);
+            // Расценка на утеплитель зависит от того, что легло в смету (раздел
+            // «4.2. Утеплитель и крепёж»): мат STOUT — базовая; мат ROMMER — +10 %
+            // (мельче, полезных 0,72 м² против 0,88, стыков больше); XPS с подложкой,
+            // дюбелями и скобами — +30 % (листы крепить, трубу — такером).
+            // Так решил владелец 24.09.2026 под вариант «Подешевле», но правило
+            // общее: тот же XPS, выбранный руками, кладут так же.
+            const _ufhBaseK = this.ufhBaseWorkFactor();
+            addToWorks("Монтаж утеплителя для укладки ТП", tpArea, 350, "м²", tpGroup, _ufhBaseK.k);
             // #18: укладка петель считается по м² обогрева и не покрывает подводку к коллектору
             // — прокладка транзита оплачивается отдельно, по метражу трассы. Трасса
             // есть на обоих этажах: наверх это подъём по стояку, на первом — ход от
@@ -70724,9 +71460,9 @@ const app = {
 
             // Строим HTML каркас только 1 раз (или при смене тарифа), чтобы не сбрасывать анимацию
             if (!headerTotals.innerHTML.includes('anim_eq_sum') || headerTotals.dataset.isPro !== String(showWorksTotal) || headerTotals.dataset.hasMargin !== String(showHdrMargin)) {
-                let sumsHtml = `<span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Оборудование:</span> <b id="anim_eq_sum" style="color:var(--primary); font-size:14px;">0 ₽</b>`;
+                let sumsHtml = `<span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Оборудование:</span> <b id="anim_eq_sum" style="font-size:14px;">0 ₽</b>`;
                 if (showWorksTotal) {
-                    sumsHtml += `<span style="margin:0 10px; color:var(--border);">|</span> <span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Монтаж:</span> <b id="anim_works_sum" style="color:#F97316; font-size:14px;">0 ₽</b>`;
+                    sumsHtml += `<span style="margin:0 10px; color:var(--border);">|</span> <span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Монтаж:</span> <b id="anim_works_sum" style="font-size:14px;">0 ₽</b>`;
                 }
                 if (showHdrMargin) {
                     sumsHtml += `<span style="margin:0 10px; color:var(--border);">|</span> <span style="color:var(--text-sec); font-size:11px; margin-right:4px;">Мне:</span> <b id="hdr_margin_sum" style="color:#10B981; font-size:14px; cursor:pointer;" title="Что остаётся вам по этому объекту — открыть вкладку «Деньги»" onclick="app.setViewMode('money')">0 ₽</b>`;
@@ -70971,12 +71707,20 @@ const app = {
 
         // Моментальное обновление бейджа с процентом экономии
         let dBadge = document.getElementById('discount_badge');
+        // Открытая подсказка «из чего экономия» после пересчёта устарела
+        const _spOpen = document.getElementById('savings_pop');
+        if (_spOpen) _spOpen.remove();
+        // Процент — против той же сметы без «Подешевле» (computeCheapBaseline),
+        // а не по позициям: так в него входит и другая обвязка котельной.
+        // Пока базовая смета не посчитана (или режим выключен) — по позициям.
+        const _cb = this.cheapModeOn() ? this._cheapBase : null;
+        const _bBase = _cb ? _cb.eq : this.calcBaseTotal;
         if (dBadge) {
-            if (this.calcBaseTotal > this.calcFinalTotal) {
-                let diff = this.calcBaseTotal - this.calcFinalTotal;
-                let percent = Math.round((diff / this.calcBaseTotal) * 100);
+            if (_bBase > this.calcFinalTotal) {
+                let diff = _bBase - this.calcFinalTotal;
+                let percent = Math.round((diff / _bBase) * 100);
                 if (percent > 0) {
-                    dBadge.textContent = 'Экономия ' + percent + '%';
+                    dBadge.textContent = (_cb ? 'Дешевле на ' : 'Экономия ') + percent + '%';
                     dBadge.style.display = 'block';
                 } else {
                     dBadge.style.display = 'none';
@@ -70985,6 +71729,9 @@ const app = {
                 dBadge.style.display = 'none';
             }
         }
+        this.syncCheaperTab();
+        if (this.state.viewMode === 'cheaper') this.renderCheaperPanel();
+        this.renderCheaperPrint();
 
         // Ограничение мощности и прогноз стоимости электроотопления считаются от
         // теплопотерь, поэтому обновляем их на каждую отрисовку сметы, а не только
@@ -70997,6 +71744,272 @@ const app = {
         if (this.state.detailedRooms && this.state.fuels.includes('gas') && this.state.showGasCost) {
             this.renderGasCostUI();
         }
+    },
+
+    // ─── Подсказка «из чего складывается экономия» ──────────────────────────
+    // Плашка «Экономия N%» у переключателя «Аналог» показывала процент, но не
+    // объясняла, откуда он: подбор с «Аналогом» не просто берёт пару ROMMER, а
+    // выбирает самый выгодный вариант того же назначения, учитывает ручные
+    // замены, а обвязку котельной вообще собирает другой системой (полипропилен
+    // вместо нержавейки) — и это в процент не входит. Окно открывается кликом
+    // по плашке и перечисляет всё по группам, с самыми заметными заменами.
+    toggleSavingsPopover: function (event) {
+        if (event) event.stopPropagation();
+        const old = document.getElementById('savings_pop');
+        if (old) { old.remove(); return; }
+        const wrap = document.getElementById('cheaper_wrapper');
+        if (!wrap) return;
+        // Считаем до вставки: расчёт обвязки по системам гоняет render(true),
+        // а тот убирает открытое окно как устаревшее
+        const html = this.savingsPopoverHtml();
+        const pop = document.createElement('div');
+        pop.id = 'savings_pop';
+        pop.className = 'savings-pop no-print';
+        pop.onclick = e => e.stopPropagation();
+        pop.innerHTML = html;
+        wrap.appendChild(pop);
+        const close = (e) => {
+            if (e && e.type === 'keydown' && e.key !== 'Escape') return;
+            const p = document.getElementById('savings_pop');
+            if (p) p.remove();
+            document.removeEventListener('click', close);
+            document.removeEventListener('keydown', close);
+        };
+        setTimeout(() => { document.addEventListener('click', close); document.addEventListener('keydown', close); }, 0);
+    },
+
+    savingsPopoverHtml: function () {
+        const fmt = v => Math.round(Math.abs(v)).toLocaleString('ru-RU') + ' ₽';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const log = (this._savingsLog || []).slice();
+        // Итог — разница двух полных смет (computeCheapBaseline); по позициям
+        // только пока базовая ещё не посчитана
+        const _cb = this.cheapModeOn() ? this._cheapBase : null;
+        const base = _cb ? _cb.eq : (this.calcBaseTotal || 0), fin = this.calcFinalTotal || 0;
+        const diff = base - fin;
+        const pct = base > 0 ? Math.round(diff / base * 100) : 0;
+
+        const kinds = [
+            { k: 'rommer', label: 'Пары ROMMER из каталога' },
+            { k: 'alt', label: 'Равнозначные варианты дешевле' },
+            { k: 'manual', label: 'Ваши замены в таблице' }
+        ];
+        const rows = kinds.map(g => {
+            const list = log.filter(e => e.kind === g.k);
+            if (!list.length) return '';
+            const d = list.reduce((s, e) => s + (e.base - e.final), 0);
+            return `<div class="sp-row"><span>${g.label}<span class="sp-n">${list.length}</span></span><b class="${d >= 0 ? 'sp-save' : 'sp-cost'}">${d >= 0 ? '−' : '+'}${fmt(d)}</b></div>`;
+        }).join('');
+
+        const top = log.sort((a, b) => (b.base - b.final) - (a.base - a.final))
+            .filter(e => e.base - e.final > 0).slice(0, 5)
+            .map(e => {
+                const to = e.to.map(t => esc(t.name)).join(' + ');
+                const d = e.base - e.final;
+                return `<div class="sp-item"><div class="sp-from">${esc(e.from)}</div><div class="sp-to">→ ${to}</div><div class="sp-sum">${fmt(e.base)} → ${fmt(e.final)} <b class="sp-save">−${fmt(d)}</b></div></div>`;
+            }).join('');
+
+        // Обвязка котельной — другая система целиком, в процент не входит.
+        // Сравниваем трубы с фитингами (как таблица замены): котёл, бойлер и насосы
+        // одинаковы при любой трубе и только размывали бы разницу.
+        let sysNote = '';
+        if (this.boilerPipeSystem() === 'ppr') {
+            let t = null;
+            try { t = this.boilerSystemTotals(); } catch (e) { console.warn('[экономия] обвязка по системам не посчиталась:', e); }
+            const cur = t && t.ppr ? t.ppr.pipe : 0;
+            const ref = t && t.ss304 ? t.ss304.pipe : 0;
+            const isPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            const dd = ref - cur;
+            const cmp = (cur && ref)
+                ? `: ${fmt(cur)} против ${fmt(ref)} у нержавеющей стали AISI 304, то есть ${dd >= 0 ? 'дешевле' : 'дороже'} на <b>${fmt(dd)}</b>`
+                : '';
+            sysNote = `<div class="sp-note"><b>Обвязка котельной — другая система целиком.</b> Трубы и фитинги котельной — полипропилен ${isPA ? 'Pro Aqua' : 'Wavin Ekoplastik'} вместо нержавеющей стали${cmp}. Диаметры у систем свои, подобраны по скорости воды. Разница входит в процент выше. Сменить систему можно в таблице замены у любой трубы раздела 2.</div>`;
+        }
+
+        const empty = !rows && !sysNote;
+        return `
+            <div class="sp-head">${diff >= 0 ? 'Дешевле на' : 'Дороже на'} ${fmt(diff)}${pct ? ` · ${Math.abs(pct)} %` : ''}</div>
+            <div class="sp-sub">${_cb ? `Та же смета без «Подешевле»: ${fmt(base)} → ${fmt(fin)}` : 'Против исходного подбора по тем же позициям'}</div>
+            ${rows}
+            ${top ? `<div class="sp-title">Самые заметные замены</div>${top}` : ''}
+            ${sysNote}
+            ${empty ? '<div class="sp-foot">Подробностей по позициям нет: разница сложилась из количеств.</div>' : ''}
+            <div class="sp-foot"><a href="#" onclick="event.preventDefault(); app.toggleSavingsPopover(); app.setViewMode('cheaper');">Полное обоснование — на вкладке «Почему дешевле» →</a></div>`;
+    },
+
+    // ═══ «Подешевле»: вторая смета, честная разница, обоснование ═════════════
+    // Режим включён, когда бренд переключён на ROMMER целиком или хотя бы один
+    // раздел переведён своим тумблером. Методику подбора он не трогает: те же
+    // теплопотери, та же гидравлика, тот же расчёт диаметров — меняются только
+    // позиции, прошедшие проверку параметров (analogEquivalent), и система
+    // обвязки котельной (полипропилен вместо нержавейки, см. boilerPipeSystem).
+    cheapModeOn: function () {
+        if (this.state.brandMode === 'rommer') return true;
+        const sa = this.state.sectionAnalog || {};
+        return Object.keys(sa).some(k => sa[k] === true);
+    },
+
+    // Та же смета без режима — тихим прогоном, как считает обвязку по системам
+    // boilerSystemTotals. Разница двух полных смет и есть честная экономия:
+    // в неё входит и другая обвязка, которой построчное сравнение не видит.
+    computeCheapBaseline: function () {
+        const snapshot = JSON.parse(JSON.stringify(this.state));
+        this._cheapComparing = true;
+        try {
+            this.state.brandMode = 'stout';
+            this.state.sectionAnalog = {};
+            this._boilerRangeCache = null;
+            this.render(true);
+            this._cheapBase = { eq: Math.round(this.calcFinalTotal || 0), works: Math.round(this.lastWorksSum || 0) };
+        } catch (e) {
+            console.warn('[подешевле] базовая смета не посчиталась:', e);
+            this._cheapBase = null;
+        } finally {
+            Object.keys(this.state).forEach(k => { if (!(k in snapshot)) delete this.state[k]; });
+            Object.assign(this.state, snapshot);
+            this._boilerRangeCache = null;
+            this._cheapComparing = false;
+        }
+    },
+
+    // Вкладка «Обоснование» видна только в режиме и только тем, кому открыт
+    // сам переключатель. Режим выключили на этой вкладке — уходим в смету.
+    syncCheaperTab: function () {
+        const tab = document.getElementById('tab_cheaper');
+        if (!tab) return;
+        const on = this.cheapModeOn() && this.canUseAnalog();
+        tab.style.display = on ? '' : 'none';
+        if (!on && this.state.viewMode === 'cheaper') setTimeout(() => this.setViewMode('equipment'), 0);
+    },
+
+    // Стоимость обвязки по системам — дорогой расчёт (восемь тихих прогонов),
+    // поэтому с кэшем по подписи состояния: панель и печать берут готовое.
+    cheaperBpTotals: function () {
+        const key = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        if (this._bpTotalsCache && this._bpTotalsCache.key === key) return this._bpTotalsCache.totals;
+        return null;
+    },
+    cheaperBpTotalsCompute: function () {
+        const key = this.getStateSignature ? this.getStateSignature() : JSON.stringify(this.state);
+        if (this._bpTotalsCache && this._bpTotalsCache.key === key) return this._bpTotalsCache.totals;
+        let totals = null;
+        try { totals = this.boilerSystemTotals(); } catch (e) { console.warn('[подешевле] обвязка по системам не посчиталась:', e); }
+        this._bpTotalsCache = { key: key, totals: totals };
+        return totals;
+    },
+
+    /**
+     * Отчёт «что и почему заменено». compact — вариант для печати: без
+     * карточек-итогов, мельче.
+     */
+    cheaperReportHtml: function (compact) {
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const fmt = v => Math.round(Math.abs(v)).toLocaleString('ru-RU') + ' ₽';
+        const log = (this._savingsLog || []).slice();
+        const cb = this._cheapBase;
+        const fin = Math.round(this.calcFinalTotal || 0);
+        const base = cb ? cb.eq : Math.round(this.calcBaseTotal || 0);
+        const diff = base - fin;
+        const pct = base > 0 ? Math.round(diff / base * 100) : 0;
+        const secOn = (t) => { const so = (this.state.sectionAnalog || {})[t]; return so !== undefined ? so : this.state.brandMode === 'rommer'; };
+
+        // Схемные отличия — не позиции, а система целиком
+        const scheme = [];
+        if (this.boilerPipeSystem() === 'ppr' && secOn('2. Обвязка котельной')) {
+            const isPA = (this.state.pprSystemBrand === 'proaqua' || !this.state.pprSystemBrand);
+            const t = this.cheaperBpTotals();
+            let tot = '';
+            if (t && t.ppr && t.ss304 && t.ppr.pipe && t.ss304.pipe) {
+                const dd = t.ss304.pipe - t.ppr.pipe;
+                tot = ` Трубы и фитинги котельной: <b>${fmt(t.ppr.pipe)}</b> против ${fmt(t.ss304.pipe)} у нержавейки — ${dd >= 0 ? 'дешевле' : 'дороже'} на <b>${fmt(dd)}</b>.`;
+            } else if (!compact) {
+                tot = ' <span id="cheaper_bp_totals" style="color:var(--text-sec);">Считаю стоимость обвязки по системам…</span>';
+            }
+            scheme.push(`<b>Обвязка котельной.</b> Трубы и фитинги — полипропилен ${isPA ? 'Pro Aqua PP-R DUO SDR 6' : 'Wavin Ekoplastik PP-RCT STABI PLUS'} вместо нержавеющей стали AISI 304 (пресс). Диаметр каждой линии подобран по скорости воды в этой системе: стенка у полипропилена толще, поэтому наружный размер больше при том же расходе. Котёл, бойлер, насосы, гидрострелка и арматура те же.${tot}`);
+        }
+        if ((this.state.fuels || []).includes('gas') && this.state.brandMode === 'rommer') {
+            scheme.push(`<b>Дымоход.</b> Элементы трассы — из набора ROMMER; готовый комплект, диаметр и длина трассы те же, предел эквивалентной длины сверен с котлом.`);
+        }
+        const _ufhK = this.ufhBaseWorkFactor();
+        if (_ufhK.k > 1) {
+            scheme.push(`<b>Основание тёплого пола.</b> ${_ufhK.label}: расценка «Монтаж утеплителя для укладки ТП» умножена на ${String(_ufhK.k).replace('.', ',')}.`);
+        }
+
+        // Основные замены — построчно по разделам; мелочь — одной строкой
+        const majors = log.filter(e => e.major);
+        const minors = log.filter(e => !e.major);
+        const bySec = {};
+        majors.forEach(e => { const k = e.section || 'Прочее'; (bySec[k] = bySec[k] || []).push(e); });
+        const secOrder = Object.keys(bySec).sort();
+        // Артикул рядом с названием — чтобы замену можно было перепроверить на
+        // сайте: на экране это ссылка на поиск teremonline.ru по артикулу
+        // (карточка товара в каталоге не хранится), на печати — просто текст.
+        const sku = v => {
+            const t = String(v || '').trim();
+            if (!t) return '';
+            if (compact) return ` <span class="cr-sku">${esc(t)}</span>`;
+            return ` <a class="cr-sku" href="https://www.teremonline.ru/search/?q=${encodeURIComponent(t)}" target="_blank" rel="noopener noreferrer" title="Открыть артикул на teremonline.ru">${esc(t)} ↗</a>`;
+        };
+        // Процент — от цены исходной позиции, чтобы разница читалась и без
+        // контекста всей сметы («−10 301 ₽ (−19 %)»)
+        const pctOf = (d, base) => { const p = base > 0 ? Math.round(Math.abs(d) / base * 100) : 0; return p ? ` (${d >= 0 ? '−' : '+'}${p} %)` : ''; };
+        const row = e => {
+            const d = e.base - e.final;
+            const to = (e.to || []).map(t => esc(t.name) + (t.brand ? ` <span style="color:var(--text-sec);">${esc(t.brand)}</span>` : '') + sku(t.sku)).join(' + ');
+            return `<tr>
+                <td>${esc(e.from)} <span style="color:var(--text-sec);">${esc(e.fromBrand || '')}</span>${sku(e.fromSku)}</td>
+                <td>${to}</td>
+                <td style="white-space:nowrap;">${fmt(e.base)} → ${fmt(e.final)}<br><span class="${d >= 0 ? 'cr-save' : 'cr-cost'}">${d >= 0 ? '−' : '+'}${fmt(d)}${pctOf(d, e.base)}</span></td>
+                <td>${esc(e.why || '')}</td>
+            </tr>`;
+        };
+        const tableRows = secOrder.map(sec => `<tr class="cr-sec"><td colspan="4">${esc(sec)}</td></tr>${bySec[sec].map(row).join('')}`).join('');
+        const minorSum = minors.reduce((s, e) => s + (e.base - e.final), 0);
+        const minorBase = minors.reduce((s, e) => s + (e.base || 0), 0);
+        const minorSecs = [...new Set(minors.map(e => e.section || ''))].filter(Boolean);
+
+        const cards = compact ? `<div class="cr-line">Основная смета <b>${fmt(base)}</b> · вариант «Подешевле» <b>${fmt(fin)}</b> · ${diff >= 0 ? 'дешевле' : 'дороже'} на <b>${fmt(diff)}</b>${pct ? ` (${Math.abs(pct)} %)` : ''}</div>` : `
+            <div class="cr-cards">
+                <div class="cr-card"><div class="cr-l">Основная смета</div><div class="cr-v">${fmt(base)}</div><div class="cr-s">оборудование без режима</div></div>
+                <div class="cr-card"><div class="cr-l">Вариант «Подешевле»</div><div class="cr-v">${fmt(fin)}</div><div class="cr-s">оборудование в этой смете</div></div>
+                <div class="cr-card"><div class="cr-l">${diff >= 0 ? 'Дешевле на' : 'Дороже на'}</div><div class="cr-v ${diff >= 0 ? 'cr-save' : 'cr-cost'}">${fmt(diff)}</div><div class="cr-s">${pct ? Math.abs(pct) + ' % от основной' : 'разница двух полных смет'}</div></div>
+            </div>`;
+
+        return `
+            ${compact ? '<div class="cr-title">Обоснование варианта «Подешевле»</div>' : ''}
+            ${cards}
+            <div class="cr-note">Обе сметы посчитаны одной методикой: теплопотери, мощность источника, гидравлика, диаметры и теплоотдача приборов те же. Разница — только в позициях, прошедших проверку параметров, и в системе обвязки котельной.</div>
+            ${scheme.length ? `<div class="cr-h">Схемные отличия</div>${scheme.map(s => `<div class="cr-scheme">${s}</div>`).join('')}` : ''}
+            ${majors.length ? `<div class="cr-h">Основное оборудование</div>
+            <table class="cr-table"><thead><tr><th>Было</th><th>Стало</th><th>Цена</th><th>Почему допустимо</th></tr></thead><tbody>${tableRows}</tbody></table>` : `<div class="cr-h">Основное оборудование</div><div class="cr-note">Основные позиции не менялись: у них нет пары ROMMER или кандидат не прошёл проверку параметров.</div>`}
+            ${minors.length ? `<div class="cr-note" style="margin-top:8px;"><b>Фитинги, арматура и крепёж:</b> ${minors.length} замен${minorSecs.length ? ' в разделах ' + esc(minorSecs.join(', ')) : ''}, ${minorSum >= 0 ? '−' : '+'}${fmt(minorSum)}${pctOf(minorSum, minorBase)} — те же резьбы, присоединения и диаметры, что и в основной смете.</div>` : ''}
+            <div class="cr-h">Что не меняется</div>
+            <div class="cr-note">Котлы — подбираются по мощности и числу контуров, а обвязка и дымоход идут под марку котла, поэтому режим их не трогает: другой котёл выбирается только вручную в таблице замены. Коллекторы, узлы подмеса, гидрострелки, сепараторы и приводы — типоразмерные ряды, их определяет расчёт, а не цена. Секционные радиаторы заменяются стальными панельными ROMMER с тем же подключением (нижним или боковым), теплоотдачей не ниже требуемой и шириной под окно; прибор, выбранный руками, не трогается. Позиция без параметров для сверки не заменяется.</div>`;
+    },
+
+    renderCheaperPanel: function () {
+        const panel = document.getElementById('panel_cheaper');
+        if (!panel) return;
+        if (!this.cheapModeOn()) { panel.innerHTML = ''; return; }
+        panel.innerHTML = `<div class="cheaper-panel"><h3 style="margin:0 0 12px; color:var(--text-main);">💡 Обоснование варианта «Подешевле»</h3>${this.cheaperReportHtml(false)}</div>`;
+        // Стоимость обвязки по системам — отложенно: восемь тихих прогонов
+        // сметы внутри отрисовки затянули бы саму отрисовку
+        if (document.getElementById('cheaper_bp_totals') && !this._bpTotalsPending) {
+            this._bpTotalsPending = true;
+            setTimeout(() => {
+                this._bpTotalsPending = false;
+                this.cheaperBpTotalsCompute();
+                if (this.state.viewMode === 'cheaper') this.renderCheaperPanel();
+                this.renderCheaperPrint();
+            }, 0);
+        }
+    },
+
+    // Блок для печати и PDF — последняя страница КП в варианте «Подешевле»
+    renderCheaperPrint: function () {
+        const el = document.getElementById('cheaper_print');
+        if (!el) return;
+        el.innerHTML = this.cheapModeOn() ? this.cheaperReportHtml(true) : '';
     },
 
     renderContestWidget() {
