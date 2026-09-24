@@ -14513,3 +14513,685 @@ body.dark-mode #hyd_card .hyd-card__p {
         white-space: nowrap;
     }
 }
+
+/* ================== ТЕМА «ЯНДЕКС» (пробная, пока только администратору) ==================
+   Включается классом body.theme-yandex из app.js (syncYandexTheme) по кнопке «Я»
+   в шапке сайта и в шапке панели управления. Кнопку видят только администраторы
+   (getAdminRole admin / super_admin) и localhost; выбор хранится на этом
+   устройстве (localStorage ui_theme_yandex), в базу не пишется. Обычная ночная
+   тема работает поверх: body.theme-yandex.dark-mode переопределяет переменные и
+   те цвета, что в базовом файле прописаны числом. Печать и PDF не затронуты.
+
+   Образец — ya.ru (снято со скриншота владельца 24.09.2026, ночная тема):
+   фон страницы #161617, плашки и строка поиска #39393A, второстепенный текст
+   #9C9C9D, логотип красный #F8604A, всё — круглое: значки в серых кружках,
+   кнопки-пилюли, строка поиска скруглена целиком. Светлая тема ya.ru: белый
+   фон, серые плашки rgba(0,0,0,.06), чёрный текст, красный #FC3F1D, жёлтый
+   #FFDB4D у главной кнопки. Шрифт сайта — YS Text, он несвободный; замена —
+   Golos Text (OFL, Paratype), файлы в fonts/, качаются только под темой.
+   Значки штатные (те же контурные, Feather), только тоньше и в кружках. */
+
+@font-face {
+    font-family: 'Golos Text';
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url('fonts/golos-text-cyrillic.woff2?v=1') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+    font-family: 'Golos Text';
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url('fonts/golos-text-latin.woff2?v=1') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@media screen {
+    /* ---------- Светлая ---------- */
+    body.theme-yandex {
+        --primary: #000000;
+        --primary-light: #F2F2F2;
+        --bg: #FFFFFF;
+        --surface: #FFFFFF;
+        --surface-light: #F2F2F2;
+        --text-main: #000000;
+        --text-sec: #808080;
+        --border: #E8E8E8;
+        --radius: 20px;
+        --warn-bg: #FFF1EE;
+        --warn-text: #D63A1B;
+        --warn-border: #F8B5A6;
+        --note-warn-bg: #FFF8DB;
+        --note-warn-text: #7A5C00;
+        --note-warn-border: #FFDB4D;
+        --note-info-bg: #F2F2F2;
+        --note-info-text: #000000;
+        --note-info-border: #D9D9D9;
+        --ya-font: 'Golos Text', 'YS Text', Arial, sans-serif;
+        --ya-red: #FC3F1D;
+        --ya-yellow: #FFDB4D;
+        --ya-chip: #F2F2F2;
+        --ya-chip-hover: #E6E6E6;
+        --ya-on-primary: #FFFFFF;
+        --ya-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+        background: var(--bg);
+        color: var(--text-main);
+    }
+
+    /* ---------- Ночная — цифры со скриншота ya.ru ---------- */
+    body.theme-yandex.dark-mode {
+        --primary: #FFFFFF;
+        --primary-light: #2C2C2C;
+        --bg: #161617;
+        --surface: #1F1F20;
+        --surface-light: #39393A;
+        --text-main: #FFFFFF;
+        --text-sec: #9C9C9D;
+        --border: #2C2C2C;
+        --warn-bg: #3A1F1A;
+        --warn-text: #F8604A;
+        --warn-border: rgba(248, 96, 74, 0.4);
+        --note-warn-bg: #3A3316;
+        --note-warn-text: #FFDB4D;
+        --note-warn-border: rgba(255, 219, 77, 0.4);
+        --note-info-bg: #2C2C2C;
+        --note-info-text: #E6E6E6;
+        --note-info-border: #444445;
+        --ya-red: #F8604A;
+        --ya-chip: #39393A;
+        --ya-chip-hover: #474748;
+        --ya-on-primary: #000000;
+        --ya-shadow: none;
+        scrollbar-color: #39393A #161617;
+    }
+
+    /* ---------- Шрифт: Inter в базе прописан жёстко, перекрываем поимённо ---------- */
+    body.theme-yandex,
+    body.theme-yandex input,
+    body.theme-yandex select,
+    body.theme-yandex textarea,
+    body.theme-yandex button,
+    body.theme-yandex .step-val,
+    body.theme-yandex .ai-parse-fab,
+    body.theme-yandex .desktop-feedback-btn,
+    body.theme-yandex .feedback-input,
+    body.theme-yandex .feedback-textarea,
+    body.theme-yandex .custom-dropdown-options,
+    body.theme-yandex .custom-dropdown-options *,
+    body.theme-yandex .city-search-input,
+    body.theme-yandex .city-suggestions-dropdown,
+    body.theme-yandex .city-suggestion-item {
+        font-family: var(--ya-font) !important;
+    }
+
+    /* У Яндекса заголовки не кричат: без разрядки, плотный вес */
+    body.theme-yandex .doc-title,
+    body.theme-yandex .output-panel h2,
+    body.theme-yandex .output-panel h3,
+    body.theme-yandex .auth-modal-title,
+    body.theme-yandex .lk-section-head h4 {
+        letter-spacing: 0;
+        font-weight: 700;
+    }
+
+    /* ---------- Шапка ---------- */
+    body.theme-yandex .site-header {
+        background: var(--bg);
+        border-bottom-color: transparent;
+    }
+
+    body.theme-yandex .header-auth-block div[style*="border-right"] {
+        border-color: var(--border) !important;
+    }
+
+    /* Кнопки шапки — значки в серых кружках, как на ya.ru */
+    body.theme-yandex .btn-ctrl {
+        border-radius: 50%;
+        border-color: transparent;
+        background: var(--ya-chip);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .btn-ctrl svg {
+        stroke-width: 1.75;
+    }
+
+    body.theme-yandex .btn-ctrl:hover {
+        border-color: transparent;
+        background: var(--ya-chip-hover);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .btn-ctrl.btn-reset:hover {
+        border-color: transparent;
+        background: var(--ya-chip-hover);
+        color: var(--ya-red);
+    }
+
+    body.theme-yandex .btn-ctrl.is-on,
+    body.theme-yandex .btn-ctrl.is-on:hover {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: var(--ya-on-primary);
+        filter: none;
+    }
+
+    body.theme-yandex .header-totals-block {
+        border-radius: 999px;
+        border-color: transparent;
+        background: var(--ya-chip);
+        box-shadow: none;
+    }
+
+    body.theme-yandex .header-fill-bar-fill {
+        background: var(--ya-yellow);
+    }
+
+    body.theme-yandex .menu-toggle-btn {
+        color: var(--text-main);
+    }
+
+    /* ---------- Панели ---------- */
+    body.theme-yandex .input-panel,
+    body.theme-yandex .output-panel {
+        border-radius: 24px;
+        box-shadow: var(--ya-shadow);
+    }
+
+    body.theme-yandex .control-card {
+        background: var(--ya-chip);
+        border-color: transparent;
+        border-radius: 16px;
+    }
+
+    body.theme-yandex .zone-card {
+        background: var(--surface);
+        border-color: var(--border);
+        border-radius: 16px;
+    }
+
+    body.theme-yandex .tabs,
+    body.theme-yandex .mode-selector-tabs {
+        background: var(--ya-chip);
+        border-color: transparent;
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .tab,
+    body.theme-yandex .mode-tab {
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .tab.active {
+        background: var(--surface);
+        color: var(--text-main);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    body.theme-yandex .tab.multi-active,
+    body.theme-yandex .mode-tab.active {
+        background: var(--primary);
+        color: var(--ya-on-primary);
+        box-shadow: none;
+    }
+
+    body.theme-yandex .stepper {
+        background: var(--ya-chip);
+        border-color: transparent;
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .step-btn {
+        border-radius: 50%;
+        border-color: transparent;
+        background: var(--surface);
+        color: var(--text-main);
+        box-shadow: none;
+    }
+
+    body.theme-yandex .step-btn:hover {
+        background: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .step-val {
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .slider {
+        background-color: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex input:checked+.slider {
+        background-color: var(--primary);
+    }
+
+    /* Ночью тумблер белый — ползунок делаем тёмным, иначе он сливается */
+    body.theme-yandex.dark-mode input:checked+.slider:before {
+        background-color: #161617;
+    }
+
+    body.theme-yandex .info-card {
+        border-color: transparent;
+        border-radius: 12px;
+    }
+
+    body.theme-yandex .zone-input,
+    body.theme-yandex input[type="number"] {
+        border-radius: 12px;
+    }
+
+    /* ---------- Смета ---------- */
+    body.theme-yandex .doc-header-rule {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex .inv-table th {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex .inv-table td {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex .row-sec td {
+        background: var(--primary-light);
+        color: var(--text-main);
+        border-top-color: var(--surface);
+    }
+
+    body.theme-yandex .group-header td {
+        background-color: var(--surface-light);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .group-header td[style*="9CA3AF"] {
+        color: var(--text-sec) !important;
+    }
+
+    /* ---------- Кнопки — пилюли ---------- */
+    body.theme-yandex .footer-btns .btn-primary-action,
+    body.theme-yandex .footer-btns .btn-secondary-action,
+    body.theme-yandex .custom-modal-btn,
+    body.theme-yandex .calc-dialog-btn-confirm,
+    body.theme-yandex .calc-dialog-btn-cancel,
+    body.theme-yandex .auth-btn-base,
+    body.theme-yandex .admin-btn,
+    body.theme-yandex .admin-action-btn,
+    body.theme-yandex .btn-email-submit,
+    body.theme-yandex .btn-subscribe,
+    body.theme-yandex .notif-tab,
+    body.theme-yandex .currency-toggle-btn,
+    body.theme-yandex .lk-nav-item,
+    body.theme-yandex .lk-rail-toggle {
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .footer-btns .btn-primary-action {
+        color: var(--ya-on-primary);
+    }
+
+    body.theme-yandex .footer-btns .btn-primary-action:hover {
+        filter: none;
+        opacity: 0.85;
+    }
+
+    body.theme-yandex .footer-btns .btn-secondary-action {
+        background-color: var(--ya-chip);
+        color: var(--text-main);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .footer-btns .btn-secondary-action:hover {
+        background-color: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .footer-btns .btn-secondary-action svg {
+        stroke: var(--text-main);
+    }
+
+    body.theme-yandex .admin-btn {
+        background: var(--ya-chip);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .admin-btn:hover:not(:disabled) {
+        background: var(--ya-chip-hover);
+        border-color: transparent;
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .admin-btn.danger,
+    body.theme-yandex .admin-btn.danger:hover:not(:disabled) {
+        color: var(--ya-red);
+    }
+
+    /* Вкладки панели управления рисуются инлайн-стилями из app.js: цвета
+       берут переменные, форму (радиус) ставит класс — перекрываем его */
+    body.theme-yandex .admin-tab-btn {
+        border-radius: 999px;
+    }
+
+    /* ---------- Окна и поля ---------- */
+    body.theme-yandex .auth-modal-content {
+        border-radius: 28px;
+        border-color: transparent;
+    }
+
+    body.theme-yandex .auth-input,
+    body.theme-yandex .city-search-input,
+    body.theme-yandex .feedback-input,
+    body.theme-yandex .feedback-textarea {
+        border-radius: 12px;
+        background: var(--ya-chip);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .auth-input:focus,
+    body.theme-yandex .city-search-input:focus {
+        border-color: var(--text-sec);
+    }
+
+    body.theme-yandex .custom-dropdown-options,
+    body.theme-yandex .city-suggestions-dropdown,
+    body.theme-yandex .download-menu {
+        border-radius: 16px;
+    }
+
+    body.theme-yandex #admin_modal_overlay .admin-theme-btn {
+        border-radius: 50%;
+        border-color: transparent;
+        background: var(--ya-chip);
+        color: var(--text-main);
+    }
+
+    /* ---------- Меню кабинета (левая колонка): значки в кружках ---------- */
+    body.theme-yandex .lk-rail {
+        border-color: transparent;
+        border-radius: 20px;
+        box-shadow: var(--ya-shadow);
+    }
+
+    body.theme-yandex .lk-rail-item {
+        border-radius: 16px;
+        padding: calc(4px * var(--lk-scale, 1)) 2px calc(4px * var(--lk-scale, 1));
+    }
+
+    body.theme-yandex .lk-rail-item svg {
+        width: calc(34px * var(--lk-scale, 1));
+        height: calc(34px * var(--lk-scale, 1));
+        padding: calc(7px * var(--lk-scale, 1));
+        box-sizing: border-box;
+        border-radius: 50%;
+        background: var(--ya-chip);
+        stroke-width: 1.75;
+        transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+    }
+
+    body.theme-yandex .lk-rail-item:hover,
+    body.theme-yandex .lk-rail-item.active {
+        background: transparent;
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .lk-rail-item:hover svg {
+        background: var(--ya-chip-hover);
+    }
+
+    body.theme-yandex .lk-rail-item.active svg {
+        background: var(--primary);
+        color: var(--ya-on-primary);
+    }
+
+    /* Зелёная «Админка» и красный «Выйти» у Яндекса были бы лишними цветами */
+    body.theme-yandex .lk-rail-admin,
+    body.theme-yandex .lk-rail-admin:hover {
+        color: var(--text-sec);
+        background: transparent;
+    }
+
+    body.theme-yandex .lk-rail-admin:hover {
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .lk-rail-logout,
+    body.theme-yandex .lk-rail-logout:hover {
+        color: var(--text-sec);
+        background: transparent;
+    }
+
+    body.theme-yandex .lk-rail-logout:hover {
+        color: var(--ya-red);
+    }
+
+    body.theme-yandex .lk-rail-badge,
+    body.theme-yandex .notif-tab-badge,
+    body.theme-yandex .admin-chat-badge,
+    body.theme-yandex #notification_badge {
+        background: var(--ya-red) !important;
+    }
+
+    /* ---------- Кабинет: колонка разделов ---------- */
+    body.theme-yandex .lk-nav-item.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--ya-on-primary);
+    }
+
+    body.theme-yandex .lk-nav-avatar {
+        background: var(--ya-chip);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .lk-nav-logout,
+    body.theme-yandex .lk-nav-logout:hover {
+        color: var(--ya-red);
+    }
+
+    /* ---------- Телефон: нижняя навигация ---------- */
+    body.theme-yandex .mobile-bottom-nav {
+        background: var(--surface);
+        border-top-color: var(--border);
+    }
+
+    body.theme-yandex .mob-nav-item.active {
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .mob-nav-item.active svg {
+        stroke: var(--text-main);
+    }
+
+    /* ======================================================================
+       НОЧЬ ПОВЕРХ ТЕМЫ: база ночной темы пишет цвета числом (#161616, #1E1E1E,
+       #2A2A2A, #6366F1, #374151) и местами с !important — возвращаем их к
+       переменным, чтобы серые плашки ya.ru жили и ночью.
+       ====================================================================== */
+    body.theme-yandex.dark-mode *::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    body.theme-yandex.dark-mode *::-webkit-scrollbar-thumb {
+        background: var(--surface-light);
+        border-color: var(--bg);
+    }
+
+    body.theme-yandex.dark-mode .site-header {
+        background: var(--bg);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .input-panel,
+    body.theme-yandex.dark-mode .output-panel {
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .control-card,
+    body.theme-yandex.dark-mode .tabs,
+    body.theme-yandex.dark-mode .mode-selector-tabs,
+    body.theme-yandex.dark-mode .stepper {
+        background: var(--ya-chip) !important;
+        border: 1px solid transparent !important;
+    }
+
+    body.theme-yandex.dark-mode .doc-summary,
+    body.theme-yandex.dark-mode .zone-card {
+        background: var(--surface-light) !important;
+        border: 1px solid transparent !important;
+    }
+
+    body.theme-yandex.dark-mode .step-btn,
+    body.theme-yandex.dark-mode .step-val,
+    body.theme-yandex.dark-mode input[type="number"],
+    body.theme-yandex.dark-mode .zone-input {
+        background: var(--surface);
+        color: var(--text-main);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .tab.active {
+        background: var(--surface);
+        color: var(--text-main);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .row-sec td {
+        background: var(--primary-light) !important;
+        color: var(--text-main);
+        border-top-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .group-header td {
+        background-color: var(--surface-light) !important;
+        color: var(--text-main);
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .inv-table th {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .inv-table td {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .info-card {
+        background: var(--primary-light);
+    }
+
+    body.theme-yandex.dark-mode .btn-ctrl {
+        background: var(--ya-chip);
+        border-color: transparent;
+        color: var(--text-main);
+    }
+
+    body.theme-yandex.dark-mode .btn-ctrl:hover {
+        background: var(--ya-chip-hover);
+        border-color: transparent;
+        color: var(--text-main);
+    }
+
+    body.theme-yandex.dark-mode .btn-ctrl.is-on,
+    body.theme-yandex.dark-mode .btn-ctrl.is-on:hover {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--ya-on-primary);
+    }
+
+    body.theme-yandex.dark-mode .mode-tab.active {
+        box-shadow: none;
+    }
+
+    body.theme-yandex.dark-mode .footer-btns .btn-secondary-action {
+        background-color: var(--ya-chip);
+        color: var(--text-main);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .footer-btns .btn-secondary-action:hover {
+        background-color: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .footer-btns .btn-secondary-action svg {
+        stroke: var(--text-main);
+    }
+
+    body.theme-yandex.dark-mode .header-totals-block {
+        background: var(--ya-chip);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .mobile-bottom-nav {
+        background: var(--surface);
+        border-top-color: var(--border);
+    }
+
+    /* Ночью главный цвет — белый: всё, что залито var(--primary), должно
+       писать чёрным. Список — правила базы плюс инлайн-стили из app.js
+       (там заливка задана строкой background:var(--primary), ловим её по
+       подстроке атрибута style). */
+    body.theme-yandex.dark-mode .tab.multi-active,
+    body.theme-yandex.dark-mode .mode-tab.active,
+    body.theme-yandex.dark-mode .footer-btns .btn-primary-action,
+    body.theme-yandex.dark-mode .custom-modal-btn,
+    body.theme-yandex.dark-mode .calc-dialog-btn-confirm,
+    body.theme-yandex.dark-mode .btn-ctrl.is-on,
+    body.theme-yandex.dark-mode .btn-ctrl.is-on:hover,
+    body.theme-yandex.dark-mode .lk-nav-item.active,
+    body.theme-yandex.dark-mode .admin-chat-item.active,
+    body.theme-yandex.dark-mode .admin-chat-item.active *,
+    body.theme-yandex.dark-mode .admin-chat-bubble.from-admin,
+    body.theme-yandex.dark-mode .admin-chat-bubble.from-admin *,
+    body.theme-yandex.dark-mode .admin-chat-send,
+    body.theme-yandex.dark-mode .notif-tab.active,
+    body.theme-yandex.dark-mode .currency-toggle-btn.active,
+    body.theme-yandex.dark-mode .btn-subscribe,
+    body.theme-yandex.dark-mode .cookie-banner-btn,
+    body.theme-yandex.dark-mode .grm-lb-tab.active,
+    body.theme-yandex.dark-mode .grm-guest-btn,
+    body.theme-yandex.dark-mode .grm-you,
+    body.theme-yandex.dark-mode .msg-toast-send,
+    body.theme-yandex.dark-mode .ai-chat-product-add,
+    body.theme-yandex.dark-mode .to-top-btn,
+    body.theme-yandex.dark-mode .mobile-sidebar #btn_share_trigger,
+    body.theme-yandex.dark-mode .qty-step:hover,
+    body.theme-yandex.dark-mode .expand-locs-btn:hover,
+    body.theme-yandex.dark-mode .brx-pill.on,
+    body.theme-yandex.dark-mode #swap_modal_body .swap-tab:hover,
+    body.theme-yandex.dark-mode #swap_modal_body .swap-tab.active,
+    body.theme-yandex.dark-mode .cw-xp-block.filled,
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"],
+    body.theme-yandex.dark-mode [style*="background: var(--primary)"],
+    body.theme-yandex.dark-mode [style*="background-color:var(--primary)"],
+    body.theme-yandex.dark-mode [style*="background-color: var(--primary)"] {
+        color: #000000 !important;
+    }
+
+    body.theme-yandex.dark-mode .admin-chat-item.active .admin-chat-badge {
+        background: #000000;
+        color: #FFFFFF !important;
+    }
+
+    body.theme-yandex.dark-mode .admin-chat-bubble.from-admin .chat-quote {
+        background: rgba(0, 0, 0, 0.08);
+    }
+}
+
+/* Вторая кнопка в шапке панели управления — «Я», левее переключателя темы.
+   Показ (display) ставит app.syncYandexTheme: только администратору. */
+#admin_modal_overlay .admin-yandex-btn {
+    right: 90px;
+    display: none;
+}
+
+@media screen and (max-width: 899.98px) {
+    #admin_modal_overlay .admin-yandex-btn {
+        right: 70px !important;
+    }
+}

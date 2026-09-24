@@ -5673,7 +5673,9 @@ const app = {
             + `<span style="opacity:.35; margin: 0 2px;">|</span>`
             + rbtn('installer', 'Монтажник', role === 'installer', "app.setLocalRole('installer')", 'Сфера: монтаж (повторное нажатие — как в базе)')
             + rbtn('seller', 'Продавец', role === 'seller', "app.setLocalRole('seller')", 'Сфера: продажа без монтажа — включает оформление «магазин» (повторное нажатие — как в базе)')
-            + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы: панель управления в виде менеджера');
+            + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы: панель управления в виде менеджера')
+            + `<span style="opacity:.35; margin: 0 2px;">|</span>`
+            + rbtn('yandex', 'Яндекс', this.isYandexTheme(), 'app.toggleYandexTheme()', 'Пробное оформление по образцу ya.ru — только на этой машине');
     },
 
     setLocalRole: function (val) {
@@ -15038,6 +15040,70 @@ const app = {
         document.body.classList.toggle('theme-shop', on);
         if (on) document.body.classList.remove('dark-mode');
         this.syncTopLogo();
+        this.syncYandexTheme();
+    },
+
+    // ═══════════════ Тема «Яндекс» (пробная) ═══════════════
+    // Оформление по образцу ya.ru: шрифт, серые плашки, значки в кружках,
+    // кнопки-пилюли; светлая и ночная. Пока только у администратора: кнопка «Я»
+    // в шапке сайта и в шапке панели управления, по ней тема включается и
+    // выключается. Выбор личный и хранится на этом устройстве (localStorage
+    // ui_theme_yandex), в базу не пишется — это пробный вариант, не общий
+    // выключатель. Только стили: класс theme-yandex на body, правила в
+    // style.css (блок «ТЕМА „ЯНДЕКС“»). Ночная тема работает поверх.
+    // Локально (localhost) кнопка видна без входа — та же панель, что и тариф.
+    YANDEX_THEME_KEY: 'ui_theme_yandex',
+
+    canUseYandexTheme: function () {
+        if (this.isLocalhost()) return true;
+        const role = this.getAdminRole();
+        return role === 'super_admin' || role === 'admin';
+    },
+
+    isYandexTheme: function () {
+        if (!this.canUseYandexTheme()) return false;
+        try { return localStorage.getItem(this.YANDEX_THEME_KEY) === '1'; } catch (e) { return false; }
+    },
+
+    syncYandexTheme: function () {
+        const can = this.canUseYandexTheme();
+        const on = can && this.isYandexTheme();
+        document.body.classList.toggle('theme-yandex', on);
+        ['btn_yandex_theme', 'btn_yandex_theme_admin'].forEach(id => {
+            const b = document.getElementById(id);
+            if (!b) return;
+            b.style.display = can ? 'flex' : 'none';
+            b.classList.toggle('is-on', on);
+            b.setAttribute('aria-pressed', on ? 'true' : 'false');
+            b.title = on
+                ? 'Оформление «Яндекс» включено — нажмите, чтобы вернуть обычное'
+                : 'Оформление «Яндекс» (пробное, видно только администратору) — нажмите, чтобы включить';
+        });
+        // Цвет строки состояния на телефоне (PWA, вкладка Android)
+        const meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', !on ? '#2563EB' : (document.body.classList.contains('dark-mode') ? '#161617' : '#FFFFFF'));
+    },
+
+    toggleYandexTheme: function () {
+        if (!this.canUseYandexTheme()) return;
+        let on;
+        try {
+            on = localStorage.getItem(this.YANDEX_THEME_KEY) !== '1';
+            if (on) localStorage.setItem(this.YANDEX_THEME_KEY, '1');
+            else localStorage.removeItem(this.YANDEX_THEME_KEY);
+        } catch (e) { on = false; }
+        this.syncYandexTheme();
+        if (this.isLocalhost()) this.mountLocalTariffSwitch();
+        let el = document.getElementById('theme_toast');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'theme_toast';
+            document.body.appendChild(el);
+        }
+        el.innerHTML = `<span class="ct-icon">${on ? '🟡' : '⚪'}</span><div><div class="ct-title">Оформление: ${on ? 'Яндекс' : 'обычное'}</div><div class="ct-sub">${on ? 'Пробная тема, только на этом устройстве' : 'Вернули обычное оформление калькулятора'}</div></div>`;
+        el.className = 'contest-toast visible no-print';
+        clearTimeout(this._themeToastTimer);
+        this._themeToastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
     },
 
     // Логотип в левом углу шапки. Обычно — по бренду (STOUT / ROMMER), под
@@ -36115,6 +36181,8 @@ const app = {
         this.state.darkMode = dark;
         document.body.classList.toggle('dark-mode', dark && !this.isShopTheme());
         this.updateThemeButton(mode);
+        // Тема «Яндекс» живёт поверх: ей нужно знать, ночь сейчас или день (цвет строки состояния)
+        if (this.syncYandexTheme) this.syncYandexTheme();
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
         // раз в минуту, и писать состояние каждый раз незачем.
         if (changed) this.saveState();
