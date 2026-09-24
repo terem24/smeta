@@ -4573,6 +4573,9 @@ const RecognizeUI = {
      * вместе с ними, и смета уезжала без монтажа.
      */
     renderTabs(eqTotal, works) {
+        // Монтаж закрыт (у продавца исходно) — вкладку работ не показываем:
+        // в смету они всё равно не переносятся (см. app.applyRecognized).
+        if (typeof app.canUseWorks === 'function' && !app.canUseWorks()) return '';
         const miss = this.missingWorks(works);
         if (!works.length && !miss.length) return '';
         const wSum = works.reduce((s, r) => s + this.docPrice(r) * this.docQty(r), 0);
@@ -6513,6 +6516,7 @@ const RecognizeUI = {
 
         const parts = [`Добавлено позиций: ${r.eq}`];
         if (r.works) parts.push(`работ: ${r.works}`);
+        if (r.worksOff) parts.push(`строки работ не переносились (монтаж отключён): ${r.worksOff}`);
         if (r.hintWorks) parts.push(`из них по составу оборудования: ${r.hintWorks}`);
         if (r.docPriced) parts.push(`с ценой из документа: ${r.docPriced}`);
         if (r.noPrice) parts.push(`из них без цены: ${r.noPrice}`);

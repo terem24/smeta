@@ -5075,8 +5075,13 @@ const app = {
          */
         this.state.groupItems = false;
 
+        // Монтаж закрыт (таблица «Тарифы», у продавца исходно) — работы из
+        // распознавания не добавляем вовсе: на экране их всё равно прячут, а в
+        // облако смета уезжала бы с работами, которых пользователь не видит.
+        const worksOn = this.canUseWorks();
+
         const stamp = Date.now();
-        let eqCount = 0, workCount = 0, noPrice = 0, skippedNoQty = 0, docPriced = 0;
+        let eqCount = 0, workCount = 0, noPrice = 0, skippedNoQty = 0, docPriced = 0, worksOff = 0;
 
         rows.forEach((r, i) => {
             const qty = (Number(r.qty) || 0) + (Number(r.qtyExtra) || 0);
@@ -5112,6 +5117,9 @@ const app = {
             if (!price) noPrice++;
 
             if (r.kind === 'work') {
+                // Монтаж отключён — строки работ из документа не переносим,
+                // но считаем: о пропуске надо сказать в сводке, а не молчать.
+                if (!worksOn) { worksOff++; return; }
                 /**
                  * Работа, сопоставленная с нашим прайсом монтажа (см. вкладку
                  * «Монтажные работы» на экране проверки), уезжает под НАШИМ
@@ -5234,7 +5242,7 @@ const app = {
          * количеств, а не сумму.
          */
         let hintCount = 0;
-        for (const w of (opts && opts.addWorks) || []) {
+        for (const w of (worksOn && opts && opts.addWorks) || []) {
             if (!w || !w.name || !(w.q > 0)) continue;
             const same = this.state.userAddedWorks.find(x => x.name === w.name && x.group === w.group);
             if (same) { same.q = Math.max(Number(same.q) || 0, w.q); continue; }
@@ -5250,7 +5258,7 @@ const app = {
         this.saveState();
         this.render();
 
-        return { eq: eqCount, works: workCount, hintWorks: hintCount, noPrice: noPrice, skippedNoQty: skippedNoQty, docPriced: docPriced };
+        return { eq: eqCount, works: workCount, hintWorks: hintCount, noPrice: noPrice, skippedNoQty: skippedNoQty, docPriced: docPriced, worksOff: worksOff };
     },
 
     /** Откат последнего применения распознавания одним действием. */
