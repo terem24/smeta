@@ -56329,7 +56329,52 @@ const app = {
         // переключатель из-под курсора.
         this.initPanelFocusTracking();
         const _ia = this._inputAnchorBefore();
-        try { this._syncUIInner(); } finally { this._inputAnchorAfter(_ia); }
+        try { this._syncUIInner(); this.syncFineTune(); } finally { this._inputAnchorAfter(_ia); }
+    },
+    // ─── «Тонкая настройка» — свёрнутые инженерные строки панели ─────────────
+    // Перепад котлового контура, режим радиаторов, шаг и перепад тёплого пола
+    // большинство оставляет по умолчанию, и раскрытыми они только удлиняли
+    // панель. Группа свёрнута, в заголовке — сводка значений, чтобы нестандартный
+    // выбор был виден и так. Раскрытие — удобство этого браузера (localStorage),
+    // в смету и состояние не входит. Сама группа скрывается, когда скрыты все её
+    // строки (быстрый режим, нет радиаторов, нет пола) — иначе висел бы пустой
+    // заголовок.
+    FINE_TUNE_KEY: 'heatcalc_fine_tune',
+    FINE_TUNE_ROWS: { boiler: ['blk_boiler_dt'], rad: ['lbl_rad_regime', 'blk_rad_regime'], ufh: ['blk_step_floor1', 'blk_step_floor2', 'blk_ufh_dt'] },
+    fineTuneOpen: function () {
+        try { return JSON.parse(localStorage.getItem(this.FINE_TUNE_KEY) || '{}') || {}; } catch (e) { return {}; }
+    },
+    toggleFineTune: function (key) {
+        const o = this.fineTuneOpen();
+        o[key] = !o[key];
+        try { localStorage.setItem(this.FINE_TUNE_KEY, JSON.stringify(o)); } catch (e) { /* приватное окно */ }
+        this.syncFineTune();
+    },
+    fineTuneSummary: function (key) {
+        const s = this.state;
+        if (key === 'boiler') return `${this.boilerDT()} K`;
+        if (key === 'rad') return (this.RAD_REGIMES[s.radRegime] || this.RAD_REGIMES.r8060).label;
+        if (key === 'ufh') {
+            const dt = parseInt(s.ufhDT, 10) || null;
+            const two = s.floors === 2 && (parseFloat(s.tp2) || 0) > 0 && s.ufhStep2 !== s.ufhStep1;
+            return `шаг ${two ? `${s.ufhStep1}/${s.ufhStep2}` : s.ufhStep1} мм, перепад ${dt ? dt + ' K' : 'авто'}`;
+        }
+        return '';
+    },
+    syncFineTune: function () {
+        const open = this.fineTuneOpen();
+        const vis = (id) => { const el = document.getElementById(id); return !!el && el.style.display !== 'none'; };
+        Object.keys(this.FINE_TUNE_ROWS).forEach(k => {
+            const wrap = document.getElementById('ft_' + k);
+            if (!wrap) return;
+            const any = this.FINE_TUNE_ROWS[k].some(vis);
+            wrap.style.display = any ? '' : 'none';
+            wrap.classList.toggle('open', !!open[k]);
+            const body = document.getElementById('ft_' + k + '_body');
+            if (body) body.style.display = open[k] ? 'block' : 'none';
+            const sum = document.getElementById('ft_' + k + '_sum');
+            if (sum) sum.textContent = any ? this.fineTuneSummary(k) : '';
+        });
     },
     _syncUIInner: function () {
         const isGuest = !this.state.tgUser;
@@ -56616,7 +56661,11 @@ const app = {
         _rgTab('rad_regime_7055', _rg === 'r7055');
         _rgTab('rad_regime_5545', _rg === 'r5545');
         const _rgNote = document.getElementById('lbl_rad_regime_note');
-        if (_rgNote) _rgNote.textContent = this.RAD_REGIMES[_rg].note;
+        // Под кнопками — только значение; объяснение режимов лежит под «i» заголовка.
+        if (_rgNote) {
+            const _r = this.RAD_REGIMES[_rg];
+            _rgNote.textContent = `Перепад ${_r.dt} K` + (_r.tMean ? `, средняя ${String(_r.tMean).replace('.', ',')} °C — приборы крупнее` : '') + '.';
+        }
 
         // Перепад котлового контура — только в подробном режиме, как и перепад
         // тёплого пола: в быстром расчёте менять его незачем.
@@ -56630,11 +56679,10 @@ const app = {
             const _bdtNote = document.getElementById('lbl_boiler_dt_note');
             const _bdtLocked = this.boilerSchemeEff() === 'direct' && hasRad;
             if (_bdtNote) {
+                // Только значение; что означает перепад — под «i» заголовка.
                 _bdtNote.textContent = _bdtLocked
-                    ? `Без гидрострелки перепад котла равен режиму радиаторов — ${_bdt} K. Меняется в «Режиме системы».`
-                    : (_bdt === 10)
-                    ? 'Перепад 10 K. Расход через котловой контур вдвое выше, чем в паспортном режиме, — обвязка считается по нему.'
-                    : 'Перепад 20 K. По нему считаются расход и диаметр обвязки котельной.';
+                    ? `${_bdt} K — как режим радиаторов (без гидрострелки).`
+                    : `Перепад ${_bdt} K.`;
             }
         }
 
@@ -56666,14 +56714,14 @@ const app = {
             const _dtNote = document.getElementById('lbl_ufh_dt_note');
             if (_dtNote) {
                 const b = this._ufhBal;
+                // Только значение; что за перепад и графики — под «i» заголовка.
                 if (!_fd) {
                     _dtNote.textContent = b
-                        ? 'Подобран расчётом: ' + b.dT + ' K, график ' + this.ufhGraph(b.dT) +
-                          ' °C, насос ' + b.pump.label + '.'
-                        : 'Перепад подбирается расчётом.';
+                        ? 'Авто: ' + b.dT + ' K, ' + this.ufhGraph(b.dT) + ' °C, насос ' + b.pump.label + '.'
+                        : 'Авто.';
                 } else {
-                    _dtNote.textContent = 'Задан вручную: ' + _fd + ' K, график ' + this.ufhGraph(_fd) +
-                        ' °C' + (b ? ', насос ' + b.pump.label + (b.ok ? '' : ' — напора не хватает') : '') + '.';
+                    _dtNote.textContent = _fd + ' K, ' + this.ufhGraph(_fd) + ' °C' +
+                        (b ? ', насос ' + b.pump.label + (b.ok ? '' : ' — напора не хватает') : '') + '.';
                 }
             }
             const step1Block = document.getElementById('blk_step_floor1');
@@ -57164,7 +57212,7 @@ const app = {
             const lbl = roomsHeader.querySelector('.lbl');
             if (lbl) {
                 const count = this.state.rooms ? this.state.rooms.length : 0;
-                lbl.innerText = `Расчёт по комнатам (${count} комнат)`;
+                lbl.innerText = count ? `Расчёт по комнатам (${count} ${this.plural(count, 'комната', 'комнаты', 'комнат')})` : 'Расчёт по комнатам: не заданы';
             }
         }
         if (document.getElementById('chk_detailed_rooms_toggle')) {
@@ -59588,9 +59636,6 @@ const app = {
         if (tDirect) {
             tDirect.className = (lit === 'direct') ? 'tab active' : 'tab';
             tDirect.style.opacity = impossible ? '0.45' : '';
-            tDirect.title = impossible
-                ? 'Без гидрострелки не собрать: ' + noDirectWhy + '.'
-                : 'Без гидрострелки. Радиаторы питает насос котла, тёплый пол — свой узел подмеса, бойлер — трёхходовой клапан. Для одного котла и простой системы.';
         }
         const lnk = document.getElementById('lnk_boiler_scheme_auto');
         if (lnk) lnk.hidden = (bs === 'auto');
@@ -59602,20 +59647,20 @@ const app = {
         if ((s.systems || []).includes('tp')) parts.push('тёплый пол через узел подмеса');
         if (s.hotWater) parts.push('бойлер через трёхходовой клапан');
         const why = this._bsAutoWhy || [];
+        // Под кнопками — коротко: что выбрано и почему; что значит каждая схема —
+        // под «i» заголовка, а оговорки к собранной обвязке — в шапке раздела 2.
+        void parts;
         el.textContent = blocked
-            ? 'Без гидрострелки не собрать: ' + noDirectWhy + '. Смета собрана по автоподбору.'
+            ? 'Авто: со стрелкой. Без неё не собрать: ' + noDirectWhy + '.'
             : (bs === 'direct')
-            ? 'Выбрано вручную. ' +
-              (parts.length ? parts.join(', ').replace(/^./, c => c.toUpperCase()) + '. ' : '') +
-              'Оговорки — в шапке раздела «2. Обвязка котельной».'
+            ? 'Вручную: без стрелки.'
             : (bs === 'hydro')
-            ? 'Выбрано вручную: гидрострелка и насосная группа на каждый контур, даже если хватило бы насоса котла.'
+            ? 'Вручную: со стрелкой.'
             : (had === true)
-            ? 'Подобрано автоматически' + (why.length ? ': ' + why.join(', ') : '') + '.' +
-              (impossible ? ' Без гидрострелки не собрать: ' + noDirectWhy + '.' : '')
+            ? 'Авто: со стрелкой' + (why.length ? ' (' + why.join(', ') + ')' : '') + '.'
             : (had === false)
-            ? 'Подобрано автоматически: систему тянет насос котла.'
-            : 'Схему калькулятор подбирает сам.';
+            ? 'Авто: без стрелки, систему тянет насос котла.'
+            : 'Авто.';
     },
 
     setBoilerScheme: function (mode, event) {
@@ -69696,6 +69741,9 @@ const app = {
             currentSectionTitle = "4.5 Автоматика отопления";
             const zk = this.getZoneAutoKit();
             this._zoneKit = zk;
+            // Сводка под тумблером — отсюда, а не из раздела 2: петли и приборы
+            // известны только после разделов 3 и 4, раньше она была на шаг позади.
+            this.renderZoneAutoInfo();
             zk.rows.forEach(r => addToBill(r.item, r.qty, r.tip, r.group));
             if (zk.rows.length) {
                 // Янтарная: комплект подобран, это оговорки к нему.

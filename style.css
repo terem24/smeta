@@ -449,6 +449,45 @@ h3 {
     letter-spacing: 0.02em;
 }
 
+/* «Тонкая настройка» — свёрнутая группа инженерных строк (перепад котлового
+   контура, режим радиаторов, шаг и перепад тёплого пола). Заголовок в стиле
+   .lbl-sub, рядом сводка текущих значений, чтобы нестандартный выбор был виден
+   и в свёрнутом виде; стрелка поворачивается при раскрытии. */
+.fine-tune { margin-bottom: 16px; }
+.fine-tune-head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    user-select: none;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: var(--text-sec);
+    padding: 6px 0;
+    border-top: 1px dashed var(--border);
+}
+.fine-tune-sum {
+    flex: 1;
+    min-width: 0;
+    text-transform: none;
+    letter-spacing: 0;
+    font-weight: 500;
+    color: var(--text-sec);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.fine-tune-arrow {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+    color: var(--text-sec);
+}
+.fine-tune.open .fine-tune-arrow { transform: rotate(90deg); }
+.fine-tune-body { padding-top: 10px; }
+.fine-tune-body > .control-item:last-child { margin-bottom: 0; }
+
 .val {
     font-weight: 700;
     color: var(--primary);
