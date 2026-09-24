@@ -1175,16 +1175,13 @@
                 style="display:none; position:relative; border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
                 <!-- Подпись о длине трассы спрятана под «i»: position:relative у блока
                      нужен .tip-panel-wrap, иначе подсказка не появится. -->
-                <span class="lbl" style="display:flex; align-items:center; gap:4px; margin-bottom: 6px;"
-                    title="Трасса дымохода: по ней подбираются удлинители, отводы и крепёж, а эквивалентная длина сверяется с пределом котла.">Дымоход<span
+                <span class="lbl" style="display:flex; align-items:center; gap:4px; margin-bottom: 6px;">Дымоход<span
                         class="tooltip-wrapper tip-panel-wrap" id="chim_note_wrap"><i class="info-icon" tabindex="0"
                             role="button" aria-label="Подробнее">i</i>
                         <div class="tooltip-content tip-panel" id="chim_note"></div></span></span>
                 <div class="tabs" style="margin-bottom: 6px;">
-                    <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')"
-                        title="Коаксиальный: «труба в трубе», по внутренней уходит дым, по внешней приходит воздух.">Коаксиальный</div>
-                    <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')"
-                        title="Раздельная система: две трубы Ø80 вместо «трубы в трубе». Нужна там, где коаксиал не проходит по длине.">Раздельный D80</div>
+                    <div class="tab" id="chim_sys_coax" onclick="app.setChimneySystem('coax')">Коаксиальный</div>
+                    <div class="tab" id="chim_sys_split" onclick="app.setChimneySystem('split')">Раздельный D80</div>
                 </div>
                 <div class="tabs" style="margin-bottom: 10px;">
                     <div class="tab" id="chim_exit_wall" onclick="app.setChimneyExit('wall')">Через стену</div>
@@ -1486,13 +1483,22 @@
                             </div>
                         </div>
                     </div>
-                    <div id="blk_tank_pump_wrap" style="border-top:1px solid #E5E7EB; padding-top:8px;">
-                        <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Загрузка
-                                бойлера насосной группой<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">По умолчанию бойлер греется через переключающий 3-х ходовой клапан Fugas (на время нагрева бойлера отопление отключается). Насосная группа греет бойлер параллельно с отоплением, не отключая его.</div></span></span><label class="switch"
-                                style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
-                                    id="chk_tank_pump" onchange="app.toggleTankLoadScheme(this.checked, event)"><span
-                                    class="slider"></span></label>
+                    <div class="fine-tune" id="ft_hw">
+                        <div class="fine-tune-head" onclick="app.toggleFineTune('hw')" role="button" tabindex="0">
+                            <span class="fine-tune-title">Тонкая настройка</span>
+                            <span class="fine-tune-sum" id="ft_hw_sum"></span>
+                            <span class="fine-tune-arrow">▸</span>
+                        </div>
+                        <div class="fine-tune-body" id="ft_hw_body" style="display:none;">
+                        <div id="blk_tank_pump_wrap" style="padding-top:2px;">
+                            <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Загрузка
+                                    бойлера насосной группой<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">По умолчанию бойлер греется через переключающий 3-х ходовой клапан Fugas (на время нагрева бойлера отопление отключается). Насосная группа греет бойлер параллельно с отоплением, не отключая его.</div></span></span><label class="switch"
+                                    style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
+                                        id="chk_tank_pump" onchange="app.toggleTankLoadScheme(this.checked, event)"><span
+                                        class="slider"></span></label>
+                            </div>
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -1559,8 +1565,8 @@
             </div>
 
             <div class="control-item toggle-item">
-                <div class="label-row" id="blk_water_input_row">
-                    <span class="lbl" id="lbl_water_input">Узел ввода ХВС</span>
+                <div class="label-row" id="blk_water_input_row" style="position:relative;">
+                    <span class="lbl" id="lbl_water_input" style="display:flex; align-items:center; gap:4px;"><span id="lbl_water_input_txt">Узел ввода ХВС</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Что входит в узел и за что отвечает каждый переключатель.<div class="tip-p"><b>Редуктор давления.</b> Держит в доме постоянное давление 3–4 бара независимо от магистрали. Ночные скачки выше 6 бар рвут гибкую подводку.</div><div class="tip-p"><b>Счётчик воды.</b> Учёт воды из городской сети. На скважине не нужен.</div><div class="tip-p"><b>Защита от протечки.</b> Датчики на полу плюс краны с электроприводом на вводе: поймав воду, система перекрывает её за несколько секунд.</div><div class="tip-p"><b>Монтажный каркас.</b> Узел собирается на двух сантехнических шинах, а не по месту на стене: снимается и обслуживается целиком.</div><div class="tip-p"><b>Подпитка отопления.</b> <b>Ручная.</b> Кран с заглушкой: доливать давление вручную.<div class="tip-p"><b>Авто.</b> Автоматический подпиточный клапан: держит заданное давление сам. Если в смете есть контроллер отопления, к нему добавится датчик давления с оповещением.</div></div></div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_water_input"
                         onchange="app.toggleWaterInput(this.checked, event)"><span class="slider"></span></label>
                 </div>
@@ -1607,7 +1613,7 @@
                         </div>
                     </div>
                     <div id="blk_water_reducer_row" style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Редуктор давления<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Держит в доме постоянное давление 3–4 бара независимо от магистрали. Ночные скачки выше 6 бар рвут гибкую подводку.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Редуктор давления</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_reducer" onchange="app.toggleState('waterReducer', this.checked)">
                             <span class="slider"></span>
@@ -1615,14 +1621,14 @@
                     </div>
                     <div id="blk_water_meter_row"
                         style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Счётчик воды<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Учёт воды из городской сети. На скважине не нужен.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Счётчик воды</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_meter" onchange="app.toggleState('waterMeter', this.checked)">
                             <span class="slider"></span>
                         </label>
                     </div>
                     <div style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Защита от протечки<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Датчики на полу плюс краны с электроприводом на вводе: поймав воду, система перекрывает её за несколько секунд.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Защита от протечки</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_leak_guard" onchange="app.toggleState('waterLeakGuard', this.checked)">
                             <span class="slider"></span>
@@ -1630,7 +1636,7 @@
                     </div>
                     <div id="blk_water_frame_row"
                         style="position:relative; display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-top:1px solid var(--border);">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Монтажный каркас<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Узел собирается на двух сантехнических шинах, а не по месту на стене: снимается и обслуживается целиком.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Монтажный каркас</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_water_frame" onchange="app.toggleState('waterFrame', this.checked)">
                             <span class="slider"></span>
@@ -1638,7 +1644,7 @@
                     </div>
                     <div id="blk_heating_feed_row" style="padding:6px 0; border-top:1px solid var(--border);">
                         <div style="position:relative; display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Подпитка отопления<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel"><b>Ручная.</b> Кран с заглушкой: доливать давление вручную.<div class="tip-p"><b>Авто.</b> Автоматический подпиточный клапан: держит заданное давление сам. Если в смете есть контроллер отопления, к нему добавится датчик давления с оповещением.</div></div></span></span>
+                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Подпитка отопления</span>
                             <label class="switch">
                                 <input type="checkbox" id="chk_heating_feed" onchange="app.toggleState('heatingFeed', this.checked)">
                                 <span class="slider"></span>
@@ -1897,35 +1903,41 @@
                         <div class="tabs" id="snow_ctrl_tabs" style="font-size:11px;">
                             <div class="tab active" id="snow_ctrl_sensor" onclick="app.setSnowCtrl('sensor')">Датчик
                                 осадков</div>
-                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')"
-                                title="Датчик осадков в смету не попадает. Снеготаяние включается вручную — из приложения контроллера или выключателем.">Ручной</div>
+                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')">Ручной</div>
                         </div>
                     </div>
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
-                        <span class="lbl"
-                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
-                            петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
-                                    role="button" aria-label="Подробнее">i</i>
-                                <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Внутренний диаметр
-                                    16 мм. Потери в петле примерно на треть ниже, метр дешевле, петля выходит
-                                    длиннее — а значит меньше петель, меньше выходов коллектора и реже приходится
-                                    делить снеготаяние на два узла. Теплоносителя в контуре на 15 % больше.<br><br>
-                                    <b>20х2.8 (серая).</b> Внутренний 14,4 мм. Толстая стенка — запас на механику
-                                    там, где за петлю страшно: тяжёлый проезд, работы поверх готовой стяжки. За это
-                                    платите гидравликой: петля короче, петель больше, узлов может понадобиться
-                                    больше.<br><br>
-                                    <b>Общее у обеих.</b> PE-Xa/EVOH, обе переживают замерзание теплоносителя
-                                    (металлопластик в этом месте расслаивается по алюминию), обе на аксиальном
-                                    соединении. Различается только монтажная гильза — она обжимает трубу по стенке.
-                                </div>
-                            </span></span>
-                        <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
-                            <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')"
-                                title="PE-Xa/EVOH 20х2.0, внутренний 16 мм. Потери в петле ниже — петель и узлов нужно меньше.">
-                                20×2.0</div>
-                            <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')"
-                                title="PE-Xa/EVOH 20х2.8, внутренний 14,4 мм. Толстая стенка под тяжёлый проезд, но петля короче.">
-                                20×2.8</div>
+                    <div class="fine-tune" id="ft_snow">
+                        <div class="fine-tune-head" onclick="app.toggleFineTune('snow')" role="button" tabindex="0">
+                            <span class="fine-tune-title">Тонкая настройка</span>
+                            <span class="fine-tune-sum" id="ft_snow_sum"></span>
+                            <span class="fine-tune-arrow">▸</span>
+                        </div>
+                        <div class="fine-tune-body" id="ft_snow_body" style="display:none;">
+                        <div id="blk_snow_pipe_row" style="position:relative;">
+                            <span class="lbl"
+                                style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
+                                петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
+                                        role="button" aria-label="Подробнее">i</i>
+                                    <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Внутренний диаметр
+                                        16 мм. Потери в петле примерно на треть ниже, метр дешевле, петля выходит
+                                        длиннее — а значит меньше петель, меньше выходов коллектора и реже приходится
+                                        делить снеготаяние на два узла. Теплоносителя в контуре на 15 % больше.<br><br>
+                                        <b>20х2.8 (серая).</b> Внутренний 14,4 мм. Толстая стенка — запас на механику
+                                        там, где за петлю страшно: тяжёлый проезд, работы поверх готовой стяжки. За это
+                                        платите гидравликой: петля короче, петель больше, узлов может понадобиться
+                                        больше.<br><br>
+                                        <b>Общее у обеих.</b> PE-Xa/EVOH, обе переживают замерзание теплоносителя
+                                        (металлопластик в этом месте расслаивается по алюминию), обе на аксиальном
+                                        соединении. Различается только монтажная гильза — она обжимает трубу по стенке.
+                                    </div>
+                                </span></span>
+                            <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
+                                <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')">
+                                    20×2.0</div>
+                                <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')">
+                                    20×2.8</div>
+                            </div>
+                        </div>
                         </div>
                     </div>
                     <div
