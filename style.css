@@ -5360,7 +5360,11 @@ body.dark-mode .header-totals-block {
         border-radius: 0 !important;
         border-left: none !important;
         border-right: none !important;
-        padding: 16px 12px !important;
+        /* Снизу запас под стопку плавающих кнопок («ИИ», «Наверх», «Вниз»): они
+           висят над нижней навигацией до ~mob-nav-h + 92px, а отступ body — только
+           под саму навигацию. Без запаса последний переключатель панели
+           («Скважинный насос») оставался под кнопками, и тап по нему не проходил. */
+        padding: 16px 12px calc(var(--mob-nav-h, 72px) + 40px) !important;
         margin: 0 !important;
     }
     .output-panel {
@@ -7093,10 +7097,11 @@ body.dark-mode input[type="number"].eq-qty-input {
         border-radius: 0 !important;
         border-left: none !important;
         border-right: none !important;
-        padding: 16px 12px !important;
+        /* Нижний запас под плавающие кнопки — то же, что в правиле выше */
+        padding: 16px 12px calc(var(--mob-nav-h, 72px) + 40px) !important;
         margin: 0 !important;
     }
-    
+
     .output-panel {
         padding: 16px 12px !important;
         width: 100% !important;
