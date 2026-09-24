@@ -4519,6 +4519,22 @@ body.modal-over-banner .hc-cookie-banner {
     max-width: 100%;
 }
 
+/* Поля и кнопка почтовой формы — крупные, как у vc.ru (владелец 25.09.2026,
+   «не очень похоже»): поля выше и круглее, кнопка — большая синяя пилюля.
+   Подписей над полями нет, названия — плейсхолдерами внутри. */
+#auth_modal_overlay .auth-input {
+    height: 54px;
+    border-radius: 14px;
+    font-size: 15px;
+    padding-left: 16px;
+}
+
+#auth_modal_overlay .btn-email-submit {
+    height: 54px;
+    border-radius: 999px;
+    font-size: 16px;
+}
+
 .auth-input:focus {
     border-color: #3B82F6;
     outline: none;
@@ -16051,4 +16067,13 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     flex: none;
     width: 100%;
     pointer-events: none;
+}
+
+/* Кнопка «Войти»/«Зарегистрироваться» остаётся синей и под темой «Профи»:
+   тема красит .btn-email-submit в серый var(--ya-fill), но в окне входа
+   образец (vc.ru) держит акцентную синюю пилюлю (владелец 25.09.2026). */
+body.theme-yandex #auth_modal_overlay .btn-email-submit,
+body.theme-yandex #auth_modal_overlay .btn-email-submit:hover {
+    background: #3B82F6;
+    border-color: #3B82F6;
 }
