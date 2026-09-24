@@ -162,10 +162,10 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=3.83">
+    <link rel="stylesheet" href="style.css?v=3.91">
 
     <script src="supabase-js.js" defer></script>
-    <script src="catalog.js?v=3.18" defer></script>
+    <script src="catalog.js?v=3.19" defer></script>
     <!-- Координаты и регионы населённых пунктов: карта проектов в админке и
          адрес объекта. Данные вшиты в файл, наружу никаких запросов. -->
     <script src="cities_geo.js?v=1.0" defer></script>
@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.09" defer></script>
+    <script src="app.js?v=9.25" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2155,7 +2155,7 @@
                         <div id="cheaper_wrapper" class="sku-toggle-group"
                             style="display: none; align-items: center; position: relative;"
                             onclick="app.handlePremiumToggleClick('cheaper', event)">
-                            <span class="sku-label" style="font-weight: 700;">АНАЛОГ</span>
+                            <span class="sku-label" style="font-weight: 700;" title="Вторая смета подешевле: те же расчёты, позиции заменены на технически равнозначные — пары ROMMER и более выгодные варианты из каталога. Обоснование — на своей вкладке">ПОДЕШЕВЛЕ</span>
 
                             <span id="cheaper_lock"
                                 style="display: none;"
@@ -2167,8 +2167,12 @@
                                 <span class="slider round"></span>
                             </label>
 
-                            <span id="discount_badge"
-                                style="display: none; position: absolute; bottom: 100%; right: 0; margin-bottom: 5px; background: #10B981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); z-index: 100;"></span>
+                            <!-- Плашка кликабельна: открывает подсказку «из чего складывается
+                                 экономия» (app.toggleSavingsPopover). Клик не должен доходить
+                                 до обёртки — та переключает сам «Аналог». -->
+                            <span id="discount_badge" title="Из чего складывается экономия"
+                                onclick="event.stopPropagation(); app.toggleSavingsPopover(event)"
+                                style="display: none; position: absolute; bottom: 100%; right: 0; margin-bottom: 5px; background: #10B981; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; white-space: nowrap; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); z-index: 100; cursor: pointer;"></span>
                         </div>
 
                         <div id="scheme_wrapper" class="sku-toggle-group"
@@ -2218,6 +2222,11 @@
                         onclick="app.setViewMode('money')">4. Деньги</div>
                     <div id="tab_3d" class="tab" style="font-size: 14px; font-weight: 700; display: none;"
                         onclick="app.setViewMode('3d')">5. 3D Котельная</div>
+                    <!-- Обоснование варианта «Подешевле»: что и почему заменено.
+                         Видна только при включённом режиме (app.syncCheaperTab). -->
+                    <div id="tab_cheaper" class="tab tab-cheaper" style="font-size: 14px; font-weight: 700; display: none;"
+                        title="Что и почему заменено в варианте «Подешевле»"
+                        onclick="app.setViewMode('cheaper')">💡 Почему дешевле</div>
                 </div>
             </div>
             <!-- Чёрная черта, которой раньше заканчивался .doc-header. Осталась на прежнем
@@ -2230,6 +2239,8 @@
                  no-print обязателен — закупочные цены не должны попасть ни на
                  бумагу, ни в PDF, ни в то, что монтажник показывает заказчику. -->
             <div id="panel_money" style="display:none; margin-top: 15px;" class="no-print"></div>
+            <!-- Вкладка «Обоснование» варианта «Подешевле» (app.renderCheaperPanel) -->
+            <div id="panel_cheaper" style="display:none; margin-top: 15px;" class="no-print"></div>
             <div class="table-responsive">
                 <table class="inv-table">
                     <thead>
@@ -2248,6 +2259,9 @@
                     <tbody id="tbody"></tbody>
                 </table>
             </div>
+            <!-- Обоснование варианта «Подешевле» на печати и в PDF: на экране скрыто,
+                 печатается последней страницей КП (app.renderCheaperPrint) -->
+            <div id="cheaper_print" class="cheaper-print"></div>
             <div id="contest_widget" class="no-print"></div>
             <div class="doc-footer" style="display: flex; flex-direction: column; align-items: stretch;">
                 <div class="discount-container no-print" id="discount_block" style="display: none; width: 100%; flex-direction: column; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;">
