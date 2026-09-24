@@ -15076,3 +15076,790 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     .cheaper-print .cr-table tr.cr-sec td { background: #eee; }
     .cheaper-print .cr-note { color: #333; }
 }
+
+/* ================== ТЕМА «ПРОФИ» (оформление по образцу ya.ru; в коде — theme-yandex) ==================
+   Включается классом body.theme-yandex из app.js (syncYandexTheme): всем на
+   тарифе «Профи» (любая роль, по умолчанию включено) и группам, которые
+   администратор отметил в панели управления, вкладка «Тарифы», блок
+   «Оформление „Профи“» (app_settings.ui_theme.yandex: pro, администраторы,
+   монтажники, продавцы, менеджеры); на localhost — кнопки «Профи» и «Тема Профи»
+   панели тарифа. Кнопок в шапке нет намеренно (владелец, 24.09.2026). Обычная ночная
+   тема работает поверх: body.theme-yandex.dark-mode переопределяет переменные и
+   те цвета, что в базовом файле прописаны числом. Печать и PDF не затронуты.
+
+   Образец — ya.ru (снято со скриншота владельца 24.09.2026, ночная тема):
+   фон страницы #161617, плашки и строка поиска #39393A, второстепенный текст
+   #9C9C9D, логотип красный #F8604A, всё — круглое: значки в серых кружках,
+   кнопки-пилюли, строка поиска скруглена целиком. Светлая тема ya.ru: белый
+   фон, серые плашки rgba(0,0,0,.06), чёрный текст, красный #FC3F1D, жёлтый
+   #FFDB4D у главной кнопки. Шрифт сайта — YS Text, он несвободный; сам ya.ru
+   в запасе держит Arial ('YS Text', Arial, sans-serif), и YS Text — тот же
+   нейтральный гротеск. Поэтому стек: YS Text, если стоит в системе, иначе
+   Arial; где Arial нет (Android), — Arimo (OFL, метрический двойник Arial),
+   файлы в fonts/, качаются только под темой. Первый вариант с Golos Text
+   владелец отверг: «шрифты нечитаемые». Заголовки у Яндекса без капса и
+   разрядки, вес 500–700 — капс базы под темой снимается.
+   Значки штатные (те же контурные, Feather), только тоньше и в кружках. */
+
+@font-face {
+    font-family: 'Arimo';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('fonts/arimo-cyrillic.woff2?v=1') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+    font-family: 'Arimo';
+    font-style: normal;
+    font-weight: 400 700;
+    font-display: swap;
+    src: url('fonts/arimo-latin.woff2?v=1') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@media screen {
+    /* ---------- Светлая ---------- */
+    body.theme-yandex {
+        --primary: #4D4D4D; /* активная плашка ya.ru днём — чёрный 70 % */
+        --primary-light: #F2F2F2;
+        --bg: #FFFFFF;
+        --surface: #FFFFFF;
+        --surface-light: #F2F2F2;
+        --text-main: #000000;
+        --text-sec: #808080;
+        --border: #E8E8E8;
+        --radius: 20px;
+        --warn-bg: #FFF1EE;
+        --warn-text: #D63A1B;
+        --warn-border: #F8B5A6;
+        --note-warn-bg: #FFF8DB;
+        --note-warn-text: #7A5C00;
+        --note-warn-border: #FFDB4D;
+        --note-info-bg: #F2F2F2;
+        --note-info-text: #000000;
+        --note-info-border: #D9D9D9;
+        --ya-font: 'YS Text', Arial, 'Arimo', 'Helvetica Neue', Helvetica, sans-serif;
+        --ya-red: #FC3F1D;
+        --ya-yellow: #FFDB4D;
+        --ya-chip: #F2F2F2;
+        --ya-chip-hover: #E6E6E6;
+        --ya-fill: #4D4D4D;
+        --ya-on-primary: #FFFFFF;
+        --ya-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+        /* Кнопка «Сменить пароль» в профиле берёт --bg-sec, которой в базе нет
+           (ночью выходил белый текст на светлом) — под темой переменная есть */
+        --bg-sec: #F2F2F2;
+        background: var(--bg);
+        color: var(--text-main);
+    }
+
+    /* ---------- Ночная — вычисленные стили ya.ru/favs (24.09.2026) ----------
+       фон rgb(24,24,26); плашки — белый 10 % (≈ #2E2E30 на этом фоне), при
+       наведении 15 %; текст #FFF, второстепенный белый 75 %; пилюли 36 px,
+       радиус 100 px; значки 24 px толщиной ~1.5 px. */
+    body.theme-yandex.dark-mode {
+        --primary: #FFFFFF;
+        --primary-light: #2E2E30;
+        --bg: #18181A;
+        --surface: #1F1F21;
+        --surface-light: #2E2E30;
+        --text-main: #FFFFFF;
+        --text-sec: #A3A3A6;
+        --border: #2E2E30;
+        --warn-bg: #3A1F1A;
+        --warn-text: #F8604A;
+        --warn-border: rgba(248, 96, 74, 0.4);
+        --note-warn-bg: #3A3316;
+        --note-warn-text: #FFDB4D;
+        --note-warn-border: rgba(255, 219, 77, 0.4);
+        --note-info-bg: #2C2C2C;
+        --note-info-text: #E6E6E6;
+        --note-info-border: #444445;
+        --ya-red: #F8604A;
+        --ya-chip: #2E2E30;
+        --ya-chip-hover: #3A3A3D;
+        /* Нажатые состояния ночью — серые, как активная плашка ya.ru (белые
+           владелец 24.09.2026 отверг: «режут глаз», чёрные заменил на серые по
+           образцу); --primary остаётся белым для текстовых акцентов. Заливки
+           переводит на --ya-fill список в конце блока. */
+        --ya-fill: #747476; /* белый 40 % на #18181A — активная плашка ya.ru ночью */
+        --ya-on-primary: #FFFFFF;
+        --ya-shadow: none;
+        --bg-sec: #2E2E30;
+        scrollbar-color: #2E2E30 #18181A;
+    }
+
+    /* ---------- Шрифт: Inter в базе прописан жёстко, перекрываем поимённо ---------- */
+    body.theme-yandex,
+    body.theme-yandex input,
+    body.theme-yandex select,
+    body.theme-yandex textarea,
+    body.theme-yandex button,
+    body.theme-yandex .step-val,
+    body.theme-yandex .ai-parse-fab,
+    body.theme-yandex .desktop-feedback-btn,
+    body.theme-yandex .feedback-input,
+    body.theme-yandex .feedback-textarea,
+    body.theme-yandex .custom-dropdown-options,
+    body.theme-yandex .custom-dropdown-options *,
+    body.theme-yandex .city-search-input,
+    body.theme-yandex .city-suggestions-dropdown,
+    body.theme-yandex .city-suggestion-item {
+        font-family: var(--ya-font) !important;
+    }
+
+    /* У Яндекса заголовки не кричат: обычный регистр, без разрядки, вес 600–700.
+       База пишет заголовки капсом 800 — на Arial такой капс читается тяжело. */
+    body.theme-yandex h2,
+    body.theme-yandex h3,
+    body.theme-yandex .doc-title,
+    body.theme-yandex .auth-modal-title,
+    body.theme-yandex .lk-section-head h4 {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 700;
+    }
+
+    body.theme-yandex .doc-title {
+        font-size: 17px;
+    }
+
+    body.theme-yandex .input-panel h3 {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    /* Подписи и служебные строки таблицы: обычный регистр, вес 600, кегль чуть крупнее */
+    body.theme-yandex .lbl-sub,
+    body.theme-yandex .sku-label,
+    body.theme-yandex .inv-table th,
+    body.theme-yandex .row-sec td,
+    body.theme-yandex .group-header td,
+    body.theme-yandex .sec-analog-label,
+    body.theme-yandex .sec-toggle-label {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 600;
+    }
+
+    body.theme-yandex .inv-table th {
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    body.theme-yandex .row-sec td {
+        font-size: 12.5px;
+    }
+
+    body.theme-yandex .group-header td {
+        font-size: 11.5px;
+    }
+
+    body.theme-yandex .sec-analog-label,
+    body.theme-yandex .sec-toggle-label {
+        font-size: 10px;
+    }
+
+    /* Оранжевый на сером сливается — под темой акцентный красный ya.ru */
+    body.theme-yandex .sec-analog-badge.active .sec-analog-label,
+    body.theme-yandex #anim_works_sum,
+    body.theme-yandex .m-total-work span {
+        color: var(--ya-red) !important;
+    }
+
+    /* ---------- Логотип: пламя HeatCalc и подпись, без брендов ----------
+       Картинку ставит app.syncTopLogo (img/logo_hc_flame.png — пламя из
+       logo_HC.png без подписи: на 40 px подпись превращалась в кашу). Слово
+       рядом дорисовываем стилем, шрифтом темы — как «Яндекс» рядом с «Я». */
+    body.theme-yandex .site-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    body.theme-yandex .site-header-left::after {
+        content: 'HeatCalc';
+        font-family: var(--ya-font);
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text-main);
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    body.theme-yandex .stout-logo-img {
+        max-height: 34px;
+        max-width: 34px;
+    }
+
+    /* ---------- Шапка ---------- */
+    body.theme-yandex .site-header {
+        background: var(--bg);
+        border-bottom-color: transparent;
+    }
+
+    body.theme-yandex .header-auth-block div[style*="border-right"] {
+        border-color: var(--border) !important;
+    }
+
+    /* Кнопки шапки — значки в серых кружках, как на ya.ru */
+    body.theme-yandex .btn-ctrl {
+        border-radius: 50%;
+        border-color: transparent;
+        background: var(--ya-chip);
+        color: var(--text-main);
+    }
+
+    /* Значки Яндекса тоньше штатных Feather (2 px): у них ~1.5 px */
+    body.theme-yandex .btn-ctrl svg,
+    body.theme-yandex .lk-nav-item svg,
+    body.theme-yandex .mob-nav-item svg {
+        stroke-width: 1.5;
+    }
+
+    body.theme-yandex .btn-ctrl:hover {
+        border-color: transparent;
+        background: var(--ya-chip-hover);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .btn-ctrl.btn-reset:hover {
+        border-color: transparent;
+        background: var(--ya-chip-hover);
+        color: var(--ya-red);
+    }
+
+    body.theme-yandex .btn-ctrl.is-on,
+    body.theme-yandex .btn-ctrl.is-on:hover {
+        border-color: var(--primary);
+        background: var(--primary);
+        color: var(--ya-on-primary);
+        filter: none;
+    }
+
+    body.theme-yandex .header-totals-block {
+        border-radius: 999px;
+        border-color: transparent;
+        background: var(--ya-chip);
+        box-shadow: none;
+    }
+
+    body.theme-yandex .header-fill-bar-fill {
+        background: var(--ya-yellow);
+    }
+
+    body.theme-yandex .menu-toggle-btn {
+        color: var(--text-main);
+    }
+
+    /* ---------- Панели ---------- */
+    body.theme-yandex .input-panel,
+    body.theme-yandex .output-panel {
+        border-radius: 24px;
+        box-shadow: var(--ya-shadow);
+    }
+
+    body.theme-yandex .control-card {
+        background: var(--ya-chip);
+        border-color: transparent;
+        border-radius: 16px;
+    }
+
+    body.theme-yandex .zone-card {
+        background: var(--surface);
+        border-color: var(--border);
+        border-radius: 16px;
+    }
+
+    body.theme-yandex .tabs,
+    body.theme-yandex .mode-selector-tabs {
+        background: var(--ya-chip);
+        border-color: transparent;
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .tab,
+    body.theme-yandex .mode-tab {
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .tab.active {
+        background: var(--surface);
+        color: var(--text-main);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    }
+
+    body.theme-yandex .tab.multi-active,
+    body.theme-yandex .mode-tab.active {
+        background: var(--primary);
+        color: var(--ya-on-primary);
+        box-shadow: none;
+    }
+
+    body.theme-yandex .stepper {
+        background: var(--ya-chip);
+        border-color: transparent;
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .step-btn {
+        border-radius: 50%;
+        border-color: transparent;
+        background: var(--surface);
+        color: var(--text-main);
+        box-shadow: none;
+    }
+
+    body.theme-yandex .step-btn:hover {
+        background: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .step-val {
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .slider {
+        background-color: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex input:checked+.slider {
+        background-color: var(--primary);
+    }
+
+    /* Ночью включённый тумблер чёрный с белым ползунком, выключенный — серый */
+    body.theme-yandex.dark-mode input:checked+.slider {
+        background-color: var(--ya-fill);
+    }
+
+    body.theme-yandex .info-card {
+        border-color: transparent;
+        border-radius: 12px;
+    }
+
+    body.theme-yandex .zone-input,
+    body.theme-yandex input[type="number"] {
+        border-radius: 12px;
+    }
+
+    /* ---------- Смета ---------- */
+    body.theme-yandex .doc-header-rule {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex .inv-table th {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex .inv-table td {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex .row-sec td {
+        background: var(--primary-light);
+        color: var(--text-main);
+        border-top-color: var(--surface);
+    }
+
+    body.theme-yandex .group-header td {
+        background-color: var(--surface-light);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .group-header td[style*="9CA3AF"] {
+        color: var(--text-sec) !important;
+    }
+
+    /* ---------- Кнопки — пилюли ---------- */
+    body.theme-yandex .footer-btns .btn-primary-action,
+    body.theme-yandex .footer-btns .btn-secondary-action,
+    body.theme-yandex .custom-modal-btn,
+    body.theme-yandex .calc-dialog-btn-confirm,
+    body.theme-yandex .calc-dialog-btn-cancel,
+    body.theme-yandex .auth-btn-base,
+    body.theme-yandex .admin-btn,
+    body.theme-yandex .admin-action-btn,
+    body.theme-yandex .btn-email-submit,
+    body.theme-yandex .btn-subscribe,
+    body.theme-yandex .notif-tab,
+    body.theme-yandex .currency-toggle-btn,
+    body.theme-yandex .lk-nav-item,
+    body.theme-yandex .lk-rail-toggle {
+        border-radius: 999px;
+    }
+
+    body.theme-yandex .footer-btns .btn-primary-action {
+        color: var(--ya-on-primary);
+    }
+
+    /* Синие кнопки входа и «Сохранить» в кабинете (в базе #3B82F6 числом) —
+       главный цвет темы: чёрная днём, белая ночью */
+    body.theme-yandex .btn-email-submit,
+    body.theme-yandex .btn-email-submit:hover {
+        background: var(--ya-fill);
+        border-color: var(--ya-fill);
+        color: var(--ya-on-primary) !important;
+    }
+
+    body.theme-yandex .footer-btns .btn-primary-action:hover {
+        filter: none;
+        opacity: 0.85;
+    }
+
+    body.theme-yandex .footer-btns .btn-secondary-action {
+        background-color: var(--ya-chip);
+        color: var(--text-main);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .footer-btns .btn-secondary-action:hover {
+        background-color: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .footer-btns .btn-secondary-action svg {
+        stroke: var(--text-main);
+    }
+
+    body.theme-yandex .admin-btn {
+        background: var(--ya-chip);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .admin-btn:hover:not(:disabled) {
+        background: var(--ya-chip-hover);
+        border-color: transparent;
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .admin-btn.danger,
+    body.theme-yandex .admin-btn.danger:hover:not(:disabled) {
+        color: var(--ya-red);
+    }
+
+    /* Вкладки панели управления рисуются инлайн-стилями из app.js: цвета
+       берут переменные, форму (радиус) ставит класс — перекрываем его */
+    body.theme-yandex .admin-tab-btn {
+        border-radius: 999px;
+    }
+
+    /* ---------- Окна и поля ---------- */
+    body.theme-yandex .auth-modal-content {
+        border-radius: 28px;
+        border-color: transparent;
+    }
+
+    body.theme-yandex .auth-input,
+    body.theme-yandex .city-search-input,
+    body.theme-yandex .feedback-input,
+    body.theme-yandex .feedback-textarea {
+        border-radius: 12px;
+        background: var(--ya-chip);
+        border-color: transparent;
+    }
+
+    body.theme-yandex .auth-input:focus,
+    body.theme-yandex .city-search-input:focus {
+        border-color: var(--text-sec);
+    }
+
+    body.theme-yandex .custom-dropdown-options,
+    body.theme-yandex .city-suggestions-dropdown,
+    body.theme-yandex .download-menu {
+        border-radius: 16px;
+    }
+
+    body.theme-yandex #admin_modal_overlay .admin-theme-btn {
+        border-radius: 50%;
+        border-color: transparent;
+        background: var(--ya-chip);
+        color: var(--text-main);
+    }
+
+    /* ---------- Меню кабинета (левая колонка) ----------
+       Значки без кружков: на страницах Яндекса (ya.ru/favs, снято 24.09.2026)
+       в кружке стоит только кнопка «назад», а разделы — плашки со скруглением
+       и тонким значком 1.5 px. Первый вариант с кружками у каждого значка
+       владелец отверг: «у Яндекса нет прям такого закругления». Раздел целиком —
+       плашка: наведение серая, активный — чёрная с белым. */
+    body.theme-yandex .lk-rail {
+        border-color: transparent;
+        border-radius: 20px;
+        box-shadow: var(--ya-shadow);
+    }
+
+    body.theme-yandex .lk-rail-item {
+        border-radius: 14px;
+    }
+
+    body.theme-yandex .lk-rail-item svg {
+        stroke-width: 1.5;
+    }
+
+    body.theme-yandex .lk-rail-item:hover {
+        background: var(--ya-chip);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .lk-rail-item.active {
+        background: var(--ya-fill);
+        color: var(--ya-on-primary);
+    }
+
+    /* Зелёная «Админка» и красный «Выйти» у Яндекса были бы лишними цветами */
+    body.theme-yandex .lk-rail-admin,
+    body.theme-yandex .lk-rail-admin:hover {
+        color: var(--text-sec);
+        background: transparent;
+    }
+
+    body.theme-yandex .lk-rail-admin:hover {
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .lk-rail-logout,
+    body.theme-yandex .lk-rail-logout:hover {
+        color: var(--text-sec);
+        background: transparent;
+    }
+
+    body.theme-yandex .lk-rail-logout:hover {
+        color: var(--ya-red);
+    }
+
+    body.theme-yandex .lk-rail-badge,
+    body.theme-yandex .notif-tab-badge,
+    body.theme-yandex .admin-chat-badge,
+    body.theme-yandex #notification_badge {
+        background: var(--ya-red) !important;
+    }
+
+    /* ---------- Кабинет: колонка разделов ---------- */
+    body.theme-yandex .lk-nav-item.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: var(--ya-on-primary);
+    }
+
+    body.theme-yandex .lk-nav-avatar {
+        background: var(--ya-chip);
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .lk-nav-logout,
+    body.theme-yandex .lk-nav-logout:hover {
+        color: var(--ya-red);
+    }
+
+    /* ---------- Телефон: нижняя навигация ---------- */
+    body.theme-yandex .mobile-bottom-nav {
+        background: var(--surface);
+        border-top-color: var(--border);
+    }
+
+    body.theme-yandex .mob-nav-item.active {
+        color: var(--text-main);
+    }
+
+    body.theme-yandex .mob-nav-item.active svg {
+        stroke: var(--text-main);
+    }
+
+    /* ======================================================================
+       НОЧЬ ПОВЕРХ ТЕМЫ: база ночной темы пишет цвета числом (#161616, #1E1E1E,
+       #2A2A2A, #6366F1, #374151) и местами с !important — возвращаем их к
+       переменным, чтобы серые плашки ya.ru жили и ночью.
+       ====================================================================== */
+    body.theme-yandex.dark-mode *::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    body.theme-yandex.dark-mode *::-webkit-scrollbar-thumb {
+        background: var(--surface-light);
+        border-color: var(--bg);
+    }
+
+    body.theme-yandex.dark-mode .site-header {
+        background: var(--bg);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .input-panel,
+    body.theme-yandex.dark-mode .output-panel {
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .control-card,
+    body.theme-yandex.dark-mode .tabs,
+    body.theme-yandex.dark-mode .mode-selector-tabs,
+    body.theme-yandex.dark-mode .stepper {
+        background: var(--ya-chip) !important;
+        border: 1px solid transparent !important;
+    }
+
+    body.theme-yandex.dark-mode .doc-summary,
+    body.theme-yandex.dark-mode .zone-card {
+        background: var(--surface-light) !important;
+        border: 1px solid transparent !important;
+    }
+
+    body.theme-yandex.dark-mode .step-btn,
+    body.theme-yandex.dark-mode .step-val,
+    body.theme-yandex.dark-mode input[type="number"],
+    body.theme-yandex.dark-mode .zone-input {
+        background: var(--surface);
+        color: var(--text-main);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .tab.active {
+        background: var(--ya-fill);
+        color: var(--ya-on-primary);
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    body.theme-yandex.dark-mode .lk-rail-item.active {
+        background: var(--ya-fill);
+        color: var(--ya-on-primary);
+    }
+
+    body.theme-yandex.dark-mode .row-sec td {
+        background: var(--primary-light) !important;
+        color: var(--text-main);
+        border-top-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .group-header td {
+        background-color: var(--surface-light) !important;
+        color: var(--text-main);
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .inv-table th {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .inv-table td {
+        border-bottom-color: var(--border);
+    }
+
+    body.theme-yandex.dark-mode .info-card {
+        background: var(--primary-light);
+    }
+
+    body.theme-yandex.dark-mode .btn-ctrl {
+        background: var(--ya-chip);
+        border-color: transparent;
+        color: var(--text-main);
+    }
+
+    body.theme-yandex.dark-mode .btn-ctrl:hover {
+        background: var(--ya-chip-hover);
+        border-color: transparent;
+        color: var(--text-main);
+    }
+
+    body.theme-yandex.dark-mode .btn-ctrl.is-on,
+    body.theme-yandex.dark-mode .btn-ctrl.is-on:hover {
+        background: var(--ya-fill);
+        border-color: var(--ya-fill);
+        color: var(--ya-on-primary);
+    }
+
+    body.theme-yandex.dark-mode .mode-tab.active {
+        box-shadow: none;
+    }
+
+    body.theme-yandex.dark-mode .footer-btns .btn-secondary-action {
+        background-color: var(--ya-chip);
+        color: var(--text-main);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .footer-btns .btn-secondary-action:hover {
+        background-color: var(--ya-chip-hover);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .footer-btns .btn-secondary-action svg {
+        stroke: var(--text-main);
+    }
+
+    body.theme-yandex.dark-mode .header-totals-block {
+        background: var(--ya-chip);
+        border-color: transparent;
+    }
+
+    body.theme-yandex.dark-mode .mobile-bottom-nav {
+        background: var(--surface);
+        border-top-color: var(--border);
+    }
+
+    /* Ночью главный цвет — белый (для текстовых акцентов), а всё, что залито
+       var(--primary), переводим на чёрную заливку с белым текстом — как
+       нажатые плашки ya.ru. Список — правила базы плюс инлайн-стили из app.js
+       (там заливка задана строкой background:var(--primary), ловим её по
+       подстроке атрибута style). */
+    body.theme-yandex.dark-mode .tab.active,
+    body.theme-yandex.dark-mode .tab.multi-active,
+    body.theme-yandex.dark-mode .mode-tab.active,
+    body.theme-yandex.dark-mode .rec-beta,
+    body.theme-yandex.dark-mode .footer-btns .btn-primary-action,
+    body.theme-yandex.dark-mode .custom-modal-btn,
+    body.theme-yandex.dark-mode .calc-dialog-btn-confirm,
+    body.theme-yandex.dark-mode .btn-ctrl.is-on,
+    body.theme-yandex.dark-mode .btn-ctrl.is-on:hover,
+    body.theme-yandex.dark-mode .lk-nav-item.active,
+    body.theme-yandex.dark-mode .admin-chat-item.active,
+    body.theme-yandex.dark-mode .admin-chat-item.active *,
+    body.theme-yandex.dark-mode .admin-chat-bubble.from-admin,
+    body.theme-yandex.dark-mode .admin-chat-bubble.from-admin *,
+    body.theme-yandex.dark-mode .admin-chat-send,
+    body.theme-yandex.dark-mode .notif-tab.active,
+    body.theme-yandex.dark-mode .currency-toggle-btn.active,
+    body.theme-yandex.dark-mode .btn-subscribe,
+    body.theme-yandex.dark-mode .cookie-banner-btn,
+    body.theme-yandex.dark-mode .grm-lb-tab.active,
+    body.theme-yandex.dark-mode .grm-guest-btn,
+    body.theme-yandex.dark-mode .grm-you,
+    body.theme-yandex.dark-mode .msg-toast-send,
+    body.theme-yandex.dark-mode .ai-chat-product-add,
+    body.theme-yandex.dark-mode .to-top-btn,
+    body.theme-yandex.dark-mode .mobile-sidebar #btn_share_trigger,
+    body.theme-yandex.dark-mode .qty-step:hover,
+    body.theme-yandex.dark-mode .expand-locs-btn:hover,
+    body.theme-yandex.dark-mode .brx-pill.on,
+    body.theme-yandex.dark-mode #swap_modal_body .swap-tab:hover,
+    body.theme-yandex.dark-mode #swap_modal_body .swap-tab.active,
+    body.theme-yandex.dark-mode .cw-xp-block.filled,
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"],
+    body.theme-yandex.dark-mode [style*="background: var(--primary)"],
+    body.theme-yandex.dark-mode [style*="background-color:var(--primary)"],
+    body.theme-yandex.dark-mode [style*="background-color: var(--primary)"] {
+        background-color: var(--ya-fill) !important;
+        border-color: var(--ya-fill) !important;
+        color: #FFFFFF !important;
+    }
+
+    /* Полоски-индикаторы в аналитике залиты тем же var(--primary), но это
+       не кнопки: чёрная полоска на тёмном не видна — оставляем светлой */
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:8px"],
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:6px"],
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:100%"] {
+        background-color: var(--primary) !important;
+    }
+
+    body.theme-yandex.dark-mode .admin-chat-item.active .admin-chat-badge {
+        background: #FFFFFF !important;
+        color: #000000 !important;
+    }
+
+    body.theme-yandex.dark-mode .admin-chat-bubble.from-admin .chat-quote {
+        background: rgba(255, 255, 255, 0.1);
+    }
+}
