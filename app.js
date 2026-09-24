@@ -35603,9 +35603,13 @@ const app = {
                 }
             }
         } else {
-            if (tableResponsive) tableResponsive.style.display = 'block';
-            if (docFooter) docFooter.style.display = 'flex';
-            if (footerBtns) footerBtns.style.display = 'flex';
+            // Инлайн-стиль только снимаем, значение отдаём стилям: на пустом
+            // расчёте обёртка таблицы — flex-колонка (body.empty-fit в style.css),
+            // и жёсткий display:block ронял заглушку «параметры не заданы» к
+            // верху листа до перезагрузки; у ряда кнопок в стилях grid, а не flex.
+            if (tableResponsive) tableResponsive.style.display = '';
+            if (docFooter) docFooter.style.display = '';
+            if (footerBtns) footerBtns.style.display = '';
             if (panel3d) {
                 panel3d.style.display = 'none';
                 if (window.Boiler3D) {
