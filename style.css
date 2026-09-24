@@ -14558,7 +14558,7 @@ body.dark-mode #hyd_card .hyd-card__p {
 @media screen {
     /* ---------- Светлая ---------- */
     body.theme-yandex {
-        --primary: #000000;
+        --primary: #4D4D4D; /* активная плашка ya.ru днём — чёрный 70 % */
         --primary-light: #F2F2F2;
         --bg: #FFFFFF;
         --surface: #FFFFFF;
@@ -14581,7 +14581,7 @@ body.dark-mode #hyd_card .hyd-card__p {
         --ya-yellow: #FFDB4D;
         --ya-chip: #F2F2F2;
         --ya-chip-hover: #E6E6E6;
-        --ya-fill: #000000;
+        --ya-fill: #4D4D4D;
         --ya-on-primary: #FFFFFF;
         --ya-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
         /* Кнопка «Сменить пароль» в профиле берёт --bg-sec, которой в базе нет
@@ -14616,10 +14616,11 @@ body.dark-mode #hyd_card .hyd-card__p {
         --ya-red: #F8604A;
         --ya-chip: #2E2E30;
         --ya-chip-hover: #3A3A3D;
-        /* Нажатые состояния ночью — чёрные с белым текстом (владелец 24.09.2026:
-           белые «режут глаз»); --primary остаётся белым для текстовых акцентов.
-           Заливки переводит на --ya-fill список в конце блока. */
-        --ya-fill: #000000;
+        /* Нажатые состояния ночью — серые, как активная плашка ya.ru (белые
+           владелец 24.09.2026 отверг: «режут глаз», чёрные заменил на серые по
+           образцу); --primary остаётся белым для текстовых акцентов. Заливки
+           переводит на --ya-fill список в конце блока. */
+        --ya-fill: #747476; /* белый 40 % на #18181A — активная плашка ya.ru ночью */
         --ya-on-primary: #FFFFFF;
         --ya-shadow: none;
         --bg-sec: #2E2E30;
