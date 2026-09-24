@@ -15160,7 +15160,10 @@ const app = {
 
     setBrandThemeEnabled: async function (on) {
         if (!this.canEditTariffs()) { app.alert('Менять оформление может только администратор.'); return; }
-        const value = { installer_brand: !!on };
+        // Сливаем поверх прежнего ui_theme: раньше здесь писался объект из одного
+        // ключа, и тумблер бренда молча стирал настройки групп темы «Профи»
+        // (ui_theme.yandex) — обе настройки живут в одной строке app_settings.
+        const value = Object.assign({}, (this.appSettings && this.appSettings.ui_theme) || {}, { installer_brand: !!on });
         // Сразу на экран, не дожидаясь базы
         this.appSettings = Object.assign({}, this.appSettings, { ui_theme: value });
         this.syncBrandTheme();
@@ -15365,7 +15368,7 @@ const app = {
             opts.push({ v: 'standard', label: 'Стандарт', sub: 'обычное оформление калькулятора' });
             // Кнопка «Бренд» — только монтажникам и только пока администратор
             // не выключил тему бренда целиком (иначе выбор ни на что не влиял бы)
-            if (!office && this.brandThemeEnabled()) opts.push({ v: 'brand', label: 'Бренд', sub: 'в цветах STOUT или ROMMER — каких, решает переключатель «Аналог»' });
+            if (!office && this.brandThemeEnabled()) opts.push({ v: 'brand', label: 'Бренд', sub: 'в цветах STOUT или ROMMER — каких, решает переключатель «Подешевле»' });
         }
         opts.push({ v: 'profi', label: 'Профи', sub: 'лаконичное серое оформление, ночной режим по умолчанию' });
         return opts;
@@ -15432,32 +15435,62 @@ const app = {
         }
     },
 
-    adminYandexThemeBlockHtml: function () {
+    // Единый блок «Оформление» вкладки «Тарифы»: правило показывается людям
+    // словами (аудитория → тема по умолчанию, «Профи» — выбор в кабинете),
+    // а переключатели собраны в одном месте вместо двух блоков с разными
+    // умолчаниями (до 24.09.2026 бренд и «Профи» настраивались порознь).
+    // Хранилище прежнее: app_settings.ui_theme (installer_brand и yandex.*).
+    adminAppearanceBlockHtml: function () {
         const canEdit = this.canEditTariffs();
-        const cfg = this.yandexThemeConfig();
-        const rows = this.YANDEX_THEME_GROUPS.map(g => {
-            const on = this.yandexThemeGroupOn(g.key);
-            return `<div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-top:1px solid var(--border);">
-                <label class="switch" title="${on ? 'Включено — нажмите, чтобы вернуть этой группе обычное оформление' : 'Выключено — нажмите, чтобы показать этой группе тему «Профи»'}">
-                    <input type="checkbox" ${on ? 'checked' : ''} ${canEdit ? '' : 'disabled'} onchange="app.setYandexThemeGroup('${g.key}', this.checked)">
-                    <span class="slider"></span>
-                </label>
-                <div style="font-size:12.5px; line-height:1.4;"><b style="color:var(--text-main);">${g.label}</b>
-                    <span style="color:var(--text-sec);"> — ${g.hint}</span></div>
+        const sw = (on, titleOn, titleOff, onclick) => `
+            <button type="button" ${canEdit ? '' : 'disabled'} role="switch" aria-checked="${on}" title="${on ? titleOn : titleOff}"
+                onclick="${onclick}"
+                style="position:relative; flex:0 0 auto; width:40px; height:22px; border-radius:999px; border:none; padding:0; cursor:${canEdit ? 'pointer' : 'default'}; background:${on ? '#10B981' : 'var(--border)'}; transition:background .15s;">
+                <span style="position:absolute; top:3px; left:${on ? '21px' : '3px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:left .15s;"></span>
+            </button>`;
+        const row = (switchHtml, title, hint, indent) => `
+            <div style="display:flex; align-items:center; gap:14px; padding:10px 0 10px ${indent ? '26px' : '0'}; border-top:1px solid var(--border);">
+                ${switchHtml}
+                <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec);"><b style="color:var(--text-main);">${title}</b> — ${hint}</div>
             </div>`;
+
+        // Тумблер показывает значение настройки, а не brandThemeEnabled():
+        // локальная кнопка «Тема бренда» перекрывает базу только на этой машине
+        const uiBrand = !((this.appSettings && this.appSettings.ui_theme) && this.appSettings.ui_theme.installer_brand === false);
+        const proOn = this.yandexThemeGroupOn('pro');
+
+        const brandRow = row(
+            sw(uiBrand, 'Включено — нажмите, чтобы вернуть монтажникам обычное оформление', 'Выключено — нажмите, чтобы включить тему бренда', `app.setBrandThemeEnabled(${uiBrand ? 'false' : 'true'})`),
+            'Тема бренда для монтажников',
+            'шрифты и цвета stout.ru, при включённом «Подешевле» — rommer.ru; ночная тема работает. Выключено — у монтажников обычное оформление.');
+        const proRow = row(
+            sw(proOn, 'Разрешено — нажмите, чтобы убрать выбор темы у тарифа «Профи»', 'Запрещено — нажмите, чтобы разрешить выбор темы', `app.setYandexThemeGroup('pro', ${proOn ? 'false' : 'true'})`),
+            'Выбор оформления на тарифе «Профи»',
+            'обладатели тарифа (оплаченного или пробного, любая роль) выбирают тему сами в кабинете, раздел «Профиль»: Стандарт / Бренд (у продавца — Магазин) / Профи. Выключено — карточки выбора нет, у всех тема своей аудитории.');
+        const forceRows = this.YANDEX_THEME_GROUPS.filter(g => g.key !== 'pro').map(g => {
+            const on = this.yandexThemeGroupOn(g.key);
+            return row(
+                sw(on, 'Включено — нажмите, чтобы вернуть этой группе тему её аудитории', 'Выключено — нажмите, чтобы включить этой группе тему «Профи»', `app.setYandexThemeGroup('${g.key}', ${on ? 'false' : 'true'})`),
+                g.label, g.hint, true);
         }).join('');
+
         return `
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
-                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление «Профи»</h3>
+                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление</h3>
             </div>
             <div style="padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg); max-width:900px;">
-                <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec); margin-bottom:6px;">
-                    Тема тарифа «Профи»: шрифт и серые плашки в духе ya.ru, кнопки-пилюли, тонкие значки, логотип HeatCalc вместо брендов;
-                    по умолчанию ночная, светлую и авто человек выбирает сам кнопкой в шапке. Показывается всем на тарифе «Профи» — первый
-                    переключатель; остальные открывают тему группам целиком, независимо от тарифа. Всё выключено — у всех обычное оформление.
+                <div style="font-size:12.5px; line-height:1.6; color:var(--text-sec); margin-bottom:8px;">
+                    Тему по умолчанию решает аудитория: <b>продавцы</b> — оформление магазина, <b>монтажники</b> — тема бренда,
+                    <b>администраторы, менеджеры и наблюдатели</b> — обычное оформление, не вошедшие — тоже обычное.
+                    Тема «Профи» (серые плашки в духе ya.ru, логотип HeatCalc, по умолчанию ночная) — личный выбор обладателя тарифа, сама не включается.
                     ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
                 </div>
-                ${rows}
+                ${brandRow}
+                ${proRow}
+                <div style="font-size:12px; color:var(--text-sec); margin:12px 0 2px; padding-top:10px; border-top:1px solid var(--border);">
+                    <b style="color:var(--text-main);">Принудительно включить тему «Профи» группе</b> — независимо от тарифа; личный выбор человека в кабинете сильнее этих переключателей.
+                </div>
+                ${forceRows}
             </div>`;
     },
 
@@ -20329,35 +20362,9 @@ const app = {
                 <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
                 <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
             </div>
-            ${this.adminThemeBlockHtml()}
-            ${this.adminYandexThemeBlockHtml()}
+            ${this.adminAppearanceBlockHtml()}
             ${this.adminTabsTableHtml(esc, th, td, sep)}`;
         this.renderAdminTariffsStatus();
-    },
-
-    // Блок «Оформление» вкладки «Тарифы»: общий выключатель темы бренда для
-    // монтажников (см. brandThemeEnabled). Один тумблер на всех, как режим
-    // регистрации в «Дистрибьюторах».
-    adminThemeBlockHtml: function () {
-        const canEdit = this.canEditTariffs();
-        const ui = this.appSettings && this.appSettings.ui_theme;
-        const on = !(ui && ui.installer_brand === false);
-        return `
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
-                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление</h3>
-            </div>
-            <div style="display:flex; align-items:center; gap:14px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg); max-width:900px;">
-                <button type="button" ${canEdit ? '' : 'disabled'} role="switch" aria-checked="${on}" title="${on ? 'Включено — нажмите, чтобы вернуть обычное оформление' : 'Выключено — нажмите, чтобы включить тему бренда'}"
-                    onclick="app.setBrandThemeEnabled(${on ? 'false' : 'true'})"
-                    style="position:relative; flex:0 0 auto; width:40px; height:22px; border-radius:999px; border:none; padding:0; cursor:${canEdit ? 'pointer' : 'default'}; background:${on ? '#10B981' : 'var(--border)'}; transition:background .15s;">
-                    <span style="position:absolute; top:3px; left:${on ? '21px' : '3px'}; width:16px; height:16px; border-radius:50%; background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.25); transition:left .15s;"></span>
-                </button>
-                <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec);">
-                    <b style="color:var(--text-main);">Тема бренда для монтажников</b> — шрифты и цвета stout.ru, при включённом «Подешевле» — rommer.ru; ночная тема работает.
-                    Продавцов не касается: у них оформление магазина. Администраторы пока остаются на обычном оформлении. Выключено — у всех обычное оформление калькулятора.
-                    ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
-                </div>
-            </div>`;
     },
 
     // Вторая таблица вкладки «Тарифы»: какие разделы панели видит каждая роль
