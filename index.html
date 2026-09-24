@@ -3071,6 +3071,10 @@
             <!-- Способ входа в аккаунт и привязка Яндекс ID — заполняет app.renderProfileLoginMethod -->
             <div id="profile_login_method"></div>
 
+            <!-- Выбор оформления — перк тарифа «Профи», остальным темы решает аудитория.
+                 Заполняет app.renderThemeChoiceCard, без тарифа блок скрыт. -->
+            <div id="profile_theme_choice" style="display:none;"></div>
+
             <!-- Подсказки городов для поля «Ваш город»: заполняет app.fillCitySuggestions из CITIES_DB.
                  Имя своё, не city_suggestions: так уже зовётся выпадающий список города объекта
                  в левой панели, и getElementById находил его, а не этот datalist -->

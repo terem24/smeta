@@ -1125,6 +1125,7 @@ const app = {
         delete s.viewMode;
         delete s.darkMode;
         delete s.themeMode;
+        delete s.uiTheme;
         delete s.collapsedGroups;
         delete s.revealedToggles;
         delete s.showSwapFor;
@@ -11204,7 +11205,7 @@ const app = {
             if (error) throw error;
 
             let loadedState = data.calc_data;
-            delete loadedState.tgUser; delete loadedState.accountType; delete loadedState.demoUsed; delete loadedState.darkMode; delete loadedState.themeMode;
+            delete loadedState.tgUser; delete loadedState.accountType; delete loadedState.demoUsed; delete loadedState.darkMode; delete loadedState.themeMode; delete loadedState.uiTheme;
             // Реквизиты компании — настройка учётной записи, а не сметы: в сохранённом
             // расчёте лежит лишь снимок на момент отправки. Без этой строки открытие
             // старого объекта возвращало бы шапку к тому, что было тогда (а у смет,
@@ -12062,6 +12063,7 @@ const app = {
         this.renderProfileLoginMethod();
         this.renderProfileNavHeader(tgUser);
         this.renderProfilePhotoField();
+        this.renderThemeChoiceCard();
         this.setProfileTab(forced ? 'requisites' : (initialTab || 'requisites'));
         this.refreshManagerTabVisibility(tgUser.email);
 
@@ -15115,7 +15117,13 @@ const app = {
     // body, все правила в style.css. Сняли сферу — класс уходит при следующем
     // syncRoleTabs, расчёт об этом не знает. Тёмная тема поверх магазинной не
     // накладывается: два набора переопределений друг на друге читались бы плохо.
-    isShopTheme: function () { return this.isSellerOnly(); },
+    isShopTheme: function () {
+        // Тема «Профи» главнее: продавец, выбравший её в кабинете (или включённый
+        // администратором в группу), магазинную не получает — две темы на одном
+        // body спорили бы за цвета, а syncShopTheme ещё и снимал бы ночной режим.
+        if (this.isYandexTheme && this.isYandexTheme()) return false;
+        return this.isSellerOnly();
+    },
 
     syncShopTheme: function () {
         const on = this.isShopTheme();
@@ -15186,6 +15194,9 @@ const app = {
         // Тема «Профи» (ya.ru) главнее темы бренда: у кого она включена, бренд не накладываем
         if (this.isYandexTheme && this.isYandexTheme()) return false;
         if (this.isShopTheme()) return false;
+        // Человек сам выбрал обычное оформление в кабинете (выбор — перк
+        // тарифа «Профи», см. uiThemeChoice) — бренд не накладываем
+        if (this.uiThemeChoice() === 'standard') return false;
         // Локальная кнопка «Монтажник» — как монтажник, даже под учёткой админа
         if (this.localRole() === 'installer') return true;
         const u = this.state.tgUser || this.state.user;
@@ -15216,19 +15227,24 @@ const app = {
     // задумывалась; для людей она «Профи» (владелец 24.09.2026: «переименуем в
     // Профи и будем показывать тем, у кого тариф Профи, неважно — продавцы,
     // монтажники, администраторы»).
-    // Кому показывается: всем на тарифе «Профи» (isPro — оплаченный или пробный
-    // период, любая роль) — по умолчанию включено, администратор может выключить;
-    // плюс отдельные группы по переключателям в панели управления, вкладка
+    // Кому показывается (с 24.09.2026 — по выбору, не автоматом): тариф «Профи»
+    // (isPro — оплаченный или пробный период, любая роль) даёт ПРАВО включить
+    // тему в кабинете, карточка «Оформление» раздела «Профиль» (uiThemeChoice);
+    // сама по себе тема при оплате не включается — иначе покупка тарифа внезапно
+    // отнимала у монтажника брендовое оформление, а у продавца — магазинное.
+    // Плюс отдельные группы по переключателям в панели управления, вкладка
     // «Тарифы», блок «Оформление „Профи“» (администраторы, монтажники, продавцы,
-    // менеджеры — по умолчанию выключены). Общая настройка
-    // app_settings.ui_theme.yandex = { pro, admins, installers, sellers, managers }.
+    // менеджеры — по умолчанию выключены; это принудительное включение всей
+    // группе, личный выбор человека сильнее). Общая настройка
+    // app_settings.ui_theme.yandex = { pro, admins, installers, sellers, managers }:
+    // ключ pro теперь значит «разрешить выбор темы обладателям тарифа».
     // Кнопок в шапке нет намеренно. Только стили: класс theme-yandex на body,
     // правила в style.css (блок «ТЕМА „ЯНДЕКС“ / „ПРОФИ“»). Ночная тема поверх.
     // Локально (localhost) без базы — кнопка «Тема Профи» в панели тарифа
     // (localStorage local_yandex_theme); кнопка «Профи» той же панели включает
     // тему сама, как и настоящий тариф.
     YANDEX_THEME_GROUPS: [
-        { key: 'pro', label: 'Тариф «Профи»', hint: 'все на тарифе «Профи» (оплаченный или пробный период), любая роль — включено по умолчанию', def: true },
+        { key: 'pro', label: 'Тариф «Профи»', hint: 'разрешает обладателям тарифа «Профи» (оплаченный или пробный период, любая роль) включать тему в кабинете; сама тема при этом не включается — включено по умолчанию', def: true },
         { key: 'admins', label: 'Администраторы', hint: 'владелец и администраторы панели управления' },
         { key: 'installers', label: 'Монтажники', hint: 'все вошедшие монтажники (сфера «монтаж»)' },
         { key: 'sellers', label: 'Продавцы', hint: 'сфера «продажа» без монтажа — вместо оформления магазина' },
@@ -15264,8 +15280,14 @@ const app = {
         }
         const u = this.state.tgUser || this.state.user;
         if (!u) return false;
-        // Тариф «Профи» — любая роль
-        if (this.yandexThemeGroupOn('pro') && this.isPro()) return true;
+        const choice = this.uiThemeChoice();
+        // Личный выбор в кабинете решает первым: выбрал «Профи» — тема есть,
+        // пока жив тариф (кончился — человек тихо возвращается на тему своей
+        // аудитории); выбрал любую другую — «Профи» не накладываем, даже если
+        // администратор включил её всей группе.
+        if (choice === 'profi') return this.yandexThemeGroupOn('pro') && this.isPro();
+        if (choice !== 'auto') return false;
+        // Выбора не было — только группы, включённые администратором принудительно
         const g = this.yandexThemeGroupOfMe();
         return !!(g && this.yandexThemeGroupOn(g));
     },
@@ -15301,6 +15323,88 @@ const app = {
         } catch (e) { }
         this.mountLocalTariffSwitch();
         this.syncShopTheme();
+    },
+
+    // ═══════════ Выбор оформления в кабинете (перк тарифа «Профи») ═══════════
+    // Правило одно: тариф отвечает за функции, аудитория — за тему по умолчанию
+    // (продавец — «магазин», монтажник — бренд, админ/менеджер — обычная), а тема
+    // «Профи» — личный выбор человека, не автоматика. Выбор живёт в state.uiTheme
+    // на этом устройстве, как режим день/ночь: в ссылку клиенту не уходит
+    // (compactPayload собирает поля по списку), из чужой сметы не приезжает.
+    // 'auto' — не выбирал, тема аудитории.
+    uiThemeChoice: function () {
+        const v = this.state.uiTheme;
+        return ['standard', 'brand', 'shop', 'profi'].includes(v) ? v : 'auto';
+    },
+
+    // Право включить тему «Профи»: тариф жив и администратор не запретил выбор
+    canChooseProfiTheme: function () {
+        const u = this.state.tgUser || this.state.user;
+        return !!u && this.yandexThemeGroupOn('pro') && this.isPro();
+    },
+
+    // Тема, которая сейчас на экране, — для подсветки выбранной кнопки
+    uiThemeEffective: function () {
+        if (this.isYandexTheme()) return 'profi';
+        if (this.isShopTheme()) return 'shop';
+        if (this.isBrandTheme()) return 'brand';
+        return 'standard';
+    },
+
+    // Какие темы предлагать этому человеку: продавцу — «Магазин» вместо
+    // «Стандарта» и «Бренда» (его обычное оформление — магазинное), монтажнику —
+    // «Стандарт» и «Бренд», админам/менеджерам/наблюдателям — только «Стандарт»
+    // (тему бренда им не включает и isBrandTheme); «Профи» — всем
+    uiThemeOptions: function () {
+        const opts = [];
+        if (this.isSellerOnly()) {
+            opts.push({ v: 'shop', label: 'Магазин', sub: 'оформление магазина — как было' });
+        } else {
+            const role = this.getAdminRole();
+            const office = role === 'super_admin' || role === 'admin' || role === 'manager' || role === 'viewer';
+            opts.push({ v: 'standard', label: 'Стандарт', sub: 'обычное оформление калькулятора' });
+            // Кнопка «Бренд» — только монтажникам и только пока администратор
+            // не выключил тему бренда целиком (иначе выбор ни на что не влиял бы)
+            if (!office && this.brandThemeEnabled()) opts.push({ v: 'brand', label: 'Бренд', sub: 'в цветах STOUT или ROMMER — каких, решает переключатель «Аналог»' });
+        }
+        opts.push({ v: 'profi', label: 'Профи', sub: 'лаконичное серое оформление, ночной режим по умолчанию' });
+        return opts;
+    },
+
+    setUiTheme: function (v) {
+        if (v === 'profi' && !this.canChooseProfiTheme()) return;
+        this.state.uiTheme = v;
+        this.saveState();
+        // syncShopTheme прогоняет всю цепочку: магазин → бренд → «Профи»
+        this.syncShopTheme();
+        this.applyTheme();
+        this.renderThemeChoiceCard();
+    },
+
+    // Карточка «Оформление» в разделе «Профиль» кабинета. Показывается только
+    // тем, кому есть из чего выбирать, — обладателям тарифа «Профи»; остальным
+    // тему решает аудитория, и карточка без выбора только путала бы.
+    renderThemeChoiceCard: function () {
+        const box = document.getElementById('profile_theme_choice');
+        if (!box) return;
+        if (!this.canChooseProfiTheme()) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        const cur = this.uiThemeEffective();
+        const opts = this.uiThemeOptions();
+        const btns = opts.map(o => {
+            const active = o.v === cur;
+            const style = active
+                ? 'background: var(--primary); color: #fff; border-color: var(--primary);'
+                : 'background: var(--surface-light); color: var(--text-sec); border-color: var(--border);';
+            return `<button type="button" class="btn-subscribe" onclick="app.setUiTheme('${o.v}')" title="${o.sub}" style="padding: 5px 12px; font-size: 11px; margin: 0; width: auto; height: auto; border: 1px solid; ${style}">${o.label}</button>`;
+        }).join('');
+        const curOpt = opts.find(o => o.v === cur);
+        box.innerHTML = `
+            <div class="lk-card" style="margin-top: 12px; text-align: left;">
+                <div class="lk-card-label" style="margin-bottom: 8px;">🎨 Оформление</div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">${btns}</div>
+                <div style="font-size: 11px; color: var(--text-sec); margin-top: 8px;">${curOpt ? curOpt.sub : ''} · настройка этого устройства</div>
+            </div>`;
+        box.style.display = '';
     },
 
     // Переключатель группы в блоке «Оформление „Яндекс“» вкладки «Тарифы».
@@ -33538,7 +33642,7 @@ const app = {
                 for (let key in st) {
                     let val = st[key];
                     if (val === null || val === undefined || val === false || val === 0 || val === "" || key === 'viewMode' || key === 'showSwapFor' || key === 'collapsedGroups') continue;
-                    if (key === 'tgUser' || key === 'accountType' || key === 'demoUsed' || key === 'darkMode' || key === 'themeMode') continue;
+                    if (key === 'tgUser' || key === 'accountType' || key === 'demoUsed' || key === 'darkMode' || key === 'themeMode' || key === 'uiTheme') continue;
                     if (Array.isArray(val) && val.length === 0) continue;
                     if (typeof val === 'object' && Object.keys(val).length === 0) continue;
                     exportState[key] = val;
@@ -33791,7 +33895,7 @@ const app = {
         for (let key in st) {
             let val = st[key];
             if (val === null || val === undefined || val === false || val === 0 || val === "" || key === 'viewMode' || key === 'showSwapFor' || key === 'collapsedGroups') continue;
-            if (key === 'tgUser' || key === 'accountType' || key === 'demoUsed' || key === 'darkMode' || key === 'themeMode') continue;
+            if (key === 'tgUser' || key === 'accountType' || key === 'demoUsed' || key === 'darkMode' || key === 'themeMode' || key === 'uiTheme') continue;
             if (Array.isArray(val) && val.length === 0) continue;
             if (typeof val === 'object' && Object.keys(val).length === 0) continue;
             exportState[key] = val;
@@ -41510,6 +41614,7 @@ const app = {
                     delete savedState.demoUsed;
                     delete savedState.darkMode;
                     delete savedState.themeMode;
+                    delete savedState.uiTheme;
                     delete savedState.customCompany;
 
                     this.state = this.stateForLoadedEstimate(savedState);
@@ -41556,6 +41661,7 @@ const app = {
                 delete savedState.demoUsed;
                 delete savedState.darkMode;
                 delete savedState.themeMode;
+                delete savedState.uiTheme;
                 delete savedState.customCompany;
 
                 this.state = this.stateForLoadedEstimate(savedState);
@@ -41585,6 +41691,7 @@ const app = {
         // Запоминаем важные данные перед сбросом
         const currentDarkMode = this.state.darkMode;
         const currentThemeMode = this.state.themeMode;
+        const currentUiTheme = this.state.uiTheme;
         const currentTgUser = this.state.tgUser;
         const currentAccType = this.state.accountType;
         // Привязка к дистрибьютору — это про учётку, а не про расчёт: сброс сметы
@@ -41607,6 +41714,7 @@ const app = {
             tgUser: currentTgUser,
             accountType: currentAccType,
             themeMode: currentThemeMode,
+            uiTheme: currentUiTheme,
             distributorId: currentDistId,
             distributorInfo: currentDistInfo,
             priceSource: currentPriceSource
@@ -41706,7 +41814,7 @@ const app = {
     stateForLoadedEstimate: function (loaded) {
         const src = loaded || {};
         const base = JSON.parse(JSON.stringify(this._stateDefaults || {}));
-        ['darkMode', 'themeMode', 'yandexDarkApplied', 'showScheme'].forEach(k => { delete base[k]; });
+        ['darkMode', 'themeMode', 'uiTheme', 'yandexDarkApplied', 'showScheme'].forEach(k => { delete base[k]; });
         const next = { ...this.state, ...base, userAddedEq: [], userAddedWorks: [], swapQtyRatios: {}, ...src };
         // Метки конкретной сметы: нет в загружаемой — не должно остаться и от прежней
         ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress', 'kpVersions', 'kpVersion', 'priceSnapshot', 'copiedFrom'].forEach(k => {
@@ -42445,7 +42553,7 @@ const app = {
      * и оформление экрана. Всё остальное — параметры объекта, и они у дома и у
      * квартиры свои.
      */
-    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'yandexDarkApplied', 'tgUser', 'accountType',
+    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'uiTheme', 'yandexDarkApplied', 'tgUser', 'accountType',
                      'distributorId', 'distributorInfo', 'priceSource', 'showScheme'],
 
     /**
