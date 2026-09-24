@@ -2092,19 +2092,6 @@
                         </div>
                     </div>
                 </div>
-                <!-- Контроллер котла уже стоит у клиента, Thermatic не нужен — только
-                     датчик улицы к нему. Видно, пока автоматика котельной выключена:
-                     у Thermatic свой датчик в составе. -->
-                <div id="blk_zone_outdoor_row" style="display:none; padding:8px 0 12px;">
-                    <span class="lbl-sub" style="margin-bottom:6px;"
-                        title="Датчик наружной температуры для погодозависимой работы — в контроллер котла, который уже стоит у клиента.">Датчик улицы в контроллер клиента</span>
-                    <div class="tabs" style="font-size:11px;">
-                        <div class="tab zone-out-tab active" data-out="none" onclick="app.setZoneOutdoor('none')">Нет</div>
-                        <div class="tab zone-out-tab" data-out="myheat" onclick="app.setZoneOutdoor('myheat')">MyHeat</div>
-                        <div class="tab zone-out-tab" data-out="other" onclick="app.setZoneOutdoor('other')">Другой</div>
-                    </div>
-                </div>
-
                 <!-- Зональная автоматика: планка, термостаты проводные и радио,
                      сервоприводы на коллектор, радиоголовки на радиаторы. При тёплом
                      поле термостаты и приводы считаются из дома и правятся руками,
