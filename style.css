@@ -14581,8 +14581,12 @@ body.dark-mode #hyd_card .hyd-card__p {
         --ya-yellow: #FFDB4D;
         --ya-chip: #F2F2F2;
         --ya-chip-hover: #E6E6E6;
+        --ya-fill: #000000;
         --ya-on-primary: #FFFFFF;
         --ya-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
+        /* Кнопка «Сменить пароль» в профиле берёт --bg-sec, которой в базе нет
+           (ночью выходил белый текст на светлом) — под темой переменная есть */
+        --bg-sec: #F2F2F2;
         background: var(--bg);
         color: var(--text-main);
     }
@@ -14609,8 +14613,13 @@ body.dark-mode #hyd_card .hyd-card__p {
         --ya-red: #F8604A;
         --ya-chip: #39393A;
         --ya-chip-hover: #474748;
-        --ya-on-primary: #000000;
+        /* Нажатые состояния ночью — чёрные с белым текстом (владелец 24.09.2026:
+           белые «режут глаз»); --primary остаётся белым для текстовых акцентов.
+           Заливки переводит на --ya-fill список в конце блока. */
+        --ya-fill: #000000;
+        --ya-on-primary: #FFFFFF;
         --ya-shadow: none;
+        --bg-sec: #39393A;
         scrollbar-color: #39393A #161617;
     }
 
@@ -14851,9 +14860,9 @@ body.dark-mode #hyd_card .hyd-card__p {
         background-color: var(--primary);
     }
 
-    /* Ночью тумблер белый — ползунок делаем тёмным, иначе он сливается */
-    body.theme-yandex.dark-mode input:checked+.slider:before {
-        background-color: #161617;
+    /* Ночью включённый тумблер чёрный с белым ползунком, выключенный — серый */
+    body.theme-yandex.dark-mode input:checked+.slider {
+        background-color: var(--ya-fill);
     }
 
     body.theme-yandex .info-card {
@@ -14914,6 +14923,15 @@ body.dark-mode #hyd_card .hyd-card__p {
 
     body.theme-yandex .footer-btns .btn-primary-action {
         color: var(--ya-on-primary);
+    }
+
+    /* Синие кнопки входа и «Сохранить» в кабинете (в базе #3B82F6 числом) —
+       главный цвет темы: чёрная днём, белая ночью */
+    body.theme-yandex .btn-email-submit,
+    body.theme-yandex .btn-email-submit:hover {
+        background: var(--ya-fill);
+        border-color: var(--ya-fill);
+        color: var(--ya-on-primary) !important;
     }
 
     body.theme-yandex .footer-btns .btn-primary-action:hover {
@@ -14998,15 +15016,18 @@ body.dark-mode #hyd_card .hyd-card__p {
         box-shadow: var(--ya-shadow);
     }
 
+    /* Кружок прибавляет разделу высоты (32 вместо 22 px значка) — отступы
+       разделов ужаты, а множитель --lk-scale после смены темы пересчитывает
+       app.syncYandexTheme, чтобы колонка по-прежнему помещалась в экран */
     body.theme-yandex .lk-rail-item {
         border-radius: 16px;
-        padding: calc(4px * var(--lk-scale, 1)) 2px calc(4px * var(--lk-scale, 1));
+        padding: calc(3px * var(--lk-scale, 1)) 2px calc(3px * var(--lk-scale, 1));
     }
 
     body.theme-yandex .lk-rail-item svg {
-        width: calc(34px * var(--lk-scale, 1));
-        height: calc(34px * var(--lk-scale, 1));
-        padding: calc(7px * var(--lk-scale, 1));
+        width: calc(32px * var(--lk-scale, 1));
+        height: calc(32px * var(--lk-scale, 1));
+        padding: calc(6px * var(--lk-scale, 1));
         box-sizing: border-box;
         border-radius: 50%;
         background: var(--ya-chip);
@@ -15136,9 +15157,15 @@ body.dark-mode #hyd_card .hyd-card__p {
     }
 
     body.theme-yandex.dark-mode .tab.active {
-        background: var(--surface);
-        color: var(--text-main);
+        background: var(--ya-fill);
+        color: var(--ya-on-primary);
         border-color: transparent;
+        box-shadow: none;
+    }
+
+    body.theme-yandex.dark-mode .lk-rail-item.active svg {
+        background: var(--ya-fill);
+        color: var(--ya-on-primary);
     }
 
     body.theme-yandex.dark-mode .row-sec td {
@@ -15179,8 +15206,8 @@ body.dark-mode #hyd_card .hyd-card__p {
 
     body.theme-yandex.dark-mode .btn-ctrl.is-on,
     body.theme-yandex.dark-mode .btn-ctrl.is-on:hover {
-        background: var(--primary);
-        border-color: var(--primary);
+        background: var(--ya-fill);
+        border-color: var(--ya-fill);
         color: var(--ya-on-primary);
     }
 
@@ -15213,12 +15240,15 @@ body.dark-mode #hyd_card .hyd-card__p {
         border-top-color: var(--border);
     }
 
-    /* Ночью главный цвет — белый: всё, что залито var(--primary), должно
-       писать чёрным. Список — правила базы плюс инлайн-стили из app.js
+    /* Ночью главный цвет — белый (для текстовых акцентов), а всё, что залито
+       var(--primary), переводим на чёрную заливку с белым текстом — как
+       нажатые плашки ya.ru. Список — правила базы плюс инлайн-стили из app.js
        (там заливка задана строкой background:var(--primary), ловим её по
        подстроке атрибута style). */
+    body.theme-yandex.dark-mode .tab.active,
     body.theme-yandex.dark-mode .tab.multi-active,
     body.theme-yandex.dark-mode .mode-tab.active,
+    body.theme-yandex.dark-mode .rec-beta,
     body.theme-yandex.dark-mode .footer-btns .btn-primary-action,
     body.theme-yandex.dark-mode .custom-modal-btn,
     body.theme-yandex.dark-mode .calc-dialog-btn-confirm,
@@ -15251,15 +15281,25 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.theme-yandex.dark-mode [style*="background: var(--primary)"],
     body.theme-yandex.dark-mode [style*="background-color:var(--primary)"],
     body.theme-yandex.dark-mode [style*="background-color: var(--primary)"] {
-        color: #000000 !important;
-    }
-
-    body.theme-yandex.dark-mode .admin-chat-item.active .admin-chat-badge {
-        background: #000000;
+        background-color: var(--ya-fill) !important;
+        border-color: var(--ya-fill) !important;
         color: #FFFFFF !important;
     }
 
+    /* Полоски-индикаторы в аналитике залиты тем же var(--primary), но это
+       не кнопки: чёрная полоска на тёмном не видна — оставляем светлой */
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:8px"],
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:6px"],
+    body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:100%"] {
+        background-color: var(--primary) !important;
+    }
+
+    body.theme-yandex.dark-mode .admin-chat-item.active .admin-chat-badge {
+        background: #FFFFFF !important;
+        color: #000000 !important;
+    }
+
     body.theme-yandex.dark-mode .admin-chat-bubble.from-admin .chat-quote {
-        background: rgba(0, 0, 0, 0.08);
+        background: rgba(255, 255, 255, 0.1);
     }
 }

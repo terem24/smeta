@@ -15088,7 +15088,22 @@ const app = {
 
     syncYandexTheme: function () {
         const on = this.isYandexTheme();
+        const was = document.body.classList.contains('theme-yandex');
         document.body.classList.toggle('theme-yandex', on);
+        // Под темой разделы меню кабинета выше (значки в кружках): множитель
+        // --lk-scale, подобранный под обычное оформление, перестаёт годиться,
+        // и нижние разделы («Админка», «Выйти») уходили за экран
+        if (was !== on && this.fitRailToViewport) this.fitRailToViewport();
+        // Первое включение темы у этого человека — сразу ночной режим, даже если
+        // раньше он выбирал «авто» или «светлая» (владелец 24.09.2026: «по умолчанию
+        // чтобы всегда стояла сразу тёмная»). Дальше режим меняется руками как обычно;
+        // отметка в состоянии — чтобы не сбрасывать его выбор при каждой загрузке.
+        if (was !== on && on && !this.state.yandexDarkApplied) {
+            this.state.yandexDarkApplied = true;
+            this.state.themeMode = 'dark';
+            this.saveState();
+            this.applyTheme();
+        }
         // Цвет строки состояния на телефоне (PWA, вкладка Android)
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', !on ? '#2563EB' : (document.body.classList.contains('dark-mode') ? '#161617' : '#FFFFFF'));
@@ -36158,6 +36173,9 @@ const app = {
     themeMode: function () {
         const m = this.state.themeMode;
         if (this.THEME_ORDER.includes(m)) return m;
+        // Под темой «Яндекс» умолчание — ночная, а не «авто» (владелец,
+        // 24.09.2026): человек сам может переключить на светлую или авто.
+        if (this.isYandexTheme && this.isYandexTheme()) return 'dark';
         return this.state.darkMode ? 'dark' : 'auto';
     },
 
@@ -41130,7 +41148,7 @@ const app = {
     stateForLoadedEstimate: function (loaded) {
         const src = loaded || {};
         const base = JSON.parse(JSON.stringify(this._stateDefaults || {}));
-        ['darkMode', 'themeMode', 'showScheme'].forEach(k => { delete base[k]; });
+        ['darkMode', 'themeMode', 'yandexDarkApplied', 'showScheme'].forEach(k => { delete base[k]; });
         const next = { ...this.state, ...base, userAddedEq: [], userAddedWorks: [], swapQtyRatios: {}, ...src };
         // Метки конкретной сметы: нет в загружаемой — не должно остаться и от прежней
         ['from_recognition', 'calc_id', 'shared_invoice_id', 'projectAddress', 'kpVersions', 'kpVersion', 'priceSnapshot', 'copiedFrom'].forEach(k => {
@@ -41864,7 +41882,7 @@ const app = {
      * и оформление экрана. Всё остальное — параметры объекта, и они у дома и у
      * квартиры свои.
      */
-    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'tgUser', 'accountType',
+    MODE_KEEP_KEYS: ['darkMode', 'themeMode', 'yandexDarkApplied', 'tgUser', 'accountType',
                      'distributorId', 'distributorInfo', 'priceSource', 'showScheme'],
 
     /**
