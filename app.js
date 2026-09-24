@@ -62310,7 +62310,7 @@ const app = {
                 live++;
                 const tr = this._estFindRow(tbody, key);
                 if (!tr) continue;
-                tr.style.setProperty('--flash-delay', (fu[key] - t0 - 2600) + 'ms');
+                tr.style.setProperty('--flash-delay', (fu[key] - t0 - 5200) + 'ms');
                 tr.classList.add('row-just-added');
                 setTimeout(() => { if (tr.isConnected) tr.classList.remove('row-just-added'); }, fu[key] - t0 + 100);
             }
@@ -62365,12 +62365,12 @@ const app = {
     _flashRow: function (tr) {
         if (!tr) return;
         const fu = this._flashUntil || (this._flashUntil = {});
-        fu[this._estRowKey(tr)] = Date.now() + 2600;
+        fu[this._estRowKey(tr)] = Date.now() + 5200;
         tr.style.removeProperty('--flash-delay');
         tr.classList.remove('row-just-added');
         void tr.offsetWidth;
         tr.classList.add('row-just-added');
-        setTimeout(() => { if (tr.isConnected) tr.classList.remove('row-just-added'); }, 2700);
+        setTimeout(() => { if (tr.isConnected) tr.classList.remove('row-just-added'); }, 5300);
     },
     // Плавно ставит строку под липкую шапку. Если строка и так целиком на экране
     // (с запасом на пару строк ниже) — не двигаем, хватит подсветки.

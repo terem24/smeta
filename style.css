@@ -15885,7 +15885,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     overflow-anchor: none;
 }
 .inv-table tr.row-just-added td {
-    animation: rowJustAdded 2.6s ease-out;
+    animation: rowJustAdded 5.2s ease-out;
     /* Отрицательная задержка — анимация продолжается с середины после
        повторной перерисовки (см. app._estimateAfter) */
     animation-delay: var(--flash-delay, 0ms);
@@ -15896,7 +15896,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     0%, 40% { background-color: rgba(34, 197, 94, 0.28); }
 }
 .inv-table tr.row-sec.row-just-added td {
-    animation: secJustAdded 2.6s ease-out;
+    animation: secJustAdded 5.2s ease-out;
     animation-delay: var(--flash-delay, 0ms);
 }
 @keyframes secJustAdded {
