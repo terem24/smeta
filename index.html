@@ -2676,7 +2676,9 @@
                              его нужно получить до создания аккаунта и в явном виде.
                              Оферта принимается конклюдентно, текстом под кнопкой (#auth_terms_note). -->
                         <div id="auth_terms_wrapper" style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin: 4px 0 12px;">
-                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12.5px; color: var(--text-sec); line-height: 1.3;">
+                            <!-- Размер и межстрочный — как у строки про оферту (#auth_terms_note),
+                                 чтобы оба юридических текста выглядели одинаково -->
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
                                 <input type="checkbox" id="chk_privacy" required style="width: 15px; height: 15px; cursor: pointer; flex-shrink: 0;">
                                 <span>Согласен с <a href="privacy-policy.html" target="_blank" style="color: var(--primary); font-weight: 600; text-decoration: none;">политикой обработки персональных данных</a></span>
                             </label>
