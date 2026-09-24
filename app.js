@@ -4196,7 +4196,10 @@ const app = {
         this._emptyFitScalePending = true;
         setTimeout(() => {
             this._emptyFitScalePending = false;
+            // Потолок колонки меняется — нажатый переключатель не должен уехать.
+            const _ia = this._inputAnchorBefore();
             this.syncEmptyFitPanelScale();
+            this._inputAnchorAfter(_ia);
         }, 0);
     },
     // Набор видимых настроек меняется не только из render()/syncUI(): блоки
@@ -41924,6 +41927,11 @@ const app = {
         if (activeTab === 'output') {
             document.body.classList.add('mob-tab-output');
             window.scrollTo(0, 0);
+            // Переключатель на вкладке параметров добавил строки — показываем их,
+            // как только открыли смету (см. _estimateAfter).
+            const _pend = this._pendingEstFocus; this._pendingEstFocus = null;
+            const _tr = _pend ? this._estFindRow(document.getElementById('tbody'), _pend) : null;
+            if (_tr) setTimeout(() => { this._flashRow(_tr); this._scrollEstimateTo(_tr, true); }, 0);
         } else if (activeTab === 'profile') {
             document.body.classList.add('mob-tab-profile');
             window.scrollTo(0, 0);
@@ -56316,6 +56324,14 @@ const app = {
     updOutdoorFaucet: function (d) { let n = (parseInt(this.state.outdoorFaucet) || 0) + d; if (n < 0) n = 0; if (n > 5) n = 5; this.state.outdoorFaucet = n; this.syncUI(); this.render(); },
     setOutdoorFaucet: function (v) { let n = parseInt(v); if (isNaN(n) || n < 0) n = 0; if (n > 5) n = 5; this.state.outdoorFaucet = n; this.syncUI(); this.render(); },
     syncUI: function () {
+        // Колонка параметров: то, что человек только что нажал, остаётся на месте
+        // (см. _inputAnchorBefore) — иначе показ или скрытие блоков сдвигало бы
+        // переключатель из-под курсора.
+        this.initPanelFocusTracking();
+        const _ia = this._inputAnchorBefore();
+        try { this._syncUIInner(); } finally { this._inputAnchorAfter(_ia); }
+    },
+    _syncUIInner: function () {
         const isGuest = !this.state.tgUser;
         const isPro = this.isPro();
 
@@ -62149,7 +62165,266 @@ const app = {
      * первой записью в DOM: всё, что выше, — чистый счёт, всё, что ниже, —
      * отрисовка и побочные эффекты (автосохранение, вкладка «Деньги», виджеты).
      */
+    // ─── Плавная навигация по смете при смене параметров ─────────────────────
+    //
+    // Смета перерисовывается целиком (innerHTML), а страница остаётся на том же
+    // пикселе прокрутки. Раньше это выглядело как скачок: включил водоснабжение —
+    // и под глазами уже другой раздел, потому что выше добавился десяток строк.
+    // Теперь после каждой отрисовки:
+    //   1. строка (или заголовок раздела), которая была вверху экрана, ставится
+    //      на прежнее место — смета не «уезжает» ни при добавлении, ни при
+    //      удалении позиций выше;
+    //   2. если параметр переключили в колонке слева и в смете появились новые
+    //      строки, лист плавно прокручивается к ним, а сами строки на пару секунд
+    //      подсвечиваются — видно, что именно добавил переключатель. Для нового
+    //      раздела целимся в его заголовок, для строк внутри уже существующего —
+    //      в первую новую строку.
+    // Выключение раздела ничего не подсвечивает (подсвечивать нечего), но и не
+    // двигает лист: работает пункт 1.
+    //
+    // Слежение за колонкой параметров: какой элемент нажали последним и был ли
+    // это дискретный переключатель (тумблер, вкладка, кнопка, выпадающий список),
+    // а не ползунок или поле ввода. Ползунок площади зовёт render() на каждый
+    // шаг — прокручивать смету от него нельзя. Переключатель режима «Быстрый /
+    // Подробный» тоже не считается: он перестраивает всю смету, «новых» строк
+    // там полсметы, и лететь к первой попавшейся бессмысленно.
+    initPanelFocusTracking: function () {
+        if (this._panelFocusInit) return;
+        const panel = document.querySelector('.input-panel');
+        if (!panel) return;
+        this._panelFocusInit = true;
+        const note = (e) => {
+            const t = e.target;
+            // Только живые нажатия: события, которые шлёт сам код (chk.click(),
+            // dispatchEvent), — не выбор человека.
+            if (!e.isTrusted || !t || !t.closest) return;
+            const continuous = !!t.closest('input[type="range"], input[type="number"], input[type="text"], input[type="search"], input[type="tel"], textarea, [contenteditable="true"], .mode-selector-tabs');
+            const discrete = !continuous && !!t.closest('input, .switch, .tab, button, select, .step-btn, .stepper, a, [onclick]');
+            // Сам чекбокс тумблера спрятан (нулевой размер) — держимся за его
+            // подпись или рамку, у которых есть положение на экране.
+            const el = t.closest('label, .switch') || t.closest('.tab, button, .stepper, select, input, .zone-card, .room-card') || t;
+            this._panelTouch = { at: Date.now(), el: el, discrete: discrete };
+        };
+        panel.addEventListener('click', note, true);
+        panel.addEventListener('change', note, true);
+    },
+    // Положение последнего нажатого элемента колонки до перестройки её содержимого.
+    _inputAnchorBefore: function () {
+        const t = this._panelTouch;
+        if (!t || !t.el || !t.el.isConnected) return null;
+        const panel = t.el.closest('.input-panel');
+        if (!panel) return null;
+        let el = t.el, r = el.getBoundingClientRect();
+        // У невидимого элемента (скрытый input) нет высоты — берём ближайшего
+        // видимого предка внутри колонки.
+        while (!r.height && el.parentElement && el.parentElement !== panel) { el = el.parentElement; r = el.getBoundingClientRect(); }
+        if (!r.height) return null;
+        // Элемент давно уехал из видимой части колонки — держать его незачем:
+        // поправка по нему могла бы сдвинуть то, что человек сейчас смотрит.
+        const pr = panel.getBoundingClientRect();
+        if (r.bottom < pr.top || r.top > pr.bottom) return null;
+        return { el: el, panel: panel, top: r.top };
+    },
+    // …и возврат его на прежнее место после. Когда содержимое ниже ушло и
+    // колонке не хватает высоты на нужную прокрутку, снизу подкладывается
+    // распорка (#input_panel_spacer): без неё браузер прижал бы колонку к низу и
+    // переключатель уехал бы вниз из-под курсора. Распорка живёт ровно столько,
+    // сколько нужна: следующая правка её ужимает.
+    _inputAnchorAfter: function (a) {
+        if (!a || !a.el.isConnected) return;
+        const r = a.el.getBoundingClientRect();
+        if (!r.height) return;
+        const d = r.top - a.top;
+        if (Math.abs(d) < 1) return;
+        const panel = a.panel;
+        const own = panel.scrollHeight > panel.clientHeight + 1 && /(auto|scroll)/.test(getComputedStyle(panel).overflowY);
+        if (!own) { window.scrollBy(0, d); return; }
+        // Экранные пиксели → единицы прокрутки колонки: страница идёт в zoom 0.8,
+        // а колонка может быть ужата ещё и своим масштабом (fitParamsPanel).
+        const k = panel.offsetWidth ? (panel.getBoundingClientRect().width / panel.offsetWidth) : 1;
+        const want = panel.scrollTop + d / k;
+        let spacer = document.getElementById('input_panel_spacer');
+        const need = want - (panel.scrollHeight - panel.clientHeight);
+        if (need > 0 || (spacer && spacer.offsetHeight)) {
+            if (!spacer) {
+                spacer = document.createElement('div');
+                spacer.id = 'input_panel_spacer';
+                spacer.className = 'no-print';
+                spacer.setAttribute('aria-hidden', 'true');
+                panel.appendChild(spacer);
+            }
+            const cur = parseFloat(spacer.style.height) || 0;
+            const h = Math.max(0, Math.ceil(cur + need));
+            spacer.style.height = h ? h + 'px' : '';
+        }
+        panel.scrollTop = Math.max(0, want);
+    },
+    // Сколько пикселей сверху экрана закрыто липкими элементами (шапка сайта и
+    // строка параметров объекта): к заголовку раздела прокручиваем так, чтобы
+    // он встал под ними, а не за ними.
+    _estimateCoverPx: function () {
+        let cover = 0;
+        const hdr = document.querySelector('.site-header');
+        if (hdr) {
+            const cs = getComputedStyle(hdr);
+            if (cs.position === 'sticky' || cs.position === 'fixed') cover = Math.max(cover, hdr.getBoundingClientRect().bottom);
+        }
+        const sum = document.getElementById('doc_summary');
+        if (sum && getComputedStyle(sum).position === 'sticky') cover += sum.getBoundingClientRect().height;
+        return Math.max(0, cover);
+    },
+    // Ключ строки таблицы: раздел без номера (номера подразделов канализации
+    // сдвигаются при добавлении санузла, а строки те же) плюс артикул или
+    // название работы. Повторы в одном разделе нумеруются, чтобы ключ был
+    // уникален и одинаково считался до и после перерисовки.
+    _rowKey: function (kind, sec, id) {
+        const base = kind + '|' + String(sec || '').replace(/^[\d.\s]+/, '') + '|' + String(id || '');
+        const seen = this._rkSeen || (this._rkSeen = {});
+        const n = seen[base] || 0;
+        seen[base] = n + 1;
+        return (n ? base + '#' + n : base).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    },
+    _estRowKey: function (tr) {
+        if (tr.classList.contains('row-sec')) {
+            const t = tr.querySelector('.row-sec-title');
+            return 's:' + (t ? (t.dataset.title || '') : '');
+        }
+        return 'r:' + (tr.dataset.rk || '');
+    },
+    _estFindRow: function (tbody, key) {
+        if (!tbody || !key) return null;
+        const k = key.slice(2);
+        if (key.startsWith('s:')) {
+            const list = tbody.querySelectorAll('.row-sec-title[data-title]');
+            for (let i = 0; i < list.length; i++) if (list[i].dataset.title === k) return list[i].closest('tr');
+            return null;
+        }
+        const rows = tbody.querySelectorAll('tr[data-rk]');
+        for (let i = 0; i < rows.length; i++) if (rows[i].dataset.rk === k) return rows[i];
+        return null;
+    },
+    // Снимок таблицы до перерисовки: ключи строк, заголовки разделов и якоря —
+    // строка вверху экрана и несколько заголовков разделов над ней (если сама
+    // строка исчезнет, например выключили её раздел, держимся за ближайший
+    // уцелевший заголовок выше).
+    _estimateBefore: function () {
+        const tbody = document.getElementById('tbody');
+        if (!tbody) return null;
+        const keys = new Set(), secs = new Set();
+        tbody.querySelectorAll('tr[data-rk]').forEach(tr => keys.add(tr.dataset.rk));
+        tbody.querySelectorAll('.row-sec-title[data-title]').forEach(el => secs.add(el.dataset.title));
+        const cover = this._estimateCoverPx();
+        const anchors = [], prevSecs = [];
+        const rows = tbody.querySelectorAll('tr.row-sec, tr[data-rk]');
+        for (let i = 0; i < rows.length; i++) {
+            const tr = rows[i];
+            const r = tr.getBoundingClientRect();
+            if (!r.height) continue;
+            const a = { key: this._estRowKey(tr), top: r.top };
+            if (r.bottom >= cover) { anchors.push(a); break; }
+            if (tr.classList.contains('row-sec')) prevSecs.push(a);
+        }
+        for (let i = prevSecs.length - 1; i >= 0 && anchors.length < 4; i--) anchors.push(prevSecs[i]);
+        return { keys: keys, secs: secs, anchors: anchors, view: this.state.viewMode };
+    },
+    _estimateAfter: function (b) {
+        const tbody = document.getElementById('tbody');
+        if (!b || !tbody) return;
+        // Подсветка переживает повторную перерисовку: обработчик тумблера часто
+        // зовёт render() дважды (добавил санузел — перерисовал, включил воду —
+        // перерисовал), и второй innerHTML стирал бы класс с только что
+        // подсвеченных строк. Анимация продолжается с того же места.
+        const fu = this._flashUntil;
+        if (fu) {
+            const t0 = Date.now();
+            let live = 0;
+            for (const key in fu) {
+                if (fu[key] <= t0) { delete fu[key]; continue; }
+                live++;
+                const tr = this._estFindRow(tbody, key);
+                if (!tr) continue;
+                tr.style.setProperty('--flash-delay', (fu[key] - t0 - 7800) + 'ms');
+                tr.classList.add('row-just-added');
+                setTimeout(() => { if (tr.isConnected) tr.classList.remove('row-just-added'); }, fu[key] - t0 + 100);
+            }
+            if (!live) this._flashUntil = null;
+        }
+        // 1. Что было под глазами — остаётся на месте.
+        for (let i = 0; i < b.anchors.length; i++) {
+            const el = this._estFindRow(tbody, b.anchors[i].key);
+            if (!el) continue;
+            const r = el.getBoundingClientRect();
+            if (!r.height) continue;
+            const d = r.top - b.anchors[i].top;
+            if (Math.abs(d) >= 1) window.scrollBy(0, d);
+            break;
+        }
+        // 2. Новые строки — только от переключателя в колонке параметров и только
+        // внутри той же вкладки (оборудование / работы): смена вкладки или первая
+        // отрисовка меняют всё, показывать там нечего.
+        const touch = this._panelTouch;
+        const fromPanel = !!(touch && touch.discrete && (Date.now() - touch.at) < 1500);
+        if (!fromPanel || b.view !== this.state.viewMode || !b.keys.size) return;
+        const all = tbody.querySelectorAll('tr[data-rk]');
+        const fresh = [], now = new Set();
+        all.forEach(tr => { now.add(tr.dataset.rk); if (!b.keys.has(tr.dataset.rk)) fresh.push(tr); });
+        if (!fresh.length) return;
+        // Ушло больше половины прежних строк — это не «добавили позиции», а
+        // перестроили расчёт (дом ↔ квартира и подобное): лететь некуда.
+        let gone = 0;
+        b.keys.forEach(k => { if (!now.has(k)) gone++; });
+        if (gone > b.keys.size * 0.5) return;
+        touch.discrete = false;   // одно нажатие — одна прокрутка
+        fresh.forEach(tr => this._flashRow(tr));
+        let target = fresh[0];
+        let sec = target;
+        while (sec && !sec.classList.contains('row-sec')) sec = sec.previousElementSibling;
+        const secTitleEl = sec ? sec.querySelector('.row-sec-title') : null;
+        const secTitle = secTitleEl ? secTitleEl.dataset.title : null;
+        if (sec && secTitle && !b.secs.has(secTitle)) {
+            target = sec;                       // раздел новый — к его заголовку
+            this._flashRow(sec);
+        } else if (sec && (target.getBoundingClientRect().top - sec.getBoundingClientRect().bottom) < 160) {
+            target = sec;                       // заголовок рядом — пусть будет виден
+        }
+        // На телефоне смета на своей вкладке: запоминаем, к чему прокрутить,
+        // когда её откроют (см. syncMobileUI).
+        if (this.isMobileLayout && this.isMobileLayout() && this.state.mobTab !== 'output') {
+            this._pendingEstFocus = this._estRowKey(target);
+            return;
+        }
+        this._scrollEstimateTo(target);
+    },
+    _flashRow: function (tr) {
+        if (!tr) return;
+        const fu = this._flashUntil || (this._flashUntil = {});
+        fu[this._estRowKey(tr)] = Date.now() + 7800;
+        tr.style.removeProperty('--flash-delay');
+        tr.classList.remove('row-just-added');
+        void tr.offsetWidth;
+        tr.classList.add('row-just-added');
+        setTimeout(() => { if (tr.isConnected) tr.classList.remove('row-just-added'); }, 7900);
+    },
+    // Плавно ставит строку под липкую шапку. Если строка и так целиком на экране
+    // (с запасом на пару строк ниже) — не двигаем, хватит подсветки.
+    _scrollEstimateTo: function (tr, instant) {
+        if (!tr) return;
+        const cover = this._estimateCoverPx();
+        const r = tr.getBoundingClientRect();
+        const pad = 14;
+        if (r.top >= cover + pad && r.bottom + 100 <= window.innerHeight) return;
+        const y = Math.max(0, window.scrollY + r.top - cover - pad);
+        try { window.scrollTo({ top: y, behavior: instant ? 'auto' : 'smooth' }); } catch (e) { window.scrollTo(0, y); }
+    },
+
     render: function (computeOnly) {
+        // Прикидочный прогон экран не трогает — см. computeOnly ниже.
+        if (computeOnly) return this._renderInner(true);
+        this.initPanelFocusTracking();
+        const _ia = this._inputAnchorBefore();
+        try { return this._renderInner(false); } finally { this._inputAnchorAfter(_ia); }
+    },
+    _renderInner: function (computeOnly) {
         if (!computeOnly) this.ensureCalcId();
         if (this.state.disabledSections) {
             const migrations = {
@@ -62206,6 +62481,7 @@ const app = {
         this.resetFlatSecNumbers();
         this.currentEquipmentList = [];
         this.currentWorksList = [];
+        this._rkSeen = {};  // счётчик ключей строк таблицы (см. _rowKey)
         app.tempWarns = []; // Массив для сбора предупреждений о дефиците мощности
         app.chimneyWarns = []; // Замечания по трассе дымохода — в раздел обвязки котельной
         // Подобранные приборы отопления с их фактической мощностью — из них
@@ -63379,7 +63655,7 @@ const app = {
                 const portTagHtml = (i.portTag && this.schemeOn())
                     ? ` <span class="port-tag no-print">(${i.portTag})</span>`
                     : '';
-                rows += `<tr ${rowStyle}${rowClass} onclick="${rowClick}"><td class="col-idx">${recSelHtml}${globalIdx++}</td>${imgCellHtml}<td class="${nameClass}" ${nameClick}>${i.name}${portTagHtml}${nameBtnHtml}${eqBadgeHtml}${swapInlineHtml}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">${i.displaySku}</td><td class="col-brand">${i.brand || 'STOUT'}</td><td class="col-unit">${i.unit || 'шт'}</td><td class="col-qty">${qHtml}</td>${priceCell}${sumCell}</tr>` + locsRows;
+                rows += `<tr ${rowStyle}${rowClass} data-rk="${this._rowKey('e', title, lookupId)}" onclick="${rowClick}"><td class="col-idx">${recSelHtml}${globalIdx++}</td>${imgCellHtml}<td class="${nameClass}" ${nameClick}>${i.name}${portTagHtml}${nameBtnHtml}${eqBadgeHtml}${swapInlineHtml}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">${i.displaySku}</td><td class="col-brand">${i.brand || 'STOUT'}</td><td class="col-unit">${i.unit || 'шт'}</td><td class="col-qty">${qHtml}</td>${priceCell}${sumCell}</tr>` + locsRows;
             });
             let addCustomRow = "";
             if (this.state.viewMode === 'equipment') {
@@ -63550,7 +63826,7 @@ const app = {
                     } else {
                         workPriceHtml = `<span class="price-edit" contenteditable="true" onblur="app.updateWorkPrice('${wNameArg}', this.innerText)" title="Изменить цену">${w.price.toLocaleString()}</span>`;
                     }
-                    rows += `<tr ${rowStyle} onclick="this.classList.toggle('active-row')"><td class="col-idx">${globalIdx++}</td><td class="col-img hidden-col"></td><td class="col-name"><span class="work-del-btn" onclick="event.stopPropagation(); app.deleteWork('${wNameArg}')" title="Удалить работу">✖</span>${w.name}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">-</td><td class="col-brand hidden-col"></td><td class="col-unit">${w.unit}</td><td class="col-qty"><div class="qty-wrap"><span class="work-qty-num">${w.q}</span>${tipHtml}</div></td><td class="col-price"><span class="mob-mult" style="display:none;">${w.q}</span>${workPriceHtml}</td><td class="col-sum">${app.formatPriceHtml(w.sum)}</td></tr>`;
+                    rows += `<tr ${rowStyle} data-rk="${this._rowKey('w', g, w.name)}" onclick="this.classList.toggle('active-row')"><td class="col-idx">${globalIdx++}</td><td class="col-img hidden-col"></td><td class="col-name"><span class="work-del-btn" onclick="event.stopPropagation(); app.deleteWork('${wNameArg}')" title="Удалить работу">✖</span>${w.name}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">-</td><td class="col-brand hidden-col"></td><td class="col-unit">${w.unit}</td><td class="col-qty"><div class="qty-wrap"><span class="work-qty-num">${w.q}</span>${tipHtml}</div></td><td class="col-price"><span class="mob-mult" style="display:none;">${w.q}</span>${workPriceHtml}</td><td class="col-sum">${app.formatPriceHtml(w.sum)}</td></tr>`;
                 });
 
                 h += rows + `<tr class="row-subtotal"><td colspan="9">Итого: ${app.formatPriceHtml(secTotal, true)}</td></tr>`;
@@ -71413,8 +71689,11 @@ const app = {
         // поверх открытого окна замены.
         if (computeOnly) return;
 
+        const _estBefore = this._estimateBefore();
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
+        // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
+        this._estimateAfter(_estBefore);
         this.renderContestWidget();
         // Панель переноса выделенных распознанных строк: таблица только что
         // перестроена, число выделенных могло измениться (перенос, удаление,

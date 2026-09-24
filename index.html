@@ -162,7 +162,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=3.93">
+    <link rel="stylesheet" href="style.css?v=3.96">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.20" defer></script>
@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.27" defer></script>
+    <script src="app.js?v=9.30" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1746,8 +1746,11 @@
                         onchange="app.toggleWaterInput(this.checked, event)"><span class="slider"></span></label>
                 </div>
                 <div id="blk_water_input_opts" style="display:none; flex-direction:column; gap:0; margin-top:10px; background:var(--surface-light); padding:10px 12px; border-radius:8px; border:1px solid var(--border);">
+                    <!-- Показ только в квартире решает style.css (#blk_flat_hot_riser_row):
+                         инлайновый display здесь перебивал бы правило, и строка
+                         торчала в доме. -->
                     <div id="blk_flat_hot_riser_row"
-                        style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+                        style="justify-content:space-between; align-items:center; padding:6px 0;">
                         <span class="lbl" style="font-size:12px;"
                             title="В доме два стояка — холодный и горячий, и на каждом свой счётчик с фильтром. Если ГВС в доме нет и воду греет свой водонагреватель, оставьте выключенным: узел посчитается на один ввод.">Стояк ГВС</span>
                         <label class="switch">
