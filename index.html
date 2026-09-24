@@ -1442,106 +1442,6 @@
                 </div>
             </div>
 
-            <!-- Оформлен как все остальные пункты панели (toggle-item): черта
-                 сверху и такой же шаг. Нижняя черта своя — ею заканчивается весь
-                 блок «Тип котла». -->
-            <div class="control-item toggle-item" id="blk_boiler_auto_item"
-                style="border-bottom:1px dashed var(--border); padding-bottom:16px; margin-bottom:16px;">
-                <div class="label-row">
-                    <span class="lbl"
-                        title="Контроллер STOUT Thermatic: держит температуру по погоде, управляет котлами, бойлером и рециркуляцией, доступен с телефона через интернет. Прибор — 1002 или 3001 — выбирается ниже, по составу котельной.">Автоматика
-                        котельной</span>
-                    <label class="switch"><input type="checkbox" id="chk_boiler_auto"
-                            onchange="app.toggleBoilerAuto(this.checked, event)"><span class="slider"></span></label>
-                </div>
-                <!-- Подпункты собраны в серую рамку — тем же приёмом, что и блок «Горячая
-                     вода (Бойлер)»: пока основной тумблер выключен, рамки нет вовсе, а
-                     включённый контроллер показывает всё своё хозяйство одним куском. -->
-                <div id="blk_boiler_auto_box"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div id="blk_boiler_auto_info" style="font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
-
-                    <!-- Защита от протечки, регулирование по воздуху и выносная панель —
-                         только в подробном режиме (app.syncUI). -->
-                    <div id="blk_boiler_auto_opts" style="display:none; flex-direction:column; gap:10px;">
-                        <!-- Первый подпункт — без линии сверху: она отделяла бы его
-                             от сводки, а при пустом объекте сводки нет вовсе и черта
-                             висела бы по верхнему краю рамки. Так же и в блоке
-                             «Горячая вода»: разделители идут только между пунктами. -->
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;"
-                                title="Датчик протечки на аналоговый вход контроллера, шаровой зональный кран STOUT с сервоприводом на вводе. Сработал датчик — вода перекрыта, ушло оповещение.">Защита от протечки</span>
-                            <label class="switch" style="transform:scale(0.8); transform-origin:right;">
-                                <input type="checkbox" id="chk_leak_protect" onchange="app.toggleLeakProtect(this.checked, event)"><span class="slider"></span>
-                            </label>
-                        </div>
-                        <div id="blk_leak_opts" style="display:none;">
-                            <div style="display:flex; justify-content:space-between; align-items:center;">
-                                <span class="lbl" style="font-size:12px;">Количество датчиков</span>
-                                <div class="stepper" style="width:100px;">
-                                    <button class="step-btn" onclick="app.updLeakSensors(-1)">−</button>
-                                    <div class="step-val editable-val" id="val_leak_sensors" contenteditable="true"
-                                        onblur="app.setLeakSensors(this.innerText)"
-                                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">1</div>
-                                    <button class="step-btn" onclick="app.updLeakSensors(1)">+</button>
-                                </div>
-                            </div>
-                            <div id="leak_sensors_hint" style="margin-top:8px; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
-                        </div>
-                        <div style="border-top:1px solid #E5E7EB; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;"
-                                title="Контур держит заданную температуру воздуха в своей зоне, а не температуру теплоносителя. На каждый контур нужен свой датчик.">Регулирование по воздуху</span>
-                            <label class="switch" style="transform:scale(0.8); transform-origin:right;">
-                                <input type="checkbox" id="chk_air_control" onchange="app.toggleAirControl(this.checked, event)"><span class="slider"></span>
-                            </label>
-                        </div>
-                        <div id="blk_air_opts" style="display:none;">
-                        <span class="lbl-sub" style="margin-bottom:6px;">Устройство в помещении</span>
-                        <div class="tabs" style="font-size:11px;">
-                            <div class="tab air-kind-tab" data-akind="sensor" onclick="app.setAirDeviceType('sensor')"
-                                title="Только датчик температуры, все уставки задаются в приложении.">Датчик</div>
-                            <div class="tab air-kind-tab" data-akind="thermostat" onclick="app.setAirDeviceType('thermostat')"
-                                title="Датчик со своим экраном и колесом уставки — температуру можно менять прямо в комнате.">Термостат</div>
-                        </div>
-                        <!-- Двухпозиционные термостаты STOUT отдельной вкладки не имеют:
-                             они меняют сам способ регулирования, поэтому выбираются
-                             осознанно — заменой позиции в смете. -->
-                        <!-- Для сухого контакта выбор связи неприменим — прячется -->
-                        <div id="blk_air_link">
-                            <span class="lbl-sub" style="margin:10px 0 6px 0; display:block;">Связь</span>
-                            <div class="tabs" style="font-size:11px;">
-                                <div class="tab air-link-tab" data-alink="wired" onclick="app.setAirLink('wired')"
-                                    title="Шина RS-485, витая пара, до 200 м.">Проводом</div>
-                                <div class="tab air-link-tab" data-alink="radio" onclick="app.setAirLink('radio')"
-                                    title="868 МГц. Дополнительно нужен радиомодуль — он добавится сам.">По радио</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                            <span class="lbl" style="font-size:12px;">Количество</span>
-                            <div class="stepper" style="width:100px;">
-                                <button class="step-btn" onclick="app.updAirSensors(-1)">−</button>
-                                <div class="step-val editable-val" id="val_air_sensors" contenteditable="true"
-                                    onblur="app.setAirSensors(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">1</div>
-                                <button class="step-btn" onclick="app.updAirSensors(1)">+</button>
-                            </div>
-                        </div>
-                        <div id="air_hint" style="margin-top:8px; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
-                        </div>
-                        <!-- Панели нет в линейке базового уровня: у Thermatic 1002
-                             нет ни разъёма под неё, ни самой панели. Прячется в
-                             app.syncBoilerAutoLevel. -->
-                        <div id="blk_ctrl_panel_row" style="border-top:1px solid #E5E7EB; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;"
-                                title="Панель с экраном в жилой зоне: сменить режим или температуру, не спускаясь в котельную.">Выносная панель управления</span>
-                            <label class="switch" style="transform:scale(0.8); transform-origin:right;">
-                                <input type="checkbox" id="chk_ctrl_panel" onchange="app.toggleState('ctrlPanel', this.checked)"><span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип отопления</h4>
             <div class="control-item">
                 <div class="tabs">
@@ -1711,133 +1611,6 @@
                         <div class="tab active" id="ufh_step2_150" onclick="app.setUfhStep(2, 150)">150 мм</div>
                         <div class="tab" id="ufh_step2_200" onclick="app.setUfhStep(2, 200)">200 мм</div>
                     </div>
-                </div>
-            </div>
-
-            <div id="blk_ufh_ctrl" style="display:none; border-top:1px dashed #E5E7EB; padding-top:15px; margin-top:0;">
-                <div class="control-item">
-                    <div class="label-row">
-                        <span class="lbl">Автоматика Тёплого пола</span>
-                        <label class="switch">
-                            <input type="checkbox" id="chk_ufh_auto" onchange="app.toggleUfhAuto(this.checked, event)">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <div id="blk_ufh_settings" style="display:none;">
-                    <div class="control-item">
-                        <div class="control-card"
-                            style="width:100%; display:flex; flex-direction:row; justify-content:space-between; padding:15px; align-items:center;">
-                            <span class="lbl" style="margin-right:15px;">Количество термостатов</span>
-                            <div class="stepper">
-                                <button class="step-btn" onclick="app.updZones(-1)">−</button>
-                                <div class="step-val editable-val" id="val_zones" contenteditable="true"
-                                    onblur="app.setZones(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">1</div>
-                                <button class="step-btn" onclick="app.updZones(1)">+</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="control-item">
-                        <div class="label-row"><span class="lbl">Тип термостата:</span></div>
-                        <div class="tabs">
-                            <div class="tab ufh-tab active" data-type="mech" onclick="app.setUfhCtrl('mech')">
-                                Механический</div>
-                            <div class="tab ufh-tab" data-type="electro" onclick="app.setUfhCtrl('electro')">Электронный
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Зональная автоматика по заявке: планка, термостаты проводные и радио,
-                 радиоголовки, сервоприводы и датчик улицы под уже стоящий контроллер
-                 котла. К тёплому полу не привязана — монтажник приносит список, а
-                 не дом. Состав считает app.getZoneAutoKit(), рамка — как у бойлера. -->
-            <div class="control-item toggle-item" id="blk_zone_auto_item">
-                <div class="label-row">
-                    <span class="lbl"
-                        title="Список по заявке: планка, термостаты проводные и радио, радиоголовки на радиаторы, сервоприводы на коллектор, датчик улицы в контроллер котла. STOUT по умолчанию; ENGO — когда нужны радиотермостаты к планке.">Зональная автоматика (по заявке)</span>
-                    <label class="switch"><input type="checkbox" id="chk_zone_auto"
-                            onchange="app.toggleZoneAuto(this.checked, event)"><span class="slider"></span></label>
-                </div>
-                <div id="blk_zone_auto_box"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div>
-                        <span class="lbl-sub" style="margin-bottom:6px;">Система</span>
-                        <div class="tabs" style="font-size:11px;">
-                            <div class="tab zone-sys-tab active" data-sys="auto" id="tab_zone_sys_auto" onclick="app.setZoneAutoSys('auto')">Авто: STOUT</div>
-                            <div class="tab zone-sys-tab" data-sys="stout" onclick="app.setZoneAutoSys('stout')">STOUT</div>
-                            <div class="tab zone-sys-tab" data-sys="engo" onclick="app.setZoneAutoSys('engo')">ENGO</div>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;">Термостаты проводные</span>
-                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('wired', -1)">−</button>
-                            <div class="step-val editable-val" id="val_zone_wired" contenteditable="true"
-                                onblur="app.setZoneAutoQty('wired', this.innerText)"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
-                            <button class="step-btn" onclick="app.updZoneAutoQty('wired', 1)">+</button>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;" title="К планке по радио. У STOUT таких нет — система переключится на ENGO.">Термостаты радио</span>
-                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('radio', -1)">−</button>
-                            <div class="step-val editable-val" id="val_zone_radio" contenteditable="true"
-                                onblur="app.setZoneAutoQty('radio', this.innerText)"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
-                            <button class="step-btn" onclick="app.updZoneAutoQty('radio', 1)">+</button>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;" title="Радиоголовки на радиаторные клапаны M30x1,5.">Радиоголовки на радиаторы</span>
-                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('heads', -1)">−</button>
-                            <div class="step-val editable-val" id="val_zone_heads" contenteditable="true"
-                                onblur="app.setZoneAutoQty('heads', this.innerText)"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
-                            <button class="step-btn" onclick="app.updZoneAutoQty('heads', 1)">+</button>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;" title="Термоэлектрические приводы 230 В NC на клапаны коллектора.">Сервоприводы на коллектор</span>
-                        <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('servos', -1)">−</button>
-                            <div class="step-val editable-val" id="val_zone_servos" contenteditable="true"
-                                onblur="app.setZoneAutoQty('servos', this.innerText)"
-                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
-                            <button class="step-btn" onclick="app.updZoneAutoQty('servos', 1)">+</button>
-                        </div>
-                    </div>
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;"
-                            title="Подключается к контроллеру котла, который уже стоит у клиента, а не к планке.">Датчик наружного воздуха</span>
-                        <label class="switch" style="transform:scale(0.8); transform-origin:right;">
-                            <input type="checkbox" id="chk_zone_outdoor" onchange="app.toggleZoneAutoFlag('outdoor', this.checked)"><span class="slider"></span>
-                        </label>
-                    </div>
-                    <div id="blk_zone_ctrl" style="display:none;">
-                        <span class="lbl-sub" style="margin-bottom:6px;">Контроллер котла у клиента</span>
-                        <div class="tabs" style="font-size:11px;">
-                            <div class="tab zone-ctrl-tab active" data-ctrl="myheat" onclick="app.setZoneAutoCtrl('myheat')">MyHeat</div>
-                            <div class="tab zone-ctrl-tab" data-ctrl="thermatic" onclick="app.setZoneAutoCtrl('thermatic')">Thermatic</div>
-                            <div class="tab zone-ctrl-tab" data-ctrl="other" onclick="app.setZoneAutoCtrl('other')">Другой</div>
-                        </div>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;"
-                            title="ENGO: шлюз EGATEZB и приложение ENGO Smart. STOUT: в телефон выходят только Zigbee-головки через свой шлюз.">Управление с телефона</span>
-                        <label class="switch" style="transform:scale(0.8); transform-origin:right;">
-                            <input type="checkbox" id="chk_zone_phone" onchange="app.toggleZoneAutoFlag('phone', this.checked)"><span class="slider"></span>
-                        </label>
-                    </div>
-                    <div>
-                        <span class="lbl-sub" style="margin-bottom:6px;">Цвет приборов</span>
-                        <div class="tabs" style="font-size:11px;">
-                            <div class="tab zone-color-tab active" data-color="white" onclick="app.setZoneAutoColor('white')">Белый</div>
-                            <div class="tab zone-color-tab" data-color="black" onclick="app.setZoneAutoColor('black')">Чёрный</div>
-                        </div>
-                    </div>
-                    <div id="blk_zone_auto_info" style="display:none; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
                 </div>
             </div>
 
@@ -2209,6 +1982,196 @@
                                 class="slider"></span></label>
                     </div>
                 </div>
+            </div>
+            <!-- Автоматика — один пункт на всё: контроллер котельной и зональная
+                 автоматика радиаторов и тёплого пола. Стоит последним среди
+                 инженерных пунктов и только в подробном режиме (app.syncUI, как
+                 снеготаяние): системы уже заданы, поверх них включается
+                 автоматизация. В быстром режиме, если автоматика включена (старая
+                 смета, заявка), остаётся одна строка-подсказка. -->
+            <div class="control-item toggle-item" id="blk_auto_header" style="display:none;">
+                <div class="label-row">
+                    <span class="lbl"
+                        title="Контроллер котельной STOUT Thermatic и зональная автоматика: планка, термостаты, сервоприводы, радиоголовки. Включается, когда системы дома уже заданы.">Автоматика</span>
+                    <label class="switch"><input type="checkbox" id="chk_auto_master"
+                            onchange="app.toggleAutoMaster(this.checked, event)"><span class="slider"></span></label>
+                </div>
+                <div id="blk_auto_box" style="display:none; flex-direction:column; gap:4px; margin-top:6px;">
+                <div class="control-item toggle-item" id="blk_boiler_auto_item">
+                    <div class="label-row">
+                        <span class="lbl"
+                            title="Контроллер STOUT Thermatic: держит температуру по погоде, управляет котлами, бойлером и рециркуляцией, доступен с телефона через интернет. Прибор — 1002 или 3001 — выбирается ниже, по составу котельной.">Автоматика
+                            котельной</span>
+                        <label class="switch"><input type="checkbox" id="chk_boiler_auto"
+                                onchange="app.toggleBoilerAuto(this.checked, event)"><span class="slider"></span></label>
+                    </div>
+                    <!-- Подпункты собраны в серую рамку — тем же приёмом, что и блок «Горячая
+                         вода (Бойлер)»: пока основной тумблер выключен, рамки нет вовсе, а
+                         включённый контроллер показывает всё своё хозяйство одним куском. -->
+                    <div id="blk_boiler_auto_box"
+                        style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                        <div id="blk_boiler_auto_info" style="font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
+
+                        <!-- Защита от протечки, регулирование по воздуху и выносная панель —
+                             только в подробном режиме (app.syncUI). -->
+                        <div id="blk_boiler_auto_opts" style="display:none; flex-direction:column; gap:10px;">
+                            <!-- Первый подпункт — без линии сверху: она отделяла бы его
+                                 от сводки, а при пустом объекте сводки нет вовсе и черта
+                                 висела бы по верхнему краю рамки. Так же и в блоке
+                                 «Горячая вода»: разделители идут только между пунктами. -->
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span class="lbl" style="font-size:12px;"
+                                    title="Датчик протечки на аналоговый вход контроллера, шаровой зональный кран STOUT с сервоприводом на вводе. Сработал датчик — вода перекрыта, ушло оповещение.">Защита от протечки</span>
+                                <label class="switch" style="transform:scale(0.8); transform-origin:right;">
+                                    <input type="checkbox" id="chk_leak_protect" onchange="app.toggleLeakProtect(this.checked, event)"><span class="slider"></span>
+                                </label>
+                            </div>
+                            <div id="blk_leak_opts" style="display:none;">
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span class="lbl" style="font-size:12px;">Количество датчиков</span>
+                                    <div class="stepper" style="width:100px;">
+                                        <button class="step-btn" onclick="app.updLeakSensors(-1)">−</button>
+                                        <div class="step-val editable-val" id="val_leak_sensors" contenteditable="true"
+                                            onblur="app.setLeakSensors(this.innerText)"
+                                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">1</div>
+                                        <button class="step-btn" onclick="app.updLeakSensors(1)">+</button>
+                                    </div>
+                                </div>
+                                <div id="leak_sensors_hint" style="margin-top:8px; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
+                            </div>
+                            <div style="border-top:1px solid #E5E7EB; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="lbl" style="font-size:12px;"
+                                    title="Контур держит заданную температуру воздуха в своей зоне, а не температуру теплоносителя. На каждый контур нужен свой датчик.">Регулирование по воздуху</span>
+                                <label class="switch" style="transform:scale(0.8); transform-origin:right;">
+                                    <input type="checkbox" id="chk_air_control" onchange="app.toggleAirControl(this.checked, event)"><span class="slider"></span>
+                                </label>
+                            </div>
+                            <div id="blk_air_opts" style="display:none;">
+                            <span class="lbl-sub" style="margin-bottom:6px;">Устройство в помещении</span>
+                            <div class="tabs" style="font-size:11px;">
+                                <div class="tab air-kind-tab" data-akind="sensor" onclick="app.setAirDeviceType('sensor')"
+                                    title="Только датчик температуры, все уставки задаются в приложении.">Датчик</div>
+                                <div class="tab air-kind-tab" data-akind="thermostat" onclick="app.setAirDeviceType('thermostat')"
+                                    title="Датчик со своим экраном и колесом уставки — температуру можно менять прямо в комнате.">Термостат</div>
+                            </div>
+                            <!-- Двухпозиционные термостаты STOUT отдельной вкладки не имеют:
+                                 они меняют сам способ регулирования, поэтому выбираются
+                                 осознанно — заменой позиции в смете. -->
+                            <!-- Для сухого контакта выбор связи неприменим — прячется -->
+                            <div id="blk_air_link">
+                                <span class="lbl-sub" style="margin:10px 0 6px 0; display:block;">Связь</span>
+                                <div class="tabs" style="font-size:11px;">
+                                    <div class="tab air-link-tab" data-alink="wired" onclick="app.setAirLink('wired')"
+                                        title="Шина RS-485, витая пара, до 200 м.">Проводом</div>
+                                    <div class="tab air-link-tab" data-alink="radio" onclick="app.setAirLink('radio')"
+                                        title="868 МГц. Дополнительно нужен радиомодуль — он добавится сам.">По радио</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                                <span class="lbl" style="font-size:12px;">Количество</span>
+                                <div class="stepper" style="width:100px;">
+                                    <button class="step-btn" onclick="app.updAirSensors(-1)">−</button>
+                                    <div class="step-val editable-val" id="val_air_sensors" contenteditable="true"
+                                        onblur="app.setAirSensors(this.innerText)"
+                                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">1</div>
+                                    <button class="step-btn" onclick="app.updAirSensors(1)">+</button>
+                                </div>
+                            </div>
+                            <div id="air_hint" style="margin-top:8px; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
+                            </div>
+                            <!-- Панели нет в линейке базового уровня: у Thermatic 1002
+                                 нет ни разъёма под неё, ни самой панели. Прячется в
+                                 app.syncBoilerAutoLevel. -->
+                            <div id="blk_ctrl_panel_row" style="border-top:1px solid #E5E7EB; padding-top:8px; display:flex; justify-content:space-between; align-items:center;">
+                                <span class="lbl" style="font-size:12px;"
+                                    title="Панель с экраном в жилой зоне: сменить режим или температуру, не спускаясь в котельную.">Выносная панель управления</span>
+                                <label class="switch" style="transform:scale(0.8); transform-origin:right;">
+                                    <input type="checkbox" id="chk_ctrl_panel" onchange="app.toggleState('ctrlPanel', this.checked)"><span class="slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Контроллер котла уже стоит у клиента, Thermatic не нужен — только
+                     датчик улицы к нему. Видно, пока автоматика котельной выключена:
+                     у Thermatic свой датчик в составе. -->
+                <div id="blk_zone_outdoor_row" style="display:none; padding:8px 0 12px;">
+                    <span class="lbl-sub" style="margin-bottom:6px;"
+                        title="Датчик наружной температуры для погодозависимой работы — в контроллер котла, который уже стоит у клиента.">Датчик улицы в контроллер клиента</span>
+                    <div class="tabs" style="font-size:11px;">
+                        <div class="tab zone-out-tab active" data-out="none" onclick="app.setZoneOutdoor('none')">Нет</div>
+                        <div class="tab zone-out-tab" data-out="myheat" onclick="app.setZoneOutdoor('myheat')">MyHeat</div>
+                        <div class="tab zone-out-tab" data-out="other" onclick="app.setZoneOutdoor('other')">Другой</div>
+                    </div>
+                </div>
+
+                <!-- Зональная автоматика: планка, термостаты проводные и радио,
+                     сервоприводы на коллектор, радиоголовки на радиаторы. При тёплом
+                     поле термостаты и приводы считаются из дома и правятся руками,
+                     без пола вводятся руками или из заявки. Состав — app.getZoneAutoKit(). -->
+                <div class="control-item toggle-item" id="blk_zone_auto_item">
+                    <div class="label-row">
+                        <span class="lbl"
+                            title="Планка, термостаты проводные и радио, сервоприводы на коллектор, радиоголовки на радиаторы. STOUT по умолчанию; ENGO — когда есть радиотермостаты, вернуть STOUT можно заменой на строке планки.">Автоматика радиаторов и тёплого пола</span>
+                        <label class="switch"><input type="checkbox" id="chk_ufh_auto"
+                                onchange="app.toggleUfhAuto(this.checked, event)"><span class="slider"></span></label>
+                    </div>
+                    <div id="blk_zone_auto_box"
+                        style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="lbl" style="font-size:12px;"
+                                title="При тёплом поле — по комнатам с полом, можно править.">Термостаты проводные</span>
+                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZones(-1)">−</button>
+                                <div class="step-val editable-val" id="val_zones" contenteditable="true"
+                                    onblur="app.setZones(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">1</div>
+                                <button class="step-btn" onclick="app.updZones(1)">+</button>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="lbl" style="font-size:12px;"
+                                title="К планке по радио. У STOUT таких нет — раздел соберётся на ENGO.">Термостаты радио</span>
+                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('radio', -1)">−</button>
+                                <div class="step-val editable-val" id="val_zone_radio" contenteditable="true"
+                                    onblur="app.setZoneAutoQty('radio', this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
+                                <button class="step-btn" onclick="app.updZoneAutoQty('radio', 1)">+</button>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="lbl" style="font-size:12px;"
+                                title="Термоэлектрические приводы 230 В NC на клапаны коллектора. При тёплом поле — по числу петель, можно править.">Сервоприводы на коллектор</span>
+                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('servos', -1)">−</button>
+                                <div class="step-val editable-val" id="val_zone_servos" contenteditable="true"
+                                    onblur="app.setZoneAutoQty('servos', this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
+                                <button class="step-btn" onclick="app.updZoneAutoQty('servos', 1)">+</button>
+                            </div>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="lbl" style="font-size:12px;"
+                                title="Радиоголовки на радиаторные клапаны M30x1,5.">Радиоголовки на радиаторы</span>
+                            <div class="stepper" style="width:100px;"><button class="step-btn" onclick="app.updZoneAutoQty('heads', -1)">−</button>
+                                <div class="step-val editable-val" id="val_zone_heads" contenteditable="true"
+                                    onblur="app.setZoneAutoQty('heads', this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</div>
+                                <button class="step-btn" onclick="app.updZoneAutoQty('heads', 1)">+</button>
+                            </div>
+                        </div>
+                        <div style="border-top:1px solid #E5E7EB; padding-top:8px;">
+                            <span class="lbl-sub" style="margin-bottom:6px;">Тип проводного термостата</span>
+                            <div class="tabs" style="font-size:11px;">
+                                <div class="tab ufh-tab active" data-type="mech" onclick="app.setUfhCtrl('mech')">Механический</div>
+                                <div class="tab ufh-tab" data-type="electro" onclick="app.setUfhCtrl('electro')">Электронный</div>
+                            </div>
+                        </div>
+                        <div id="blk_zone_auto_info" style="display:none; font-size:11px; line-height:1.5; color:var(--text-sec);"></div>
+                    </div>
+                </div>
+                </div>
+            </div>
+            <div id="blk_auto_fast_note" style="display:none; font-size:11px; line-height:1.5; color:var(--text-sec); padding:8px 0;">
+                Автоматика включена и посчитана в смете. Её настройки — в подробном режиме.
             </div>
         </div>
 
