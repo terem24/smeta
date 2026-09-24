@@ -1111,7 +1111,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin' },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', zoneAuto: { on: false, sys: 'auto', wired: 0, radio: 0, heads: 0, servos: 0, outdoor: false, ctrl: 'myheat', phone: false, color: 'white' } },
 
     lastSavedStateString: "",
 
@@ -2864,6 +2864,7 @@ const app = {
         if (/материал\s*пола|основани[а-я]*\s*пола/i.test(t)) fields.push('floorMat');
         if (/остеклени[а-я]*|стеклопакет[а-я]*/i.test(t)) fields.push('glazingMat');
         if (/автоматик[а-я]*\s*котельн[а-я]*|терматик[а-я]*|thermatic/i.test(t)) fields.push('boilerAuto');
+        else if (/зональн[а-я]*\s*автоматик[а-я]*|автоматик[а-я]*\s*по\s*заявк[а-я]*|планк[а-я]*|радиотермостат[а-я]*|радиоголовк[а-я]*/i.test(t)) fields.push('zoneAuto');
         else if (/автоматик[а-я]*/i.test(t)) fields.push('ufhAuto');
         if (/снеготаян[а-я]*|обогрев[а-я]*\s*(?:дорожк|площадк|крыльц|въезд)[а-я]*|антил[её]д[а-я]*/i.test(t)) fields.push('snowMelt');
         if (/протеч[а-я]*|аквасторож[а-я]*|нептун[а-я]*/i.test(t)) fields.push('leakProtect');
@@ -3032,7 +3033,11 @@ const app = {
                 'подпитк', 'фильтр', 'водоподготовк', 'магистральн', 'канализац', 'бесшумн', 'малошумн',
                 'металлопласт', 'полиэтилен', 'сшит', 'панел', 'выносн', 'воздух', 'управлен', 'регулирован',
                 'выделен', 'лимит', 'ограничен', 'разрешен', 'подведен', 'киловатт', 'мощност', 'укладк',
-                'постав', 'убер', 'удал', 'отмен', 'сдел', 'нужн', 'хоч', 'давай', 'добав', 'посчита', 'стоимост', 'расход'];
+                'постав', 'убер', 'удал', 'отмен', 'сдел', 'нужн', 'хоч', 'давай', 'добав', 'посчита', 'стоимост', 'расход',
+                // Зональная автоматика по заявке: без этих слов «планка» и «радио»
+                // уезжали бы в города (Планерное, Радищево)
+                'планк', 'коммутац', 'радио', 'беспроводн', 'термостат', 'проводн', 'головк', 'привод',
+                'майхит', 'myheat', 'энго', 'engo', 'зигби', 'zigbee', 'наружн', 'уличн', 'стоит', 'сейчас'];
             // Разговорные названия городов, которых нет в официальной базе городов дословно
             // ("Питер"/"СПб" вместо "Санкт-Петербург", "мск" вместо "Москва")
             const CITY_NICKNAMES = { 'питер': 'санкт-петербург', 'спб': 'санкт-петербург', 'мск': 'москва' };
@@ -3285,8 +3290,60 @@ const app = {
             results.push({ field: 'glazingMat', value: 'glz_1cam', label: 'Остекление', display: 'однокамерное' });
         }
 
+        // ─── Зональная автоматика по заявке ──────────────────────────────────
+        // «Термостат проводной 2 шт, радио 2, термо головка радио 5, сервопривод 20,
+        // датчик наружного воздуха, планка; стоит MyHeat GO» — список приборов
+        // под уже стоящий контроллер котла, а не описание дома. Число ищем и до,
+        // и после названия («2 шт термостат» / «термостат 2шт»); «230 В» числом
+        // не считаем. Срабатывает, когда названы хотя бы две позиции с числом,
+        // либо позиция вместе с планкой или с контроллером клиента — одиночный
+        // «сервопривод» в описании дома остаётся автоматикой тёплого пола.
+        const zoneQty = (re) => {
+            let best = null, explicit = false;
+            for (const mm of tn.matchAll(re)) {
+                const tail = tn.slice(mm.index + mm[0].length, mm.index + mm[0].length + 14);
+                const after = tail.match(/^[^\dа-я]{0,6}(\d{1,3})(?!\s*(?:[вv](?![а-я])|вольт|мм(?![а-я])|м(?![а-я])|м²|м2|кв(?![а-я])|°))\s*(?:шт|штук)?/i);
+                const head = tn.slice(Math.max(0, mm.index - 16), mm.index);
+                const before = head.match(/(\d{1,3})\s*(?:шт\.?\s*|штук[а-я]*\s*)?[а-я]{0,12}\s*$/i);
+                const n = after ? parseInt(after[1], 10) : (before ? parseInt(before[1], 10) : 1);
+                if (after || before) explicit = true;
+                if (best === null || n > best) best = n;
+            }
+            return best === null ? null : { n: Math.min(this.ZONE_AUTO_MAX, best), explicit };
+        };
+        const zWired = zoneQty(/термостат[а-я]*\s+проводн[а-я]*|проводн[а-я]*\s+термостат[а-я]*|терморегулятор[а-я]*\s+проводн[а-я]*|проводн[а-я]*\s+терморегулятор[а-я]*/gi);
+        const zRadio = zoneQty(/термостат[а-я]*\s+(?:радио|беспроводн[а-я]*|zigbee|зигби)|(?:радио|беспроводн[а-я]*|zigbee|зигби)\s*термостат[а-я]*|радиотермостат[а-я]*|терморегулятор[а-я]*\s+(?:радио|беспроводн[а-я]*)|(?:радио|беспроводн[а-я]*)\s*терморегулятор[а-я]*/gi);
+        const zHeads = zoneQty(/термо\s*головк[а-я]*\s+(?:радио|беспроводн[а-я]*|zigbee|зигби|умн[а-я]*)|(?:радио|беспроводн[а-я]*|zigbee|зигби|умн[а-я]*)\s*термо\s*головк[а-я]*|радиоголовк[а-я]*/gi);
+        const zServos = zoneQty(/сервопривод[а-я]*|сервак[а-я]*|термоэлектрическ[а-я]*\s+привод[а-я]*/gi);
+        const zOutdoor = /датчик[а-я]*\s+(?:температуры\s+)?(?:наружн[а-я]*|уличн[а-я]*)|(?:наружн[а-я]*|уличн[а-я]*)\s+датчик[а-я]*|датчик[а-я]*\s+(?:температуры\s+)?(?:на\s+)?улиц[а-я]*/i.test(t);
+        const zBar = /планк[а-я]*|коммутац[а-я]*|клеммник[а-я]*/i.test(t);
+        const zCtrl = /myheat|my\s*heat|myhet|майхит|май\s*хит|майхет/i.test(t) ? 'myheat'
+            : (/терматик[а-я]*|thermatic|climatic|климатик[а-я]*/i.test(t) ? 'thermatic'
+                : (/\szont\b|\sзонт\s|ectocontrol|эктоконтрол[а-я]*/i.test(t) ? 'other' : null));
+        const zItems = [zWired, zRadio, zHeads, zServos].filter(Boolean);
+        const zExplicit = zItems.filter(x => x.explicit).length;
+        const zoneKit = zItems.length > 0 && (zExplicit >= 2 || zBar || zCtrl === 'myheat' || (zOutdoor && zExplicit >= 1));
+        if (zoneKit) {
+            const zv = { on: true, wired: zWired ? zWired.n : 0, radio: zRadio ? zRadio.n : 0, heads: zHeads ? zHeads.n : 0, servos: zServos ? zServos.n : 0, outdoor: zOutdoor };
+            if (zCtrl) zv.ctrl = zCtrl;
+            const parts = [];
+            if (zv.wired) parts.push(`проводных термостатов ${zv.wired}`);
+            if (zv.radio) parts.push(`радиотермостатов ${zv.radio}`);
+            if (zv.heads) parts.push(`радиоголовок ${zv.heads}`);
+            if (zv.servos) parts.push(`сервоприводов ${zv.servos}`);
+            if (zv.outdoor) parts.push('датчик улицы');
+            if (zBar) parts.push('планка');
+            if (zCtrl === 'myheat') parts.push('контроллер MyHeat у клиента');
+            else if (zCtrl === 'thermatic') parts.push('контроллер Thermatic');
+            parts.push(zv.radio > 0 ? 'система ENGO (нужны радиотермостаты)' : 'система STOUT');
+            results.push({ field: 'zoneAuto', value: zv, label: 'Зональная автоматика', display: parts.join(', ') });
+        }
+
         // Автоматика тёплого пола/радиаторов — механическая (термоголовки) или электронная (умный дом)
-        if (/без\s*автоматик[а-я]*|напряму[а-я]*|вручну[а-я]*|на\s*глазок|прост[а-я]*\s*кран[а-я]*/i.test(t)) {
+        if (zoneKit) {
+            // Заявка на зональную автоматику: сервоприводы и термостаты уже её,
+            // покомнатную автоматику тёплого пола по тем же словам не включаем.
+        } else if (/без\s*автоматик[а-я]*|напряму[а-я]*|вручну[а-я]*|на\s*глазок|прост[а-я]*\s*кран[а-я]*/i.test(t)) {
             results.push({ field: 'ufhAuto', value: false, label: 'Автоматика отопления', display: 'без автоматики' });
         } else if (/умн[а-я]*\s*дом|покомнатн[а-я]*|зональн[а-я]*|позонн[а-я]*|терморегулятор[а-я]*|комнатн[а-я]*\s*термостат[а-я]*|вайфай[а-я]*\s*термостат[а-я]*|сервопривод[а-я]*|серваки|контроллер[а-я]*|клеммник[а-я]*|управлени[а-я]*\s*с\s*телефон[а-я]*|\szont\b|\sзонт\s/i.test(t)) {
             results.push({ field: 'ufhAuto', value: true, ctrl: 'electro', label: 'Автоматика отопления', display: 'электронная (покомнатная)' });
@@ -3303,7 +3360,10 @@ const app = {
         const leakM = /протеч[а-я]*|аквасторож[а-я]*|нептун[а-я]*|гидролок[а-я]*|зато?пл[а-я]*\s*сосед[а-я]*/i.test(t);
         const airM = /регулирован[а-я]*\s*по\s*воздуху|управлени[а-я]*\s*по\s*воздуху|по\s*воздуху|датчик[а-я]*\s*воздуха/i.test(t);
         const panelM = /выносн[а-я]*\s*панел[а-я]*|панел[а-я]*\s*управлени[а-я]*/i.test(t);
-        const boilerAutoM = /терматик[а-я]*|thermatic|climatic|климатик[а-я]*|автоматик[а-я]*\s*котельн[а-я]*|котельн[а-я]*\s*автоматик[а-я]*|погодозависим[а-я]*|погодн[а-я]*\s*регулирован[а-я]*|уличн[а-я]*\s*датчик[а-я]*|датчик[а-я]*\s*улиц[а-я]*/i.test(t);
+        // Уличный датчик в заявке на зональную автоматику идёт в контроллер клиента,
+        // а не в новый Thermatic — там он учтён в самой заявке.
+        const boilerAutoM = /терматик[а-я]*|thermatic|climatic|климатик[а-я]*|автоматик[а-я]*\s*котельн[а-я]*|котельн[а-я]*\s*автоматик[а-я]*|погодозависим[а-я]*|погодн[а-я]*\s*регулирован[а-я]*/i.test(t)
+            || (!zoneKit && /уличн[а-я]*\s*датчик[а-я]*|датчик[а-я]*\s*улиц[а-я]*/i.test(t));
         if (boilerAutoM || leakM || airM || panelM) {
             results.push({ field: 'boilerAuto', value: true, label: 'Автоматика котельной', display: 'контроллер Thermatic' });
         }
@@ -3798,6 +3858,13 @@ const app = {
                 case 'waterZones': this.state.waterZones = r.value; this.state.water = true; break;
                 case 'radType': this.state.radType = r.value; break;
                 case 'boilerAuto': this.state.boilerAuto = r.value; break;
+                case 'zoneAuto': {
+                    // Заявка перекрывает прежние числа целиком: «термостатов 2» — это
+                    // два, а не «плюс два» к тому, что уже стояло. Систему и цвет
+                    // не трогаем — их в заявке не называют.
+                    Object.assign(this.za(), r.value || {});
+                    break;
+                }
                 case 'leakProtect': {
                     this.state.leakProtect = r.value;
                     // Число датчиков задаём, только если его назвали: иначе оставляем null,
@@ -4462,6 +4529,9 @@ const app = {
         // После того как что-то реально обсудили — предлагаем следующий незаполненный раздел
         const askFollowUp = () => {
             if (stopAsking) return;
+            // Заявка на зональную автоматику без дома: вопросы про котёл, воду и
+            // вентиляцию не по делу — список приборов и так полный.
+            if (accumulated.has('zoneAuto') && !accumulated.has('area')) { pendingTopic = null; return; }
             const topic = TOPICS.find(x => !x.addressed());
             if (!topic) { pendingTopic = null; return; }
             pendingTopic = topic.key;
@@ -6444,7 +6514,9 @@ const app = {
         // (у Морозовой так вышло две одинаковые сметы на воду).
         const hasZones = !!((this.state.waterZones || []).length
             || (this.state.rooms || []).length
-            || (this.state.snowZones || []).length);
+            || (this.state.snowZones || []).length
+            // Зональная автоматика по заявке — тоже смета без площади: список приборов.
+            || this.zoneAutoOn());
         if (!force && !hasArea && !hasOwnRows && !hasZones) return;
         this.state.calc_id = String(Math.floor(100000 + Math.random() * 900000));
         const fromRecognition = this.isRecognizedEstimate();
@@ -36732,6 +36804,245 @@ const app = {
     // Автоматика котельной — контроллер отопления STOUT Thermatic (3001 или
     // 1002, см. boilerAutoModel). Что именно он получит на управление, считает
     // getThermaticConfig().
+    // ─── Зональная автоматика по заявке (раздел 4.5) ──────────────────────
+    // Монтажник приносит список: «термостат проводной 2, радио 2, головки радио 5,
+    // сервопривод 20, датчик улицы, планка; стоит MyHeat GO». Система выбирается
+    // целиком, а не построчно: радиотермостат одной марки и планка другой друг
+    // друга не увидят. STOUT — по умолчанию; ENGO — как только нужен радиотермостат
+    // к планке (у STOUT планка STE-3050 только проводная, а Zigbee-головки живут со
+    // своим шлюзом и телефоном). TECH под STE-0101 снят с поставок — не берём.
+    // Состав считает getZoneAutoKit(), панель — syncZoneAutoUI().
+    ZONE_AUTO_DEFAULT: { on: false, sys: 'auto', wired: 0, radio: 0, heads: 0, servos: 0, outdoor: false, ctrl: 'myheat', phone: false, color: 'white' },
+    ZONE_AUTO_MAX: 60,
+    ZONE_AUTO_SYS_NAMES: { stout: 'STOUT', engo: 'ENGO' },
+    /** Состояние блока; старым сохранениям заводит его на месте. */
+    za: function () {
+        if (!this.state.zoneAuto || typeof this.state.zoneAuto !== 'object') this.state.zoneAuto = { ...this.ZONE_AUTO_DEFAULT };
+        return this.state.zoneAuto;
+    },
+    zoneAutoOn: function () { const z = this.state.zoneAuto; return !!(z && z.on); },
+    toggleZoneAuto: function (chk, event) {
+        if (!this.checkAccess('pro', event)) {
+            const el = document.getElementById('chk_zone_auto');
+            if (el) el.checked = this.zoneAutoOn();
+            return;
+        }
+        this.za().on = !!chk;
+        this.syncUI(); this.render(); this.saveState();
+    },
+    setZoneAutoSys: function (sys) {
+        if (!['auto', 'stout', 'engo'].includes(sys)) return;
+        this.za().sys = sys;
+        // Ручные замены строк ENGO при смене системы снимаем: иначе в смете
+        // остался бы прибор одной марки при планке другой.
+        const sw = this.state.swaps || {};
+        this.zoneAutoEngoIds().forEach(id => { delete sw[id]; });
+        this.syncUI(); this.render(); this.saveState();
+    },
+    zoneAutoEngoIds: function () {
+        const e = catalog.zone_engo || {}; const o = catalog.zone_outdoor || {};
+        const ids = [];
+        const push = (x) => { if (x && x.id) ids.push(x.id); };
+        push(e.bar); push(e.gateway); push(e.repeater); push(e.actuator);
+        (e.wired || []).concat(e.radio || [], e.heads || []).forEach(push);
+        Object.values(o).forEach(push);
+        return ids;
+    },
+    updZoneAutoQty: function (field, d) {
+        if (!['wired', 'radio', 'heads', 'servos'].includes(field)) return;
+        const z = this.za();
+        const n = (parseInt(z[field], 10) || 0) + d;
+        z[field] = Math.max(0, Math.min(this.ZONE_AUTO_MAX, n));
+        this.syncUI(); this.render(); this.saveState();
+    },
+    setZoneAutoQty: function (field, v) {
+        if (!['wired', 'radio', 'heads', 'servos'].includes(field)) return;
+        const z = this.za();
+        let n = parseInt(String(v).replace(/[^\d]/g, ''), 10);
+        if (isNaN(n)) n = 0;
+        z[field] = Math.max(0, Math.min(this.ZONE_AUTO_MAX, n));
+        this.syncUI(); this.render(); this.saveState();
+    },
+    setZoneAutoCtrl: function (v) {
+        if (!['myheat', 'thermatic', 'other'].includes(v)) return;
+        this.za().ctrl = v;
+        this.syncUI(); this.render(); this.saveState();
+    },
+    setZoneAutoColor: function (c) {
+        if (!['white', 'black'].includes(c)) return;
+        this.za().color = c;
+        this.syncUI(); this.render(); this.saveState();
+    },
+    toggleZoneAutoFlag: function (field, chk) {
+        if (!['outdoor', 'phone'].includes(field)) return;
+        this.za()[field] = !!chk;
+        this.syncUI(); this.render(); this.saveState();
+    },
+    /** Какая система выйдет в смету: 'stout' или 'engo'. */
+    zoneAutoSystem: function () {
+        const z = this.za();
+        if (z.sys === 'stout' || z.sys === 'engo') return z.sys;
+        return ((parseInt(z.radio, 10) || 0) > 0) ? 'engo' : 'stout';
+    },
+    /**
+     * Состав раздела 4.5 из состояния — строки сметы, оговорки и числа для работ.
+     * Что с чем стыкуется — в комментарии к catalog.zone_engo.
+     */
+    getZoneAutoKit: function () {
+        const z = this.za();
+        const sys = this.zoneAutoSystem();
+        const rows = [];   // { item, qty, tip, group }
+        const warns = [];  // янтарные оговорки в шапку раздела
+        const grpDev = "4.5.1. Приборы зональной автоматики";
+        const grpCab = "4.5.2. Провода и кабели (зональная автоматика)";
+        const color = z.color === 'black' ? 'black' : 'white';
+        const num = (v) => Math.max(0, Math.min(this.ZONE_AUTO_MAX, parseInt(v, 10) || 0));
+        const wired = num(z.wired), radio = num(z.radio), heads = num(z.heads), servos = num(z.servos);
+        const add = (item, qty, tip, group) => { if (item && qty > 0) rows.push({ item, qty, tip, group: group || grpDev }); };
+        const withAlts = (item, alts) => {
+            if (!item) return item;
+            const list = (alts || []).filter(a => a && a.id !== item.id);
+            return list.length ? { ...item, alts: list } : item;
+        };
+        let bars = 0, extraMasters = 0, gateway = 0, radioAll = 0, wiredAll = wired;
+        if (sys === 'stout') {
+            // Планка STE-3050 проводная: радиотермостаты сюда не встают — считаем
+            // их проводными и говорим об этом на виду.
+            wiredAll = wired + radio;
+            if (radio > 0) warns.push(`Радиотермостатов к планке у STOUT нет: STE-3050 принимает только проводные. ` +
+                `${radio} ${this.plural(radio, 'радиотермостат посчитан проводным', 'радиотермостата посчитаны проводными', 'радиотермостатов посчитаны проводными')}. ` +
+                `Нужны именно радио — переключите систему на ENGO.`);
+            bars = (wiredAll > 0 || servos > 0) ? Math.max(1, Math.ceil(wiredAll / 8)) : 0;
+            if (bars) add(catalog.wiring_center, bars, `Планка на 8 зон, приводы 230 В. Зон ${wiredAll}, приводов ${servos}.`);
+            if (wiredAll > 0) {
+                const ts = catalog.thermostats_stout || [];
+                const pick = (id) => ts.find(x => x.id === id);
+                // В прайсе STE-3001 назван «термостат тёплого пола 3А», а стоит он
+                // комнатным на планку — подписываем по назначению, артикул тот же.
+                const base0 = color === 'black' ? pick('STE-3002-331222') : pick('STE-3001-130210');
+                const base = base0 ? { ...base0, name: color === 'black'
+                    ? 'Термостат комнатный STOUT STE-3002, 3 А, ON/OFF, электронный, чёрный'
+                    : 'Термостат комнатный STOUT STE-3001, 3 А, ON/OFF, белый' } : null;
+                const alts = color === 'black'
+                    ? [pick('STE-2001-130220'), pick('STE-2002-331222')]
+                    : [pick('STE-3002-331212'), pick('STE-2001-130210'), pick('STE-2002-331212')];
+                add(withAlts(base, alts), wiredAll, `Проводной, сухой контакт на планку. В замене — с дисплеем и сенсорный.`);
+            }
+            if (heads > 0) {
+                const head = (catalog.heads || []).find(h => h.type === 'smart');
+                add(head, heads, `Радиоголовка Zigbee на радиаторный клапан M30x1,5. Управление с телефона через шлюз; с планкой не связана.`);
+                gateway = Math.ceil(heads / 15);
+                add(catalog.smart_hub, gateway, `Шлюз Zigbee: до 15 головок на один.`);
+            } else if (z.phone) {
+                warns.push(`Управление с телефона у STOUT есть только у Zigbee-головок (через их шлюз). Планка и проводные термостаты в телефон не выходят — для этого нужна система ENGO.`);
+            }
+        } else {
+            const e = catalog.zone_engo || {};
+            const bar = e.bar || {};
+            // Радиоголовкам нужен хозяин — E25, до 6 головок на один. Хозяином
+            // может быть радиотермостат из заявки; если их меньше — добавляем.
+            const needMasters = heads > 0 ? Math.ceil(heads / 6) : 0;
+            extraMasters = Math.max(0, needMasters - radio);
+            radioAll = radio + extraMasters;
+            if (extraMasters > 0) warns.push(`Радиоголовкам ENGO нужен хозяин — терморегулятор E25 (до 6 головок на один). ` +
+                `Радиотермостатов ${radio}, головок ${heads}: добавлен${extraMasters === 1 ? '' : 'о'} ${extraMasters} E25. ` +
+                `Головки должны стоять в тех же комнатах, что и E25.`);
+            const byWired = Math.ceil(wired / (bar.zonesWired || 2));
+            const byRadio = Math.ceil(radioAll / (bar.zonesRadio || 6));
+            const byAct = Math.ceil(servos / (bar.maxActuators || 50));
+            bars = (wired + radioAll + servos > 0) ? Math.max(1, byWired, byRadio, byAct) : 0;
+            if (bars) add(bar, bars, `Планка: 2 проводные зоны + 6 зон Zigbee, до 50 приводов 230 В NC. ` +
+                `Проводных ${wired}, радио ${radioAll}, приводов ${servos}. Термостаты привязываются к планке напрямую, без шлюза.`);
+            if (bars > 1 && byWired === bars && byWired > byRadio) warns.push(`Планок ${bars} из-за проводных термостатов: на одной ECB62-ZB только 2 проводные зоны. ` +
+                `Дешевле часть термостатов взять Zigbee (E25).`);
+            const wl = e.wired || [];
+            if (wired > 0) {
+                const wBase = wl.find(x => x.color === color && !x.prog) || wl[0];
+                add(withAlts(wBase, wl.filter(x => x.color === color)), wired, `Проводной, 230 В, на проводную зону планки. В замене — программируемый EASY.`);
+            }
+            const rl = e.radio || [];
+            if (radioAll > 0) {
+                const rBase = rl.find(x => x.color === color && x.heads && x.power === 'bat') || rl[0];
+                const rAlts = rl.filter(x => x.color === color && (heads === 0 || x.heads));
+                add(withAlts(rBase, rAlts), radioAll, heads > 0
+                    ? `Zigbee-зона планки и хозяин радиоголовок (до 6 на один). Поэтому только E25: ENGO ONE головками не управляет.`
+                    : `Zigbee-зона планки, привязка напрямую. В замене — питание 230 В и ENGO ONE с датчиком влажности.`);
+            }
+            if (heads > 0) {
+                const hl = e.heads || [];
+                add(withAlts(hl[0], hl), heads, `Радиоголовка на клапан M30x1,5 (M28 — в замене). Работает в паре с E25 через шлюз.`);
+                gateway = 1;
+            }
+            if (z.phone && !gateway) gateway = 1;
+            if (gateway) add(e.gateway, gateway, heads > 0
+                ? `Шлюз обязателен радиоголовкам; заодно управление с телефона (ENGO Smart).`
+                : `Шлюз для управления с телефона (ENGO Smart). Планке и термостатам он не нужен.`);
+        }
+        if (servos > 0) {
+            // Привод остаётся STOUT при любой системе: планка ENGO принимает
+            // любые 230 В NC. ENGO и ROMMER — в таблице замены (пара ROMMER у
+            // позиции есть и так — для «Аналога»).
+            const act = catalog.actuators;
+            const eAct = (catalog.zone_engo || {}).actuator;
+            const item = act ? withAlts(act, [eAct].concat((catalog.actuators_rommer || []).filter(a => a.voltage === 230))) : eAct;
+            add(item, servos, `На клапан коллектора, 230 В, нормально закрытый. ` +
+                (sys === 'engo' ? `Планка ENGO принимает любые приводы 230 В NC — оставлен STOUT.` : `Под планку STE-3050.`));
+        }
+        let outdoorRow = false;
+        if (z.outdoor) {
+            const o = catalog.zone_outdoor || {};
+            if (z.ctrl === 'thermatic') {
+                warns.push(`Датчик наружной температуры для Thermatic входит в состав автоматики котельной (раздел 2) — включите её; отдельной строкой здесь его нет.`);
+            } else if (z.ctrl === 'other') {
+                warns.push(`Датчик наружной температуры подключается к контроллеру котла, а не к планке. Какой контроллер стоит у клиента — уточните; в прайсе есть датчик MyHeat.`);
+            } else {
+                add(withAlts(o.myheat, [o.myheat_wired]), 1, `Датчик улицы для погодозависимой работы — в контроллер MyHeat, который уже стоит. В замене — проводной NTC в колбе.`);
+                outdoorRow = true;
+            }
+        }
+        // Кабель: проводным термостатам — 15 м на каждый, приводам — 3 м до планки.
+        const cab = catalog.ufh_cables || [];
+        const cTs = cab.find(c => c.id === 'CBL-VVG-3X15-TS');
+        const cSv = cab.find(c => c.id === 'CBL-VVG-2X15-SV');
+        if (wiredAll > 0 && cTs) add(cTs, wiredAll * 15, `${wiredAll} ${this.plural(wiredAll, 'термостат', 'термостата', 'термостатов')} × 15 м до планки.`, grpCab);
+        if (servos > 0 && cSv) add(cSv, servos * 3, `${servos} ${this.plural(servos, 'привод', 'привода', 'приводов')} × 3 м до планки.`, grpCab);
+        return { sys, rows, warns, bars, wired, radio, heads, servos, extraMasters, gateway, wiredAll, radioAll, outdoorRow };
+    },
+    syncZoneAutoUI: function () {
+        const z = this.za();
+        const $ = (id) => document.getElementById(id);
+        if ($('chk_zone_auto')) $('chk_zone_auto').checked = !!z.on;
+        if ($('blk_zone_auto_box')) $('blk_zone_auto_box').style.display = z.on ? 'flex' : 'none';
+        ['wired', 'radio', 'heads', 'servos'].forEach(f => {
+            const el = $('val_zone_' + f);
+            if (el && document.activeElement !== el) el.innerText = parseInt(z[f], 10) || 0;
+        });
+        document.querySelectorAll('.zone-sys-tab').forEach(t => t.classList.toggle('active', t.dataset.sys === (z.sys || 'auto')));
+        document.querySelectorAll('.zone-color-tab').forEach(t => t.classList.toggle('active', t.dataset.color === (z.color || 'white')));
+        document.querySelectorAll('.zone-ctrl-tab').forEach(t => t.classList.toggle('active', t.dataset.ctrl === (z.ctrl || 'myheat')));
+        if ($('chk_zone_outdoor')) $('chk_zone_outdoor').checked = !!z.outdoor;
+        if ($('chk_zone_phone')) $('chk_zone_phone').checked = !!z.phone;
+        if ($('blk_zone_ctrl')) $('blk_zone_ctrl').style.display = z.outdoor ? 'block' : 'none';
+        const autoTab = $('tab_zone_sys_auto');
+        if (autoTab) autoTab.innerText = 'Авто: ' + this.ZONE_AUTO_SYS_NAMES[this.zoneAutoSystem()];
+    },
+    /** Сводка и оговорки под тумблером — тем же приёмом, что у автоматики котельной. */
+    renderZoneAutoInfo: function () {
+        const box = document.getElementById('blk_zone_auto_info');
+        if (!box) return;
+        const z = this.za();
+        if (!z.on) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        const zk = this._zoneKit || this.getZoneAutoKit();
+        const why = z.sys === 'auto' ? (zk.sys === 'engo' ? ' — из-за радиотермостатов' : ' — по умолчанию') : '';
+        let html = `<div style="padding-left:8px; border-left:3px solid var(--primary); color:var(--text-main);">` +
+            `Система: <b>${this.ZONE_AUTO_SYS_NAMES[zk.sys]}</b>${why}. Планок ${zk.bars}, строк в смете ${zk.rows.length}.</div>`;
+        zk.warns.forEach(w => {
+            html += `<div style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${w}</div>`;
+        });
+        box.innerHTML = html;
+        box.style.display = 'block';
+    },
+
     toggleBoilerAuto: function (chk, event) {
         if (!this.checkAccess('pro', event)) {
             if (document.getElementById('chk_boiler_auto')) document.getElementById('chk_boiler_auto').checked = this.state.boilerAuto;
@@ -40904,6 +41215,7 @@ const app = {
         // Полный сброс данных расчета
         this.state = {
             objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            zoneAuto: { on: false, sys: 'auto', wired: 0, radio: 0, heads: 0, servos: 0, outdoor: false, ctrl: 'myheat', phone: false, color: 'white' },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
             accountType: currentAccType,
@@ -42842,6 +43154,7 @@ const app = {
         if (this.state.area > 0 || this.state.calc_id) return false;
         if ((this.state.userAddedEq || []).length || (this.state.userAddedWorks || []).length) return false;
         if ((this.state.rooms || []).length) return false;
+        if (this.zoneAutoOn()) return false;
         return true;
     },
 
@@ -47697,6 +48010,7 @@ const app = {
         "1.4 Автоматика для теплого пола": "4. Водяной тёплый пол",
         "1.4 Электрический тёплый пол": "4. Электрический тёплый пол",
         "1.6 Монтаж снеготаяния": "4.4 Снеготаяние",
+        "1.8 Зональная автоматика": "4.5 Зональная автоматика",
         "1.7 Водонагреватель": "1. Водонагреватель",
         "2.2 Монтаж узла ввода ХВС": "6. Узел ввода ХВС",
         "2.4 Узел ввода воды в квартиру": "6. Узел ввода воды в квартиру"
@@ -56149,6 +56463,9 @@ const app = {
         if (document.getElementById('chk_ufh_auto')) document.getElementById('chk_ufh_auto').checked = this.state.ufhAuto;
         if (document.getElementById('blk_ufh_settings')) document.getElementById('blk_ufh_settings').style.display = this.state.ufhAuto ? 'block' : 'none';
 
+        // Зональная автоматика по заявке — галочка, счётчики, вкладки системы.
+        this.syncZoneAutoUI();
+
         // Синхронизация Автоматики котельной. Саму сводку наполняет render(),
         // здесь только галочка и скрытие панели при выключении.
         if (document.getElementById('chk_boiler_auto')) document.getElementById('chk_boiler_auto').checked = this.state.boilerAuto;
@@ -56429,6 +56746,7 @@ const app = {
         applyLock('blk_sewer_type', 'pro');
         applyLock('chk_ufh_auto', 'pro');
         applyLock('chk_boiler_auto', 'pro');
+        applyLock('chk_zone_auto', 'pro');
         applyLock('chk_leak_protect', 'pro');
         applyLock('chk_air_control', 'pro');
         applyLock('chk_ctrl_panel', 'pro');
@@ -65597,6 +65915,7 @@ const app = {
                 .forEach(r => addToBill(r.item, r.qty, r.desc, r.group));
         }
         this.renderBoilerAutoInfo();
+        this.renderZoneAutoInfo();
 
         // Замечания по дымоходу — в шапку того раздела, где он лежит.
         if (app.chimneyWarns && app.chimneyWarns.length) {
@@ -68280,6 +68599,26 @@ const app = {
                 this.noteBox('error', 'Снеготаяние не подобрано.', 'Проверьте площадь и параметры участка.'));
         }
 
+        // === 4.5 ЗОНАЛЬНАЯ АВТОМАТИКА (ПО ЗАЯВКЕ) ===
+        // Номер внутри четвёртого — по той же причине, что и у снеготаяния.
+        // Состав считает getZoneAutoKit(): система целиком (STOUT или ENGO),
+        // затем планка, термостаты, головки, приводы, датчик улицы и кабель.
+        this._zoneKit = null;
+        if (this.zoneAutoOn()) {
+            currentSectionTitle = "4.5 Зональная автоматика";
+            const zk = this.getZoneAutoKit();
+            this._zoneKit = zk;
+            zk.rows.forEach(r => addToBill(r.item, r.qty, r.tip, r.group));
+            if (zk.rows.length) {
+                // Янтарная: комплект подобран, это оговорки к нему.
+                const _zWarn = this.noteFromList('warn', `Зональная автоматика ${this.ZONE_AUTO_SYS_NAMES[zk.sys]} — на что смотреть.`, zk.warns);
+                flushBill("4.5 Зональная автоматика", _zWarn || null);
+            } else {
+                flushBill("4.5 Зональная автоматика",
+                    this.noteBox('info', 'Зональная автоматика включена, состав пуст.', 'Задайте в панели число термостатов, головок или сервоприводов.'));
+            }
+        }
+
         currentSectionTitle = "5. Внутреннее водоснабжение";
         // Для работ ниже: сколько коллекторов водоснабжения собрано (по линии на
         // ХВС, ГВС и рециркуляцию) и сколько смесителей с горячей водой.
@@ -70027,18 +70366,22 @@ const app = {
             // Автоматику котельной исключаем: привод запорного крана защиты от
             // протечки тоже называется сервоприводом, но его монтаж уже оплачен
             // своей работой в разделе 1.5 — иначе он считался бы дважды.
+            // Зональная автоматика по заявке (4.5) считает свои приводы, головки и
+            // шлюз своей группой работ 1.8 — здесь их не трогаем.
             let servos = this.currentEquipmentList.filter(x => (x.name || '').toLowerCase().includes("сервопривод")
-                && !String(x.group || '').startsWith("2.9.")).reduce((sum, x) => sum + x.q, 0);
+                && !String(x.group || '').startsWith("2.9.") && !String(x.group || '').startsWith("4.5.")).reduce((sum, x) => sum + x.q, 0);
             if (servos > 0) addToWorks("Монтаж сервоприводов", servos, 1000, "шт", autoGroup);
 
             // Монтаж умных термоголовок Zigbee
-            let smartHeads = this.currentEquipmentList.filter(x => (x.name || '').toLowerCase().includes("zigbee") && (x.name || '').toLowerCase().includes("головка")).reduce((sum, x) => sum + x.q, 0);
+            let smartHeads = this.currentEquipmentList.filter(x => (x.name || '').toLowerCase().includes("zigbee") && (x.name || '').toLowerCase().includes("головка")
+                && !String(x.group || '').startsWith("4.5.")).reduce((sum, x) => sum + x.q, 0);
             if (smartHeads > 0) {
                 addToWorks("Монтаж умной термоголовки Zigbee", smartHeads, 1000, "шт", autoGroup);
             }
 
             // Монтаж беспроводного шлюза Zigbee
-            let gateways = this.currentEquipmentList.filter(x => (x.name || '').toLowerCase().includes("шлюз zigbee")).reduce((sum, x) => sum + x.q, 0);
+            let gateways = this.currentEquipmentList.filter(x => (x.name || '').toLowerCase().includes("шлюз zigbee")
+                && !String(x.group || '').startsWith("4.5.")).reduce((sum, x) => sum + x.q, 0);
             if (gateways > 0) {
                 addToWorks("Монтаж и настройка беспроводного шлюза Zigbee", gateways, 2500, "шт", autoGroup);
             }
@@ -70049,6 +70392,27 @@ const app = {
                 addToWorks("Монтаж закладной для датчика пола", therms, 1000, "шт", autoGroup);
                 addToWorks("Прокладка провода на термостаты", therms * 15, 100, "м.p.", autoGroup);
             }
+        }
+
+        // ==========================================
+        // БЛОК: 1.8 Зональная автоматика (по заявке)
+        // ==========================================
+        // Количества — из того же расчёта, что и раздел 4.5 (getZoneAutoKit),
+        // своей группой: 1.4 считает сервоприводы и головки по всей смете.
+        if (this.zoneAutoOn() && this._zoneKit) {
+            const zk = this._zoneKit;
+            const zg = "1.8 Зональная автоматика";
+            if (zk.bars > 0) addToWorks("Монтаж планки зональной автоматики", zk.bars, 5000, "шт", zg);
+            if (zk.wiredAll > 0) {
+                addToWorks("Монтаж проводного термостата", zk.wiredAll, 4500, "шт", zg);
+                addToWorks("Прокладка провода к проводным термостатам", zk.wiredAll * 15, 100, "м.п.", zg);
+            }
+            if (zk.radioAll > 0) addToWorks("Монтаж радиотермостата", zk.radioAll, 2500, "шт", zg);
+            if (zk.heads > 0) addToWorks("Монтаж радиоголовки на радиатор", zk.heads, 1000, "шт", zg);
+            if (zk.servos > 0) addToWorks("Монтаж сервопривода на коллектор", zk.servos, 1000, "шт", zg);
+            if (zk.gateway > 0) addToWorks("Монтаж и настройка шлюза Zigbee", zk.gateway, 2500, "шт", zg);
+            if (zk.outdoorRow) addToWorks("Монтаж датчика наружной температуры", 1, 2500, "шт", zg);
+            if (zk.rows.length) addToWorks("Пусконаладка зональной автоматики", 1, 6000, "компл", zg);
         }
 
         // ==========================================
