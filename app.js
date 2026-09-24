@@ -5675,7 +5675,7 @@ const app = {
             + rbtn('seller', 'Продавец', role === 'seller', "app.setLocalRole('seller')", 'Сфера: продажа без монтажа — включает оформление «магазин» (повторное нажатие — как в базе)')
             + rbtn('manager', 'Менеджер', mgr, 'app.toggleLocalManager()', 'Роль «менеджер дистрибьютора» поверх сферы: панель управления в виде менеджера')
             + `<span style="opacity:.35; margin: 0 2px;">|</span>`
-            + rbtn('yandex', 'Яндекс', this.isYandexTheme(), 'app.toggleYandexTheme()', 'Пробное оформление по образцу ya.ru — только на этой машине');
+            + rbtn('yandex', 'Яндекс', this.isYandexTheme(), 'app.toggleLocalYandexTheme()', 'Пробное оформление по образцу ya.ru — только на этой машине, общую настройку в админке не трогает');
     },
 
     setLocalRole: function (val) {
@@ -15033,7 +15033,8 @@ const app = {
     // body, все правила в style.css. Сняли сферу — класс уходит при следующем
     // syncRoleTabs, расчёт об этом не знает. Тёмная тема поверх магазинной не
     // накладывается: два набора переопределений друг на друге читались бы плохо.
-    isShopTheme: function () { return this.isSellerOnly(); },
+    // Тема «Яндекс» главнее магазинной: если её включили продавцам, магазинная уходит
+    isShopTheme: function () { return this.isSellerOnly() && !this.isYandexTheme(); },
 
     syncShopTheme: function () {
         const on = this.isShopTheme();
@@ -15045,65 +15046,115 @@ const app = {
 
     // ═══════════════ Тема «Яндекс» (пробная) ═══════════════
     // Оформление по образцу ya.ru: шрифт, серые плашки, значки в кружках,
-    // кнопки-пилюли; светлая и ночная. Пока только у администратора: кнопка «Я»
-    // в шапке сайта и в шапке панели управления, по ней тема включается и
-    // выключается. Выбор личный и хранится на этом устройстве (localStorage
-    // ui_theme_yandex), в базу не пишется — это пробный вариант, не общий
-    // выключатель. Только стили: класс theme-yandex на body, правила в
+    // кнопки-пилюли, логотип HeatCalc вместо брендов; светлая и ночная.
+    // Включается только из панели управления, вкладка «Тарифы», блок
+    // «Оформление „Яндекс“»: администратор отмечает, каким группам её показывать —
+    // администраторам, монтажникам, продавцам, менеджерам. По умолчанию никому
+    // (24.09.2026, решение владельца: «пока только у админа», кнопки в шапке не
+    // надо). Общая настройка app_settings.ui_theme.yandex = { admins, installers,
+    // sellers, managers }. Только стили: класс theme-yandex на body, правила в
     // style.css (блок «ТЕМА „ЯНДЕКС“»). Ночная тема работает поверх.
-    // Локально (localhost) кнопка видна без входа — та же панель, что и тариф.
-    YANDEX_THEME_KEY: 'ui_theme_yandex',
+    // Локально (localhost) без базы — кнопка «Яндекс» в панели тарифа
+    // (localStorage local_yandex_theme), включает тему на этой машине.
+    YANDEX_THEME_GROUPS: [
+        { key: 'admins', label: 'Администраторы', hint: 'владелец и администраторы панели управления' },
+        { key: 'installers', label: 'Монтажники', hint: 'все вошедшие монтажники (сфера «монтаж»)' },
+        { key: 'sellers', label: 'Продавцы', hint: 'сфера «продажа» без монтажа — вместо оформления магазина' },
+        { key: 'managers', label: 'Менеджеры и наблюдатели', hint: 'менеджеры дистрибьюторов и наблюдатели панели' }
+    ],
 
-    canUseYandexTheme: function () {
-        if (this.isLocalhost()) return true;
+    yandexThemeConfig: function () {
+        const ui = this.appSettings && this.appSettings.ui_theme;
+        return (ui && ui.yandex && typeof ui.yandex === 'object') ? ui.yandex : {};
+    },
+
+    // К какой группе настройки относится текущий человек; без входа — ни к какой
+    yandexThemeGroupOfMe: function () {
+        const u = this.state.tgUser || this.state.user;
+        if (!u) return null;
         const role = this.getAdminRole();
-        return role === 'super_admin' || role === 'admin';
+        if (role === 'super_admin' || role === 'admin') return 'admins';
+        if (role === 'manager' || role === 'viewer') return 'managers';
+        return this.isSellerOnly() ? 'sellers' : 'installers';
     },
 
     isYandexTheme: function () {
-        if (!this.canUseYandexTheme()) return false;
-        try { return localStorage.getItem(this.YANDEX_THEME_KEY) === '1'; } catch (e) { return false; }
+        if (this.isLocalhost()) {
+            try { if (localStorage.getItem('local_yandex_theme') === '1') return true; } catch (e) { }
+        }
+        const g = this.yandexThemeGroupOfMe();
+        return !!(g && this.yandexThemeConfig()[g] === true);
     },
 
     syncYandexTheme: function () {
-        const can = this.canUseYandexTheme();
-        const on = can && this.isYandexTheme();
+        const on = this.isYandexTheme();
         document.body.classList.toggle('theme-yandex', on);
-        ['btn_yandex_theme', 'btn_yandex_theme_admin'].forEach(id => {
-            const b = document.getElementById(id);
-            if (!b) return;
-            b.style.display = can ? 'flex' : 'none';
-            b.classList.toggle('is-on', on);
-            b.setAttribute('aria-pressed', on ? 'true' : 'false');
-            b.title = on
-                ? 'Оформление «Яндекс» включено — нажмите, чтобы вернуть обычное'
-                : 'Оформление «Яндекс» (пробное, видно только администратору) — нажмите, чтобы включить';
-        });
         // Цвет строки состояния на телефоне (PWA, вкладка Android)
         const meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute('content', !on ? '#2563EB' : (document.body.classList.contains('dark-mode') ? '#161617' : '#FFFFFF'));
     },
 
-    toggleYandexTheme: function () {
-        if (!this.canUseYandexTheme()) return;
-        let on;
+    toggleLocalYandexTheme: function () {
+        if (!this.isLocalhost()) return;
         try {
-            on = localStorage.getItem(this.YANDEX_THEME_KEY) !== '1';
-            if (on) localStorage.setItem(this.YANDEX_THEME_KEY, '1');
-            else localStorage.removeItem(this.YANDEX_THEME_KEY);
-        } catch (e) { on = false; }
-        this.syncYandexTheme();
-        if (this.isLocalhost()) this.mountLocalTariffSwitch();
-        let el = document.getElementById('theme_toast');
-        if (!el) {
-            el = document.createElement('div');
-            el.id = 'theme_toast';
-            document.body.appendChild(el);
+            if (localStorage.getItem('local_yandex_theme') === '1') localStorage.removeItem('local_yandex_theme');
+            else localStorage.setItem('local_yandex_theme', '1');
+        } catch (e) { }
+        this.mountLocalTariffSwitch();
+        this.syncShopTheme();
+    },
+
+    // Переключатель группы в блоке «Оформление „Яндекс“» вкладки «Тарифы».
+    // Остальные ключи ui_theme (если появятся) не трогаем — сливаем поверх.
+    setYandexThemeGroup: async function (key, on) {
+        if (!this.canEditTariffs()) { app.alert('Менять оформление может только администратор.'); return; }
+        if (!this.YANDEX_THEME_GROUPS.some(g => g.key === key)) return;
+        const ui = Object.assign({}, (this.appSettings && this.appSettings.ui_theme) || {});
+        ui.yandex = Object.assign({}, this.yandexThemeConfig(), { [key]: !!on });
+        // Сразу на экран, не дожидаясь базы
+        this.appSettings = Object.assign({}, this.appSettings, { ui_theme: ui });
+        this.syncShopTheme();
+        this.renderAdminTariffs();
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'ui_theme', value: ui, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+        } catch (e) {
+            console.error('[оформление] запись не прошла:', e);
+            await this.loadAppSettings(true);
+            this.syncShopTheme();
+            this.renderAdminTariffs();
+            app.alert('Не удалось сохранить оформление: ' + (e.message || e));
         }
-        el.innerHTML = `<span class="ct-icon">${on ? '🟡' : '⚪'}</span><div><div class="ct-title">Оформление: ${on ? 'Яндекс' : 'обычное'}</div><div class="ct-sub">${on ? 'Пробная тема, только на этом устройстве' : 'Вернули обычное оформление калькулятора'}</div></div>`;
-        el.className = 'contest-toast visible no-print';
-        clearTimeout(this._themeToastTimer);
-        this._themeToastTimer = setTimeout(() => el.classList.remove('visible'), 3000);
+    },
+
+    adminYandexThemeBlockHtml: function () {
+        const canEdit = this.canEditTariffs();
+        const cfg = this.yandexThemeConfig();
+        const rows = this.YANDEX_THEME_GROUPS.map(g => {
+            const on = cfg[g.key] === true;
+            return `<div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-top:1px solid var(--border);">
+                <label class="switch" title="${on ? 'Включено — нажмите, чтобы вернуть этой группе обычное оформление' : 'Выключено — нажмите, чтобы показать этой группе тему «Яндекс»'}">
+                    <input type="checkbox" ${on ? 'checked' : ''} ${canEdit ? '' : 'disabled'} onchange="app.setYandexThemeGroup('${g.key}', this.checked)">
+                    <span class="slider"></span>
+                </label>
+                <div style="font-size:12.5px; line-height:1.4;"><b style="color:var(--text-main);">${g.label}</b>
+                    <span style="color:var(--text-sec);"> — ${g.hint}</span></div>
+            </div>`;
+        }).join('');
+        return `
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
+                <h3 style="margin:0; color:var(--text-main);">🎨 Оформление «Яндекс»</h3>
+            </div>
+            <div style="padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg); max-width:900px;">
+                <div style="font-size:12.5px; line-height:1.5; color:var(--text-sec); margin-bottom:6px;">
+                    Пробная тема по образцу ya.ru: шрифт, серые плашки, значки в кружках, кнопки-пилюли, логотип HeatCalc вместо брендов;
+                    ночная тема работает поверх. Отметьте, кому её показывать. Ничего не отмечено — у всех обычное оформление.
+                    ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
+                </div>
+                ${rows}
+            </div>`;
     },
 
     // Логотип в левом углу шапки. Обычно — по бренду (STOUT / ROMMER), под
@@ -15117,7 +15168,10 @@ const app = {
         let src, alt;
         // Под темой «магазин» — логотип дистрибьютора, если он задан, иначе ТЕРЕМ
         const _brand = this.distBrand && this.distBrand();
-        if (this.isShopTheme() && _brand && _brand.logo) { src = _brand.logo; alt = _brand.name || 'Дистрибьютор'; }
+        // Под темой «Яндекс» — пламя HeatCalc (подпись «HeatCalc.ru» дорисовывает style.css),
+        // без брендов: владелец 24.09.2026 — «STOUT и ROMMER не используй, ТЕРЕМ оставляй»
+        if (this.isYandexTheme()) { src = 'img/logo_hc_flame.png'; alt = 'HeatCalc.ru'; }
+        else if (this.isShopTheme() && _brand && _brand.logo) { src = _brand.logo; alt = _brand.name || 'Дистрибьютор'; }
         else if (this.isShopTheme()) { src = 'img/terem_logo.svg'; alt = 'ТЕРЕМ'; }
         else if (this.state.brandMode === 'rommer') { src = 'img/rommer_logo.jpg'; alt = 'ROMMER'; }
         else { src = 'img/stout_logo.png'; alt = 'STOUT'; }
@@ -19967,6 +20021,7 @@ const app = {
                 <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
                 <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
             </div>
+            ${this.adminYandexThemeBlockHtml()}
             ${this.adminTabsTableHtml(esc, th, td, sep)}`;
         this.renderAdminTariffsStatus();
     },

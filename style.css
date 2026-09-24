@@ -14515,10 +14515,11 @@ body.dark-mode #hyd_card .hyd-card__p {
 }
 
 /* ================== ТЕМА «ЯНДЕКС» (пробная, пока только администратору) ==================
-   Включается классом body.theme-yandex из app.js (syncYandexTheme) по кнопке «Я»
-   в шапке сайта и в шапке панели управления. Кнопку видят только администраторы
-   (getAdminRole admin / super_admin) и localhost; выбор хранится на этом
-   устройстве (localStorage ui_theme_yandex), в базу не пишется. Обычная ночная
+   Включается классом body.theme-yandex из app.js (syncYandexTheme). Кому
+   показывать, решает администратор в панели управления, вкладка «Тарифы»,
+   блок «Оформление „Яндекс“» (app_settings.ui_theme.yandex: администраторы,
+   монтажники, продавцы, менеджеры); на localhost — кнопка «Яндекс» в панели
+   тарифа. Кнопок в шапке нет намеренно (владелец, 24.09.2026). Обычная ночная
    тема работает поверх: body.theme-yandex.dark-mode переопределяет переменные и
    те цвета, что в базовом файле прописаны числом. Печать и PDF не затронуты.
 
@@ -14527,25 +14528,30 @@ body.dark-mode #hyd_card .hyd-card__p {
    #9C9C9D, логотип красный #F8604A, всё — круглое: значки в серых кружках,
    кнопки-пилюли, строка поиска скруглена целиком. Светлая тема ya.ru: белый
    фон, серые плашки rgba(0,0,0,.06), чёрный текст, красный #FC3F1D, жёлтый
-   #FFDB4D у главной кнопки. Шрифт сайта — YS Text, он несвободный; замена —
-   Golos Text (OFL, Paratype), файлы в fonts/, качаются только под темой.
+   #FFDB4D у главной кнопки. Шрифт сайта — YS Text, он несвободный; сам ya.ru
+   в запасе держит Arial ('YS Text', Arial, sans-serif), и YS Text — тот же
+   нейтральный гротеск. Поэтому стек: YS Text, если стоит в системе, иначе
+   Arial; где Arial нет (Android), — Arimo (OFL, метрический двойник Arial),
+   файлы в fonts/, качаются только под темой. Первый вариант с Golos Text
+   владелец отверг: «шрифты нечитаемые». Заголовки у Яндекса без капса и
+   разрядки, вес 500–700 — капс базы под темой снимается.
    Значки штатные (те же контурные, Feather), только тоньше и в кружках. */
 
 @font-face {
-    font-family: 'Golos Text';
+    font-family: 'Arimo';
     font-style: normal;
-    font-weight: 400 900;
+    font-weight: 400 700;
     font-display: swap;
-    src: url('fonts/golos-text-cyrillic.woff2?v=1') format('woff2');
+    src: url('fonts/arimo-cyrillic.woff2?v=1') format('woff2');
     unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 
 @font-face {
-    font-family: 'Golos Text';
+    font-family: 'Arimo';
     font-style: normal;
-    font-weight: 400 900;
+    font-weight: 400 700;
     font-display: swap;
-    src: url('fonts/golos-text-latin.woff2?v=1') format('woff2');
+    src: url('fonts/arimo-latin.woff2?v=1') format('woff2');
     unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
@@ -14570,7 +14576,7 @@ body.dark-mode #hyd_card .hyd-card__p {
         --note-info-bg: #F2F2F2;
         --note-info-text: #000000;
         --note-info-border: #D9D9D9;
-        --ya-font: 'Golos Text', 'YS Text', Arial, sans-serif;
+        --ya-font: 'YS Text', Arial, 'Arimo', 'Helvetica Neue', Helvetica, sans-serif;
         --ya-red: #FC3F1D;
         --ya-yellow: #FFDB4D;
         --ya-chip: #F2F2F2;
@@ -14627,14 +14633,89 @@ body.dark-mode #hyd_card .hyd-card__p {
         font-family: var(--ya-font) !important;
     }
 
-    /* У Яндекса заголовки не кричат: без разрядки, плотный вес */
+    /* У Яндекса заголовки не кричат: обычный регистр, без разрядки, вес 600–700.
+       База пишет заголовки капсом 800 — на Arial такой капс читается тяжело. */
+    body.theme-yandex h2,
+    body.theme-yandex h3,
     body.theme-yandex .doc-title,
-    body.theme-yandex .output-panel h2,
-    body.theme-yandex .output-panel h3,
     body.theme-yandex .auth-modal-title,
     body.theme-yandex .lk-section-head h4 {
+        text-transform: none;
         letter-spacing: 0;
         font-weight: 700;
+    }
+
+    body.theme-yandex .doc-title {
+        font-size: 17px;
+    }
+
+    body.theme-yandex .input-panel h3 {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    /* Подписи и служебные строки таблицы: обычный регистр, вес 600, кегль чуть крупнее */
+    body.theme-yandex .lbl-sub,
+    body.theme-yandex .sku-label,
+    body.theme-yandex .inv-table th,
+    body.theme-yandex .row-sec td,
+    body.theme-yandex .group-header td,
+    body.theme-yandex .sec-analog-label,
+    body.theme-yandex .sec-toggle-label {
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 600;
+    }
+
+    body.theme-yandex .inv-table th {
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    body.theme-yandex .row-sec td {
+        font-size: 12.5px;
+    }
+
+    body.theme-yandex .group-header td {
+        font-size: 11.5px;
+    }
+
+    body.theme-yandex .sec-analog-label,
+    body.theme-yandex .sec-toggle-label {
+        font-size: 10px;
+    }
+
+    /* Оранжевый на сером сливается — под темой акцентный красный ya.ru */
+    body.theme-yandex .sec-analog-badge.active .sec-analog-label,
+    body.theme-yandex #anim_works_sum,
+    body.theme-yandex .m-total-work span {
+        color: var(--ya-red) !important;
+    }
+
+    /* ---------- Логотип: пламя HeatCalc и подпись, без брендов ----------
+       Картинку ставит app.syncTopLogo (img/logo_hc_flame.png — пламя из
+       logo_HC.png без подписи: на 40 px подпись превращалась в кашу). Слово
+       рядом дорисовываем стилем, шрифтом темы — как «Яндекс» рядом с «Я». */
+    body.theme-yandex .site-header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    body.theme-yandex .site-header-left::after {
+        content: 'HeatCalc';
+        font-family: var(--ya-font);
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        color: var(--text-main);
+        line-height: 1;
+        white-space: nowrap;
+    }
+
+    body.theme-yandex .stout-logo-img {
+        max-height: 34px;
+        max-width: 34px;
     }
 
     /* ---------- Шапка ---------- */
@@ -15180,18 +15261,5 @@ body.dark-mode #hyd_card .hyd-card__p {
 
     body.theme-yandex.dark-mode .admin-chat-bubble.from-admin .chat-quote {
         background: rgba(0, 0, 0, 0.08);
-    }
-}
-
-/* Вторая кнопка в шапке панели управления — «Я», левее переключателя темы.
-   Показ (display) ставит app.syncYandexTheme: только администратору. */
-#admin_modal_overlay .admin-yandex-btn {
-    right: 90px;
-    display: none;
-}
-
-@media screen and (max-width: 899.98px) {
-    #admin_modal_overlay .admin-yandex-btn {
-        right: 70px !important;
     }
 }
