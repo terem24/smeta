@@ -37396,6 +37396,43 @@ const app = {
         document.querySelectorAll('.zone-link-tab').forEach(t => t.classList.toggle('active', t.dataset.link === z.link));
         if ($('blk_zone_ctrl_type')) $('blk_zone_ctrl_type').style.display = z.link === 'wired' ? 'block' : 'none';
     },
+    /**
+     * Пояснение к разделу 4.5 для клиента: как подобрано и как будет работать.
+     * Печатается в КП (класс sec-explain, не плашка), без марок и артикулов —
+     * они и так в строках сметы.
+     */
+    zoneAutoExplainHtml: function (zk) {
+        const z = this.za();
+        const p = (n, a, b, c) => `${n} ${this.plural(n, a, b, c)}`;
+        let how;
+        if (zk.house) {
+            const h = zk.house;
+            const parts = [`привод на каждый выход коллектора (тёплый пол ${h.loops}${z.radMode === 'servo' ? `, радиаторы ${h.devs}` : ''})`];
+            if (zk.wiredAll + zk.radioAll > 0) parts.push(`термостат в каждую комнату (${zk.wiredAll + zk.radioAll}${zk.radioAll ? ', радио' : ', проводные'})`);
+            if (zk.heads > 0) parts.push(`головка на каждый прибор (${zk.heads})`);
+            how = `из подобранного: ${parts.join('; ')}.`;
+        } else {
+            const parts = [];
+            if (zk.wired) parts.push(p(zk.wired, 'проводной термостат', 'проводных термостата', 'проводных термостатов'));
+            if (zk.radio) parts.push(p(zk.radio, 'радиотермостат', 'радиотермостата', 'радиотермостатов'));
+            if (zk.heads) parts.push(p(zk.heads, 'радиоголовка', 'радиоголовки', 'радиоголовок'));
+            if (zk.servos) parts.push(p(zk.servos, 'сервопривод', 'сервопривода', 'сервоприводов'));
+            how = `по заявке: ${parts.join(', ')}.`;
+        }
+        how += ` ${this.plural(zk.bars, 'Планка', 'Планки', 'Планок')} ${zk.bars} — по числу зон и приводов.`;
+        let works;
+        if (zk.sys === 'stout') {
+            works = `термостат в комнате замыкает контакт на планке, планка открывает сервоприводы петель этой комнаты и включает насос; когда все зоны прогреты, насос останавливается.` +
+                (zk.heads > 0 ? ` Радиоголовки держат температуру радиаторов по своей уставке и управляются со смартфона через шлюз.` : '');
+        } else {
+            works = `проводные термостаты подключены к планке кабелем, радиотермостаты — по радио напрямую, без интернета; по сигналу термостата планка открывает приводы контуров комнаты и даёт котлу команду греть.` +
+                (zk.heads > 0 ? ` Радиоголовки держат температуру радиаторов по уставке своего радиотермостата (до 6 головок на один) и управляются с телефона через шлюз.` : '');
+        }
+        const note = zk.fromReq
+            ? ` <b>Уточнить у заказчика:</b> в каких комнатах стоят термостаты и головки${zk.heads > 0 && zk.radioAll > 0 ? ' — головки должны быть в тех же комнатах, что и радиотермостаты' : ''}.`
+            : '';
+        return `<div class="sec-explain"><b>Как подобрано:</b> ${how} <b>Как работает:</b> ${works}${note}</div>`;
+    },
     /** Сводка состава под тумблером — тем же приёмом, что у автоматики котельной. */
     renderZoneAutoInfo: function () {
         this.syncZoneAutoUI();
@@ -62614,13 +62651,18 @@ const app = {
         const _objChip = _flatSum
             ? `<span class="param-item">🏢 Квартира: <b>${this.state.area} м²</b> (${this.flatPositionName()}${this.state.flatCorner ? ', угловая' : ''})</span>
             <span class="param-item">🚪 Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
-            : `<span class="param-item">🏠 Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
-            <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`;
+            : (parseFloat(this.state.area) > 0
+                ? `<span class="param-item">🏠 Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
+            <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`
+                // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
+                // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
+                : `<span class="param-item">📋 Объект: <b>по заявке</b></span>`);
+        const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
             <span class="param-item">🔖 № КП: <b>${this.kpNumber() || '—'}</b></span>
             ${this.cheapModeOn() ? '<span class="param-item">💡 Вариант: <b>подешевле</b></span>' : ''}
             ${_objChip}
-            <span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>
+            ${_hasArea ? `<span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>` : ''}
             <span class="param-item">📍 Регион: <b>${regionName}</b></span>
             <span class="param-item param-date calculation-date">📅 Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
         `;
@@ -63815,7 +63857,8 @@ const app = {
                     let headStyle = `style="background:var(--surface-light); border: ${dashStyle}; color:var(--text-main);"`;
                     if (!isCollapsed) headStyle = `style="background:var(--surface-light); border: ${dashStyle}; border-bottom: none; color:var(--text-main);"`;
 
-                    rows += `<tr class="group-header" ${headStyle} onclick="app.toggleGroup('${groupId}')" title="Свернуть/Развернуть"><td colspan="${titleColSpan}" style="text-align:left; padding-left:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><b>${arrow} ${icon} Детализация</b></td><td class="col-unit" style="color:#9CA3AF; font-size:10px;">${txtUnit}</td><td class="col-qty" style="font-weight:700;">${txtQty}</td><td class="col-price"></td><td class="col-sum">${txtSum}</td></tr>`;
+                    // works-detail: строка-кнопка «свернуть/развернуть», в печати ей делать нечего.
+                    rows += `<tr class="group-header works-detail" ${headStyle} onclick="app.toggleGroup('${groupId}')" title="Свернуть/Развернуть"><td colspan="${titleColSpan}" style="text-align:left; padding-left:10px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><b>${arrow} ${icon} Детализация</b></td><td class="col-unit" style="color:#9CA3AF; font-size:10px;">${txtUnit}</td><td class="col-qty" style="font-weight:700;">${txtQty}</td><td class="col-price"></td><td class="col-sum">${txtSum}</td></tr>`;
                 }
 
                 // Рендер самих строк
@@ -69763,9 +69806,10 @@ const app = {
             this.renderZoneAutoInfo();
             zk.rows.forEach(r => addToBill(r.item, r.qty, r.tip, r.group));
             if (zk.rows.length) {
-                // Янтарная: комплект подобран, это оговорки к нему.
-                const _zWarn = this.noteFromList('warn', `Автоматика ${this.ZONE_AUTO_SYS_NAMES[zk.sys]} — на что смотреть.`, zk.warns);
-                flushBill("4.5 Автоматика отопления", _zWarn || null);
+                // Пояснение для клиента печатается в КП; янтарная плашка — оговорки,
+                // только на экране (в печати плашки скрыты).
+                const _zWarn = this.noteFromList('warn', `Автоматика — на что смотреть.`, zk.warns);
+                flushBill("4.5 Автоматика отопления", this.zoneAutoExplainHtml(zk) + (_zWarn || ''));
             } else {
                 flushBill("4.5 Автоматика отопления",
                     this.noteBox('info', 'Автоматика включена, состав пуст.', 'Задайте в панели число термостатов, сервоприводов или радиоголовок.'));

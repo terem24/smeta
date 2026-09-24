@@ -2315,6 +2315,34 @@ body.menu-open .mobile-menu-backdrop {
     margin-top: 4px;
 }
 
+/* Пояснение к разделу для клиента: как подобрано и как работает. В отличие от
+   плашек (.note-box) печатается в КП — hide-warns-print его не трогает. */
+.sec-explain {
+    display: block;
+    margin-top: 6px;
+    padding: 7px 10px;
+    border-left: 3px solid var(--primary);
+    background: var(--primary-light);
+    border-radius: 0 6px 6px 0;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-main);
+    text-transform: none;
+    letter-spacing: normal;
+    text-align: left;
+    white-space: normal;
+    cursor: default;
+}
+
+.sec-explain b {
+    font-weight: 700;
+}
+
+body.dark-mode .sec-explain {
+    background: #161616;
+}
+
 .note-box .note-ico {
     flex-shrink: 0;
     font-size: 12px;
@@ -2708,13 +2736,24 @@ body.html2pdf-printing .note-box .note-tip .tooltip-content b { color: inherit !
     }
 
 
+    /* !important: базовое правило .price-edit объявлено ниже по файлу и без него
+       перебивало печатное — цены работ уходили в PDF с пунктиром. */
     .price-edit {
-        border-bottom: none;
-        color: #000;
+        border-bottom: none !important;
+        color: #000 !important;
     }
 
-    .print-hide {
+    .print-hide,
+    .hc-cookie-banner,
+    .inv-table tr.works-detail,
+    tr.works-detail {
         display: none !important;
+    }
+
+    .sec-explain {
+        background: #f3f3f3 !important;
+        border-left-color: #000 !important;
+        color: #000 !important;
     }
 
     .doc-footer {
@@ -15132,6 +15171,9 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
 .cheaper-print { display: none; }
 @media print {
     .cheaper-print { display: block; page-break-before: always; padding-top: 12px; font-size: 11px; color: #000; }
+    /* Пустой блок (режим «Подешевле» выключен) печататься не должен: с разрывом
+       страницы перед собой он уносил «Итого» и QR на отдельный лист. */
+    .cheaper-print:empty { display: none !important; break-before: auto !important; page-break-before: auto !important; }
     .cheaper-print .cr-scheme { border-left-color: #000; background: #f3f3f3; }
     .cheaper-print .cr-table th, .cheaper-print .cr-table td { border-bottom: 1px solid #ccc; }
     .cheaper-print .cr-table tr.cr-sec td { background: #eee; }
