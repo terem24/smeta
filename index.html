@@ -2694,23 +2694,26 @@
 
                 <div id="auth_form_view" style="display:none;">
                 <div id="auth_form_container">
-                    <!-- На входе поля без подписей, с плейсхолдерами «Почта»/«Пароль», как у
-                         vc.ru; подпись и подробный плейсхолдер остаются на регистрации
-                         (переключает app.syncAuthChrome) -->
-                    <label class="reg-field-label" id="auth_email_label" style="text-align:left;">Email</label>
+                    <!-- Поля без подписей, с плейсхолдерами внутри («Почта», «Пароль»,
+                         «Промокод магазина») — как у vc.ru, на обеих вкладках -->
                     <input type="email" id="auth_email_input" class="auth-input" placeholder="Почта" style="max-width:100%; margin:0 0 12px;">
                     <div id="login_fields">
                         <div style="position:relative;">
-                            <input type="password" id="auth_password_input" class="auth-input" placeholder="Пароль" autocomplete="off" oninput="app.checkPasswordLayout(this)" style="max-width:100%; margin:0 0 12px; padding-right:44px;">
+                            <input type="password" id="auth_password_input" class="auth-input" placeholder="Пароль" autocomplete="off" oninput="app.checkPasswordLayout(this)" style="max-width:100%; margin:0 0 12px; padding-right:48px;">
                             <button type="button" onclick="app.togglePasswordEye('auth_password_input', this)" aria-label="Показать пароль"
-                                style="position:absolute; top:0; right:2px; height:46px; width:40px; border:none; background:transparent; color:var(--text-sec); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">
+                                style="position:absolute; top:0; right:2px; height:54px; width:44px; border:none; background:transparent; color:var(--text-sec); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                             </button>
                         </div>
                     </div>
                     <div id="register_fields" style="display: none; text-align:left;">
-                        <label class="reg-field-label" style="text-align:left;">Пароль</label>
-                        <input type="text" id="auth_reg_password" class="auth-input" placeholder="Придумайте пароль" autocomplete="off" oninput="app.checkPasswordLayout(this)" style="max-width:100%; margin:0 0 12px;">
+                        <div style="position:relative;">
+                            <input type="password" id="auth_reg_password" class="auth-input" placeholder="Пароль" autocomplete="off" oninput="app.checkPasswordLayout(this)" style="max-width:100%; margin:0 0 12px; padding-right:48px;">
+                            <button type="button" onclick="app.togglePasswordEye('auth_reg_password', this)" aria-label="Показать пароль"
+                                style="position:absolute; top:0; right:2px; height:54px; width:44px; border:none; background:transparent; color:var(--text-sec); cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
 
                         <!-- Промокод магазина-партнёра. Подставляется сам, если сайт открыли
                              по ссылке менеджера (?ref=КОД, см. app.captureInvite). Проверяется
@@ -2718,10 +2721,9 @@
                              в базе, чтобы неверный код не тратил месячный лимит писем.
                              Промокод дистрибьютора по-прежнему можно ввести и позже,
                              в анкете кабинета или в окне тарифов. -->
-                        <label class="reg-field-label" style="text-align:left;">Промокод магазина</label>
-                        <input type="text" id="auth_reg_promo" class="auth-input" placeholder="Например, SHOP-07" maxlength="32" autocomplete="off"
+                        <input type="text" id="auth_reg_promo" class="auth-input" placeholder="Промокод магазина" maxlength="32" autocomplete="off"
                             oninput="this.value = this.value.toUpperCase()"
-                            style="max-width:100%; margin:0 0 12px; text-transform:uppercase; letter-spacing:0.04em;">
+                            style="max-width:100%; margin:0 0 12px; letter-spacing:0.04em;">
 
                         <!-- Анкета (ФИО, телефон, дата рождения, сфера, регион и город) больше
                              не спрашивается при регистрации: её обязательно заполняют сразу после

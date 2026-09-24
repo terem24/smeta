@@ -34245,12 +34245,6 @@ const app = {
         // На почтовой форме логотип не показываем — только заголовок, как у vc.ru
         const logo = document.getElementById('auth_logo_tile');
         if (logo) logo.style.display = view === 'form' ? 'none' : '';
-        // Поля входа — без подписей, с плейсхолдером «Почта»; на регистрации
-        // подпись и подробный плейсхолдер остаются (полей там три)
-        const emailLabel = document.getElementById('auth_email_label');
-        if (emailLabel) emailLabel.style.display = tab === 'register' ? 'block' : 'none';
-        const emailInput = document.getElementById('auth_email_input');
-        if (emailInput) emailInput.placeholder = tab === 'register' ? 'Введите ваш Email' : 'Почта';
         const back = document.getElementById('auth_back_btn');
         if (back) back.style.display = (view === 'form' || tab === 'register') ? 'flex' : 'none';
         const link = 'color: var(--primary); font-weight: 600; text-decoration: none;';
