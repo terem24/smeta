@@ -15863,3 +15863,38 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
         background: rgba(255, 255, 255, 0.1);
     }
 }
+
+/* ── Смета: подсветка строк, добавленных переключателем, и распорка колонки ──
+   Строки, появившиеся после нажатия в колонке параметров, на пару секунд
+   подсвечиваются, а лист плавно едет к ним (app._estimateAfter). Таблица
+   исключена из «якорения» браузера: перерисовка innerHTML сама держит
+   прежнюю строку на месте, и двойная поправка дёргала бы лист. */
+.inv-table {
+    overflow-anchor: none;
+}
+.inv-table tr.row-just-added td {
+    animation: rowJustAdded 2.6s ease-out;
+    /* Отрицательная задержка — анимация продолжается с середины после
+       повторной перерисовки (см. app._estimateAfter) */
+    animation-delay: var(--flash-delay, 0ms);
+}
+/* Конечного кадра нет намеренно: к концу анимации фон возвращается к своему
+   обычному значению (у распознанных строк и подразделов он свой). */
+@keyframes rowJustAdded {
+    0%, 40% { background-color: rgba(34, 197, 94, 0.28); }
+}
+.inv-table tr.row-sec.row-just-added td {
+    animation: secJustAdded 2.6s ease-out;
+    animation-delay: var(--flash-delay, 0ms);
+}
+@keyframes secJustAdded {
+    0%, 40% { box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.9); background-color: rgba(34, 197, 94, 0.28); }
+}
+/* Распорка внизу колонки параметров: даёт прокрутить колонку так, чтобы
+   нажатый переключатель остался на месте, когда блоки под ним скрылись
+   (app._inputAnchorAfter). Высоту ставит скрипт. */
+#input_panel_spacer {
+    flex: none;
+    width: 100%;
+    pointer-events: none;
+}
