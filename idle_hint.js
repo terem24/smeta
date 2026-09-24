@@ -123,6 +123,9 @@ window.IdleHint = {
     // ведёт человека по шагам, вкладка на виду.
     screenFree: function () {
         if (document.hidden) return false;
+        // Анкета не заполнена целиком — никакие новичковые окна не показываем
+        // (то же правило, что у окна быстрого старта, см. app.onboardingAllowed).
+        if (typeof app.onboardingAllowed === 'function' && !app.onboardingAllowed()) return false;
         if (!app.isCalcEmpty()) return false;
         if (document.querySelector('.custom-modal-overlay.active')) return false;
         if (document.getElementById('quick_start_overlay')) return false;

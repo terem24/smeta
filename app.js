@@ -5813,6 +5813,17 @@ const app = {
         return !(u.lastName && u.givenName && u.middleName && u.phone && u.birthDate && u.region && u.city && u.activityTypes && u.activityTypes.length);
     },
 
+    // Новичковые подсказки — кнопка «Быстрый старт» и описание в пустой смете,
+    // окно первого запуска, окно «Смета за минуту», автоматическое включение
+    // обучения — показываются только тому, кто прошёл регистрацию и вход целиком
+    // и заполнил всю анкету. Гостю и недозаполненному сначала вход и анкета.
+    // Анкету судим только по данным из базы (_profileDbLoaded) — по той же
+    // причине, что profileLocked в syncUI: пока строка users в пути, заполненная
+    // анкета выглядит пустой.
+    onboardingAllowed: function () {
+        return !!(this.state.tgUser && this._profileDbLoaded && !this.isProfileIncomplete());
+    },
+
     // Телефон в профиле заполнен? Считаем цифры, а не длину строки: из формы номер
     // приходит с маской («+7 (953) 004-43-33», 18 символов), а из базы и от Яндекс ID /
     // Google / Telegram — без неё («+79530044333», 12 символов). Проверка на длину строки
@@ -14027,6 +14038,10 @@ const app = {
     // срока быстрого старта, спрашивать нечего.
     decideNewcomerDefaults: async function (userId) {
         if (!userId) return;
+        // Пока анкета не заполнена целиком, новичковые окна (быстрый старт,
+        // автоматическое обучение) не показываем вовсе. Решение не записывается —
+        // при следующем заходе с заполненной анкетой всё предложится как новичку.
+        if (!this.onboardingAllowed()) return;
         const tourDecided = (typeof Tour === 'undefined') || Tour.userChose();
         const quickOpen = this.quickStartWindowOpen();
         if (tourDecided && !quickOpen) return;
@@ -43855,6 +43870,10 @@ const app = {
             // Только вошедшим. Гостю окно не показываем вовсе: всё, ради чего
             // считается смета, у него упрётся в окно входа.
             if (!this.state.tgUser) return;
+            // И только заполнившим анкету целиком: пока она не заполнена, поверх
+            // экрана и так висит обязательная форма, и окно первого запуска под
+            // ней (или поверх неё) только мешало бы.
+            if (!this.onboardingAllowed()) return;
             // Сколько у человека сохранённых смет, знаем не сразу: сессия поднимается
             // асинхронно, а число приезжает отдельным запросом. Пока не знаем —
             // молчим; позовёт decideNewcomerDefaults, когда ответит база. Показать
@@ -72106,7 +72125,11 @@ const app = {
             const _emptyWhich = _flatEmpty
                 ? 'площадь, комнаты, отопление'
                 : 'площадь, отопление, материалы';
-            const qsBtn = this.isCalcEmpty() ? `
+            // Описание и «Быстрый старт» — только после полной регистрации и
+            // заполненной анкеты (см. onboardingAllowed): гостю и недозаполненному
+            // остаются значок и заголовок.
+            const _onboardOk = this.onboardingAllowed();
+            const qsBtn = (_onboardOk && this.isCalcEmpty()) ? `
                     <button type="button" id="quick_start_row" class="no-print" onclick="app.showQuickStart()"
                         style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;
                                margin-top: 12px; font: inherit; font-size: 13px; font-weight: 600;
@@ -72118,7 +72141,7 @@ const app = {
                 <div class="empty-state-hint">
                     <span class="empty-state-icon">${_emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    <div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>${qsBtn}
+                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>` : ''}${qsBtn}
                 </div>
             </td></tr>`;
             sum = 0;
