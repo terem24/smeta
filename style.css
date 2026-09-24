@@ -4501,17 +4501,21 @@ body.modal-over-banner .hc-cookie-banner {
     margin-bottom: 12px;
 }
 
-/* Вкладка "Вход": поля, кнопка и ссылки — одной ширины (как кнопка) и с одним
-   вертикальным шагом 12px. В режиме регистрации колонку не сужаем — там сетка
-   полей занимает всю ширину окна. */
-#auth_modal_overlay:not(.register-mode) #auth_form_container {
+/* Окно входа/регистрации: колонка полей, кнопки, разделитель «или войти через»
+   и кнопка Яндекса — во всю внутреннюю ширину окна, вровень с рядом вкладок
+   «Вход | Регистрация». Раньше колонка сужалась до 280px, и по бокам полей
+   оставались поля по 50px против 31px у вкладок — владелец 25.09.2026 назвал
+   такие отступы «странными и несимметричными». */
+#auth_modal_overlay #auth_form_container {
     width: 100%;
-    max-width: 280px;
     margin: 0 auto;
 }
 
-#auth_modal_overlay:not(.register-mode) #auth_form_container .auth-input,
-#auth_modal_overlay:not(.register-mode) #auth_form_container .auth-btn-base {
+#auth_modal_overlay #auth_form_container .auth-input,
+#auth_modal_overlay #auth_form_container .auth-btn-base,
+#auth_modal_overlay .auth-divider,
+#auth_modal_overlay .social-btn-wrapper,
+#auth_modal_overlay .social-btn-wrapper .auth-btn-base {
     max-width: 100%;
 }
 
@@ -4721,6 +4725,13 @@ body.auth-modal-open .hc-cookie-banner {
     flex-grow: 1;
     height: 1px;
     background: var(--border);
+}
+
+/* Кнопки выбора способа входа (Яндекс ID / Почта) — крупные пилюли, как у vc.ru */
+#auth_method_view .auth-btn-base {
+    height: 54px;
+    border-radius: 999px;
+    font-size: 15px;
 }
 
 /* Google Button */
