@@ -36949,15 +36949,14 @@ const app = {
         // под «i» у строки автоматики в смете, и два одинаковых текста рядом только
         // сбивают — состав смотрят там, где стоит сама позиция.
         let html = '';
-        // Каскад — единственный случай, когда состав всё-таки называем здесь.
-        // Приборы держат разное число котлов, и в быстром режиме рамка иначе не
-        // раскрывается вовсе: монтажник соберёт каскад и не узнает, какой
-        // контроллер ему подобрали, пока не дойдёт до строки в смете.
-        if ((cfg.boilerCount || 0) > 1) {
-            const _m = this.BOILER_AUTO_MODELS[cfg.model === 'basic' ? 'basic' : 'full'];
-            html += `<div style="margin-top:8px; padding-left:8px; border-left:3px solid var(--primary); color:var(--text-main);">` +
-                `Котлов в смете ${cfg.boilerCount} — подобран ${_m.short}. ` +
-                `Прибор меняется заменой позиции на строке контроллера в смете.</div>`;
+        // Каскад: сводка живёт под «i» подписи «Котельная», без марок (владелец:
+        // на виду только предупреждения, в подсказках — только принцип).
+        const tip = document.getElementById('boiler_auto_info_tip');
+        if (tip) {
+            tip.textContent = (cfg.boilerCount || 0) > 1
+                ? `Котлов в смете ${cfg.boilerCount} — контроллер подобран под каскад. Модель меняется заменой строки контроллера в смете.`
+                : '';
+            tip.style.display = tip.textContent ? '' : 'none';
         }
         (cfg.warnings || []).forEach(w => {
             html += `<div style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${w}</div>`;
@@ -37291,9 +37290,9 @@ const app = {
             // Планка STE-3050 проводная: радиотермостаты сюда не встают — считаем
             // их проводными и говорим об этом на виду.
             wiredAll = wired + radio;
-            if (radio > 0) warns.push(`Радиотермостатов к планке у STOUT нет: STE-3050 принимает только проводные. ` +
+            if (radio > 0) warns.push(`Проводная планка радиотермостаты не принимает: ` +
                 `${radio} ${this.plural(radio, 'радиотермостат посчитан проводным', 'радиотермостата посчитаны проводными', 'радиотермостатов посчитаны проводными')}. ` +
-                `Нужны именно радио — замените планку на ENGO ECB62-ZB на её строке.`);
+                `Нужны именно радио — замените планку на радиокомплект на её строке.`);
             // Планок по зонам (8 на планку); при поле на двух этажах — по планке
             // на этаж, как считалось в разделе тёплого пола.
             const byFloors = (hasTp && house && s.floors === 2 && (parseFloat(s.tp2) || 0) > 0) ? 2 : 1;
@@ -37321,17 +37320,17 @@ const app = {
             const needMasters = heads > 0 ? Math.ceil(heads / 6) : 0;
             extraMasters = Math.max(0, needMasters - radio);
             radioAll = radio + extraMasters;
-            if (extraMasters > 0) warns.push(`Радиоголовкам ENGO нужен хозяин — терморегулятор E25 (до 6 головок на один). ` +
-                `Радиотермостатов ${radio}, головок ${heads}: добавлен${extraMasters === 1 ? '' : 'о'} ${extraMasters} E25. ` +
-                `Головки должны стоять в тех же комнатах, что и E25.`);
+            if (extraMasters > 0) warns.push(`Радиоголовкам нужен хозяин — радиотермостат (до 6 головок на один). ` +
+                `Радиотермостатов ${radio}, головок ${heads}: добавлен${extraMasters === 1 ? '' : 'о'} ${extraMasters}. ` +
+                `Головки должны стоять в тех же комнатах, что и их термостаты.`);
             const byWired = Math.ceil(wired / (bar.zonesWired || 2));
             const byRadio = Math.ceil(radioAll / (bar.zonesRadio || 6));
             const byAct = Math.ceil(servos / (bar.maxActuators || 50));
             bars = (wired + radioAll + servos > 0) ? Math.max(1, byWired, byRadio, byAct) : 0;
             if (bars) add(withAlts(bar, [catalog.wiring_center]), bars, `Планка: 2 проводные зоны + 6 зон Zigbee, до 50 приводов 230 В NC. ` +
                 `Проводных ${wired}, радио ${radioAll}, приводов ${servos}. ${srcTip} Термостаты привязываются к планке напрямую, без шлюза. В замене — STOUT STE-3050 (только проводные).`);
-            if (bars > 1 && byWired === bars && byWired > byRadio) warns.push(`Планок ${bars} из-за проводных термостатов: на одной ECB62-ZB только 2 проводные зоны. ` +
-                `Дешевле часть термостатов взять Zigbee (E25).`);
+            if (bars > 1 && byWired === bars && byWired > byRadio) warns.push(`Планок ${bars} из-за проводных термостатов: у планки радиокомплекта только 2 проводные зоны. ` +
+                `Дешевле часть термостатов взять радио.`);
             const wl = e.wired || [];
             if (wired > 0) {
                 const wBase = wl.find(x => x.color === 'white' && !x.prog) || wl[0];
@@ -37401,28 +37400,33 @@ const app = {
     renderZoneAutoInfo: function () {
         this.syncZoneAutoUI();
         const box = document.getElementById('blk_zone_auto_info');
+        const tip = document.getElementById('zone_auto_info_tip');
         if (!box) return;
-        if (!this.state.ufhAuto) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        if (!this.state.ufhAuto) {
+            box.style.display = 'none'; box.innerHTML = '';
+            if (tip) { tip.textContent = ''; tip.style.display = 'none'; }
+            return;
+        }
         const zk = this._zoneKit || this.getZoneAutoKit();
         const z = this.za();
+        // Сводка состава — под «i» подписи, без марок; на виду только предупреждения.
         const parts = [];
         const stats = zk.wiredAll + zk.radioAll;
         if (stats) parts.push(`термостатов ${stats} (${zk.radioAll ? 'радио' : 'проводных'})`);
         if (zk.servos) parts.push(`сервоприводов ${zk.servos}` + (zk.house ? ` (пол ${zk.house.loops}${z.radMode === 'servo' ? `, радиаторы ${zk.house.devs}` : ''})` : ''));
         if (zk.heads) parts.push(`головок ${zk.heads}`);
         if (zk.bars) parts.push(`${this.plural(zk.bars, 'планка', 'планки', 'планок')} ${zk.bars}`);
-        let why = '';
-        if (zk.sys === 'engo') why = z.sys === 'engo' ? ' (заменой на строке планки)' : ' (радиотермостаты)';
-        else if (z.sys === 'stout') why = ' (заменой на строке планки)';
-        let html = `<div style="padding-left:8px; border-left:3px solid var(--primary); color:var(--text-main);">` +
-            (zk.house ? `Из подобранного: ` : (zk.fromReq ? `По заявке: ` : `Нечего зонировать: нет петель и приборов. `)) +
-            (parts.length ? parts.join(', ') + '. ' : '') +
-            `Система: <b>${this.ZONE_AUTO_SYS_NAMES[zk.sys]}</b>${why}.</div>`;
+        if (tip) {
+            tip.textContent = (zk.house ? 'Сейчас из подобранного: ' : (zk.fromReq ? 'Сейчас по заявке: ' : 'Сейчас нечего зонировать: нет петель и приборов. ')) +
+                (parts.length ? parts.join(', ') + '.' : '');
+            tip.style.display = '';
+        }
+        let html = '';
         zk.warns.forEach(w => {
             html += `<div style="margin-top:8px; padding-left:8px; border-left:3px solid #F59E0B; color:var(--text-main);">⚠️ ${w}</div>`;
         });
         box.innerHTML = html;
-        box.style.display = 'block';
+        box.style.display = html ? 'block' : 'none';
     },
 
     toggleBoilerAuto: function (chk, event) {

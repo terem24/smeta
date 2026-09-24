@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.36" defer></script>
+    <script src="app.js?v=9.37" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1728,7 +1728,7 @@
                 <div id="blk_auto_box" style="display:flex; flex-direction:column; gap:10px; margin-top:8px; padding-left:12px; border-left:2px solid #E5E7EB;">
                 <div class="control-item" id="blk_boiler_auto_item" style="margin-bottom:0;">
                     <div class="label-row" style="position:relative; margin-bottom:0;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Котельная<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Контроллер котельной: держит температуру по погоде, управляет котлами, бойлером и рециркуляцией, доступен с телефона. Модель подбирается по составу котельной.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Котельная<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Контроллер котельной: держит температуру по погоде, управляет котлами, бойлером и рециркуляцией, доступен с телефона. Модель подбирается по составу котельной.<div class="tip-p" id="boiler_auto_info_tip" style="color:#93C5FD;"></div></div></span></span>
                         <label class="switch"><input type="checkbox" id="chk_boiler_auto"
                                 onchange="app.toggleBoilerAuto(this.checked, event)"><span class="slider"></span></label>
                     </div>
@@ -1818,7 +1818,7 @@
                      без пола вводятся руками или из заявки. Состав — app.getZoneAutoKit(). -->
                 <div class="control-item" id="blk_zone_auto_item" style="margin-bottom:0; border-top:1px solid #E5E7EB; padding-top:10px;">
                     <div class="label-row" style="position:relative; margin-bottom:0;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Радиаторы и тёплый пол<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Считается из подобранного: привод на каждый выход коллекторов тёплого пола и радиаторов, термостат в каждую комнату, головка на каждый прибор. Комплект подбирается под выбранную связь термостатов; сменить его можно заменой на строке планки.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Радиаторы и тёплый пол<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Считается из подобранного: привод на каждый выход коллекторов тёплого пола и радиаторов, термостат в каждую комнату, головка на каждый прибор. Комплект подбирается под выбранную связь термостатов; сменить его можно заменой на строке планки.<div class="tip-p" id="zone_auto_info_tip" style="color:#93C5FD;"></div></div></span></span>
                         <label class="switch"><input type="checkbox" id="chk_ufh_auto"
                                 onchange="app.toggleUfhAuto(this.checked, event)"><span class="slider"></span></label>
                     </div>
