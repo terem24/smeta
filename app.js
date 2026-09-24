@@ -15387,8 +15387,10 @@ const app = {
         if (this.isSellerOnly()) {
             opts.push({ v: 'shop', label: 'Магазин', sub: 'оформление магазина — как было' });
         } else {
+            // Локальная кнопка «Монтажник» показывает вид монтажника целиком,
+            // включая кнопку «Бренд», даже под учёткой администратора
             const role = this.getAdminRole();
-            const office = role === 'super_admin' || role === 'admin' || role === 'manager' || role === 'viewer';
+            const office = this.localRole() !== 'installer' && (role === 'super_admin' || role === 'admin' || role === 'manager' || role === 'viewer');
             opts.push({ v: 'standard', label: 'Стандарт', sub: 'обычное оформление калькулятора' });
             // Кнопка «Бренд» — только монтажникам и только пока администратор
             // не выключил тему бренда целиком (иначе выбор ни на что не влиял бы)
@@ -15419,10 +15421,13 @@ const app = {
         const opts = this.uiThemeOptions();
         const btns = opts.map(o => {
             const active = o.v === cur;
+            // Выбранную кнопку отмечаем галочкой и жирным, а не только цветом:
+            // темы («Профи», бренд, магазин) перекрашивают .btn-subscribe своими
+            // правилами, и заливка через var(--primary) под ними не отличима
             const style = active
-                ? 'background: var(--primary); color: #fff; border-color: var(--primary);'
-                : 'background: var(--surface-light); color: var(--text-sec); border-color: var(--border);';
-            return `<button type="button" class="btn-subscribe" onclick="app.setUiTheme('${o.v}')" title="${o.sub}" style="padding: 5px 12px; font-size: 11px; margin: 0; width: auto; height: auto; border: 1px solid; ${style}">${o.label}</button>`;
+                ? 'font-weight: 700; background: var(--primary); color: #fff; border-color: var(--primary);'
+                : 'font-weight: 500; background: var(--surface-light); color: var(--text-sec); border-color: var(--border);';
+            return `<button type="button" class="btn-subscribe" aria-pressed="${active}" onclick="app.setUiTheme('${o.v}')" title="${o.sub}" style="padding: 5px 12px; font-size: 11px; margin: 0; width: auto; height: auto; border: 1px solid; ${style}">${active ? '✓ ' : ''}${o.label}</button>`;
         }).join('');
         const curOpt = opts.find(o => o.v === cur);
         box.innerHTML = `
