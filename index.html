@@ -1899,12 +1899,12 @@
                  автоматизация. В быстром режиме, если автоматика включена (старая
                  смета, заявка), остаётся одна строка-подсказка. -->
             <div class="control-item toggle-item" id="blk_auto_header" style="display:none;">
+                <!-- Заголовок без тумблера: свой был лишним — он только показывал два
+                     тумблера ниже, а в смете ничего не менял (замечание владельца 24.09.2026). -->
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Контроллер котельной STOUT Thermatic и зональная автоматика: планка, термостаты, сервоприводы, радиоголовки. Включается, когда системы дома уже заданы.</div></span></span>
-                    <label class="switch"><input type="checkbox" id="chk_auto_master"
-                            onchange="app.toggleAutoMaster(this.checked, event)"><span class="slider"></span></label>
                 </div>
-                <div id="blk_auto_box" style="display:none; flex-direction:column; gap:4px; margin-top:6px;">
+                <div id="blk_auto_box" style="display:flex; flex-direction:column; gap:4px; margin-top:6px;">
                 <div class="control-item toggle-item" id="blk_boiler_auto_item">
                     <div class="label-row" style="position:relative;">
                         <span class="lbl" style="display:flex; align-items:center; gap:4px;">Автоматика

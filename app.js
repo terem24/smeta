@@ -37173,21 +37173,8 @@ const app = {
         this.za();
         return !!this.state.ufhAuto;
     },
-    toggleAutoMaster: function (chk, event) {
-        if (!this.checkAccess('pro', event)) {
-            const el = document.getElementById('chk_auto_master');
-            if (el) el.checked = !!this.state.autoOn;
-            return;
-        }
-        this.za();
-        this.state.autoOn = !!chk;
-        if (!chk) {
-            // Верхний тумблер гасит оба: контроллер котельной и зональную.
-            this.state.boilerAuto = false;
-            this.state.ufhAuto = false;
-        }
-        this.syncUI(); this.render(); this.saveState();
-    },
+    // Верхнего тумблера «Автоматика» больше нет (24.09.2026): он только раскрывал
+    // два тумблера ниже. state.autoOn остаётся в сохранениях, но ничего не решает.
     setZoneRadMode: function (v) {
         if (!['none', 'servo', 'heads'].includes(v)) return;
         this.za().radMode = v;
@@ -37402,8 +37389,6 @@ const app = {
         // одна строка, и только если что-то включено.
         if ($('blk_auto_header')) $('blk_auto_header').style.display = s.detailedRooms ? 'block' : 'none';
         if ($('blk_auto_fast_note')) $('blk_auto_fast_note').style.display = (!s.detailedRooms && anyOn) ? 'block' : 'none';
-        if ($('chk_auto_master')) $('chk_auto_master').checked = !!s.autoOn;
-        if ($('blk_auto_box')) $('blk_auto_box').style.display = s.autoOn ? 'flex' : 'none';
         if ($('chk_ufh_auto')) $('chk_ufh_auto').checked = !!s.ufhAuto;
         if ($('blk_zone_auto_box')) $('blk_zone_auto_box').style.display = s.ufhAuto ? 'flex' : 'none';
         const hasRad = (s.systems || []).includes('rad');
@@ -57517,7 +57502,6 @@ const app = {
         applyLock('blk_sewer_type', 'pro');
         applyLock('chk_ufh_auto', 'pro');
         applyLock('chk_boiler_auto', 'pro');
-        applyLock('chk_auto_master', 'pro');
         applyLock('chk_leak_protect', 'pro');
         applyLock('chk_air_control', 'pro');
         applyLock('chk_ctrl_panel', 'pro');
