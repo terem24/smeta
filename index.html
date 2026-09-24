@@ -1157,182 +1157,6 @@
                 </div>
             </div>
 
-            <!-- Во сколько обойдётся отопление электричеством. Условия те же, что
-                 у ограничения мощности: подробный режим и включённый электрокотёл
-                 (app.syncUI). Таблицу собирает app.renderElCostUI(). -->
-            <div class="control-item" id="blk_el_cost" style="display:none;">
-                <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления ⚡<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Один тариф.</b> Один тариф круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночная зона 23:00–07:00 по своей цене.</div></div></span></span>
-                    <label class="switch"><input type="checkbox" id="chk_el_cost"
-                            onchange="app.toggleElCost(this.checked)"><span class="slider"></span></label>
-                </div>
-                <!-- Тарифы и таблица — подпункты тумблера, как у «Автоматики котельной»:
-                     пока прогноз выключен, в панели остаётся одна строка. -->
-                <div id="blk_el_cost_box"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div class="tabs" style="font-size:11px;">
-                        <div class="tab el-tariff-mode-tab" data-tmode="single"
-                            onclick="app.setElTariffMode('single')">Один тариф</div>
-                        <div class="tab el-tariff-mode-tab" data-tmode="day_night"
-                            onclick="app.setElTariffMode('day_night')">День-ночь</div>
-                    </div>
-
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;" id="lbl_el_tariff_day">Тариф, ₽/кВт·ч</span>
-                        <div style="position:relative; display:inline-flex; align-items:center;">
-                            <!-- 124px, а не 110: в тарифах четыре знака («26.0»), и в
-                                 стандартную ширину степпера значение не влезает — переносится
-                                 на вторую строку. -->
-                            <div class="stepper" style="width:124px;">
-                                <button class="step-btn" onclick="app.updElTariff(-1)">−</button>
-                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff"
-                                    contenteditable="true"
-                                    onfocus="app.showElTariffSlider('day', event)"
-                                    onclick="app.showElTariffSlider('day', event)"
-                                    onblur="app.setElTariff(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">6.0</div>
-                                <button class="step-btn" onclick="app.updElTariff(1)">+</button>
-                            </div>
-                            <div class="el-tariff-slider-container" id="el_tariff_slider_box"
-                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                onclick="event.stopPropagation();">
-                                <input type="range" id="inp_el_tariff" min="1" max="20" step="0.1" value="6"
-                                    oninput="app.setElTariff(this.value, true)"
-                                    onchange="app.setElTariff(this.value)"
-                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                <span
-                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                    onclick="document.getElementById('el_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="blk_el_tariff_night"
-                        style="display:none; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;">Ночь (23–07), ₽/кВт·ч</span>
-                        <div style="position:relative; display:inline-flex; align-items:center;">
-                            <div class="stepper" style="width:124px;">
-                                <button class="step-btn" onclick="app.updElTariffNight(-1)">−</button>
-                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff_night"
-                                    contenteditable="true"
-                                    onfocus="app.showElTariffSlider('night', event)"
-                                    onclick="app.showElTariffSlider('night', event)"
-                                    onblur="app.setElTariffNight(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">3.0</div>
-                                <button class="step-btn" onclick="app.updElTariffNight(1)">+</button>
-                            </div>
-                            <div class="el-tariff-slider-container" id="el_tariff_night_slider_box"
-                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                onclick="event.stopPropagation();">
-                                <input type="range" id="inp_el_tariff_night" min="1" max="20" step="0.1" value="3"
-                                    oninput="app.setElTariffNight(this.value, true)"
-                                    onchange="app.setElTariffNight(this.value)"
-                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                <span
-                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                    onclick="document.getElementById('el_tariff_night_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Видно только когда тариф правили руками: иначе кнопка сброса
-                         ничего не сбрасывает и только путает. Та же логика, что у газа. -->
-                    <div id="el_tariff_region_row" style="display:none; text-align:right;">
-                        <span onclick="app.resetElTariff()"
-                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
-                            тариф региона</span>
-                    </div>
-
-                    <div id="el_cost_body"></div>
-                </div>
-            </div>
-                </div>
-            </div>
-
-            <!-- Стоимость отопления газом. Устроено как блок по электричеству, но
-                 переключатель другой: магистральный газ считается по тарифу региона
-                 (GAS_TARIFF_RU в catalog.js, подставляется по выбранному городу),
-                 сжиженный тарифом не регулируется и задаётся руками. -->
-            <div class="control-item toggle-item" id="blk_gas_cost" style="display:none;">
-                <div class="label-row" style="position:relative;">
-                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления 🔥<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход в кубометрах или литрах и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов. Тарифом не регулируется — цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы. Тариф устанавливает регион, подставляется по выбранному городу.</div></div></span></span>
-                    <label class="switch"><input type="checkbox" id="chk_gas_cost"
-                            onchange="app.toggleGasCost(this.checked)"><span class="slider"></span></label>
-                </div>
-                <div id="blk_gas_cost_box"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div class="tabs" style="font-size:11px;">
-                        <div class="tab gas-tariff-mode-tab" data-gmode="lpg"
-                            onclick="app.setGasTariffMode('lpg')">Сжиженный</div>
-                        <div class="tab gas-tariff-mode-tab" data-gmode="main"
-                            onclick="app.setGasTariffMode('main')">Магистральный</div>
-                    </div>
-
-                    <div id="blk_gas_tariff_main" style="flex-direction:column; gap:4px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="lbl" style="font-size:12px;">Тариф, ₽/м³</span>
-                            <div style="position:relative; display:inline-flex; align-items:center;">
-                                <div class="stepper" style="width:124px;">
-                                    <button class="step-btn" onclick="app.updGasTariff(-1)">−</button>
-                                    <div class="step-val editable-val gas-tariff-val" id="val_gas_tariff"
-                                        contenteditable="true"
-                                        onfocus="app.showGasTariffSlider('main', event)"
-                                        onclick="app.showGasTariffSlider('main', event)"
-                                        onblur="app.setGasTariff(this.innerText)"
-                                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">8.50</div>
-                                    <button class="step-btn" onclick="app.updGasTariff(1)">+</button>
-                                </div>
-                                <div class="gas-tariff-slider-container" id="gas_tariff_slider_box"
-                                    style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                    onclick="event.stopPropagation();">
-                                    <input type="range" id="inp_gas_tariff" min="3" max="20" step="0.01" value="8.5"
-                                        oninput="app.setGasTariff(this.value, true)"
-                                        onchange="app.setGasTariff(this.value)"
-                                        style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                    <span
-                                        style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                        onclick="document.getElementById('gas_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Видно только когда тариф правили руками: иначе кнопка сброса
-                             ничего не сбрасывает и только путает. -->
-                        <div id="gas_tariff_region_row" style="display:none; text-align:right;">
-                            <span onclick="app.resetGasTariff()"
-                                style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
-                                тариф региона</span>
-                        </div>
-                    </div>
-
-                    <div id="blk_gas_tariff_lpg" style="display:none; justify-content:space-between; align-items:center;">
-                        <span class="lbl" style="font-size:12px;">Цена, ₽/л</span>
-                        <div style="position:relative; display:inline-flex; align-items:center;">
-                            <div class="stepper" style="width:124px;">
-                                <button class="step-btn" onclick="app.updLpgTariff(-1)">−</button>
-                                <div class="step-val editable-val gas-tariff-val" id="val_gas_lpg" contenteditable="true"
-                                    onfocus="app.showGasTariffSlider('lpg', event)"
-                                    onclick="app.showGasTariffSlider('lpg', event)"
-                                    onblur="app.setLpgTariff(this.innerText)"
-                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">26.0</div>
-                                <button class="step-btn" onclick="app.updLpgTariff(1)">+</button>
-                            </div>
-                            <div class="gas-tariff-slider-container" id="gas_lpg_slider_box"
-                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
-                                onclick="event.stopPropagation();">
-                                <input type="range" id="inp_gas_lpg" min="10" max="60" step="0.5" value="26"
-                                    oninput="app.setLpgTariff(this.value, true)"
-                                    onchange="app.setLpgTariff(this.value)"
-                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
-                                <span
-                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
-                                    onclick="document.getElementById('gas_lpg_slider_box').style.display='none'; event.stopPropagation();">OK</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="gas_cost_body"></div>
                 </div>
             </div>
 
@@ -2112,6 +1936,183 @@
                                 id="chk_snow_boiler" onchange="app.toggleSnowBoilerPower(this.checked)"><span
                                 class="slider"></span></label>
                     </div>
+                </div>
+            </div>
+
+            <!-- Во сколько обойдётся отопление электричеством. Условия те же, что
+                 у ограничения мощности: подробный режим и включённый электрокотёл
+                 (app.syncUI). Таблицу собирает app.renderElCostUI(). -->
+            <div class="control-item toggle-item" id="blk_el_cost" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
+                        отопления ⚡<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Один тариф.</b> Один тариф круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночная зона 23:00–07:00 по своей цене.</div></div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_el_cost"
+                            onchange="app.toggleElCost(this.checked)"><span class="slider"></span></label>
+                </div>
+                <!-- Тарифы и таблица — подпункты тумблера, как у «Автоматики котельной»:
+                     пока прогноз выключен, в панели остаётся одна строка. -->
+                <div id="blk_el_cost_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div class="tabs" style="font-size:11px;">
+                        <div class="tab el-tariff-mode-tab" data-tmode="single"
+                            onclick="app.setElTariffMode('single')">Один тариф</div>
+                        <div class="tab el-tariff-mode-tab" data-tmode="day_night"
+                            onclick="app.setElTariffMode('day_night')">День-ночь</div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;" id="lbl_el_tariff_day">Тариф, ₽/кВт·ч</span>
+                        <div style="position:relative; display:inline-flex; align-items:center;">
+                            <!-- 124px, а не 110: в тарифах четыре знака («26.0»), и в
+                                 стандартную ширину степпера значение не влезает — переносится
+                                 на вторую строку. -->
+                            <div class="stepper" style="width:124px;">
+                                <button class="step-btn" onclick="app.updElTariff(-1)">−</button>
+                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff"
+                                    contenteditable="true"
+                                    onfocus="app.showElTariffSlider('day', event)"
+                                    onclick="app.showElTariffSlider('day', event)"
+                                    onblur="app.setElTariff(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">6.0</div>
+                                <button class="step-btn" onclick="app.updElTariff(1)">+</button>
+                            </div>
+                            <div class="el-tariff-slider-container" id="el_tariff_slider_box"
+                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                onclick="event.stopPropagation();">
+                                <input type="range" id="inp_el_tariff" min="1" max="20" step="0.1" value="6"
+                                    oninput="app.setElTariff(this.value, true)"
+                                    onchange="app.setElTariff(this.value)"
+                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                <span
+                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                    onclick="document.getElementById('el_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="blk_el_tariff_night"
+                        style="display:none; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Ночь (23–07), ₽/кВт·ч</span>
+                        <div style="position:relative; display:inline-flex; align-items:center;">
+                            <div class="stepper" style="width:124px;">
+                                <button class="step-btn" onclick="app.updElTariffNight(-1)">−</button>
+                                <div class="step-val editable-val el-tariff-val" id="val_el_tariff_night"
+                                    contenteditable="true"
+                                    onfocus="app.showElTariffSlider('night', event)"
+                                    onclick="app.showElTariffSlider('night', event)"
+                                    onblur="app.setElTariffNight(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">3.0</div>
+                                <button class="step-btn" onclick="app.updElTariffNight(1)">+</button>
+                            </div>
+                            <div class="el-tariff-slider-container" id="el_tariff_night_slider_box"
+                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                onclick="event.stopPropagation();">
+                                <input type="range" id="inp_el_tariff_night" min="1" max="20" step="0.1" value="3"
+                                    oninput="app.setElTariffNight(this.value, true)"
+                                    onchange="app.setElTariffNight(this.value)"
+                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                <span
+                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                    onclick="document.getElementById('el_tariff_night_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Видно только когда тариф правили руками: иначе кнопка сброса
+                         ничего не сбрасывает и только путает. Та же логика, что у газа. -->
+                    <div id="el_tariff_region_row" style="display:none; text-align:right;">
+                        <span onclick="app.resetElTariff()"
+                            style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
+                            тариф региона</span>
+                    </div>
+
+                    <div id="el_cost_body"></div>
+                </div>
+            </div>
+
+            <!-- Стоимость отопления газом. Устроено как блок по электричеству, но
+                 переключатель другой: магистральный газ считается по тарифу региона
+                 (GAS_TARIFF_RU в catalog.js, подставляется по выбранному городу),
+                 сжиженный тарифом не регулируется и задаётся руками. -->
+            <div class="control-item toggle-item" id="blk_gas_cost" style="display:none;">
+                <div class="label-row" style="position:relative;">
+                    <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
+                        отопления 🔥<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход в кубометрах или литрах и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов. Тарифом не регулируется — цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы. Тариф устанавливает регион, подставляется по выбранному городу.</div></div></span></span>
+                    <label class="switch"><input type="checkbox" id="chk_gas_cost"
+                            onchange="app.toggleGasCost(this.checked)"><span class="slider"></span></label>
+                </div>
+                <div id="blk_gas_cost_box"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div class="tabs" style="font-size:11px;">
+                        <div class="tab gas-tariff-mode-tab" data-gmode="lpg"
+                            onclick="app.setGasTariffMode('lpg')">Сжиженный</div>
+                        <div class="tab gas-tariff-mode-tab" data-gmode="main"
+                            onclick="app.setGasTariffMode('main')">Магистральный</div>
+                    </div>
+
+                    <div id="blk_gas_tariff_main" style="flex-direction:column; gap:4px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="lbl" style="font-size:12px;">Тариф, ₽/м³</span>
+                            <div style="position:relative; display:inline-flex; align-items:center;">
+                                <div class="stepper" style="width:124px;">
+                                    <button class="step-btn" onclick="app.updGasTariff(-1)">−</button>
+                                    <div class="step-val editable-val gas-tariff-val" id="val_gas_tariff"
+                                        contenteditable="true"
+                                        onfocus="app.showGasTariffSlider('main', event)"
+                                        onclick="app.showGasTariffSlider('main', event)"
+                                        onblur="app.setGasTariff(this.innerText)"
+                                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">8.50</div>
+                                    <button class="step-btn" onclick="app.updGasTariff(1)">+</button>
+                                </div>
+                                <div class="gas-tariff-slider-container" id="gas_tariff_slider_box"
+                                    style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                    onclick="event.stopPropagation();">
+                                    <input type="range" id="inp_gas_tariff" min="3" max="20" step="0.01" value="8.5"
+                                        oninput="app.setGasTariff(this.value, true)"
+                                        onchange="app.setGasTariff(this.value)"
+                                        style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                    <span
+                                        style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                        onclick="document.getElementById('gas_tariff_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Видно только когда тариф правили руками: иначе кнопка сброса
+                             ничего не сбрасывает и только путает. -->
+                        <div id="gas_tariff_region_row" style="display:none; text-align:right;">
+                            <span onclick="app.resetGasTariff()"
+                                style="font-size:10px; color:var(--primary); cursor:pointer; text-decoration:underline dotted;">вернуть
+                                тариф региона</span>
+                        </div>
+                    </div>
+
+                    <div id="blk_gas_tariff_lpg" style="display:none; justify-content:space-between; align-items:center;">
+                        <span class="lbl" style="font-size:12px;">Цена, ₽/л</span>
+                        <div style="position:relative; display:inline-flex; align-items:center;">
+                            <div class="stepper" style="width:124px;">
+                                <button class="step-btn" onclick="app.updLpgTariff(-1)">−</button>
+                                <div class="step-val editable-val gas-tariff-val" id="val_gas_lpg" contenteditable="true"
+                                    onfocus="app.showGasTariffSlider('lpg', event)"
+                                    onclick="app.showGasTariffSlider('lpg', event)"
+                                    onblur="app.setLpgTariff(this.innerText)"
+                                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">26.0</div>
+                                <button class="step-btn" onclick="app.updLpgTariff(1)">+</button>
+                            </div>
+                            <div class="gas-tariff-slider-container" id="gas_lpg_slider_box"
+                                style="display:none; position:absolute; z-index:1000; bottom:40px; right:0; align-items:center; padding:6px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; gap:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"
+                                onclick="event.stopPropagation();">
+                                <input type="range" id="inp_gas_lpg" min="10" max="60" step="0.5" value="26"
+                                    oninput="app.setLpgTariff(this.value, true)"
+                                    onchange="app.setLpgTariff(this.value)"
+                                    style="width:140px; accent-color:var(--primary); height:6px; cursor:pointer;">
+                                <span
+                                    style="font-size:11px; color:var(--primary); font-weight:700; cursor:pointer; user-select:none; padding:2px 6px; background:var(--primary-light); border-radius:4px;"
+                                    onclick="document.getElementById('gas_lpg_slider_box').style.display='none'; event.stopPropagation();">OK</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="gas_cost_body"></div>
                 </div>
             </div>
         </div>
