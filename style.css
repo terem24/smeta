@@ -14591,16 +14591,19 @@ body.dark-mode #hyd_card .hyd-card__p {
         color: var(--text-main);
     }
 
-    /* ---------- Ночная — цифры со скриншота ya.ru ---------- */
+    /* ---------- Ночная — вычисленные стили ya.ru/favs (24.09.2026) ----------
+       фон rgb(24,24,26); плашки — белый 10 % (≈ #2E2E30 на этом фоне), при
+       наведении 15 %; текст #FFF, второстепенный белый 75 %; пилюли 36 px,
+       радиус 100 px; значки 24 px толщиной ~1.5 px. */
     body.theme-yandex.dark-mode {
         --primary: #FFFFFF;
-        --primary-light: #2C2C2C;
-        --bg: #161617;
-        --surface: #1F1F20;
-        --surface-light: #39393A;
+        --primary-light: #2E2E30;
+        --bg: #18181A;
+        --surface: #1F1F21;
+        --surface-light: #2E2E30;
         --text-main: #FFFFFF;
-        --text-sec: #9C9C9D;
-        --border: #2C2C2C;
+        --text-sec: #A3A3A6;
+        --border: #2E2E30;
         --warn-bg: #3A1F1A;
         --warn-text: #F8604A;
         --warn-border: rgba(248, 96, 74, 0.4);
@@ -14611,16 +14614,16 @@ body.dark-mode #hyd_card .hyd-card__p {
         --note-info-text: #E6E6E6;
         --note-info-border: #444445;
         --ya-red: #F8604A;
-        --ya-chip: #39393A;
-        --ya-chip-hover: #474748;
+        --ya-chip: #2E2E30;
+        --ya-chip-hover: #3A3A3D;
         /* Нажатые состояния ночью — чёрные с белым текстом (владелец 24.09.2026:
            белые «режут глаз»); --primary остаётся белым для текстовых акцентов.
            Заливки переводит на --ya-fill список в конце блока. */
         --ya-fill: #000000;
         --ya-on-primary: #FFFFFF;
         --ya-shadow: none;
-        --bg-sec: #39393A;
-        scrollbar-color: #39393A #161617;
+        --bg-sec: #2E2E30;
+        scrollbar-color: #2E2E30 #18181A;
     }
 
     /* ---------- Шрифт: Inter в базе прописан жёстко, перекрываем поимённо ---------- */
@@ -14745,8 +14748,11 @@ body.dark-mode #hyd_card .hyd-card__p {
         color: var(--text-main);
     }
 
-    body.theme-yandex .btn-ctrl svg {
-        stroke-width: 1.75;
+    /* Значки Яндекса тоньше штатных Feather (2 px): у них ~1.5 px */
+    body.theme-yandex .btn-ctrl svg,
+    body.theme-yandex .lk-nav-item svg,
+    body.theme-yandex .mob-nav-item svg {
+        stroke-width: 1.5;
     }
 
     body.theme-yandex .btn-ctrl:hover {
@@ -15009,44 +15015,33 @@ body.dark-mode #hyd_card .hyd-card__p {
         color: var(--text-main);
     }
 
-    /* ---------- Меню кабинета (левая колонка): значки в кружках ---------- */
+    /* ---------- Меню кабинета (левая колонка) ----------
+       Значки без кружков: на страницах Яндекса (ya.ru/favs, снято 24.09.2026)
+       в кружке стоит только кнопка «назад», а разделы — плашки со скруглением
+       и тонким значком 1.5 px. Первый вариант с кружками у каждого значка
+       владелец отверг: «у Яндекса нет прям такого закругления». Раздел целиком —
+       плашка: наведение серая, активный — чёрная с белым. */
     body.theme-yandex .lk-rail {
         border-color: transparent;
         border-radius: 20px;
         box-shadow: var(--ya-shadow);
     }
 
-    /* Кружок прибавляет разделу высоты (32 вместо 22 px значка) — отступы
-       разделов ужаты, а множитель --lk-scale после смены темы пересчитывает
-       app.syncYandexTheme, чтобы колонка по-прежнему помещалась в экран */
     body.theme-yandex .lk-rail-item {
-        border-radius: 16px;
-        padding: calc(3px * var(--lk-scale, 1)) 2px calc(3px * var(--lk-scale, 1));
+        border-radius: 14px;
     }
 
     body.theme-yandex .lk-rail-item svg {
-        width: calc(32px * var(--lk-scale, 1));
-        height: calc(32px * var(--lk-scale, 1));
-        padding: calc(6px * var(--lk-scale, 1));
-        box-sizing: border-box;
-        border-radius: 50%;
-        background: var(--ya-chip);
-        stroke-width: 1.75;
-        transition: background var(--dur-fast) ease, color var(--dur-fast) ease;
+        stroke-width: 1.5;
     }
 
-    body.theme-yandex .lk-rail-item:hover,
-    body.theme-yandex .lk-rail-item.active {
-        background: transparent;
+    body.theme-yandex .lk-rail-item:hover {
+        background: var(--ya-chip);
         color: var(--text-main);
     }
 
-    body.theme-yandex .lk-rail-item:hover svg {
-        background: var(--ya-chip-hover);
-    }
-
-    body.theme-yandex .lk-rail-item.active svg {
-        background: var(--primary);
+    body.theme-yandex .lk-rail-item.active {
+        background: var(--ya-fill);
         color: var(--ya-on-primary);
     }
 
@@ -15163,7 +15158,7 @@ body.dark-mode #hyd_card .hyd-card__p {
         box-shadow: none;
     }
 
-    body.theme-yandex.dark-mode .lk-rail-item.active svg {
+    body.theme-yandex.dark-mode .lk-rail-item.active {
         background: var(--ya-fill);
         color: var(--ya-on-primary);
     }

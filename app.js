@@ -15106,7 +15106,7 @@ const app = {
         }
         // Цвет строки состояния на телефоне (PWA, вкладка Android)
         const meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', !on ? '#2563EB' : (document.body.classList.contains('dark-mode') ? '#161617' : '#FFFFFF'));
+        if (meta) meta.setAttribute('content', !on ? '#2563EB' : (document.body.classList.contains('dark-mode') ? '#18181A' : '#FFFFFF'));
     },
 
     toggleLocalYandexTheme: function () {
