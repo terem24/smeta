@@ -11973,6 +11973,9 @@ const app = {
         // Посетителям из РФ показываем, что через Google можно только войти
         // в ранее созданный аккаунт
         this.applyRuLoginRestrictions();
+        // Каждое открытие — с выбора способа (Яндекс ID / Почта), как у vc.ru
+        this._authView = 'method';
+        this.syncAuthChrome();
         if (this.currentAuthTab !== 'register') {
             const tw = document.getElementById('auth_terms_wrapper');
             if (tw) tw.style.display = 'none';
@@ -15262,11 +15265,13 @@ const app = {
     // задумывалась; для людей она «Профи» (владелец 24.09.2026: «переименуем в
     // Профи и будем показывать тем, у кого тариф Профи, неважно — продавцы,
     // монтажники, администраторы»).
-    // Кому показывается (с 24.09.2026 — по выбору, не автоматом): тариф «Профи»
-    // (isPro — оплаченный или пробный период, любая роль) даёт ПРАВО включить
-    // тему в кабинете, карточка «Оформление» раздела «Профиль» (uiThemeChoice);
-    // сама по себе тема при оплате не включается — иначе покупка тарифа внезапно
-    // отнимала у монтажника брендовое оформление, а у продавца — магазинное.
+    // Кому показывается (с 24.09.2026 — по выбору, не автоматом): не вошедшим —
+    // всегда, это тема по умолчанию для гостей (владелец 25.09.2026); вошедшим
+    // тариф «Профи» (isPro — оплаченный или пробный период, любая роль) даёт
+    // ПРАВО включить тему в кабинете, карточка «Оформление» раздела «Профиль»
+    // (uiThemeChoice); сама по себе тема при оплате не включается — иначе
+    // покупка тарифа внезапно отнимала у монтажника брендовое оформление,
+    // а у продавца — магазинное.
     // Плюс отдельные группы по переключателям в панели управления, вкладка
     // «Тарифы», блок «Оформление „Профи“» (администраторы, монтажники, продавцы,
     // менеджеры — по умолчанию выключены; это принудительное включение всей
@@ -15307,7 +15312,10 @@ const app = {
             try { if (localStorage.getItem('local_yandex_theme') === '1') return true; } catch (e) { }
         }
         const u = this.state.tgUser || this.state.user;
-        if (!u) return false;
+        // Без входа — тема «Профи» и есть тема по умолчанию (владелец
+        // 25.09.2026): гость видит нейтральное оформление с логотипом
+        // HeatCalc, брендовые темы появляются после входа по аудитории
+        if (!u) return true;
         const choice = this.uiThemeChoice();
         // Личный выбор в кабинете решает первым: выбрал «Профи» — тема есть,
         // пока жив тариф (кончился — человек тихо возвращается на тему своей
@@ -15511,9 +15519,10 @@ const app = {
             </div>
             <div style="padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:var(--bg); max-width:900px;">
                 <div style="font-size:12.5px; line-height:1.6; color:var(--text-sec); margin-bottom:8px;">
-                    Тему по умолчанию решает аудитория: <b>продавцы</b> — оформление магазина, <b>монтажники</b> — тема бренда,
-                    <b>администраторы, менеджеры и наблюдатели</b> — обычное оформление, не вошедшие — тоже обычное.
-                    Тема «Профи» (серые плашки в духе ya.ru, логотип HeatCalc, по умолчанию ночная) — личный выбор обладателя тарифа, сама не включается.
+                    Тему по умолчанию решает аудитория: <b>не вошедшие</b> — тема «Профи» (нейтральная, с логотипом HeatCalc),
+                    <b>продавцы</b> — оформление магазина, <b>монтажники</b> — тема бренда,
+                    <b>администраторы, менеджеры и наблюдатели</b> — обычное оформление.
+                    Вошедшим тема «Профи» (серые плашки в духе ya.ru, по умолчанию ночная) сама не включается — это личный выбор обладателя тарифа.
                     ${canEdit ? '' : '<b style="color:#D97706;">Менять может только администратор.</b>'}
                 </div>
                 ${brandRow}
@@ -34176,7 +34185,6 @@ const app = {
         const termsNote = document.getElementById('auth_terms_note');
         const modalOverlay = document.getElementById('auth_modal_overlay');
         const modalContent = document.querySelector('#auth_modal_overlay .auth-modal-content');
-        const socialWrapper = document.getElementById('auth_social_login_wrapper');
         if (tab === 'login') {
             tabLogin.classList.add('active');
             tabRegister.classList.remove('active');
@@ -34187,7 +34195,6 @@ const app = {
             if (termsWrapper) termsWrapper.style.display = 'none';
             if (termsNote) termsNote.style.display = 'none';
             if (modalOverlay) modalOverlay.classList.remove('register-mode');
-            if (socialWrapper) socialWrapper.style.display = '';
             // maxHeight/overflow — страховка для низких экранов (нетбуки, окно в половину
             // высоты): содержимое прокрутится внутри модалки, а не уедет за край
             if (modalContent) { modalContent.style.maxWidth = '380px'; modalContent.style.maxHeight = '95vh'; modalContent.style.overflowY = 'auto'; }
@@ -34203,15 +34210,75 @@ const app = {
             // Класс register-mode ужимал поля и отступы под длинную анкету. Её больше нет,
             // и в компактном виде регистрация выглядела иначе, чем вход, — не включаем.
             if (modalOverlay) modalOverlay.classList.remove('register-mode');
-            // Регистрация теперь короткая (почта + пароль), поэтому здесь же показываем
-            // и вход через Яндекс ID — это второй равноправный способ завести аккаунт
-            if (socialWrapper) socialWrapper.style.display = '';
             if (modalContent) { modalContent.style.maxWidth = '380px'; modalContent.style.maxHeight = '95vh'; modalContent.style.overflowY = 'auto'; }
             // Код из ссылки менеджера (?ref=КОД) подставляем, если поле ещё пустое:
             // введённое руками не трогаем
             const promoEl = document.getElementById('auth_reg_promo');
             if (promoEl && !promoEl.value) promoEl.value = this.storedInviteCode();
         }
+        this.syncAuthChrome();
+    },
+
+    // ═══ Окно входа по образцу vc.ru: два вида — выбор способа и почтовая форма ═══
+    // Первый экран — логотип, заголовок и способы (Яндекс ID / Почта), почтовая
+    // форма открывается вторым шагом. «Вход ↔ Регистрация» переключается ссылкой
+    // внизу; стрелка «назад» ведёт из формы к способам, а с «Регистрации» — на «Вход».
+    _authView: 'method',
+
+    syncAuthChrome: function () {
+        const view = this._authView === 'form' ? 'form' : 'method';
+        const tab = this.currentAuthTab === 'register' ? 'register' : 'login';
+        const mv = document.getElementById('auth_method_view');
+        const fv = document.getElementById('auth_form_view');
+        if (mv) mv.style.display = view === 'method' ? '' : 'none';
+        if (fv) fv.style.display = view === 'form' ? '' : 'none';
+        const title = document.getElementById('auth_view_title');
+        if (title) title.textContent = tab === 'register' ? 'Регистрация' : 'Вход';
+        // На почтовой форме логотип не показываем — только заголовок, как у vc.ru
+        const logo = document.getElementById('auth_logo_tile');
+        if (logo) logo.style.display = view === 'form' ? 'none' : '';
+        // Поля входа — без подписей, с плейсхолдером «Почта»; на регистрации
+        // подпись и подробный плейсхолдер остаются (полей там три)
+        const emailLabel = document.getElementById('auth_email_label');
+        if (emailLabel) emailLabel.style.display = tab === 'register' ? 'block' : 'none';
+        const emailInput = document.getElementById('auth_email_input');
+        if (emailInput) emailInput.placeholder = tab === 'register' ? 'Введите ваш Email' : 'Почта';
+        const back = document.getElementById('auth_back_btn');
+        if (back) back.style.display = (view === 'form' || tab === 'register') ? 'flex' : 'none';
+        const link = 'color: var(--primary); font-weight: 600; text-decoration: none;';
+        const sw = document.getElementById('auth_switch_line');
+        if (sw) sw.innerHTML = tab === 'register'
+            ? `Уже есть аккаунт? <a href="#" style="${link}" onclick="app.switchAuthTab('login'); return false;">Вход</a>`
+            : `Нет аккаунта? <a href="#" style="${link}" onclick="app.switchAuthTab('register'); return false;">Регистрация</a>`;
+        // Юридическая строка — только на выборе способа при регистрации (как у vc.ru);
+        // в почтовой форме согласие спрашивает явная галочка
+        const mt = document.getElementById('auth_method_terms');
+        if (mt) mt.style.display = (view === 'method' && tab === 'register') ? '' : 'none';
+    },
+
+    showAuthEmailForm: function () {
+        this._authView = 'form';
+        this.syncAuthChrome();
+    },
+
+    authBack: function () {
+        if (this._authView === 'form') {
+            this._authView = 'method';
+            this.syncAuthChrome();
+        } else if (this.currentAuthTab === 'register') {
+            this.switchAuthTab('login');
+        }
+    },
+
+    // Глазок у поля пароля: показывает и снова прячет введённое
+    togglePasswordEye: function (inputId, btn) {
+        const el = document.getElementById(inputId);
+        if (!el) return;
+        const show = el.type === 'password';
+        el.type = show ? 'text' : 'password';
+        if (btn) btn.innerHTML = show
+            ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path><path d="M14.12 14.12a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'
+            : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
     },
 
     // Пароль принимается только латиницей. Раскладку клавиатуры браузер не отдаёт,
