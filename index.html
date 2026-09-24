@@ -1899,95 +1899,8 @@
                 </div>
             </div>
 
-            <!-- Снеготаяние: уличный контур на гликоле, развязанный с домом насосной
-                 группой с пластинчатым теплообменником. Виден только в подробном
-                 режиме — расчёт опирается на расчётную зимнюю температуру города,
-                 а город выбирается только там (app.syncUI). -->
-            <div class="control-item toggle-item" id="blk_snow_header" style="display:none;">
-                <div class="label-row"><span class="lbl">Снеготаяние</span><label class="switch"><input
-                            type="checkbox" id="chk_snow" onchange="app.toggleSnowMelt(this.checked, event)"><span
-                            class="slider"></span></label></div>
-                <div id="blk_snow_opts"
-                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
-                    <div id="snow_zones_list"></div>
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px;">
-                        <button
-                            style="margin: 0 auto; display: block; width: fit-content; padding: 5px 16px; font-size: 11px; font-weight: 700; background: var(--primary-light); border: 1px dashed var(--primary); color: var(--primary); border-radius: 20px; cursor: pointer; transition: 0.2s;"
-                            onclick="app.addSnowZone()"
-                            onmouseover="this.style.background='var(--primary)'; this.style.color='#fff';"
-                            onmouseout="this.style.background='var(--primary-light)'; this.style.color='var(--primary)';">+
-                            Добавить участок</button>
-                    </div>
-                    <div id="snow_summary"
-                        style="display:none; border-top:1px solid #E5E7EB; padding-top:4px; font-size:11px; line-height:1.5; color:var(--text-sec);">
-                    </div>
-                    <!-- position:relative обязателен: .tip-panel-wrap снимает позиционирование
-                         с самой обёртки подсказки, чтобы та привязалась к строке и не уезжала
-                         за левый край узкой панели. Без него точкой отсчёта становится
-                         случайный предок, и подсказка не появляется вовсе. -->
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
-                        <span class="lbl"
-                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Управление<span
-                                class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
-                                    role="button" aria-label="Подробнее">i</i>
-                                <div class="tooltip-content tip-panel"><b>Датчик осадков.</b> В смету добавляются
-                                    грунтовый датчик снега и влаги с блоком управления и кабель к нему. Контроллер
-                                    получает от датчика сухой контакт и включает контур сам, как только пошёл снег
-                                    и на улице холодно, а после — держит выбег, пока площадка не просохнет.<br><br>
-                                    <b>Ручной.</b> Датчика и кабеля в смете нет, узел дешевле. Включать приходится
-                                    самому — из приложения контроллера или выключателем.<br><br>
-                                    <b>На что влияет ещё.</b> В обоих режимах контур ведёт контроллер и всю зиму
-                                    держит дежурные +5…+8 °C: остывшую уличную стяжку разогреть с нуля — это часы,
-                                    а не минуты. Разница только в том, кто даёт команду выйти на рабочий режим.
-                                </div>
-                            </span></span>
-                        <div class="tabs" id="snow_ctrl_tabs" style="font-size:11px;">
-                            <div class="tab active" id="snow_ctrl_sensor" onclick="app.setSnowCtrl('sensor')">Датчик
-                                осадков</div>
-                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')"
-                                title="Датчик осадков в смету не попадает. Снеготаяние включается вручную — из приложения контроллера или выключателем.">Ручной</div>
-                        </div>
-                    </div>
-                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
-                        <span class="lbl"
-                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
-                            петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
-                                    role="button" aria-label="Подробнее">i</i>
-                                <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Внутренний диаметр
-                                    16 мм. Потери в петле примерно на треть ниже, метр дешевле, петля выходит
-                                    длиннее — а значит меньше петель, меньше выходов коллектора и реже приходится
-                                    делить снеготаяние на два узла. Теплоносителя в контуре на 15 % больше.<br><br>
-                                    <b>20х2.8 (серая).</b> Внутренний 14,4 мм. Толстая стенка — запас на механику
-                                    там, где за петлю страшно: тяжёлый проезд, работы поверх готовой стяжки. За это
-                                    платите гидравликой: петля короче, петель больше, узлов может понадобиться
-                                    больше.<br><br>
-                                    <b>Общее у обеих.</b> PE-Xa/EVOH, обе переживают замерзание теплоносителя
-                                    (металлопластик в этом месте расслаивается по алюминию), обе на аксиальном
-                                    соединении. Различается только монтажная гильза — она обжимает трубу по стенке.
-                                </div>
-                            </span></span>
-                        <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
-                            <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')"
-                                title="PE-Xa/EVOH 20х2.0, внутренний 16 мм. Потери в петле ниже — петель и узлов нужно меньше.">
-                                20×2.0</div>
-                            <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')"
-                                title="PE-Xa/EVOH 20х2.8, внутренний 14,4 мм. Толстая стенка под тяжёлый проезд, но петля короче.">
-                                20×2.8</div>
-                        </div>
-                    </div>
-                    <div
-                        style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #E5E7EB; padding-top:8px;">
-                        <span class="lbl" style="font-size:12px;"
-                            title="Снеготаяние — самостоятельная нагрузка, часто больше половины дома. Включено — котёл подбирается с её учётом. Выключено — котёл считается по дому, а контроллер гасит снеготаяние при нехватке мощности.">Учесть
-                            в мощности котла</span><label class="switch"
-                            style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
-                                id="chk_snow_boiler" onchange="app.toggleSnowBoilerPower(this.checked)"><span
-                                class="slider"></span></label>
-                    </div>
-                </div>
-            </div>
             <!-- Автоматика — один пункт на всё: контроллер котельной и зональная
-                 автоматика радиаторов и тёплого пола. Стоит последним среди
+                 автоматика радиаторов и тёплого пола. Стоит перед снеготаянием, среди
                  инженерных пунктов и только в подробном режиме (app.syncUI, как
                  снеготаяние): системы уже заданы, поверх них включается
                  автоматизация. В быстром режиме, если автоматика включена (старая
@@ -2142,6 +2055,94 @@
             </div>
             <div id="blk_auto_fast_note" style="display:none; font-size:11px; line-height:1.5; color:var(--text-sec); padding:8px 0;">
                 Автоматика включена и посчитана в смете. Её настройки — в подробном режиме.
+            </div>
+
+            <!-- Снеготаяние: уличный контур на гликоле, развязанный с домом насосной
+                 группой с пластинчатым теплообменником. Последний пункт панели, виден только в подробном
+                 режиме — расчёт опирается на расчётную зимнюю температуру города,
+                 а город выбирается только там (app.syncUI). -->
+            <div class="control-item toggle-item" id="blk_snow_header" style="display:none;">
+                <div class="label-row"><span class="lbl">Снеготаяние</span><label class="switch"><input
+                            type="checkbox" id="chk_snow" onchange="app.toggleSnowMelt(this.checked, event)"><span
+                            class="slider"></span></label></div>
+                <div id="blk_snow_opts"
+                    style="display:none; flex-direction:column; gap:10px; margin-top:10px; background:#F8FAFC; padding:12px; border-radius:8px; border:1px solid #E5E7EB;">
+                    <div id="snow_zones_list"></div>
+                    <div style="border-top:1px solid #E5E7EB; padding-top:8px;">
+                        <button
+                            style="margin: 0 auto; display: block; width: fit-content; padding: 5px 16px; font-size: 11px; font-weight: 700; background: var(--primary-light); border: 1px dashed var(--primary); color: var(--primary); border-radius: 20px; cursor: pointer; transition: 0.2s;"
+                            onclick="app.addSnowZone()"
+                            onmouseover="this.style.background='var(--primary)'; this.style.color='#fff';"
+                            onmouseout="this.style.background='var(--primary-light)'; this.style.color='var(--primary)';">+
+                            Добавить участок</button>
+                    </div>
+                    <div id="snow_summary"
+                        style="display:none; border-top:1px solid #E5E7EB; padding-top:4px; font-size:11px; line-height:1.5; color:var(--text-sec);">
+                    </div>
+                    <!-- position:relative обязателен: .tip-panel-wrap снимает позиционирование
+                         с самой обёртки подсказки, чтобы та привязалась к строке и не уезжала
+                         за левый край узкой панели. Без него точкой отсчёта становится
+                         случайный предок, и подсказка не появляется вовсе. -->
+                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
+                        <span class="lbl"
+                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Управление<span
+                                class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
+                                    role="button" aria-label="Подробнее">i</i>
+                                <div class="tooltip-content tip-panel"><b>Датчик осадков.</b> В смету добавляются
+                                    грунтовый датчик снега и влаги с блоком управления и кабель к нему. Контроллер
+                                    получает от датчика сухой контакт и включает контур сам, как только пошёл снег
+                                    и на улице холодно, а после — держит выбег, пока площадка не просохнет.<br><br>
+                                    <b>Ручной.</b> Датчика и кабеля в смете нет, узел дешевле. Включать приходится
+                                    самому — из приложения контроллера или выключателем.<br><br>
+                                    <b>На что влияет ещё.</b> В обоих режимах контур ведёт контроллер и всю зиму
+                                    держит дежурные +5…+8 °C: остывшую уличную стяжку разогреть с нуля — это часы,
+                                    а не минуты. Разница только в том, кто даёт команду выйти на рабочий режим.
+                                </div>
+                            </span></span>
+                        <div class="tabs" id="snow_ctrl_tabs" style="font-size:11px;">
+                            <div class="tab active" id="snow_ctrl_sensor" onclick="app.setSnowCtrl('sensor')">Датчик
+                                осадков</div>
+                            <div class="tab" id="snow_ctrl_manual" onclick="app.setSnowCtrl('manual')"
+                                title="Датчик осадков в смету не попадает. Снеготаяние включается вручную — из приложения контроллера или выключателем.">Ручной</div>
+                        </div>
+                    </div>
+                    <div style="border-top:1px solid #E5E7EB; padding-top:8px; position:relative;">
+                        <span class="lbl"
+                            style="font-size:12px; display:flex; align-items:center; gap:4px; margin-bottom:6px;">Труба
+                            петель<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0"
+                                    role="button" aria-label="Подробнее">i</i>
+                                <div class="tooltip-content tip-panel"><b>20х2.0 (красная).</b> Внутренний диаметр
+                                    16 мм. Потери в петле примерно на треть ниже, метр дешевле, петля выходит
+                                    длиннее — а значит меньше петель, меньше выходов коллектора и реже приходится
+                                    делить снеготаяние на два узла. Теплоносителя в контуре на 15 % больше.<br><br>
+                                    <b>20х2.8 (серая).</b> Внутренний 14,4 мм. Толстая стенка — запас на механику
+                                    там, где за петлю страшно: тяжёлый проезд, работы поверх готовой стяжки. За это
+                                    платите гидравликой: петля короче, петель больше, узлов может понадобиться
+                                    больше.<br><br>
+                                    <b>Общее у обеих.</b> PE-Xa/EVOH, обе переживают замерзание теплоносителя
+                                    (металлопластик в этом месте расслаивается по алюминию), обе на аксиальном
+                                    соединении. Различается только монтажная гильза — она обжимает трубу по стенке.
+                                </div>
+                            </span></span>
+                        <div class="tabs" id="snow_pipe_tabs" style="font-size:11px;">
+                            <div class="tab active" id="snow_pipe_thin" onclick="app.setSnowPipe('thin')"
+                                title="PE-Xa/EVOH 20х2.0, внутренний 16 мм. Потери в петле ниже — петель и узлов нужно меньше.">
+                                20×2.0</div>
+                            <div class="tab" id="snow_pipe_thick" onclick="app.setSnowPipe('thick')"
+                                title="PE-Xa/EVOH 20х2.8, внутренний 14,4 мм. Толстая стенка под тяжёлый проезд, но петля короче.">
+                                20×2.8</div>
+                        </div>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #E5E7EB; padding-top:8px;">
+                        <span class="lbl" style="font-size:12px;"
+                            title="Снеготаяние — самостоятельная нагрузка, часто больше половины дома. Включено — котёл подбирается с её учётом. Выключено — котёл считается по дому, а контроллер гасит снеготаяние при нехватке мощности.">Учесть
+                            в мощности котла</span><label class="switch"
+                            style="transform:scale(0.8); transform-origin:right;"><input type="checkbox"
+                                id="chk_snow_boiler" onchange="app.toggleSnowBoilerPower(this.checked)"><span
+                                class="slider"></span></label>
+                    </div>
+                </div>
             </div>
         </div>
 
