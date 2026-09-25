@@ -20666,13 +20666,16 @@ const app = {
         { id: 'projects', icon: '📁', label: 'Проекты', hint: 'Выпущенные комплекты листов' },
         { id: 'dashboard', icon: '📊', label: 'Дашборд', hint: 'Вся аналитика одним экраном' },
         { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
-        { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' }
+        { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
+        { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' }
     ],
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
     // поэтому и закрыт он тем же ключом. Список один, чтобы права не разъехались.
     // «Умное заполнение» — журнал диалогов монтажников с окном ✨, тоже только владельцу.
-    OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill'],
+    // «Статьи» — очередь SEO-публикаций: план продвижения и тексты, которые ещё
+    // не вышли. Наблюдателям и менеджерам дистрибьюторов там делать нечего.
+    OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill', 'articles'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -20926,6 +20929,144 @@ const app = {
         const defs = this.orderedAdminTabDefs().filter(t => this.tabVisibleFor(t.id, role, owner));
         if (role !== 'manager') return defs;
         return defs.map(t => Object.assign({}, t, { hint: this.MANAGER_TAB_HINTS[t.id] || t.hint }));
+    },
+
+    // ═══ Вкладка «Статьи» ════════════════════════════════════════════════
+    //
+    // Очередь SEO-публикаций на год. Сами статьи лежат в репозитории
+    // (content/articles/<slug>.json), расписание — в content/schedule.json,
+    // выкладывает их workflow publish-queue.yml раз в сутки. Здесь только
+    // показываем: что уже вышло, что написано и ждёт, что ещё не написано.
+    //
+    // Данные берём файлом с самого сайта, а не из базы: расписание живёт
+    // в репозитории, и второй источник правды здесь только мешал бы. Заодно
+    // это ничего не стоит по трафику Supabase.
+    ARTICLES_URL: '/content/schedule.json',
+
+    articleStatusMeta: {
+        published: { label: 'Опубликована', color: '#10B981' },
+        queued: { label: 'Написана, ждёт даты', color: '#3B82F6' },
+        planned: { label: 'Не написана', color: '#9CA3AF' }
+    },
+
+    renderAdminArticles: async function () {
+        const box = document.getElementById('admin_articles_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        if (!this._articlesData) {
+            box.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-sec); font-size:13px;">Загружаем расписание…</div>';
+            try {
+                // ?t= — обход кэша: расписание меняется каждой публикацией,
+                // а Service Worker отдал бы вчерашнее.
+                const res = await fetch(this.ARTICLES_URL + '?t=' + Date.now(), { cache: 'no-store' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                this._articlesData = await res.json();
+            } catch (e) {
+                box.innerHTML = `<div style="padding:24px; color:var(--text-sec); font-size:13px; line-height:1.6;">
+                    Не удалось прочитать расписание публикаций.<br>
+                    Это не поломка сайта: статьи всё равно выходят сами, расписание читает робот GitHub.<br>
+                    <button class="auth-btn-base" style="margin-top:12px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._articlesData=null; app.renderAdminArticles()">Попробовать ещё раз</button>
+                </div>`;
+                return;
+            }
+        }
+
+        const data = this._articlesData;
+        const items = (data.items || []).slice();
+        const f = this._articlesFilter || (this._articlesFilter = { cluster: '', status: '', q: '' });
+
+        const today = new Date().toISOString().slice(0, 10);
+        const counts = { published: 0, queued: 0, planned: 0 };
+        items.forEach(i => { counts[i.status] = (counts[i.status] || 0) + 1; });
+        const next = items.filter(i => i.status !== 'published' && (i.date || '') >= today)
+            .sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0];
+        const daysTo = next ? Math.round((new Date(next.date) - new Date(today)) / 86400000) : null;
+        const dayWord = n => (n % 10 === 1 && n % 100 !== 11) ? 'день' : ((n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? 'дня' : 'дней');
+
+        const clusters = [];
+        items.forEach(i => { if (clusters.indexOf(i.cluster) < 0) clusters.push(i.cluster); });
+
+        const shown = items.filter(i =>
+            (!f.cluster || i.cluster === f.cluster) &&
+            (!f.status || i.status === f.status) &&
+            (!f.q || (i.title + ' ' + i.query).toLowerCase().includes(f.q.toLowerCase())));
+
+        const card = (n, label, color) => `
+            <div style="flex:1 1 130px; background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+                <div style="font-size:22px; font-weight:800; color:${color}; line-height:1.2;">${n}</div>
+                <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${label}</div>
+            </div>`;
+
+        const th = 'padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); background:var(--surface-light); border-bottom:1px solid var(--border); white-space:nowrap;';
+        const td = 'padding:8px 10px; border-bottom:1px solid var(--border); font-size:12px; vertical-align:top;';
+
+        const rows = shown.map(i => {
+            const st = this.articleStatusMeta[i.status] || this.articleStatusMeta.planned;
+            const readUrl = i.status === 'published' ? '/' + i.slug + '/'
+                : (i.status === 'queued' ? '/queue/' + i.slug + '/' : '');
+            const editUrl = 'https://github.com/terem24/smeta/edit/main/content/articles/' + i.slug + '.json';
+            const d = i.date ? i.date.split('-').reverse().join('.') : '—';
+            const overdue = i.status !== 'published' && (i.date || '') < today;
+            return `<tr>
+                <td style="${td} white-space:nowrap; ${overdue ? 'color:#D97706; font-weight:700;' : ''}">${d}${overdue ? ' ⏳' : ''}</td>
+                <td style="${td}">
+                    <div style="font-weight:600; color:var(--text-main);">${esc(i.title)}</div>
+                    <div style="color:var(--text-sec); margin-top:2px;">${esc(i.cluster)} · запрос «${esc(i.query)}» · ${i.freq} в месяц${i.words ? ' · ' + i.words + ' слов' : ''}</div>
+                </td>
+                <td style="${td} white-space:nowrap;"><span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:#fff; background:${st.color};">${st.label}</span></td>
+                <td style="${td} white-space:nowrap;">
+                    ${readUrl ? `<a href="${readUrl}" target="_blank" rel="noopener" style="color:var(--primary); text-decoration:none; font-weight:600;">Читать</a>` : '<span style="color:var(--text-sec);">—</span>'}
+                    ${i.status !== 'planned' ? ` · <a href="${editUrl}" target="_blank" rel="noopener" style="color:var(--text-sec); text-decoration:none;">Править</a>` : ''}
+                </td>
+            </tr>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                ${card(items.length, 'всего в плане', 'var(--text-main)')}
+                ${card(counts.published || 0, 'опубликовано', '#10B981')}
+                ${card(counts.queued || 0, 'написано, ждёт', '#3B82F6')}
+                ${card(counts.planned || 0, 'ещё не написано', '#9CA3AF')}
+            </div>
+
+            <div style="background:var(--surface-light); border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; font-size:12px; line-height:1.6; color:var(--text-sec);">
+                ${next
+                ? `Следующая публикация — <b style="color:var(--text-main);">${esc(next.title)}</b>, ${next.date.split('-').reverse().join('.')}${daysTo === 0 ? ' (сегодня)' : ', через ' + daysTo + ' ' + dayWord(daysTo)}.`
+                : 'Все запланированные статьи опубликованы.'}
+                <br>Выходят сами, ${esc(data.cadence || 'по расписанию')}, без чьего-либо участия. Написанные статьи можно прочитать до публикации — в поиск они до своего дня не попадают.
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <input id="articles_q" value="${esc(f.q)}" placeholder="Поиск по названию или запросу"
+                    style="flex:1 1 220px; padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
+                    oninput="app._articlesFilter.q = this.value; app.renderAdminArticles()">
+                <select style="padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
+                    onchange="app._articlesFilter.cluster = this.value; app.renderAdminArticles()">
+                    <option value="">Все разделы</option>
+                    ${clusters.map(c => `<option value="${esc(c)}"${f.cluster === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}
+                </select>
+                <select style="padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
+                    onchange="app._articlesFilter.status = this.value; app.renderAdminArticles()">
+                    <option value="">Любое состояние</option>
+                    ${Object.keys(this.articleStatusMeta).map(k => `<option value="${k}"${f.status === k ? ' selected' : ''}>${this.articleStatusMeta[k].label}</option>`).join('')}
+                </select>
+                <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;"
+                    onclick="app._articlesData=null; app.renderAdminArticles()">Обновить</button>
+            </div>
+
+            <div style="overflow-x:auto;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr><th style="${th}">Дата</th><th style="${th}">Статья</th><th style="${th}">Состояние</th><th style="${th}"></th></tr>
+                    ${rows || `<tr><td colspan="4" style="${td} text-align:center; color:var(--text-sec); padding:24px;">Ничего не нашлось</td></tr>`}
+                </table>
+            </div>
+            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${shown.length} из ${items.length}.</div>
+        `;
+
+        // Курсор в поле поиска слетает после перерисовки — возвращаем в конец строки
+        const q = document.getElementById('articles_q');
+        if (q && f.q) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); }
     },
 
     // ═══ Вкладка «Тарифы» ════════════════════════════════════════════════
@@ -21478,6 +21619,12 @@ const app = {
         if (this._adminTab === 'successors') {
             content.innerHTML = navHtml;
             this.renderAdminSuccessors();
+            return;
+        }
+
+        if (this._adminTab === 'articles') {
+            content.innerHTML = navHtml + '<div id="admin_articles_box"></div>';
+            this.renderAdminArticles();
             return;
         }
 

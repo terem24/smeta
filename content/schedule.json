@@ -11,10 +11,10 @@
    "freq": 2001,
    "audience": "owner",
    "data_block": "расценки и расчёт",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-09-29",
    "published_at": null,
-   "words": 0
+   "words": 819
   },
   {
    "slug": "kollektor-teplogo-pola",

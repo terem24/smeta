@@ -197,7 +197,19 @@ def build(slug, publish=False):
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, 'index.html')
     io.open(path, 'w', encoding='utf-8').write(page)
-    return path, len(plain(body).split())
+    words = len(plain(body).split())
+
+    # Отмечаем в расписании, что статья написана: по этому полю вкладка «Статьи»
+    # в админке отличает готовое от запланированного. Статус published не трогаем —
+    # его ставит publish_due.py, и затирать его пересборкой нельзя.
+    if meta.get('words') != words or meta['status'] == 'planned':
+        meta['words'] = words
+        if meta['status'] == 'planned' and not publish:
+            meta['status'] = 'queued'
+        io.open(os.path.join(ROOT, 'content', 'schedule.json'), 'w', encoding='utf-8').write(
+            json.dumps(schedule, ensure_ascii=False, indent=1))
+
+    return path, words
 
 
 TEMPLATE = '''<!DOCTYPE html>
