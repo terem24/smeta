@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отопление под ключ: цена и из чего складывается смета | HeatCalc.ru</title>
+    <meta name="description" content="Сколько стоит отопление частного дома под ключ: разбор сметы на дом 150 м² по этапам, соотношение материалов и работ, что не входит в «под ключ» и как сравнивать предложения.">
+    <link rel="canonical" href="https://heatcalc.ru/skolko-stoit-otoplenie-doma/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/skolko-stoit-otoplenie-doma/">
+    <meta property="og:title" content="Сколько стоит отопление под ключ: разбор сметы">
+    <meta property="og:description" content="300 тысяч работ на дом 150 м² с разбивкой по этапам. И что обычно остаётся за скобками.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/skolko-stoit-otoplenie-doma/#webpage",
+      "url": "https://heatcalc.ru/skolko-stoit-otoplenie-doma/",
+      "name": "Сколько стоит отопление под ключ: разбор сметы",
+      "description": "Сколько стоит отопление частного дома под ключ: разбор сметы на дом 150 м² по этапам, соотношение материалов и работ, что не входит в «под ключ» и как сравнивать предложения.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "отопление под ключ цена"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Сколько стоит отопление под ключ: разбор сметы",
+          "item": "https://heatcalc.ru/skolko-stoit-otoplenie-doma/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Сколько стоит отопление дома 150 м² под ключ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Около 300 тысяч рублей работ для дома с тёплым полом на первом этаже (80 м²), 12 радиаторами, газовым котлом и бойлером: котельная 63 500 ₽, тёплый пол 119 500 ₽, радиаторы 107 000 ₽, опрессовки 10 000 ₽. Материалы считаются отдельно и обычно сопоставимы — ещё 350–500 тысяч в зависимости от бренда."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему в смете должны быть разделены материалы и работы?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Иначе предложения нельзя сравнить. Одна и та же итоговая сумма может означать дорогое оборудование с минимумом работ или дешёвое с большим объёмом монтажа. При разделении видно состав: сколько точек радиаторов, сколько квадратов пола, есть ли гидрострелка, какой бойлер."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что не входит в отопление под ключ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Стяжка поверх тёплого пола, штробление и заделка, электрика котельной, проект газоснабжения и пуск газа, водоснабжение и канализация, демонтаж старого оборудования и промывка системы. Эти позиции всплывают отдельным счётом, поэтому спрашивать о них стоит до подписания."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "От чего смета меняется сильнее всего?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "От типа разводки радиаторов: лучевая 6 500 ₽ за точку против 2 500 у тройниковой, на 12 приборах это шестьдесят тысяч. От площади тёплого пола — 1 100 ₽ за квадрат работ. От типа дымохода и наличия бойлера. И от температурного графика: низкотемпературная система требует вдвое больше секций."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "На чём в отоплении нельзя экономить?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "На расчёте, опрессовке, группе безопасности и диаметрах труб. Расчёт по площади вместо покомнатного даёт завышенный котёл и неверно подобранные приборы. Пропущенная опрессовка означает поиск протечки в залитой стяжке. Группа безопасности — единственная защита системы от перегрева."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/skolko-stoit-otoplenie-doma/#article",
+      "headline": "Сколько стоит отопление под ключ: разбор сметы",
+      "description": "Сколько стоит отопление частного дома под ключ: разбор сметы на дом 150 м² по этапам, соотношение материалов и работ, что не входит в «под ключ» и как сравнивать предложения.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/skolko-stoit-otoplenie-doma/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-10-27",
+      "dateModified": "2026-10-27",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Сколько стоит отопление под ключ: разбор сметы</nav>
+
+        <h1>Сколько стоит отопление под ключ: разбор сметы</h1>
+
+        <p class="art-meta"><time datetime="2026-10-27">27 октября 2026</time></p>
+
+        <p class="lead">«Под ключ» у разных подрядчиков означает разное, и сравнивать предложения по итоговой цифре бессмысленно. Раскладываем смету на дом 150 м² по этапам, показываем соотношение материалов и работ и перечисляем то, что обычно остаётся за скобками.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#primer-dom-150-m²">Пример: дом 150 м²</a></li>
+            <li><a href="#na-chto-raspadaetsya-cena">На что распадается цена</a></li>
+            <li><a href="#gde-smeta-menyaetsya-v-razy">Где смета меняется в разы</a></li>
+            <li><a href="#chto-obychno-ne-vhodit">Что обычно не входит</a></li>
+            <li><a href="#kak-sravnivat-predlozheniya">Как сравнивать предложения</a></li>
+            <li><a href="#na-chem-ekonomit-mozhno">На чём экономить можно</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="primer-dom-150-m²">Пример: дом 150 м²</h2>
+
+        <p>Два этажа, тёплый пол на первом (80 м² укладки), радиаторы на обоих этажах (12 приборов), газовый котёл, бойлер на 200 литров.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Этап</th><th>Что входит</th><th>Работы</th></tr>
+                <tr><td>Котельная</td><td>котёл, дымоход, баки, гидрострелка, бойлер</td><td class="num">63 500 ₽</td></tr>
+                <tr><td>Тёплый пол</td><td>утеплитель, труба, коллектор, узел подмеса, шкаф, гидравлика</td><td class="num">119 500 ₽</td></tr>
+                <tr><td>Радиаторы</td><td>12 точек, коллекторы, шкафы, магистрали</td><td class="num">107 000 ₽</td></tr>
+                <tr><td>Пуск</td><td>опрессовка котельной и тёплого пола</td><td class="num">10 000 ₽</td></tr>
+                <tr><td>Итого работ</td><td></td><td class="num">300 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Базовые расценки калькулятора. Полный прайс — в <a href="/rascenki-na-montazh-otopleniya/">расценках на монтаж</a>.</p>
+
+        <div class="callout">
+            <p><strong>Материалы считаются отдельно и обычно сопоставимы с работами.</strong> Котёл, бойлер, радиаторы, труба, коллекторы, утеплитель и автоматика на такой дом — это ещё 350–500 тысяч в зависимости от бренда и того, сколько зон автоматики закладывается. Смета, где материалы и работы не разделены, не позволяет сравнить предложения: непонятно, на чём сэкономили.</p>
+        </div>
+
+        <h2 id="na-chto-raspadaetsya-cena">На что распадается цена</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Позиция</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж газового котла</td><td>шт</td><td class="num">20 000 ₽</td></tr>
+                <tr><td>Коаксиальный дымоход с отверстием</td><td>компл</td><td class="num">16 000 ₽</td></tr>
+                <tr><td>Гидравлика: баки и предохранительные клапаны</td><td>компл</td><td class="num">9 000 ₽</td></tr>
+                <tr><td>Гидравлика: магистрали радиаторов</td><td>компл</td><td class="num">9 000 ₽</td></tr>
+                <tr><td>Гидравлика: до коллектора тёплого пола</td><td>компл</td><td class="num">15 000 ₽</td></tr>
+                <tr><td>Монтаж трубы тёплого пола</td><td>м²</td><td class="num">750 ₽</td></tr>
+                <tr><td>Утеплитель под тёплый пол</td><td>м²</td><td class="num">350 ₽</td></tr>
+                <tr><td>Коллектор тёплого пола с подключением</td><td>пара</td><td class="num">6 500 ₽</td></tr>
+                <tr><td>Узел подмеса</td><td>шт</td><td class="num">6 000 ₽</td></tr>
+                <tr><td>Монтаж радиатора (лучевая разводка)</td><td>точка</td><td class="num">6 500 ₽</td></tr>
+                <tr><td>Монтаж радиатора (тройниковая)</td><td>точка</td><td class="num">2 500 ₽</td></tr>
+                <tr><td>Монтаж и обвязка шкафа</td><td>шт</td><td class="num">4 000 ₽</td></tr>
+                <tr><td>Опрессовка котельной</td><td>компл</td><td class="num">5 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Всё считается за понятные единицы — квадраты, точки, комплекты. Смета «за объект одной строкой» ничего не объясняет.</p>
+
+        <h2 id="gde-smeta-menyaetsya-v-razy">Где смета меняется в разы</h2>
+
+        <ul>
+            <li><strong>Разводка радиаторов.</strong> Лучевая — 6 500 ₽ за точку, тройниковая — 2 500. На 12 приборах разница около шестидесяти тысяч.</li>
+            <li><strong>Площадь тёплого пола.</strong> Работы стоят 1 100 ₽ за квадрат (труба плюс утеплитель), и 80 м² против 40 — это 44 тысячи.</li>
+            <li><strong>Тип дымохода.</strong> Коаксиал через стену 16 000 ₽, раздельный D80 — 25 000, через кровлю — 18 000 плюс проходной элемент.</li>
+            <li><strong>Бойлер.</strong> Плюс 21 000 ₽ работ и, возможно, более мощный котёл: бак на 300 литров требует 17,5 кВт на прогрев за час.</li>
+            <li><strong>Температурный график.</strong> Низкотемпературная система под конденсационный котёл требует вдвое больше секций: на 55/45 радиатор отдаёт 47 % каталожной мощности.</li>
+        </ul>
+
+        <h2 id="chto-obychno-ne-vhodit">Что обычно не входит</h2>
+
+        <ul>
+            <li><strong>Стяжка поверх тёплого пола</strong> — работа бетонщиков.</li>
+            <li><strong>Штробление и заделка</strong> под скрытую подводку.</li>
+            <li><strong>Электрика котельной</strong> — линия от щита, автоматы, УЗО.</li>
+            <li><strong>Проект газоснабжения и пуск газа</strong> — работа газораспределительной организации со своими сроками.</li>
+            <li><strong>Водоснабжение и канализация</strong> — отдельные разделы: узел ввода около 48 тысяч, разводка по точкам.</li>
+            <li><strong>Демонтаж старого оборудования</strong> и промывка системы при переделке.</li>
+        </ul>
+
+        <h2 id="kak-sravnivat-predlozheniya">Как сравнивать предложения</h2>
+
+        <ol>
+            <li><strong>Потребовать разделения на материалы и работы.</strong> Без этого сравнение невозможно: одна и та же сумма может означать дорогое оборудование с минимумом работ или наоборот.</li>
+            <li><strong>Сверить состав, а не итог.</strong> Сколько точек радиаторов, сколько квадратов пола, есть ли гидрострелка, какой объём бойлера.</li>
+            <li><strong>Проверить мощность котла.</strong> Если она вдвое больше теплопотерь, считали по площади, а не по расчёту, и вслед за котлом завышено всё остальное.</li>
+            <li><strong>Спросить про температурный график.</strong> От него зависит число секций, и предложение с меньшим числом приборов может просто игнорировать этот пересчёт.</li>
+            <li><strong>Уточнить, что в «под ключ» не входит.</strong> Именно эти позиции всплывают потом отдельным счётом.</li>
+        </ol>
+
+        <h2 id="na-chem-ekonomit-mozhno">На чём экономить можно</h2>
+
+        <ul>
+            <li><strong>Тройниковая разводка вместо лучевой</strong> — если полы не под стяжку, а по стенам или в плинтусе.</li>
+            <li><strong>Меньше площади тёплого пола.</strong> Пол в кладовой и гардеробной — это комфорт, без которого живут.</li>
+            <li><strong>Своя работа на подготовке.</strong> Укладка утеплителя и трубы — 1 100 ₽ за квадрат, и это та часть, которую реально сделать самому.</li>
+            <li><strong>Бренд оборудования.</strong> Аналоги дают 10–15 % на позициях, где разница только в шильдике.</li>
+        </ul>
+
+        <p>А чего трогать не стоит: расчёта, опрессовки, группы безопасности и диаметров. Это те позиции, экономия на которых обнаруживается в первый мороз и обходится дороже сэкономленного.</p>
+
+        <a class="cta" href="/">
+            Собрать смету на свой дом
+            <small>Оборудование и работы с ценами</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько стоит отопление дома 150 м² под ключ?</span></summary>
+            <div class="answer">
+                <p>Около 300 тысяч рублей работ для дома с тёплым полом на первом этаже (80 м²), 12 радиаторами, газовым котлом и бойлером: котельная 63 500 ₽, тёплый пол 119 500 ₽, радиаторы 107 000 ₽, опрессовки 10 000 ₽. Материалы считаются отдельно и обычно сопоставимы — ещё 350–500 тысяч в зависимости от бренда.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему в смете должны быть разделены материалы и работы?</span></summary>
+            <div class="answer">
+                <p>Иначе предложения нельзя сравнить. Одна и та же итоговая сумма может означать дорогое оборудование с минимумом работ или дешёвое с большим объёмом монтажа. При разделении видно состав: сколько точек радиаторов, сколько квадратов пола, есть ли гидрострелка, какой бойлер.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что не входит в отопление под ключ?</span></summary>
+            <div class="answer">
+                <p>Стяжка поверх тёплого пола, штробление и заделка, электрика котельной, проект газоснабжения и пуск газа, водоснабжение и канализация, демонтаж старого оборудования и промывка системы. Эти позиции всплывают отдельным счётом, поэтому спрашивать о них стоит до подписания.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">От чего смета меняется сильнее всего?</span></summary>
+            <div class="answer">
+                <p>От типа разводки радиаторов: лучевая 6 500 ₽ за точку против 2 500 у тройниковой, на 12 приборах это шестьдесят тысяч. От площади тёплого пола — 1 100 ₽ за квадрат работ. От типа дымохода и наличия бойлера. И от температурного графика: низкотемпературная система требует вдвое больше секций.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">На чём в отоплении нельзя экономить?</span></summary>
+            <div class="answer">
+                <p>На расчёте, опрессовке, группе безопасности и диаметрах труб. Расчёт по площади вместо покомнатного даёт завышенный котёл и неверно подобранные приборы. Пропущенная опрессовка означает поиск протечки в залитой стяжке. Группа безопасности — единственная защита системы от перегрева.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/septik-ili-vygrebnaya-yama/">септик или станция очистки</a> · <a href="/teplovoy-nasos-dlya-doma/">тепловой насос: работает ли в наши морозы</a> · <a href="/vodosnabzhenie-chastnogo-doma/">водоснабжение частного дома: с чего начать</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -17,6 +17,20 @@
    "words": 819
   },
   {
+   "slug": "podgotovka-otopleniya-k-zime",
+   "title": "Подготовка отопления к зиме: что проверить перед сезоном",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "подготовка отопления к зиме",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "чек-лист перед сезоном",
+   "status": "queued",
+   "date": "2026-09-28",
+   "published_at": null,
+   "words": 629
+  },
+  {
    "slug": "kollektor-teplogo-pola",
    "title": "Коллектор тёплого пола: на сколько выходов",
    "cluster": "Тёплый пол",
@@ -179,10 +193,10 @@
    "freq": 6400,
    "audience": "owner",
    "data_block": "две сметы из калькулятора",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-27",
    "published_at": null,
-   "words": 0
+   "words": 578
   },
   {
    "slug": "vodosnabzhenie-doma-lenoblast",
@@ -211,6 +225,20 @@
    "date": "2026-10-31",
    "published_at": null,
    "words": 648
+  },
+  {
+   "slug": "kotel-ne-greet-v-moroz",
+   "title": "Котёл не справляется в мороз: что проверять",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "котел не греет дом",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "расчётная пятидневка и три режима",
+   "status": "planned",
+   "date": "2026-11-03",
+   "published_at": null,
+   "words": null
   },
   {
    "slug": "zamena-kotla-v-dome",
@@ -249,10 +277,10 @@
    "freq": 89775,
    "audience": "owner",
    "data_block": "сравнение с PEX",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-07",
    "published_at": null,
-   "words": 0
+   "words": 483
   },
   {
    "slug": "dvuhtrubnaya-sistema",
@@ -493,6 +521,20 @@
    "words": 0
   },
   {
+   "slug": "dom-bez-otopleniya-zimoy",
+   "title": "Дом без присмотра зимой: как уехать и не разморозить",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "как оставить дом на зиму",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "режим +5 и мощность резерва",
+   "status": "planned",
+   "date": "2026-12-18",
+   "published_at": null,
+   "words": null
+  },
+  {
    "slug": "rezervnoe-pitanie-kotelnoy",
    "title": "Резервное питание котельной",
    "cluster": "Автоматика и умный дом",
@@ -547,6 +589,20 @@
    "date": "2026-12-26",
    "published_at": null,
    "words": 0
+  },
+  {
+   "slug": "tarify-na-otoplenie-s-1-yanvarya",
+   "title": "Тарифы на отопление с 1 января: как пересчитать расходы",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "тарифы на газ и электричество",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "наши тарифные таблицы",
+   "status": "planned",
+   "date": "2026-12-26",
+   "published_at": null,
+   "words": null
   },
   {
    "slug": "otoplenie-bez-gaza-lenoblast",
@@ -631,6 +687,20 @@
    "date": "2027-01-09",
    "published_at": null,
    "words": 0
+  },
+  {
+   "slug": "otklyuchili-svet-zimoy",
+   "title": "Отключили свет зимой: сколько продержится дом",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "отключили свет отопление не работает",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "расчёт остывания и автономии",
+   "status": "planned",
+   "date": "2027-01-12",
+   "published_at": null,
+   "words": null
   },
   {
    "slug": "zashchita-ot-protechek",
@@ -1137,6 +1207,20 @@
    "words": 628
   },
   {
+   "slug": "konservatsiya-otopleniya-na-leto",
+   "title": "Консервация отопления на лето: что сделать в апреле",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "консервация системы отопления",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "что проверяют перед простоем",
+   "status": "planned",
+   "date": "2027-04-06",
+   "published_at": null,
+   "words": null
+  },
+  {
    "slug": "skolko-sektsiy-radiatora",
    "title": "Сколько секций радиатора нужно на комнату",
    "cluster": "Радиаторы и приборы",
@@ -1275,6 +1359,20 @@
    "date": "2027-04-27",
    "published_at": null,
    "words": 0
+  },
+  {
+   "slug": "zapusk-vodosnabzheniya-posle-zimy",
+   "title": "Запуск водоснабжения после зимы: порядок и опрессовка",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "запуск воды на даче после зимы",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "давления по СП 73",
+   "status": "planned",
+   "date": "2027-04-27",
+   "published_at": null,
+   "words": null
   },
   {
    "slug": "kotelnaya-pod-klyuch-spb",
@@ -1569,6 +1667,20 @@
    "date": "2027-06-15",
    "published_at": null,
    "words": 0
+  },
+  {
+   "slug": "povyshenie-tarifov-s-1-iyulya",
+   "title": "Повышение тарифов с 1 июля: что меняется в счетах за отопление",
+   "cluster": "Сезонные пики",
+   "cluster_key": "season",
+   "query": "повышение тарифов жкх",
+   "freq": 0,
+   "audience": "owner",
+   "data_block": "пересчёт стоимости сезона",
+   "status": "planned",
+   "date": "2027-06-15",
+   "published_at": null,
+   "words": null
   },
   {
    "slug": "pogodozavisimaya-avtomatika",
