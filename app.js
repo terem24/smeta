@@ -37613,6 +37613,37 @@ const app = {
      * @param {string} short  Одна строка сути — по возможности с цифрами.
      * @param {string} [details]  HTML под «i»: разбор и что делать.
      */
+    /**
+     * Плашка «Требования проекта» — то, что распознавание нашло в примечаниях
+     * к листам проекта («площади без запаса», «терморегуляторы в группе с
+     * выключателями», «дренажи кондиционеров в канализацию»…) и монтажник
+     * отметил на экране проверки (state.projectReqs, RecognizeProject.applyReqs).
+     * Жёлтая: в смету это само не попадает, пройти по списку надо руками.
+     */
+    PROJECT_REQ_TOPICS: { heat: 'Отопление', ufh: 'Тёплый пол', water: 'Водоснабжение', sewer: 'Канализация', vent: 'Вентиляция', boiler: 'Котельная', general: 'Общее' },
+    PROJECT_REQ_ACTIONS: { add: 'добавить в смету', check: 'уточнить', mount: 'учесть при монтаже' },
+    projectReqsNote: function () {
+        const reqs = Array.isArray(this.state.projectReqs) ? this.state.projectReqs : [];
+        if (!reqs.length) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const nAdd = reqs.filter(r => r.action === 'add').length;
+        const nCheck = reqs.filter(r => r.action === 'check').length;
+        const byTopic = {};
+        reqs.forEach(r => { (byTopic[r.topic] = byTopic[r.topic] || []).push(r); });
+        const details = Object.keys(byTopic).map(t =>
+            `<div class="tip-p"><b>${esc(this.PROJECT_REQ_TOPICS[t] || 'Общее')}</b>` +
+            byTopic[t].map(r => `<br>• ${esc(r.text)} <i style="color:#94A3B8;">(${r.sheet ? 'лист ' + r.sheet + ', ' : ''}${esc(this.PROJECT_REQ_ACTIONS[r.action] || '')})</i>`).join('') +
+            `</div>`).join('');
+        const parts = [];
+        if (nAdd) parts.push(`добавить в смету — ${nAdd}`);
+        if (nCheck) parts.push(`уточнить — ${nCheck}`);
+        const rest = reqs.length - nAdd - nCheck;
+        if (rest) parts.push(`при монтаже — ${rest}`);
+        return this.noteBox('warn', 'Требования проекта.',
+            `Из примечаний к листам: ${parts.join(', ')}.`,
+            details + `<div class="tip-p" style="color:#94A3B8;">Найдено распознаванием в тексте листов проекта. В смету само не попадает — пройдите по списку.</div>`);
+    },
+
     noteBox: function (level, title, short, details) {
         if (!title && !short) return '';
         const ico = { error: '⛔', warn: '⚠️', info: 'ℹ️' }[level] || 'ℹ️';
@@ -65616,6 +65647,10 @@ const app = {
                     `<div class="tip-p"><b>Проверьте:</b> совпадает ли пирог стены, кровли и пола с тем, что на объекте. Кнопка «Кирпич» в быстром режиме — это не кирпичная стена в подробном: там по умолчанию газобетон 300 мм.</div>`);
             }
         }
+        // Требования из примечаний проекта (распознавание комплекта листов):
+        // первой плашкой сметы, пока их не учли — чтобы не потерялись.
+        const _reqNote = this.projectReqsNote();
+        if (_reqNote) boilerWarnHtml = _reqNote + (boilerWarnHtml || '');
         flushBill("1. Котёл + водонагреватель", boilerWarnHtml);
 
         // === 2. ОБВЯЗКА КОТЕЛЬНОЙ ===

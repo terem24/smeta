@@ -170,6 +170,97 @@ const RecognizeProject = {
         });
     },
 
+    // ------------------------------------------------------------------
+    // Требования из примечаний проекта
+    //
+    // Примечания собирает RecognizeFiles.collectNotes со всех листов, без
+    // модели. Модель одним текстовым запросом (без картинки — дёшево)
+    // оставляет то, что касается наших систем, и говорит, что с этим делать.
+    // Монтажник отмечает нужное на экране проверки, отмеченное уходит в
+    // state.projectReqs и висит плашкой в шапке сметы (app.projectReqsNote).
+    // ------------------------------------------------------------------
+
+    REQ_TOPICS: {
+        heat: 'Отопление', ufh: 'Тёплый пол', water: 'Водоснабжение', sewer: 'Канализация',
+        vent: 'Вентиляция', boiler: 'Котельная', general: 'Общее',
+    },
+    REQ_ACTIONS: {
+        add: 'добавить в смету',
+        check: 'уточнить',
+        mount: 'учесть при монтаже',
+    },
+
+    async readNotes(project, onStatus) {
+        this.reqs = [];
+        const notes = (project && project.notes) || [];
+        if (!notes.length) return { warnings: [] };
+        const ui = RecognizeUI;
+        if (onStatus) onStatus('Читаю примечания проекта…');
+        const body = notes.map(n => `### Лист ${n.sheets.join(', ')} «${n.title}»\n${n.text}`).join('\n\n');
+        try {
+            const data = await ui.askModel([{ text: `Примечания и пометки со всех листов проекта:\n\n${body}\n\nВерни только JSON.` }],
+                PROJECT_NOTES_PROMPT);
+            const cand = data?.candidates?.[0];
+            const text = cand?.content?.parts?.[0]?.text;
+            if (!text) throw new Error('пустой ответ');
+            const parsed = ui.parseModelJson(text, cand.finishReason);
+            const sheetsAll = new Set(notes.flatMap(n => n.sheets));
+            this.reqs = (Array.isArray(parsed.reqs) ? parsed.reqs : []).map(r => {
+                r = r || {};
+                const sheet = Math.round(this.num(r.sheet));
+                const t = String(r.text || '').replace(/\s+/g, ' ').trim();
+                if (!t) return null;
+                return {
+                    sheet: sheetsAll.has(sheet) ? sheet : null,
+                    topic: this.REQ_TOPICS[r.topic] ? r.topic : 'general',
+                    action: this.REQ_ACTIONS[r.action] ? r.action : 'mount',
+                    text: t.slice(0, 220),
+                    quote: String(r.quote || '').replace(/\s+/g, ' ').trim().slice(0, 240),
+                    _sel: true,
+                };
+            }).filter(Boolean).slice(0, 30);
+            return { warnings: [] };
+        } catch (e) {
+            if (e.quota) return { warnings: [e.message] };
+            return { warnings: [`примечания проекта не разобраны: ${ui.cleanError(e.message).split('\n')[0]}`] };
+        }
+    },
+
+    setReq(i, v) { if (this.reqs && this.reqs[i]) this.reqs[i]._sel = !!v; },
+
+    /** Блок на экране проверки: требования с галочками, по разделам. */
+    reqsBlock() {
+        const reqs = this.reqs || [];
+        if (!reqs.length) return '';
+        const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const chip = a => `<span style="font-size:11px;padding:1px 7px;border-radius:999px;border:1px solid var(--border,#cbd5e1);white-space:nowrap">${this.REQ_ACTIONS[a]}</span>`;
+        const n = reqs.filter(r => r._sel).length;
+        const rows = reqs.map((r, i) => `
+            <label style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border,#e2e8f0);cursor:pointer">
+              <input type="checkbox" ${r._sel ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setReq(${i}, this.checked)">
+              <span style="flex:1;min-width:0">
+                <span style="font-weight:600">${esc(this.REQ_TOPICS[r.topic])}.</span> ${esc(r.text)}
+                <span style="display:block;font-size:11.5px;color:var(--text-sec,#64748b)">${r.sheet ? `лист ${r.sheet}` : 'проект'}${r.quote ? ` · «${esc(r.quote)}»` : ''}</span>
+              </span>
+              ${chip(r.action)}
+            </label>`).join('');
+        return `<div class="rec-tcheck warn" style="display:block">
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
+              <div class="rec-tcheck-ico">📝</div>
+              <div><div>Требования из примечаний проекта</div>
+                <div class="rec-tcheck-sub">Отмеченные (${n} из ${reqs.length}) попадут в смету плашкой «Требования проекта» — чтобы не потерялись при подборе и монтаже.</div></div>
+            </div>${rows}</div>`;
+    },
+
+    /** Отмеченные требования — в состояние расчёта. */
+    applyReqs(st) {
+        const sel = (this.reqs || []).filter(r => r._sel)
+            .map(({ sheet, topic, action, text, quote }) => ({ sheet, topic, action, text, quote }));
+        if (!sel.length) return 0;
+        st.projectReqs = sel;
+        return sel.length;
+    },
+
     SHEET_WHAT: { heat: 'отопления', water: 'сантехники', vent: 'вентиляции' },
     SHEET_TOPIC: {
         heat: 'отопление и тёплые полы',
@@ -582,7 +673,7 @@ const RecognizeProject = {
         if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
     },
 
-    reset() { this.towel = null; this.vent = null; },
+    reset() { this.towel = null; this.vent = null; this.reqs = []; },
 };
 
 window.RecognizeProject = RecognizeProject;
@@ -639,3 +730,34 @@ water:
 vent:
 {"system":"natural","evidence":"вытяжные вентиляторы в санузлах, приток через оконные клапаны","conditioners":0,"unclear":[]}
 Помещения без тёплого пола, приборов и сантехники в rooms не включай.`;
+
+const PROJECT_NOTES_PROMPT = `Ты помогаешь монтажнику систем отопления, тёплого пола, водоснабжения и канализации частного дома (Россия) составить смету по чужому проекту (дизайн-проект или рабочий проект). Тебе дают примечания и пометки со всех листов проекта — текст, набранный на листах, с номером листа.
+
+Задача — выбрать то, что влияет на смету и работу монтажника ЭТИХ систем, и сказать коротко, что с этим делать.
+
+Бери:
+- отопление, радиаторы, конвекторы, тёплый пол, терморегуляторы и датчики тёплого пола, котельная;
+- водоснабжение, горячая вода, выводы к приборам, встраиваемые части смесителей, фильтры;
+- канализация, трапы, шумоизоляция труб, дренажи кондиционеров в канализацию;
+- вентиляция и кондиционирование — только то, что задевает наши системы (дренаж, приток, вытяжка из сушильного шкафа);
+- отметки и высоты (от чистового или чернового пола) — они задают высоту выводов и толщину стяжки тёплого пола;
+- «площади без запаса», отступы тёплого пола, кто и что покупает заранее, что уточнить у заказчика по нашим системам;
+- кто поставляет и где ставит терморегуляторы тёплого пола — отдельным требованием. Если они «в группе с выключателями» или «из коллекции выключателей/розеток», их покупает и монтирует электрик, в нашу смету они не входят, но сервоприводы на коллекторы и коммутационный блок остаются нашими, а совместимость терморегулятора с датчиком пола и приводами надо уточнить (action "check");
+- гидроизоляцию санузлов и зоны стиральной машины — только если она задевает трапы и выводы.
+
+Не бери: мебель, свет, розетки, выключатели (кроме терморегуляторов тёплого пола), двери, отделку, покраску, демонтаж, согласование перепланировки, авторские и юридические оговорки дизайнера.
+
+Для каждого требования:
+- sheet — номер листа, откуда оно (если листов несколько — первый);
+- topic — heat | ufh | water | sewer | vent | boiler | general;
+- action:
+  "add" — в смету надо добавить позицию или работу (например, сервоприводы на коллекторы, дренажные сифоны, шумоизоляция канализации, трапы);
+  "check" — уточнить у заказчика или проектировщика до подбора (например, заведение тёплого пола на подиум, тип приборов);
+  "mount" — выполнить при монтаже, в смете позиций не меняет (например, отступ тёплого пола 100 мм, датчик не ближе 300 мм от стены);
+- text — что это значит для сметы или монтажа, одной фразой до 200 символов, своими словами, по делу; если из требования следует конкретная позиция — назови её;
+- quote — короткая цитата из примечания (до 200 символов), по которой ты это решил.
+
+Одно требование — одна запись; одинаковые с разных листов объединяй. Не выдумывай того, чего в тексте нет. Если ничего подходящего нет — пустой список.
+
+Только JSON:
+{"reqs":[{"sheet":14,"topic":"sewer","action":"add","text":"Стояки канализации обернуть шумоизоляцией — добавить изоляцию труб в раздел канализации","quote":"Канализационные стояки в санузлах выполнить в шумоизоляции"}]}`;

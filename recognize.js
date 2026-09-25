@@ -1816,12 +1816,17 @@ const RecognizeUI = {
         // Комплект листов проекта: к помещениям — тёплые полы, приборы и
         // сантехника с листов инженерных систем.
         const eng = this._project && this._project.eng;
-        if (eng && eng.length && typeof RecognizeProject !== 'undefined' && res.rows.length) {
+        if (this._project && typeof RecognizeProject !== 'undefined' && res.rows.length) {
             this.progressTo(2);
             RecognizeProject.reset();
-            const e = await RecognizeProject.read(res.rows, this._project, (t) => this.setStatus(t));
-            res.engSummary = e.summary;
-            res.warnings = (res.warnings || []).concat(e.warnings);
+            if (eng && eng.length) {
+                const e = await RecognizeProject.read(res.rows, this._project, (t) => this.setStatus(t));
+                res.engSummary = e.summary;
+                res.warnings = (res.warnings || []).concat(e.warnings);
+            }
+            // Примечания со всех листов — одним текстовым запросом.
+            const n = await RecognizeProject.readNotes(this._project, (t) => this.setStatus(t));
+            res.warnings = (res.warnings || []).concat(n.warnings);
         }
         this.progressTo(2);
         RecognizePlan.startReview(res);

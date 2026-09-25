@@ -851,6 +851,7 @@ const RecognizeFiles = {
         const stamp = new Set([...freq].filter(([, n]) => n > pages.length / 2).map(([s]) => s));
         pages.forEach(p => {
             p.text = p.kind ? this.sheetText(p.lines, stamp) : '';
+            p.notes = this.sheetNotes(p.lines, stamp, p.title, !!p.kind);
             delete p.lines;
         });
 
@@ -873,7 +874,8 @@ const RecognizeFiles = {
         rooms = rooms.slice(0, this.PDF_MAX_SCAN);
 
         const visual = pages.filter(p => /^визуализац/i.test(p.title)).length;
-        return { pages, rooms, found, visual, other: pdf.numPages - found.length - visual };
+        return { pages, rooms, found, visual, other: pdf.numPages - found.length - visual,
+            notes: this.collectNotes(pages) };
     },
 
     /**
@@ -888,6 +890,111 @@ const RecognizeFiles = {
         const out = lines.filter(s => !stamp.has(s) &&
             !/^([hHнН]\s*=\s*)?\d{1,3}(\s\d{3})*$/.test(s) && s.length > 1);
         return out.join('\n').slice(0, this.SHEET_TEXT_MAX);
+    },
+
+    // ------------------------------------------------------------------
+    // Примечания проекта
+    //
+    // В проекте половина требований не нарисована, а написана: «Теплый пол
+    // укладывается с отступом 100 мм… Площади указаны без запаса!»,
+    // «Терморегуляторы в группе с выключателями», «Предусмотреть
+    // шумоизоляцию канализации», «Дренажи уводить в канализацию». Раньше
+    // модель видела их только как хвост текста листов отопления и
+    // сантехники, и ответ ей некуда было положить; с остальных листов
+    // (пояснительная записка, потолки, вентиляция) они не читались вовсе.
+    // ------------------------------------------------------------------
+
+    NOTE_HEAD_RE: /^примечани[ея]\s*:?/i,
+    // Где кончается блок примечаний: следующая таблица или легенда листа.
+    NOTE_END_RE: /^(условные\s+обозначения|спецификаци|экспликаци|ведомость|разрез|вид\s)/i,
+    // Пометки прямо на чертеже — поручения монтажнику, а не подписи.
+    NOTE_ASK_RE: /^(уточнить|предусмотреть|выполнить|необходимо|обязательно|не\s+допускается|запрещается|согласовать|проверить)/i,
+    NOTE_BLOCK_MAX: 1600,
+    NOTES_MAX: 12000,
+
+    /**
+     * Примечания листа — массив текстов. Пояснительная записка берётся
+     * целиком. На листах систем (kind) — ещё и пометки-поручения с чертежа
+     * («Уточнить возможность заведения теплого пола на подиум»).
+     */
+    sheetNotes(lines, stamp, title, isSystem) {
+        // Заголовок «Примечание:» стоит на половине листов и по частоте мог
+        // попасть в штамп — его оставляем всегда.
+        const own = lines.filter(s => !stamp.has(s) || this.NOTE_HEAD_RE.test(s));
+        const out = [];
+        if (/^пояснительн/i.test(title || '')) {
+            const t = own.filter(s => !/^[\d\s.,]+$/.test(s)).join('\n').trim();
+            if (t) out.push(t.slice(0, this.NOTE_BLOCK_MAX * 2));
+            return out;
+        }
+        for (let i = 0; i < own.length; i++) {
+            if (!this.NOTE_HEAD_RE.test(own[i])) continue;
+            const buf = [own[i].replace(this.NOTE_HEAD_RE, '').trim()].filter(Boolean);
+            for (let j = i + 1; j < own.length && j < i + 60; j++) {
+                if (this.NOTE_END_RE.test(own[j]) || this.NOTE_HEAD_RE.test(own[j])) break;
+                buf.push(own[j]);
+            }
+            const t = this.noteText(buf);
+            if (t) out.push(t.slice(0, this.NOTE_BLOCK_MAX));
+        }
+        if (isSystem) {
+            for (let i = 0; i < own.length; i++) {
+                if (!this.NOTE_ASK_RE.test(own[i])) continue;
+                // Пометка на чертеже бывает в две-три строки: добираем
+                // продолжение, пока строка начинается со строчной буквы.
+                let t = own[i];
+                for (let j = i + 1; j < own.length && j < i + 4 && /^[а-яё(]/.test(own[j]); j++) t += ' ' + own[j];
+                if (!out.some(b => b.includes(own[i]))) out.push(t);
+            }
+        }
+        return out;
+    },
+
+    /**
+     * Текст блока примечаний или '' — если это не примечания.
+     *
+     * Слово «Примечание» бывает и заголовком колонки таблицы: у
+     * спецификации мебели под ним идут артикулы и размеры, у развёрток —
+     * размерные цепочки. Настоящие примечания пронумерованы («1. …»);
+     * без номера блок берём, только если это связный текст, а не легенда.
+     * Слова, разбитые по строкам («Выводы / к / приборам»), склеиваем, а
+     * пункты начинаем с новой строки.
+     */
+    noteText(buf) {
+        const lines = buf.map(s => s.trim()).filter(s => s && !/^[\d\s.,×xх*/-]+$/.test(s));
+        if (!lines.length) return '';
+        const numbered = /^\d{1,2}\.\s*\S/.test(lines[0]);
+        const joined = lines.join(' ').replace(/\s+/g, ' ').trim();
+        const words = joined.split(' ').filter(w => /[а-яё]{3}/i.test(w)).length;
+        // Без номера — только связный текст: хотя бы одно законченное
+        // предложение. У списка мебели и подписей выводов его нет.
+        if (!numbered && (words < 12 || !/[а-яё]{2,}[.!](\s|$)/i.test(joined))) return '';
+        return joined.replace(/\s(?=\d{1,2}\.\s*[А-ЯЁA-Z])/g, '\n').trim();
+    },
+
+    /**
+     * Примечания всего проекта без повторов: одно и то же примечание стоит
+     * на каждой развёртке. Возвращает [{sheets: [номера], text}].
+     */
+    collectNotes(pages) {
+        const byText = new Map();
+        for (const p of pages) {
+            for (const t of (p.notes || [])) {
+                const key = t.toLowerCase().replace(/[^а-яёa-z\d]/g, '');
+                if (!key) continue;
+                const cur = byText.get(key);
+                if (cur) { if (!cur.sheets.includes(p.num)) cur.sheets.push(p.num); }
+                else byText.set(key, { sheets: [p.num], title: p.title, text: t });
+            }
+        }
+        const out = [];
+        let total = 0;
+        for (const n of byText.values()) {
+            if (total + n.text.length > this.NOTES_MAX) break;
+            out.push(n);
+            total += n.text.length;
+        }
+        return out;
     },
 
     /**

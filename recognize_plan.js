@@ -699,6 +699,7 @@ const RecognizePlan = {
                 <div class="rec-tcheck-sub">Что к какой комнате отнесено — в строке под помещением, там же и поправить.
                   При переносе тёплый пол и приборы встанут в комнаты, сантехника — в «Водоснабжение» по помещениям.</div></div>
             </div>` : ''}
+          ${typeof RecognizeProject !== 'undefined' ? RecognizeProject.reqsBlock() : ''}
           <div class="rec-toolbar">
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(true)">Отметить все</button>
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(false)">Снять все</button>
@@ -778,6 +779,13 @@ const RecognizePlan = {
             r.ownFloor = false;
             this.markStacked();
         }
+        this.renderReview();
+    },
+
+    /** Требование из примечаний проекта — взять в смету или нет. */
+    setReq(i, v) {
+        if (typeof RecognizeProject === 'undefined') return;
+        RecognizeProject.setReq(i, v);
         this.renderReview();
     },
 
@@ -924,6 +932,7 @@ const RecognizePlan = {
             showDetailedRoomsPanel: st.showDetailedRoomsPanel,
             water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null,
             ventilationEnabled: st.ventilationEnabled, ventilationType: st.ventilationType,
+            projectReqs: st.projectReqs || null,
         }));
 
         const base = Date.now();
@@ -952,11 +961,12 @@ const RecognizePlan = {
         // Сантехника и полотенцесушители с листов проекта. Зоны водоснабжения
         // заменяются целиком: в проекте перечислены все приборы дома, и
         // шаблонные «Санузел 1», «Санузел 2» рядом с ними были бы лишними.
-        let waterZones = 0, towel = false, vent = '';
+        let waterZones = 0, towel = false, vent = '', reqs = 0;
         if (typeof RecognizeProject !== 'undefined') {
             waterZones = RecognizeProject.applyWater(st, chosen);
             towel = RecognizeProject.applyTowel(st);
             vent = RecognizeProject.applyVent(st);
+            reqs = RecognizeProject.applyReqs(st);
             if (chosen.some(r => r.eng && r.eng.heatSheet)) RecognizeProject.syncUfhSliders(st);
         }
 
@@ -1022,6 +1032,7 @@ const RecognizePlan = {
         if (waterZones) parts.push(`Водоснабжение включено, приборы по помещениям: ${waterZones}`);
         if (towel) parts.push(`Полотенцесушители: ${st.towelWarmer.count}`);
         if (vent) parts.push(`Вентиляция: ${vent}`);
+        if (reqs) parts.push(`Требования из примечаний проекта: ${reqs} — плашкой в шапке сметы`);
         app.alert(parts.join('\n') +
             '\n\nПроверьте окна и системы отопления в карточках комнат. ' +
             'Вернуть комнаты как было — кнопка «↶ Вернуть комнаты» во вкладке распознавания.' + planNote);
@@ -1056,6 +1067,7 @@ const RecognizePlan = {
             st.water = u.water; st.waterZones = u.waterZones;
             if (u.towelWarmer) st.towelWarmer = u.towelWarmer;
             st.ventilationEnabled = u.ventilationEnabled; st.ventilationType = u.ventilationType;
+            if (u.projectReqs) st.projectReqs = u.projectReqs; else delete st.projectReqs;
             if (typeof app.renderZonesUI === 'function') app.renderZonesUI();
         }
         this._undo = null;
