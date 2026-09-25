@@ -340,11 +340,19 @@ const RecognizePlan = {
         }
 
         if (!rows.length) {
-            throw new Error(sheets.length
+            // Ни на одном листе не оказалось помещений — модель разобрала их
+            // и сказала, что это не планы. Помечаем ошибку: RecognizeUI по
+            // этой пометке возвращается к разбору сметы, если план был лишь
+            // догадкой по картинке (см. planScore).
+            const notPlan = !sheets.length && failed.length === imgs.length
+                && !quotaHit && warnings.every(w => /не план этажа/.test(w));
+            const err = new Error(sheets.length
                 ? 'На плане не удалось прочитать ни одного помещения.\n' + warnings.join('\n')
-                : (failed.length === imgs.length && !quotaHit && warnings.every(w => /не план этажа/.test(w))
+                : (notPlan
                     ? 'На листе не нашлось ни сметы, ни плана этажа. Нужен план: чертёж, скан или эскиз с помещениями.'
                     : 'Не удалось прочитать план.\n' + warnings.join('\n')));
+            err.notPlan = notPlan;
+            throw err;
         }
         this.status('');
         return { sheets, rows, warnings, failed, quotaHit };

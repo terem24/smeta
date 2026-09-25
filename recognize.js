@@ -137,11 +137,11 @@ const RecognizeUI = {
               <div class="rec-panel">
                 <div class="rec-head">
                   <div>
-                    <div class="rec-title"><span id="rec_title_text">Распознавание рукописной сметы</span></div>
+                    <div class="rec-title"><span id="rec_title_text">Распознавание сметы или плана этажа</span></div>
                     <div class="rec-steps">
                       <span class="rec-step on" data-s="1">1. Загрузка</span>
                       <span class="rec-step" data-s="2">2. Проверка</span>
-                      <span class="rec-step" data-s="3" id="rec_step3">3. В смету</span>
+                      <span class="rec-step" data-s="3" id="rec_step3">3. Перенос</span>
                     </div>
                   </div>
                   <div class="rec-head-btns">
@@ -215,53 +215,267 @@ const RecognizeUI = {
     // ------------------------------------------------------------------
     // Что на файле: смета или план этажа
     //
-    // Один и тот же экран загрузки принимает и то и другое, но разбираются
-    // они разными правилами и уходят в разные места: смета — в позиции,
-    // план — в комнаты подробного расчёта (RecognizePlan). Переключатель
-    // на экране загрузки говорит, что грузят; в положении «Смета» лист всё
-    // равно опознаётся автоматически — модель, увидев план вместо сметы,
-    // отвечает docKind=floor_plan, и разбор сам уходит в план.
+    // Один и тот же экран загрузки принимает и то и другое, и спрашивать об
+    // этом человека незачем: вид листа виден по самому листу. Комплект листов
+    // проекта опознаётся по штампам ещё при чтении файла (RecognizeFiles.
+    // projectSheets), PDF-чертёж — по тому, что он нарисован, а не набран
+    // (fromPdf, порог PDF_DRAW_PER_CHAR), одиночный план — самой моделью:
+    // увидев вместо сметы чертёж, она отвечает docKind=floor_plan, и разбор
+    // уходит в план (RecognizePlan.isPlanResult).
+    //
+    // Раньше над зоной загрузки стояли две вкладки «Смету / План этажа».
+    // Выбор ничего не давал сверх этого распознавания, а экран делил надвое:
+    // человек с планом в руках искал, ту ли вкладку он открыл. 25.09.2026
+    // вкладки убраны, зона осталась одна.
     // ------------------------------------------------------------------
 
-    _docKind: 'auto',   // 'auto' — смета с автоопознанием плана, 'plan' — план этажа
-
-    setDocKind(kind) {
-        this._docKind = kind === 'plan' ? 'plan' : 'auto';
-        this.syncDocKind();
-    },
-
-    /** Переключатель, подписи зоны загрузки и шапки — по выбранному виду. */
+    /** Подписи зоны загрузки и шапки — по тому, что уже понятно про файл. */
     syncDocKind() {
-        // Комплект листов проекта читается как план, в какое бы положение ни
-        // стоял переключатель, — пока он загружен, переключатель это и
-        // показывает. Сам выбор монтажника (_docKind) не трогаем: следующая
-        // смета пойдёт так, как он выбрал.
-        const plan = this._docKind === 'plan' || !!this._project;
-        document.querySelectorAll('#rec_kind .rec-tab').forEach(b => {
-            b.classList.toggle('on', (b.dataset.k === 'plan') === plan);
-        });
+        // Комплект листов проекта уже прочитан и разбирается как план — об
+        // этом и пишем. Пока ничего не загружено, лист может быть любым.
+        const plan = !!this._project;
         const t = document.querySelector('#rec_drop .rec-drop-t');
         const s = document.querySelector('#rec_drop .rec-drop-s');
         const ico = document.querySelector('#rec_drop .rec-drop-ico');
-        if (t) t.textContent = plan ? 'Перетащите план этажа сюда' : 'Перетащите смету сюда';
+        if (t) t.textContent = plan ? 'Перетащите план этажа сюда' : 'Перетащите смету или план этажа сюда';
         if (s) s.textContent = plan
             ? 'чертёж, скан, фото или эскиз от руки · PDF или картинка · один лист — один этаж, несколько этажей грузите несколькими файлами · или нажмите для выбора · или вставьте снимок через Ctrl+V'
-            : 'фото, PDF, Excel, Word или HTML · или нажмите для выбора · или вставьте скриншот или текст через Ctrl+V';
+            : 'смета — фото, PDF, Excel, Word или HTML · план этажа — чертёж, скан, фото или эскиз от руки, один лист — один этаж · или нажмите для выбора · или вставьте снимок или текст через Ctrl+V';
         if (ico) ico.textContent = plan ? '📐' : '📄';
         const st = document.getElementById('rec_status');
         if (st && !this._img && !(this._imgs && this._imgs.length) && !this._text && !(this._docs && this._docs.length)) {
-            st.textContent = plan ? 'Планы этажей: PDF, фото, сканы, эскизы' : 'Фото и сканы, а также PDF, Excel, Word, HTML';
+            st.textContent = plan
+                ? 'Планы этажей: PDF, фото, сканы, эскизы'
+                : 'Смета или план этажа: фото и сканы, а также PDF, Excel, Word, HTML';
         }
-        this.setHead(plan ? 'plan' : 'estimate');
+        this.setHead(plan ? 'plan' : 'any');
     },
 
-    /** Заголовок мастера и подпись третьего шага — по тому, что разбираем. */
+    /**
+     * Заголовок мастера и подпись третьего шага — по тому, что разбираем.
+     * 'any' — ещё не знаем: лист не загружен или не прочитан.
+     */
     setHead(kind) {
-        const plan = kind === 'plan';
         const t = document.getElementById('rec_title_text');
-        if (t) t.textContent = plan ? 'Распознавание плана этажа' : 'Распознавание рукописной сметы';
         const s3 = document.getElementById('rec_step3');
-        if (s3) s3.textContent = plan ? '3. В расчёт' : '3. В смету';
+        if (kind === 'plan') {
+            if (t) t.textContent = 'Распознавание плана этажа';
+            if (s3) s3.textContent = '3. В расчёт';
+        } else if (kind === 'estimate') {
+            if (t) t.textContent = 'Распознавание рукописной сметы';
+            if (s3) s3.textContent = '3. В смету';
+        } else {
+            if (t) t.textContent = 'Распознавание сметы или плана этажа';
+            if (s3) s3.textContent = '3. Перенос';
+        }
+    },
+
+    // ------------------------------------------------------------------
+    // Догадка по самой картинке: план этажа или всё-таки смета
+    //
+    // Нужна ради экономии запросов. Без неё снимок плана читается дважды:
+    // первый раз по правилам сметы — модель отвечает «это план», второй раз
+    // по правилам плана. Два запроса из месячного лимита там, где хватает
+    // одного. Догадка смотрит на лист арифметикой, без модели, и если она
+    // уверена — разбор сразу идёт в план.
+    //
+    // Она намеренно молчалива: сомневается — отвечает «не знаю», и лист идёт
+    // прежним путём. Ошибка в другую сторону разбор тоже не ломает: модель
+    // плана ответит, что помещений на листе нет, и смета будет прочитана
+    // вторым запросом — ровно как было бы без догадки.
+    // ------------------------------------------------------------------
+
+    /** Уменьшенный снимок в оттенках серого — вход для planScore. */
+    async grayOf(b64, side) {
+        const max = side || 480;
+        const img = await new Promise((res, rej) => {
+            const im = new Image();
+            im.onload = () => res(im);
+            im.onerror = () => rej(new Error('снимок не открылся'));
+            im.src = 'data:image/jpeg;base64,' + b64;
+        });
+        const k = Math.min(1, max / Math.max(img.width || 1, img.height || 1));
+        const w = Math.max(1, Math.round((img.width || 1) * k));
+        const h = Math.max(1, Math.round((img.height || 1) * k));
+        const c = document.createElement('canvas');
+        c.width = w; c.height = h;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        const d = ctx.getImageData(0, 0, w, h).data;
+        const g = new Uint8Array(w * h);
+        for (let i = 0, q = 0; i < g.length; i++, q += 4) {
+            g[i] = (d[q] * 299 + d[q + 1] * 587 + d[q + 2] * 114) / 1000 | 0;
+        }
+        return { g, w, h };
+    },
+
+    /**
+     * Ровный свет по всему листу. Снимок с телефона почти всегда с тенью от
+     * руки или от самого телефона, и общий порог делит лист не на чернила и
+     * бумагу, а на светлую и тёмную его половины: у листа со сметой «чернил»
+     * тогда выходит половина страницы. Поэтому яркость каждой клетки делим на
+     * её же фон — самое светлое в клетке, то есть бумагу.
+     */
+    flattenLight(px) {
+        const g = px.g, w = px.w, h = px.h;
+        const cell = Math.max(16, Math.round(Math.min(w, h) / 8));
+        const out = new Uint8Array(w * h);
+        for (let cy = 0; cy < h; cy += cell) {
+            for (let cx = 0; cx < w; cx += cell) {
+                const xb = Math.min(w, cx + cell), yb = Math.min(h, cy + cell);
+                // Фон клетки — не максимум (одиночный блик задрал бы его), а
+                // граница верхней десятой части её яркостей.
+                const hist = new Uint32Array(256);
+                let n = 0;
+                for (let y = cy; y < yb; y++) for (let x = cx; x < xb; x++) { hist[g[y * w + x]]++; n++; }
+                let acc = 0, bg = 255;
+                for (let v = 255; v >= 0; v--) { acc += hist[v]; if (acc >= n * 0.1) { bg = v || 1; break; } }
+                for (let y = cy; y < yb; y++) {
+                    for (let x = cx; x < xb; x++) {
+                        const i = y * w + x;
+                        out[i] = Math.min(255, Math.round(g[i] * 220 / bg));
+                    }
+                }
+            }
+        }
+        return { g: out, w, h };
+    },
+
+    /** Порог «чернила / бумага» по гистограмме яркости (метод Оцу). */
+    otsuThreshold(g) {
+        const hist = new Array(256).fill(0);
+        for (let i = 0; i < g.length; i++) hist[g[i]]++;
+        const total = g.length;
+        let sum = 0;
+        for (let t = 0; t < 256; t++) sum += t * hist[t];
+        let sumB = 0, wB = 0, best = -1, thr = 128, mDark = 0, mLight = 0;
+        for (let t = 0; t < 256; t++) {
+            wB += hist[t];
+            if (!wB) continue;
+            const wF = total - wB;
+            if (!wF) break;
+            sumB += t * hist[t];
+            const mB = sumB / wB, mF = (sum - sumB) / wF;
+            const v = wB * wF * (mB - mF) * (mB - mF);
+            if (v > best) { best = v; thr = t; mDark = mB; mLight = mF; }
+        }
+        return { thr, contrast: mLight - mDark };
+    },
+
+    /**
+     * Меры листа по серому снимку. Считаются четыре вещи:
+     *   inkFrac   — сколько на листе чернил вообще;
+     *   hLong/vLong — сколько строк и столбцов пересекает длинная прямая
+     *               линия: стены, рамка, размерные цепочки;
+     *   bands     — сколько на листе строк текста: у сметы это частокол в
+     *               десятки полос, у чертежа — единицы;
+     *   emptyFrac — доля пустых клеток внутри рисунка: комнаты на плане
+     *               пусты изнутри, у текста и таблиц таких пустот нет;
+     *   partial   — сколько длинных линий обрывается посреди листа: это
+     *               перегородки между комнатами, у таблицы линии идут от
+     *               края до края.
+     * План — когда чернил мало, длинные линии есть в обе стороны, строк
+     * мало, а пустот много. Пороги подобраны так, чтобы скорее промолчать:
+     * bench/planlook.js проверяет их на собранных листах.
+     */
+    planScore(raw) {
+        if (!raw.w || !raw.h || raw.w < 80 || raw.h < 80) return { plan: false, why: { small: true } };
+        const px = this.flattenLight(raw);
+        const g = px.g, w = px.w, h = px.h;
+        const o = this.otsuThreshold(g);
+        // Ровный серый (фотография комнаты, тёмный кадр) — делить нечего
+        if (o.contrast < 40) return { plan: false, why: { contrast: o.contrast } };
+
+        const dark = new Uint8Array(w * h);
+        let ink = 0;
+        for (let i = 0; i < g.length; i++) if (g[i] <= o.thr) { dark[i] = 1; ink++; }
+        const inkFrac = ink / (w * h);
+
+        const MIN_RUN_H = Math.round(w * 0.25), MIN_RUN_V = Math.round(h * 0.25);
+        let hLong = 0, bands = 0, inBand = false;
+        let x0 = w, y0 = h, x1 = -1, y1 = -1;
+        const hRuns = [];
+        for (let y = 0; y < h; y++) {
+            let run = 0, max = 0, cnt = 0;
+            for (let x = 0; x < w; x++) {
+                if (dark[y * w + x]) {
+                    cnt++;
+                    if (++run > max) max = run;
+                    if (x < x0) x0 = x;
+                    if (x > x1) x1 = x;
+                } else run = 0;
+            }
+            if (max >= MIN_RUN_H) { hLong++; hRuns.push(max); }
+            if (cnt) { if (y < y0) y0 = y; y1 = y; }
+            // Строка текста даёт заметную долю чернил, промежуток между
+            // строками — почти ничего: по этому смета и считается полосами.
+            if (cnt / w > 0.02) { if (!inBand) { bands++; inBand = true; } } else inBand = false;
+        }
+        let vLong = 0;
+        const vRuns = [];
+        for (let x = 0; x < w; x++) {
+            let run = 0, max = 0;
+            for (let y = 0; y < h; y++) {
+                if (dark[y * w + x]) { if (++run > max) max = run; } else run = 0;
+            }
+            if (max >= MIN_RUN_V) { vLong++; vRuns.push(max); }
+        }
+
+        // Внутренние перегородки — то, чем чертёж отличается от таблицы.
+        // У таблицы все длинные линии идут от края до края, у плана комнаты
+        // делят линии покороче: они обрываются посреди листа.
+        const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
+        const partial = hRuns.filter(v => v < bw * 0.85).length
+            + vRuns.filter(v => v < bh * 0.85).length;
+
+        // Пустоты считаем только внутри рисунка: поля листа к делу не относятся
+        let empty = 0, cells = 0;
+        if (x1 >= x0 && y1 >= y0) {
+            const N = 32;
+            const cw = (x1 - x0 + 1) / N, ch = (y1 - y0 + 1) / N;
+            for (let cy = 0; cy < N; cy++) {
+                for (let cx = 0; cx < N; cx++) {
+                    const xa = x0 + Math.floor(cx * cw), xb = x0 + Math.floor((cx + 1) * cw);
+                    const ya = y0 + Math.floor(cy * ch), yb = y0 + Math.floor((cy + 1) * ch);
+                    let has = 0;
+                    for (let y = ya; y < yb && !has; y++) {
+                        for (let x = xa; x < xb; x++) if (dark[y * w + x]) { has = 1; break; }
+                    }
+                    cells++;
+                    if (!has) empty++;
+                }
+            }
+        }
+        const emptyFrac = cells ? empty / cells : 0;
+
+        const why = { inkFrac: inkFrac, hLong: hLong, vLong: vLong, bands: bands,
+            emptyFrac: emptyFrac, partial: partial };
+        const plan = inkFrac > 0.004 && inkFrac < 0.18
+            && hLong >= 2 && vLong >= 2
+            && partial >= 2
+            && bands <= 12
+            && emptyFrac >= 0.45;
+        return { plan: plan, why: why };
+    },
+
+    /**
+     * Все снимки похожи на планы этажей? Хватает одного непохожего: пачка
+     * листов сметы с планом на первой странице должна читаться как смета.
+     * Смотрим не больше трёх листов — этого довольно, чтобы отличить
+     * комплект планов от сметы, а считать каждый лист небесплатно.
+     */
+    async looksLikePlan() {
+        if (this._text || (this._docs && this._docs.length)) return false;
+        const imgs = (this._imgs && this._imgs.length) ? this._imgs : (this._img ? [this._img] : []);
+        if (!imgs.length) return false;
+        try {
+            for (const b of imgs.slice(0, 3)) {
+                if (!this.planScore(await this.grayOf(b)).plan) return false;
+            }
+            return true;
+        } catch (e) {
+            return false;   // не разобрались со снимком — читаем как раньше
+        }
     },
 
     /**
@@ -331,17 +545,10 @@ const RecognizeUI = {
         this.step(1);
         document.getElementById('rec_body').innerHTML = `
           ${this.draftBanner()}
-          <div class="rec-kind" id="rec_kind">
-            <span class="rec-kind-l">Что загружаете:</span>
-            <button class="rec-tab on" data-k="auto" onclick="RecognizeUI.setDocKind('auto')"
-                    title="Список материалов и работ: рукописный, счёт поставщика, КП">📋 Смету</button>
-            <button class="rec-tab" data-k="plan" onclick="RecognizeUI.setDocKind('plan')"
-                    title="План этажа: помещения с плана уйдут в расчёт по комнатам">📐 План этажа</button>
-          </div>
           <!-- Пустой экран вкладки оформлен тем же, чем пустая смета: бумага в
                крапинку (.empty-state-pad) и та же стопка «значок — заголовок — пояснение»
                (.empty-state-hint). Классы rec-drop-* остаются: по ним syncDocKind()
-               подменяет текст при переключении на план этажа. -->
+               подменяет текст, когда становится понятно, что загружен план. -->
           <div class="rec-drop empty-state-pad" id="rec_drop">
             <div class="empty-state-hint">
               <span class="rec-drop-ico empty-state-icon">📄</span>
@@ -436,8 +643,11 @@ const RecognizeUI = {
             // Документ дослать листом можно только картинками: текст и фото
             // в одном запросе не соединить, а сканы страниц — те же листы.
             try {
+                // Лист к уже загруженному комплекту проекта — картинкой:
+                // разбирается он по правилам плана, а текстовый слой чертежа
+                // помещений не содержит.
                 const r = await RecognizeFiles.extract(f, (m) => this.setStatus(m),
-                    { forceImages: this._docKind === 'plan' });
+                    { forceImages: !!this._project });
                 if (r.images && r.images.length) {
                     this.notePdfNames(r, f.name);
                     added.push(...r.images);
@@ -1133,10 +1343,12 @@ const RecognizeUI = {
         this.setGoReady(false);
 
         try {
-            // План этажа читается только как картинка: текстовый слой чертежа
-            // — это размерные цепочки и подписи, а не помещения.
-            const r = await RecognizeFiles.extract(file, (m) => this.setStatus(m),
-                { forceImages: this._docKind === 'plan' });
+            // Чертёж читается картинкой, а не текстом: текстовым слоем в нём
+            // лежат размерные цепочки и подписи, а помещения — это стены,
+            // которые нарисованы. Решает это сам читатель файла: у чертежа на
+            // символ текста приходятся десятки линий (RecognizeFiles.fromPdf,
+            // порог PDF_DRAW_PER_CHAR), и страницы уходят изображениями.
+            const r = await RecognizeFiles.extract(file, (m) => this.setStatus(m));
 
             // Читатель файла мог взять не всё — например, у PDF есть потолок
             // страниц. Молчать об этом нельзя: неполная смета выглядит ровно
@@ -1765,7 +1977,7 @@ const RecognizeUI = {
                 err.textContent = (quota.left <= 0
                     ? `Лимит запросов к распознаванию на этот месяц исчерпан: ${quota.used} из ${quota.limit}. `
                     : `Для комплекта листов проекта нужно не меньше ${need} запросов к распознаванию, а осталось ${quota.left} из ${quota.limit}. ` +
-                      'Можно распознать один план этажа — выберите «План этажа» и загрузите его отдельным файлом. ') +
+                      'Можно распознать один план этажа — загрузите его отдельным файлом. ') +
                     'Лимит обновится первого числа. Если нужно больше — напишите администратору' +
                     (quota.tariff === 'base' ? ' или перейдите на тариф «Профи»' : '') + '.';
                 body.appendChild(err);
@@ -1783,19 +1995,37 @@ const RecognizeUI = {
         this._mergeInfo = '';
         this._apiCalls = 0;
         this._fromCache = 0;
-        const asPlan = this._docKind === 'plan' || !!this._project;
+        // Комплект листов проекта — план наверняка; одиночные снимки —
+        // по догадке (см. planScore): она бережёт запрос, который иначе
+        // уходил бы на чтение плана по правилам сметы.
+        const guess = !this._project && await this.looksLikePlan();
+        const asPlan = !!this._project || guess;
         this.progressStart(asPlan ? 'plan' : !!this._text);
 
         try {
             this.progressTo(1);
 
-            // План этажа выбран руками или пришёл комплект листов проекта —
-            // сразу по правилам плана, без попытки прочитать лист как смету.
+            // Пришёл комплект листов проекта или лист выглядит чертежом —
+            // сразу по правилам плана, без попытки прочитать его как смету.
             if (asPlan) {
-                await this.runPlan();
-                this._busy = false;
-                if (go) go.disabled = false;
-                return;
+                let missed = false;
+                try {
+                    await this.runPlan();
+                } catch (e) {
+                    // Догадка ошиблась: помещений на листе не нашлось. Читаем
+                    // его как смету — то есть так, как читали бы без догадки.
+                    if (!guess || !e.notPlan) throw e;
+                    missed = true;
+                    this.setStatus('На листе не план этажа — читаю его как смету');
+                    this.progressStop();
+                    this.progressStart(!!this._text);
+                    this.progressTo(1);
+                }
+                if (!missed) {
+                    this._busy = false;
+                    if (go) go.disabled = false;
+                    return;
+                }
             }
 
             /**
@@ -1931,7 +2161,7 @@ const RecognizeUI = {
         if (this._text || (this._docs && this._docs.length)) {
             throw new Error('План этажа читается с фото, скана или PDF-чертежа, а из этого файла ' +
                 'взят текст, а не изображение. Excel, Word и HTML для плана не подходят; ' +
-                'если это PDF — уберите файл крестиком, выберите «План этажа» и загрузите его снова.');
+                'если это PDF — уберите файл крестиком и загрузите чертёж картинкой или отдельным файлом.');
         }
         const imgs = (this._imgs && this._imgs.length) ? this._imgs : (this._img ? [this._img] : []);
         if (!imgs.length) throw new Error('Нет снимка для распознавания.');
@@ -3109,6 +3339,10 @@ const RecognizeUI = {
     },
 
     startReview(res) {
+        // Лист прочитан и оказался сметой — шапка мастера говорит об этом
+        // прямо. До разбора она нейтральна: что именно принесли, там ещё
+        // неизвестно (см. setHead).
+        this.setHead('estimate');
         const items = res.items || [];
         this._skipped = res.skipped || [];
         // Итог, НАПЕЧАТАННЫЙ в документе. По нему проверяется, все ли строки
