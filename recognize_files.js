@@ -899,6 +899,7 @@ const RecognizeFiles = {
     ENG_PER_KIND: 2,
     // Вентиляция в расчёте — одна настройка на дом: хватит одного листа.
     ENG_LIMIT: { vent: 1 },
+    ENG_SHORT: { heat: 'отопление и тёплые полы', water: 'сантехника', vent: 'вентиляция' },
 
     /** Короткая подпись листа: «62 «План теплых полов и отопления»». */
     sheetLabel(p) {
@@ -974,24 +975,18 @@ const RecognizeFiles = {
             }
         }
 
-        const inRooms = new Set(set.rooms.map(p => p.num));
-        const rest = this.SHEET_KINDS
-            .map(k => ({ k, list: set.found.filter(p => p.kind === k.kind && !inRooms.has(p.num)) }))
-            .filter(g => g.list.length)
-            .map(g => `${g.k.label} — ${g.list.map(p => this.sheetLabel(p)).join(', ')}`);
-        const skipped = [
-            set.visual ? `визуализации — ${set.visual}` : '',
-            set.other ? `прочие листы (обложка, развёртки, потолки, электрика, отделка) — ${set.other}` : '',
-        ].filter(Boolean).join(', ');
-
+        // Сводка коротко: что берём и что пропускаем. Прежняя перечисляла
+        // все найденные листы с названиями, включая отвергнутые версии плана
+        // («Обмерный план», «Планировочное решение»), — пять строк, из
+        // которых монтажнику нужны две.
+        const used = set.rooms.length + set.eng.length;
+        const skipped = pdf.numPages - used;
         const note = [
-            `В файле ${pdf.numPages} ${this.plural(pdf.numPages, 'страница', 'страницы', 'страниц')}. ` +
-            `Помещения читаю с ${set.rooms.length > 1 ? 'листов' : 'листа'} ${
+            `Помещения — с ${set.rooms.length > 1 ? 'листов' : 'листа'} ${
                 set.rooms.map(p => this.sheetLabel(p)).join(', ')}.`,
-            rest.length ? `Найдены также листы: ${rest.join('; ')}.` : '',
-            set.eng.length ? `С ${set.eng.map(e => e.num).join(', ')} после помещений ` +
-                'прочитаю тёплые полы, приборы отопления, сантехнику по комнатам и тип вентиляции.' : '',
-            skipped ? `Пропущено: ${skipped}.` : '',
+            set.eng.length ? `Следом: ${set.eng.map(e => `${e.num} — ${this.ENG_SHORT[e.kind] || e.kind}`).join(', ')}.` : '',
+            skipped > 0 ? `Пропущено ${skipped} из ${pdf.numPages} ${this.plural(pdf.numPages, 'страницы', 'страниц', 'страниц')}` +
+                (set.visual ? ` (${set.visual} — визуализации)` : '') + '.' : '',
         ].filter(Boolean).join(' ');
 
         return {

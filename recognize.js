@@ -233,7 +233,11 @@ const RecognizeUI = {
 
     /** Переключатель, подписи зоны загрузки и шапки — по выбранному виду. */
     syncDocKind() {
-        const plan = this._docKind === 'plan';
+        // Комплект листов проекта читается как план, в какое бы положение ни
+        // стоял переключатель, — пока он загружен, переключатель это и
+        // показывает. Сам выбор монтажника (_docKind) не трогаем: следующая
+        // смета пойдёт так, как он выбрал.
+        const plan = this._docKind === 'plan' || !!this._project;
         document.querySelectorAll('#rec_kind .rec-tab').forEach(b => {
             b.classList.toggle('on', (b.dataset.k === 'plan') === plan);
         });
@@ -601,7 +605,10 @@ const RecognizeUI = {
         this._imgWarn = null;   // замечания по кадру относились к тем снимкам
         this._fileNote = '';    // и замечание о неполном чтении — тоже
         this._fileNoteHead = '';
-        this._project = null;
+        if (this._project) {
+            this._project = null;
+            this.syncDocKind();     // переключатель — обратно к выбору монтажника
+        }
     },
 
     /**
@@ -958,13 +965,22 @@ const RecognizeUI = {
         if (!box) {
             box = document.createElement('div');
             box.id = 'rec_filenote';
-            box.className = 'rec-frame';
             const actions = host.querySelector('.rec-actions');
             if (actions) host.insertBefore(box, actions); else host.appendChild(box);
         }
-        box.innerHTML = `<b>${String(this._fileNoteHead || 'Файл прочитан не полностью')
-            .replace(/[&<>]/g, '')}</b><div>${
-            String(this._fileNote).replace(/[&<>]/g, '')}</div>`;
+        const esc = s => String(s).replace(/[&<>]/g, '');
+        // Комплект листов проекта — не предупреждение, а сводка: прочитано
+        // всё, что нужно, остальное пропущено нарочно. Оранжевая рамка
+        // «прочитан не полностью» тут пугала зря; зелёная плашка — та же,
+        // что у итогов на экране проверки.
+        if (this._project) {
+            box.className = 'rec-tcheck ok';
+            box.innerHTML = `<div class="rec-tcheck-ico">✓</div><div><div>${esc(this._fileNoteHead || 'Комплект листов проекта')}</div>
+                <div class="rec-tcheck-sub">${esc(this._fileNote)}</div></div>`;
+            return;
+        }
+        box.className = 'rec-frame';
+        box.innerHTML = `<b>${esc(this._fileNoteHead || 'Файл прочитан не полностью')}</b><div>${esc(this._fileNote)}</div>`;
     },
 
     /** Строка с замечаниями по кадру под миниатюрами. */
@@ -1118,13 +1134,14 @@ const RecognizeUI = {
             // Читатель файла мог взять не всё — например, у PDF есть потолок
             // страниц. Молчать об этом нельзя: неполная смета выглядит ровно
             // как полная, и заметить пропажу монтажнику не по чему.
+            // Комплект листов проекта: со сметой в нём нечего сверять, из
+            // него берутся помещения — сразу по правилам плана этажа. Ставим
+            // до сводки: по нему она выбирает вид.
+            this._project = r.project || null;
+
             this._fileNote = r.note || '';
             this._fileNoteHead = r.noteHead || '';
             if (this._fileNote) this.showFileNote();
-
-            // Комплект листов проекта: со сметой в нём нечего сверять, из
-            // него берутся помещения — сразу по правилам плана этажа.
-            this._project = r.project || null;
 
             if (r.images && r.images.length) this.notePdfNames(r, file.name);
 
@@ -1135,7 +1152,7 @@ const RecognizeUI = {
                 const dl = document.getElementById('rec_docs');
                 if (dl) dl.style.display = 'none';
                 this.showImagesPreview();
-                this.setHead('plan');
+                this.syncDocKind();     // «План этажа» в переключателе и в шапке
                 this.setStatus('Комплект листов проекта — читаю помещения с ' +
                     (r.images.length > 1 ? `${r.images.length} планов` : 'плана'));
             } else if (r.images && r.images.length > 1) {
