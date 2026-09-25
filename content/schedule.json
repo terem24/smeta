@@ -39,10 +39,10 @@
    "freq": 251231,
    "audience": "owner",
    "data_block": "стоимость сезона по тарифам",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-03",
    "published_at": null,
-   "words": 0
+   "words": 703
   },
   {
    "slug": "bimetall-ili-alyuminiy",
@@ -221,10 +221,10 @@
    "freq": 35564,
    "audience": "owner",
    "data_block": "что тянет за собой замена",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-03",
    "published_at": null,
-   "words": 0
+   "words": 762
   },
   {
    "slug": "zamena-radiatorov-v-dome",
@@ -403,10 +403,10 @@
    "freq": 15229,
    "audience": "owner",
    "data_block": "подбор из каталога",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-03",
    "published_at": null,
-   "words": 0
+   "words": 732
   },
   {
    "slug": "stalnye-panelnye-radiatory",
