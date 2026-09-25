@@ -389,10 +389,10 @@
    "freq": 4100,
    "audience": "owner",
    "data_block": "сравнение по нашей смете",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-01",
    "published_at": null,
-   "words": 0
+   "words": 622
   },
   {
    "slug": "gazovyy-kotel-dlya-doma",
@@ -753,10 +753,10 @@
    "freq": 3200,
    "audience": "pro",
    "data_block": "таблица шага и теплосъёма",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-30",
    "published_at": null,
-   "words": 0
+   "words": 555
   },
   {
    "slug": "kakoy-kotel-vybrat",
@@ -1467,10 +1467,10 @@
    "freq": 2100,
    "audience": "pro",
    "data_block": "деление петли >100 м из калькулятора",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-29",
    "published_at": null,
-   "words": 0
+   "words": 618
   },
   {
    "slug": "opressovka-sistemy-otopleniya",

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шаг укладки тёплого пола: 100, 150 или 200 мм | HeatCalc.ru</title>
+    <meta name="description" content="Какой шаг укладки выбрать для водяного тёплого пола: сколько трубы уходит при 100, 150 и 200 мм, сколько тепла даёт каждый шаг, где нужна краевая зона и почему одинаковый шаг по всему дому — ошибка.">
+    <link rel="canonical" href="https://heatcalc.ru/shag-ukladki-teplogo-pola/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=2">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/shag-ukladki-teplogo-pola/">
+    <meta property="og:title" content="Шаг укладки тёплого пола: 100, 150 или 200 мм">
+    <meta property="og:description" content="Метраж, теплоотдача и цена каждого шага. Краевая зона и почему одинаковый шаг везде — признак, что не считали.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/shag-ukladki-teplogo-pola/#webpage",
+      "url": "https://heatcalc.ru/shag-ukladki-teplogo-pola/",
+      "name": "Шаг укладки тёплого пола: 100, 150 или 200 мм",
+      "description": "Какой шаг укладки выбрать для водяного тёплого пола: сколько трубы уходит при 100, 150 и 200 мм, сколько тепла даёт каждый шаг, где нужна краевая зона и почему одинаковый шаг по всему дому — ошибка.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "шаг укладки теплого пола"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Шаг укладки тёплого пола: 100, 150 или 200 мм",
+          "item": "https://heatcalc.ru/shag-ukladki-teplogo-pola/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какой шаг укладки тёплого пола выбрать?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "150 мм — рабочий шаг для жилых комнат, кухни и коридоров. 100 мм берут в санузлах и ванных, во входной зоне и вдоль панорамного остекления. 200 мм — в кладовых и технических помещениях, где достаточно, чтобы пол не был холодным. Одинаковый шаг по всему дому означает, что раскладку не считали по помещениям."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Даёт ли мелкий шаг больше тепла?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В жилой комнате — нет. Там упираются не в трубу, а в температуру поверхности: по СП 60.13330.2020 пол в жилых помещениях не теплее 26 °C, и при комнатных 22 °C это около 41 Вт с квадрата при любом шаге. В санузлах и ванных, где пол можно греть до 31 °C, шаг решает: переход со 150 на 100 мм добавляет почти треть мощности."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько трубы уходит при разных шагах?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "С запасом 1,1 на развороты: 11 метров на квадрат при шаге 100 мм, 7,3 метра при 150 мм и 5,5 метра при 200 мм. На 80 м² это 880, 584 и 440 метров соответственно — разница между крайними вариантами примерно две бухты."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что такое краевая зона и нужна ли она?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Это полоса шириной полтора-два метра вдоль наружной стены, где трубу кладут шагом мельче основного. Теплопотери у наружной стены и особенно у остекления выше, и без краевой зоны вдоль окна тянет холодом даже при формально достаточной общей мощности пола."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Влияет ли шаг на цену монтажа?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Работа по укладке считается за квадратные метры и от шага не зависит — 750 ₽ за м² по базовым расценкам. Меняется расход трубы: между шагом 100 и 200 мм на 80 квадратах разница 440 метров. Плюс мелкий шаг даёт больше петель, а значит больше выходов коллектора, иногда и второй коллектор со шкафом."
+          }
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Шаг укладки тёплого пола: 100, 150 или 200 мм</nav>
+
+        <h1>Шаг укладки тёплого пола: 100, 150 или 200 мм</h1>
+
+        <p class="lead">Шаг укладки — единственный параметр тёплого пола, который меняет сразу всё: расход трубы, количество петель, теплоотдачу и цену. Разница между 100 и 200 мм — ровно вдвое по трубе. Разбираем, где какой шаг уместен и почему одинаковый по всему дому означает, что раскладку не считали.</p>
+
+        <h2>Что меняется от шага</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Шаг</th><th>Трубы на 1 м²</th><th>Предел петли</th><th>Площадь под петлёй</th><th>Отдача в комнате</th></tr>
+                <tr><td>100 мм</td><td class="num">11,0 м</td><td class="num">96 м</td><td class="num">9 м²</td><td class="num">41 Вт/м²</td></tr>
+                <tr><td>150 мм</td><td class="num">7,3 м</td><td class="num">87 м</td><td class="num">12 м²</td><td class="num">41 Вт/м²</td></tr>
+                <tr><td>200 мм</td><td class="num">5,5 м</td><td class="num">90 м</td><td class="num">16 м²</td><td class="num">41 Вт/м²</td></tr>
+            </table>
+        </div>
+        <p class="note">Труба PE-Xa 16×2,0, жилая комната при 22 °C. Отдача в жилой комнате одинаковая при любом шаге — и это не опечатка.</p>
+
+        <div class="callout">
+            <p><strong>Самое неочевидное в тёплом поле.</strong> В жилой комнате мелкий шаг не даёт больше тепла. Упираемся не в трубу, а в температуру поверхности: по СП 60.13330.2020, п. 6.4.8 пол в жилых помещениях не должен быть теплее 26 °C. При комнатных 22 °C это около 41 Вт с квадрата — хоть при шаге 200, хоть при 100. Мелкий шаг здесь даёт не мощность, а равномерность: полосатости между тёплыми и холодными линиями не чувствуется.</p>
+        </div>
+
+        <p>А вот там, где пол разрешено греть до 31 °C — в санузлах, ванных, коридорах, — шаг уже решает:</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Помещение</th><th>В помещении</th><th>Шаг 100</th><th>Шаг 150</th><th>Шаг 200</th></tr>
+                <tr><td>Санузел, коридор</td><td class="num">20 °C</td><td class="num">102 Вт/м²</td><td class="num">79 Вт/м²</td><td class="num">56 Вт/м²</td></tr>
+                <tr><td>Ванная</td><td class="num">25 °C</td><td class="num">64 Вт/м²</td><td class="num">56 Вт/м²</td><td class="num">40 Вт/м²</td></tr>
+                <tr><td>Кухня</td><td class="num">20 °C</td><td class="num">64 Вт/м²</td><td class="num">64 Вт/м²</td><td class="num">56 Вт/м²</td></tr>
+                <tr><td>Жилая комната</td><td class="num">22 °C</td><td class="num">41 Вт/м²</td><td class="num">41 Вт/м²</td><td class="num">41 Вт/м²</td></tr>
+            </table>
+        </div>
+        <p class="note">В санузле переход со 150 на 100 мм добавляет почти треть мощности. В жилой комнате не добавляет ничего.</p>
+
+        <h2>Где какой шаг ставить</h2>
+
+        <ul>
+            <li><strong>100 мм</strong> — санузлы и ванные, входная зона, полоса вдоль панорамного остекления. Там, где либо разрешён горячий пол, либо надо перехватить холод от окна.</li>
+            <li><strong>150 мм</strong> — жилые комнаты, кухня, коридоры. Рабочий шаг по умолчанию: разумный расход трубы и ровная поверхность.</li>
+            <li><strong>200 мм</strong> — кладовые, гардеробные, технические помещения и всё, где достаточно, чтобы пол просто не был холодным.</li>
+            <li><strong>Краевая зона.</strong> У наружной стены первые полтора-два метра кладут шагом мельче основного: теплопотери там выше, и без этого вдоль окна тянет холодом даже при формально достаточной мощности.</li>
+        </ul>
+
+        <h2>Сколько это стоит</h2>
+
+        <p>Работа по укладке от шага не зависит — платят за квадратные метры. А вот трубы уходит по-разному, и на большой площади разница заметная.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Шаг</th><th>Трубы на 80 м²</th><th>Работа по укладке</th></tr>
+                <tr><td>100 мм</td><td class="num">880 м</td><td class="num">60 000 ₽</td></tr>
+                <tr><td>150 мм</td><td class="num">584 м</td><td class="num">60 000 ₽</td></tr>
+                <tr><td>200 мм</td><td class="num">440 м</td><td class="num">60 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Работа — 750 ₽ за м² по базовым расценкам калькулятора, одинаково при любом шаге. Разница только в трубе: между 100 и 200 мм это 440 метров, то есть примерно две бухты.</p>
+
+        <p>Есть и скрытая статья: мелкий шаг — это больше петель, значит больше выходов коллектора, а иногда и второй коллектор со своим шкафом.</p>
+
+        <h2>Чем толще покрытие, тем мельче шаг</h2>
+
+        <p>Всё, что лежит поверх стяжки, работает как одеяло. Плитка почти не мешает теплу, ламинат с подложкой и особенно ковролин срезают отдачу ощутимо. Поэтому под ламинатом тот же шаг даёт меньше тепла в комнате, и его уменьшают — либо смиряются с тем, что пол здесь только для комфорта, а греют радиаторы.</p>
+
+        <p>Обратная сторона: под плиткой при мелком шаге легко упереться в предел температуры поверхности, и автоматика будет постоянно придушивать контур. Это не поломка, но деньги за лишнюю трубу уже потрачены.</p>
+
+        <h2>Почему одинаковый шаг по всему дому — плохой признак</h2>
+
+        <p>Если в проекте везде стоит 150 мм, это почти всегда значит, что раскладку не считали по помещениям. У санузла и гардеробной разная задача: первому нужно 79 Вт с квадрата, второй хватит и сорока. У комнаты с панорамным окном и внутренней спальни разные теплопотери при одинаковой площади.</p>
+
+        <p>Считать надо по каждому помещению: сколько оно теряет, сколько пол может отдать при своём пределе температуры, и хватает ли этого. Там, где не хватает, в смете появляется радиатор — и это нормальный результат расчёта, а не признак плохого пола.</p>
+
+        <a class="cta" href="/">
+            Подобрать шаг для своих комнат
+            <small>Калькулятор считает каждое помещение отдельно</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой шаг укладки тёплого пола выбрать?</span></summary>
+            <div class="answer">
+                <p>150 мм — рабочий шаг для жилых комнат, кухни и коридоров. 100 мм берут в санузлах и ванных, во входной зоне и вдоль панорамного остекления. 200 мм — в кладовых и технических помещениях, где достаточно, чтобы пол не был холодным. Одинаковый шаг по всему дому означает, что раскладку не считали по помещениям.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Даёт ли мелкий шаг больше тепла?</span></summary>
+            <div class="answer">
+                <p>В жилой комнате — нет. Там упираются не в трубу, а в температуру поверхности: по СП 60.13330.2020 пол в жилых помещениях не теплее 26 °C, и при комнатных 22 °C это около 41 Вт с квадрата при любом шаге. В санузлах и ванных, где пол можно греть до 31 °C, шаг решает: переход со 150 на 100 мм добавляет почти треть мощности.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько трубы уходит при разных шагах?</span></summary>
+            <div class="answer">
+                <p>С запасом 1,1 на развороты: 11 метров на квадрат при шаге 100 мм, 7,3 метра при 150 мм и 5,5 метра при 200 мм. На 80 м² это 880, 584 и 440 метров соответственно — разница между крайними вариантами примерно две бухты.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что такое краевая зона и нужна ли она?</span></summary>
+            <div class="answer">
+                <p>Это полоса шириной полтора-два метра вдоль наружной стены, где трубу кладут шагом мельче основного. Теплопотери у наружной стены и особенно у остекления выше, и без краевой зоны вдоль окна тянет холодом даже при формально достаточной общей мощности пола.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Влияет ли шаг на цену монтажа?</span></summary>
+            <div class="answer">
+                <p>Работа по укладке считается за квадратные метры и от шага не зависит — 750 ₽ за м² по базовым расценкам. Меняется расход трубы: между шагом 100 и 200 мм на 80 квадратах разница 440 метров. Плюс мелкий шаг даёт больше петель, а значит больше выходов коллектора, иногда и второй коллектор со шкафом.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/raschet-teplogo-pola/">расчёт тёплого пола: площадь, шаг, длина петли</a> · <a href="/kollektor-teplogo-pola/">коллектор тёплого пола: на сколько выходов</a> · <a href="/teplyy-pol-ili-radiatory/">тёплый пол или радиаторы: что выбрать</a> · <a href="/montazh-teplogo-pola-svoimi-rukami/">монтаж тёплого пола: порядок работ и ошибки</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
