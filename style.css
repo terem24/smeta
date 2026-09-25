@@ -11504,18 +11504,6 @@ body.rec-sel-mode .inv-table .col-idx {
 
 .rec-title { font-size: 17px; font-weight: 800; }
 
-.rec-beta {
-    font-size: 10.5px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    background: var(--primary, #0284c7);
-    color: #fff;
-    border-radius: 5px;
-    padding: 2px 6px;
-    vertical-align: middle;
-}
-
 /* Шаги подсвечиваются накопительно: пройденные остаются активными,
    чтобы был виден путь, а не только текущая точка. */
 .rec-steps { display: flex; gap: 14px; margin-top: 7px; font-size: 12.5px; }
@@ -14956,8 +14944,7 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-stout.dark-mode .custom-modal-btn,
     body.brand-stout.dark-mode .calc-dialog-btn-confirm,
     body.brand-stout.dark-mode .btn-tg,
-    body.brand-stout.dark-mode .btn-share,
-    body.brand-stout.dark-mode .rec-beta {
+    body.brand-stout.dark-mode .btn-share {
         background-color: #203F6F;
         border-color: #203F6F;
         color: #fff;
@@ -15045,8 +15032,7 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-rommer.dark-mode .custom-modal-btn,
     body.brand-rommer.dark-mode .calc-dialog-btn-confirm,
     body.brand-rommer.dark-mode .btn-tg,
-    body.brand-rommer.dark-mode .btn-share,
-    body.brand-rommer.dark-mode .rec-beta {
+    body.brand-rommer.dark-mode .btn-share {
         background-color: #A92028;
         border-color: #A92028;
         color: #fff;
@@ -16052,7 +16038,6 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     body.theme-yandex.dark-mode .tab.active,
     body.theme-yandex.dark-mode .tab.multi-active,
     body.theme-yandex.dark-mode .mode-tab.active,
-    body.theme-yandex.dark-mode .rec-beta,
     body.theme-yandex.dark-mode .footer-btns .btn-primary-action,
     body.theme-yandex.dark-mode .custom-modal-btn,
     body.theme-yandex.dark-mode .calc-dialog-btn-confirm,

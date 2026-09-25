@@ -137,8 +137,7 @@ const RecognizeUI = {
               <div class="rec-panel">
                 <div class="rec-head">
                   <div>
-                    <div class="rec-title"><span id="rec_title_text">Распознавание рукописной сметы</span>
-                      <span class="rec-beta">бета</span></div>
+                    <div class="rec-title"><span id="rec_title_text">Распознавание рукописной сметы</span></div>
                     <div class="rec-steps">
                       <span class="rec-step on" data-s="1">1. Загрузка</span>
                       <span class="rec-step" data-s="2">2. Проверка</span>
