@@ -245,7 +245,11 @@ def build(slug, publish=False):
              'inLanguage': 'ru-RU',
              'datePublished': pub_date,
              'dateModified': pub_date,
-             'author': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'},
+             # Автор — человек, а не организация: у статей есть конкретный
+             # автор, и это проверяемо (он же подписан автором материалов
+             # на сайте производителя). Организация остаётся издателем.
+             'author': {'@type': 'Person', 'name': 'Дмитрий Ибатуллин',
+                        'sameAs': ['https://www.rommer.ru/usefull-info/']},
              'publisher': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'}},
         ],
     }
@@ -309,7 +313,7 @@ TEMPLATE = '''<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=3">
+    <link rel="stylesheet" href="/seo.css?v=5">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -402,6 +406,15 @@ TEMPLATE = '''<!DOCTYPE html>
             Заказать монтаж в СПб и области
             <small>Отопление, тёплый пол, котельная, водоснабжение</small>
         </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b> — автор калькулятора HeatCalc.ru и статей
+            о монтаже отопления на сайте <a href="https://www.rommer.ru/usefull-info/" rel="nofollow">ROMMER</a>.
+            Расчёты в этой статье сделаны движком калькулятора: теми же формулами и
+            справочниками, по которым монтажники считают сметы.</p>
+        </div>
 
         <h2>Читать дальше</h2>
         <p>{related}</p>

@@ -196,6 +196,32 @@ strong, b { color: var(--text-main); font-weight: 700; }
 /* Чтобы якорь из оглавления не уводил заголовок под шапку. */
 h2[id] { scroll-margin-top: 16px; }
 
+/* Подпись автора в конце статьи. */
+.author {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    border-top: 1px solid var(--border);
+    margin: 28px 0 24px;
+    padding-top: 16px;
+}
+.author img {
+    flex: 0 0 auto;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.author p {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-sec);
+    margin: 0;
+}
+.author b { color: var(--text-main); }
+.author a { color: var(--text-sec); }
+.author a:hover { color: var(--primary); }
+
 ul, ol { margin: 0 0 16px; padding-left: 22px; }
 li { margin-bottom: 8px; }
 li::marker { color: var(--text-sec); }
