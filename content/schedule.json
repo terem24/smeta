@@ -1131,10 +1131,10 @@
    "freq": 4200,
    "audience": "pro",
    "data_block": "проверка расхода через стрелку",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-03",
    "published_at": null,
-   "words": 0
+   "words": 628
   },
   {
    "slug": "skolko-sektsiy-radiatora",
@@ -1313,10 +1313,10 @@
    "freq": 4100,
    "audience": "owner",
    "data_block": "поправки бака и насоса",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-04",
    "published_at": null,
-   "words": 0
+   "words": 600
   },
   {
    "slug": "termogolovka-na-radiator",
@@ -1481,10 +1481,10 @@
    "freq": 3800,
    "audience": "owner",
    "data_block": "СП 73 и наш акт",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-01",
    "published_at": null,
-   "words": 0
+   "words": 611
   },
   {
    "slug": "temperaturnyy-grafik-80-60",
