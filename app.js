@@ -21159,7 +21159,14 @@ const app = {
 
         const list = rows.map((r, i) => {
             const works = (r.works || []).map(w => this.LEAD_WORK_LABELS[w] || w).join(', ');
-            const when = r.at ? String(r.at).replace('T', ' ').slice(0, 16) : '';
+            // В журнале время записано по часам сервера (date('c') с его смещением),
+            // и оно отличается от московского. Показываем по часам того, кто смотрит.
+            let when = '';
+            if (r.at) {
+                const d = new Date(r.at);
+                when = isNaN(d) ? String(r.at).replace('T', ' ').slice(0, 16)
+                    : d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            }
             const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src)}</span>`
                 : '<span style="color:var(--text-sec); font-size:11px;">напрямую</span>';
             return `<div style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
