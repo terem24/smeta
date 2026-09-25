@@ -59,6 +59,8 @@
     .share-row .wa { background: #25D366; border-color: #25D366; color: #fff; }
     .share-row .tg { background: #229ED9; border-color: #229ED9; color: #fff; }
     .note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
+    .req { color: #DC2626; }
+    .value-note { background: var(--primary-light); border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--primary-dark); line-height: 1.5; margin-bottom: 16px; }
     .ok-copied { color: #16A34A; font-size: 13px; font-weight: 600; display: none; margin-top: 6px; }
 </style>
 </head>
@@ -67,7 +69,13 @@
     <div class="logo-row"><div class="mark">🔥</div><div class="name">HeatCalc</div></div>
     <h1>Опросник для расчёта отопления</h1>
     <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
-        точный расчёт системы отопления. Заполнение займёт 3–5 минут.</div>
+        точный расчёт системы отопления. Заполнение займёт 3–5 минут. Поля со звёздочкой
+        <span class="req">*</span> обязательны — без них даже быстрый расчёт в калькуляторе
+        не запустится.</div>
+    <div class="value-note">Зачем это заполнять: чем точнее данные, тем точнее смета и цена
+        с первого раза — монтажник приедет на объект подготовленным, без лишних созвонов
+        и уточнений задним числом.</div>
+    <form id="oprosForm" onsubmit="return false;">
 
     <div class="card">
         <h2>Контакты</h2>
@@ -79,12 +87,12 @@
 
     <div class="card">
         <h2>Дом</h2>
-        <label class="f">Город строительства</label>
-        <input type="text" id="f_city" placeholder="Екатеринбург">
+        <label class="f">Город строительства <span class="req">*</span></label>
+        <input type="text" id="f_city" placeholder="Екатеринбург" required>
         <div class="row2">
-            <div><label class="f">Площадь дома, м²</label><input type="number" id="f_area" min="20" max="2000" placeholder="120"></div>
-            <div><label class="f">Этажей</label>
-                <select id="f_floors"><option value="1">1</option><option value="2" selected>2</option></select>
+            <div><label class="f">Площадь дома, м² <span class="req">*</span></label><input type="number" id="f_area" min="20" max="2000" placeholder="120" required></div>
+            <div><label class="f">Этажей <span class="req">*</span></label>
+                <select id="f_floors" required><option value="1">1</option><option value="2" selected>2</option></select>
             </div>
         </div>
         <label class="f">Сколько человек будет жить</label>
@@ -125,37 +133,38 @@
 
     <div class="card">
         <h2>Из чего построен дом</h2>
-        <div class="note" style="margin:0 0 4px;">Выберите то, что ближе всего — эти пункты
-            подставляются в расчёт точнее, чем описание словами. Если не уверены — оставьте
-            «Не знаю» и опишите словами ниже, монтажник уточнит сам.</div>
-
-        <label class="f">Материал наружной стены</label>
-        <select id="f_wallMat"></select>
-        <div class="row2">
-            <div><label class="f">Толщина стены, мм</label><input type="number" id="f_wallThick" min="50" max="800" placeholder="300"></div>
-            <div><label class="f">Дополнительный утеплитель</label><select id="f_wallInsMat"></select></div>
+        <label class="f">У вас есть проект или план дома?</label>
+        <div class="seg">
+            <label><input type="radio" name="f_hasProject" value="no" checked onchange="toggleProjectMode()">Нет, опишу как есть</label>
+            <label><input type="radio" name="f_hasProject" value="yes" onchange="toggleProjectMode()">Да, есть — пришлю монтажнику</label>
         </div>
-        <div class="row2" id="f_wallInsThickWrap" style="display:none;">
-            <div><label class="f">Толщина утеплителя, мм</label><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100"></div>
-            <div></div>
+
+        <div class="note" id="f_projectNote" style="display:none; margin-top:10px;">Отлично, тогда
+            ничего ниже заполнять не нужно. Прикрепите файл проекта в том же сообщении WhatsApp
+            или Telegram, куда отправите ссылку в конце анкеты.</div>
+
+        <div id="f_envelopeFields">
+            <div class="note" style="margin:10px 0 4px;">Не обязательно знать точно — если не
+                уверены, выберите ближайшее по смыслу или оставьте «Не знаю».</div>
+            <label class="f">Материал наружной стены <span class="req">*</span></label>
+            <select id="f_wallMat" required></select>
+            <div class="row2">
+                <div><label class="f">Толщина стены, мм</label><input type="number" id="f_wallThick" min="50" max="800" placeholder="300"></div>
+                <div><label class="f">Утеплена дополнительно?</label><select id="f_wallInsMat"></select></div>
+            </div>
+            <div class="row2" id="f_wallInsThickWrap" style="display:none;">
+                <div><label class="f">Толщина утеплителя, мм</label><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100"></div>
+                <div></div>
+            </div>
+            <div class="row2">
+                <div><label class="f">Пол 1 этажа</label><select id="f_floorMat"></select></div>
+                <div><label class="f">Кровля / чердак</label><select id="f_roofMat"></select></div>
+            </div>
+            <label class="f">Окна</label>
+            <select id="f_glazing"></select>
+            <label class="f">Комментарий по конструкции дома (необязательно)</label>
+            <textarea id="f_wall" placeholder="Всё, что хотите уточнить словами: марка окон, особенности стен, пола, кровли"></textarea>
         </div>
-        <label class="f">Уточнение по стене (необязательно)</label>
-        <textarea id="f_wall" placeholder="Например: штукатурка, газоблок D400 375 мм"></textarea>
-
-        <label class="f">Пол 1 этажа</label>
-        <select id="f_floorMat"></select>
-        <label class="f">Уточнение по полу (необязательно)</label>
-        <textarea id="f_floor1" placeholder="Например: плита по грунту, ЭППС 100 мм, стяжка"></textarea>
-
-        <label class="f">Кровля / чердачное перекрытие</label>
-        <select id="f_roofMat"></select>
-        <label class="f">Уточнение по кровле (необязательно)</label>
-        <textarea id="f_roof" placeholder="Например: холодный чердак, минвата 200 мм по перекрытию"></textarea>
-
-        <label class="f">Окна</label>
-        <select id="f_glazing"></select>
-        <label class="f">Марка и модель окон (необязательно)</label>
-        <input type="text" id="f_win" placeholder="Например: Rehau">
     </div>
 
     <div class="card">
@@ -166,7 +175,11 @@
         <textarea id="f_comment" placeholder="Всё, что считаете важным"></textarea>
     </div>
 
+    </form>
+
     <button class="btn" onclick="buildLink()">Отправить монтажнику</button>
+
+    <div id="confetti" style="position:fixed; inset:0; pointer-events:none; z-index:9999; overflow:hidden;"></div>
 
     <div class="card" id="result">
         <div id="r_sent" style="display:none; margin-bottom:12px; padding:12px; border-radius:10px; background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; font-size:14px; font-weight:600;">
@@ -254,6 +267,15 @@
         document.getElementById('f_wallInsThickWrap').style.display = this.value ? 'grid' : 'none';
     });
 
+    // «Есть проект» — прячем весь блок подробностей о доме (не нужны, если и так
+    // придёт файл) и снимаем required со стены, иначе форма не даст её отправить
+    function toggleProjectMode() {
+        var hasProject = radio('f_hasProject') === 'yes';
+        document.getElementById('f_envelopeFields').style.display = hasProject ? 'none' : '';
+        document.getElementById('f_projectNote').style.display = hasProject ? 'block' : 'none';
+        document.getElementById('f_wallMat').required = !hasProject;
+    }
+
     function radio(name) {
         var el = document.querySelector('input[name="' + name + '"]:checked');
         return el ? el.value : '';
@@ -296,6 +318,8 @@
     }
 
     function buildLink() {
+        var form = document.getElementById('oprosForm');
+        if (!form.reportValidity()) return;
         var d = {
             name: val('f_name'), phone: val('f_phone'), city: val('f_city'),
             area: parseFloat(val('f_area')) || 0,
@@ -305,13 +329,19 @@
             rad: document.getElementById('f_rad').checked,
             fuel: radio('f_fuel'), live: radio('f_live'), stage: radio('f_stage'),
             vent: radio('f_vent') === 'yes',
-            tpRooms: val('f_tprooms'), wall: val('f_wall'), floor1: val('f_floor1'),
-            roof: val('f_roof'), win: val('f_win'),
+            tpRooms: val('f_tprooms'),
+            hasProject: radio('f_hasProject') === 'yes',
+            wall: val('f_wall'),
             wallMat: val('f_wallMat'), wallThick: parseInt(val('f_wallThick'), 10) || 0,
             wallInsMat: val('f_wallInsMat'), wallInsThick: parseInt(val('f_wallInsThick'), 10) || 0,
             floorMat: val('f_floorMat'), roofMat: val('f_roofMat'), glazing: val('f_glazing'),
             bought: val('f_bought'), comment: val('f_comment')
         };
+        // «Есть проект» — детали конструкции не спрашивали, отправлять нечего
+        if (d.hasProject) {
+            delete d.wallMat; delete d.wallThick; delete d.wallInsMat; delete d.wallInsThick;
+            delete d.floorMat; delete d.roofMat; delete d.glazing; delete d.wall;
+        }
         // пустые строки не тащим в ссылку — она короче
         Object.keys(d).forEach(function (k) { if (d[k] === '' || d[k] === 0) delete d[k]; });
         var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(d))))
@@ -335,12 +365,42 @@
                 document.getElementById('r_sent').style.display = 'block';
                 document.getElementById('r_senderr').style.display = 'none';
                 document.getElementById('r_title').textContent = 'Ссылка с данными (дублировать не обязательно)';
+                fireConfetti();
             }).catch(function () {
                 document.getElementById('r_sent').style.display = 'none';
                 document.getElementById('r_senderr').style.display = 'block';
                 document.getElementById('r_title').textContent = 'Отправьте эту ссылку монтажнику';
             });
+        } else {
+            fireConfetti();
         }
+    }
+
+    // Ненавязчивый залп: чуть частиц, недолго и не на весь экран — анкета длинная,
+    // и в конце хочется короткого «готово», а не отвлекающего шоу
+    function fireConfetti() {
+        try {
+            var host = document.getElementById('confetti');
+            var origin = document.getElementById('result').getBoundingClientRect();
+            var cx = origin.left + origin.width / 2, cy = origin.top + 16;
+            var colors = ['#2563EB', '#60A5FA', '#FBBF24', '#34D399', '#F87171'];
+            for (var i = 0; i < 22; i++) {
+                var p = document.createElement('div');
+                var size = 5 + Math.random() * 5;
+                p.style.cssText = 'position:absolute; width:' + size + 'px; height:' + (size * 0.45) + 'px;' +
+                    'background:' + colors[i % colors.length] + '; border-radius:2px; left:' + cx + 'px; top:' + cy + 'px;';
+                host.appendChild(p);
+                var angle = -Math.PI / 2 + (Math.random() * 2 - 1) * (Math.PI / 2.3);
+                var dist = 70 + Math.random() * 130;
+                var dx = Math.cos(angle) * dist, dy = Math.sin(angle) * dist;
+                var rot = (Math.random() * 360) | 0;
+                var anim = p.animate([
+                    { transform: 'translate(0,0) rotate(0deg)', opacity: 1 },
+                    { transform: 'translate(' + dx + 'px,' + (dy + 160) + 'px) rotate(' + rot + 'deg)', opacity: 0 }
+                ], { duration: 850 + Math.random() * 400, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' });
+                anim.onfinish = function (el) { return function () { el.remove(); }; }(p);
+            }
+        } catch (e) { /* анимация необязательна — молча пропускаем */ }
     }
 
     // Персональная ссылка — говорим сразу, что пересылать ничего не придётся

@@ -1592,23 +1592,24 @@ const app = {
         put('Режим проживания', { all: 'круглогодичный', season: 'сезонный' }[d.live]);
         put('Стадия строительства', { none: 'ещё не приступил', box: 'возводится коробка', closed: 'закрыт тепловой контур' }[d.stage]);
         put('Приточная вентиляция с подогревом', d.vent === true ? 'да' : (d.vent === false ? 'нет' : ''));
-        const findName = (db, id) => (typeof window[db] !== 'undefined' ? window[db].find(m => m.id === id) : null);
-        if (d.wallMat) {
-            const wm = findName('WALL_MATERIALS_DB', d.wallMat);
-            let t = (wm ? wm.name : d.wallMat) + (d.wallThick ? ', ' + d.wallThick + ' мм' : '');
-            if (d.wallInsMat) {
-                const wi = findName('WALL_MATERIALS_DB', d.wallInsMat);
-                t += ' + утеплитель ' + (wi ? wi.name : d.wallInsMat) + (d.wallInsThick ? ', ' + d.wallInsThick + ' мм' : '');
+        if (d.hasProject) {
+            L.push('Есть готовый проект/план дома — заказчик пришлёт файлом отдельно.');
+        } else {
+            const findName = (db, id) => (typeof window[db] !== 'undefined' ? window[db].find(m => m.id === id) : null);
+            if (d.wallMat) {
+                const wm = findName('WALL_MATERIALS_DB', d.wallMat);
+                let t = (wm ? wm.name : d.wallMat) + (d.wallThick ? ', ' + d.wallThick + ' мм' : '');
+                if (d.wallInsMat) {
+                    const wi = findName('WALL_MATERIALS_DB', d.wallInsMat);
+                    t += ' + утеплитель ' + (wi ? wi.name : d.wallInsMat) + (d.wallInsThick ? ', ' + d.wallInsThick + ' мм' : '');
+                }
+                put('Стена (выбрано из списка)', t);
             }
-            put('Стена (выбрано из списка)', t);
+            if (d.floorMat) put('Пол 1 этажа (выбрано из списка)', (findName('FLOOR_MATERIALS_DB', d.floorMat) || {}).name || d.floorMat);
+            if (d.roofMat) put('Кровля (выбрано из списка)', (findName('ROOF_MATERIALS_DB', d.roofMat) || {}).name || d.roofMat);
+            if (d.glazing) put('Окна (выбрано из списка)', (findName('GLAZING_DB', d.glazing) || {}).name || d.glazing);
+            put('Комментарий по конструкции дома', d.wall);
         }
-        if (d.floorMat) put('Пол 1 этажа (выбрано из списка)', (findName('FLOOR_MATERIALS_DB', d.floorMat) || {}).name || d.floorMat);
-        if (d.roofMat) put('Кровля (выбрано из списка)', (findName('ROOF_MATERIALS_DB', d.roofMat) || {}).name || d.roofMat);
-        if (d.glazing) put('Окна (выбрано из списка)', (findName('GLAZING_DB', d.glazing) || {}).name || d.glazing);
-        put('Окна (марка/модель)', d.win);
-        put('Уточнение по стене', d.wall);
-        put('Уточнение по полу', d.floor1);
-        put('Уточнение по кровле', d.roof);
         put('Помещения с тёплым полом', d.tpRooms);
         put('Уже закуплено', d.bought);
         put('Комментарий', d.comment);
