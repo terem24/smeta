@@ -3625,6 +3625,13 @@ const app = {
         const zHeads = zoneQty(/термо\s*головк[а-я]*\s+(?:радио|беспроводн[а-я]*|zigbee|зигби|умн[а-я]*)|(?:радио|беспроводн[а-я]*|zigbee|зигби|умн[а-я]*)\s*термо\s*головк[а-я]*|радиоголовк[а-я]*/gi);
         const zServos = zoneQty(/сервопривод[а-я]*|сервак[а-я]*|термоэлектрическ[а-я]*\s+привод[а-я]*/gi);
         const zBar = /планк[а-я]*|коммутац[а-я]*|клеммник[а-я]*/i.test(t);
+        // Сколько планок — когда число стоит вплотную к слову («3 планки», «планок 3»).
+        // Названное число сильнее расчёта по зонам: планку ставят на коллектор, а
+        // коллекторов у объекта бывает больше, чем выходит по числу термостатов.
+        // Вплотную — чтобы «20 приводов, планка» не прочиталось как двадцать планок.
+        const zBarsM = !zBar ? null : (tn.match(/(\d{1,2})\s*(?:шт\.?\s*|штук[а-я]*\s*)?(?:планк|планок|коммутац|клеммник)/i)
+            || tn.match(/(?:планк[а-я]*|планок|коммутац[а-я]*|клеммник[а-я]*)\s*(?:[-—:]\s*)?(\d{1,2})(?!\d)(?!\s*(?:[вv](?![а-я])|вольт|зон|привод|серв))/i));
+        const zBars = zBarsM ? Math.max(1, Math.min(20, parseInt(zBarsM[1], 10) || 1)) : 0;
         const zItems = [zWired, zRadio, zHeads, zServos].filter(Boolean);
         const zExplicit = zItems.filter(x => x.explicit).length;
         const zoneKit = zItems.length > 0 && (zExplicit >= 2 || zBar);
@@ -3636,13 +3643,13 @@ const app = {
         // отдельно спрашивать не нужно.
         const zWifiM = /приложени[а-я]*|smart\s*life|смарт\s*лайф|wi-?fi|вайфай[а-я]*|дисплей[а-я]*|сенсорн[а-я]*\s*экран/i.test(t);
         if (zoneKit) {
-            const zv = { on: true, wired: zWired ? zWired.n : 0, radio: zRadio ? zRadio.n : 0, heads: zHeads ? zHeads.n : 0, servos: zServos ? zServos.n : 0 };
+            const zv = { on: true, wired: zWired ? zWired.n : 0, radio: zRadio ? zRadio.n : 0, heads: zHeads ? zHeads.n : 0, servos: zServos ? zServos.n : 0, bars: zBars };
             const parts = [];
             if (zv.wired) parts.push(`проводных термостатов ${zv.wired}`);
             if (zv.radio) parts.push(`радиотермостатов ${zv.radio}`);
             if (zv.heads) parts.push(`радиоголовок ${zv.heads}`);
             if (zv.servos) parts.push(`сервоприводов ${zv.servos}`);
-            if (zBar) parts.push('планка');
+            if (zBar) parts.push(zBars > 1 ? `планок ${zBars}` : 'планка');
             parts.push(zv.radio > 0 ? 'система ENGO (нужны радиотермостаты)' : 'система STOUT');
             if (zWifiM && zv.wired > 0) parts.push('термостаты с дисплеем (Wi-Fi, Smart Life)');
             results.push({ field: 'zoneAuto', value: zv, label: 'Зональная автоматика', display: parts.join(', ') });
@@ -4182,7 +4189,8 @@ const app = {
                         wired: parseInt(v.wired, 10) || 0,
                         radio: parseInt(v.radio, 10) || 0,
                         heads: parseInt(v.heads, 10) || 0,
-                        servos: parseInt(v.servos, 10) || 0
+                        servos: parseInt(v.servos, 10) || 0,
+                        bars: parseInt(v.bars, 10) || 0
                     };
                     z.sys = 'auto';
                     break;
@@ -4687,9 +4695,21 @@ const app = {
         textInput.placeholder = 'Напишите сообщение...';
         inputWrap.appendChild(textInput);
 
+        // Поле растёт под текст, как в мессенджере: вставил четыре строки — видно все
+        // четыре, а не две. Выше потолка (max-height у .ai-parse-textarea) поле само
+        // переходит на внутреннюю прокрутку, а переписка при этом уезжает вверх —
+        // до этого вставленный текст прятался под двумя видимыми строками.
+        const autoGrow = () => {
+            textInput.style.height = 'auto';
+            textInput.style.height = textInput.scrollHeight + 'px';
+            chatLog.scrollTop = chatLog.scrollHeight;
+        };
+        textInput.addEventListener('input', autoGrow);
+
         const voiceUI = this._createVoiceMicButton((transcript) => {
             textInput.value = transcript;
             journal.voiceDraft = transcript;
+            autoGrow();
             textInput.focus();
         });
         if (voiceUI) {
@@ -4911,6 +4931,7 @@ const app = {
             if (!text) { textInput.focus(); return; }
             addBubble('user', escapeHtml(text));
             textInput.value = '';
+            autoGrow();
             // Откуда реплика: надиктована, набрана, или надиктована и поправлена руками
             const src = journal.voiceDraft == null ? 'text' : (journal.voiceDraft.trim() === text ? 'voice' : 'voice+edit');
             journal.voiceDraft = null;
@@ -38180,13 +38201,21 @@ const app = {
             wired = num(z.req.wired); radio = num(z.req.radio); heads = num(z.req.heads); servos = num(z.req.servos);
         }
         const hasTp = (s.systems || []).includes('tp');
-        const add = (item, qty, tip, group) => { if (item && qty > 0) rows.push({ item, qty, tip, group: group || grpDev }); };
+        // kind — вид позиции (планка, термостат, привод...). По нему блок работ
+        // «1.4 Автоматика отопления» находит строку в готовой смете и берёт
+        // количество оттуда, а не из расчёта.
+        const add = (item, qty, tip, group, kind) => { if (item && qty > 0) rows.push({ item, qty, tip, group: group || grpDev, kind }); };
         const withAlts = (item, alts) => {
             if (!item) return item;
             const list = (alts || []).filter(a => a && a.id !== item.id);
             return list.length ? { ...item, alts: list } : item;
         };
         const e = catalog.zone_engo || {};
+        // Планок в заявке названо больше, чем выходит по зонам, — верим заявке:
+        // монтажник считает по коллекторам («3 планки»), а расчёт знает только
+        // число зон и приводов. Меньше названного расчёта не берём — иначе зоны
+        // некуда включать.
+        const reqBars = fromReq ? num(z.req.bars) : 0;
         let bars = 0, extraMasters = 0, gateway = 0, radioAll = 0, wiredAll = wired;
         const srcTip = house
             ? `Считается из подобранного: петель ТП ${house.loops}, приборов отопления ${house.devs}, комнат под термостаты ${house.zones}.`
@@ -38202,7 +38231,9 @@ const app = {
             // на этаж, как считалось в разделе тёплого пола.
             const byFloors = (hasTp && house && s.floors === 2 && (parseFloat(s.tp2) || 0) > 0) ? 2 : 1;
             bars = (wiredAll > 0 || servos > 0) ? Math.max(Math.ceil(wiredAll / 8), byFloors) : 0;
-            if (bars) add(withAlts(catalog.wiring_center, [e.bar]), bars, `Планка на 8 зон, приводы 230 В. Зон ${wiredAll}, приводов ${servos}. ${srcTip} В замене — ENGO ECB62-ZB (с радиотермостатами).`);
+            if (reqBars > bars) bars = reqBars;
+            if (bars) add(withAlts(catalog.wiring_center, [e.bar]), bars, `Планка на 8 зон, приводы 230 В. Зон ${wiredAll}, приводов ${servos}. ${srcTip}` +
+                (reqBars >= bars ? ` Планок ${bars} — столько названо в заявке.` : ``) + ` В замене — ENGO ECB62-ZB (с радиотермостатами).`, null, 'bar');
             if (wiredAll > 0) {
                 const ts = catalog.thermostats_stout || [];
                 const pick = (id) => ts.find(x => x.id === id);
@@ -38210,13 +38241,13 @@ const app = {
                 const alts = (s.ufhCtrl === 'mech')
                     ? [(catalog.ufh_mech || [])[1], pick('STE-3001-130210'), pick('STE-3002-331212')]
                     : [(catalog.ufh_electro || [])[1], pick('STE-3002-331212'), pick('STE-3002-331222')];
-                add(withAlts(base, alts), wiredAll, this.getDesc('thermostat') + (house ? ` Один на комнату: ${house.zones}.` : ''));
+                add(withAlts(base, alts), wiredAll, this.getDesc('thermostat') + (house ? ` Один на комнату: ${house.zones}.` : ''), null, 'wired');
             }
             if (heads > 0) {
                 const head = (catalog.heads || []).find(h => h.type === 'smart');
-                add(head, heads, `Радиоголовка Zigbee на клапан каждого прибора (${heads}). Управление с телефона через шлюз; с планкой не связана.`);
+                add(head, heads, `Радиоголовка Zigbee на клапан каждого прибора (${heads}). Управление с телефона через шлюз; с планкой не связана.`, null, 'head');
                 gateway = Math.ceil(heads / 15);
-                add(catalog.smart_hub, gateway, `Шлюз Zigbee: до 15 головок на один.`);
+                add(catalog.smart_hub, gateway, `Шлюз Zigbee: до 15 головок на один.`, null, 'gw');
             }
         } else {
             const bar = e.bar || {};
@@ -38231,15 +38262,17 @@ const app = {
             const byWired = Math.ceil(wired / (bar.zonesWired || 2));
             const byRadio = Math.ceil(radioAll / (bar.zonesRadio || 6));
             const byAct = Math.ceil(servos / (bar.maxActuators || 50));
-            bars = (wired + radioAll + servos > 0) ? Math.max(1, byWired, byRadio, byAct) : 0;
+            bars = (wired + radioAll + servos > 0) ? Math.max(1, byWired, byRadio, byAct, reqBars) : 0;
             if (bars) add(withAlts(bar, [catalog.wiring_center]), bars, `Планка: 2 проводные зоны + 6 зон Zigbee, до 50 приводов 230 В NC. ` +
-                `Проводных ${wired}, радио ${radioAll}, приводов ${servos}. ${srcTip} Термостаты привязываются к планке напрямую, без шлюза. В замене — STOUT STE-3050 (только проводные).`);
+                `Проводных ${wired}, радио ${radioAll}, приводов ${servos}. ${srcTip}` +
+                (reqBars >= bars && reqBars > 0 ? ` Планок ${bars} — столько названо в заявке.` : ``) +
+                ` Термостаты привязываются к планке напрямую, без шлюза. В замене — STOUT STE-3050 (только проводные).`, null, 'bar');
             if (bars > 1 && byWired === bars && byWired > byRadio) warns.push(`Планок ${bars} из-за проводных термостатов: у планки радиокомплекта только 2 проводные зоны. ` +
                 `Дешевле часть термостатов взять радио.`);
             const wl = e.wired || [];
             if (wired > 0) {
                 const wBase = wl.find(x => x.color === 'white' && !x.prog) || wl[0];
-                add(withAlts(wBase, wl), wired, `Проводной, 230 В, на проводную зону планки. В замене — чёрный и программируемый EASY.`);
+                add(withAlts(wBase, wl), wired, `Проводной, 230 В, на проводную зону планки. В замене — чёрный и программируемый EASY.`, null, 'wired');
             }
             const rl = e.radio || [];
             if (radioAll > 0) {
@@ -38247,13 +38280,13 @@ const app = {
                 const rAlts = rl.filter(x => heads === 0 || x.heads);
                 add(withAlts(rBase, rAlts), radioAll, heads > 0
                     ? `Zigbee-зона планки и хозяин радиоголовок (до 6 на один). Поэтому только E25: ENGO ONE головками не управляет. В замене — чёрный и питание 230 В.`
-                    : `Zigbee-зона планки, привязка напрямую.${house ? ` Один на комнату: ${house.zones}.` : ''} В замене — чёрный, питание 230 В и ENGO ONE с датчиком влажности.`);
+                    : `Zigbee-зона планки, привязка напрямую.${house ? ` Один на комнату: ${house.zones}.` : ''} В замене — чёрный, питание 230 В и ENGO ONE с датчиком влажности.`, null, 'radio');
             }
             if (heads > 0) {
                 const hl = e.heads || [];
-                add(withAlts(hl[0], hl), heads, `Радиоголовка на клапан каждого прибора (${heads}); M28 — в замене. Работает в паре с E25 через шлюз.`);
+                add(withAlts(hl[0], hl), heads, `Радиоголовка на клапан каждого прибора (${heads}); M28 — в замене. Работает в паре с E25 через шлюз.`, null, 'head');
                 gateway = 1;
-                add(e.gateway, gateway, `Шлюз обязателен радиоголовкам; заодно управление с телефона (ENGO Smart).`);
+                add(e.gateway, gateway, `Шлюз обязателен радиоголовкам; заодно управление с телефона (ENGO Smart).`, null, 'gw');
             }
         }
         if (servos > 0) {
@@ -38265,7 +38298,7 @@ const app = {
             const whence = house
                 ? ` По выходам коллекторов: тёплый пол ${house.loops}${z.radMode === 'servo' ? `, радиаторы ${house.devs}` : ''}.`
                 : '';
-            add(item, servos, this.getDesc('actuator') + whence + (sys === 'engo' ? ` Планка ENGO принимает любые приводы 230 В NC — оставлен STOUT.` : ``));
+            add(item, servos, this.getDesc('actuator') + whence + (sys === 'engo' ? ` Планка ENGO принимает любые приводы 230 В NC — оставлен STOUT.` : ``), null, 'servo');
         }
         // Кабель — тем же расчётом, что был у автоматики тёплого пола: линии до
         // термостатов по площади пола и этажности, приводы у самого коллектора,
@@ -38282,7 +38315,7 @@ const app = {
                 if (m > 0) add(c, m, cab.desc[c.id], grpCab);
             });
         }
-        return { sys, rows, warns, bars, wired, radio, heads, servos, extraMasters, gateway, wiredAll, radioAll, house, fromReq };
+        return { sys, rows, warns, bars, reqBars, wired, radio, heads, servos, extraMasters, gateway, wiredAll, radioAll, house, fromReq };
     },
     syncZoneAutoUI: function () {
         const s = this.state;
@@ -38324,7 +38357,8 @@ const app = {
             if (zk.servos) parts.push(p(zk.servos, 'сервопривод', 'сервопривода', 'сервоприводов'));
             how = `по заявке: ${parts.join(', ')}.`;
         }
-        how += ` ${this.plural(zk.bars, 'Планка', 'Планки', 'Планок')} ${zk.bars} — по числу зон и приводов.`;
+        how += ` ${this.plural(zk.bars, 'Планка', 'Планки', 'Планок')} ${zk.bars} — ` +
+            (zk.reqBars >= zk.bars && zk.reqBars > 0 ? `столько названо в заявке.` : `по числу зон и приводов.`);
         let works;
         if (zk.sys === 'stout') {
             works = `термостат в комнате замыкает контакт на планке, планка открывает сервоприводы петель этой комнаты и включает насос; когда все зоны прогреты, насос останавливается.` +
@@ -73024,21 +73058,49 @@ const app = {
                 .filter(x => test((x.name || '').toLowerCase()) && x.unit !== 'м'
                     && !String(x.group || '').startsWith("2.9.") && !String(x.group || '').startsWith("4.5"))
                 .reduce((sum, x) => sum + x.q, 0);
+            /**
+             * Сколько позиций этого вида реально осталось в разделе 4.5.
+             *
+             * Количество в строке монтажник правит руками (qtyOverrides), строку
+             * можно и вычеркнуть. Работы до этого считались по расчёту
+             * getZoneAutoKit: исправил планку с одной на три — оборудование
+             * пересчиталось, а «Монтаж коммутационного блока» так и оставался на
+             * одну. Заметить это в смете трудно, а в деньгах это неучтённая работа.
+             * Поэтому берём количество из готовых строк сметы, а расчёт остаётся
+             * запасным значением — на случай, если строку в смете не нашли.
+             */
+            const _kitQty = (kind, fallback) => {
+                const kitRows = zk ? (zk.rows || []).filter(r => r.kind === kind && r.item && r.item.id) : [];
+                if (!kitRows.length) return fallback;
+                let total = 0, found = false;
+                kitRows.forEach(r => {
+                    const key = r.item.originalId || r.item.id;
+                    const row = this.currentEquipmentList.find(x => String(x.group || '').startsWith("4.5")
+                        && (x.originalId === key || x.id === r.item.id));
+                    if (!row) return;
+                    found = true;
+                    if (!row.isOpt) total += (row.q || 0);
+                });
+                return found ? total : fallback;
+            };
             if (zk) {
-                if (zk.bars > 0) addToWorks("Монтаж коммутационного блока", zk.bars, 5000, "шт", autoGroup);
-                const _servos = zk.servos + _outside(n => n.includes("сервопривод"));
+                const _bars = _kitQty('bar', zk.bars);
+                if (_bars > 0) addToWorks("Монтаж коммутационного блока", _bars, 5000, "шт", autoGroup);
+                const _servos = _kitQty('servo', zk.servos) + _outside(n => n.includes("сервопривод"));
                 if (_servos > 0) addToWorks("Монтаж сервоприводов", _servos, 1000, "шт", autoGroup);
-                if (zk.wiredAll > 0) {
-                    addToWorks("Монтаж термостатов", zk.wiredAll, 4500, "шт", autoGroup);
+                const _wired = _kitQty('wired', zk.wiredAll);
+                if (_wired > 0) {
+                    addToWorks("Монтаж термостатов", _wired, 4500, "шт", autoGroup);
                     // Закладная под датчик пола — только термостатам тёплого пола.
-                    const _floorStats = this.state.systems.includes('tp') ? Math.min(zk.wiredAll, this.state.ufhZones || 0) : 0;
+                    const _floorStats = this.state.systems.includes('tp') ? Math.min(_wired, this.state.ufhZones || 0) : 0;
                     if (_floorStats > 0) addToWorks("Монтаж закладной для датчика пола", _floorStats, 1000, "шт", autoGroup);
-                    addToWorks("Прокладка провода на термостаты", zk.wiredAll * 15, 100, "м.p.", autoGroup);
+                    addToWorks("Прокладка провода на термостаты", _wired * 15, 100, "м.p.", autoGroup);
                 }
-                if (zk.radioAll > 0) addToWorks("Монтаж радиотермостата", zk.radioAll, 2500, "шт", autoGroup);
-                const _heads = zk.heads + _outside(n => n.includes("zigbee") && n.includes("головка"));
+                const _radio = _kitQty('radio', zk.radioAll);
+                if (_radio > 0) addToWorks("Монтаж радиотермостата", _radio, 2500, "шт", autoGroup);
+                const _heads = _kitQty('head', zk.heads) + _outside(n => n.includes("zigbee") && n.includes("головка"));
                 if (_heads > 0) addToWorks("Монтаж умной термоголовки Zigbee", _heads, 1000, "шт", autoGroup);
-                const _gw = zk.gateway + _outside(n => n.includes("шлюз zigbee"));
+                const _gw = _kitQty('gw', zk.gateway) + _outside(n => n.includes("шлюз zigbee"));
                 if (_gw > 0) addToWorks("Монтаж и настройка беспроводного шлюза Zigbee", _gw, 2500, "шт", autoGroup);
             }
         }

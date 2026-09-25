@@ -8180,6 +8180,8 @@ body.dark-mode .desktop-feedback-btn:hover {
 }
 
 .ai-chat-log {
+    /* Сжимается первой, когда поле ввода выросло: карточка выше потолка не идёт,
+       и верхняя подсказка уходит на прокрутку вместо того, чтобы давить на ввод */
     flex: 0 1 auto;
     overflow-y: auto;
     display: flex;
@@ -8239,8 +8241,12 @@ body.dark-mode .desktop-feedback-btn:hover {
 }
 
 .ai-parse-textarea {
+    /* Поле растёт под текст (autoGrow в openAiParseModal), но не выше потолка:
+       дальше прокручивается само, а переписка сверху уезжает вверх, как в мессенджере */
     resize: vertical;
     min-height: 70px;
+    max-height: 190px;
+    overflow-y: auto;
     padding-right: 42px !important;
     font-family: inherit;
 }
