@@ -15028,6 +15028,13 @@ const app = {
                 ? ('Подключено' + (c.username ? ' как @' + c.username : ''))
                 : 'Не подключено';
         }
+        // Кнопка тоже должна отвечать состоянию: пока она всегда звала «Подключить»,
+        // монтажник с уже привязанным ботом читал её как «связи нет».
+        const btnEl = document.getElementById('profile_tg_connect_btn');
+        if (btnEl) {
+            const c = this.state.tgConnect;
+            btnEl.textContent = (c && c.chatId) ? 'Переподключить' : 'Подключить';
+        }
         ['kp', 'oprosnik', 'chat'].forEach((kind) => {
             const el = document.getElementById('profile_tg_notify_' + kind);
             if (el) el.checked = this.tgNotifyEnabled(kind);

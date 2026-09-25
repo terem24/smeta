@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.73" defer></script>
+    <script src="app.js?v=9.74" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3251,7 +3251,7 @@
                         <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">📨 Уведомления в Telegram</label>
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                             <span id="profile_tg_status" style="font-size: 12px;">Не подключено</span>
-                            <button type="button" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить</button>
+                            <button type="button" id="profile_tg_connect_btn" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить</button>
                         </div>
                         <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; cursor: pointer;">
                             <input type="checkbox" id="profile_tg_notify_kp" onchange="app.setTgNotify('kp', this.checked)"> Одобрение/отклонение КП
