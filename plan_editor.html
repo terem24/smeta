@@ -3803,6 +3803,11 @@ var heroOff = false;     // автоматика споткнулась — ша
 
 function heroMode() {
   if (allTools || curStep || heroOff) return null;
+  // Включён режим рисования — инструменты шага нужны на виду: иначе масштаб
+  // ждёт двух кликов по плану, а кнопки «Масштаб», которой этот режим
+  // включён, в шапке нет и выключить его нечем. Так бывает сразу после
+  // загрузки плана, когда масштаб не подобрался сам.
+  if (mode !== 'select') return null;
   var f = F();
   if (!f || !f.img) return 'empty';
   return (!f.pxPerM && !(f.zones || []).length && !(f.rads || []).length) ? 'auto' : null;
@@ -3919,6 +3924,10 @@ function applyBar(step) {
   });
   var am = document.getElementById('b_automark');
   if (am) am.style.display = (hero === 'empty') ? 'none' : '';
+  // «Подобрать масштаб» живёт вне STEP_BTNS (он нужен и вне шага «Масштаб»),
+  // поэтому на первом экране убирается отдельно: там одно действие.
+  var as = document.getElementById('b_autoscale');
+  if (as) as.style.display = hero ? 'none' : '';
   var mb = document.getElementById('b_zonemore');
   if (mb) {
     mb.style.display = (hero || allTools || !zoneStep) ? 'none' : '';
