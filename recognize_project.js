@@ -246,19 +246,17 @@ const RecognizeProject = {
         const n = reqs.filter(r => r._sel).length;
         const rows = reqs.map((r, i) => `
             <label style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border,#e2e8f0);cursor:pointer">
-              <input type="checkbox" ${r._sel ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setReq(${i}, this.checked)">
+              <input type="checkbox" ${r._sel ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setReq(${i}, this.checked); RecognizePlan.renderReview()">
               <span style="flex:1;min-width:0">
                 <span style="font-weight:600">${esc(this.REQ_TOPICS[r.topic])}.</span> ${esc(r.text)}
                 <span style="display:block;font-size:11.5px;color:var(--text-sec,#64748b)">${r.sheet ? `лист ${r.sheet}` : 'проект'}${r.quote ? ` · «${esc(r.quote)}»` : ''}</span>
               </span>
               ${chip(r.action)}
             </label>`).join('');
-        return `<div class="rec-tcheck warn" style="display:block">
-            <div style="display:flex;gap:10px;align-items:center;margin-bottom:4px">
-              <div class="rec-tcheck-ico">📝</div>
-              <div><div>Требования из примечаний проекта</div>
-                <div class="rec-tcheck-sub">Отмеченные (${n} из ${reqs.length}) попадут в смету плашкой «Требования проекта» — чтобы не потерялись при подборе и монтаже.</div></div>
-            </div>${rows}</div>`;
+        return `<details class="rec-tcheck" style="display:block" ${this._reqsOpen ? 'open' : ''} ontoggle="RecognizeProject._reqsOpen = this.open">
+            <summary style="cursor:pointer">📝 Требования из примечаний проекта: <b>${n} из ${reqs.length}</b> в смету</summary>
+            <div class="rec-tcheck-sub" style="margin:4px 0">Отмеченные попадут в смету плашкой «Требования проекта» — чтобы не потерялись при подборе и монтаже.</div>
+            ${rows}</details>`;
     },
 
     /** Отмеченные требования — в состояние расчёта. */
@@ -317,8 +315,8 @@ const RecognizeProject = {
         const cur = (typeof app !== 'undefined' && app.state && app.state.selectedCity) ? app.state.selectedCity.name : '';
         return `<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
             <input type="checkbox" ${c.use ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setCityUse(this.checked)">
-            <span>Город в расчёте: <b>${esc(c.city.name)}</b> (${c.city.temp} °C, СП 131.13330.2020) — по адресу «${esc(c.address)}»${
-                cur && cur !== c.city.name ? `; сейчас в расчёте ${esc(cur)}` : ''}</span></label>`;
+            <span>Город: <b>${esc(c.city.name)}</b> (${c.city.temp} °C)${
+                cur && cur !== c.city.name ? `, сейчас ${esc(cur)}` : ''}</span></label>`;
     },
 
     applyCity(st) {

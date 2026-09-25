@@ -673,8 +673,44 @@ const RecognizePlan = {
         const busy = this._busy ? 'disabled' : '';
         const disabled = (this._busy || !chosen.length || noArea || chosenArea > maxA) ? 'disabled' : '';
 
+        // Предупреждения без повторов: при обрыве по лимиту одна и та же фраза
+        // приходила от каждого листа и склеивалась через «·». Первое на виду,
+        // остальные — под «ещё N».
+        const warns = [...new Set(String(this._warning || '').split(' · ').map(s => s.trim()).filter(Boolean))];
+        const warnHtml = warns.length ? `<div class="rec-err">${esc(warns[0])}${warns.length > 1 ? `
+            <details style="margin-top:4px"><summary style="cursor:pointer">ещё ${warns.length - 1}</summary>
+              ${warns.slice(1).map(w => `<div style="margin-top:3px">${esc(w)}</div>`).join('')}</details>` : ''}</div>` : '';
+
+        // Одна сводка вместо стопки плашек: заголовок, по строке на город,
+        // проживающих, итог «в расчёт пойдёт» и вентиляцию; пояснения и
+        // сводки по листам — под «подробнее».
+        const P = typeof RecognizeProject !== 'undefined' ? RecognizeProject : null;
+        const rowSt = 'display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border,#e2e8f0);font-size:13px';
+        const sumRows = [
+            P && P.city ? `<div style="${rowSt}">📍 ${P.cityLine()}</div>` : '',
+            this.resRow() ? `<div style="${rowSt}">👪 ${this.resRow()}</div>` : '',
+            P && (this._engSummary || []).length ? `<div style="${rowSt}">🔧 <span>${esc(P.totals(chosen))}
+                <span style="color:var(--text-sec,#64748b)">Что к какой комнате — в строке под помещением.</span></span></div>` : '',
+            P && P.vent ? `<div style="${rowSt}">🌬️ ${P.ventSelect()}</div>` : '',
+        ].filter(Boolean).join('');
+        const details = [
+            sumSub,
+            ...(this._engSummary || []).map(t => esc(t)),
+            this.resDetail(),
+            P && P.city ? `Адрес проекта: «${esc(P.city.address)}».` : '',
+            (this._engSummary || []).length ? 'При переносе тёплый пол и приборы встанут в комнаты, сантехника — в «Водоснабжение» по помещениям.' : '',
+        ].filter(Boolean);
+        const summaryHtml = `<div class="rec-tcheck ${sumCls}" style="display:block">
+            <div style="display:flex;gap:10px;align-items:center">
+              <div class="rec-tcheck-ico">${sumIco}</div><div style="font-weight:600">${sumText}</div></div>
+            ${sumRows ? `<div style="margin-top:6px">${sumRows}</div>` : ''}
+            ${details.length ? `<details ${this._sumOpen ? 'open' : ''} ontoggle="RecognizePlan._sumOpen = this.open" style="margin-top:4px">
+                <summary class="rec-tcheck-sub" style="cursor:pointer">Подробнее</summary>
+                ${details.map(t => `<div class="rec-tcheck-sub" style="margin-top:3px">${t}</div>`).join('')}</details>` : ''}
+          </div>`;
+
         document.getElementById('rec_body').innerHTML = `
-          ${this._warning ? `<div class="rec-err">${esc(this._warning)}</div>` : ''}
+          ${warnHtml}
           ${this._busy ? `
             <div class="rec-tcheck warn">
               <div class="rec-tcheck-ico">⏳</div>
@@ -686,25 +722,8 @@ const RecognizePlan = {
               <div class="rec-tcheck-ico">${/не добавлен/.test(this._addNote) ? '!' : '✓'}</div>
               <div><div>${esc(this._addNote)}</div></div>
             </div>` : ''}
-          <div class="rec-tcheck ${sumCls}">
-            <div class="rec-tcheck-ico">${sumIco}</div>
-            <div><div>${sumText}</div><div class="rec-tcheck-sub">${sumSub}</div></div>
-          </div>
-          ${(this._engSummary || []).length ? `
-            <div class="rec-tcheck ok">
-              <div class="rec-tcheck-ico">🔧</div>
-              <div><div>С листов инженерных систем</div>
-                ${this._engSummary.map(t => `<div class="rec-tcheck-sub">${esc(t)}</div>`).join('')}
-                ${RecognizeProject.vent ? `<div class="rec-tcheck-sub" style="margin:4px 0">${RecognizeProject.ventSelect()}</div>` : ''}
-                <div class="rec-tcheck-sub"><b>${esc(RecognizeProject.totals(chosen))}</b></div>
-                <div class="rec-tcheck-sub">Что к какой комнате отнесено — в строке под помещением, там же и поправить.
-                  При переносе тёплый пол и приборы встанут в комнаты, сантехника — в «Водоснабжение» по помещениям.</div></div>
-            </div>` : ''}
-          ${this.resLine()}
-          ${typeof RecognizeProject !== 'undefined' && RecognizeProject.city ? `
-            <div class="rec-tcheck ok"><div class="rec-tcheck-ico">📍</div>
-              <div style="flex:1">${RecognizeProject.cityLine()}</div></div>` : ''}
-          ${typeof RecognizeProject !== 'undefined' ? RecognizeProject.reqsBlock() : ''}
+          ${summaryHtml}
+          ${P ? P.reqsBlock() : ''}
           <div class="rec-toolbar">
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(true)">Отметить все</button>
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(false)">Снять все</button>
@@ -840,35 +859,45 @@ const RecognizePlan = {
         }
     },
 
-    resLine() {
+    /**
+     * Строка сводки: проживающие по спальням и итог проверки по приборам в
+     * три слова. Расклад по спальням и сама проверка — в resDetail
+     * («подробнее»).
+     */
+    resRow() {
+        const est = this.residentsFromRows(this._rows);
+        if (!est) return '';
+        const chk = this.resCheck(est.n);
+        let tail = '';
+        if (chk) {
+            const warn = (chk.plan.fixturesVol || 0) > chk.volByRes;
+            tail = warn
+                ? ` — <b style="color:#b45309">приборам нужно больше, бойлер ${chk.plan.vol} л по приборам</b>`
+                : ` — бойлер ${chk.plan.vol} л, приборам хватает`;
+        }
+        return `<label style="display:flex;gap:6px;align-items:flex-start;cursor:pointer">
+            <input type="checkbox" ${this._resUse ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setResUse(this.checked)">
+            <span>Проживающих: <b>${est.n}</b> по спальням${tail}</span></label>`;
+    },
+
+    resDetail() {
         const est = this.residentsFromRows(this._rows);
         if (!est) return '';
         const cur = (typeof app !== 'undefined' && app.state) ? (parseInt(app.state.res) || 0) : 0;
         const chk = this.resCheck(est.n);
-        let check = '';
-        let warn = false;
+        let s = `Проживающие: ${this.esc(est.parts.map(p => `${p.name} — ${p.n}`).join(', '))}` +
+            (cur && cur !== est.n ? `; сейчас в расчёте ${cur}` : '') + '. От этого числа — объём бойлера и расход горячей воды.';
         if (chk) {
             const f = chk.plan.fixtures || {};
             const fxList = [f.bath ? `ванн ${f.bath}` : '', f.shower ? `душей ${f.shower}` : '', f.basin ? `раковин и биде ${f.basin}` : '']
                 .filter(Boolean).join(', ');
-            const byFix = chk.plan.fixturesVol || 0;
-            warn = byFix > chk.volByRes;
-            check = `<div class="rec-tcheck-sub">Проверка по приборам (${fxList || 'без ванн и душей'}): пиковый разбор горячей воды ≈ ${byFix} л` +
-                (f.nSim ? ` при одновременной работе ${f.nSim} ${this.fmt(f.nSim) === '1' ? 'прибора' : 'приборов'}` : '') +
-                `, по ${est.n} проживающим — ${chk.volByRes} л. ` +
-                (warn ? `<b>Приборы требуют больше, чем даёт число проживающих</b> — бойлер подберётся по приборам (${chk.plan.vol} л); проверьте, не больше ли жильцов.`
-                    : `Бойлер — ${chk.plan.vol} л, по числу проживающих: приборам этого хватает.`) +
-                (chk.flow ? ` Расчётный расход ГВС по СП 30.13330.2020 — ${this.fmt(Math.round(chk.flow.qh * 100) / 100)} л/с.` : '') +
-                `</div>`;
+            s += ` Проверка по приборам (${fxList || 'без ванн и душей'}): пиковый разбор горячей воды ≈ ${chk.plan.fixturesVol || 0} л, ` +
+                `по ${est.n} проживающим — ${chk.volByRes} л; бойлер берётся по большему.` +
+                (chk.flow ? ` Расчётный расход ГВС по СП 30.13330.2020 — ${this.fmt(Math.round(chk.flow.qh * 100) / 100)} л/с.` : '');
         } else {
-            check = `<div class="rec-tcheck-sub">Проверки по приборам нет: сантехника по помещениям не распознана — бойлер подберётся по числу проживающих.</div>`;
+            s += ' Проверки по приборам нет: сантехника по помещениям не распознана.';
         }
-        return `<div class="rec-tcheck ${warn ? 'warn' : 'ok'}"><div class="rec-tcheck-ico">👪</div><div style="flex:1">
-            <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
-              <input type="checkbox" ${this._resUse ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setResUse(this.checked)">
-              <span>Проживающих в расчёте: <b>${est.n}</b> — по спальням (${this.esc(est.parts.map(p => `${p.name} — ${p.n}`).join(', '))})${
-                cur && cur !== est.n ? `; сейчас в расчёте ${cur}` : ''}. От этого числа — объём бойлера и расход горячей воды.</span>
-            </label>${check}</div></div>`;
+        return s;
     },
 
     /** Город из адреса проекта — подставить в расчёт или нет. */
