@@ -34937,6 +34937,24 @@ const app = {
             }
             return;
         }
+
+        // Блокировка временной почты (temp-mail, guerrillamail и др.)
+        // Нельзя регистрироваться на одноразовые адреса: клиент не получит сообщения,
+        // смета не будет доставлена, счёт не придёт.
+        if (this.isTempmailDomain(email)) {
+            const msg = 'Регистрация на временную почту невозможна. Укажите постоянный адрес (Gmail, Яндекс, корпоративная почта).';
+            if (authErrEl) {
+                authErrEl.innerText = msg;
+                authErrEl.style.display = 'block';
+            } else {
+                app.alert(msg);
+            }
+            if (btn) {
+                btn.disabled = false;
+            }
+            return;
+        }
+
         // Промокод магазина: из поля формы (туда же подставляется код из ссылки
         // менеджера). Проверяется ниже функцией базы до отправки письма с кодом.
         // Применяется при первом входе — см. applyPromoFromRegistration.
@@ -36313,6 +36331,36 @@ const app = {
     // -вна/-чна и тюркские -оглы, -кызы, -улы
     PATRONYMIC_END: /(ич|вна|чна|оглы|огли|улы|уулу|кызы|кизи|гызы)$/i,
 
+    // Известные сервисы временной почты — блокируются при регистрации.
+    // Актуальный список: https://disposable-email-domains.github.io/
+    // Топ-50 самых распространённых (обновлять ежеквартально).
+    TEMP_EMAIL_DOMAINS: [
+        'tempmail.com', 'temp-mail.org', '10minutemail.com', '10minuteemail.com',
+        'guerrillamail.com', 'guerrillamail.info', 'guerrillamail.net', 'guerrillamail.org',
+        'mailinator.com', 'maildrop.cc', 'sharklasers.com',
+        'throwaway.email', 'trashmail.com', 'temp.mail.ru', 'yopmail.com',
+        'fakeinbox.com', 'spam4.me', 'mytrashmail.com', 'mailnesia.com',
+        'minutemail.com', 'tempmail.co.uk', 'temp-mail.ru', 'tempmail.ru',
+        '0-mail.com', '0clickemail.com', '1-7-7.com', 'alivemails.com',
+        'binkmail.com', 'bluebottle.com', 'bobmail.info', 'bodym.ru',
+        'boun.cr', 'boxformail.in', 'byom.de', 'chammy.info',
+        'clickmail.io', 'clothingcarearchive.com', 'dacikuci.com', 'dayrep.com',
+        'dodgeit.com', 'dodgemail.de', 'donttellma.info', 'dumpmail.com',
+        'e-mailnesia.com', 'easytrashmail.com', 'email4u.biz', 'emailchop.com',
+        'emailmiser.com', 'emailnesia.com', 'emailondeck.com', 'emailtmp.com',
+        'emkei.cz', 'estate.com', 'etempmail.com', 'exoticaz.com',
+        'fakeinbox.com', 'falsemail.com', 'fandangomail.com', 'fastmail.net',
+        'filzmail.com', 'flurred.com', 'freemail.ws', 'freshmail.net',
+        'from.ovpn.to', 'fronttierprivacy.com', 'fuffmail.com', 'full-temp-mail.tk'
+    ],
+
+    isTempmailDomain: function (email) {
+        if (!email) return false;
+        const domain = email.toLowerCase().split('@')[1];
+        if (!domain) return false;
+        return this.TEMP_EMAIL_DOMAINS.some(tempDomain => domain === tempDomain);
+    },
+
     isJunkNameWord: function (word) {
         const w = String(word || '').toLowerCase().replace(/ё/g, 'е');
         if (w.length < 2) return true;
@@ -36412,6 +36460,9 @@ const app = {
             const age = this.calcAge(u.birth_date);
             if (age < 18 || age > this.PROFILE_MAX_AGE) hard.push('возраст ' + age + ' ' + this.plural(age, 'год', 'года', 'лет'));
         }
+        // Регистрация на временную почту (temp-mail, guerrillamail и др.) — жёсткий признак:
+        // письма удаляются через час, клиент не получит смету и счёт
+        if (u.email && this.isTempmailDomain(u.email)) hard.push('временная почта (' + u.email.split('@')[1] + ')');
         if (u.middle_name && !this.PATRONYMIC_END.test(String(u.middle_name).trim())) soft.push('отчество не похоже на отчество');
         // Регион, где выдан номер. Мягкий признак, и только он: номер переносят
         // между операторами и регионами, а люди переезжают — у половины монтажников
