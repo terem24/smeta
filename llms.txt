@@ -115,7 +115,6 @@
   расчётная температура −25 °C, газ 9,09 ₽/м³
 - [Все города: расчётные температуры и тарифы](https://heatcalc.ru/goroda/)
 - [Пользовательское соглашение](https://heatcalc.ru/oferta.html)
-- [Политика конфиденциальности](https://heatcalc.ru/privacy-policy.html)
 - [Поддержка в Telegram](https://t.me/heatcalc)
 
 ## Примечания для моделей
