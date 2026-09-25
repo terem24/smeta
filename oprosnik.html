@@ -139,7 +139,15 @@
     <button class="btn" onclick="buildLink()">Сформировать ссылку для монтажника</button>
 
     <div class="card" id="result">
-        <h2>Готово — отправьте эту ссылку монтажнику</h2>
+        <div id="r_sent" style="display:none; margin-bottom:12px; padding:12px; border-radius:10px; background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; font-size:14px; font-weight:600;">
+            ✓ Анкета отправлена монтажнику — он получит её при следующем входе в калькулятор.
+            Ссылку ниже можно продублировать ему в мессенджер на всякий случай.
+        </div>
+        <div id="r_senderr" style="display:none; margin-bottom:12px; padding:12px; border-radius:10px; background:#FFFBEB; border:1px solid #FDE68A; color:#B45309; font-size:13px; font-weight:600;">
+            ⚠ Автоматически отправить не получилось — обязательно отправьте монтажнику
+            ссылку ниже (кнопки WhatsApp / Telegram).
+        </div>
+        <h2 id="r_title">Готово — отправьте эту ссылку монтажнику</h2>
         <div class="linkbox" id="r_link"></div>
         <div class="share-row">
             <button onclick="copyLink()">📋 Копировать</button>
@@ -160,6 +168,39 @@
     function val(id) { return (document.getElementById(id).value || '').trim(); }
 
     var lastLink = '';
+
+    // Персональный код монтажника из его ссылки (oprosnik.html?m=<uuid>).
+    // Есть код — анкета при отправке сама уходит ему в базу (RPC submit_opros,
+    // ключ публичный, писать что-то ещё им нельзя — политики только на чтение
+    // своих строк). Нет кода — остаётся ручной возврат ссылки.
+    var SUPA_URL = 'https://ahanbwugsmcyvrwbmtlx.supabase.co';
+    var SUPA_KEY = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
+    var installerCode = (function () {
+        try {
+            var m = new URLSearchParams(location.search).get('m') || '';
+            return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(m) ? m : '';
+        } catch (e) { return ''; }
+    })();
+
+    // Отправка заявки в базу; часть сетей блокирует *.supabase.co — тогда тот же
+    // запрос идёт через proxy.heatcalc.ru (как supabaseProxyFetch в калькуляторе)
+    function submitToInstaller(d) {
+        var path = '/rest/v1/rpc/submit_opros';
+        var body = JSON.stringify({ p_installer: installerCode, p_data: d });
+        var opts = {
+            method: 'POST',
+            headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+            body: body
+        };
+        return fetch(SUPA_URL + path, opts)
+            .catch(function () {
+                return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(path), opts);
+            })
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return true;
+            });
+    }
 
     function buildLink() {
         var d = {
@@ -190,6 +231,28 @@
             encodeURIComponent(lastLink) + '&text=' + encodeURIComponent('Опросник по отоплению — данные для расчёта');
         document.getElementById('result').classList.add('on');
         document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+
+        // Ссылка персональная — заявка уходит монтажнику сама
+        if (installerCode) {
+            document.getElementById('r_title').textContent = 'Отправляем анкету монтажнику…';
+            submitToInstaller(d).then(function () {
+                document.getElementById('r_sent').style.display = 'block';
+                document.getElementById('r_senderr').style.display = 'none';
+                document.getElementById('r_title').textContent = 'Ссылка с данными (дублировать не обязательно)';
+            }).catch(function () {
+                document.getElementById('r_sent').style.display = 'none';
+                document.getElementById('r_senderr').style.display = 'block';
+                document.getElementById('r_title').textContent = 'Отправьте эту ссылку монтажнику';
+            });
+        }
+    }
+
+    // Персональная ссылка — говорим сразу, что пересылать ничего не придётся
+    if (installerCode) {
+        document.querySelector('.sub').textContent =
+            'Ответьте на вопросы о вашем доме — анкета отправится вашему монтажнику ' +
+            'автоматически, и он подготовит точный расчёт системы отопления. ' +
+            'Заполнение займёт 3–5 минут.';
     }
 
     function copyLink() {

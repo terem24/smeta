@@ -1449,12 +1449,19 @@ const app = {
     // расчёт они сами не ложатся, их монтажник читает и решает сам.
     // Вызывается из init() после загрузки сохранённого state — данные анкеты
     // сильнее сохранёнки, это осознанное открытие новой заявки.
-    // Кнопка в окне «Поделиться»: копирует адрес страницы опросника, чтобы
-    // монтажник отправил её заказчику в любом мессенджере.
-    copyOprosnikLink: function (el) {
+    // Кнопка в окне «Поделиться» и на пустой смете: копирует адрес страницы
+    // опросника, чтобы монтажник отправил её заказчику в любом мессенджере.
+    // Авторизованному монтажнику ссылка выдаётся персональной (?m=<users.id>):
+    // тогда заявка сама придёт ему в базу через submit_opros, и заказчику не
+    // нужно ничего пересылать обратно. Без входа — общая ссылка, возврат руками.
+    copyOprosnikLink: async function (el) {
         const origin = /heatcalc\.ru|github\.io|localhost|127\.0\.0\.1/.test(location.hostname)
             ? location.origin : 'https://heatcalc.ru';
-        const url = origin + '/oprosnik.html';
+        let url = origin + '/oprosnik.html';
+        try {
+            const myId = await this.resolveMyDbId();
+            if (myId) url += '?m=' + myId;
+        } catch (e) { }
         const done = () => {
             if (!el) return;
             const old = el.innerText;
@@ -1482,6 +1489,22 @@ const app = {
             d = JSON.parse(decodeURIComponent(escape(atob(b64))));
         } catch (e) { return; }
         if (!d || typeof d !== 'object') return;
+        this.applyOprosData(d);
+        const txt = this.oprosSummaryText(d);
+        setTimeout(() => { try { this.alert(txt, 'Опросник заказчика'); } catch (e) { } }, 900);
+
+        // Убираем параметр из адреса: перезагрузка страницы не должна
+        // второй раз перетирать смету данными анкеты
+        try {
+            const u = new URL(window.location.href);
+            u.searchParams.delete('opros');
+            window.history.replaceState({}, '', u.toString());
+        } catch (e) { }
+    },
+
+    // Числа и переключатели анкеты — в state. Общая часть для ссылки ?opros=
+    // и для заявок из базы (checkOprosInbox).
+    applyOprosData: function (d) {
         const s = this.state;
         try {
             s.objectType = 'house';
@@ -1512,8 +1535,10 @@ const app = {
                     (_a > 0 ? ', дом ' + Math.round(_a) + ' м²' : '');
             }
         } catch (e) { console.warn('опросник: не все поля применились', e); }
+    },
 
-        // Текст анкеты целиком — окном, после того как интерфейс отрисуется
+    // Текст анкеты целиком — для окна монтажнику
+    oprosSummaryText: function (d) {
         const L = [];
         const put = (label, v) => { if (v) L.push(label + ': ' + String(v).slice(0, 500)); };
         put('Имя', d.name); put('Телефон', d.phone); put('Город', d.city);
@@ -1533,16 +1558,113 @@ const app = {
         put('Помещения с тёплым полом', d.tpRooms);
         put('Уже закуплено', d.bought);
         put('Комментарий', d.comment);
-        const txt = 'Заказчик заполнил опросник. Параметры объекта уже подставлены в расчёт, ' +
+        return 'Заказчик заполнил опросник. Параметры объекта уже подставлены в расчёт, ' +
             'текстовые ответы ниже — прочитайте и учтите вручную.\n\n' + L.join('\n');
-        setTimeout(() => { try { this.alert(txt, 'Опросник заказчика'); } catch (e) { } }, 900);
+    },
 
-        // Убираем параметр из адреса: перезагрузка страницы не должна
-        // второй раз перетирать смету данными анкеты
+    // ── Входящие заявки из опросника (таблица opros_requests) ────────────────
+    // Заказчик отправил анкету по персональной ссылке oprosnik.html?m=<users.id>
+    // — заявка легла в базу через RPC submit_opros. Здесь монтажник её получает:
+    // при загрузке (после восстановления сессии) показываем окно со списком
+    // новых заявок; «Открыть в расчёте» применяет данные, «Скрыть» помечает
+    // прочитанной. Читать чужие не даёт RLS (installer по auth_user_id).
+
+    // id текущего пользователя в таблице users — с кэшем на сессию
+    resolveMyDbId: async function () {
+        if (this._myDbId) return this._myDbId;
         try {
-            const u = new URL(window.location.href);
-            u.searchParams.delete('opros');
-            window.history.replaceState({}, '', u.toString());
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const tg = this.state.tgUser;
+            const authId = session ? session.user.id : (tg && tg.authUserId) || null;
+            if (!authId) return null;
+            const { data } = await supabaseClient.from('users').select('id').eq('auth_user_id', authId).maybeSingle();
+            this._myDbId = data ? data.id : null;
+            return this._myDbId;
+        } catch (e) { return null; }
+    },
+
+    checkOprosInbox: async function () {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) return; // RLS всё равно ничего не отдаст без сессии
+            const { data, error } = await supabaseClient.from('opros_requests')
+                .select('id, created_at, client_name, client_phone, data')
+                .eq('status', 'new')
+                .order('created_at', { ascending: false })
+                .limit(20);
+            if (error || !data || !data.length) return;
+            this.showOprosInbox(data);
+        } catch (e) { console.warn('[checkOprosInbox]', e); }
+    },
+
+    showOprosInbox: function (rows) {
+        const old = document.getElementById('opros_inbox_overlay');
+        if (old) old.remove();
+        const esc = (t) => String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const items = rows.map(r => {
+            const d = r.data || {};
+            const when = r.created_at ? new Date(r.created_at).toLocaleDateString('ru-RU') : '';
+            const line = [d.city, d.area ? d.area + ' м²' : '', d.floors ? d.floors + ' эт.' : '',
+                { gas: 'газ', el: 'электро', solid: 'тв. топливо', hp: 'тепловой насос' }[d.fuel] || '']
+                .filter(Boolean).join(' · ');
+            return `<div style="border:1px solid var(--border); border-radius:10px; padding:10px 12px; margin-bottom:8px; background:var(--surface);">
+                <div style="display:flex; justify-content:space-between; gap:8px; font-size:13px; font-weight:700; color:var(--text-main);">
+                    <span>${esc(r.client_name) || 'Без имени'}${r.client_phone ? ' · ' + esc(r.client_phone) : ''}</span>
+                    <span style="color:var(--text-sec); font-weight:500;">${when}</span>
+                </div>
+                ${line ? `<div style="font-size:12px; color:var(--text-sec); margin-top:2px;">${esc(line)}</div>` : ''}
+                <div style="display:flex; gap:8px; margin-top:8px;">
+                    <button onclick="app.openOprosRequest('${r.id}')" style="flex:1; padding:8px; border:none; border-radius:8px; background:var(--primary); color:#fff; font-size:12.5px; font-weight:700; cursor:pointer;">Открыть в расчёте</button>
+                    <button onclick="app.dismissOprosRequest('${r.id}', this)" style="padding:8px 12px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--text-sec); font-size:12.5px; font-weight:600; cursor:pointer;">Скрыть</button>
+                </div>
+            </div>`;
+        }).join('');
+        const ov = document.createElement('div');
+        ov.id = 'opros_inbox_overlay';
+        ov.className = 'calc-dialog-overlay active';
+        ov.innerHTML = `<div class="calc-dialog-card" style="max-width:440px; text-align:left;">
+            <h3 class="calc-dialog-title" style="text-align:left;">📋 Заявки из опросника</h3>
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px;">Заказчики заполнили ваш опросник. «Открыть в расчёте» подставит параметры дома в текущую смету.</div>
+            <div style="max-height:50vh; overflow:auto;">${items}</div>
+            <div class="calc-dialog-buttons"><button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="document.getElementById('opros_inbox_overlay').remove()">Закрыть</button></div>
+        </div>`;
+        ov.onclick = (e) => { if (e.target === ov) ov.remove(); };
+        // Сырые заявки держим под рукой для openOprosRequest
+        this._oprosInboxRows = rows;
+        document.body.appendChild(ov);
+    },
+
+    openOprosRequest: async function (id) {
+        const r = (this._oprosInboxRows || []).find(x => String(x.id) === String(id));
+        if (!r) return;
+        const ov = document.getElementById('opros_inbox_overlay');
+        if (ov) ov.remove();
+        this.applyOprosData(r.data || {});
+        this.markOprosSeen(id);
+        this.syncUI(); this.render(); this.saveState();
+        try { await this.alert(this.oprosSummaryText(r.data || {}), 'Опросник заказчика'); } catch (e) { }
+    },
+
+    dismissOprosRequest: function (id, btn) {
+        this.markOprosSeen(id);
+        // Убираем карточку из окна; последняя — закрываем окно целиком
+        try {
+            const card = btn.closest('div[style*="border-radius:10px"]') || btn.parentElement.parentElement;
+            const list = card.parentElement;
+            card.remove();
+            if (list && !list.children.length) {
+                const ov = document.getElementById('opros_inbox_overlay');
+                if (ov) ov.remove();
+            }
+        } catch (e) { }
+    },
+
+    markOprosSeen: function (id) {
+        try {
+            supabaseClient.from('opros_requests')
+                .update({ status: 'seen', seen_at: new Date().toISOString() })
+                .eq('id', id)
+                .then(({ error }) => { if (error) console.warn('[markOprosSeen]', error); });
         } catch (e) { }
     },
 
@@ -44314,6 +44436,9 @@ const app = {
         // Ссылка из опросника заказчика: параметры объекта — в state, текстовые
         // ответы — окном монтажнику (см. applyOprosFromUrl)
         this.applyOprosFromUrl();
+        // Заявки, пришедшие в базу по персональной ссылке опросника, — после
+        // восстановления сессии Supabase (без сессии RLS ничего не отдаст)
+        setTimeout(() => { try { this.checkOprosInbox(); } catch (e) { } }, 5000);
         this.loadInstallerSettingsLocal();
         // Реквизиты компании переехали из сметы в настройки аккаунта — забираем их
         // из последнего расчёта, пока он ещё лежит в state (разовая операция)
