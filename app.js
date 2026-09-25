@@ -73511,11 +73511,8 @@ const app = {
             const workSum = app.lastWorksSum || 0;
             const totalSum = eqSum + workSum;
 
-            // 2. Telegram Alert dispatch
-            const tgBotToken = '8601624733:AAH3Mlz6NQJ3MB1pSE2T17hMzPoocbTAGmg';
-            const tgChatId = '594437394';
-            const tgMessage = `📩 НОВЫЙ ОТЗЫВ / ОБРАТНАЯ СВЯЗЬ!\n` +
-                `========================\n` +
+            // 2. Уведомление владельцу в Телеграм — через сервер (sendOwnerTelegram), заголовок ставит он
+            const tgMessage = `========================\n` +
                 `• Категория: ${categoryLabel}\n` +
                 `• Тема: ${subject}\n` +
                 `• Описание: ${description}\n\n` +
@@ -73537,12 +73534,7 @@ const app = {
                 `========================\n` +
                 `${this.feedbackImageBase64 ? '🖼️ [Изображение прикреплено в письме]' : '❌ Изображение не прикреплено'}`;
 
-            const tgUrl = `https://api.telegram.org/bot${tgBotToken}/sendMessage`;
-            fetch(tgUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: tgChatId, text: tgMessage })
-            }).catch(err => console.error('Ошибка отправки в Telegram:', err));
+            sendOwnerTelegram('feedback', tgMessage);
 
             // 3. EmailJS dispatch
             const emailjsServiceID = 'service_o11b4ej';
@@ -73613,6 +73605,18 @@ const app = {
 
 };
 
+// Уведомление владельцу в Телеграм. Токен бота живёт только на сервере (tg_notify.php на
+// proxy.heatcalc.ru): репозиторий публичный, в браузерном коде его держать нельзя.
+// Ошибку не показываем — письмо через EmailJS уходит отдельно, уведомление не критично.
+function sendOwnerTelegram(kind, text) {
+    return fetch('https://proxy.heatcalc.ru/tg_notify.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: kind, text: text }),
+        keepalive: true
+    }).catch(err => console.error('Ошибка отправки в Telegram:', err));
+}
+
 // Глобальные функции для обработки оплаты (вызываются напрямую из HTML)
 function closePaymentModal() {
     const overlay = document.getElementById('payment_modal_overlay');
@@ -73637,16 +73641,8 @@ async function notifyPayment() {
     }
 
     // === 1. ОТПРАВКА В TELEGRAM ===
-    const tgBotToken = '8601624733:AAH3Mlz6NQJ3MB1pSE2T17hMzPoocbTAGmg';
-    const tgChatId = '594437394';
-    const messageText = `🔥 Новая заявка на Профи!\nПользователь: ${emailInput}\nТариф: ${tariffNameText}\nПроверьте поступление в Т-Банке.`;
-    const tgUrl = `https://api.telegram.org/bot${tgBotToken}/sendMessage`;
-
-    fetch(tgUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: tgChatId, text: messageText })
-    }).catch(err => console.error('Ошибка ТГ:', err));
+    const messageText = `Пользователь: ${emailInput}\nТариф: ${tariffNameText}\nПроверьте поступление в Т-Банке.`;
+    sendOwnerTelegram('pro_request', messageText);
 
     // === 2. ОТПРАВКА НА EMAIL (через EmailJS с обновленным шаблоном) ===
     const emailjsServiceID = 'service_o11b4ej';
