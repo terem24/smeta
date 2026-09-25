@@ -360,12 +360,14 @@ const RecognizeUI = {
                     style="display:none" disabled>Распознать</button>
             <span class="rec-status" id="rec_status">Фото и сканы, а также PDF, Excel, Word, HTML</span>
             <span class="rec-status" id="rec_quota" style="margin-left:auto"></span>
-          </div>`;
+          </div>
+          <div class="rec-err" id="rec_block" style="display:none"></div>`;
 
         // Остаток на месяц подтягиваем сразу: лучше увидеть его до того,
         // как монтажник сфотографировал и загрузил смету.
         this.showQuota();
         this.syncDocKind();
+        this.tickBlock();
 
         const drop = document.getElementById('rec_drop');
         drop.onclick = () => this.pickFiles(files => this.handleFiles(files));
@@ -1633,6 +1635,102 @@ const RecognizeUI = {
         const tariff = q.personal ? '' : (q.tariff === 'pro' ? ' (тариф «Профи»)' : q.tariff === 'base' ? ' (тариф «Базовый»)' : '');
         el.textContent = `Запросов к распознаванию в этом месяце: ${q.used} из ${q.limit}${tariff}, осталось ${q.left}`;
         if (q.left <= 3) el.style.color = q.left === 0 ? '#EF4444' : '#F59E0B';
+        if (q.left <= 0) this.setBlock(this.nextMonthStart(), 'month');
+    },
+
+    // ------------------------------------------------------------------
+    // Таймер до снятия лимита
+    //
+    // Лимитов три, и у каждого свой момент обнуления:
+    //  day   — суточный лимит Google: сутки у него по тихоокеанскому
+    //          времени, у нас это 10:00 МСК летом и 11:00 зимой;
+    //  hour  — прокси, 30 запросов в час с IP: сколько ждать, прокси
+    //          пишет сам («попробуйте через N мин.»);
+    //  month — месячный лимит тарифа: первое число, 00:00 по Москве
+    //          (сервер лимитов считает по московскому месяцу).
+    // Момент снятия храним в localStorage, чтобы отсчёт пережил
+    // обновление страницы, а кнопка не тратила запросы впустую.
+    // ------------------------------------------------------------------
+
+    BLOCK_KEY: 'rec_block_until',
+
+    blockInfo() {
+        try {
+            const b = JSON.parse(localStorage.getItem(this.BLOCK_KEY) || 'null');
+            if (b && b.until > Date.now()) return b;
+        } catch (e) { /* нет хранилища — живём без таймера */ }
+        return null;
+    },
+
+    setBlock(until, why) {
+        const cur = this.blockInfo();
+        if (cur && cur.until >= until) return;   // держим самый дальний срок
+        try { localStorage.setItem(this.BLOCK_KEY, JSON.stringify({ until, why })); } catch (e) { }
+        this.tickBlock();
+    },
+
+    /** Полночь по тихоокеанскому времени — тогда Google обнуляет сутки. */
+    nextGoogleReset() {
+        const now = new Date();
+        const p = new Intl.DateTimeFormat('en-US', {
+            timeZone: 'America/Los_Angeles', hourCycle: 'h23',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+        }).formatToParts(now);
+        const g = t => +(p.find(x => x.type === t) || { value: 0 }).value;
+        const passed = g('hour') * 3600 + g('minute') * 60 + g('second');
+        return now.getTime() + (86400 - passed) * 1000 + 60000;   // минута запаса
+    },
+
+    /** Первое число следующего месяца, 00:00 по Москве (UTC+3). */
+    nextMonthStart() {
+        const msk = new Date(Date.now() + 3 * 3600000);
+        return Date.UTC(msk.getUTCFullYear(), msk.getUTCMonth() + 1, 1) - 3 * 3600000;
+    },
+
+    /** «2 ч 15 мин», «4 мин 10 с», «3 дн 5 ч». */
+    fmtLeft(ms) {
+        const s = Math.max(0, Math.ceil(ms / 1000));
+        const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600),
+            m = Math.floor(s % 3600 / 60), sec = s % 60;
+        if (d) return `${d} дн ${h} ч`;
+        if (h) return `${h} ч ${String(m).padStart(2, '0')} мин`;
+        return m ? `${m} мин ${String(sec).padStart(2, '0')} с` : `${sec} с`;
+    },
+
+    blockText(b) {
+        if (!b) return '';
+        const why = {
+            day: 'Распознавание на сегодня исчерпано',
+            hour: 'Слишком много запросов к распознаванию за час',
+            month: 'Лимит запросов к распознаванию на этот месяц исчерпан',
+        }[b.why] || 'Распознавание временно недоступно';
+        const at = new Date(b.until);
+        const when = at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) +
+            (at.toDateString() === new Date().toDateString() ? ''
+                : ', ' + at.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }));
+        return `${why}. Снова будет доступно через ${this.fmtLeft(b.until - Date.now())} — в ${when}.` +
+            (b.why === 'month' ? ' Если нужно раньше — напишите администратору.' : '');
+    },
+
+    /** Раз в секунду: отсчёт на экране загрузки и кнопка «Распознать». */
+    tickBlock() {
+        clearTimeout(this._blockTimer);
+        const el = document.getElementById('rec_block');
+        if (!el) return;
+        const b = this.blockInfo();
+        const go = document.getElementById('rec_go');
+        if (!b) {
+            if (el.style.display !== 'none') {
+                el.style.display = 'none';
+                try { localStorage.removeItem(this.BLOCK_KEY); } catch (e) { }
+                if (go && !this._busy) go.disabled = false;
+            }
+            return;
+        }
+        el.style.display = '';
+        el.textContent = '⏳ ' + this.blockText(b);
+        if (go) go.disabled = true;
+        this._blockTimer = setTimeout(() => this.tickBlock(), 1000);
     },
 
     async run() {
@@ -1640,6 +1738,7 @@ const RecognizeUI = {
         // PDF с текстовым слоем, HTML). Что именно — определил handleFile.
         const hasImgs = this._img || (this._imgs && this._imgs.length);
         if ((!hasImgs && !this._text) || this._busy) return;
+        if (this.blockInfo()) { this.tickBlock(); return; }
 
         const quota = await this.checkQuota();
         // Комплект листов проекта — это 6 запросов (помещения, окна, отопление,
@@ -1647,6 +1746,11 @@ const RecognizeUI = {
         // с остатком меньше шести — оборвать на середине: помещения будут, а
         // тёплых полов и сантехники нет, и запросы уже потрачены.
         const need = this._project ? this.PROJECT_MIN_CALLS : 1;
+        if (quota && quota.left <= 0) {
+            this.setStatus('');
+            this.setBlock(this.nextMonthStart(), 'month');
+            return;
+        }
         if (quota && quota.left < need) {
             this.setStatus('');
             const body = document.getElementById('rec_body');
@@ -1968,9 +2072,20 @@ const RecognizeUI = {
                  */
                 if (/plan and billing|exceeded your current quota/i.test(msg)) {
                     if (mi < MODELS.length - 1) break;   // к следующей модели
-                    const err = new Error('Суточный лимит запросов исчерпан по всем моделям. ' +
-                        'Он обнулится в начале следующих суток. ' +
-                        'Уже прочитанные листы сохранены — их не придётся читать заново.');
+                    this.setBlock(this.nextGoogleReset(), 'day');
+                    const err = new Error(this.blockText(this.blockInfo()) +
+                        ' Уже прочитанные листы сохранены — их не придётся читать заново.');
+                    err.quota = true;
+                    throw err;
+                }
+
+                // Прокси: 30 запросов в час с одного адреса. Сколько ждать,
+                // он пишет сам — «Попробуйте через N мин.».
+                const hourly = msg.match(/в час\.[^0-9]*через\s*(\d+)\s*мин/i);
+                if (hourly) {
+                    this.setBlock(Date.now() + (+hourly[1]) * 60000, 'hour');
+                    const err = new Error(this.blockText(this.blockInfo()) +
+                        ' Уже прочитанные листы сохранены — их не придётся читать заново.');
                     err.quota = true;
                     throw err;
                 }
