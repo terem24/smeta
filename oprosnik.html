@@ -23,16 +23,31 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
     :root {
-        --primary: #2563EB; --primary-dark: #1D4ED8; --primary-light: #EFF6FF;
+        --primary: #2563EB; --primary-dark: #1D4ED8; --primary-light: #EFF6FF; --primary-border: #BFDBFE;
         --text: #111827; --text-sec: #6B7280;
         --border: #E5E7EB; --surface: #fff; --surface-light: #F9FAFB; --bg: #F3F4F6;
+        --req: #DC2626;
+    }
+    /* Автопереключение по системной теме устройства — так же, как «авто» в самом
+       калькуляторе решает светло/темно, только без гео/заката: страница разовая,
+       открывается по ссылке от монтажника, тянуть на неё ipapi.co ни к чему.
+       Индиго вместо синего в тёмном — тот же акцент, что в body.dark-mode style.css. */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --primary: #6366F1; --primary-dark: #818CF8; --primary-light: rgba(99, 102, 241, 0.15); --primary-border: rgba(99, 102, 241, 0.35);
+            --text: #F3F4F6; --text-sec: #9CA3AF;
+            --border: #2A2A2A; --surface: #121212; --surface-light: #1E1E1E; --bg: #000;
+            --req: #F87171;
+        }
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); }
     .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
     .logo-row { display: flex; align-items: center; gap: 8px; padding-top: 14px; }
     .logo-row .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .logo-row .name { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
+    .logo-row .name { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; line-height: 1.2; }
+    .logo-row .name .ru { color: var(--primary); }
+    .logo-row .tagline { font-size: 9px; color: var(--text-sec); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
     h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin: 16px 0 6px; }
     .sub { color: var(--text-sec); font-size: 13.5px; margin-bottom: 18px; line-height: 1.5; }
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
@@ -40,13 +55,19 @@
     label.f { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-sec); margin: 10px 0 4px; }
     input[type=text], input[type=number], input[type=tel], textarea, select {
         width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
-        font-family: inherit; font-size: 15px; color: var(--text); background: #fff; outline: none; transition: border-color .15s;
+        font-family: inherit; font-size: 15px; color: var(--text); background: var(--surface); outline: none; transition: border-color .15s;
     }
     input:focus, textarea:focus, select:focus { border-color: var(--primary); }
     textarea { min-height: 64px; resize: vertical; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    /* Два select с длинным текстом («Не знаю», названия материалов) в 163px не
+       помещаются — обрезаются без многоточия. На узком экране складываем в один
+       столбец; числовые пары (площадь/этажи) от этого не страдают, просто ниже. */
+    @media (max-width: 420px) {
+        .row2 { grid-template-columns: 1fr; }
+    }
     .seg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-    .seg label { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: 13.5px; cursor: pointer; background: #fff; transition: .15s; }
+    .seg label { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: 13.5px; cursor: pointer; background: var(--surface); transition: .15s; }
     .seg label:has(input:checked) { border-color: var(--primary); background: var(--primary-light); font-weight: 600; color: var(--primary-dark); }
     .seg input { accent-color: var(--primary); margin: 0; }
     .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--primary); color: #fff; font-size: 15.5px; font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.25); transition: background .15s; }
@@ -55,18 +76,21 @@
     #result.on { display: block; }
     .linkbox { word-break: break-all; font-size: 12px; color: var(--text-sec); background: var(--surface-light); border: 1px solid var(--border); border-radius: 9px; padding: 10px; margin: 10px 0; max-height: 90px; overflow: auto; }
     .share-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .share-row a, .share-row button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 6px; border-radius: 9px; border: 1px solid var(--border); background: #fff; color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .share-row a, .share-row button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 6px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
     .share-row .wa { background: #25D366; border-color: #25D366; color: #fff; }
     .share-row .tg { background: #229ED9; border-color: #229ED9; color: #fff; }
     .note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
-    .req { color: #DC2626; }
-    .value-note { background: var(--primary-light); border: 1px solid #BFDBFE; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--primary-dark); line-height: 1.5; margin-bottom: 16px; }
+    .req { color: var(--req); }
+    .value-note { background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--primary-dark); line-height: 1.5; margin-bottom: 16px; }
     .ok-copied { color: #16A34A; font-size: 13px; font-weight: 600; display: none; margin-top: 6px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-    <div class="logo-row"><div class="mark">🔥</div><div class="name">HeatCalc</div></div>
+    <div class="logo-row"><div class="mark">🔥</div><div>
+        <div class="name">HeatCalc<span class="ru">.ru</span></div>
+        <div class="tagline">Калькулятор отопления</div>
+    </div></div>
     <h1>Опросник для расчёта отопления</h1>
     <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
         точный расчёт системы отопления. Заполнение займёт 3–5 минут. Поля со звёздочкой
@@ -209,7 +233,7 @@
     // catalog.js (~750 КБ, весь товарный каталог) сюда не тащим, страница для заказчика
     // должна оставаться лёгкой; эти списки нормативные и меняются раз в несколько лет.
     var WALL_OPTS = [
-        { id: '', name: 'Не знаю / другое' },
+        { id: '', name: 'Не знаю' },
         { id: 'brick_clay', name: 'Кирпич полнотелый (глиняный)' },
         { id: 'brick_hollow', name: 'Кирпич пустотелый' },
         { id: 'gas_d400', name: 'Газобетон D400' },
@@ -226,7 +250,7 @@
         { id: 'xps', name: 'Экструдированный пенополистирол (XPS)' }
     ];
     var ROOF_OPTS = [
-        { id: '', name: 'Не знаю / другое' },
+        { id: '', name: 'Не знаю' },
         { id: 'roof_mw400', name: 'Мин. вата ~400 мм' },
         { id: 'roof_mw350', name: 'Мин. вата ~350 мм' },
         { id: 'roof_mw300', name: 'Мин. вата ~300 мм' },
@@ -238,7 +262,7 @@
         { id: 'roof_concrete', name: 'Ж/б перекрытие без утепления' }
     ];
     var FLOOR_OPTS = [
-        { id: '', name: 'Не знаю / другое' },
+        { id: '', name: 'Не знаю' },
         { id: 'floor_ground_ins', name: 'По грунту, утеплён (XPS ~100 мм)' },
         { id: 'floor_ground_ins50', name: 'По грунту, утеплён (XPS ~50 мм)' },
         { id: 'floor_lags_ins', name: 'На лагах, утеплён (мин. вата ~150 мм)' },
@@ -247,7 +271,7 @@
         { id: 'floor_heated', name: 'Над отапливаемым помещением' }
     ];
     var GLAZING_OPTS = [
-        { id: '', name: 'Не знаю / другое' },
+        { id: '', name: 'Не знаю' },
         { id: 'glz_2cam', name: 'Двухкамерный стеклопакет' },
         { id: 'glz_3cam', name: 'Трёхкамерный стеклопакет (энергосберегающий)' },
         { id: 'glz_1cam', name: 'Однокамерный стеклопакет' },
