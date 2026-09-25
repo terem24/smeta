@@ -1663,10 +1663,10 @@
    "freq": 2400,
    "audience": "pro",
    "data_block": "блоки и выходы по паспорту",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-01",
    "published_at": null,
-   "words": 0
+   "words": 678
   },
   {
    "slug": "fitingi-press-ili-aksialnye",
