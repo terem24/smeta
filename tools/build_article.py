@@ -43,10 +43,31 @@ def plain(s):
     return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', str(s))).strip()
 
 
+TRANSLIT = {
+    'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e', 'ж': 'zh',
+    'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm', 'н': 'n', 'о': 'o',
+    'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u', 'ф': 'f', 'х': 'h', 'ц': 'c',
+    'ч': 'ch', 'ш': 'sh', 'щ': 'sch', 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e',
+    'ю': 'yu', 'я': 'ya',
+}
+
+
+def anchor(text):
+    """Якорь раздела из его заголовка: читаемый адрес вида #skolko-stoit.
+
+    Читаемый, а не порядковый: по такой ссылке видно, куда она ведёт, и Google
+    показывает подобные якоря отдельными строками в выдаче.
+    """
+    s = plain(text).lower()
+    out = ''.join(TRANSLIT.get(ch, ch if ch.isalnum() else '-') for ch in s)
+    out = re.sub(r'-+', '-', out).strip('-')
+    return out[:60].rstrip('-') or 'razdel'
+
+
 def render_block(b):
     t = b.get('type')
     if t == 'h2':
-        return '        <h2>%s</h2>' % esc(b['text'])
+        return '        <h2 id="%s">%s</h2>' % (anchor(b['text']), esc(b['text']))
     if t == 'h3':
         return '        <h3>%s</h3>' % esc(b['text'])
     if t == 'p':
@@ -86,6 +107,32 @@ FAQ_ICON = ('<svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fi
             'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" '
             'aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/>'
             '<path d="M12 17h.01"/></svg>')
+
+
+MONTHS = ('января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+          'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря')
+
+
+def human_date(iso):
+    y, m, d = iso.split('-')
+    return '%d %s %s' % (int(d), MONTHS[int(m) - 1], y)
+
+
+def render_toc(blocks):
+    """Оглавление по разделам h2.
+
+    Ставим только когда разделов от четырёх: на короткой статье оглавление —
+    лишний экран между читателем и текстом.
+    """
+    heads = [b for b in blocks if b.get('type') == 'h2']
+    if len(heads) < 4:
+        return ''
+    items = ''.join('            <li><a href="#%s">%s</a></li>\n'
+                    % (anchor(b['text']), esc(b['text'])) for b in heads)
+    return ('        <nav class="toc" aria-label="Содержание">\n'
+            '            <p class="toc-title">В статье</p>\n'
+            '            <ol>\n%s            </ol>\n'
+            '        </nav>' % items)
 
 
 def render_faq(faq):
@@ -158,6 +205,10 @@ def build(slug, publish=False):
 
     url = '%s/%s/' % (SITE, slug)
     body = '\n\n'.join(render_block(b) for b in art['blocks'])
+    toc = render_toc(art['blocks'])
+    pub_date = (meta.get('published_at') or meta['date'])[:10]
+    meta_line = ('        <p class="art-meta"><time datetime="%s">%s</time></p>'
+                 % (pub_date, human_date(pub_date)))
     robots = ('index, follow, max-snippet:-1, max-image-preview:large' if publish
               else 'noindex, follow')
 
@@ -172,6 +223,18 @@ def build(slug, publish=False):
                 {'@type': 'ListItem', 'position': 1, 'name': 'Калькулятор отопления', 'item': SITE + '/'},
                 {'@type': 'ListItem', 'position': 2, 'name': plain(art['title']), 'item': url}]},
             {'@type': 'FAQPage', 'mainEntity': faq_ld(art['faq'])},
+            # Article с датами: свежесть учитывается поиском, а сама дата попадает
+            # в сниппет. Берём её из расписания — published_at у вышедших статей,
+            # плановую дату у тех, что ещё лежат в очереди.
+            {'@type': 'Article', '@id': url + '#article',
+             'headline': plain(art['title'])[:110],
+             'description': plain(art['description']),
+             'mainEntityOfPage': {'@id': url + '#webpage'},
+             'inLanguage': 'ru-RU',
+             'datePublished': pub_date,
+             'dateModified': pub_date,
+             'author': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'},
+             'publisher': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'}},
         ],
     }
 
@@ -184,6 +247,8 @@ def build(slug, publish=False):
         og_description=esc(art.get('og_description', art['description'])),
         ld=json.dumps(ld, ensure_ascii=False, indent=2),
         h1=esc(art['title']),
+        meta_line=meta_line,
+        toc=toc,
         lead=art['lead'],
         body=body,
         faq=render_faq(art['faq']),
@@ -291,7 +356,11 @@ TEMPLATE = '''<!DOCTYPE html>
 
         <h1>{h1}</h1>
 
+{meta_line}
+
         <p class="lead">{lead}</p>
+
+{toc}
 
 {body}
 

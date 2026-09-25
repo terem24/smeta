@@ -170,6 +170,32 @@ strong, b { color: var(--text-main); font-weight: 700; }
 
 .lead { font-size: 18px; line-height: 1.55; color: var(--text-main); margin-bottom: 22px; }
 
+/* Дата под заголовком: она же уходит в микроразметку Article и в сниппет. */
+.art-meta { font-size: 13px; color: var(--text-sec); margin: -8px 0 18px; }
+
+/* Оглавление. Ставится только при четырёх и более разделах — см. render_toc. */
+.toc {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 18px 12px;
+    margin: 0 0 24px;
+    background: var(--surface-light);
+}
+.toc-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-sec);
+    margin: 0 0 8px;
+}
+.toc ol { margin: 0; padding-left: 20px; }
+.toc li { margin-bottom: 4px; }
+.toc a { color: var(--text-main); text-decoration: none; border-bottom: 1px solid transparent; }
+.toc a:hover { color: var(--primary); border-bottom-color: currentColor; }
+
+/* Чтобы якорь из оглавления не уводил заголовок под шапку. */
+h2[id] { scroll-margin-top: 16px; }
+
 ul, ol { margin: 0 0 16px; padding-left: 22px; }
 li { margin-bottom: 8px; }
 li::marker { color: var(--text-sec); }
