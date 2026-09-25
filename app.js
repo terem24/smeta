@@ -33083,6 +33083,7 @@ const app = {
     recognitionDefaultLimit: function (user) {
         const cfg = this._adminRecognitionLimits || {};
         const t = cfg.tariffs && (cfg.tariffs[user] || cfg.tariffs[String(user || '').toLowerCase()]);
+        if (t === 'admin' && cfg.defaultAdmin !== undefined) return { limit: cfg.defaultAdmin, tariff: 'администратор' };
         if (t === 'pro' && cfg.defaultPro !== undefined) return { limit: cfg.defaultPro, tariff: 'Профи' };
         return { limit: cfg.default || 50, tariff: cfg.defaultPro !== undefined ? 'Базовый' : '' };
     },

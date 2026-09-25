@@ -118,6 +118,11 @@ const LIMIT_DEFAULT = 50;   // старый общий лимит — тольк
  */
 const LIMIT_BASE = 5;
 const LIMIT_PRO = 30;
+// Администраторам и владельцам — без ограничений: им распознавание нужно
+// для проверки и отладки. Число, а не «бесконечность», — чтобы старые
+// калькуляторы, которые считают «осталось = лимит − израсходовано», не
+// споткнулись. Суточный лимит Google оно, конечно, не снимает.
+const LIMIT_ADMIN = 100000;
 
 /**
  * Тариф по строке users — та же логика, что app.isPro(): «Профи» с
@@ -126,6 +131,8 @@ const LIMIT_PRO = 30;
  */
 function tariffOfRow($row) {
     $type = $row['account_type'] ?? 'base';
+    if (in_array(strtolower((string)($row['email'] ?? '')), SUPER_ADMIN_EMAILS, true)) return 'admin';
+    if (in_array($type, ['admin', 'viewer'], true)) return 'admin';
     $demo = $row['demo_ends_at'] ?? null;
     $demoOk = $demo ? (strtotime($demo) >= time()) : null;
     if ($type === 'pro') return ($demoOk === false) ? 'base' : 'pro';
@@ -141,13 +148,17 @@ function tariffOfRow($row) {
  */
 function userTariff($user, $token) {
     if ($user === '') return 'base';
+    if (in_array(strtolower($user), SUPER_ADMIN_EMAILS, true)) return 'admin';
     $q = rawurlencode($user);
-    $rows = supabaseGet('/rest/v1/users?select=account_type,demo_ends_at&or=(email.eq.' . $q . ',username.eq.' . $q . ')&limit=1',
+    $rows = supabaseGet('/rest/v1/users?select=email,account_type,demo_ends_at&or=(email.eq.' . $q . ',username.eq.' . $q . ')&limit=1',
         $token ?: null);
     return (is_array($rows) && isset($rows[0])) ? tariffOfRow($rows[0]) : 'base';
 }
 
-function tariffLimit($tariff) { return $tariff === 'pro' ? LIMIT_PRO : LIMIT_BASE; }
+function tariffLimit($tariff) {
+    if ($tariff === 'admin') return LIMIT_ADMIN;
+    return $tariff === 'pro' ? LIMIT_PRO : LIMIT_BASE;
+}
 
 function limitsPath() { return __DIR__ . '/archive/limits.json'; }
 function accessPath() { return __DIR__ . '/archive/access.json'; }
@@ -999,7 +1010,8 @@ if (is_array($req) && !empty($req['action'])) {
             if (!empty($u['email'])) $tariffs[strtolower($u['email'])] = $t;
             if (!empty($u['username'])) $tariffs[$u['username']] = $t;
         }
-        echo json_encode(['ok' => true, 'default' => LIMIT_BASE, 'defaultPro' => LIMIT_PRO,
+        foreach (SUPER_ADMIN_EMAILS as $e) $tariffs[$e] = 'admin';
+        echo json_encode(['ok' => true, 'default' => LIMIT_BASE, 'defaultPro' => LIMIT_PRO, 'defaultAdmin' => LIMIT_ADMIN,
             'limits' => readLimits(), 'tariffs' => $tariffs], JSON_UNESCAPED_UNICODE);
         exit;
     }
