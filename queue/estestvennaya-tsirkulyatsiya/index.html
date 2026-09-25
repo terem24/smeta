@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отопление с естественной циркуляцией: расчёт и ограничения | HeatCalc.ru</title>
+    <meta name="description" content="Как работает самотёчная система отопления: расчёт гравитационного давления по высоте и плотности воды, почему напор измеряется миллибарами, требования к уклонам и диаметрам, где она оправдана.">
+    <link rel="canonical" href="https://heatcalc.ru/estestvennaya-tsirkulyatsiya/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/estestvennaya-tsirkulyatsiya/">
+    <meta property="og:title" content="Система с естественной циркуляцией: расчёт давления">
+    <meta property="og:description" content="Разница высот 3 метра даёт 0,014 бара — в сто раз меньше насоса. Отсюда все ограничения.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/estestvennaya-tsirkulyatsiya/#webpage",
+      "url": "https://heatcalc.ru/estestvennaya-tsirkulyatsiya/",
+      "name": "Система с естественной циркуляцией: расчёт давления",
+      "description": "Как работает самотёчная система отопления: расчёт гравитационного давления по высоте и плотности воды, почему напор измеряется миллибарами, требования к уклонам и диаметрам, где она оправдана.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "система отопления с естественной циркуляцией"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Система с естественной циркуляцией: расчёт давления",
+          "item": "https://heatcalc.ru/estestvennaya-tsirkulyatsiya/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как рассчитать давление в самотёчной системе?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Умножить разницу высот между котлом и прибором на разницу плотностей воды в обратке и подаче и на 9,81. При графике 80/60 плотности составляют 983,2 и 971,8 кг/м³, и разница высот 3 метра даёт 335 Па — это 0,0034 бара. Циркуляционный насос 25/60 даёт в сто семьдесят раз больше."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему в самотёчной системе нельзя ставить термоголовки?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Потому что располагаемое давление около 300 Па, а термостатический клапан на радиаторе съедает больше, чем вся система имеет. По той же причине там нет узких труб, лишних отводов и тёплого пола: петля пола требует 20 килопаскалей, то есть в шестьдесят раз больше доступного давления."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что нужно для работы естественной циркуляции?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Котёл ниже приборов — в доме без подвала его заглубляют в приямок. Увеличенные диаметры магистралей, обычно на два типоразмера больше насосных. Уклоны 5–10 мм на метр по всей длине без провисаний. Минимум поворотов и верхняя разводка с разгонным стояком от котла."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли перевести насосную систему на самотёк при отключении света?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Только если она изначально к этому приспособлена: нужны уклоны, увеличенные диаметры и правильное расположение котла. Одним краном на байпасе обычную систему на самотёк не перевести. Такой гибрид проектируют заранее — тогда при отключении света перекрывают краны байпаса, и контур работает без насоса."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Где самотёчная система уместна?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В доме без электричества или с частыми долгими отключениями, в небольшом дачном доме на три-четыре прибора и с твердотопливным котлом — там она ещё и подстраховка: при отключении света котёл не вскипит, потому что циркуляция не останавливается. Для дома с частыми отключениями это надёжнее ИБП, который даёт около пяти часов."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/estestvennaya-tsirkulyatsiya/#article",
+      "headline": "Система с естественной циркуляцией: расчёт давления",
+      "description": "Как работает самотёчная система отопления: расчёт гравитационного давления по высоте и плотности воды, почему напор измеряется миллибарами, требования к уклонам и диаметрам, где она оправдана.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/estestvennaya-tsirkulyatsiya/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-02-09",
+      "dateModified": "2027-02-09",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Система с естественной циркуляцией: расчёт давления</nav>
+
+        <h1>Система с естественной циркуляцией: расчёт давления</h1>
+
+        <p class="art-meta"><time datetime="2027-02-09">9 февраля 2027</time></p>
+
+        <p class="lead">Самотёчная система работает без электричества — и это её единственное, но серьёзное достоинство. Движущее давление в ней создаёт разница плотностей горячей и холодной воды, и оно в сотню раз меньше того, что даёт насос. Считаем и смотрим, что из этого следует.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#otkuda-beretsya-dvizhuschee-davlenie">Откуда берётся движущее давление</a></li>
+            <li><a href="#chto-trebuetsya-ot-shemy">Что требуется от схемы</a></li>
+            <li><a href="#gde-ona-opravdana">Где она оправдана</a></li>
+            <li><a href="#chego-v-ney-ne-budet">Чего в ней не будет</a></li>
+            <li><a href="#gibridnyy-variant">Гибридный вариант</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="otkuda-beretsya-dvizhuschee-davlenie">Откуда берётся движущее давление</h2>
+
+        <p>Горячая вода легче холодной. В контуре, где котёл стоит внизу, а приборы выше, горячий столб в подаче весит меньше холодного в обратке — эта разница и гонит воду по кругу.</p>
+
+        <div class="formula">
+            <p><strong>Давление, Па</strong> = высота × (плотность обратки − плотность подачи) × 9,81</p>
+            <p>Вода 80 °C — 971,8 кг/м³, вода 60 °C — 983,2 кг/м³</p>
+            <p>Разница высот 3 м: 3 × (983,2 − 971,8) × 9,81 = <strong>335 Па</strong></p>
+        </div>
+
+        <p>Триста тридцать пять паскалей — это 0,0034 бара, или 3,4 сантиметра водяного столба. Для сравнения: обычный циркуляционный насос 25/60 даёт до 6 метров, то есть в сто семьдесят раз больше.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Разница высот</th><th>График 80/60</th><th>График 70/55</th></tr>
+                <tr><td>2 м</td><td class="num">223 Па</td><td class="num">168 Па</td></tr>
+                <tr><td>3 м</td><td class="num">335 Па</td><td class="num">252 Па</td></tr>
+                <tr><td>4 м</td><td class="num">447 Па</td><td class="num">336 Па</td></tr>
+                <tr><td>6 м</td><td class="num">670 Па</td><td class="num">504 Па</td></tr>
+            </table>
+        </div>
+        <p class="note">Высота считается от середины котла до середины прибора. Чем выше приборы над котлом и чем шире температурный перепад, тем больше давление.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда все ограничения самотёчной системы.</strong> Триста паскалей нельзя потратить на сопротивление арматуры: термостатический клапан на радиаторе съедает больше, чем вся система имеет. Поэтому здесь нет термоголовок, нет узких труб, нет лишних отводов — и нет тёплого пола, петля которого требует 20 килопаскалей, то есть в шестьдесят раз больше располагаемого давления.</p>
+        </div>
+
+        <h2 id="chto-trebuetsya-ot-shemy">Что требуется от схемы</h2>
+
+        <ul>
+            <li><strong>Котёл ниже приборов.</strong> Это условие работы: в доме без подвала котёл заглубляют в приямок, иначе высоты не набрать.</li>
+            <li><strong>Увеличенные диаметры.</strong> Магистрали обычно на два типоразмера больше, чем в системе с насосом: сопротивление трубы должно быть минимальным.</li>
+            <li><strong>Уклоны по всей длине.</strong> Подача с уклоном от котла, обратка к котлу — 5–10 мм на метр. Провисание между креплениями образует воздушный карман, который останавливает контур.</li>
+            <li><strong>Минимум поворотов.</strong> Каждый отвод — это сопротивление, которого система не может себе позволить.</li>
+            <li><strong>Верхняя разводка.</strong> Разгонный стояк от котла вверх, оттуда подача идёт вниз к приборам — так проще удалять воздух и больше рабочая высота.</li>
+            <li><strong>Открытый расширительный бак</strong> в верхней точке или мембранный, но с учётом низкого давления.</li>
+        </ul>
+
+        <h2 id="gde-ona-opravdana">Где она оправдана</h2>
+
+        <ul>
+            <li><strong>Дом без электричества</strong> или с постоянными отключениями, где генератор или ИБП ставить не планируют.</li>
+            <li><strong>Небольшой дачный дом</strong> на три-четыре прибора: короткие кольца, простая схема.</li>
+            <li><strong>Твердотопливный котёл как основной.</strong> Самотёчная схема здесь ещё и подстраховка: при отключении света котёл не вскипит, потому что циркуляция не останавливается.</li>
+            <li><strong>Как резервный контур</strong> в системе с насосом: байпас с шаровым краном вокруг насоса позволяет при отключении света перейти на самотёк — если схема изначально к этому приспособлена.</li>
+        </ul>
+
+        <p>Последний пункт стоит знать: перевести обычную насосную систему на самотёк одним краном нельзя. Нужны и уклоны, и диаметры, и расположение котла — то есть решение принимается на стадии проекта, а не в момент аварии.</p>
+
+        <h2 id="chego-v-ney-ne-budet">Чего в ней не будет</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Чего нет</th><th>Почему</th></tr>
+                <tr><td>Тёплого пола</td><td>петля требует 20 кПа при располагаемых 0,3</td></tr>
+                <tr><td>Термоголовок</td><td>клапан съедает больше, чем есть давления</td></tr>
+                <tr><td>Скрытой разводки в стяжке</td><td>нужны уклоны и большие диаметры</td></tr>
+                <tr><td>Быстрого прогрева</td><td>скорость воды в разы ниже насосной</td></tr>
+                <tr><td>Точной балансировки</td><td>нечем душить ветки</td></tr>
+            </table>
+        </div>
+        <p class="note">Самотёчная схема — это компромисс ради независимости от электричества, и остальные удобства в него не помещаются.</p>
+
+        <h2 id="gibridnyy-variant">Гибридный вариант</h2>
+
+        <p>На практике чаще делают систему, рассчитанную на самотёк, но с насосом на байпасе. В обычном режиме работает насос — быстро, ровно, с балансировкой. При отключении света перекрывают краны байпаса, и контур переходит на естественную циркуляцию.</p>
+
+        <ul>
+            <li><strong>Диаметры и уклоны считаются по самотёчной схеме</strong> — иначе резерв не сработает.</li>
+            <li><strong>Насос на байпасе с двумя кранами</strong> и обводной линией, открывающейся при его остановке.</li>
+            <li><strong>Приборы без термоголовок</strong> или с ними, но тогда при переходе на самотёк их открывают полностью.</li>
+            <li><strong>Дороже обычной насосной</strong> — за счёт увеличенных диаметров, но дешевле генератора и не требует обслуживания.</li>
+        </ul>
+
+        <p>Для дома, где свет пропадает регулярно и надолго, это разумнее, чем ИБП: аккумулятор на 100 А·ч даёт около пяти часов, а самотёк работает, пока в котле есть огонь.</p>
+
+        <a class="cta" href="/">
+            Посчитать систему отопления
+            <small>Теплопотери, приборы и гидравлика</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как рассчитать давление в самотёчной системе?</span></summary>
+            <div class="answer">
+                <p>Умножить разницу высот между котлом и прибором на разницу плотностей воды в обратке и подаче и на 9,81. При графике 80/60 плотности составляют 983,2 и 971,8 кг/м³, и разница высот 3 метра даёт 335 Па — это 0,0034 бара. Циркуляционный насос 25/60 даёт в сто семьдесят раз больше.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему в самотёчной системе нельзя ставить термоголовки?</span></summary>
+            <div class="answer">
+                <p>Потому что располагаемое давление около 300 Па, а термостатический клапан на радиаторе съедает больше, чем вся система имеет. По той же причине там нет узких труб, лишних отводов и тёплого пола: петля пола требует 20 килопаскалей, то есть в шестьдесят раз больше доступного давления.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что нужно для работы естественной циркуляции?</span></summary>
+            <div class="answer">
+                <p>Котёл ниже приборов — в доме без подвала его заглубляют в приямок. Увеличенные диаметры магистралей, обычно на два типоразмера больше насосных. Уклоны 5–10 мм на метр по всей длине без провисаний. Минимум поворотов и верхняя разводка с разгонным стояком от котла.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли перевести насосную систему на самотёк при отключении света?</span></summary>
+            <div class="answer">
+                <p>Только если она изначально к этому приспособлена: нужны уклоны, увеличенные диаметры и правильное расположение котла. Одним краном на байпасе обычную систему на самотёк не перевести. Такой гибрид проектируют заранее — тогда при отключении света перекрывают краны байпаса, и контур работает без насоса.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Где самотёчная система уместна?</span></summary>
+            <div class="answer">
+                <p>В доме без электричества или с частыми долгими отключениями, в небольшом дачном доме на три-четыре прибора и с твердотопливным котлом — там она ещё и подстраховка: при отключении света котёл не вскипит, потому что циркуляция не останавливается. Для дома с частыми отключениями это надёжнее ИБП, который даёт около пяти часов.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=estestvennaya-tsirkulyatsiya#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/elektroostoplenie-stoimost/">отопление электричеством: сколько выйдет в месяц</a> · <a href="/dogovor-s-montazhnikom/">договор с монтажником: что проверить</a> · <a href="/shema-otopleniya-chastnogo-doma/">схема отопления частного дома: какие бывают</a> · <a href="/dvuhtrubnaya-sistema/">двухтрубная система: тупиковая и попутная</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=estestvennaya-tsirkulyatsiya">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

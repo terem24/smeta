@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отопление электричеством: стоимость по месяцам и способы снизить | HeatCalc.ru</title>
+    <meta name="description" content="Помесячный расчёт стоимости электрического отопления: как распределяется расход по месяцам сезона, почему январь дороже октября втрое, тарифные категории и что реально снижает счёт.">
+    <link rel="canonical" href="https://heatcalc.ru/elektroostoplenie-stoimost/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/elektroostoplenie-stoimost/">
+    <meta property="og:title" content="Отопление электричеством: сколько по месяцам">
+    <meta property="og:description" content="Январь дороже октября втрое — и об этом узнают по счёту. Помесячная раскладка.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/elektroostoplenie-stoimost/#webpage",
+      "url": "https://heatcalc.ru/elektroostoplenie-stoimost/",
+      "name": "Отопление электричеством: сколько выходит по месяцам",
+      "description": "Помесячный расчёт стоимости электрического отопления: как распределяется расход по месяцам сезона, почему январь дороже октября втрое, тарифные категории и что реально снижает счёт.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "отопление электричеством стоимость"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Отопление электричеством: сколько выходит по месяцам",
+          "item": "https://heatcalc.ru/elektroostoplenie-stoimost/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Сколько стоит отопление электричеством по месяцам?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Для дома 150 м² с теплопотерями 10 кВт в Петербурге по тарифу для дома с электроотоплением: октябрь около 13 700 ₽, декабрь 23 900 ₽, январь 26 200 ₽, за сезон 139 000 ₽. Разброс между октябрём и январём почти трёхкратный, потому что расход пропорционален разнице температур."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как снизить счёт за электрическое отопление?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Первое — проверить тарифную категорию: для дома с электроотоплением она на 2,18 ₽ дешевле городской, это 53 тысячи за сезон. Второе — утепление: снижение теплопотерь с 10 до 7 кВт экономит 42 тысячи ежегодно. Дальше термоголовки (7 400 ₽ за градус понижения) и погодозависимая автоматика."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Выгоден ли ночной тариф для отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Сам по себе почти нет: отопление работает круглосуточно, а при двухставочном тарифе дневная ставка обычно выше одноставочной. Выигрыш появляется только с теплоаккумулятором, когда часть нагрузки реально смещается в ночь на ставку 3,41 ₽ вместо 5,70."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Стоит ли ставить тепловой насос вместо электрокотла?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "При постоянном проживании и сезонном расходе от 20 тысяч киловатт-часов — да: он даёт 3–4 киловатта тепла на киловатт электричества, и сезон обходится в 40 тысяч вместо 139. Срок окупаемости пять-восемь лет. Но нужна низкотемпературная система: на радиаторах 80/60 насос работает как дорогой электрокотёл."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему фактический расход больше расчётного?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Три обычные причины. Теплопотери оказались больше — чаще всего в расчёте забыли нагрев приточного воздуха, а это около четверти нагрузки. Система перетапливает из-за отсутствия автоматики: без погодозависимости дом всю зиму греется так, будто на улице расчётные минус двадцать четыре. Или в счёт попадает не только отопление, но и бойлер, плита, сауна."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/elektroostoplenie-stoimost/#article",
+      "headline": "Отопление электричеством: сколько выходит по месяцам",
+      "description": "Помесячный расчёт стоимости электрического отопления: как распределяется расход по месяцам сезона, почему январь дороже октября втрое, тарифные категории и что реально снижает счёт.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/elektroostoplenie-stoimost/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-01-21",
+      "dateModified": "2027-01-21",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Отопление электричеством: сколько выходит по месяцам</nav>
+
+        <h1>Отопление электричеством: сколько выходит по месяцам</h1>
+
+        <p class="art-meta"><time datetime="2027-01-21">21 января 2027</time></p>
+
+        <p class="lead">Годовая цифра расходов на электрическое отопление мало что говорит: платить приходится помесячно, и разброс между октябрём и январём трёхкратный. Раскладываем сезон по месяцам и разбираем, что реально уменьшает счёт, а что только кажется экономией.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#kak-rashod-raspredelyaetsya-po-mesyacam">Как расход распределяется по месяцам</a></li>
+            <li><a href="#chto-stoit-v-dengah">Что стоит в деньгах</a></li>
+            <li><a href="#pervoe-chto-nuzhno-proverit">Первое, что нужно проверить</a></li>
+            <li><a href="#chto-realno-snizhaet-schet">Что реально снижает счёт</a></li>
+            <li><a href="#chto-ekonomiey-ne-yavlyaetsya">Что экономией не является</a></li>
+            <li><a href="#kogda-schitat-teplovoy-nasos">Когда считать тепловой насос</a></li>
+            <li><a href="#kak-proverit-svoy-rashod">Как проверить свой расход</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="kak-rashod-raspredelyaetsya-po-mesyacam">Как расход распределяется по месяцам</h2>
+
+        <p>Расход месяца пропорционален разнице между температурой в доме и средней уличной. В октябре она вдвое меньше январской — и счёт соответственно.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Месяц</th><th>Средняя на улице</th><th>Доля сезона</th><th>Дом 10 кВт</th></tr>
+                <tr><td>Октябрь</td><td class="num">+5 °C</td><td class="num">10 %</td><td class="num">2 400 кВт·ч</td></tr>
+                <tr><td>Ноябрь</td><td class="num">0 °C</td><td class="num">14 %</td><td class="num">3 400 кВт·ч</td></tr>
+                <tr><td>Декабрь</td><td class="num">−5 °C</td><td class="num">17 %</td><td class="num">4 200 кВт·ч</td></tr>
+                <tr><td>Январь</td><td class="num">−8 °C</td><td class="num">19 %</td><td class="num">4 600 кВт·ч</td></tr>
+                <tr><td>Февраль</td><td class="num">−7 °C</td><td class="num">17 %</td><td class="num">4 100 кВт·ч</td></tr>
+                <tr><td>Март</td><td class="num">−2 °C</td><td class="num">14 %</td><td class="num">3 400 кВт·ч</td></tr>
+                <tr><td>Апрель</td><td class="num">+4 °C</td><td class="num">9 %</td><td class="num">2 300 кВт·ч</td></tr>
+            </table>
+        </div>
+        <p class="note">Оценка для Петербурга при сезонных 24 400 кВт·ч. Точные средние по месяцам отличаются год от года, но пропорция устойчива.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда типичная история.</strong> В октябре счёт приходит на 14 тысяч, и кажется, что всё терпимо. В январе — 26 тысяч, и это вызывает вопросы к системе, хотя она работает ровно так же. Годовая сумма при этом известна заранее: для дома 150 м² с теплопотерями 10 кВт это 139 тысяч рублей по тарифу для дома с электроотоплением.</p>
+        </div>
+
+        <h2 id="chto-stoit-v-dengah">Что стоит в деньгах</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Месяц</th><th>С электроотоплением, 5,70 ₽</th><th>Городской, 7,88 ₽</th><th>Ночная, 3,41 ₽</th></tr>
+                <tr><td>Октябрь</td><td class="num">13 700 ₽</td><td class="num">18 900 ₽</td><td class="num">8 200 ₽</td></tr>
+                <tr><td>Декабрь</td><td class="num">23 900 ₽</td><td class="num">33 100 ₽</td><td class="num">14 300 ₽</td></tr>
+                <tr><td>Январь</td><td class="num">26 200 ₽</td><td class="num">36 200 ₽</td><td class="num">15 700 ₽</td></tr>
+                <tr><td>За сезон</td><td class="num">139 000 ₽</td><td class="num">192 000 ₽</td><td class="num">83 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Тарифы Ленинградской области на конец 2026 года. Ночная ставка приведена для сравнения: круглосуточно платить по ней нельзя.</p>
+
+        <h2 id="pervoe-chto-nuzhno-proverit">Первое, что нужно проверить</h2>
+
+        <p>Категория тарифа. Разница между городским и тарифом для дома с электроотоплением — <strong>2,18 ₽ на киловатт-час</strong>, то есть 53 тысячи рублей за сезон на доме 150 м².</p>
+
+        <p>Это не льгота и не схема: категория для домов, где отопление электрическое и нет газа, предусмотрена законом. Оформляется заявлением в сбытовую компанию с подтверждением, что дом не газифицирован. Люди платят по городскому тарифу годами просто потому, что не знали о разнице.</p>
+
+        <h2 id="chto-realno-snizhaet-schet">Что реально снижает счёт</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Мера</th><th>Экономия за сезон</th><th>Разовые вложения</th></tr>
+                <tr><td>Правильная тарифная категория</td><td class="num">53 000 ₽</td><td>заявление</td></tr>
+                <tr><td>Утепление: 10 → 7 кВт теплопотерь</td><td class="num">42 000 ₽</td><td>работы по дому</td></tr>
+                <tr><td>Тепловой насос вместо котла</td><td class="num">99 000 ₽</td><td>оборудование</td></tr>
+                <tr><td>Понижение на 1 градус</td><td class="num">7 400 ₽</td><td>термоголовки</td></tr>
+                <tr><td>Погодозависимая автоматика</td><td class="num">убирает перетоп межсезонья</td><td>3 500 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Первые две строки доступны почти всем и не требуют переделки системы.</p>
+
+        <h2 id="chto-ekonomiey-ne-yavlyaetsya">Что экономией не является</h2>
+
+        <ul>
+            <li><strong>Выключать отопление на время отъезда.</strong> Дежурный режим +5 °C требует 6,6 кВт вместо 10 — экономия есть, но полное выключение добавляет к ней немного, а риск разморозки делает несоизмеримым.</li>
+            <li><strong>Ночной тариф без теплоаккумулятора.</strong> Отопление работает круглосуточно, и дневная ставка при двухставочном тарифе обычно выше одноставочной. Выигрыш появляется только когда часть нагрузки реально смещена в ночь.</li>
+            <li><strong>Топить одну комнату.</strong> Соседние остывают, и через внутренние стены тепло уходит к ним же. Плюс сырость в неотапливаемых помещениях.</li>
+            <li><strong>Ставить котёл помощнее «чтобы быстрее нагревал».</strong> Расход определяется теплопотерями, а не мощностью котла; более мощный просто будет чаще выключаться.</li>
+        </ul>
+
+        <h2 id="kogda-schitat-teplovoy-nasos">Когда считать тепловой насос</h2>
+
+        <p>При сезонных 139 тысячах разница с тепловым насосом — около 99 тысяч в год: он даёт 3–4 киловатта тепла на киловатт электричества, и киловатт-час тепла обходится в 1,63 ₽ вместо 5,70.</p>
+
+        <ul>
+            <li><strong>Считать имеет смысл при постоянном проживании</strong> и расходе от 20 тысяч киловатт-часов за сезон. На даче с редкими приездами он не окупится.</li>
+            <li><strong>Нужна низкотемпературная система:</strong> тёплый пол на 40/35 или радиаторы с увеличенным вдвое числом секций. На обычных 80/60 насос работает как дорогой электрокотёл.</li>
+            <li><strong>Срок окупаемости</strong> при такой разнице — пять-восемь лет, и это без учёта того, что тёплый пол в доме обычно делают и так.</li>
+            <li><strong>Если газ есть или подведут</strong> — считать не нужно: газ дешевле, 1,09 ₽ за киловатт-час тепла.</li>
+        </ul>
+
+        <h2 id="kak-proverit-svoy-rashod">Как проверить свой расход</h2>
+
+        <div class="formula">
+            <p><strong>Ожидаемый расход месяца</strong> = теплопотери × часы × (t в доме − t средняя) ÷ (t в доме − t расчётная)</p>
+            <p>Январь, дом 10 кВт, Петербург: 10 × 744 × (20 + 8) ÷ (20 + 24) ≈ <strong>4 700 кВт·ч</strong></p>
+            <p>Те же 19 % сезона, что в таблице выше — расхождение от округления средних</p>
+        </div>
+
+        <p>Если фактический расход заметно выше расчётного, дело обычно в одном из трёх: теплопотери больше, чем считали (чаще всего забыли вентиляцию), система перетапливает из-за отсутствия автоматики, или в счёт попадает не только отопление — бойлер, плита, сауна.</p>
+
+        <a class="cta" href="/">
+            Посчитать свой дом
+            <small>Теплопотери и стоимость сезона по тарифам</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько стоит отопление электричеством по месяцам?</span></summary>
+            <div class="answer">
+                <p>Для дома 150 м² с теплопотерями 10 кВт в Петербурге по тарифу для дома с электроотоплением: октябрь около 13 700 ₽, декабрь 23 900 ₽, январь 26 200 ₽, за сезон 139 000 ₽. Разброс между октябрём и январём почти трёхкратный, потому что расход пропорционален разнице температур.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как снизить счёт за электрическое отопление?</span></summary>
+            <div class="answer">
+                <p>Первое — проверить тарифную категорию: для дома с электроотоплением она на 2,18 ₽ дешевле городской, это 53 тысячи за сезон. Второе — утепление: снижение теплопотерь с 10 до 7 кВт экономит 42 тысячи ежегодно. Дальше термоголовки (7 400 ₽ за градус понижения) и погодозависимая автоматика.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Выгоден ли ночной тариф для отопления?</span></summary>
+            <div class="answer">
+                <p>Сам по себе почти нет: отопление работает круглосуточно, а при двухставочном тарифе дневная ставка обычно выше одноставочной. Выигрыш появляется только с теплоаккумулятором, когда часть нагрузки реально смещается в ночь на ставку 3,41 ₽ вместо 5,70.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Стоит ли ставить тепловой насос вместо электрокотла?</span></summary>
+            <div class="answer">
+                <p>При постоянном проживании и сезонном расходе от 20 тысяч киловатт-часов — да: он даёт 3–4 киловатта тепла на киловатт электричества, и сезон обходится в 40 тысяч вместо 139. Срок окупаемости пять-восемь лет. Но нужна низкотемпературная система: на радиаторах 80/60 насос работает как дорогой электрокотёл.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему фактический расход больше расчётного?</span></summary>
+            <div class="answer">
+                <p>Три обычные причины. Теплопотери оказались больше — чаще всего в расчёте забыли нагрев приточного воздуха, а это около четверти нагрузки. Система перетапливает из-за отсутствия автоматики: без погодозависимости дом всю зиму греется так, будто на улице расчётные минус двадцать четыре. Или в счёт попадает не только отопление, но и бойлер, плита, сауна.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=elektroostoplenie-stoimost#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/umnyy-dom-otoplenie/">умный дом и отопление: с чего начать</a> · <a href="/zashchita-ot-protechek/">защита от протечек: датчики и краны</a> · <a href="/teplovoy-nasos-dlya-doma/">тепловой насос: работает ли в наши морозы</a> · <a href="/vozduh-voda-ili-geotermalnyy/">воздух-вода или геотермальный</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=elektroostoplenie-stoimost">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

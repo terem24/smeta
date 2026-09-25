@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Балансировочный клапан: подбор по Kv и настройка | HeatCalc.ru</title>
+    <meta name="description" content="Балансировочный клапан в отоплении: что такое Kv, как подобрать клапан под расход ветки, ручной против автоматического, порядок настройки и чем он отличается от обычного крана.">
+    <link rel="canonical" href="https://heatcalc.ru/balansirovochnyy-klapan/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/balansirovochnyy-klapan/">
+    <meta property="og:title" content="Балансировочный клапан: зачем нужен и как настроить">
+    <meta property="og:description" content="Kv — расход в м³/ч при перепаде 1 бар. Из него и считается настройка.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/balansirovochnyy-klapan/#webpage",
+      "url": "https://heatcalc.ru/balansirovochnyy-klapan/",
+      "name": "Балансировочный клапан: зачем нужен и как настроить",
+      "description": "Балансировочный клапан в отоплении: что такое Kv, как подобрать клапан под расход ветки, ручной против автоматического, порядок настройки и чем он отличается от обычного крана.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "балансировочный клапан"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Балансировочный клапан: зачем нужен и как настроить",
+          "item": "https://heatcalc.ru/balansirovochnyy-klapan/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Что такое Kv балансировочного клапана?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Расход воды в кубометрах в час, который проходит через клапан при перепаде давления 1 бар. Перепад на клапане считается как квадрат отношения расхода к Kv: при расходе 0,5 м³/ч и Kv 1,5 это 0,111 бар, то есть 11 кПа. Из-за квадрата уменьшение Kv вдвое увеличивает сопротивление вчетверо."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем балансировочный клапан отличается от обычного крана?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Шкалой предварительной настройки, которую можно записать и восстановить, фиксацией положения, чтобы настройку не сбили случайно, измерительными ниппелями для замера перепада прибором и известной характеристикой Kv, по которой настройка и считается. Шаровым краном можно придушить ветку, но повторить это положение нельзя."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как подобрать балансировочный клапан?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По расходу ветки, а не по диаметру трубы. Частая ошибка — взять клапан по размеру трубы: на ветке с малым расходом клапан большого Kv придётся закручивать почти до упора, где шкала работает рывками и настройка не держится. Правильная настройка лежит в середине диапазона."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужен ли автоматический балансировочный клапан?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В частном доме с одной-двумя ветками достаточно ручного. Автоматический держит заданный расход независимо от режима и окупается там, где веток много и они работают по-разному — например, поэтажно с разным расписанием. В системе с зонами расход постоянно меняется: закрылись одни, остальным достаётся больше."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему после балансировки дальние приборы всё равно холодные?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Балансировка распределяет воду, но не создаёт её: если насосу не хватает напора, дальние приборы останутся холодными при любых настройках. Другие причины — недостаточное число секций у прибора, воздух в системе, слишком длинная ветка, которую надо делить надвое, или залитый антифриз без пересчёта напора."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/balansirovochnyy-klapan/#article",
+      "headline": "Балансировочный клапан: зачем нужен и как настроить",
+      "description": "Балансировочный клапан в отоплении: что такое Kv, как подобрать клапан под расход ветки, ручной против автоматического, порядок настройки и чем он отличается от обычного крана.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/balansirovochnyy-klapan/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-02-16",
+      "dateModified": "2027-02-16",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Балансировочный клапан: зачем нужен и как настроить</nav>
+
+        <h1>Балансировочный клапан: зачем нужен и как настроить</h1>
+
+        <p class="art-meta"><time datetime="2027-02-16">16 февраля 2027</time></p>
+
+        <p class="lead">Вода идёт по пути наименьшего сопротивления, и без балансировки ближние ветки забирают больше положенного. Балансировочный клапан добавляет им сопротивления ровно столько, сколько нужно. Разбираем, что такое Kv и как по нему настраивать.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#chem-on-otlichaetsya-ot-krana">Чем он отличается от крана</a></li>
+            <li><a href="#chto-takoe-kv">Что такое Kv</a></li>
+            <li><a href="#ruchnoy-ili-avtomaticheskiy">Ручной или автоматический</a></li>
+            <li><a href="#gde-stavyat">Где ставят</a></li>
+            <li><a href="#poryadok-nastroyki">Порядок настройки</a></li>
+            <li><a href="#kogda-balansirovka-ne-pomogaet">Когда балансировка не помогает</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="chem-on-otlichaetsya-ot-krana">Чем он отличается от крана</h2>
+
+        <p>Обычным шаровым краном тоже можно придушить ветку, но в нём нет ни шкалы, ни повторяемости: закрыли на глаз, задели при уборке — настройка потеряна. У балансировочного есть <strong>предварительная настройка</strong>: число оборотов от закрытого положения, которое фиксируется и записывается.</p>
+
+        <ul>
+            <li><strong>Шкала настройки</strong> — положение можно записать и восстановить.</li>
+            <li><strong>Фиксация</strong> — после настройки клапан стопорится, и случайно сбить её нельзя.</li>
+            <li><strong>Измерительные ниппели</strong> у клапанов с расходомером — перепад меряется прибором, а не на ощупь.</li>
+            <li><strong>Известная характеристика</strong> — тот самый Kv, по которому считается настройка.</li>
+        </ul>
+
+        <h2 id="chto-takoe-kv">Что такое Kv</h2>
+
+        <p>Kv — это расход воды в кубометрах в час, который проходит через клапан при перепаде давления 1 бар. Чем больше Kv, тем свободнее клапан пропускает воду.</p>
+
+        <div class="formula">
+            <p><strong>Перепад на клапане, бар</strong> = (расход, м³/ч ÷ Kv)²</p>
+            <p>Ветка 0,5 м³/ч, клапан настроен на Kv = 1,5:</p>
+            <p>(0,5 ÷ 1,5)² = <strong>0,111 бар</strong> = 11 кПа</p>
+        </div>
+
+        <p>Квадрат в формуле объясняет, почему балансировка так чувствительна: уменьшили Kv вдвое — сопротивление выросло вчетверо. Отсюда же правило, что настройка должна лежать в середине диапазона: у края шкалы небольшой поворот меняет расход резко.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда типичная ошибка подбора.</strong> Клапан берут по диаметру трубы, а не по расходу. На ветке с малым расходом клапан большого Kv придётся закручивать почти до упора — туда, где шкала работает рывками и настройка не держится. Правильно наоборот: по расходу подбирают Kv, а уже под него диаметр корпуса.</p>
+        </div>
+
+        <h2 id="ruchnoy-ili-avtomaticheskiy">Ручной или автоматический</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Ручной</th><th>Автоматический</th></tr>
+                <tr><td>Что держит</td><td>заданное сопротивление</td><td>заданный расход</td></tr>
+                <tr><td>При изменении режима</td><td>расход плывёт</td><td>держит свой</td></tr>
+                <tr><td>Где ставят</td><td>ветки, стояки, приборы</td><td>ветки в системах с зонами</td></tr>
+                <tr><td>Настройка</td><td>по расчёту, один раз</td><td>выставляется расход</td></tr>
+                <tr><td>Цена</td><td>ниже</td><td>выше</td></tr>
+            </table>
+        </div>
+        <p class="note">В доме с термоголовками и зонами расход по веткам постоянно меняется: закрылись зоны — остальным достаётся больше. Автоматический клапан это компенсирует, ручной нет.</p>
+
+        <p>Для частного дома с одной-двумя ветками ручного достаточно. Автоматические окупаются там, где веток много и они работают в разных режимах — например, поэтажно с разным расписанием.</p>
+
+        <h2 id="gde-stavyat">Где ставят</h2>
+
+        <ul>
+            <li><strong>На обратке каждой ветки</strong> — основное место. Именно там выравнивают этажи и крылья дома между собой.</li>
+            <li><strong>На обратке прибора</strong> — запорно-регулирующий клапан с предварительной настройкой; это балансировка внутри ветки.</li>
+            <li><strong>На выходах коллектора</strong> при лучевой разводке — все настройки собраны в шкафу.</li>
+            <li><strong>На контуре рециркуляции ГВС</strong> — иначе вода идёт по короткому кольцу, а дальнее остаётся холодным.</li>
+            <li><strong>Не ставят</strong> между котлом и группой безопасности и на байпасе в однотрубной системе.</li>
+        </ul>
+
+        <h2 id="poryadok-nastroyki">Порядок настройки</h2>
+
+        <ol>
+            <li><strong>Посчитать расход каждой ветки:</strong> мощность в ваттах разделить на 1,163 и на перепад. Ветка 6 кВт при перепаде 20 К — 258 л/ч.</li>
+            <li><strong>Определить лишнее сопротивление.</strong> Разница между располагаемым напором и потерями ветки — это то, что должен съесть клапан.</li>
+            <li><strong>Найти настройку по таблице Kv</strong> из паспорта клапана: у каждого положения шкалы своё значение.</li>
+            <li><strong>Выставить и зафиксировать</strong>, записать положение.</li>
+            <li><strong>Проверить по перепаду у котла</strong> — в мороз он должен быть 15–20 градусов. Пять означает избыточный расход, тридцать — нехватку.</li>
+            <li><strong>Повесить схему настроек</strong> на дверцу шкафа: через год их никто не вспомнит.</li>
+        </ol>
+
+        <h2 id="kogda-balansirovka-ne-pomogaet">Когда балансировка не помогает</h2>
+
+        <ul>
+            <li><strong>Насосу не хватает напора.</strong> Балансировка распределяет воду, но не создаёт её. Если суммарного расхода мало, дальние приборы останутся холодными при любых настройках.</li>
+            <li><strong>Приборы подобраны неверно.</strong> Радиатор, которому не хватает секций, будет холодным при полностью открытом клапане — это вопрос расчёта, а не настройки.</li>
+            <li><strong>Воздух в системе.</strong> Воздушная пробка выглядит как нехватка расхода; сначала стравить, потом балансировать.</li>
+            <li><strong>Ветка слишком длинная.</strong> Восемь приборов подряд на тупиковой схеме дают разброс колец, который клапанами уже не выбрать — ветку делят надвое.</li>
+            <li><strong>Залит антифриз без пересчёта.</strong> Требуемый напор вырастает в полтора раза, и система, сбалансированная на воде, может не сойтись.</li>
+        </ul>
+
+        <p>И общее правило: балансировку делают один раз, после пуска, и записывают. Настройки, «покрученные зимой», через год превращаются в загадку, а восстанавливать их приходится с нуля — по расчёту, которого к тому времени обычно уже нет под рукой.</p>
+
+        <a class="cta" href="/">
+            Посчитать гидравлику дома
+            <small>Расходы по веткам и приборам</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что такое Kv балансировочного клапана?</span></summary>
+            <div class="answer">
+                <p>Расход воды в кубометрах в час, который проходит через клапан при перепаде давления 1 бар. Перепад на клапане считается как квадрат отношения расхода к Kv: при расходе 0,5 м³/ч и Kv 1,5 это 0,111 бар, то есть 11 кПа. Из-за квадрата уменьшение Kv вдвое увеличивает сопротивление вчетверо.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем балансировочный клапан отличается от обычного крана?</span></summary>
+            <div class="answer">
+                <p>Шкалой предварительной настройки, которую можно записать и восстановить, фиксацией положения, чтобы настройку не сбили случайно, измерительными ниппелями для замера перепада прибором и известной характеристикой Kv, по которой настройка и считается. Шаровым краном можно придушить ветку, но повторить это положение нельзя.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как подобрать балансировочный клапан?</span></summary>
+            <div class="answer">
+                <p>По расходу ветки, а не по диаметру трубы. Частая ошибка — взять клапан по размеру трубы: на ветке с малым расходом клапан большого Kv придётся закручивать почти до упора, где шкала работает рывками и настройка не держится. Правильная настройка лежит в середине диапазона.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли автоматический балансировочный клапан?</span></summary>
+            <div class="answer">
+                <p>В частном доме с одной-двумя ветками достаточно ручного. Автоматический держит заданный расход независимо от режима и окупается там, где веток много и они работают по-разному — например, поэтажно с разным расписанием. В системе с зонами расход постоянно меняется: закрылись одни, остальным достаётся больше.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему после балансировки дальние приборы всё равно холодные?</span></summary>
+            <div class="answer">
+                <p>Балансировка распределяет воду, но не создаёт её: если насосу не хватает напора, дальние приборы останутся холодными при любых настройках. Другие причины — недостаточное число секций у прибора, воздух в системе, слишком длинная ветка, которую надо делить надвое, или залитый антифриз без пересчёта напора.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=balansirovochnyy-klapan#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/elektroostoplenie-stoimost/">отопление электричеством: сколько выйдет в месяц</a> · <a href="/dogovor-s-montazhnikom/">договор с монтажником: что проверить</a> · <a href="/umnyy-dom-otoplenie/">умный дом и отопление: с чего начать</a> · <a href="/podbor-tsirkulyatsionnogo-nasosa/">подбор циркуляционного насоса: напор и расход</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=balansirovochnyy-klapan">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

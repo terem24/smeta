@@ -117,6 +117,7 @@
 - [Пользовательское соглашение](https://heatcalc.ru/oferta.html)
 - [Поддержка в Telegram](https://t.me/heatcalc)
 - [Монтаж тёплого пола в СПб и Ленобласти: цена за м²](https://heatcalc.ru/montazh-teplogo-pola-spb/) — монтаж теплого пола спб
+- [Подготовка отопления к зиме: что проверить перед сезоном](https://heatcalc.ru/podgotovka-otopleniya-k-zime/) — подготовка отопления к зиме
 
 ## Примечания для моделей
 

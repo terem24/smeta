@@ -25,9 +25,9 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "чек-лист перед сезоном",
-   "status": "queued",
-   "date": "2026-09-28",
-   "published_at": null,
+   "status": "published",
+   "date": "2026-09-26",
+   "published_at": "2026-09-26",
    "words": 629
   },
   {
