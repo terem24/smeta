@@ -16322,7 +16322,7 @@ const app = {
                 </div>
             </div>`;
         const settingsBlock = `
-            <div style="margin-top: 26px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 13px 16px 15px;">
+            <div class="money-how" style="background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 13px 16px 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <div style="font-size: 12px; font-weight: 700; color: var(--text-sec); text-transform: uppercase; letter-spacing: .5px;">Как считается</div>
                     <button type="button" onclick="app.resetMarginSettings()"
@@ -16345,7 +16345,7 @@ const app = {
 
         if (!rep || !rep.client) {
             panel.innerHTML = `
-                <div class="money-wrap" style="margin: 6px 0 30px;">
+                <div class="money-wrap">
                     <div class="empty-state-pad">
                         <div class="empty-state-hint">
                             <span class="empty-state-icon">💰</span>
@@ -16420,7 +16420,7 @@ const app = {
                </div>`
             : '';
         panel.innerHTML = `
-            <div class="money-wrap" style="margin: 6px 0 30px;">
+            <div class="money-wrap">
                 ${kpHead}
                 <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
                     ${card('Клиенту', fmt(rep.client), 'var(--text-main)', 'оборудование и монтаж')}
