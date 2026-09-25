@@ -40,207 +40,310 @@
         --border: #2A2A2A; --surface: #121212; --surface-light: #1E1E1E; --bg: #000;
         --req: #F87171;
     }
-    .top-row { display: flex; align-items: center; justify-content: space-between; }
-    .theme-toggle { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 14px; flex-shrink: 0; }
+    :root { --field: #F9FAFB; --shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px -6px rgba(16,24,40,.08);
+            --ok-bg: #F0FDF4; --ok-border: #BBF7D0; --ok-text: #15803D;
+            --warn-bg: #FFFBEB; --warn-border: #FDE68A; --warn-text: #B45309; }
+    body.theme-dark { --field: #1A1A1A; --shadow: none;
+            --ok-bg: rgba(34,197,94,.1); --ok-border: rgba(34,197,94,.3); --ok-text: #4ADE80;
+            --warn-bg: rgba(245,158,11,.1); --warn-border: rgba(245,158,11,.3); --warn-text: #FBBF24; }
+
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); }
-    .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
-    .logo-row { display: flex; align-items: center; gap: 8px; padding-top: 14px; }
-    .logo-row .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; }
-    .logo-row .name { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; line-height: 1.2; }
-    .logo-row .name .ru { color: var(--primary); }
-    .logo-row .tagline { font-size: 9px; color: var(--text-sec); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-    h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin: 16px 0 6px; }
-    .sub { color: var(--text-sec); font-size: 13.5px; margin-bottom: 18px; line-height: 1.5; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
-    .card h2 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 12px; color: var(--text); }
-    label.f { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-sec); margin: 10px 0 4px; }
+    body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px; }
+
+    /* Шапка */
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .brand .mark { width: 34px; height: 34px; border-radius: 10px; background: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 17px; }
+    .brand .name { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; line-height: 1.15; }
+    .brand .name .ru { color: var(--primary); }
+    .brand .tagline { font-size: 11px; color: var(--text-sec); font-weight: 500; }
+    .theme-toggle { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* Вводная карточка */
+    .hero { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px 22px 20px; box-shadow: var(--shadow); margin-bottom: 14px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 4px 10px; border-radius: 999px; }
+    h1 { font-size: 24px; line-height: 1.2; font-weight: 800; letter-spacing: -0.025em; margin: 12px 0 8px; }
+    .sub { color: var(--text-sec); font-size: 14.5px; line-height: 1.55; margin: 0; }
+
+    /* Монтажник — строка с аватаром и кнопкой звонка */
+    .installer { display: flex; align-items: center; gap: 12px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); }
+    .installer .avatar { width: 42px; height: 42px; border-radius: 50%; background: var(--primary-light); color: var(--primary); font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .installer .who { flex: 1; min-width: 0; }
+    .installer .role { font-size: 12px; color: var(--text-sec); }
+    .installer .nm { font-size: 15px; font-weight: 700; line-height: 1.3; margin-top: 1px; }
+    .installer .call { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 0 16px; border-radius: 999px; background: var(--primary); color: #fff; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; flex-shrink: 0; }
+    .installer .call svg { width: 16px; height: 16px; }
+    @media (max-width: 420px) { .installer .call { width: 42px; padding: 0; } .installer .call .num { display: none; } }
+
+    /* Секции */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 20px 22px 22px; margin-bottom: 14px; box-shadow: var(--shadow); }
+    .sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .sec-head .num { width: 26px; height: 26px; border-radius: 8px; background: var(--primary-light); color: var(--primary); font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .sec-head h2 { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+    .fields { display: flex; flex-direction: column; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+    label.f { font-size: 13.5px; font-weight: 600; color: var(--text); }
+    label.f .opt { font-weight: 400; color: var(--text-sec); }
+    .hint { font-size: 12.5px; color: var(--text-sec); line-height: 1.45; }
+    .req { color: var(--req); }
+
     input[type=text], input[type=number], input[type=tel], textarea, select {
-        width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
-        font-family: inherit; font-size: 15px; color: var(--text); background: var(--surface); outline: none; transition: border-color .15s;
+        width: 100%; min-height: 46px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
+        font-family: inherit; font-size: 15px; color: var(--text); background: var(--field); outline: none;
+        transition: border-color .15s, box-shadow .15s, background .15s;
     }
-    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
-    textarea { min-height: 64px; resize: vertical; }
-    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    /* Два select с длинным текстом («Не знаю», названия материалов) в 163px не
-       помещаются — обрезаются без многоточия. На узком экране складываем в один
-       столбец; числовые пары (площадь/этажи) от этого не страдают, просто ниже. */
-    @media (max-width: 420px) {
-        .row2 { grid-template-columns: 1fr; }
-    }
-    .seg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-    .seg label { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: 13.5px; cursor: pointer; background: var(--surface); transition: .15s; }
-    .seg label:has(input:checked) { border-color: var(--primary); background: var(--primary-light); font-weight: 600; color: var(--primary-dark); }
-    .seg input { accent-color: var(--primary); margin: 0; }
-    .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--primary); color: #fff; font-size: 15.5px; font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.25); transition: background .15s; }
+    input::placeholder, textarea::placeholder { color: var(--text-sec); opacity: .7; }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); background: var(--surface); box-shadow: 0 0 0 3px var(--primary-light); }
+    textarea { min-height: 84px; resize: vertical; line-height: 1.45; }
+    select { appearance: none; -webkit-appearance: none; padding-right: 40px; cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239CA3AF' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat; background-position: right 15px center; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 420px) { .row2 { grid-template-columns: 1fr; } }
+
+    /* Варианты-«чипы»: сам радиокружок спрятан, выбранный чип подсвечен */
+    .seg { display: flex; flex-wrap: wrap; gap: 8px; }
+    .seg label { position: relative; display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 9px 15px; border: 1px solid var(--border); border-radius: 999px; font-size: 14px; cursor: pointer; background: var(--field); transition: border-color .15s, background .15s, color .15s; user-select: none; }
+    .seg label:hover { border-color: var(--primary); }
+    .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+    .seg label:has(input:checked) { border-color: var(--primary); background: var(--primary-light); color: var(--primary-dark); font-weight: 600; }
+    .seg label:has(input:checked)::before { content: '✓'; font-weight: 700; }
+    .seg label:has(input:focus-visible) { box-shadow: 0 0 0 3px var(--primary-light); }
+
+    .note { font-size: 13px; color: var(--text-sec); line-height: 1.5; }
+    .callout { font-size: 13.5px; line-height: 1.5; color: var(--text); background: var(--primary-light); border-radius: 12px; padding: 12px 14px; }
+
+    /* Кнопка отправки прилипает к низу экрана, пока листаешь анкету */
+    .submit-bar { position: sticky; bottom: 0; padding: 14px 0 18px; background: linear-gradient(to bottom, transparent, var(--bg) 35%); z-index: 5; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; padding: 14px; border: none; border-radius: 14px; background: var(--primary); color: #fff; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px -8px rgba(37,99,235,.55); transition: background .15s, transform .1s; }
     .btn:hover { background: var(--primary-dark); }
+    .btn:active { transform: scale(.99); }
+    .footnote { text-align: center; font-size: 12px; color: var(--text-sec); padding: 4px 0 32px; }
+
+    /* Результат */
     #result { display: none; }
     #result.on { display: block; }
-    .linkbox { word-break: break-all; font-size: 12px; color: var(--text-sec); background: var(--surface-light); border: 1px solid var(--border); border-radius: 9px; padding: 10px; margin: 10px 0; max-height: 90px; overflow: auto; }
+    #result h2 { font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+    .banner { padding: 12px 14px; border-radius: 12px; font-size: 14px; font-weight: 600; line-height: 1.45; margin-bottom: 14px; }
+    .banner.ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok-text); }
+    .banner.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
+    .linkbox { word-break: break-all; font-size: 12.5px; color: var(--text-sec); background: var(--field); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin: 12px 0; max-height: 96px; overflow: auto; }
     .share-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .share-row a, .share-row button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 6px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .share-row a, .share-row button { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 46px; padding: 10px 6px; border-radius: 12px; border: 1px solid var(--border); background: var(--field); color: var(--text); font-family: inherit; font-size: 14px; font-weight: 600; text-decoration: none; cursor: pointer; }
     .share-row .wa { background: #25D366; border-color: #25D366; color: #fff; }
     .share-row .tg { background: #229ED9; border-color: #229ED9; color: #fff; }
-    .note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
-    .req { color: var(--req); }
-    /* Инфо-блок в стиле «Предложение подготовил / Телефон / Город» на бланке КП
-       (invoice.html) — та же идея карточки с подписью-капслоком над значением,
-       чтобы анкета выглядела частью того же продукта, а не отдельной формой. */
-    .letterhead-rule { height: 3px; background: var(--primary); border-radius: 2px; margin: 14px 0 18px; opacity: .8; }
-    .installer-box { display: flex; gap: 18px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
-    .installer-box .f-label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sec); margin-bottom: 3px; }
-    .installer-box .f-value { font-size: 14px; font-weight: 700; color: var(--text); }
-    .installer-box a.f-value { color: var(--primary); text-decoration: none; }
-    .ok-copied { color: #16A34A; font-size: 13px; font-weight: 600; display: none; margin-top: 6px; }
+    .ok-copied { color: var(--ok-text); font-size: 13px; font-weight: 600; display: none; margin-top: 8px; }
 </style>
 </head>
 <body>
 <div class="wrap">
-    <div class="top-row">
-        <div class="logo-row"><div class="mark">🔥</div><div>
-            <div class="name">HeatCalc<span class="ru">.ru</span></div>
-            <div class="tagline">Калькулятор отопления</div>
-        </div></div>
+    <header class="topbar">
+        <div class="brand">
+            <div class="mark">🔥</div>
+            <div>
+                <div class="name">HeatCalc<span class="ru">.ru</span></div>
+                <div class="tagline">Калькулятор отопления</div>
+            </div>
+        </div>
         <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()"></button>
-    </div>
-    <div class="letterhead-rule"></div>
-    <h1>Опросник для расчёта отопления</h1>
-    <div class="installer-box" id="installerNote" style="display:none;"></div>
-    <div class="sub">3–5 минут — чем точнее данные, тем точнее смета и меньше созвонов потом.
-        Поля со звёздочкой <span class="req">*</span> обязательны.</div>
+    </header>
+
+    <section class="hero">
+        <span class="eyebrow">⏱ 3–5 минут</span>
+        <h1>Опросник для расчёта отопления</h1>
+        <p class="sub">Чем точнее ответы, тем точнее смета и меньше созвонов потом.
+            Поля со звёздочкой <span class="req">*</span> обязательны.</p>
+        <div class="installer" id="installerNote" style="display:none;"></div>
+    </section>
+
     <form id="oprosForm" onsubmit="return false;">
 
-    <div class="card">
-        <h2>Контакты</h2>
-        <div class="row2">
-            <div><label class="f">Ваше имя</label><input type="text" id="f_name" placeholder="Иван"></div>
-            <div><label class="f">Телефон</label><input type="tel" id="f_phone" placeholder="+7 ___ ___-__-__"></div>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Дом</h2>
-        <label class="f">Город строительства <span class="req">*</span></label>
-        <input type="text" id="f_city" placeholder="Екатеринбург" required>
-        <label class="f">Точный адрес (улица, дом) — для доставки оборудования, необязательно</label>
-        <input type="text" id="f_address" placeholder="Например: ул. Садовая, 14">
-        <div class="row2">
-            <div><label class="f">Площадь дома, м² <span class="req">*</span></label><input type="number" id="f_area" min="20" max="2000" placeholder="120" required></div>
-            <div><label class="f">Этажей <span class="req">*</span></label>
-                <select id="f_floors" required><option value="1">1</option><option value="2" selected>2</option></select>
-            </div>
-        </div>
-        <label class="f">Сколько человек будет жить</label>
-        <input type="number" id="f_people" min="1" max="20" placeholder="4">
-        <label class="f">Текущая стадия строительства</label>
-        <div class="seg">
-            <label><input type="radio" name="f_stage" value="none">Ещё не приступил</label>
-            <label><input type="radio" name="f_stage" value="box" checked>Возводится коробка</label>
-            <label><input type="radio" name="f_stage" value="closed">Закрыт тепловой контур</label>
-        </div>
-        <label class="f">Режим проживания</label>
-        <div class="seg">
-            <label><input type="radio" name="f_live" value="all" checked>Круглогодичный</label>
-            <label><input type="radio" name="f_live" value="season">Сезонный (наездами)</label>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Отопление</h2>
-        <label class="f">Чем хотите отапливать</label>
-        <div class="seg">
-            <label><input type="checkbox" id="f_tp" checked>Водяной тёплый пол</label>
-            <label><input type="checkbox" id="f_rad" checked>Радиаторы</label>
-        </div>
-        <label class="f">Основной источник тепла</label>
-        <div class="seg">
-            <label><input type="radio" name="f_fuel" value="gas" checked>Газовый котёл</label>
-            <label><input type="radio" name="f_fuel" value="el">Электрокотёл</label>
-        </div>
-        <label class="f">Будет ли приточная вентиляция с подогревом воздуха?</label>
-        <div class="seg">
-            <label><input type="radio" name="f_vent" value="no" checked>Нет / проветривание окнами</label>
-            <label><input type="radio" name="f_vent" value="yes">Да</label>
-        </div>
-        <label class="f">В каких помещениях нужен тёплый пол</label>
-        <textarea id="f_tprooms" placeholder="Например: весь первый этаж; на втором — только санузлы"></textarea>
-        <label class="f">Нужна ли автоматика (управление отоплением с телефона, датчики)?</label>
-        <div class="seg">
-            <label><input type="radio" name="f_auto" value="no" checked>Не нужна</label>
-            <label><input type="radio" name="f_auto" value="yes">Нужна</label>
-            <label><input type="radio" name="f_auto" value="unknown">Не знаю</label>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>ГВС и водоснабжение</h2>
-        <label class="f">Нужна ли горячая вода (бойлер)?</label>
-        <div class="seg">
-            <label><input type="radio" name="f_hw" value="yes" checked>Да</label>
-            <label><input type="radio" name="f_hw" value="no">Нет</label>
-        </div>
-        <label class="f">Откуда вода</label>
-        <div class="seg">
-            <label><input type="radio" name="f_watersource" value="unknown" checked>Не знаю</label>
-            <label><input type="radio" name="f_watersource" value="well">Скважина / колодец</label>
-            <label><input type="radio" name="f_watersource" value="central">Центральный водопровод</label>
-        </div>
-    </div>
-
-    <div class="card">
-        <h2>Из чего построен дом</h2>
-        <label class="f">У вас есть проект или план дома?</label>
-        <div class="seg">
-            <label><input type="radio" name="f_hasProject" value="no" checked onchange="toggleProjectMode()">Нет, опишу как есть</label>
-            <label><input type="radio" name="f_hasProject" value="yes" onchange="toggleProjectMode()">Да, есть — пришлю монтажнику</label>
-        </div>
-
-        <div class="note" id="f_projectNote" style="display:none; margin-top:10px;"></div>
-
-        <div id="f_envelopeFields">
-            <div class="note" style="margin:10px 0 4px;">Не обязательно знать точно — если не
-                уверены, выберите ближайшее по смыслу или оставьте «Не знаю».</div>
-            <label class="f">Материал наружной стены <span class="req">*</span></label>
-            <select id="f_wallMat" required></select>
+    <section class="card">
+        <div class="sec-head"><span class="num">1</span><h2>Контакты</h2></div>
+        <div class="fields">
             <div class="row2">
-                <div><label class="f">Толщина стены, мм</label><input type="number" id="f_wallThick" min="50" max="800" placeholder="300"></div>
-                <div><label class="f">Утеплена дополнительно?</label><select id="f_wallInsMat"></select></div>
+                <div class="field"><label class="f" for="f_name">Ваше имя</label><input type="text" id="f_name" placeholder="Иван"></div>
+                <div class="field"><label class="f" for="f_phone">Телефон</label><input type="tel" id="f_phone" placeholder="+7 ___ ___-__-__"></div>
             </div>
-            <div class="row2" id="f_wallInsThickWrap" style="display:none;">
-                <div><label class="f">Толщина утеплителя, мм</label><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100"></div>
-                <div></div>
-            </div>
-            <label class="f">Пол 1 этажа</label>
-            <select id="f_floorMat"></select>
-            <label class="f">Кровля / чердак</label>
-            <select id="f_roofMat"></select>
-            <label class="f">Окна</label>
-            <select id="f_glazing"></select>
-            <label class="f">Комментарий по конструкции дома (необязательно)</label>
-            <textarea id="f_wall" placeholder="Всё, что хотите уточнить словами: марка окон, особенности стен, пола, кровли"></textarea>
         </div>
-    </div>
+    </section>
 
-    <div class="card">
-        <h2>Прочее</h2>
-        <label class="f">Какие материалы и оборудование уже закуплены</label>
-        <textarea id="f_bought" placeholder="Например: куплен котёл 24 кВт, труба тёплого пола"></textarea>
-        <label class="f">Комментарий</label>
-        <textarea id="f_comment" placeholder="Всё, что считаете важным"></textarea>
-    </div>
+    <section class="card">
+        <div class="sec-head"><span class="num">2</span><h2>Дом</h2></div>
+        <div class="fields">
+            <div class="field">
+                <label class="f" for="f_city">Город строительства <span class="req">*</span></label>
+                <input type="text" id="f_city" placeholder="Екатеринбург" required>
+            </div>
+            <div class="field">
+                <label class="f" for="f_address">Адрес <span class="opt">· необязательно</span></label>
+                <input type="text" id="f_address" placeholder="ул. Садовая, 14">
+                <span class="hint">Улица и дом — для доставки оборудования</span>
+            </div>
+            <div class="row2">
+                <div class="field"><label class="f" for="f_area">Площадь дома, м² <span class="req">*</span></label><input type="number" id="f_area" min="20" max="2000" placeholder="120" required></div>
+                <div class="field"><label class="f" for="f_floors">Этажей <span class="req">*</span></label>
+                    <select id="f_floors" required><option value="1">1</option><option value="2" selected>2</option></select>
+                </div>
+            </div>
+            <div class="field">
+                <label class="f" for="f_people">Сколько человек будет жить</label>
+                <input type="number" id="f_people" min="1" max="20" placeholder="4">
+            </div>
+            <div class="field">
+                <label class="f">Стадия строительства</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_stage" value="none">Ещё не начали</label>
+                    <label><input type="radio" name="f_stage" value="box" checked>Возводится коробка</label>
+                    <label><input type="radio" name="f_stage" value="closed">Закрыт тепловой контур</label>
+                </div>
+            </div>
+            <div class="field">
+                <label class="f">Режим проживания</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_live" value="all" checked>Круглый год</label>
+                    <label><input type="radio" name="f_live" value="season">Наездами</label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="sec-head"><span class="num">3</span><h2>Отопление</h2></div>
+        <div class="fields">
+            <div class="field">
+                <label class="f">Чем хотите отапливать</label>
+                <div class="seg">
+                    <label><input type="checkbox" id="f_tp" checked>Водяной тёплый пол</label>
+                    <label><input type="checkbox" id="f_rad" checked>Радиаторы</label>
+                </div>
+            </div>
+            <div class="field">
+                <label class="f">Котёл</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_fuel" value="gas" checked>Газовый</label>
+                    <label><input type="radio" name="f_fuel" value="el">Электрический</label>
+                </div>
+            </div>
+            <div class="field">
+                <label class="f">Приточная вентиляция с подогревом воздуха</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_vent" value="no" checked>Нет, проветриваем окнами</label>
+                    <label><input type="radio" name="f_vent" value="yes">Да, будет</label>
+                </div>
+            </div>
+            <div class="field">
+                <label class="f">Автоматика — управление с телефона, датчики</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_auto" value="no" checked>Не нужна</label>
+                    <label><input type="radio" name="f_auto" value="yes">Нужна</label>
+                    <label><input type="radio" name="f_auto" value="unknown">Не знаю</label>
+                </div>
+            </div>
+            <div class="field">
+                <label class="f" for="f_tprooms">Где нужен тёплый пол <span class="opt">· необязательно</span></label>
+                <textarea id="f_tprooms" placeholder="Например: весь первый этаж, на втором — только санузлы"></textarea>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="sec-head"><span class="num">4</span><h2>Горячая вода и водоснабжение</h2></div>
+        <div class="fields">
+            <div class="field">
+                <label class="f">Нужна горячая вода (бойлер)?</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_hw" value="yes" checked>Да</label>
+                    <label><input type="radio" name="f_hw" value="no">Нет</label>
+                </div>
+            </div>
+            <div class="field">
+                <label class="f">Откуда вода</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_watersource" value="well">Скважина или колодец</label>
+                    <label><input type="radio" name="f_watersource" value="central">Центральный водопровод</label>
+                    <label><input type="radio" name="f_watersource" value="unknown" checked>Не знаю</label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="sec-head"><span class="num">5</span><h2>Из чего построен дом</h2></div>
+        <div class="fields">
+            <div class="field">
+                <label class="f">Есть проект или план дома?</label>
+                <div class="seg">
+                    <label><input type="radio" name="f_hasProject" value="no" checked onchange="toggleProjectMode()">Нет, опишу сам</label>
+                    <label><input type="radio" name="f_hasProject" value="yes" onchange="toggleProjectMode()">Да, пришлю монтажнику</label>
+                </div>
+            </div>
+
+            <div class="callout" id="f_projectNote" style="display:none;"></div>
+
+            <div class="fields" id="f_envelopeFields">
+                <div class="hint">Не обязательно знать точно — выберите ближайшее по смыслу или оставьте «Не знаю».</div>
+                <div class="field">
+                    <label class="f" for="f_wallMat">Материал наружных стен <span class="req">*</span></label>
+                    <select id="f_wallMat" required></select>
+                </div>
+                <div class="row2">
+                    <div class="field"><label class="f" for="f_wallThick">Толщина стены, мм</label><input type="number" id="f_wallThick" min="50" max="800" placeholder="300"></div>
+                    <div class="field"><label class="f" for="f_wallInsMat">Утепление снаружи</label><select id="f_wallInsMat"></select></div>
+                </div>
+                <div class="row2" id="f_wallInsThickWrap" style="display:none;">
+                    <div class="field"><label class="f" for="f_wallInsThick">Толщина утеплителя, мм</label><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100"></div>
+                    <div></div>
+                </div>
+                <div class="field">
+                    <label class="f" for="f_floorMat">Пол первого этажа</label>
+                    <select id="f_floorMat"></select>
+                </div>
+                <div class="field">
+                    <label class="f" for="f_roofMat">Кровля или чердак</label>
+                    <select id="f_roofMat"></select>
+                </div>
+                <div class="field">
+                    <label class="f" for="f_glazing">Окна</label>
+                    <select id="f_glazing"></select>
+                </div>
+                <div class="field">
+                    <label class="f" for="f_wall">Уточнения по дому <span class="opt">· необязательно</span></label>
+                    <textarea id="f_wall" placeholder="Марка окон, особенности стен, пола, кровли"></textarea>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card">
+        <div class="sec-head"><span class="num">6</span><h2>Прочее</h2></div>
+        <div class="fields">
+            <div class="field">
+                <label class="f" for="f_bought">Что уже куплено <span class="opt">· необязательно</span></label>
+                <textarea id="f_bought" placeholder="Например: котёл 24 кВт, труба для тёплого пола"></textarea>
+            </div>
+            <div class="field">
+                <label class="f" for="f_comment">Комментарий <span class="opt">· необязательно</span></label>
+                <textarea id="f_comment" placeholder="Всё, что считаете важным"></textarea>
+            </div>
+        </div>
+    </section>
 
     </form>
 
-    <button class="btn" onclick="buildLink()">Отправить монтажнику</button>
+    <div class="submit-bar">
+        <button class="btn" onclick="buildLink()">Отправить монтажнику</button>
+    </div>
 
     <div id="confetti" style="position:fixed; inset:0; pointer-events:none; z-index:9999; overflow:hidden;"></div>
 
-    <div class="card" id="result">
-        <div id="r_sent" style="display:none; margin-bottom:12px; padding:12px; border-radius:10px; background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; font-size:14px; font-weight:600;">
+    <section class="card" id="result">
+        <div class="banner ok" id="r_sent" style="display:none;">
             ✓ Анкета отправлена монтажнику — он получит её при следующем входе в калькулятор.
             Ссылку ниже можно продублировать ему в мессенджер на всякий случай.
         </div>
-        <div id="r_senderr" style="display:none; margin-bottom:12px; padding:12px; border-radius:10px; background:#FFFBEB; border:1px solid #FDE68A; color:#B45309; font-size:13px; font-weight:600;">
+        <div class="banner warn" id="r_senderr" style="display:none;">
             ⚠ Автоматически отправить не получилось — обязательно отправьте монтажнику
             ссылку ниже (кнопки WhatsApp / Telegram).
         </div>
@@ -252,9 +355,11 @@
             <a class="tg" id="r_tg" target="_blank" rel="noopener">Telegram</a>
         </div>
         <div class="ok-copied" id="r_copied">Ссылка скопирована</div>
-        <div class="note">Монтажник откроет ссылку — и параметры вашего дома сами встанут
-            в калькулятор HeatCalc, а текстовые ответы он увидит отдельным окном.</div>
-    </div>
+        <p class="note" style="margin:12px 0 0;">Монтажник откроет ссылку — параметры дома сами встанут
+            в калькулятор HeatCalc, а текстовые ответы он увидит отдельным окном.</p>
+    </section>
+
+    <div class="footnote">HeatCalc.ru · данные уходят только вашему монтажнику</div>
 </div>
 
 <script>
@@ -416,18 +521,20 @@
             .then(function (rows) {
                 var row = rows && rows[0];
                 if (!row || (!row.name && !row.phone)) return;
-                var cells = '';
-                if (row.name) {
-                    cells += '<div><span class="f-label">Монтажник</span><span class="f-value">' +
-                        row.name.replace(/[<>]/g, '') + '</span></div>';
-                }
+                var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+                var name = row.name ? String(row.name).trim() : '';
+                var initials = name.split(/\s+/).slice(0, 2).map(function (w) { return w.charAt(0); }).join('').toUpperCase() || '👷';
+                var html = '<div class="avatar">' + esc(initials) + '</div>' +
+                    '<div class="who"><div class="role">Ваш монтажник</div>' +
+                    '<div class="nm">' + esc(name || 'Монтажник') + '</div></div>';
                 if (row.phone) {
-                    var telHref = 'tel:' + row.phone.replace(/[^\d+]/g, '');
-                    cells += '<div><span class="f-label">Телефон</span><a class="f-value" href="' + telHref + '">' +
-                        row.phone.replace(/[<>]/g, '') + '</a></div>';
+                    var telHref = 'tel:' + String(row.phone).replace(/[^\d+]/g, '');
+                    html += '<a class="call" href="' + telHref + '" title="Позвонить: ' + esc(row.phone) + '" aria-label="Позвонить монтажнику">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.8 19.8 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.1 9.9a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>' +
+                        '<span class="num">' + esc(row.phone) + '</span></a>';
                 }
                 var el = document.getElementById('installerNote');
-                el.innerHTML = cells;
+                el.innerHTML = html;
                 el.style.display = 'flex';
             })
             .catch(function () { /* нет контактов — не беда, анкета всё равно заполняется */ });
@@ -557,8 +664,9 @@
     // Персональная ссылка — говорим сразу, что пересылать ничего не придётся,
     // и подгружаем имя/телефон монтажника для шапки (loadInstallerContact)
     if (installerCode) {
-        document.querySelector('.sub').textContent =
-            '3–5 минут — анкета уйдёт монтажнику сама, пересылать ничего не нужно.';
+        document.querySelector('.sub').innerHTML =
+            'Анкета уйдёт монтажнику сама — пересылать ничего не нужно. ' +
+            'Поля со звёздочкой <span class="req">*</span> обязательны.';
         loadInstallerContact();
     }
 
