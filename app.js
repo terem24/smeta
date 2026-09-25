@@ -37884,9 +37884,9 @@ const app = {
         if ($('blk_zone_ctrl_type')) $('blk_zone_ctrl_type').style.display = z.link === 'wired' ? 'block' : 'none';
     },
     /**
-     * Пояснение к разделу 4.5 для клиента: как подобрано и как будет работать.
-     * Печатается в КП (класс sec-explain, не плашка), без марок и артикулов —
-     * они и так в строках сметы.
+     * Пояснение к разделу 4.5: как подобрано и как будет работать — подсказка
+     * монтажнику или продавцу на экране подбора (класс sec-explain), без марок
+     * и артикулов — они и так в строках сметы. В печать/PDF и клиенту не идёт.
      */
     zoneAutoExplainHtml: function (zk) {
         const z = this.za();
@@ -38933,6 +38933,10 @@ const app = {
         const chkTimer = document.getElementById('share_opt_timer');
         const daysTimer = document.getElementById('share_opt_timer_days');
         if (cardTimer) cardTimer.style.display = actionType === 'share' ? 'flex' : 'none';
+
+        // Подсказка про опросник — туда же: при печати и в Excel данные уже есть, собирать их незачем
+        const blockOprosnik = document.getElementById('block_opt_oprosnik');
+        if (blockOprosnik) blockOprosnik.style.display = actionType === 'share' ? '' : 'none';
 
         // Вид файла Excel — только у выгрузки в Excel; каждый раз начинаем с разделов
         const excelLayoutBlock = document.getElementById('excel_layout_block');

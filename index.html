@@ -162,7 +162,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.03">
+    <link rel="stylesheet" href="style.css?v=4.04">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.21" defer></script>
@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.49" defer></script>
+    <script src="app.js?v=9.50" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2915,8 +2915,10 @@
             </button>
 
             <!-- Опросник для заказчика: клиент заполняет анкету на oprosnik.html и
-                 возвращает ссылку, которая предзаполняет расчёт (app.applyOprosFromUrl) -->
-            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
+                 возвращает ссылку, которая предзаполняет расчёт (app.applyOprosFromUrl).
+                 Только у ссылки клиенту — при печати и в Excel уже есть готовые данные,
+                 предлагать их собрать не к месту (openShareOptionsModal). -->
+            <div id="block_opt_oprosnik" style="display: none; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
                 📋 Ещё нет данных по объекту? <span onclick="app.copyOprosnikLink(this)" style="color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline;">Скопировать ссылку на опросник</span> — отправьте её заказчику, он заполнит анкету о доме и вернёт вам ссылку с готовыми данными для расчёта.
             </div>
         </div>

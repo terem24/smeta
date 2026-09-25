@@ -2315,8 +2315,10 @@ body.menu-open .mobile-menu-backdrop {
     margin-top: 4px;
 }
 
-/* Пояснение к разделу для клиента: как подобрано и как работает. В отличие от
-   плашек (.note-box) печатается в КП — hide-warns-print его не трогает. */
+/* Пояснение к разделу: как подобрано и как работает — подсказка монтажнику или
+   продавцу во время подбора. В печать и PDF не идёт (правило в @media print ниже);
+   в ссылку и КП клиента не попадает и так — buildSharedEquipment берёт структурные
+   поля позиций, а не HTML экрана. */
 .sec-explain {
     display: block;
     margin-top: 6px;
@@ -2746,14 +2748,11 @@ body.html2pdf-printing .note-box .note-tip .tooltip-content b { color: inherit !
     .print-hide,
     .hc-cookie-banner,
     .inv-table tr.works-detail,
-    tr.works-detail {
-        display: none !important;
-    }
-
+    tr.works-detail,
+    /* «Как подобрано / Как работает» — подсказка для монтажника или продавца во
+       время подбора, не для клиента: в печать и PDF не идёт (25.09.2026). */
     .sec-explain {
-        background: #f3f3f3 !important;
-        border-left-color: #000 !important;
-        color: #000 !important;
+        display: none !important;
     }
 
     .doc-footer {
