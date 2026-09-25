@@ -108,10 +108,23 @@ def main():
             published += 1
             continue
 
-        subprocess.check_call([sys.executable, os.path.join(ROOT, 'tools', 'build_article.py'),
-                               slug, '--publish'])
-        subprocess.check_call([sys.executable, os.path.join(ROOT, 'tools', 'check_article.py'),
-                               slug, '--published'])
+        # Сборка и проверка — без check_call. Упавшая статья не должна ронять
+        # весь прогон: иначе одна кривая статья встаёт поперёк очереди, и
+        # публикации прекращаются насовсем — каждый следующий день скрипт
+        # упирается в неё же. Вместо этого статью пропускаем, недособранную
+        # страницу убираем, и очередь идёт дальше. Разбираться с ней можно
+        # потом, а сайт тем временем продолжает выходить.
+        built = os.path.join(ROOT, slug)
+        rc = subprocess.call([sys.executable, os.path.join(ROOT, 'tools', 'build_article.py'),
+                              slug, '--publish'])
+        if rc == 0:
+            rc = subprocess.call([sys.executable, os.path.join(ROOT, 'tools', 'check_article.py'),
+                                  slug, '--published'])
+        if rc != 0:
+            print('! %s не прошла проверку — пропускаю, очередь идёт дальше' % slug)
+            if os.path.isdir(built):
+                rmtree(built)
+            continue
 
         qdir = os.path.join(ROOT, 'queue', slug)
         if os.path.isdir(qdir):

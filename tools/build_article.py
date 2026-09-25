@@ -169,10 +169,22 @@ def related_links(meta, schedule, art):
     mine = by_slug.get(meta['slug'], {})
     picked, seen = [], {meta['slug']}
     mydate = mine.get('date') or ''
+
+    def written(s):
+        """Статья написана — значит, её страница к своей дате появится.
+
+        Ссылаться только на написанные. Раньше проверка по дате считала, что
+        любая статья с более ранней датой к моменту публикации будет на месте.
+        Это верно, пока план выполняется целиком; стоит одной статье остаться
+        ненаписанной — и все ссылки на неё превращаются в 404 навсегда, причём
+        на уже опубликованных страницах, которые никто не пересобирает.
+        """
+        return os.path.isfile(os.path.join(ROOT, 'content', 'articles', '%s.json' % s))
     for s in art.get('related', []):
         # Заданные вручную соседи проходят ту же проверку по дате, что и подобранные
         # автоматически: статья, которая выйдет позже, на момент публикации — 404.
-        if s in by_slug and s not in seen and (by_slug[s]['date'] or '9999') < mydate:
+        if (s in by_slug and s not in seen and written(s)
+                and (by_slug[s]['date'] or '9999') < mydate):
             picked.append(by_slug[s]); seen.add(s)
     same = [i for i in schedule['items']
             if i['cluster_key'] == mine.get('cluster_key') and i['slug'] not in seen]
@@ -180,7 +192,7 @@ def related_links(meta, schedule, art):
     for i in same:
         if len(picked) >= 4:
             break
-        if (i['date'] or '') < (mine.get('date') or ''):
+        if (i['date'] or '') < (mine.get('date') or '') and written(i['slug']):
             picked.append(i); seen.add(i['slug'])
     # Всегда добавляем опорные страницы калькулятора — они опубликованы давно
     fixed = [('/smeta/', 'что входит в смету на отопление'),
