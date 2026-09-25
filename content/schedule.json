@@ -1145,10 +1145,10 @@
    "freq": 4300,
    "audience": "owner",
    "data_block": "наш покомнатный расчёт",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-06",
    "published_at": null,
-   "words": 0
+   "words": 635
   },
   {
    "slug": "diametr-trub-otopleniya",
@@ -1327,10 +1327,10 @@
    "freq": 3600,
    "audience": "owner",
    "data_block": "состав из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-06",
    "published_at": null,
-   "words": 0
+   "words": 707
   },
   {
    "slug": "gofrotruba-nerzhaveyka",
@@ -1495,10 +1495,10 @@
    "freq": 2900,
    "audience": "pro",
    "data_block": "пересчёт теплоотдачи",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-03",
    "published_at": null,
-   "words": 0
+   "words": 674
   },
   {
    "slug": "teploizolyatsiya-trub",
