@@ -165,22 +165,117 @@ const RecognizeProject = {
         };
     },
 
-    /** Что с листов инженерных систем относится к помещению — для примечаний. */
+    /**
+     * Примечания к помещению. Сами тёплый пол, приборы и сантехника видны и
+     * правятся в строке под помещением (engRow), здесь — только то, что
+     * требует внимания.
+     */
     rowNotes(r) {
         const e = r.eng;
-        if (!e) return [];
+        if (!e || !e.heatSheet) return [];
         const out = [];
-        if (e.heatSheet) {
-            if (e.ufh) out.push(`тёплый пол${e.ufhArea ? ` ${this.fmt(e.ufhArea)} м²` : ''} (лист ${e.heatSheet})` +
-                (e.ufhArea && r.area > 0 && e.ufhArea < r.area * 0.9 ? ' — в расчёте ляжет на всю комнату' : ''));
-            if (e.heaters) out.push(`${this.HEATER_NAMES[e.heaterType] || 'прибор'}: ${e.heaters}`);
-            if (!e.ufh && !e.heaters) out.push(`на листе ${e.heatSheet} отопления нет — поставлен радиатор, проверьте`);
+        if (e.ufh && e.ufhArea && r.area > 0 && e.ufhArea < r.area * 0.9) {
+            out.push(`тёплый пол по листу ${this.fmt(e.ufhArea)} м² — в расчёте ляжет на всю комнату`);
         }
-        if (e.fix) {
-            out.push('сантехника: ' + this.FIX_KEYS.filter(k => e.fix[k])
-                .map(k => this.FIX_NAMES[k] + (e.fix[k] > 1 ? ` ×${e.fix[k]}` : '')).join(', '));
-        }
+        if (!e.ufh && !e.heaters) out.push(`на листе ${e.heatSheet} отопления нет — в расчёте будет радиатор`);
         return out;
+    },
+
+    // ------------------------------------------------------------------
+    // Правка на экране проверки
+    //
+    // Модель привязывает приборы к комнатам по картинке и может ошибиться
+    // комнатой. Поправить это после переноса можно и в калькуляторе, но там
+    // сантехника живёт отдельно от комнат, и связь «этот унитаз — из этого
+    // санузла» уже потеряна. Поэтому правим здесь, пока всё рядом с планом.
+    // ------------------------------------------------------------------
+
+    FIX_SHORT: {
+        toilet: 'унитаз', basin: 'раковина', bath: 'ванна', shower: 'душ',
+        bidet: 'биде', wash: 'стиральная', dish: 'посудомоечная',
+    },
+
+    /** Какие листы прочитаны — от этого зависит, что показывать в строке. */
+    sheetsRead(rows) {
+        return {
+            heat: rows.some(r => r.eng && r.eng.heatSheet),
+            water: rows.some(r => r.eng && r.eng.waterSheet),
+        };
+    },
+
+    /** Строка правки под помещением. n — индекс строки в RecognizePlan._rows. */
+    engRow(r, n, read, cols) {
+        if (!r.eng || (!read.heat && !read.water)) return '';
+        const e = r.eng;
+        const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const on = `RecognizePlan.setEng(${n}`;
+        const numIn = (field, val, w, step) =>
+            `<input class="rec-f" type="number" min="0" step="${step || 1}" value="${val ? esc(val) : ''}" placeholder="0"
+                    style="width:${w}px;padding:2px 4px" onchange="${on},'${field}',this.value)">`;
+        const parts = [];
+        if (read.heat) {
+            parts.push(`<label style="white-space:nowrap"><input type="checkbox" ${e.ufh ? 'checked' : ''}
+                    onchange="${on},'ufh',this.checked)"> тёплый пол</label>
+                ${e.ufh ? `${numIn('ufhArea', e.ufhArea, 64, 0.01)} м²` : ''}`);
+            const typeOpt = (v) => `<option value="${v}" ${(e.heaterType || 'radiator') === v ? 'selected' : ''}>${this.HEATER_NAMES[v]}</option>`;
+            parts.push(`<span style="white-space:nowrap">приборов ${numIn('heaters', e.heaters, 44)}
+                ${e.heaters ? `<select class="rec-f" style="width:auto;padding:2px 4px" onchange="${on},'heaterType',this.value)">
+                    ${typeOpt('floor_convector')}${typeOpt('wall_convector')}${typeOpt('radiator')}</select>` : ''}</span>`);
+        }
+        if (read.water) {
+            const f = e.fix || {};
+            parts.push(this.FIX_KEYS.map(k => `<span style="white-space:nowrap">${this.FIX_SHORT[k]} ${numIn('fix.' + k, f[k], 40)}</span>`).join(' '));
+        }
+        return `<tr class="rec-plan-eng"><td></td><td colspan="${cols - 1}" style="padding-top:0">
+            <div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--text-sec,#64748b)">
+              ${parts.join('')}</div></td></tr>`;
+    },
+
+    /** Правка из строки под помещением. */
+    setEng(r, field, val) {
+        const e = r.eng || (r.eng = {});
+        if (field === 'ufh') {
+            e.ufh = !!val;
+            if (!e.ufh) e.ufhArea = null;
+        } else if (field === 'ufhArea') {
+            const a = this.num(val);
+            e.ufhArea = a > 0 ? Math.round(a * 100) / 100 : null;
+            if (e.ufhArea) e.ufh = true;
+        } else if (field === 'heaters') {
+            e.heaters = this.cnt(val);
+            if (e.heaters && !e.heaterType) e.heaterType = 'radiator';
+        } else if (field === 'heaterType') {
+            e.heaterType = this.HEATER_NAMES[val] ? val : 'radiator';
+        } else if (field.startsWith('fix.')) {
+            const k = field.slice(4);
+            if (!this.FIX_KEYS.includes(k)) return;
+            const f = Object.assign({}, ...this.FIX_KEYS.map(x => ({ [x]: 0 })), e.fix || {});
+            f[k] = this.cnt(val);
+            e.fix = this.FIX_KEYS.some(x => f[x]) ? f : null;
+        }
+    },
+
+    /** Что пойдёт в расчёт с отмеченных помещений — пересчитывается при правке. */
+    totals(chosen) {
+        const read = this.sheetsRead(chosen);
+        const out = [];
+        if (read.heat) {
+            const ufh = chosen.filter(r => r.eng && r.eng.ufh);
+            const ufhArea = ufh.reduce((s, r) => s + (r.area > 0 ? r.area : 0), 0);
+            const heaters = chosen.reduce((s, r) => s + ((r.eng && r.eng.heaters) || 0), 0);
+            out.push(`тёплый пол в ${ufh.length} ${RecognizeUI.plural(ufh.length, 'помещении', 'помещениях', 'помещениях')}` +
+                (ufh.length ? ` (${this.fmt(ufhArea)} м² по площади комнат)` : '') + `, приборов отопления ${heaters}`);
+        }
+        if (read.water) {
+            const tot = {};
+            chosen.forEach(r => { if (r.eng && r.eng.fix) this.FIX_KEYS.forEach(k => { tot[k] = (tot[k] || 0) + r.eng.fix[k]; }); });
+            const zones = chosen.filter(r => r.eng && r.eng.fix).length;
+            const parts = this.FIX_KEYS.filter(k => tot[k]).map(k => `${this.FIX_NAMES[k]} — ${tot[k]}`);
+            out.push(zones ? `водоснабжение: ${zones} ${RecognizeUI.plural(zones, 'помещение', 'помещения', 'помещений')} с приборами (${parts.join(', ')})`
+                : 'сантехники в отмеченных помещениях нет');
+        }
+        if (this.towel) out.push(`полотенцесушителей ${this.towel.count}`);
+        return out.length ? 'В расчёт пойдёт: ' + out.join('; ') + '.' : '';
     },
 
     /**
@@ -232,9 +327,30 @@ const RecognizeProject = {
     /** Полотенцесушители с листа отопления. */
     applyTowel(st) {
         if (!this.towel) return false;
+        // countTouched — отметка «число задано, а не посчитано»: без неё
+        // app.getTowelWarmer вернёт счёт в автомат (по одному на санузел).
         st.towelWarmer = Object.assign({}, st.towelWarmer || {},
-            { enabled: true, type: this.towel.type, count: this.towel.count });
+            { enabled: true, type: this.towel.type, count: this.towel.count, countTouched: true });
         return true;
+    },
+
+    /**
+     * Площадь тёплого пола на ползунках быстрого режима — по комнатам с листа.
+     *
+     * Включение подробного режима (app.toggleDetailedRooms) раскладывает
+     * площадь с ползунков tp1/tp2 по комнатам через applyTpAreaToRooms. Там
+     * стоял 0 — и тёплый пол, только что расставленный по листу отопления,
+     * снимался со всех комнат, а комната с одним тёплым полом оставалась
+     * вовсе без отопления. Совпадающая площадь раскладку не трогает.
+     */
+    syncUfhSliders(st) {
+        if (!(st.rooms || []).some(r => r.sys && r.sys.includes('tp'))) return;
+        const sum = f => st.rooms
+            .filter(r => (f === 2 ? r.floor === 2 : r.floor !== 2) && r.sys && r.sys.includes('tp'))
+            .reduce((s, r) => s + (parseFloat(r.area) || 0), 0);
+        st.tp1 = sum(1);
+        st.tp2 = sum(2);
+        if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
     },
 
     reset() { this.towel = null; },

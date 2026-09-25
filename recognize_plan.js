@@ -594,6 +594,11 @@ const RecognizePlan = {
                 '«Этаж в расчёте» в шапке листа.';
         }
 
+        // Листы инженерных систем из комплекта проекта: под каждым помещением
+        // строка правки тёплого пола, приборов и сантехники.
+        const engRead = (typeof RecognizeProject !== 'undefined' && (this._engSummary || []).length)
+            ? RecognizeProject.sheetsRead(this._rows) : null;
+
         const floorOpt = (v, cur) => `<option value="${v}" ${cur === v ? 'selected' : ''}>${v}-й</option>`;
         const outerOpt = (v, t, cur) => `<option value="${v}" ${String(cur ?? '') === String(v) ? 'selected' : ''}>${t}</option>`;
 
@@ -654,7 +659,7 @@ const RecognizePlan = {
                       </select></td>
                   <td class="rec-plan-notes">${notes.map(t => `<div>${esc(t)}</div>`).join('')}</td>
                   <td class="rec-acts"><button onclick="RecognizePlan.del(${n})" title="Убрать строку">✕</button></td>
-                </tr>`;
+                </tr>${engRead ? RecognizeProject.engRow(r, n, engRead, 10) : ''}`;
             }).join('');
 
             return head + trs;
@@ -689,8 +694,9 @@ const RecognizePlan = {
               <div class="rec-tcheck-ico">🔧</div>
               <div><div>С листов инженерных систем</div>
                 ${this._engSummary.map(t => `<div class="rec-tcheck-sub">${esc(t)}</div>`).join('')}
-                <div class="rec-tcheck-sub">При переносе тёплый пол и приборы встанут в комнаты,
-                  сантехника — в «Водоснабжение» по помещениям. Что к какой комнате отнесено — в примечаниях.</div></div>
+                <div class="rec-tcheck-sub"><b>${esc(RecognizeProject.totals(chosen))}</b></div>
+                <div class="rec-tcheck-sub">Что к какой комнате отнесено — в строке под помещением, там же и поправить.
+                  При переносе тёплый пол и приборы встанут в комнаты, сантехника — в «Водоснабжение» по помещениям.</div></div>
             </div>` : ''}
           <div class="rec-toolbar">
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(true)">Отметить все</button>
@@ -771,6 +777,14 @@ const RecognizePlan = {
             r.ownFloor = false;
             this.markStacked();
         }
+        this.renderReview();
+    },
+
+    /** Тёплый пол, приборы, сантехника — из строки под помещением. */
+    setEng(i, field, val) {
+        const r = this._rows[i];
+        if (!r || typeof RecognizeProject === 'undefined') return;
+        RecognizeProject.setEng(r, field, val);
         this.renderReview();
     },
 
@@ -933,6 +947,7 @@ const RecognizePlan = {
         if (typeof RecognizeProject !== 'undefined') {
             waterZones = RecognizeProject.applyWater(st, chosen);
             towel = RecognizeProject.applyTowel(st);
+            if (chosen.some(r => r.eng && r.eng.heatSheet)) RecognizeProject.syncUfhSliders(st);
         }
 
         if (!st.detailedRooms) {
