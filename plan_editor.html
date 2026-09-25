@@ -1880,6 +1880,9 @@ function autoScale(silent) {
     // иначе совет «заполните комнаты» выглядит единственным выходом.
     var pre = (PDF_DIMS[cur] && PDF_DIMS[cur].length)
       ? 'С размерных линий чертежа масштаб снять не вышло. ' : '';
+    // Масштаб придётся задавать руками — значит, кнопка «Масштаб» должна
+    // быть на виду, а не за «Все инструменты».
+    if (!silent) heroOff = true;
     if (!silent) hint(pre + (tg.length < 2
       ? 'Подбирать масштаб не по чему: в подробном расчёте нет комнат ' + (cur + 1) +
         '-го этажа' + (tg.length ? ' (нашлась только одна)' : '') + '. Нужны хотя бы две ' +
@@ -2035,6 +2038,7 @@ function autoMarkAll() {
     return saveAll();      // сохранение считает трассы, подводки и контуры стен
   }).then(function () {
     var done = zones + rads + colls;
+    if (bad.length) heroOff = true;   // что-то осталось руками — открываем шапку
     hint((done
       ? '<span class=ok>Разметка готова и сохранена.</span> Зон: ' + zones +
         ', радиаторов: ' + rads + (colls ? ', коллекторов ТП: ' + colls : '') + '. '
@@ -3795,8 +3799,10 @@ function toggleZoneMore() { zoneMore = !zoneMore; updateGuide(); }
  * Дальше шапка живёт по шагам, как раньше. Выход из обоих режимов — кнопка
  * «Все инструменты» или любой шаг в полоске.
  */
+var heroOff = false;     // автоматика споткнулась — шапка нужна целиком
+
 function heroMode() {
-  if (allTools || curStep) return null;
+  if (allTools || curStep || heroOff) return null;
   var f = F();
   if (!f || !f.img) return 'empty';
   return (!f.pxPerM && !(f.zones || []).length && !(f.rads || []).length) ? 'auto' : null;
