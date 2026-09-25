@@ -787,9 +787,19 @@ const RecognizeFiles = {
             // мебели, например. Такой лист тоже годится для помещений.
             const expl = usable ? lines.find(s => s.length <= 90 && /^экспликац/i.test(s)) : null;
             if (expl && !kind) kind = 'plan';
-            pages.push({ num: i, title, kind, expl: !!expl,
+            pages.push({ num: i, title, kind, lines, expl: !!expl,
                 explBefore: !!expl && /до\s*перепланировк/i.test(expl) });
         }
+
+        // Строки штампа повторяются на каждом листе: адрес, разработчики,
+        // контакты. В подсказку модели они не нужны — считаем их по частоте.
+        const freq = new Map();
+        pages.forEach(p => new Set(p.lines).forEach(s => freq.set(s, (freq.get(s) || 0) + 1)));
+        const stamp = new Set([...freq].filter(([, n]) => n > pages.length / 2).map(([s]) => s));
+        pages.forEach(p => {
+            p.text = p.kind ? this.sheetText(p.lines, stamp) : '';
+            delete p.lines;
+        });
 
         const titled = pages.filter(p => p.title).length;
         const found = pages.filter(p => p.kind);
@@ -813,6 +823,28 @@ const RecognizeFiles = {
         return { pages, rooms, found, visual, other: pdf.numPages - found.length - visual };
     },
 
+    /**
+     * Текст листа для подсказки модели: без штампа и без размерных цепочек
+     * («1 250», «h=1 000» — их на плане сотни, и смысла в них для разбора
+     * нет). Остаются подписи площадей, марки приборов, спецификации. Число
+     * с дробной частью («121,95») — это площадь из спецификации, его
+     * оставляем: размеры на чертеже целые, в миллиметрах.
+     */
+    SHEET_TEXT_MAX: 4000,
+    sheetText(lines, stamp) {
+        const out = lines.filter(s => !stamp.has(s) &&
+            !/^([hHнН]\s*=\s*)?\d{1,3}(\s\d{3})*$/.test(s) && s.length > 1);
+        return out.join('\n').slice(0, this.SHEET_TEXT_MAX);
+    },
+
+    /**
+     * Листы инженерных систем, которые читаются вслед за помещениями:
+     * по листу на систему и этаж — больше двух одного вида в частном доме
+     * не бывает, а каждый лист стоит запроса.
+     */
+    ENG_KINDS: ['heat', 'water'],
+    ENG_PER_KIND: 2,
+
     /** Короткая подпись листа: «62 «План теплых полов и отопления»». */
     sheetLabel(p) {
         return `${p.num} «${p.title.replace(/[«»"]/g, '')}»`;
@@ -824,6 +856,20 @@ const RecognizeFiles = {
             const p = set.rooms[k];
             if (onProgress) onProgress(`готовлю лист ${p.num} (${k + 1} из ${set.rooms.length})`);
             images.push(await this.renderPage(await pdf.getPage(p.num)));
+        }
+
+        // Листы отопления и сантехники — картинкой и текстом. Их читают уже
+        // после помещений, когда есть список комнат, к которым всё привязать.
+        const inRoomsSet = new Set(set.rooms.map(p => p.num));
+        set.eng = [];
+        for (const kind of this.ENG_KINDS) {
+            const list = set.found.filter(p => p.kind === kind && !inRoomsSet.has(p.num))
+                .slice(0, this.ENG_PER_KIND);
+            for (const p of list) {
+                if (onProgress) onProgress(`готовлю лист ${p.num}`);
+                set.eng.push({ kind, num: p.num, title: p.title, text: p.text,
+                    img: await this.renderPage(await pdf.getPage(p.num)) });
+            }
         }
 
         const inRooms = new Set(set.rooms.map(p => p.num));
@@ -841,6 +887,8 @@ const RecognizeFiles = {
             `Помещения читаю с ${set.rooms.length > 1 ? 'листов' : 'листа'} ${
                 set.rooms.map(p => this.sheetLabel(p)).join(', ')}.`,
             rest.length ? `Найдены также листы: ${rest.join('; ')}.` : '',
+            set.eng.length ? `С ${set.eng.map(e => e.num).join(', ')} после помещений ` +
+                'прочитаю тёплые полы, приборы отопления и сантехнику по комнатам.' : '',
             skipped ? `Пропущено: ${skipped}.` : '',
         ].filter(Boolean).join(' ');
 

@@ -50,6 +50,10 @@ const RecognizePlan = {
         this._busy = false;
         this._busyText = '';
         this._addNote = '';
+        this._engSummary = [];
+        // Полотенцесушители прошлого проекта не должны доехать до
+        // следующего плана, у которого листа отопления нет вовсе.
+        if (typeof RecognizeProject !== 'undefined') RecognizeProject.reset();
     },
 
     /** Ответ модели — про план, а не про смету. */
@@ -432,6 +436,7 @@ const RecognizePlan = {
         this._sheets = res.sheets || [];
         this._rows = res.rows || [];
         this._warning = (res.warnings || []).join(' · ');
+        this._engSummary = res.engSummary || [];
         this.arrangeFloors();
         RecognizeUI.progressStop();
         RecognizeUI.step(2);
@@ -459,6 +464,7 @@ const RecognizePlan = {
         if (r.windows === null) notes.push('окна не разобраны — поставлено 1');
         if (r.confidence < 0.5 && r.area > 0 && r.areaSrc !== 'estimate') notes.push('прочитано неуверенно');
         if (r.note) notes.push(r.note);
+        if (r.eng && typeof RecognizeProject !== 'undefined') notes.push(...RecognizeProject.rowNotes(r));
         return notes;
     },
 
@@ -678,6 +684,14 @@ const RecognizePlan = {
             <div class="rec-tcheck-ico">${sumIco}</div>
             <div><div>${sumText}</div><div class="rec-tcheck-sub">${sumSub}</div></div>
           </div>
+          ${(this._engSummary || []).length ? `
+            <div class="rec-tcheck ok">
+              <div class="rec-tcheck-ico">🔧</div>
+              <div><div>С листов инженерных систем</div>
+                ${this._engSummary.map(t => `<div class="rec-tcheck-sub">${esc(t)}</div>`).join('')}
+                <div class="rec-tcheck-sub">При переносе тёплый пол и приборы встанут в комнаты,
+                  сантехника — в «Водоснабжение» по помещениям. Что к какой комнате отнесено — в примечаниях.</div></div>
+            </div>` : ''}
           <div class="rec-toolbar">
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(true)">Отметить все</button>
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(false)">Снять все</button>
@@ -823,6 +837,8 @@ const RecognizePlan = {
         // грунту, а по тёплому — иначе оно получит лишние потери (см. markStacked).
         if (r.warmBelow) room.warmBelow = true;
         if (r.warmAbove) room.warmAbove = true;
+        // Лист отопления из комплекта проекта: системы и приборы — как там.
+        if (r.eng && typeof RecognizeProject !== 'undefined') RecognizeProject.fitRoom(room, r);
         return room;
     },
 
@@ -884,6 +900,7 @@ const RecognizePlan = {
             detailedRooms: st.detailedRooms, area: st.area, tp1: st.tp1, tp2: st.tp2,
             win: st.win, systems: st.systems || [], ufhZones: st.ufhZones,
             showDetailedRoomsPanel: st.showDetailedRoomsPanel,
+            water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null,
         }));
 
         const base = Date.now();
@@ -909,6 +926,15 @@ const RecognizePlan = {
         // сгенерировало бы шаблонные комнаты поверх наших.
         st.area = Math.round(total * 10) / 10;
 
+        // Сантехника и полотенцесушители с листов проекта. Зоны водоснабжения
+        // заменяются целиком: в проекте перечислены все приборы дома, и
+        // шаблонные «Санузел 1», «Санузел 2» рядом с ними были бы лишними.
+        let waterZones = 0, towel = false;
+        if (typeof RecognizeProject !== 'undefined') {
+            waterZones = RecognizeProject.applyWater(st, chosen);
+            towel = RecognizeProject.applyTowel(st);
+        }
+
         if (!st.detailedRooms) {
             app.toggleDetailedRooms(true);
             if (!st.detailedRooms) {
@@ -931,6 +957,7 @@ const RecognizePlan = {
 
         app.syncRoomsToState();
         if (typeof app.autoCalcZones === 'function') app.autoCalcZones();
+        if (waterZones && typeof app.renderZonesUI === 'function') app.renderZonesUI();
         app.syncUI();
         app.render();
         if (typeof app.saveState === 'function') app.saveState();
@@ -967,6 +994,8 @@ const RecognizePlan = {
         parts.push(`Площадь по комнатам: ${this.fmt(st.area)} м²`);
         const hs = this._undo && (this._undo.h1 !== st.h1 || this._undo.h2 !== st.h2);
         if (hs) parts.push(`Высота потолка взята с плана: ${st.h1}${st.floors === 2 ? ' / ' + st.h2 : ''} м`);
+        if (waterZones) parts.push(`Водоснабжение включено, приборы по помещениям: ${waterZones}`);
+        if (towel) parts.push(`Полотенцесушители: ${st.towelWarmer.count}`);
         app.alert(parts.join('\n') +
             '\n\nПроверьте окна и системы отопления в карточках комнат. ' +
             'Вернуть комнаты как было — кнопка «↶ Вернуть комнаты» во вкладке распознавания.' + planNote);
@@ -997,6 +1026,11 @@ const RecognizePlan = {
         st.area = u.area; st.tp1 = u.tp1; st.tp2 = u.tp2; st.win = u.win;
         st.systems = u.systems; st.ufhZones = u.ufhZones;
         st.showDetailedRoomsPanel = u.showDetailedRoomsPanel;
+        if ('water' in u) {
+            st.water = u.water; st.waterZones = u.waterZones;
+            if (u.towelWarmer) st.towelWarmer = u.towelWarmer;
+            if (typeof app.renderZonesUI === 'function') app.renderZonesUI();
+        }
         this._undo = null;
         const chkD = document.getElementById('chk_detailed_rooms');
         if (chkD) chkD.checked = !!st.detailedRooms;

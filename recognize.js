@@ -1795,6 +1795,17 @@ const RecognizeUI = {
         this.progressTo(1);
         RecognizePlan.reset();
         const res = await RecognizePlan.run(imgs, imgs.map(b => this.imgNameOf(b)));
+
+        // Комплект листов проекта: к помещениям — тёплые полы, приборы и
+        // сантехника с листов инженерных систем.
+        const eng = this._project && this._project.eng;
+        if (eng && eng.length && typeof RecognizeProject !== 'undefined' && res.rows.length) {
+            this.progressTo(2);
+            RecognizeProject.reset();
+            const e = await RecognizeProject.read(res.rows, this._project, (t) => this.setStatus(t));
+            res.engSummary = e.summary;
+            res.warnings = (res.warnings || []).concat(e.warnings);
+        }
         this.progressTo(2);
         RecognizePlan.startReview(res);
     },
