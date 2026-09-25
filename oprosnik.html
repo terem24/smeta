@@ -84,9 +84,14 @@
     .note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
     .req { color: var(--req); }
     .value-note { background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--primary-dark); line-height: 1.5; margin-bottom: 16px; }
-    .installer-note { font-size: 12.5px; color: var(--text-sec); margin: 2px 0 10px; }
-    .installer-note b { color: var(--text); font-weight: 700; }
-    .installer-note a { color: var(--primary); text-decoration: none; }
+    /* Инфо-блок в стиле «Предложение подготовил / Телефон / Город» на бланке КП
+       (invoice.html) — та же идея карточки с подписью-капслоком над значением,
+       чтобы анкета выглядела частью того же продукта, а не отдельной формой. */
+    .letterhead-rule { height: 3px; background: var(--primary); border-radius: 2px; margin: 14px 0 18px; opacity: .8; }
+    .installer-box { display: flex; gap: 18px; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; }
+    .installer-box .f-label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-sec); margin-bottom: 3px; }
+    .installer-box .f-value { font-size: 14px; font-weight: 700; color: var(--text); }
+    .installer-box a.f-value { color: var(--primary); text-decoration: none; }
     .ok-copied { color: #16A34A; font-size: 13px; font-weight: 600; display: none; margin-top: 6px; }
 </style>
 </head>
@@ -99,8 +104,9 @@
         </div></div>
         <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()"></button>
     </div>
+    <div class="letterhead-rule"></div>
     <h1>Опросник для расчёта отопления</h1>
-    <div class="installer-note" id="installerNote" style="display:none;"></div>
+    <div class="installer-box" id="installerNote" style="display:none;"></div>
     <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
         точный расчёт системы отопления. Заполнение займёт 3–5 минут. Поля со звёздочкой
         <span class="req">*</span> обязательны — без них даже быстрый расчёт в калькуляторе
@@ -393,15 +399,19 @@
             .then(function (rows) {
                 var row = rows && rows[0];
                 if (!row || (!row.name && !row.phone)) return;
-                var html = 'Опросник от монтажника';
-                if (row.name) html += ' <b>' + row.name.replace(/[<>]/g, '') + '</b>';
+                var cells = '';
+                if (row.name) {
+                    cells += '<div><span class="f-label">Монтажник</span><span class="f-value">' +
+                        row.name.replace(/[<>]/g, '') + '</span></div>';
+                }
                 if (row.phone) {
                     var telHref = 'tel:' + row.phone.replace(/[^\d+]/g, '');
-                    html += ' · <a href="' + telHref + '">' + row.phone.replace(/[<>]/g, '') + '</a>';
+                    cells += '<div><span class="f-label">Телефон</span><a class="f-value" href="' + telHref + '">' +
+                        row.phone.replace(/[<>]/g, '') + '</a></div>';
                 }
                 var el = document.getElementById('installerNote');
-                el.innerHTML = html;
-                el.style.display = 'block';
+                el.innerHTML = cells;
+                el.style.display = 'flex';
             })
             .catch(function () { /* нет контактов — не беда, анкета всё равно заполняется */ });
     }
