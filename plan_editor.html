@@ -3916,11 +3916,14 @@ function applyBar(step) {
       return;
     }
     var show = !need || need.indexOf(id) >= 0;
+    var rare = hidRare(id);
     // Ненужное на шаге не прячем: кнопка остаётся на месте и нажимается, но
     // гаснет. Пряталась — и вся шапка на каждом шаге перестраивалась,
-    // соседние кнопки уезжали из-под курсора.
-    el.style.display = (show && hidRare(id)) ? 'none' : '';
-    el.classList.toggle('dim', !show && !hidRare(id));
+    // соседние кнопки уезжали из-под курсора. Исключение — рамка и контур:
+    // они уходят под «Иначе» на любом шаге, иначе на зону по-прежнему
+    // приходится три кнопки в шапке.
+    el.style.display = rare ? 'none' : '';
+    el.classList.toggle('dim', !show && !rare);
   });
   var am = document.getElementById('b_automark');
   if (am) am.style.display = (hero === 'empty') ? 'none' : '';
