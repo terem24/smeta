@@ -10,6 +10,9 @@ User-agent: *
 Allow: /
 Disallow: /scratch/
 Disallow: /bench/
+# Очередь статей: страницы лежат на сайте, чтобы их можно было прочитать
+# до публикации, но в поиск попадают только в свой день (см. publish-queue.yml).
+Disallow: /queue/
 Disallow: /models/
 Disallow: /vendor/
 Disallow: /supabase/
@@ -23,6 +26,9 @@ User-agent: Yandex
 Allow: /
 Disallow: /scratch/
 Disallow: /bench/
+# Очередь статей: страницы лежат на сайте, чтобы их можно было прочитать
+# до публикации, но в поиск попадают только в свой день (см. publish-queue.yml).
+Disallow: /queue/
 Disallow: /models/
 Disallow: /vendor/
 Disallow: /supabase/

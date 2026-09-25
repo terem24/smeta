@@ -1,0 +1,80 @@
+# Автопубликация статей по расписанию.
+#
+# Зачем. Статьи на год вперёд написаны заранее и лежат в очереди. Задача владельца
+# была прямой: чтобы сайт продвигался сам, даже если он к нему не подходит и не
+# продлевает подписку на ИИ. Здесь этого и добиваемся — раз в сутки скрипт смотрит
+# content/schedule.json, берёт созревшую статью и выкладывает её.
+#
+# Что происходит при публикации (tools/publish_due.py):
+#   1. статья пересобирается из content/articles/<slug>.json уже с индексацией;
+#   2. проверяется (tools/check_article.py): микроразметка против видимого текста,
+#      баланс тегов, ссылки, объём. Не прошла — не публикуется, ждёт;
+#   3. копия из queue/ убирается, адрес дописывается в sitemap.xml и llms.txt;
+#   4. в расписании проставляется published и дата.
+#
+# Дальше само: коммит меняет sitemap.xml, и срабатывает indexnow.yml — Яндекс
+# и Bing узнают об адресе в тот же час.
+#
+# Ритм — вторник, четверг, суббота, но запуск ежедневный: cron у GitHub может
+# задержаться на часы, а иногда и пропустить запуск, поэтому скрипт смотрит не
+# «сегодня вторник?», а «чей день уже настал и ещё не опубликовано». За один
+# прогон выходит не больше одной статьи: если workflow неделю не работал,
+# он догоняет по штуке в день, а не вываливает семь разом — пачка публикаций
+# выглядит как свалка контента, за которую наказывают весь домен.
+#
+# Запустить вручную можно кнопкой Run workflow (или с dry_run, чтобы посмотреть,
+# что было бы сделано).
+
+name: Публикация статей по расписанию
+
+on:
+  schedule:
+    - cron: '0 6 * * *'      # 09:00 по Москве
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Только показать, что было бы опубликовано'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-queue
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Что созрело
+        run: python tools/publish_due.py --dry-run
+
+      - name: Публикация
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: python tools/publish_due.py
+
+      - name: Коммит
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "публиковать было нечего — коммитить нечего"
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Стейджим поимённо: в репозитории параллельно работают люди и другие
+          # workflow, git add -A забрал бы чужое.
+          git add content/schedule.json sitemap.xml llms.txt
+          git add -- '*/index.html'
+          git add -u -- queue
+          SLUG=$(python -c "import json,io;d=json.load(io.open('content/schedule.json',encoding='utf-8'));p=[i for i in d['items'] if i.get('published_at')];print(p[-1]['slug'] if p else 'статья')")
+          git commit -m "Публикация по расписанию: $SLUG"
+          git push
