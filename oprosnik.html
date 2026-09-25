@@ -122,6 +122,8 @@
         <h2>Дом</h2>
         <label class="f">Город строительства <span class="req">*</span></label>
         <input type="text" id="f_city" placeholder="Екатеринбург" required>
+        <label class="f">Точный адрес (улица, дом) — для доставки оборудования, необязательно</label>
+        <input type="text" id="f_address" placeholder="Например: ул. Садовая, 14">
         <div class="row2">
             <div><label class="f">Площадь дома, м² <span class="req">*</span></label><input type="number" id="f_area" min="20" max="2000" placeholder="120" required></div>
             <div><label class="f">Этажей <span class="req">*</span></label>
@@ -467,7 +469,7 @@
         var form = document.getElementById('oprosForm');
         if (!form.reportValidity()) return;
         var d = {
-            name: val('f_name'), phone: val('f_phone'), city: val('f_city'),
+            name: val('f_name'), phone: val('f_phone'), city: val('f_city'), address: val('f_address'),
             area: parseFloat(val('f_area')) || 0,
             floors: parseInt(val('f_floors'), 10) || 1,
             people: parseInt(val('f_people'), 10) || 0,

@@ -1463,10 +1463,12 @@ const app = {
             if (myId) url += '?m=' + myId;
         } catch (e) { }
         const done = () => {
-            if (!el) return;
-            const old = el.innerText;
-            el.innerText = '✓ Ссылка скопирована';
-            setTimeout(() => { el.innerText = old; }, 2000);
+            if (el) {
+                const old = el.innerText;
+                el.innerText = '✓ Ссылка скопирована';
+                setTimeout(() => { el.innerText = old; }, 2000);
+            }
+            this.showInAppNotification('Скопировано', 'Ссылка на опросник в буфере обмена', '🔗');
         };
         try {
             if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -1584,7 +1586,7 @@ const app = {
     oprosSummaryText: function (d) {
         const L = [];
         const put = (label, v) => { if (v) L.push(label + ': ' + String(v).slice(0, 500)); };
-        put('Имя', d.name); put('Телефон', d.phone); put('Город', d.city);
+        put('Имя', d.name); put('Телефон', d.phone); put('Город', d.city); put('Адрес', d.address);
         put('Площадь дома', d.area ? d.area + ' м²' : '');
         put('Этажей', d.floors);
         put('Жителей', d.people);
