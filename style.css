@@ -10097,8 +10097,37 @@ body.dark-mode .cw-achieve.earned {
     background-position: 30px 30px, 0 0;
 }
 
+/* Пад занимает лист так же, как строка-заглушка таблицы в «Оборудовании»: во всю
+   ширину и во всю свободную высоту. Раньше он был ровно по своему тексту — на
+   «Деньгах» крапинка шла узкой полосой сверху, а под ней начиналась чистая
+   панель, и вкладка выглядела иначе, чем первые две. */
 .empty-state-pad {
     border-radius: 14px;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 320px;
+}
+
+/* Вкладки без таблицы («3. Распознавание», «4. Деньги») — колонки во всю высоту
+   листа. Показывает их setViewMode, снимая инлайновый display: значение берётся
+   отсюда, потому что display:block отменил бы колонку. */
+#panel_recognize,
+#panel_money {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* Содержимое «Денег» (app.renderMoneyPanel) — во всю ширину листа, как таблица
+   сметы на первых двух вкладках. */
+.money-wrap {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 body.dark-mode .empty-state-row td,
@@ -11499,11 +11528,14 @@ body.rec-sel-mode .inv-table .col-idx {
 /* Распознавание живёт вкладкой рядом с «1. Оборудование» и «2. Монтажные
    работы», а не модальным окном: так оно занимает всю ширину сметы и
    таблице проверки не нужна горизонтальная прокрутка. */
+/* Рамки у панели нет: вкладка — часть того же листа, что «Оборудование» и
+   «Монтажные работы». Карточка внутри листа делала из неё окно в окне, и всё
+   содержимое — заглушка загрузки, таблица проверки — жалось к середине. */
 .rec-panel {
-    background: var(--surface, #fff);
-    border: 1px solid var(--border, #e2e8f0);
-    border-radius: 12px;
-    overflow: hidden;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
 }
 
 /* Окно поиска по каталогу остаётся модальным — оно короткое.
@@ -11518,7 +11550,7 @@ body.rec-sel-mode .inv-table .col-idx {
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
-    padding: 16px 18px 12px;
+    padding: 2px 0 12px;
     border-bottom: 1px solid var(--border, #e2e8f0);
 }
 
@@ -11531,7 +11563,16 @@ body.rec-sel-mode .inv-table .col-idx {
 .rec-step.on { color: var(--primary, #0284c7); font-weight: 700; }
 
 
-.rec-body { padding: 16px 18px 18px; overflow-y: auto; }
+/* Своих полей у тела панели больше нет — поля даёт сам лист сметы, как таблице
+   на первых двух вкладках. Колонка нужна, чтобы заглушка загрузки тянулась на
+   всю оставшуюся высоту. */
+.rec-body {
+    padding: 14px 0 0;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
 
 /* Отступы и центровку внутри даёт .empty-state-hint — та же заглушка, что
    в пустой смете, поэтому у самой зоны паддинга нет. Подсветка при наводке задана
@@ -11849,7 +11890,7 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 .rec-hit:hover { background: var(--surface-light, #f1f5f9); }
 
 @media (max-width: 700px) {
-    .rec-body { padding: 12px; }
+    .rec-body { padding: 12px 0 0; }
     .rec-table { font-size: 11.5px; }
     .rec-steps { gap: 9px; font-size: 11.5px; }
 }
