@@ -948,7 +948,7 @@ const RecognizePlan = {
             detailedRooms: st.detailedRooms, area: st.area, tp1: st.tp1, tp2: st.tp2,
             win: st.win, systems: st.systems || [], ufhZones: st.ufhZones,
             showDetailedRoomsPanel: st.showDetailedRoomsPanel,
-            water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null,
+            water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null, hotWater: st.hotWater,
             ventilationEnabled: st.ventilationEnabled, ventilationType: st.ventilationType,
             projectReqs: st.projectReqs || null,
             selectedCity: st.selectedCity || null, region: st.region,
@@ -1090,6 +1090,7 @@ const RecognizePlan = {
             st.ventilationEnabled = u.ventilationEnabled; st.ventilationType = u.ventilationType;
             if (u.projectReqs) st.projectReqs = u.projectReqs; else delete st.projectReqs;
             st.selectedCity = u.selectedCity; st.region = u.region;
+            st.hotWater = u.hotWater;
             if (typeof app.renderZonesUI === 'function') app.renderZonesUI();
         }
         this._undo = null;

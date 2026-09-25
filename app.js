@@ -60027,8 +60027,21 @@ const app = {
             if (z.fixtures[type] === undefined) z.fixtures[type] = 0;
             z.fixtures[type] += delta;
             if (z.fixtures[type] < 0) z.fixtures[type] = 0;
+            // «Из них с биде» — часть унитазов, больше их быть не может.
+            if (type === 'toiletHot' && z.fixtures.toiletHot > (z.fixtures.toilet || 0)) z.fixtures.toiletHot = z.fixtures.toilet || 0;
+            if (type === 'toilet' && (z.fixtures.toiletHot || 0) > z.fixtures.toilet) z.fixtures.toiletHot = z.fixtures.toilet;
         }
         this.renderZonesUI(); this.render();
+    },
+    /**
+     * Унитазы с функцией биде (гигиенический смеситель или унитаз-биде вроде
+     * Flaminia Goclean): к инсталляции подводится и горячая вода. Холодная у
+     * них уже посчитана в toilet, отдельного слива нет — прибавляется только
+     * точка ГВС. Не больше, чем унитазов в зоне.
+     */
+    toiletHotOf: function (f) {
+        if (!f) return 0;
+        return Math.max(0, Math.min(parseInt(f.toiletHot) || 0, parseInt(f.toilet) || 0));
     },
     updZoneDist: function (id, val) {
         let z = this.state.waterZones.find(x => x.id === id);
@@ -60039,7 +60052,7 @@ const app = {
         const container = document.getElementById('zones_list');
         if (!container) return;
         container.innerHTML = "";
-        const labels = { basin: "🚰 Раковина", shower: "🚿 Душ", bath: "🛁 Ванна", toilet: "🚽 Унитаз", bidet: "🚻 Биде", wash: "🧺 Стиралка", dish: "🍽️ ПММ" };
+        const labels = { basin: "🚰 Раковина", shower: "🚿 Душ", bath: "🛁 Ванна", toilet: "🚽 Унитаз", toiletHot: "🚽 из них с биде (ГВС)", bidet: "🚻 Биде", wash: "🧺 Стиралка", dish: "🍽️ ПММ", drain: "🕳️ Трап в полу" };
         this.state.waterZones.forEach((z, idx) => {
             let itemsHtml = "";
             for (let [key, name] of Object.entries(labels)) {
@@ -71077,7 +71090,10 @@ const app = {
                 let f = z.fixtures;
                 totalToilets += f.toilet;
                 let cw_only = f.toilet + f.wash + f.dish;
-                let mix = f.basin + f.shower + (f.bath || 0) + (f.bidet || 0); // биде — как раковина (ХВС+ГВС)
+                // биде — как раковина (ХВС+ГВС); унитаз с функцией биде (toiletHot) —
+                // холодная у него уже в toilet, прибавляется только горячая
+                let mix = f.basin + f.shower + (f.bath || 0) + (f.bidet || 0) + this.toiletHotOf(f);
+                cw_only -= this.toiletHotOf(f);
                 let zoneCold = cw_only + mix;
                 let zoneHot = mix;
                 this._waterHotFixtures += zoneHot;
@@ -71105,8 +71121,9 @@ const app = {
                 let cold = 0, hot = 0;
                 g.zones.forEach(z => {
                     const f = z.fixtures || {};
-                    const mix = (f.basin || 0) + (f.shower || 0) + (f.bath || 0) + (f.bidet || 0);
-                    cold += (f.toilet || 0) + (f.wash || 0) + (f.dish || 0) + mix;
+                    const th = this.toiletHotOf(f);
+                    const mix = (f.basin || 0) + (f.shower || 0) + (f.bath || 0) + (f.bidet || 0) + th;
+                    cold += (f.toilet || 0) - th + (f.wash || 0) + (f.dish || 0) + mix;
                     if (recirc) { if (mix > 0) hot++; } else hot += mix;
                 });
                 return { cold: cold, hot: hot };
@@ -71263,7 +71280,7 @@ const app = {
                     }
                 }
                 let totalMixers = 0;
-                this.state.waterZones.forEach(z => totalMixers += (z.fixtures.basin + z.fixtures.shower + (z.fixtures.bath || 0) + (z.fixtures.bidet || 0)));
+                this.state.waterZones.forEach(z => totalMixers += (z.fixtures.basin + z.fixtures.shower + (z.fixtures.bath || 0) + (z.fixtures.bidet || 0) + this.toiletHotOf(z.fixtures)));
                 if (totalMixers > 0) {
                     // #10: проточного настенного угольника в пресс-линейке STOUT нет (SFA-0039/0040 —
                     // только аксиальные). Поэтому у металлопластика с рециркуляцией точка собирается
@@ -71371,10 +71388,12 @@ const app = {
             let tToilet = 0, tWash = 0, tDish = 0, tBasin = 0, tBath = 0, tShower = 0;
             this.state.waterZones.forEach(z => {
                 if (z && z.fixtures) {
-                    tToilet += (z.fixtures.toilet || 0);
+                    // унитаз-биде — две водорозетки (ХВС+ГВС) на двойной планке, как раковина
+                    const _th = this.toiletHotOf(z.fixtures);
+                    tToilet += (z.fixtures.toilet || 0) - _th;
                     tWash += (z.fixtures.wash || 0);
                     tDish += (z.fixtures.dish || 0);
-                    tBasin += (z.fixtures.basin || 0) + (z.fixtures.bidet || 0); // биде — двойная водорозетка 100мм, как раковина
+                    tBasin += (z.fixtures.basin || 0) + (z.fixtures.bidet || 0) + _th; // биде — двойная водорозетка 100мм, как раковина
                     tBath += (z.fixtures.bath || 0);
                     tShower += (z.fixtures.shower || 0);
                 }
@@ -72188,6 +72207,13 @@ const app = {
                     if (_rev110) addToBill(_rev110, _revQty, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Прочистка стояка без разборки. Ставится на первом и последнем этажах — так указано на листе «К» проекта.<br><b>Количество:</b> ${_revQty} шт. (этажей: ${floors}).</span>`, grpSewerMain);
                     const _aer110 = catalog.sewer_silent.find(x => x.id === "NO.1.110");
                     if (_aer110) addToBill(_aer110, 1, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Вентиляция стояка: пропускает воздух внутрь при сливе, чтобы не срывало гидрозатворы, и не выпускает запах. Ставится на верх стояка вместо вентвыпуска выше кровли (лист «К» проекта). Если стояк выводится на кровлю, аэратор из сметы уберите.</span>`, grpSewerMain);
+
+                    // Трапы в полу (душ без поддона, «подвод канализации для душевого
+                    // трапа» в проекте). Отвод D50 от трапа уже в ветке душа — здесь
+                    // только сам трап. В каталоге один — боковой D50 с решёткой 100×100.
+                    const _drains = this.state.waterZones.reduce((a, z) => a + (parseInt(z.fixtures && z.fixtures.drain) || 0), 0);
+                    const _drainItem = (catalog.extra_items || []).find(x => x.id === "10.В.050.R.M.B");
+                    if (_drains > 0 && _drainItem) addToBill(_drainItem, _drains, `<span style="font-size:11px;line-height:1.4;"><b>Зачем:</b> Трап в полу душевой без поддона — по зонам водоснабжения (${_drains} шт.). Регулируемый по высоте, выход D50 вбок — под стяжку. Линейный трап или трап другого сечения подберите заменой.</span>`, grpSewerMain);
 
                     // Добавление крепежной системы для канализации (Раздел 6)
                     // Хомуты — по тем же длинам, по каким нарезаны трубы (с плана или по норме)

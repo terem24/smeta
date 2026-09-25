@@ -18,11 +18,13 @@
 
 const RecognizeProject = {
 
-    FIX_KEYS: ['toilet', 'basin', 'bath', 'shower', 'bidet', 'wash', 'dish'],
+    FIX_KEYS: ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'drain', 'bidet', 'wash', 'dish'],
     FIX_NAMES: {
-        toilet: 'унитаз', basin: 'раковина', bath: 'ванна', shower: 'душ',
-        bidet: 'биде', wash: 'стиральная машина', dish: 'посудомоечная машина',
+        toilet: 'унитаз', toiletHot: 'из них унитаз-биде (ГВС)', basin: 'раковина', bath: 'ванна', shower: 'душ',
+        drain: 'трап', bidet: 'биде', wash: 'стиральная машина', dish: 'посудомоечная машина',
     },
+    // Приборы с горячей водой — по ним включается бойлер.
+    HOT_KEYS: ['toiletHot', 'basin', 'bath', 'shower', 'bidet'],
     HEATER_NAMES: {
         floor_convector: 'конвектор в полу',
         wall_convector: 'настенный конвектор',
@@ -697,6 +699,12 @@ const RecognizeProject = {
             // Кухонная мойка в «Водоснабжении» — та же раковина (смеситель на
             // горячую и холодную), только в зоне «Кухня».
             f.basin += this.cnt(x.kitchenSink);
+            // Станция робота-пылесоса — холодная вода и слив, как у посудомойки:
+            // отдельного прибора в расчёте нет, считаем её посудомоечной.
+            const robot = this.cnt(x.robot);
+            f.dish += robot;
+            if (robot) r.eng.robot = robot;
+            f.toiletHot = Math.min(f.toiletHot, f.toilet);
             if (!this.FIX_KEYS.some(k => f[k])) return;
             r.eng.fix = f;
             this.FIX_KEYS.forEach(k => { tot[k] = (tot[k] || 0) + f[k]; });
@@ -718,6 +726,7 @@ const RecognizeProject = {
         const e = r.eng;
         if (!e) return [];
         const out = this.winNotes(r);
+        if (e.robot && e.fix) out.push('вывод для робота-пылесоса учтён как посудомоечная (ХВС и слив)');
         if (!e.heatSheet) return out;
         if (e.ufh && e.ufhArea && r.area > 0 && e.ufhArea > r.area) {
             out.push(`зона тёплого пола больше комнаты — в расчёт пойдёт ${this.fmt(r.area)} м²`);
@@ -739,8 +748,8 @@ const RecognizeProject = {
     // ------------------------------------------------------------------
 
     FIX_SHORT: {
-        toilet: 'унитаз', basin: 'раковина', bath: 'ванна', shower: 'душ',
-        bidet: 'биде', wash: 'стиральная', dish: 'посудомоечная',
+        toilet: 'унитаз', toiletHot: 'унитаз-биде (ГВС)', basin: 'раковина', bath: 'ванна', shower: 'душ',
+        drain: 'трап', bidet: 'биде', wash: 'стиральная', dish: 'посудомоечная',
     },
 
     /** Какие листы прочитаны — от этого зависит, что показывать в строке. */
@@ -751,31 +760,49 @@ const RecognizeProject = {
         };
     },
 
-    /** Строка правки под помещением. n — индекс строки в RecognizePlan._rows. */
+    /**
+     * Строка правки под помещением. n — индекс строки в RecognizePlan._rows.
+     *
+     * Только то, что в помещении есть, — «пилюлями» с числом и крестиком;
+     * чего нет — кнопкой «+ …». Прежняя строка выводила все девять счётчиков
+     * сантехники нулями в каждой комнате, и под коридором стояло «унитаз 0
+     * раковина 0 ванна 0…» в две строки.
+     */
     engRow(r, n, read, cols) {
         if (!r.eng || (!read.heat && !read.water)) return '';
         const e = r.eng;
         const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const on = `RecognizePlan.setEng(${n}`;
-        const numIn = (field, val, w, step) =>
-            `<input class="rec-f" type="number" min="0" step="${step || 1}" value="${val ? esc(val) : ''}" placeholder="0"
-                    style="width:${w}px;padding:2px 4px" onchange="${on},'${field}',this.value)">`;
+        const pill = 'display:inline-flex;align-items:center;gap:4px;padding:1px 4px 1px 9px;border:1px solid var(--border,#cbd5e1);border-radius:999px;white-space:nowrap;background:var(--surface,transparent)';
+        const ghost = 'padding:2px 9px;border:1px dashed var(--border,#cbd5e1);border-radius:999px;background:none;color:inherit;font:inherit;cursor:pointer;white-space:nowrap';
+        const num = (field, val, w, step) =>
+            `<input type="number" min="0" step="${step || 1}" value="${val ? esc(val) : ''}" placeholder="0"
+                    style="width:${w}px;border:0;background:transparent;color:var(--text-main,inherit);font:inherit;font-weight:600;text-align:right;padding:0"
+                    onchange="${on},'${field}',this.value)">`;
+        const x = (field, val) => `<button type="button" title="Убрать" style="border:0;background:none;color:inherit;cursor:pointer;padding:0 4px;font-size:13px;line-height:1"
+                    onclick="${on},'${field}',${val})">×</button>`;
         const parts = [];
         if (read.heat) {
-            parts.push(`<label style="white-space:nowrap"><input type="checkbox" ${e.ufh ? 'checked' : ''}
-                    onchange="${on},'ufh',this.checked)"> тёплый пол</label>
-                ${e.ufh ? `${numIn('ufhArea', e.ufhArea, 64, 0.01)} м²` : ''}`);
+            parts.push(e.ufh
+                ? `<span style="${pill}">♨️ тёплый пол ${num('ufhArea', e.ufhArea, 50, 0.01)} м²${x('ufh', 'false')}</span>`
+                : `<button type="button" style="${ghost}" onclick="${on},'ufh',true)">+ тёплый пол</button>`);
             const typeOpt = (v) => `<option value="${v}" ${(e.heaterType || 'radiator') === v ? 'selected' : ''}>${this.HEATER_NAMES[v]}</option>`;
-            parts.push(`<span style="white-space:nowrap">приборов ${numIn('heaters', e.heaters, 44)}
-                ${e.heaters ? `<select class="rec-f" style="width:auto;padding:2px 4px" onchange="${on},'heaterType',this.value)">
-                    ${typeOpt('floor_convector')}${typeOpt('wall_convector')}${typeOpt('radiator')}</select>` : ''}</span>`);
+            parts.push(e.heaters
+                ? `<span style="${pill}">🔥 ${num('heaters', e.heaters, 26)}
+                     <select style="border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer" onchange="${on},'heaterType',this.value)">
+                       ${typeOpt('floor_convector')}${typeOpt('wall_convector')}${typeOpt('radiator')}</select>${x('heaters', 0)}</span>`
+                : `<button type="button" style="${ghost}" onclick="${on},'heaters',1)">+ прибор</button>`);
         }
         if (read.water) {
             const f = e.fix || {};
-            parts.push(this.FIX_KEYS.map(k => `<span style="white-space:nowrap">${this.FIX_SHORT[k]} ${numIn('fix.' + k, f[k], 40)}</span>`).join(' '));
+            const have = this.FIX_KEYS.filter(k => f[k] > 0);
+            have.forEach(k => parts.push(`<span style="${pill}">${this.FIX_SHORT[k]} ${num('fix.' + k, f[k], 24)}${x('fix.' + k, 0)}</span>`));
+            const rest = this.FIX_KEYS.filter(k => !(f[k] > 0));
+            if (rest.length) parts.push(`<select style="${ghost}" onchange="if(this.value){${on},'fix.'+this.value,1)}">
+                <option value="">+ сантехника</option>${rest.map(k => `<option value="${k}">${this.FIX_SHORT[k]}</option>`).join('')}</select>`);
         }
-        return `<tr class="rec-plan-eng"><td></td><td colspan="${cols - 1}" style="padding-top:0">
-            <div style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:12px;color:var(--text-sec,#64748b)">
+        return `<tr class="rec-plan-eng"><td></td><td colspan="${cols - 1}" style="padding:0 6px 6px">
+            <div style="display:flex;flex-wrap:wrap;gap:5px 6px;align-items:center;font-size:12px;color:var(--text-sec,#64748b)">
               ${parts.join('')}</div></td></tr>`;
     },
 
@@ -801,6 +828,9 @@ const RecognizeProject = {
             if (!this.FIX_KEYS.includes(k)) return;
             const f = Object.assign({}, ...this.FIX_KEYS.map(x => ({ [x]: 0 })), e.fix || {});
             f[k] = this.cnt(val);
+            // Унитаз-биде — часть унитазов: добавили его — добавился и унитаз.
+            if (k === 'toiletHot' && f.toiletHot > f.toilet) f.toilet = f.toiletHot;
+            if (k === 'toilet' && f.toiletHot > f.toilet) f.toiletHot = f.toilet;
             e.fix = this.FIX_KEYS.some(x => f[x]) ? f : null;
         }
     },
@@ -895,6 +925,10 @@ const RecognizeProject = {
             fixtures: Object.assign({}, r.eng.fix),
         }));
         st.water = true;
+        // Есть приборы с горячей водой — нужен водонагреватель. В КП по
+        // «Хвойной 3» разводка ГВС была, а бойлера не было: тумблер стоял
+        // выключенным.
+        if (withFix.some(r => this.HOT_KEYS.some(k => r.eng.fix[k] > 0))) st.hotWater = true;
         return withFix.length;
     },
 
@@ -956,9 +990,12 @@ ufhTotal — итог тёплого пола из спецификации ли
 - kitchenSink — кухонная мойка;
 - bath — ванна;
 - shower — душ: душевая система, душевой трап, поддон; одна душевая = 1, даже если у неё и трап, и смеситель, и лейка;
+- drain — трап в полу (душ без поддона: «подвод канализации для душевого трапа», трап на плане); одна душевая с трапом = 1;
+- toiletHot — сколько из унитазов этого помещения требуют и горячую воду: «вывод ГВС/ХВС для инсталляции и унитаза-биде», унитаз с функцией биде со смесителем; toiletHot не больше toilet;
 - wash — стиральная машина;
-- dish — посудомоечная машина.
-Выводы для робота-пылесоса, кофемашины, холодильника, кондиционера — не считай.
+- dish — посудомоечная машина;
+- robot — станция робота-пылесоса с водой и сливом («вывод ХВС и канализации для робота-пылесоса»).
+Выводы для кофемашины, холодильника, кондиционера — не считай.
 Прибор, помещение которого не удаётся определить, — опиши в unclear.
 
 === vent — вентиляция и кондиционирование ===
@@ -982,7 +1019,7 @@ heat:
           {"n":4,"name":"Кладовая","ufh":true,"ufhArea":null,"ufhApprox":2.5,"heaters":0}],
  "towelRails":{"count":1,"type":"electric"},"ufhTotal":121.95,"unclear":[]}
 water:
-{"rooms":[{"n":5,"name":"Мастер-санузел","toilet":1,"bidet":0,"basin":1,"kitchenSink":0,"bath":1,"shower":1,"wash":0,"dish":0}],
+{"rooms":[{"n":5,"name":"Мастер-санузел","toilet":1,"toiletHot":0,"bidet":0,"basin":1,"kitchenSink":0,"bath":1,"shower":1,"drain":0,"wash":0,"dish":0,"robot":0}],
  "unclear":[]}
 vent:
 {"system":"natural","evidence":"вытяжные вентиляторы в санузлах, приток через оконные клапаны","conditioners":0,"unclear":[]}
