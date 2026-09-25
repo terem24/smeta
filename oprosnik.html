@@ -525,9 +525,12 @@
     function checkPhone() {
         var raw = phoneEl.value.trim();
         var d = raw.replace(/\D/g, '');
+        // Одинаковые цифры ищем в самом номере, без кода страны: у «+7 999 999-99-99»
+        // первая цифра семёрка, и проверка по всей строке такой номер пропускала
+        var body = ruMask(raw) ? d.slice(1) : d;
         var msg = '';
         if (!d) msg = 'Оставьте телефон — по нему монтажник позвонит с расчётом';
-        else if (/^(\d)\1+$/.test(d)) msg = 'Проверьте номер: в нём все цифры одинаковые';
+        else if (body.length > 5 && /^(\d)\1+$/.test(body)) msg = 'Проверьте номер: в нём все цифры одинаковые';
         else if (ruMask(raw) && d.length !== 11) msg = 'В номере 11 цифр: +7 и десять цифр номера';
         else if (!ruMask(raw) && d.length < 10) msg = 'Похоже, номер неполный — проверьте его';
         phoneEl.setCustomValidity(msg);

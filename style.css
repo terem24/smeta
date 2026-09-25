@@ -11162,7 +11162,9 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
         gap: 6px;
-        padding: 0 0 10px;
+        /* сверху место под крестик закрытия окна: он абсолютный в правом верхнем
+           углу и без отступа ложится прямо на четвёртую ячейку первого ряда */
+        padding: 28px 0 10px;
         border-right: none;
         border-bottom: 1px solid var(--border);
         overflow: visible;
@@ -11209,6 +11211,14 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
         background: transparent;
         border-radius: 10px;
         font-size: 13px;
+    }
+}
+
+/* Планшет стоймя: в четыре колонки ячейка растягивается почти до 190 px под
+   иконку в 18 px и выглядит пустой — там же помещаются шесть */
+@media screen and (min-width: 600px) and (max-width: 1024px) and (orientation: portrait) {
+    .lk-nav {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
     }
 }
 
