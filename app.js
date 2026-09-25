@@ -72564,11 +72564,22 @@ const app = {
                                background: transparent; color: var(--primary); cursor: pointer;">
                         <span style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
+            // Опросник для заказчика — именно на пустом экране: данных нет,
+            // и взять их проще всего у самого клиента (см. oprosnik.html и
+            // applyOprosFromUrl). Показывается по тому же правилу, что и
+            // остальные подсказки пустой сметы (onboardingAllowed), и только
+            // дому: квартирный расчёт опросник не спрашивает.
+            const oprosLine = (_onboardOk && !_flatEmpty) ? `
+                    <div class="no-print" style="margin-top: 14px; font-size: 12px; color: var(--text-sec); line-height: 1.45; max-width: 420px;">
+                        📋 Нет данных от заказчика? <span onclick="app.copyOprosnikLink(this)"
+                            style="color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline;">Скопируйте ссылку на опросник</span> —
+                        отправьте её клиенту, он заполнит анкету о доме и вернёт вам ссылку с готовыми данными для расчёта.
+                    </div>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">
                     <span class="empty-state-icon">${_emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>` : ''}${qsBtn}
+                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>` : ''}${qsBtn}${oprosLine}
                 </div>
             </td></tr>`;
             sum = 0;
