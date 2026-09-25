@@ -935,10 +935,10 @@
    "freq": 2697,
    "audience": "owner",
    "data_block": "теплосъём по покрытию",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-02",
    "published_at": null,
-   "words": 0
+   "words": 536
   },
   {
    "slug": "dymohod-koaksialnyy-ili-razdelnyy",
@@ -1117,10 +1117,10 @@
    "freq": 2400,
    "audience": "owner",
    "data_block": "ограничение по температуре пола",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-01",
    "published_at": null,
-   "words": 0
+   "words": 589
   },
   {
    "slug": "gidrostrelka",
@@ -2027,10 +2027,10 @@
    "freq": 1600,
    "audience": "builder",
    "data_block": "сроки и толщина",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-31",
    "published_at": null,
-   "words": 0
+   "words": 631
   },
   {
    "slug": "obvyazka-kotla",
@@ -2167,10 +2167,10 @@
    "freq": 1400,
    "audience": "owner",
    "data_block": "температуры помещений ГОСТ",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-23",
    "published_at": null,
-   "words": 0
+   "words": 564
   },
   {
    "slug": "kotel-na-szhizhennom-gaze",
@@ -2251,10 +2251,10 @@
    "freq": 1100,
    "audience": "builder",
    "data_block": "настильные системы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-07",
    "published_at": null,
-   "words": 0
+   "words": 579
   },
   {
    "slug": "kaskad-kotlov",
@@ -2307,10 +2307,10 @@
    "freq": 800,
    "audience": "owner",
    "data_block": "доля площади из расчёта",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-16",
    "published_at": null,
-   "words": 0
+   "words": 552
   },
   {
    "slug": "oshibki-teplogo-pola",
