@@ -23,7 +23,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
     :root {
-        --primary: #2563EB; --primary-dark: #1D4ED8; --primary-light: #EFF6FF; --primary-border: #BFDBFE;
+        --primary: #2563EB; --primary-dark: #1D4ED8; --primary-light: #EFF6FF;
         --text: #111827; --text-sec: #6B7280;
         --border: #E5E7EB; --surface: #fff; --surface-light: #F9FAFB; --bg: #F3F4F6;
         --req: #DC2626;
@@ -35,7 +35,7 @@
        вручную поверх времени. Индиго вместо синего в тёмном — тот же акцент,
        что в body.dark-mode style.css. */
     body.theme-dark {
-        --primary: #6366F1; --primary-dark: #818CF8; --primary-light: rgba(99, 102, 241, 0.15); --primary-border: rgba(99, 102, 241, 0.35);
+        --primary: #6366F1; --primary-dark: #818CF8; --primary-light: rgba(99, 102, 241, 0.15);
         --text: #F3F4F6; --text-sec: #9CA3AF;
         --border: #2A2A2A; --surface: #121212; --surface-light: #1E1E1E; --bg: #000;
         --req: #F87171;
@@ -83,7 +83,6 @@
     .share-row .tg { background: #229ED9; border-color: #229ED9; color: #fff; }
     .note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
     .req { color: var(--req); }
-    .value-note { background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--primary-dark); line-height: 1.5; margin-bottom: 16px; }
     /* Инфо-блок в стиле «Предложение подготовил / Телефон / Город» на бланке КП
        (invoice.html) — та же идея карточки с подписью-капслоком над значением,
        чтобы анкета выглядела частью того же продукта, а не отдельной формой. */
@@ -107,13 +106,8 @@
     <div class="letterhead-rule"></div>
     <h1>Опросник для расчёта отопления</h1>
     <div class="installer-box" id="installerNote" style="display:none;"></div>
-    <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
-        точный расчёт системы отопления. Заполнение займёт 3–5 минут. Поля со звёздочкой
-        <span class="req">*</span> обязательны — без них даже быстрый расчёт в калькуляторе
-        не запустится.</div>
-    <div class="value-note">Зачем это заполнять: чем точнее данные, тем точнее смета и цена
-        с первого раза — монтажник приедет на объект подготовленным, без лишних созвонов
-        и уточнений задним числом.</div>
+    <div class="sub">3–5 минут — чем точнее данные, тем точнее смета и меньше созвонов потом.
+        Поля со звёздочкой <span class="req">*</span> обязательны.</div>
     <form id="oprosForm" onsubmit="return false;">
 
     <div class="card">
@@ -538,9 +532,7 @@
     // и подгружаем имя/телефон монтажника для шапки (loadInstallerContact)
     if (installerCode) {
         document.querySelector('.sub').textContent =
-            'Ответьте на вопросы о вашем доме — анкета отправится вашему монтажнику ' +
-            'автоматически, и он подготовит точный расчёт системы отопления. ' +
-            'Заполнение займёт 3–5 минут.';
+            '3–5 минут — анкета уйдёт монтажнику сама, пересылать ничего не нужно.';
         loadInstallerContact();
     }
 
