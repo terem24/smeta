@@ -11,9 +11,9 @@
    "freq": 2001,
    "audience": "owner",
    "data_block": "расценки и расчёт",
-   "status": "queued",
-   "date": "2026-09-29",
-   "published_at": null,
+   "status": "published",
+   "date": "2026-09-25",
+   "published_at": "2026-09-25",
    "words": 819
   },
   {

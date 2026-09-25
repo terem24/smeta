@@ -116,6 +116,7 @@
 - [Все города: расчётные температуры и тарифы](https://heatcalc.ru/goroda/)
 - [Пользовательское соглашение](https://heatcalc.ru/oferta.html)
 - [Поддержка в Telegram](https://t.me/heatcalc)
+- [Монтаж тёплого пола в СПб и Ленобласти: цена за м²](https://heatcalc.ru/montazh-teplogo-pola-spb/) — монтаж теплого пола спб
 
 ## Примечания для моделей
 
