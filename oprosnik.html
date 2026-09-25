@@ -28,18 +28,20 @@
         --border: #E5E7EB; --surface: #fff; --surface-light: #F9FAFB; --bg: #F3F4F6;
         --req: #DC2626;
     }
-    /* Автопереключение по системной теме устройства — так же, как «авто» в самом
-       калькуляторе решает светло/темно, только без гео/заката: страница разовая,
-       открывается по ссылке от монтажника, тянуть на неё ipapi.co ни к чему.
-       Индиго вместо синего в тёмном — тот же акцент, что в body.dark-mode style.css. */
-    @media (prefers-color-scheme: dark) {
-        :root {
-            --primary: #6366F1; --primary-dark: #818CF8; --primary-light: rgba(99, 102, 241, 0.15); --primary-border: rgba(99, 102, 241, 0.35);
-            --text: #F3F4F6; --text-sec: #9CA3AF;
-            --border: #2A2A2A; --surface: #121212; --surface-light: #1E1E1E; --bg: #000;
-            --req: #F87171;
-        }
+    /* Автопереключение по часам — как «авто» в самом калькуляторе без гео/заката
+       (страница разовая, открывается по ссылке от монтажника, тянуть на неё
+       ipapi.co ни к чему): с 20:00 до 7:00 тёмная, иначе светлая. Класс на body
+       ставит applyTheme() — не медиазапрос, чтобы кнопкой можно было переключить
+       вручную поверх времени. Индиго вместо синего в тёмном — тот же акцент,
+       что в body.dark-mode style.css. */
+    body.theme-dark {
+        --primary: #6366F1; --primary-dark: #818CF8; --primary-light: rgba(99, 102, 241, 0.15); --primary-border: rgba(99, 102, 241, 0.35);
+        --text: #F3F4F6; --text-sec: #9CA3AF;
+        --border: #2A2A2A; --surface: #121212; --surface-light: #1E1E1E; --bg: #000;
+        --req: #F87171;
     }
+    .top-row { display: flex; align-items: center; justify-content: space-between; }
+    .theme-toggle { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 14px; flex-shrink: 0; }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); }
     .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
@@ -87,10 +89,13 @@
 </head>
 <body>
 <div class="wrap">
-    <div class="logo-row"><div class="mark">🔥</div><div>
-        <div class="name">HeatCalc<span class="ru">.ru</span></div>
-        <div class="tagline">Калькулятор отопления</div>
-    </div></div>
+    <div class="top-row">
+        <div class="logo-row"><div class="mark">🔥</div><div>
+            <div class="name">HeatCalc<span class="ru">.ru</span></div>
+            <div class="tagline">Калькулятор отопления</div>
+        </div></div>
+        <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()"></button>
+    </div>
     <h1>Опросник для расчёта отопления</h1>
     <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
         точный расчёт системы отопления. Заполнение займёт 3–5 минут. Поля со звёздочкой
@@ -228,6 +233,36 @@
 </div>
 
 <script>
+    // Тема: авто по часам (с 20:00 до 7:00 тёмная — то же правило, что в калькуляторе
+    // без геопозиции), плюс ручной выбор кнопкой поверх времени. Выбор запоминается
+    // в localStorage браузера — только этого устройства, ссылка каждый раз новая.
+    var THEME_KEY = 'oprosnik_theme';
+    function isDarkByTime() {
+        var h = new Date().getHours();
+        return h >= 20 || h < 7;
+    }
+    function themeOverride() {
+        try { return localStorage.getItem(THEME_KEY); } catch (e) { return null; }
+    }
+    function effectiveDark() {
+        var ov = themeOverride();
+        return ov ? ov === 'dark' : isDarkByTime();
+    }
+    function applyTheme() {
+        var dark = effectiveDark();
+        document.body.classList.toggle('theme-dark', dark);
+        var btn = document.getElementById('themeToggle');
+        if (btn) {
+            btn.textContent = dark ? '☀️' : '🌙';
+            btn.title = dark ? 'Включить дневную тему' : 'Включить ночную тему';
+        }
+    }
+    function toggleTheme() {
+        try { localStorage.setItem(THEME_KEY, effectiveDark() ? 'light' : 'dark'); } catch (e) { }
+        applyTheme();
+    }
+    applyTheme();
+
     // Те же id и названия, что в WALL_MATERIALS_DB / ROOF_MATERIALS_DB / FLOOR_MATERIALS_DB /
     // GLAZING_DB (catalog.js) — калькулятор ищет пришедшие значения именно по id. Полный
     // catalog.js (~750 КБ, весь товарный каталог) сюда не тащим, страница для заказчика
