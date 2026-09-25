@@ -51,6 +51,7 @@ const RecognizePlan = {
         this._busyText = '';
         this._addNote = '';
         this._engSummary = [];
+        this._resUse = true;
         // Полотенцесушители прошлого проекта не должны доехать до
         // следующего плана, у которого листа отопления нет вовсе.
         if (typeof RecognizeProject !== 'undefined') RecognizeProject.reset();
@@ -699,6 +700,7 @@ const RecognizePlan = {
                 <div class="rec-tcheck-sub">Что к какой комнате отнесено — в строке под помещением, там же и поправить.
                   При переносе тёплый пол и приборы встанут в комнаты, сантехника — в «Водоснабжение» по помещениям.</div></div>
             </div>` : ''}
+          ${this.resLine()}
           ${typeof RecognizeProject !== 'undefined' && RecognizeProject.city ? `
             <div class="rec-tcheck ok"><div class="rec-tcheck-ico">📍</div>
               <div style="flex:1">${RecognizeProject.cityLine()}</div></div>` : ''}
@@ -786,6 +788,87 @@ const RecognizePlan = {
             this.markStacked();
         }
         this.renderReview();
+    },
+
+    // ------------------------------------------------------------------
+    // Проживающие по спальням
+    //
+    // От числа проживающих (state.res) зависят объём бойлера и расход ГВС
+    // (app.dhwTankPlan, dhwDesignFlow). С плана он не переносился, и КП по
+    // «Хвойной 3» ушло с «Проживающих: 0» и бойлером на 100 л при ванне и
+    // двух душах. Оценка по практике: в самой большой спальне двое, в каждой
+    // следующей спальне и детской — по одному. Гостиная, кабинет, гардеробная
+    // — не спальни.
+    // ------------------------------------------------------------------
+
+    BEDROOM_RE: /спальн|детск/i,
+    _resUse: true,
+
+    residentsFromRows(rows) {
+        const beds = rows.filter(r => r._sel && this.BEDROOM_RE.test(r.name || '') && !/гардероб/i.test(r.name || ''))
+            .sort((a, b) => (b.area || 0) - (a.area || 0));
+        if (!beds.length) return null;
+        const parts = beds.map((r, k) => ({ name: r.name, n: k === 0 ? 2 : 1 }));
+        const n = Math.min(10, parts.reduce((a, p) => a + p.n, 0));
+        return { n, parts };
+    },
+
+    setResUse(v) { this._resUse = !!v; this.renderReview(); },
+
+    /**
+     * Проверка числа проживающих по водоразборным приборам — теми же
+     * формулами, что подберут бойлер в смете (app.dhwTankPlan: большее из
+     * «по людям» и «по пиковому разбору приборов»; app.dhwDesignFlow — расход
+     * по СП 30.13330.2020). Считаем на временном состоянии: сантехника с
+     * листа проекта ещё не перенесена в расчёт. Сантехники нет — null.
+     */
+    resCheck(n) {
+        if (typeof app === 'undefined' || typeof app.dhwTankPlan !== 'function') return null;
+        const zones = this._rows.filter(r => r._sel && r.eng && r.eng.fix)
+            .map((r, k) => ({ id: k + 1, name: r.name, dist: 6, fixtures: Object.assign({}, r.eng.fix) }));
+        if (!zones.length) return null;
+        const st = app.state;
+        const keep = { water: st.water, waterZones: st.waterZones, res: st.res, tankVol: st.tankVol };
+        try {
+            Object.assign(st, { water: true, waterZones: zones, res: n, tankVol: null });
+            const plan = app.dhwTankPlan();
+            const flow = typeof app.dhwDesignFlow === 'function' ? app.dhwDesignFlow() : null;
+            const volByRes = n >= 10 ? 500 : n >= 7 ? 300 : n >= 5 ? 200 : n >= 3 ? 150 : 100;
+            return { plan, flow, volByRes };
+        } finally {
+            Object.assign(st, keep);
+        }
+    },
+
+    resLine() {
+        const est = this.residentsFromRows(this._rows);
+        if (!est) return '';
+        const cur = (typeof app !== 'undefined' && app.state) ? (parseInt(app.state.res) || 0) : 0;
+        const chk = this.resCheck(est.n);
+        let check = '';
+        let warn = false;
+        if (chk) {
+            const f = chk.plan.fixtures || {};
+            const fxList = [f.bath ? `ванн ${f.bath}` : '', f.shower ? `душей ${f.shower}` : '', f.basin ? `раковин и биде ${f.basin}` : '']
+                .filter(Boolean).join(', ');
+            const byFix = chk.plan.fixturesVol || 0;
+            warn = byFix > chk.volByRes;
+            check = `<div class="rec-tcheck-sub">Проверка по приборам (${fxList || 'без ванн и душей'}): пиковый разбор горячей воды ≈ ${byFix} л` +
+                (f.nSim ? ` при одновременной работе ${f.nSim} ${this.fmt(f.nSim) === '1' ? 'прибора' : 'приборов'}` : '') +
+                `, по ${est.n} проживающим — ${chk.volByRes} л. ` +
+                (warn ? `<b>Приборы требуют больше, чем даёт число проживающих</b> — бойлер подберётся по приборам (${chk.plan.vol} л); проверьте, не больше ли жильцов.`
+                    : `Бойлер — ${chk.plan.vol} л, по числу проживающих: приборам этого хватает.`) +
+                (chk.flow ? ` Расчётный расход ГВС по СП 30.13330.2020 — ${this.fmt(Math.round(chk.flow.qh * 100) / 100)} л/с.` : '') +
+                `</div>`;
+        } else {
+            check = `<div class="rec-tcheck-sub">Проверки по приборам нет: сантехника по помещениям не распознана — бойлер подберётся по числу проживающих.</div>`;
+        }
+        return `<div class="rec-tcheck ${warn ? 'warn' : 'ok'}"><div class="rec-tcheck-ico">👪</div><div style="flex:1">
+            <label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+              <input type="checkbox" ${this._resUse ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setResUse(this.checked)">
+              <span>Проживающих в расчёте: <b>${est.n}</b> — по спальням (${this.esc(est.parts.map(p => `${p.name} — ${p.n}`).join(', '))})${
+                cur && cur !== est.n ? `; сейчас в расчёте ${cur}` : ''}. От этого числа — объём бойлера и расход горячей воды.</span>
+            </label>${check}</div></div>`;
     },
 
     /** Город из адреса проекта — подставить в расчёт или нет. */
@@ -948,7 +1031,7 @@ const RecognizePlan = {
             detailedRooms: st.detailedRooms, area: st.area, tp1: st.tp1, tp2: st.tp2,
             win: st.win, systems: st.systems || [], ufhZones: st.ufhZones,
             showDetailedRoomsPanel: st.showDetailedRoomsPanel,
-            water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null, hotWater: st.hotWater,
+            water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null, hotWater: st.hotWater, res: st.res,
             ventilationEnabled: st.ventilationEnabled, ventilationType: st.ventilationType,
             projectReqs: st.projectReqs || null,
             selectedCity: st.selectedCity || null, region: st.region,
@@ -989,6 +1072,11 @@ const RecognizePlan = {
             reqs = RecognizeProject.applyReqs(st);
             if (chosen.some(r => r.eng && r.eng.heatSheet)) RecognizeProject.syncUfhSliders(st);
         }
+
+        // Проживающие — по спальням (см. residentsFromRows): от них бойлер.
+        let resN = 0;
+        const _res = this.residentsFromRows(this._rows);
+        if (_res && this._resUse) { st.res = _res.n; resN = _res.n; }
 
         if (!st.detailedRooms) {
             app.toggleDetailedRooms(true);
@@ -1053,6 +1141,7 @@ const RecognizePlan = {
         if (towel) parts.push(`Полотенцесушители: ${st.towelWarmer.count}`);
         if (vent) parts.push(`Вентиляция: ${vent}`);
         if (city) parts.push(`Город расчёта по адресу проекта: ${city}`);
+        if (resN) parts.push(`Проживающих: ${resN} (по спальням)`);
         if (reqs) parts.push(`Требования из примечаний проекта: ${reqs} — плашкой в шапке сметы`);
         app.alert(parts.join('\n') +
             '\n\nПроверьте окна и системы отопления в карточках комнат. ' +
@@ -1091,6 +1180,7 @@ const RecognizePlan = {
             if (u.projectReqs) st.projectReqs = u.projectReqs; else delete st.projectReqs;
             st.selectedCity = u.selectedCity; st.region = u.region;
             st.hotWater = u.hotWater;
+            st.res = u.res;
             if (typeof app.renderZonesUI === 'function') app.renderZonesUI();
         }
         this._undo = null;
