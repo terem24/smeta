@@ -11530,17 +11530,30 @@ const app = {
     loginYandex: function (linkMode) {
         try {
             // state защищает от подмены: код авторизации примем только если вернулись
-            // из той же вкладки, из которой уходили
+            // из той же вкладки, из которой уходили. SessionStorage может быть недоступен
+            // в приватном режиме или очищен — fallback на localStorage.
             const state = (window.crypto && crypto.randomUUID)
                 ? crypto.randomUUID()
                 : String(Date.now()) + String(Math.random()).slice(2);
-            sessionStorage.setItem('yandex_oauth_state', state);
+            try {
+                sessionStorage.setItem('yandex_oauth_state', state);
+            } catch (e) {
+                // SessionStorage недоступен — сохраняем в localStorage
+                localStorage.setItem('yandex_oauth_state_fallback', state);
+            }
             // Режим привязки: пользователь уже вошёл (через Google) и переводит
             // существующий аккаунт на Яндекс ID, а не логинится заново
             if (linkMode) {
-                sessionStorage.setItem('yandex_link_mode', '1');
+                try {
+                    sessionStorage.setItem('yandex_link_mode', '1');
+                } catch (e) {
+                    localStorage.setItem('yandex_link_mode_fallback', '1');
+                }
             } else {
-                sessionStorage.removeItem('yandex_link_mode');
+                try {
+                    sessionStorage.removeItem('yandex_link_mode');
+                } catch (e) { }
+                localStorage.removeItem('yandex_link_mode_fallback');
             }
 
             const url = 'https://oauth.yandex.ru/authorize?response_type=code'
@@ -11618,10 +11631,17 @@ const app = {
         if (!code && !yaError) return;
 
         // Свой флоу опознаём по state в sessionStorage — чтобы не перехватить
-        // ?code=, принадлежащий чему-то другому (например, PKCE-редиректу Supabase)
-        const savedState = sessionStorage.getItem('yandex_oauth_state');
+        // ?code=, принадлежащий чему-то другому (например, PKCE-редиректу Supabase).
+        // SessionStorage может быть недоступен в приватном режиме — fallback на localStorage.
+        let savedState = sessionStorage.getItem('yandex_oauth_state');
+        if (!savedState) {
+            savedState = localStorage.getItem('yandex_oauth_state_fallback');
+        }
         if (!savedState) return;
-        sessionStorage.removeItem('yandex_oauth_state');
+        try {
+            sessionStorage.removeItem('yandex_oauth_state');
+        } catch (e) { }
+        localStorage.removeItem('yandex_oauth_state_fallback');
 
         // Чистим адрес от служебных параметров, остальные (ссылка на смету и пр.) храним
         params.delete('code');
@@ -11645,9 +11665,15 @@ const app = {
             return;
         }
 
-        // Привязка Яндекса к уже открытому аккаунту — отдельный сценарий, без входа
-        if (sessionStorage.getItem('yandex_link_mode') === '1') {
-            sessionStorage.removeItem('yandex_link_mode');
+        // Привязка Яндекса к уже открытому аккаунту — отдельный сценарий, без входа.
+        // Fallback на localStorage, если sessionStorage недоступен.
+        const linkMode = sessionStorage.getItem('yandex_link_mode') === '1'
+            || localStorage.getItem('yandex_link_mode_fallback') === '1';
+        if (linkMode) {
+            try {
+                sessionStorage.removeItem('yandex_link_mode');
+            } catch (e) { }
+            localStorage.removeItem('yandex_link_mode_fallback');
             await this.finishYandexLink(code);
             return;
         }
@@ -74038,11 +74064,8 @@ const app = {
             const workSum = app.lastWorksSum || 0;
             const totalSum = eqSum + workSum;
 
-            // 2. Telegram Alert dispatch
-            const tgBotToken = '8601624733:AAH3Mlz6NQJ3MB1pSE2T17hMzPoocbTAGmg';
-            const tgChatId = '594437394';
-            const tgMessage = `📩 НОВЫЙ ОТЗЫВ / ОБРАТНАЯ СВЯЗЬ!\n` +
-                `========================\n` +
+            // 2. Уведомление владельцу в Телеграм — через сервер (sendOwnerTelegram), заголовок ставит он
+            const tgMessage = `========================\n` +
                 `• Категория: ${categoryLabel}\n` +
                 `• Тема: ${subject}\n` +
                 `• Описание: ${description}\n\n` +
@@ -74064,12 +74087,7 @@ const app = {
                 `========================\n` +
                 `${this.feedbackImageBase64 ? '🖼️ [Изображение прикреплено в письме]' : '❌ Изображение не прикреплено'}`;
 
-            const tgUrl = `https://api.telegram.org/bot${tgBotToken}/sendMessage`;
-            fetch(tgUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_id: tgChatId, text: tgMessage })
-            }).catch(err => console.error('Ошибка отправки в Telegram:', err));
+            sendOwnerTelegram('feedback', tgMessage);
 
             // 3. EmailJS dispatch
             const emailjsServiceID = 'service_o11b4ej';
@@ -74140,6 +74158,18 @@ const app = {
 
 };
 
+// Уведомление владельцу в Телеграм. Токен бота живёт только на сервере (tg_notify.php на
+// proxy.heatcalc.ru): репозиторий публичный, в браузерном коде его держать нельзя.
+// Ошибку не показываем — письмо через EmailJS уходит отдельно, уведомление не критично.
+function sendOwnerTelegram(kind, text) {
+    return fetch('https://proxy.heatcalc.ru/tg_notify.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kind: kind, text: text }),
+        keepalive: true
+    }).catch(err => console.error('Ошибка отправки в Telegram:', err));
+}
+
 // Глобальные функции для обработки оплаты (вызываются напрямую из HTML)
 function closePaymentModal() {
     const overlay = document.getElementById('payment_modal_overlay');
@@ -74164,16 +74194,8 @@ async function notifyPayment() {
     }
 
     // === 1. ОТПРАВКА В TELEGRAM ===
-    const tgBotToken = '8601624733:AAH3Mlz6NQJ3MB1pSE2T17hMzPoocbTAGmg';
-    const tgChatId = '594437394';
-    const messageText = `🔥 Новая заявка на Профи!\nПользователь: ${emailInput}\nТариф: ${tariffNameText}\nПроверьте поступление в Т-Банке.`;
-    const tgUrl = `https://api.telegram.org/bot${tgBotToken}/sendMessage`;
-
-    fetch(tgUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: tgChatId, text: messageText })
-    }).catch(err => console.error('Ошибка ТГ:', err));
+    const messageText = `Пользователь: ${emailInput}\nТариф: ${tariffNameText}\nПроверьте поступление в Т-Банке.`;
+    sendOwnerTelegram('pro_request', messageText);
 
     // === 2. ОТПРАВКА НА EMAIL (через EmailJS с обновленным шаблоном) ===
     const emailjsServiceID = 'service_o11b4ej';
