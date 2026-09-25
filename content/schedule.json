@@ -599,10 +599,10 @@
    "freq": 5200,
    "audience": "owner",
    "data_block": "поправки на схему подключения",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-05",
    "published_at": null,
-   "words": 0
+   "words": 653
   },
   {
    "slug": "kakie-truby-dlya-otopleniya",
@@ -781,10 +781,10 @@
    "freq": 5100,
    "audience": "owner",
    "data_block": "обвязка из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-04",
    "published_at": null,
-   "words": 0
+   "words": 603
   },
   {
    "slug": "truba-pnd-vvod-vody",
@@ -963,10 +963,10 @@
    "freq": 4400,
    "audience": "owner",
    "data_block": "цена точки из прайса",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-06",
    "published_at": null,
-   "words": 0
+   "words": 685
   },
   {
    "slug": "truby-dlya-vodosnabzheniya",
