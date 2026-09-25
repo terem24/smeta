@@ -84,6 +84,9 @@
     .note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
     .req { color: var(--req); }
     .value-note { background: var(--primary-light); border: 1px solid var(--primary-border); border-radius: 10px; padding: 10px 12px; font-size: 12.5px; color: var(--primary-dark); line-height: 1.5; margin-bottom: 16px; }
+    .installer-note { font-size: 12.5px; color: var(--text-sec); margin: 2px 0 10px; }
+    .installer-note b { color: var(--text); font-weight: 700; }
+    .installer-note a { color: var(--primary); text-decoration: none; }
     .ok-copied { color: #16A34A; font-size: 13px; font-weight: 600; display: none; margin-top: 6px; }
 </style>
 </head>
@@ -97,6 +100,7 @@
         <button type="button" class="theme-toggle" id="themeToggle" onclick="toggleTheme()"></button>
     </div>
     <h1>Опросник для расчёта отопления</h1>
+    <div class="installer-note" id="installerNote" style="display:none;"></div>
     <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
         точный расчёт системы отопления. Заполнение займёт 3–5 минут. Поля со звёздочкой
         <span class="req">*</span> обязательны — без них даже быстрый расчёт в калькуляторе
@@ -370,6 +374,38 @@
         } catch (e) { return ''; }
     })();
 
+    // Имя и телефон монтажника по его коду — чтобы заказчик видел в шапке, от кого
+    // анкета и кому звонить по вопросам заполнения. RPC отдаёт только эти два поля
+    // (get_installer_contact), тот же приём прокси-фолбэка, что и submitToInstaller.
+    function loadInstallerContact() {
+        var path = '/rest/v1/rpc/get_installer_contact';
+        var body = JSON.stringify({ p_installer: installerCode });
+        var opts = {
+            method: 'POST',
+            headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+            body: body
+        };
+        fetch(SUPA_URL + path, opts)
+            .catch(function () {
+                return fetch('https://proxy.heatcalc.ru/supabase_proxy.php?path=' + encodeURIComponent(path), opts);
+            })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (rows) {
+                var row = rows && rows[0];
+                if (!row || (!row.name && !row.phone)) return;
+                var html = 'Опросник от монтажника';
+                if (row.name) html += ' <b>' + row.name.replace(/[<>]/g, '') + '</b>';
+                if (row.phone) {
+                    var telHref = 'tel:' + row.phone.replace(/[^\d+]/g, '');
+                    html += ' · <a href="' + telHref + '">' + row.phone.replace(/[<>]/g, '') + '</a>';
+                }
+                var el = document.getElementById('installerNote');
+                el.innerHTML = html;
+                el.style.display = 'block';
+            })
+            .catch(function () { /* нет контактов — не беда, анкета всё равно заполняется */ });
+    }
+
     // Отправка заявки в базу; часть сетей блокирует *.supabase.co — тогда тот же
     // запрос идёт через proxy.heatcalc.ru (как supabaseProxyFetch в калькуляторе)
     function submitToInstaller(d) {
@@ -476,12 +512,14 @@
         } catch (e) { /* анимация необязательна — молча пропускаем */ }
     }
 
-    // Персональная ссылка — говорим сразу, что пересылать ничего не придётся
+    // Персональная ссылка — говорим сразу, что пересылать ничего не придётся,
+    // и подгружаем имя/телефон монтажника для шапки (loadInstallerContact)
     if (installerCode) {
         document.querySelector('.sub').textContent =
             'Ответьте на вопросы о вашем доме — анкета отправится вашему монтажнику ' +
             'автоматически, и он подготовит точный расчёт системы отопления. ' +
             'Заполнение займёт 3–5 минут.';
+        loadInstallerContact();
     }
 
     function copyLink() {
