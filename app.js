@@ -40684,7 +40684,12 @@ const app = {
                 if (c.act) {
                     const go = document.createElement('button');
                     go.className = 'calc-dialog-btn calc-dialog-btn-cancel';
-                    go.style.cssText = 'margin-top:8px; padding:5px 12px; font-size:12px;';
+                    // Ради этих кнопок панель и затевалась — они должны выглядеть
+                    // нажимаемыми: прозрачная заливка с почти невидимой рамкой
+                    // читалась на тёмной карточке как обычный текст.
+                    go.style.cssText = 'margin-top:8px; padding:5px 12px; font-size:12px;' +
+                        'background:transparent; border:1px solid var(--primary);' +
+                        'color:var(--primary); font-weight:600;';
                     go.innerText = c.btn || 'Перейти';
                     go.onclick = () => { close(); this.goProjectStep(c.act); };
                     body.appendChild(go);
