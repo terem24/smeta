@@ -54260,13 +54260,22 @@ const app = {
         this._planCheckData = {
             floors: floors.map(f => {
                 if (!hasPlan(f)) return null;   // пустая вкладка этажа — не сверяем
-                let tpNames = {}, wcNames = {};
+                // tpIds — зоны, знающие id своей комнаты расчёта (редактор
+                // ставит его при авторазметке и при подписи кликом). Имена
+                // оставляем рядом: у зон, размеченных до этого, id нет, и
+                // сверять их по-прежнему приходится по названию.
+                let tpNames = {}, wcNames = {}, tpIds = {}, tpLinked = {};
                 (f.zones || []).forEach(z => {
                     if (f.pxPerM && Array.isArray(z.pts) && z.pts.length >= 3)
                         zonesArea += polyM2(z.pts, f.pxPerM);
                     let nm = String(z.name || '').trim();
-                    if (z.type === 'tp') { if (nm) tpNames[nm.toLowerCase()] = nm; }
-                    else if (z.type === 'wc') { if (nm) wcNames[nm.toLowerCase()] = nm; }
+                    if (z.type === 'tp') {
+                        if (nm) tpNames[nm.toLowerCase()] = nm;
+                        if (z.roomId != null) {
+                            tpIds[String(z.roomId)] = nm;
+                            if (nm) tpLinked[nm.toLowerCase()] = 1;
+                        }
+                    } else if (z.type === 'wc') { if (nm) wcNames[nm.toLowerCase()] = nm; }
                 });
                 // приборы: сколько каких стоит в каждом санузле плана
                 let fx = {}, risers = 0, loose = 0;
@@ -54276,7 +54285,8 @@ const app = {
                     if (!key) { loose++; return; }
                     (fx[key] = fx[key] || {})[q.t] = ((fx[key] || {})[q.t] || 0) + 1;
                 });
-                return { tpNames: tpNames, rads: (f.rads || []).length,
+                return { tpNames: tpNames, tpIds: tpIds, tpLinked: tpLinked,
+                    rads: (f.rads || []).length,
                     wcNames: wcNames, fx: fx, risers: risers, loose: loose,
                     fixTotal: (f.fixtures || []).filter(q => q.t !== 'riser').length };
             }),
@@ -56271,8 +56281,39 @@ const app = {
             nameCount[k] = (nameCount[k] || 0) + 1;
         });
         let dupWarned = {};
-        // Сторона плана: каждая подписанная зона ТП должна найти свою комнату
+        // Зоны, связанные с комнатой по id: имена у них могут повторяться и
+        // меняться — сверка от этого не страдает. Разобранные здесь имена
+        // дальше пропускаем, чтобы не сверять ту же зону второй раз.
+        let idFloor = {}, idLabel = {}, linkedKeys = {}, coveredIds = {}, coveredNames = {};
+        data.floors.forEach((fl, idx) => {
+            if (!fl) return;
+            for (const id in (fl.tpIds || {})) { idFloor[id] = idx + 1; idLabel[id] = fl.tpIds[id]; }
+            for (const k in (fl.tpLinked || {})) linkedKeys[k] = 1;
+        });
+        let roomById = {};
+        rooms.forEach(r => { if (r.id != null) roomById[String(r.id)] = r; });
+        for (const id in idFloor) {
+            const r = roomById[id];
+            const label = idLabel[id] || (r && r.name) || 'без имени';
+            if (!r) {
+                warns.push('Зона ТП <b>' + esc(label) + '</b> на плане привязана к помещению, ' +
+                    'которого в расчёте больше нет — подпишите её заново.');
+                continue;
+            }
+            coveredIds[id] = 1;
+            coveredNames[String(r.name || '').trim().toLowerCase()] = 1;
+            if (!(r.sys && r.sys.includes('tp'))) {
+                warns.push('<b>' + esc(r.name) + '</b>: на плане есть зона ТП, а в расчёте тёплый пол у комнаты выключен.');
+                continue;
+            }
+            const rfId = parseInt(r.floor) || 1;
+            if (rfId !== idFloor[id])
+                warns.push('<b>' + esc(r.name) + '</b>: зона ТП нарисована на плане ' + idFloor[id] +
+                    ' этажа, а в расчёте комната на ' + rfId + '-м.');
+        }
+        // Сторона плана: зоны без ссылки на комнату — сверяем по имени, как раньше
         for (const k in zoneName) {
+            if (linkedKeys[k] || coveredNames[k]) continue;   // разобрана по id
             if (nameCount[k] > 1) {
                 if (!dupWarned[k]) {
                     dupWarned[k] = 1;
@@ -56296,11 +56337,13 @@ const app = {
         // постепенно, и ругаться на пустую вкладку этажа значило бы шуметь зря.
         rooms.forEach(r => {
             if (!(r.sys && r.sys.includes('tp'))) return;
+            if (r.id != null && coveredIds[String(r.id)]) return;   // зона найдена по id
             const k = String(r.name || '').trim().toLowerCase();
             if (!k || nameCount[k] > 1) return;             // без имени / тёзки — разобрано выше
             if (zoneName[k]) return;                        // зона есть — разобрано выше
             const fl = data.floors[(parseInt(r.floor) || 1) - 1];
-            if (!fl || !Object.keys(fl.tpNames).length) return;
+            if (!fl || (!Object.keys(fl.tpNames).length &&
+                !Object.keys(fl.tpIds || {}).length)) return;
             warns.push('<b>' + esc(r.name) + '</b>: по расчёту тёплый пол, а зоны ТП на плане нет.');
         });
         // Приборы под окнами — только по этажам, где радиаторы уже расставлены

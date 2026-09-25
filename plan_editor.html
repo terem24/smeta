@@ -432,6 +432,7 @@ try {
     if (!n || roomNames.indexOf(n) >= 0) return;
     roomNames.push(n);
     calcRooms.push({
+      id: (r.id != null ? r.id : null),
       name: n, area: +r.area || 0, floor: +r.floor || 1,
       sys: r.sys || [], win: (r.windows || []).length
     });
@@ -454,6 +455,23 @@ if (roomNames.length) {
   var dl = document.createElement('datalist'); dl.id = 'roomNames';
   roomNames.forEach(function (n) { var o = document.createElement('option'); o.value = n; dl.appendChild(o); });
   document.body.appendChild(dl);
+}
+
+/**
+ * Комната расчёта по имени — для зоны, подписанной руками.
+ *
+ * Связь «зона ↔ комната» держится на id, а не на совпадении имён: тёзки
+ * («Санузел» на обоих этажах) по имени не различаются, и сверка на них
+ * ломалась. Руками вписанное имя превращаем в id только тогда, когда такое
+ * имя в расчёте одно; иначе ссылки нет и сверка работает по-старому.
+ */
+function roomIdByName(nm) {
+  var k = String(nm || '').trim().toLowerCase(), hit = null, n = 0;
+  if (!k) return null;
+  calcRooms.forEach(function (r) {
+    if (String(r.name).trim().toLowerCase() === k) { hit = r.id; n++; }
+  });
+  return (n === 1 && hit != null) ? hit : null;
 }
 
 /** Карточка санузла расчёта по имени зоны (регистр и пробелы не важны) */
@@ -2079,7 +2097,7 @@ function autoRooms() {
         // доме она одна — по ней собирается компоновка.
         if (kind === 'boiler' && boiler) return;
         if (kind === 'boiler') boiler = true;
-        F().zones.push({ type: kind, name: t.name, pts: pts });
+        F().zones.push({ type: kind, name: t.name, roomId: (t.id != null ? t.id : null), pts: pts });
         cnt[kind] = (cnt[kind] || 0) + 1;
         made++;
       });
@@ -3206,6 +3224,7 @@ function renderZones() {
     if (roomNames.length) inp.setAttribute('list', 'roomNames');
     inp.oninput = function () {
       z.name = inp.value;
+      z.roomId = roomIdByName(inp.value);
       // санузел подписали именем из расчёта — приборы появляются сразу
       if (z.type === 'wc' && fixAuto) { refreshAutoFixtures(); renderZones(); }
       draw();
@@ -3314,6 +3333,7 @@ function renderZones() {
         if (!F().zones[zi].name) { z = F().zones[zi]; break; }
       if (!z) { hint('Все зоны этажа уже подписаны — исправьте имя прямо в списке зон.'); return; }
       z.name = r.name;
+      z.roomId = (r.id != null ? r.id : null);
       renderZones(); draw();
     };
     sum.appendChild(g);
