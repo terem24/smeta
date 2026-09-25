@@ -162,7 +162,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.04">
+    <link rel="stylesheet" href="style.css?v=4.05">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.21" defer></script>
@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.60" defer></script>
+    <script src="app.js?v=9.61" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -663,6 +663,10 @@
             </div>
 
             <div class="lk-rail-group" data-group="objects">
+                <button type="button" class="lk-rail-item" data-rail="oprosniki" onclick="app.railGo('oprosniki')" title="Опросные листы">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    <span class="lk-rail-label">Опросники</span>
+                </button>
                 <button type="button" class="lk-rail-item" data-rail="objects" onclick="app.railGo('objects')" title="Мои объекты — сохранённые сметы">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                     <span class="lk-rail-label">Объекты</span>
@@ -672,10 +676,6 @@
                 <button type="button" class="lk-rail-item" data-rail="orders" onclick="app.railGo('orders')" title="Документы: договор, акты, гарантийный талон">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     <span class="lk-rail-label">Документы</span>
-                </button>
-                <button type="button" class="lk-rail-item" data-rail="oprosniki" onclick="app.railGo('oprosniki')" title="Опросные листы">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-                    <span class="lk-rail-label">Опросники</span>
                 </button>
                 <button type="button" class="lk-rail-item" data-rail="summary" onclick="app.railGo('summary')" title="Сводка по своим сметам">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
@@ -2965,16 +2965,16 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M12 2l2.6 6.6L21 9.3l-5 4.5 1.4 6.8L12 17.3 6.6 20.6 8 13.8 3 9.3l6.4-.7z"></path></svg>
                     <span class="lk-nav-label">Подписка</span>
                 </button>
+                <!-- Постоянный архив заявок с oprosnik.html — раньше их было видно только во
+                     всплывающем окне для новых (checkOprosInbox/showOprosInbox), после
+                     просмотра карточка пропадала из кабинета навсегда. -->
+                <button type="button" class="lk-nav-item" data-tab="oprosniki" title="Опросные листы" onclick="app.setProfileTab('oprosniki')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+                    <span class="lk-nav-label">Опросные листы</span>
+                </button>
                 <button type="button" class="lk-nav-item" data-tab="objects" title="Мои объекты" onclick="app.setProfileTab('objects')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                     <span class="lk-nav-label">Мои объекты</span>
-                </button>
-                <!-- Сводка по своим сметам: воронка, что висит без ответа, чем всё
-                     кончилось. Считается по тем же событиям invoice_events, что видит
-                     админ в канбане, но только по своим — фильтр по email. -->
-                <button type="button" class="lk-nav-item" data-tab="summary" title="Сводка" onclick="app.setProfileTab('summary')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                    <span class="lk-nav-label">Сводка</span>
                 </button>
                 <!-- Ключ data-tab="orders" не меняю — на него ссылаются push-уведомления
                      (payload.open:"orders" в send-push), меняю только подпись -->
@@ -2982,12 +2982,12 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     <span class="lk-nav-label">Документы</span>
                 </button>
-                <!-- Постоянный архив заявок с oprosnik.html — раньше их было видно только во
-                     всплывающем окне для новых (checkOprosInbox/showOprosInbox), после
-                     просмотра карточка пропадала из кабинета навсегда. -->
-                <button type="button" class="lk-nav-item" data-tab="oprosniki" title="Опросные листы" onclick="app.setProfileTab('oprosniki')">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-                    <span class="lk-nav-label">Опросные листы</span>
+                <!-- Сводка по своим сметам: воронка, что висит без ответа, чем всё
+                     кончилось. Считается по тем же событиям invoice_events, что видит
+                     админ в канбане, но только по своим — фильтр по email. -->
+                <button type="button" class="lk-nav-item" data-tab="summary" title="Сводка" onclick="app.setProfileTab('summary')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    <span class="lk-nav-label">Сводка</span>
                 </button>
                 <!-- Показывается только зарегистрированным менеджерам дистрибьюторов (email совпал
                      с distributors.manager_email) — см. app.refreshManagerTabVisibility -->

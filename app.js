@@ -10858,9 +10858,9 @@ const app = {
                             ${getInvoiceBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'open')" title="Открыть расчёт в калькуляторе">Открыть</button>
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.lazy('reprice').then(() => Reprice.open('${item.id}'))" title="Сравнить цены сметы с сегодняшними">Цены</button>
-                            ${item.calc_id ? `<button class="lk-btn-sm" onclick="event.stopPropagation(); app.toggleObjectHistory('${item.calc_id}', '${item.id}')" title="История статусов: когда отправлено, открыто, согласовано">🕘 История</button>` : ''}
                             ${shareBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'download')" title="Скачать смету: PDF или Excel">Скачать</button>
+                            ${item.calc_id ? `<button class="lk-btn-sm" onclick="event.stopPropagation(); app.toggleObjectHistory('${item.calc_id}', '${item.id}')" title="История статусов: когда отправлено, открыто, согласовано">🕘 История</button>` : ''}
                             ${canDelete ? `
                                 <button class="delete-icon-btn" onclick="event.stopPropagation(); app.deleteEstimate('${item.id}', event)" title="Удалить смету">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
@@ -12830,14 +12830,27 @@ const app = {
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const fmt = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
         const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
-        return (list || []).map(ev => {
-            const m = EVENT_META[ev.event] || { label: ev.event, color: '#94A3B8' };
+        // Повторная отправка той же версии КП пишет в журнал отдельное событие, и
+        // в списке выходил столбик одинаковых строк, отличавшихся только минутой.
+        // Схлопываем подряд идущие одинаковые в одну: время — последнее, рядом «×N».
+        const groups = [];
+        (list || []).forEach(ev => {
             const comment = ev.meta && ev.meta.comment ? ev.meta.comment : '';
-            const evV = ev.meta && Number(ev.meta.kp_version);
+            const evV = (ev.meta && Number(ev.meta.kp_version)) || 0;
+            const prev = groups[groups.length - 1];
+            if (prev && prev.event === ev.event && prev.evV === evV && prev.comment === comment) {
+                prev.count++;
+                prev.created_at = ev.created_at;
+                return;
+            }
+            groups.push({ event: ev.event, evV: evV, comment: comment, created_at: ev.created_at, count: 1 });
+        });
+        return groups.map(g => {
+            const m = EVENT_META[g.event] || { label: g.event, color: '#94A3B8' };
             return `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:4px 0; border-bottom:1px dashed var(--border);">
-                        <span style="display:inline-block; background:${m.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${m.label}</span>
-                        <span style="flex:1; font-size:11px; color:var(--text-main);">${evV ? `<span style="font-family:monospace; color:var(--text-sec);">КП № ${esc(calcId)}-${evV}</span>${comment ? ' · ' : ''}` : ''}${esc(comment)}</span>
-                        <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${fmt(ev.created_at)}</span>
+                        <span style="display:inline-block; background:${m.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${m.label}${g.count > 1 ? ' ×' + g.count : ''}</span>
+                        <span style="flex:1; font-size:11px; color:var(--text-main);">${g.evV ? `<span style="font-family:monospace; color:var(--text-sec);">КП № ${esc(calcId)}-${g.evV}</span>${g.comment ? ' · ' : ''}` : ''}${esc(g.comment)}</span>
+                        <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${fmt(g.created_at)}</span>
                     </div>`;
         }).join('');
     },
@@ -12939,17 +12952,17 @@ const app = {
             return;
         }
 
-        const options = objects.map(o => `<option value="${esc(o.calc_id)}">${esc(o.project_name || 'Без названия')} · КП № ${esc(o.calc_id)}</option>`).join('');
-        container.innerHTML = head + `
-            <div class="lk-card" style="margin-bottom:12px;">
-                <label style="font-size:11px; color:var(--text-sec); font-weight:600; margin-bottom:6px; display:block;">Объект</label>
-                <select id="doc_tab_calc_select" class="auth-input" style="margin:0;" onchange="app.renderDocChecklist(this.value)">
-                    <option value="">— выберите объект —</option>
-                    ${options}
-                </select>
-            </div>
-            <div id="doc_tab_checklist"></div>
-        `;
+        // Все объекты сразу, без выпадающего списка: раньше вкладка открывалась пустой
+        // и требовала сперва выбрать объект — документы по остальным были не видны.
+        container.innerHTML = head + objects.map(o => {
+            const calcId = esc(o.calc_id);
+            return `<div class="lk-card" style="margin-bottom:8px; padding:10px 12px;">
+                        <div style="font-size:12.5px; font-weight:600; color:var(--text-main); margin-bottom:2px;">${esc(o.project_name || 'Без названия')}</div>
+                        <div style="font-size:10.5px; font-family:monospace; color:var(--text-sec); margin-bottom:8px;">КП № ${calcId}</div>
+                        <div id="doc_list_${calcId}" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                    </div>`;
+        }).join('');
+        objects.forEach(o => this.renderDocChecklist(o.calc_id));
     },
 
     // Чек-лист по выбранному в «Документах» объекту: 7 видов документов
@@ -12958,34 +12971,25 @@ const app = {
     // Сама генерация — в единой форме Docs.openForOrder, кнопка ниже чек-листа её
     // и открывает; shareId она находит сама, если не передать.
     renderDocChecklist: function (calcId) {
-        const holder = document.getElementById('doc_tab_checklist');
+        if (!calcId) return;
+        const holder = document.getElementById('doc_list_' + calcId);
         if (!holder) return;
-        if (!calcId) { holder.innerHTML = ''; return; }
 
         let generated = {};
         try { generated = JSON.parse(localStorage.getItem('docs_generated_' + calcId) || '{}'); } catch (e) { }
 
         const fmt = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
-        const rows = this.DOC_TYPES.map(t => {
+        // Каждый документ — кнопка, а не плашка-статус: по плашке «Можно сформировать»
+        // пробовали нажимать, а она ничего не делала. Сформированные помечены галочкой.
+        holder.innerHTML = this.DOC_TYPES.map(t => {
             const at = generated[t.key];
-            const badge = at
-                ? `<span style="background:#10B981; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">Уже делали · ${fmt(at)}</span>`
-                : `<span style="background:var(--surface-light); color:var(--text-sec); font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap; border:1px solid var(--border);">Можно сформировать</span>`;
-            return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-bottom:1px dashed var(--border);">
-                        <span style="font-size:12.5px; color:var(--text-main);">${t.label}</span>
-                        ${badge}
-                    </div>`;
+            const style = at
+                ? 'background:#ECFDF5; border-color:#10B981; color:#047857;'
+                : '';
+            return `<button type="button" class="lk-btn-sm" style="font-size:11px; padding:4px 10px; ${style}"
+                        title="${at ? 'Уже формировали · ' + fmt(at) : 'Сформировать документ'}"
+                        onclick="app.lazy('docs').then(() => Docs.openForOrder('${calcId}'))">${at ? '✓ ' : ''}${t.label}</button>`;
         }).join('');
-
-        holder.innerHTML = `<div class="lk-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
-                <strong style="font-size:12.5px; color:var(--text-main);">Документы по объекту</strong>
-                <button type="button" class="lk-btn-sm" onclick="app.renderDocChecklist('${calcId}')" title="Обновить отметки">↻</button>
-            </div>
-            ${rows}
-            <button class="btn-subscribe" style="width:100%; height:36px; margin-top:12px;"
-                onclick="app.lazy('docs').then(() => Docs.openForOrder('${calcId}'))">📄 Открыть документы</button>
-        </div>`;
     },
 
     // skipHead — когда заголовок раздела уже нарисован снаружи (фоллбек в renderOrdersTab)
@@ -13033,6 +13037,9 @@ const app = {
         const head = `<div class="lk-section-head">
                           <h4>📋 Опросные листы</h4>
                           <button type="button" class="lk-btn-sm" onclick="app.renderOprosnikiTab()">↻ Обновить</button>
+                      </div>
+                      <div class="no-print" style="margin: 14px 0; padding: 12px; font-size: 12px; color: var(--text-sec); line-height: 1.45; background: var(--surface); border-radius: 8px; border-left: 3px solid var(--primary);">
+                          📋 <strong>Нет данных от заказчика?</strong> <span onclick="app.copyOprosnikLink(this)" style="color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline;">Скопируйте ссылку на опросник</span> — отправьте её клиенту, он заполнит анкету о доме и вернёт вам ссылку с готовыми данными для расчёта.
                       </div>`;
         container.innerHTML = head + `<div class="lk-empty">⌛ Загрузка заявок...</div>`;
 
@@ -13060,7 +13067,7 @@ const app = {
         this._oprosniksTabRows = rows;
 
         if (!rows.length) {
-            container.innerHTML = head + `<div class="lk-empty">Пока нет заявок с опросника. <span onclick="app.copyOprosnikLink(this)" style="color:var(--primary); font-weight:700; cursor:pointer; text-decoration:underline;">Скопировать ссылку на опросник</span> — отправьте её заказчику.</div>`;
+            container.innerHTML = head + `<div class="lk-empty">Пока нет заявок с опросника.</div>`;
             return;
         }
 
@@ -73159,22 +73166,11 @@ const app = {
                                background: transparent; color: var(--primary); cursor: pointer;">
                         <span style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
-            // Опросник для заказчика — именно на пустом экране: данных нет,
-            // и взять их проще всего у самого клиента (см. oprosnik.html и
-            // applyOprosFromUrl). Показывается по тому же правилу, что и
-            // остальные подсказки пустой сметы (onboardingAllowed), и только
-            // дому: квартирный расчёт опросник не спрашивает.
-            const oprosLine = (_onboardOk && !_flatEmpty) ? `
-                    <div class="no-print" style="margin-top: 14px; font-size: 12px; color: var(--text-sec); line-height: 1.45; max-width: 420px;">
-                        📋 Нет данных от заказчика? <span onclick="app.copyOprosnikLink(this)"
-                            style="color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline;">Скопируйте ссылку на опросник</span> —
-                        отправьте её клиенту, он заполнит анкету о доме и вернёт вам ссылку с готовыми данными для расчёта.
-                    </div>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">
                     <span class="empty-state-icon">${_emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>` : ''}${qsBtn}${oprosLine}
+                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>` : ''}${qsBtn}
                 </div>
             </td></tr>`;
             sum = 0;

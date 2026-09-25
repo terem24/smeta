@@ -10085,7 +10085,11 @@ body.dark-mode .cw-achieve.earned {
    (см. gridPattern в plan_editor.html — точки через 12 px, узел покрупнее через
    каждые пять). Прозрачность низкая, а под самой подсказкой сетка гасится
    заливкой цветом панели — текст читается по чистому фону. */
-.empty-state-row td {
+/* .empty-state-pad — та же бумага, но для вкладок без таблицы («Распознавание»,
+   «Деньги»): вешать сетку там не на что, а выглядеть пустой экран должен так же,
+   как в «Оборудовании» и «Монтажных работах». */
+.empty-state-row td,
+.empty-state-pad {
     background-image:
         radial-gradient(circle, rgba(17, 24, 39, 0.16) 1px, transparent 1.6px),
         radial-gradient(circle, rgba(17, 24, 39, 0.09) 1px, transparent 1.4px);
@@ -10093,7 +10097,12 @@ body.dark-mode .cw-achieve.earned {
     background-position: 30px 30px, 0 0;
 }
 
-body.dark-mode .empty-state-row td {
+.empty-state-pad {
+    border-radius: 14px;
+}
+
+body.dark-mode .empty-state-row td,
+body.dark-mode .empty-state-pad {
     background-image:
         radial-gradient(circle, rgba(255, 255, 255, 0.20) 1px, transparent 1.6px),
         radial-gradient(circle, rgba(255, 255, 255, 0.10) 1px, transparent 1.4px);
@@ -10117,6 +10126,7 @@ body.dark-mode .empty-state-row td {
 /* На печати сетка — только лишний тонер */
 @media print {
     .empty-state-row td,
+    .empty-state-pad,
     .empty-state-hint {
         background: none;
     }
@@ -10525,6 +10535,7 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 #profile_tab_objects,
 #profile_tab_summary,
 #profile_tab_orders,
+#profile_tab_oprosniki,
 #profile_tab_manager,
 #profile_tab_installers,
 #profile_tab_workprices,
@@ -10534,6 +10545,55 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     min-height: 0 !important;
     margin-bottom: 12px !important;
     padding-right: 6px !important;
+}
+
+/* ── Четыре раздела работы с объектом: «Опросники», «Мои объекты», «Документы»,
+   «Сводка». Их писали в разное время, и каждый набрал свой кегль и свои отступы —
+   рядом они читались как четыре разных экрана. Здесь общий масштаб: кегль на
+   полступени мельче, карточки плотнее, заголовок один на всех. Помещается
+   больше строк, а длинный список прокручивается внутри раздела (правило выше). */
+#profile_tab_oprosniki,
+#profile_tab_objects,
+#profile_tab_orders,
+#profile_tab_summary {
+    font-size: 12px;
+}
+
+#profile_tab_oprosniki .lk-section-head h4,
+#profile_tab_objects .lk-section-head h4,
+#profile_tab_orders .lk-section-head h4,
+#profile_tab_summary .lk-section-head h4 {
+    font-size: 13px;
+}
+
+#profile_tab_oprosniki .lk-section-head,
+#profile_tab_objects .lk-section-head,
+#profile_tab_orders .lk-section-head,
+#profile_tab_summary .lk-section-head {
+    margin-bottom: 10px;
+}
+
+#profile_tab_oprosniki .lk-card,
+#profile_tab_objects .lk-card,
+#profile_tab_orders .lk-card,
+#profile_tab_summary .lk-card {
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 10px;
+}
+
+#profile_tab_oprosniki .lk-btn-sm,
+#profile_tab_objects .lk-btn-sm,
+#profile_tab_orders .lk-btn-sm,
+#profile_tab_summary .lk-btn-sm {
+    font-size: 11px;
+    padding: 4px 10px;
+}
+
+/* Таблица объектов: та же ступень кегля, что и карточки соседних разделов */
+#profile_tab_objects table,
+#profile_tab_summary table {
+    font-size: 12px;
 }
 
 /* ── «Реквизиты компании» на полном экране ─────────────────────────────────
