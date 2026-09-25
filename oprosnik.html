@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Опросник для расчёта отопления — HeatCalc</title>
+<!--
+  Опросник для заказчика. Монтажник отправляет клиенту ссылку на эту страницу,
+  клиент заполняет анкету и жмёт «Сформировать ссылку» — страница пакует ответы
+  в base64url JSON и даёт ссылку вида heatcalc.ru/?opros=..., которую клиент
+  возвращает монтажнику (кнопки WhatsApp/Telegram). Калькулятор разбирает её в
+  app.applyOprosFromUrl(): числа встают в расчёт, тексты — окном.
+  Сервера нет: всё считается в браузере, никуда не отправляется само.
+-->
+<style>
+    :root {
+        --primary: #E31E24; --primary-dark: #C41A1F;
+        --text: #1F2937; --text-sec: #6B7280;
+        --border: #E5E7EB; --surface: #fff; --bg: #F3F4F6;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
+    h1 { font-size: 22px; margin: 18px 0 6px; }
+    .sub { color: var(--text-sec); font-size: 14px; margin-bottom: 18px; line-height: 1.45; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
+    .card h2 { font-size: 15px; margin: 0 0 12px; }
+    label.f { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-sec); margin: 10px 0 4px; }
+    input[type=text], input[type=number], input[type=tel], textarea, select {
+        width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
+        font-size: 15px; color: var(--text); background: #fff; outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    textarea { min-height: 64px; resize: vertical; }
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .seg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+    .seg label { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: 13.5px; cursor: pointer; background: #fff; }
+    .seg label:has(input:checked) { border-color: var(--primary); background: #FEF2F2; font-weight: 600; }
+    .seg input { accent-color: var(--primary); margin: 0; }
+    .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 11px; background: var(--primary); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+    .btn:hover { background: var(--primary-dark); }
+    #result { display: none; }
+    #result.on { display: block; }
+    .linkbox { word-break: break-all; font-size: 12px; color: var(--text-sec); background: var(--bg); border-radius: 9px; padding: 10px; margin: 10px 0; max-height: 90px; overflow: auto; }
+    .share-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .share-row a, .share-row button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 6px; border-radius: 9px; border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .share-row .wa { background: #25D366; border-color: #25D366; color: #fff; }
+    .share-row .tg { background: #229ED9; border-color: #229ED9; color: #fff; }
+    .note { font-size: 12px; color: var(--text-sec); line-height: 1.45; margin-top: 8px; }
+    .ok-copied { color: #16A34A; font-size: 13px; font-weight: 600; display: none; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <h1>Опросник для расчёта отопления</h1>
+    <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
+        точный расчёт системы отопления. Заполнение займёт 3–5 минут. Данные никуда не
+        отправляются сами: в конце вы получите ссылку и сами перешлёте её монтажнику.</div>
+
+    <div class="card">
+        <h2>Контакты</h2>
+        <div class="row2">
+            <div><label class="f">Ваше имя</label><input type="text" id="f_name" placeholder="Иван"></div>
+            <div><label class="f">Телефон</label><input type="tel" id="f_phone" placeholder="+7 ___ ___-__-__"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Дом</h2>
+        <label class="f">Город строительства</label>
+        <input type="text" id="f_city" placeholder="Екатеринбург">
+        <div class="row2">
+            <div><label class="f">Площадь дома, м²</label><input type="number" id="f_area" min="20" max="2000" placeholder="120"></div>
+            <div><label class="f">Этажей</label>
+                <select id="f_floors"><option value="1">1</option><option value="2" selected>2</option></select>
+            </div>
+        </div>
+        <label class="f">Сколько человек будет жить</label>
+        <input type="number" id="f_people" min="1" max="20" placeholder="4">
+        <label class="f">Текущая стадия строительства</label>
+        <div class="seg">
+            <label><input type="radio" name="f_stage" value="none">Ещё не приступил</label>
+            <label><input type="radio" name="f_stage" value="box" checked>Возводится коробка</label>
+            <label><input type="radio" name="f_stage" value="closed">Закрыт тепловой контур</label>
+        </div>
+        <label class="f">Режим проживания</label>
+        <div class="seg">
+            <label><input type="radio" name="f_live" value="all" checked>Круглогодичный</label>
+            <label><input type="radio" name="f_live" value="season">Сезонный (наездами)</label>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Отопление</h2>
+        <label class="f">Чем хотите отапливать</label>
+        <div class="seg">
+            <label><input type="checkbox" id="f_tp" checked>Водяной тёплый пол</label>
+            <label><input type="checkbox" id="f_rad" checked>Радиаторы</label>
+        </div>
+        <label class="f">Основной источник тепла</label>
+        <div class="seg">
+            <label><input type="radio" name="f_fuel" value="gas" checked>Газовый котёл</label>
+            <label><input type="radio" name="f_fuel" value="el">Электрокотёл</label>
+            <label><input type="radio" name="f_fuel" value="solid">Твердотопливный</label>
+            <label><input type="radio" name="f_fuel" value="hp">Тепловой насос</label>
+        </div>
+        <label class="f">Будет ли приточная вентиляция с подогревом воздуха?</label>
+        <div class="seg">
+            <label><input type="radio" name="f_vent" value="no" checked>Нет / проветривание окнами</label>
+            <label><input type="radio" name="f_vent" value="yes">Да</label>
+        </div>
+        <label class="f">В каких помещениях нужен тёплый пол</label>
+        <textarea id="f_tprooms" placeholder="Например: весь первый этаж; на втором — только санузлы"></textarea>
+    </div>
+
+    <div class="card">
+        <h2>Из чего построен дом</h2>
+        <div class="note" style="margin:0 0 4px;">Если есть проект — просто напишите «есть проект,
+            пришлю». Если нет, опишите словами, снаружи внутрь.</div>
+        <label class="f">Состав наружной стены</label>
+        <textarea id="f_wall" placeholder="Например: штукатурка, газоблок D400 375 мм"></textarea>
+        <label class="f">Состав пола 1 этажа</label>
+        <textarea id="f_floor1" placeholder="Например: плита по грунту, ЭППС 100 мм, стяжка"></textarea>
+        <label class="f">Состав кровли или чердачного перекрытия</label>
+        <textarea id="f_roof" placeholder="Например: холодный чердак, минвата 200 мм по перекрытию"></textarea>
+        <label class="f">Марка и модель окон</label>
+        <input type="text" id="f_win" placeholder="Например: Rehau, двухкамерный стеклопакет">
+    </div>
+
+    <div class="card">
+        <h2>Прочее</h2>
+        <label class="f">Какие материалы и оборудование уже закуплены</label>
+        <textarea id="f_bought" placeholder="Например: куплен котёл 24 кВт, труба тёплого пола"></textarea>
+        <label class="f">Комментарий</label>
+        <textarea id="f_comment" placeholder="Всё, что считаете важным"></textarea>
+    </div>
+
+    <button class="btn" onclick="buildLink()">Сформировать ссылку для монтажника</button>
+
+    <div class="card" id="result">
+        <h2>Готово — отправьте эту ссылку монтажнику</h2>
+        <div class="linkbox" id="r_link"></div>
+        <div class="share-row">
+            <button onclick="copyLink()">📋 Копировать</button>
+            <a class="wa" id="r_wa" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="tg" id="r_tg" target="_blank" rel="noopener">Telegram</a>
+        </div>
+        <div class="ok-copied" id="r_copied">Ссылка скопирована</div>
+        <div class="note">Монтажник откроет ссылку — и параметры вашего дома сами встанут
+            в калькулятор HeatCalc, а текстовые ответы он увидит отдельным окном.</div>
+    </div>
+</div>
+
+<script>
+    function radio(name) {
+        var el = document.querySelector('input[name="' + name + '"]:checked');
+        return el ? el.value : '';
+    }
+    function val(id) { return (document.getElementById(id).value || '').trim(); }
+
+    var lastLink = '';
+
+    function buildLink() {
+        var d = {
+            name: val('f_name'), phone: val('f_phone'), city: val('f_city'),
+            area: parseFloat(val('f_area')) || 0,
+            floors: parseInt(val('f_floors'), 10) || 1,
+            people: parseInt(val('f_people'), 10) || 0,
+            tp: document.getElementById('f_tp').checked,
+            rad: document.getElementById('f_rad').checked,
+            fuel: radio('f_fuel'), live: radio('f_live'), stage: radio('f_stage'),
+            vent: radio('f_vent') === 'yes',
+            tpRooms: val('f_tprooms'), wall: val('f_wall'), floor1: val('f_floor1'),
+            roof: val('f_roof'), win: val('f_win'),
+            bought: val('f_bought'), comment: val('f_comment')
+        };
+        // пустые строки не тащим в ссылку — она короче
+        Object.keys(d).forEach(function (k) { if (d[k] === '' || d[k] === 0) delete d[k]; });
+        var b64 = btoa(unescape(encodeURIComponent(JSON.stringify(d))))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        var origin = /heatcalc\.ru|github\.io|localhost|127\.0\.0\.1/.test(location.hostname)
+            ? location.origin : 'https://heatcalc.ru';
+        lastLink = origin + '/?opros=' + b64;
+
+        document.getElementById('r_link').textContent = lastLink;
+        var msg = 'Заполнил опросник по отоплению, вот ссылка с данными: ' + lastLink;
+        document.getElementById('r_wa').href = 'https://wa.me/?text=' + encodeURIComponent(msg);
+        document.getElementById('r_tg').href = 'https://t.me/share/url?url=' +
+            encodeURIComponent(lastLink) + '&text=' + encodeURIComponent('Опросник по отоплению — данные для расчёта');
+        document.getElementById('result').classList.add('on');
+        document.getElementById('result').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function copyLink() {
+        if (!lastLink) return;
+        var done = function () {
+            var el = document.getElementById('r_copied');
+            el.style.display = 'block';
+            setTimeout(function () { el.style.display = 'none'; }, 2000);
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(lastLink).then(done, done);
+        } else {
+            var ta = document.createElement('textarea');
+            ta.value = lastLink; document.body.appendChild(ta);
+            ta.select(); try { document.execCommand('copy'); } catch (e) { }
+            document.body.removeChild(ta); done();
+        }
+    }
+</script>
+</body>
+</html>

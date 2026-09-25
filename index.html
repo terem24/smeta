@@ -948,6 +948,8 @@
                             <span style="color: var(--text-main);">Сопротивление R₀:</span>
                             <span id="lbl_wall_resistance" style="color: var(--text-main); font-weight: 500;">0.16 м²·°С/Вт</span>
                         </div>
+                        <!-- Сверка с нормой энергоэффективности СП 50.13330 по выбранному городу (app.wallSp50BadgeHtml) -->
+                        <div id="lbl_wall_sp50" style="display: none; font-size: 10px; line-height: 1.35; padding-top: 2px;"></div>
                         <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px dashed var(--border); padding-top: 3px; margin-top: 1px; font-size: 9.5px; opacity: 0.6; color: var(--text-main);">
                             <span>Расчетный коэфф.:</span>
                             <span id="lbl_wall_coef">1.00</span>
@@ -2911,6 +2913,12 @@
             <button id="btn_confirm_share_options" class="auth-btn-base btn-email-submit" style="width: 100%; height: 44px; margin-top: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;" onclick="app.confirmShareOptions()">
                 <span id="btn_confirm_share_options_text">Создать ссылку</span>
             </button>
+
+            <!-- Опросник для заказчика: клиент заполняет анкету на oprosnik.html и
+                 возвращает ссылку, которая предзаполняет расчёт (app.applyOprosFromUrl) -->
+            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 11.5px; color: var(--text-sec); line-height: 1.4;">
+                📋 Ещё нет данных по объекту? <span onclick="app.copyOprosnikLink(this)" style="color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline;">Скопировать ссылку на опросник</span> — отправьте её заказчику, он заполнит анкету о доме и вернёт вам ссылку с готовыми данными для расчёта.
+            </div>
         </div>
     </div>
 

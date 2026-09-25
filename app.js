@@ -1440,6 +1440,112 @@ const app = {
         this.closeInviteBanner();
     },
 
+    // ═══ Опросник для заказчика (oprosnik.html) ═══════════════════════════
+    // Монтажник отправляет клиенту ссылку heatcalc.ru/oprosnik.html, клиент
+    // заполняет анкету и получает ссылку heatcalc.ru/?opros=<base64url JSON>,
+    // которую возвращает монтажнику (WhatsApp/Telegram — прямо со страницы).
+    // Открыв её, монтажник получает предзаполненные параметры объекта, а
+    // текстовые ответы (составы стен, что закуплено, контакты) — окном: в
+    // расчёт они сами не ложатся, их монтажник читает и решает сам.
+    // Вызывается из init() после загрузки сохранённого state — данные анкеты
+    // сильнее сохранёнки, это осознанное открытие новой заявки.
+    // Кнопка в окне «Поделиться»: копирует адрес страницы опросника, чтобы
+    // монтажник отправил её заказчику в любом мессенджере.
+    copyOprosnikLink: function (el) {
+        const origin = /heatcalc\.ru|github\.io|localhost|127\.0\.0\.1/.test(location.hostname)
+            ? location.origin : 'https://heatcalc.ru';
+        const url = origin + '/oprosnik.html';
+        const done = () => {
+            if (!el) return;
+            const old = el.innerText;
+            el.innerText = '✓ Ссылка скопирована';
+            setTimeout(() => { el.innerText = old; }, 2000);
+        };
+        try {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(url).then(done, done);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = url; document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); } catch (e) { }
+                document.body.removeChild(ta); done();
+            }
+        } catch (e) { done(); }
+    },
+
+    applyOprosFromUrl: function () {
+        let d = null;
+        try {
+            const raw = new URLSearchParams(window.location.search).get('opros');
+            if (!raw) return;
+            const b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+            d = JSON.parse(decodeURIComponent(escape(atob(b64))));
+        } catch (e) { return; }
+        if (!d || typeof d !== 'object') return;
+        const s = this.state;
+        try {
+            s.objectType = 'house';
+            const _a = parseFloat(d.area);
+            if (_a > 0) s.area = Math.min(this.MAX_AREA || 2000, Math.round(_a));
+            const _fl = parseInt(d.floors, 10);
+            if (_fl === 1 || _fl === 2) s.floors = _fl;
+            const sys = [];
+            if (d.tp) sys.push('tp');
+            if (d.rad) sys.push('rad');
+            if (sys.length) s.systems = sys;
+            if (d.fuel === 'gas') s.fuels = ['gas', 'el'];
+            else if (d.fuel === 'el') s.fuels = ['el'];
+            if (d.vent === true) { s.ventilationEnabled = true; s.ventilationType = 'forced'; }
+            if (d.hw !== undefined) s.hotWater = !!d.hw;
+            // Город — та же формула коэффициента, что в selectCity
+            if (d.city && typeof CITIES_DB !== 'undefined') {
+                const key = String(d.city).trim().toLowerCase();
+                const city = CITIES_DB.find(c => String(c.name).toLowerCase() === key)
+                    || CITIES_DB.find(c => String(c.name).toLowerCase().startsWith(key));
+                if (city) {
+                    s.selectedCity = city;
+                    s.region = Math.round(((20 - city.temp) / 45) * 100);
+                }
+            }
+            if (!s.projectName) {
+                s.projectName = 'Заявка' + (d.name ? ' от ' + String(d.name).slice(0, 40) : '') +
+                    (_a > 0 ? ', дом ' + Math.round(_a) + ' м²' : '');
+            }
+        } catch (e) { console.warn('опросник: не все поля применились', e); }
+
+        // Текст анкеты целиком — окном, после того как интерфейс отрисуется
+        const L = [];
+        const put = (label, v) => { if (v) L.push(label + ': ' + String(v).slice(0, 500)); };
+        put('Имя', d.name); put('Телефон', d.phone); put('Город', d.city);
+        put('Площадь дома', d.area ? d.area + ' м²' : '');
+        put('Этажей', d.floors);
+        put('Жителей', d.people);
+        const _heatTxt = [d.tp ? 'тёплый пол' : '', d.rad ? 'радиаторы' : ''].filter(Boolean).join(' + ');
+        if (_heatTxt) L.push('Отопление: ' + _heatTxt);
+        put('Основной источник тепла', { gas: 'газовый котёл', el: 'электрокотёл', solid: 'твердотопливный котёл', hp: 'тепловой насос' }[d.fuel]);
+        put('Режим проживания', { all: 'круглогодичный', season: 'сезонный' }[d.live]);
+        put('Стадия строительства', { none: 'ещё не приступил', box: 'возводится коробка', closed: 'закрыт тепловой контур' }[d.stage]);
+        put('Приточная вентиляция с подогревом', d.vent === true ? 'да' : (d.vent === false ? 'нет' : ''));
+        put('Окна (марка/модель)', d.win);
+        put('Состав наружной стены', d.wall);
+        put('Состав пола 1 этажа', d.floor1);
+        put('Состав кровли', d.roof);
+        put('Помещения с тёплым полом', d.tpRooms);
+        put('Уже закуплено', d.bought);
+        put('Комментарий', d.comment);
+        const txt = 'Заказчик заполнил опросник. Параметры объекта уже подставлены в расчёт, ' +
+            'текстовые ответы ниже — прочитайте и учтите вручную.\n\n' + L.join('\n');
+        setTimeout(() => { try { this.alert(txt, 'Опросник заказчика'); } catch (e) { } }, 900);
+
+        // Убираем параметр из адреса: перезагрузка страницы не должна
+        // второй раз перетирать смету данными анкеты
+        try {
+            const u = new URL(window.location.href);
+            u.searchParams.delete('opros');
+            window.history.replaceState({}, '', u.toString());
+        } catch (e) { }
+    },
+
     // Промокод латиницей монтажник нередко набирает русскими буквами: TEREM
     // как «ТЕРЕМ». Если такой код не нашёлся, пробуем его транслитерацию.
     // Пустая строка — транслитерировать нечего (кириллицы в коде нет).
@@ -38878,7 +38984,14 @@ const app = {
                 if (L.Q_roof > 0) items.push({ type: 'Кровля', count: 1, area: parseFloat(r.area) || 0, Tv: L.Tv, Tn: L.Tn, R: L.R_roof, n: L.n_roof, Q: L.Q_roof });
                 if (L.Q_wall > 0) items.push({ type: 'Наружная стена', count: 1, area: L.wallArea, Tv: L.Tv, Tn: L.Tn, R: L.R_wall, n: L.n_wall, Q: L.Q_wall });
                 if (L.Q_glz > 0) items.push({ type: 'Окно', count: 1, area: L.totalWinArea, Tv: L.Tv, Tn: L.Tn, R: L.R_glz, n: L.n_glz, Q: L.Q_glz });
-                if (L.Q_floor > 0) items.push({ type: 'Пол', count: 1, area: parseFloat(r.area) || 0, Tv: L.Tv, Tn: L.Tn, R: L.R_floor, n: L.n_floor, Q: L.Q_floor });
+                if (L.Q_floor > 0) items.push({
+                    type: L.floorZones ? 'Пол по грунту' : 'Пол', count: 1,
+                    area: parseFloat(r.area) || 0, Tv: L.Tv, Tn: L.Tn,
+                    // R у пола по грунту — приведённое (площадь·dT/Q): сам расчёт
+                    // идёт по зонам, их состав — в formula.
+                    R: L.R_floor, n: L.n_floor, Q: L.Q_floor,
+                    formula: L.floorZoneNote || undefined
+                });
                 // Нагрев приточного воздуха. Сопротивления у него нет, поэтому
                 // формула к строке приложена своя, а вместо R на листе прочерк.
                 if (L.Q_vent > 0) items.push({
@@ -39105,11 +39218,21 @@ const app = {
             '-СП 61.13330.2012 Тепловая изоляция оборудования и трубопроводов (актуал. СНиП 41-03-2003)',
             '-ГОСТ 30494-2011 Здания жилые и общественные.'
         ]});
+        // Теплопотери в трёх режимах: комфорт (основной котёл), эконом −4 °C
+        // (ночь и отъезд при покомнатной автоматике), дежурное отопление +5 °C
+        // (СП 60.13330.2020 — по нему подбирается резервный электрокотёл).
+        const _modes = this.getHouseHeatLossModes();
         notes.push({ h: '2. Внутренние расчётные температуры в отопительный период', lines: [
             'сан. узлы +25 °С; жилые комнаты +20…+22 °С; прихожая, холл, кладовая, бойлерная +18…+20 °С.',
             'Расчётная температура наружного воздуха: ' + tOut + ' °С' +
                 (s.selectedCity ? ' (' + s.selectedCity.name + ')' : '') + '.'
-        ]});
+        ].concat(_modes ? [
+            'Теплопотери здания по режимам: «Комфорт» — ' + _modes.comfort.toFixed(1) +
+                ' кВт (по ним подбирается основной источник тепла); «Эконом», на 4 °С ниже — ' +
+                _modes.econom.toFixed(1) + ' кВт (ночное снижение и отъезд при покомнатной автоматике); ' +
+                '«Дежурное отопление» +5 °С (СП 60.13330.2020) — ' + _modes.frost.toFixed(1) +
+                ' кВт (по нему подбирается резервный источник: при аварии основного его задача — не дать системе замёрзнуть).'
+        ] : []) });
         notes.push({ h: '3. Сведения о температурных параметрах', lines: [
             'В качестве теплоносителя приняты:',
             '-теплоноситель на радиаторное отопление с параметрами: 75-65 °С',
@@ -44188,6 +44311,9 @@ const app = {
             const _objQ = new URLSearchParams(window.location.search || '').get('type');
             if (_objQ === 'flat' || _objQ === 'house') this.state.objectType = _objQ;
         } catch (e) { }
+        // Ссылка из опросника заказчика: параметры объекта — в state, текстовые
+        // ответы — окном монтажнику (см. applyOprosFromUrl)
+        this.applyOprosFromUrl();
         this.loadInstallerSettingsLocal();
         // Реквизиты компании переехали из сметы в настройки аккаунта — забираем их
         // из последнего расчёта, пока он ещё лежит в state (разовая операция)
@@ -51176,7 +51302,10 @@ const app = {
         return Math.min(1, left / fallbackOuter);
     },
 
-    getRoomHeatLoss: function (r) {
+    // tvOver — необязательная подмена расчётной температуры помещения для
+    // расчёта режимов (getHouseHeatLossModes): { shift: -4 } — «Эконом»,
+    // { abs: 5 } — «Дежурное отопление». Обычные вызовы аргумент не передают.
+    getRoomHeatLoss: function (r, tvOver) {
         const s = this.state;
         // Без города — ступень по региону. Ступени согласованы с обратной
         // формулой t = 20 - 0.45 * region (той же, что в buildGeneralData):
@@ -51225,6 +51354,10 @@ const app = {
         // разницу теплопотерь втрое, и подбирать им приборы одинаково нельзя.
         var tInfo = this.roomTempInfo(r);
         var Tv = tInfo.t;
+        if (tvOver) {
+            if (tvOver.abs !== undefined) Tv = tvOver.abs;
+            else if (tvOver.shift) Tv = Tv + tvOver.shift;
+        }
 
         var dT = Tv - Tn;
         var rFloorNum = parseInt(r.floor) || 1;
@@ -51313,7 +51446,54 @@ const app = {
             if (s.flatPosition !== 'last') warmAbove = true;
         }
         var Q_roof = (isTopFloor && !warmAbove && R_roof > 0) ? area * dT / R_roof * n_roof : 0;
-        var Q_floor = (isBottomFloor && !warmBelow && R_floor > 0) ? area * dT / R_floor * n_floor : 0;
+
+        /**
+         * Пол. Для пола по грунту — расчёт по зонам (СНиП 2.04.05-91*, прил. 9;
+         * Сканави «Отопление»): грунт сам сопротивляется теплопередаче, и полоса
+         * шириной 2 м у наружной стены теряет в разы больше, чем середина дома.
+         * R зоны прибавляется к R конструкции пола, множитель n при этом не
+         * нужен — прежний n_floor = 0,85 был суррогатом именно этого расчёта
+         * (закрыт долг из CLAUDE.md «пол по грунту считается по зонам»).
+         *
+         * Площади зон берём полосами по наружному периметру помещения без
+         * сужения полос к центру — это идёт в запас и компенсирует то, что
+         * угловые клетки зоны I по методике считаются дважды. Помещение без
+         * наружных стен лежит в глубине дома — вся его площадь в зоне III.
+         *
+         * Полы над подвалом, над тёплым помещением и на лагах считаются как
+         * раньше: зоны — только про грунт. Квартире пол по грунту не считается
+         * вовсе (см. warmBelow выше).
+         */
+        var Q_floor = 0;
+        var floorZones = null;
+        var R_floorShow = R_floor;
+        if (isBottomFloor && !warmBelow && R_floor > 0) {
+            var floorIsGround = !s.floorEnabled || /^floor_ground/.test(String(s.floorMatId || ''));
+            if (floorIsGround && !this.isFlat()) {
+                var R_GROUND_ZONES = [2.1, 4.3, 8.6, 14.2];
+                var zoneAreas = [0, 0, 0, 0];
+                var restA = area;
+                if (outerPerim > 0.1) {
+                    for (var zi = 0; zi < 3 && restA > 0.01; zi++) {
+                        var za = Math.min(restA, outerPerim * 2);
+                        zoneAreas[zi] = za; restA -= za;
+                    }
+                    zoneAreas[3] = restA > 0.01 ? restA : 0;
+                } else {
+                    zoneAreas[2] = area;
+                }
+                for (var zj = 0; zj < 4; zj++) {
+                    if (zoneAreas[zj] > 0) Q_floor += zoneAreas[zj] * dT / (R_GROUND_ZONES[zj] + R_floor);
+                }
+                n_floor = 1.0;
+                floorZones = zoneAreas;
+                // Приведённое R — чтобы строка «Пол» на листах читалась той же
+                // формулой A · dT / R, что и остальные ограждения.
+                if (Q_floor > 0 && dT !== 0) R_floorShow = Math.round((area * dT / Q_floor) * 100) / 100;
+            } else {
+                Q_floor = area * dT / R_floor * n_floor;
+            }
+        }
 
         // Нагрев приточного воздуха. Раньше эта составляющая считалась разом на
         // весь дом в getHouseHeatLoss и добавлялась только к мощности котла, а в
@@ -51342,7 +51522,19 @@ const app = {
             // помещения, по которой подбираются приборы, — Q_sum.
             Q_total: Q_env,
             Q_sum: Q_env + Q_vent,
-            R_wall: R_wall, R_glz: R_glz, R_roof: R_roof, R_floor: R_floor,
+            R_wall: R_wall, R_glz: R_glz, R_roof: R_roof, R_floor: R_floorShow,
+            // Пол по грунту: R_floorConstr — R самой конструкции (без грунта),
+            // floorZones — площади зон I–IV, floorZoneNote — расшифровка для листов.
+            R_floorConstr: R_floor,
+            floorZones: floorZones,
+            floorZoneNote: floorZones
+                ? 'Пол по грунту по зонам шириной 2 м (СНиП 2.04.05-91*, прил. 9; Сканави): ' +
+                  floorZones.map(function (a, i) {
+                      var names = ['I (R 2,1)', 'II (R 4,3)', 'III (R 8,6)', 'IV (R 14,2)'];
+                      return a > 0 ? 'зона ' + names[i] + ' — ' + (Math.round(a * 10) / 10) + ' м²' : '';
+                  }).filter(Boolean).join('; ') +
+                  '; R конструкции пола ' + R_floor.toFixed(2) + ' прибавляется к R зоны'
+                : null,
             wallArea: wallArea, totalWinArea: totalWinArea,
             vol: vol, n_vent: n_eff, kOrient: kOrient, orient: orient,
             tKind: tInfo.kind, tManual: tInfo.manual,
@@ -52672,6 +52864,46 @@ const app = {
         }
         return pwr;
     },
+    /**
+     * Теплопотери дома в трёх режимах, кВт:
+     *   comfort — расчётные температуры помещений (по ним подбирается основной котёл);
+     *   econom  — на 4 °C ниже комфорта (ночь, отъезд — режим покомнатной автоматики);
+     *   frost   — «дежурное отопление» +5 °C во всех помещениях (СП 60.13330.2020
+     *             допускает поддержание пониженной температуры вне рабочего времени,
+     *             но не ниже +5 °C) — по нему подбирается резервный электрокотёл:
+     *             его задача при аварии основного не комфорт, а незамерзание системы.
+     *
+     * В подробном режиме — тот же getRoomHeatLoss с подменой температуры, в быстром —
+     * пересчёт пропорцией (t − Tн)/(20 − Tн): формула 37 Вт/м³ нормирована на +20 °C.
+     */
+    getHouseHeatLossModes: function () {
+        const s = this.state;
+        const comfort = parseFloat(this.getHouseHeatLoss()) || 0;
+        if (!(comfort > 0)) return null;
+        let econom = 0, frost = 0;
+        if (s.detailedRooms && s.rooms && s.rooms.length > 0) {
+            let e = 0, f = 0;
+            s.rooms.forEach(r => {
+                e += Math.max(0, this.getRoomHeatLoss(r, { shift: -4 }).Q_sum);
+                f += Math.max(0, this.getRoomHeatLoss(r, { abs: 5 }).Q_sum);
+            });
+            econom = e / 1000; frost = f / 1000;
+        } else {
+            const Tn = (s.selectedCity && s.selectedCity.temp !== undefined)
+                ? s.selectedCity.temp
+                : Math.round(20 - (s.region || 100) * 0.45);
+            const base = 20 - Tn;
+            if (base > 0) {
+                econom = comfort * Math.max(0, 16 - Tn) / base;
+                frost = comfort * Math.max(0, 5 - Tn) / base;
+            }
+        }
+        return {
+            comfort: comfort,
+            econom: Math.round(econom * 10) / 10,
+            frost: Math.round(frost * 10) / 10
+        };
+    },
     renderHeatLossTable: function () {
         var s = this.state;
         if (!s.showDetailedRoomsPanel) return '';
@@ -53294,6 +53526,46 @@ const app = {
      */
     ufhSupply: function (dT) {
         return this.UFH_SUPPLY + ((dT || this.UFH_DTS[0]) - this.UFH_DTS[0]) / 2;
+    },
+    /**
+     * Тыльная теплоотдача тёплого пола 1-го этажа: сколько тепла уходит вниз,
+     * в грунт или подвал, мимо помещения. Ориентир справочника проектировщика
+     * (и DIN EN 1264) — не больше 10 % от лицевой; выше — утеплитель под полом
+     * тонковат, и хозяин греет грунт.
+     *
+     * Оценка: q_тыл = (t_ср.воды − t_под полом) / (R_подложки + R_конструкции пола).
+     *   t_ср.воды — график узла подмеса (ufhSupply − dT/2, обычно 37,5 °C);
+     *   t_под полом — +5 °C (грунт под утеплённым полом / холодный подвал);
+     *   R_подложки — мат с бобышками 20 мм (≈0,55) или плита XPS 50 мм (≈1,45);
+     *   R_конструкции — пол 1 этажа из FLOOR_MATERIALS_DB (без грунта).
+     * Пол над отапливаемым помещением тепло вниз не теряет — там не считаем.
+     * Второй этаж не считаем всегда: под ним тёплый первый.
+     */
+    ufhBackLoss: function () {
+        const c = this._ufhCalc;
+        if (!c || !c.floors) return null;
+        const f1 = c.floors.find(f => f.fl === 1);
+        if (!f1 || !(f1.area > 0)) return null;
+        const s = this.state;
+        const matId = s.floorEnabled ? String(s.floorMatId || '') : 'floor_ground_ins';
+        if (matId === 'floor_heated') return null;
+        let rConstr = 2.8;
+        if (typeof FLOOR_MATERIALS_DB !== 'undefined') {
+            const m = FLOOR_MATERIALS_DB.find(x => x.id === matId);
+            if (m) rConstr = m.R;
+        }
+        const rBase = (s.ufhBaseType === 'xps') ? 1.45 : 0.55;
+        const dT = (this._ufhBal && this._ufhBal.dT) || this.UFH_DTS[0];
+        const tw = this.ufhSupply(dT) - dT / 2;
+        const qBack = Math.max(0, (tw - 5) / (rBase + rConstr));
+        const qFace = f1.rows.reduce((a, r) => a + (r.Q || 0), 0) / f1.area;
+        if (!(qFace > 0)) return null;
+        return {
+            qBack: Math.round(qBack * 10) / 10,
+            qFace: Math.round(qFace),
+            pct: Math.round(qBack / qFace * 100),
+            under: /^floor_basement/.test(matId) ? 'холодный подвал' : 'грунт'
+        };
     },
     /** График подачи/обратки строкой: «41 / 34» */
     ufhGraph: function (dT) {
@@ -55949,6 +56221,35 @@ const app = {
         card.style.boxShadow = '0 0 0 3px rgba(239,68,68,0.55)';
         setTimeout(() => { card.style.boxShadow = prevShadow; card.style.transition = prevTransition; }, 1800);
     },
+    /**
+     * Плашка баланса помещения в списке комнат: «+92» зелёным или «−34» красным —
+     * что остаётся, если из мощности подобранных приборов и тёплого пола вычесть
+     * теплопотери (как в списке помещений у «Спроектируй.рф»). Данные кладёт
+     * render() в app._roomBalance при подборе приборов; пока подбора не было
+     * (быстрый режим, дом без радиаторной части) — плашки нет, список выглядит
+     * как раньше.
+     */
+    roomBalanceChipHtml: function (roomId) {
+        const b = (this._roomBalance || {})[roomId];
+        if (!b || !(b.q > 0)) return '';
+        const give = (b.fact || 0) + (b.ufh || 0);
+        const diff = Math.round(give - b.q);
+        const col = diff < 0 ? '#EF4444' : '#10B981';
+        const tip = `Тепловой баланс: приборы ${b.fact} Вт` +
+            (b.hasTp ? ` + тёплый пол ${b.ufh} Вт (физический предел пола ${b.ufhMax} Вт, лишнее срезает термостат)` : '') +
+            ` − теплопотери ${b.q} Вт = ${diff >= 0 ? '+' : ''}${diff} Вт. ` +
+            (diff < 0 ? 'Тепла не хватает: добавьте прибор или утеплите помещение.' : 'Баланс в плюсе — в самые морозы комната не остынет.');
+        return `<span style="font-size:10px; font-weight:800; color:${col}; white-space:nowrap;" title="${tip}">${diff >= 0 ? '+' : '−'}${Math.abs(diff)}</span>`;
+    },
+    // render() пересчитывает баланс после пересборки сметы — обновляем плашки
+    // в уже отрисованном списке, не трогая сам список (ввод и фокус целы).
+    updateRoomBalanceChips: function () {
+        if (!this.state.rooms) return;
+        this.state.rooms.forEach(r => {
+            const el = document.getElementById('room_bal_' + r.id);
+            if (el) el.innerHTML = this.roomBalanceChipHtml(r.id);
+        });
+    },
     renderRoomsUI: function () {
         const c1 = document.getElementById('rooms_list_1');
         const c2 = document.getElementById('rooms_list_2');
@@ -56100,6 +56401,7 @@ const app = {
                                 <span style="font-size:11px; opacity:${hasRad ? 1 : 0.25};" title="Радиаторы">🌡️</span>
                                 <span style="font-size:11px; opacity:${hasTp ? 1 : 0.25};" title="Тёплый пол">♨️</span>
                                 <span style="font-size:11px; font-weight:700; color:var(--text-main); white-space:nowrap;" title="${roomQTip}">${roomQ} Вт</span>
+                                <span id="room_bal_${r.id}">${this.roomBalanceChipHtml(r.id)}</span>
                             </div>
                         </div>`;
                 if (r.floor === 2 && c2) c2.insertAdjacentHTML('beforeend', rowHtml);
@@ -56144,6 +56446,7 @@ const app = {
                             <span style="font-weight:700; color:var(--text-sec); font-size:12px; user-select:none;">${roomIndex}.</span>
                             <span contenteditable="true" style="font-weight:700; color:var(--text-main); font-size:12px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; outline:none;" onblur="app.updRoom(${r.id}, 'name', this.innerText)">${r.name}</span>
                             <span style="font-size:12px; font-weight:700; color:var(--text-main); white-space:nowrap;" title="${roomQTip}">${roomQ} Вт</span>
+                            <span id="room_bal_${r.id}">${this.roomBalanceChipHtml(r.id)}</span>
                             <span style="color:#EF4444; cursor:pointer; font-size:16px; line-height:1; opacity:0.6; padding:0 2px;" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6" onclick="app.removeRoom(${r.id})">×</span>
                         </div>
 
@@ -57272,6 +57575,13 @@ const app = {
             if (lblThick) lblThick.innerText = `${totalThick} мм`;
             if (lblRes) lblRes.innerText = `${totalR.toFixed(2)} м²·°С/Вт`;
             if (lblCoef) lblCoef.innerText = wallCoef.toFixed(2);
+            // Бейдж «соответствует СП 50»: сверка R₀ с нормой города (см. wallSp50Req)
+            const lblSp50 = document.getElementById('lbl_wall_sp50');
+            if (lblSp50) {
+                const _b50 = this.wallSp50BadgeHtml(totalR);
+                lblSp50.innerHTML = _b50;
+                lblSp50.style.display = _b50 ? 'block' : 'none';
+            }
         }
 
         // Sync Ventilation UI
@@ -58202,6 +58512,35 @@ const app = {
         this.saveState();
     },
 
+    /**
+     * Требуемое сопротивление наружной стены жилого дома по СП 50.13330
+     * (табл. 3): R_тр = a·ГСОП + b, для стен a = 0,00035, b = 1,4.
+     * ГСОП = (t_в − t_от) · z_от; t_в = 20 °C, t_от и z_от — из СП 131.13330.2020
+     * (поля tot/zot города в CITIES_DB). Без выбранного города вернуть нечего:
+     * по одному «региону» ГСОП не восстановить, и бейдж не показывается.
+     */
+    wallSp50Req: function () {
+        const c = this.state.selectedCity;
+        if (!c || c.zot === undefined || c.tot === undefined) return null;
+        const gsop = (20 - c.tot) * c.zot;
+        return {
+            gsop: Math.round(gsop),
+            rreq: Math.round((0.00035 * gsop + 1.4) * 100) / 100,
+            city: c.name
+        };
+    },
+    // Строка-бейдж под итогом R₀ пирога стены: проходит ли стена норму СП 50
+    // для выбранного города. Пустая строка — города нет, строку скрываем.
+    wallSp50BadgeHtml: function (totalR) {
+        const req = this.wallSp50Req();
+        if (!req) return '';
+        const ok = totalR >= req.rreq - 0.005;
+        const rs = String(req.rreq).replace('.', ',');
+        return ok
+            ? `<span style="color:#22C55E; font-weight:600;">✓ Соответствует СП 50.13330: норма для г. ${req.city} — R ≥ ${rs}</span>`
+            : `<span style="color:#F59E0B; font-weight:600;">⚠ Ниже нормы СП 50.13330 для г. ${req.city} (R ≥ ${rs}) — дом будет терять больше нормативного, утеплите стену</span>`;
+    },
+
     calculateWallResistance: function () {
         if (!this.state.wallLayers || this.state.wallLayers.length === 0) {
             this.state.mat = 1.0;
@@ -58288,6 +58627,12 @@ const app = {
             if (lblThick) lblThick.innerText = `${totalThick} мм`;
             if (lblRes) lblRes.innerText = `${totalR.toFixed(2)} м²·°С/Вт`;
             if (lblCoef) lblCoef.innerText = wallCoef.toFixed(2);
+            const lblSp50 = document.getElementById('lbl_wall_sp50');
+            if (lblSp50) {
+                const _b50 = this.wallSp50BadgeHtml(totalR);
+                lblSp50.innerHTML = _b50;
+                lblSp50.style.display = _b50 ? 'block' : 'none';
+            }
 
             this.updateInfo();
         } else {
@@ -61875,6 +62220,14 @@ const app = {
                     `<b>Формула подбора:</b> ${formulaStr}<br><br>` +
                     `<b>Подставленные значения:</b><br>` +
                     `• Расчетные теплопотери здания: ${targetPwr.toFixed(1)} кВт.<br>` +
+                    (() => {
+                        // Три режима — те же цифры, что на листе «Общие данные»:
+                        // монтажник видит, на что подобран основной котёл и на что резерв.
+                        const _m3 = this.getHouseHeatLossModes();
+                        return _m3
+                            ? `• Теплопотери по режимам: «Комфорт» ${_m3.comfort.toFixed(1)} кВт (основной котёл); «Эконом» −4 °C — ${_m3.econom.toFixed(1)} кВт (ночь и отъезд при покомнатной автоматике); «Дежурное отопление» +5 °C — ${_m3.frost.toFixed(1)} кВт (СП 60.13330.2020, по нему подбирается резервный котёл).<br>`
+                            : '';
+                    })() +
                     needLines +
                     `• Количество котлов${qty > 1 ? ' в каскаде' : ''}: ${qty} шт.<br>` +
                     `• Мощность подобранного котла: ${singlePower} кВт (${bkText}).<br>` +
@@ -61892,6 +62245,9 @@ const app = {
                 // Разбор требуемой мощности подбор кладёт в _elNeed (boilerTargetPower)
                 let need = (this._elNeed && this._elNeed.kw > 0) ? this._elNeed : null;
                 let heatPwr = need ? need.heat : targetPwr;
+                // Резерв подобран на дежурное отопление +5 °C (см. подбор в render):
+                // покрытие меньше 100 % — не ошибка и не лимит сети, а замысел.
+                let frostPick = (need && need.frostPick) ? need.frostPick : null;
                 let singlePower = val2 || 18;
                 let qty = val3 || 1;
                 // val7 — мощность второго котла неодинаковой пары (каскад 12 + 18 кВт).
@@ -61929,15 +62285,19 @@ const app = {
                     ? 'больше не даёт ограничение по выделенной мощности'
                     : phaseCapKw
                         ? 'больше не даёт однофазная сеть на объекте'
-                        : elIsBackup
-                            ? 'это резервный источник при основном газовом котле, и подбор берёт старший в линейке, а не каскад'
-                            : 'типоразмер выбран вручную, автоподбор взял бы больший';
+                        : frostPick
+                            ? 'резерв подобран на режим дежурного отопления +5 °C, а не на полный комфорт'
+                            : elIsBackup
+                                ? 'это резервный источник при основном газовом котле, и подбор берёт старший в линейке, а не каскад'
+                                : 'типоразмер выбран вручную, автоподбор взял бы больший';
                 // Доля теплопотерь, которую резервный котёл реально закрывает: POLIS
                 // подбирается одной штукой при любой мощности объекта, поэтому на большом
                 // доме он греет не весь дом, и монтажник должен видеть это числом.
                 // Считаем по суммарной мощности: в каскаде дом греют оба котла.
                 let coverPct = heatPwr > 0 ? Math.min(100, Math.round(totalPwrLimit / heatPwr * 100)) : 100;
-                let formulaStr = isPolis
+                let formulaStr = frostPick
+                    ? `Q_требуемая = Q_теплопотерь при +5 °C в доме (режим «дежурное отопление», СП 60.13330.2020) = ${frostPick.frost.toFixed(1)} кВт. Это резерв при основном газовом котле: при его аварии задача электрокотла — не комфорт, а защита системы от замерзания до восстановления основного. Полные теплопотери в комфорте — ${frostPick.comfort.toFixed(1)} кВт; нужен полный резерв — выберите типоразмер вручную («Заменить»).`
+                    : isPolis
                     ? `Подбирается один котёл — максимальный по мощности, который закрывает теплопотери, либо старший в линейке (${maxSeriesPower} кВт). В каскад POLIS не ставится: как резерв на случай аварии он дублирует основной котёл, а не наращивает мощность котельной.`
                     : ((need && need.tankVol > 0)
                         ? `Q_требуемая = max(Q_теплопотери ; Q_нагрева_бойлера). Теплопотери — ${this.heatLossSourceText()}. Нагрев бойлера — Q = V × 4,187 кДж/(кг·°C) × 50 °C / 3600 с (с 10 до 60 °C за час; время прогрева — допущение по практике). Мощности не складываются: на время нагрева бойлера отопление отключается.`
@@ -61955,14 +62315,18 @@ const app = {
                 let polisLines = isPolis
                     ? `• Электропитание: ${singlePower <= 9 ? '220 В или 380 В' : 'только 380 В (трёхфазная сеть)'}.<br>` +
                       (polisCable ? `• Кабель (медь): ${polisCable}. На линии питания котла обязателен отдельный автоматический выключатель.<br>` : '') +
-                      `• <b style="color:${coverPct >= 100 ? '#22C55E' : '#F59E0B'};">Перекрывает ${coverPct} % расчётных теплопотерь</b> (${singlePower} из ${heatPwr.toFixed(1)} кВт).<br>` +
-                      (coverPct >= 100
-                          ? `• Мощности хватает на весь дом — при аварии газового котла отопление держит расчётную температуру.<br>`
-                          : `• При аварии газового котла котёл не вытянет дом целиком: он не даст системе разморозиться и прогреет часть помещений. Для полного резервирования нужен STATUS (до 27 кВт).<br>`)
+                      (frostPick
+                          ? `• <b style="color:${totalPwrLimit >= frostPick.frost ? '#22C55E' : '#F59E0B'};">Резерв на дежурное отопление +5 °C:</b> нужно ${frostPick.frost.toFixed(1)} кВт, у котла ${totalPwrLimit} кВт — при аварии газового дом не разморозится. Полный комфорт (${heatPwr.toFixed(1)} кВт) резерв держать не обязан.<br>`
+                          : `• <b style="color:${coverPct >= 100 ? '#22C55E' : '#F59E0B'};">Перекрывает ${coverPct} % расчётных теплопотерь</b> (${singlePower} из ${heatPwr.toFixed(1)} кВт).<br>` +
+                            (coverPct >= 100
+                                ? `• Мощности хватает на весь дом — при аварии газового котла отопление держит расчётную температуру.<br>`
+                                : `• При аварии газового котла котёл не вытянет дом целиком: он не даст системе разморозиться и прогреет часть помещений. Для полного резервирования нужен STATUS (до 27 кВт).<br>`))
                     // У STATUS полноту показываем только тогда, когда её не хватает: подбор
                     // сам мощность не занижает, а вот выбранный руками типоразмер — может,
                     // и монтажник должен видеть это числом, а не догадываться.
-                    : (coverPct < 100
+                    : (frostPick
+                        ? `• <b style="color:${totalPwrLimit >= frostPick.frost ? '#22C55E' : '#F59E0B'};">Резерв на дежурное отопление +5 °C</b> (СП 60.13330.2020): нужно ${frostPick.frost.toFixed(1)} кВт, у котла ${totalPwrLimit} кВт — при аварии газового дом не разморозится, а часть помещений прогреется. Полный комфорт (${heatPwr.toFixed(1)} кВт) резерв держать не обязан — это экономит типоразмер и обвязку. Нужен полный резерв — выберите котёл мощнее кнопкой «Заменить».<br>`
+                        : coverPct < 100
                         ? `• <b style="color:#F59E0B;">Перекрывает ${coverPct} % расчётных теплопотерь</b> (${totalPwrLimit} из ${heatPwr.toFixed(1)} кВт) — ${elCapReason}.<br>` +
                           (elIsBackup
                               ? `• Каскад из двух электрокотлов ради резерва не собирается: это две обвязки, два стабилизатора и две линии 380 В ради нескольких дней в году. При аварии газового котла этот не вытянет дом целиком в самый мороз, но не даст системе разморозиться и прогреет часть помещений. Если нужен полный резерв — добавьте второй котёл кнопкой «Добавить своё оборудование».<br>`
@@ -62435,13 +62799,30 @@ const app = {
                     `• Предел длины петли: <b>${_lmaxStr}</b>. Он не назначен, а посчитан: длиннее петля — больше и метры, и расход (она закрывает больше площади), поэтому потери растут по кубу длины. Останавливаемся на первом из двух: потери ${this.UFH_LOOP_DP_MAX} кПа или скорость ${String(this.UFH_V_MAX).replace('.', ',')} м/с.<br>` +
                     `• Петель в расчёте: <b>${(this._ufhCalc && this._ufhCalc.loops) || 0}</b> — столько же выходов у коллекторов.<br>` +
                     (_bal2 ? `• Самая нагруженная петля: ${Math.round(_bal2.worst.rows.reduce((a, r) => Math.max(a, r.m), 0))} м, потери ${_bal2.worst.worstDp.toFixed(1).replace('.', ',')} кПа при расходе ${_bal2.worst.rows.reduce((a, r) => Math.max(a, r.flow), 0).toFixed(1).replace('.', ',')} л/мин.<br>` : '') +
+                    (() => {
+                        // Тыльная теплоотдача — сколько уходит вниз мимо помещения
+                        const _bk = this.ufhBackLoss();
+                        if (!_bk) return '';
+                        const _bad = _bk.pct > 10;
+                        return `• Тыльная теплоотдача пола 1 этажа (вниз, в ${_bk.under}): ~${String(_bk.qBack).replace('.', ',')} Вт/м² — <b style="color:${_bad ? '#F59E0B' : '#22C55E'};">${_bk.pct} % от лицевой</b> (${_bk.qFace} Вт/м²). Ориентир справочника проектировщика и DIN EN 1264 — не выше 10 %.${_bad ? ' Выше — вниз уходит заметная доля тепла: замените подложку на плиту XPS потолще (кнопка «Заменить» на строке подложки) или утеплите конструкцию пола 1 этажа.' : ''}<br>`;
+                    })() +
                     (_cmp ? `• Для сравнения: ${_cmp}. Сменить трубу — «Заменить» на этой строке; петли, коллекторы и насос пересчитаются.<br>` : '') +
                     `</span>`;
             }
-            case 'ufh_mat':
-                return `<span style="${styles}"><span style="${head}">Мат с бобышками</span><b>Зачем:</b> Быстрый монтаж и фиксация трубы.<br><b>Расчет:</b> Чистая площадь ТП (${val1} м²) + 5% запас на подрезку.</span>`;
-            case 'ufh_xps':
-                return `<span style="${styles}"><span style="${head}">Пенополистирол (XPS)</span><b>Зачем:</b> Теплоизоляция от перекрытия/грунта.<br><b>Толщина:</b> 50 мм (стандарт для 1 этажа).<br><b>Расчет:</b> Площадь ТП + 5% запас.</span>`;
+            case 'ufh_mat': {
+                const _bk = this.ufhBackLoss();
+                const _bkLine = _bk
+                    ? `<br><b>Тыльная теплоотдача (1 этаж):</b> ~${String(_bk.qBack).replace('.', ',')} Вт/м² — ${_bk.pct} % от лицевой; ориентир — не выше 10 % (справочник проектировщика, DIN EN 1264).${_bk.pct > 10 ? ' Мат 20 мм тепло вниз держит слабо — рассмотрите плиту XPS (кнопка «Заменить»).' : ''}`
+                    : '';
+                return `<span style="${styles}"><span style="${head}">Мат с бобышками</span><b>Зачем:</b> Быстрый монтаж и фиксация трубы.<br><b>Расчет:</b> Чистая площадь ТП (${val1} м²) + 5% запас на подрезку.${_bkLine}</span>`;
+            }
+            case 'ufh_xps': {
+                const _bk = this.ufhBackLoss();
+                const _bkLine = _bk
+                    ? `<br><b>Тыльная теплоотдача (1 этаж):</b> ~${String(_bk.qBack).replace('.', ',')} Вт/м² — ${_bk.pct} % от лицевой; ориентир — не выше 10 % (справочник проектировщика, DIN EN 1264).`
+                    : '';
+                return `<span style="${styles}"><span style="${head}">Пенополистирол (XPS)</span><b>Зачем:</b> Теплоизоляция от перекрытия/грунта.<br><b>Толщина:</b> 50 мм (стандарт для 1 этажа).<br><b>Расчет:</b> Площадь ТП + 5% запас.${_bkLine}</span>`;
+            }
             case 'ufh_damper': {
                 // val1 — результат ufhTapeCalc, val2 — метраж рулона
                 const t = val1 || {}, roll = val2 || 25;
@@ -62945,6 +63326,12 @@ const app = {
         // (getZoneAutoKit), пока их не задали руками. Заполняется в разделе 4.
         this._ufhLoops = 0;
         app._radDevPerFloor = {};   // приборов на этаже — по нему выходы радиаторного коллектора
+        // Покомнатный тепловой баланс: что помещению нужно (Q_sum) и что ему
+        // реально дают подобранные приборы и тёплый пол. Заполняется циклом
+        // подбора приборов ниже, а показывает его список помещений
+        // (renderRoomsUI → updateRoomBalanceChips): плюс зелёным, минус красным —
+        // как в списке помещений у «Спроектируй.рф».
+        app._roomBalance = {};
         // Чем подключены приборы — гидравлике нужно знать, чей клапан считать:
         // боковой SVT или узел SVH со встроенным клапаном (см. radValveKv).
         // Счётчики заполняет блок обвязки радиаторов ниже.
@@ -64475,6 +64862,22 @@ const app = {
                     // Ручной выбор серии (boilerSeriesManual) аналог не трогает — так же,
                     // как ручная замена позиции в addToBill() выигрывает у аналога.
                     if (!this.state.boilerSeriesManual && useAnalogSec1 && this.polisAvailable()) elSeries = 'polis';
+                    // Резерв при основном газовом котле автоподбор берёт не на полные
+                    // теплопотери, а на режим «дежурного отопления» +5 °C в доме
+                    // (СП 60.13330.2020): задача резерва при аварии газового — не
+                    // держать комфорт, а не дать системе замёрзнуть до её починки.
+                    // Так дом на 12 кВт получает резервом котёл 9 кВт, а не 12.
+                    // Прогрев бойлера ГВС за час с резерва тоже не спрашиваем — это
+                    // аварийный режим. Ручной типоразмер (elBoilerPower) правило не
+                    // трогает: он и так сильнее автоподбора.
+                    if ((this.state.fuels || []).includes('gas') && !this.state.elBoilerPower) {
+                        const _modes = this.getHouseHeatLossModes();
+                        if (_modes && _modes.frost > 0 && _modes.frost < needed) {
+                            needed = _modes.frost;
+                            this._elNeed.kw = needed;
+                            this._elNeed.frostPick = { frost: _modes.frost, comfort: _modes.comfort };
+                        }
+                    }
                 }
                 // PLUS снят с производства и в подборе не участвует. Серия из сохранённой
                 // сметы может быть любой, поэтому всё, что не POLIS, читаем как STATUS —
@@ -68040,6 +68443,16 @@ const app = {
                         }
                     });
                     // === Проверка покрытия теплопотерь помещения ===
+                    // Баланс помещения для списка комнат: приборы посчитаны фактом,
+                    // тёплый пол — не больше своего физического предела и не больше
+                    // потребности комнаты (лишние ватты пола срежет термостат).
+                    app._roomBalance[r.id] = {
+                        q: Math.round(roomLoss.Q_sum),
+                        fact: Math.round(roomFactPowerSum),
+                        ufh: roomHasTp ? Math.round(Math.min(qUfhMax, roomLoss.Q_sum)) : 0,
+                        ufhMax: roomHasTp ? Math.round(qUfhMax) : 0,
+                        hasTp: roomHasTp, hasRad: roomHasRad
+                    };
                     if ((roomHasRad) && roomFactPowerSum > 0 && Math.round(roomDemandSum) > roomFactPowerSum) {
                         app.tempWarns.push(`• ${app._warnRoomLabel(r.id, r.name + ':')} суммарная мощность приборов (${roomFactPowerSum} Вт) меньше теплопотерь помещения (${Math.round(roomDemandSum)} Вт). Дефицит: ~${Math.round(roomDemandSum) - roomFactPowerSum} Вт.`);
                     }
@@ -72543,6 +72956,10 @@ const app = {
         if (this.state.detailedRooms && this.state.fuels.includes('gas') && this.state.showGasCost) {
             this.renderGasCostUI();
         }
+
+        // Плашки баланса в списке помещений: подбор приборов только что положил
+        // свежие цифры в _roomBalance — обновляем плашки, не пересобирая список.
+        if (this.state.detailedRooms) this.updateRoomBalanceChips();
     },
 
     // ─── Подсказка «из чего складывается экономия» ──────────────────────────
