@@ -410,6 +410,16 @@ const Tour = {
         try { return localStorage.getItem(this.LS_ON) === '1'; } catch (e) { return false; }
     },
 
+    // Обучение — только вошедшим. Гостю не показываем ни карточки, ни кнопку в
+    // шапке (её прячет body.guest-mode в style.css): половина шагов до входа
+    // упирается в окно авторизации. Судим по app.state.tgUser, а не по классу
+    // guest-mode на body — Tour.init срабатывает раньше, чем авторизация
+    // успевает проставить класс, а tgUser восстанавливается из localStorage
+    // сразу при загрузке.
+    allowed: function () {
+        try { return !!(typeof app !== 'undefined' && app.state && app.state.tgUser); } catch (e) { return false; }
+    },
+
     // Человек сам решил, нужны ему подсказки или нет: нажал кнопку в шапке, закрыл
     // карточку крестиком или дошёл до конца. С этого момента за него не решаем.
     userChose: function () {
@@ -431,8 +441,10 @@ const Tour = {
         this.syncButton();
     },
 
-    // Кнопка в шапке сайта (#btn_tour)
+    // Кнопка в шапке сайта (#btn_tour). Гостю она скрыта, но на всякий случай
+    // (мобильное меню, устаревшая вёрстка в кэше) не запускаем обучение и отсюда.
     toggleFromButton: function () {
+        if (!this.allowed()) return;
         this.rememberChoice();
         this.toggle(!this.active());
     },
@@ -473,21 +485,20 @@ const Tour = {
     // Восстановление после перезагрузки страницы
     init: function () {
         this.syncButton();
+        if (!this.allowed()) return;
         if (this.active()) {
             this._step = this._savedStep();
             this.start();
             return;
         }
-        // Сами подсказки больше никому не включаем на входе. Гостю — потому что до
-        // входа в аккаунт половина шагов ведёт в окно авторизации: и «Сохранить», и
-        // разделы кабинета, и подробный режим расчёта. Вошедшему — потому что первым
-        // делом ему показывают окно быстрого старта, а обучение включится после
-        // него: этим занимается app.decideNewcomerDefaults и позовёт applyDefault
-        // сам. Кнопка в шапке при этом работает всегда, в том числе у гостя: нажал —
-        // значит хочет.
+        // Сами подсказки больше никому не включаем на входе. Гостю обучение не
+        // показываем вовсе (см. allowed). Вошедшему — потому что первым делом ему
+        // показывают окно быстрого старта, а обучение включится после него: этим
+        // занимается app.decideNewcomerDefaults и позовёт applyDefault сам.
     },
 
     start: function () {
+        if (!this.allowed()) return;
         this.injectStyles();
         document.body.classList.add('tour-running');
         this.buildPlan();

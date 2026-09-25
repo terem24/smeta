@@ -12700,6 +12700,14 @@ body.guest-mode .lk-rail {
     display: none !important;
 }
 
+/* Гостю в шапке не показываем режим обучения и переключатель темы: половина
+   шагов обучения до входа упирается в окно авторизации, а тема до входа одна.
+   Сам запуск обучения гостю закрыт и в tour.js (Tour.allowed). */
+body.guest-mode #btn_tour,
+body.guest-mode #btn_theme {
+    display: none !important;
+}
+
 /* Размер разделов задан не числами, а долей от --lk-scale: её ставит
    app.fitRailToViewport так, чтобы колонка занимала высоту первого экрана
    целиком. На высоком мониторе разделы крупнее, на низком ноутбуке — мельче,
@@ -16007,6 +16015,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     body.theme-yandex.dark-mode #swap_modal_body .swap-tab:hover,
     body.theme-yandex.dark-mode #swap_modal_body .swap-tab.active,
     body.theme-yandex.dark-mode .cw-xp-block.filled,
+    body.theme-yandex.dark-mode .tour-btn:not(.tour-btn-ghost),
     body.theme-yandex.dark-mode [style*="background:var(--primary)"],
     body.theme-yandex.dark-mode [style*="background: var(--primary)"],
     body.theme-yandex.dark-mode [style*="background-color:var(--primary)"],
@@ -16022,6 +16031,17 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:6px"],
     body.theme-yandex.dark-mode [style*="background:var(--primary)"][style*="height:100%"] {
         background-color: var(--primary) !important;
+    }
+
+    /* Карточки режима обучения (стили внедряет tour.js). Там var(--primary) —
+       заливка при белом тексте: ночью под этой темой кнопка «Дальше» (.tour-btn,
+       серый ей даёт список выше) и кнопка в ролике с жестом становились белым по
+       белому. Ролику (.tour-anim) переопределяем --primary целиком: его заливки —
+       тумблер, ползунок, кнопка — рисуются и внутри keyframes, селектором их не
+       достать. «ШАГ N ИЗ M» и подсветка элемента живут вне ролика и остаются
+       белыми — как текстовые акценты темы. */
+    body.theme-yandex.dark-mode .tour-anim {
+        --primary: var(--ya-fill);
     }
 
     body.theme-yandex.dark-mode .admin-chat-item.active .admin-chat-badge {
