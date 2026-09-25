@@ -372,6 +372,18 @@
             })
             .then(function (r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json().catch(function () { return null; });
+            })
+            .then(function (opId) {
+                // Заявка уже сохранена — уведомление монтажнику необязательное и не должно
+                // мешать основному результату, поэтому ошибку здесь просто гасим
+                if (opId) {
+                    fetch(SUPA_URL + '/functions/v1/send-push', {
+                        method: 'POST',
+                        headers: { 'apikey': SUPA_KEY, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason: 'opros_lead', id: opId })
+                    }).catch(function () { });
+                }
                 return true;
             });
     }

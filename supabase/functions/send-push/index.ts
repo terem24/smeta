@@ -17,6 +17,13 @@
 //
 // Секреты (Edge Function Secrets):
 //   FCM_SERVICE_ACCOUNT — json сервисного аккаунта Firebase целиком, одной строкой
+//   TG_INSTALLER_BOT_TOKEN — токен Telegram-бота для личных уведомлений монтажнику
+//     (не путать с ботом владельца в tg_notify.php — это разные боты)
+//
+// Кроме пуша в приложение, часть событий (kp/oprosnik/chat — см. TG_CATEGORY ниже)
+// дублируется монтажнику в Telegram, если он его подключил (users.tg_chat_id) и не
+// отключил эту категорию (installer_settings.tgNotify). Получатель и текст те же,
+// что и для push — считаются один раз, до FCM.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -178,7 +185,7 @@ Deno.serve(async (req) => {
     // же анонимная страница по ссылке. Поэтому здесь токен не требуем, а требуем его
     // внутри ветки — для всех событий, кроме открытия.
     const needsAuth = reason !== "shared_invoice" && reason !== "invoice_event" &&
-      reason !== "inactivity" && reason !== "kp_reminder";
+      reason !== "inactivity" && reason !== "kp_reminder" && reason !== "opros_lead";
     let callerId = "";
     let isAdmin = false;
 
@@ -489,6 +496,26 @@ Deno.serve(async (req) => {
       ].filter(Boolean).join(" · ") || "Откройте смету, чтобы посмотреть ответ";
       payload.open = "orders";
       if (calcNo) payload.calcId = calcNo;
+    } else if (reason === "opros_lead") {
+      // Клиент заполнил опросник по персональной ссылке монтажника (oprosnik.html?m=<id>)
+      // и анкета ушла в базу через RPC submit_opros. Страница анонимная, токена нет и
+      // быть не может — как у shared_invoice, пропуском служит сам id новой строки.
+      const rows = await get(
+        `opros_requests?id=eq.${encodeURIComponent(rowId)}&select=installer_id,client_name,client_phone,created_at&limit=1`,
+      );
+      const row = Array.isArray(rows) && rows[0] ? rows[0] : null;
+      if (!row) return json({ status: "skipped", reason: "opros-not-found" });
+
+      const age = Date.now() - new Date(String(row.created_at || "")).getTime();
+      if (!isFinite(age) || age > EVENT_FRESH_MS) {
+        return json({ status: "skipped", reason: "event-not-fresh" });
+      }
+      if (!row.installer_id) return json({ status: "skipped", reason: "owner-unknown" });
+
+      recipientUserIds = [String(row.installer_id)];
+      title = "Заполнен опросный лист";
+      text = [row.client_name, row.client_phone].filter(Boolean).join(" · ") || "Новая заявка с опросника";
+      payload.open = "messages";
     } else {
       return json({ error: "Неизвестное событие" }, 400);
     }
@@ -496,6 +523,46 @@ Deno.serve(async (req) => {
     // Себе уведомление не шлём — телефон отправителя и так знает, что произошло
     if (callerId) {
       recipientUserIds = recipientUserIds.filter((id) => String(id) !== callerId);
+    }
+
+    // --- Дубль в личный Telegram монтажника ---------------------------------
+    // Три категории, которые можно включить/выключить в кабинете (installer_settings.tgNotify):
+    //  kp — клиент одобрил/отклонил/попросил доработать КП;
+    //  oprosnik — заполненный опросный лист;
+    //  chat — сообщение в чате с менеджером дистрибьютора или с администрацией.
+    // Остальные события send-push (открытие сметы, запрос/выставление счёта, оплата,
+    // inactivity, kp_reminder) в Telegram не дублируются — только push в приложении.
+    const KP_DECISION_TITLES = new Set([
+      "Клиент согласовал смету",
+      "Клиент отклонил смету",
+      "Клиент просит доработать смету",
+    ]);
+    let tgCategory: "kp" | "oprosnik" | "chat" | null = null;
+    if (reason === "manager_chat" || reason === "broadcast") tgCategory = "chat";
+    else if (reason === "opros_lead") tgCategory = "oprosnik";
+    else if ((reason === "invoice_event" || reason === "shared_invoice") && KP_DECISION_TITLES.has(title)) {
+      tgCategory = "kp";
+    }
+
+    if (tgCategory && recipientUserIds.length) {
+      const tgBotToken = Deno.env.get("TG_INSTALLER_BOT_TOKEN");
+      if (tgBotToken) {
+        const list = recipientUserIds.map((id) => `"${id}"`).join(",");
+        const tgUsers = await get(`users?id=in.(${encodeURIComponent(list)})&select=id,tg_chat_id,installer_settings`);
+        if (Array.isArray(tgUsers)) {
+          const category = tgCategory;
+          await Promise.all(tgUsers.map(async (u: { tg_chat_id?: number; installer_settings?: Record<string, unknown> }) => {
+            if (!u.tg_chat_id) return;
+            const notify = (u.installer_settings && (u.installer_settings as any).tgNotify) || {};
+            if (notify[category] === false) return; // явно выключено в кабинете
+            await fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ chat_id: u.tg_chat_id, text: `${title}\n${text}`.trim().slice(0, 4000) }),
+            }).catch((e) => console.error("send-push: Telegram-отправка упала", e));
+          }));
+        }
+      }
     }
 
     // --- Достаём адреса устройств ------------------------------------------

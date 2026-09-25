@@ -14655,6 +14655,54 @@ const app = {
         this.installerSettings.kpReminderDays = n;
         this.pushInstallerSettingsToCloud();
     },
+    // ── Личные уведомления в Telegram ────────────────────────────────────────
+    // Юзернейм бота для монтажников (не бот владельца из tg_notify.php — тот
+    // отдельный, шлёт фидбек/pro_request на один зашитый на сервере chat_id).
+    TG_INSTALLER_BOT_USERNAME: 'heatcalc_notify_bot',
+    // Код на подключение живёт 10 минут (tg-webhook сверяет users.tg_connect_token_at).
+    // users.id для этого не годится: тот же id уже публичный — стоит в ссылке на
+    // опросник (oprosnik.html?m=<id>), которую монтажник рассылает клиентам.
+    connectTelegram: async function () {
+        if (!this._installerCloudUserId) this._installerCloudUserId = await this._resolveInstallerCloudUserId();
+        if (!this._installerCloudUserId) { this.alert('Сначала войдите в аккаунт.'); return; }
+        try {
+            const token = Array.from(crypto.getRandomValues(new Uint8Array(16))).map(b => b.toString(16).padStart(2, '0')).join('');
+            const { error } = await supabaseClient.from('users')
+                .update({ tg_connect_token: token, tg_connect_token_at: new Date().toISOString() })
+                .eq('id', this._installerCloudUserId);
+            if (error) throw error;
+            window.open(`https://t.me/${this.TG_INSTALLER_BOT_USERNAME}?start=${token}`, '_blank');
+        } catch (e) {
+            this.alert('Не удалось начать подключение Telegram: ' + (e.message || e));
+        }
+    },
+    // Включена ли категория уведомлений (kp / oprosnik / chat). Ключа нет — считаем
+    // включённым: по умолчанию монтажнику должно приходить всё, что он подключил.
+    tgNotifyEnabled: function (kind) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const v = this.installerSettings.tgNotify && this.installerSettings.tgNotify[kind];
+        return v !== false;
+    },
+    setTgNotify: function (kind, on) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        if (!this.installerSettings.tgNotify || typeof this.installerSettings.tgNotify !== 'object') this.installerSettings.tgNotify = {};
+        this.installerSettings.tgNotify[kind] = !!on;
+        this.pushInstallerSettingsToCloud();
+    },
+    // Статус подключения + три чекбокса — карточка «Telegram» на вкладке «Мои объекты»
+    refreshTelegramConnectUI: function () {
+        const statusEl = document.getElementById('profile_tg_status');
+        if (statusEl) {
+            const c = this.state.tgConnect;
+            statusEl.textContent = (c && c.chatId)
+                ? ('Подключено' + (c.username ? ' как @' + c.username : ''))
+                : 'Не подключено';
+        }
+        ['kp', 'oprosnik', 'chat'].forEach((kind) => {
+            const el = document.getElementById('profile_tg_notify_' + kind);
+            if (el) el.checked = this.tgNotifyEnabled(kind);
+        });
+    },
     // «до 15.09.2026, 15:20» — одна подпись и для окна ссылки, и для списка объектов
     formatValidUntil: function (iso) {
         const d = new Date(iso);
@@ -14944,6 +14992,7 @@ const app = {
         if (daysEl) daysEl.value = String(this.invoiceValidDaysDefault());
         const kpDaysEl = document.getElementById('profile_kp_reminder_days');
         if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
+        this.refreshTelegramConnectUI();
     },
     _resolveInstallerCloudUserId: async function () {
         try {
@@ -14973,8 +15022,11 @@ const app = {
             if (!uid) return;
             this._installerSettingsCloudSynced = true;
             this._installerCloudUserId = uid;
-            const { data, error } = await supabaseClient.from('users').select('installer_settings').eq('id', uid).maybeSingle();
+            const { data, error } = await supabaseClient.from('users').select('installer_settings, tg_chat_id, tg_username').eq('id', uid).maybeSingle();
             if (error) throw error;
+            // tg_chat_id/tg_username пишет только tg-webhook сервисным ключом (см. connectTelegram) —
+            // в installer_settings им не место, иначе монтажник мог бы сам подставить чужой chat_id.
+            this.state.tgConnect = { chatId: (data && data.tg_chat_id) || null, username: (data && data.tg_username) || null };
             const cloud = data && data.installer_settings;
             if (cloud && typeof cloud === 'object') {
                 // Реквизиты компании: облачная версия главнее, но если в облаке их ещё нет
@@ -15009,7 +15061,10 @@ const app = {
                     // затирает то, что монтажник успел завести на этом устройстве.
                     margin: (cloud.margin && typeof cloud.margin === 'object')
                         ? cloud.margin
-                        : ((this.installerSettings && this.installerSettings.margin) || null)
+                        : ((this.installerSettings && this.installerSettings.margin) || null),
+                    // Какие виды личных Telegram-уведомлений включены (см. connectTelegram,
+                    // setTgNotify). Ключа нет — считаем включённым, отключают явно.
+                    tgNotify: (cloud.tgNotify && typeof cloud.tgNotify === 'object') ? cloud.tgNotify : {}
                 };
                 this.saveInstallerSettingsLocal();
                 if (!cloudCompany && localCompany) this.pushInstallerSettingsToCloud();
@@ -15019,6 +15074,7 @@ const app = {
                 if (this._activeProfileTab === 'workprices') this.renderWorkPricesTab();
                 if (this._activeProfileTab === 'equipment') this.renderEquipmentLibraryTab();
                 if (this._activeProfileTab === 'company') this.fillCompanyDetailsForm();
+                this.refreshTelegramConnectUI();
                 this.updateHeaderCompanyDetails();
                 // Раскладка меню могла приехать с другого устройства — переставляем
                 // панель уже после того, как настройки заменены
