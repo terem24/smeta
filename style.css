@@ -11525,22 +11525,24 @@ body.rec-sel-mode .inv-table .col-idx {
 
 .rec-body { padding: 16px 18px 18px; overflow-y: auto; }
 
+/* Отступы и центровку внутри даёт .empty-state-hint — та же заглушка, что
+   в пустой смете, поэтому у самой зоны паддинга нет. Подсветка при наводке задана
+   background-color, а не сокращённым background: иначе она стирает сетку в крапинку. */
 .rec-drop {
     border: 2px dashed var(--border, #cbd5e1);
     border-radius: 14px;
-    padding: 42px 20px;
     text-align: center;
     cursor: pointer;
     transition: border-color var(--dur-fast, 150ms) var(--ease-out, ease),
-                background var(--dur-fast, 150ms) var(--ease-out, ease);
+                background-color var(--dur-fast, 150ms) var(--ease-out, ease);
 }
 .rec-drop.over, .rec-drop:hover {
     border-color: var(--primary, #0284c7);
-    background: var(--primary-light, rgba(2,132,199,.06));
+    background-color: var(--primary-light, rgba(2,132,199,.06));
 }
 .rec-drop-ico { font-size: 34px; margin-bottom: 8px; }
 .rec-drop-t { font-weight: 700; font-size: 15px; }
-.rec-drop-s { color: var(--text-sec, #94a3b8); font-size: 12.5px; margin-top: 5px; }
+.rec-drop-s { color: var(--text-sec, #94a3b8); font-size: 12.5px; margin-top: 5px; max-width: 480px; }
 
 /* Превью и плитка «+» стоят в одном ряду: догрузить лист — то же действие,
    что и загрузить первый, и место ему рядом с уже загруженным. */

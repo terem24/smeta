@@ -339,10 +339,16 @@ const RecognizeUI = {
             <button class="rec-tab" data-k="plan" onclick="RecognizeUI.setDocKind('plan')"
                     title="План этажа: помещения с плана уйдут в расчёт по комнатам">📐 План этажа</button>
           </div>
-          <div class="rec-drop" id="rec_drop">
-            <div class="rec-drop-ico">📄</div>
-            <div class="rec-drop-t">Перетащите смету сюда</div>
-            <div class="rec-drop-s">фото, PDF, Excel, Word или HTML · или нажмите для выбора · или вставьте скриншот или текст через Ctrl+V</div>
+          <!-- Пустой экран вкладки оформлен тем же, чем пустая смета: бумага в
+               крапинку (.empty-state-pad) и та же стопка «значок — заголовок — пояснение»
+               (.empty-state-hint). Классы rec-drop-* остаются: по ним syncDocKind()
+               подменяет текст при переключении на план этажа. -->
+          <div class="rec-drop empty-state-pad" id="rec_drop">
+            <div class="empty-state-hint">
+              <span class="rec-drop-ico empty-state-icon">📄</span>
+              <div class="rec-drop-t empty-state-title">Перетащите смету сюда</div>
+              <div class="rec-drop-s empty-state-text">фото, PDF, Excel, Word или HTML · или нажмите для выбора · или вставьте скриншот или текст через Ctrl+V</div>
+            </div>
           </div>
           <div class="rec-prev-row" id="rec_prev_wrap">
             <div class="rec-prev-wrap">

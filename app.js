@@ -16277,9 +16277,12 @@ const app = {
         if (!rep || !rep.client) {
             panel.innerHTML = `
                 <div style="max-width: 760px; margin: 20px auto 30px;">
-                    <div style="text-align: center; color: var(--text-sec); font-size: 13px; padding: 30px 0;">
-                        Смета пока пуста — считать нечего. Задайте параметры объекта слева,
-                        и здесь появятся деньги по нему.
+                    <div class="empty-state-pad">
+                        <div class="empty-state-hint">
+                            <span class="empty-state-icon">💰</span>
+                            <div class="empty-state-title">Смета пока пуста</div>
+                            <div class="empty-state-text">Задайте параметры объекта слева — и здесь появятся деньги по нему: закупка, бригада, накладные и то, что остаётся вам.</div>
+                        </div>
                     </div>
                     ${settingsBlock}
                 </div>`;
