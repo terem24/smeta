@@ -501,10 +501,10 @@
    "freq": 14200,
    "audience": "owner",
    "data_block": "сравнение по мощности",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-15",
    "published_at": null,
-   "words": 0
+   "words": 492
   },
   {
    "slug": "obratnyy-klapan-v-otoplenii",
@@ -697,10 +697,10 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "расчёт остывания и автономии",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-12",
    "published_at": null,
-   "words": null
+   "words": 525
   },
   {
    "slug": "zashchita-ot-protechek",

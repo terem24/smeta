@@ -407,6 +407,31 @@
                 status.textContent = '';
                 status.className = 'lf-status';
 
+                // Откуда пришёл человек. Статьи ведут сюда со ссылкой ?src=<слаг>,
+                // и по этой метке потом видно, какая из них приносит заявки.
+                // Если параметра нет, берём путь страницы, с которой перешли, —
+                // это покрывает переходы по внутренним ссылкам без метки.
+                // Запоминаем в sessionStorage: человек может походить по сайту
+                // и вернуться к форме, и тогда в адресе метки уже не будет.
+                function leadSource() {
+                    var KEY = 'hc_lead_src';
+                    var stored = '';
+                    try { stored = sessionStorage.getItem(KEY) || ''; } catch (e) { }
+                    var m = /[?&]src=([\w-]{1,64})/.exec(location.search);
+                    var found = m ? m[1] : '';
+                    if (!found && !stored && document.referrer) {
+                        try {
+                            var u = new URL(document.referrer);
+                            if (u.host === location.host) found = u.pathname.replace(/^\/|\/$/g, '').slice(0, 64);
+                        } catch (e) { }
+                    }
+                    if (found) {
+                        try { sessionStorage.setItem(KEY, found); } catch (e) { }
+                        return found;
+                    }
+                    return stored;
+                }
+
                 var works = [].map.call(form.querySelectorAll('input[name="works"]:checked'), function (i) { return i.value; });
                 var name = document.getElementById('lf_name');
                 var phone = document.getElementById('lf_phone');
@@ -447,7 +472,8 @@
                         comment: document.getElementById('lf_comment').value,
                         website: document.getElementById('lf_website').value,
                         consent: true,
-                        page: location.pathname + location.search
+                        page: location.pathname + location.search,
+                        src: leadSource()
                     }),
                     signal: ctrl ? ctrl.signal : undefined
                 }).then(function (res) {

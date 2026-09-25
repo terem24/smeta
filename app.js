@@ -20786,7 +20786,8 @@ const app = {
         { id: 'dashboard', icon: '📊', label: 'Дашборд', hint: 'Вся аналитика одним экраном' },
         { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
-        { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' }
+        { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
+        { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' }
     ],
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
@@ -20794,7 +20795,10 @@ const app = {
     // «Умное заполнение» — журнал диалогов монтажников с окном ✨, тоже только владельцу.
     // «Статьи» — очередь SEO-публикаций: план продвижения и тексты, которые ещё
     // не вышли. Наблюдателям и менеджерам дистрибьюторов там делать нечего.
-    OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill', 'articles'],
+    // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
+    // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
+    // клиентская здесь только чтобы не показывать пустую вкладку.
+    OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill', 'articles', 'leads'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -21060,6 +21064,141 @@ const app = {
     // Данные берём файлом с самого сайта, а не из базы: расписание живёт
     // в репозитории, и второй источник правды здесь только мешал бы. Заодно
     // это ничего не стоит по трафику Supabase.
+    LEADS_URL: 'https://proxy.heatcalc.ru/lead_list.php',
+
+    LEAD_WORK_LABELS: {
+        heating: 'отопление', ufh: 'тёплый пол', boiler: 'котельная, котёл',
+        water: 'водоснабжение', sewer: 'канализация', other: 'другое'
+    },
+
+    /** Текст заявки для мессенджера: то, что монтажнику нужно знать, одним куском. */
+    leadAsText: function (r) {
+        const works = (r.works || []).map(w => this.LEAD_WORK_LABELS[w] || w).join(', ');
+        const lines = [
+            'Заявка на монтаж' + (r.id ? ' № ' + r.id : ''),
+            works ? 'Что: ' + works : '',
+            r.place ? 'Где: ' + r.place : '',
+            r.area ? 'Площадь: ' + r.area + ' м²' : '',
+            r.name ? 'Имя: ' + r.name : '',
+            r.phone ? 'Телефон: ' + r.phone : '',
+            r.when ? 'Когда звонить: ' + r.when : '',
+            r.comment ? 'Комментарий: ' + r.comment : ''
+        ];
+        return lines.filter(Boolean).join('\n');
+    },
+
+    copyLead: async function (idx, btn) {
+        const r = (this._leadsData || [])[idx];
+        if (!r) return;
+        const text = this.leadAsText(r);
+        try {
+            await navigator.clipboard.writeText(text);
+            if (btn) {
+                const was = btn.innerText;
+                btn.innerText = '✓ Скопировано';
+                setTimeout(() => { btn.innerText = was; }, 2000);
+            }
+        } catch (e) {
+            // Буфер недоступен (старый браузер, нет разрешения, не https) —
+            // показываем текст, чтобы его можно было выделить руками.
+            window.prompt('Скопируйте текст заявки:', text);
+        }
+    },
+
+    renderAdminLeads: async function () {
+        const box = document.getElementById('admin_leads_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        if (!this._leadsData) {
+            box.innerHTML = '<div style="padding:30px; text-align:center; color:var(--text-sec); font-size:13px;">Загружаем заявки…</div>';
+            try {
+                const token = await this.recognitionToken();
+                const res = await fetch(this.LEADS_URL, {
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+                    cache: 'no-store'
+                });
+                if (res.status === 403) throw new Error('forbidden');
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                this._leadsData = data.items || [];
+            } catch (e) {
+                const denied = e && e.message === 'forbidden';
+                box.innerHTML = `<div style="padding:24px; color:var(--text-sec); font-size:13px; line-height:1.6;">
+                    ${denied ? 'Журнал заявок доступен только владельцу.' : 'Не удалось прочитать журнал заявок.'}<br>
+                    ${denied ? '' : 'Сами заявки от этого не теряются: каждая приходит в Телеграм и пишется в журнал на сервере.<br>'}
+                    <button class="auth-btn-base" style="margin-top:12px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
+                </div>`;
+                return;
+            }
+        }
+
+        const rows = this._leadsData;
+        if (!rows.length) {
+            box.innerHTML = `<div style="padding:24px; color:var(--text-sec); font-size:13px; line-height:1.6;">
+                Заявок пока нет.<br>
+                Они приходят с формы на странице <a href="/montazh-otopleniya-spb/" target="_blank" style="color:var(--primary);">монтажа в СПб</a>, куда ведут ссылки из статей.
+                <button class="auth-btn-base" style="margin-left:10px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
+            </div>`;
+            return;
+        }
+
+        // Сводка по источникам: ради неё вкладка и нужна — видно, какие статьи
+        // приводят людей, а какие только читают.
+        const bySrc = {};
+        rows.forEach(r => {
+            const k = r.src || '— напрямую';
+            bySrc[k] = (bySrc[k] || 0) + 1;
+        });
+        const srcTop = Object.keys(bySrc).sort((a, b) => bySrc[b] - bySrc[a]).slice(0, 8);
+
+        const card = (label, value) => `<div style="flex:1; min-width:120px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+            <div style="font-size:22px; font-weight:700; color:var(--text-main);">${value}</div>
+            <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${label}</div>
+        </div>`;
+
+        const list = rows.map((r, i) => {
+            const works = (r.works || []).map(w => this.LEAD_WORK_LABELS[w] || w).join(', ');
+            const when = r.at ? String(r.at).replace('T', ' ').slice(0, 16) : '';
+            const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src)}</span>`
+                : '<span style="color:var(--text-sec); font-size:11px;">напрямую</span>';
+            return `<div style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
+                <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+                    <div style="font-size:13px; color:var(--text-main);">
+                        <b>${esc(r.name || 'без имени')}</b> · <a href="tel:${esc(r.phone || '')}" style="color:var(--primary); text-decoration:none;">${esc(r.phone || '')}</a>
+                    </div>
+                    <div style="font-size:11px; color:var(--text-sec);">${esc(when)} ${src}</div>
+                </div>
+                <div style="font-size:12px; color:var(--text-sec); margin-top:8px; line-height:1.6;">
+                    ${works ? '<b>Что:</b> ' + esc(works) + '<br>' : ''}
+                    ${r.place ? '<b>Где:</b> ' + esc(r.place) + (r.area ? ', ' + esc(r.area) + ' м²' : '') + '<br>' : ''}
+                    ${r.when ? '<b>Когда звонить:</b> ' + esc(r.when) + '<br>' : ''}
+                    ${r.comment ? '<b>Комментарий:</b> ' + esc(r.comment) : ''}
+                </div>
+                <button class="auth-btn-base" style="margin-top:10px; width:auto; padding:0 14px; height:30px; font-size:12px;"
+                    onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+            </div>`;
+        }).join('');
+
+        box.innerHTML = `
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                ${card('всего заявок', rows.length)}
+                ${card('со статей', rows.filter(r => r.src).length)}
+                ${card('напрямую', rows.filter(r => !r.src).length)}
+            </div>
+            <div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light);">
+                <div style="font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-sec); margin-bottom:8px;">Откуда приходят</div>
+                <div style="font-size:12px; color:var(--text-main); line-height:1.8;">
+                    ${srcTop.map(k => `${esc(k)} — <b>${bySrc[k]}</b>`).join(' · ')}
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+                <button class="auth-btn-base" style="width:auto; padding:0 14px; height:32px; font-size:12px;"
+                    onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
+            </div>
+            ${list}`;
+    },
+
     ARTICLES_URL: '/content/schedule.json',
 
     articleStatusMeta: {
@@ -21744,6 +21883,12 @@ const app = {
         if (this._adminTab === 'articles') {
             content.innerHTML = navHtml + '<div id="admin_articles_box"></div>';
             this.renderAdminArticles();
+            return;
+        }
+
+        if (this._adminTab === 'leads') {
+            content.innerHTML = navHtml + '<div id="admin_leads_box"></div>';
+            this.renderAdminLeads();
             return;
         }
 

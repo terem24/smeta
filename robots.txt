@@ -35,7 +35,7 @@ Disallow: /supabase/
 Disallow: /mobile-android/
 Disallow: /*.json$
 Disallow: /*.php$
-Clean-param: share&p&utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid
+Clean-param: src&from&share&p&utm_source&utm_medium&utm_campaign&utm_term&utm_content&yclid&gclid
 
 # --- Роботы ИИ-поиска ---
 # Пускаем осознанно: именно они формируют ответы в Яндекс Нейро,

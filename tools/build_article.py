@@ -265,7 +265,11 @@ def build(slug, publish=False):
         body=body,
         faq=render_faq(art['faq']),
         related=related_links(meta, schedule, art),
-        lead_page=LEAD_PAGE,
+        # Метка источника: по ней видно, какая статья привела заявку. Без неё
+        # заявка приходит обезличенной, и связь «статья → клиент» теряется
+        # навсегда — восстановить её задним числом нечем. Параметр вычищается
+        # из индекса через Clean-param в robots.txt, чтобы не плодить дубли.
+        lead_page=LEAD_PAGE + '?src=' + slug,
         cta_calc=esc(art.get('cta_calc', 'Посчитать свой дом в калькуляторе')),
         cta_calc_note=esc(art.get('cta_calc_note', 'Бесплатно, результат сразу на экране')),
     )

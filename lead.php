@@ -90,6 +90,10 @@ $area     = clean(isset($in['area']) ? $in['area'] : '', 10);
 $when     = clean(isset($in['when']) ? $in['when'] : '', 80);
 $comment  = clean(isset($in['comment']) ? $in['comment'] : '', 1000);
 $page     = clean(isset($in['page']) ? $in['page'] : '', 200);
+// Метка источника: слаг статьи, с которой человек пришёл по ссылке ?src=.
+// По ней потом считается, какие статьи приносят заявки. Пусто — значит
+// человек попал на форму напрямую или из поиска.
+$src      = clean(isset($in['src']) ? $in['src'] : '', 64);
 $consent  = !empty($in['consent']);
 
 // Телефон — только российский: 11 цифр с 7 или 8 впереди, либо 10 цифр.
@@ -143,6 +147,7 @@ $record = [
     'when'    => $when,
     'comment' => $comment,
     'page'    => $page,
+    'src'     => $src,
     'consent' => true,
 ];
 
@@ -179,6 +184,8 @@ if (is_array($secret) && !empty($secret['bot_token']) && !empty($secret['chat_id
         . ($when !== '' ? "Когда звонить: {$when}\n" : '')
         . ($comment !== '' ? "Комментарий: {$comment}\n" : '')
         . "Согласие на передачу мастеру: да\n"
+        . ($src !== '' ? "Источник: {$src}
+" : '')
         . ($page !== '' ? "Страница: {$page}" : '');
 
     $ch = curl_init('https://api.telegram.org/bot' . $secret['bot_token'] . '/sendMessage');

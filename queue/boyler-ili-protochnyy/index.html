@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проточный водонагреватель: расчёт мощности и сравнение с бойлером | HeatCalc.ru</title>
+    <meta name="description" content="Проточный водонагреватель: расчёт мощности по расходу воды, почему на душ нужно 12 кВт, ограничение по вводу и сравнение с накопительным бойлером по деньгам и удобству.">
+    <link rel="canonical" href="https://heatcalc.ru/boyler-ili-protochnyy/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/boyler-ili-protochnyy/">
+    <meta property="og:title" content="Проточный водонагреватель: сколько мощности нужно">
+    <meta property="og:description" content="Душ с комфортным напором требует 12 кВт. Это 55 ампер и трёхфазный ввод.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/boyler-ili-protochnyy/#webpage",
+      "url": "https://heatcalc.ru/boyler-ili-protochnyy/",
+      "name": "Проточный водонагреватель: сколько мощности он требует",
+      "description": "Проточный водонагреватель: расчёт мощности по расходу воды, почему на душ нужно 12 кВт, ограничение по вводу и сравнение с накопительным бойлером по деньгам и удобству.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "проточный водонагреватель"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Проточный водонагреватель: сколько мощности он требует",
+          "item": "https://heatcalc.ru/boyler-ili-protochnyy/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какая мощность нужна проточному водонагревателю?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Мощность равна расходу в литрах в минуту, умноженному на перепад температур и на 0,07. Комфортный душ 8 л/мин зимой, когда вода приходит с 8 °C, требует 16,8 кВт; экономичный 6 л/мин — 12,6 кВт. Летом, при входящей 18 °C, те же струи требуют 11,2 и 8,4 кВт."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему проточник на 3,5 кВт плохо греет?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Потому что мощность ограничивает расход. Зимой при перепаде 30 градусов прибор на 3,5 кВт даёт около 2 литров в минуту — тонкая тёплая нить, а не душ. Такие модели рассчитаны на мойку и на лето, когда входящая вода теплее и перепад меньше."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли поставить проточный водонагреватель в частном доме?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Для основного горячего водоснабжения — обычно нет. Комфортный душ зимой требует почти 17 кВт, то есть 76 ампер по одной фазе, а типичный ввод в дом — 15 кВт на всё. Проточник уместен на даче, в удалённой точке разбора, как летняя подстраховка при выключенном котле или в квартире на время отключения горячей воды."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что выгоднее по расходу энергии?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Суммарно они сопоставимы: накопительный тратит немного на поддержание температуры, проточный — ровно столько, сколько взяли. Разница не в киловатт-часах за год, а в одномоментной нагрузке: проточнику нужны 8–27 кВт в момент разбора, накопительному 1,5–2,5 кВт на протяжении часов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что дешевле всего для горячей воды в доме с газом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Бойлер косвенного нагрева от котла: тепло приходит по цене газа, 1,09 ₽ за киловатт-час против 5,70 у электричества. Семье из четырёх человек нужно около 8 500 кВт·ч в год на подогрев воды, и разница между этими вариантами составляет примерно 39 тысяч рублей ежегодно."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/boyler-ili-protochnyy/#article",
+      "headline": "Проточный водонагреватель: сколько мощности он требует",
+      "description": "Проточный водонагреватель: расчёт мощности по расходу воды, почему на душ нужно 12 кВт, ограничение по вводу и сравнение с накопительным бойлером по деньгам и удобству.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/boyler-ili-protochnyy/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-15",
+      "dateModified": "2026-12-15",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Проточный водонагреватель: сколько мощности он требует</nav>
+
+        <h1>Проточный водонагреватель: сколько мощности он требует</h1>
+
+        <p class="art-meta"><time datetime="2026-12-15">15 декабря 2026</time></p>
+
+        <p class="lead">Проточный водонагреватель греет воду на ходу и не занимает места — тем и привлекателен. Но мощность ему нужна такая, что в частном доме её обычно просто нет свободной. Считаем, сколько именно, и сравниваем с бойлером.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#skolko-moschnosti-nuzhno">Сколько мощности нужно</a></li>
+            <li><a href="#sravnenie-s-nakopitelnym">Сравнение с накопительным</a></li>
+            <li><a href="#gde-protochnyy-umesten">Где проточный уместен</a></li>
+            <li><a href="#chto-schitat-po-elektrike">Что считать по электрике</a></li>
+            <li><a href="#esli-vybrali-nakopitelnyy">Если выбрали накопительный</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="skolko-moschnosti-nuzhno">Сколько мощности нужно</h2>
+
+        <p>Проточник греет воду на лету, поэтому его мощность определяется расходом и тем, насколько холодную воду надо поднять до комфортной.</p>
+
+        <div class="formula">
+            <p><strong>Мощность, кВт</strong> = расход, л/мин × перепад, °C × 0,07</p>
+            <p>Душ 8 л/мин, вода с 10 до 38 °C:</p>
+            <p>8 × 28 × 0,07 = <strong>15,7 кВт</strong></p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Что</th><th>Расход</th><th>Зимой (с 8 °C)</th><th>Летом (с 18 °C)</th></tr>
+                <tr><td>Мойка на кухне</td><td class="num">4 л/мин</td><td class="num">8,4 кВт</td><td class="num">5,6 кВт</td></tr>
+                <tr><td>Душ экономичный</td><td class="num">6 л/мин</td><td class="num">12,6 кВт</td><td class="num">8,4 кВт</td></tr>
+                <tr><td>Душ комфортный</td><td class="num">8 л/мин</td><td class="num">16,8 кВт</td><td class="num">11,2 кВт</td></tr>
+                <tr><td>Тропический душ</td><td class="num">12 л/мин</td><td class="num">25,2 кВт</td><td class="num">16,8 кВт</td></tr>
+            </table>
+        </div>
+        <p class="note">Нагрев до 38 °C — температура воды в душе, а не в баке. Зимой водопроводная вода холоднее, и та же струя требует в полтора раза больше мощности.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда главное ограничение.</strong> Комфортный душ зимой — это почти 17 киловатт, то есть 25 ампер по трём фазам или 76 по одной. При типичном вводе в частный дом 15 кВт такой прибор не помещается вообще: он один съедает больше, чем выделено на весь дом. Проточники на 3,5–5 кВт, которые продаются для розетки, дают зимой струю около 2 литров в минуту — это тонкая тёплая нить, а не душ.</p>
+        </div>
+
+        <h2 id="sravnenie-s-nakopitelnym">Сравнение с накопительным</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Проточный</th><th>Накопительный</th></tr>
+                <tr><td>Мощность</td><td>8–27 кВт</td><td>1,5–2,5 кВт</td></tr>
+                <tr><td>Нужна отдельная линия</td><td>всегда, обычно три фазы</td><td>часто хватает розетки</td></tr>
+                <tr><td>Ждать нагрева</td><td>нет</td><td>часы с нуля</td></tr>
+                <tr><td>Две точки одновременно</td><td>нет</td><td>да</td></tr>
+                <tr><td>Место</td><td>коробка на стене</td><td>цилиндр 1,5 м</td></tr>
+                <tr><td>Расход энергии</td><td>только при разборе</td><td>плюс поддержание температуры</td></tr>
+            </table>
+        </div>
+        <p class="note">Проточник не тратит энергию на поддержание температуры — но и не накапливает, поэтому вся нагрузка приходится на момент разбора.</p>
+
+        <p>Суммарный расход за год у них сопоставим: накопительный тратит немного на поддержание, проточный — ровно столько, сколько взяли. Разница не в киловатт-часах, а в том, выдержит ли их ввод одномоментно.</p>
+
+        <h2 id="gde-protochnyy-umesten">Где проточный уместен</h2>
+
+        <ul>
+            <li><strong>Дача и летний душ.</strong> Летом входящая вода теплее, перепад меньше, и прибора на 5–8 кВт хватает.</li>
+            <li><strong>Удалённая точка разбора.</strong> Мойка в мастерской или гараже, куда тянуть горячую воду из дома дорого.</li>
+            <li><strong>Подстраховка на лето,</strong> когда газовый котёл с бойлером выключен. Небольшой проточник на кухню решает вопрос без запуска котла.</li>
+            <li><strong>Квартира на время отключения горячей воды</strong> — классический сценарий, где мощности обычно хватает.</li>
+        </ul>
+
+        <p>Чего им не делают — основного горячего водоснабжения дома с ванной. Для этого либо бойлер косвенного нагрева от котла, либо накопительный электрический.</p>
+
+        <h2 id="chto-schitat-po-elektrike">Что считать по электрике</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Мощность</th><th>Ток при 220 В</th><th>Ток при 380 В</th><th>Сечение кабеля</th></tr>
+                <tr><td>3,5 кВт</td><td class="num">16 А</td><td class="num">—</td><td>2,5 мм²</td></tr>
+                <tr><td>8 кВт</td><td class="num">36 А</td><td class="num">12 А</td><td>6 мм² на одной фазе</td></tr>
+                <tr><td>12 кВт</td><td class="num">55 А</td><td class="num">18 А</td><td>только три фазы</td></tr>
+                <tr><td>18 кВт</td><td class="num">82 А</td><td class="num">27 А</td><td>только три фазы</td></tr>
+            </table>
+        </div>
+        <p class="note">Сечение и автомат подбирают по паспорту прибора. Проточник всегда подключают отдельной линией с УЗО — это влажное помещение и большой ток.</p>
+
+        <h2 id="esli-vybrali-nakopitelnyy">Если выбрали накопительный</h2>
+
+        <p>Объём подбирают по числу жильцов: 50 литров на одного, 80 на двоих, 100 на семью из трёх-четырёх, 150 на четверых-пятерых с ванной. Время нагрева считается просто:</p>
+
+        <div class="formula">
+            <p><strong>Время, ч</strong> = объём, л × перепад, °C × 1,163 ÷ мощность, Вт</p>
+            <p>Бак 100 л с 10 до 60 °C, ТЭН 1,5 кВт: <strong>3,9 часа</strong></p>
+        </div>
+
+        <p>И главное для дома с газовым котлом: бойлер косвенного нагрева даёт ту же горячую воду по цене газа — 1,09 ₽ за киловатт-час против 5,70 у электричества. На семье из четырёх это разница около 39 тысяч рублей в год.</p>
+
+        <a class="cta" href="/">
+            Посчитать горячее водоснабжение
+            <small>Объём бака и мощность источника</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какая мощность нужна проточному водонагревателю?</span></summary>
+            <div class="answer">
+                <p>Мощность равна расходу в литрах в минуту, умноженному на перепад температур и на 0,07. Комфортный душ 8 л/мин зимой, когда вода приходит с 8 °C, требует 16,8 кВт; экономичный 6 л/мин — 12,6 кВт. Летом, при входящей 18 °C, те же струи требуют 11,2 и 8,4 кВт.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему проточник на 3,5 кВт плохо греет?</span></summary>
+            <div class="answer">
+                <p>Потому что мощность ограничивает расход. Зимой при перепаде 30 градусов прибор на 3,5 кВт даёт около 2 литров в минуту — тонкая тёплая нить, а не душ. Такие модели рассчитаны на мойку и на лето, когда входящая вода теплее и перепад меньше.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли поставить проточный водонагреватель в частном доме?</span></summary>
+            <div class="answer">
+                <p>Для основного горячего водоснабжения — обычно нет. Комфортный душ зимой требует почти 17 кВт, то есть 76 ампер по одной фазе, а типичный ввод в дом — 15 кВт на всё. Проточник уместен на даче, в удалённой точке разбора, как летняя подстраховка при выключенном котле или в квартире на время отключения горячей воды.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что выгоднее по расходу энергии?</span></summary>
+            <div class="answer">
+                <p>Суммарно они сопоставимы: накопительный тратит немного на поддержание температуры, проточный — ровно столько, сколько взяли. Разница не в киловатт-часах за год, а в одномоментной нагрузке: проточнику нужны 8–27 кВт в момент разбора, накопительному 1,5–2,5 кВт на протяжении часов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что дешевле всего для горячей воды в доме с газом?</span></summary>
+            <div class="answer">
+                <p>Бойлер косвенного нагрева от котла: тепло приходит по цене газа, 1,09 ₽ за киловатт-час против 5,70 у электричества. Семье из четырёх человек нужно около 8 500 кВт·ч в год на подогрев воды, и разница между этими вариантами составляет примерно 39 тысяч рублей ежегодно.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=boyler-ili-protochnyy#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/boyler-kosvennogo-nagreva/">бойлер косвенного нагрева: как подобрать объём</a> · <a href="/elektricheskiy-vodonagrevatel/">электрический водонагреватель для дома</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=boyler-ili-protochnyy">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
