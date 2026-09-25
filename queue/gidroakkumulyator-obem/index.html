@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гидроаккумулятор: расчёт объёма и настройка давления | HeatCalc.ru</title>
+    <meta name="description" content="Зачем нужен гидроаккумулятор, как подобрать объём по числу пусков насоса, какое давление выставлять в воздушной камере и почему бак нельзя ставить в неотапливаемом кессоне.">
+    <link rel="canonical" href="https://heatcalc.ru/gidroakkumulyator-obem/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/gidroakkumulyator-obem/">
+    <meta property="og:title" content="Гидроаккумулятор: объём и настройка давления">
+    <meta property="og:description" content="Бак нужен не для запаса воды, а чтобы насос не щёлкал на каждый кран.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/gidroakkumulyator-obem/#webpage",
+      "url": "https://heatcalc.ru/gidroakkumulyator-obem/",
+      "name": "Гидроаккумулятор для водоснабжения: объём и настройка",
+      "description": "Зачем нужен гидроаккумулятор, как подобрать объём по числу пусков насоса, какое давление выставлять в воздушной камере и почему бак нельзя ставить в неотапливаемом кессоне.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "гидроаккумулятор для водоснабжения"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Гидроаккумулятор для водоснабжения: объём и настройка",
+          "item": "https://heatcalc.ru/gidroakkumulyator-obem/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какой объём гидроаккумулятора нужен?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "50 литров на дачу, 80 на дом для двух-трёх человек, 100 на семью из четырёх с двумя точками одновременно, 150 на большой дом с поливом. Полезный объём — примерно треть номинального: бак на 100 литров отдаёт 30–35 литров за цикл. Главный критерий не литры, а частота включений насоса: его ресурс считается в циклах."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какое давление должно быть в гидроаккумуляторе?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "На 0,2 бара ниже давления включения насоса: при пороге включения 1,7 бара в баке должно быть 1,5. Настраивают на полностью сброшенной системе автомобильным манометром через ниппель. Проверять стоит раз в год — воздух постепенно уходит через мембрану."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему насос включается слишком часто?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Чаще всего спущен воздух в гидроаккумуляторе: полезный объём падает почти до нуля, и насос щёлкает при открытом кране почти непрерывно. Если из ниппеля идёт вода — порвана мембрана, бак под замену. Вторая причина — слишком узкий диапазон реле: разница между порогами включения и отключения меньше одного бара."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли поставить гидроаккумулятор в кессоне?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В неотапливаемом — нет: зимой вода в баке замёрзнет, и мембрана этого не переживёт. Бак ставят в доме, рядом с узлом ввода, вместе с реле давления, манометром и фильтром грубой очистки. Там же его удобно обслуживать: проверять ниппель надо раз в год."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем гидроаккумулятор отличается от расширительного бака отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Мембраной и рабочим давлением. В гидроаккумуляторе питьевая вода, поэтому мембрана из пищевой резины, а давление водопроводное — 3–5 бар. У бака отопления обычная мембрана и рабочее давление 1,5–2 бара, а объём считается как 12 % от объёма системы. Внешне они похожи, но взаимозаменяемыми не являются."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/gidroakkumulyator-obem/#article",
+      "headline": "Гидроаккумулятор для водоснабжения: объём и настройка",
+      "description": "Зачем нужен гидроаккумулятор, как подобрать объём по числу пусков насоса, какое давление выставлять в воздушной камере и почему бак нельзя ставить в неотапливаемом кессоне.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/gidroakkumulyator-obem/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-12",
+      "dateModified": "2026-12-12",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Гидроаккумулятор для водоснабжения: объём и настройка</nav>
+
+        <h1>Гидроаккумулятор для водоснабжения: объём и настройка</h1>
+
+        <p class="art-meta"><time datetime="2026-12-12">12 декабря 2026</time></p>
+
+        <p class="lead">Гидроаккумулятор ставят не ради запаса воды, а ради насоса: без бака он включается на каждое открытие крана и изнашивается за пару лет. Разбираем, как подобрать объём, какое давление выставить и где бак ставить нельзя.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#kak-on-rabotaet">Как он работает</a></li>
+            <li><a href="#obem">Объём</a></li>
+            <li><a href="#nastroyka-davleniya">Настройка давления</a></li>
+            <li><a href="#gde-stavit">Где ставить</a></li>
+            <li><a href="#otoplenie-i-vodosnabzhenie-raznye-baki">Отопление и водоснабжение: разные баки</a></li>
+            <li><a href="#tipichnye-neispravnosti">Типичные неисправности</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="kak-on-rabotaet">Как он работает</h2>
+
+        <p>Внутри бака резиновая мембрана, за ней воздух под давлением. Насос нагнетает воду, мембрана растягивается, воздух сжимается. Открыли кран — сжатый воздух выдавливает воду обратно, и насос молчит, пока давление не упадёт до нижнего порога.</p>
+
+        <p>Полезный объём — то, что бак реально отдаёт между включениями, — составляет примерно треть номинального. Бак на 100 литров даёт около 30–35 литров воды за цикл.</p>
+
+        <h2 id="obem">Объём</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Объём</th><th>Полезно за цикл</th><th>Для чего</th></tr>
+                <tr><td class="num">24 л</td><td class="num">7–8 л</td><td>встроенный в станцию: минимум</td></tr>
+                <tr><td class="num">50 л</td><td class="num">15–17 л</td><td>дача, один-два человека</td></tr>
+                <tr><td class="num">80 л</td><td class="num">25–27 л</td><td>дом на двух-трёх</td></tr>
+                <tr><td class="num">100 л</td><td class="num">30–35 л</td><td>дом на четверых, две точки</td></tr>
+                <tr><td class="num">150 л</td><td class="num">45–50 л</td><td>большой дом, полив, несколько санузлов</td></tr>
+            </table>
+        </div>
+        <p class="note">Чем больше бак, тем реже включается насос и дольше он живёт. Верхнего предела по технике нет — есть по месту и цене.</p>
+
+        <div class="callout">
+            <p><strong>Главный критерий — частота пусков, а не литры.</strong> Ресурс насоса измеряется в циклах включения, и производители ограничивают их число в час: обычно 20–30 для бытовых моделей. Бак на 24 литра при спокойном разборе даёт пуск каждые пару минут, бак на 100 — раз в десять. Разница в цене баков — несколько тысяч, разница в сроке службы насоса — годы.</p>
+        </div>
+
+        <h2 id="nastroyka-davleniya">Настройка давления</h2>
+
+        <div class="formula">
+            <p><strong>Давление воздуха в баке</strong> = давление включения насоса − 0,2 бара</p>
+            <p>Реле настроено на включение 1,7 и отключение 3,2 бара:</p>
+            <p>в баке должно быть <strong>1,5 бара</strong></p>
+        </div>
+
+        <ol>
+            <li><strong>Сбросить давление воды</strong> в системе полностью — через любой кран.</li>
+            <li><strong>Измерить воздух</strong> в ниппеле бака обычным автомобильным манометром.</li>
+            <li><strong>Довести до нужного</strong> — подкачать насосом или стравить.</li>
+            <li><strong>Заполнить систему</strong> и проверить цикл: открыть кран, дождаться включения, закрыть, дождаться отключения.</li>
+            <li><strong>Записать обе цифры</strong> — давление в баке и пороги реле.</li>
+        </ol>
+
+        <p>Проверять давление в баке стоит раз в год: воздух постепенно уходит через мембрану. Спущенный бак ведёт себя узнаваемо — насос начинает щёлкать почти непрерывно при открытом кране, потому что полезный объём упал почти до нуля.</p>
+
+        <h2 id="gde-stavit">Где ставить</h2>
+
+        <ul>
+            <li><strong>В доме, а не в кессоне.</strong> В неотапливаемом кессоне бак зимой замёрзнет, и мембрана этого не переживёт. Это самая дорогая ошибка размещения.</li>
+            <li><strong>Рядом с узлом ввода</strong> — вместе с реле давления, манометром и фильтром грубой очистки.</li>
+            <li><strong>На полу или на кронштейне по весу.</strong> Бак на 100 литров с водой весит больше центнера.</li>
+            <li><strong>С доступом к ниппелю</strong> — его надо проверять раз в год.</li>
+            <li><strong>Мембраной вниз или горизонтально</strong> — по исполнению бака; перевёрнутый работает хуже и мембрана изнашивается быстрее.</li>
+        </ul>
+
+        <h2 id="otoplenie-i-vodosnabzhenie-raznye-baki">Отопление и водоснабжение: разные баки</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Гидроаккумулятор ХВС</th><th>Расширительный бак отопления</th></tr>
+                <tr><td>Что внутри</td><td>питьевая вода</td><td>теплоноситель</td></tr>
+                <tr><td>Мембрана</td><td>пищевая резина</td><td>обычная</td></tr>
+                <tr><td>Рабочее давление</td><td>водопроводное, 3–5 бар</td><td>1,5–2 бара</td></tr>
+                <tr><td>Задача</td><td>сгладить пуски насоса</td><td>принять расширение воды</td></tr>
+                <tr><td>Объём</td><td>по числу пусков</td><td>12 % от объёма системы</td></tr>
+            </table>
+        </div>
+        <p class="note">Внешне они похожи и часто одного цвета у разных производителей. Ставить бак отопления на водоснабжение нельзя: мембрана не пищевая.</p>
+
+        <h2 id="tipichnye-neispravnosti">Типичные неисправности</h2>
+
+        <ul>
+            <li><strong>Насос щёлкает часто.</strong> Спущен воздух в баке или порвана мембрана. Проверяется ниппелем: если оттуда идёт вода — мембрана порвана, бак под замену.</li>
+            <li><strong>Давление в системе скачет.</strong> Слишком узкий диапазон между порогами реле: разница меньше одного бара даёт частые пуски.</li>
+            <li><strong>Бак «булькает».</strong> Воздух попал в водяную часть — обычно после долива системы. Сбросить давление и заполнить заново.</li>
+            <li><strong>Ржавчина на корпусе снизу.</strong> Конденсат от холодной воды; ставить бак вплотную к стене без вентзазора не стоит.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать водоснабжение дома
+            <small>Насос, бак и точки водоразбора</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой объём гидроаккумулятора нужен?</span></summary>
+            <div class="answer">
+                <p>50 литров на дачу, 80 на дом для двух-трёх человек, 100 на семью из четырёх с двумя точками одновременно, 150 на большой дом с поливом. Полезный объём — примерно треть номинального: бак на 100 литров отдаёт 30–35 литров за цикл. Главный критерий не литры, а частота включений насоса: его ресурс считается в циклах.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какое давление должно быть в гидроаккумуляторе?</span></summary>
+            <div class="answer">
+                <p>На 0,2 бара ниже давления включения насоса: при пороге включения 1,7 бара в баке должно быть 1,5. Настраивают на полностью сброшенной системе автомобильным манометром через ниппель. Проверять стоит раз в год — воздух постепенно уходит через мембрану.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему насос включается слишком часто?</span></summary>
+            <div class="answer">
+                <p>Чаще всего спущен воздух в гидроаккумуляторе: полезный объём падает почти до нуля, и насос щёлкает при открытом кране почти непрерывно. Если из ниппеля идёт вода — порвана мембрана, бак под замену. Вторая причина — слишком узкий диапазон реле: разница между порогами включения и отключения меньше одного бара.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли поставить гидроаккумулятор в кессоне?</span></summary>
+            <div class="answer">
+                <p>В неотапливаемом — нет: зимой вода в баке замёрзнет, и мембрана этого не переживёт. Бак ставят в доме, рядом с узлом ввода, вместе с реле давления, манометром и фильтром грубой очистки. Там же его удобно обслуживать: проверять ниппель надо раз в год.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем гидроаккумулятор отличается от расширительного бака отопления?</span></summary>
+            <div class="answer">
+                <p>Мембраной и рабочим давлением. В гидроаккумуляторе питьевая вода, поэтому мембрана из пищевой резины, а давление водопроводное — 3–5 бар. У бака отопления обычная мембрана и рабочее давление 1,5–2 бара, а объём считается как 12 % от объёма системы. Внешне они похожи, но взаимозаменяемыми не являются.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/installyatsiya-unitaza/">инсталляция унитаза: что нужно учесть</a> · <a href="/vozduh-voda-ili-geotermalnyy/">воздух-вода или геотермальный</a> · <a href="/sshityy-polietilen-pex/">сшитый полиэтилен pex: марки и отличия</a> · <a href="/vodosnabzhenie-chastnogo-doma/">водоснабжение частного дома: с чего начать</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

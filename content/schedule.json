@@ -361,10 +361,10 @@
    "freq": 18600,
    "audience": "owner",
    "data_block": "сравнение затрат",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-21",
    "published_at": null,
-   "words": 0
+   "words": 529
   },
   {
    "slug": "installyatsiya-unitaza",
@@ -375,10 +375,10 @@
    "freq": 18200,
    "audience": "owner",
    "data_block": "расценки",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-24",
    "published_at": null,
-   "words": 0
+   "words": 518
   },
   {
    "slug": "stoimost-ekspluatatsii",
@@ -487,10 +487,10 @@
    "freq": 9400,
    "audience": "owner",
    "data_block": "расчёт объёма",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-12",
    "published_at": null,
-   "words": 0
+   "words": 495
   },
   {
    "slug": "boyler-ili-protochnyy",

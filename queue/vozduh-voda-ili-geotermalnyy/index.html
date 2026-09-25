@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тепловой насос воздух-вода или геотермальный: сравнение | HeatCalc.ru</title>
+    <meta name="description" content="Сравнение теплового насоса воздух-вода и геотермального: коэффициент преобразования зимой, стоимость контура, бивалентная точка, требования к участку и что выбрать для российского климата.">
+    <link rel="canonical" href="https://heatcalc.ru/vozduh-voda-ili-geotermalnyy/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/vozduh-voda-ili-geotermalnyy/">
+    <meta property="og:title" content="Тепловой насос воздух-вода или геотермальный">
+    <meta property="og:description" content="Воздушный дешевле вдвое, но проседает в мороз. Грунтовый стабилен, но контур стоит как насос.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/vozduh-voda-ili-geotermalnyy/#webpage",
+      "url": "https://heatcalc.ru/vozduh-voda-ili-geotermalnyy/",
+      "name": "Тепловой насос воздух-вода или геотермальный: что выбрать",
+      "description": "Сравнение теплового насоса воздух-вода и геотермального: коэффициент преобразования зимой, стоимость контура, бивалентная точка, требования к участку и что выбрать для российского климата.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "тепловой насос воздух вода"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Тепловой насос воздух-вода или геотермальный: что выбрать",
+          "item": "https://heatcalc.ru/vozduh-voda-ili-geotermalnyy/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Чем воздушный тепловой насос отличается от геотермального?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Источником тепла. Воздушный берёт его из наружного воздуха, и его коэффициент преобразования падает с морозом: около 4,0 при +7 °C, 2,7 при −7 и 1,8 при −20. Геотермальный берёт из грунта ниже глубины промерзания, где стабильно +4…+8 °C круглый год, и держит коэффициент 3,5–4 в любой мороз."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужен ли воздушному насосу догрев?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, в бивалентной схеме: насос закрывает нагрузку до −10…−15 °C, ниже подключается электрический догрев. Мощность насоса подбирают на эту точку перехода, а не на расчётную пятидневку — рассчитанный на −24 °C насос девять месяцев в году будет избыточен и начнёт тактовать."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что нужно для геотермального теплового насоса?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Контур в грунте: вертикальные скважины по 50–150 метров или горизонтальные траншеи ниже глубины промерзания, для которых нужно две-три сотки. Плюс незамерзающий теплоноситель и свой насос. Стоимость контура сопоставима со стоимостью самого насоса, и решать это надо до благоустройства участка."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли поставить тепловой насос к обычным радиаторам?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. На графике 80/60 коэффициент преобразования падает практически до единицы, и насос работает как дорогой электрокотёл. Нужна низкотемпературная система: тёплый пол на 40/35, а где нужны приборы — с увеличенным вдвое-вчетверо числом секций, потому что на 55/45 радиатор отдаёт 47 % каталожной мощности."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что выгоднее в российском климате?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Если газ есть — газовый котёл: 1,09 ₽ за киловатт-час тепла против 1,63 у теплового насоса. Если газа не будет: на большом участке с бюджетом — геотермальный, он стабильнее и не проседает в мороз; на маленьком участке или в готовом доме — воздух-вода с электрическим догревом на самые холодные недели."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/vozduh-voda-ili-geotermalnyy/#article",
+      "headline": "Тепловой насос воздух-вода или геотермальный: что выбрать",
+      "description": "Сравнение теплового насоса воздух-вода и геотермального: коэффициент преобразования зимой, стоимость контура, бивалентная точка, требования к участку и что выбрать для российского климата.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/vozduh-voda-ili-geotermalnyy/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-11-21",
+      "dateModified": "2026-11-21",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Тепловой насос воздух-вода или геотермальный: что выбрать</nav>
+
+        <h1>Тепловой насос воздух-вода или геотермальный: что выбрать</h1>
+
+        <p class="art-meta"><time datetime="2026-11-21">21 ноября 2026</time></p>
+
+        <p class="lead">Оба насоса переносят тепло снаружи внутрь, разница в том, откуда они его берут. Воздушный берёт из улицы — и зависит от её температуры. Грунтовый из земли ниже глубины промерзания, где зимой и летом одинаково. Отсюда всё остальное: цена, стабильность и требования к участку.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#v-chem-raznica">В чём разница</a></li>
+            <li><a href="#pochemu-vozdushnyy-prosedaet">Почему воздушный проседает</a></li>
+            <li><a href="#chego-trebuet-geotermalnyy">Чего требует геотермальный</a></li>
+            <li><a href="#chto-obschego-u-oboih">Что общего у обоих</a></li>
+            <li><a href="#chto-vybrat">Что выбрать</a></li>
+            <li><a href="#poryadok-rascheta">Порядок расчёта</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="v-chem-raznica">В чём разница</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Воздух-вода</th><th>Геотермальный</th></tr>
+                <tr><td>Источник тепла</td><td>наружный воздух</td><td>грунт ниже промерзания</td></tr>
+                <tr><td>Температура источника зимой</td><td>от −5 до −30 °C</td><td>стабильно +4…+8 °C</td></tr>
+                <tr><td>Коэффициент в мороз</td><td>падает до 1,5–2</td><td>держится 3,5–4</td></tr>
+                <tr><td>Земляные работы</td><td>нет</td><td>скважины или траншеи</td></tr>
+                <tr><td>Цена комплекта</td><td>ниже</td><td>выше в 1,5–2 раза</td></tr>
+                <tr><td>Наружный блок</td><td>есть, шумит и обмерзает</td><td>нет</td></tr>
+                <tr><td>Срок службы контура</td><td>—</td><td>десятки лет</td></tr>
+            </table>
+        </div>
+        <p class="note">Ключевая строка — третья: именно она определяет, нужен ли догрев и насколько.</p>
+
+        <h2 id="pochemu-vozdushnyy-prosedaet">Почему воздушный проседает</h2>
+
+        <p>Коэффициент преобразования падает по мере роста разницы между источником и подачей. Летом при +10 на улице и подаче 35 разница 25 градусов, зимой при −20 и той же подаче — уже 55. Компрессору тяжелее, и на киловатт электричества он выдаёт меньше тепла.</p>
+
+        <div class="formula">
+            <p>При +7 °C на улице: коэффициент около <strong>4,0</strong></p>
+            <p>При −7 °C: около <strong>2,7</strong></p>
+            <p>При −20 °C: около <strong>1,8</strong></p>
+            <p>Плюс потери на оттайку наружного блока при влажном морозе</p>
+        </div>
+
+        <p>При коэффициенте 1,8 киловатт-час тепла обходится в 3,17 ₽ по тарифу для дома с электроотоплением — это уже вдвое дороже газа, хотя всё ещё вдвое дешевле прямого электрокотла.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда бивалентная схема.</strong> Воздушный насос закрывает нагрузку до определённой уличной температуры — обычно −10…−15 °C, — а ниже подключается электрический догрев. Мощность насоса подбирают именно на эту точку, а не на расчётную пятидневку: насос, рассчитанный на −24, девять месяцев в году будет избыточен и начнёт тактовать. Дни с температурой ниже точки перехода в Петербурге исчисляются неделями за сезон, и на общий расход они влияют слабо.</p>
+        </div>
+
+        <h2 id="chego-trebuet-geotermalnyy">Чего требует геотермальный</h2>
+
+        <ul>
+            <li><strong>Вертикальные скважины</strong> — по 50–150 метров, несколько штук. Занимают мало места на участке, но бурение стоит заметно.</li>
+            <li><strong>Или горизонтальный контур</strong> — трубы в траншеях ниже глубины промерзания. Дешевле бурения, но требует площади: ориентировочно две-три сотки на дом.</li>
+            <li><strong>Незамерзающий теплоноситель</strong> в контуре и свой циркуляционный насос.</li>
+            <li><strong>Расчёт теплосъёма с грунта.</strong> Контур, рассчитанный впритык, за несколько сезонов выхолаживает грунт вокруг себя, и коэффициент падает.</li>
+            <li><strong>Решение до благоустройства.</strong> Траншеи по готовому участку — это заново газон, дорожки и посадки.</li>
+        </ul>
+
+        <p>Стоимость контура сопоставима со стоимостью самого насоса, и это главная причина, по которой геотермальные системы в частных домах встречаются реже воздушных.</p>
+
+        <h2 id="chto-obschego-u-oboih">Что общего у обоих</h2>
+
+        <ul>
+            <li><strong>Низкотемпературная система обязательна.</strong> На радиаторах 80/60 не работает ни один: коэффициент падает до единицы. Нужен тёплый пол на 40/35, а где приборы — с увеличенным вдвое-вчетверо числом секций.</li>
+            <li><strong>Буферная ёмкость.</strong> Компрессор не любит частых пусков, а система с закрывающимися зонами их даёт.</li>
+            <li><strong>Бойлер с увеличенным змеевиком.</strong> При подаче 45 °C обычный греет бак слишком медленно.</li>
+            <li><strong>Электрическая мощность.</strong> Втрое меньше, чем у электрокотла, но ввод нужен нормальный, и лучше три фазы.</li>
+            <li><strong>Проектирование с самого начала.</strong> Поставить насос последним элементом в готовую систему почти никогда не выходит удачно.</li>
+        </ul>
+
+        <h2 id="chto-vybrat">Что выбрать</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Ситуация</th><th>Выбор</th></tr>
+                <tr><td>Дом строится, участок большой, бюджет есть</td><td>геотермальный: стабильность и лучший коэффициент</td></tr>
+                <tr><td>Дом строится, участок маленький</td><td>воздух-вода с электрическим догревом</td></tr>
+                <tr><td>Готовый дом с тёплым полом</td><td>воздух-вода: не требует земляных работ</td></tr>
+                <tr><td>Готовый дом с радиаторами 80/60</td><td>ни один: сначала переделка системы</td></tr>
+                <tr><td>Есть газ</td><td>газовый котёл: 1,09 ₽ за киловатт-час тепла</td></tr>
+            </table>
+        </div>
+        <p class="note">Последняя строка закрывает вопрос для большинства домов: тепловой насос — решение там, где газа нет и не будет.</p>
+
+        <h2 id="poryadok-rascheta">Порядок расчёта</h2>
+
+        <ol>
+            <li><strong>Теплопотери по помещениям</strong> — по ограждениям и климату города, а не по площади.</li>
+            <li><strong>Потребность в тепле за сезон</strong> — по средней температуре отопительного периода.</li>
+            <li><strong>Бивалентная точка</strong> для воздушного насоса и мощность на неё.</li>
+            <li><strong>Проверка системы отопления:</strong> хватит ли приборов на подаче 40–45 °C.</li>
+            <li><strong>Сравнение с альтернативой</strong> по стоимости сезона, а не по цене оборудования.</li>
+        </ol>
+
+        <a class="cta" href="/">
+            Посчитать дом и сравнить варианты
+            <small>Теплопотери и стоимость сезона</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем воздушный тепловой насос отличается от геотермального?</span></summary>
+            <div class="answer">
+                <p>Источником тепла. Воздушный берёт его из наружного воздуха, и его коэффициент преобразования падает с морозом: около 4,0 при +7 °C, 2,7 при −7 и 1,8 при −20. Геотермальный берёт из грунта ниже глубины промерзания, где стабильно +4…+8 °C круглый год, и держит коэффициент 3,5–4 в любой мороз.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли воздушному насосу догрев?</span></summary>
+            <div class="answer">
+                <p>Да, в бивалентной схеме: насос закрывает нагрузку до −10…−15 °C, ниже подключается электрический догрев. Мощность насоса подбирают на эту точку перехода, а не на расчётную пятидневку — рассчитанный на −24 °C насос девять месяцев в году будет избыточен и начнёт тактовать.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что нужно для геотермального теплового насоса?</span></summary>
+            <div class="answer">
+                <p>Контур в грунте: вертикальные скважины по 50–150 метров или горизонтальные траншеи ниже глубины промерзания, для которых нужно две-три сотки. Плюс незамерзающий теплоноситель и свой насос. Стоимость контура сопоставима со стоимостью самого насоса, и решать это надо до благоустройства участка.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли поставить тепловой насос к обычным радиаторам?</span></summary>
+            <div class="answer">
+                <p>Нет. На графике 80/60 коэффициент преобразования падает практически до единицы, и насос работает как дорогой электрокотёл. Нужна низкотемпературная система: тёплый пол на 40/35, а где нужны приборы — с увеличенным вдвое-вчетверо числом секций, потому что на 55/45 радиатор отдаёт 47 % каталожной мощности.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что выгоднее в российском климате?</span></summary>
+            <div class="answer">
+                <p>Если газ есть — газовый котёл: 1,09 ₽ за киловатт-час тепла против 1,63 у теплового насоса. Если газа не будет: на большом участке с бюджетом — геотермальный, он стабильнее и не проседает в мороз; на маленьком участке или в готовом доме — воздух-вода с электрическим догревом на самые холодные недели.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/komnatnyy-termostat/">комнатный термостат: проводной или беспроводной</a> · <a href="/teplovoy-nasos-dlya-doma/">тепловой насос: работает ли в наши морозы</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
