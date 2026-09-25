@@ -585,10 +585,10 @@
    "freq": 8900,
    "audience": "owner",
    "data_block": "объём теплоаккумулятора",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-02",
    "published_at": null,
-   "words": 0
+   "words": 766
   },
   {
    "slug": "podklyuchenie-radiatora",
@@ -767,10 +767,10 @@
    "freq": 5600,
    "audience": "owner",
    "data_block": "сравнение по стоимости сезона",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-02",
    "published_at": null,
-   "words": 0
+   "words": 540
   },
   {
    "slug": "polotentsesushitel-v-dome",
@@ -949,10 +949,10 @@
    "freq": 4800,
    "audience": "owner",
    "data_block": "подбор по мощности котла",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-04",
    "published_at": null,
-   "words": 0
+   "words": 602
   },
   {
    "slug": "vnutripolnye-konvektory",
