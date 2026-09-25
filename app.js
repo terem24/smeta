@@ -35634,10 +35634,26 @@ const app = {
                     if (insertError) console.error('[handleAuthSession] Запись пользователя не создана:', insertError.message);
                     upsertResult = newUList;
                 } else {
-                    await supabaseClient.from('users').update({ auth_user_id: authUserId, city: existingCity || uData.city || undefined, ...updatePayload }).eq('id', uData.id);
+                    // ФИО, дату рождения, регион и сферу деятельности эта ветка раньше не
+                    // писала вовсе — только город и служебные отметки. А попадают сюда как
+                    // раз те, у кого строка в users привязана к прежнему auth_user_id (переезд
+                    // с Google на Яндекс ID): на своём компьютере анкета оставалась в
+                    // localStorage и выглядела заполненной, а в базу не доезжала никогда. При
+                    // входе с телефона брать её было неоткуда, и анкету просили заново.
+                    // Пустыми полями строку не трогаем (regFieldsObj уже без undefined-ключей).
+                    const fallbackUpdate = { auth_user_id: authUserId, city: existingCity || uData.city || undefined, ...regFieldsObj, ...updatePayload };
+                    if (existingPhone) fallbackUpdate.phone = existingPhone;
+                    Object.keys(fallbackUpdate).forEach(k => { if (fallbackUpdate[k] === undefined) delete fallbackUpdate[k]; });
+                    await supabaseClient.from('users').update(fallbackUpdate).eq('id', uData.id);
                     upsertResult = [uData];
                     if (upsertResult[0]) {
                         upsertResult[0].city = existingCity || uData.city || '';
+                        // Строку читали до записи — вернём в неё то, что только что записали,
+                        // иначе анкета ниже снова сочтётся незаполненной.
+                        Object.keys(regFieldsObj).forEach(k => {
+                            if (regFieldsObj[k] !== undefined) upsertResult[0][k] = regFieldsObj[k];
+                        });
+                        if (existingPhone) upsertResult[0].phone = existingPhone;
                     }
                 }
             }
@@ -36341,20 +36357,41 @@ const app = {
 
         // 2. В фоне синхронизируем с Supabase без блокировки UI
         (async () => {
-            try {
-                let query = supabaseClient.from('users').update({
-                    username: name, phone: phone, city: city, email: email,
-                    last_name: lastName, first_name: firstName, middle_name: middleName,
-                    birth_date: birthDate || null, region: region, activity_types: activityTypes
-                });
-                if (tgUser.authUserId) query = query.eq('auth_user_id', tgUser.authUserId);
-                else if (tgUser.email) query = query.eq('email', tgUser.email);
-                const { error } = await query;
+            const fields = {
+                username: name, phone: phone, city: city, email: email,
+                last_name: lastName, first_name: firstName, middle_name: middleName,
+                birth_date: birthDate || null, region: region, activity_types: activityTypes
+            };
+            // Раньше ответ базы не смотрели: update по auth_user_id, не нашедший ни одной
+            // строки, — это не ошибка, и анкета молча оставалась только в этом браузере.
+            // На компьютере всё выглядело заполненным, а при входе с телефона поля брать
+            // было неоткуда, и анкету просили заново. Теперь считаем обновлённые строки и,
+            // если их нет, повторяем по почте — этого хватает, когда строка в users привязана
+            // к прежнему входу (переезд с Google на Яндекс ID).
+            const writeBy = async (col, val) => {
+                if (!val) return null;
+                const { data, error } = await supabaseClient.from('users').update(fields).eq(col, val).select('id');
                 if (error) throw error;
+                return (data && data.length) ? data.length : 0;
+            };
+            try {
+                let saved = await writeBy('auth_user_id', tgUser.authUserId);
+                if (!saved) saved = await writeBy('email', tgUser.email || email);
+                if (!saved) {
+                    console.error('[saveProfile] Анкета не записана: строка пользователя не найдена', {
+                        authUserId: tgUser.authUserId, email: tgUser.email || email
+                    });
+                    app.alert('Анкета сохранена на этом устройстве, но не записалась в вашу учётную запись — ' +
+                        'на другом устройстве её придётся заполнить заново. Напишите на dima24ba@gmail.com, мы поправим.',
+                        'Профиль сохранён не полностью');
+                    return;
+                }
                 if (tgUser.email) await supabaseClient.auth.updateUser({ data: { full_name: name, phone: phone } });
                 console.log("[saveProfile] Профиль успешно синхронизирован с облаком Supabase.");
             } catch (error) {
                 console.error('[saveProfile] Фоновая ошибка синхронизации профиля с Supabase:', error);
+                app.alert('Анкета сохранена на этом устройстве, но не ушла в вашу учётную запись — проверьте связь ' +
+                    'и нажмите «Сохранить» ещё раз.', 'Профиль сохранён не полностью');
             }
         })();
     },
