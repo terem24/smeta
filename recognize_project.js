@@ -53,8 +53,17 @@ const RecognizeProject = {
     async read(rows, project, onStatus) {
         const ui = RecognizeUI;
         const summary = [], warnings = [];
+        // Где на плане подписана каждая комната — в тех же координатах, что и
+        // надписи листов отопления и сантехники (листы в одном масштабе).
+        const pos = this.roomPositions(rows, project && project.roomWords);
         const list = rows.map((r, n) => `${n + 1}. ${r.name}${r.area > 0 ? `, ${this.fmt(r.area)} м²` : ''}` +
-            `${r.floor === 2 ? ', 2-й этаж' : ''}`).join('\n');
+            `${r.floor === 2 ? ', 2-й этаж' : ''}` +
+            (pos[n] ? `, подпись на плане (${pos[n].x}%, ${pos[n].y}%)` : '')).join('\n');
+        const posHint = pos.some(Boolean)
+            ? 'Координаты подписей помещений взяты с листа планировки того же проекта: листы нарисованы в одном масштабе ' +
+              'и положении, x — % ширины слева, y — % высоты сверху. Помещение, в котором стоит прибор или зона, — то, ' +
+              'в чьих границах на этом листе оказывается её точка; ориентируйся по стенам на картинке и по этим координатам.\n\n'
+            : '';
 
         for (const sh of (project && project.eng) || []) {
             const what = this.SHEET_WHAT[sh.kind] || 'инженерных систем';
@@ -72,10 +81,29 @@ const RecognizeProject = {
             }
 
             if (onStatus) onStatus(`Читаю лист ${sh.num} — ${what}…`);
+
+            // Марки приборов набраны в PDF — их число известно точно. Говорим
+            // его модели прямо: по картинке она на «Хвойной 3» насчитала шесть
+            // приборов при пяти марках и поставила лишний в кабинет.
+            const marks = sh.kind === 'heat' ? this.heaterMarks(sh.text) : [];
+            const marksHint = marks.length
+                ? `На листе ровно ${marks.length} ${RecognizeUI.plural(marks.length, 'прибор', 'прибора', 'приборов')} отопления: ` +
+                  `${marks.join(', ')}. Найди на картинке, где стоит каждая марка, и отнеси её к помещению; ` +
+                  `сумма heaters по всем помещениям должна быть ровно ${marks.length}, в heaterMarks перечисли марки помещения.\n\n`
+                : '';
+            // Точное положение марок и подписей зон — из PDF, а не с картинки.
+            const labels = (sh.labels || []);
+            const labelsHint = labels.length
+                ? 'Положение надписей на листе (x — % ширины слева, y — % высоты сверху; взято из PDF точно): ' +
+                  labels.map(l => `${l.s} (${l.x}%, ${l.y}%)`).join('; ') +
+                  '. Марка прибора стоит у окна своего помещения — обычно ближе всего к подписи площади зоны тёплого пола ' +
+                  'этого же помещения; помещение каждой марки определяй по этим координатам, а не по картинке.\n\n'
+                : '';
             try {
                 const data = await ui.askModel([
                     { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
                         `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
+                        (sh.kind === 'vent' ? '' : posHint) + marksHint + labelsHint +
                         (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
                         'Верни только JSON.' },
                     { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
@@ -95,6 +123,30 @@ const RecognizeProject = {
             }
         }
         return { summary, warnings };
+    },
+
+    /**
+     * Место подписи каждой комнаты на листе помещений: [{x, y} | null] по
+     * строкам. Та же надпись есть и в таблице экспликации — там названия
+     * стоят столбиком (три и больше с одним x), такие отбрасываем. Две
+     * комнаты с одним названием («Санузел» и «Санузел») — место не указываем:
+     * какая из подписей чья, по тексту не понять.
+     */
+    roomPositions(rows, words) {
+        if (!Array.isArray(words) || !words.length) return rows.map(() => null);
+        const norm = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+        const names = new Set(rows.map(r => norm(r.name)));
+        const cand = words.filter(w => names.has(norm(w.s)));
+        const column = w => cand.filter(o => Math.abs(o.x - w.x) < 0.5).length >= 3;
+        const onPlan = cand.filter(w => !column(w));
+        const dup = {};
+        rows.forEach(r => { const k = norm(r.name); dup[k] = (dup[k] || 0) + 1; });
+        return rows.map(r => {
+            const k = norm(r.name);
+            if (dup[k] > 1) return null;
+            const hits = onPlan.filter(w => norm(w.s) === k);
+            return hits.length === 1 ? { x: hits[0].x, y: hits[0].y } : null;
+        });
     },
 
     SHEET_WHAT: { heat: 'отопления', water: 'сантехники', vent: 'вентиляции' },
@@ -219,7 +271,12 @@ const RecognizeProject = {
                 ufhRooms++;
                 if (a > 0) ufhSum += a;
             }
-            const h = this.cnt(x.heaters);
+            // Марки, отнесённые к помещению, надёжнее голого числа: их модель
+            // нашла на листе поимённо, и лишний прибор без марки не пройдёт.
+            const mk = Array.isArray(x.heaterMarks)
+                ? [...new Set(x.heaterMarks.map(s => String(s).trim()).filter(Boolean))] : [];
+            const h = mk.length ? Math.min(20, mk.length) : this.cnt(x.heaters);
+            r.eng.heaterMarks = mk;
             if (h) {
                 r.eng.heaters = h;
                 r.eng.heaterType = this.HEATER_NAMES[x.heaterType] ? x.heaterType : 'radiator';
@@ -298,6 +355,7 @@ const RecognizeProject = {
             out.push(`зона тёплого пола больше комнаты — в расчёт пойдёт ${this.fmt(r.area)} м²`);
         }
         if (!e.ufh && !e.heaters) out.push(`на листе ${e.heatSheet} отопления нет — в расчёте будет радиатор`);
+        if (e.heaters && e.heaterMarks && e.heaterMarks.length) out.push(`приборы на листе: ${e.heaterMarks.join(', ')}`);
         return out;
     },
 
@@ -363,6 +421,7 @@ const RecognizeProject = {
             if (e.ufhArea) e.ufh = true;
         } else if (field === 'heaters') {
             e.heaters = this.cnt(val);
+            e.heaterMarks = [];     // число правлено руками — марки с листа ему уже не опора
             if (e.heaters && !e.heaterType) e.heaterType = 'radiator';
         } else if (field === 'heaterType') {
             e.heaterType = this.HEATER_NAMES[val] ? val : 'radiator';
@@ -533,7 +592,7 @@ n — номер помещения из списка в запросе. Опр�
 === Формат ответа ===
 Только JSON, без пояснений.
 heat:
-{"rooms":[{"n":1,"name":"Кухня-гостиная","ufh":true,"ufhArea":57.54,"heaters":3,"heaterType":"floor_convector"}],
+{"rooms":[{"n":1,"name":"Кухня-гостиная","ufh":true,"ufhArea":57.54,"heaters":3,"heaterMarks":["Р-1","Р-2","Р-3"],"heaterType":"floor_convector"}],
  "towelRails":{"count":1,"type":"electric"},"ufhTotal":121.95,"unclear":[]}
 water:
 {"rooms":[{"n":5,"name":"Мастер-санузел","toilet":1,"bidet":0,"basin":1,"kitchenSink":0,"bath":1,"shower":1,"wash":0,"dish":0}],

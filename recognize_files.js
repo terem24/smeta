@@ -763,6 +763,56 @@ const RecognizeFiles = {
     },
 
     /**
+     * Где на листе стоят марки приборов (РД-1) и подписи зон тёплого пола
+     * («S=10,63м2»), в процентах от ширины и высоты, от левого верхнего угла.
+     *
+     * Мелкую марку у окна модель на картинке находит, но с комнатой путает:
+     * на «Хвойной 3» РД-4 и РД-5 уехали на комнату ниже. Подпись площади
+     * стоит внутри своей зоны, и её комнату модель определяет верно, — с
+     * точными координатами обоих марка ложится рядом со своей зоной.
+     *
+     * Марки из таблицы спецификации стоят столбиком: три и больше с одной
+     * координатой x — это таблица, а не план, их отбрасываем.
+     */
+    async pageLabels(page) {
+        let c;
+        try { c = await page.getTextContent(); } catch (e) { return []; }
+        const vp = page.getViewport({ scale: 1 });
+        const out = [];
+        for (const t of c.items) {
+            const s = String(t.str || '').replace(/\s+/g, '').trim();
+            const mark = /^(РД|КВ|КП|Р|К)-\d{1,2}$/.test(s);
+            if (!mark && !/^S=[\d.,]+м/i.test(s)) continue;
+            const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
+            out.push({ s, mark, x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10 });
+        }
+        const marks = out.filter(l => l.mark);
+        const column = l => marks.filter(m => Math.abs(m.x - l.x) < 1).length >= 3;
+        return out.filter(l => !l.mark || !column(l));
+    },
+
+    /**
+     * Надписи листа помещений с координатами (в процентах, как у pageLabels):
+     * по ним RecognizeProject найдёт, где на плане подписана каждая комната.
+     * Листы проекта нарисованы в одном масштабе и положении, и место
+     * «Постирочной» на плане мебели — то же, что на листе тёплых полов, где
+     * названий комнат нет вовсе.
+     */
+    async pageWords(page) {
+        let c;
+        try { c = await page.getTextContent(); } catch (e) { return []; }
+        const vp = page.getViewport({ scale: 1 });
+        const out = [];
+        for (const t of c.items) {
+            const s = String(t.str || '').replace(/\s+/g, ' ').trim();
+            if (s.length < 3 || s.length > 40 || !/[А-Яа-яЁё]{3}/.test(s)) continue;
+            const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
+            out.push({ s, x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10 });
+        }
+        return out;
+    },
+
+    /**
      * Комплект листов проекта или нет.
      *
      * Признак — у большинства страниц есть название листа, среди них есть
@@ -867,13 +917,19 @@ const RecognizeFiles = {
         // после помещений, когда есть список комнат, к которым всё привязать.
         const inRoomsSet = new Set(set.rooms.map(p => p.num));
         set.eng = [];
+        // Места подписей комнат — только при одном листе помещений: у
+        // нескольких этажей свои листы, и какому из них соответствует лист
+        // отопления, по координатам не понять.
+        set.roomWords = set.rooms.length === 1 ? await this.pageWords(await pdf.getPage(set.rooms[0].num)) : [];
         for (const kind of this.ENG_KINDS) {
             const list = set.found.filter(p => p.kind === kind && !inRoomsSet.has(p.num))
                 .slice(0, this.ENG_LIMIT[kind] || this.ENG_PER_KIND);
             for (const p of list) {
                 if (onProgress) onProgress(`готовлю лист ${p.num}`);
+                const page = await pdf.getPage(p.num);
                 set.eng.push({ kind, num: p.num, title: p.title, text: p.text,
-                    img: await this.renderPage(await pdf.getPage(p.num)) });
+                    labels: kind === 'heat' ? await this.pageLabels(page) : [],
+                    img: await this.renderPage(page) });
             }
         }
 
