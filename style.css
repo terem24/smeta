@@ -10748,16 +10748,21 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     white-space: nowrap;
 }
 
+/* «Действия» — фиксированные 300px (кнопки не сжать), остальные четыре делят
+   то, что осталось, через calc(), а не проценты от полной ширины таблицы. Было
+   42/17/16/14/11% от 100% при фактических 300px у «Действия» — сумма ширин
+   выходила за пределы таблицы, и «Статус»/«Дата» рендерились уже своего
+   содержимого; без overflow:hidden badge и дата просто наезжали на соседей. */
 #profile_cloud_list_content .inv-table th:nth-child(1),
-#profile_cloud_list_content .inv-table td:nth-child(1) { width: 42%; }
+#profile_cloud_list_content .inv-table td:nth-child(1) { width: calc((100% - 300px) * 0.40); }
 #profile_cloud_list_content .inv-table th:nth-child(2),
-#profile_cloud_list_content .inv-table td:nth-child(2) { width: 17%; white-space: nowrap; }
+#profile_cloud_list_content .inv-table td:nth-child(2) { width: calc((100% - 300px) * 0.15); white-space: nowrap; }
 #profile_cloud_list_content .inv-table th:nth-child(3),
-#profile_cloud_list_content .inv-table td:nth-child(3) { width: 16%; }
+#profile_cloud_list_content .inv-table td:nth-child(3) { width: calc((100% - 300px) * 0.25); overflow: hidden; }
 #profile_cloud_list_content .inv-table th:nth-child(4),
-#profile_cloud_list_content .inv-table td:nth-child(4) { width: 14%; white-space: nowrap; }
+#profile_cloud_list_content .inv-table td:nth-child(4) { width: calc((100% - 300px) * 0.20); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #profile_cloud_list_content .inv-table th:nth-child(5),
-#profile_cloud_list_content .inv-table td:nth-child(5) { width: 11%; }
+#profile_cloud_list_content .inv-table td:nth-child(5) { width: 300px; }
 
 /* Длинное название объекта не должно распирать колонку */
 #profile_cloud_list_content .inv-table td:nth-child(1) {

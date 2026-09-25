@@ -10759,9 +10759,10 @@ const app = {
                         <th>Сумма</th>
                         <th>Статус</th>
                         <th>Дата</th>
-                        <!-- Ширина задана явно: в колонке три кнопки действий, и без неё
-                             таблица отдавала ей меньше места, чем занимает содержимое -->
-                        <th style="text-align:right; width: 360px;">Действия</th>
+                        <!-- Ширина задана и здесь, и в style.css (#profile_cloud_list_content
+                             .inv-table th:nth-child(5)) — те же 300px: у остальных колонок
+                             ширины через calc(100% - 300px), число должно совпадать -->
+                        <th style="text-align:right; width: 300px;">Действия</th>
                     </tr>
                 </thead>
                 <tbody>
