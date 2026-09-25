@@ -235,10 +235,10 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "расчётная пятидневка и три режима",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-03",
    "published_at": null,
-   "words": null
+   "words": 671
   },
   {
    "slug": "zamena-kotla-v-dome",
@@ -291,10 +291,10 @@
    "freq": 6200,
    "audience": "pro",
    "data_block": "разница в гидравлике",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-10",
    "published_at": null,
-   "words": 0
+   "words": 593
   },
   {
    "slug": "nasosnaya-stantsiya",
@@ -305,10 +305,10 @@
    "freq": 12600,
    "audience": "owner",
    "data_block": "сравнение решений",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-12",
    "published_at": null,
-   "words": 0
+   "words": 624
   },
   {
    "slug": "elektricheskiy-vodonagrevatel",
@@ -319,10 +319,10 @@
    "freq": 22400,
    "audience": "owner",
    "data_block": "сравнение с косвенным",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-14",
    "published_at": null,
-   "words": 0
+   "words": 518
   },
   {
    "slug": "vozduh-v-sisteme-otopleniya",
@@ -333,10 +333,10 @@
    "freq": 5800,
    "audience": "owner",
    "data_block": "состав группы безопасности",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-17",
    "published_at": null,
-   "words": 0
+   "words": 582
   },
   {
    "slug": "komnatnyy-termostat",

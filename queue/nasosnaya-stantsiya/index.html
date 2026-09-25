@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Насосная станция для частного дома: подбор и ограничения | HeatCalc.ru</title>
+    <meta name="description" content="Насосная станция для водоснабжения: предел всасывания 7–8 метров, подбор по напору и расходу, объём гидроаккумулятора, настройка реле давления и когда нужен скважинный насос.">
+    <link rel="canonical" href="https://heatcalc.ru/nasosnaya-stantsiya/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/nasosnaya-stantsiya/">
+    <meta property="og:title" content="Насосная станция: когда её хватит, а когда нет">
+    <meta property="og:description" content="Восемь метров всасывания — физический предел. Что делать, если вода глубже.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/nasosnaya-stantsiya/#webpage",
+      "url": "https://heatcalc.ru/nasosnaya-stantsiya/",
+      "name": "Насосная станция для дома: когда её хватит, а когда нет",
+      "description": "Насосная станция для водоснабжения: предел всасывания 7–8 метров, подбор по напору и расходу, объём гидроаккумулятора, настройка реле давления и когда нужен скважинный насос.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "насосная станция для дома"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Насосная станция для дома: когда её хватит, а когда нет",
+          "item": "https://heatcalc.ru/nasosnaya-stantsiya/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "С какой глубины насосная станция поднимает воду?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Практический предел — 7–8 метров по вертикали от зеркала воды до насоса. Поверхностный насос не поднимает воду, а создаёт разрежение, и вверх её толкает атмосферное давление; теоретический потолок около 10 метров, остальное съедают потери. Горизонтальный участок тоже отнимает: примерно метр вертикали на каждые десять метров горизонтали."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему купленная станция не тянет?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Чаще всего потому, что считали по статическому уровню воды, а не по динамическому. При работе насоса вода в колодце опускается: было 6 метров в покое, стало 9 при откачке — и станция срывает подачу. Вторая причина — подсос воздуха на всасывающей линии: любая неплотность там останавливает работу."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой гидроаккумулятор нужен к станции?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Встроенного бака на 24 литра хватает редко: насос включается на каждое открытие крана. Внешний бак берут 50 литров на дачу, 100 на дом для четверых с двумя точками одновременно, 150 на большой дом с поливом. Давление воздуха в баке выставляют на 0,2 бара ниже давления включения реле."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как настроить реле давления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нижний порог — давление включения, обычно 1,5–1,8 бара; верхний — отключения, 3,0–3,5 бара. Разница между ними меньше одного бара означает частые пуски и быстрый износ. Перед настройкой проверяют воздух в гидроаккумуляторе: он должен быть на 0,2 бара ниже давления включения."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда нужен скважинный насос вместо станции?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Когда динамический уровень воды глубже семи-восьми метров. Погружной насос не всасывает, а толкает воду снизу, поэтому ограничения по глубине у него нет; он ещё и тише, потому что находится в скважине. Монтаж с оголовком и автоматикой стоит 15 000 ₽, а гидроаккумулятор с реле давления нужны в обоих случаях."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/nasosnaya-stantsiya/#article",
+      "headline": "Насосная станция для дома: когда её хватит, а когда нет",
+      "description": "Насосная станция для водоснабжения: предел всасывания 7–8 метров, подбор по напору и расходу, объём гидроаккумулятора, настройка реле давления и когда нужен скважинный насос.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/nasosnaya-stantsiya/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-11-12",
+      "dateModified": "2026-11-12",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Насосная станция для дома: когда её хватит, а когда нет</nav>
+
+        <h1>Насосная станция для дома: когда её хватит, а когда нет</h1>
+
+        <p class="art-meta"><time datetime="2026-11-12">12 ноября 2026</time></p>
+
+        <p class="lead">Насосная станция — поверхностный насос с гидроаккумулятором и автоматикой в одном корпусе. Она дешевле скважинного насоса и проще в обслуживании, но упирается в физику: поднять воду всасыванием можно лишь с ограниченной глубины. Разбираем, где проходит эта граница.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#glavnoe-ogranichenie-7-8-metrov">Главное ограничение: 7–8 метров</a></li>
+            <li><a href="#kogda-stanciya-podhodit">Когда станция подходит</a></li>
+            <li><a href="#kak-podbirayut">Как подбирают</a></li>
+            <li><a href="#gidroakkumulyator">Гидроаккумулятор</a></li>
+            <li><a href="#nastroyka-rele-davleniya">Настройка реле давления</a></li>
+            <li><a href="#chto-uchest-pri-ustanovke">Что учесть при установке</a></li>
+            <li><a href="#kogda-brat-skvazhinnyy-nasos">Когда брать скважинный насос</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="glavnoe-ogranichenie-7-8-metrov">Главное ограничение: 7–8 метров</h2>
+
+        <p>Поверхностный насос не поднимает воду, а создаёт разрежение, и воду вверх толкает атмосферное давление. Теоретический предел — около 10 метров, практический с учётом потерь в трубе и неплотностей — <strong>7–8 метров</strong> по вертикали от зеркала воды до насоса.</p>
+
+        <div class="callout">
+            <p><strong>Считать надо от динамического уровня, а не от статического.</strong> При работе насоса вода в колодце или скважине опускается, и если в покое до неё было 6 метров, а при откачке становится 9 — станция начнёт срывать подачу. Смотреть нужно уровень при работе, а не при осмотре. Это самая частая причина, по которой купленная станция «не тянет».</p>
+        </div>
+
+        <p>Горизонтальный участок трубы тоже отнимает: примерно метр вертикали на каждые десять метров горизонтали. Колодец в тридцати метрах от дома — это минус три метра из восьми.</p>
+
+        <h2 id="kogda-stanciya-podhodit">Когда станция подходит</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Источник</th><th>Подходит ли станция</th></tr>
+                <tr><td>Колодец, вода на 4–6 м</td><td>да, основной сценарий</td></tr>
+                <tr><td>Скважина «на песок», уровень до 7 м</td><td>да</td></tr>
+                <tr><td>Скважина глубиной 30–60 м</td><td>нет, нужен скважинный насос</td></tr>
+                <tr><td>Накопительная ёмкость в доме</td><td>да, идеальный случай</td></tr>
+                <tr><td>Магистральный водопровод с низким давлением</td><td>да, в режиме подкачки</td></tr>
+            </table>
+        </div>
+        <p class="note">Глубина скважины и уровень воды в ней — разные числа: скважина может быть 40 метров, а вода стоять на шести.</p>
+
+        <p>Отдельный случай — станция с выносным эжектором. Она поднимает воду с 20–30 метров, но требует двух труб к источнику, шумит и имеет низкий КПД. Сегодня её почти вытеснил скважинный насос.</p>
+
+        <h2 id="kak-podbirayut">Как подбирают</h2>
+
+        <div class="formula">
+            <p><strong>Требуемый напор</strong> = глубина до воды + высота до верхней точки + потери + напор на приборе</p>
+            <p>Колодец 6 м, дом в 20 м, верхняя точка на 4 м выше насоса:</p>
+            <p>6 + 4 + 2 + 25 = <strong>37 м</strong></p>
+        </div>
+
+        <p>Последнее слагаемое — рабочее давление в доме, 2,5 бара. Без него душ будет течь, а не бить, и техника начнёт жаловаться на давление.</p>
+
+        <p>Расход считают по одновременности: дом на четверых с двумя точками, работающими разом, — это около 1,8–2,0 м³/ч. Смотреть надо на кривую насоса в этой точке, а не на максимальный напор из паспорта: максимум указан при нулевом расходе.</p>
+
+        <h2 id="gidroakkumulyator">Гидроаккумулятор</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Объём</th><th>Для чего</th></tr>
+                <tr><td class="num">24 л</td><td>встроенный в станцию: минимум, частые пуски</td></tr>
+                <tr><td class="num">50 л</td><td>дача, один-два человека</td></tr>
+                <tr><td class="num">100 л</td><td>дом на четверых, две точки одновременно</td></tr>
+                <tr><td class="num">150 л</td><td>большой дом, полив, несколько санузлов</td></tr>
+            </table>
+        </div>
+        <p class="note">Встроенного в станцию бака на 24 литра хватает редко: насос включается на каждое открытие крана, и ресурс уходит быстро. Внешний бак ставят почти всегда.</p>
+
+        <p>Давление воздуха в баке выставляют на 0,2 бара ниже давления включения реле — так же, как у расширительного бака отопления. Проверяют раз в год автомобильным манометром на сброшенном давлении.</p>
+
+        <h2 id="nastroyka-rele-davleniya">Настройка реле давления</h2>
+
+        <ol>
+            <li><strong>Сбросить давление</strong> и проверить воздух в баке: 1,3–1,5 бара при давлении включения 1,5–1,7.</li>
+            <li><strong>Выставить нижний порог</strong> — давление включения. Обычно 1,5–1,8 бара.</li>
+            <li><strong>Выставить верхний порог</strong> — отключения. Обычно 3,0–3,5 бара. Разница между порогами меньше 1 бара означает частые пуски.</li>
+            <li><strong>Проверить цикл:</strong> открыть кран, дождаться включения, закрыть, дождаться отключения. Насос не должен щёлкать чаще раза в минуту при спокойном разборе.</li>
+        </ol>
+
+        <h2 id="chto-uchest-pri-ustanovke">Что учесть при установке</h2>
+
+        <ul>
+            <li><strong>Станция шумит.</strong> Ставить её в жилой зоне или под спальней не стоит: подойдут котельная, подсобное помещение или кессон с утеплением.</li>
+            <li><strong>Обратный клапан на всасывании</strong> с сетчатым фильтром — обязателен, иначе станция теряет заливку при каждой остановке.</li>
+            <li><strong>Труба всасывания без провисаний и подсосов.</strong> Любая неплотность на всасывающей линии срывает подачу, и найти её сложнее, чем протечку.</li>
+            <li><strong>Защита от сухого хода.</strong> Работа без воды убивает насос за минуты; реле или датчик уровня стоят дёшево.</li>
+            <li><strong>Отвод и слив.</strong> Станцию придётся обслуживать, и место под таз тоже нужно.</li>
+        </ul>
+
+        <h2 id="kogda-brat-skvazhinnyy-nasos">Когда брать скважинный насос</h2>
+
+        <p>Если динамический уровень глубже семи-восьми метров — вопрос закрыт: нужен погружной насос, который не всасывает, а толкает воду снизу. Он дороже, но не имеет ограничения по глубине, работает тише (он в скважине) и не срывает подачу.</p>
+
+        <p>Монтаж скважинного насоса с оголовком и автоматикой стоит 15 000 ₽ по базовым расценкам. Гидроаккумулятор и реле давления при этом всё равно нужны — просто стоят они в доме, а не в одном корпусе с насосом.</p>
+
+        <a class="cta" href="/">
+            Посчитать водоснабжение дома
+            <small>Насос, бак и точки водоразбора</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">С какой глубины насосная станция поднимает воду?</span></summary>
+            <div class="answer">
+                <p>Практический предел — 7–8 метров по вертикали от зеркала воды до насоса. Поверхностный насос не поднимает воду, а создаёт разрежение, и вверх её толкает атмосферное давление; теоретический потолок около 10 метров, остальное съедают потери. Горизонтальный участок тоже отнимает: примерно метр вертикали на каждые десять метров горизонтали.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему купленная станция не тянет?</span></summary>
+            <div class="answer">
+                <p>Чаще всего потому, что считали по статическому уровню воды, а не по динамическому. При работе насоса вода в колодце опускается: было 6 метров в покое, стало 9 при откачке — и станция срывает подачу. Вторая причина — подсос воздуха на всасывающей линии: любая неплотность там останавливает работу.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой гидроаккумулятор нужен к станции?</span></summary>
+            <div class="answer">
+                <p>Встроенного бака на 24 литра хватает редко: насос включается на каждое открытие крана. Внешний бак берут 50 литров на дачу, 100 на дом для четверых с двумя точками одновременно, 150 на большой дом с поливом. Давление воздуха в баке выставляют на 0,2 бара ниже давления включения реле.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как настроить реле давления?</span></summary>
+            <div class="answer">
+                <p>Нижний порог — давление включения, обычно 1,5–1,8 бара; верхний — отключения, 3,0–3,5 бара. Разница между ними меньше одного бара означает частые пуски и быстрый износ. Перед настройкой проверяют воздух в гидроаккумуляторе: он должен быть на 0,2 бара ниже давления включения.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда нужен скважинный насос вместо станции?</span></summary>
+            <div class="answer">
+                <p>Когда динамический уровень воды глубже семи-восьми метров. Погружной насос не всасывает, а толкает воду снизу, поэтому ограничения по глубине у него нет; он ещё и тише, потому что находится в скважине. Монтаж с оголовком и автоматикой стоит 15 000 ₽, а гидроаккумулятор с реле давления нужны в обоих случаях.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/dvuhtrubnaya-sistema/">двухтрубная система: тупиковая и попутная</a> · <a href="/kotel-ne-greet-v-moroz/">котёл не справляется в мороз: что проверять</a> · <a href="/skolko-stoit-otoplenie-doma/">сколько стоит отопление частного дома под ключ</a> · <a href="/vodosnabzhenie-chastnogo-doma/">водоснабжение частного дома: с чего начать</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
