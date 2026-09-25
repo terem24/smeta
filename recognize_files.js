@@ -895,6 +895,68 @@ const RecognizeFiles = {
     },
 
     /**
+     * Таблица «Экспликация помещений» листа — текстом из PDF: [{ num, name,
+     * area }] и итог. Модель читает её верно почти всегда, но «почти» —
+     * это переименованная комната или площадь 19,6 вместо 19,06, и
+     * проверять приходится все строки. Отсюда названия и площади берутся
+     * дословно, и на экране проверки они зелёные. null — таблицы нет или
+     * она не разобралась (столбцы не найдены, сумма не сходится с итогом).
+     */
+    async pageExplication(page) {
+        let c;
+        try { c = await page.getTextContent(); } catch (e) { return null; }
+        const vp = page.getViewport({ scale: 1 });
+        const items = c.items.map(t => {
+            const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
+            return { s: String(t.str || '').replace(/\s+/g, ' ').trim(), x: x / vp.width * 100, y: y / vp.height * 100,
+                x1: (x + (t.width || 0)) / vp.width * 100 };
+        }).filter(i => i.s);
+        const heads = items.filter(i => /^экспликаци/i.test(i.s) && !/до\s*перепланировк/i.test(i.s));
+        for (const head of heads) {
+            const near = i => i.y > head.y && i.y < head.y + 8 && i.x > head.x - 15 && i.x < head.x + 40;
+            const hNum = items.filter(i => near(i) && /^(№|№\s*п\/п|поз\.?|номер)$/i.test(i.s)).sort((a, b) => a.y - b.y)[0];
+            const hName = items.filter(i => near(i) && /^(помещени|наименовани|назначени)/i.test(i.s)).sort((a, b) => a.y - b.y)[0];
+            const hArea = items.filter(i => near(i) && /^(s\b|s,|s\s|площад)/i.test(i.s)).sort((a, b) => a.y - b.y)[0];
+            if (!hNum || !hName || !hArea || !(hNum.x < hName.x && hName.x < hArea.x)) continue;
+            const top = Math.max(hNum.y, hName.y, hArea.y);
+            const col = items.filter(i => /^\d{1,3}[а-яa-z]?$/i.test(i.s) && Math.abs(i.x - hNum.x) < 2 && i.y > top + 0.3)
+                .sort((a, b) => a.y - b.y);
+            const rows = [];
+            for (const m of col) {
+                if (rows.length && m.y - rows[rows.length - 1].y > 5) break;
+                rows.push({ num: m.s, y: m.y, name: [], area: null });
+            }
+            if (rows.length < 2) continue;
+            const step = (rows[rows.length - 1].y - rows[0].y) / Math.max(1, rows.length - 1);
+            const yMax = rows[rows.length - 1].y + step * 0.6;
+            const nearest = i => rows.reduce((b, r) => Math.abs(r.y - i.y) < Math.abs(b.y - i.y) ? r : b, rows[0]);
+            let total = null;
+            for (const i of items) {
+                if (i.y <= top + 0.3) continue;
+                const num = /^\d{1,4}([.,]\d{1,2})?$/.test(i.s) ? parseFloat(i.s.replace(',', '.')) : null;
+                if (i.x >= hArea.x - 1.5 && i.x < hArea.x + 8) {
+                    // Итог — под таблицей, с «м²» или без.
+                    const m = i.s.match(/^(\d{1,4}[.,]\d{1,2})\s*(м|$)/);
+                    if (m && i.y > yMax && i.y < yMax + step * 2.5) { total = parseFloat(m[1].replace(',', '.')); continue; }
+                    if (num !== null && i.y <= yMax) { const r = nearest(i); if (r.area === null) r.area = num; }
+                } else if (i.x >= hName.x - 1.5 && i.x < hArea.x - 0.5 && i.y <= yMax && !/^\d+$/.test(i.s)) {
+                    nearest(i).name.push(i);
+                }
+            }
+            const out = rows.map(r => ({
+                num: r.num,
+                name: r.name.sort((a, b) => (a.y - b.y) || (a.x - b.x)).map(i => i.s).join(' ').replace(/\s+/g, ' ').trim(),
+                area: r.area,
+            }));
+            if (out.some(r => !r.name || !(r.area > 0))) continue;
+            const sum = out.reduce((a, r) => a + r.area, 0);
+            if (total !== null && Math.abs(sum - total) > 0.05) continue;   // что-то прочитано не так
+            return { rows: out, total: total !== null ? total : Math.round(sum * 100) / 100 };
+        }
+        return null;
+    },
+
+    /**
      * Комплект листов проекта или нет.
      *
      * Признак — у большинства страниц есть название листа, среди них есть
@@ -1303,9 +1365,12 @@ const RecognizeFiles = {
         // без модели. Не вышло (скан, стены не заливкой) — null, модель
         // справится по картинке, как прежде.
         set.roomWalls = [];
+        // Экспликация — названия и площади дословно (RecognizeProject.fitExplication).
+        set.roomTables = [];
         for (const p of set.rooms) {
             const page = await pdf.getPage(p.num);
             set.roomWords.push(await this.pageWords(page));
+            set.roomTables.push(p.expl ? await this.pageExplication(page) : null);
             let walls = null;
             if (typeof RecognizeGeo !== 'undefined') {
                 try { walls = await RecognizeGeo.wallsOf(page, p.text); } catch (e) { walls = null; }

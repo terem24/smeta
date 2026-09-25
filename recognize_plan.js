@@ -693,9 +693,9 @@ const RecognizePlan = {
                   <td><input type="checkbox" ${r._sel ? 'checked' : ''}
                              onchange="RecognizePlan.sel(${n}, this.checked)"></td>
                   <td class="rec-raw">${esc(r.num)}</td>
-                  <td><input class="rec-f" value="${esc(r.name)}"
+                  <td><input class="rec-f" value="${esc(r.name)}"${src.name === 'pdf' ? ` style="${this.PDF_CELL}" title="Из экспликации PDF дословно"` : ''}
                              onchange="RecognizePlan.set(${n},'name',this.value)"></td>
-                  <td><input class="rec-f rec-f-s" type="number" step="0.1" min="0" value="${esc(cell(r.area))}"
+                  <td><input class="rec-f rec-f-s" type="number" step="0.1" min="0" value="${esc(cell(r.area))}"${src.area === 'pdf' ? ` style="${this.PDF_CELL}" title="Из экспликации PDF дословно"` : ''}
                              onchange="RecognizePlan.set(${n},'area',this.value)"></td>
                   <td><input class="rec-f rec-f-s" type="number" step="1" min="0" value="${r.windows === null ? 1 : r.windows}"${pdfWin}
                              onchange="RecognizePlan.set(${n},'windows',this.value)"></td>
@@ -826,6 +826,7 @@ const RecognizePlan = {
     set(i, field, val) {
         const r = this._rows[i];
         if (!r) return;
+        if ((field === 'name' || field === 'area') && r.eng && r.eng.src) delete r.eng.src[field];
         if (field === 'name') r.name = this.cleanName(val);
         else if (field === 'area') {
             const n = this.num(val);

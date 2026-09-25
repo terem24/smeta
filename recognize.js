@@ -2181,6 +2181,8 @@ const RecognizeUI = {
         if (this._project && typeof RecognizeProject !== 'undefined' && res.rows.length) {
             this.progressTo(2);
             RecognizeProject.reset();
+            // Названия и площади — дословно из экспликации PDF.
+            res.warnings = (res.warnings || []).concat(RecognizeProject.fitExplication(res, this._project));
             // Город — по адресу из штампа, без модели.
             RecognizeProject.readCity(this._project);
             // Окна — с обмерного плана: высоты и окна в пол. До листа

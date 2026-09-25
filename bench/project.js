@@ -82,10 +82,11 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
     console.log(`Листов ${pdf.numPages}; помещения — ${set.rooms.map(p => p.num + ' «' + p.title + '»').join(', ')}`);
 
     // То, что fromProjectSet готовит без картинок.
-    set.roomWords = []; set.roomWalls = [];
+    set.roomWords = []; set.roomWalls = []; set.roomTables = [];
     for (const p of set.rooms) {
         const page = await pdf.getPage(p.num);
         set.roomWords.push(await F.pageWords(page));
+        set.roomTables.push(p.expl ? await F.pageExplication(page) : null);
         set.roomWalls.push(await G.wallsOf(page, p.text));
     }
     const cand = set.pages.find(p => p.kind === 'plan' && /h\s*окна\s*=/i.test(p.text || ''));
@@ -101,8 +102,20 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
     }
     set.eng = eng;
 
-    // Помещения — из эталона.
-    const rows = et.rooms.map((r, i) => ({ name: r.name, area: r.area, windows: null, panoramic: 0, _sheet: 0, num: String(i + 1) }));
+    // Помещения — из экспликации PDF, как на сайте (fitExplication), будто
+    // модель не прочитала ни одного. Таблицы нет — из эталона.
+    let rows;
+    const res0 = { rows: [], sheets: [{}] };
+    P.fitExplication(res0, set);
+    if (res0.rows.length) {
+        rows = res0.rows;
+        console.log(`Экспликация: ${rows.length} помещений, итог ${fmt(set.roomTables[0].total)} м²`);
+    } else {
+        console.log('Экспликация не разобрана — помещения из эталона');
+        rows = et.rooms.map((r, i) => ({ name: r.name, area: r.area, windows: null, panoramic: 0, _sheet: 0, num: String(i + 1) }));
+    }
+    const etOf = r => et.rooms.find(e => e.name === r.name);
+    et.rooms.filter(e => !rows.some(r => r.name === e.name)).forEach(e => console.log(`  ✗ нет помещения «${e.name}»`));
     const map = P.geoMap(rows, set, 0);
     if (!map) { console.log('Карта помещений не построилась: стен заливкой нет или подписей комнат меньше двух.'); return; }
     const noSeed = rows.filter(r => !map.rows.includes(r)).map(r => r.name);
@@ -125,7 +138,7 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         if (sh.kind === 'heat') {
             P.takeHeat({ rooms: [], ufhTotal: et.ufhTotal || null }, rows, sh, scope);
             // Зоны без подписи модель отмечает сама; на стенде — из эталона.
-            rows.forEach((r, i) => { if (et.rooms[i].ufh === true) { r.eng.ufh = true; r.eng.ufhArea = null; r.eng.ufhAreaSrc = 'spec'; } });
+            rows.forEach(r => { const e = etOf(r); if (e && e.ufh === true) { r.eng.ufh = true; r.eng.ufhArea = null; r.eng.ufhAreaSrc = 'spec'; } });
             const g = P.geoHeat(sh, scope, map);
             (g ? g.summary : ['по чертежу не разложено']).forEach(s => console.log(`  Лист ${sh.num}: ${s}`));
             (g ? g.warnings : []).forEach(s => console.log('  ! ' + s));
@@ -145,8 +158,10 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         const same = typeof want === 'number' && typeof got === 'number' ? Math.abs(want - got) < 0.015 : want === got;
         if (same) ok++; else bad.push(`${room}: ${field} — эталон ${want}, стенд ${got}`);
     };
-    rows.forEach((r, i) => {
-        const e = et.rooms[i], g = r.eng || {};
+    rows.forEach(r => {
+        const e = etOf(r), g = r.eng || {};
+        if (!e) { bad.push(`${r.name}: лишнее помещение`); all++; return; }
+        if ('area' in e) check(r.name, 'площадь', e.area, r.area);
         if ('windows' in e) check(r.name, 'окон', e.windows, r.windows === null ? '—' : r.windows);
         if ('floorWin' in e) check(r.name, 'окон в пол', e.floorWin, r.panoramic || 0);
         if ('ufh' in e) {

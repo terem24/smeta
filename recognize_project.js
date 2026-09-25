@@ -242,6 +242,60 @@ const RecognizeProject = {
         return i >= 0 ? map.rows[i] : null;
     },
 
+    /**
+     * Названия и площади — дословно из экспликации PDF
+     * (RecognizeFiles.pageExplication). Строки модели сверяются с таблицей
+     * по названию, затем по площади; чего модель не прочитала — добавляется,
+     * лишнее остаётся неотмеченным с пометкой. Порядок — как в таблице.
+     * Вызывать до окон и инженерных листов: они ссылаются на строки.
+     */
+    fitExplication(res, project) {
+        const tabs = project && project.roomTables;
+        if (!Array.isArray(tabs) || !tabs.some(Boolean) || !res || !Array.isArray(res.rows)) return [];
+        const warnings = [];
+        const norm = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^а-яa-z0-9]/g, '');
+        tabs.forEach((tab, k) => {
+            if (!tab) return;
+            const own = res.rows.filter(r => tabs.length === 1 || r._sheet === k);
+            if (!own.length && tabs.length > 1) return;
+            const tpl = own[0] || res.rows[0] || {};
+            const used = new Set(), ordered = [];
+            let added = 0;
+            tab.rows.forEach(t => {
+                let r = own.find(x => !used.has(x) && norm(x.name) === norm(t.name))
+                    || own.find(x => !used.has(x) && x.area > 0 && Math.abs(x.area - t.area) < 0.015);
+                if (!r) {
+                    added++;
+                    r = { _sheet: tpl._sheet !== undefined ? tpl._sheet : k, _sel: true, num: '', name: '', nameGuessed: false,
+                        area: null, areaSrc: null, dims: '', windows: null, panoramic: 0, outerWalls: null, orient: null,
+                        doubleHeight: false, heated: true, floorRaw: tpl.floorRaw !== undefined ? tpl.floorRaw : 1,
+                        floor: tpl.floor !== undefined ? tpl.floor : 1, ownFloor: false, confidence: 1,
+                        note: 'добавлено из экспликации — на плане модель его не нашла' };
+                }
+                used.add(r);
+                r.num = t.num; r.name = t.name; r.area = t.area; r.areaSrc = 'table'; r.nameGuessed = false;
+                this.setSrc(r, 'name', 'pdf');
+                this.setSrc(r, 'area', 'pdf');
+                ordered.push(r);
+            });
+            const extra = own.filter(x => !used.has(x));
+            extra.forEach(x => {
+                x._sel = false;
+                x.note = [x.note, 'в экспликации такого помещения нет — в расчёт не отмечено'].filter(Boolean).join('; ');
+                ordered.push(x);
+            });
+            const at = own.length ? res.rows.indexOf(own[0]) : res.rows.length;
+            const rest = res.rows.filter(r => !own.includes(r));
+            const pos = rest.filter((r, i) => res.rows.indexOf(r) < at).length;
+            rest.splice(pos, 0, ...ordered);
+            res.rows = rest;
+            if (res.sheets && res.sheets[k]) res.sheets[k].totalArea = tab.total;
+            if (added) warnings.push(`экспликация: ${added} ${RecognizeUI.plural(added, 'помещение добавлено', 'помещения добавлены', 'помещений добавлено')} из таблицы — на плане их не нашли`);
+            if (extra.length) warnings.push(`в экспликации нет: ${extra.map(x => x.name).join(', ')} — не отмечено`);
+        });
+        return warnings;
+    },
+
     setSrc(r, field, v) {
         r.eng = r.eng || {};
         r.eng.src = r.eng.src || {};
