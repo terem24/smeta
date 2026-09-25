@@ -12985,6 +12985,85 @@ const app = {
         return head(requestedInvoices.length) + `<div style="display:flex; flex-direction:column;">${listHtml}</div>`;
     },
 
+    // Раздел «Опросные листы» — постоянный архив заявок с oprosnik.html, в отличие от
+    // всплывающего окна checkOprosInbox/showOprosInbox: то показывает только новые
+    // (status='new') и один раз, эти же карточки после открытия/скрытия навсегда пропадали
+    // из кабинета. Здесь читаем весь opros_requests (RLS сама отдаёт только свои строки),
+    // «Новая» — просто бейдж поверх той же записи, а не условие показа.
+    renderOprosnikiTab: async function () {
+        const container = document.getElementById('profile_tab_oprosniki');
+        if (!container) return;
+
+        const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+        const head = `<div class="lk-section-head">
+                          <h4>📋 Опросные листы</h4>
+                          <button type="button" class="lk-btn-sm" onclick="app.renderOprosnikiTab()">↻ Обновить</button>
+                      </div>`;
+        container.innerHTML = head + `<div class="lk-empty">⌛ Загрузка заявок...</div>`;
+
+        let rows = [];
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (!session) {
+                container.innerHTML = head + `<div class="lk-empty">Войдите в аккаунт, чтобы видеть заявки.</div>`;
+                return;
+            }
+            const { data, error } = await supabaseClient.from('opros_requests')
+                .select('id, created_at, client_name, client_phone, data, status')
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (error) throw error;
+            rows = data || [];
+        } catch (e) {
+            console.warn('[renderOprosnikiTab]', e);
+            container.innerHTML = head + `<div class="lk-empty">Не удалось загрузить заявки.</div>`;
+            return;
+        }
+
+        // Сырые строки держим под рукой для openOprosRequestFromTab — те же поля,
+        // что и в data, второй раз их из базы не тянем
+        this._oprosniksTabRows = rows;
+
+        if (!rows.length) {
+            container.innerHTML = head + `<div class="lk-empty">Пока нет заявок с опросника. <span onclick="app.copyOprosnikLink(this)" style="color:var(--primary); font-weight:700; cursor:pointer; text-decoration:underline;">Скопировать ссылку на опросник</span> — отправьте её заказчику.</div>`;
+            return;
+        }
+
+        const fmt = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+
+        let html = '';
+        rows.forEach(r => {
+            const d = r.data || {};
+            const line = [d.city, d.area ? d.area + ' м²' : '', d.floors ? d.floors + ' эт.' : '',
+                { gas: 'газ', el: 'электро', solid: 'тв. топливо', hp: 'тепловой насос' }[d.fuel] || '']
+                .filter(Boolean).join(' · ');
+            const isNew = r.status === 'new';
+            html += `<div class="lk-card" style="display:flex; flex-direction:column; gap:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                            <strong style="font-size:13.5px; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(r.client_name) || 'Без имени'}${r.client_phone ? ' · ' + esc(r.client_phone) : ''}</strong>
+                            ${isNew ? `<span style="background:#10B981; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">Новая</span>` : ''}
+                        </div>
+                        <div style="font-size:11px; color:var(--text-sec); font-weight:500;">${fmt(r.created_at)}</div>
+                        ${line ? `<div style="font-size:11.5px; color:var(--text-sec); border-top:1px dashed var(--border); padding-top:6px;">${esc(line)}</div>` : ''}
+                        <div style="display:flex; gap:6px; margin-top:4px;">
+                            <button class="btn-subscribe" onclick="app.openOprosRequestFromTab('${r.id}')" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0;">Открыть в расчёте</button>
+                        </div>
+                     </div>`;
+        });
+
+        container.innerHTML = head + html;
+    },
+
+    openOprosRequestFromTab: async function (id) {
+        const r = (this._oprosniksTabRows || []).find(x => String(x.id) === String(id));
+        if (!r) return;
+        this.applyOprosData(r.data || {});
+        this.markOprosSeen(id);
+        this.closeProfileModal();
+        this.syncUI(); this.render(); this.saveState();
+        try { await this.alert(this.oprosSummaryText(r.data || {}), 'Опросник заказчика'); } catch (e) { }
+    },
+
     /**
      * «Сводка» в личном кабинете монтажника: что стало с его сметами.
      *
@@ -13528,7 +13607,7 @@ const app = {
     // Прайс монтажа / Своё оборудование. Содержимое всех разделов, кроме реквизитов,
     // строится лениво при первом открытии раздела.
     setProfileTab: function (tab) {
-        const tabs = ['requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'manager', 'installers', 'workprices', 'equipment'];
+        const tabs = ['requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment'];
         if (!tabs.includes(tab)) tab = 'requisites';
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
         // висящие подписки и не обновлять невидимую панель
@@ -13572,6 +13651,8 @@ const app = {
             this.renderInstallerSummaryTab();
         } else if (tab === 'orders') {
             this.renderOrdersTab();
+        } else if (tab === 'oprosniki') {
+            this.renderOprosnikiTab();
         } else if (tab === 'manager') {
             this.showSupplierSection('profile_tab_manager');
         } else if (tab === 'installers') {
