@@ -159,10 +159,13 @@ $logged = @file_put_contents($logFile, json_encode($record, JSON_UNESCAPED_UNICO
 // один токен в двух файлах нельзя: при перевыпуске один из них протухнет молча.
 $sent = false;
 $secret = null;
-foreach (['lead_secret.php', 'tg_notify_secret.php'] as $name) {
-    $file = __DIR__ . '/' . $name;
-    if (is_file($file)) {
-        $secret = include $file;
+// Имя переменной цикла — не $name и не $file: в $name лежит имя заказчика, и цикл
+// затирал его именем файла секрета. В тестовой заявке 25.09.2026 вместо имени
+// пришло «tg_notify_secret.php».
+foreach (['lead_secret.php', 'tg_notify_secret.php'] as $secretName) {
+    $secretPath = __DIR__ . '/' . $secretName;
+    if (is_file($secretPath)) {
+        $secret = include $secretPath;
         break;
     }
 }
