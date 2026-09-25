@@ -647,6 +647,26 @@ const RecognizeFiles = {
         };
     },
 
+    /**
+     * Кусок страницы в высоком разрешении: box — рамка в процентах листа
+     * {x0, y0, x1, y1}, maxPx — длинная сторона кадра. Обмерный план целиком
+     * ужимается до 1600 px, и тонкие выноски от подписей окон к самим окнам
+     * пропадают; дом без штампа и полей — вдвое крупнее.
+     */
+    async renderCrop(page, box, maxPx) {
+        const vp1 = page.getViewport({ scale: 1 });
+        const wPt = vp1.width * (box.x1 - box.x0) / 100, hPt = vp1.height * (box.y1 - box.y0) / 100;
+        const scale = maxPx / Math.max(wPt, hPt);
+        const vp = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(wPt * scale);
+        canvas.height = Math.round(hPt * scale);
+        const dx = vp.width * box.x0 / 100, dy = vp.height * box.y0 / 100;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp, intent: 'print',
+            transform: [1, 0, 0, 1, -dx, -dy] }).promise;
+        return canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+    },
+
     /** Страница PDF картинкой для распознавания. */
     async renderPage(page) {
         const vp = page.getViewport({ scale: 2 });
@@ -941,9 +961,104 @@ const RecognizeFiles = {
             const t = c.items[i];
             const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
             out.push({ n: out.length + 1, s: items[i], h: h / 1000, sill: sill === null ? null : sill / 1000, floor,
-                x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10 });
+                x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10,
+                // в единицах страницы — для поиска выноски (pageLeaders)
+                px: t.transform[4], py: t.transform[5], pw: t.width || 0 });
         }
+        try { await this.pageLeaders(page, out); } catch (e) { /* без выносок — модель найдёт окна по картинке */ }
         return out;
+    },
+
+    /**
+     * Где окно на самом деле: конец выноски от подписи. Подпись подчёркнута
+     * горизонтальной линией, от её конца к окну идёт выноска в 1–2 отрезка.
+     * Линии берутся из списка операций pdf.js (constructPath) с учётом
+     * преобразований (save/restore/transform), идём от концов подчёркивания
+     * не дальше трёх отрезков и останавливаемся на развилке — иначе цепочка
+     * уходит в стены. Нашли — у подписи wx/wy в процентах листа.
+     *
+     * Зачем: на «Хвойной 3» модель по картинке относила окно №13 к коридору,
+     * а конец его выноски (39,0 %; 74,8 %) — ниже перегородки, в кабинете.
+     */
+    async pageLeaders(page, labels) {
+        const OPS = window.pdfjsLib && window.pdfjsLib.OPS;
+        if (!OPS || !labels.length) return;
+        const list = await page.getOperatorList();
+        const mul = (m, n) => [m[0] * n[0] + m[2] * n[1], m[1] * n[0] + m[3] * n[1], m[0] * n[2] + m[2] * n[3],
+            m[1] * n[2] + m[3] * n[3], m[0] * n[4] + m[2] * n[5] + m[4], m[1] * n[4] + m[3] * n[5] + m[5]];
+        const ap = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+        let ctm = [1, 0, 0, 1, 0, 0];
+        const stack = [], segs = [];
+        for (let i = 0; i < list.fnArray.length; i++) {
+            const fn = list.fnArray[i], a = list.argsArray[i];
+            if (fn === OPS.save) stack.push(ctm);
+            else if (fn === OPS.restore) ctm = stack.pop() || ctm;
+            else if (fn === OPS.transform) ctm = mul(ctm, a);
+            // Вложенный объект (Form XObject) со своей матрицей: выноски и
+            // подчёркивания подписей в этом PDF лежат именно в них.
+            else if (fn === OPS.paintFormXObjectBegin) { stack.push(ctm); if (Array.isArray(a[0]) && a[0].length === 6) ctm = mul(ctm, a[0]); }
+            else if (fn === OPS.paintFormXObjectEnd) ctm = stack.pop() || ctm;
+            else if (fn === OPS.constructPath) {
+                const ops = a[0], co = a[1];
+                let k = 0, cur = null, start = null;
+                const push = (p, q) => { if (p && q && (p[0] !== q[0] || p[1] !== q[1])) segs.push([p, q]); };
+                for (const op of ops) {
+                    if (op === OPS.moveTo) { cur = ap(ctm, co[k], co[k + 1]); start = cur; k += 2; }
+                    else if (op === OPS.lineTo) { const p = ap(ctm, co[k], co[k + 1]); push(cur, p); cur = p; k += 2; }
+                    else if (op === OPS.curveTo) { const p = ap(ctm, co[k + 4], co[k + 5]); push(cur, p); cur = p; k += 6; }
+                    else if (op === OPS.curveTo2 || op === OPS.curveTo3) { const p = ap(ctm, co[k + 2], co[k + 3]); push(cur, p); cur = p; k += 4; }
+                    else if (op === OPS.rectangle) {
+                        const [x, y, w, h] = [co[k], co[k + 1], co[k + 2], co[k + 3]]; k += 4;
+                        const p = [ap(ctm, x, y), ap(ctm, x + w, y), ap(ctm, x + w, y + h), ap(ctm, x, y + h)];
+                        push(p[0], p[1]); push(p[1], p[2]); push(p[2], p[3]); push(p[3], p[0]);
+                        cur = start = p[0];
+                    } else if (op === OPS.closePath) { push(cur, start); cur = start; }
+                }
+            }
+        }
+        const vp = page.getViewport({ scale: 1 });
+        const tol = 1.2;
+        const near = (p, q) => Math.abs(p[0] - q[0]) < tol && Math.abs(p[1] - q[1]) < tol;
+        for (const l of labels) {
+            const x0 = l.px, x1 = l.px + (l.pw || 40), yb = l.py;
+            // Подчёркивание: горизонталь под текстом (в PDF y растёт вверх).
+            // Подпись бывает в три строки (тип, hокна, hот пола) — подчёркнута
+            // последняя, до 40 pt ниже первой. Берём ближайшую к тексту.
+            let under = segs.filter(([p, q]) => Math.abs(p[1] - q[1]) < 0.5 && p[1] <= yb + 2 && p[1] >= yb - 40 &&
+                Math.min(p[0], q[0]) <= x0 + 3 && Math.max(p[0], q[0]) >= x1 - 10);
+            if (!under.length) continue;
+            const topY = Math.max(...under.map(s => s[0][1]));
+            const lowY = Math.min(...under.filter(s => topY - s[0][1] < 30).map(s => s[0][1]));
+            under = under.filter(s => Math.abs(s[0][1] - lowY) < 0.6);
+            // Рамка-подложка подписи: её стороны сходятся в тех же углах, что
+            // подчёркивание и выноска, и давали развилку. Всё, что целиком
+            // внутри рамки подписи, из поиска исключаем.
+            const inBox = p => p[0] >= x0 - 1.5 && p[0] <= Math.max(x1, ...under.map(u => Math.max(u[0][0], u[1][0]))) + 1.5 &&
+                p[1] >= lowY - 1.5 && p[1] <= yb + 14;
+            const frame = new Set(segs.filter(s => inBox(s[0]) && inBox(s[1])));
+            let best = null;
+            for (const u of under) {
+                for (const end of [u[0], u[1]]) {
+                    let cur = end, used = new Set([...under, ...frame]), steps = 0;
+                    while (steps < 3) {
+                        const next = segs.filter(s => !used.has(s) && (near(s[0], cur) || near(s[1], cur)));
+                        if (next.length !== 1) break;       // тупик или развилка — дальше не идём
+                        const s = next[0];
+                        used.add(s);
+                        cur = near(s[0], cur) ? s[1] : s[0];
+                        steps++;
+                    }
+                    if (!steps) continue;
+                    const d = Math.hypot(cur[0] - (x0 + x1) / 2, cur[1] - yb);
+                    if (!best || d > best.d) best = { d, p: cur };
+                }
+            }
+            if (best && best.d > 8) {
+                const [vx, vy] = vp.convertToViewportPoint(best.p[0], best.p[1]);
+                l.wx = Math.round(vx / vp.width * 1000) / 10;
+                l.wy = Math.round(vy / vp.height * 1000) / 10;
+            }
+        }
     },
 
     // ------------------------------------------------------------------
@@ -1135,6 +1250,26 @@ const RecognizeFiles = {
                 if (labels.length) {
                     if (onProgress) onProgress(`готовлю лист ${cand.num}`);
                     set.winSheet = { num: cand.num, title: cand.title, labels, img: await this.renderPage(page) };
+                    // Кадр по подписям окон с запасом: подписи стоят вокруг дома,
+                    // так что он весь внутри. Метки на него наносит
+                    // RecognizeProject.readWindows, когда известны помещения.
+                    const m = 7;
+                    const box = {
+                        x0: Math.max(0, Math.min(...labels.map(l => l.x)) - m),
+                        x1: Math.min(100, Math.max(...labels.map(l => l.x)) + m),
+                        y0: Math.max(0, Math.min(...labels.map(l => l.y)) - m),
+                        y1: Math.min(100, Math.max(...labels.map(l => l.y)) + m),
+                    };
+                    try {
+                        set.winSheet.crop = { box, b64: await this.renderCrop(page, box, 2000) };
+                        // Обмерный план — дом ДО перепланировки: граница коридора и
+                        // кабинета «Хвойной 3» там другая, и окно уходило не в ту
+                        // комнату. Тот же кадр с листа помещений — стены, какие будут.
+                        if (set.rooms[0].num !== cand.num) {
+                            set.winSheet.cropRooms = await this.renderCrop(await pdf.getPage(set.rooms[0].num), box, 2000);
+                            set.winSheet.roomsNum = set.rooms[0].num;
+                        }
+                    } catch (e) { /* не вышло — модель получит лист целиком */ }
                 }
             }
         }

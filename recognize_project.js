@@ -349,12 +349,33 @@ const RecognizeProject = {
         const list = rows.map((r, n) => `${n + 1}. ${r.name}${r.area > 0 ? `, ${this.fmt(r.area)} м²` : ''}` +
             (pos[n] ? `, подпись на плане (${pos[n].x}%, ${pos[n].y}%)` : '')).join('\n');
         const labels = ws.labels.map(l => `${l.n}. «${l.s}», высота ${this.fmt(l.h)} м, от пола ${
-            l.sill === null ? '—' : this.fmt(l.sill) + ' м'} — подпись в точке (${l.x}%, ${l.y}%)`).join('\n');
+            l.sill === null ? '—' : this.fmt(l.sill) + ' м'} — подпись в точке (${l.x}%, ${l.y}%)` +
+            (l.wx !== undefined ? `; само окно (конец выноски, из PDF точно) — в точке (${l.wx}%, ${l.wy}%)` : '')).join('\n');
+        // Крупный кадр дома с метками: красные «№» у подписей окон, синие
+        // «номер. Название» в помещениях. Не вышло — лист целиком, как прежде.
+        let img = ws.img, marked = false, imgRooms = null;
+        if (ws.crop) {
+            try { img = await this.markWindowsImage(ws, rows, pos); marked = true; } catch (e) { img = ws.img; }
+            // Второй кадр — та же рамка с листа помещений (после перепланировки).
+            if (marked && ws.cropRooms) {
+                try { imgRooms = await this.markWindowsImage(ws, rows, pos, ws.cropRooms, true); } catch (e) { imgRooms = null; }
+            }
+        }
         try {
             const data = await ui.askModel([
                 { text: `Лист ${ws.num} «${ws.title}». Помещения дома (координаты подписей — с листа планировки, листы в одном масштабе и положении):\n${list}\n\n` +
-                    `Подписи окон на этом листе (текст и координаты взяты из PDF точно):\n${labels}\n\nВерни только JSON.` },
-                { inline_data: { mime_type: 'image/jpeg', data: ws.img } },
+                    `Подписи окон на этом листе (текст и координаты взяты из PDF точно):\n${labels}\n\n` +
+                    (marked ? 'На картинке — только дом, крупно. Красная метка «№N» стоит у подписи окна N; синяя метка «N. Название» — ' +
+                        'в помещении N списка. Иди по выноске от красной метки к окну и смотри, в стене какого помещения (синей метки) оно. ' +
+                        'Координаты в тексте — по всему листу, а не по картинке.\n\n' : '') +
+                    (imgRooms ? `Картинок две, в одном кадре и с одинаковыми метками. Первая — этот лист ${ws.num} с выносками к окнам ` +
+                        `(он может показывать дом до перепланировки). Вторая — лист ${ws.roomsNum}, стены после перепланировки, выносок на нём нет; ` +
+                        'на ней красная точка «№N» стоит прямо в окне N — это конец его выноски, найденный в PDF. ' +
+                        'Помещение окна — то, в чьей наружной стене стоит точка на второй картинке: смотри на перегородки рядом с точкой, ' +
+                        'а не на расстояние до синих меток. Окна без точки ищи по выноске на первой картинке.\n\n' : '') +
+                    'Верни только JSON.' },
+                { inline_data: { mime_type: 'image/jpeg', data: img } },
+                ...(imgRooms ? [{ inline_data: { mime_type: 'image/jpeg', data: imgRooms } }] : []),
             ], PROJECT_WINDOWS_PROMPT);
             const cand = data?.candidates?.[0];
             const text = cand?.content?.parts?.[0]?.text;
@@ -365,6 +386,56 @@ const RecognizeProject = {
             if (e.quota) return { summary: [], warnings: [e.message] };
             return { summary: [], warnings: [`лист ${ws.num} (окна) не прочитан: ${ui.cleanError(e.message).split('\n')[0]}`] };
         }
+    },
+
+    /**
+     * Кадр обмерного плана с метками для модели. Координаты подписей окон
+     * и помещений — в процентах листа, кадр — рамка ws.crop.box в тех же
+     * процентах: пересчёт линейный. Метки полупрозрачные, чтобы не закрыть
+     * выноски, и стоят чуть в стороне от точки подписи — сама подпись
+     * остаётся читаемой.
+     */
+    async markWindowsImage(ws, rows, pos, src, atWindow) {
+        const box = ws.crop.box;
+        const b64 = src || ws.crop.b64;
+        const im = new Image();
+        await new Promise((ok, err) => { im.onload = ok; im.onerror = () => err(new Error('кадр не открылся')); im.src = 'data:image/jpeg;base64,' + b64; });
+        const c = document.createElement('canvas');
+        c.width = im.naturalWidth; c.height = im.naturalHeight;
+        const g = c.getContext('2d');
+        g.drawImage(im, 0, 0);
+        const X = x => (x - box.x0) / (box.x1 - box.x0) * c.width;
+        const Y = y => (y - box.y0) / (box.y1 - box.y0) * c.height;
+        const fs = Math.max(14, Math.round(c.width / 90));
+        const tag = (text, x, y, fill) => {
+            g.font = `bold ${fs}px Arial, sans-serif`;
+            const w = g.measureText(text).width + fs * 0.6, h = fs * 1.35;
+            g.globalAlpha = 0.85;
+            g.fillStyle = fill;
+            g.fillRect(x, y - h / 2, w, h);
+            g.globalAlpha = 1;
+            g.fillStyle = '#fff';
+            g.textBaseline = 'middle';
+            g.fillText(text, x + fs * 0.3, y);
+        };
+        ws.labels.forEach(l => {
+            const t = `№${l.n}`;
+            g.font = `bold ${fs}px Arial, sans-serif`;
+            // На плане после перепланировки выносок нет — метка ставится в
+            // само окно (конец выноски, найденный в PDF): красная точка и номер.
+            if (atWindow && l.wx !== undefined) {
+                const cx = X(l.wx), cy = Y(l.wy);
+                g.globalAlpha = 0.9; g.fillStyle = '#dc2626';
+                g.beginPath(); g.arc(cx, cy, fs * 0.45, 0, Math.PI * 2); g.fill();
+                g.globalAlpha = 1;
+                tag(t, cx + fs * 0.6, cy - fs * 0.9, '#dc2626');
+                return;
+            }
+            if (atWindow) return;       // точки нет — на втором кадре не гадаем
+            tag(t, X(l.x) - g.measureText(t).width - fs * 1.2, Y(l.y) - fs * 0.4, '#dc2626');
+        });
+        rows.forEach((r, k) => { if (pos[k]) tag(`${k + 1}. ${r.name}`, X(pos[k].x), Y(pos[k].y) + fs * 1.3, '#1d4ed8'); });
+        return c.toDataURL('image/jpeg', 0.85).split(',')[1];
     },
 
     takeWindows(parsed, rows, ws) {
