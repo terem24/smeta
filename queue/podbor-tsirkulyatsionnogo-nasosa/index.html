@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подбор циркуляционного насоса отопления: расход и напор | HeatCalc.ru</title>
+    <meta name="description" content="Как подобрать циркуляционный насос для отопления: расчёт расхода по мощности и перепаду, напора по потерям, поправки на антифриз, почему 25/40 и 25/60 — это не про диаметр.">
+    <link rel="canonical" href="https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/">
+    <meta property="og:title" content="Циркуляционный насос: подбор по расходу и напору">
+    <meta property="og:description" content="Два числа вместо маркировки на коробке. Расчёт расхода и напора с примерами.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/#webpage",
+      "url": "https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/",
+      "name": "Циркуляционный насос: подбор по расходу и напору",
+      "description": "Как подобрать циркуляционный насос для отопления: расчёт расхода по мощности и перепаду, напора по потерям, поправки на антифриз, почему 25/40 и 25/60 — это не про диаметр.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "циркуляционный насос"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Циркуляционный насос: подбор по расходу и напору",
+          "item": "https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как рассчитать циркуляционный насос для отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По двум числам. Расход в м³/ч равен мощности в ваттах, делённой на 1,163, на перепад температур и на 1000: дом 10 кВт на графике 80/60 требует 0,43 м³/ч. Напор в метрах — это потери контура в килопаскалях, умноженные на 1,15 и делённые на 9,81. Контур тёплого пола с потерями 38 кПа требует 4,5 метра, то есть насос 25/60."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что означают цифры 25/40 и 25/60?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Первая — присоединительный размер в миллиметрах, вторая — максимальный напор в дециметрах. 25/60 это подключение 1 дюйм и напор до 6 метров водяного столба. Первая цифра не говорит о производительности: насос 32/40 не мощнее насоса 25/40, у него просто больше патрубки."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему нельзя подбирать насос по площади дома?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Потому что площадь не говорит ни о расходе, ни о потерях. Расход зависит от мощности и перепада температур: при перепаде 5 К он вчетверо больше, чем при 20 К для той же мощности. Напор зависит от длины колец, диаметров и арматуры. Два дома одинаковой площади могут требовать насосов разного класса."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой насос нужен для антифриза?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Производительнее: по паспорту теплоносителя требуется плюс 10 % по расходу и плюс 54 % по напору из-за большей вязкости. Характеристику проверяют на расходе, увеличенном на 10 %. Полуторакратная добавка по напору — причина, по которой система, работавшая на воде, после заливки антифриза перестаёт прогревать дальние петли тёплого пола."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько насосов нужно в доме?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По одному на каждую температуру. Радиаторы и тёплый пол не работают от общего насоса: у них разные расходы и сопротивления. Добавляется насос загрузки бойлера, если тот подключён насосной группой, и отдельный котловой насос при наличии гидрострелки. В простой системе с одними радиаторами насос обычно уже встроен в котёл."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/#article",
+      "headline": "Циркуляционный насос: подбор по расходу и напору",
+      "description": "Как подобрать циркуляционный насос для отопления: расчёт расхода по мощности и перепаду, напора по потерям, поправки на антифриз, почему 25/40 и 25/60 — это не про диаметр.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/podbor-tsirkulyatsionnogo-nasosa/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-10-17",
+      "dateModified": "2026-10-17",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Циркуляционный насос: подбор по расходу и напору</nav>
+
+        <h1>Циркуляционный насос: подбор по расходу и напору</h1>
+
+        <p class="art-meta"><time datetime="2026-10-17">17 октября 2026</time></p>
+
+        <p class="lead">Насос подбирают по двум числам — расходу и напору, — и оба считаются из системы, а не берутся из таблицы «до 200 квадратов». Разбираем расчёт по шагам и объясняем, что означают цифры в маркировке.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#chto-oznachaet-markirovka">Что означает маркировка</a></li>
+            <li><a href="#chislo-pervoe-rashod">Число первое: расход</a></li>
+            <li><a href="#chislo-vtoroe-napor">Число второе: напор</a></li>
+            <li><a href="#podbor-po-krivoy-a-ne-po-maksimumu">Подбор по кривой, а не по максимуму</a></li>
+            <li><a href="#popravki-na-teplonositel">Поправки на теплоноситель</a></li>
+            <li><a href="#skolko-nasosov-v-dome">Сколько насосов в доме</a></li>
+            <li><a href="#chto-esche-uchest">Что ещё учесть</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="chto-oznachaet-markirovka">Что означает маркировка</h2>
+
+        <p>Цифры вроде 25/40 или 32/80 читаются так: первое — присоединительный размер в миллиметрах, второе — <strong>максимальный напор в дециметрах</strong>. То есть 25/60 — это подключение 1 дюйм и напор до 6 метров водяного столба.</p>
+
+        <div class="callout">
+            <p><strong>Первая цифра не про производительность.</strong> Насос 32/40 не мощнее насоса 25/40 — у него просто больше патрубки. Подбирают по второй цифре и по кривой, а диаметр подключения выбирают под трубу. Таблицы «25/40 — до 200 м²» вводят в заблуждение: площадь ничего не говорит ни о потерях, ни о расходе.</p>
+        </div>
+
+        <h2 id="chislo-pervoe-rashod">Число первое: расход</h2>
+
+        <div class="formula">
+            <p><strong>Расход, м³/ч</strong> = мощность, Вт ÷ (1,163 × перепад, К) ÷ 1000</p>
+            <p>Дом 10 кВт, график 80/60 (перепад 20 К):</p>
+            <p>10 000 ÷ (1,163 × 20) ÷ 1000 = <strong>0,43 м³/ч</strong></p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Мощность</th><th>Перепад 20 К</th><th>Перепад 15 К</th><th>Перепад 10 К</th><th>Перепад 5 К</th></tr>
+                <tr><td>10 кВт</td><td class="num">0,43 м³/ч</td><td class="num">0,57 м³/ч</td><td class="num">0,86 м³/ч</td><td class="num">1,72 м³/ч</td></tr>
+                <tr><td>15 кВт</td><td class="num">0,64 м³/ч</td><td class="num">0,86 м³/ч</td><td class="num">1,29 м³/ч</td><td class="num">2,58 м³/ч</td></tr>
+                <tr><td>20 кВт</td><td class="num">0,86 м³/ч</td><td class="num">1,15 м³/ч</td><td class="num">1,72 м³/ч</td><td class="num">3,44 м³/ч</td></tr>
+                <tr><td>30 кВт</td><td class="num">1,29 м³/ч</td><td class="num">1,72 м³/ч</td><td class="num">2,58 м³/ч</td><td class="num">5,16 м³/ч</td></tr>
+            </table>
+        </div>
+        <p class="note">Перепад решает всё. Тёплый пол работает на 5 К, и расход через него вчетверо больше, чем у радиаторного контура той же мощности.</p>
+
+        <p>Отсюда практический вывод: узкий график — это не только больше приборов, но и более производительный насос вместе с бо́льшими диаметрами труб.</p>
+
+        <h2 id="chislo-vtoroe-napor">Число второе: напор</h2>
+
+        <p>Напор должен покрыть потери самого нагруженного кольца — от насоса до дальнего прибора и обратно. Складываются три составляющие.</p>
+
+        <ul>
+            <li><strong>Потери в трубах</strong> — длина кольца, умноженная на удельные потери. Их считают по диаметру и расходу.</li>
+            <li><strong>Местные сопротивления</strong> — отводы, тройники, краны, клапаны. В расчёте их учитывают коэффициентом к длине: для радиаторного кольца это обычно плюс 25–30 %.</li>
+            <li><strong>Арматура узлов</strong> — коллектор с расходомерами, кранами и сервоприводами даёт около 10 кПа сам по себе, ещё до петель.</li>
+        </ul>
+
+        <div class="formula">
+            <p><strong>Напор, м</strong> = потери, кПа × 1,15 ÷ 9,81</p>
+            <p>Контур тёплого пола: петля 20 кПа + коллектор 10 кПа + трасса 8 кПа = 38 кПа</p>
+            <p>38 × 1,15 ÷ 9,81 = <strong>4,5 м</strong> → насос 25/60</p>
+        </div>
+
+        <p>Коэффициент 1,15 — запас на неточность расчёта и на загрязнение системы со временем. Больше закладывать не нужно: избыточный напор означает шум на клапанах и работу вне оптимальной точки кривой.</p>
+
+        <h2 id="podbor-po-krivoy-a-ne-po-maksimumu">Подбор по кривой, а не по максимуму</h2>
+
+        <p>Максимальный напор указан при нулевом расходе — в этой точке насос ничего не качает. Рабочая точка находится на пересечении кривой насоса и кривой системы, и смотреть надо именно её.</p>
+
+        <p>Практическое правило: рабочая точка должна лежать <strong>в средней трети кривой</strong>. Насос, работающий у левого края, избыточен — он будет шуметь на клапанах и тратить электричество впустую. Насос у правого края работает на пределе и не даст запаса на балансировку.</p>
+
+        <h2 id="popravki-na-teplonositel">Поправки на теплоноситель</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Теплоноситель</th><th>Расход</th><th>Напор</th></tr>
+                <tr><td>Вода</td><td>×1,0</td><td>×1,0</td></tr>
+                <tr><td>Незамерзающий (пропиленгликоль)</td><td>×1,1</td><td>×1,54</td></tr>
+            </table>
+        </div>
+        <p class="note">Поправки из паспорта теплоносителя: из-за большей вязкости требуется насос производительнее на 10 % по расходу и на 54 % по напору. Проверяют характеристику на расходе, увеличенном на 10 %.</p>
+
+        <p>Полуторакратная добавка по напору — причина, по которой система, отлично работавшая на воде, после заливки антифриза перестаёт прогревать дальние петли тёплого пола. Они и так работают у предела 20 кПа.</p>
+
+        <h2 id="skolko-nasosov-v-dome">Сколько насосов в доме</h2>
+
+        <ul>
+            <li><strong>Один</strong> — если контур один: котёл и радиаторы. У большинства настенных котлов он уже встроен.</li>
+            <li><strong>По одному на контур</strong> — как только появляется вторая температура. Радиаторы и тёплый пол не могут работать от общего насоса: у них разные расходы и разные сопротивления.</li>
+            <li><strong>Плюс насос загрузки бойлера</strong>, если бойлер подключён насосной группой, а не трёхходовым клапаном.</li>
+            <li><strong>Котловой насос отдельно</strong> — при наличии гидрострелки: он гоняет воду по своему кругу независимо от потребителей.</li>
+        </ul>
+
+        <h2 id="chto-esche-uchest">Что ещё учесть</h2>
+
+        <ul>
+            <li><strong>Ставить на обратке.</strong> Там температура ниже, и ресурс подшипников выше. Технически насос работает и на подаче, но причин так делать нет.</li>
+            <li><strong>Вал горизонтально.</strong> Клеммная коробка сверху или сбоку, но вал всегда горизонтален — иначе подшипник останется без смазки.</li>
+            <li><strong>Краны с обеих сторон.</strong> Насос — расходник, его меняют, и делать это со сливом системы неудобно.</li>
+            <li><strong>Энергоэффективный или обычный.</strong> Насос с электронным управлением подстраивает обороты под нагрузку и потребляет в разы меньше: 5–20 Вт против 50–70. За сезон разница небольшая, но он ещё и тише.</li>
+            <li><strong>ИБП.</strong> Насос без электричества останавливается, и система встаёт. Аккумулятор 100 А·ч при нагрузке 150 Вт даёт около 5 часов.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать насос для своей системы
+            <small>Расход и напор по каждому контуру</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как рассчитать циркуляционный насос для отопления?</span></summary>
+            <div class="answer">
+                <p>По двум числам. Расход в м³/ч равен мощности в ваттах, делённой на 1,163, на перепад температур и на 1000: дом 10 кВт на графике 80/60 требует 0,43 м³/ч. Напор в метрах — это потери контура в килопаскалях, умноженные на 1,15 и делённые на 9,81. Контур тёплого пола с потерями 38 кПа требует 4,5 метра, то есть насос 25/60.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что означают цифры 25/40 и 25/60?</span></summary>
+            <div class="answer">
+                <p>Первая — присоединительный размер в миллиметрах, вторая — максимальный напор в дециметрах. 25/60 это подключение 1 дюйм и напор до 6 метров водяного столба. Первая цифра не говорит о производительности: насос 32/40 не мощнее насоса 25/40, у него просто больше патрубки.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему нельзя подбирать насос по площади дома?</span></summary>
+            <div class="answer">
+                <p>Потому что площадь не говорит ни о расходе, ни о потерях. Расход зависит от мощности и перепада температур: при перепаде 5 К он вчетверо больше, чем при 20 К для той же мощности. Напор зависит от длины колец, диаметров и арматуры. Два дома одинаковой площади могут требовать насосов разного класса.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой насос нужен для антифриза?</span></summary>
+            <div class="answer">
+                <p>Производительнее: по паспорту теплоносителя требуется плюс 10 % по расходу и плюс 54 % по напору из-за большей вязкости. Характеристику проверяют на расходе, увеличенном на 10 %. Полуторакратная добавка по напору — причина, по которой система, работавшая на воде, после заливки антифриза перестаёт прогревать дальние петли тёплого пола.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько насосов нужно в доме?</span></summary>
+            <div class="answer">
+                <p>По одному на каждую температуру. Радиаторы и тёплый пол не работают от общего насоса: у них разные расходы и сопротивления. Добавляется насос загрузки бойлера, если тот подключён насосной группой, и отдельный котловой насос при наличии гидрострелки. В простой системе с одними радиаторами насос обычно уже встроен в котёл.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/shema-otopleniya-chastnogo-doma/">схема отопления частного дома: какие бывают</a> · <a href="/polipropilen-dlya-otopleniya/">полипропилен для отопления: плюсы и границы</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -67,10 +67,10 @@
    "freq": 336462,
    "audience": "owner",
    "data_block": "где применим по нашим расчётам",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-08",
    "published_at": null,
-   "words": 0
+   "words": 746
   },
   {
    "slug": "shema-otopleniya-chastnogo-doma",
@@ -81,10 +81,10 @@
    "freq": 23013,
    "audience": "owner",
    "data_block": "наши принципиальные схемы",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-10",
    "published_at": null,
-   "words": 0
+   "words": 698
   },
   {
    "slug": "vodosnabzhenie-chastnogo-doma",
@@ -123,10 +123,10 @@
    "freq": 259218,
    "audience": "owner",
    "data_block": "наш гидравлический расчёт",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-17",
    "published_at": null,
-   "words": 0
+   "words": 661
   },
   {
    "slug": "datchiki-protechki",
