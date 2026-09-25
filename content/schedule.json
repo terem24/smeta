@@ -739,10 +739,10 @@
    "freq": 500,
    "audience": "builder",
    "data_block": "как работаем с подрядчиками",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-28",
    "published_at": null,
-   "words": 0
+   "words": 661
   },
   {
    "slug": "shag-ukladki-teplogo-pola",
@@ -921,10 +921,10 @@
    "freq": 400,
    "audience": "owner",
    "data_block": "расценки",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-27",
    "published_at": null,
-   "words": 0
+   "words": 593
   },
   {
    "slug": "teplyy-pol-pod-plitku",
@@ -1103,10 +1103,10 @@
    "freq": 146,
    "audience": "owner",
    "data_block": "состав и смета",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-30",
    "published_at": null,
-   "words": 0
+   "words": 626
   },
   {
    "slug": "teplyy-pol-pod-laminat",
@@ -1285,10 +1285,10 @@
    "freq": 87,
    "audience": "owner",
    "data_block": "состав котельной",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-29",
    "published_at": null,
-   "words": 0
+   "words": 624
   },
   {
    "slug": "truba-dlya-teplogo-pola",
