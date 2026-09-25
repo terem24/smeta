@@ -14203,7 +14203,14 @@ const app = {
         }
 
         const adminBtn = document.getElementById('lk_rail_admin');
-        if (adminBtn) adminBtn.style.display = this.hasAdminAccess() ? 'flex' : 'none';
+        const adminWasVisible = adminBtn && adminBtn.style.display !== 'none';
+        const adminShouldBeVisible = this.hasAdminAccess();
+        if (adminBtn) adminBtn.style.display = adminShouldBeVisible ? 'flex' : 'none';
+        // Если видимость админки изменилась, содержимое панели стало другим —
+        // пересчитываем её посадку по высоте, иначе вновь появившаяся кнопка
+        // админки может заехать за край или спрятаться под прокруткой
+        const adminVisibilityChanged = !!adminWasVisible !== !!adminShouldBeVisible;
+        if (adminVisibilityChanged) this._railFitSign = null;
 
         // «Мои монтажники» показываются только менеджерам дистрибьюторов. Проверку
         // делает refreshManagerTabVisibility — повторять её незачем, берём результат
