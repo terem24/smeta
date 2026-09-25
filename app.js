@@ -51012,8 +51012,8 @@ const app = {
                 tA += (parseFloat(r.area) || 0);
                 tW += r.windows.length;
                 if (r.sys && r.sys.includes('tp')) {
-                    if (r.floor === 2) tTp2 += (parseFloat(r.area) || 0);
-                    else tTp1 += (parseFloat(r.area) || 0);
+                    if (r.floor === 2) tTp2 += this.roomTpArea(r);
+                    else tTp1 += this.roomTpArea(r);
                 }
             });
             // Округляем сумму площадей комнат до 0.1 м² — иначе сложение дробных площадей
@@ -51387,6 +51387,30 @@ const app = {
     roomUfhRank: function (r) {
         const k = this.ROOM_KINDS.find(x => x.id === ((r && r.roomKind) || this.detectRoomKind(r && r.name)));
         return (k && k.tpRank) ? k.tpRank : 1;
+    },
+    /**
+     * Площадь тёплого пола в комнате. По умолчанию — вся комната, но в проекте
+     * пол почти никогда не ложится от стены до стены: отступ 100 мм, встроенная
+     * мебель, кухонный остров, подиум. На «Хвойной 3» в кухне-гостиной 71,4 м²
+     * заштриховано 57,5 м² — и считать трубу, петли и мощность пола по всей
+     * комнате значило бы взять на пятую часть больше. r.tpArea задаётся с
+     * листа отопления (распознавание проекта) или руками в карточке комнаты;
+     * больше площади комнаты не бывает.
+     */
+    roomTpArea: function (r) {
+        const a = parseFloat(r && r.area) || 0;
+        const t = parseFloat(r && r.tpArea);
+        return t > 0 ? Math.min(t, a) : a;
+    },
+    updRoomTpArea: function (roomId, val) {
+        const r = this.state.rooms.find(x => x.id === roomId);
+        if (!r) return;
+        const n = parseFloat(String(val).replace(',', '.'));
+        const a = parseFloat(r.area) || 0;
+        // Пусто или не меньше комнаты — «вся комната», отдельного поля не держим.
+        if (!(n > 0) || n >= a) delete r.tpArea;
+        else r.tpArea = Math.round(n * 100) / 100;
+        this.syncRoomsToState(); this.renderRoomsUI(); this.syncUI(); this.render();
     },
 
     /** Тип помещения по его названию; null — ничего не узнали. */
@@ -55086,7 +55110,7 @@ const app = {
                     ? s.rooms.filter(r => (parseInt(r.floor, 10) || 1) === fl
                         && (!r.sys || r.sys.includes('tp')) && (parseFloat(r.area) || 0) > 0)
                         .map(r => {
-                            const a = parseFloat(r.area) || 0;
+                            const a = this.roomTpArea(r);
                             const _ti = this.roomTempInfo(r);
                             const qUdR = this.ufhQudForRoom(step, _ti.t, _ti.kind);
                             return { name: r.name || 'Помещение', area: a,
@@ -55632,13 +55656,13 @@ const app = {
                 const rms = (s.detailedRooms && Array.isArray(s.rooms) ? s.rooms : [])
                     .filter(r => (parseInt(r.floor, 10) || 1) === fl
                         && (!r.sys || r.sys.includes('tp')) && (parseFloat(r.area) || 0) > 0);
-                const zSum = rms.reduce((a, r) => a + (parseFloat(r.area) || 0), 0);
+                const zSum = rms.reduce((a, r) => a + this.roomTpArea(r), 0);
                 if (rms.length && zSum > 0) {
                     // Площадь ТП этажа задаётся ползунком отдельно от комнат: разошлись —
                     // тянем комнаты на заданную площадь, как это делает ufhCalc.
                     const k = area / zSum;
                     rms.forEach(r => {
-                        const a = (parseFloat(r.area) || 0) * k;
+                        const a = this.roomTpArea(r) * k;
                         perim += est(a);
                         seam += seamOf(a);
                     });
@@ -56687,6 +56711,11 @@ const app = {
                                 <button onclick="app.toggleRoomSys(${r.id}, 'rad')" style="${hasRad ? segOn : segOff} border-radius:6px 0 0 6px;">🌡️ Радиаторы</button>
                                 <button onclick="app.toggleRoomSys(${r.id}, 'tp')" style="${hasTp ? segOn : segOff} border-left:0; border-radius:0 6px 6px 0;">♨️ Тёплый пол</button>
                             </div>
+                            ${hasTp ? `<label style="${fLbl} margin-top:6px;" title="Сколько пола реально занято трубой: без отступов от стен, мебели, острова. Пусто — вся комната.">Площадь тёплого пола, м²
+                                <input type="number" class="room-num-input" style="${fInp}" step="0.1" min="0" max="${parseFloat(r.area) || 0}"
+                                    value="${r.tpArea > 0 ? r.tpArea : ''}" placeholder="${parseFloat(r.area) || 0} — вся комната"
+                                    onchange="app.updRoomTpArea(${r.id}, this.value)">
+                            </label>` : ''}
                         </div>
 
                         <div style="margin-top:8px;">
@@ -59912,7 +59941,9 @@ const app = {
         const rooms = this.state.rooms.filter(r => (floor === 2 ? r.floor === 2 : r.floor !== 2));
         if (!rooms.length) return;
 
-        const areaOf = r => parseFloat(r.area) || 0;
+        // Площадь пола, а не комнаты: иначе при заданной r.tpArea сумма комнат
+        // с тёплым полом всегда больше ползунка, и раскладка снимала бы пол.
+        const areaOf = r => this.roomTpArea(r);
         const isTp = r => !!(r.sys && r.sys.includes('tp'));
         const setTp = r => { if (!r.sys) r.sys = ['rad']; if (!r.sys.includes('tp')) r.sys.push('tp'); };
         const clearTp = r => { if (r.sys && r.sys.includes('tp')) r.sys = r.sys.filter(s => s !== 'tp'); };
@@ -68177,7 +68208,7 @@ const app = {
                     let ufhStepVal = (r.floor === 2) ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
                     let qUdeUfh = this.ufhQudForRoom(ufhStepVal, roomLoss.Tv, roomLoss.tKind);
 
-                    let qUfhMax = r.area * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
+                    let qUfhMax = this.roomTpArea(r) * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
 
                     // Паспортная мощность прибора дана при ΔT = 50 K: средняя температура воды
                     // 70 °C (80/60 и 75/65) при воздухе +20 °C. Ниже вода (70/55, 55/45) или теплее

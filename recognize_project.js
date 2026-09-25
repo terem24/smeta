@@ -195,8 +195,8 @@ const RecognizeProject = {
         const e = r.eng;
         if (!e || !e.heatSheet) return [];
         const out = [];
-        if (e.ufh && e.ufhArea && r.area > 0 && e.ufhArea < r.area * 0.9) {
-            out.push(`тёплый пол по листу ${this.fmt(e.ufhArea)} м² — в расчёте ляжет на всю комнату`);
+        if (e.ufh && e.ufhArea && r.area > 0 && e.ufhArea > r.area) {
+            out.push(`зона тёплого пола больше комнаты — в расчёт пойдёт ${this.fmt(r.area)} м²`);
         }
         if (!e.ufh && !e.heaters) out.push(`на листе ${e.heatSheet} отопления нет — в расчёте будет радиатор`);
         return out;
@@ -282,10 +282,10 @@ const RecognizeProject = {
         const out = [];
         if (read.heat) {
             const ufh = chosen.filter(r => r.eng && r.eng.ufh);
-            const ufhArea = ufh.reduce((s, r) => s + (r.area > 0 ? r.area : 0), 0);
+            const ufhArea = ufh.reduce((s, r) => s + this.ufhAreaOf(r), 0);
             const heaters = chosen.reduce((s, r) => s + ((r.eng && r.eng.heaters) || 0), 0);
             out.push(`тёплый пол в ${ufh.length} ${RecognizeUI.plural(ufh.length, 'помещении', 'помещениях', 'помещениях')}` +
-                (ufh.length ? ` (${this.fmt(ufhArea)} м² по площади комнат)` : '') + `, приборов отопления ${heaters}`);
+                (ufh.length ? ` (${this.fmt(ufhArea)} м²)` : '') + `, приборов отопления ${heaters}`);
         }
         if (read.water) {
             const tot = {};
@@ -299,9 +299,17 @@ const RecognizeProject = {
         return out.length ? 'В расчёт пойдёт: ' + out.join('; ') + '.' : '';
     },
 
+    /** Площадь тёплого пола помещения: зона с листа, но не больше комнаты. */
+    ufhAreaOf(r) {
+        const a = r.area > 0 ? r.area : 0;
+        const z = r.eng && r.eng.ufhArea;
+        return z > 0 ? Math.min(z, a) : a;
+    },
+
     /**
      * Системы и окна комнаты по листу отопления. Лист прочитан — решает он:
-     * радиатор только там, где нарисован прибор, тёплый пол — где заштрихован.
+     * радиатор только там, где нарисован прибор, тёплый пол — где заштрихован,
+     * и ровно той площади, что подписана на листе (app.roomTpArea).
      */
     fitRoom(room, r) {
         const e = r.eng;
@@ -311,6 +319,7 @@ const RecognizeProject = {
         if (e.ufh) sys.push('tp');
         if (!sys.length) sys.push('rad');
         room.sys = sys;
+        if (e.ufh && e.ufhArea > 0 && e.ufhArea < room.area) room.tpArea = e.ufhArea;
 
         // Приборов больше, чем окон: лишние встают под «виртуальное» окно
         // той же ширины. Конвектор в полу — это панорамное окно расчёта.
@@ -368,7 +377,8 @@ const RecognizeProject = {
         if (!(st.rooms || []).some(r => r.sys && r.sys.includes('tp'))) return;
         const sum = f => st.rooms
             .filter(r => (f === 2 ? r.floor === 2 : r.floor !== 2) && r.sys && r.sys.includes('tp'))
-            .reduce((s, r) => s + (parseFloat(r.area) || 0), 0);
+            .reduce((s, r) => s + (typeof app.roomTpArea === 'function'
+                ? app.roomTpArea(r) : (parseFloat(r.area) || 0)), 0);
         st.tp1 = sum(1);
         st.tp2 = sum(2);
         if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
