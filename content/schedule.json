@@ -770,7 +770,7 @@
    "status": "queued",
    "date": "2027-02-02",
    "published_at": null,
-   "words": 540
+   "words": 547
   },
   {
    "slug": "polotentsesushitel-v-dome",
@@ -2041,10 +2041,10 @@
    "freq": 2800,
    "audience": "pro",
    "data_block": "состав узла из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-02",
    "published_at": null,
-   "words": 0
+   "words": 587
   },
   {
    "slug": "troynikovaya-ili-kollektornaya",
@@ -2111,10 +2111,10 @@
    "freq": 2600,
    "audience": "pro",
    "data_block": "формула и поправка на гликоль",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-14",
    "published_at": null,
-   "words": 0
+   "words": 650
   },
   {
    "slug": "konvektory-ili-radiatory",
@@ -2223,10 +2223,10 @@
    "freq": 2100,
    "audience": "owner",
    "data_block": "расчёт по числу точек ГВС",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-02",
    "published_at": null,
-   "words": 0
+   "words": 595
   },
   {
    "slug": "raschet-radiatorov-po-ploshchadi",
