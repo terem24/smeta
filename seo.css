@@ -213,14 +213,14 @@ h2[id] { scroll-margin-top: 16px; }
     object-fit: cover;
 }
 .author p {
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--text-sec);
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--text-main);
     margin: 0;
+    align-self: center;
 }
-.author b { color: var(--text-main); }
-.author a { color: var(--text-sec); }
-.author a:hover { color: var(--primary); }
+.author b { font-weight: 700; }
+.author span { font-size: 13px; color: var(--text-sec); }
 
 ul, ol { margin: 0 0 16px; padding-left: 22px; }
 li { margin-bottom: 8px; }

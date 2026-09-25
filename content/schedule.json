@@ -767,10 +767,10 @@
    "freq": 8400,
    "audience": "owner",
    "data_block": "помесячный расчёт",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-21",
    "published_at": null,
-   "words": 0
+   "words": 633
   },
   {
    "slug": "ventilyatsiya-v-chastnom-dome",
@@ -879,10 +879,10 @@
    "freq": 2900,
    "audience": "owner",
    "data_block": "гравитационное давление",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-09",
    "published_at": null,
-   "words": 0
+   "words": 592
   },
   {
    "slug": "filtry-dlya-vody-v-dome",
@@ -921,10 +921,10 @@
    "freq": 3600,
    "audience": "pro",
    "data_block": "Kv по паспорту",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-16",
    "published_at": null,
-   "words": 0
+   "words": 599
   },
   {
    "slug": "gsm-modul-dlya-kotla",
