@@ -12467,11 +12467,9 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 .rec-dupnote span { flex: 1; min-width: 200px; }
 
 /* ── Планы этажей ──
-   Переключатель «Смету / План этажа» над зоной загрузки — те же вкладки, что
-   разделяют оборудование и работы на проверке: один язык на весь мастер. */
+   Переключателя «Смету / План этажа» над зоной загрузки больше нет: вид листа
+   определяется по самому листу (25.09.2026, см. RecognizeUI.syncDocKind). */
 .rec-head-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-.rec-kind { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
-.rec-kind-l { font-size: 12.5px; color: var(--text-sec, #94a3b8); margin-right: 6px; }
 
 /* Строка листа в таблице помещений: этаж и потолок правятся на весь лист
    разом — один лист плана это один этаж. */
