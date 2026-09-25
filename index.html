@@ -3192,6 +3192,25 @@
                             <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней. Поставьте 0 или очистите поле — напоминаний не будет.</span>
                         </div>
                     </div>
+
+                    <!-- Личные уведомления в Telegram: подключение через бота (tg-webhook) и три
+                         переключателя категорий (installer_settings.tgNotify, см. app.setTgNotify) -->
+                    <div class="lk-card" style="margin: 0;">
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">📨 Уведомления в Telegram</label>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span id="profile_tg_status" style="font-size: 12px;">Не подключено</span>
+                            <button type="button" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить</button>
+                        </div>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; cursor: pointer;">
+                            <input type="checkbox" id="profile_tg_notify_kp" onchange="app.setTgNotify('kp', this.checked)"> Одобрение/отклонение КП
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; cursor: pointer;">
+                            <input type="checkbox" id="profile_tg_notify_oprosnik" onchange="app.setTgNotify('oprosnik', this.checked)"> Заполненный опросник
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer;">
+                            <input type="checkbox" id="profile_tg_notify_chat" onchange="app.setTgNotify('chat', this.checked)"> Сообщения из калькулятора
+                        </label>
+                    </div>
                 </div>
 
                 <div id="profile_cloud_list_content"></div>
