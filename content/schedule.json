@@ -571,10 +571,10 @@
    "freq": 3229,
    "audience": "owner",
    "data_block": "порядок из наших актов",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-31",
    "published_at": null,
-   "words": 0
+   "words": 602
   },
   {
    "slug": "tverdotoplivnyy-kotel",
@@ -1915,10 +1915,10 @@
    "freq": 1800,
    "audience": "owner",
    "data_block": "стоимость сезона по тарифам",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-12",
    "published_at": null,
-   "words": 0
+   "words": 631
   },
   {
    "slug": "kotelnaya-v-chastnom-dome",
@@ -2097,10 +2097,10 @@
    "freq": 1500,
    "audience": "pro",
    "data_block": "состав автоматики из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-11",
    "published_at": null,
-   "words": 0
+   "words": 679
   },
   {
    "slug": "rasshiritelnyy-bak-raschet",
@@ -2321,10 +2321,10 @@
    "freq": 700,
    "audience": "owner",
    "data_block": "разбор по нашим расчётам",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-19",
    "published_at": null,
-   "words": 0
+   "words": 725
   }
  ]
 }
