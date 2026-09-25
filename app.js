@@ -73466,21 +73466,27 @@ const app = {
 
         try {
             // 1. Gather browser diagnostics & network IP/geo details
-            let clientIp = '0.0.0.0';
+            // Оба сервиса режут блокировщики рекламы (щит Brave и т. п.), поэтому в Телеграм IP
+            // дописывает сервер (tg_notify.php); здесь он нужен только письму и городу.
+            let clientIp = 'Не определен';
             let clientCity = 'Не определен';
-            try {
-                const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-                if (isLocal) {
-                    clientIp = '127.0.0.1';
-                    clientCity = 'Локальный хост';
-                } else {
-                    const res = await fetch('https://ipapi.co/json/');
-                    const geo = await res.json();
-                    clientIp = geo.ip || '0.0.0.0';
-                    clientCity = geo.city || 'Не определен';
+            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            if (isLocal) {
+                clientIp = '127.0.0.1';
+                clientCity = 'Локальный хост';
+            } else {
+                for (const geoUrl of ['https://ipapi.co/json/', 'https://ipinfo.io/json']) {
+                    try {
+                        const res = await fetch(geoUrl);
+                        if (!res.ok) continue;
+                        const geo = await res.json();
+                        if (geo.ip) clientIp = geo.ip;
+                        if (geo.city) clientCity = geo.city;
+                        break;
+                    } catch (e) {
+                        console.warn('Feedback geo-IP error:', geoUrl, e);
+                    }
                 }
-            } catch (e) {
-                console.error("Feedback geo-IP error:", e);
             }
 
             const categoryLabels = {
@@ -73522,7 +73528,7 @@ const app = {
                 `• Телефон: ${userPhone}\n` +
                 `• Город (профиль): ${userCity}\n\n` +
                 `🌐 УСТРОЙСТВО И СЕТЬ:\n` +
-                `• IP: ${clientIp} (${clientCity})\n` +
+                `• Город по IP: ${clientCity}\n` +
                 `• Браузер/ОС: ${userAgent}\n` +
                 `• Окно: ${windowSize}, Экран: ${screenSize}\n` +
                 `• Платформа: ${platform}, Язык: ${language}\n` +

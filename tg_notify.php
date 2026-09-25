@@ -108,11 +108,14 @@ if (!is_array($secret) || empty($secret['bot_token']) || empty($secret['chat_id'
     reply(503, ['ok' => false, 'error' => 'not_configured']);
 }
 
+// IP отправителя пишем отсюда, а не из браузера: браузер узнавал его у ipapi.co, а тот режут
+// блокировщики рекламы (щит Brave и подобные) — в сообщении приходило «0.0.0.0».
+// Берём REMOTE_ADDR, а не X-Forwarded-For: второй заголовок присылает сам клиент и может подделать.
 $ch = curl_init('https://api.telegram.org/bot' . $secret['bot_token'] . '/sendMessage');
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
     'chat_id' => $secret['chat_id'],
-    'text'    => $KINDS[$kind] . "\n" . $text,
+    'text'    => $KINDS[$kind] . "\n" . $text . "\n\n🌐 IP отправителя: " . $ip,
 ], JSON_UNESCAPED_UNICODE));
 curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
