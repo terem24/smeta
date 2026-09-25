@@ -1220,11 +1220,26 @@
                 border-radius: 0 !important;
             }
 
-            /* Product Name styling */
+            /* Ночная тема: снимки у товаров разных пропорций — дымоход 600×189, коллектор
+               почти квадратный, — и на тёмной плитке белое поле снимка занимало у каждого
+               свою часть: одни иконки выглядели плитками, другие узкой обрезанной полоской.
+               Белую подложку даём самой картинке, во всю плитку — ровно так же, как в
+               смете калькулятора (style.css, тот же мобильный блок). */
+            body.dark-mode #equipment_tbody td.col-img img,
+            body.dark-mode #equipment_tbody td.col-img .table-img {
+                background: #fff !important;
+                border-radius: 9px !important;
+                padding: 3px !important;
+                box-sizing: border-box !important;
+            }
+
+            /* Product Name styling. Кегли — те же, что в смете калькулятора на телефоне
+               (style.css: название 13px, сумма 14px, цена 11px): у клиента та же смета,
+               и читаться она должна так же, а не крупнее на полразмера. */
             #equipment_tbody td.col-name {
                 grid-area: name !important;
                 font-weight: 600 !important;
-                font-size: 14px !important;
+                font-size: 13px !important;
                 line-height: 1.3 !important;
                 align-self: start !important;
                 max-width: none !important;
@@ -1253,7 +1268,7 @@
                 justify-content: flex-end !important;
                 align-items: center !important;
                 align-self: end !important;
-                font-size: 12px !important;
+                font-size: 11px !important;
                 font-weight: 500 !important;
                 color: var(--text-sec) !important;
                 white-space: nowrap !important;
@@ -1266,7 +1281,7 @@
                 justify-content: flex-end !important;
                 align-items: center !important;
                 align-self: end !important;
-                font-size: 12px !important;
+                font-size: 11px !important;
                 color: var(--text-sec) !important;
                 text-align: right !important;
                 white-space: nowrap !important;
@@ -1322,7 +1337,7 @@
             #works_tbody td.col-name {
                 grid-area: name !important;
                 font-weight: 600 !important;
-                font-size: 14px !important;
+                font-size: 13px !important;
                 line-height: 1.3 !important;
                 align-self: start !important;
                 text-align: left !important;
@@ -1336,7 +1351,7 @@
                 justify-content: flex-end !important;
                 align-items: center !important;
                 align-self: end !important;
-                font-size: 12px !important;
+                font-size: 11px !important;
                 font-weight: 500 !important;
                 color: var(--text-sec) !important;
                 white-space: nowrap !important;
@@ -1352,7 +1367,7 @@
                 justify-content: flex-end !important;
                 align-items: center !important;
                 align-self: end !important;
-                font-size: 12px !important;
+                font-size: 11px !important;
                 color: var(--text-sec) !important;
                 text-align: right !important;
                 white-space: nowrap !important;
