@@ -10798,34 +10798,54 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 }
 
 /* Ширины колонок задаём сами: по содержимому браузер отдавал половину ширины
-   правому краю, а «Название объекта» ужимал до переноса заголовка в две строки */
+   правому краю, а «Название объекта» ужимал до переноса заголовка в две строки.
+
+   Ширина «Действий» живёт в переменной: кнопок в ряду шесть, и каждая новая
+   раньше молча съедала соседнюю колонку — ряд не сжимается, а при
+   table-layout:fixed просто вылезает поверх «Даты». Меняется число кнопок —
+   правится одно число здесь, остальные колонки пересчитываются сами.
+   Не хватило ширины окна — таблица уезжает в прокрутку (min-width ниже),
+   а не наезжает сама на себя. */
 #profile_cloud_list_content .inv-table {
     width: 100%;
-    table-layout: fixed;
+    /* Не fixed: ширины колонок задавались через calc((100% - 300px) * доля), а
+       проценты внутри calc() браузер в колонке таблицы не разрешает — значение
+       считалось недействительным, и все четыре текстовые колонки делились
+       поровну. Оттого «Дата» и обрезалась, а ряд кнопок лез на соседа.
+       Проверено в браузере 25.09.2026: с fixed все колонки выходили по 167px. */
+    table-layout: auto;
+    /* Уже этой ширины начало бы резать содержимое — отдаём в горизонтальную
+       прокрутку контейнера (#profile_cloud_list_content), а не в наложение */
+    min-width: 860px;
 }
 
 #profile_cloud_list_content .inv-table th {
     white-space: nowrap;
 }
 
-/* «Действия» — фиксированные 300px (кнопки не сжать), остальные четыре делят
-   то, что осталось, через calc(), а не проценты от полной ширины таблицы. Было
-   42/17/16/14/11% от 100% при фактических 300px у «Действия» — сумма ширин
-   выходила за пределы таблицы, и «Статус»/«Дата» рендерились уже своего
-   содержимого; без overflow:hidden badge и дата просто наезжали на соседей. */
-#profile_cloud_list_content .inv-table th:nth-child(1),
-#profile_cloud_list_content .inv-table td:nth-child(1) { width: calc((100% - 300px) * 0.40); }
+/* Сумма, статус, дата и кнопки — по своему содержимому: width:1% при
+   table-layout:auto означает «минимум, сколько нужно», nowrap не даёт
+   переносить. Кнопок в ряду шесть; добавится седьмая — колонка подстроится
+   сама, править числа не придётся. */
 #profile_cloud_list_content .inv-table th:nth-child(2),
-#profile_cloud_list_content .inv-table td:nth-child(2) { width: calc((100% - 300px) * 0.15); white-space: nowrap; }
+#profile_cloud_list_content .inv-table td:nth-child(2),
 #profile_cloud_list_content .inv-table th:nth-child(3),
-#profile_cloud_list_content .inv-table td:nth-child(3) { width: calc((100% - 300px) * 0.25); overflow: hidden; }
+#profile_cloud_list_content .inv-table td:nth-child(3),
 #profile_cloud_list_content .inv-table th:nth-child(4),
-#profile_cloud_list_content .inv-table td:nth-child(4) { width: calc((100% - 300px) * 0.20); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#profile_cloud_list_content .inv-table td:nth-child(4),
 #profile_cloud_list_content .inv-table th:nth-child(5),
-#profile_cloud_list_content .inv-table td:nth-child(5) { width: 300px; }
+#profile_cloud_list_content .inv-table td:nth-child(5) {
+    width: 1%;
+    white-space: nowrap;
+}
 
-/* Длинное название объекта не должно распирать колонку */
+/* Название забирает весь остаток. max-width:0 здесь не опечатка: без него
+   в auto-таблице многоточие не включается — ячейка растёт по тексту и
+   распирает колонку. */
+#profile_cloud_list_content .inv-table th:nth-child(1),
 #profile_cloud_list_content .inv-table td:nth-child(1) {
+    width: auto;
+    max-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

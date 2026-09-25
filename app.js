@@ -1583,7 +1583,9 @@ const app = {
     },
 
     // Текст анкеты целиком — для окна монтажнику
-    oprosSummaryText: function (d) {
+    // applied=false — заявку только смотрят («Анкета»), расчёт не тронут: обещать
+    // подставленные параметры в этом случае нельзя, человек им поверит.
+    oprosSummaryText: function (d, applied = true) {
         const L = [];
         const put = (label, v) => { if (v) L.push(label + ': ' + String(v).slice(0, 500)); };
         put('Имя', d.name); put('Телефон', d.phone); put('Город', d.city); put('Адрес', d.address);
@@ -1620,8 +1622,12 @@ const app = {
         put('Помещения с тёплым полом', d.tpRooms);
         put('Уже закуплено', d.bought);
         put('Комментарий', d.comment);
-        return 'Заказчик заполнил опросник. Параметры объекта уже подставлены в расчёт, ' +
-            'текстовые ответы ниже — прочитайте и учтите вручную.\n\n' + L.join('\n');
+        const intro = applied
+            ? 'Заказчик заполнил опросник. Параметры объекта уже подставлены в расчёт, ' +
+              'текстовые ответы ниже — прочитайте и учтите вручную.'
+            : 'Что заполнил заказчик. Текущий расчёт не менялся — чтобы подставить ' +
+              'эти параметры, нажмите «Открыть в расчёте».';
+        return intro + '\n\n' + L.join('\n');
     },
 
     // ── Входящие заявки из опросника (таблица opros_requests) ────────────────
@@ -10789,10 +10795,10 @@ const app = {
                         <th>Сумма</th>
                         <th>Статус</th>
                         <th>Дата</th>
-                        <!-- Ширина задана и здесь, и в style.css (#profile_cloud_list_content
-                             .inv-table th:nth-child(5)) — те же 300px: у остальных колонок
-                             ширины через calc(100% - 300px), число должно совпадать -->
-                        <th style="text-align:right; width: 300px;">Действия</th>
+                        <!-- Ширину держит переменная --act-col в style.css
+                             (#profile_cloud_list_content .inv-table): от неё же считаются
+                             остальные колонки. Здесь её не дублируем — разъезжалось. -->
+                        <th style="text-align:right;">Действия</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -13080,15 +13086,25 @@ const app = {
                 { gas: 'газ', el: 'электро', solid: 'тв. топливо', hp: 'тепловой насос' }[d.fuel] || '']
                 .filter(Boolean).join(' · ');
             const isNew = r.status === 'new';
+            // Набор действий тот же, что у строки в «Моих объектах»: статус, дата,
+            // кнопки и корзина. Раньше кроме «Открыть в расчёте» не было ничего —
+            // ни посмотреть, что заполнил заказчик, ни удалить заявку.
+            const statusBadge = isNew
+                ? `<span class="status-badge-cabinet status-cabinet-sent" title="Заявку ещё не открывали">Новая</span>`
+                : `<span class="status-badge-cabinet status-cabinet-saved" title="Заявку уже смотрели">Просмотрена</span>`;
             html += `<div class="lk-card" style="display:flex; flex-direction:column; gap:6px;">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                            <strong style="font-size:13.5px; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(r.client_name) || 'Без имени'}${r.client_phone ? ' · ' + esc(r.client_phone) : ''}</strong>
-                            ${isNew ? `<span style="background:#10B981; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">Новая</span>` : ''}
+                            <strong style="font-size:13px; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(r.client_name) || 'Без имени'}${r.client_phone ? ' · ' + esc(r.client_phone) : ''}</strong>
+                            ${statusBadge}
                         </div>
                         <div style="font-size:11px; color:var(--text-sec); font-weight:500;">${fmt(r.created_at)}</div>
                         ${line ? `<div style="font-size:11.5px; color:var(--text-sec); border-top:1px dashed var(--border); padding-top:6px;">${esc(line)}</div>` : ''}
-                        <div style="display:flex; gap:6px; margin-top:4px;">
-                            <button class="btn-subscribe" onclick="app.openOprosRequestFromTab('${r.id}')" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0;">Открыть в расчёте</button>
+                        <div style="display:flex; gap:6px; margin-top:4px; align-items:center;">
+                            <button class="lk-btn-sm" onclick="app.viewOprosRequest('${r.id}')" title="Посмотреть, что заполнил заказчик, не меняя текущий расчёт">Анкета</button>
+                            <button class="lk-btn-sm" onclick="app.openOprosRequestFromTab('${r.id}')" title="Подставить данные заказчика в расчёт">Открыть в расчёте</button>
+                            <button class="delete-icon-btn" style="margin-left:auto;" onclick="app.deleteOprosRequest('${r.id}')" title="Удалить заявку">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            </button>
                         </div>
                      </div>`;
         });
@@ -13104,6 +13120,33 @@ const app = {
         this.closeProfileModal();
         this.syncUI(); this.render(); this.saveState();
         try { await this.alert(this.oprosSummaryText(r.data || {}), 'Опросник заказчика'); } catch (e) { }
+    },
+
+    // Посмотреть заявку, не трогая открытый расчёт: «Открыть в расчёте» затирает
+    // текущие параметры, и до этой кнопки прочитать, что написал заказчик, было
+    // негде — приходилось соглашаться на подстановку вслепую.
+    viewOprosRequest: async function (id) {
+        const r = (this._oprosniksTabRows || []).find(x => String(x.id) === String(id));
+        if (!r) return;
+        this.markOprosSeen(id);
+        if (r.status === 'new') { r.status = 'seen'; this.renderOprosnikiTab(); }
+        try { await this.alert(this.oprosSummaryText(r.data || {}, false), 'Опросник заказчика'); } catch (e) { }
+    },
+
+    deleteOprosRequest: async function (id) {
+        const r = (this._oprosniksTabRows || []).find(x => String(x.id) === String(id));
+        if (!r) return;
+        const who = [r.client_name, r.client_phone].filter(Boolean).join(' · ') || 'заявку';
+        if (!await this.confirm(`Удалить заявку «${who}»? Данные опросника пропадут безвозвратно.`, 'Удалить заявку')) return;
+        try {
+            const { error } = await supabaseClient.from('opros_requests').delete().eq('id', id);
+            if (error) throw error;
+            this._oprosniksTabRows = (this._oprosniksTabRows || []).filter(x => String(x.id) !== String(id));
+            this.renderOprosnikiTab();
+        } catch (e) {
+            console.warn('[deleteOprosRequest]', e);
+            this.alert('Не удалось удалить заявку. Попробуйте ещё раз.', 'Ошибка');
+        }
     },
 
     /**
