@@ -653,7 +653,10 @@ const RecognizeFiles = {
         const canvas = document.createElement('canvas');
         canvas.width = vp.width;
         canvas.height = vp.height;
-        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        // intent 'print' — pdf.js рисует без requestAnimationFrame: в скрытой
+        // вкладке (монтажник ушёл в почту, пока готовится файл) кадры браузер
+        // не выдаёт, и подготовка страницы стояла бы до возвращения на вкладку.
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp, intent: 'print' }).promise;
         return RecognizeFiles.shrink(canvas);
     },
 
@@ -674,7 +677,7 @@ const RecognizeFiles = {
             canvas.width = Math.max(1, Math.round(vp.width));
             canvas.height = Math.max(1, Math.round(vp.height));
             const ctx = canvas.getContext('2d');
-            await page.render({ canvasContext: ctx, viewport: vp }).promise;
+            await page.render({ canvasContext: ctx, viewport: vp, intent: 'print' }).promise;
             const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
             let white = 0, color = 0, n = 0;
             for (let k = 0; k < d.length; k += 4) {

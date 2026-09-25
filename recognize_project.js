@@ -84,6 +84,18 @@ const RecognizeProject = {
         return { summary, warnings };
     },
 
+    /**
+     * Марки приборов отопления в тексте листа: РД-1, Р-2, К-3, КВ-1, КП-2.
+     * \b в JS кириллицу не видит — границу слова задаём явно.
+     */
+    heaterMarks(text) {
+        const set = new Set();
+        const re = /(^|[^А-ЯЁA-Z\d-])((?:РД|КВ|КП|Р|К)-\d{1,2})(?!\d)/g;
+        let m;
+        while ((m = re.exec(String(text || '')))) set.add(m[2]);
+        return [...set].sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }));
+    },
+
     /** Строка по номеру из ответа модели (номера в списке — с единицы). */
     rowOf(rows, n) {
         const k = Math.round(this.num(n)) - 1;
@@ -132,6 +144,15 @@ const RecognizeProject = {
             }
         }
         if (heaters) parts.push(`приборов отопления ${heaters}`);
+
+        // Сверка с марками приборов в тексте листа (РД-1…РД-5): на «Хвойной 3»
+        // модель поставила шестой прибор в кабинет, где его нет, — а марки
+        // набраны в PDF, и их число известно точно.
+        const marks = this.heaterMarks(sh.text);
+        if (marks.length && marks.length !== heaters) {
+            warnings.push(`лист ${sh.num}: марок приборов на листе ${marks.length} (${marks[0]}…${marks[marks.length - 1]}), ` +
+                `а по помещениям ${heaters} — проверьте приборы в строках под помещениями`);
+        }
         if (this.towel) parts.push(`полотенцесушителей ${this.towel.count} (${
             this.towel.type === 'water' ? 'водяные' : 'электрические'})`);
         if (Array.isArray(parsed.unclear)) parsed.unclear.filter(Boolean).forEach(u => warnings.push(`лист ${sh.num}: ${u}`));
