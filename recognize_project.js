@@ -57,12 +57,24 @@ const RecognizeProject = {
             `${r.floor === 2 ? ', 2-й этаж' : ''}`).join('\n');
 
         for (const sh of (project && project.eng) || []) {
-            const what = sh.kind === 'heat' ? 'отопления' : 'сантехники';
+            const what = this.SHEET_WHAT[sh.kind] || 'инженерных систем';
+
+            // Тип вентиляции часто назван в тексте листа прямо — тогда модель
+            // не нужна, и запрос из лимита не тратится.
+            if (sh.kind === 'vent') {
+                const byText = this.ventFromText(sh.text);
+                if (byText) {
+                    const res = this.takeVent(byText, sh);
+                    summary.push(res.summary);
+                    warnings.push(...res.warnings);
+                    continue;
+                }
+            }
+
             if (onStatus) onStatus(`Читаю лист ${sh.num} — ${what}…`);
             try {
                 const data = await ui.askModel([
-                    { text: `Лист ${sh.num} «${sh.title}» — ${sh.kind === 'heat'
-                        ? 'отопление и тёплые полы' : 'водоснабжение и канализация'}. ` +
+                    { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
                         `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
                         (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
                         'Верни только JSON.' },
@@ -72,8 +84,9 @@ const RecognizeProject = {
                 const text = cand?.content?.parts?.[0]?.text;
                 if (!text) throw new Error('пустой ответ');
                 const parsed = ui.parseModelJson(text, cand.finishReason);
-                const res = sh.kind === 'heat'
-                    ? this.takeHeat(parsed, rows, sh) : this.takeWater(parsed, rows, sh);
+                const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh)
+                    : sh.kind === 'vent' ? this.takeVent(parsed, sh)
+                    : this.takeWater(parsed, rows, sh);
                 summary.push(res.summary);
                 warnings.push(...res.warnings);
             } catch (e) {
@@ -82,6 +95,92 @@ const RecognizeProject = {
             }
         }
         return { summary, warnings };
+    },
+
+    SHEET_WHAT: { heat: 'отопления', water: 'сантехники', vent: 'вентиляции' },
+    SHEET_TOPIC: {
+        heat: 'отопление и тёплые полы',
+        water: 'водоснабжение и канализация',
+        vent: 'вентиляция и кондиционирование',
+    },
+
+    // ------------------------------------------------------------------
+    // Вентиляция
+    //
+    // В расчёте это одна настройка на дом (app.state.ventilationType): от неё
+    // кратность в нагреве приточного воздуха — 0,35 / 1,0 / 0,25 ч⁻¹. Ошибка
+    // дорогая: «принудительная» втрое поднимает вентиляционную долю потерь и
+    // с ней котёл. Поэтому настройку меняем, только когда тип назван ясно, и
+    // показываем на экране проверки, по какому признаку решили.
+    // ------------------------------------------------------------------
+
+    VENT_NAMES: {
+        natural: 'естественная',
+        forced: 'принудительная, без рекуперации',
+        recuperator: 'приточно-вытяжная с рекуперацией',
+        ac_only: 'только кондиционирование — свежего воздуха не подаёт',
+        unknown: 'по листу не понять',
+    },
+
+    /**
+     * Тип по тексту листа, если он назван прямо. Рекуператор главнее
+     * «приточной установки»: ПВУ с рекуператором — тоже приточная.
+     */
+    ventFromText(text) {
+        const t = String(text || '');
+        const hit = (re) => { const m = t.match(re); return m ? m[0].replace(/\s+/g, ' ').trim() : ''; };
+        let ev = hit(/[^\n]*рекуперат[^\n]*/i);
+        if (ev) return { system: 'recuperator', evidence: ev, byText: true };
+        ev = hit(/[^\n]*(приточно[\s-]*вытяжн|приточн[а-я]*\s+установк|\bПВУ\b|вентустановк|вентиляционн[а-я]*\s+установк)[^\n]*/i);
+        if (ev) return { system: 'forced', evidence: ev, byText: true };
+        return null;
+    },
+
+    takeVent(parsed, sh) {
+        const sys = this.VENT_NAMES[parsed && parsed.system] ? parsed.system : 'unknown';
+        let evidence = String((parsed && parsed.evidence) || '').replace(/\s+/g, ' ').trim();
+        if (evidence.length > 220) evidence = evidence.slice(0, 220).replace(/\s+\S*$/, '') + '…';
+        const ac = this.cnt(parsed && parsed.conditioners);
+        // В расчёт по умолчанию — только ясный ответ про приток. Кондиционер
+        // гоняет воздух помещения по кругу и на теплопотери не влияет.
+        const choice = (sys === 'natural' || sys === 'forced' || sys === 'recuperator') ? sys : '';
+        this.vent = { sheet: sh.num, system: sys, evidence, conditioners: ac, choice, byText: !!(parsed && parsed.byText) };
+        const warnings = [];
+        if (Array.isArray(parsed && parsed.unclear)) parsed.unclear.filter(Boolean).forEach(u => warnings.push(`лист ${sh.num}: ${u}`));
+        return {
+            summary: `Лист ${sh.num} «${sh.title}»: вентиляция — ${this.VENT_NAMES[sys]}` +
+                (evidence ? ` (${this.vent.byText ? 'в тексте листа' : 'признак'}: «${evidence}»)` : '') +
+                (ac ? `; кондиционеров ${ac}` : '') + '.',
+            warnings,
+        };
+    },
+
+    /** Выбор на экране проверки: '' — настройку расчёта не трогать. */
+    setVentChoice(v) {
+        if (!this.vent) return;
+        this.vent.choice = ['natural', 'forced', 'recuperator'].includes(v) ? v : '';
+    },
+
+    /** Выпадающий список над таблицей помещений. */
+    ventSelect() {
+        if (!this.vent) return '';
+        const cur = (typeof app !== 'undefined' && app.state && app.state.ventilationEnabled)
+            ? (app.state.ventilationType || 'natural') : 'natural';
+        const opt = (v, t) => `<option value="${v}" ${this.vent.choice === v ? 'selected' : ''}>${t}</option>`;
+        return `<label style="display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap">Вентиляция в расчёте:
+            <select class="rec-f" style="width:auto;padding:2px 4px" onchange="RecognizePlan.setVent(this.value)">
+              ${opt('', `не менять (сейчас ${this.VENT_NAMES[cur] ? this.VENT_NAMES[cur].split(',')[0] : 'естественная'})`)}
+              ${opt('natural', 'естественная — 0,35 ч⁻¹')}
+              ${opt('forced', 'принудительная — 1,0 ч⁻¹')}
+              ${opt('recuperator', 'с рекуперацией — 0,25 ч⁻¹')}
+            </select></label>`;
+    },
+
+    applyVent(st) {
+        if (!this.vent || !this.vent.choice) return '';
+        st.ventilationEnabled = true;
+        st.ventilationType = this.vent.choice;
+        return this.VENT_NAMES[this.vent.choice];
     },
 
     /**
@@ -296,6 +395,7 @@ const RecognizeProject = {
                 : 'сантехники в отмеченных помещениях нет');
         }
         if (this.towel) out.push(`полотенцесушителей ${this.towel.count}`);
+        if (this.vent && this.vent.choice) out.push(`вентиляция ${this.VENT_NAMES[this.vent.choice].split(',')[0]}`);
         return out.length ? 'В расчёт пойдёт: ' + out.join('; ') + '.' : '';
     },
 
@@ -384,14 +484,14 @@ const RecognizeProject = {
         if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
     },
 
-    reset() { this.towel = null; },
+    reset() { this.towel = null; this.vent = null; },
 };
 
 window.RecognizeProject = RecognizeProject;
 
 const PROJECT_ENG_PROMPT = `Ты разбираешь лист инженерных систем из дизайн-проекта или рабочего проекта частного дома (Россия). Помещения дома уже прочитаны с плана и даны списком с номерами. Твоя задача — привязать к ним то, что нарисовано на этом листе. Ничего не выдумывай: нет на листе — нет в ответе.
 
-Задача указана в запросе словом heat или water.
+Задача указана в запросе словом heat, water или vent.
 
 === heat — отопление и тёплые полы ===
 Тёплый пол на плане — заштрихованная зона (часто красной или косой штриховкой) с подписью площади «S=10,63м2». Для каждого помещения, где есть такая зона, укажи ufh=true и ufhArea — сумму подписанных площадей зон в этом помещении. Площадь бери из подписи на листе, не вычисляй.
@@ -416,6 +516,17 @@ ufhTotal — итог тёплого пола из спецификации ли
 Выводы для робота-пылесоса, кофемашины, холодильника, кондиционера — не считай.
 Прибор, помещение которого не удаётся определить, — опиши в unclear.
 
+=== vent — вентиляция и кондиционирование ===
+Нужен ТИП системы, подающей в дом СВЕЖИЙ наружный воздух (привязка к помещениям не нужна):
+- "recuperator" — приточно-вытяжная установка с рекуператором (ПВУ, рекуператор, пластинчатый/роторный теплообменник, приток и вытяжка сходятся в одной установке);
+- "forced" — механический приток без рекуператора: приточная установка, канальный вентилятор на притоке с калорифером;
+- "natural" — только вытяжка (вентканалы, вытяжные вентиляторы в санузлах и на кухне), приток через окна и клапаны;
+- "ac_only" — на листе только кондиционеры: настенные сплит-системы, канальные кондиционеры с решётками подачи и забора; они перемешивают воздух помещения, но наружного не подают;
+- "unknown" — по листу не понять (например, решётки подачи нарисованы, а откуда воздух — не сказано и установки нет).
+Решётки подачи воздуха сами по себе — не признак приточной вентиляции: так же выглядит канальный кондиционер. Ставь "forced" или "recuperator" только если нарисована или названа установка, воздуховод с улицы или рекуператор.
+evidence — дословная надпись или короткое описание нарисованного, по которому ты решил.
+conditioners — сколько кондиционеров (внутренних блоков) на листе, если они есть.
+
 === Привязка к помещениям ===
 n — номер помещения из списка в запросе. Определи помещение по положению на листе и по подписям; если на листе помещения подписаны иначе, сопоставь по смыслу и площади. Если прибор стоит в помещении, которого в списке нет, — опиши его в unclear, n не придумывай.
 
@@ -427,4 +538,6 @@ heat:
 water:
 {"rooms":[{"n":5,"name":"Мастер-санузел","toilet":1,"bidet":0,"basin":1,"kitchenSink":0,"bath":1,"shower":1,"wash":0,"dish":0}],
  "unclear":[]}
+vent:
+{"system":"natural","evidence":"вытяжные вентиляторы в санузлах, приток через оконные клапаны","conditioners":0,"unclear":[]}
 Помещения без тёплого пола, приборов и сантехники в rooms не включай.`;

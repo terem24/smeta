@@ -694,6 +694,7 @@ const RecognizePlan = {
               <div class="rec-tcheck-ico">🔧</div>
               <div><div>С листов инженерных систем</div>
                 ${this._engSummary.map(t => `<div class="rec-tcheck-sub">${esc(t)}</div>`).join('')}
+                ${RecognizeProject.vent ? `<div class="rec-tcheck-sub" style="margin:4px 0">${RecognizeProject.ventSelect()}</div>` : ''}
                 <div class="rec-tcheck-sub"><b>${esc(RecognizeProject.totals(chosen))}</b></div>
                 <div class="rec-tcheck-sub">Что к какой комнате отнесено — в строке под помещением, там же и поправить.
                   При переносе тёплый пол и приборы встанут в комнаты, сантехника — в «Водоснабжение» по помещениям.</div></div>
@@ -777,6 +778,13 @@ const RecognizePlan = {
             r.ownFloor = false;
             this.markStacked();
         }
+        this.renderReview();
+    },
+
+    /** Тип вентиляции с листа проекта — выбор над таблицей. */
+    setVent(v) {
+        if (typeof RecognizeProject === 'undefined') return;
+        RecognizeProject.setVentChoice(v);
         this.renderReview();
     },
 
@@ -915,6 +923,7 @@ const RecognizePlan = {
             win: st.win, systems: st.systems || [], ufhZones: st.ufhZones,
             showDetailedRoomsPanel: st.showDetailedRoomsPanel,
             water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null,
+            ventilationEnabled: st.ventilationEnabled, ventilationType: st.ventilationType,
         }));
 
         const base = Date.now();
@@ -943,10 +952,11 @@ const RecognizePlan = {
         // Сантехника и полотенцесушители с листов проекта. Зоны водоснабжения
         // заменяются целиком: в проекте перечислены все приборы дома, и
         // шаблонные «Санузел 1», «Санузел 2» рядом с ними были бы лишними.
-        let waterZones = 0, towel = false;
+        let waterZones = 0, towel = false, vent = '';
         if (typeof RecognizeProject !== 'undefined') {
             waterZones = RecognizeProject.applyWater(st, chosen);
             towel = RecognizeProject.applyTowel(st);
+            vent = RecognizeProject.applyVent(st);
             if (chosen.some(r => r.eng && r.eng.heatSheet)) RecognizeProject.syncUfhSliders(st);
         }
 
@@ -1011,6 +1021,7 @@ const RecognizePlan = {
         if (hs) parts.push(`Высота потолка взята с плана: ${st.h1}${st.floors === 2 ? ' / ' + st.h2 : ''} м`);
         if (waterZones) parts.push(`Водоснабжение включено, приборы по помещениям: ${waterZones}`);
         if (towel) parts.push(`Полотенцесушители: ${st.towelWarmer.count}`);
+        if (vent) parts.push(`Вентиляция: ${vent}`);
         app.alert(parts.join('\n') +
             '\n\nПроверьте окна и системы отопления в карточках комнат. ' +
             'Вернуть комнаты как было — кнопка «↶ Вернуть комнаты» во вкладке распознавания.' + planNote);
@@ -1044,6 +1055,7 @@ const RecognizePlan = {
         if ('water' in u) {
             st.water = u.water; st.waterZones = u.waterZones;
             if (u.towelWarmer) st.towelWarmer = u.towelWarmer;
+            st.ventilationEnabled = u.ventilationEnabled; st.ventilationType = u.ventilationType;
             if (typeof app.renderZonesUI === 'function') app.renderZonesUI();
         }
         this._undo = null;

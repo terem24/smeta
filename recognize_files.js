@@ -845,8 +845,10 @@ const RecognizeFiles = {
      * по листу на систему и этаж — больше двух одного вида в частном доме
      * не бывает, а каждый лист стоит запроса.
      */
-    ENG_KINDS: ['heat', 'water'],
+    ENG_KINDS: ['heat', 'water', 'vent'],
     ENG_PER_KIND: 2,
+    // Вентиляция в расчёте — одна настройка на дом: хватит одного листа.
+    ENG_LIMIT: { vent: 1 },
 
     /** Короткая подпись листа: «62 «План теплых полов и отопления»». */
     sheetLabel(p) {
@@ -867,7 +869,7 @@ const RecognizeFiles = {
         set.eng = [];
         for (const kind of this.ENG_KINDS) {
             const list = set.found.filter(p => p.kind === kind && !inRoomsSet.has(p.num))
-                .slice(0, this.ENG_PER_KIND);
+                .slice(0, this.ENG_LIMIT[kind] || this.ENG_PER_KIND);
             for (const p of list) {
                 if (onProgress) onProgress(`готовлю лист ${p.num}`);
                 set.eng.push({ kind, num: p.num, title: p.title, text: p.text,
@@ -891,7 +893,7 @@ const RecognizeFiles = {
                 set.rooms.map(p => this.sheetLabel(p)).join(', ')}.`,
             rest.length ? `Найдены также листы: ${rest.join('; ')}.` : '',
             set.eng.length ? `С ${set.eng.map(e => e.num).join(', ')} после помещений ` +
-                'прочитаю тёплые полы, приборы отопления и сантехнику по комнатам.' : '',
+                'прочитаю тёплые полы, приборы отопления, сантехнику по комнатам и тип вентиляции.' : '',
             skipped ? `Пропущено: ${skipped}.` : '',
         ].filter(Boolean).join(' ');
 
