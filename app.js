@@ -27267,7 +27267,7 @@ const app = {
         cabinets_shrn180: 'shkaf_kollekt', cabinets_shrn_eco: 'shkaf_kollekt',
         mixing_units: 'uzel_podmesa', ufh_node_parts: 'uzel_podmesa',
         mats: 'maty_tp', ufh_mat: 'maty_tp',
-        xps_kit: 'komplekt_tp', damper_tape: 'komplekt_tp', parts: 'komplekt_tp',
+        xps_kit: 'komplekt_tp', ufh_ins_plates: 'komplekt_tp', damper_tape: 'komplekt_tp', parts: 'komplekt_tp',
         thermostats_stout: 'termostaty_tp', ufh_mech: 'termostaty_tp', ufh_electro: 'termostaty_tp',
         actuators_rommer: 'termostaty_tp', ufh_cables: 'termostaty_tp',
         // Обвязка котельной
@@ -47844,14 +47844,18 @@ const app = {
                 + _pipePerM2 * 2.5 * (_xk[2]?.price || 0) / 25
                 + _sheetsM2 * 1.76 * 1.1 * (_xk[3]?.price || 0) / 50;
             const _fmtA = (a) => String(Math.round(a * 100) / 100).replace('.', ',');
+            // Плиты добора до нормы ГОСТ Р 70834-2023 входят в цену системы: у мата
+            // они есть всегда, у XPS 50 мм — только там, где одной плиты мало.
+            const _addMat = this.ufhInsAddCost(this.UFH_INS_R_MAT);
+            const _addXps = this.ufhInsAddCost(0.05 / this.UFH_INS_LAMBDA);
             customAlts = [
                 { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT',
-                  price: p_mat * 1.05 / _matArea, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
-                  sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен',
+                  price: p_mat * 1.05 / _matArea + _addMat, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
+                  sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен' + (_addMat > 0 ? ', плюс плиты добора до нормы' : ''),
                   imgId: _matR ? _matR.id : _matCat?.id },
                 { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol',
-                  price: _xpsSys, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
-                  sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч',
+                  price: _xpsSys + _addXps, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
+                  sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч' + (_addXps > 0 ? ', плюс второй слой до нормы' : ''),
                   imgId: _xk[0]?.id }
             ];
         }
@@ -49932,13 +49936,31 @@ const app = {
      * Надбавка к расценке «Монтаж утеплителя для укладки ТП» по основанию,
      * которое реально легло в смету (раздел 4.2): { k, label }.
      * Мат STOUT — 1; мат ROMMER — 1,1; XPS с подложкой и крепежом — 1,3.
+     * Каждый слой плит добора сверх основания — ещё +20 %.
      */
     ufhBaseWorkFactor: function () {
         const rows = (this.currentEquipmentList || []).filter(x => String(x.group || '').startsWith('4.2'));
         const nm = x => String(x.name || '').toLowerCase();
-        if (rows.some(x => /xps|пенополистирол/.test(nm(x)))) return { k: 1.3, label: 'XPS с подложкой, дюбелями и скобами — монтаж утеплителя +30 %' };
-        if (rows.some(x => /мат с бобышками/.test(nm(x)) && /rommer/i.test(String(x.brand || '')))) return { k: 1.1, label: 'маты ROMMER (полезных 0,72 м² против 0,88 у STOUT, стыков больше) — монтаж утеплителя +10 %' };
-        return { k: 1, label: '' };
+        const matRow = rows.find(x => /мат с бобышками/.test(nm(x)));
+        let k = 1;
+        const parts = [];
+        if (matRow) {
+            if (/rommer/i.test(String(matRow.brand || ''))) {
+                k = 1.1; parts.push('маты ROMMER (полезных 0,72 м² против 0,88 у STOUT, стыков больше) — монтаж утеплителя +10 %');
+            }
+        } else if (rows.some(x => /xps|пенополистирол/.test(nm(x)))) {
+            k = 1.3; parts.push('XPS с подложкой, дюбелями и скобами — монтаж утеплителя +30 %');
+        }
+        // Слой добора — это ещё одна раскладка плит с подрезкой по месту и
+        // проклейкой швов, но без подготовки основания, разметки и выноса упаковки:
+        // они оплачены первым слоем. По практике монтажа это около пятой части
+        // операции, отсюда +20 % за каждый слой сверх основания.
+        const add = (this._ufhInsPlan && this._ufhInsPlan.maxAdd) || 0;
+        if (add > 0) {
+            k = Math.round((k + 0.2 * add) * 100) / 100;
+            parts.push(`добор утеплителя под норму, ${add} ${add === 1 ? 'слой' : 'слоя'} плит — +${20 * add} %`);
+        }
+        return { k: k, label: parts.join('; ') };
     },
 
     pickPanelForWindow: function (list, reqPwr, winW) {
@@ -54416,16 +54438,169 @@ const app = {
     ufhSupply: function (dT) {
         return this.UFH_SUPPLY + ((dT || this.UFH_DTS[0]) - this.UFH_DTS[0]) / 2;
     },
+    /* --- Утеплитель под тёплым полом -------------------------------------
+     *
+     * Норма — ГОСТ Р 70834-2023 «Системы водяного отопления, встроенные в пол»
+     * (действует с 01.04.2024), п. 9.1.5 и таблица 2: изолирующий слой под
+     * трубой должен давать не меньше
+     *   0,75 м²·°С/Вт — установка над отапливаемым помещением;
+     *   1,25 — над неотапливаемым или нерегулярно отапливаемым помещением либо
+     *          помещением, расположенным непосредственно на грунте;
+     *   1,25 / 1,50 / 2,00 — когда под системой отопления наружный воздух, по
+     *          его расчётной температуре (выше 0, от −5 до 0 включ., ниже −5).
+     *
+     * Считаем сопротивление только того, что кладёт монтажник — мата или плит:
+     * п. 9.1.5 говорит про «изолирующий слой» системы, а не про весь пирог, да и
+     * панель «Пол» может быть не заполнена — подставлять оттуда чужие 100 мм XPS
+     * значило бы додумывать за строителя.
+     *
+     * Мат с бобышками сам норму не добирает нигде: у него EPS 20 мм, R ≈ 0,53
+     * при требовании 0,75 даже на межэтажном перекрытии. Поэтому под основание
+     * подкладываются плиты, при нужде в несколько слоёв (ufhInsLayers).
+     */
+    UFH_INS_LAMBDA: 0.034,   // расчётная теплопроводность плит XPS, Вт/(м·°С) — карточка товара
+    UFH_INS_R_MAT: 0.53,     // мат с бобышками: EPS 20 мм при λ 0,038
+    /** Ряд плит добора от тонкой к толстой: { thick, r, item }. */
+    ufhInsGrid: function () {
+        return (catalog.ufh_ins_plates || []).map(p => ({
+            thick: p.thick,
+            r: (p.thick / 1000) / (p.lambda || this.UFH_INS_LAMBDA),
+            item: p
+        })).sort((a, b) => a.thick - b.thick);
+    },
+    /** Требование таблицы 2 по этажу: { r, why }. */
+    ufhInsReq: function (fl) {
+        if (fl === 2) return { r: 0.75, why: 'под полом отапливаемый первый этаж' };
+        const s = this.state;
+        const matId = s.floorEnabled ? String(s.floorMatId || '') : 'floor_ground_ins';
+        if (matId === 'floor_heated') return { r: 0.75, why: 'под полом отапливаемое помещение' };
+        if (matId === 'floor_lags_ins') {
+            // Пол на лагах — это проветриваемое подполье: средой под системой
+            // отопления оказывается наружный воздух, и таблица 2 требует тем
+            // больше, чем холоднее расчётная зима.
+            const t = s.selectedCity ? s.selectedCity.temp : Math.round(20 - (s.region || 100) * 0.45);
+            const why = `под полом проветриваемое подполье, расчётная температура ${t} °С`;
+            if (t > 0) return { r: 1.25, why };
+            if (t >= -5) return { r: 1.50, why };
+            return { r: 2.00, why };
+        }
+        if (/^floor_basement/.test(matId)) return { r: 1.25, why: 'под полом неотапливаемый подвал' };
+        return { r: 1.25, why: 'пол по грунту' };
+    },
+    /**
+     * Набор плит под требуемое R добора. Сначала пробуем закрыть остаток одной
+     * плитой — самой тонкой из подходящих, чтобы не задирать пирог пола зря; не
+     * хватило и самой толстой — кладём её и повторяем. Слои идут снизу вверх.
+     */
+    ufhInsLayers: function (need) {
+        const grid = this.ufhInsGrid();
+        const out = [];
+        let left = need;
+        while (left > 0.005 && grid.length && out.length < 4) {
+            const fit = grid.find(g => g.r >= left - 0.005);
+            const use = fit || grid[grid.length - 1];
+            out.push(use);
+            left -= use.r;
+        }
+        return out;
+    },
+    /**
+     * План утепления по этажам: что требует норма, что даёт основание, какие
+     * плиты добираются и сколько их квадратов. maxAdd — наибольшее число слоёв
+     * добора по этажам, по нему идёт надбавка к расценке монтажа.
+     */
+    ufhInsPlan: function (a1, a2) {
+        const s = this.state;
+        const base = (s.ufhBaseType === 'xps')
+            ? { r: 0.05 / this.UFH_INS_LAMBDA, label: 'плита XPS 50 мм' }
+            : { r: this.UFH_INS_R_MAT, label: 'мат с бобышками (EPS 20 мм)' };
+        const floors = [], byThick = {};
+        let maxAdd = 0;
+        [[1, parseFloat(a1) || 0], [2, parseFloat(a2) || 0]].forEach(p => {
+            const fl = p[0], area = p[1];
+            if (!(area > 0)) return;
+            const req = this.ufhInsReq(fl);
+            const layers = (base.r >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - base.r);
+            layers.forEach(l => {
+                const k = String(l.thick);
+                if (!byThick[k]) byThick[k] = { item: l.item, thick: l.thick, r: l.r, area: 0, floors: [] };
+                byThick[k].area += area;
+                if (byThick[k].floors.indexOf(fl) < 0) byThick[k].floors.push(fl);
+            });
+            if (layers.length > maxAdd) maxAdd = layers.length;
+            floors.push({
+                fl: fl, area: area, req: req, rBase: base.r,
+                rTotal: base.r + layers.reduce((x, l) => x + l.r, 0),
+                layers: layers,
+                add: layers.reduce((x, l) => x + l.thick, 0)
+            });
+        });
+        if (!floors.length) return null;
+        return { base: base, floors: floors, byThick: byThick, maxAdd: maxAdd };
+    },
+    /**
+     * Цена добора утеплителя, ₽ на м² пола, при основании с сопротивлением baseR.
+     * Нужна таблице «Заменить»: мат и XPS сравнивать по цене самой подложки уже
+     * нельзя — под мат норма требует плит, и разница между вариантами не та, что
+     * между матом и листом. Берём тяжёлый этаж из тех, что есть в расчёте.
+     */
+    ufhInsAddCost: function (baseR) {
+        const s = this.state;
+        const fls = [];
+        if ((parseFloat(s.tp1) || 0) > 0) fls.push(1);
+        if (s.floors === 2 && (parseFloat(s.tp2) || 0) > 0) fls.push(2);
+        if (!fls.length) fls.push(1);
+        let worst = 0;
+        fls.forEach(fl => { const r = this.ufhInsReq(fl).r; if (r > worst) worst = r; });
+        if (baseR >= worst - 0.005) return 0;
+        return this.ufhInsLayers(worst - baseR)
+            .reduce((a, l) => a + 1.05 * (l.item.price || 0) / (l.item.area || 1), 0);
+    },
+    /**
+     * Строка «норма и факт» для подсказок раздела «4.2. Утеплитель и крепёж».
+     * Зелёным/янтарным красится сопоставление с ГОСТ Р 70834-2023, а не доля
+     * тыльной отдачи: доля — справочная величина, см. ufhBackLoss.
+     */
+    ufhInsNote: function () {
+        const plan = this._ufhInsPlan;
+        if (!plan) return '';
+        const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
+        let out = `<br><b>Утепление под трубой (ГОСТ Р 70834-2023, п. 9.1.5, табл. 2):</b><br>`;
+        plan.floors.forEach(f => {
+            const ok = f.rTotal >= f.req.r - 0.005;
+            const st = f.layers.length
+                ? `${plan.base.label} + ${f.layers.map(l => l.thick + ' мм').join(' + ')}`
+                : plan.base.label;
+            out += `• ${f.fl} этаж (${f.req.why}): норма ${n(f.req.r)} — уложено ${st}, ` +
+                `<b style="color:${ok ? '#22C55E' : '#F59E0B'};">R = ${n(f.rTotal)} м²·°С/Вт</b>.<br>`;
+        });
+        const addMm = plan.floors.reduce((m, f) => Math.max(m, f.add), 0);
+        if (addMm > 0) {
+            out += `Плиты добора ложатся под основание и поднимают пирог пола ещё на ${addMm} мм — ` +
+                `проверьте высоту порогов и дверных проёмов.<br>`;
+        }
+        const bk = this.ufhBackLoss();
+        if (bk) {
+            out += `<b>Тыльная теплоотдача (1 этаж, вниз в ${bk.under}):</b> ~${String(bk.qBack).replace('.', ',')} Вт/м², ` +
+                `${bk.pct} % от лицевой (${bk.qFace} Вт/м²). Величина справочная, а не приёмочная: лицевая отдача сверху ` +
+                `ограничена температурой поверхности +26 °C (СП 60.13330.2020, п. 6.4.8), поэтому доля высока и у ` +
+                `правильного пирога — соответствие смотрите по строке нормы выше.`;
+        }
+        return out;
+    },
     /**
      * Тыльная теплоотдача тёплого пола 1-го этажа: сколько тепла уходит вниз,
-     * в грунт или подвал, мимо помещения. Ориентир справочника проектировщика
-     * (и DIN EN 1264) — не больше 10 % от лицевой; выше — утеплитель под полом
-     * тонковат, и хозяин греет грунт.
+     * в грунт или подвал, мимо помещения. Величина справочная, а не приёмочная:
+     * долю от лицевой отдачи мерить нормой нельзя. Лицевая сверху ограничена
+     * температурой поверхности +26 °C (СП 60.13330.2020, п. 6.4.8) — это около
+     * 40–50 Вт/м² в жилой комнате, знаменатель маленький, и доля уходит за 10 %
+     * даже у совершенно правильного пирога. Соответствие проверяется по
+     * абсолютной величине — сопротивлению изолирующего слоя, ufhInsPlan().
      *
-     * Оценка: q_тыл = (t_ср.воды − t_под полом) / (R_подложки + R_конструкции пола).
+     * Оценка: q_тыл = (t_ср.воды − t_под полом) / (R_утеплителя + R_конструкции пола).
      *   t_ср.воды — график узла подмеса (ufhSupply − dT/2, обычно 37,5 °C);
      *   t_под полом — +5 °C (грунт под утеплённым полом / холодный подвал);
-     *   R_подложки — мат с бобышками 20 мм (≈0,55) или плита XPS 50 мм (≈1,45);
+     *   R_утеплителя — основание плюс подобранные слои добора (ufhInsPlan);
      *   R_конструкции — пол 1 этажа из FLOOR_MATERIALS_DB (без грунта).
      * Пол над отапливаемым помещением тепло вниз не теряет — там не считаем.
      * Второй этаж не считаем всегда: под ним тёплый первый.
@@ -54443,7 +54618,11 @@ const app = {
             const m = FLOOR_MATERIALS_DB.find(x => x.id === matId);
             if (m) rConstr = m.R;
         }
-        const rBase = (s.ufhBaseType === 'xps') ? 1.45 : 0.55;
+        // Утеплитель берём тот, что реально лёг в смету: основание плюс слои добора.
+        const plan = this._ufhInsPlan;
+        const pf1 = plan && plan.floors.find(f => f.fl === 1);
+        const rBase = pf1 ? pf1.rTotal
+            : ((s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT);
         const dT = (this._ufhBal && this._ufhBal.dT) || this.UFH_DTS[0];
         const tw = this.ufhSupply(dT) - dT / 2;
         const qBack = Math.max(0, (tw - 5) / (rBase + rConstr));
@@ -63717,28 +63896,46 @@ const app = {
                     `• Петель в расчёте: <b>${(this._ufhCalc && this._ufhCalc.loops) || 0}</b> — столько же выходов у коллекторов.<br>` +
                     (_bal2 ? `• Самая нагруженная петля: ${Math.round(_bal2.worst.rows.reduce((a, r) => Math.max(a, r.m), 0))} м, потери ${_bal2.worst.worstDp.toFixed(1).replace('.', ',')} кПа при расходе ${_bal2.worst.rows.reduce((a, r) => Math.max(a, r.flow), 0).toFixed(1).replace('.', ',')} л/мин.<br>` : '') +
                     (() => {
-                        // Тыльная теплоотдача — сколько уходит вниз мимо помещения
+                        // Утепление под трубой: цвет — по норме, доля тыльной отдачи справочно
+                        const _pl = this._ufhInsPlan;
+                        const _n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
+                        let _s = '';
+                        if (_pl) {
+                            _s += _pl.floors.map(f => {
+                                const _ok = f.rTotal >= f.req.r - 0.005;
+                                return `• Утепление под трубой, ${f.fl} этаж (${f.req.why}): норма ГОСТ Р 70834-2023 (табл. 2) — ${_n(f.req.r)}, ` +
+                                    `<b style="color:${_ok ? '#22C55E' : '#F59E0B'};">уложено R = ${_n(f.rTotal)} м²·°С/Вт</b>` +
+                                    (f.layers.length ? ` (${_pl.base.label} + ${f.layers.map(l => l.thick + ' мм').join(' + ')})` : ` (${_pl.base.label})`) + `.<br>`;
+                            }).join('');
+                        }
                         const _bk = this.ufhBackLoss();
-                        if (!_bk) return '';
-                        const _bad = _bk.pct > 10;
-                        return `• Тыльная теплоотдача пола 1 этажа (вниз, в ${_bk.under}): ~${String(_bk.qBack).replace('.', ',')} Вт/м² — <b style="color:${_bad ? '#F59E0B' : '#22C55E'};">${_bk.pct} % от лицевой</b> (${_bk.qFace} Вт/м²). Ориентир справочника проектировщика и DIN EN 1264 — не выше 10 %.${_bad ? ' Выше — вниз уходит заметная доля тепла: замените подложку на плиту XPS потолще (кнопка «Заменить» на строке подложки) или утеплите конструкцию пола 1 этажа.' : ''}<br>`;
+                        if (_bk) {
+                            _s += `• Тыльная теплоотдача пола 1 этажа (вниз, в ${_bk.under}): ~${String(_bk.qBack).replace('.', ',')} Вт/м², ` +
+                                `${_bk.pct} % от лицевой (${_bk.qFace} Вт/м²) — справочно. Долей соответствие не мерят: лицевая отдача ` +
+                                `сверху ограничена температурой поверхности +26 °C (СП 60.13330.2020, п. 6.4.8), и процент выходит высоким ` +
+                                `даже у правильного пирога. Норма — в строке выше.<br>`;
+                        }
+                        return _s;
                     })() +
                     (_cmp ? `• Для сравнения: ${_cmp}. Сменить трубу — «Заменить» на этой строке; петли, коллекторы и насос пересчитаются.<br>` : '') +
                     `</span>`;
             }
             case 'ufh_mat': {
-                const _bk = this.ufhBackLoss();
-                const _bkLine = _bk
-                    ? `<br><b>Тыльная теплоотдача (1 этаж):</b> ~${String(_bk.qBack).replace('.', ',')} Вт/м² — ${_bk.pct} % от лицевой; ориентир — не выше 10 % (справочник проектировщика, DIN EN 1264).${_bk.pct > 10 ? ' Мат 20 мм тепло вниз держит слабо — рассмотрите плиту XPS (кнопка «Заменить»).' : ''}`
-                    : '';
-                return `<span style="${styles}"><span style="${head}">Мат с бобышками</span><b>Зачем:</b> Быстрый монтаж и фиксация трубы.<br><b>Расчет:</b> Чистая площадь ТП (${val1} м²) + 5% запас на подрезку.${_bkLine}</span>`;
+                return `<span style="${styles}"><span style="${head}">Мат с бобышками</span><b>Зачем:</b> Быстрый монтаж и фиксация трубы.<br><b>Расчет:</b> Чистая площадь ТП (${val1} м²) + 5% запас на подрезку.<br><b>Изоляция:</b> EPS 20 мм в основании мата, R ≈ 0,53 м²·°С/Вт — норму он не добирает сам, разницу закрывают плиты добора.${this.ufhInsNote()}</span>`;
             }
             case 'ufh_xps': {
-                const _bk = this.ufhBackLoss();
-                const _bkLine = _bk
-                    ? `<br><b>Тыльная теплоотдача (1 этаж):</b> ~${String(_bk.qBack).replace('.', ',')} Вт/м² — ${_bk.pct} % от лицевой; ориентир — не выше 10 % (справочник проектировщика, DIN EN 1264).`
-                    : '';
-                return `<span style="${styles}"><span style="${head}">Пенополистирол (XPS)</span><b>Зачем:</b> Теплоизоляция от перекрытия/грунта.<br><b>Толщина:</b> 50 мм (стандарт для 1 этажа).<br><b>Расчет:</b> Площадь ТП + 5% запас.${_bkLine}</span>`;
+                return `<span style="${styles}"><span style="${head}">Пенополистирол (XPS)</span><b>Зачем:</b> Теплоизоляция от перекрытия/грунта.<br><b>Толщина:</b> 50 мм, R ≈ 1,47 м²·°С/Вт.<br><b>Расчет:</b> Площадь ТП + 5% запас.${this.ufhInsNote()}</span>`;
+            }
+            case 'ufh_ins_plate': {
+                // val1 — слой из ufhInsPlan().byThick, val2 — сам план
+                const L = val1 || {}, plan = val2 || this._ufhInsPlan;
+                const flStr = (L.floors || []).map(f => f + ' этаж').join(' и ');
+                const baseLbl = (plan && plan.base) ? plan.base.label : 'основание';
+                return `<span style="${styles}"><span style="${head}">Плита утеплителя ${L.thick} мм</span>` +
+                    `<b>Зачем:</b> Добор теплоизоляции до нормы: ${baseLbl} в одиночку требуемое сопротивление не даёт, и тепло уходит вниз мимо помещения.<br>` +
+                    `<b>Куда:</b> На подготовленное основание, ${flStr || '1 этаж'}; поверх плиты — ${baseLbl} с трубой. Из нескольких материалов сверху кладётся менее сжимаемый (ГОСТ Р 70834-2023, п. 9.1.7), поэтому мягкая подложка — всегда нижним слоем.<br>` +
+                    `<b>Расчёт:</b> ${Math.round(L.area)} м² тёплого пола + 5 % на подрезку, полезная площадь плиты ${String(L.item && L.item.area || 0).replace('.', ',')} м².` +
+                    this.ufhInsNote() + `</span>`;
             }
             case 'ufh_damper': {
                 // val1 — результат ufhTapeCalc, val2 — метраж рулона
@@ -66794,6 +66991,7 @@ const app = {
         const _ufhGeom = (hasTp && tpArea > 0) ? this.ufhGeom() : null;
         const _ufhCalc = (hasTp && tpArea > 0) ? this.ufhCalc() : null;
         this._ufhCalc = _ufhCalc;
+        this._ufhInsPlan = null;   // заполняется в разделе «4.2. Утеплитель и крепёж»
         const tpFloorCalc = (area, step, gi) => {
             if (!(area > 0)) return { m: 0, loops: 0, geo: null };
             const fc = _ufhCalc && _ufhCalc.floors.find(f => f.fl === gi + 1);
@@ -71079,6 +71277,14 @@ const app = {
             addToBill(catalog.protective_sleeves[0], loops, "Втулка красная.", grpPipe); addToBill(catalog.protective_sleeves[1], loops, "Втулка синяя.", grpPipe); addToBill(catalog.label_kits[1], 1, "Наклейки.", grpPipe);
             let grpIns = "4.2. УТЕПЛИТЕЛЬ И КРЕПЁЖ";
 
+            // Добор утеплителя до требования ГОСТ Р 70834-2023, табл. 2. Считается
+            // до строк основания: от него зависит и подсказка к ним, и надбавка к
+            // расценке монтажа.
+            const _insPlan = this.ufhInsPlan(
+                this.state.tp1,
+                this.state.floors === 2 ? this.state.tp2 : 0);
+            this._ufhInsPlan = _insPlan;
+
             if (this.state.ufhBaseType === 'mat') {
                 let mt = catalog.mats[0]; mt.alts = [catalog.xps_kit[0]];
                 // Мат ROMMER мельче стаутовского (полезные 0,72 м² против 0,88), поэтому при
@@ -71094,6 +71300,18 @@ const app = {
                 addToBill(mt, mc, this.getDesc('ufh_mat', tpArea), grpIns);
             }
             else { let xpsItem = catalog.xps_kit[0]; xpsItem.alts = catalog.mats; let sheets = Math.ceil((tpArea / xpsItem.area) * 1.05); addToBill(xpsItem, sheets, this.getDesc('ufh_xps', tpArea), grpIns); if (catalog.ufh_mat && catalog.ufh_mat[0]) { let matRolls = Math.ceil(tpArea / catalog.ufh_mat[0].pack_m2); addToBill(catalog.ufh_mat[0], matRolls, `Подложка 3 мм, ${tpArea} м² (рулон 30 м²).`, grpIns); } let totalDowels = Math.ceil(tpArea * 5); addToBill(catalog.xps_kit[1], Math.ceil(totalDowels / 100), `Дюбеля.`, grpIns); let totalStaples = Math.ceil(tpMeters * 2.5); addToBill(catalog.xps_kit[2], Math.ceil(totalStaples / 25), `Скобы.`, grpIns); let tapeRolls = Math.ceil((sheets * 1.76 * 1.1) / 50); addToBill(catalog.xps_kit[3], tapeRolls, `Скотч.`, grpIns); }
+
+            // Плиты добора. Слои идут отдельными строками по толщине: монтажнику
+            // важно, что под основание ложится именно 30 мм, а не «утеплитель».
+            if (_insPlan) {
+                Object.keys(_insPlan.byThick)
+                    .sort((a, b) => parseFloat(a) - parseFloat(b))
+                    .forEach(k => {
+                        const L = _insPlan.byThick[k];
+                        const sh = Math.ceil((L.area / L.item.area) * 1.05);
+                        addToBill(L.item, sh, this.getDesc('ufh_ins_plate', L, _insPlan), grpIns);
+                    });
+            }
 
             // Демпферная лента идёт при любом основании: она развязывает стяжку со
             // стенами, а не утепляет пол. Скотчу из набора XPS не замена — тот
