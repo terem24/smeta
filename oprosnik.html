@@ -744,6 +744,67 @@
         loadInstallerContact();
     }
 
+    // ── Режим просмотра: oprosnik.html?view=<base64url JSON> ─────────────
+    // Монтажник открывает анкету такой, какой её видел заказчик, — с его ответами
+    // в тех же полях. Только читать: поля заблокированы, кнопки отправки нет, чтобы
+    // чужая заявка не ушла второй раз. Ссылку собирает app.oprosViewLink.
+    (function applyViewMode() {
+        var raw = '';
+        try { raw = new URLSearchParams(location.search).get('view') || ''; } catch (e) { return; }
+        if (!raw) return;
+        var d = null;
+        try {
+            var b64 = raw.replace(/-/g, '+').replace(/_/g, '/');
+            d = JSON.parse(decodeURIComponent(escape(atob(b64))));
+        } catch (e) { return; }
+        if (!d || typeof d !== 'object') return;
+
+        var setVal = function (id, v) {
+            var el = document.getElementById(id);
+            if (el && v !== undefined && v !== null && v !== '') el.value = v;
+        };
+        var setCheck = function (id, v) { var el = document.getElementById(id); if (el) el.checked = !!v; };
+        var setRadio = function (name, v) {
+            var el = document.querySelector('input[name="' + name + '"][value="' + v + '"]');
+            if (el) el.checked = true;
+        };
+
+        setVal('f_name', d.name); setVal('f_phone', d.phone); setVal('f_city', d.city);
+        setVal('f_address', d.address); setVal('f_area', d.area); setVal('f_floors', d.floors);
+        setVal('f_people', d.people); setVal('f_tprooms', d.tpRooms); setVal('f_wall', d.wall);
+        setVal('f_bought', d.bought); setVal('f_comment', d.comment);
+        setVal('f_wallMat', d.wallMat); setVal('f_wallThick', d.wallThick);
+        setVal('f_wallInsMat', d.wallInsMat); setVal('f_wallInsThick', d.wallInsThick);
+        setVal('f_floorMat', d.floorMat); setVal('f_roofMat', d.roofMat); setVal('f_glazing', d.glazing);
+        setCheck('f_tp', d.tp); setCheck('f_rad', d.rad);
+        setRadio('f_fuel', d.fuel); setRadio('f_live', d.live); setRadio('f_stage', d.stage);
+        setRadio('f_vent', d.vent ? 'yes' : 'no');
+        setRadio('f_auto', d.auto === true ? 'yes' : (d.auto === false ? 'no' : 'unknown'));
+        setRadio('f_hw', d.hw === false ? 'no' : 'yes');
+        setRadio('f_watersource', d.watersource || 'unknown');
+        setRadio('f_hasProject', d.hasProject ? 'yes' : 'no');
+        toggleProjectMode();
+        if (document.getElementById('f_wallInsMat').value) {
+            document.getElementById('f_wallInsThickWrap').style.display = 'grid';
+        }
+
+        var form = document.getElementById('oprosForm');
+        Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (el) {
+            el.disabled = true;
+        });
+        var bar = document.querySelector('.submit-bar');
+        if (bar) bar.style.display = 'none';
+
+        var head = document.createElement('div');
+        head.className = 'banner ok';
+        head.style.cssText = 'margin: 0 0 14px;';
+        head.textContent = 'Так анкету заполнил заказчик' + (d.name ? ' (' + d.name + ')' : '') +
+            '. Это копия для чтения — изменить или отправить её нельзя.';
+        form.parentNode.insertBefore(head, form);
+        var sub = document.querySelector('.sub');
+        if (sub) sub.textContent = 'Копия заполненной анкеты.';
+    })();
+
     function copyLink() {
         if (!lastLink) return;
         var done = function () {

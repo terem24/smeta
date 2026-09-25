@@ -1534,8 +1534,7 @@ const app = {
         } catch (e) { return; }
         if (!d || typeof d !== 'object') return;
         this.applyOprosData(d);
-        const txt = this.oprosSummaryText(d);
-        setTimeout(() => { try { this.alert(txt, 'Опросник заказчика'); } catch (e) { } }, 900);
+        setTimeout(() => { try { this.showOprosSummary(d); } catch (e) { } }, 900);
 
         // Убираем параметр из адреса: перезагрузка страницы не должна
         // второй раз перетирать смету данными анкеты
@@ -1653,7 +1652,16 @@ const app = {
         if (d.hasProject) {
             L.push('Есть готовый проект/план дома — заказчик пришлёт файлом отдельно.');
         } else {
-            const findName = (db, id) => (typeof window[db] !== 'undefined' ? window[db].find(m => m.id === id) : null);
+            // Справочники объявлены в catalog.js через const — в window их нет, и
+            // прежний window[db] всегда давал null: вместо «Газобетон D400, 400 мм»
+            // в сводке печатался код gas_d400
+            const DBS = {
+                WALL_MATERIALS_DB: typeof WALL_MATERIALS_DB !== 'undefined' ? WALL_MATERIALS_DB : null,
+                FLOOR_MATERIALS_DB: typeof FLOOR_MATERIALS_DB !== 'undefined' ? FLOOR_MATERIALS_DB : null,
+                ROOF_MATERIALS_DB: typeof ROOF_MATERIALS_DB !== 'undefined' ? ROOF_MATERIALS_DB : null,
+                GLAZING_DB: typeof GLAZING_DB !== 'undefined' ? GLAZING_DB : null
+            };
+            const findName = (db, id) => (DBS[db] ? DBS[db].find(m => m.id === id) : null);
             if (d.wallMat) {
                 const wm = findName('WALL_MATERIALS_DB', d.wallMat);
                 let t = (wm ? wm.name : d.wallMat) + (d.wallThick ? ', ' + d.wallThick + ' мм' : '');
@@ -1677,6 +1685,55 @@ const app = {
             : 'Что заполнил заказчик. Текущий расчёт не менялся — чтобы подставить ' +
               'эти параметры, нажмите «Открыть в расчёте».';
         return intro + '\n\n' + L.join('\n');
+    },
+
+    // Ссылка на саму анкету с ответами заказчика: oprosnik.html?view=<base64url>
+    // открывает её как видел он, только смотреть — поля заблокированы, отправки нет.
+    oprosViewLink: function (d) {
+        try {
+            const origin = /heatcalc\.ru|github\.io|localhost|127\.0\.0\.1/.test(location.hostname)
+                ? location.origin : 'https://heatcalc.ru';
+            const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(d || {}))))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            return origin + '/oprosnik.html?view=' + b64;
+        } catch (e) { return ''; }
+    },
+
+    // Сводка по анкете отдельным окном, а не app.alert: монтажнику нужно не только
+    // прочитать ответы, но и забрать их текстом (перенести в переписку с заказчиком)
+    // и посмотреть саму анкету — в каком виде её заполняли.
+    showOprosSummary: function (d, applied = true) {
+        const txt = this.oprosSummaryText(d, applied);
+        const link = this.oprosViewLink(d);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card" style="max-width:460px;">
+                <h3 class="calc-dialog-title" style="margin-bottom:10px;">Опросник заказчика</h3>
+                <div style="text-align:left; font-size:13px; line-height:1.5; white-space:pre-wrap; max-height:56vh; overflow:auto; margin-bottom:14px;">${esc(txt)}</div>
+                <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <button type="button" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main);" data-act="copy">Скопировать</button>
+                    ${link ? `<a href="${esc(link)}" target="_blank" rel="noopener" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main); display:inline-flex; align-items:center; text-decoration:none;">Открыть анкету</a>` : ''}
+                    <button type="button" class="auth-btn-base btn-email-submit" style="height:36px; padding:0 18px; font-size:13px;" data-act="close">Закрыть</button>
+                </div>
+            </div>`;
+        overlay.addEventListener('click', (e) => {
+            const btn = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+            const act = btn && btn.getAttribute('data-act');
+            if (act === 'copy') {
+                this.copyToClipboard(txt)
+                    .then(() => { btn.innerText = '✓ Скопировано'; setTimeout(() => { btn.innerText = 'Скопировать'; }, 2000); })
+                    .catch(() => { });
+                return;
+            }
+            if (act === 'close' || e.target === overlay) {
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.remove(), 200);
+            }
+        });
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
     },
 
     // ── Входящие заявки из опросника (таблица opros_requests) ────────────────
@@ -1759,7 +1816,7 @@ const app = {
         this.applyOprosData(r.data || {});
         this.markOprosSeen(id);
         this.syncUI(); this.render(); this.saveState();
-        try { await this.alert(this.oprosSummaryText(r.data || {}), 'Опросник заказчика'); } catch (e) { }
+        try { this.showOprosSummary(r.data || {}); } catch (e) { }
     },
 
     dismissOprosRequest: function (id, btn) {
@@ -13190,7 +13247,7 @@ const app = {
         this.markOprosSeen(id);
         this.closeProfileModal();
         this.syncUI(); this.render(); this.saveState();
-        try { await this.alert(this.oprosSummaryText(r.data || {}), 'Опросник заказчика'); } catch (e) { }
+        try { this.showOprosSummary(r.data || {}); } catch (e) { }
     },
 
     // Посмотреть заявку, не трогая открытый расчёт: «Открыть в расчёте» затирает
@@ -13201,7 +13258,7 @@ const app = {
         if (!r) return;
         this.markOprosSeen(id);
         if (r.status === 'new') { r.status = 'seen'; this.renderOprosnikiTab(); }
-        try { await this.alert(this.oprosSummaryText(r.data || {}, false), 'Опросник заказчика'); } catch (e) { }
+        try { this.showOprosSummary(r.data || {}, false); } catch (e) { }
     },
 
     deleteOprosRequest: async function (id) {
@@ -14783,6 +14840,10 @@ const app = {
         const adminWasVisible = adminBtn && adminBtn.style.display !== 'none';
         const adminShouldBeVisible = this.hasAdminAccess();
         if (adminBtn) adminBtn.style.display = adminShouldBeVisible ? 'flex' : 'none';
+        // Тот же пункт в меню кабинета: на телефоне панели разделов нет, и без него
+        // админ остался бы вообще без входа в панель управления
+        const navAdmin = document.getElementById('lk_nav_admin');
+        if (navAdmin) navAdmin.style.display = adminShouldBeVisible ? '' : 'none';
         // Если видимость админки изменилась, содержимое панели стало другим —
         // пересчитываем её посадку по высоте, иначе вновь появившаяся кнопка
         // админки может заехать за край или спрятаться под прокруткой

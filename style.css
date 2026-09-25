@@ -10821,6 +10821,12 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     white-space: nowrap;
 }
 
+/* Короткая подпись того же пункта — только для сетки на телефоне, где на полную
+   («Реквизиты компании», «Баллы и рейтинг») ширины ячейки не хватает */
+.lk-nav-short {
+    display: none;
+}
+
 .lk-nav-spacer {
     flex: 1;
     min-height: 0;
@@ -11089,11 +11095,9 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     color: #EF4444;
 }
 
-/* Узкие экраны: колонка ложится горизонтальным рядом иконок над содержимым.
-   Подписи убираем — иначе восемь разделов не помещаются даже в две строки.
-   Условие медиазапроса дословно совпадает с общим «мобильным» брейкпоинтом проекта —
-   тем же, по которому модалка кабинета превращается в bottom sheet. */
-@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+/* Телефон лёжа: по высоте места нет, и разделы остаются рядом безымянных иконок
+   с прокруткой вбок. Стоймя вместо него идёт сетка с подписями — блок ниже. */
+@media screen and (orientation: landscape) and (max-height: 500px) {
     .lk-layout {
         flex-direction: column;
         gap: 10px;
@@ -11137,6 +11141,74 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
         background: transparent;
         border-top: 1px solid var(--border);
         border-radius: 10px;
+    }
+}
+
+/* Телефон и планшет стоймя: разделы сеткой по четыре в строку и с подписями.
+   Панели разделов (.lk-rail) здесь нет, это меню — единственное, и прежний ряд
+   иконок с прокруткой вбок прятал половину пунктов за краем экрана: человек не
+   видел ни «Опросные листы», ни «Сообщения» и не догадывался, что ряд тянется.
+   Подпись берём короткую (.lk-nav-short) — полная в ячейку не влезает. */
+@media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    .lk-layout {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .lk-nav {
+        flex: 0 0 auto;
+        width: 100%;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 6px;
+        padding: 0 0 10px;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        overflow: visible;
+    }
+
+    .lk-nav-user,
+    .lk-nav-spacer,
+    .lk-nav-label {
+        display: none;
+    }
+
+    .lk-nav-short {
+        display: block;
+        width: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .lk-nav-item {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        width: 100%;
+        min-height: 60px;
+        padding: 8px 4px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 10.5px;
+        line-height: 1.15;
+        text-align: center;
+    }
+
+    /* «Выйти» — во всю ширину последней строкой, чтобы не путался с разделами */
+    .lk-nav-logout {
+        position: static;
+        grid-column: 1 / -1;
+        flex-direction: row;
+        gap: 8px;
+        min-height: 42px;
+        margin-top: 0;
+        padding: 0;
+        background: transparent;
+        border-radius: 10px;
+        font-size: 13px;
     }
 }
 
