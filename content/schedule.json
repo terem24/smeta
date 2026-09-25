@@ -25,10 +25,10 @@
    "freq": 51691,
    "audience": "owner",
    "data_block": "подбор шкафа и числа выходов",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-01",
    "published_at": null,
-   "words": 0
+   "words": 663
   },
   {
    "slug": "elektrokotel-dlya-doma",
@@ -207,10 +207,10 @@
    "freq": 8838,
    "audience": "owner",
    "data_block": "наш расчёт петель и шага",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-31",
    "published_at": null,
-   "words": 0
+   "words": 648
   },
   {
    "slug": "zamena-kotla-v-dome",
