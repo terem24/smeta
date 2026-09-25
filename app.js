@@ -40719,7 +40719,7 @@ const app = {
 
     // Листы проекта (project_sheets.js): спецификация оборудования на листах А3
     // по текущей смете. Данные уходят через localStorage, страницу листов рисует
-    // sheet_demo.html — по той же схеме, по какой invoice.html получает счёт.
+    // project.html — по той же схеме, по какой invoice.html получает счёт.
     openProjectSheets: async function () {
         if (window.SessionTrack) SessionTrack.screen('sheets');
         if (!this.canUseDesign()) { app.alert('Раздел проектирования вам пока не открыт. Его включает администратор.'); return; }
@@ -40874,7 +40874,7 @@ const app = {
         // Комплект собран — отмечаем объект как выпущенный проект (вкладка
         // «Проекты» в админке). Разделы считаем ровно так же, как их поделит
         // страница листов: по номеру раздела сметы (см. SECTION_MARK в
-        // sheet_demo.html), MEP есть всегда.
+        // project.html), MEP есть всегда.
         const SEC_MARK = { 1: 'ТМ', 2: 'ТМ', 6: 'ТМ', 3: 'О', 4: 'О', 9: 'О', 5: 'В', 7: 'В', 8: 'В' };
         const marks = { MEP: true };
         list.forEach(i => {
@@ -40890,7 +40890,7 @@ const app = {
         // и открытием стоит окно адреса — а браузеры считают всплывающим окном
         // всё, что открылось не «сразу по клику», и молча блокируют. Ловим это:
         // если окно не открылось, показываем ссылку, по которой достаточно щёлкнуть.
-        const win = window.open('sheet_demo.html', '_blank');
+        const win = window.open('project.html', '_blank');
         if (!win || win.closed) {
             this.alert(
                 'Браузер заблокировал новое окно с листами проекта.\n\n' +
@@ -40902,7 +40902,7 @@ const app = {
                 const card = document.querySelector('.calc-dialog-card');
                 if (!card) return;
                 const a = document.createElement('a');
-                a.href = 'sheet_demo.html';
+                a.href = 'project.html';
                 a.target = '_blank';
                 a.textContent = 'Открыть листы проекта →';
                 a.style.cssText = 'display:inline-block; margin-top:6px; color:var(--primary); font-weight:700; text-decoration:none;';
