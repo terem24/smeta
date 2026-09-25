@@ -2181,10 +2181,10 @@
    "freq": 2200,
    "audience": "owner",
    "data_block": "цена кВт·ч по видам топлива",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-25",
    "published_at": null,
-   "words": 0
+   "words": 692
   },
   {
    "slug": "radiatory-dlya-panoramnyh-okon",
@@ -2265,10 +2265,10 @@
    "freq": 1500,
    "audience": "pro",
    "data_block": "порог по мощности из расчёта",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-09",
    "published_at": null,
-   "words": 0
+   "words": 697
   },
   {
    "slug": "rashodomery-teplogo-pola",
@@ -2293,10 +2293,10 @@
    "freq": 1140,
    "audience": "owner",
    "data_block": "наш расчёт с запасом 1,15",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-14",
    "published_at": null,
-   "words": 0
+   "words": 657
   },
   {
    "slug": "teplyy-pol-ploshchad-pokrytiya",
