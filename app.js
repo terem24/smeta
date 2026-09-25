@@ -1530,6 +1530,47 @@ const app = {
                     s.region = Math.round(((20 - city.temp) / 45) * 100);
                 }
             }
+            // Пирог стены/пола/кровли/окон — те же id, что в WALL_MATERIALS_DB и
+            // соседних базах (catalog.js), опросник (oprosnik.html) собирает их
+            // выбором из списка, а не текстом. Это работает даже без переключения
+            // в «Подробный» режим: mat пересчитывается по реальному R стены, и
+            // быстрая формула (area × h × 37 × mat) сразу становится точнее.
+            // wallLayers/roofMatId/... при этом уже лежат в state — если монтажник
+            // сам включит подробный режим, calculateWallResistance подхватит их
+            // готовыми (см. toggleDetailedRooms: needsLayersInit ждёт пустой массив).
+            if (d.wallMat && typeof WALL_MATERIALS_DB !== 'undefined') {
+                const layers = [];
+                const mainM = WALL_MATERIALS_DB.find(m => m.id === d.wallMat);
+                const mainThick = parseInt(d.wallThick, 10);
+                if (mainM && mainThick > 0) layers.push({ matId: mainM.id, thick: mainThick });
+                if (d.wallInsMat) {
+                    const insM = WALL_MATERIALS_DB.find(m => m.id === d.wallInsMat);
+                    const insThick = parseInt(d.wallInsThick, 10);
+                    if (insM && insThick > 0) layers.push({ matId: insM.id, thick: insThick });
+                }
+                if (layers.length) {
+                    s.wallLayers = layers;
+                    s.wallLayersEnabled = true;
+                    let R = 0.115 + 0.043;
+                    layers.forEach(l => {
+                        const m = WALL_MATERIALS_DB.find(x => x.id === l.matId);
+                        if (m && m.lambda) R += (l.thick / 1000) / m.lambda;
+                    });
+                    if (R > 0) {
+                        s.mat = Math.max(0.5, Math.min(1.6, +(1.8 / R).toFixed(2)));
+                        s.lastQuickMat = s.mat;
+                    }
+                }
+            }
+            if (d.roofMat && typeof ROOF_MATERIALS_DB !== 'undefined' && ROOF_MATERIALS_DB.some(m => m.id === d.roofMat)) {
+                s.roofMatId = d.roofMat; s.roofEnabled = true;
+            }
+            if (d.floorMat && typeof FLOOR_MATERIALS_DB !== 'undefined' && FLOOR_MATERIALS_DB.some(m => m.id === d.floorMat)) {
+                s.floorMatId = d.floorMat; s.floorEnabled = true;
+            }
+            if (d.glazing && typeof GLAZING_DB !== 'undefined' && GLAZING_DB.some(m => m.id === d.glazing)) {
+                s.glazingMatId = d.glazing; s.glazingEnabled = true;
+            }
             if (!s.projectName) {
                 s.projectName = 'Заявка' + (d.name ? ' от ' + String(d.name).slice(0, 40) : '') +
                     (_a > 0 ? ', дом ' + Math.round(_a) + ' м²' : '');
@@ -1551,10 +1592,23 @@ const app = {
         put('Режим проживания', { all: 'круглогодичный', season: 'сезонный' }[d.live]);
         put('Стадия строительства', { none: 'ещё не приступил', box: 'возводится коробка', closed: 'закрыт тепловой контур' }[d.stage]);
         put('Приточная вентиляция с подогревом', d.vent === true ? 'да' : (d.vent === false ? 'нет' : ''));
+        const findName = (db, id) => (typeof window[db] !== 'undefined' ? window[db].find(m => m.id === id) : null);
+        if (d.wallMat) {
+            const wm = findName('WALL_MATERIALS_DB', d.wallMat);
+            let t = (wm ? wm.name : d.wallMat) + (d.wallThick ? ', ' + d.wallThick + ' мм' : '');
+            if (d.wallInsMat) {
+                const wi = findName('WALL_MATERIALS_DB', d.wallInsMat);
+                t += ' + утеплитель ' + (wi ? wi.name : d.wallInsMat) + (d.wallInsThick ? ', ' + d.wallInsThick + ' мм' : '');
+            }
+            put('Стена (выбрано из списка)', t);
+        }
+        if (d.floorMat) put('Пол 1 этажа (выбрано из списка)', (findName('FLOOR_MATERIALS_DB', d.floorMat) || {}).name || d.floorMat);
+        if (d.roofMat) put('Кровля (выбрано из списка)', (findName('ROOF_MATERIALS_DB', d.roofMat) || {}).name || d.roofMat);
+        if (d.glazing) put('Окна (выбрано из списка)', (findName('GLAZING_DB', d.glazing) || {}).name || d.glazing);
         put('Окна (марка/модель)', d.win);
-        put('Состав наружной стены', d.wall);
-        put('Состав пола 1 этажа', d.floor1);
-        put('Состав кровли', d.roof);
+        put('Уточнение по стене', d.wall);
+        put('Уточнение по полу', d.floor1);
+        put('Уточнение по кровле', d.roof);
         put('Помещения с тёплым полом', d.tpRooms);
         put('Уже закуплено', d.bought);
         put('Комментарий', d.comment);

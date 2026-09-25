@@ -67,8 +67,7 @@
     <div class="logo-row"><div class="mark">🔥</div><div class="name">HeatCalc</div></div>
     <h1>Опросник для расчёта отопления</h1>
     <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
-        точный расчёт системы отопления. Заполнение займёт 3–5 минут. Данные никуда не
-        отправляются сами: в конце вы получите ссылку и сами перешлёте её монтажнику.</div>
+        точный расчёт системы отопления. Заполнение займёт 3–5 минут.</div>
 
     <div class="card">
         <h2>Контакты</h2>
@@ -114,8 +113,6 @@
         <div class="seg">
             <label><input type="radio" name="f_fuel" value="gas" checked>Газовый котёл</label>
             <label><input type="radio" name="f_fuel" value="el">Электрокотёл</label>
-            <label><input type="radio" name="f_fuel" value="solid">Твердотопливный</label>
-            <label><input type="radio" name="f_fuel" value="hp">Тепловой насос</label>
         </div>
         <label class="f">Будет ли приточная вентиляция с подогревом воздуха?</label>
         <div class="seg">
@@ -128,16 +125,37 @@
 
     <div class="card">
         <h2>Из чего построен дом</h2>
-        <div class="note" style="margin:0 0 4px;">Если есть проект — просто напишите «есть проект,
-            пришлю». Если нет, опишите словами, снаружи внутрь.</div>
-        <label class="f">Состав наружной стены</label>
+        <div class="note" style="margin:0 0 4px;">Выберите то, что ближе всего — эти пункты
+            подставляются в расчёт точнее, чем описание словами. Если не уверены — оставьте
+            «Не знаю» и опишите словами ниже, монтажник уточнит сам.</div>
+
+        <label class="f">Материал наружной стены</label>
+        <select id="f_wallMat"></select>
+        <div class="row2">
+            <div><label class="f">Толщина стены, мм</label><input type="number" id="f_wallThick" min="50" max="800" placeholder="300"></div>
+            <div><label class="f">Дополнительный утеплитель</label><select id="f_wallInsMat"></select></div>
+        </div>
+        <div class="row2" id="f_wallInsThickWrap" style="display:none;">
+            <div><label class="f">Толщина утеплителя, мм</label><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100"></div>
+            <div></div>
+        </div>
+        <label class="f">Уточнение по стене (необязательно)</label>
         <textarea id="f_wall" placeholder="Например: штукатурка, газоблок D400 375 мм"></textarea>
-        <label class="f">Состав пола 1 этажа</label>
+
+        <label class="f">Пол 1 этажа</label>
+        <select id="f_floorMat"></select>
+        <label class="f">Уточнение по полу (необязательно)</label>
         <textarea id="f_floor1" placeholder="Например: плита по грунту, ЭППС 100 мм, стяжка"></textarea>
-        <label class="f">Состав кровли или чердачного перекрытия</label>
+
+        <label class="f">Кровля / чердачное перекрытие</label>
+        <select id="f_roofMat"></select>
+        <label class="f">Уточнение по кровле (необязательно)</label>
         <textarea id="f_roof" placeholder="Например: холодный чердак, минвата 200 мм по перекрытию"></textarea>
-        <label class="f">Марка и модель окон</label>
-        <input type="text" id="f_win" placeholder="Например: Rehau, двухкамерный стеклопакет">
+
+        <label class="f">Окна</label>
+        <select id="f_glazing"></select>
+        <label class="f">Марка и модель окон (необязательно)</label>
+        <input type="text" id="f_win" placeholder="Например: Rehau">
     </div>
 
     <div class="card">
@@ -148,7 +166,7 @@
         <textarea id="f_comment" placeholder="Всё, что считаете важным"></textarea>
     </div>
 
-    <button class="btn" onclick="buildLink()">Сформировать ссылку для монтажника</button>
+    <button class="btn" onclick="buildLink()">Отправить монтажнику</button>
 
     <div class="card" id="result">
         <div id="r_sent" style="display:none; margin-bottom:12px; padding:12px; border-radius:10px; background:#F0FDF4; border:1px solid #BBF7D0; color:#15803D; font-size:14px; font-weight:600;">
@@ -173,6 +191,69 @@
 </div>
 
 <script>
+    // Те же id и названия, что в WALL_MATERIALS_DB / ROOF_MATERIALS_DB / FLOOR_MATERIALS_DB /
+    // GLAZING_DB (catalog.js) — калькулятор ищет пришедшие значения именно по id. Полный
+    // catalog.js (~750 КБ, весь товарный каталог) сюда не тащим, страница для заказчика
+    // должна оставаться лёгкой; эти списки нормативные и меняются раз в несколько лет.
+    var WALL_OPTS = [
+        { id: '', name: 'Не знаю / другое' },
+        { id: 'brick_clay', name: 'Кирпич полнотелый (глиняный)' },
+        { id: 'brick_hollow', name: 'Кирпич пустотелый' },
+        { id: 'gas_d400', name: 'Газобетон D400' },
+        { id: 'gas_d500', name: 'Газобетон D500' },
+        { id: 'gas_d600', name: 'Газобетон D600' },
+        { id: 'ceramic_block', name: 'Керамический блок (тёплая керамика)' },
+        { id: 'wood_pine', name: 'Брус деревянный (сосна/ель)' },
+        { id: 'concrete', name: 'Железобетон / монолит' }
+    ];
+    var WALL_INS_OPTS = [
+        { id: '', name: 'Нет' },
+        { id: 'minwool', name: 'Минеральная вата (базальт)' },
+        { id: 'polystyrene', name: 'Пенополистирол (пенопласт)' },
+        { id: 'xps', name: 'Экструдированный пенополистирол (XPS)' }
+    ];
+    var ROOF_OPTS = [
+        { id: '', name: 'Не знаю / другое' },
+        { id: 'roof_mw400', name: 'Мин. вата ~400 мм' },
+        { id: 'roof_mw350', name: 'Мин. вата ~350 мм' },
+        { id: 'roof_mw300', name: 'Мин. вата ~300 мм' },
+        { id: 'roof_mw250', name: 'Мин. вата ~250 мм' },
+        { id: 'roof_mw200', name: 'Мин. вата ~200 мм' },
+        { id: 'roof_mw150', name: 'Мин. вата ~150 мм' },
+        { id: 'roof_mw100', name: 'Мин. вата ~100 мм' },
+        { id: 'roof_wood_ins', name: 'Деревянное перекрытие утеплённое' },
+        { id: 'roof_concrete', name: 'Ж/б перекрытие без утепления' }
+    ];
+    var FLOOR_OPTS = [
+        { id: '', name: 'Не знаю / другое' },
+        { id: 'floor_ground_ins', name: 'По грунту, утеплён (XPS ~100 мм)' },
+        { id: 'floor_ground_ins50', name: 'По грунту, утеплён (XPS ~50 мм)' },
+        { id: 'floor_lags_ins', name: 'На лагах, утеплён (мин. вата ~150 мм)' },
+        { id: 'floor_basement_ins', name: 'Над холодным подвалом, утеплён' },
+        { id: 'floor_basement_bare', name: 'Над холодным подвалом, без утепления' },
+        { id: 'floor_heated', name: 'Над отапливаемым помещением' }
+    ];
+    var GLAZING_OPTS = [
+        { id: '', name: 'Не знаю / другое' },
+        { id: 'glz_2cam', name: 'Двухкамерный стеклопакет' },
+        { id: 'glz_3cam', name: 'Трёхкамерный стеклопакет (энергосберегающий)' },
+        { id: 'glz_1cam', name: 'Однокамерный стеклопакет' },
+        { id: 'glz_single', name: 'Одинарное стекло' }
+    ];
+    function fillSelect(id, opts) {
+        document.getElementById(id).innerHTML = opts.map(function (o) {
+            return '<option value="' + o.id + '">' + o.name + '</option>';
+        }).join('');
+    }
+    fillSelect('f_wallMat', WALL_OPTS);
+    fillSelect('f_wallInsMat', WALL_INS_OPTS);
+    fillSelect('f_roofMat', ROOF_OPTS);
+    fillSelect('f_floorMat', FLOOR_OPTS);
+    fillSelect('f_glazing', GLAZING_OPTS);
+    document.getElementById('f_wallInsMat').addEventListener('change', function () {
+        document.getElementById('f_wallInsThickWrap').style.display = this.value ? 'grid' : 'none';
+    });
+
     function radio(name) {
         var el = document.querySelector('input[name="' + name + '"]:checked');
         return el ? el.value : '';
@@ -226,6 +307,9 @@
             vent: radio('f_vent') === 'yes',
             tpRooms: val('f_tprooms'), wall: val('f_wall'), floor1: val('f_floor1'),
             roof: val('f_roof'), win: val('f_win'),
+            wallMat: val('f_wallMat'), wallThick: parseInt(val('f_wallThick'), 10) || 0,
+            wallInsMat: val('f_wallInsMat'), wallInsThick: parseInt(val('f_wallInsThick'), 10) || 0,
+            floorMat: val('f_floorMat'), roofMat: val('f_roofMat'), glazing: val('f_glazing'),
             bought: val('f_bought'), comment: val('f_comment')
         };
         // пустые строки не тащим в ссылку — она короче
