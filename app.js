@@ -1454,7 +1454,8 @@ const app = {
     // Авторизованному монтажнику ссылка выдаётся персональной (?m=<users.id>):
     // тогда заявка сама придёт ему в базу через submit_opros, и заказчику не
     // нужно ничего пересылать обратно. Без входа — общая ссылка, возврат руками.
-    copyOprosnikLink: async function (el) {
+    // Адрес анкеты одним местом: его берут и кнопка копирования, и QR-код
+    oprosnikLink: async function () {
         const origin = /heatcalc\.ru|github\.io|localhost|127\.0\.0\.1/.test(location.hostname)
             ? location.origin : 'https://heatcalc.ru';
         let url = origin + '/oprosnik.html';
@@ -1462,6 +1463,11 @@ const app = {
             const myId = await this.resolveMyDbId();
             if (myId) url += '?m=' + myId;
         } catch (e) { }
+        return url;
+    },
+
+    copyOprosnikLink: async function (el) {
+        const url = await this.oprosnikLink();
         const done = () => {
             if (el) {
                 const old = el.innerText;
@@ -1482,6 +1488,42 @@ const app = {
         } catch (e) { done(); }
     },
 
+    // QR на экран: монтажник открывает его у себя на телефоне и даёт заказчику
+    // навести камеру — тот сразу попадает в анкету. Пересылать ничего не нужно,
+    // ссылка персональная, и заполненная анкета придёт монтажнику сама.
+    // Рисует тот же qrDataUrl, что и QR приглашений (qrcode.js, отложенный).
+    showOprosnikQr: async function () {
+        const link = await this.oprosnikLink();
+        const src = await this.qrDataUrl(link, 260);
+        if (!src) { app.alert('Не удалось нарисовать QR-код. Ссылка: ' + link); return; }
+        const personal = link.indexOf('?m=') > -1;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card" style="text-align:center; max-width:340px;">
+                <h3 class="calc-dialog-title" style="margin-bottom:6px;">Опросник для заказчика</h3>
+                <div style="font-size:12.5px; color:var(--text-sec); margin-bottom:12px;">Дайте заказчику навести камеру телефона</div>
+                <img src="${src}" alt="QR" style="width:220px; height:220px; display:block; margin:0 auto 10px; border-radius:8px; background:#fff; padding:6px; box-sizing:content-box;">
+                <div style="font-size:11.5px; color:var(--text-sec); word-break:break-all; margin-bottom:${personal ? '14px' : '8px'};">${esc(link)}</div>
+                ${personal ? '' : '<div style="font-size:11.5px; color:var(--warning, #B45309); margin-bottom:12px;">Вы не вошли в аккаунт — заполненную анкету заказчику придётся вернуть вам ссылкой. Войдите, и она будет приходить сама.</div>'}
+                <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <button type="button" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main);" data-act="copy">Скопировать ссылку</button>
+                    <button type="button" class="auth-btn-base btn-email-submit" style="height:36px; padding:0 18px; font-size:13px;" data-act="close">Закрыть</button>
+                </div>
+            </div>`;
+        overlay.addEventListener('click', (e) => {
+            const act = e.target && e.target.getAttribute && e.target.getAttribute('data-act');
+            if (act === 'copy') this.copyOprosnikLink(null);
+            if (act === 'close' || e.target === overlay) {
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.remove(), 200);
+            }
+        });
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+    },
+
     applyOprosFromUrl: function () {
         let d = null;
         try {
@@ -1492,8 +1534,7 @@ const app = {
         } catch (e) { return; }
         if (!d || typeof d !== 'object') return;
         this.applyOprosData(d);
-        const txt = this.oprosSummaryText(d);
-        setTimeout(() => { try { this.alert(txt, 'Опросник заказчика'); } catch (e) { } }, 900);
+        setTimeout(() => { try { this.showOprosSummary(d); } catch (e) { } }, 900);
 
         // Убираем параметр из адреса: перезагрузка страницы не должна
         // второй раз перетирать смету данными анкеты
@@ -1589,7 +1630,14 @@ const app = {
         const L = [];
         const put = (label, v) => { if (v) L.push(label + ': ' + String(v).slice(0, 500)); };
         put('Имя', d.name); put('Телефон', d.phone); put('Город', d.city); put('Адрес', d.address);
+        // Калькулятор считает дома до MAX_AREA, applyOprosData ужимает площадь молча —
+        // поэтому про большой дом монтажнику говорим прямо, иначе он увидит смету на
+        // 360 м² и решит, что заказчик столько и написал
         put('Площадь дома', d.area ? d.area + ' м²' : '');
+        if (Number(d.area) > this.MAX_AREA) {
+            L.push('⚠ Заказчик указал ' + Math.round(Number(d.area)) + ' м² — расчёт сделан на ' +
+                   this.MAX_AREA + ' м² (предел калькулятора). Дом такой площади считайте отдельно.');
+        }
         put('Этажей', d.floors);
         put('Жителей', d.people);
         const _heatTxt = [d.tp ? 'тёплый пол' : '', d.rad ? 'радиаторы' : ''].filter(Boolean).join(' + ');
@@ -1604,7 +1652,16 @@ const app = {
         if (d.hasProject) {
             L.push('Есть готовый проект/план дома — заказчик пришлёт файлом отдельно.');
         } else {
-            const findName = (db, id) => (typeof window[db] !== 'undefined' ? window[db].find(m => m.id === id) : null);
+            // Справочники объявлены в catalog.js через const — в window их нет, и
+            // прежний window[db] всегда давал null: вместо «Газобетон D400, 400 мм»
+            // в сводке печатался код gas_d400
+            const DBS = {
+                WALL_MATERIALS_DB: typeof WALL_MATERIALS_DB !== 'undefined' ? WALL_MATERIALS_DB : null,
+                FLOOR_MATERIALS_DB: typeof FLOOR_MATERIALS_DB !== 'undefined' ? FLOOR_MATERIALS_DB : null,
+                ROOF_MATERIALS_DB: typeof ROOF_MATERIALS_DB !== 'undefined' ? ROOF_MATERIALS_DB : null,
+                GLAZING_DB: typeof GLAZING_DB !== 'undefined' ? GLAZING_DB : null
+            };
+            const findName = (db, id) => (DBS[db] ? DBS[db].find(m => m.id === id) : null);
             if (d.wallMat) {
                 const wm = findName('WALL_MATERIALS_DB', d.wallMat);
                 let t = (wm ? wm.name : d.wallMat) + (d.wallThick ? ', ' + d.wallThick + ' мм' : '');
@@ -1628,6 +1685,55 @@ const app = {
             : 'Что заполнил заказчик. Текущий расчёт не менялся — чтобы подставить ' +
               'эти параметры, нажмите «Открыть в расчёте».';
         return intro + '\n\n' + L.join('\n');
+    },
+
+    // Ссылка на саму анкету с ответами заказчика: oprosnik.html?view=<base64url>
+    // открывает её как видел он, только смотреть — поля заблокированы, отправки нет.
+    oprosViewLink: function (d) {
+        try {
+            const origin = /heatcalc\.ru|github\.io|localhost|127\.0\.0\.1/.test(location.hostname)
+                ? location.origin : 'https://heatcalc.ru';
+            const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(d || {}))))
+                .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            return origin + '/oprosnik.html?view=' + b64;
+        } catch (e) { return ''; }
+    },
+
+    // Сводка по анкете отдельным окном, а не app.alert: монтажнику нужно не только
+    // прочитать ответы, но и забрать их текстом (перенести в переписку с заказчиком)
+    // и посмотреть саму анкету — в каком виде её заполняли.
+    showOprosSummary: function (d, applied = true) {
+        const txt = this.oprosSummaryText(d, applied);
+        const link = this.oprosViewLink(d);
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card" style="max-width:460px;">
+                <h3 class="calc-dialog-title" style="margin-bottom:10px;">Опросник заказчика</h3>
+                <div style="text-align:left; font-size:13px; line-height:1.5; white-space:pre-wrap; max-height:56vh; overflow:auto; margin-bottom:14px;">${esc(txt)}</div>
+                <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+                    <button type="button" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main);" data-act="copy">Скопировать</button>
+                    ${link ? `<a href="${esc(link)}" target="_blank" rel="noopener" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main); display:inline-flex; align-items:center; text-decoration:none;">Открыть анкету</a>` : ''}
+                    <button type="button" class="auth-btn-base btn-email-submit" style="height:36px; padding:0 18px; font-size:13px;" data-act="close">Закрыть</button>
+                </div>
+            </div>`;
+        overlay.addEventListener('click', (e) => {
+            const btn = e.target && e.target.closest ? e.target.closest('[data-act]') : null;
+            const act = btn && btn.getAttribute('data-act');
+            if (act === 'copy') {
+                this.copyToClipboard(txt)
+                    .then(() => { btn.innerText = '✓ Скопировано'; setTimeout(() => { btn.innerText = 'Скопировать'; }, 2000); })
+                    .catch(() => { });
+                return;
+            }
+            if (act === 'close' || e.target === overlay) {
+                overlay.classList.remove('active');
+                setTimeout(() => overlay.remove(), 200);
+            }
+        });
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
     },
 
     // ── Входящие заявки из опросника (таблица opros_requests) ────────────────
@@ -1710,7 +1816,7 @@ const app = {
         this.applyOprosData(r.data || {});
         this.markOprosSeen(id);
         this.syncUI(); this.render(); this.saveState();
-        try { await this.alert(this.oprosSummaryText(r.data || {}), 'Опросник заказчика'); } catch (e) { }
+        try { this.showOprosSummary(r.data || {}); } catch (e) { }
     },
 
     dismissOprosRequest: function (id, btn) {
@@ -11592,6 +11698,7 @@ const app = {
             // Какая смета сейчас на экране — для разбора «Что изменилось» под плашкой
             this._loadedEstimateId = id;
             this.state = this.stateForLoadedEstimate(loadedState);
+            this.migrateXpsKitIds();
             this.migrateSnowPipeSwap();
             this.migrateBoilerSectionTitles();
             this.migrateBoilerAutoLevel(loadedState);
@@ -13067,6 +13174,7 @@ const app = {
                       </div>
                       <div class="no-print" style="margin: 14px 0; padding: 12px; font-size: 12px; color: var(--text-sec); line-height: 1.45; background: var(--surface); border-radius: 8px; border-left: 3px solid var(--primary);">
                           📋 <strong>Нет данных от заказчика?</strong> <span onclick="app.copyOprosnikLink(this)" style="color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline;">Скопируйте ссылку на опросник</span> — отправьте её клиенту, он заполнит анкету о доме и вернёт вам ссылку с готовыми данными для расчёта.
+                          <span onclick="app.showOprosnikQr()" style="color: var(--primary); font-weight: 700; cursor: pointer; text-decoration: underline; white-space: nowrap;">📱 Показать QR</span> — если заказчик рядом: он наводит камеру и заполняет анкету сам.
                       </div>`;
         container.innerHTML = head + `<div class="lk-empty">⌛ Загрузка заявок...</div>`;
 
@@ -13140,7 +13248,7 @@ const app = {
         this.markOprosSeen(id);
         this.closeProfileModal();
         this.syncUI(); this.render(); this.saveState();
-        try { await this.alert(this.oprosSummaryText(r.data || {}), 'Опросник заказчика'); } catch (e) { }
+        try { this.showOprosSummary(r.data || {}); } catch (e) { }
     },
 
     // Посмотреть заявку, не трогая открытый расчёт: «Открыть в расчёте» затирает
@@ -13151,7 +13259,7 @@ const app = {
         if (!r) return;
         this.markOprosSeen(id);
         if (r.status === 'new') { r.status = 'seen'; this.renderOprosnikiTab(); }
-        try { await this.alert(this.oprosSummaryText(r.data || {}, false), 'Опросник заказчика'); } catch (e) { }
+        try { this.showOprosSummary(r.data || {}, false); } catch (e) { }
     },
 
     deleteOprosRequest: async function (id) {
@@ -14733,6 +14841,10 @@ const app = {
         const adminWasVisible = adminBtn && adminBtn.style.display !== 'none';
         const adminShouldBeVisible = this.hasAdminAccess();
         if (adminBtn) adminBtn.style.display = adminShouldBeVisible ? 'flex' : 'none';
+        // Тот же пункт в меню кабинета: на телефоне панели разделов нет, и без него
+        // админ остался бы вообще без входа в панель управления
+        const navAdmin = document.getElementById('lk_nav_admin');
+        if (navAdmin) navAdmin.style.display = adminShouldBeVisible ? '' : 'none';
         // Если видимость админки изменилась, содержимое панели стало другим —
         // пересчитываем её посадку по высоте, иначе вновь появившаяся кнопка
         // админки может заехать за край или спрятаться под прокруткой
@@ -27156,7 +27268,7 @@ const app = {
         cabinets_shrn180: 'shkaf_kollekt', cabinets_shrn_eco: 'shkaf_kollekt',
         mixing_units: 'uzel_podmesa', ufh_node_parts: 'uzel_podmesa',
         mats: 'maty_tp', ufh_mat: 'maty_tp',
-        xps_kit: 'komplekt_tp', damper_tape: 'komplekt_tp', parts: 'komplekt_tp',
+        xps_kit: 'komplekt_tp', ufh_ins_plates: 'komplekt_tp', damper_tape: 'komplekt_tp', parts: 'komplekt_tp',
         thermostats_stout: 'termostaty_tp', ufh_mech: 'termostaty_tp', ufh_electro: 'termostaty_tp',
         actuators_rommer: 'termostaty_tp', ufh_cables: 'termostaty_tp',
         // Обвязка котельной
@@ -34838,6 +34950,7 @@ const app = {
             // реальный проект администратора в localStorage/облаке.
             this._suppressSaveState = true;
             this.state = this.stateForLoadedEstimate(st);
+            this.migrateXpsKitIds();
             this.migrateSnowPipeSwap();
             this.migrateBoilerSectionTitles();
             this.migrateBoilerAutoLevel(st);
@@ -40676,52 +40789,213 @@ const app = {
         };
     },
 
+    /**
+     * Готовность проекта: те же условия, по которым собирается комплект.
+     *
+     * Раньше они жили внутри openProjectSheets и проверялись в момент нажатия:
+     * первое непройденное выдавалось окном и обрывало выпуск, следующее — на
+     * следующем нажатии. Правила приходилось узнавать по одному, упираясь.
+     * Теперь список один, показывается целиком и до нажатия.
+     *
+     * Каждая строка: выполнено ли, что это даёт и куда идти, если нет.
+     */
+    projectChecks: function () {
+        const list = this.currentEquipmentList || [];
+        const plans = this.currentPlans();
+        const floors = (plans && plans.floors) || [];
+        const zn = f => (f && f.zones) || [];
+        const rooms = this.state.rooms || [];
+        const wantTp = (this.state.tp1 || 0) + (this.state.tp2 || 0) > 0;
+        const withImg = floors.filter(f => f && f.img);
+        const withScale = withImg.filter(f => f.pxPerM);
+        const marked = withScale.filter(f => zn(f).length || (f.rads || []).length ||
+            (f.fixtures || []).length);
+        const out = [];
+        out.push({
+            ok: list.length > 0,
+            t: 'Смета рассчитана',
+            yes: 'позиций: ' + list.length,
+            no: 'Задайте площадь и систему: спецификации всех разделов собираются из сметы.'
+        });
+        out.push({
+            ok: rooms.length > 0,
+            t: 'Помещения в подробном расчёте',
+            yes: 'комнат: ' + rooms.length,
+            no: 'Перечислите комнаты: из них берутся экспликация, расчёт теплопотерь и ' +
+                'подписи зон на плане. По их площадям редактор подбирает и масштаб.',
+            act: 'rooms', btn: 'Заполнить комнаты'
+        });
+        out.push({
+            ok: marked.length > 0,
+            t: 'План этажа: подложка, масштаб, разметка',
+            yes: 'размечено этажей: ' + marked.length,
+            no: !withImg.length
+                ? 'Загрузите подложку — фото, скан или PDF плана этажа.'
+                : !withScale.length
+                    ? 'Подложка есть, масштаба нет: без него не считаются площади зон и длины петель.'
+                    : 'Масштаб есть, разметки нет: обведите зоны или расставьте радиаторы.',
+            act: 'plan', btn: 'Открыть план этажей'
+        });
+        out.push({
+            ok: floors.some(f => zn(f).some(z => z.type === 'boiler')),
+            t: 'Котельная отмечена на плане',
+            no: 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
+                'компоновка котельной, туда же встаёт коллектор тёплого пола.',
+            act: 'plan', btn: 'Открыть план этажей'
+        });
+        if (wantTp) out.push({
+            ok: floors.some(f => zn(f).some(z => (z.type || 'tp') === 'tp')),
+            t: 'Помещения тёплого пола обведены',
+            no: 'В расчёте есть тёплый пол — обведите комнаты с ним: по контурам считаются ' +
+                'петли, шаг укладки и узел коллектора.',
+            act: 'plan', btn: 'Открыть план этажей'
+        });
+        return out;
+    },
+
+    /** Все ли условия выпуска выполнены. */
+    projectReady: function () { return this.projectChecks().every(c => c.ok); },
+
+    /** Переход к незакрытому пункту прямо из панели готовности. */
+    goProjectStep: function (act) {
+        if (act === 'plan') { this.openPlanEditor(); return; }
+        if (act !== 'rooms') return;
+        if (!this.state.detailedRooms) this.toggleDetailedRooms(true);
+        if (!this.state.showDetailedRoomsPanel) {
+            this.state.showDetailedRoomsPanel = true;
+            const chk = document.getElementById('chk_detailed_rooms_toggle');
+            if (chk) chk.checked = true;
+            this.syncUI();
+        }
+        // На телефоне параметры объекта лежат на отдельной вкладке — как в jumpToRoom.
+        if (this.isMobileLayout && this.isMobileLayout() && this.state.mobTab !== 'inputs') {
+            this.state.mobTab = 'inputs';
+            this.syncMobileUI();
+        }
+        const box = document.getElementById('blk_detailed_calc');
+        if (box) setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    },
+
+    /**
+     * Панель «Готовность проекта»: весь список условий разом.
+     *
+     * Открывается той же кнопкой «Проект», когда чего-то не хватает, — кнопка
+     * больше не отвечает отказом, а показывает, что осталось. Готово всё —
+     * панель не нужна, комплект собирается сразу.
+     */
+    showProjectReadiness: function () {
+        const checks = this.projectChecks();
+        const done = checks.filter(c => c.ok).length;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        const card = document.createElement('div');
+        card.className = 'calc-dialog-card';
+        card.style.maxWidth = '560px';
+
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'calc-dialog-title';
+        titleEl.innerText = 'Готовность проекта: ' + done + ' из ' + checks.length;
+        card.appendChild(titleEl);
+
+        const lead = document.createElement('p');
+        lead.className = 'calc-dialog-message';
+        lead.innerText = done === checks.length
+            ? 'Всё на месте — комплект листов можно выпускать.'
+            : 'Комплект собирается из сметы и разметки плана. Осталось закрыть отмеченное.';
+        card.appendChild(lead);
+
+        let closed = false;
+        const close = () => {
+            if (closed) return;
+            closed = true;
+            document.removeEventListener('keydown', onKey);
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+        };
+        const onKey = (e) => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKey);
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+        const listBox = document.createElement('div');
+        listBox.style.cssText = 'display:flex; flex-direction:column; gap:10px; margin:4px 0 6px; text-align:left;';
+        checks.forEach(c => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; gap:10px; align-items:flex-start; padding:10px 12px;' +
+                'border-radius:10px; background:var(--surface-light); border:1px solid var(--border);';
+            const mark = document.createElement('span');
+            mark.style.cssText = 'font-size:15px; line-height:1.3; font-weight:800; flex:0 0 auto;' +
+                'color:' + (c.ok ? '#10B981' : '#EF4444');
+            mark.innerText = c.ok ? '✓' : '•';
+            row.appendChild(mark);
+
+            const body = document.createElement('div');
+            body.style.cssText = 'flex:1 1 auto; min-width:0;';
+            const head = document.createElement('div');
+            head.style.cssText = 'font-weight:600; font-size:13.5px;' +
+                (c.ok ? ' color:var(--text-sec);' : '');
+            head.innerText = c.t + (c.ok && c.yes ? ' — ' + c.yes : '');
+            body.appendChild(head);
+            if (!c.ok) {
+                const note = document.createElement('div');
+                note.style.cssText = 'font-size:12px; line-height:1.45; color:var(--text-sec); margin-top:3px;';
+                note.innerText = c.no;
+                body.appendChild(note);
+                if (c.act) {
+                    const go = document.createElement('button');
+                    go.className = 'calc-dialog-btn calc-dialog-btn-cancel';
+                    // Ради этих кнопок панель и затевалась — они должны выглядеть
+                    // нажимаемыми: прозрачная заливка с почти невидимой рамкой
+                    // читалась на тёмной карточке как обычный текст.
+                    go.style.cssText = 'margin-top:8px; padding:5px 12px; font-size:12px;' +
+                        'background:transparent; border:1px solid var(--primary);' +
+                        'color:var(--primary); font-weight:600;';
+                    go.innerText = c.btn || 'Перейти';
+                    go.onclick = () => { close(); this.goProjectStep(c.act); };
+                    body.appendChild(go);
+                }
+            }
+            row.appendChild(body);
+            listBox.appendChild(row);
+        });
+        card.appendChild(listBox);
+
+        const btns = document.createElement('div');
+        btns.className = 'calc-dialog-buttons';
+        const okBtn = document.createElement('button');
+        okBtn.className = 'calc-dialog-btn calc-dialog-btn-confirm';
+        if (done === checks.length) {
+            okBtn.innerText = 'Выпустить проект';
+            okBtn.onclick = () => {
+                close();
+                setTimeout(() => this.openProjectSheets().catch(e => this.alert(
+                    'Не удалось открыть проект: ' + (e && e.message ? e.message : e), 'Проект')), 220);
+            };
+        } else {
+            okBtn.innerText = 'Понятно';
+            okBtn.onclick = close;
+        }
+        btns.appendChild(okBtn);
+        card.appendChild(btns);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+    },
+
     // Листы проекта (project_sheets.js): спецификация оборудования на листах А3
     // по текущей смете. Данные уходят через localStorage, страницу листов рисует
-    // sheet_demo.html — по той же схеме, по какой invoice.html получает счёт.
+    // project.html — по той же схеме, по какой invoice.html получает счёт.
     openProjectSheets: async function () {
         if (window.SessionTrack) SessionTrack.screen('sheets');
         if (!this.canUseDesign()) { app.alert('Раздел проектирования вам пока не открыт. Его включает администратор.'); return; }
         const list = this.currentEquipmentList || [];
-        if (!list.length) { app.alert("Смета пуста — сначала рассчитайте объект."); return; }
-        // Без разметки планов проект не выпускаем. От планов зависит больше
-        // половины комплекта: сводные планы сетей и расчёт теплопотерь (MEP),
-        // планы и объёмные виды отопления и тёплого пола (О), узел коллектора
-        // ТП, планы водоснабжения и канализации со своими 3D-видами (В, К).
-        // Без них остаются титульные листы, общие данные и спецификации —
-        // это не проект.
-        const _plans = this.currentPlans();
-        const _ready = _plans && (_plans.floors || []).some(f => f && f.pxPerM &&
-            ((f.zones || []).length || (f.rads || []).length || (f.fixtures || []).length));
-        if (!_ready) {
-            app.alert(
-                'Без плана этажей проект не выпускается.\n\n' +
-                'От разметки плана зависят: сводные планы сетей и расчёт теплопотерь (MEP), ' +
-                'планы напольного и радиаторного отопления с объёмными видами и узел коллектора ' +
-                'тёплого пола (О), планы водоснабжения и канализации с объёмными видами (В, К).\n\n' +
-                'Откройте «План этажей», загрузите подложку, задайте масштаб и разметьте помещения.',
-                'Проект'
-            );
-            return;
-        }
-        // На сводном плане сетей обязательны котельная и помещения тёплого
-        // пола: без них лист теряет смысл — по нему собирается компоновка
-        // котельной и раскладка петель.
-        const _zones = f => (f && f.zones) || [];
-        const _need = [];
-        if (!(_plans.floors || []).some(f => _zones(f).some(z => z.type === 'boiler')))
-            _need.push('отметить помещение котельной (тип зоны «Котельная»)');
-        const _wantTp = (this.state.tp1 || 0) + (this.state.tp2 || 0) > 0;
-        if (_wantTp && !(_plans.floors || []).some(f => _zones(f).some(z => (z.type || 'tp') === 'tp')))
-            _need.push('обвести помещения с тёплым полом');
-        // Экспликация помещений на сводном плане берётся из подробного расчёта
-        if (!(this.state.rooms || []).length)
-            _need.push('заполнить помещения в подробном расчёте — из них строится экспликация');
-        if (_need.length) {
-            app.alert('На плане не хватает разметки:\n\n— ' + _need.join('\n— ') +
-                '\n\nБез неё сводный план сетей не выпускается.', 'Проект');
-            return;
-        }
+        // Условия выпуска — одним списком (projectChecks): смета, комнаты
+        // подробного расчёта, размеченный план, котельная, зоны тёплого пола.
+        // От них зависит больше половины комплекта: сводные планы сетей и
+        // расчёт теплопотерь (MEP), планы и объёмные виды отопления с узлом
+        // коллектора (О), планы водоснабжения и канализации (В, К). Чего-то
+        // нет — показываем панель готовности целиком, а не первый отказ.
+        if (!this.projectReady()) { this.showProjectReadiness(); return; }
         // Название не спрашиваем: калькулятор считает жилые дома, а площадь берётся
         // из расчёта (см. projectObjectTitle). Спрашиваем только адрес — он идёт на
         // титульный лист и даёт точку на карте проектов в админке.
@@ -40753,6 +41027,12 @@ const app = {
             // и канализация — отдельным разделом с «– В», у каждого свой
             // титульный лист и своя спецификация.
             codeBase: new Date().getFullYear() + ' – ' + (this.state.calc_id || 'HC'),
+            // Номер расчёта в открытую: планы страница листов читает из
+            // передаточного ключа хранилища, а он один на все вкладки и
+            // переживает смену объекта. Без метки комплект мог собраться из
+            // спецификации одного дома и планов другого — и никто бы этого
+            // не заметил. Сверку делает сама страница листов.
+            calcId: this.state.calc_id || null,
             code: new Date().getFullYear() + ' – ' + (this.state.calc_id || 'HC') + ' – О',
             // Площадь дописывается из текущего расчёта, а не хранится в названии
             object: this.projectObjectTitle(pName),
@@ -40859,7 +41139,7 @@ const app = {
         // Комплект собран — отмечаем объект как выпущенный проект (вкладка
         // «Проекты» в админке). Разделы считаем ровно так же, как их поделит
         // страница листов: по номеру раздела сметы (см. SECTION_MARK в
-        // sheet_demo.html), MEP есть всегда.
+        // project.html), MEP есть всегда.
         const SEC_MARK = { 1: 'ТМ', 2: 'ТМ', 6: 'ТМ', 3: 'О', 4: 'О', 9: 'О', 5: 'В', 7: 'В', 8: 'В' };
         const marks = { MEP: true };
         list.forEach(i => {
@@ -40875,7 +41155,7 @@ const app = {
         // и открытием стоит окно адреса — а браузеры считают всплывающим окном
         // всё, что открылось не «сразу по клику», и молча блокируют. Ловим это:
         // если окно не открылось, показываем ссылку, по которой достаточно щёлкнуть.
-        const win = window.open('sheet_demo.html', '_blank');
+        const win = window.open('project.html', '_blank');
         if (!win || win.closed) {
             this.alert(
                 'Браузер заблокировал новое окно с листами проекта.\n\n' +
@@ -40887,7 +41167,7 @@ const app = {
                 const card = document.querySelector('.calc-dialog-card');
                 if (!card) return;
                 const a = document.createElement('a');
-                a.href = 'sheet_demo.html';
+                a.href = 'project.html';
                 a.target = '_blank';
                 a.textContent = 'Открыть листы проекта →';
                 a.style.cssText = 'display:inline-block; margin-top:6px; color:var(--primary); font-weight:700; text-decoration:none;';
@@ -42658,6 +42938,7 @@ const app = {
                     delete savedState.customCompany;
 
                     this.state = this.stateForLoadedEstimate(savedState);
+                    this.migrateXpsKitIds();
                     this.migrateSnowPipeSwap();
                     this.migrateBoilerSectionTitles();
                     this.migrateBoilerAutoLevel(savedState);
@@ -42705,6 +42986,7 @@ const app = {
                 delete savedState.customCompany;
 
                 this.state = this.stateForLoadedEstimate(savedState);
+                this.migrateXpsKitIds();
                 this.migrateSnowPipeSwap();
                 this.migrateBoilerSectionTitles();
                 this.migrateBoilerAutoLevel(savedState);
@@ -45051,6 +45333,7 @@ const app = {
         // открывает — получилась бы смета без подвала и без панели. Тариф к тому же
         // мог кончиться между сеансами.
         if (this.state.viewMode === 'money' || this.state.viewMode === 'cheaper') this.state.viewMode = 'equipment';
+        this.migrateXpsKitIds();
         this.migrateSnowPipeSwap();
         this.migrateElCostDefaultOff();
         this.migrateBoilerSectionTitles();
@@ -45807,7 +46090,7 @@ const app = {
             this._ufhGeomCache = null;
         }
         else if (originalId.endsWith('_water') || (originalId.startsWith('SPX-0001-') && !originalId.endsWith('_rad'))) { this.state.waterPipeMaterial = (this.state.waterPipeMaterial === 'pex') ? 'metal_plastic' : 'pex'; }
-        else if (originalId.startsWith('SMF-0001') || originalId === '418318') { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
+        else if (originalId.startsWith('SMF-0001') || originalId === '147312') { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
         else if (originalId.startsWith('SCS-0001')) { if (this.state.wellAutoType === 'sirio') this.state.wellAutoType = 'top'; else if (this.state.wellAutoType === 'top') this.state.wellAutoType = 'base'; else this.state.wellAutoType = 'sirio'; }
         else if (originalId.startsWith('SCQ') || originalId.startsWith('SCN')) { this.state.convectorType = (this.state.convectorType === 'scq') ? 'scn' : 'scq'; }
         else if (originalId.startsWith('SVT') || originalId.startsWith('SVL')) { this.state.convConnectionType = (this.state.convConnectionType === 'straight') ? 'angled' : 'straight'; }
@@ -47705,7 +47988,7 @@ const app = {
                 };
             });
         }
-        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || item.originalId === '418318')) {
+        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || item.originalId === '147312')) {
             // В строке может стоять и мат ROMMER (его подставляет «Аналог») — тогда и в
             // таблице показываем его, иначе она предлагала бы вернуться на STOUT под видом
             // текущего выбора. Бренд берём из самой строки: посекционный «Аналог» глобальный
@@ -47733,14 +48016,18 @@ const app = {
                 + _pipePerM2 * 2.5 * (_xk[2]?.price || 0) / 25
                 + _sheetsM2 * 1.76 * 1.1 * (_xk[3]?.price || 0) / 50;
             const _fmtA = (a) => String(Math.round(a * 100) / 100).replace('.', ',');
+            // Плиты добора до нормы ГОСТ Р 70834-2023 входят в цену системы: у мата
+            // они есть всегда, у XPS 50 мм — только там, где одной плиты мало.
+            const _addMat = this.ufhInsAddCost(this.UFH_INS_R_MAT);
+            const _addXps = this.ufhInsAddCost(0.05 / this.UFH_INS_LAMBDA);
             customAlts = [
                 { id: 'mat', name: _matR ? 'Маты с бобышками ROMMER' : 'Маты с бобышками STOUT', brand: _matR ? 'ROMMER' : 'STOUT',
-                  price: p_mat * 1.05 / _matArea, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
-                  sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен',
+                  price: p_mat * 1.05 / _matArea + _addMat, unitM2: p_mat / _matArea, unitPrice: p_mat, unitLabel: `за мат ${_fmtA(_matArea)} м²`,
+                  sysText: 'мат с запасом 5 %, трубу держат бобышки — крепёж не нужен' + (_addMat > 0 ? ', плюс плиты добора до нормы' : ''),
                   imgId: _matR ? _matR.id : _matCat?.id },
                 { id: 'xps', name: 'Пенополистирол XPS + скобы', brand: 'Technonicol',
-                  price: _xpsSys, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
-                  sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч',
+                  price: _xpsSys + _addXps, unitM2: p_xps / _xpsArea, unitPrice: p_xps, unitLabel: `за лист ${_fmtA(_xpsArea)} м²`,
+                  sysText: 'листы с запасом 5 %, подложка, дюбели, скобы, скотч' + (_addXps > 0 ? ', плюс второй слой до нормы' : ''),
                   imgId: _xk[0]?.id }
             ];
         }
@@ -49821,13 +50108,31 @@ const app = {
      * Надбавка к расценке «Монтаж утеплителя для укладки ТП» по основанию,
      * которое реально легло в смету (раздел 4.2): { k, label }.
      * Мат STOUT — 1; мат ROMMER — 1,1; XPS с подложкой и крепежом — 1,3.
+     * Каждый слой плит добора сверх основания — ещё +20 %.
      */
     ufhBaseWorkFactor: function () {
         const rows = (this.currentEquipmentList || []).filter(x => String(x.group || '').startsWith('4.2'));
         const nm = x => String(x.name || '').toLowerCase();
-        if (rows.some(x => /xps|пенополистирол/.test(nm(x)))) return { k: 1.3, label: 'XPS с подложкой, дюбелями и скобами — монтаж утеплителя +30 %' };
-        if (rows.some(x => /мат с бобышками/.test(nm(x)) && /rommer/i.test(String(x.brand || '')))) return { k: 1.1, label: 'маты ROMMER (полезных 0,72 м² против 0,88 у STOUT, стыков больше) — монтаж утеплителя +10 %' };
-        return { k: 1, label: '' };
+        const matRow = rows.find(x => /мат с бобышками/.test(nm(x)));
+        let k = 1;
+        const parts = [];
+        if (matRow) {
+            if (/rommer/i.test(String(matRow.brand || ''))) {
+                k = 1.1; parts.push('маты ROMMER (полезных 0,72 м² против 0,88 у STOUT, стыков больше) — монтаж утеплителя +10 %');
+            }
+        } else if (rows.some(x => /xps|пенополистирол/.test(nm(x)))) {
+            k = 1.3; parts.push('XPS с подложкой, дюбелями и скобами — монтаж утеплителя +30 %');
+        }
+        // Слой добора — это ещё одна раскладка плит с подрезкой по месту и
+        // проклейкой швов, но без подготовки основания, разметки и выноса упаковки:
+        // они оплачены первым слоем. По практике монтажа это около пятой части
+        // операции, отсюда +20 % за каждый слой сверх основания.
+        const add = (this._ufhInsPlan && this._ufhInsPlan.maxAdd) || 0;
+        if (add > 0) {
+            k = Math.round((k + 0.2 * add) * 100) / 100;
+            parts.push(`добор утеплителя под норму, ${add} ${add === 1 ? 'слой' : 'слоя'} плит — +${20 * add} %`);
+        }
+        return { k: k, label: parts.join('; ') };
     },
 
     pickPanelForWindow: function (list, reqPwr, winW) {
@@ -51462,8 +51767,8 @@ const app = {
             if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
             else this.state.waterPipeMaterial = 'metal_plastic';
         }
-        else if (originalId.startsWith('SMF-0001') || originalId === '418318') {
-            if (chosenId === '418318' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
+        else if (originalId.startsWith('SMF-0001') || originalId === '147312') {
+            if (chosenId === '147312' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
             else this.state.ufhBaseType = 'mat';
         }
         else if (originalId.startsWith('SCS-0001')) {
@@ -53182,6 +53487,37 @@ const app = {
         delete this.state.elCostDefaultOn;
         this.state.showElCost = false;
     },
+    /**
+     * Разовый перенос сохранённых смет: три розничные позиции набора XPS
+     * переехали на артикулы Петровича (418318 → 147312, 138605 → 166420,
+     * 160028 → 1230304), чтобы цену можно было сверить по ссылке магазина.
+     *
+     * Старый номер лежит в смете не только в списке позиций: им подписаны ручная
+     * замена (ключ и значение в swaps), правка количества и снятая галочка
+     * «не нужно». Без переноса у того, кто выбирал XPS руками, выбор отвалился бы
+     * к мату, а исправленное количество вернулось к расчётному.
+     */
+    XPS_KIT_ID_MOVES: { '418318': '147312', '138605': '166420', '160028': '1230304' },
+    migrateXpsKitIds: function () {
+        const map = this.XPS_KIT_ID_MOVES;
+        const s = this.state;
+        const sw = s.swaps;
+        if (sw) {
+            Object.keys(sw).forEach(k => {
+                let v = sw[k];
+                if (typeof v === 'string' && map[v]) v = map[v];
+                if (map[k]) { delete sw[k]; sw[map[k]] = v; }
+                else if (v !== sw[k]) sw[k] = v;
+            });
+        }
+        ['qtyOverrides', 'optItems'].forEach(key => {
+            const o = s[key];
+            if (!o) return;
+            Object.keys(o).forEach(k => {
+                if (map[k]) { o[map[k]] = o[k]; delete o[k]; }
+            });
+        });
+    },
     migrateSnowPipeSwap: function () {
         const sw = this.state.swaps;
         if (!sw || !sw['snow_pipe']) return;
@@ -54245,13 +54581,22 @@ const app = {
         this._planCheckData = {
             floors: floors.map(f => {
                 if (!hasPlan(f)) return null;   // пустая вкладка этажа — не сверяем
-                let tpNames = {}, wcNames = {};
+                // tpIds — зоны, знающие id своей комнаты расчёта (редактор
+                // ставит его при авторазметке и при подписи кликом). Имена
+                // оставляем рядом: у зон, размеченных до этого, id нет, и
+                // сверять их по-прежнему приходится по названию.
+                let tpNames = {}, wcNames = {}, tpIds = {}, tpLinked = {};
                 (f.zones || []).forEach(z => {
                     if (f.pxPerM && Array.isArray(z.pts) && z.pts.length >= 3)
                         zonesArea += polyM2(z.pts, f.pxPerM);
                     let nm = String(z.name || '').trim();
-                    if (z.type === 'tp') { if (nm) tpNames[nm.toLowerCase()] = nm; }
-                    else if (z.type === 'wc') { if (nm) wcNames[nm.toLowerCase()] = nm; }
+                    if (z.type === 'tp') {
+                        if (nm) tpNames[nm.toLowerCase()] = nm;
+                        if (z.roomId != null) {
+                            tpIds[String(z.roomId)] = nm;
+                            if (nm) tpLinked[nm.toLowerCase()] = 1;
+                        }
+                    } else if (z.type === 'wc') { if (nm) wcNames[nm.toLowerCase()] = nm; }
                 });
                 // приборы: сколько каких стоит в каждом санузле плана
                 let fx = {}, risers = 0, loose = 0;
@@ -54261,7 +54606,8 @@ const app = {
                     if (!key) { loose++; return; }
                     (fx[key] = fx[key] || {})[q.t] = ((fx[key] || {})[q.t] || 0) + 1;
                 });
-                return { tpNames: tpNames, rads: (f.rads || []).length,
+                return { tpNames: tpNames, tpIds: tpIds, tpLinked: tpLinked,
+                    rads: (f.rads || []).length,
                     wcNames: wcNames, fx: fx, risers: risers, loose: loose,
                     fixTotal: (f.fixtures || []).filter(q => q.t !== 'riser').length };
             }),
@@ -54305,16 +54651,169 @@ const app = {
     ufhSupply: function (dT) {
         return this.UFH_SUPPLY + ((dT || this.UFH_DTS[0]) - this.UFH_DTS[0]) / 2;
     },
+    /* --- Утеплитель под тёплым полом -------------------------------------
+     *
+     * Норма — ГОСТ Р 70834-2023 «Системы водяного отопления, встроенные в пол»
+     * (действует с 01.04.2024), п. 9.1.5 и таблица 2: изолирующий слой под
+     * трубой должен давать не меньше
+     *   0,75 м²·°С/Вт — установка над отапливаемым помещением;
+     *   1,25 — над неотапливаемым или нерегулярно отапливаемым помещением либо
+     *          помещением, расположенным непосредственно на грунте;
+     *   1,25 / 1,50 / 2,00 — когда под системой отопления наружный воздух, по
+     *          его расчётной температуре (выше 0, от −5 до 0 включ., ниже −5).
+     *
+     * Считаем сопротивление только того, что кладёт монтажник — мата или плит:
+     * п. 9.1.5 говорит про «изолирующий слой» системы, а не про весь пирог, да и
+     * панель «Пол» может быть не заполнена — подставлять оттуда чужие 100 мм XPS
+     * значило бы додумывать за строителя.
+     *
+     * Мат с бобышками сам норму не добирает нигде: у него EPS 20 мм, R ≈ 0,53
+     * при требовании 0,75 даже на межэтажном перекрытии. Поэтому под основание
+     * подкладываются плиты, при нужде в несколько слоёв (ufhInsLayers).
+     */
+    UFH_INS_LAMBDA: 0.034,   // расчётная теплопроводность плит XPS, Вт/(м·°С) — карточка товара
+    UFH_INS_R_MAT: 0.53,     // мат с бобышками: EPS 20 мм при λ 0,038
+    /** Ряд плит добора от тонкой к толстой: { thick, r, item }. */
+    ufhInsGrid: function () {
+        return (catalog.ufh_ins_plates || []).map(p => ({
+            thick: p.thick,
+            r: (p.thick / 1000) / (p.lambda || this.UFH_INS_LAMBDA),
+            item: p
+        })).sort((a, b) => a.thick - b.thick);
+    },
+    /** Требование таблицы 2 по этажу: { r, why }. */
+    ufhInsReq: function (fl) {
+        if (fl === 2) return { r: 0.75, why: 'под полом отапливаемый первый этаж' };
+        const s = this.state;
+        const matId = s.floorEnabled ? String(s.floorMatId || '') : 'floor_ground_ins';
+        if (matId === 'floor_heated') return { r: 0.75, why: 'под полом отапливаемое помещение' };
+        if (matId === 'floor_lags_ins') {
+            // Пол на лагах — это проветриваемое подполье: средой под системой
+            // отопления оказывается наружный воздух, и таблица 2 требует тем
+            // больше, чем холоднее расчётная зима.
+            const t = s.selectedCity ? s.selectedCity.temp : Math.round(20 - (s.region || 100) * 0.45);
+            const why = `под полом проветриваемое подполье, расчётная температура ${t} °С`;
+            if (t > 0) return { r: 1.25, why };
+            if (t >= -5) return { r: 1.50, why };
+            return { r: 2.00, why };
+        }
+        if (/^floor_basement/.test(matId)) return { r: 1.25, why: 'под полом неотапливаемый подвал' };
+        return { r: 1.25, why: 'пол по грунту' };
+    },
+    /**
+     * Набор плит под требуемое R добора. Сначала пробуем закрыть остаток одной
+     * плитой — самой тонкой из подходящих, чтобы не задирать пирог пола зря; не
+     * хватило и самой толстой — кладём её и повторяем. Слои идут снизу вверх.
+     */
+    ufhInsLayers: function (need) {
+        const grid = this.ufhInsGrid();
+        const out = [];
+        let left = need;
+        while (left > 0.005 && grid.length && out.length < 4) {
+            const fit = grid.find(g => g.r >= left - 0.005);
+            const use = fit || grid[grid.length - 1];
+            out.push(use);
+            left -= use.r;
+        }
+        return out;
+    },
+    /**
+     * План утепления по этажам: что требует норма, что даёт основание, какие
+     * плиты добираются и сколько их квадратов. maxAdd — наибольшее число слоёв
+     * добора по этажам, по нему идёт надбавка к расценке монтажа.
+     */
+    ufhInsPlan: function (a1, a2) {
+        const s = this.state;
+        const base = (s.ufhBaseType === 'xps')
+            ? { r: 0.05 / this.UFH_INS_LAMBDA, label: 'плита XPS 50 мм' }
+            : { r: this.UFH_INS_R_MAT, label: 'мат с бобышками (EPS 20 мм)' };
+        const floors = [], byThick = {};
+        let maxAdd = 0;
+        [[1, parseFloat(a1) || 0], [2, parseFloat(a2) || 0]].forEach(p => {
+            const fl = p[0], area = p[1];
+            if (!(area > 0)) return;
+            const req = this.ufhInsReq(fl);
+            const layers = (base.r >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - base.r);
+            layers.forEach(l => {
+                const k = String(l.thick);
+                if (!byThick[k]) byThick[k] = { item: l.item, thick: l.thick, r: l.r, area: 0, floors: [] };
+                byThick[k].area += area;
+                if (byThick[k].floors.indexOf(fl) < 0) byThick[k].floors.push(fl);
+            });
+            if (layers.length > maxAdd) maxAdd = layers.length;
+            floors.push({
+                fl: fl, area: area, req: req, rBase: base.r,
+                rTotal: base.r + layers.reduce((x, l) => x + l.r, 0),
+                layers: layers,
+                add: layers.reduce((x, l) => x + l.thick, 0)
+            });
+        });
+        if (!floors.length) return null;
+        return { base: base, floors: floors, byThick: byThick, maxAdd: maxAdd };
+    },
+    /**
+     * Цена добора утеплителя, ₽ на м² пола, при основании с сопротивлением baseR.
+     * Нужна таблице «Заменить»: мат и XPS сравнивать по цене самой подложки уже
+     * нельзя — под мат норма требует плит, и разница между вариантами не та, что
+     * между матом и листом. Берём тяжёлый этаж из тех, что есть в расчёте.
+     */
+    ufhInsAddCost: function (baseR) {
+        const s = this.state;
+        const fls = [];
+        if ((parseFloat(s.tp1) || 0) > 0) fls.push(1);
+        if (s.floors === 2 && (parseFloat(s.tp2) || 0) > 0) fls.push(2);
+        if (!fls.length) fls.push(1);
+        let worst = 0;
+        fls.forEach(fl => { const r = this.ufhInsReq(fl).r; if (r > worst) worst = r; });
+        if (baseR >= worst - 0.005) return 0;
+        return this.ufhInsLayers(worst - baseR)
+            .reduce((a, l) => a + 1.05 * (l.item.price || 0) / (l.item.area || 1), 0);
+    },
+    /**
+     * Строка «норма и факт» для подсказок раздела «4.2. Утеплитель и крепёж».
+     * Зелёным/янтарным красится сопоставление с ГОСТ Р 70834-2023, а не доля
+     * тыльной отдачи: доля — справочная величина, см. ufhBackLoss.
+     */
+    ufhInsNote: function () {
+        const plan = this._ufhInsPlan;
+        if (!plan) return '';
+        const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
+        let out = `<br><b>Утепление под трубой (ГОСТ Р 70834-2023, п. 9.1.5, табл. 2):</b><br>`;
+        plan.floors.forEach(f => {
+            const ok = f.rTotal >= f.req.r - 0.005;
+            const st = f.layers.length
+                ? `${plan.base.label} + ${f.layers.map(l => l.thick + ' мм').join(' + ')}`
+                : plan.base.label;
+            out += `• ${f.fl} этаж (${f.req.why}): норма ${n(f.req.r)} — уложено ${st}, ` +
+                `<b style="color:${ok ? '#22C55E' : '#F59E0B'};">R = ${n(f.rTotal)} м²·°С/Вт</b>.<br>`;
+        });
+        const addMm = plan.floors.reduce((m, f) => Math.max(m, f.add), 0);
+        if (addMm > 0) {
+            out += `Плиты добора ложатся под основание и поднимают пирог пола ещё на ${addMm} мм — ` +
+                `проверьте высоту порогов и дверных проёмов.<br>`;
+        }
+        const bk = this.ufhBackLoss();
+        if (bk) {
+            out += `<b>Тыльная теплоотдача (1 этаж, вниз в ${bk.under}):</b> ~${String(bk.qBack).replace('.', ',')} Вт/м², ` +
+                `${bk.pct} % от лицевой (${bk.qFace} Вт/м²). Величина справочная, а не приёмочная: лицевая отдача сверху ` +
+                `ограничена температурой поверхности +26 °C (СП 60.13330.2020, п. 6.4.8), поэтому доля высока и у ` +
+                `правильного пирога — соответствие смотрите по строке нормы выше.`;
+        }
+        return out;
+    },
     /**
      * Тыльная теплоотдача тёплого пола 1-го этажа: сколько тепла уходит вниз,
-     * в грунт или подвал, мимо помещения. Ориентир справочника проектировщика
-     * (и DIN EN 1264) — не больше 10 % от лицевой; выше — утеплитель под полом
-     * тонковат, и хозяин греет грунт.
+     * в грунт или подвал, мимо помещения. Величина справочная, а не приёмочная:
+     * долю от лицевой отдачи мерить нормой нельзя. Лицевая сверху ограничена
+     * температурой поверхности +26 °C (СП 60.13330.2020, п. 6.4.8) — это около
+     * 40–50 Вт/м² в жилой комнате, знаменатель маленький, и доля уходит за 10 %
+     * даже у совершенно правильного пирога. Соответствие проверяется по
+     * абсолютной величине — сопротивлению изолирующего слоя, ufhInsPlan().
      *
-     * Оценка: q_тыл = (t_ср.воды − t_под полом) / (R_подложки + R_конструкции пола).
+     * Оценка: q_тыл = (t_ср.воды − t_под полом) / (R_утеплителя + R_конструкции пола).
      *   t_ср.воды — график узла подмеса (ufhSupply − dT/2, обычно 37,5 °C);
      *   t_под полом — +5 °C (грунт под утеплённым полом / холодный подвал);
-     *   R_подложки — мат с бобышками 20 мм (≈0,55) или плита XPS 50 мм (≈1,45);
+     *   R_утеплителя — основание плюс подобранные слои добора (ufhInsPlan);
      *   R_конструкции — пол 1 этажа из FLOOR_MATERIALS_DB (без грунта).
      * Пол над отапливаемым помещением тепло вниз не теряет — там не считаем.
      * Второй этаж не считаем всегда: под ним тёплый первый.
@@ -54332,7 +54831,11 @@ const app = {
             const m = FLOOR_MATERIALS_DB.find(x => x.id === matId);
             if (m) rConstr = m.R;
         }
-        const rBase = (s.ufhBaseType === 'xps') ? 1.45 : 0.55;
+        // Утеплитель берём тот, что реально лёг в смету: основание плюс слои добора.
+        const plan = this._ufhInsPlan;
+        const pf1 = plan && plan.floors.find(f => f.fl === 1);
+        const rBase = pf1 ? pf1.rTotal
+            : ((s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT);
         const dT = (this._ufhBal && this._ufhBal.dT) || this.UFH_DTS[0];
         const tw = this.ufhSupply(dT) - dT / 2;
         const qBack = Math.max(0, (tw - 5) / (rBase + rConstr));
@@ -56256,8 +56759,39 @@ const app = {
             nameCount[k] = (nameCount[k] || 0) + 1;
         });
         let dupWarned = {};
-        // Сторона плана: каждая подписанная зона ТП должна найти свою комнату
+        // Зоны, связанные с комнатой по id: имена у них могут повторяться и
+        // меняться — сверка от этого не страдает. Разобранные здесь имена
+        // дальше пропускаем, чтобы не сверять ту же зону второй раз.
+        let idFloor = {}, idLabel = {}, linkedKeys = {}, coveredIds = {}, coveredNames = {};
+        data.floors.forEach((fl, idx) => {
+            if (!fl) return;
+            for (const id in (fl.tpIds || {})) { idFloor[id] = idx + 1; idLabel[id] = fl.tpIds[id]; }
+            for (const k in (fl.tpLinked || {})) linkedKeys[k] = 1;
+        });
+        let roomById = {};
+        rooms.forEach(r => { if (r.id != null) roomById[String(r.id)] = r; });
+        for (const id in idFloor) {
+            const r = roomById[id];
+            const label = idLabel[id] || (r && r.name) || 'без имени';
+            if (!r) {
+                warns.push('Зона ТП <b>' + esc(label) + '</b> на плане привязана к помещению, ' +
+                    'которого в расчёте больше нет — подпишите её заново.');
+                continue;
+            }
+            coveredIds[id] = 1;
+            coveredNames[String(r.name || '').trim().toLowerCase()] = 1;
+            if (!(r.sys && r.sys.includes('tp'))) {
+                warns.push('<b>' + esc(r.name) + '</b>: на плане есть зона ТП, а в расчёте тёплый пол у комнаты выключен.');
+                continue;
+            }
+            const rfId = parseInt(r.floor) || 1;
+            if (rfId !== idFloor[id])
+                warns.push('<b>' + esc(r.name) + '</b>: зона ТП нарисована на плане ' + idFloor[id] +
+                    ' этажа, а в расчёте комната на ' + rfId + '-м.');
+        }
+        // Сторона плана: зоны без ссылки на комнату — сверяем по имени, как раньше
         for (const k in zoneName) {
+            if (linkedKeys[k] || coveredNames[k]) continue;   // разобрана по id
             if (nameCount[k] > 1) {
                 if (!dupWarned[k]) {
                     dupWarned[k] = 1;
@@ -56281,11 +56815,13 @@ const app = {
         // постепенно, и ругаться на пустую вкладку этажа значило бы шуметь зря.
         rooms.forEach(r => {
             if (!(r.sys && r.sys.includes('tp'))) return;
+            if (r.id != null && coveredIds[String(r.id)]) return;   // зона найдена по id
             const k = String(r.name || '').trim().toLowerCase();
             if (!k || nameCount[k] > 1) return;             // без имени / тёзки — разобрано выше
             if (zoneName[k]) return;                        // зона есть — разобрано выше
             const fl = data.floors[(parseInt(r.floor) || 1) - 1];
-            if (!fl || !Object.keys(fl.tpNames).length) return;
+            if (!fl || (!Object.keys(fl.tpNames).length &&
+                !Object.keys(fl.tpIds || {}).length)) return;
             warns.push('<b>' + esc(r.name) + '</b>: по расчёту тёплый пол, а зоны ТП на плане нет.');
         });
         // Приборы под окнами — только по этажам, где радиаторы уже расставлены
@@ -63606,28 +64142,46 @@ const app = {
                     `• Петель в расчёте: <b>${(this._ufhCalc && this._ufhCalc.loops) || 0}</b> — столько же выходов у коллекторов.<br>` +
                     (_bal2 ? `• Самая нагруженная петля: ${Math.round(_bal2.worst.rows.reduce((a, r) => Math.max(a, r.m), 0))} м, потери ${_bal2.worst.worstDp.toFixed(1).replace('.', ',')} кПа при расходе ${_bal2.worst.rows.reduce((a, r) => Math.max(a, r.flow), 0).toFixed(1).replace('.', ',')} л/мин.<br>` : '') +
                     (() => {
-                        // Тыльная теплоотдача — сколько уходит вниз мимо помещения
+                        // Утепление под трубой: цвет — по норме, доля тыльной отдачи справочно
+                        const _pl = this._ufhInsPlan;
+                        const _n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
+                        let _s = '';
+                        if (_pl) {
+                            _s += _pl.floors.map(f => {
+                                const _ok = f.rTotal >= f.req.r - 0.005;
+                                return `• Утепление под трубой, ${f.fl} этаж (${f.req.why}): норма ГОСТ Р 70834-2023 (табл. 2) — ${_n(f.req.r)}, ` +
+                                    `<b style="color:${_ok ? '#22C55E' : '#F59E0B'};">уложено R = ${_n(f.rTotal)} м²·°С/Вт</b>` +
+                                    (f.layers.length ? ` (${_pl.base.label} + ${f.layers.map(l => l.thick + ' мм').join(' + ')})` : ` (${_pl.base.label})`) + `.<br>`;
+                            }).join('');
+                        }
                         const _bk = this.ufhBackLoss();
-                        if (!_bk) return '';
-                        const _bad = _bk.pct > 10;
-                        return `• Тыльная теплоотдача пола 1 этажа (вниз, в ${_bk.under}): ~${String(_bk.qBack).replace('.', ',')} Вт/м² — <b style="color:${_bad ? '#F59E0B' : '#22C55E'};">${_bk.pct} % от лицевой</b> (${_bk.qFace} Вт/м²). Ориентир справочника проектировщика и DIN EN 1264 — не выше 10 %.${_bad ? ' Выше — вниз уходит заметная доля тепла: замените подложку на плиту XPS потолще (кнопка «Заменить» на строке подложки) или утеплите конструкцию пола 1 этажа.' : ''}<br>`;
+                        if (_bk) {
+                            _s += `• Тыльная теплоотдача пола 1 этажа (вниз, в ${_bk.under}): ~${String(_bk.qBack).replace('.', ',')} Вт/м², ` +
+                                `${_bk.pct} % от лицевой (${_bk.qFace} Вт/м²) — справочно. Долей соответствие не мерят: лицевая отдача ` +
+                                `сверху ограничена температурой поверхности +26 °C (СП 60.13330.2020, п. 6.4.8), и процент выходит высоким ` +
+                                `даже у правильного пирога. Норма — в строке выше.<br>`;
+                        }
+                        return _s;
                     })() +
                     (_cmp ? `• Для сравнения: ${_cmp}. Сменить трубу — «Заменить» на этой строке; петли, коллекторы и насос пересчитаются.<br>` : '') +
                     `</span>`;
             }
             case 'ufh_mat': {
-                const _bk = this.ufhBackLoss();
-                const _bkLine = _bk
-                    ? `<br><b>Тыльная теплоотдача (1 этаж):</b> ~${String(_bk.qBack).replace('.', ',')} Вт/м² — ${_bk.pct} % от лицевой; ориентир — не выше 10 % (справочник проектировщика, DIN EN 1264).${_bk.pct > 10 ? ' Мат 20 мм тепло вниз держит слабо — рассмотрите плиту XPS (кнопка «Заменить»).' : ''}`
-                    : '';
-                return `<span style="${styles}"><span style="${head}">Мат с бобышками</span><b>Зачем:</b> Быстрый монтаж и фиксация трубы.<br><b>Расчет:</b> Чистая площадь ТП (${val1} м²) + 5% запас на подрезку.${_bkLine}</span>`;
+                return `<span style="${styles}"><span style="${head}">Мат с бобышками</span><b>Зачем:</b> Быстрый монтаж и фиксация трубы.<br><b>Расчет:</b> Чистая площадь ТП (${val1} м²) + 5% запас на подрезку.<br><b>Изоляция:</b> EPS 20 мм в основании мата, R ≈ 0,53 м²·°С/Вт — норму он не добирает сам, разницу закрывают плиты добора.${this.ufhInsNote()}</span>`;
             }
             case 'ufh_xps': {
-                const _bk = this.ufhBackLoss();
-                const _bkLine = _bk
-                    ? `<br><b>Тыльная теплоотдача (1 этаж):</b> ~${String(_bk.qBack).replace('.', ',')} Вт/м² — ${_bk.pct} % от лицевой; ориентир — не выше 10 % (справочник проектировщика, DIN EN 1264).`
-                    : '';
-                return `<span style="${styles}"><span style="${head}">Пенополистирол (XPS)</span><b>Зачем:</b> Теплоизоляция от перекрытия/грунта.<br><b>Толщина:</b> 50 мм (стандарт для 1 этажа).<br><b>Расчет:</b> Площадь ТП + 5% запас.${_bkLine}</span>`;
+                return `<span style="${styles}"><span style="${head}">Пенополистирол (XPS)</span><b>Зачем:</b> Теплоизоляция от перекрытия/грунта.<br><b>Толщина:</b> 50 мм, R ≈ 1,47 м²·°С/Вт.<br><b>Расчет:</b> Площадь ТП + 5% запас.${this.ufhInsNote()}</span>`;
+            }
+            case 'ufh_ins_plate': {
+                // val1 — слой из ufhInsPlan().byThick, val2 — сам план
+                const L = val1 || {}, plan = val2 || this._ufhInsPlan;
+                const flStr = (L.floors || []).map(f => f + ' этаж').join(' и ');
+                const baseLbl = (plan && plan.base) ? plan.base.label : 'основание';
+                return `<span style="${styles}"><span style="${head}">Плита утеплителя ${L.thick} мм</span>` +
+                    `<b>Зачем:</b> Добор теплоизоляции до нормы: ${baseLbl} в одиночку требуемое сопротивление не даёт, и тепло уходит вниз мимо помещения.<br>` +
+                    `<b>Куда:</b> На подготовленное основание, ${flStr || '1 этаж'}; поверх плиты — ${baseLbl} с трубой. Из нескольких материалов сверху кладётся менее сжимаемый (ГОСТ Р 70834-2023, п. 9.1.7), поэтому мягкая подложка — всегда нижним слоем.<br>` +
+                    `<b>Расчёт:</b> ${Math.round(L.area)} м² тёплого пола + 5 % на подрезку, полезная площадь плиты ${String(L.item && L.item.area || 0).replace('.', ',')} м².` +
+                    this.ufhInsNote() + `</span>`;
             }
             case 'ufh_damper': {
                 // val1 — результат ufhTapeCalc, val2 — метраж рулона
@@ -66683,6 +67237,7 @@ const app = {
         const _ufhGeom = (hasTp && tpArea > 0) ? this.ufhGeom() : null;
         const _ufhCalc = (hasTp && tpArea > 0) ? this.ufhCalc() : null;
         this._ufhCalc = _ufhCalc;
+        this._ufhInsPlan = null;   // заполняется в разделе «4.2. Утеплитель и крепёж»
         const tpFloorCalc = (area, step, gi) => {
             if (!(area > 0)) return { m: 0, loops: 0, geo: null };
             const fc = _ufhCalc && _ufhCalc.floors.find(f => f.fl === gi + 1);
@@ -70968,6 +71523,14 @@ const app = {
             addToBill(catalog.protective_sleeves[0], loops, "Втулка красная.", grpPipe); addToBill(catalog.protective_sleeves[1], loops, "Втулка синяя.", grpPipe); addToBill(catalog.label_kits[1], 1, "Наклейки.", grpPipe);
             let grpIns = "4.2. УТЕПЛИТЕЛЬ И КРЕПЁЖ";
 
+            // Добор утеплителя до требования ГОСТ Р 70834-2023, табл. 2. Считается
+            // до строк основания: от него зависит и подсказка к ним, и надбавка к
+            // расценке монтажа.
+            const _insPlan = this.ufhInsPlan(
+                this.state.tp1,
+                this.state.floors === 2 ? this.state.tp2 : 0);
+            this._ufhInsPlan = _insPlan;
+
             if (this.state.ufhBaseType === 'mat') {
                 let mt = catalog.mats[0]; mt.alts = [catalog.xps_kit[0]];
                 // Мат ROMMER мельче стаутовского (полезные 0,72 м² против 0,88), поэтому при
@@ -70983,6 +71546,18 @@ const app = {
                 addToBill(mt, mc, this.getDesc('ufh_mat', tpArea), grpIns);
             }
             else { let xpsItem = catalog.xps_kit[0]; xpsItem.alts = catalog.mats; let sheets = Math.ceil((tpArea / xpsItem.area) * 1.05); addToBill(xpsItem, sheets, this.getDesc('ufh_xps', tpArea), grpIns); if (catalog.ufh_mat && catalog.ufh_mat[0]) { let matRolls = Math.ceil(tpArea / catalog.ufh_mat[0].pack_m2); addToBill(catalog.ufh_mat[0], matRolls, `Подложка 3 мм, ${tpArea} м² (рулон 30 м²).`, grpIns); } let totalDowels = Math.ceil(tpArea * 5); addToBill(catalog.xps_kit[1], Math.ceil(totalDowels / 100), `Дюбеля.`, grpIns); let totalStaples = Math.ceil(tpMeters * 2.5); addToBill(catalog.xps_kit[2], Math.ceil(totalStaples / 25), `Скобы.`, grpIns); let tapeRolls = Math.ceil((sheets * 1.76 * 1.1) / 50); addToBill(catalog.xps_kit[3], tapeRolls, `Скотч.`, grpIns); }
+
+            // Плиты добора. Слои идут отдельными строками по толщине: монтажнику
+            // важно, что под основание ложится именно 30 мм, а не «утеплитель».
+            if (_insPlan) {
+                Object.keys(_insPlan.byThick)
+                    .sort((a, b) => parseFloat(a) - parseFloat(b))
+                    .forEach(k => {
+                        const L = _insPlan.byThick[k];
+                        const sh = Math.ceil((L.area / L.item.area) * 1.05);
+                        addToBill(L.item, sh, this.getDesc('ufh_ins_plate', L, _insPlan), grpIns);
+                    });
+            }
 
             // Демпферная лента идёт при любом основании: она развязывает стяжку со
             // стенами, а не утепляет пол. Скотчу из набора XPS не замена — тот

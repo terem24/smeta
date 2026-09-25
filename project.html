@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<!-- Комплект листов конкретного объекта: в поиске ему делать нечего.
+     Заголовок вкладки страница ставит сама — объект, разделы и дата. -->
+<meta name="robots" content="noindex, nofollow">
+<title>Листы проекта</title>
+<style>
+  /* Шрифты оригинала, полными файлами: ISOCPEUR из поставки AutoCAD и
+     GOST-Common. local() первым — если шрифт стоит в системе, берём его. */
+  /* Только файл из папки fonts: local() убран намеренно. Установленный в
+     системе ISOCPEUR зарегистрирован курсивным начертанием, и при запросе
+     прямого правило local() не совпадало — браузер откатывался на Arial
+     Narrow, отчего лист переставал быть похожим на оригинал. */
+  @font-face {
+    font-family: 'ISOCPEUR'; font-style: normal;
+    src: url('fonts/isocpeur.ttf?v=4.14') format('truetype');
+  }
+  @font-face {
+    font-family: 'GOST Common'; font-style: normal;
+    src: url('fonts/gost_common.ttf?v=4.14') format('truetype');
+  }
+  body { margin: 0; background: #6b6b6b; font: 14px/1.4 system-ui, sans-serif; color: #fff; }
+  /* Шапка липкая: в комплекте десятки листов А3, и добраться до разделов,
+     пролистав их до конца, было нельзя. */
+  .bar { padding: 10px 16px; background: #2b2b2b; display: flex; gap: 14px; align-items: center;
+         flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+  .bar b { font-weight: 600; }
+  .secs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .secs .sec { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px;
+               border: 1px solid #555; border-radius: 8px; font-size: 13px; }
+  .secs .sec a { color: #fff; text-decoration: none; }
+  .secs .sec a:hover { text-decoration: underline; }
+  .secs .sec button { font: inherit; font-size: 12px; padding: 2px 7px; border-radius: 6px;
+                      border: 1px solid #666; background: #3a3a3a; color: #eee; cursor: pointer; }
+  .secs .sec button:hover { background: #4a4a4a; }
+  .wrap { padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 24px; }
+  .paper { background: #fff; box-shadow: 0 4px 24px rgba(0,0,0,.5); }
+  svg.sheet-a3 { display: block; width: min(96vw, 1400px); height: auto; }
+  svg.sheet-a3 text { fill: #000; stroke: none; }
+
+  @media print {
+    @page { size: A3 landscape; margin: 0; }
+    body { background: #fff; }
+    .bar { display: none; }
+    /* Печать одного раздела: остальные листы на время печати скрыты —
+       заказчику обычно нужен раздел целиком, а не весь комплект. */
+    body.print-one .paper { display: none; }
+    body.print-one .paper.print-me { display: block; }
+    .wrap { padding: 0; gap: 0; }
+    .paper { box-shadow: none; break-after: page; }
+    .paper:last-child { break-after: auto; }
+    svg.sheet-a3 { width: 420mm; height: 297mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <b id="bar_title">Листы проекта</b>
+  <span id="bar_note"></span>
+  <span class="secs" id="bar_secs"></span>
+  <label style="display:flex;gap:6px;align-items:center">Обвязка узлов:
+    <select id="piping_sel" onchange="try{localStorage.setItem('project_nodes_piping',this.value)}catch(e){};location.reload()">
+      <option value="insulated">группы в теплоизоляции (по подбору)</option>
+      <option value="steel">сборная из нержавейки</option>
+    </select>
+  </label>
+  <button onclick="window.print()">Печать / PDF — весь комплект</button>
+</div>
+
+<div class="wrap" id="out"></div>
+
+<script src="project_sheets.js?v=4.25"></script>
+<script src="project_scheme.js?v=4.51"></script>
+<script src="boiler_wall.js?v=1.0"></script>
+<script src="project_layout.js?v=4.17"></script>
+<script src="project_plans.js?v=4.27"></script>
+<script src="project_nodes.js?v=4.15"></script>
+<!-- Узел коллектора ТП: рисуется вектором и берёт петли из project_plans.js,
+     поэтому подключается после него. -->
+<script src="project_ufh_manifold.js?v=4.15"></script>
+<!-- Листы узлов по 3D-рендеру: коллектор водоснабжения и панельный радиатор. -->
+<script src="project_node_sheets.js?v=4.15"></script>
+<script>
+// Данные один в один с листа ТМ-16 примера
+var items = [
+  { section: 'Арматура трубопроводов' },
+  { name: 'Хомут трубный 24-28 мм', unit: 'шт.', qty: 2 },
+  { name: 'Шаровой кран латунный стандарт. 3/4" ВР-НР, ручка-бабочка', unit: 'шт.', qty: 7 },
+  { name: 'Клапан обратный 3/4’’ ВР', unit: 'шт.', qty: 1 },
+  { name: 'Фильтр сетчатый косой 3/4"', unit: 'шт.', qty: 1 },
+  { name: 'Манометр радиальный 6 бар, 50мм, 1/4’’', unit: 'шт.', qty: 2 },
+  { section: 'Оборудование' },
+  { name: 'Водосчетчик универсальный (новый), 3/4’’, 105 мм', unit: 'шт.', qty: 1 },
+  { section: 'Соединительные детали трубопроводов' },
+  { name: 'Ниппель HH никелированный 3/4"', unit: 'шт.', qty: 6 },
+  { name: 'Разъемное соединение "американка" ВН, никелированное, уплотнение под гайкой по плоскости, 3/4"', unit: 'шт.', qty: 7 },
+  { name: 'Тройник ВВ никелированный 3/4"', unit: 'шт.', qty: 6 },
+  { name: 'Фитинг резьбовой – удлинитель хромированный 3/4" 30 мм', unit: 'шт.', qty: 3 },
+  { name: 'Футорка никелированная 1/2" x 1/4"', unit: 'шт.', qty: 2 },
+  { name: 'Футорка никелированная 3/4" x 1/2"', unit: 'шт.', qty: 2 }
+];
+
+// Доступ к проектированию: отметку оставляет калькулятор (app.syncDesignUI),
+// своей авторизации у страницы нет. Без отметки листы не собираем — иначе
+// прямая ссылка обходила бы переключатель в админке.
+(function () {
+  var ok = false;
+  try { ok = localStorage.getItem('heatcalc_design_access') === '1'; } catch (e) {}
+  if (ok) return;
+  document.body.innerHTML =
+    '<div style="max-width:520px;margin:80px auto;background:#fff;border-radius:12px;padding:28px 32px;' +
+    'font:15px/1.5 system-ui,sans-serif;color:#222;box-shadow:0 8px 30px rgba(0,0,0,.25)">' +
+    '<h2 style="margin:0 0 10px;font-size:19px">Раздел проектирования не открыт</h2>' +
+    '<p style="margin:0 0 14px;color:#555">Листы проекта включает администратор. Если доступ вам уже ' +
+    'дали — откройте калькулятор heatcalc.ru, войдите в свою учётную запись и нажмите «Листы проекта».</p>' +
+    '<a href="index.html" style="display:inline-block;padding:9px 18px;border-radius:8px;' +
+    'background:#ff6b35;color:#fff;text-decoration:none;font-weight:600">К калькулятору</a></div>';
+  throw new Error('design access denied');
+})();
+
+// Режим 1: смета из калькулятора (кнопка «Листы проекта» кладёт её в localStorage).
+// Режим 2 (#demo или нет данных): контрольный образец ТМ-16 для сверки с PDF.
+var payload = null;
+if (location.hash !== '#demo') {
+  try { payload = JSON.parse(localStorage.getItem('project_sheets_payload')); } catch (e) {}
+}
+
+var out = document.getElementById('out');
+if (payload && payload.items && payload.items.length) {
+  // ── Разделы комплекта ────────────────────────────────────────────────
+  // Как в проектах-образцах: четыре марки, у каждой свой шифр, свой
+  // титульный лист с собственным описанием, своя нумерация листов и своя
+  // спецификация. Номер листа внутри раздела печатается с маркой («ТМ-6»),
+  // титульный лист номера не имеет и в списке идёт нулевым.
+  //   MEP — сводный проект: сводные планы сетей и расчёт теплопотерь;
+  //   ТМ  — котельная: схема, компоновка, обвязка узлов;
+  //   О   — отопление: планы этажей, тёплый пол, коллекторы;
+  //   В   — водоснабжение и канализация.
+  var codeBase = payload.codeBase ||
+    String(payload.code || '').replace(/\s*[–—-]\s*[A-ZА-Я]{1,3}\s*$/, '');
+  var MARK = {
+    mep: { code: codeBase + ' – MEP', name: 'Сводный проект инженерных систем', pre: '' },
+    tm:  { code: codeBase + ' – ТМ',  name: 'Индивидуальная котельная',        pre: 'ТМ-' },
+    o:   { code: codeBase + ' – О',   name: 'Система отопления',               pre: 'О-' },
+    v:   { code: codeBase + ' – В',   name: 'Система водоснабжения',           pre: 'В-' },
+    k:   { code: codeBase + ' – К',   name: 'Система канализации',             pre: 'К-' }
+  };
+  // Нумерация как в проектах-образцах: номер двузначный, титульный лист —
+  // первый (О-01), а спецификации выделены суффиксом СО (О-СО-11).
+  // Нумерация как в проектах-образцах Виталяна: одна цифра без ведущего
+  // нуля, титульный лист нулевой (В-0), общие данные В-1, содержательные с
+  // В-2, спецификация продолжает тот же ряд — отдельного суффикса СО нет.
+  // Внутри страницы счёт по-прежнему ведётся с единицы, поэтому сдвиг тут.
+  var numOf = function (mk) {
+    return function (v) { return MARK[mk].pre + String(Math.max(0, v - 1)); };
+  };
+  var specNumOf = numOf;
+
+  // Позиции сметы по разделам. Котельная (1, 2) и узел ввода ХВС (6) — в ТМ;
+  // приборы отопления, тёплый пол и расходные материалы (3, 4, 9) — в О;
+  // водоснабжение и канализация (5, 7, 8) — в В. Так же поделены спецификации
+  // в проектах-образцах.
+  var SECTION_MARK = { 1: 'tm', 2: 'tm', 6: 'tm', 3: 'o', 4: 'o', 9: 'o', 5: 'v', 7: 'v', 8: 'k' };
+  var itemsBy = { mep: [], tm: [], o: [], v: [], k: [] };
+  payload.items.forEach(function (i) {
+    var m = /^\s*(\d+)/.exec(String(i.sectionTitle || ''));
+    itemsBy[(m && SECTION_MARK[+m[1]]) || 'tm'].push(i);
+  });
+
+  // Планы этажей: подложки и зоны готовит plan_editor.html (localStorage).
+  // Зона «котельная» задаёт реальные размеры помещения на листе компоновки.
+  var plans = null;
+  try { plans = JSON.parse(localStorage.getItem('floor_plans_v1')); } catch (e) {}
+  // Подложка лежит на Beget (plans.php), а в разметке от неё остаётся имя
+  // файла — разворачиваем его в адрес, картинку загрузит сам <image> листа.
+  // Записи, сделанные до переноса, держат картинку прямо в img: у них imgFile
+  // пуст, и эта ветка их не трогает.
+  if (plans && plans.key && plans.floors) {
+    plans.floors.forEach(function (f) {
+      if (f && !f.img && f.imgFile) {
+        f.img = 'https://proxy.heatcalc.ru/plans.php?k=' + plans.key +
+          '&n=' + encodeURIComponent(f.imgFile);
+      }
+    });
+  }
+  // Планы и смета — из одного объекта? Планы лежат в общем ключе хранилища
+  // ('floor_plans_v1'), смета — в своём; между ними мог смениться объект, и
+  // тогда комплект собрался бы из спецификации одного дома и планов другого.
+  // Молча рисовать такое нельзя: в штампе стоит шифр, по нему заказывают.
+  (function () {
+    var a = (plans && plans.forCalc != null) ? String(plans.forCalc) : '';
+    var b = (payload.calcId != null) ? String(payload.calcId) : '';
+    if (!a || !b || a === b) return;
+    document.body.innerHTML =
+      '<div style="max-width:560px;margin:80px auto;background:#fff;border-radius:12px;' +
+      'padding:28px 32px;font:15px/1.55 system-ui,sans-serif;color:#222;' +
+      'box-shadow:0 8px 30px rgba(0,0,0,.25)">' +
+      '<h2 style="margin:0 0 10px;font-size:19px">Планы и смета — от разных объектов</h2>' +
+      '<p style="margin:0 0 14px;color:#555">В браузере лежат планы этажей расчёта <b>№' +
+      a + '</b>, а смета пришла из расчёта <b>№' + b + '</b>. Комплект из двух объектов ' +
+      'сразу не собирается: в штампе каждого листа стоит шифр, по которому заказывают ' +
+      'оборудование.</p>' +
+      '<p style="margin:0 0 18px;color:#555">Откройте нужный расчёт в калькуляторе и ' +
+      'нажмите «Проект» заново — планы и смета снова сойдутся.</p>' +
+      '<a href="index.html" style="display:inline-block;padding:9px 18px;border-radius:8px;' +
+      'background:#ff6b35;color:#fff;text-decoration:none;font-weight:600">К калькулятору</a></div>';
+    throw new Error('plans/calc mismatch');
+  })();
+
+  var room = (plans && window.projectPlans) ? projectPlans.boilerRoom(plans) : null;
+  // Шаг укладки по этажам приходит из сметы (ufhSteps). У смет, отправленных
+  // на листы до этого, его нет — тогда, как раньше, достаём одно число из
+  // названия позиции.
+  var tpStep = 150;
+  (payload.items || []).some(function (i) {
+    var m = /шаг[^0-9]{0,4}(\d{2,3})/i.exec(i.name || '');
+    if (m) { tpStep = +m[1]; return true; }
+    return false;
+  });
+  var tpSteps = payload.ufhSteps || [tpStep, tpStep];
+  // Предел длины петли — из сметы: иначе лист делит укладку по запасным 100 м
+  // и петель на нём выходит не столько, сколько выходов у коллектора в смете
+  if (payload.ufhLoopMax && window.projectPlans && projectPlans.setLoopLimits)
+    projectPlans.setLoopLimits(payload.ufhLoopMax);
+  // Помещения для экспликации сводного плана: номер, имя, площадь и
+  // теплопотери — те же, что на листе расчёта теплопотерь.
+  var expRooms = [];
+  (payload.heatloss || []).forEach(function (fl, fi) {
+    (fl.rooms || []).forEach(function (r) {
+      expRooms.push({ id: r.id, name: r.name, area: r.area, q: r.total, floor: fi + 1 });
+    });
+  });
+  var planOpts = {
+    stepMm: tpStep, steps: tpSteps, rooms: expRooms,
+    floorLayers: (payload.gd && payload.gd.floorScheme) ? payload.gd.floorScheme.layers : null,
+    wallLayers: (payload.gd && payload.gd.wallLayers) ? payload.gd.wallLayers : null
+  };
+  var withOpts = function (extra) {
+    var o = {}, k;
+    for (k in planOpts) o[k] = planOpts[k];
+    for (k in extra) o[k] = extra[k];
+    return o;
+  };
+
+  var now = new Date();
+  var dateStr = now.toLocaleDateString('ru-RU');
+  var stampDate = String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getFullYear()).slice(2);
+  // Подписи: «Заказчик» пустой (подписывает клиент), ГИП и «Разработал» —
+  // из личного кабинета; место под живую подпись остаётся между ними.
+  var ppl = payload.people || {};
+  var sigs = [{ label: 'Заказчик', name: ppl.zakaz || '' },
+              { label: 'ГИП', name: ppl.gip || '' },
+              { label: 'Разработал', name: ppl.razrab || '' }];
+  var objLine = 'Объект: ' + payload.object +
+    (payload.area ? ', отапливаемая площадь ' + payload.area + ' м²' : '') +
+    (payload.city ? ', ' + payload.city : '') + '.';
+
+  // ── MEP: сводные планы сетей и расчёт теплопотерь ────────────────────
+  // Номера листов MEP — как в эталоне: два знака, титульный 01, сводная
+  // схема сетей котельной 02, дальше по два листа на этаж (сводный план и
+  // сводная схема сетей этажа), затем расчёт теплопотерь по этажам. Слот
+  // ненаписанного листа остаётся пустым — по разрыву в номерах сразу видно,
+  // какого листа не хватает.
+  var pad2 = function (v) { return (v < 10 ? '0' : '') + v; };
+  var numMep = function (v) { return pad2(v); };
+  var nFloors = (plans && plans.floors) ? plans.floors.length : 0;
+  var mepPlans = [], mepSlots = [];
+  mepSlots.push(['02', 'Сводная схема сетей помещения котельной', 'лист не формируется']);
+  if (plans && window.projectPlans) {
+    (plans.floors || []).forEach(function (_, i) {
+      var fl = i + 1, base = 3 + i * 2;
+      var got = projectPlans.sheets(plans, withOpts({ code: MARK.mep.code,
+        sheetStart: base, only: ['summary'], floor: fl, num: numMep }));
+      got.forEach(function (p) { mepPlans.push(p); mepSlots.push([pad2(base), p.title, '']); });
+      if (!got.length) mepSlots.push([pad2(base),
+        'Этаж ' + pad2(fl) + '. Сводный план сетей', 'лист не сформирован']);
+      mepSlots.push([pad2(base + 1), 'Сводная схема сетей ' + fl + ' этажа', 'лист не формируется']);
+    });
+  }
+  // Сводка по помещениям — перед подробным расчётом: сначала «какая нагрузка»,
+  // потом «из чего она сложилась». В проектах-образцах порядок тот же.
+  var mepRdStart = 3 + nFloors * 2;
+  var mepRooms = (payload.heatloss && payload.heatloss.length &&
+                  projectSheets.roomDataSheets)
+    ? projectSheets.roomDataSheets(payload.heatloss,
+        { code: MARK.mep.code, sheetStart: mepRdStart, num: numMep })
+    : [];
+  var mepHlStart = mepRdStart + mepRooms.length;
+  var mepHl = (payload.heatloss && payload.heatloss.length)
+    ? projectSheets.heatLossSheets(payload.heatloss,
+        { code: MARK.mep.code, sheetStart: mepHlStart, num: numMep })
+    : [];
+
+  // Схемы, которые смета рисует у своих разделов (автоматика котельной,
+  // автоматика напольного отопления, узел снеготаяния), приходят готовыми
+  // чертежами — тем же project_scheme.js. Рисовать их здесь заново незачем:
+  // на лист уходит тот же самый SVG, страница добавляет рамку и штамп.
+  var artAll = payload.artSheets || [];
+  var artOf = function (mk, start) {
+    return artAll.filter(function (q) { return q.mk === mk; }).map(function (q, i) {
+      return { title: q.title, svg: projectSheets.artSheet({ art: q, title: q.title,
+        code: MARK[mk].code, sheet: numOf(mk)(start + i) }) };
+    });
+  };
+
+  // ── ТМ: котельная ────────────────────────────────────────────────────
+  var tmSchemeNo = 3;                       // 01 — титул, 02 — общие указания
+  var tmScheme = (payload.scheme && window.projectScheme)
+    ? [projectScheme.sheet(payload.scheme, { code: MARK.tm.code, sheet: numOf('tm')(tmSchemeNo) })]
+    : [];
+  var tmLayoutStart = tmSchemeNo + tmScheme.length;
+  var tmLayout = (payload.scheme && window.projectLayout)
+    ? projectLayout.sheets(payload.scheme, payload.items,
+        { code: MARK.tm.code, sheetStart: tmLayoutStart, room: room,
+          photo: payload.boiler3d || null, num: numOf('tm'),
+          equip: payload.equip || null,
+          front: (payload.node3d || {}).boiler_front || null,
+          frontDhw: (payload.node3d || {}).boiler_dhw || null })
+    : [];
+  // Обвязка узлов: по умолчанию подбор считает готовые насосные группы и
+  // коллекторы в теплоизоляции — листы сборки групп из нержавейки скрыты;
+  // переключатель в шапке страницы включает вариант «на нержавейке».
+  var piping = 'insulated';
+  try { piping = localStorage.getItem('project_nodes_piping') || 'insulated'; } catch (e) {}
+  try { document.getElementById('piping_sel').value = piping; } catch (e) {}
+  var nodesPlan = (payload.scheme && window.projectNodes)
+    ? projectNodes.plan(payload.scheme, payload.items, { piping: piping }) : [];
+  var nodeCtx = nodesPlan.length ? projectNodes.buildCtx(payload.scheme, payload.items) : null;
+  var tmNodesStart = tmLayoutStart + tmLayout.length;
+  // Листы узлов собираем по одному: нумерация раздела своя, а
+  // projectNodes.sheets() нумерует список подряд с единицы.
+  var tmNodes = nodesPlan.map(function (p, i) {
+    return projectNodes.sheet(p.id, p.title, nodeCtx,
+      { code: MARK.tm.code, sheet: numOf('tm')(tmNodesStart + i) });
+  });
+  // Схема подключения автоматики котельной — сразу за узлами обвязки
+  var tmArtNo = tmNodesStart + tmNodes.length;
+  var tmArt = artOf('tm', tmArtNo);
+  // Листы обвязки из фитингов сняты: не совпадают с эталоном, узлы идут
+  // прежними видами из img/nodes.
+  var tmPipeNo = tmArtNo + tmArt.length;
+  var tmPipe = [];
+  var tmSpecStart = tmPipeNo + tmPipe.length;
+  var tmSpec = itemsBy.tm.length ? projectSheets.fromEquipment(itemsBy.tm, {
+    title: 'Спецификация материалов и оборудования котельной',
+    code: MARK.tm.code, sheetStart: tmSpecStart, num: specNumOf('tm')
+  }) : [];
+
+  // ── О: отопление ─────────────────────────────────────────────────────
+  // Порядок листов внутри раздела — как в проектах-образцах: этажами, а не
+  // пачками. На каждом этаже: план напольного отопления, его объёмный вид,
+  // затем план радиаторного отопления и его объёмный вид.
+  // На этаж отведено до четырёх слотов эталона: план напольного отопления, его
+  // объёмный вид, план отопления, объёмный вид отопления. Слот, лист которого
+  // должен быть, но не построился, — разрыв в нумерации и строка «лист не
+  // сформирован». А листа, которому на этаже неоткуда взяться (тёплого пола
+  // или радиаторов там нет), в списке нет вовсе: раньше на втором этаже без
+  // ТП висели две строки «не сформирован», будто лист потерялся.
+  var oBody = [], oSlots = [], oNo = 3;
+  // Для 3D вида отопления: схема разводки — из гидравлики сметы (там же, где
+  // она выбирала диаметры), высота прибора — из названия радиатора в
+  // спецификации («… 500 …», «… H=300 …»). Нет ни того ни другого — лучи и 500 мм.
+  var radTee = !!(payload.hydro && /тройник/i.test(payload.hydro.scheme || ''));
+  var radH = 500;
+  (itemsBy.o || []).some(function (i) {
+    var nm = String(i.name || '');
+    if (!/радиатор/i.test(nm) || /кронштейн|узел|кран|клапан|головк|трубк|полотенц/i.test(nm)) return false;
+    var m = /(?:^|[^\d])(200|300|350|500|600)(?:\s*мм)?(?!\d)/.exec(nm);
+    if (m) { radH = +m[1]; return true; }
+    return false;
+  });
+  if (plans && window.projectPlans) {
+    (plans.floors || []).forEach(function (f, i) {
+      var fl = i + 1, ttl = 'Этаж ' + pad2(fl);
+      var zs = (f && f.zones) || [];
+      var hasTp = zs.some(function (z) { return (z.type || 'tp') === 'tp'; });
+      var hasRad = !!((f && f.rads || []).length || zs.some(function (z) { return z.type === 'rad'; }));
+      // make(n) строит листы с номера n; applicable — должен ли лист на этаже быть
+      var put = function (make, want, applicable) {
+        var list = make(oNo);
+        list.forEach(function (p) { oBody.push(p); oSlots.push([numOf('o')(oNo), p.title, '']); oNo++; });
+        if (!list.length && applicable) { oSlots.push([numOf('o')(oNo), want, 'лист не сформирован']); oNo++; }
+      };
+      put(function (n) { return projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
+        sheetStart: n, only: ['tp'], floor: fl, num: numOf('o') })); },
+        ttl + '. План напольного отопления', hasTp);
+      put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'tp', code: MARK.o.code,
+        sheetStart: n, stepMm: tpStep, rooms: expRooms, floor: fl, num: numOf('o') }); },
+        ttl + '. 3D вид напольного отопления', hasTp);
+      put(function (n) { return projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
+        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o') })); },
+        ttl + '. План отопления', true);
+      put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'rad', code: MARK.o.code,
+        sheetStart: n, rooms: expRooms, floor: fl, num: numOf('o'),
+        tee: radTee, radH: radH }); }, ttl + '. 3D вид отопления', hasRad);
+    });
+  }
+  // Узлы отопления: готовые листы проектов-образцов — ровно те, что смета
+  // показывает картинкой над своими разделами (payload.nodeSheets). Заново их
+  // не рисуем: оформление проектного листа задано жёстко, и снимок отвечает
+  // ему точнее любой перерисовки.
+  var NS = payload.nodeSheets || null;
+  var oManStart = oNo;
+  var oNodes = [];
+  if (NS) {
+    var oDefs = [];
+    if (NS.ufh) oDefs.push({ url: NS.ufh, title: 'Узел обвязки коллектора тёплого пола' });
+    if (NS.radManifold) oDefs.push({ url: NS.radManifold,
+      title: 'Узел обвязки коллектора радиаторного отопления' });
+    (NS.radPanels || []).forEach(function (q) {
+      oDefs.push({ url: q.url, title: 'Узел обвязки панельного радиатора' +
+        (q.kind === 'side' ? ' (боковое подключение)' : ' (нижнее подключение)') });
+    });
+    oNodes = oDefs.map(function (d, i) {
+      return { title: d.title, svg: projectSheets.imageSheet({ url: d.url,
+        code: MARK.o.code, sheet: numOf('o')(oManStart + i) }) };
+    });
+  } else {
+    // Сметы, отправленные на листы раньше, готовых узлов не передают — им
+    // остаётся прежнее: вектор узла коллектора ТП и радиатор по 3D-рендеру.
+    if (plans && window.projectUfhManifold) {
+      oNodes = projectUfhManifold.sheets(plans, { code: MARK.o.code, sheetStart: oManStart,
+        stepMm: tpStep, steps: tpSteps, rooms: expRooms, items: payload.items,
+        photo: (payload.node3d || {}).ufh || null, num: numOf('o') });
+    }
+    if (window.projectNodeSheets && (payload.node3d || {}).radiator) {
+      oNodes = oNodes.concat([projectNodeSheets.radiator({ code: MARK.o.code,
+        sheet: numOf('o')(oManStart + oNodes.length),
+        photo: payload.node3d.radiator, items: itemsBy.o })].filter(Boolean));
+    }
+  }
+  // Схемы автоматики напольного отопления и узла снеготаяния — за узлами
+  var oArtNo = oManStart + oNodes.length;
+  var oArt = artOf('o', oArtNo);
+  // Гидравлический расчёт радиаторной части: итоги и расчётное кольцо, за
+  // ними преднастройки клапанов приборов. Данные готовит калькулятор
+  // (payload.hydro) — у смет, отправленных на листы раньше, их нет.
+  var oHydroStart = oArtNo + oArt.length;
+  var oHydro = (payload.hydro && projectSheets.hydraulicsSheets)
+    ? projectSheets.hydraulicsSheets(payload.hydro,
+        { code: MARK.o.code, sheetStart: oHydroStart, num: numOf('o') })
+    : [];
+  // Гидравлика напольного отопления — сразу за радиаторной: тот же раздел,
+  // тот же вид листа, только предмет другой.
+  var oUfhHydroStart = oHydroStart + oHydro.length;
+  var oUfhHydro = (payload.ufhHydro && projectSheets.ufhHydraulicsSheets)
+    ? projectSheets.ufhHydraulicsSheets(payload.ufhHydro,
+        { code: MARK.o.code, sheetStart: oUfhHydroStart, num: numOf('o') })
+    : [];
+  var oSpecStart = oUfhHydroStart + oUfhHydro.length;
+  var oSpec = itemsBy.o.length ? projectSheets.fromEquipment(itemsBy.o, {
+    title: 'Спецификация материалов и оборудования отопления',
+    code: MARK.o.code, sheetStart: oSpecStart, num: specNumOf('o')
+  }) : [];
+
+  // ── В: водоснабжение ─────────────────────────────────────────────────
+  // Этажами, как в эталоне: план водоснабжения этажа — сразу его объёмный вид.
+  // Этаж без сантехприборов (жилой второй этаж) водоснабжения не несёт — его
+  // слотов в списке нет, как и у отопления.
+  var vBody = [], vSlots = [], vNo = 3;
+  if (plans && window.projectPlans && itemsBy.v.length) {
+    (plans.floors || []).forEach(function (f, i) {
+      var fl = i + 1, ttl = 'Этаж ' + pad2(fl);
+      var hasFx = ((f && f.fixtures) || []).some(function (q) { return q.t !== 'riser'; });
+      var put = function (make, want) {
+        var list = make(vNo);
+        list.forEach(function (p) { vBody.push(p); vSlots.push([numOf('v')(vNo), p.title, '']); vNo++; });
+        if (!list.length && hasFx) { vSlots.push([numOf('v')(vNo), want, 'лист не сформирован']); vNo++; }
+      };
+      put(function (n) { return projectPlans.waterSheets(plans, { code: MARK.v.code, sheetStart: n,
+        only: 'water', floor: fl, num: numOf('v') }); }, ttl + '. План водоснабжения');
+      put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'water', code: MARK.v.code,
+        sheetStart: n, floor: fl, num: numOf('v') }); }, ttl + '. 3D вид водоснабжения');
+    });
+  }
+  // Мокрые зоны крупно — санузлы, кухня, котельная: привязки приборов и высоты
+  // водорозеток и выпусков. Сразу за планами этажей, как в проектах-образцах.
+  // Выпуски канализации тут же: монтажник собирает воду и канализацию зоны
+  // по одному листу, а не сверяет два раздела.
+  // Аксонометрические схемы В1/Т3 по этажам — сразу за планами и 3D-видами.
+  // Труба подводок в примечании — из названия позиции сметы («16х2,2»).
+  var vAxoStart = vNo;
+  var vPipeLabel = null;
+  (itemsBy.v || []).some(function (i) {
+    var m = /(PEX|PE-RT|PE-Xa|металлопласт\S*|полипропилен\S*)[^\d]{0,40}(\d{2})\s*[xх×]\s*(\d[.,]\d)/i.exec(String(i.name || ''));
+    if (m && /труб/i.test(i.name)) { vPipeLabel = m[1] + ' ' + m[2] + '×' + m[3].replace('.', ','); return true; }
+    return false;
+  });
+  var vAxo = (plans && window.projectPlans && projectPlans.axonoSheets && itemsBy.v.length)
+    ? projectPlans.axonoSheets(plans, { kind: 'water', code: MARK.v.code, sheetStart: vAxoStart,
+        num: numOf('v'), floorH: payload.floorH, pipeLabel: vPipeLabel,
+        recirc: !!(payload.scheme && payload.scheme.recirc) })
+    : [];
+  var vZoneStart = vAxoStart + vAxo.length;
+  var vZones = (plans && window.projectPlans && projectPlans.wetZoneSheets && itemsBy.v.length)
+    ? projectPlans.wetZoneSheets(plans, { code: MARK.v.code, sheetStart: vZoneStart,
+        num: numOf('v'), recirc: !!(payload.scheme && payload.scheme.recirc) })
+    : [];
+  var vNodeStart = vZoneStart + vZones.length;
+  // Узел обвязки коллекторов водоснабжения — тот же готовый лист, что в смете
+  var vNodes = [];
+  if (NS && NS.water && itemsBy.v.length) {
+    vNodes = [{ title: 'Узел обвязки коллекторов водоснабжения',
+      svg: projectSheets.imageSheet({ url: NS.water, code: MARK.v.code,
+        sheet: numOf('v')(vNodeStart) }) }];
+  } else if (!NS && window.projectNodeSheets && itemsBy.v.length && (payload.node3d || {}).water) {
+    vNodes = [projectNodeSheets.water({ code: MARK.v.code, sheet: numOf('v')(vNodeStart),
+      photo: payload.node3d.water, items: itemsBy.v })].filter(Boolean);
+  }
+  var vPipeNo = vNodeStart + vNodes.length;
+  // Обвязка узла ввода ХВС: вид собран 3D-рендером, потому что на листах
+  // проектов-образцов узел с редуктором и счётчиком не нарисован ни разу.
+  // Примечания — по тому, что реально стоит на виде узла (подписи деталей
+  // рендера). Раньше текст про счётчик и редуктор печатался всегда, даже у
+  // узла, где их нет ни на виде, ни в смете.
+  var hvsNotes = function (photo) {
+    var names = ((photo && photo.marks) || []).map(function (m) { return String(m.t || ''); }).join(' | ');
+    var meter = /сч[её]тчик/i.test(names), reducer = /редуктор/i.test(names);
+    var filter = /фильтр/i.test(names), check = /обратн/i.test(names);
+    var out = [];
+    if (filter && (meter || reducer)) {
+      out.push('Косой фильтр ставится раньше ' +
+        [meter ? 'счётчика' : '', reducer ? 'редуктора' : ''].filter(Boolean).join(' и ') +
+        ': песок и окалина из магистрали сажают ' +
+        [meter ? 'крыльчатку счётчика' : '', reducer ? 'седло редуктора' : ''].filter(Boolean).join(' и ') + '.');
+    } else if (filter) {
+      out.push('Фильтр ставится первым по ходу воды, сразу за вводным краном: песок и окалина ' +
+        'из магистрали оседают в нём, а не в арматуре узла.');
+    }
+    if (check && reducer) out.push('Обратный клапан — после редуктора; перед ним он отсекает редуктор ' +
+      'от магистрали, и настроить его нечем.');
+    out.push('После сборки провести гидравлическое испытание давлением 10 бар.');
+    return out;
+  };
+  var vPipe = (window.projectNodeSheets && (payload.node3d || {}).hvs_in)
+    ? [projectNodeSheets.piping({ code: MARK.v.code, sheet: numOf('v')(vPipeNo),
+        title: 'Обвязка узла ввода ХВС', photo: payload.node3d.hvs_in,
+        notes: hvsNotes(payload.node3d.hvs_in) })].filter(Boolean)
+    : [];
+  var vSpecStart = vPipeNo + vPipe.length;
+  var vSpec = itemsBy.v.length ? projectSheets.fromEquipment(itemsBy.v, {
+    title: 'Спецификация материалов и оборудования водоснабжения',
+    code: MARK.v.code, sheetStart: vSpecStart, num: specNumOf('v')
+  }) : [];
+
+  // ── К: канализация ───────────────────────────────────────────────────
+  // В проектах-образцах это самостоятельный раздел со своим титулом,
+  // общими данными, планами и спецификацией, а не часть водоснабжения.
+  var kNo = 3;
+  var kBody = [];
+  if (plans && window.projectPlans && itemsBy.k.length) {
+    (plans.floors || []).forEach(function (_, i) {
+      var fl = i + 1, add = function (list) {
+        list.forEach(function (p) { kBody.push(p); kNo++; });
+      };
+      add(projectPlans.waterSheets(plans, { code: MARK.k.code, sheetStart: kNo,
+        only: 'sewer', floor: fl, num: numOf('k') }));
+      add(projectPlans.iso3dSheets(plans, { kind: 'sewer', code: MARK.k.code,
+        sheetStart: kNo, floor: fl, num: numOf('k') }));
+      // Аксонометрическая схема К1 этажа — ГОСТ 21.601-2011 требует схем
+      // систем в составе раздела; 3D-вид с плитой их не заменяет.
+      if (projectPlans.axonoSheets)
+        add(projectPlans.axonoSheets(plans, { kind: 'sewer', code: MARK.k.code,
+          sheetStart: kNo, floor: fl, num: numOf('k'), floorH: payload.floorH }));
+    });
+  }
+  var kSpecStart = kNo;
+  // Трубы и фасонные части смета считает по приборам («Канализация: [Ванная]»,
+  // «[Душ]», «[Раковина]» …) — в спецификации это один подраздел, где
+  // одинаковые позиции сложены в строку с общим количеством (ГОСТ 21.110-2013).
+  // Инсталляции, трапы и прочее оборудование остаются своими подразделами.
+  var kSpec = itemsBy.k.length ? projectSheets.fromEquipment(itemsBy.k, {
+    title: 'Спецификация материалов и оборудования канализации',
+    code: MARK.k.code, sheetStart: kSpecStart, num: specNumOf('k'),
+    merge: function (g) {
+      return /Канализация:\s*\[/.test(String(g)) ? 'Трубы, фасонные части и материалы' : g;
+    }
+  }) : [];
+
+  // ── Сборка разделов ──────────────────────────────────────────────────
+  // Раздел выпускается, только если в нём есть содержательные листы: пустой
+  // комплект из титула и общих данных заказчику не нужен.
+  var titleOf = function (mk) {
+    return projectSheets.titleSheet({
+      object: payload.object || MARK[mk].code,
+      region: payload.city,
+      code: MARK[mk].code,
+      logo: payload.logo,
+      section: MARK[mk].name,
+      year: now.getFullYear(),
+      sigs: sigs
+    });
+  };
+  // список листов раздела: [номер, имя листа, примечание]; титульный — нулевой
+  var listOf = function (mk, rows) {
+    var pre = MARK[mk].pre;
+    // Имена листов — как в оригинале: титульный лист называет систему
+    var sysName = { tm: ' котельной', o: ' системы отопления',
+                    v: ' системы водоснабжения', k: ' системы канализации' }[mk] || '';
+    var out2 = [[numOf(mk)(1), 'Титульный лист' + sysName, '']];
+    if (mk !== 'mep') out2.push([numOf(mk)(2), 'Общие данные', '']);
+    rows.forEach(function (r) { out2.push([String(r[0]), r[1], r[2] || '']); });
+    return out2;
+  };
+  var gdOf = function (mk, list, notes, total, extra) {
+    extra = extra || {};
+    return projectSheets.generalData({
+      // В оригинале название таблицы указывает систему: «Список листов
+      // раздела водоснабжения», «…отопления» и так далее
+      listTitle: 'Список листов раздела' + ({
+        tm: ' котельной', o: ' отопления', v: ' водоснабжения', k: ' канализации'
+      }[mk] || ''),
+      sheetsList: list,
+      notesTitle: mk === 'tm' ? 'Общие указания' : 'Общие данные',
+      notes: notes,
+      indicators: extra.indicators || null,
+      // Разрез пола — вырезка из оригинала: слои, штриховки и выноски там
+      // выверены, перерисовывать вектором смысла нет.
+      floorScheme: (mk === 'v' || mk === 'o')
+        ? { image: 'img/scheme_floor.png' } : (extra.floorScheme || null),
+      // Условные обозначения систем: в оригинале они стоят на листе общих
+      // данных того раздела, чьи трубопроводы показаны на схеме пола.
+      legend: {
+        v: [{ code: 'В1', color: '#4fc3d9', text: 'трубопровод холодного водоснабжения' },
+            { code: 'Т3', color: '#e8a35a', text: 'трубопровод горячего водоснабжения' }],
+        o: [{ code: 'Т11', color: '#c62828', text: 'трубопровод подачи отопления' },
+            { code: 'Т21', color: '#2c47a8', text: 'трубопровод обратки отопления' }],
+        k: [{ code: 'К1', color: '#7a7a7a', text: 'трубопровод бытовой канализации' }]
+      }[mk] || null,
+      // Сноска к схеме, типовая оговорка и подпись ГИП — как в оригинале
+      footer: {
+        note: [
+          '*На Схеме 1 приведена принципиальная модель расположения трубопроводов в составе перекрытия 1',
+          'этажа. Толщина слоев, как и состав перекрытия может меняться в зависимости от требований',
+          'архитектурного проекта.'
+        ],
+        legalLines: [
+          'Технические решения, принятые в рабочих чертежах, соответствуют требованиям экологических, санитарно-гигиенических,',
+          'противопожарных и других действующих норм и правил, обеспечивающих безопасную для жизни и здоровья людей эксплуатацию',
+          'объекта при проведении мероприятий, предусмотренных рабочим проектом.'
+        ],
+        gip: 'Главный инженер проекта _________________/ ' + ((payload.people || {}).gip || '')
+      },
+      code: MARK[mk].code, object: payload.object,
+      section: MARK[mk].name,
+      sheetTitle: mk === 'tm' ? 'Общие указания' : 'Общие данные',
+      people: { razrab: ppl.razrab, utv: ppl.gip },
+      sheet: numOf(mk)(2), total: String(total), date: stampDate
+    });
+  };
+  var made = [];        // [{mk, total}] — для перекрёстных ссылок в общих данных
+  var svgs = [];        // листы комплекта по порядку разделов
+
+  var mepTotal = mepPlans.length + mepRooms.length + mepHl.length;
+  var tmTotal = (tmScheme.length + tmNodes.length + tmSpec.length)
+    ? 1 + tmScheme.length + tmLayout.length + tmNodes.length + tmArt.length +
+      tmPipe.length + tmSpec.length : 0;
+  var oTotal = (oBody.length + oNodes.length + oArt.length + oHydro.length + oUfhHydro.length + oSpec.length)
+    ? 1 + oBody.length + oNodes.length + oArt.length + oHydro.length + oUfhHydro.length + oSpec.length : 0;
+  var vTotal = (vBody.length + vAxo.length + vZones.length + vNodes.length + vSpec.length)
+    ? 1 + vBody.length + vAxo.length + vZones.length + vNodes.length + vPipe.length + vSpec.length : 0;
+  var kTotal = (kBody.length + kSpec.length)
+    ? 1 + kBody.length + kSpec.length : 0;
+
+  // перечень «другие разделы» для общих данных каждого раздела
+  var otherLine = function (mk) {
+    var parts = [];
+    if (mk !== 'mep' && mepTotal) parts.push(MARK.mep.code + ' (' + mepTotal + ' л.)');
+    if (mk !== 'tm' && tmTotal) parts.push(MARK.tm.code + ' (' + tmTotal + ' л.)');
+    if (mk !== 'o' && oTotal) parts.push(MARK.o.code + ' (' + oTotal + ' л.)');
+    if (mk !== 'v' && vTotal) parts.push(MARK.v.code + ' (' + vTotal + ' л.)');
+    if (mk !== 'k' && kTotal) parts.push(MARK.k.code + ' (' + kTotal + ' л.)');
+    return parts.length ? ['Другие разделы комплекта: ' + parts.join(', ') + '.'] : [];
+  };
+  var commonNotes = function (mk, composition, total) {
+    return [
+      { h: '1. Общие сведения', lines: [
+        objLine,
+        'Раздел сформирован ' + dateStr + ' автоматически, по составу сметы калькулятора heatcalc.ru.'
+      ]},
+      { h: '2. Состав раздела', lines: [composition +
+        ' — ' + total + ' листов формата А3.'].concat(otherLine(mk)) },
+      { h: '3. Примечания', lines: [
+        'Количества позиций соответствуют смете на дату формирования; цены в спецификацию не выносятся.',
+        'Комплект не заменяет проектную документацию. Перед закупкой и монтажом проконсультируйтесь с инженером.'
+      ]}
+    ];
+  };
+
+  // MEP: титул и содержательные листы. Общих данных в этом разделе нет —
+  // указания живут в разделах, к которым относятся.
+  if (mepTotal) {
+    svgs.push(titleOf('mep'));
+    mepPlans.forEach(function (p) { svgs.push(p.svg); });
+    mepRooms.forEach(function (s) { svgs.push(s); });
+    mepHl.forEach(function (s) { svgs.push(s); });
+    made.push({ mk: 'mep', total: mepTotal, to: svgs.length });
+  }
+
+  if (tmTotal) {
+    var tmRows = [];
+    tmScheme.forEach(function () { tmRows.push([numOf('tm')(tmSchemeNo), 'Принципиальная схема']); });
+    tmLayout.forEach(function (p, i) { tmRows.push([numOf('tm')(tmLayoutStart + i), p.title]); });
+    nodesPlan.forEach(function (p, i) { tmRows.push([numOf('tm')(tmNodesStart + i), p.title]); });
+    tmArt.forEach(function (p, i) { tmRows.push([numOf('tm')(tmArtNo + i), p.title]); });
+    tmPipe.forEach(function (p, i) { tmRows.push([numOf('tm')(tmPipeNo + i), p.title]); });
+    tmSpec.forEach(function (_, i) {
+      tmRows.push([specNumOf('tm')(tmSpecStart + i), 'Спецификация материалов и оборудования котельной']);
+    });
+    // Указания по котельной приходят из сметы (gdTm): описание, режимы,
+    // обвязка, энергоэффективность. Их нет у смет, отправленных на листы
+    // раньше, — тогда обходимся составом раздела.
+    var gdTm = payload.gdTm || {};
+    var tmNotes = (gdTm.notes && gdTm.notes.length)
+      ? gdTm.notes.concat([{ h: 'Состав раздела', lines: ['Титульный лист, общие указания' +
+          (tmScheme.length ? ', принципиальная схема' : '') +
+          (tmLayout.length ? ', компоновка и виды котельной' : '') +
+          (tmNodes.length ? ', узлы обвязки (' + tmNodes.length + ' л.)' : '') +
+          (tmArt.length ? ', схема автоматики' : '') +
+          ' и спецификация — ' + tmTotal + ' листов формата А3.'].concat(otherLine('tm')) }])
+      : commonNotes('tm', 'Титульный лист, общие указания' +
+      (tmScheme.length ? ', принципиальная схема' : '') +
+      (tmLayout.length ? ', компоновка и виды котельной' : '') +
+      (tmNodes.length ? ', узлы обвязки (' + tmNodes.length + ' л.)' : '') +
+      ' и спецификация', tmTotal);
+    svgs.push(titleOf('tm'));
+    svgs.push(gdOf('tm', listOf('tm', tmRows), tmNotes, tmTotal));
+    tmScheme.forEach(function (s) { svgs.push(s); });
+    tmLayout.forEach(function (p) { svgs.push(p.svg); });
+    tmNodes.forEach(function (s) { svgs.push(s); });
+    tmArt.forEach(function (p) { svgs.push(p.svg); });
+    tmPipe.forEach(function (p) { svgs.push(p.svg); });
+    tmSpec.forEach(function (s) { svgs.push(s); });
+    made.push({ mk: 'tm', total: tmTotal, to: svgs.length });
+  }
+
+  if (oTotal) {
+    var oRows = [];
+    oSlots.forEach(function (r) { oRows.push(r); });
+    oNodes.forEach(function (p, i) { oRows.push([numOf('o')(oManStart + i), p.title]); });
+    oArt.forEach(function (p, i) { oRows.push([numOf('o')(oArtNo + i), p.title]); });
+    // Листы гидравлики приходят готовыми SVG, без названия в объекте: первый —
+    // сам расчёт, следующие — продолжение таблицы преднастроек.
+    oHydro.forEach(function (_, i) {
+      oRows.push([numOf('o')(oHydroStart + i), i === 0
+        ? 'Гидравлический расчет системы отопления'
+        : 'Настройка клапанов приборов отопления']);
+    });
+    oUfhHydro.forEach(function (_, i) {
+      oRows.push([numOf('o')(oUfhHydroStart + i), i === 0
+        ? 'Гидравлический расчет напольного отопления'
+        : 'Настройка расходомеров напольного отопления']);
+    });
+    oSpec.forEach(function (_, i) {
+      oRows.push([specNumOf('o')(oSpecStart + i), 'Спецификация материалов и оборудования отопления']);
+    });
+    var gd = payload.gd || {};
+    var oNotes = (gd.notes && gd.notes.length) ? gd.notes
+      : commonNotes('o', 'Титульный лист, общие данные' +
+          (oBody.length ? ', планы этажей (' + oBody.length + ' л.)' : '') +
+          (oNodes.length ? ', узлы обвязки (' + oNodes.length + ' л.)' : '') +
+          (oArt.length ? ', схемы (' + oArt.length + ' л.)' : '') +
+          (oHydro.length ? ', гидравлический расчёт' : '') +
+          (oUfhHydro.length ? ', гидравлика напольного отопления' : '') +
+          ' и спецификация', oTotal);
+    svgs.push(titleOf('o'));
+    svgs.push(gdOf('o', listOf('o', oRows), oNotes, oTotal,
+      { indicators: gd.indicators, floorScheme: gd.floorScheme }));
+    oBody.forEach(function (p) { svgs.push(p.svg); });
+    oNodes.forEach(function (p) { svgs.push(p.svg); });
+    oArt.forEach(function (p) { svgs.push(p.svg); });
+    oHydro.forEach(function (s) { svgs.push(s); });
+    oUfhHydro.forEach(function (s) { svgs.push(s); });
+    oSpec.forEach(function (s) { svgs.push(s); });
+    made.push({ mk: 'o', total: oTotal, to: svgs.length });
+  }
+
+  if (vTotal) {
+    var vRows = [];
+    vSlots.forEach(function (r) { vRows.push(r); });
+    vAxo.forEach(function (p, i) { vRows.push([numOf('v')(vAxoStart + i), p.title]); });
+    vZones.forEach(function (p, i) { vRows.push([numOf('v')(vZoneStart + i), p.title]); });
+    vNodes.forEach(function (p, i) { vRows.push([numOf('v')(vNodeStart + i), p.title]); });
+    vPipe.forEach(function (p, i) { vRows.push([numOf('v')(vPipeNo + i), p.title]); });
+    vSpec.forEach(function (_, i) {
+      vRows.push([specNumOf('v')(vSpecStart + i), 'Спецификация материалов и оборудования водоснабжения']);
+    });
+    var gdVk = payload.gdVk || {};
+    var vNotes = (gdVk.notes && gdVk.notes.length) ? gdVk.notes
+      : commonNotes('v', 'Титульный лист, общие данные' +
+          (vBody.length ? ', планы водоснабжения (' + vBody.length + ' л.)' : '') +
+          (vAxo.length ? ', схемы систем (' + vAxo.length + ' л.)' : '') +
+          (vZones.length ? ', мокрые зоны (' + vZones.length + ' л.)' : '') +
+          (vNodes.length ? ', узел коллектора водоснабжения' : '') +
+          ' и спецификация', vTotal);
+    svgs.push(titleOf('v'));
+    svgs.push(gdOf('v', listOf('v', vRows), vNotes, vTotal,
+      // Таблицы показателей на листе общих данных раздела В в оригинале нет —
+      // её место занимают условные обозначения систем и схема пола.
+      { floorScheme: gdVk.floorScheme }));
+    vBody.forEach(function (p) { svgs.push(p.svg); });
+    vAxo.forEach(function (p) { svgs.push(p.svg); });
+    vZones.forEach(function (p) { svgs.push(p.svg); });
+    vNodes.forEach(function (p) { svgs.push(p.svg); });
+    vPipe.forEach(function (p) { svgs.push(p.svg); });
+    vSpec.forEach(function (s) { svgs.push(s); });
+    made.push({ mk: 'v', total: vTotal, to: svgs.length });
+  }
+
+  if (kTotal) {
+    var kRows = [];
+    kBody.forEach(function (p, i) { kRows.push([numOf('k')(3 + i), p.title]); });
+    kSpec.forEach(function (_, i) {
+      kRows.push([specNumOf('k')(kSpecStart + i), 'Спецификация материалов и оборудования канализации']);
+    });
+    var kNotes = (payload.gdK && payload.gdK.length) ? payload.gdK
+      : commonNotes('k', 'Титульный лист, общие данные' +
+          (kBody.length ? ', планы и схемы канализации (' + kBody.length + ' л.)' : '') +
+          ' и спецификация', kTotal);
+    svgs.push(titleOf('k'));
+    svgs.push(gdOf('k', listOf('k', kRows), kNotes, kTotal));
+    kBody.forEach(function (p) { svgs.push(p.svg); });
+    kSpec.forEach(function (s) { svgs.push(s); });
+    made.push({ mk: 'k', total: kTotal, to: svgs.length });
+  }
+
+  // Имя вкладки — оно же имя файла, который предложит «Печать / PDF»: браузер
+  // берёт его из <title>. «Проба листа А3» в папке заказчика ничего не значит,
+  // а объект, площадь, разделы и дата — значат.
+  var MARKS_ORDER = { mep: 'MEP', tm: 'ТМ', o: 'О', v: 'В', k: 'К' };
+  document.title = 'Проект: ' + (payload.object || 'объект') +
+    ' — ' + (made.map(function (m) { return MARKS_ORDER[m.mk]; }).join(', ') || 'без разделов') +
+    ' — ' + dateStr;
+
+  // Шапка: объект и шифр вместо «Проба листа», разделы — переходом и
+  // печатью поодиночке. Пролистывать полсотни листов А3, чтобы добраться до
+  // водоснабжения, больше не нужно.
+  document.getElementById('bar_title').textContent =
+    (payload.object || payload.title) + (payload.city ? ' · ' + payload.city : '');
+  document.getElementById('bar_note').textContent =
+    (payload.codeBase ? payload.codeBase + ' · ' : '') +
+    'листов: ' + svgs.length + ' · позиций: ' + payload.items.length;
+
+  // Марка каждого листа — по границам разделов: они идут подряд, поэтому
+  // достаточно помнить, где кончился предыдущий.
+  var mkOf = [], prev = 0;
+  made.forEach(function (m) {
+    for (var i = prev; i < m.to; i++) mkOf[i] = m.mk;
+    prev = m.to;
+  });
+  out.innerHTML = svgs.map(function (s, i) {
+    var mk = mkOf[i] || 'mep';
+    var first = (i === 0 || mkOf[i - 1] !== mk);
+    return '<div class="paper" data-mk="' + mk + '"' +
+      (first ? ' id="sec-' + mk + '"' : '') + '>' + s + '</div>';
+  }).join('');
+
+  var secPrev = 0;
+  document.getElementById('bar_secs').innerHTML = made.map(function (m) {
+    // Считаем листы так, как их видно при прокрутке: в шапке это навигация.
+    // Номер в штампе меньше на титульный — он в ГОСТ идёт нулевым, и сверять
+    // одно с другим не нужно.
+    var pages = m.to - secPrev; secPrev = m.to;
+    return '<span class="sec"><a href="#sec-' + m.mk + '">' + MARKS_ORDER[m.mk] +
+      ' · ' + pages + ' л.</a>' +
+      '<button title="Напечатать только этот раздел" onclick="printSection(\'' + m.mk +
+      '\')">⎙</button></span>';
+  }).join('');
+} else {
+  document.getElementById('bar_title').textContent = 'Лист ТМ-16 — Спецификация узла ввода воды';
+  document.getElementById('bar_note').textContent = 'контрольный образец, сверять с Boiler_Club_106m2.pdf стр. 39';
+  out.innerHTML = '<div class="paper">' + projectSheets.specification({
+    title: 'Спецификация узла ввода воды',
+    code: '2025-191 - ТМ',
+    sheet: 'ТМ-16',
+    numTitle: 'Позиция',      // на листах ТМ так, на В и О — «№»
+    items: items
+  }) + '</div>';
+}
+
+// Печать одного раздела: помечаем его листы и на время печати прячем
+// остальные. Возврат — по afterprint; в браузерах, где события нет,
+// страховка по таймеру, иначе комплект остался бы урезанным на экране.
+function printSection(mk) {
+  var all = document.querySelectorAll('.paper');
+  for (var i = 0; i < all.length; i++)
+    all[i].classList.toggle('print-me', all[i].getAttribute('data-mk') === mk);
+  document.body.classList.add('print-one');
+  var back = function () {
+    document.body.classList.remove('print-one');
+    for (var j = 0; j < all.length; j++) all[j].classList.remove('print-me');
+    window.removeEventListener('afterprint', back);
+  };
+  window.addEventListener('afterprint', back);
+  setTimeout(back, 60000);
+  window.print();
+}
+</script>
+</body>
+</html>
