@@ -6642,7 +6642,7 @@ const app = {
                 <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
                     <button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px;" onclick="app.viewAdminEstimateInvoice('${estId}')" title="Смета, как её видит клиент, с контактами монтажника и кнопкой «Копировать для 1С»">📄 Открыть смету для счёта</button>
                     ${calc ? `<button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px; background:transparent; color:var(--primary);" onclick="app.copyKpNumber('${this.kpNumber(st)}')" title="Скопировать «Счёт по КП № …» — вставить в комментарий счёта в 1С">📋 Номер КП</button>` : ''}
-                    ${canMark ? `<button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px; background:#10B981; border-color:#10B981;" onclick="app.markKpInvoiceIssued()">✓ Счёт выставлен</button>` : ''}
+                    ${canMark ? `<button class="btn-header-blue" style="height:32px; padding:0 14px; font-size:12px; background:#10B981; border-color:#10B981; color:#fff;" onclick="app.markKpInvoiceIssued()">✓ Счёт выставлен</button>` : ''}
                 </div>
                 <div style="font-size:11.5px; color:var(--text-sec); line-height:1.5;">
                     1. «Открыть смету для счёта» — в новой вкладке откроется КП; кнопкой «Копировать для 1С» заберите артикулы и количество (два столбца) и вставьте в 1С или Excel. «📋 Номер КП» — строка для комментария счёта в 1С.<br>
@@ -34739,7 +34739,11 @@ const app = {
             if (typeof st === 'string') {
                 try { st = JSON.parse(st); } catch (e) { console.error("Error parsing calc_data:", e); }
             }
-            let objArea = st && st.area ? st.area + ' м²' : 'Не указана';
+            // Площадь приходит из расчёта суммой по комнатам, поэтому в базе лежит
+            // 196.53000000000003 — округляем до двух знаков, иначе в карточке
+            // видно хвост двоичной дроби.
+            const areaNum = Number(st && st.area);
+            let objArea = areaNum > 0 ? (Math.round(areaNum * 100) / 100) + ' м²' : 'Не указана';
             // Для «Счёт по этой версии» в блоке «Версии КП» (openKpVersionInvoice)
             this._kpCard = { st: st, estId: est.id, userId: est.user_id, name: est.project_name || '' };
             // Связка «оригинал ↔ копии» дочитывается отдельно, после отрисовки карточки
