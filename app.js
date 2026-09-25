@@ -33021,7 +33021,10 @@ const app = {
                 body: JSON.stringify({ action: 'limits' }),
             });
             const data = await r.json();
-            if (data.ok) this._adminRecognitionLimits = { default: data.default, limits: data.limits || {} };
+            // defaultPro и tariffs — с 25.09.2026 (лимит по тарифу); старый
+            // сервер их не шлёт, тогда один общий лимит, как раньше.
+            if (data.ok) this._adminRecognitionLimits = { default: data.default, defaultPro: data.defaultPro,
+                limits: data.limits || {}, tariffs: data.tariffs || {} };
         } catch (e) {
             console.warn('[архив] лимиты не получены:', e.message);
         }
@@ -33037,11 +33040,23 @@ const app = {
      * исключения: кому-то больше, кому-то ноль. Пустое поле возвращает
      * человека к общему значению.
      */
+    /**
+     * Лимит распознаваний по умолчанию для пользователя — по его тарифу
+     * («Базовый» / «Профи», recognize_archive.php: LIMIT_BASE / LIMIT_PRO).
+     * Старый сервер тарифов не отдаёт — один общий лимит.
+     */
+    recognitionDefaultLimit: function (user) {
+        const cfg = this._adminRecognitionLimits || {};
+        const t = cfg.tariffs && (cfg.tariffs[user] || cfg.tariffs[String(user || '').toLowerCase()]);
+        if (t === 'pro' && cfg.defaultPro !== undefined) return { limit: cfg.defaultPro, tariff: 'Профи' };
+        return { limit: cfg.default || 50, tariff: cfg.defaultPro !== undefined ? 'Базовый' : '' };
+    },
+
     setRecognitionLimit: async function (user) {
         const cur = (this._adminRecognitionLimits && this._adminRecognitionLimits.limits[user]);
-        const def = (this._adminRecognitionLimits && this._adminRecognitionLimits.default) || 50;
+        const d = this.recognitionDefaultLimit(user);
         const answer = await this.prompt(
-            `Лимит распознаваний в месяц для «${user}».\nПусто — вернуть общий (${def}).`,
+            `Лимит запросов к распознаванию в месяц для «${user}».\nПусто — вернуть по тарифу${d.tariff ? ` «${d.tariff}»` : ''} (${d.limit}).`,
             cur === undefined ? '' : String(cur));
         if (answer === null) return;
 
@@ -33279,7 +33294,7 @@ const app = {
             const isOpen = !!open[g.key];
             // Персональный лимит перекрывает общий; у админов лимита нет вовсе.
             const personal = limitsCfg.limits[g.key];
-            const limit = personal === undefined ? limitsCfg.default : personal;
+            const limit = personal === undefined ? this.recognitionDefaultLimit(g.key).limit : personal;
             const left = Math.max(0, limit - g.month);
             const leftColor = left === 0 ? '#EF4444' : (left <= 5 ? '#F59E0B' : 'var(--text-sec)');
             const keyEsc = esc(g.key).replace(/'/g, "\\'");

@@ -1597,12 +1597,21 @@ const RecognizeUI = {
      * Если сервер лимитов недоступен, распознавание не блокируем — падать
      * из-за необязательной проверки нельзя.
      */
+    /** Минимум запросов на комплект листов проекта (см. run). */
+    PROJECT_MIN_CALLS: 6,
+
     async checkQuota() {
         if (typeof app.hasAdminAccess === 'function' && app.hasAdminAccess()) return null;
         try {
             const url = 'https://proxy.heatcalc.ru/recognize_archive.php?quota=1&user=' +
                 encodeURIComponent(this.userKey());
-            const r = await fetch(url);
+            // Токен входа — по нему сервер узнаёт тариф (лимит «Базового» и
+            // «Профи» разный). Нет сессии — спросит без него.
+            let headers = {};
+            try {
+                if (typeof app.recognitionAuthHeaders === 'function') headers = (await app.recognitionAuthHeaders()) || {};
+            } catch (e) { headers = {}; }
+            const r = await fetch(url, { headers });
             const data = await r.json();
             return data && data.ok ? data : null;
         } catch (e) {
@@ -1617,7 +1626,8 @@ const RecognizeUI = {
         if (!el) return;
         const q = await this.checkQuota();
         if (!q) return;   // админ либо сервер лимитов промолчал
-        el.textContent = `Запросов к распознаванию в этом месяце: ${q.used} из ${q.limit}, осталось ${q.left}`;
+        const tariff = q.personal ? '' : (q.tariff === 'pro' ? ' (тариф «Профи»)' : q.tariff === 'base' ? ' (тариф «Базовый»)' : '');
+        el.textContent = `Запросов к распознаванию в этом месяце: ${q.used} из ${q.limit}${tariff}, осталось ${q.left}`;
         if (q.left <= 3) el.style.color = q.left === 0 ? '#EF4444' : '#F59E0B';
     },
 
@@ -1628,14 +1638,23 @@ const RecognizeUI = {
         if ((!hasImgs && !this._text) || this._busy) return;
 
         const quota = await this.checkQuota();
-        if (quota && quota.left <= 0) {
+        // Комплект листов проекта — это 6 запросов (помещения, окна, отопление,
+        // сантехника, вентиляция, примечания), с повторами до 15. Начинать его
+        // с остатком меньше шести — оборвать на середине: помещения будут, а
+        // тёплых полов и сантехники нет, и запросы уже потрачены.
+        const need = this._project ? this.PROJECT_MIN_CALLS : 1;
+        if (quota && quota.left < need) {
             this.setStatus('');
             const body = document.getElementById('rec_body');
             if (body) {
                 const err = document.createElement('div');
                 err.className = 'rec-err';
-                err.textContent = `Лимит запросов к распознаванию на этот месяц исчерпан: ${quota.used} из ${quota.limit}. ` +
-                    'Лимит обновится первого числа. Если нужно больше — напишите администратору.';
+                err.textContent = (quota.left <= 0
+                    ? `Лимит запросов к распознаванию на этот месяц исчерпан: ${quota.used} из ${quota.limit}. `
+                    : `Для комплекта листов проекта нужно не меньше ${need} запросов к распознаванию, а осталось ${quota.left} из ${quota.limit}. ` +
+                      'Можно распознать один план этажа — выберите «План этажа» и загрузите его отдельным файлом. ') +
+                    'Лимит обновится первого числа. Если нужно больше — напишите администратору' +
+                    (quota.tariff === 'base' ? ' или перейдите на тариф «Профи»' : '') + '.';
                 body.appendChild(err);
             }
             return;

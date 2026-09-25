@@ -68,10 +68,12 @@ function bearerToken() {
 function supabaseGet($path, $token) {
     $ch = curl_init(SUPABASE_HOST . $path);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    // Без токена — только apikey: публикуемый ключ нового формата
+    // (sb_publishable_…) не JWT, в Authorization его не кладут.
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $token ? [
         'apikey: ' . SUPABASE_ANON_KEY,
         'Authorization: Bearer ' . $token,
-    ]);
+    ] : ['apikey: ' . SUPABASE_ANON_KEY]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $resp = curl_exec($ch);
     $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -103,7 +105,49 @@ function isAllowedAdmin($email, $token) {
  * стоит того, а файл здесь же, рядом с самими распознаваниями, по которым
  * лимит и считается.
  */
-const LIMIT_DEFAULT = 50;
+const LIMIT_DEFAULT = 50;   // старый общий лимит — только для ответа старым калькуляторам
+
+/**
+ * Лимит по тарифу, запросов к модели в месяц (25.09.2026).
+ *
+ * Пока ключ Gemini на бесплатном тарифе Google, у всего сайта общий потолок
+ * около 60 запросов в сутки (20 на модель × 3 модели), и один дизайн-проект
+ * съедает 6–15 из них. Лимиты держат этот потолок: «Базовый» — попробовать
+ * (2–3 сметы или один план), «Профи» — 10–15 смет или 2 проекта и несколько
+ * смет. Персональный лимит из админки по-прежнему перекрывает тарифный.
+ */
+const LIMIT_BASE = 5;
+const LIMIT_PRO = 30;
+
+/**
+ * Тариф по строке users — та же логика, что app.isPro(): «Профи» с
+ * истёкшим demo_ends_at — уже не «Профи»; менеджеру и наблюдателю «Профи»
+ * даёт только действующий демо-период.
+ */
+function tariffOfRow($row) {
+    $type = $row['account_type'] ?? 'base';
+    $demo = $row['demo_ends_at'] ?? null;
+    $demoOk = $demo ? (strtotime($demo) >= time()) : null;
+    if ($type === 'pro') return ($demoOk === false) ? 'base' : 'pro';
+    if (in_array($type, ['admin', 'viewer', 'manager'], true) && $demoOk === true) return 'pro';
+    return 'base';
+}
+
+/**
+ * Тариф пользователя по ключу распознавания (email или ник — как
+ * RecognizeUI.userKey). Читаем под токеном самого пользователя; нет токена
+ * — публикуемым ключом (пока таблица users открыта на чтение). Не нашли —
+ * «Базовый»: лишнего не выдаём.
+ */
+function userTariff($user, $token) {
+    if ($user === '') return 'base';
+    $q = rawurlencode($user);
+    $rows = supabaseGet('/rest/v1/users?select=account_type,demo_ends_at&or=(email.eq.' . $q . ',username.eq.' . $q . ')&limit=1',
+        $token ?: null);
+    return (is_array($rows) && isset($rows[0])) ? tariffOfRow($rows[0]) : 'base';
+}
+
+function tariffLimit($tariff) { return $tariff === 'pro' ? LIMIT_PRO : LIMIT_BASE; }
 
 function limitsPath() { return __DIR__ . '/archive/limits.json'; }
 function accessPath() { return __DIR__ . '/archive/access.json'; }
@@ -623,10 +667,12 @@ function archiveUserCounts($archiveDir, $days, $force = false) {
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($_GET['quota'])) {
     $user = (string)($_GET['user'] ?? '');
     $limits = readLimits();
-    $limit = isset($limits[$user]) ? (int)$limits[$user] : LIMIT_DEFAULT;
+    $tariff = userTariff($user, bearerToken());
+    $personal = isset($limits[$user]);
+    $limit = $personal ? (int)$limits[$user] : tariffLimit($tariff);
     $used = is_dir($ARCHIVE_DIR) ? usedThisMonth($ARCHIVE_DIR, $user) : 0;
     echo json_encode([
-        'ok' => true, 'user' => $user,
+        'ok' => true, 'user' => $user, 'tariff' => $tariff, 'personal' => $personal,
         'limit' => $limit, 'used' => $used, 'left' => max(0, $limit - $used),
     ], JSON_UNESCAPED_UNICODE);
     exit;
@@ -884,7 +930,7 @@ if (is_array($req) && !empty($req['action'])) {
         else $limits[$user] = max(0, (int)$req['limit']);
         writeLimits($limits);
         echo json_encode(['ok' => true, 'user' => $user,
-            'limit' => $limits[$user] ?? LIMIT_DEFAULT], JSON_UNESCAPED_UNICODE);
+            'limit' => $limits[$user] ?? tariffLimit(userTariff($user, $token))], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
@@ -943,7 +989,18 @@ if (is_array($req) && !empty($req['action'])) {
     }
 
     if ($req['action'] === 'limits') {
-        echo json_encode(['ok' => true, 'default' => LIMIT_DEFAULT, 'limits' => readLimits()], JSON_UNESCAPED_UNICODE);
+        // Тарифы всех пользователей одним запросом (под токеном администратора):
+        // админке нужен лимит по умолчанию каждого, а он теперь по тарифу.
+        // Ключ — email и ник, как ключ распознавания (RecognizeUI.userKey).
+        $tariffs = [];
+        $rows = supabaseGet('/rest/v1/users?select=email,username,account_type,demo_ends_at', $token);
+        foreach (is_array($rows) ? $rows : [] as $u) {
+            $t = tariffOfRow($u);
+            if (!empty($u['email'])) $tariffs[strtolower($u['email'])] = $t;
+            if (!empty($u['username'])) $tariffs[$u['username']] = $t;
+        }
+        echo json_encode(['ok' => true, 'default' => LIMIT_BASE, 'defaultPro' => LIMIT_PRO,
+            'limits' => readLimits(), 'tariffs' => $tariffs], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
