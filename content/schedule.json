@@ -347,10 +347,10 @@
    "freq": 7200,
    "audience": "owner",
    "data_block": "состав из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-19",
    "published_at": null,
-   "words": 0
+   "words": 591
   },
   {
    "slug": "vozduh-voda-ili-geotermalnyy",
@@ -389,10 +389,10 @@
    "freq": 5200,
    "audience": "owner",
    "data_block": "расчёт по 21 городу",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-26",
    "published_at": null,
-   "words": 0
+   "words": 573
   },
   {
    "slug": "zamena-kotla-spb",
@@ -459,10 +459,10 @@
    "freq": 31424,
    "audience": "pro",
    "data_block": "диаметры и бухты из каталога",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-08",
    "published_at": null,
-   "words": 0
+   "words": 492
   },
   {
    "slug": "odnotrubnaya-leningradka",

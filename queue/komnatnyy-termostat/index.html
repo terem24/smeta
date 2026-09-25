@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Комнатный термостат для котла: подключение и экономия | HeatCalc.ru</title>
+    <meta name="description" content="Комнатный термостат для газового котла: релейное подключение против цифровой шины, погодозависимое управление, куда вешать датчик и сколько реально экономит.">
+    <link rel="canonical" href="https://heatcalc.ru/komnatnyy-termostat/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/komnatnyy-termostat/">
+    <meta property="og:title" content="Комнатный термостат для котла: какой и куда ставить">
+    <meta property="og:description" content="Реле или цифровая шина — разница в том, выключает котёл или меняет его мощность.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/komnatnyy-termostat/#webpage",
+      "url": "https://heatcalc.ru/komnatnyy-termostat/",
+      "name": "Комнатный термостат для котла: какой и куда ставить",
+      "description": "Комнатный термостат для газового котла: релейное подключение против цифровой шины, погодозависимое управление, куда вешать датчик и сколько реально экономит.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "комнатный термостат для котла"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Комнатный термостат для котла: какой и куда ставить",
+          "item": "https://heatcalc.ru/komnatnyy-termostat/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Чем цифровая шина лучше релейного подключения термостата?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Релейный термостат просто включает и выключает котёл: в межсезонье это короткие циклы, а ресурс горелки считается именно в них. По цифровой шине термостат передаёт котлу нужную температуру подачи, и тот плавно меняет мощность горелки, работая непрерывно на малой. Подключение по шине стоит 3 500 ₽ по базовым расценкам."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Куда вешать комнатный термостат?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "На внутренней стене на высоте 1,3–1,5 метра, в комнате, показательной для дома — обычно в гостиной. Не над радиатором, не на сквозняке от входной двери, не напротив окна, не на кухне (там своё тепло от готовки) и не в спальне с ночным понижением. В этой комнате термоголовку на приборе оставляют полностью открытой."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Зачем нужен уличный датчик, если есть комнатный термостат?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Они работают вместе. Уличный задаёт температуру подачи по погоде: в мороз 80 °C, в октябре 45 — без него котёл всю зиму работает так, будто на улице расчётные −24. Комнатный корректирует по факту: солнце в окна, камин, гости. Плюс низкая подача в межсезонье выводит конденсационный котёл в выгодный режим."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько экономит комнатный термостат?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Каждый градус понижения — около 5–6 % расхода: для дома 150 м² в Петербурге это 1 400 ₽ за сезон на газе и 7 400 ₽ на электричестве. Но основная экономия не от понижения, а от режима: ночное понижение на 3–4 градуса, отсутствие тактования и работа котла на модуляции."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Поможет ли термостат, если одни комнаты холодные?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет, это задача балансировки. Термостат управляет котлом целиком, а не распределением воды между приборами. Если одна комната жаркая, а другая холодная, надо перераспределить расход клапанами. И термостат не добавит мощности: при нехватке приборов он просто будет держать запрос постоянно."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/komnatnyy-termostat/#article",
+      "headline": "Комнатный термостат для котла: какой и куда ставить",
+      "description": "Комнатный термостат для газового котла: релейное подключение против цифровой шины, погодозависимое управление, куда вешать датчик и сколько реально экономит.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/komnatnyy-termostat/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-11-19",
+      "dateModified": "2026-11-19",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Комнатный термостат для котла: какой и куда ставить</nav>
+
+        <h1>Комнатный термостат для котла: какой и куда ставить</h1>
+
+        <p class="art-meta"><time datetime="2026-11-19">19 ноября 2026</time></p>
+
+        <p class="lead">Термостат избавляет от главной беды котла без автоматики — тактования, когда прибор включается на минуту и выключается. Но эффект сильно зависит от того, как он подключён: реле просто выключает котёл, цифровая шина меняет его мощность.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#dva-sposoba-podklyucheniya">Два способа подключения</a></li>
+            <li><a href="#pogodozavisimoe-upravlenie">Погодозависимое управление</a></li>
+            <li><a href="#kuda-veshat">Куда вешать</a></li>
+            <li><a href="#skolko-ekonomit">Сколько экономит</a></li>
+            <li><a href="#provodnoy-ili-besprovodnoy">Проводной или беспроводной</a></li>
+            <li><a href="#chego-termostat-ne-sdelaet">Чего термостат не сделает</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="dva-sposoba-podklyucheniya">Два способа подключения</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Релейное</th><th>Цифровая шина</th></tr>
+                <tr><td>Что делает</td><td>замыкает и размыкает контакт</td><td>передаёт котлу нужную температуру</td></tr>
+                <tr><td>Поведение котла</td><td>работает на заданной мощности или стоит</td><td>плавно меняет мощность горелки</td></tr>
+                <tr><td>Тактование</td><td>остаётся</td><td>почти исчезает</td></tr>
+                <tr><td>Совместимость</td><td>с любым котлом</td><td>только со «своим» протоколом</td></tr>
+                <tr><td>Монтаж</td><td>два провода</td><td>два провода плюс настройка</td></tr>
+            </table>
+        </div>
+        <p class="note">Подключение котла к контроллеру по цифровой шине стоит 3 500 ₽ по базовым расценкам — одна работа, которая меняет поведение системы целиком.</p>
+
+        <p>Релейный термостат работает как выключатель: в комнате стало тепло — котёл выключился целиком, остыло — включился на полную. В межсезонье, когда дому нужно два киловатта из двенадцати, это означает короткие циклы, а ресурс горелки считается именно в них.</p>
+
+        <p>По цифровой шине термостат сообщает котлу не «включись», а «держи такую-то температуру подачи». Котёл модулирует горелку и работает непрерывно на малой мощности — тише, экономичнее и с меньшим износом.</p>
+
+        <h2 id="pogodozavisimoe-upravlenie">Погодозависимое управление</h2>
+
+        <p>Следующий шаг после комнатного термостата — уличный датчик. Контроллер ведёт температуру подачи по кривой: на улице −24 °C подача 80, в октябре при +5 °C — 45.</p>
+
+        <ul>
+            <li><strong>Ровная температура в доме.</strong> Система не догоняет и не перегревает, а работает в нужном режиме постоянно.</li>
+            <li><strong>Нет тактования в межсезонье</strong> — котёл опускает мощность вместо того, чтобы выключаться.</li>
+            <li><strong>Конденсационный режим.</strong> Чем ниже подача, тем холоднее обратка и тем больше конденсации: котёл сам выходит в выгодный режим большую часть сезона.</li>
+            <li><strong>График 80/60 — это расчётная пятидневка,</strong> а не режим всей зимы. Без погодозависимости котёл всю зиму работает так, будто на улице −24.</li>
+        </ul>
+
+        <div class="callout">
+            <p><strong>Комнатный термостат и погодозависимость дополняют друг друга, а не заменяют.</strong> Уличный датчик задаёт температуру подачи по погоде, комнатный корректирует её по факту: солнце в окна, камин, гости, готовка. Лучший результат даёт связка, где комнатный термостат стоит в помещении, показательном для дома, — обычно в гостиной.</p>
+        </div>
+
+        <h2 id="kuda-veshat">Куда вешать</h2>
+
+        <ul>
+            <li><strong>На внутренней стене</strong> на высоте 1,3–1,5 метра.</li>
+            <li><strong>Не над радиатором и не рядом с ним</strong> — иначе меряет прибор, а не комнату.</li>
+            <li><strong>Не на пути сквозняка</strong> от входной двери и не напротив окна.</li>
+            <li><strong>Не в кухне</strong> — там готовка даёт своё тепло, и вся система будет жить по кухне.</li>
+            <li><strong>Не в спальне с ночным понижением,</strong> если оно настроено: термостат будет держать по ней весь дом.</li>
+            <li><strong>В комнате, где термостат управляет котлом, термоголовку на приборе оставляют открытой.</strong> Иначе два регулятора спорят: термостат просит тепло, а головка закрывает клапан.</li>
+        </ul>
+
+        <h2 id="skolko-ekonomit">Сколько экономит</h2>
+
+        <p>Каждый градус понижения температуры в доме — около 5–6 % расхода на отопление.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Топливо</th><th>Сезон при +22</th><th>Экономия 1 градуса</th></tr>
+                <tr><td>Газ</td><td class="num">26 500 ₽</td><td class="num">1 400 ₽</td></tr>
+                <tr><td>Электричество, с электроотоплением</td><td class="num">139 000 ₽</td><td class="num">7 400 ₽</td></tr>
+                <tr><td>Электричество, городской тариф</td><td class="num">192 000 ₽</td><td class="num">10 200 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Дом 150 м² в Петербурге с теплопотерями 10 кВт, тарифы Ленинградской области на конец 2026 года.</p>
+
+        <p>Но основная экономия не от самого понижения, а от режима: ночное понижение на 3–4 градуса, отсутствие тактования и работа котла на модуляции вместо циклов «включился — выключился».</p>
+
+        <h2 id="provodnoy-ili-besprovodnoy">Проводной или беспроводной</h2>
+
+        <ul>
+            <li><strong>Проводной</strong> — на стройке очевидный выбор: два провода от котла к месту термостата, питание от котла, ничего не садится.</li>
+            <li><strong>Беспроводной</strong> — в готовом доме, где штробить нельзя. Батарейки живут 2–3 года; связь надо проверить в реальном месте установки до монтажа.</li>
+            <li><strong>С вайфаем</strong> — управление из приложения и расписание. Полезно там, где приезжают по выходным: включить отопление за день до приезда.</li>
+            <li><strong>Кабель для проводного</strong> прокладывают вместе с электрикой котельной — потом это уже штробление.</li>
+        </ul>
+
+        <h2 id="chego-termostat-ne-sdelaet">Чего термостат не сделает</h2>
+
+        <ul>
+            <li><strong>Не выровняет комнаты между собой.</strong> Если одна жаркая, а другая холодная, это балансировка. Термостат управляет котлом, а не распределением воды.</li>
+            <li><strong>Не добавит мощности.</strong> Если приборов не хватает, термостат будет держать клапан открытым, а дом — мёрзнуть.</li>
+            <li><strong>Не заменит термоголовки.</strong> Они выравнивают отдельные комнаты, термостат ведёт систему целиком.</li>
+            <li><strong>Не спасёт от тактования,</strong> если котёл вдвое мощнее нужного: диапазон модуляции ограничен примерно 20 % номинала, и ниже котёл всё равно начнёт циклиться.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Собрать автоматику котельной
+            <small>Состав по числу зон и контуров</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем цифровая шина лучше релейного подключения термостата?</span></summary>
+            <div class="answer">
+                <p>Релейный термостат просто включает и выключает котёл: в межсезонье это короткие циклы, а ресурс горелки считается именно в них. По цифровой шине термостат передаёт котлу нужную температуру подачи, и тот плавно меняет мощность горелки, работая непрерывно на малой. Подключение по шине стоит 3 500 ₽ по базовым расценкам.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Куда вешать комнатный термостат?</span></summary>
+            <div class="answer">
+                <p>На внутренней стене на высоте 1,3–1,5 метра, в комнате, показательной для дома — обычно в гостиной. Не над радиатором, не на сквозняке от входной двери, не напротив окна, не на кухне (там своё тепло от готовки) и не в спальне с ночным понижением. В этой комнате термоголовку на приборе оставляют полностью открытой.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Зачем нужен уличный датчик, если есть комнатный термостат?</span></summary>
+            <div class="answer">
+                <p>Они работают вместе. Уличный задаёт температуру подачи по погоде: в мороз 80 °C, в октябре 45 — без него котёл всю зиму работает так, будто на улице расчётные −24. Комнатный корректирует по факту: солнце в окна, камин, гости. Плюс низкая подача в межсезонье выводит конденсационный котёл в выгодный режим.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько экономит комнатный термостат?</span></summary>
+            <div class="answer">
+                <p>Каждый градус понижения — около 5–6 % расхода: для дома 150 м² в Петербурге это 1 400 ₽ за сезон на газе и 7 400 ₽ на электричестве. Но основная экономия не от понижения, а от режима: ночное понижение на 3–4 градуса, отсутствие тактования и работа котла на модуляции.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Поможет ли термостат, если одни комнаты холодные?</span></summary>
+            <div class="answer">
+                <p>Нет, это задача балансировки. Термостат управляет котлом целиком, а не распределением воды между приборами. Если одна комната жаркая, а другая холодная, надо перераспределить расход клапанами. И термостат не добавит мощности: при нехватке приборов он просто будет держать запрос постоянно.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/vozduh-v-sisteme-otopleniya/">воздух в системе: развоздушивание и автоматика</a> · <a href="/kotel-ne-greet-v-moroz/">котёл не справляется в мороз: что проверять</a> · <a href="/dvuhtrubnaya-sistema/">двухтрубная система: тупиковая и попутная</a> · <a href="/datchiki-protechki/">датчики протечки и аварийное отключение</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Стоимость отопления за сезон: расчёт по климату и тарифам | HeatCalc.ru</title>
+    <meta name="description" content="Как посчитать, сколько будет стоить отопление дома за сезон: формула по климату города, расход каждого вида топлива в натуре и цена киловатт-часа тепла по тарифам.">
+    <link rel="canonical" href="https://heatcalc.ru/stoimost-ekspluatatsii/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/stoimost-ekspluatatsii/">
+    <meta property="og:title" content="Стоимость отопления за сезон: как посчитать">
+    <meta property="og:description" content="24 400 кВт·ч за зиму на дом 150 м². Дальше — арифметика по тарифам.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/stoimost-ekspluatatsii/#webpage",
+      "url": "https://heatcalc.ru/stoimost-ekspluatatsii/",
+      "name": "Стоимость отопления за сезон: как посчитать заранее",
+      "description": "Как посчитать, сколько будет стоить отопление дома за сезон: формула по климату города, расход каждого вида топлива в натуре и цена киловатт-часа тепла по тарифам.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "стоимость отопления за сезон"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Стоимость отопления за сезон: как посчитать заранее",
+          "item": "https://heatcalc.ru/stoimost-ekspluatatsii/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как посчитать стоимость отопления за сезон?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Умножить мощность теплопотерь на число суток отопительного периода, на 24 и на отношение (температура внутри минус средняя наружная) к (температура внутри минус расчётная). Для дома 150 м² с теплопотерями 10 кВт в Петербурге это 24 400 кВт·ч тепла за сезон. Дальше разделить на теплоту сгорания топлива и КПД и умножить на цену."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько газа уходит на отопление за сезон?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Дому 150 м² с теплопотерями 10 кВт в Петербурге нужно 2 848 кубометров: 24 400 кВт·ч тепла при теплоте сгорания 9,31 кВт·ч/м³ (ГОСТ 5542-2014) и КПД котла 92 %. По тарифу Ленинградской области это около 26 500 ₽ за сезон."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему в Москве котёл мощнее, а расход меньше, чем в Петербурге?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Потому что это разные числа. Мощность считают по расчётной температуре самой холодной пятидневки: в Москве −26 °C против −24 в Петербурге. А сезонный расход зависит от длительности периода и средней температуры: в Петербурге период на шесть суток длиннее, и в сумме тепла нужно больше."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что сильнее всего влияет на счёт за отопление?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Теплопотери дома — снижение с 10 до 7 кВт уменьшает расход на треть, а на электричестве это 42 тысячи за сезон. Затем тариф: категория «дом с электроотоплением» вместо городской экономит 2,18 ₽ на киловатт-час, то есть 53 тысячи. И температура в доме: каждый градус — 5–6 % расхода."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что не входит в расчёт стоимости отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Горячая вода — она считается отдельно, семье из четырёх нужно около 8 500 кВт·ч в год. Аномально холодная зима добавит 10–15 % к среднему сезону. Электричество на насосы — около 500 кВт·ч. И обслуживание: регламентное обслуживание котла, чистка дымохода, замена анода в бойлере."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/stoimost-ekspluatatsii/#article",
+      "headline": "Стоимость отопления за сезон: как посчитать заранее",
+      "description": "Как посчитать, сколько будет стоить отопление дома за сезон: формула по климату города, расход каждого вида топлива в натуре и цена киловатт-часа тепла по тарифам.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/stoimost-ekspluatatsii/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-11-26",
+      "dateModified": "2026-11-26",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Стоимость отопления за сезон: как посчитать заранее</nav>
+
+        <h1>Стоимость отопления за сезон: как посчитать заранее</h1>
+
+        <p class="art-meta"><time datetime="2026-11-26">26 ноября 2026</time></p>
+
+        <p class="lead">Стоимость сезона считается до стройки, а не выясняется в феврале. Нужны три числа: теплопотери дома, климат города и цена топлива. Разбираем формулу и показываем, во что она превращается для каждого источника тепла.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#formula">Формула</a></li>
+            <li><a href="#vo-chto-eto-prevraschaetsya">Во что это превращается</a></li>
+            <li><a href="#cena-tam-gde-tarif-reguliruetsya">Цена там, где тариф регулируется</a></li>
+            <li><a href="#chto-menyaet-rezultat-silnee-vsego">Что меняет результат сильнее всего</a></li>
+            <li><a href="#chego-v-raschete-net">Чего в расчёте нет</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="formula">Формула</h2>
+
+        <p>Дом теряет расчётную мощность только в самую холодную пятидневку. Всю остальную зиму на улице теплее, и расход пропорционально меньше. Поэтому в формуле стоит отношение средней температуры отопительного периода к расчётной.</p>
+
+        <div class="formula">
+            <p><strong>Тепло за сезон</strong> = мощность × сутки × 24 × (t внутри − t средняя) ÷ (t внутри − t расчётная)</p>
+            <p>Дом 150 м² в Петербурге, теплопотери 10 кВт:</p>
+            <p>10 × 211 × 24 × (20 + 1,2) ÷ (20 + 24) = <strong>24 400 кВт·ч</strong></p>
+        </div>
+
+        <p>Климатические числа берутся из СП 131.13330.2020, табл. 3.1: для Петербурга расчётная температура −24 °C, средняя за отопительный период −1,2 °C, длительность 211 суток. Для Москвы −26, −2,2 и 204; для Краснодара −15, +2,7 и 146.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Город</th><th>Расчётная</th><th>Средняя</th><th>Суток</th><th>Сезон при 10 кВт</th></tr>
+                <tr><td>Краснодар</td><td class="num">−15 °C</td><td class="num">+2,7 °C</td><td class="num">146</td><td class="num">17 300 кВт·ч</td></tr>
+                <tr><td>Москва</td><td class="num">−26 °C</td><td class="num">−2,2 °C</td><td class="num">204</td><td class="num">23 600 кВт·ч</td></tr>
+                <tr><td>Санкт-Петербург</td><td class="num">−24 °C</td><td class="num">−1,2 °C</td><td class="num">211</td><td class="num">24 400 кВт·ч</td></tr>
+                <tr><td>Архангельск</td><td class="num">−34 °C</td><td class="num">−4,5 °C</td><td class="num">248</td><td class="num">27 000 кВт·ч</td></tr>
+            </table>
+        </div>
+        <p class="note">Один и тот же дом с одинаковыми теплопотерями. Данные — из справочника городов калькулятора по СП 131.13330.2020.</p>
+
+        <div class="callout">
+            <p><strong>Самое неочевидное в этой таблице — Архангельск.</strong> Расчётная температура там −34 °C против −24 в Петербурге, то есть котёл нужен заметно мощнее. А сезонный расход при одинаковых теплопотерях отличается всего на одиннадцать процентов: 27 000 кВт·ч против 24 400 — хотя отопительный период длиннее на 37 суток. Причина в том, что мощность считают по самой холодной пятидневке, а расход — по средней температуре сезона. Эти два числа живут отдельно: суровый климат бьёт по стоимости оборудования сильнее, чем по счетам за топливо.</p>
+        </div>
+
+        <h2 id="vo-chto-eto-prevraschaetsya">Во что это превращается</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Топливо</th><th>Теплота сгорания</th><th>КПД</th><th>Расход за сезон</th></tr>
+                <tr><td>Природный газ</td><td class="num">9,31 кВт·ч/м³</td><td class="num">92 %</td><td class="num">2 848 м³</td></tr>
+                <tr><td>Электричество</td><td class="num">—</td><td class="num">100 %</td><td class="num">24 400 кВт·ч</td></tr>
+                <tr><td>Тепловой насос</td><td class="num">—</td><td class="num">коэффициент 3,5</td><td class="num">7 000 кВт·ч</td></tr>
+                <tr><td>Пеллеты</td><td class="num">4,8 кВт·ч/кг</td><td class="num">88 %</td><td class="num">5,8 т</td></tr>
+                <tr><td>Дрова, влажность 20 %</td><td class="num">3,9 кВт·ч/кг</td><td class="num">75 %</td><td class="num">8,3 т</td></tr>
+                <tr><td>Сжиженный газ</td><td class="num">6,9 кВт·ч/л</td><td class="num">92 %</td><td class="num">3 843 л</td></tr>
+                <tr><td>Дизельное топливо</td><td class="num">10,0 кВт·ч/л</td><td class="num">90 %</td><td class="num">2 711 л</td></tr>
+            </table>
+        </div>
+        <p class="note">Теплота сгорания природного газа — по ГОСТ 5542-2014, остальные справочные. Расход = тепло за сезон ÷ теплота сгорания ÷ КПД.</p>
+
+        <h2 id="cena-tam-gde-tarif-reguliruetsya">Цена там, где тариф регулируется</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Источник</th><th>Цена тепла</th><th>Сезон</th></tr>
+                <tr><td>Газовый котёл</td><td class="num">1,09 ₽/кВт·ч</td><td class="num">26 500 ₽</td></tr>
+                <tr><td>Тепловой насос</td><td class="num">1,63 ₽/кВт·ч</td><td class="num">40 000 ₽</td></tr>
+                <tr><td>Электрокотёл, ночная ставка</td><td class="num">3,41 ₽/кВт·ч</td><td class="num">83 000 ₽</td></tr>
+                <tr><td>Электрокотёл, с электроотоплением</td><td class="num">5,70 ₽/кВт·ч</td><td class="num">139 000 ₽</td></tr>
+                <tr><td>Электрокотёл, городской тариф</td><td class="num">7,88 ₽/кВт·ч</td><td class="num">192 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Тарифы Ленинградской области на конец 2026 года. Цены на дрова, пеллеты и сжиженный газ не регулируются — их подставляйте свои, а объёмы возьмите из таблицы выше.</p>
+
+        <h2 id="chto-menyaet-rezultat-silnee-vsego">Что меняет результат сильнее всего</h2>
+
+        <ol>
+            <li><strong>Теплопотери дома.</strong> Прямая пропорция: снижение с 10 до 7 кВт уменьшает расход на 30 %. На электричестве это 42 тысячи рублей за сезон, каждый год.</li>
+            <li><strong>Тариф.</strong> Оформить категорию «дом с электроотоплением» вместо городской — это 2,18 ₽ на киловатт-час, то есть 53 тысячи за сезон.</li>
+            <li><strong>Температура в доме.</strong> Каждый градус — 5–6 % расхода. Ночное понижение на 3–4 градуса даёт ощутимо больше, чем кажется.</li>
+            <li><strong>Автоматика.</strong> Погодозависимое управление убирает перетоп в межсезонье, когда дом греется «как в мороз».</li>
+            <li><strong>КПД источника.</strong> Разница между 92 % у конденсационного котла на низком графике и 85 % у него же на 80/60 — это несколько тысяч рублей в год.</li>
+        </ol>
+
+        <h2 id="chego-v-raschete-net">Чего в расчёте нет</h2>
+
+        <ul>
+            <li><strong>Горячей воды.</strong> Она считается отдельно: семье из четырёх нужно около 8 500 кВт·ч в год на подогрев.</li>
+            <li><strong>Аномальных зим.</strong> Формула даёт средний сезон; холодная зима добавит 10–15 %.</li>
+            <li><strong>Электричества на насосы.</strong> Два насоса по 50 Вт за сезон — это около 500 кВт·ч, заметно только при дорогом тарифе.</li>
+            <li><strong>Обслуживания.</strong> Регламентное обслуживание котла, чистка дымохода, замена анода в бойлере.</li>
+        </ul>
+
+        <p>И главное, что стоит сделать до выбора котла: посчитать теплопотери по помещениям, а не по объёму. Укрупнённая оценка завышает их иногда в полтора раза, и вслед за ней завышается всё — котёл, приборы и прогноз расходов, по которому потом принимают решение.</p>
+
+        <a class="cta" href="/">
+            Посчитать стоимость сезона
+            <small>Калькулятор берёт тарифы вашего региона</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как посчитать стоимость отопления за сезон?</span></summary>
+            <div class="answer">
+                <p>Умножить мощность теплопотерь на число суток отопительного периода, на 24 и на отношение (температура внутри минус средняя наружная) к (температура внутри минус расчётная). Для дома 150 м² с теплопотерями 10 кВт в Петербурге это 24 400 кВт·ч тепла за сезон. Дальше разделить на теплоту сгорания топлива и КПД и умножить на цену.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько газа уходит на отопление за сезон?</span></summary>
+            <div class="answer">
+                <p>Дому 150 м² с теплопотерями 10 кВт в Петербурге нужно 2 848 кубометров: 24 400 кВт·ч тепла при теплоте сгорания 9,31 кВт·ч/м³ (ГОСТ 5542-2014) и КПД котла 92 %. По тарифу Ленинградской области это около 26 500 ₽ за сезон.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему в Москве котёл мощнее, а расход меньше, чем в Петербурге?</span></summary>
+            <div class="answer">
+                <p>Потому что это разные числа. Мощность считают по расчётной температуре самой холодной пятидневки: в Москве −26 °C против −24 в Петербурге. А сезонный расход зависит от длительности периода и средней температуры: в Петербурге период на шесть суток длиннее, и в сумме тепла нужно больше.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что сильнее всего влияет на счёт за отопление?</span></summary>
+            <div class="answer">
+                <p>Теплопотери дома — снижение с 10 до 7 кВт уменьшает расход на треть, а на электричестве это 42 тысячи за сезон. Затем тариф: категория «дом с электроотоплением» вместо городской экономит 2,18 ₽ на киловатт-час, то есть 53 тысячи. И температура в доме: каждый градус — 5–6 % расхода.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что не входит в расчёт стоимости отопления?</span></summary>
+            <div class="answer">
+                <p>Горячая вода — она считается отдельно, семье из четырёх нужно около 8 500 кВт·ч в год. Аномально холодная зима добавит 10–15 % к среднему сезону. Электричество на насосы — около 500 кВт·ч. И обслуживание: регламентное обслуживание котла, чистка дымохода, замена анода в бойлере.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/komnatnyy-termostat/">комнатный термостат: проводной или беспроводной</a> · <a href="/kotel-ne-greet-v-moroz/">котёл не справляется в мороз: что проверять</a> · <a href="/skolko-stoit-otoplenie-doma/">сколько стоит отопление частного дома под ключ</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
