@@ -905,6 +905,45 @@ const RecognizeFiles = {
         return `${p.num} «${p.title.replace(/[«»"]/g, '')}»`;
     },
 
+    /**
+     * Этаж по названию листа: «План тёплых полов 2 этажа», «План мебели
+     * первого этажа», «Мансарда», «Цокольный этаж». null — не указан.
+     * \b в JS кириллицу не видит, поэтому слова ищем без границ.
+     */
+    sheetFloor(title) {
+        const s = String(title || '').toLowerCase();
+        if (/подвал|цокол/.test(s)) return 0;
+        if (/мансард|чердак/.test(s)) return 'm';
+        const m = s.match(/(\d)\s*-?\s*(?:й|го|ого|ый|ой)?\s*этаж/);
+        if (m) return +m[1];
+        if (/перв[а-я]*\s*этаж/.test(s)) return 1;
+        if (/втор[а-я]*\s*этаж/.test(s)) return 2;
+        if (/трет[а-я]*\s*этаж/.test(s)) return 3;
+        return null;
+    },
+
+    /**
+     * Какому листу помещений соответствует лист инженерной системы — номер в
+     * set.rooms или null. Один лист помещений — он. Иначе этаж в названии
+     * («…2 этажа» ↔ «…2 этажа»); этажей в названиях нет, но листов системы
+     * столько же, сколько листов помещений, — по порядку: проекты идут от
+     * нижнего этажа к верхнему. Уверенности нет — null: лучше без подсказки,
+     * чем с планом чужого этажа.
+     *
+     * k — порядковый номер листа среди листов этой системы, total — их число.
+     */
+    pairRoomSheet(p, k, total, rooms) {
+        if (rooms.length === 1) return 0;
+        const f = this.sheetFloor(p.title);
+        if (f !== null) {
+            const hits = rooms.map((r, i) => this.sheetFloor(r.title) === f ? i : -1).filter(i => i >= 0);
+            if (hits.length === 1) return hits[0];
+        }
+        const anyFloor = rooms.some(r => this.sheetFloor(r.title) !== null);
+        if (!anyFloor && f === null && total === rooms.length) return k;
+        return null;
+    },
+
     async fromProjectSet(pdf, set, onProgress) {
         const images = [];
         for (let k = 0; k < set.rooms.length; k++) {
@@ -917,17 +956,19 @@ const RecognizeFiles = {
         // после помещений, когда есть список комнат, к которым всё привязать.
         const inRoomsSet = new Set(set.rooms.map(p => p.num));
         set.eng = [];
-        // Места подписей комнат — только при одном листе помещений: у
-        // нескольких этажей свои листы, и какому из них соответствует лист
-        // отопления, по координатам не понять.
-        set.roomWords = set.rooms.length === 1 ? await this.pageWords(await pdf.getPage(set.rooms[0].num)) : [];
+        // Надписи каждого листа помещений — по ним найдутся места подписей
+        // комнат. roomWords[k] — лист set.rooms[k], он же снимок k для плана.
+        set.roomWords = [];
+        for (const p of set.rooms) set.roomWords.push(await this.pageWords(await pdf.getPage(p.num)));
         for (const kind of this.ENG_KINDS) {
             const list = set.found.filter(p => p.kind === kind && !inRoomsSet.has(p.num))
                 .slice(0, this.ENG_LIMIT[kind] || this.ENG_PER_KIND);
-            for (const p of list) {
+            for (let k = 0; k < list.length; k++) {
+                const p = list[k];
                 if (onProgress) onProgress(`готовлю лист ${p.num}`);
                 const page = await pdf.getPage(p.num);
                 set.eng.push({ kind, num: p.num, title: p.title, text: p.text,
+                    roomSheet: kind === 'vent' ? null : this.pairRoomSheet(p, k, list.length, set.rooms),
                     labels: kind === 'heat' ? await this.pageLabels(page) : [],
                     img: await this.renderPage(page) });
             }

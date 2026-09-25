@@ -53,20 +53,28 @@ const RecognizeProject = {
     async read(rows, project, onStatus) {
         const ui = RecognizeUI;
         const summary = [], warnings = [];
-        // Где на плане подписана каждая комната — в тех же координатах, что и
-        // надписи листов отопления и сантехники (листы в одном масштабе).
-        const pos = this.roomPositions(rows, project && project.roomWords);
-        const list = rows.map((r, n) => `${n + 1}. ${r.name}${r.area > 0 ? `, ${this.fmt(r.area)} м²` : ''}` +
-            `${r.floor === 2 ? ', 2-й этаж' : ''}` +
-            (pos[n] ? `, подпись на плане (${pos[n].x}%, ${pos[n].y}%)` : '')).join('\n');
-        const posHint = pos.some(Boolean)
-            ? 'Координаты подписей помещений взяты с листа планировки того же проекта: листы нарисованы в одном масштабе ' +
-              'и положении, x — % ширины слева, y — % высоты сверху. Помещение, в котором стоит прибор или зона, — то, ' +
-              'в чьих границах на этом листе оказывается её точка; ориентируйся по стенам на картинке и по этим координатам.\n\n'
-            : '';
+        const posHint = 'Координаты подписей помещений взяты с листа планировки того же этажа: листы нарисованы в одном масштабе ' +
+            'и положении, x — % ширины слева, y — % высоты сверху. Помещение, в котором стоит прибор или зона, — то, ' +
+            'в чьих границах на этом листе оказывается её точка; ориентируйся по стенам на картинке и по этим координатам.\n\n';
 
         for (const sh of (project && project.eng) || []) {
             const what = this.SHEET_WHAT[sh.kind] || 'инженерных систем';
+
+            // Помещения этого листа. Лист системы сведён с листом помещений
+            // своего этажа (RecognizeFiles.pairRoomSheet) — тогда только его
+            // комнаты: список второго этажа на плане первого сбивал бы модель.
+            // Не сведён — весь дом, как прежде, и без мест подписей.
+            const scope = this.sheetScope(rows, sh);
+            const words = sh.roomSheet !== null && sh.roomSheet !== undefined && project.roomWords
+                ? project.roomWords[sh.roomSheet] : null;
+            const pos = this.roomPositions(scope.map(n => rows[n]), words);
+            const list = scope.map((n, k) => {
+                const r = rows[n];
+                return `${n + 1}. ${r.name}${r.area > 0 ? `, ${this.fmt(r.area)} м²` : ''}` +
+                    `${r.floor === 2 ? ', 2-й этаж' : ''}` +
+                    (pos[k] ? `, подпись на плане (${pos[k].x}%, ${pos[k].y}%)` : '');
+            }).join('\n');
+            const scopeRows = scope.map(n => rows[n]);
 
             // Тип вентиляции часто назван в тексте листа прямо — тогда модель
             // не нужна, и запрос из лимита не тратится.
@@ -103,7 +111,7 @@ const RecognizeProject = {
                 const data = await ui.askModel([
                     { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
                         `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
-                        (sh.kind === 'vent' ? '' : posHint) + marksHint + labelsHint +
+                        (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint +
                         (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
                         'Верни только JSON.' },
                     { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
@@ -112,9 +120,9 @@ const RecognizeProject = {
                 const text = cand?.content?.parts?.[0]?.text;
                 if (!text) throw new Error('пустой ответ');
                 const parsed = ui.parseModelJson(text, cand.finishReason);
-                const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh)
+                const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh, scopeRows)
                     : sh.kind === 'vent' ? this.takeVent(parsed, sh)
-                    : this.takeWater(parsed, rows, sh);
+                    : this.takeWater(parsed, rows, sh, scopeRows);
                 summary.push(res.summary);
                 warnings.push(...res.warnings);
             } catch (e) {
@@ -123,6 +131,19 @@ const RecognizeProject = {
             }
         }
         return { summary, warnings };
+    },
+
+    /**
+     * Номера строк (индексы в rows), к которым относится лист системы. Лист
+     * сведён с листом помещений k — строки, прочитанные с него (row._sheet —
+     * номер снимка, а снимки идут в порядке set.rooms). Не сведён или с того
+     * листа строк нет (дочитанный руками этаж) — весь дом.
+     */
+    sheetScope(rows, sh) {
+        const all = rows.map((r, n) => n);
+        if (sh.kind === 'vent' || sh.roomSheet === null || sh.roomSheet === undefined) return all;
+        const own = all.filter(n => rows[n]._sheet === sh.roomSheet);
+        return own.length ? own : all;
     },
 
     /**
@@ -247,22 +268,33 @@ const RecognizeProject = {
         return [...set].sort((a, b) => a.localeCompare(b, 'ru', { numeric: true }));
     },
 
-    /** Строка по номеру из ответа модели (номера в списке — с единицы). */
-    rowOf(rows, n) {
+    /**
+     * Строка по номеру из ответа модели (номера в списке — с единицы, общие
+     * на весь дом). scope — строки этого листа: номер чужого этажа модели не
+     * давали, и если она его назвала, это ошибка, а не находка.
+     */
+    rowOf(rows, n, scope) {
         const k = Math.round(this.num(n)) - 1;
-        return (k >= 0 && k < rows.length) ? rows[k] : null;
+        const r = (k >= 0 && k < rows.length) ? rows[k] : null;
+        return r && (!scope || scope.includes(r)) ? r : null;
     },
 
-    takeHeat(parsed, rows, sh) {
+    /**
+     * scope — строки этажа этого листа (по умолчанию весь дом). Сбрасываем
+     * только их: второй лист отопления (2-й этаж) не должен стирать то, что
+     * первый уже разложил по комнатам 1-го.
+     */
+    takeHeat(parsed, rows, sh, scope) {
         const warnings = [];
-        rows.forEach(r => {
+        scope = scope || rows;
+        scope.forEach(r => {
             r.eng = r.eng || {};
             r.eng.heatSheet = sh.num;       // лист прочитан: молчание о комнате — тоже ответ
             r.eng.ufh = false; r.eng.ufhArea = null; r.eng.heaters = 0; r.eng.heaterType = null;
         });
         let ufhSum = 0, ufhRooms = 0, heaters = 0;
         (Array.isArray(parsed.rooms) ? parsed.rooms : []).forEach(x => {
-            const r = this.rowOf(rows, x && x.n);
+            const r = this.rowOf(rows, x && x.n, scope);
             if (!r) { if (x && x.name) warnings.push(`лист ${sh.num}: «${x.name}» не найдено среди помещений`); return; }
             if (x.ufh) {
                 r.eng.ufh = true;
@@ -286,7 +318,13 @@ const RecognizeProject = {
 
         const tr = parsed.towelRails || {};
         const trCount = this.cnt(tr.count);
-        this.towel = trCount ? { count: trCount, type: tr.type === 'water' ? 'water' : 'electric' } : null;
+        // Полотенцесушители с листов разных этажей складываются.
+        if (trCount) {
+            const type = tr.type === 'water' ? 'water' : 'electric';
+            this.towel = this.towel
+                ? { count: this.towel.count + trCount, type: this.towel.type }
+                : { count: trCount, type };
+        }
 
         const total = this.num(parsed.ufhTotal);
         const parts = [];
@@ -318,12 +356,13 @@ const RecognizeProject = {
         };
     },
 
-    takeWater(parsed, rows, sh) {
+    takeWater(parsed, rows, sh, scope) {
         const warnings = [];
-        rows.forEach(r => { r.eng = r.eng || {}; r.eng.waterSheet = sh.num; r.eng.fix = null; });
+        scope = scope || rows;
+        scope.forEach(r => { r.eng = r.eng || {}; r.eng.waterSheet = sh.num; r.eng.fix = null; });
         const tot = {};
         (Array.isArray(parsed.rooms) ? parsed.rooms : []).forEach(x => {
-            const r = this.rowOf(rows, x && x.n);
+            const r = this.rowOf(rows, x && x.n, scope);
             if (!r) { if (x && x.name) warnings.push(`лист ${sh.num}: «${x.name}» не найдено среди помещений`); return; }
             const f = {};
             this.FIX_KEYS.forEach(k => { f[k] = this.cnt(x[k]); });
