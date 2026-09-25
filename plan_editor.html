@@ -56,6 +56,11 @@
   .steps .up { color: #d8b26a; }
   .steps .up.bad { color: var(--warn-text); }
   .steps .up b { cursor: pointer; text-decoration: underline; }
+  /* Что делать прямо сейчас. Живёт в полоске шагов, а не только в правой
+     колонке: там же печатаются результаты и отказы, инструкция под ними
+     теряется, а подсказки к тому же бывают выключены. */
+  .steps .tip { color: #9ccbe8; }
+  .steps .tip.wait { color: #d8b26a; }
   button, select, input[type=text] { font: inherit; font-size: 12.5px; padding: 5px 10px;
          border-radius: var(--rad); border: 1px solid var(--border-soft);
          background: var(--surface-light); color: var(--text-main); cursor: pointer;
@@ -175,11 +180,13 @@
   </label>
   <button id="b_automark" class="go" onclick="autoMarkAll()" title="Масштаб, зоны, радиаторы и коллектор — по всем этажам сразу, и сохранить">Разметить всё</button>
   <button id="b_scale" onclick="setMode('scale')">Масштаб</button>
-  <button id="b_autoscale" onclick="autoScale()" title="Подобрать масштаб по площадям комнат подробного расчёта">Масштаб по расчёту</button>
+  <button id="b_autoscale" onclick="autoScale()" title="Взять масштаб с размерных линий чертежа, а если их нет — подобрать по площадям комнат подробного расчёта">Подобрать масштаб</button>
   <button id="b_autorooms" onclick="autoRooms()" title="Найти все комнаты по стенам и создать зоны по комнатам расчёта: тёплый пол, котельная, санузлы">Распознать комнаты</button>
   <button id="b_room" onclick="setMode('room')">Зона: по клику</button>
   <button id="b_rect" onclick="setMode('rect')">Зона: прямоугольник</button>
   <button id="b_poly" onclick="setMode('poly')">Зона: контур</button>
+  <button id="b_zonemore" class="ghost" onclick="toggleZoneMore()"
+    title="Другие способы обвести зону: рамкой или по углам. Обычно хватает клика внутри комнаты">Иначе ▾</button>
   <button id="b_rad" onclick="setMode('rad')">Радиаторы</button>
   <button id="b_autorad" onclick="autoRads()" title="Найти окна и поставить радиаторы под ними">Под окна</button>
   <button id="b_coll" onclick="setMode('coll')" title="Точка коллектора ТП — от неё на листах рисуются подводки петель">Коллектор</button>
@@ -427,6 +434,7 @@ try {
     if (!n || roomNames.indexOf(n) >= 0) return;
     roomNames.push(n);
     calcRooms.push({
+      id: (r.id != null ? r.id : null),
       name: n, area: +r.area || 0, floor: +r.floor || 1,
       sys: r.sys || [], win: (r.windows || []).length
     });
@@ -449,6 +457,23 @@ if (roomNames.length) {
   var dl = document.createElement('datalist'); dl.id = 'roomNames';
   roomNames.forEach(function (n) { var o = document.createElement('option'); o.value = n; dl.appendChild(o); });
   document.body.appendChild(dl);
+}
+
+/**
+ * Комната расчёта по имени — для зоны, подписанной руками.
+ *
+ * Связь «зона ↔ комната» держится на id, а не на совпадении имён: тёзки
+ * («Санузел» на обоих этажах) по имени не различаются, и сверка на них
+ * ломалась. Руками вписанное имя превращаем в id только тогда, когда такое
+ * имя в расчёте одно; иначе ссылки нет и сверка работает по-старому.
+ */
+function roomIdByName(nm) {
+  var k = String(nm || '').trim().toLowerCase(), hit = null, n = 0;
+  if (!k) return null;
+  calcRooms.forEach(function (r) {
+    if (String(r.name).trim().toLowerCase() === k) { hit = r.id; n++; }
+  });
+  return (n === 1 && hit != null) ? hit : null;
 }
 
 /** Карточка санузла расчёта по имени зоны (регистр и пробелы не важны) */
@@ -475,6 +500,17 @@ function typeChanged() {
   if (mode !== 'room' && mode !== 'rect' && mode !== 'poly') setMode('room');
   else { draw(); updateGuide(); }
 }
+
+// Короткая строка режима для полоски шагов; в правой колонке текст длиннее.
+var MODE_BAR = {
+  scale: 'Кликните на плане две точки известного размера — потом впишете его длину в метрах',
+  room: 'Кликните внутри комнаты — контур найдётся по стенам',
+  rect: 'Растяните рамку по комнате мышью',
+  poly: 'Кликайте углы контура по порядку; двойной клик — замкнуть',
+  rad: 'Кликайте под окнами; клик по значку — убрать',
+  coll: 'Кликните точку, где стоит коллектор тёплого пола',
+  wc: 'Выберите прибор в списке и кликните, где он стоит'
+};
 
 function setMode(m) {
   if (m === 'scale' && !F().img) { alert('Сначала загрузите план.'); return; }
@@ -1721,6 +1757,15 @@ function matchScore(ok, found, nTargets) {
   return ok * Math.min(1, nTargets * 1.3 / Math.max(1, found));
 }
 
+/** Площади комнат этажа из подробного расчёта — то единственное, по чему
+ *  подбирается масштаб. Вынесено из guessScale: отказ обязан называть
+ *  причину, а она как раз в том, сколько таких комнат нашлось. */
+function scaleTargets() {
+  return calcRooms.filter(function (r) {
+    return (+r.floor || 1) === cur + 1 && r.area > 0;
+  }).map(function (r) { return r.area; });
+}
+
 /** Масштаб по площадям комнат расчёта: сколько пикселей плана в метре.
  *
  *  Единственное число разметки, которого нет ни на чертеже, ни в расчёте, —
@@ -1733,9 +1778,7 @@ function matchScore(ok, found, nTargets) {
  *  масштабов, у каждого меряем согласие с расчётом, а лучший уточняем ещё
  *  дважды — уже на его собственной сегментации. */
 function guessScale() {
-  var targets = calcRooms.filter(function (r) {
-    return (+r.floor || 1) === cur + 1 && r.area > 0;
-  }).map(function (r) { return r.area; });
+  var targets = scaleTargets();
   if (targets.length < 2) return null;
   // Подбор по одной маске: обычной ('raw') либо очищенной от тонкого ('clean')
   var score = function (ok, n) { return matchScore(ok, n, targets.length); };
@@ -1787,38 +1830,89 @@ function doorWidthM() {
   return median(DOORS.map(function (d) { return d.w / f.pxPerM; }));
 }
 
-/** Кнопка «Масштаб по расчёту», она же автоподбор при загрузке плана.
+/** Ширина дверных проёмов при таком масштабе: 0 — проёмов не нашлось.
+ *  Проверка независимая: площади можно свести к чему угодно, а проём —
+ *  величина известная, 0,8–0,9 м. */
+function doorCheck(ppm) {
+  var f = F(), was = f.pxPerM;
+  f.pxPerM = ppm; resetScaleCaches();
+  var dw = doorWidthM();
+  f.pxPerM = was; resetScaleCaches();
+  return dw;
+}
+
+/** Кнопка «Подобрать масштаб», она же автоподбор при загрузке плана.
  *  silent — молчать о неудаче: при загрузке плана комнат в расчёте может и
  *  не быть, ругаться тут не на что. */
 function autoScale(silent) {
+  // Первый источник — размеры самого чертежа. Он не зависит от того,
+  // заполнен ли расчёт, и потому закрывает случай, на котором шаг «Масштаб»
+  // раньше становился тупиком: план второго этажа есть, комнат второго
+  // этажа в расчёте нет.
+  var d = null;
+  try { d = scaleFromDims(PDF_DIMS[cur]); }
+  catch (e) { console.error('[plan_editor] dims:', e); }
+  if (d) {
+    var ddw = doorCheck(d.ppm);
+    if (!ddw || (ddw >= 0.6 && ddw <= 1.3)) {
+      if (!silent) pushUndo('scale');
+      var fd = F();
+      fd.pxPerM = d.ppm;
+      resetScaleCaches();
+      renderZones(); draw(); updateGuide();
+      hint('<span class=ok>Масштаб взят с размерных линий чертежа</span> (сошлось ' +
+        d.n + ' размеров из ' + d.total + '). ' +
+        (ddw ? 'Проверьте: дверные проёмы получились ' + ddw.toFixed(2).replace('.', ',') +
+          ' м. ' : 'Проверьте его кнопкой «Масштаб» по любому известному размеру. ') +
+        'Дальше — «Распознать комнаты».');
+      return true;
+    }
+    d = null;   // проёмы не сошлись — размеры не от этого плана, идём к площадям
+  }
   var g = null;
   try { g = guessScale(); } catch (e) { console.error('[plan_editor] scale:', e); }
   if (!g) {
-    if (!silent) hint('Масштаб по расчёту подобрать не удалось. Задайте его кнопкой ' +
-      '«Масштаб»: две точки отрезка с известной длиной. Для подбора нужны хотя бы три ' +
-      'комнаты этажа в подробном расчёте и читаемые стены на подложке.');
+    // Причин у отказа две, и лечатся они по-разному: либо заполнить комнаты в
+    // расчёте, либо задать масштаб руками. Общее «подобрать не удалось» не
+    // говорило ни о той, ни о другой — и кнопка выглядела просто сломанной.
+    var tg = scaleTargets();
+    // Размеры на чертеже были, но не сошлись — об этом надо сказать отдельно,
+    // иначе совет «заполните комнаты» выглядит единственным выходом.
+    var pre = (PDF_DIMS[cur] && PDF_DIMS[cur].length)
+      ? 'С размерных линий чертежа масштаб снять не вышло. ' : '';
+    // Масштаб придётся задавать руками — значит, кнопка «Масштаб» должна
+    // быть на виду, а не за «Все инструменты».
+    if (!silent) heroOff = true;
+    if (!silent) hint(pre + (tg.length < 2
+      ? 'Подбирать масштаб не по чему: в подробном расчёте нет комнат ' + (cur + 1) +
+        '-го этажа' + (tg.length ? ' (нашлась только одна)' : '') + '. Нужны хотя бы две ' +
+        'комнаты с площадью и отметкой «' + (cur + 1) + ' этаж». Проставьте этаж комнатам ' +
+        'в расчёте — или задайте масштаб кнопкой «Масштаб»: две точки отрезка с известной ' +
+        'длиной и его длина в метрах.'
+      : 'Масштаб по площадям комнат не подобрался: комнаты ' + (cur + 1) + '-го этажа из ' +
+        'расчёта (' + tg.length + ' шт.) не сошлись с комнатами на подложке — стены плана ' +
+        'читаются плохо или комнаты в расчёте от другого этажа. Задайте масштаб кнопкой ' +
+        '«Масштаб»: две точки отрезка с известной длиной — подойдёт размерная линия плана ' +
+        'или дверной проём 0,9 м.'));
     return false;
   }
   // Проверяем не тем, чем подбирали: площади можно свести к чему угодно, если
   // комнаты в расчёте вообще от другого объекта, а ширина дверного проёма —
   // величина известная. Вышло полтора метра — подобрался не масштаб, а
   // совпадение, и такой лучше не ставить вовсе.
-  var f = F(), was = f.pxPerM;
-  f.pxPerM = g.ppm; resetScaleCaches();
-  var dw = doorWidthM();
-  f.pxPerM = was; resetScaleCaches();
+  var f = F(), dw = doorCheck(g.ppm);
   // Проёмов не нашлось вовсе — проверить нечем, и тогда подбор должен сойтись
   // хотя бы по половине комнат этажа. Иначе на плане без читаемых стен
   // «сходились» три случайные площади, и масштаб уезжал в разы (39 px/м
   // вместо ~100 на инженерном плане второго этажа).
   if (!dw && g.ok < Math.ceil(g.total / 2)) {
-    if (!silent) hint('Масштаб по расчёту не принят: по стенам плана сошлось только ' + g.ok +
+    if (!silent) hint('Масштаб по площадям не принят: по стенам плана сошлось только ' + g.ok +
       ' комнат из ' + g.total + ', а дверных проёмов для проверки не нашлось. ' +
       'Задайте масштаб кнопкой «Масштаб».');
     return false;
   }
   if (dw && (dw < 0.6 || dw > 1.3)) {
-    if (!silent) hint('Масштаб по расчёту не принят: при нём дверные проёмы плана выходят ' +
+    if (!silent) hint('Масштаб по площадям не принят: при нём дверные проёмы плана выходят ' +
       dw.toFixed(2).replace('.', ',') + ' м вместо обычных 0,8–0,9. Похоже, комнаты в ' +
       'расчёте не от этого этажа. Задайте масштаб кнопкой «Масштаб».');
     return false;
@@ -1944,6 +2038,7 @@ function autoMarkAll() {
     return saveAll();      // сохранение считает трассы, подводки и контуры стен
   }).then(function () {
     var done = zones + rads + colls;
+    if (bad.length) heroOff = true;   // что-то осталось руками — открываем шапку
     hint((done
       ? '<span class=ok>Разметка готова и сохранена.</span> Зон: ' + zones +
         ', радиаторов: ' + rads + (colls ? ', коллекторов ТП: ' + colls : '') + '. '
@@ -1987,7 +2082,7 @@ function hasBoilerZone() {
  *  Сопоставление по площади (лучшие пары, допуск 25% или 2 м²); без расчёта —
  *  зоны ТП для всех найденных комнат. Уже размеченные комнаты не трогаются. */
 function autoRooms() {
-  if (!F().pxPerM) { alert('Сначала задайте масштаб: кнопкой «Масштаб по расчёту» или «Масштаб».'); return; }
+  if (!F().pxPerM) { alert('Сначала задайте масштаб: кнопкой «Подобрать масштаб» или «Масштаб».'); return; }
   var rooms = [];
   try { rooms = enumerateRooms(); } catch (e) { console.error('[plan_editor] rooms:', e); }
   // Масштаб могли задать руками — тогда режим маски не выбирал никто.
@@ -2044,7 +2139,7 @@ function autoRooms() {
         // доме она одна — по ней собирается компоновка.
         if (kind === 'boiler' && boiler) return;
         if (kind === 'boiler') boiler = true;
-        F().zones.push({ type: kind, name: t.name, pts: pts });
+        F().zones.push({ type: kind, name: t.name, roomId: (t.id != null ? t.id : null), pts: pts });
         cnt[kind] = (cnt[kind] || 0) + 1;
         made++;
       });
@@ -2078,7 +2173,7 @@ function autoRooms() {
 
 /** Кнопка «Под окна»: расставить радиаторы по найденным окнам */
 function autoRads() {
-  if (!F().pxPerM) { alert('Сначала задайте масштаб: кнопкой «Масштаб по расчёту» или «Масштаб».'); return; }
+  if (!F().pxPerM) { alert('Сначала задайте масштаб: кнопкой «Подобрать масштаб» или «Масштаб».'); return; }
   var wins = floorWindows();
   if (!wins.length) {
     hint('Окна распознать не удалось (нечёткий план?) — расставьте радиаторы кликами.');
@@ -2099,6 +2194,101 @@ function autoRads() {
   hint('<span class=ok>Найдено окон: ' + wins.length + ', поставлено радиаторов: ' + added +
     '.</span> Лишние уберите кликом по значку, недостающие добавьте кликом.');
   if (mode !== 'rad') setMode('rad');
+}
+
+/**
+ * Размерные числа страницы PDF, пересчитанные в пиксели подложки.
+ *
+ * Держим в памяти по этажу: в разметку это не идёт (масштаб из них считается
+ * один раз), а этажи только добавляются, поэтому индекс не разъезжается.
+ */
+var PDF_DIMS = {};
+
+/** Умножение матриц PDF (как pdfjsLib.Util.transform, но без зависимости). */
+function mulT(a, b) {
+  return [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1],
+          a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3],
+          a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+}
+
+/** Текстовый слой страницы → [{ s, x, y }] в пикселях отрисованной подложки. */
+function textItemsPx(tc, vp) {
+  var out = [];
+  (tc.items || []).forEach(function (it) {
+    var str = String(it.str == null ? '' : it.str).trim();
+    if (!str || !it.transform) return;
+    var m = mulT(vp.transform, it.transform);
+    out.push({ s: str, x: m[4], y: m[5] });
+  });
+  return out;
+}
+
+/**
+ * Масштаб по размерным линиям чертежа.
+ *
+ * На листе проекта размеры стоят цепочками, и число подписано над своим
+ * участком примерно по его середине. Значит расстояние между соседними
+ * числами одной цепочки — это половина первого участка плюс половина
+ * второго, то есть (v1 + v2) / 2 миллиметров. Отсюда и берётся, сколько
+ * пикселей подложки приходится на миллиметр.
+ *
+ * Пары считаются по всем цепочкам — и горизонтальным (числа стоят в строку),
+ * и вертикальным (в столбец), — а дальше берётся не среднее, а середина:
+ * в цепочку попадают отметки высот и номера узлов, дающие чушь, и одно такое
+ * число сдвинуло бы среднее, но не медиану.
+ *
+ * Источник надёжнее площадей: он не зависит от того, заполнен ли расчёт, и
+ * не путает этажи. Проверяется он тем же, чем и подбор по площадям, —
+ * шириной дверных проёмов.
+ */
+function scaleFromDims(items) {
+  if (!items || items.length < 4) return null;
+  var toks = [];
+  items.forEach(function (t) {
+    // «4 732» и «4732» — одно и то же: в PDF разряды разделены пробелом
+    var v = t.s.replace(/[\s\u00a0]+/g, '');
+    if (!/^\d{3,5}$/.test(v)) return;
+    var mm = +v;
+    if (mm < 200 || mm > 20000) return;   // не размер помещения: отметки, номера, годы
+    toks.push({ v: mm, x: t.x, y: t.y });
+  });
+  if (toks.length < 3) return null;
+
+  var ks = [];
+  // sk — координата, по которой числа стоят в одну линию, ak — вдоль цепочки
+  var walk = function (sk, ak) {
+    var list = toks.slice().sort(function (a, b) { return a[sk] - b[sk]; });
+    var grp = [];
+    var flush = function () {
+      if (grp.length >= 2) {
+        grp.sort(function (a, b) { return a[ak] - b[ak]; });
+        for (var i = 1; i < grp.length; i++) {
+          var d = grp[i][ak] - grp[i - 1][ak];
+          var mm = (grp[i].v + grp[i - 1].v) / 2;
+          if (d <= 2 || mm <= 0) continue;
+          var k = d / mm;                       // пикселей в миллиметре
+          if (k > 0.004 && k < 1.5) ks.push(k); // 4..1500 px/м — вне этого чертежей не бывает
+        }
+      }
+      grp = [];
+    };
+    list.forEach(function (t) {
+      if (grp.length && Math.abs(t[sk] - grp[grp.length - 1][sk]) > 6) flush();
+      grp.push(t);
+    });
+    flush();
+  };
+  walk('y', 'x');
+  walk('x', 'y');
+  if (ks.length < 3) return null;
+
+  ks.sort(function (a, b) { return a - b; });
+  var med = ks[Math.floor(ks.length / 2)];
+  var good = ks.filter(function (k) { return Math.abs(k - med) / med < 0.12; });
+  if (good.length < 3) return null;
+  var sum = 0;
+  good.forEach(function (k) { sum += k; });
+  return { ppm: (sum / good.length) * 1000, n: good.length, total: ks.length };
 }
 
 function loadPdfPlan(file, done) {
@@ -2123,7 +2313,14 @@ function loadPdfPlan(file, done) {
       c.width = Math.round(vp.width); c.height = Math.round(vp.height);
       var g = c.getContext('2d');
       g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);  // PDF бывает прозрачным
-      return page.render({ canvasContext: g, viewport: vp }).promise.then(function () {
+      // Размерные числа читаем ДО applyPlanCanvas: он сам зовёт автоподбор
+      // масштаба, и к этому моменту размеры уже должны быть под рукой.
+      var fi = cur;
+      return page.getTextContent().then(function (tc) {
+        PDF_DIMS[fi] = textItemsPx(tc, vp);
+      }, function () { PDF_DIMS[fi] = null; }).then(function () {
+        return page.render({ canvasContext: g, viewport: vp }).promise;
+      }).then(function () {
         applyPlanCanvas(c);
         if (done) done();
       });
@@ -3171,6 +3368,7 @@ function renderZones() {
     if (roomNames.length) inp.setAttribute('list', 'roomNames');
     inp.oninput = function () {
       z.name = inp.value;
+      z.roomId = roomIdByName(inp.value);
       // санузел подписали именем из расчёта — приборы появляются сразу
       if (z.type === 'wc' && fixAuto) { refreshAutoFixtures(); renderZones(); }
       draw();
@@ -3279,6 +3477,7 @@ function renderZones() {
         if (!F().zones[zi].name) { z = F().zones[zi]; break; }
       if (!z) { hint('Все зоны этажа уже подписаны — исправьте имя прямо в списке зон.'); return; }
       z.name = r.name;
+      z.roomId = (r.id != null ? r.id : null);
       renderZones(); draw();
     };
     sum.appendChild(g);
@@ -3457,7 +3656,7 @@ function stepTip(s, L) {
   var wcZones = f.zones.filter(function (z) { return z.type === 'wc'; });
   var TXT = {
     plan: 'Загрузите план этажа: фото, скан или PDF. Можно выбрать сразу несколько файлов — каждый станет своим этажом. Дальше всё остальное делает кнопка «Разметить всё»: масштаб, зоны, радиаторы, коллектор и сохранение — по всем этажам сразу. Шаги ниже остаются, чтобы проверить и поправить сделанное.',
-    scale: 'Масштаб обычно подбирается сам при загрузке плана — по площадям комнат подробного расчёта; кнопка «Масштаб по расчёту» повторяет подбор. Если комнат в расчёте нет или стены на подложке не читаются, задайте вручную: «Масштаб», две точки отрезка с известной длиной и его длина в метрах. Без масштаба площади зон не посчитать.',
+    scale: 'Масштаб обычно подбирается сам при загрузке плана: сначала по размерным линиям чертежа (PDF), а если их нет — по площадям комнат подробного расчёта. Кнопка «Подобрать масштаб» повторяет подбор. Не вышло ни так, ни так — задайте вручную: «Масштаб», две точки отрезка с известной длиной и его длина в метрах. Без масштаба площади зон не посчитать.',
     tp: 'Нажмите «Распознать комнаты» — все комнаты найдутся по стенам, а зоны создадутся и подпишутся по комнатам подробного расчёта: тёплый пол, котельная и санузлы сразу своим типом. Поправить можно вручную: «Зона: по клику» внутри комнаты или «Зона: контур». Нет тёплого пола на этаже — переходите к радиаторам.',
     rad: 'Нажмите «Под окна» — радиаторы расставятся по найденным окнам. Лишние убираются кликом по значку, недостающие добавляются кликом в режиме «Радиаторы». Нет радиаторов на этаже — переходите дальше.',
     coll: 'Нажмите «Коллектор» и кликните, где он будет стоять (обычно в котельной). От коллектора на листе «Тёплый пол» нарисуются подводки ко всем петлям, а длины петель посчитаются вместе с ними.',
@@ -3550,7 +3749,7 @@ function guideStep() {
 function openSheets() {
   var has = false;
   try { has = !!localStorage.getItem('project_sheets_payload'); } catch (e) {}
-  if (has) window.open('sheet_demo.html', '_blank');
+  if (has) window.open('project.html', '_blank');
   else alert('Сначала откройте калькулятор и нажмите «Проект» — комплект соберётся по смете вместе с планами этажей.');
 }
 
@@ -3586,6 +3785,28 @@ function placeGuide() {
 // проект, подсказки) видны всегда
 var STEP_BTNS = ['b_upload', 'b_scale', 'b_autorooms', 'b_room', 'b_rect', 'b_poly',
                  'b_rad', 'b_autorad', 'b_coll', 'b_fixauto', 'b_wc', 'wctype', 'ztype'];
+
+var zoneMore = false;    // «Иначе»: показаны ли рамка и контур рядом с «по клику»
+
+function toggleZoneMore() { zoneMore = !zoneMore; updateGuide(); }
+
+/**
+ * Первый экран: пока размечать нечего, в шапке одно действие, а не двадцать.
+ *
+ * 'empty' — у этажа нет подложки: нужна только «Загрузить план».
+ * 'auto'  — подложка есть, разметки нет и шаг не выбран руками: нужна
+ *           «Разметить всё», она проходит весь порядок сама.
+ * Дальше шапка живёт по шагам, как раньше. Выход из обоих режимов — кнопка
+ * «Все инструменты» или любой шаг в полоске.
+ */
+var heroOff = false;     // автоматика споткнулась — шапка нужна целиком
+
+function heroMode() {
+  if (allTools || curStep || heroOff) return null;
+  var f = F();
+  if (!f || !f.img) return 'empty';
+  return (!f.pxPerM && !(f.zones || []).length && !(f.rads || []).length) ? 'auto' : null;
+}
 
 var curStep = null;      // шаг, выбранный вручную (null — ведёт первый незакрытый)
 var allTools = false;    // «Все инструменты»: показывать шапку целиком
@@ -3670,17 +3891,39 @@ function goStep(id) {
 
 /** Кнопки шапки: на шаге видны только его инструменты. */
 function applyBar(step) {
+  var hero = heroMode();
   var need = allTools || !step ? null : (step.btn || []);
+  // Шаг зон: «по клику» остаётся в шапке, рамка и контур — под «Иначе».
+  // Три кнопки на одно действие читались как три разных инструмента, хотя
+  // в девяти случаях из десяти нужен только первый.
+  var zoneStep = !!need && need.indexOf('b_rect') >= 0;
+  var hidRare = function (id) {
+    return !allTools && !zoneMore && (id === 'b_rect' || id === 'b_poly');
+  };
   STEP_BTNS.forEach(function (id) {
     var el = document.getElementById(id);
     if (!el) return;
+    if (hero) {
+      // Первый экран: лишнее убираем совсем, иначе пустой план накрыт
+      // двумя десятками погашенных кнопок и выглядит сломанным.
+      el.style.display = (id === 'b_upload') ? '' : 'none';
+      el.classList.remove('dim');
+      return;
+    }
     var show = !need || need.indexOf(id) >= 0;
-    // Не прячем: кнопка остаётся на месте и нажимается, но гаснет. Раньше
-    // ненужные на шаге кнопки уходили в display:none, и вся шапка на каждом
-    // шаге перестраивалась — соседние кнопки уезжали из-под курсора.
-    el.style.display = '';
-    el.classList.toggle('dim', !show);
+    // Ненужное на шаге не прячем: кнопка остаётся на месте и нажимается, но
+    // гаснет. Пряталась — и вся шапка на каждом шаге перестраивалась,
+    // соседние кнопки уезжали из-под курсора.
+    el.style.display = (show && hidRare(id)) ? 'none' : '';
+    el.classList.toggle('dim', !show && !hidRare(id));
   });
+  var am = document.getElementById('b_automark');
+  if (am) am.style.display = (hero === 'empty') ? 'none' : '';
+  var mb = document.getElementById('b_zonemore');
+  if (mb) {
+    mb.style.display = (hero || allTools || !zoneStep) ? 'none' : '';
+    mb.textContent = zoneMore ? 'Иначе ▴' : 'Иначе ▾';
+  }
   var b = document.getElementById('b_alltools');
   if (b) {
     b.textContent = allTools ? 'Только текущий шаг' : 'Все инструменты';
@@ -3705,6 +3948,16 @@ function renderSteps() {
       (s.ok ? '✓ ' : '') + s.t + '</span>';
   });
   if (!act) h += '<span class="st save" onclick="saveAll()">Сохранить</span>';
+
+  // Режим рисования объясняет себя прямо здесь: раньше это было написано
+  // только в правой колонке, где лежит и отказ автоподбора, — инструкция
+  // терялась под ним, а при выключенных подсказках других слов и не было.
+  // Масштаб вдобавок держит остальные шаги: кнопки гаснут, и без объяснения
+  // это выглядит поломкой сайта.
+  if (MODE_BAR[mode]) h += '<span class="tip">' + MODE_BAR[mode] + '</span>';
+  else if (act && act.id === 'scale')
+    h += '<span class="tip wait">Пока масштаб не задан, зоны, радиаторы и коллектор не ' +
+      'работают' + (allTools ? '' : ' — потому и погашены') + '.</span>';
 
   // Фоновая отправка подложек — тут же, чтобы не гадать, ушли они или нет.
   if (upState && upState.run) {

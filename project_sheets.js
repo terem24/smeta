@@ -46,7 +46,7 @@
 
   // В оригинале два шрифта: ISOCPEUR (таблицы) и GOST-Common (штамп, графы).
   // Оба лежат в fonts/ полными файлами, страница объявляет @font-face
-  // (см. sheet_demo.html). Дальше — системные копии и свободные аналоги.
+  // (см. project.html). Дальше — системные копии и свободные аналоги.
   var FONT = "'ISOCPEUR','GOST type A','GOST type B','Arial Narrow','Liberation Sans Narrow',sans-serif";
   var FONT_STAMP = "'GOST Common','GOST-Common','ISOCPEUR','GOST type A','Arial Narrow',sans-serif";
 
