@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рециркуляция горячей воды: как устроена и сколько стоит | HeatCalc.ru</title>
+    <meta name="description" content="Рециркуляция ГВС в частном доме: сколько воды сливается без неё, как устроено кольцо, нужен ли отдельный насос, расход на теплопотери и почему решение принимается до отделки.">
+    <link rel="canonical" href="https://heatcalc.ru/retsirkulyatsiya-gvs/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/retsirkulyatsiya-gvs/">
+    <meta property="og:title" content="Рециркуляция ГВС: зачем нужна">
+    <meta property="og:description" content="Без неё до дальнего крана уходит 10–20 литров. Третья труба, которую кладут один раз.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/retsirkulyatsiya-gvs/#webpage",
+      "url": "https://heatcalc.ru/retsirkulyatsiya-gvs/",
+      "name": "Рециркуляция ГВС: зачем нужна и почему её не добавить потом",
+      "description": "Рециркуляция ГВС в частном доме: сколько воды сливается без неё, как устроено кольцо, нужен ли отдельный насос, расход на теплопотери и почему решение принимается до отделки.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "рециркуляция гвс"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Рециркуляция ГВС: зачем нужна и почему её не добавить потом",
+          "item": "https://heatcalc.ru/retsirkulyatsiya-gvs/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Зачем нужна рециркуляция горячей воды?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Чтобы горячая вода шла из крана сразу. Без неё сливается всё, что стояло в трубе: до санузла в 25 метрах от бойлера это около 5 литров по объёму трубы и 10–15 литров с учётом остывания, то есть 30–60 секунд ожидания каждый раз."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли добавить рециркуляцию после ремонта?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. Рециркуляция — это третья труба, которую прокладывают вместе со всей разводкой до стяжки и до закрытия стен. После отделки пришлось бы вскрывать полы по всему маршруту. Поэтому решение принимают один раз, на этапе разводки."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что входит в рециркуляцию ГВС?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Обратная труба от дальней точки к бойлеру, циркуляционный насос для питьевой воды с бронзовым или нержавеющим корпусом, обратный клапан на обратной линии и балансировочный клапан на длинных ветках. Работы — 3 700 ₽ за точку и 4 500 ₽ за монтаж насоса по базовым расценкам."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько тепла теряет рециркуляция?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Столько, сколько отдаёт труба кольца, и это постоянная нагрузка: бойлер подогревает воду даже ночью, когда её никто не берёт. Поэтому петлю обязательно изолируют по СП 61.13330.2012, а насос ставят на таймер или на термостат, который включает его только когда вода в кольце остыла."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли сделать рециркуляцию с двухконтурным котлом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. Двухконтурный котёл греет воду только в момент разбора, и гонять по кольцу нечего. Рециркуляция возможна только с накопительным баком — бойлером косвенного нагрева или электрическим водонагревателем. Это стоит учитывать при выборе схемы горячей воды."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/retsirkulyatsiya-gvs/#article",
+      "headline": "Рециркуляция ГВС: зачем нужна и почему её не добавить потом",
+      "description": "Рециркуляция ГВС в частном доме: сколько воды сливается без неё, как устроено кольцо, нужен ли отдельный насос, расход на теплопотери и почему решение принимается до отделки.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/retsirkulyatsiya-gvs/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-01-14",
+      "dateModified": "2027-01-14",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Рециркуляция ГВС: зачем нужна и почему её не добавить потом</nav>
+
+        <h1>Рециркуляция ГВС: зачем нужна и почему её не добавить потом</h1>
+
+        <p class="art-meta"><time datetime="2027-01-14">14 января 2027</time></p>
+
+        <p class="lead">Открыли кран — и ждёте, пока пойдёт горячая. В доме на два этажа это 10–20 литров в слив и полминуты ожидания, каждый раз. Рециркуляция решает вопрос, но это третья труба, и проложить её можно только вместе со всеми остальными.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#skolko-uhodit-v-sliv">Сколько уходит в слив</a></li>
+            <li><a href="#kak-ustroeno-kolco">Как устроено кольцо</a></li>
+            <li><a href="#chem-platyat">Чем платят</a></li>
+            <li><a href="#kak-ne-topit-ulicu">Как не топить улицу</a></li>
+            <li><a href="#kogda-bez-nee-oboytis">Когда без неё обойтись</a></li>
+            <li><a href="#poleznyy-pobochnyy-effekt">Полезный побочный эффект</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="skolko-uhodit-v-sliv">Сколько уходит в слив</h2>
+
+        <p>Пока не пойдёт горячая, сливается вся вода, стоявшая в трубе от бойлера до крана. Объём считается по длине и диаметру.</p>
+
+        <div class="formula">
+            <p>Труба 20 мм (внутренний 16 мм) — <strong>0,2 литра на метр</strong></p>
+            <p>Дальний санузел в 25 метрах от бойлера: <strong>5 литров</strong></p>
+            <p>Плюс остывание: первые литры идут тёплыми, а не горячими</p>
+            <p>Итого в слив уходит <strong>10–15 литров</strong> и 30–60 секунд</p>
+        </div>
+
+        <p>Десять литров на каждое мытьё рук — это не только счётчик воды, но и то, что нагрето и остыло впустую. За год на семью выходит ощутимо.</p>
+
+        <h2 id="kak-ustroeno-kolco">Как устроено кольцо</h2>
+
+        <p>К обычной паре труб добавляется третья — обратная. Горячая вода идёт от бойлера к дальней точке, там разворачивается и возвращается в бойлер. Маленький насос гоняет её по кругу, и в трубе всегда стоит горячая.</p>
+
+        <ul>
+            <li><strong>Циркуляционный насос для ГВС</strong> — не отопительный: у него бронзовый или нержавеющий корпус, потому что вода питьевая.</li>
+            <li><strong>Обратный клапан</strong> на обратной линии — чтобы вода не пошла по кругу в другую сторону.</li>
+            <li><strong>Точка врезки</strong> — в специальный патрубок бойлера, если он есть, или в холодную линию перед ним.</li>
+            <li><strong>Балансировочный клапан</strong> на длинных ветках: без него вода пойдёт по короткому кольцу, а дальнее останется холодным.</li>
+        </ul>
+
+        <div class="callout">
+            <p><strong>Главное ограничение — это третья труба.</strong> Её прокладывают вместе со всей разводкой, до стяжки и до закрытия стен. После отделки добавить рециркуляцию невозможно: придётся вскрывать полы по всему маршруту. Поэтому решение принимают один раз, на этапе разводки, и принимают его до того, как встанет вопрос цены.</p>
+        </div>
+
+        <h2 id="chem-platyat">Чем платят</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Что</th><th>Сколько</th></tr>
+                <tr><td>Точка присоединения рециркуляции</td><td>3 700 ₽</td></tr>
+                <tr><td>Монтаж циркуляционного насоса</td><td>4 500 ₽</td></tr>
+                <tr><td>Теплопотери кольца</td><td>постоянные, круглый год</td></tr>
+                <tr><td>Электричество насоса</td><td>5–20 Вт при работе</td></tr>
+            </table>
+        </div>
+        <p class="note">Базовые расценки калькулятора. Теплопотери зависят от длины кольца и изоляции — это основная плата, а не электричество.</p>
+
+        <p>Труба с горячей водой остывает всё время, и рециркуляция превращает это в постоянную нагрузку: бойлер подогревает кольцо даже ночью, когда воду никто не берёт. Поэтому трубы рециркуляции обязательно изолируют — по СП 61.13330.2012, — а насос ставят на таймер или на термостат.</p>
+
+        <h2 id="kak-ne-topit-ulicu">Как не топить улицу</h2>
+
+        <ol>
+            <li><strong>Изоляция всей петли,</strong> включая обратную линию. Неизолированное кольцо — это тёплый пол в стенах, за который платят круглый год.</li>
+            <li><strong>Таймер на насос.</strong> Утро и вечер — время разбора; ночью кольцо можно не греть. Простейшая механическая розетка с таймером закрывает вопрос.</li>
+            <li><strong>Термостат на обратке.</strong> Насос включается, когда вода в кольце остыла ниже уставки, и останавливается, когда прогрелась. Экономичнее таймера.</li>
+            <li><strong>Короткое кольцо.</strong> Рециркуляцию ведут к дальней точке, а не по всем приборам подряд: каждый лишний метр — это теплопотери.</li>
+        </ol>
+
+        <h2 id="kogda-bez-nee-oboytis">Когда без неё обойтись</h2>
+
+        <ul>
+            <li><strong>Компактный дом.</strong> Если до дальнего крана 5–7 метров, ожидание составляет несколько секунд, и кольцо не окупается.</li>
+            <li><strong>Бойлер рядом с санузлами.</strong> Планировка, где котельная примыкает к мокрой зоне, снимает вопрос сама.</li>
+            <li><strong>Сезонный дом.</strong> Кольцо с водой надо сливать на зиму вместе со всем остальным, а греть его при редких приездах бессмысленно.</li>
+            <li><strong>Проточное ГВС от двухконтурного котла.</strong> Рециркуляцию к нему не сделать: котёл греет воду только при разборе.</li>
+        </ul>
+
+        <p>Последний пункт стоит помнить при выборе схемы горячей воды: двухконтурный котёл экономит место и деньги, но закрывает возможность рециркуляции навсегда.</p>
+
+        <h2 id="poleznyy-pobochnyy-effekt">Полезный побочный эффект</h2>
+
+        <p>Кольцо рециркуляции — удобная точка для полотенцесушителя. Врезанный в него прибор тёплый круглый год, а не только в отопительный сезон, и отдельного контура для него не нужно.</p>
+
+        <p>Обратная сторона: регулировать такой полотенцесушитель почти нечем — его температуру задаёт бойлер. Если в ванной и без него жарко, лучше вести прибор от отопления и добавить электрический ТЭН на лето.</p>
+
+        <a class="cta" href="/">
+            Посчитать водоснабжение дома
+            <small>Точки, коллекторы и рециркуляция</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Зачем нужна рециркуляция горячей воды?</span></summary>
+            <div class="answer">
+                <p>Чтобы горячая вода шла из крана сразу. Без неё сливается всё, что стояло в трубе: до санузла в 25 метрах от бойлера это около 5 литров по объёму трубы и 10–15 литров с учётом остывания, то есть 30–60 секунд ожидания каждый раз.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли добавить рециркуляцию после ремонта?</span></summary>
+            <div class="answer">
+                <p>Нет. Рециркуляция — это третья труба, которую прокладывают вместе со всей разводкой до стяжки и до закрытия стен. После отделки пришлось бы вскрывать полы по всему маршруту. Поэтому решение принимают один раз, на этапе разводки.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что входит в рециркуляцию ГВС?</span></summary>
+            <div class="answer">
+                <p>Обратная труба от дальней точки к бойлеру, циркуляционный насос для питьевой воды с бронзовым или нержавеющим корпусом, обратный клапан на обратной линии и балансировочный клапан на длинных ветках. Работы — 3 700 ₽ за точку и 4 500 ₽ за монтаж насоса по базовым расценкам.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько тепла теряет рециркуляция?</span></summary>
+            <div class="answer">
+                <p>Столько, сколько отдаёт труба кольца, и это постоянная нагрузка: бойлер подогревает воду даже ночью, когда её никто не берёт. Поэтому петлю обязательно изолируют по СП 61.13330.2012, а насос ставят на таймер или на термостат, который включает его только когда вода в кольце остыла.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли сделать рециркуляцию с двухконтурным котлом?</span></summary>
+            <div class="answer">
+                <p>Нет. Двухконтурный котёл греет воду только в момент разбора, и гонять по кольцу нечего. Рециркуляция возможна только с накопительным баком — бойлером косвенного нагрева или электрическим водонагревателем. Это стоит учитывать при выборе схемы горячей воды.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=retsirkulyatsiya-gvs#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/kanalizatsiya-v-chastnom-dome/">канализация в частном доме: схема и уклоны</a> · <a href="/obratnyy-klapan-v-otoplenii/">обратный клапан и где он обязателен</a> · <a href="/boyler-ili-protochnyy/">бойлер или проточный нагреватель</a> · <a href="/boyler-kosvennogo-nagreva/">бойлер косвенного нагрева: как подобрать объём</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=retsirkulyatsiya-gvs">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

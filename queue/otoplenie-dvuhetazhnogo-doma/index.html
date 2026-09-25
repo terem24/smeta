@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отопление двухэтажного дома: схема, коллекторы по этажам | HeatCalc.ru</title>
+    <meta name="description" content="Особенности отопления двухэтажного дома: почему коллектор ставят на каждом этаже, как считать теплопотери верхнего этажа, куда уходит тепло по лестнице и что делать со вторым светом.">
+    <link rel="canonical" href="https://heatcalc.ru/otoplenie-dvuhetazhnogo-doma/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/otoplenie-dvuhetazhnogo-doma/">
+    <meta property="og:title" content="Отопление двухэтажного дома: этажи и баланс">
+    <meta property="og:description" content="Второй этаж почти всегда перегревается. Разбираем, почему и что с этим делать.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/otoplenie-dvuhetazhnogo-doma/#webpage",
+      "url": "https://heatcalc.ru/otoplenie-dvuhetazhnogo-doma/",
+      "name": "Отопление двухэтажного дома: коллекторы, этажи, баланс",
+      "description": "Особенности отопления двухэтажного дома: почему коллектор ставят на каждом этаже, как считать теплопотери верхнего этажа, куда уходит тепло по лестнице и что делать со вторым светом.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "отопление двухэтажного дома"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Отопление двухэтажного дома: коллекторы, этажи, баланс",
+          "item": "https://heatcalc.ru/otoplenie-dvuhetazhnogo-doma/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Нужен ли отдельный коллектор на каждый этаж?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Как правило да. Лучи со второго этажа к коллектору в котельной — это десятки метров трубы в каждую сторону, лишнее сопротивление и потери по дороге. Коллектор ставят на своём этаже примерно посередине зоны, а наверх ведут одну пару труб увеличенного диаметра. Транзит через перекрытие идёт в гильзе и в изоляции."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему на втором этаже жарко, а внизу прохладно?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Тёплый воздух легче и поднимается по лестнице сам, а поэтажный расчёт этого не учитывает: каждая комната считается отдельно. Приборы наверху обычно подобраны правильно, просто к их теплу добавляется пришедшее снизу. Лечится термоголовками на верхнем этаже — они прикроются сами, когда станет жарко."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужны ли на втором этаже приборы меньше?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Только если это этаж под холодным чердаком с нормальным утеплением. Мансарда — обратный случай: она теряет через кровлю большой площади и через мансардные окна, и на квадратный метр теряет больше первого этажа. Считать мансарду «как второй этаж» — самая частая ошибка в таких домах."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что учесть при тёплом поле на втором этаже?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Вес: мокрая стяжка добавляет около 157 кг на квадратный метр вместе с плиткой, и для деревянного перекрытия это проверяют расчётом. Настильная система весит 20–35 кг/м², но отдаёт на 10–20 % меньше. Утеплитель под трубой нужен ради управляемости: без него термостаты двух этажей начинают спорить."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как отопить помещение со вторым светом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Тёплым полом как основой — он греет внизу, где люди, и не отапливает верхнюю зону. Приборами под окнами, а при остеклении в пол — внутрипольными конвекторами. В расчёте брать объём помещения, а не площадь: нагрев приточного воздуха при высоте 6 метров вдвое больше обычного. Помогает и вентилятор под потолком на малых оборотах."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/otoplenie-dvuhetazhnogo-doma/#article",
+      "headline": "Отопление двухэтажного дома: коллекторы, этажи, баланс",
+      "description": "Особенности отопления двухэтажного дома: почему коллектор ставят на каждом этаже, как считать теплопотери верхнего этажа, куда уходит тепло по лестнице и что делать со вторым светом.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/otoplenie-dvuhetazhnogo-doma/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-01-09",
+      "dateModified": "2027-01-09",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Отопление двухэтажного дома: коллекторы, этажи, баланс</nav>
+
+        <h1>Отопление двухэтажного дома: коллекторы, этажи, баланс</h1>
+
+        <p class="art-meta"><time datetime="2027-01-09">9 января 2027</time></p>
+
+        <p class="lead">Двухэтажный дом добавляет к обычному расчёту три вещи: второй коллектор, разные теплопотери этажей и тёплый воздух, который сам уходит наверх. Из-за последнего второй этаж почти всегда перегревается, и лечится это не мощностью, а схемой.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#kollektor-na-kazhdom-etazhe">Коллектор на каждом этаже</a></li>
+            <li><a href="#pochemu-vtoroy-etazh-teplee">Почему второй этаж теплее</a></li>
+            <li><a href="#teplopoteri-etazhey-razlichayutsya">Теплопотери этажей различаются</a></li>
+            <li><a href="#teplyy-pol-na-vtorom-etazhe">Тёплый пол на втором этаже</a></li>
+            <li><a href="#vtoroy-svet">Второй свет</a></li>
+            <li><a href="#chto-proverit-v-proekte-dvuhetazhnogo-doma">Что проверить в проекте двухэтажного дома</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="kollektor-na-kazhdom-etazhe">Коллектор на каждом этаже</h2>
+
+        <p>Тянуть лучи со второго этажа к коллектору в котельной — это десятки метров трубы в каждую сторону, лишнее сопротивление и потери по дороге. Коллектор ставят на своём этаже, в нише или шкафу примерно посередине обслуживаемой зоны.</p>
+
+        <ul>
+            <li><strong>Вверх идёт одна пара труб увеличенного диаметра</strong> — магистраль до коллектора второго этажа.</li>
+            <li><strong>Короче лучи</strong> — меньше разброс их длин, проще балансировка.</li>
+            <li><strong>Настройки этажа в одном месте.</strong> Перекрыть весь второй этаж — один кран, а не обход комнат.</li>
+            <li><strong>Транзит через перекрытие — в гильзе</strong> и в изоляции: труба там горячая, а не тёплая.</li>
+        </ul>
+
+        <h2 id="pochemu-vtoroy-etazh-teplee">Почему второй этаж теплее</h2>
+
+        <p>Тёплый воздух легче холодного и поднимается по лестнице сам. В доме с открытой лестницей или вторым светом это заметный поток, который не учитывается в поэтажном расчёте: каждая комната считается отдельно, а воздух между этажами ходит свободно.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда типичная картина.</strong> Внизу +20, наверху +24, термостат стоит в гостиной первого этажа и требует тепла, а наверху открывают окна. Приборы второго этажа при этом подобраны правильно — просто к их теплу добавляется то, что пришло снизу. Лечится это не уменьшением радиаторов, а регулированием: термоголовки на приборах верхнего этажа прикроются сами, когда станет жарко.</p>
+        </div>
+
+        <ul>
+            <li><strong>Термоголовки на втором этаже обязательны</strong> — это тот случай, где они окупаются быстрее всего.</li>
+            <li><strong>Отдельная насосная группа на этаж</strong> позволяет вести этажи с разной температурой подачи.</li>
+            <li><strong>Прибор на лестничной площадке внизу,</strong> а не наверху: холодный воздух скапливается на нижних ступенях, тёплый уходит вверх сам.</li>
+        </ul>
+
+        <h2 id="teplopoteri-etazhey-razlichayutsya">Теплопотери этажей различаются</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Этаж</th><th>Что теряет</th><th>Обычно</th></tr>
+                <tr><td>Первый</td><td>стены, окна, пол по грунту</td><td>больше на пол</td></tr>
+                <tr><td>Второй (под холодным чердаком)</td><td>стены, окна, перекрытие</td><td>сопоставимо с первым</td></tr>
+                <tr><td>Мансарда</td><td>стены, окна, кровля большой площади, мансардные окна</td><td>больше всех</td></tr>
+            </table>
+        </div>
+        <p class="note">Мансарда — единственный этаж, где потери на квадратный метр обычно выше, чем на первом: кровля большая, а утеплитель в ней тоньше, чем в стенах.</p>
+
+        <p>Поэтому правило «на втором этаже приборы поменьше» верно только для этажа под холодным чердаком с нормальным утеплением. Для мансарды всё наоборот: там нужны и приборы под окнами, и полноценный расчёт по ограждениям.</p>
+
+        <h2 id="teplyy-pol-na-vtorom-etazhe">Тёплый пол на втором этаже</h2>
+
+        <ul>
+            <li><strong>Вес.</strong> Мокрая стяжка добавляет около 157 кг на квадратный метр вместе с плиткой. Для деревянного перекрытия это проверяют расчётом, а не на глаз.</li>
+            <li><strong>Настильная система</strong> весит 20–35 кг/м² и решает вопрос веса, но отдаёт на 10–20 % меньше и быстрее остывает.</li>
+            <li><strong>Потери вниз</strong> — 8,7 Вт/м² по деревянному перекрытию с минватой 150 мм. Утеплитель под трубой нужен не ради экономии, а ради управляемости: без него термостаты двух этажей начинают спорить.</li>
+            <li><strong>Свой коллектор и свой узел подмеса</strong> — один узел тянет до 100 м² пола, и считать надо по самому нагруженному этажу, а не по средней площади.</li>
+        </ul>
+
+        <h2 id="vtoroy-svet">Второй свет</h2>
+
+        <p>Помещение двойной высоты — отдельный случай. Тёплый воздух собирается под потолком, внизу остаётся холодно, а приборы работают вхолостую.</p>
+
+        <ol>
+            <li><strong>Тёплый пол как основа.</strong> Он греет снизу, там, где люди, и не отапливает верхнюю зону.</li>
+            <li><strong>Приборы под окнами в полный рост</strong> — внутрипольные конвекторы, если остекление до пола.</li>
+            <li><strong>Объём в расчёте, а не площадь.</strong> Нагрев приточного воздуха считается по объёму помещения, и при высоте 6 метров это вдвое больше обычного.</li>
+            <li><strong>Вентилятор под потолком</strong> на малых оборотах — простое решение, возвращающее тёплый воздух вниз.</li>
+        </ol>
+
+        <h2 id="chto-proverit-v-proekte-dvuhetazhnogo-doma">Что проверить в проекте двухэтажного дома</h2>
+
+        <ul>
+            <li><strong>Коллектор на каждом этаже</strong> с доступом — не замурованный в нишу без люка.</li>
+            <li><strong>Диаметр магистрали наверх</strong> — она несёт нагрузку всего этажа, и считается по расходу, а не «как остальные».</li>
+            <li><strong>Воздухоотводчики в верхних точках.</strong> Второй этаж — это то место, где собирается весь воздух системы.</li>
+            <li><strong>Термоголовки на приборах верхнего этажа</strong> — обязательно.</li>
+            <li><strong>Отдельный расчёт мансарды,</strong> если она есть: считать её «как второй этаж» — самая частая ошибка.</li>
+            <li><strong>Прибор внизу лестницы,</strong> а не наверху.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать дом по этажам
+            <small>Теплопотери каждой комнаты и подбор приборов</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли отдельный коллектор на каждый этаж?</span></summary>
+            <div class="answer">
+                <p>Как правило да. Лучи со второго этажа к коллектору в котельной — это десятки метров трубы в каждую сторону, лишнее сопротивление и потери по дороге. Коллектор ставят на своём этаже примерно посередине зоны, а наверх ведут одну пару труб увеличенного диаметра. Транзит через перекрытие идёт в гильзе и в изоляции.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему на втором этаже жарко, а внизу прохладно?</span></summary>
+            <div class="answer">
+                <p>Тёплый воздух легче и поднимается по лестнице сам, а поэтажный расчёт этого не учитывает: каждая комната считается отдельно. Приборы наверху обычно подобраны правильно, просто к их теплу добавляется пришедшее снизу. Лечится термоголовками на верхнем этаже — они прикроются сами, когда станет жарко.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужны ли на втором этаже приборы меньше?</span></summary>
+            <div class="answer">
+                <p>Только если это этаж под холодным чердаком с нормальным утеплением. Мансарда — обратный случай: она теряет через кровлю большой площади и через мансардные окна, и на квадратный метр теряет больше первого этажа. Считать мансарду «как второй этаж» — самая частая ошибка в таких домах.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что учесть при тёплом поле на втором этаже?</span></summary>
+            <div class="answer">
+                <p>Вес: мокрая стяжка добавляет около 157 кг на квадратный метр вместе с плиткой, и для деревянного перекрытия это проверяют расчётом. Настильная система весит 20–35 кг/м², но отдаёт на 10–20 % меньше. Утеплитель под трубой нужен ради управляемости: без него термостаты двух этажей начинают спорить.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как отопить помещение со вторым светом?</span></summary>
+            <div class="answer">
+                <p>Тёплым полом как основой — он греет внизу, где люди, и не отапливает верхнюю зону. Приборами под окнами, а при остеклении в пол — внутрипольными конвекторами. В расчёте брать объём помещения, а не площадь: нагрев приточного воздуха при высоте 6 метров вдвое больше обычного. Помогает и вентилятор под потолком на малых оборотах.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=otoplenie-dvuhetazhnogo-doma#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/kakie-truby-dlya-otopleniya/">какие трубы выбрать для отопления</a> · <a href="/kanalizatsiya-v-chastnom-dome/">канализация в частном доме: схема и уклоны</a> · <a href="/shema-otopleniya-chastnogo-doma/">схема отопления частного дома: какие бывают</a> · <a href="/dvuhtrubnaya-sistema/">двухтрубная система: тупиковая и попутная</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=otoplenie-dvuhetazhnogo-doma">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

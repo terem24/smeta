@@ -515,10 +515,10 @@
    "freq": 4200,
    "audience": "pro",
    "data_block": "состав узлов",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-17",
    "published_at": null,
-   "words": 0
+   "words": 512
   },
   {
    "slug": "dom-bez-otopleniya-zimoy",
@@ -571,10 +571,10 @@
    "freq": 11400,
    "audience": "owner",
    "data_block": "состав из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-24",
    "published_at": null,
-   "words": 0
+   "words": 533
   },
   {
    "slug": "iz-chego-skladyvaetsya-cena-montazha",
@@ -669,10 +669,10 @@
    "freq": 12400,
    "audience": "owner",
    "data_block": "сравнение по каталогу",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-07",
    "published_at": null,
-   "words": 0
+   "words": 482
   },
   {
    "slug": "otoplenie-dvuhetazhnogo-doma",
@@ -683,10 +683,10 @@
    "freq": 3400,
    "audience": "owner",
    "data_block": "расчёт по этажам",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-09",
    "published_at": null,
-   "words": 0
+   "words": 578
   },
   {
    "slug": "otklyuchili-svet-zimoy",
@@ -725,10 +725,10 @@
    "freq": 6200,
    "audience": "owner",
    "data_block": "состав из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-01-14",
    "published_at": null,
-   "words": 0
+   "words": 547
   },
   {
    "slug": "gidravlicheskiy-raschet-otopleniya",

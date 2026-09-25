@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Обратный клапан для отопления: где ставить и где нельзя | HeatCalc.ru</title>
+    <meta name="description" content="Обратный клапан в системе отопления: зачем нужен в каскаде и на насосных группах, почему его нельзя ставить между котлом и группой безопасности, какое сопротивление он добавляет.">
+    <link rel="canonical" href="https://heatcalc.ru/obratnyy-klapan-v-otoplenii/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/obratnyy-klapan-v-otoplenii/">
+    <meta property="og:title" content="Обратный клапан в отоплении: где нужен, а где вредит">
+    <meta property="og:description" content="Четыре места, где он обязателен, и одно, где он опаснее пользы.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/obratnyy-klapan-v-otoplenii/#webpage",
+      "url": "https://heatcalc.ru/obratnyy-klapan-v-otoplenii/",
+      "name": "Обратный клапан в отоплении: где нужен, а где вредит",
+      "description": "Обратный клапан в системе отопления: зачем нужен в каскаде и на насосных группах, почему его нельзя ставить между котлом и группой безопасности, какое сопротивление он добавляет.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "обратный клапан для отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Обратный клапан в отоплении: где нужен, а где вредит",
+          "item": "https://heatcalc.ru/obratnyy-klapan-v-otoplenii/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Где обязательно нужен обратный клапан в отоплении?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "На каждом котле в каскаде — иначе через выключенный идёт паразитная циркуляция и он греет улицу через свой дымоход. На параллельных насосных группах. На линии подпитки, чтобы теплоноситель не ушёл в водопровод. И на холодной воде к бойлеру, где вместе с ним обязателен расширительный бак ГВС."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли ставить обратный клапан между котлом и группой безопасности?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. На этом участке не должно быть ничего перекрываемого — ни крана, ни фильтра, ни обратного клапана. Группа безопасности защищает котёл от роста давления, и любой элемент, способный перекрыть путь, обнуляет эту защиту. Обратный клапан перекрывает путь в одну сторону всегда."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой обратный клапан выбрать для отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Тот, что меньше сопротивляется: лепестковый или гравитационный. Пружинный добавляет заметно больше сопротивления и уместен на подпитке и на ГВС, где расход небольшой. В контуре отопления каждый килопаскаль приходится потом добирать напором насоса."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как понять, что обратный клапан вышел из строя?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Заклинил закрытым — контур не работает целиком: насос гудит, тепла нет, и это видно по перепаду до и после клапана. Заклинил открытым — сложнее: внешне всё в порядке, но вернулась паразитная циркуляция, и в каскаде выключенный котёл почему-то тёплый. Причина почти всегда шлам, а лечится фильтром на обратке."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужен ли обратный клапан на каждом радиаторе?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. В двухтрубной системе приборы подключены параллельно и не гонят воду друг через друга, поэтому обратному току взяться неоткуда. Лишний клапан здесь только добавляет сопротивление, которое придётся компенсировать насосом."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/obratnyy-klapan-v-otoplenii/#article",
+      "headline": "Обратный клапан в отоплении: где нужен, а где вредит",
+      "description": "Обратный клапан в системе отопления: зачем нужен в каскаде и на насосных группах, почему его нельзя ставить между котлом и группой безопасности, какое сопротивление он добавляет.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/obratnyy-klapan-v-otoplenii/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-17",
+      "dateModified": "2026-12-17",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Обратный клапан в отоплении: где нужен, а где вредит</nav>
+
+        <h1>Обратный клапан в отоплении: где нужен, а где вредит</h1>
+
+        <p class="art-meta"><time datetime="2026-12-17">17 декабря 2026</time></p>
+
+        <p class="lead">Обратный клапан пропускает воду в одну сторону и не пускает обратно. Звучит безобидно, но каждый такой клапан — это сопротивление в контуре и потенциальная точка отказа. Разбираем, где он действительно нужен, а где его ставят по привычке и делают хуже.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#gde-on-obyazatelen">Где он обязателен</a></li>
+            <li><a href="#chem-on-platit">Чем он платит</a></li>
+            <li><a href="#gde-ego-stavyat-zrya">Где его ставят зря</a></li>
+            <li><a href="#kak-on-vyhodit-iz-stroya">Как он выходит из строя</a></li>
+            <li><a href="#proverka-pri-priemke">Проверка при приёмке</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="gde-on-obyazatelen">Где он обязателен</h2>
+
+        <ol>
+            <li><strong>На каждом котле в каскаде.</strong> Без него через выключенный котёл идёт паразитная циркуляция: работающий гонит воду по кругу через соседа, и тот греет улицу через свой дымоход. Это самая явная потеря из возможных.</li>
+            <li><strong>На насосных группах,</strong> работающих параллельно. Когда один контур стоит, а другой работает, вода может пойти через остановленный насос в обратную сторону.</li>
+            <li><strong>На подпитке системы.</strong> Клапан не даёт теплоносителю уйти в водопровод — это не про удобство, а про питьевую воду.</li>
+            <li><strong>На линии холодной воды к бойлеру.</strong> Вода при нагреве расширяется, и без клапана она вытесняется обратно в водопровод. Вместе с ним обязателен расширительный бак ГВС — иначе давить будет некуда и предохранительный клапан начнёт подкапывать при каждом нагреве.</li>
+        </ol>
+
+        <div class="callout">
+            <p><strong>А вот где его ставить нельзя: между котлом и группой безопасности.</strong> Там не должно быть ничего перекрываемого — ни крана, ни фильтра, ни обратного клапана. Группа безопасности защищает котёл от роста давления, и любой элемент, способный перекрыть путь, делает защиту бесполезной. Обратный клапан именно такой элемент: он перекрывает путь в одну сторону всегда.</p>
+        </div>
+
+        <h2 id="chem-on-platit">Чем он платит</h2>
+
+        <p>Каждый клапан — это местное сопротивление. Пружинный добавляет заметно больше, чем лепестковый, и на длинном контуре несколько таких клапанов способны съесть ощутимую часть напора насоса.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Тип</th><th>Как работает</th><th>Сопротивление</th><th>Где применяют</th></tr>
+                <tr><td>Пружинный</td><td>пружина прижимает золотник</td><td>высокое</td><td>подпитка, ГВС</td></tr>
+                <tr><td>Лепестковый</td><td>створка на оси</td><td>низкое</td><td>контуры отопления</td></tr>
+                <tr><td>Шаровой</td><td>шарик в седле</td><td>среднее</td><td>малые диаметры</td></tr>
+                <tr><td>Гравитационный</td><td>заслонка своим весом</td><td>очень низкое</td><td>самотёчные системы</td></tr>
+            </table>
+        </div>
+        <p class="note">В контуре отопления берут тот, что меньше сопротивляется: там важен каждый килопаскаль, который иначе пришлось бы добирать насосом.</p>
+
+        <p>Полезное следствие: если в системе с антифризом дальние ветки перестали прогреваться, стоит посчитать не только поправку на вязкость, но и сумму сопротивлений всех обратных клапанов на пути.</p>
+
+        <h2 id="gde-ego-stavyat-zrya">Где его ставят зря</h2>
+
+        <ul>
+            <li><strong>На единственном насосе единственного контура.</strong> Обратной циркуляции неоткуда взяться — некуда и нечему течь назад.</li>
+            <li><strong>Перед каждым радиатором.</strong> Приборы в двухтрубной схеме подключены параллельно и не гонят воду друг через друга.</li>
+            <li><strong>На обратке после фильтра «чтобы не текло назад».</strong> Если система герметична и работает, обратного тока нет; клапан здесь только добавляет сопротивление.</li>
+            <li><strong>Вместо запорного крана.</strong> Обратный клапан не перекрывает поток в рабочем направлении и снять с его помощью насос не получится.</li>
+        </ul>
+
+        <h2 id="kak-on-vyhodit-iz-stroya">Как он выходит из строя</h2>
+
+        <p>Клапан — механическая деталь в потоке с примесями. Отказывает он двумя способами, и оба неочевидны.</p>
+
+        <ul>
+            <li><strong>Заклинил закрытым.</strong> Контур перестаёт работать целиком: насос гудит, а тепла нет. Диагностируется быстро — перепад до и после клапана.</li>
+            <li><strong>Заклинил открытым.</strong> Хуже: внешне всё работает, но паразитная циркуляция вернулась. В каскаде это выглядит как «второй котёл почему-то тёплый, хотя выключен».</li>
+            <li><strong>Шумит.</strong> Пружинный клапан при высокой скорости потока может стучать. Лечится диаметром или заменой типа.</li>
+            <li><strong>Причина обычно одна</strong> — шлам. Фильтр-грязевик на обратке перед котлом снимает большинство таких историй.</li>
+        </ul>
+
+        <h2 id="proverka-pri-priemke">Проверка при приёмке</h2>
+
+        <ul>
+            <li><strong>От котла до группы безопасности — прямая труба.</strong> Пройти рукой и убедиться, что там нет ни крана, ни клапана, ни фильтра.</li>
+            <li><strong>Стрелка направления</strong> на корпусе каждого клапана совпадает с направлением потока. Перевёрнутый клапан не пропускает вообще, и это обнаруживается при первом пуске.</li>
+            <li><strong>Клапан доступен.</strong> Замурованный в стене или зашитый в короб клапан при отказе означает вскрытие.</li>
+            <li><strong>В каскаде клапан есть на каждом котле,</strong> а не один общий на коллекторе.</li>
+            <li><strong>На подпитке клапан есть</strong> — это самая забываемая позиция и единственная, где речь идёт о питьевой воде.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Собрать обвязку котельной
+            <small>Состав узлов по расчёту</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Где обязательно нужен обратный клапан в отоплении?</span></summary>
+            <div class="answer">
+                <p>На каждом котле в каскаде — иначе через выключенный идёт паразитная циркуляция и он греет улицу через свой дымоход. На параллельных насосных группах. На линии подпитки, чтобы теплоноситель не ушёл в водопровод. И на холодной воде к бойлеру, где вместе с ним обязателен расширительный бак ГВС.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли ставить обратный клапан между котлом и группой безопасности?</span></summary>
+            <div class="answer">
+                <p>Нет. На этом участке не должно быть ничего перекрываемого — ни крана, ни фильтра, ни обратного клапана. Группа безопасности защищает котёл от роста давления, и любой элемент, способный перекрыть путь, обнуляет эту защиту. Обратный клапан перекрывает путь в одну сторону всегда.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой обратный клапан выбрать для отопления?</span></summary>
+            <div class="answer">
+                <p>Тот, что меньше сопротивляется: лепестковый или гравитационный. Пружинный добавляет заметно больше сопротивления и уместен на подпитке и на ГВС, где расход небольшой. В контуре отопления каждый килопаскаль приходится потом добирать напором насоса.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как понять, что обратный клапан вышел из строя?</span></summary>
+            <div class="answer">
+                <p>Заклинил закрытым — контур не работает целиком: насос гудит, тепла нет, и это видно по перепаду до и после клапана. Заклинил открытым — сложнее: внешне всё в порядке, но вернулась паразитная циркуляция, и в каскаде выключенный котёл почему-то тёплый. Причина почти всегда шлам, а лечится фильтром на обратке.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли обратный клапан на каждом радиаторе?</span></summary>
+            <div class="answer">
+                <p>Нет. В двухтрубной системе приборы подключены параллельно и не гонят воду друг через друга, поэтому обратному току взяться неоткуда. Лишний клапан здесь только добавляет сопротивление, которое придётся компенсировать насосом.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=obratnyy-klapan-v-otoplenii#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/boyler-ili-protochnyy/">бойлер или проточный нагреватель</a> · <a href="/podbor-tsirkulyatsionnogo-nasosa/">подбор циркуляционного насоса: напор и расход</a> · <a href="/vozduh-v-sisteme-otopleniya/">воздух в системе: развоздушивание и автоматика</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=obratnyy-klapan-v-otoplenii">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
