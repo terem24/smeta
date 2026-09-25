@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Как оставить дом на зиму: дежурный режим или слить систему | HeatCalc.ru</title>
+    <meta name="description" content="Что сделать перед отъездом зимой: дежурное отопление +5 °C и его мощность, ИБП на насос, оповещение по температуре, слив системы и почему антифриз не всегда лучший ответ.">
+    <link rel="canonical" href="https://heatcalc.ru/dom-bez-otopleniya-zimoy/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/dom-bez-otopleniya-zimoy/">
+    <meta property="og:title" content="Дом без присмотра зимой: как не разморозить">
+    <meta property="og:description" content="Дом с теплопотерями 10 кВт в режиме +5 требует 6,6 кВт. Что ещё сделать перед отъездом.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/dom-bez-otopleniya-zimoy/#webpage",
+      "url": "https://heatcalc.ru/dom-bez-otopleniya-zimoy/",
+      "name": "Дом без присмотра зимой: как уехать и не разморозить",
+      "description": "Что сделать перед отъездом зимой: дежурное отопление +5 °C и его мощность, ИБП на насос, оповещение по температуре, слив системы и почему антифриз не всегда лучший ответ.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "как оставить дом на зиму"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Дом без присмотра зимой: как уехать и не разморозить",
+          "item": "https://heatcalc.ru/dom-bez-otopleniya-zimoy/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какую температуру оставлять в доме на время отъезда?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Плюс пять градусов — по СП 60.13330.2020 в отсутствие людей допускается пониженная температура, но не ниже этой. Дом с теплопотерями 10 кВт требует в таком режиме 6,6 кВт вместо 10, котёл работает на малой мощности, а при аварии у дома есть запас тепла и времени."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что чаще всего приводит к разморозке?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Отключение света, а не мороз. Котёл встаёт, насос стоит, и дом остывает на 8–12 градусов за сутки. Двое суток — и вода в дальних петлях подходит к нулю. Поэтому ИБП на насос и автоматику важнее любых других мер: аккумулятор 100 А·ч при нагрузке 150 Вт даёт около пяти часов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сливать систему или заливать антифриз?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Если зимой в доме не появляетесь вовсе — сливать: это честнее и дешевле. Если приезжаете иногда — антифриз, потому что сливать и заполнять каждый месяц хуже. Но антифриз требует бак на 10 % больше и насос с напором в полтора раза выше, а раствор меняют каждые 5–7 лет."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как правильно слить систему на зиму?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Через сливные краны в нижних точках — их закладывают при монтаже, без них полностью слить невозможно. Остатки продувают сжатым воздухом: самотёком вода не уходит из петель тёплого пола и горизонтальных участков. Отдельно сливают бойлер, гидроаккумулятор и колбы фильтров, а в сифоны заливают незамерзающую жидкость."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что проверить перед отъездом зимой?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Давление в холодной системе 1,5–2 бара, дежурный режим на котле без ошибок, работу ИБП под нагрузкой — выключить автомат котельной и убедиться, что всё продолжает работать. Отправить себе тестовое оповещение с контроллера, перекрыть ввод воды и оставить ключи соседу."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/dom-bez-otopleniya-zimoy/#article",
+      "headline": "Дом без присмотра зимой: как уехать и не разморозить",
+      "description": "Что сделать перед отъездом зимой: дежурное отопление +5 °C и его мощность, ИБП на насос, оповещение по температуре, слив системы и почему антифриз не всегда лучший ответ.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/dom-bez-otopleniya-zimoy/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-18",
+      "dateModified": "2026-12-18",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Дом без присмотра зимой: как уехать и не разморозить</nav>
+
+        <h1>Дом без присмотра зимой: как уехать и не разморозить</h1>
+
+        <p class="art-meta"><time datetime="2026-12-18">18 декабря 2026</time></p>
+
+        <p class="lead">Уехать на новогодние каникулы и вернуться к лопнувшим трубам — сценарий, который повторяется каждый январь. Разбираем три стратегии: держать дежурное тепло, слить систему или залить антифриз, и что сделать в каждом случае.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#strategiya-pervaya-derzhat-5">Стратегия первая: держать +5</a></li>
+            <li><a href="#chto-zaschischaet-ot-avarii">Что защищает от аварии</a></li>
+            <li><a href="#strategiya-vtoraya-slit-sistemu">Стратегия вторая: слить систему</a></li>
+            <li><a href="#strategiya-tretya-antifriz">Стратегия третья: антифриз</a></li>
+            <li><a href="#chto-vybrat">Что выбрать</a></li>
+            <li><a href="#pered-samym-otezdom">Перед самым отъездом</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="strategiya-pervaya-derzhat-5">Стратегия первая: держать +5</h2>
+
+        <p>Самый простой и самый распространённый вариант. По СП 60.13330.2020 в отсутствие людей допускается пониженная температура, но не ниже пяти градусов — этого достаточно, чтобы вода нигде не замёрзла.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Режим</th><th>В доме</th><th>Дом с теплопотерями 10 кВт</th></tr>
+                <tr><td>Комфорт</td><td class="num">20 °C</td><td class="num">10,0 кВт</td></tr>
+                <tr><td>Эконом</td><td class="num">16 °C</td><td class="num">9,1 кВт</td></tr>
+                <tr><td>Дежурный</td><td class="num">5 °C</td><td class="num">6,6 кВт</td></tr>
+            </table>
+        </div>
+        <p class="note">Расчёт для Петербурга. В дежурном режиме дом требует на треть меньше мощности — и примерно во столько же раз меньше топлива.</p>
+
+        <p>На газе разница в деньгах невелика и ради неё режим не включают. Смысл в другом: котёл работает на малой мощности, износ меньше, а при аварии у дома есть запас тепла и времени.</p>
+
+        <ul>
+            <li><strong>Выставить режим на котле или термостате</strong> — у большинства это отдельная уставка.</li>
+            <li><strong>Оставить все термоголовки открытыми.</strong> Закрытая головка в дальней комнате — это участок, где вода стоит и остывает быстрее всего.</li>
+            <li><strong>Открыть двери между помещениями,</strong> чтобы тепло расходилось.</li>
+            <li><strong>Не перекрывать контуры</strong> тёплого пола: замерзает в первую очередь то, где нет движения.</li>
+        </ul>
+
+        <h2 id="chto-zaschischaet-ot-avarii">Что защищает от аварии</h2>
+
+        <div class="callout">
+            <p><strong>Самая частая причина разморозки — не мороз, а отключение света.</strong> Котёл встаёт, насос стоит, и дом остывает со скоростью, зависящей от утепления: за сутки без отопления в мороз температура падает на 8–12 градусов. Двое суток — и вода в дальних петлях подходит к нулю. Поэтому ИБП здесь важнее любого другого решения.</p>
+        </div>
+
+        <ol>
+            <li><strong>ИБП с чистой синусоидой</strong> и внешним аккумулятором. Нагрузка котельной — 150–250 Вт; аккумулятор 100 А·ч даёт около 5 часов, четыре таких — сутки.</li>
+            <li><strong>Оповещение по температуре.</strong> Контроллер с GSM-модулем присылает сообщение при падении ниже уставки — за сутки до того, как что-то замёрзнет. Это дешевле всего остального и полезнее большинства.</li>
+            <li><strong>Датчики протечки с перекрытием воды.</strong> Если труба всё-таки лопнет, вода не будет литься неделю.</li>
+            <li><strong>Перекрыть ввод воды.</strong> На отопление это не влияет, а протечку водопровода исключает полностью.</li>
+            <li><strong>Попросить соседа заглянуть.</strong> Самое надёжное из всего перечисленного, и стоит ноль.</li>
+        </ol>
+
+        <h2 id="strategiya-vtoraya-slit-sistemu">Стратегия вторая: слить систему</h2>
+
+        <p>Честный вариант для дома, куда зимой не ездят вовсе. Ничего не может замёрзнуть, потому что нечему.</p>
+
+        <ul>
+            <li><strong>Нужны сливные краны в нижних точках</strong> — их закладывают при монтаже. Без них слить систему полностью невозможно.</li>
+            <li><strong>Остатки продувают сжатым воздухом.</strong> Самотёком вода уходит не вся, особенно из петель тёплого пола и из горизонтальных участков.</li>
+            <li><strong>Слить бойлер, гидроаккумулятор и фильтры.</strong> Колбы фильтров лопаются первыми.</li>
+            <li><strong>Слить сифоны</strong> или залить в них незамерзающую жидкость: гидрозатворы тоже вода.</li>
+            <li><strong>Помнить про стальные части.</strong> Пустая система с воздухом внутри корродирует быстрее заполненной — для стальных котлов и панельных радиаторов это заметно.</li>
+        </ul>
+
+        <p>Именно последний пункт делает слив спорным для дома, куда всё-таки иногда приезжают: сливать и заполнять каждый месяц хуже, чем держать дежурный режим.</p>
+
+        <h2 id="strategiya-tretya-antifriz">Стратегия третья: антифриз</h2>
+
+        <p>Незамерзающий теплоноситель снимает вопрос разморозки, но приносит свои условия, и их стоит знать до заливки.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Что меняется</th><th>Поправка</th></tr>
+                <tr><td>Расширительный бак</td><td>на 10 % больше</td></tr>
+                <tr><td>Расход насоса</td><td>×1,1</td></tr>
+                <tr><td>Напор насоса</td><td>×1,54</td></tr>
+                <tr><td>Срок службы раствора</td><td>5–7 лет, потом замена</td></tr>
+            </table>
+        </div>
+        <p class="note">Поправки из паспорта теплоносителя. Полуторакратная добавка по напору — причина, по которой после заливки антифриза перестают прогреваться дальние петли тёплого пола: они и так работают у предела 20 кПа.</p>
+
+        <p>Антифриз оправдан там, где дом стоит холодным всю зиму, но систему сливать не хотят. Для дома с постоянным проживанием он обычно лишний: разморозить такую систему можно только при совпадении нескольких аварий сразу.</p>
+
+        <h2 id="chto-vybrat">Что выбрать</h2>
+
+        <ul>
+            <li><strong>Уезжаете на неделю-две, дом отапливается</strong> — дежурный режим +5, ИБП, оповещение, перекрытый ввод воды.</li>
+            <li><strong>Дом стоит всю зиму, но иногда приезжаете</strong> — антифриз и дежурный режим.</li>
+            <li><strong>Зимой не появляетесь вовсе</strong> — слить систему полностью. Это честнее и дешевле антифриза.</li>
+            <li><strong>Отключения света частые и долгие</strong> — генератор с автозапуском вместо ИБП, либо всё то же плюс антифриз.</li>
+        </ul>
+
+        <h2 id="pered-samym-otezdom">Перед самым отъездом</h2>
+
+        <ol>
+            <li><strong>Проверить давление в системе</strong> — 1,5–2 бара в холодной.</li>
+            <li><strong>Убедиться, что котёл в дежурном режиме</strong> и не выдаёт ошибок.</li>
+            <li><strong>Проверить ИБП под нагрузкой:</strong> выключить автомат котельной и посмотреть, что всё продолжает работать.</li>
+            <li><strong>Отправить себе тестовое оповещение</strong> с контроллера.</li>
+            <li><strong>Перекрыть ввод воды</strong> и слить то, что после него: фильтры, шланги стиральной машины.</li>
+            <li><strong>Оставить ключи соседу</strong> и объяснить, что делать, если позвонят по оповещению.</li>
+        </ol>
+
+        <a class="cta" href="/">
+            Посчитать дом в трёх режимах
+            <small>Комфорт, эконом и дежурное отопление</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какую температуру оставлять в доме на время отъезда?</span></summary>
+            <div class="answer">
+                <p>Плюс пять градусов — по СП 60.13330.2020 в отсутствие людей допускается пониженная температура, но не ниже этой. Дом с теплопотерями 10 кВт требует в таком режиме 6,6 кВт вместо 10, котёл работает на малой мощности, а при аварии у дома есть запас тепла и времени.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что чаще всего приводит к разморозке?</span></summary>
+            <div class="answer">
+                <p>Отключение света, а не мороз. Котёл встаёт, насос стоит, и дом остывает на 8–12 градусов за сутки. Двое суток — и вода в дальних петлях подходит к нулю. Поэтому ИБП на насос и автоматику важнее любых других мер: аккумулятор 100 А·ч при нагрузке 150 Вт даёт около пяти часов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сливать систему или заливать антифриз?</span></summary>
+            <div class="answer">
+                <p>Если зимой в доме не появляетесь вовсе — сливать: это честнее и дешевле. Если приезжаете иногда — антифриз, потому что сливать и заполнять каждый месяц хуже. Но антифриз требует бак на 10 % больше и насос с напором в полтора раза выше, а раствор меняют каждые 5–7 лет.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как правильно слить систему на зиму?</span></summary>
+            <div class="answer">
+                <p>Через сливные краны в нижних точках — их закладывают при монтаже, без них полностью слить невозможно. Остатки продувают сжатым воздухом: самотёком вода не уходит из петель тёплого пола и горизонтальных участков. Отдельно сливают бойлер, гидроаккумулятор и колбы фильтров, а в сифоны заливают незамерзающую жидкость.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что проверить перед отъездом зимой?</span></summary>
+            <div class="answer">
+                <p>Давление в холодной системе 1,5–2 бара, дежурный режим на котле без ошибок, работу ИБП под нагрузкой — выключить автомат котельной и убедиться, что всё продолжает работать. Отправить себе тестовое оповещение с контроллера, перекрыть ввод воды и оставить ключи соседу.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/odnotrubnaya-leningradka/">однотрубная система «ленинградка»: где ещё жива</a> · <a href="/gidroakkumulyator-obem/">гидроаккумулятор: какой объём нужен</a> · <a href="/installyatsiya-unitaza/">инсталляция унитаза: что нужно учесть</a> · <a href="/podgotovka-otopleniya-k-zime/">подготовка отопления к зиме: что проверить перед сезоном</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

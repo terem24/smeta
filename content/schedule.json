@@ -473,10 +473,10 @@
    "freq": 4800,
    "audience": "owner",
    "data_block": "ограничения по числу приборов",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-10",
    "published_at": null,
-   "words": 0
+   "words": 567
   },
   {
    "slug": "gidroakkumulyator-obem",
@@ -529,10 +529,10 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "режим +5 и мощность резерва",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-18",
    "published_at": null,
-   "words": null
+   "words": 631
   },
   {
    "slug": "rezervnoe-pitanie-kotelnoy",
@@ -599,10 +599,10 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "наши тарифные таблицы",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-26",
    "published_at": null,
-   "words": null
+   "words": 625
   },
   {
    "slug": "otoplenie-bez-gaza-lenoblast",

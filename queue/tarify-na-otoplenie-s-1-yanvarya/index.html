@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тарифы на газ и электричество: как пересчитать счета за отопление | HeatCalc.ru</title>
+    <meta name="description" content="Как устроены тарифы на газ и электричество для частного дома: почему их пересматривают дважды в год, чем отличаются категории, как пересчитать стоимость сезона и на чём можно сэкономить законно.">
+    <link rel="canonical" href="https://heatcalc.ru/tarify-na-otoplenie-s-1-yanvarya/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/tarify-na-otoplenie-s-1-yanvarya/">
+    <meta property="og:title" content="Тарифы на отопление: как пересчитать расходы">
+    <meta property="og:description" content="Категория «дом с электроотоплением» дешевле городской на 2,18 ₽ — это 53 тысячи за сезон.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/tarify-na-otoplenie-s-1-yanvarya/#webpage",
+      "url": "https://heatcalc.ru/tarify-na-otoplenie-s-1-yanvarya/",
+      "name": "Тарифы на отопление с 1 января: как пересчитать расходы",
+      "description": "Как устроены тарифы на газ и электричество для частного дома: почему их пересматривают дважды в год, чем отличаются категории, как пересчитать стоимость сезона и на чём можно сэкономить законно.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "тарифы на газ и электричество"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Тарифы на отопление с 1 января: как пересчитать расходы",
+          "item": "https://heatcalc.ru/tarify-na-otoplenie-s-1-yanvarya/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Почему тарифы на отопление меняются дважды в год?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Их устанавливает каждый субъект федерации, и пересматривают обычно с 1 января и с 1 июля; вторая индексация традиционно крупнее. Единого тарифа по стране нет, поэтому сравнивать счёт с соседней областью бессмысленно: газ на отопление в одном регионе может стоить 7 рублей за кубометр, в другом 10."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как пересчитать стоимость отопления после повышения тарифа?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Тепло за сезон считают по климату города: мощность × сутки отопительного периода × 24 × (температура внутри минус средняя наружная) ÷ (внутри минус расчётная). Для дома 150 м² с теплопотерями 10 кВт в Петербурге это 24 400 кВт·ч. Дальше делят на теплоту сгорания и КПД и умножают на новый тариф — меняется только последний множитель."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какая категория тарифа выгоднее для частного дома?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Для дома без газа — категория «с электроотоплением»: 5,70 ₽ против 7,88 ₽ городского, то есть 53 тысячи рублей разницы за сезон. Она существует по закону и оформляется заявлением в сбытовую компанию. У газа аналогично: категория «на отопление» почти везде дешевле категории «плита»."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Стоит ли переходить на ночной тариф?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Сам по себе он мало что даёт: отопление работает круглосуточно, и ночная ставка 3,41 ₽ покрывает лишь часть суток. Смысл появляется в паре с теплоаккумулятором — тогда часть нагрузки реально смещается в ночь. Без бака выигрыш съедается дневной ставкой, которая при двухставочном тарифе обычно выше одноставочной."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что даёт больше всего экономии при росте тарифов?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Проверить свою категорию — 2,18 ₽ на киловатт-час разницы. Затем снизить температуру: каждый градус даёт 5–6 % расхода, на электричестве это 7 400 ₽ за сезон. Погодозависимая автоматика убирает перетоп в межсезонье. И утепление: снижение теплопотерь с 10 до 7 кВт экономит 42 тысячи за сезон и повторяется каждый год."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/tarify-na-otoplenie-s-1-yanvarya/#article",
+      "headline": "Тарифы на отопление с 1 января: как пересчитать расходы",
+      "description": "Как устроены тарифы на газ и электричество для частного дома: почему их пересматривают дважды в год, чем отличаются категории, как пересчитать стоимость сезона и на чём можно сэкономить законно.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/tarify-na-otoplenie-s-1-yanvarya/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-26",
+      "dateModified": "2026-12-26",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Тарифы на отопление с 1 января: как пересчитать расходы</nav>
+
+        <h1>Тарифы на отопление с 1 января: как пересчитать расходы</h1>
+
+        <p class="art-meta"><time datetime="2026-12-26">26 декабря 2026</time></p>
+
+        <p class="lead">Тарифы пересматривают дважды в год, и каждый раз возникает вопрос: во что теперь обойдётся зима. Считается это за пять минут, если знать три числа. Разбираем, как устроены тарифы, чем отличаются категории и что из этого реально меняет счёт.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#pochemu-tarify-menyayutsya-dvazhdy">Почему тарифы меняются дважды</a></li>
+            <li><a href="#kategorii-kotorye-reshayut-bolshe-indeksacii">Категории, которые решают больше индексации</a></li>
+            <li><a href="#kak-pereschitat-sezon-za-pyat-minut">Как пересчитать сезон за пять минут</a></li>
+            <li><a href="#chto-delat-posle-povysheniya">Что делать после повышения</a></li>
+            <li><a href="#chego-delat-ne-stoit">Чего делать не стоит</a></li>
+            <li><a href="#chto-stoit-znat-pro-gaz">Что стоит знать про газ</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="pochemu-tarify-menyayutsya-dvazhdy">Почему тарифы меняются дважды</h2>
+
+        <p>Единого тарифа по стране нет: цену устанавливает каждый субъект федерации, а внутри субъекта она ещё делится по категориям потребления. Пересматривают их обычно с 1 января и с 1 июля, и вторая индексация традиционно крупнее первой.</p>
+
+        <p>Поэтому сравнивать свой счёт с чужим по соседней области бессмысленно: в одном регионе газ на отопление может стоить 7 рублей за кубометр, в другом 10, и это нормально.</p>
+
+        <h2 id="kategorii-kotorye-reshayut-bolshe-indeksacii">Категории, которые решают больше индексации</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Категория</th><th>Тариф</th><th>Сезон, 24 400 кВт·ч</th></tr>
+                <tr><td>Электричество, город, без электроплит</td><td class="num">7,88 ₽/кВт·ч</td><td class="num">192 000 ₽</td></tr>
+                <tr><td>Электричество, дом с электроотоплением</td><td class="num">5,70 ₽/кВт·ч</td><td class="num">139 000 ₽</td></tr>
+                <tr><td>Электричество, ночная ставка</td><td class="num">3,41 ₽/кВт·ч</td><td class="num">83 000 ₽</td></tr>
+                <tr><td>Газ, категория «отопление»</td><td class="num">9,32 ₽/м³ → 1,09 ₽/кВт·ч</td><td class="num">26 500 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Ленинградская область, конец 2026 года. Дом 150 м² с теплопотерями 10 кВт.</p>
+
+        <div class="callout">
+            <p><strong>Разница между первой и второй строкой — 53 тысячи рублей за сезон.</strong> Это не льгота и не схема: категория для домов с электроотоплением существует по закону, и дом без газа в неё попадает. Оформляется она заявлением в сбытовую компанию с подтверждением, что отопление электрическое. Люди платят по городскому тарифу годами просто потому, что не знали о разнице.</p>
+        </div>
+
+        <p>У газа то же самое, только тише: категория «на отопление» почти во всех проверенных регионах дешевле категории «плита». В Рязани это 8,61 против 10,1, в Подмосковье 8,51 против 9,71, в Ростове 9,10 против 9,30.</p>
+
+        <h2 id="kak-pereschitat-sezon-za-pyat-minut">Как пересчитать сезон за пять минут</h2>
+
+        <div class="formula">
+            <p><strong>Шаг 1.</strong> Тепло за сезон = мощность × сутки × 24 × (t внутри − t средняя) ÷ (t внутри − t расчётная)</p>
+            <p>Дом 150 м², 10 кВт, Петербург: 10 × 211 × 24 × 21,2 ÷ 44 = <strong>24 400 кВт·ч</strong></p>
+            <p><strong>Шаг 2.</strong> Расход топлива = тепло ÷ теплота сгорания ÷ КПД</p>
+            <p>Газ: 24 400 ÷ 9,31 ÷ 0,92 = <strong>2 848 м³</strong></p>
+            <p><strong>Шаг 3.</strong> Умножить на новый тариф</p>
+        </div>
+
+        <p>Климатические числа — из СП 131.13330.2020, табл. 3.1, теплота сгорания газа 9,31 кВт·ч/м³ — из ГОСТ 5542-2014. Меняется в этой формуле только последний множитель, поэтому пересчёт после индексации занимает минуту.</p>
+
+        <h2 id="chto-delat-posle-povysheniya">Что делать после повышения</h2>
+
+        <ol>
+            <li><strong>Проверить свою категорию.</strong> Самое доходное действие из всех: разница между городским тарифом и тарифом для дома с электроотоплением — 2,18 ₽ на киловатт-час.</li>
+            <li><strong>Посмотреть на двухставочный тариф.</strong> Ночная ставка 3,41 ₽ против 5,70 дневной. Сам по себе он мало что даёт — отопление работает круглосуточно, — но в паре с теплоаккумулятором часть нагрузки реально уходит в ночь.</li>
+            <li><strong>Снизить температуру на градус.</strong> Каждый градус — 5–6 % расхода: на электричестве это 7 400 ₽ за сезон.</li>
+            <li><strong>Поставить погодозависимую автоматику.</strong> Она убирает перетоп в межсезонье, когда дом греется так, будто на улице расчётные минус двадцать четыре.</li>
+            <li><strong>Посчитать утепление.</strong> Снижение теплопотерь с 10 до 7 кВт экономит 42 тысячи за сезон на электричестве — и повторяется каждый год.</li>
+        </ol>
+
+        <h2 id="chego-delat-ne-stoit">Чего делать не стоит</h2>
+
+        <ul>
+            <li><strong>Менять котёл ради экономии на топливе.</strong> Разница в КПД между обычным и конденсационным котлом на радиаторах 80/60 почти отсутствует: конденсация идёт только при холодной обратке.</li>
+            <li><strong>Переходить на дрова из-за тарифа.</strong> Восемь тонн за сезон — это регулярная работа, а не разовая покупка. Сравнивать надо не только рубли.</li>
+            <li><strong>Выключать отопление на время отъезда.</strong> Дежурный режим +5 °C требует 6,6 кВт вместо 10, а риск разморозки нулевой. Полное выключение экономит немного, а стоить может дорого.</li>
+            <li><strong>Ставить электрокотёл «на подстраховку» без расчёта сети.</strong> Котёл на 12 кВт — это 55 ампер по одной фазе, и при типичных 15 киловаттах на участок он туда не помещается.</li>
+        </ul>
+
+        <h2 id="chto-stoit-znat-pro-gaz">Что стоит знать про газ</h2>
+
+        <p>Цена кубометра — не вся стоимость. В счёт входит и абонентская плата за обслуживание оборудования, и она от объёма потребления не зависит. Для дома, который топится полгода, это несколько процентов; для дачи с редкими приездами доля заметно выше.</p>
+
+        <p>И отдельно: теплота сгорания у газа по ГОСТ 5542-2014 — около 33,5 МДж на кубометр, то есть 9,31 кВт·ч. Счётчик меряет объём, а не энергию, поэтому при прочих равных зимой и летом кубометр даёт одинаковое тепло — сезонных «потерь в счётчике» не бывает.</p>
+
+        <a class="cta" href="/">
+            Посчитать стоимость сезона
+            <small>Калькулятор берёт тарифы вашего региона</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему тарифы на отопление меняются дважды в год?</span></summary>
+            <div class="answer">
+                <p>Их устанавливает каждый субъект федерации, и пересматривают обычно с 1 января и с 1 июля; вторая индексация традиционно крупнее. Единого тарифа по стране нет, поэтому сравнивать счёт с соседней областью бессмысленно: газ на отопление в одном регионе может стоить 7 рублей за кубометр, в другом 10.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как пересчитать стоимость отопления после повышения тарифа?</span></summary>
+            <div class="answer">
+                <p>Тепло за сезон считают по климату города: мощность × сутки отопительного периода × 24 × (температура внутри минус средняя наружная) ÷ (внутри минус расчётная). Для дома 150 м² с теплопотерями 10 кВт в Петербурге это 24 400 кВт·ч. Дальше делят на теплоту сгорания и КПД и умножают на новый тариф — меняется только последний множитель.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какая категория тарифа выгоднее для частного дома?</span></summary>
+            <div class="answer">
+                <p>Для дома без газа — категория «с электроотоплением»: 5,70 ₽ против 7,88 ₽ городского, то есть 53 тысячи рублей разницы за сезон. Она существует по закону и оформляется заявлением в сбытовую компанию. У газа аналогично: категория «на отопление» почти везде дешевле категории «плита».</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Стоит ли переходить на ночной тариф?</span></summary>
+            <div class="answer">
+                <p>Сам по себе он мало что даёт: отопление работает круглосуточно, и ночная ставка 3,41 ₽ покрывает лишь часть суток. Смысл появляется в паре с теплоаккумулятором — тогда часть нагрузки реально смещается в ночь. Без бака выигрыш съедается дневной ставкой, которая при двухставочном тарифе обычно выше одноставочной.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что даёт больше всего экономии при росте тарифов?</span></summary>
+            <div class="answer">
+                <p>Проверить свою категорию — 2,18 ₽ на киловатт-час разницы. Затем снизить температуру: каждый градус даёт 5–6 % расхода, на электричестве это 7 400 ₽ за сезон. Погодозависимая автоматика убирает перетоп в межсезонье. И утепление: снижение теплопотерь с 10 до 7 кВт экономит 42 тысячи за сезон и повторяется каждый год.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/dom-bez-otopleniya-zimoy/">дом без присмотра зимой: как уехать и не разморозить</a> · <a href="/odnotrubnaya-leningradka/">однотрубная система «ленинградка»: где ещё жива</a> · <a href="/gidroakkumulyator-obem/">гидроаккумулятор: какой объём нужен</a> · <a href="/podgotovka-otopleniya-k-zime/">подготовка отопления к зиме: что проверить перед сезоном</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

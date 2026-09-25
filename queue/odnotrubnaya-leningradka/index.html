@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Однотрубная система отопления «ленинградка»: расчёт и пределы | HeatCalc.ru</title>
+    <meta name="description" content="Однотрубная система отопления: как остывает вода по кольцу, почему последние приборы приходится увеличивать, зачем байпас и когда «ленинградка» всё ещё оправдана.">
+    <link rel="canonical" href="https://heatcalc.ru/odnotrubnaya-leningradka/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/odnotrubnaya-leningradka/">
+    <meta property="og:title" content="Ленинградка: как работает и где её предел">
+    <meta property="og:description" content="Последнему прибору в кольце достаётся вода на 15 градусов холоднее. Считаем, во что это обходится.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/odnotrubnaya-leningradka/#webpage",
+      "url": "https://heatcalc.ru/odnotrubnaya-leningradka/",
+      "name": "Ленинградка: как работает однотрубная система и её пределы",
+      "description": "Однотрубная система отопления: как остывает вода по кольцу, почему последние приборы приходится увеличивать, зачем байпас и когда «ленинградка» всё ещё оправдана.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "ленинградка система отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Ленинградка: как работает однотрубная система и её пределы",
+          "item": "https://heatcalc.ru/odnotrubnaya-leningradka/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как работает однотрубная система «ленинградка»?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Приборы врезаны последовательно в одну магистраль, которая обходит дом по кольцу. Вода заходит в радиатор, отдаёт часть тепла и возвращается в то же кольцо уже холоднее, поэтому каждый следующий прибор получает воду холоднее предыдущего. При шести приборах и графике 80/60 последний получает около 63 °C вместо 80."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему последние приборы в кольце греют хуже?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Потому что до них доходит остывшая вода. Напор температуры у шестого прибора в кольце 39,7 К против 56,3 у первого, и отдаёт он примерно на четверть меньше при тех же габаритах. Компенсируют это секциями: если первой комнате хватает 10 секций, последней при тех же теплопотерях нужно 13."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Зачем нужен байпас в однотрубной системе?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Прибор стоит прямо в кольце, и перекрыть его без перемычки — значит остановить циркуляцию во всём доме. Байпас должен быть на типоразмер уже подводки: если он равен ей по диаметру, вода пойдёт по пути наименьшего сопротивления, то есть мимо радиатора. Регулирующий кран на байпас не ставят."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда однотрубная схема ещё оправдана?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В небольшом доме на три-четыре прибора, где разброс температур по кольцу не успевает стать заметным. В дачном домике с самотёчной системой — она работает без насоса. При пристройке к существующей однотрубной системе. И в мастерской или гараже, где важна простота, а не равномерность."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что можно улучшить в готовой однотрубной системе?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Проверить байпасы: если они одного диаметра с подводкой, часть воды идёт мимо приборов. Добавить секции последним радиаторам. Поставить термоголовки — при наличии байпасов они работают. Разделить длинное кольцо надвое. А вот менять приборы на более мощные без пересчёта цепочки бессмысленно: увеличенный радиатор ухудшит положение тех, кто стоит за ним."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/odnotrubnaya-leningradka/#article",
+      "headline": "Ленинградка: как работает однотрубная система и её пределы",
+      "description": "Однотрубная система отопления: как остывает вода по кольцу, почему последние приборы приходится увеличивать, зачем байпас и когда «ленинградка» всё ещё оправдана.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/odnotrubnaya-leningradka/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-10",
+      "dateModified": "2026-12-10",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Ленинградка: как работает однотрубная система и её пределы</nav>
+
+        <h1>Ленинградка: как работает однотрубная система и её пределы</h1>
+
+        <p class="art-meta"><time datetime="2026-12-10">10 декабря 2026</time></p>
+
+        <p class="lead">«Ленинградка» — однотрубная схема, где приборы включены в общее кольцо последовательно. Она дешевле по трубе и проще в монтаже, но у неё есть встроенное ограничение, которое видно уже на четвёртом приборе. Считаем, где именно оно начинается.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#kak-ona-rabotaet">Как она работает</a></li>
+            <li><a href="#zachem-baypas">Зачем байпас</a></li>
+            <li><a href="#gde-ona-esche-opravdana">Где она ещё оправдана</a></li>
+            <li><a href="#chego-s-ney-ne-sdelat">Чего с ней не сделать</a></li>
+            <li><a href="#esli-sistema-uzhe-odnotrubnaya">Если система уже однотрубная</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="kak-ona-rabotaet">Как она работает</h2>
+
+        <p>От котла идёт одна магистраль, которая обходит дом по кругу и возвращается обратно. Приборы врезаны в неё последовательно: вода заходит в радиатор, отдаёт часть тепла и возвращается в то же кольцо — уже холоднее.</p>
+
+        <p>Каждый следующий прибор получает воду холоднее предыдущего. Это не дефект монтажа, а устройство схемы.</p>
+
+        <div class="formula">
+            <p>Котёл 12 кВт, график 80/60, шесть приборов в кольце</p>
+            <p>Каждый забирает примерно шестую часть перепада:</p>
+            <p>80 → 76,7 → 73,3 → 70 → 66,7 → <strong>63,3 °C</strong> на входе последнего</p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Прибор в кольце</th><th>Вода на входе</th><th>Напор температуры</th><th>Доля мощности</th></tr>
+                <tr><td class="num">Первый</td><td class="num">80 °C</td><td class="num">56,3 К</td><td class="num">117 %</td></tr>
+                <tr><td class="num">Третий</td><td class="num">73,3 °C</td><td class="num">49,7 К</td><td class="num">99 %</td></tr>
+                <tr><td class="num">Шестой</td><td class="num">63,3 °C</td><td class="num">39,7 К</td><td class="num">74 %</td></tr>
+            </table>
+        </div>
+        <p class="note">Напор температуры — разница между средней температурой прибора и воздухом в комнате при +22. Доля мощности считается относительно каталожной при перепаде 50.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда главное следствие.</strong> Последний прибор в кольце отдаёт на 37 % меньше, чем такой же первый: 74 % каталожной мощности против 117 %. Компенсируют это секциями — если первой комнате хватает 10 секций, последней при тех же теплопотерях нужно 16. Чем длиннее кольцо, тем сильнее расходятся приборы — и тем больше переплата за металл, которой в двухтрубной схеме просто нет.</p>
+        </div>
+
+        <h2 id="zachem-baypas">Зачем байпас</h2>
+
+        <p>В однотрубной схеме прибор стоит прямо в кольце. Перекрыть его — значит остановить циркуляцию во всём доме. Поэтому под каждым прибором ставят перемычку — байпас, по которой вода идёт мимо, когда радиатор закрыт.</p>
+
+        <ul>
+            <li><strong>Байпас обязателен</strong> — без него нельзя ни снять прибор, ни поставить термоголовку.</li>
+            <li><strong>Он должен быть уже подводки</strong> — на типоразмер меньше. Иначе вода пойдёт по пути наименьшего сопротивления, то есть мимо радиатора, и прибор будет чуть тёплым при полностью открытом клапане.</li>
+            <li><strong>Регулирующий кран на байпасе не ставят.</strong> Перекрытый байпас лишает схему смысла; заодно это верный способ остановить кольцо, забыв о нём.</li>
+        </ul>
+
+        <h2 id="gde-ona-esche-opravdana">Где она ещё оправдана</h2>
+
+        <ul>
+            <li><strong>Небольшой дом, три-четыре прибора.</strong> Разброс температур по кольцу не успевает стать заметным, а экономия на трубе реальная.</li>
+            <li><strong>Дачный домик с самотёчной системой.</strong> Однотрубная схема с верхней разводкой работает без насоса — на естественной циркуляции. Там, где свет отключают регулярно, это аргумент.</li>
+            <li><strong>Пристройка к существующей однотрубной системе.</strong> Переделывать весь дом ради двух приборов не всегда разумно.</li>
+            <li><strong>Открытая разводка в мастерской или гараже,</strong> где важна простота, а не равномерность.</li>
+        </ul>
+
+        <p>Во всех остальных случаях берут двухтрубную: приборы получают воду одной температуры, считаются по теплопотерям комнаты и отключаются независимо друг от друга.</p>
+
+        <h2 id="chego-s-ney-ne-sdelat">Чего с ней не сделать</h2>
+
+        <ul>
+            <li><strong>Нормально сбалансировать.</strong> Прикрывая один прибор, вы меняете расход через всё кольцо, а не через него одного.</li>
+            <li><strong>Подключить тёплый пол напрямую.</strong> Полу нужна своя температура и свой насос, то есть отдельный контур с узлом подмеса — а это уже не однотрубная схема.</li>
+            <li><strong>Использовать конденсационный котёл с выгодой.</strong> Обратка в однотрубной приходит относительно тёплой, и конденсация идёт хуже.</li>
+            <li><strong>Добавить приборов в конец кольца.</strong> Каждый новый забирает тепло у уже стоящих, и вся расстановка съезжает.</li>
+        </ul>
+
+        <h2 id="esli-sistema-uzhe-odnotrubnaya">Если система уже однотрубная</h2>
+
+        <p>Переделывать её целиком нужно не всегда. Что можно сделать без вскрытия полов:</p>
+
+        <ol>
+            <li><strong>Проверить байпасы.</strong> Если они одного диаметра с подводкой, часть воды идёт мимо приборов. Замена перемычки на меньший типоразмер — работа на пару часов, эффект заметный.</li>
+            <li><strong>Добавить секции последним приборам.</strong> Секционные радиаторы наращиваются; это дешевле переделки схемы.</li>
+            <li><strong>Поставить термоголовки</strong> — при наличии байпасов они работают, хотя и грубее, чем в двухтрубной.</li>
+            <li><strong>Поднять температуру подачи</strong> — работает, пока есть запас по котлу, но увеличивает расход.</li>
+            <li><strong>Разделить длинное кольцо надвое</strong> — если есть доступ к магистрали, два коротких кольца лучше одного длинного.</li>
+        </ol>
+
+        <p>А вот менять приборы на более мощные без пересчёта всей цепочки бессмысленно: увеличенный радиатор заберёт больше тепла и ухудшит положение тех, кто стоит за ним.</p>
+
+        <a class="cta" href="/">
+            Посчитать систему отопления
+            <small>Приборы по теплопотерям каждой комнаты</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как работает однотрубная система «ленинградка»?</span></summary>
+            <div class="answer">
+                <p>Приборы врезаны последовательно в одну магистраль, которая обходит дом по кольцу. Вода заходит в радиатор, отдаёт часть тепла и возвращается в то же кольцо уже холоднее, поэтому каждый следующий прибор получает воду холоднее предыдущего. При шести приборах и графике 80/60 последний получает около 63 °C вместо 80.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему последние приборы в кольце греют хуже?</span></summary>
+            <div class="answer">
+                <p>Потому что до них доходит остывшая вода. Напор температуры у шестого прибора в кольце 39,7 К против 56,3 у первого, и отдаёт он примерно на четверть меньше при тех же габаритах. Компенсируют это секциями: если первой комнате хватает 10 секций, последней при тех же теплопотерях нужно 13.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Зачем нужен байпас в однотрубной системе?</span></summary>
+            <div class="answer">
+                <p>Прибор стоит прямо в кольце, и перекрыть его без перемычки — значит остановить циркуляцию во всём доме. Байпас должен быть на типоразмер уже подводки: если он равен ей по диаметру, вода пойдёт по пути наименьшего сопротивления, то есть мимо радиатора. Регулирующий кран на байпас не ставят.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда однотрубная схема ещё оправдана?</span></summary>
+            <div class="answer">
+                <p>В небольшом доме на три-четыре прибора, где разброс температур по кольцу не успевает стать заметным. В дачном домике с самотёчной системой — она работает без насоса. При пристройке к существующей однотрубной системе. И в мастерской или гараже, где важна простота, а не равномерность.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что можно улучшить в готовой однотрубной системе?</span></summary>
+            <div class="answer">
+                <p>Проверить байпасы: если они одного диаметра с подводкой, часть воды идёт мимо приборов. Добавить секции последним радиаторам. Поставить термоголовки — при наличии байпасов они работают. Разделить длинное кольцо надвое. А вот менять приборы на более мощные без пересчёта цепочки бессмысленно: увеличенный радиатор ухудшит положение тех, кто стоит за ним.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/installyatsiya-unitaza/">инсталляция унитаза: что нужно учесть</a> · <a href="/vozduh-voda-ili-geotermalnyy/">воздух-вода или геотермальный</a> · <a href="/shema-otopleniya-chastnogo-doma/">схема отопления частного дома: какие бывают</a> · <a href="/dvuhtrubnaya-sistema/">двухтрубная система: тупиковая и попутная</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
