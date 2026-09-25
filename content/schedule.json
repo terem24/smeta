@@ -193,10 +193,10 @@
    "freq": 1903,
    "audience": "owner",
    "data_block": "скважины региона",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-29",
    "published_at": null,
-   "words": 0
+   "words": 772
   },
   {
    "slug": "raschet-teplogo-pola",
@@ -375,10 +375,10 @@
    "freq": 1143,
    "audience": "owner",
    "data_block": "что тянет замена",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-28",
    "published_at": null,
-   "words": 0
+   "words": 650
   },
   {
    "slug": "teplyy-pol-ili-radiatory",
@@ -557,10 +557,10 @@
    "freq": 600,
    "audience": "owner",
    "data_block": "тарифы региона",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-29",
    "published_at": null,
-   "words": 0
+   "words": 684
   },
   {
    "slug": "montazh-teplogo-pola-svoimi-rukami",
