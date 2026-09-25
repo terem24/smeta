@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Септик для частного дома: расчёт объёма и сравнение типов | HeatCalc.ru</title>
+    <meta name="description" content="Как выбрать септик: расчёт объёма по числу жильцов, сравнение выгребной ямы, септика с почвенной доочисткой и станции биологической очистки, влияние грунта и УГВ, стоимость обслуживания.">
+    <link rel="canonical" href="https://heatcalc.ru/septik-ili-vygrebnaya-yama/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/septik-ili-vygrebnaya-yama/">
+    <meta property="og:title" content="Септик для частного дома: объём и типы">
+    <meta property="og:description" content="Семья из четырёх даёт 800 литров стоков в сутки. Отсюда объём и всё остальное.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/septik-ili-vygrebnaya-yama/#webpage",
+      "url": "https://heatcalc.ru/septik-ili-vygrebnaya-yama/",
+      "name": "Септик для частного дома: объём, типы и во что обходится",
+      "description": "Как выбрать септик: расчёт объёма по числу жильцов, сравнение выгребной ямы, септика с почвенной доочисткой и станции биологической очистки, влияние грунта и УГВ, стоимость обслуживания.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "септик для частного дома"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Септик для частного дома: объём, типы и во что обходится",
+          "item": "https://heatcalc.ru/septik-ili-vygrebnaya-yama/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какого объёма нужен септик?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Из расчёта трёхсуточного притока: на человека в доме с ванной и канализацией приходится около 200 литров стоков в сутки, значит семье из четырёх нужен объём от 2 400 литров. Занижать нельзя: в маленьком септике взвесь не успевает осесть и уходит на поле фильтрации, которое заиливается за год-два вместо десяти лет."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что лучше — септик или станция биологической очистки?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Решает грунт, а не качество очистки. Септик очищает стоки частично, доводит их до нормы почвенная доочистка — поле фильтрации или инфильтратор, — и она работает только в песке и супеси. В глине и при высоком уровне грунтовых вод поле не работает, и остаётся станция биоочистки или накопитель."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем плоха выгребная яма?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Стоимостью владения. Она дешевле всех в установке, но требует откачки раз в один-два месяца, и за несколько лет вывоз стоков перевешивает любую разницу в цене оборудования. Разумна она в двух случаях: на даче с редкими приездами и там, где грунт не позволяет ничего другого."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что выяснить до выбора септика?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Тип грунта и уровень грунтовых вод — они определяют всё остальное. Глубину промерзания, нормируемые расстояния до дома, границы участка и скважины, рельеф (при подъёме от дома нужна насосная станция), подъезд для ассенизатора зимой и режим проживания: станция биоочистки не переносит простоев, активный ил без стоков гибнет."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужна ли септику вентиляция?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, и это стояк, выведенный на кровлю. Без него запах идёт в дом через гидрозатворы, а вакуумный клапан вместо стояка эту задачу не решает: он впускает воздух, но не выпускает газы. Вентиляция нужна любому типу сооружения, включая накопитель."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/septik-ili-vygrebnaya-yama/#article",
+      "headline": "Септик для частного дома: объём, типы и во что обходится",
+      "description": "Как выбрать септик: расчёт объёма по числу жильцов, сравнение выгребной ямы, септика с почвенной доочисткой и станции биологической очистки, влияние грунта и УГВ, стоимость обслуживания.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/septik-ili-vygrebnaya-yama/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-10-24",
+      "dateModified": "2026-10-24",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Септик для частного дома: объём, типы и во что обходится</nav>
+
+        <h1>Септик для частного дома: объём, типы и во что обходится</h1>
+
+        <p class="art-meta"><time datetime="2026-10-24">24 октября 2026</time></p>
+
+        <p class="lead">Выбор очистного сооружения решается не рекламой, а двумя вещами: сколько стоков даёт дом и что за грунт на участке. Считаем объём, сравниваем три типа по обслуживанию и разбираем, когда дорогая станция оправдана, а когда нет.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#skolko-stokov-daet-dom">Сколько стоков даёт дом</a></li>
+            <li><a href="#tri-varianta">Три варианта</a></li>
+            <li><a href="#chto-vyyasnit-do-pokupki">Что выяснить до покупки</a></li>
+            <li><a href="#chto-schitat-v-dengah">Что считать в деньгах</a></li>
+            <li><a href="#tipichnye-oshibki">Типичные ошибки</a></li>
+            <li><a href="#korotkiy-otvet">Короткий ответ</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="skolko-stokov-daet-dom">Сколько стоков даёт дом</h2>
+
+        <p>Считают по числу постоянно живущих: на человека в доме с ванной и канализацией приходится около 200 литров в сутки. Это не потребление питьевой воды, а весь объём, уходящий в канализацию: душ, стирка, мойка, санузлы.</p>
+
+        <div class="formula">
+            <p><strong>Суточный приток</strong> = жильцов × 200 л</p>
+            <p>Семья из четырёх человек: 4 × 200 = <strong>800 л/сут</strong></p>
+            <p><strong>Объём септика</strong> = трёхсуточный приток = <strong>2 400 л</strong></p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Жильцов</th><th>Суточный приток</th><th>Минимальный объём септика</th></tr>
+                <tr><td class="num">2</td><td class="num">400 л</td><td class="num">1 200 л</td></tr>
+                <tr><td class="num">3</td><td class="num">600 л</td><td class="num">1 800 л</td></tr>
+                <tr><td class="num">4</td><td class="num">800 л</td><td class="num">2 400 л</td></tr>
+                <tr><td class="num">5</td><td class="num">1 000 л</td><td class="num">3 000 л</td></tr>
+                <tr><td class="num">6</td><td class="num">1 200 л</td><td class="num">3 600 л</td></tr>
+            </table>
+        </div>
+        <p class="note">Правило трёхсуточного объёма — базовое для септиков-отстойников: за трое суток взвесь успевает осесть. Требования к местным очистным сооружениям — СП 32.13330.2018.</p>
+
+        <p>Занижать объём бессмысленно: в недостаточном септике стоки не успевают отстояться, и на поле фильтрации уходит то, что должно было осесть. Поле заиливается за год-два вместо десяти лет.</p>
+
+        <h2 id="tri-varianta">Три варианта</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Выгребная яма</th><th>Септик + доочистка</th><th>Станция биоочистки</th></tr>
+                <tr><td>Принцип</td><td>накопление</td><td>отстаивание и почвенная доочистка</td><td>аэрация активным илом</td></tr>
+                <tr><td>Электричество</td><td>не нужно</td><td>не нужно</td><td>нужно постоянно</td></tr>
+                <tr><td>Откачка</td><td>раз в 1–2 месяца</td><td>раз в 1–2 года</td><td>раз в 1–2 года</td></tr>
+                <tr><td>Нужна площадь под поле</td><td>нет</td><td>да</td><td>нет</td></tr>
+                <tr><td>Работает при высоком УГВ</td><td>да</td><td>нет</td><td>да</td></tr>
+                <tr><td>Переносит простой</td><td>да</td><td>да</td><td>плохо: ил гибнет</td></tr>
+                <tr><td>Обслуживание</td><td>только откачка</td><td>минимальное</td><td>регулярное, компрессор</td></tr>
+            </table>
+        </div>
+        <p class="note">Выбор между вторым и третьим определяется не качеством очистки, а грунтом: если вода не уходит, поле фильтрации построить негде.</p>
+
+        <div class="callout">
+            <p><strong>Главный вопрос — не какой септик, а куда уйдёт вода.</strong> Септик-отстойник очищает стоки частично; доводит их до нормы почвенная доочистка — поле фильтрации, инфильтратор или колодец. Работает она только в грунтах, которые воду принимают: песок, супесь. В глине и при высоком уровне грунтовых вод поле не работает, сколько его ни строй, и тогда вариантов два: станция биоочистки со сбросом в канаву или накопитель с регулярной откачкой.</p>
+        </div>
+
+        <h2 id="chto-vyyasnit-do-pokupki">Что выяснить до покупки</h2>
+
+        <ol>
+            <li><strong>Тип грунта и уровень грунтовых вод.</strong> Это определяет всё остальное. Узнаётся при бурении скважины или отдельным шурфом.</li>
+            <li><strong>Глубину промерзания</strong> — от неё зависит глубина заложения трубы и необходимость утепления.</li>
+            <li><strong>Расстояния до объектов.</strong> До дома, до границы участка, до скважины и колодца — они нормируются, и нарушение вскрывается при споре с соседями.</li>
+            <li><strong>Рельеф.</strong> Самотёчная канализация требует уклона; если участок идёт вверх от дома, появляется насосная станция.</li>
+            <li><strong>Подъезд для ассенизатора</strong> — шланг имеет конечную длину, а машина должна проехать зимой.</li>
+            <li><strong>Режим проживания.</strong> Станция биоочистки не любит простоев: активный ил без стоков гибнет, и после месяца отсутствия систему надо запускать заново.</li>
+        </ol>
+
+        <h2 id="chto-schitat-v-dengah">Что считать в деньгах</h2>
+
+        <p>Сравнивать надо не цену оборудования, а стоимость владения за несколько лет.</p>
+
+        <ul>
+            <li><strong>Выгребная яма</strong> дешевле всех в установке и дороже всех в эксплуатации: откачка раз в один-два месяца. За десять лет вывоз стоков перевешивает любую разницу в цене.</li>
+            <li><strong>Септик с полем фильтрации</strong> — средний по вложению, минимальный по расходам. Откачка раз в год-два, электричества не требует. Самый разумный вариант там, где грунт позволяет.</li>
+            <li><strong>Станция биоочистки</strong> дороже в установке и требует электричества круглосуточно, плюс компрессор — расходник. Зато занимает мало места и не зависит от грунта.</li>
+        </ul>
+
+        <p>Внутренняя канализация считается отдельно и от типа септика не зависит: монтаж труб — 3 500 ₽ за точку, инсталляция унитаза — 8 000 ₽. Дом с двумя санузлами и кухней — это 6–8 точек.</p>
+
+        <h2 id="tipichnye-oshibki">Типичные ошибки</h2>
+
+        <ul>
+            <li><strong>Поле фильтрации в глине.</strong> Самая дорогая ошибка: построено, засыпано, не работает. Проверять грунт надо до, а не после.</li>
+            <li><strong>Септик без вентиляции.</strong> Стояк должен выходить на кровлю, иначе запах идёт в дом через гидрозатворы. Вакуумный клапан вместо стояка эту задачу не решает.</li>
+            <li><strong>Обратный уклон на длинной трассе.</strong> Канализация самотёчная, и уклон должен быть выдержан по всей длине — «примерно с уклоном» означает засор через год.</li>
+            <li><strong>Ревизии засыпаны.</strong> Колодцы и ревизионные лючки должны быть доступны, иначе прочистить трассу нечем.</li>
+            <li><strong>Станция в доме, где живут наездами.</strong> Ил гибнет без стоков, и каждый приезд начинается с перезапуска.</li>
+            <li><strong>Отсутствие запаса по объёму.</strong> Гости на выходных дают двойной приток, и септик, рассчитанный ровно на семью, в эти дни не отстаивает.</li>
+        </ul>
+
+        <h2 id="korotkiy-otvet">Короткий ответ</h2>
+
+        <ul>
+            <li><strong>Песок или супесь, УГВ низкий</strong> — септик с полем фильтрации. Дёшево в эксплуатации и не зависит от электричества.</li>
+            <li><strong>Глина или высокий УГВ</strong> — станция биоочистки, если есть куда сбрасывать, или накопитель.</li>
+            <li><strong>Дача с редкими приездами</strong> — накопитель: он не портится от простоя и не требует ухода.</li>
+            <li><strong>Постоянное проживание, участок маленький</strong> — станция: поле фильтрации на шесть соток не помещается.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать канализацию дома
+            <small>Внутренняя разводка по точкам и стояки</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какого объёма нужен септик?</span></summary>
+            <div class="answer">
+                <p>Из расчёта трёхсуточного притока: на человека в доме с ванной и канализацией приходится около 200 литров стоков в сутки, значит семье из четырёх нужен объём от 2 400 литров. Занижать нельзя: в маленьком септике взвесь не успевает осесть и уходит на поле фильтрации, которое заиливается за год-два вместо десяти лет.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что лучше — септик или станция биологической очистки?</span></summary>
+            <div class="answer">
+                <p>Решает грунт, а не качество очистки. Септик очищает стоки частично, доводит их до нормы почвенная доочистка — поле фильтрации или инфильтратор, — и она работает только в песке и супеси. В глине и при высоком уровне грунтовых вод поле не работает, и остаётся станция биоочистки или накопитель.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем плоха выгребная яма?</span></summary>
+            <div class="answer">
+                <p>Стоимостью владения. Она дешевле всех в установке, но требует откачки раз в один-два месяца, и за несколько лет вывоз стоков перевешивает любую разницу в цене оборудования. Разумна она в двух случаях: на даче с редкими приездами и там, где грунт не позволяет ничего другого.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что выяснить до выбора септика?</span></summary>
+            <div class="answer">
+                <p>Тип грунта и уровень грунтовых вод — они определяют всё остальное. Глубину промерзания, нормируемые расстояния до дома, границы участка и скважины, рельеф (при подъёме от дома нужна насосная станция), подъезд для ассенизатора зимой и режим проживания: станция биоочистки не переносит простоев, активный ил без стоков гибнет.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужна ли септику вентиляция?</span></summary>
+            <div class="answer">
+                <p>Да, и это стояк, выведенный на кровлю. Без него запах идёт в дом через гидрозатворы, а вакуумный клапан вместо стояка эту задачу не решает: он впускает воздух, но не выпускает газы. Вентиляция нужна любому типу сооружения, включая накопитель.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/vodosnabzhenie-chastnogo-doma/">водоснабжение частного дома: с чего начать</a> · <a href="/datchiki-protechki/">датчики протечки и аварийное отключение</a> · <a href="/boyler-kosvennogo-nagreva/">бойлер косвенного нагрева: как подобрать объём</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

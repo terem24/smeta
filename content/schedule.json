@@ -95,10 +95,10 @@
    "freq": 28015,
    "audience": "owner",
    "data_block": "состав системы из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-13",
    "published_at": null,
-   "words": 0
+   "words": 676
   },
   {
    "slug": "boyler-kosvennogo-nagreva",
@@ -109,10 +109,10 @@
    "freq": 144240,
    "audience": "owner",
    "data_block": "расчёт по числу точек",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-15",
    "published_at": null,
-   "words": 0
+   "words": 707
   },
   {
    "slug": "podbor-tsirkulyatsionnogo-nasosa",
@@ -137,10 +137,10 @@
    "freq": 9600,
    "audience": "owner",
    "data_block": "состав системы",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-20",
    "published_at": null,
-   "words": 0
+   "words": 647
   },
   {
    "slug": "teplovoy-nasos-dlya-doma",
@@ -151,10 +151,10 @@
    "freq": 144272,
    "audience": "owner",
    "data_block": "расчёт по расчётной зиме",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-22",
    "published_at": null,
-   "words": 0
+   "words": 699
   },
   {
    "slug": "septik-ili-vygrebnaya-yama",
@@ -165,10 +165,10 @@
    "freq": 24600,
    "audience": "owner",
    "data_block": "сравнение",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-24",
    "published_at": null,
-   "words": 0
+   "words": 666
   },
   {
    "slug": "skolko-stoit-otoplenie-doma",

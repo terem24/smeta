@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Водоснабжение частного дома: состав системы, узел ввода, цены | HeatCalc.ru</title>
+    <meta name="description" content="Из чего состоит водоснабжение частного дома: наружная часть, узел ввода с фильтрами, коллектор и точки водоразбора. Полный перечень работ с расценками и порядок монтажа.">
+    <link rel="canonical" href="https://heatcalc.ru/vodosnabzhenie-chastnogo-doma/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/vodosnabzhenie-chastnogo-doma/">
+    <meta property="og:title" content="Водоснабжение частного дома: состав и смета">
+    <meta property="og:description" content="Четыре слоя системы, полный перечень работ с ценами и порядок, в котором их делают.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/vodosnabzhenie-chastnogo-doma/#webpage",
+      "url": "https://heatcalc.ru/vodosnabzhenie-chastnogo-doma/",
+      "name": "Водоснабжение частного дома: состав системы и смета",
+      "description": "Из чего состоит водоснабжение частного дома: наружная часть, узел ввода с фильтрами, коллектор и точки водоразбора. Полный перечень работ с расценками и порядок монтажа.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "водоснабжение частного дома"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Водоснабжение частного дома: состав системы и смета",
+          "item": "https://heatcalc.ru/vodosnabzhenie-chastnogo-doma/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Из чего состоит водоснабжение частного дома?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Из четырёх слоёв: наружная часть (насос, труба в траншее, ввод в дом с греющим кабелем), узел ввода с фильтрами, редуктором, счётчиком и гидроаккумулятором, разводка по дому от коллектора и сами точки водоразбора. Плюс горячая вода — от двухконтурного котла или от бойлера косвенного нагрева."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько стоит водоснабжение частного дома?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Наружная часть — 15 000 ₽ за опуск насоса и 5 000 ₽ за ввод в дом, плюс 400 ₽ за метр траншеи. Узел ввода со всеми опциями — около 48 тысяч. Разводка считается по точкам: 3 700 ₽ за холодную и 4 500 ₽ за горячую, и дом с двумя санузлами и кухней — это около 64 тысяч рублей."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что нужно заложить обязательно до отделки?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Рециркуляцию горячей воды и коллекторную разводку — это трубы, которые прокладывают вместе со всеми остальными, и после отделки добавить их нельзя. Всё остальное — фильтры, редуктор, гидроаккумулятор, защиту от протечки — можно доставить в узел ввода позже, если при монтаже оставили место."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Зачем нужен редуктор давления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Скважинный насос выдаёт давление по своей характеристике, а не то, которое нужно дому. Редуктор приводит его к разумным 3–4 барам и защищает смесители, гибкие подводки и бытовую технику. Стоит установка 2 000 ₽ и относится к тем узлам, отсутствие которых обнаруживается по протекающим подводкам."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Каким давлением опрессовывают водоснабжение?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По п. 7.4 СП 73.13330.2016 — 1,5 рабочего давления, то есть обычно 0,45 МПа, с выдержкой 10 минут и падением не более 0,05 МПа. Делают это до закрытия стен и заливки стяжки: найти протечку в открытой разводке стоит минуты, а в закрытой — вскрытия отделки."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/vodosnabzhenie-chastnogo-doma/#article",
+      "headline": "Водоснабжение частного дома: состав системы и смета",
+      "description": "Из чего состоит водоснабжение частного дома: наружная часть, узел ввода с фильтрами, коллектор и точки водоразбора. Полный перечень работ с расценками и порядок монтажа.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/vodosnabzhenie-chastnogo-doma/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-10-13",
+      "dateModified": "2026-10-13",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Водоснабжение частного дома: состав системы и смета</nav>
+
+        <h1>Водоснабжение частного дома: состав системы и смета</h1>
+
+        <p class="art-meta"><time datetime="2026-10-13">13 октября 2026</time></p>
+
+        <p class="lead">Водоснабжение дома собирается из четырёх слоёв: наружная часть от источника, узел ввода с фильтрами, разводка по дому и сами точки. Разбираем состав каждого по позициям сметы и показываем, что и в каком порядке делают.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#sloy-pervyy-naruzhnaya-chast">Слой первый: наружная часть</a></li>
+            <li><a href="#sloy-vtoroy-uzel-vvoda">Слой второй: узел ввода</a></li>
+            <li><a href="#sloy-tretiy-razvodka">Слой третий: разводка</a></li>
+            <li><a href="#sloy-chetvertyy-goryachaya-voda">Слой четвёртый: горячая вода</a></li>
+            <li><a href="#poryadok-rabot">Порядок работ</a></li>
+            <li><a href="#chto-zabyvayut-zalozhit">Что забывают заложить</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="sloy-pervyy-naruzhnaya-chast">Слой первый: наружная часть</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж скважинного насоса (опуск, оголовок, автоматика)</td><td>компл</td><td class="num">15 000 ₽</td></tr>
+                <tr><td>Прокладка трубы ПНД в траншее</td><td>м.п.</td><td class="num">400 ₽</td></tr>
+                <tr><td>Ввод воды в дом (греющий кабель, теплоизоляция)</td><td>компл</td><td class="num">5 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Бурение скважины и земляные работы считаются отдельно. Базовые расценки — в <a href="/rascenki-na-montazh-otopleniya/">прайсе на монтаж</a>.</p>
+
+        <p>Труба от скважины идёт в траншее ниже глубины промерзания, а на выходе из грунта и на участке ввода в дом её греют кабелем и утепляют — там она проходит через зону, где грунт уже промерзает. Экономия на этом узле даёт одну и ту же аварию каждый февраль.</p>
+
+        <h2 id="sloy-vtoroy-uzel-vvoda">Слой второй: узел ввода</h2>
+
+        <p>Это то место, где вода из наружной трубы превращается в водопровод дома: фильтрация, давление, учёт, защита.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж гидравлики ХВС (узел ввода, фильтры, байпас)</td><td>компл</td><td class="num">20 000 ₽</td></tr>
+                <tr><td>Сборка узла ввода на монтажном каркасе</td><td>компл</td><td class="num">5 000 ₽</td></tr>
+                <tr><td>Монтаж системы фильтрации Big Blue (колбы + картриджи)</td><td>компл</td><td class="num">3 500 ₽</td></tr>
+                <tr><td>Установка редуктора давления</td><td>шт</td><td class="num">2 000 ₽</td></tr>
+                <tr><td>Установка счётчика воды</td><td>шт</td><td class="num">2 500 ₽</td></tr>
+                <tr><td>Монтаж системы защиты от протечки воды</td><td>компл</td><td class="num">6 000 ₽</td></tr>
+                <tr><td>Установка расширительного бака водоснабжения</td><td>шт</td><td class="num">4 500 ₽</td></tr>
+                <tr><td>Монтаж незамерзающего уличного крана</td><td>шт</td><td class="num">5 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Полный узел ввода со всеми опциями — около 48 тысяч рублей работ.</p>
+
+        <ul>
+            <li><strong>Байпас</strong> вокруг фильтров: чтобы менять картриджи, не оставляя дом без воды.</li>
+            <li><strong>Редуктор давления.</strong> Скважинный насос выдаёт то, что выдаёт; редуктор приводит давление к разумным 3–4 барам и защищает смесители и технику.</li>
+            <li><strong>Гидроаккумулятор</strong> — чтобы насос не включался на каждое открытие крана. 50 литров на дачу, 100 на дом для четверых, 150 на большой дом с поливом.</li>
+            <li><strong>Монтажный каркас.</strong> Узел собирают на раме, а не вешают на стену по частям: так его можно обслуживать и он выглядит как узел, а не как клубок.</li>
+            <li><strong>Место под водоподготовку.</strong> Её состав определяют по анализу воды, а он делается после бурения — но место закладывают сразу.</li>
+        </ul>
+
+        <h2 id="sloy-tretiy-razvodka">Слой третий: разводка</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Установка и подключение коллектора водоснабжения</td><td>шт</td><td class="num">4 500 ₽</td></tr>
+                <tr><td>Точка присоединения ХВС (трубопроводы, водорозетки)</td><td>точка</td><td class="num">3 700 ₽</td></tr>
+                <tr><td>Точка присоединения ГВС</td><td>точка</td><td class="num">4 500 ₽</td></tr>
+                <tr><td>Точка присоединения рециркуляции ГВС</td><td>точка</td><td class="num">3 700 ₽</td></tr>
+                <tr><td>Монтаж циркуляционного насоса рециркуляции</td><td>шт</td><td class="num">4 500 ₽</td></tr>
+                <tr><td>Штробление стен под трубы водоснабжения</td><td>точка</td><td class="num">1 200 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Точка — это один прибор со всей подводкой и водорозеткой.</p>
+
+        <p>Коллекторная разводка здесь даёт то же, что и в отоплении: к каждой точке идёт своя труба без соединений в стене, и любую можно перекрыть отдельно. Считается она по точкам, а точек в доме больше, чем кажется.</p>
+
+        <div class="formula">
+            <p>Дом с двумя санузлами и кухней:</p>
+            <p>мойка, посудомойка, две раковины, два унитаза, душ, ванна, стиральная машина, полив</p>
+            <p>= <strong>10 точек ХВС и 6 точек ГВС</strong> — около 64 тысяч рублей работ</p>
+        </div>
+
+        <h2 id="sloy-chetvertyy-goryachaya-voda">Слой четвёртый: горячая вода</h2>
+
+        <p>Здесь два варианта, и выбор между ними влияет на мощность котла.</p>
+
+        <ul>
+            <li><strong>Двухконтурный котёл</strong> — проточное ГВС, ничего дополнительно не нужно. Ограничение одно: при двух открытых точках напор и температура падают.</li>
+            <li><strong>Бойлер косвенного нагрева</strong> — запас в баке. Объём по числу жильцов: 150 литров на трёх-четырёх, 200 на пятерых-шестерых. Подключение — 12 000 ₽ гидравлики плюс 9 000 монтажа.</li>
+            <li><strong>Рециркуляция</strong> — третья труба, чтобы горячая вода шла сразу. Закладывается вместе с разводкой; после отделки добавить нельзя.</li>
+        </ul>
+
+        <div class="callout">
+            <p><strong>Что решается один раз и навсегда.</strong> Рециркуляция ГВС и коллекторная разводка — это трубы, которые прокладывают вместе со всеми остальными. Отложить их «на потом» нельзя: потом это вскрытие стен и полов. Всё остальное — фильтры, редуктор, гидроаккумулятор, защита от протечки — добавляется в узел ввода в любой момент, если при монтаже оставили место.</p>
+        </div>
+
+        <h2 id="poryadok-rabot">Порядок работ</h2>
+
+        <ol>
+            <li><strong>Скважина и анализ воды.</strong> Состав водоподготовки определяется по анализу, а не заранее.</li>
+            <li><strong>Траншея и ввод</strong> — до благоустройства участка.</li>
+            <li><strong>Разводка по дому</strong> — вместе с отоплением, до стяжки и до закрытия стен.</li>
+            <li><strong>Опрессовка</strong> — по СП 73.13330.2016: 1,5 рабочего давления, выдержка 10 минут, падение не больше 0,05 МПа.</li>
+            <li><strong>Узел ввода и водоподготовка</strong> — после отделки котельной.</li>
+            <li><strong>Установка приборов</strong> и пусковая наладка.</li>
+        </ol>
+
+        <h2 id="chto-zabyvayut-zalozhit">Что забывают заложить</h2>
+
+        <ul>
+            <li><strong>Уличный кран.</strong> Незамерзающий, с отдельной линией и краном внутри дома — 5 000 ₽. Без него полив идёт из окна шлангом.</li>
+            <li><strong>Линию на полив</strong> и на баню, если они планируются.</li>
+            <li><strong>Сливные краны в нижних точках</strong> — для сезонного дома обязательны, для постоянного просто удобны.</li>
+            <li><strong>Защиту от протечки.</strong> 6 000 ₽ за систему плюс краны и датчики — на фоне стоимости отделки это мелочь.</li>
+            <li><strong>Место под фильтры с запасом.</strong> Анализ воды может потребовать обезжелезивание, а это не колба, а баллон.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Собрать смету на водоснабжение
+            <small>Точки, коллекторы и узел ввода с ценами</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Из чего состоит водоснабжение частного дома?</span></summary>
+            <div class="answer">
+                <p>Из четырёх слоёв: наружная часть (насос, труба в траншее, ввод в дом с греющим кабелем), узел ввода с фильтрами, редуктором, счётчиком и гидроаккумулятором, разводка по дому от коллектора и сами точки водоразбора. Плюс горячая вода — от двухконтурного котла или от бойлера косвенного нагрева.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько стоит водоснабжение частного дома?</span></summary>
+            <div class="answer">
+                <p>Наружная часть — 15 000 ₽ за опуск насоса и 5 000 ₽ за ввод в дом, плюс 400 ₽ за метр траншеи. Узел ввода со всеми опциями — около 48 тысяч. Разводка считается по точкам: 3 700 ₽ за холодную и 4 500 ₽ за горячую, и дом с двумя санузлами и кухней — это около 64 тысяч рублей.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что нужно заложить обязательно до отделки?</span></summary>
+            <div class="answer">
+                <p>Рециркуляцию горячей воды и коллекторную разводку — это трубы, которые прокладывают вместе со всеми остальными, и после отделки добавить их нельзя. Всё остальное — фильтры, редуктор, гидроаккумулятор, защиту от протечки — можно доставить в узел ввода позже, если при монтаже оставили место.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Зачем нужен редуктор давления?</span></summary>
+            <div class="answer">
+                <p>Скважинный насос выдаёт давление по своей характеристике, а не то, которое нужно дому. Редуктор приводит его к разумным 3–4 барам и защищает смесители, гибкие подводки и бытовую технику. Стоит установка 2 000 ₽ и относится к тем узлам, отсутствие которых обнаруживается по протекающим подводкам.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Каким давлением опрессовывают водоснабжение?</span></summary>
+            <div class="answer">
+                <p>По п. 7.4 СП 73.13330.2016 — 1,5 рабочего давления, то есть обычно 0,45 МПа, с выдержкой 10 минут и падением не более 0,05 МПа. Делают это до закрытия стен и заливки стяжки: найти протечку в открытой разводке стоит минуты, а в закрытой — вскрытия отделки.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
