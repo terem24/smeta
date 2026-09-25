@@ -52,6 +52,7 @@ const RecognizePlan = {
         this._addNote = '';
         this._engSummary = [];
         this._resUse = true;
+        this._deleted = [];
         // Полотенцесушители прошлого проекта не должны доехать до
         // следующего плана, у которого листа отопления нет вовсе.
         if (typeof RecognizeProject !== 'undefined') RecognizeProject.reset();
@@ -551,7 +552,45 @@ const RecognizePlan = {
         this.renderReview();
     },
 
+    // Ячейка, взятая из чертежа точно (r.eng.src[поле] === 'pdf'): зелёная.
+    // Её можно не перепроверять — проверять остальное.
+    PDF_CELL: 'background:rgba(22,163,74,.12);border-color:rgba(22,163,74,.55)',
+    PDF_TIP: 'Из чертежа PDF: по координатам и стенам листа, без модели',
+
+    // ------------------------------------------------------------------
+    // Журнал исправлений
+    //
+    // Что монтажник поправил на экране проверки — и есть ошибки
+    // распознавания. Строка запоминает, как её прочитали (r._orig), и при
+    // переносе в архив уходит и прочитанное, и итог; удалённые строки — тоже.
+    // Разбор архива показывает, какое правило добавить: какие поля правят
+    // чаще, на каких листах, после модели или после чертежа.
+    // ------------------------------------------------------------------
+
+    snapRow(r) {
+        const e = r.eng || {};
+        return {
+            name: r.name, area: r.area, windows: r.windows, panoramic: r.panoramic, outerWalls: r.outerWalls,
+            heated: r.heated, floor: r.floor,
+            ufh: e.ufh === undefined ? undefined : !!e.ufh, ufhArea: e.ufhArea, heaters: e.heaters,
+            fix: e.fix ? Object.assign({}, e.fix) : (e.waterSheet ? null : undefined),
+            src: e.src ? Object.assign({}, e.src) : undefined,
+        };
+    },
+
+    /** Поля, которые монтажник поменял: { поле: [было, стало] }. */
+    rowEdits(r) {
+        if (!r._orig) return null;
+        const now = this.snapRow(r), out = {};
+        const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+        ['name', 'area', 'windows', 'panoramic', 'outerWalls', 'floor', 'ufh', 'ufhArea', 'heaters', 'fix'].forEach(k => {
+            if (!same(r._orig[k], now[k])) out[k] = [r._orig[k] ?? null, now[k] ?? null];
+        });
+        return Object.keys(out).length ? out : null;
+    },
+
     renderReview() {
+        if (!this._busy) this._rows.forEach(r => { if (!r._orig) r._orig = this.snapRow(r); });
         const esc = this.esc;
         const fmt = (n) => this.fmt(n);
         const cell = v => (v === null || v === undefined) ? '' : v;
@@ -646,6 +685,8 @@ const RecognizePlan = {
 
             const trs = sRows.map(({ r, n }) => {
                 const notes = this.rowNotes(r);
+                const src = (r.eng && r.eng.src) || {};
+                const pdfWin = src.windows === 'pdf' ? ` style="${this.PDF_CELL}" title="${this.PDF_TIP}"` : '';
                 const cls = !(r.area > 0) ? 'rec-nomatch'
                     : (r.areaSrc === 'estimate' ? 'rec-plan-est' : '');
                 return `<tr class="${cls}">
@@ -656,9 +697,9 @@ const RecognizePlan = {
                              onchange="RecognizePlan.set(${n},'name',this.value)"></td>
                   <td><input class="rec-f rec-f-s" type="number" step="0.1" min="0" value="${esc(cell(r.area))}"
                              onchange="RecognizePlan.set(${n},'area',this.value)"></td>
-                  <td><input class="rec-f rec-f-s" type="number" step="1" min="0" value="${r.windows === null ? 1 : r.windows}"
+                  <td><input class="rec-f rec-f-s" type="number" step="1" min="0" value="${r.windows === null ? 1 : r.windows}"${pdfWin}
                              onchange="RecognizePlan.set(${n},'windows',this.value)"></td>
-                  <td><input class="rec-f rec-f-s" type="number" step="1" min="0" value="${r.panoramic}"
+                  <td><input class="rec-f rec-f-s" type="number" step="1" min="0" value="${r.panoramic}"${pdfWin}
                              onchange="RecognizePlan.set(${n},'panoramic',this.value)"></td>
                   <td><select class="rec-f" onchange="RecognizePlan.set(${n},'outerWalls',this.value)">
                         ${outerOpt('', 'авто', r.outerWalls)}${outerOpt(1, '1', r.outerWalls)}${outerOpt(2, '2', r.outerWalls)}${outerOpt(3, '3', r.outerWalls)}
@@ -700,6 +741,9 @@ const RecognizePlan = {
             P && (this._engSummary || []).length ? `<div style="${rowSt}">🔧 <span>${esc(P.totals(chosen))}
                 <span style="color:var(--text-sec,#64748b)">Что к какой комнате — в строке под помещением.</span></span></div>` : '',
             P && P.vent ? `<div style="${rowSt}">🌬️ ${P.ventSelect()}</div>` : '',
+            this._rows.some(r => r.eng && r.eng.src && Object.values(r.eng.src).includes('pdf'))
+                ? `<div style="${rowSt}"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid rgba(22,163,74,.55);background:rgba(22,163,74,.12);flex:none;margin-top:2px"></span>
+                    <span>Зелёным — взято из чертежа точно, по координатам и стенам листа: это можно не перепроверять. Остальное прочитано по картинке — его проверьте.</span></div>` : '',
         ].filter(Boolean).join('');
         const details = [
             sumSub,
@@ -801,6 +845,8 @@ const RecognizePlan = {
             if (r.windows === null) r.windows = 1;
             if (r.panoramic > r.windows) r.windows = r.panoramic;
         }
+        // Поправлено руками — уже не «из чертежа».
+        if ((field === 'windows' || field === 'panoramic') && r.eng && r.eng.src) delete r.eng.src.windows;
         // Окна с обмерного плана проекта: подогнать их список под правку.
         if ((field === 'windows' || field === 'panoramic') && r.eng && r.eng.winSpec
             && typeof RecognizeProject !== 'undefined') RecognizeProject.resizeWinSpec(r);
@@ -940,7 +986,12 @@ const RecognizePlan = {
     sel(i, v) { if (this._rows[i]) { this._rows[i]._sel = !!v; this.renderReview(); } },
     selAll(v) { this._rows.forEach(r => r._sel = !!v); this.renderReview(); },
     selHeated() { this._rows.forEach(r => r._sel = r.heated && r.area > 0); this.renderReview(); },
-    del(i) { this._rows.splice(i, 1); this.renderReview(); },
+    del(i) {
+        const r = this._rows[i];
+        if (r && r._orig) (this._deleted = this._deleted || []).push(r._orig);
+        this._rows.splice(i, 1);
+        this.renderReview();
+    },
 
     /**
      * Этаж всем помещениям листа разом: один лист — один этаж.
@@ -1254,9 +1305,11 @@ const RecognizePlan = {
                 fileName: 'План этажа · ' + (ui._fileName || ''),
                 mode: 'plan-' + mode,
                 counts: {
-                    recognized: this._rows.length,
+                    recognized: this._rows.length + (this._deleted || []).length,
                     applied: chosen.length,
-                    replaced: 0, fromMemory: 0, noMatch: 0,
+                    // Исправлено руками — строк с правками и удалённых.
+                    replaced: this._rows.filter(r => this.rowEdits(r)).length + (this._deleted || []).length,
+                    fromMemory: 0, noMatch: 0,
                 },
                 calcId: app.state.calc_id || null,
                 projectName: app.state.projectName || '',
@@ -1265,11 +1318,18 @@ const RecognizePlan = {
                 sheets: this._sheets.map(s => ({
                     i: s.i, label: s.label, floor: s.floorRaw, ceilingH: s.ceilingH, totalArea: s.totalArea,
                 })),
+                // В записи архива сервер хранит только известные поля, поэтому
+                // журнал правок едет внутри result: rec — как прочитано,
+                // edits — что поменял монтажник, src — что взято из чертежа.
                 result: this._rows.map(r => ({
                     num: r.num, name: r.name, area: r.area, areaSrc: r.areaSrc, floor: r.floor,
                     windows: r.windows, panoramic: r.panoramic, outerWalls: r.outerWalls,
                     heated: r.heated, applied: !!r._sel,
-                })),
+                    ufh: r.eng ? !!r.eng.ufh : undefined, ufhArea: r.eng ? r.eng.ufhArea : undefined,
+                    heaters: r.eng ? r.eng.heaters : undefined, fix: r.eng ? r.eng.fix : undefined,
+                    src: r.eng && r.eng.src ? r.eng.src : undefined,
+                    edits: this.rowEdits(r) || undefined,
+                })).concat((this._deleted || []).map(o => ({ name: o.name, area: o.area, deleted: true, rec: o }))),
             };
             const shot = ui._img || (ui._imgs && ui._imgs[0]);
             if (shot) { payload.file = true; payload.fileExt = 'jpg'; payload.fileData = shot; }
@@ -1349,6 +1409,8 @@ const FLOOR_PLAN_PROMPT = `Ты разбираешь ПЛАНЫ ЭТАЖЕЙ ж�
 
 12. НЕ ВЫДУМЫВАЙ. Не читается — null и пояснение в note или unclear. Не добавляй помещений, которых нет на листе; не дели помещение на части по мебели; лестничную клетку, если она подписана отдельным помещением, включи как «Лестница». Цветные рамки, стрелки, размерные линии, штриховка и подписи поверх плана — пометки, а не стены и не помещения. Один и тот же номер помещения — одно помещение.
 
-13. ПОРЯДОК. Помещения перечисляй в порядке экспликации, а без неё — по номерам, затем слева направо и сверху вниз.`;
+13. ПОРЯДОК. Помещения перечисляй в порядке экспликации, а без неё — по номерам, затем слева направо и сверху вниз.
+
+14. ПРИМЕЧАНИЕ (note) — только то, что монтажнику надо проверить: расхождение или опечатка в проекте (два помещения с одним номером, площадь в таблице не совпадает с подписью на плане), площадь или название угаданы, помещение неотапливаемое или спорное. Не описывай помещение: «входная зона», «большое помещение с камином», «с обеденной зоной» — это видно по названию и чертежу, такое примечание только отнимает время. Нечего сказать -> note=null.`;
 
 window.RecognizePlan = RecognizePlan;

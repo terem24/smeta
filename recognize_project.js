@@ -132,8 +132,17 @@ const RecognizeProject = {
                 const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh, scopeRows)
                     : sh.kind === 'vent' ? this.takeVent(parsed, sh)
                     : this.takeWater(parsed, rows, sh, scopeRows);
+                // Поверх модели — раскладка по карте помещений, где она есть.
+                const map = sh.kind === 'vent' ? null : this.geoMap(rows, project, sh.roomSheet);
+                const geo = !map ? null : sh.kind === 'heat' ? this.geoHeat(sh, scopeRows, map) : this.geoWater(sh, scopeRows, map);
+                if (geo && geo.summary.length) {
+                    res.summary = res.summary.replace(/\.$/, '') + `; по чертежу: ${geo.summary.join(', ')}.`;
+                    // Предупреждения модели о числе марок и приборов после
+                    // раскладки по чертежу уже не про то.
+                    if (sh.kind === 'heat') res.warnings = res.warnings.filter(w => !/марок приборов на листе/.test(w));
+                }
                 summary.push(res.summary);
-                warnings.push(...res.warnings);
+                warnings.push(...res.warnings, ...(geo ? geo.warnings : []));
             } catch (e) {
                 if (e.quota) { warnings.push(e.message); break; }
                 warnings.push(`лист ${sh.num} (${what}) не прочитан: ${ui.cleanError(e.message).split('\n')[0]}`);
@@ -171,12 +180,206 @@ const RecognizeProject = {
         const onPlan = cand.filter(w => !column(w));
         const dup = {};
         rows.forEach(r => { const k = norm(r.name); dup[k] = (dup[k] || 0) + 1; });
-        return rows.map(r => {
+        // Середина надписи точнее её левого края: длинное «Кухня-гостиная»
+        // начинается у самой стены.
+        const at = w => ({ x: w.cx !== undefined ? w.cx : w.x, y: w.cy !== undefined ? w.cy : w.y });
+        const out = rows.map(r => {
             const k = norm(r.name);
             if (dup[k] > 1) return null;
             const hits = onPlan.filter(w => norm(w.s) === k);
-            return hits.length === 1 ? { x: hits[0].x, y: hits[0].y } : null;
+            return hits.length === 1 ? at(hits[0]) : null;
         });
+        // Название на плане не подписано (или подписано иначе) — ищем по
+        // площади «3,02 м²» под номером комнаты. В экспликации площади без
+        // «м²», их regex не берёт.
+        rows.forEach((r, i) => {
+            if (out[i] || !(r.area > 0)) return;
+            const a = (Math.round(r.area * 100) / 100).toFixed(2);
+            const re = new RegExp('^' + a.replace('.', '[.,]') + '\\s*м');
+            const hits = words.filter(w => re.test(w.s));
+            if (hits.length === 1 && !rows.some((o, j) => j !== i && o.area > 0 && Math.abs(o.area - r.area) < 0.005)) out[i] = at(hits[0]);
+        });
+        return out;
+    },
+
+    // ------------------------------------------------------------------
+    // Карта помещений (RecognizeGeo)
+    //
+    // Где стоит окно, прибор или зона тёплого пола — вопрос геометрии, а не
+    // зрения: стены листа помещений лежат в PDF заливкой, подписи комнат,
+    // марки и концы выносок — текстом и линиями с координатами. Модель по
+    // картинке путала соседние комнаты (коридор без окон, три окна в
+    // кабинете, раковина «лишняя»). Всё, что карта разложила, ставится
+    // поверх ответа модели и помечается r.eng.src[поле] = 'pdf' — на экране
+    // проверки такие ячейки зелёные, их можно не перепроверять.
+    // ------------------------------------------------------------------
+
+    _maps: null,
+
+    geoMap(rows, project, k) {
+        if (typeof RecognizeGeo === 'undefined' || !project || !Array.isArray(project.roomWalls)) return null;
+        if (k === null || k === undefined) k = project.roomWalls.length === 1 ? 0 : null;
+        if (k === null || !project.roomWalls[k]) return null;
+        const scope = project.roomWalls.length === 1 ? rows : rows.filter(r => r._sheet === k);
+        const key = k + '|' + scope.map(r => r.name + ':' + r.area).join('|');
+        this._maps = this._maps || new Map();
+        if (this._maps.has(key)) return this._maps.get(key);
+        const pos = this.roomPositions(scope, project.roomWords && project.roomWords[k]);
+        const seeds = [], seedRows = [];
+        scope.forEach((r, i) => { if (pos[i]) { seeds.push({ name: r.name, x: pos[i].x, y: pos[i].y }); seedRows.push(r); } });
+        let map = null;
+        if (seeds.length >= 2) {
+            try { map = RecognizeGeo.buildFromWalls(project.roomWalls[k], seeds); } catch (e) { console.warn('Карта помещений:', e); map = null; }
+        }
+        if (map) map.rows = seedRows;
+        this._maps.set(key, map);
+        return map;
+    },
+
+    rowAt(map, x, y, maxMm) {
+        if (!map || x === undefined || y === undefined) return null;
+        const i = RecognizeGeo.roomAt(map, x, y, maxMm);
+        return i >= 0 ? map.rows[i] : null;
+    },
+
+    setSrc(r, field, v) {
+        r.eng = r.eng || {};
+        r.eng.src = r.eng.src || {};
+        r.eng.src[field] = v;
+    },
+
+    /**
+     * Зоны тёплого пола и приборы отопления — по карте. Подписи «S=…» и
+     * марки «РД-N» стоят внутри своих комнат. Перекладываем, только если
+     * своя комната нашлась у каждой подписи (у зон) и у каждой марки (у
+     * приборов): частичная раскладка хуже модели целиком.
+     */
+    geoHeat(sh, scope, map) {
+        if (!map || !(sh.labels || []).length) return null;
+        const zones = new Map(), marks = new Map();
+        const lostZ = [], lostM = [];
+        for (const l of sh.labels) {
+            const r = this.rowAt(map, l.cx !== undefined ? l.cx : l.x, l.cy !== undefined ? l.cy : l.y, 600);
+            if (!r || !scope.includes(r)) { (l.mark ? lostM : lostZ).push(l.s); continue; }
+            if (l.mark) {
+                if (!marks.has(r)) marks.set(r, []);
+                if (!marks.get(r).includes(l.s)) marks.get(r).push(l.s);
+            } else {
+                const a = this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, ''));
+                if (a > 0) zones.set(r, (zones.get(r) || 0) + a);
+            }
+        }
+        const out = [];
+        if (zones.size && !lostZ.length) {
+            let labeled = 0;
+            const unl = [];
+            scope.forEach(r => {
+                const e = r.eng;
+                if (zones.has(r)) {
+                    e.ufh = true; e.ufhArea = Math.round(zones.get(r) * 100) / 100; e.ufhAreaSrc = 'label';
+                    labeled += e.ufhArea;
+                    this.setSrc(r, 'ufh', 'pdf');
+                } else if (e.ufhAreaSrc === 'label') {
+                    // Модель отдала сюда подписанную зону чужой комнаты.
+                    e.ufh = false; e.ufhArea = null; e.ufhAreaSrc = null;
+                    this.setSrc(r, 'ufh', 'pdf');
+                } else if (e.ufh) unl.push(r);
+            });
+            // Зоны без подписи (гардеробные) — остаток спецификации заново:
+            // сумма подписанных после раскладки могла измениться.
+            const total = sh._ufhTotal;
+            if (unl.length && total > labeled + 0.2) {
+                const wt = r => r.eng.ufhArea > 0 ? r.eng.ufhArea : (r.area > 0 ? r.area : 1);
+                const wSum = unl.reduce((a, r) => a + wt(r), 0);
+                const rest = total - labeled;
+                unl.forEach(r => {
+                    let a = rest * wt(r) / wSum;
+                    if (r.area > 0) a = Math.min(a, r.area);
+                    r.eng.ufhArea = Math.round(a * 100) / 100;
+                    r.eng.ufhAreaSrc = 'spec';
+                });
+            }
+            out.push(`зоны тёплого пола — по подписям S= и стенам листа (${zones.size} ${RecognizeUI.plural(zones.size, 'помещение', 'помещения', 'помещений')})`);
+        }
+        if (marks.size && !lostM.length) {
+            const typeOf = {};
+            scope.forEach(r => (r.eng.heaterMarks || []).forEach(m => { if (r.eng.heaterType) typeOf[m] = r.eng.heaterType; }));
+            let n = 0;
+            scope.forEach(r => {
+                const e = r.eng, mk = marks.get(r) || [];
+                const types = mk.map(m => typeOf[m]).filter(Boolean);
+                e.heaterType = mk.length ? (types[0] || e.heaterType || 'radiator') : null;
+                e.heaters = mk.length;
+                e.heaterMarks = mk;
+                n += mk.length;
+                this.setSrc(r, 'heaters', 'pdf');
+            });
+            out.push(`приборы ${n} — по маркам и стенам листа`);
+        }
+        const warnings = [];
+        if (lostZ.length) warnings.push(`лист ${sh.num}: подписи зон ${lostZ.join(', ')} не попали ни в одно помещение — зоны разложены по картинке, проверьте`);
+        if (lostM.length) warnings.push(`лист ${sh.num}: марки ${lostM.join(', ')} не попали ни в одно помещение — приборы разложены по картинке, проверьте`);
+        return { summary: out, warnings };
+    },
+
+    /**
+     * Тип прибора по строке спецификации сантехники. Смеситель и сам прибор
+     * — две марки одного прибора: считаем по большему из двух (раковина и
+     * смеситель к ней — одна раковина). Гигиенический душ — не душ.
+     */
+    fixKind(t) {
+        const s = String(t || '').toLowerCase().replace(/ё/g, 'е');
+        if (/гигиен/.test(s)) return null;
+        if (/унитаз/.test(s)) return /биде/.test(s) ? 'toiletHot' : 'toilet';
+        if (/инсталляц/.test(s)) return 'toilet';
+        if (/стиральн/.test(s)) return 'wash';
+        if (/посудомо/.test(s)) return 'dish';
+        if (/смесител|термостат/.test(s)) return /ванн/.test(s) ? 'bathMix' : /душ/.test(s) ? 'showerMix' : 'basinMix';
+        if (/биде/.test(s)) return 'bidet';
+        if (/трап/.test(s)) return 'drain';
+        if (/ванн/.test(s)) return 'bath';
+        if (/лейк|ручн\S*\s+душ/.test(s)) return 'showerHand';
+        if (/душ/.test(s)) return 'shower';
+        if (/раковин|умывальник|мойк/.test(s)) return 'basin';
+        return null;
+    },
+
+    /**
+     * Сантехника по маркам плана и спецификации — поверх модели. Стиральные,
+     * посудомоечные и трапы на «Хвойной 3» подписаны выносками за стенами
+     * дома, без марок, — их оставляем модели, если в спецификации их нет.
+     */
+    geoWater(sh, scope, map) {
+        const fx = sh.fixtures;
+        if (!map || !fx || !fx.marks || !fx.marks.length) return null;
+        const per = new Map(), lost = [];
+        for (const m of fx.marks) {
+            const r = this.rowAt(map, m.cx, m.cy, 600);
+            if (!r || !scope.includes(r)) { lost.push(m.s); continue; }
+            if (!per.has(r)) per.set(r, []);
+            per.get(r).push(this.fixKind(fx.spec[m.s]));
+        }
+        if (lost.length) {
+            return { summary: [], warnings: [`лист ${sh.num}: марки сантехники ${lost.join(', ')} не попали ни в одно помещение — сантехника разложена по картинке, проверьте`] };
+        }
+        const specKinds = new Set(Object.values(fx.spec).map(t => this.fixKind(t)));
+        scope.forEach(r => {
+            const kinds = per.get(r) || [];
+            const c = k => kinds.filter(x => x === k).length;
+            const f = Object.assign({}, ...this.FIX_KEYS.map(k => ({ [k]: 0 })), r.eng.fix || {});
+            f.toiletHot = c('toiletHot');
+            f.toilet = c('toilet') + c('toiletHot');
+            f.bidet = c('bidet');
+            f.bath = Math.max(c('bath'), c('bathMix'));
+            f.shower = Math.max(c('shower'), c('showerHand'), c('showerMix'));
+            f.basin = Math.max(c('basin'), c('basinMix'));
+            if (specKinds.has('drain')) f.drain = c('drain');
+            if (specKinds.has('wash')) f.wash = c('wash');
+            if (specKinds.has('dish')) f.dish = c('dish') + (r.eng.robot || 0);
+            r.eng.fix = this.FIX_KEYS.some(k => f[k]) ? f : null;
+            this.setSrc(r, 'fix', 'pdf');
+        });
+        return { summary: [`сантехника — по маркам спецификации и стенам листа (${fx.marks.length} ${RecognizeUI.plural(fx.marks.length, 'марка', 'марки', 'марок')})`], warnings: [] };
     },
 
     // ------------------------------------------------------------------
@@ -343,6 +546,54 @@ const RecognizeProject = {
         const ws = project && project.winSheet;
         if (!ws || !ws.labels || !ws.labels.length) return { summary: [], warnings: [] };
         const ui = RecognizeUI;
+
+        // Сперва по карте помещений: конец выноски каждого окна — в стене
+        // своей комнаты. Все окна нашли комнату — модель не нужна (и запрос
+        // из лимита не тратится); часть — модель читает остальные.
+        const map = this.geoMap(rows, project, 0);
+        const geo = [];
+        if (map) {
+            ws.labels.forEach(l => {
+                const r = l.wx !== undefined ? this.rowAt(map, l.wx, l.wy, 900) : null;
+                if (r) geo.push({ l, r, width: RecognizeGeo.gapWidth(map, l.wx, l.wy) });
+            });
+        }
+        const geoParsed = extra => {
+            const byRow = new Map();
+            geo.forEach(g => {
+                if (!byRow.has(g.r)) byRow.set(g.r, []);
+                byRow.get(g.r).push({ label: g.l.n, width: g.width });
+            });
+            const taken = new Set(geo.map(g => g.l.n));
+            const rooms = [...byRow].map(([r, windows]) => ({ n: rows.indexOf(r) + 1, windows }));
+            // Окна, которые разложила модель, — только из тех, что карта не нашла.
+            ((extra && extra.rooms) || []).forEach(x => {
+                const ws2 = (x.windows || []).filter(w => !taken.has(Math.round(this.num(w && w.label))));
+                if (!ws2.length) return;
+                const same = rooms.find(o => o.n === Math.round(this.num(x.n)));
+                if (same) same.windows.push(...ws2); else rooms.push({ n: x.n, windows: ws2 });
+            });
+            return { rooms, unclear: extra && extra.unclear };
+        };
+        const markGeo = res => {
+            const all = geo.length === ws.labels.length;
+            rows.forEach(r => {
+                const mine = geo.filter(g => g.r === r).length;
+                if (mine && mine === (r.windows || 0)) this.setSrc(r, 'windows', 'pdf');
+                // Все окна листа разложены по чертежу, а у комнаты их нет —
+                // значит, окон у неё и правда нет.
+                if (all && !mine) {
+                    r.windows = 0; r.panoramic = 0;
+                    if (r.eng) r.eng.winSpec = null;
+                    this.setSrc(r, 'windows', 'pdf');
+                }
+            });
+            res.summary = res.summary.map(t => t.replace(/\.$/, '') + (geo.length
+                ? `; ${geo.length} из ${ws.labels.length} — по концам выносок и стенам листа, без модели.` : '.'));
+            return res;
+        };
+        if (geo.length && geo.length === ws.labels.length) return markGeo(this.takeWindows(geoParsed(null), rows, ws));
+
         if (onStatus) onStatus(`Читаю лист ${ws.num} — окна…`);
         const words = project.roomWords && project.roomWords.length === 1 ? project.roomWords[0] : null;
         const pos = this.roomPositions(rows, words);
@@ -381,8 +632,14 @@ const RecognizeProject = {
             const text = cand?.content?.parts?.[0]?.text;
             if (!text) throw new Error('пустой ответ');
             const parsed = ui.parseModelJson(text, cand.finishReason);
-            return this.takeWindows(parsed, rows, ws);
+            return geo.length ? markGeo(this.takeWindows(geoParsed(parsed), rows, ws)) : this.takeWindows(parsed, rows, ws);
         } catch (e) {
+            // Модель не ответила — то, что разложено по чертежу, всё равно в деле.
+            if (geo.length) {
+                const res = markGeo(this.takeWindows(geoParsed(null), rows, ws));
+                res.warnings.push(e.quota ? e.message : `лист ${ws.num}: окна без выноски не прочитаны — ${ui.cleanError(e.message).split('\n')[0]}`);
+                return res;
+            }
             if (e.quota) return { summary: [], warnings: [e.message] };
             return { summary: [], warnings: [`лист ${ws.num} (окна) не прочитан: ${ui.cleanError(e.message).split('\n')[0]}`] };
         }
@@ -709,6 +966,7 @@ const RecognizeProject = {
         }
 
         const total = this.num(parsed.ufhTotal);
+        sh._ufhTotal = total > 0 ? total : null;
 
         // Остаток спецификации — зонам без подписи: пропорционально оценке
         // модели по чертежу (нет оценки — площади комнаты), не больше самой
@@ -850,14 +1108,16 @@ const RecognizeProject = {
                     onchange="${on},'${field}',this.value)">`;
         const x = (field, val) => `<button type="button" title="Убрать" style="border:0;background:none;color:inherit;cursor:pointer;padding:0 4px;font-size:13px;line-height:1"
                     onclick="${on},'${field}',${val})">×</button>`;
+        const src = e.src || {};
+        const pdf = f => src[f] === 'pdf' ? `;${RecognizePlan.PDF_CELL}" title="${RecognizePlan.PDF_TIP}` : '';
         const parts = [];
         if (read.heat) {
             parts.push(e.ufh
-                ? `<span style="${pill}">♨️ тёплый пол ${num('ufhArea', e.ufhArea, 50, 0.01)} м²${x('ufh', 'false')}</span>`
+                ? `<span style="${pill}${e.ufhAreaSrc === 'label' ? pdf('ufh') : ''}">♨️ тёплый пол ${num('ufhArea', e.ufhArea, 50, 0.01)} м²${x('ufh', 'false')}</span>`
                 : `<button type="button" style="${ghost}" onclick="${on},'ufh',true)">+ тёплый пол</button>`);
             const typeOpt = (v) => `<option value="${v}" ${(e.heaterType || 'radiator') === v ? 'selected' : ''}>${this.HEATER_NAMES[v]}</option>`;
             parts.push(e.heaters
-                ? `<span style="${pill}">🔥 ${num('heaters', e.heaters, 26)}
+                ? `<span style="${pill}${pdf('heaters')}">🔥 ${num('heaters', e.heaters, 26)}
                      <select style="border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer" onchange="${on},'heaterType',this.value)">
                        ${typeOpt('floor_convector')}${typeOpt('wall_convector')}${typeOpt('radiator')}</select>${x('heaters', 0)}</span>`
                 : `<button type="button" style="${ghost}" onclick="${on},'heaters',1)">+ прибор</button>`);
@@ -865,7 +1125,10 @@ const RecognizeProject = {
         if (read.water) {
             const f = e.fix || {};
             const have = this.FIX_KEYS.filter(k => f[k] > 0);
-            have.forEach(k => parts.push(`<span style="${pill}">${this.FIX_SHORT[k]} ${num('fix.' + k, f[k], 24)}${x('fix.' + k, 0)}</span>`));
+            // Трап, стиральная и посудомоечная берутся из спецификации, только
+            // если они там есть, — иначе их разложила модель.
+            const fixPdf = k => src.fix === 'pdf' && ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'].includes(k);
+            have.forEach(k => parts.push(`<span style="${pill}${fixPdf(k) ? pdf('fix') : ''}">${this.FIX_SHORT[k]} ${num('fix.' + k, f[k], 24)}${x('fix.' + k, 0)}</span>`));
             const rest = this.FIX_KEYS.filter(k => !(f[k] > 0));
             if (rest.length) parts.push(`<select style="${ghost}" onchange="if(this.value){${on},'fix.'+this.value,1)}">
                 <option value="">+ сантехника</option>${rest.map(k => `<option value="${k}">${this.FIX_SHORT[k]}</option>`).join('')}</select>`);
@@ -878,6 +1141,12 @@ const RecognizeProject = {
     /** Правка из строки под помещением. */
     setEng(r, field, val) {
         const e = r.eng || (r.eng = {});
+        // Поправлено руками — зелёная отметка «из чертежа» снимается.
+        if (e.src) {
+            if (field === 'ufh' || field === 'ufhArea') delete e.src.ufh;
+            else if (field === 'heaters' || field === 'heaterType') delete e.src.heaters;
+            else if (field.startsWith('fix.')) delete e.src.fix;
+        }
         if (field === 'ufh') {
             e.ufh = !!val;
             if (!e.ufh) e.ufhArea = null;
@@ -1031,7 +1300,7 @@ const RecognizeProject = {
         if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
     },
 
-    reset() { this.towel = null; this.vent = null; this.reqs = []; this.city = null; },
+    reset() { this.towel = null; this.vent = null; this.reqs = []; this.city = null; this._maps = null; },
 };
 
 window.RecognizeProject = RecognizeProject;

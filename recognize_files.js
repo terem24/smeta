@@ -794,6 +794,15 @@ const RecognizeFiles = {
      * Марки из таблицы спецификации стоят столбиком: три и больше с одной
      * координатой x — это таблица, а не план, их отбрасываем.
      */
+    /**
+     * Центр надписи в процентах листа: точка отсчёта pdf.js — левый край на
+     * линии строки, а для «в какой комнате надпись» нужна её середина.
+     */
+    itemCenter(vp, t) {
+        const [x, y] = vp.convertToViewportPoint(t.transform[4] + (t.width || 0) / 2, t.transform[5] + (t.height || 0) / 3);
+        return { cx: Math.round(x / vp.width * 1000) / 10, cy: Math.round(y / vp.height * 1000) / 10 };
+    },
+
     async pageLabels(page) {
         let c;
         try { c = await page.getTextContent(); } catch (e) { return []; }
@@ -804,7 +813,7 @@ const RecognizeFiles = {
             const mark = /^(РД|КВ|КП|Р|К)-\d{1,2}$/.test(s);
             if (!mark && !/^S=[\d.,]+м/i.test(s)) continue;
             const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
-            out.push({ s, mark, x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10 });
+            out.push({ s, mark, x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10, ...this.itemCenter(vp, t) });
         }
         const marks = out.filter(l => l.mark);
         const column = l => marks.filter(m => Math.abs(m.x - l.x) < 1).length >= 3;
@@ -825,11 +834,64 @@ const RecognizeFiles = {
         const out = [];
         for (const t of c.items) {
             const s = String(t.str || '').replace(/\s+/g, ' ').trim();
-            if (s.length < 3 || s.length > 40 || !/[А-Яа-яЁё]{3}/.test(s)) continue;
+            // Площадь под названием («3,02 м²») — по ней найдётся комната,
+            // чьё название на плане не подписано (хоз. комната «Хвойной 3»).
+            const isArea = /^\d{1,3}[.,]\d{1,2}\s*м/.test(s);
+            if (!isArea && (s.length < 3 || s.length > 40 || !/[А-Яа-яЁё]{3}/.test(s))) continue;
             const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
-            out.push({ s, x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10 });
+            out.push({ s, x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10, ...this.itemCenter(vp, t) });
         }
         return out;
+    },
+
+    /**
+     * Сантехника листа по маркам: таблица «Спецификация сантехнических
+     * приборов» (марка → тип) и места марок на плане. Модель на «Хвойной 3»
+     * насчитала раковин 5 вместо 4: смеситель и раковина — две марки, а
+     * прибор один. Здесь тип каждой марки — из таблицы, комната — по карте
+     * помещений (RecognizeGeo). Возвращает { spec: {марка: текст},
+     * marks: [{ s, cx, cy }] } или null — таблицы нет.
+     */
+    async pageFixtures(page) {
+        let c;
+        try { c = await page.getTextContent(); } catch (e) { return null; }
+        const vp = page.getViewport({ scale: 1 });
+        const items = c.items.map(t => {
+            const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
+            return { s: String(t.str || '').replace(/\s+/g, ' ').trim(), x: x / vp.width * 100, y: y / vp.height * 100,
+                ...this.itemCenter(vp, t) };
+        }).filter(i => i.s);
+        const head = items.find(i => /спецификаци[яи]\s+сантехн/i.test(i.s));
+        if (!head) return null;
+        // «Марка» — ближайший заголовок столбца под названием таблицы.
+        const marka = items.filter(i => /^марка$/i.test(i.s) && i.y > head.y && i.y < head.y + 8)
+            .sort((a, b) => (a.y - b.y) || Math.abs(a.x - head.x) - Math.abs(b.x - head.x))[0];
+        if (!marka) return null;
+        const col = items.filter(i => /^\d{1,2}$/.test(i.s) && Math.abs(i.x - marka.x) < 2.5 && i.y > marka.y)
+            .sort((a, b) => a.y - b.y);
+        const rows = [];
+        for (const m of col) {
+            if (rows.length && m.y - rows[rows.length - 1].y > 6) break;   // таблица кончилась
+            rows.push({ mark: m.s, y: m.y, x: m.x, text: [] });
+        }
+        if (!rows.length) return null;
+        const note = items.find(i => /^примечани/i.test(i.s) && Math.abs(i.y - marka.y) < 1 && i.x > marka.x);
+        const xMax = note ? note.x - 0.3 : 100;
+        const yMax = rows[rows.length - 1].y + 2.5;
+        for (const i of items) {
+            if (i.x <= marka.x + 1 || i.x >= xMax || i.y <= marka.y + 0.5 || i.y > yMax || /^\d{1,2}$/.test(i.s)) continue;
+            const r = rows.reduce((b, r) => Math.abs(r.y - i.y) < Math.abs(b.y - i.y) ? r : b, rows[0]);
+            r.text.push(i);
+        }
+        const spec = {};
+        rows.forEach(r => {
+            const t = r.text.sort((a, b) => (a.y - b.y) || (a.x - b.x)).map(i => i.s).join(' ').replace(/\s+/g, ' ').trim();
+            if (t) spec[r.mark] = t;
+        });
+        const colX = rows[0].x;
+        const marks = items.filter(i => /^\d{1,2}$/.test(i.s) && spec[i.s] && Math.abs(i.x - colX) > 2.5)
+            .map(i => ({ s: i.s, cx: i.cx, cy: i.cy }));
+        return Object.keys(spec).length ? { spec, marks } : null;
     },
 
     /**
@@ -1236,7 +1298,20 @@ const RecognizeFiles = {
         // Надписи каждого листа помещений — по ним найдутся места подписей
         // комнат. roomWords[k] — лист set.rooms[k], он же снимок k для плана.
         set.roomWords = [];
-        for (const p of set.rooms) set.roomWords.push(await this.pageWords(await pdf.getPage(p.num)));
+        // Стены каждого листа помещений — для карты помещений (RecognizeGeo):
+        // по ней окна, приборы и зоны тёплого пола разложатся по комнатам
+        // без модели. Не вышло (скан, стены не заливкой) — null, модель
+        // справится по картинке, как прежде.
+        set.roomWalls = [];
+        for (const p of set.rooms) {
+            const page = await pdf.getPage(p.num);
+            set.roomWords.push(await this.pageWords(page));
+            let walls = null;
+            if (typeof RecognizeGeo !== 'undefined') {
+                try { walls = await RecognizeGeo.wallsOf(page, p.text); } catch (e) { walls = null; }
+            }
+            set.roomWalls.push(walls);
+        }
 
         // Лист с подписями окон (обычно обмерный план): высоты и отметки
         // окон от пола — окна в пол на плане мебели не отличить от обычных.
@@ -1283,6 +1358,7 @@ const RecognizeFiles = {
                 set.eng.push({ kind, num: p.num, title: p.title, text: p.text,
                     roomSheet: kind === 'vent' ? null : this.pairRoomSheet(p, k, list.length, set.rooms),
                     labels: kind === 'heat' ? await this.pageLabels(page) : [],
+                    fixtures: kind === 'water' ? await this.pageFixtures(page) : null,
                     img: await this.renderPage(page) });
             }
         }
