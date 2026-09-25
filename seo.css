@@ -371,6 +371,118 @@ footer.bottom p:last-child { margin-bottom: 0; }
     * { transition: none !important; }
 }
 
+/* ── Форма заявки на монтаж (/montazh-otopleniya-spb/) ───────────────
+   Страница подключает seo.css с ?v=, поэтому новые правила доходят до неё сразу,
+   а остальные страницы, где этих классов нет, кэш не перекачивают. */
+
+.lead-form {
+    display: grid;
+    gap: 18px;
+    margin: 0 0 28px;
+    padding: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+}
+.lead-form fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.lead-form legend,
+.lead-form .lf-label {
+    display: block;
+    margin: 0 0 8px;
+    padding: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+.lead-form .lf-opt { font-weight: 500; color: var(--text-sec); }
+.lead-form .lf-row { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.lead-form input[type="text"],
+.lead-form input[type="tel"],
+.lead-form input[type="number"],
+.lead-form textarea {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 11px 13px;
+    font: inherit;
+    font-size: 15px;
+    color: var(--text-main);
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    transition: border-color var(--dur-fast) var(--ease-out);
+}
+.lead-form textarea { min-height: 84px; resize: vertical; }
+.lead-form input:focus,
+.lead-form textarea:focus { border-color: var(--primary); }
+.lead-form [aria-invalid="true"] { border-color: #DC2626; }
+html.dark-mode .lead-form input[type="text"],
+html.dark-mode .lead-form input[type="tel"],
+html.dark-mode .lead-form input[type="number"],
+html.dark-mode .lead-form textarea { border-color: #3A3A3A; }
+
+/* Виды работ — плитки-галочки: несколько сразу */
+.lead-form .lf-works { display: flex; flex-wrap: wrap; gap: 8px; }
+.lead-form .lf-chip { position: relative; }
+.lead-form .lf-chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.lead-form .lf-chip span {
+    display: inline-block;
+    padding: 9px 14px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    user-select: none;
+}
+html.dark-mode .lead-form .lf-chip span { border-color: #3A3A3A; }
+.lead-form .lf-chip input:checked + span {
+    color: #FFFFFF;
+    background: var(--primary);
+    border-color: var(--primary);
+}
+.lead-form .lf-chip input:focus-visible + span { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+.lead-form .lf-consent {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 10px;
+    align-items: start;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--text-sec);
+}
+.lead-form .lf-consent input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--primary); }
+.lead-form .lf-trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.lead-form button[type="submit"] {
+    padding: 15px 22px;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 700;
+    color: #FFFFFF;
+    background: var(--primary);
+    border: 0;
+    border-radius: var(--radius);
+    cursor: pointer;
+}
+.lead-form button[type="submit"]:disabled { opacity: 0.6; cursor: default; }
+.lead-form button[type="submit"]:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
+
+.lead-form .lf-status { margin: 0; font-size: 14px; line-height: 1.5; }
+.lead-form .lf-status.is-error { color: #DC2626; }
+html.dark-mode .lead-form .lf-status.is-error { color: #F87171; }
+.lead-done {
+    margin: 0 0 28px;
+    padding: 22px 24px;
+    background: var(--primary-light);
+    border-radius: var(--radius);
+}
+.lead-done p { margin: 0 0 6px; }
+.lead-done p:last-child { margin: 0; }
+
 /* ── Узкие экраны ────────────────────────────────────────────────── */
 
 @media (max-width: 600px) {
@@ -383,6 +495,8 @@ footer.bottom p:last-child { margin-bottom: 0; }
     th, td { padding: 10px 12px; }
     table { font-size: 14px; }
     .cta { padding: 14px 20px; font-size: 15px; }
+    .lead-form { padding: 18px; }
+    .lead-form .lf-row { grid-template-columns: 1fr; }
 }
 
 /* ── Печать ──────────────────────────────────────────────────────── */
