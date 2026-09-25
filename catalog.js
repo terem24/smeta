@@ -2862,11 +2862,20 @@ const catalog = {
         { id: "SMF-0001-110802", name: "Мат с бобышками STOUT", area: 0.88, price: 1041, brand: "STOUT", rommer: { id: "RMF-0001-126047", name: "Мат с бобышками ROMMER", area: 0.72, price: 585, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "RMF-0001-126047", name: "Мат с бобышками ROMMER", area: 0.72, price: 585, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
     ],
+    // Три позиции здесь не из прайса ТЕРЕМ, и их id — коды какого-то стороннего
+    // магазина, уже неизвестного: на petrovich.ru по ним лежат совсем другие
+    // товары. Сами id не трогаем — на «418318» завязан переключатель основания
+    // в app.js и имена файлов в img/, — но рядом записан петровичевский код,
+    // чтобы следующая сверка была в один клик. Цены и наличие сверены по этим
+    // кодам 25.09.2026 (Москва); автообновлением они не подхватываются.
     xps_kit: [
-        { id: "418318", name: "XPS Технониколь Carbon Eco 50мм (1180х580)", area: 0.6844, price: 299, brand: "Technonicol", noCheapen: true },
-        { id: "138605", name: "Дюбель тарельчатый 10х100 (Уп. 100 шт)", price: 936, brand: "Tech-Krep" },
+        // Петрович 147312
+        { id: "418318", name: "XPS Технониколь Carbon Eco 50мм (1180х580)", area: 0.6844, price: 323, brand: "Technonicol", noCheapen: true, availability: "in_stock", price_date: "2026-09-25" },
+        // Петрович 166420
+        { id: "138605", name: "Дюбель тарельчатый 10х100 (Уп. 100 шт)", price: 890, brand: "Tech-Krep", availability: "in_stock", price_date: "2026-09-25" },
         { id: "SMF-0005-251620", name: "Скобы якорные для такера (Кассета 25 шт)", price: 109, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
-        { id: "160028", name: "Лента монтажная X-Glass ТПЛ армированная 50х50м", price: 236, brand: "X-Glass" }
+        // Петрович 1230304. Прежние 236 ₽ отстали больше чем вдвое.
+        { id: "160028", name: "Лента монтажная X-Glass ТПЛ армированная 50х50м", price: 599, brand: "X-Glass", availability: "in_stock", price_date: "2026-09-25" }
     ],
     // Добор утеплителя под тёплый пол. ГОСТ Р 70834-2023, п. 9.1.5 и табл. 2
     // требует под трубой изолирующий слой не тоньше 0,75 м²·°С/Вт над
