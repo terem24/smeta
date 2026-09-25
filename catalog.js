@@ -2884,9 +2884,9 @@ const catalog = {
     // (Москва) 25.09.2026 и автообновлением не подхватываются — проверять руками.
     // lambda — расчётная теплопроводность с карточки товара, 0,034 Вт/(м·°С).
     ufh_ins_plates: [
-        { id: "170044", name: "XPS Пеноплэкс Комфорт 20 мм (1185х585)", thick: 20, lambda: 0.034, area: 0.693, price: 175, brand: "Пеноплэкс", noCheapen: true },
-        { id: "170043", name: "XPS Пеноплэкс Комфорт 30 мм (1185х585)", thick: 30, lambda: 0.034, area: 0.693, price: 245, brand: "Пеноплэкс", noCheapen: true },
-        { id: "170040", name: "XPS Пеноплэкс Комфорт 50 мм (1185х585)", thick: 50, lambda: 0.034, area: 0.693, price: 345, brand: "Пеноплэкс", noCheapen: true }
+        { id: "170044", name: "XPS Пеноплэкс Комфорт 20 мм (1185х585)", thick: 20, lambda: 0.034, area: 0.693, price: 175, brand: "Пеноплэкс", noCheapen: true, availability: "in_stock", price_date: "2026-09-25" },
+        { id: "170043", name: "XPS Пеноплэкс Комфорт 30 мм (1185х585)", thick: 30, lambda: 0.034, area: 0.693, price: 245, brand: "Пеноплэкс", noCheapen: true, availability: "in_stock", price_date: "2026-09-25" },
+        { id: "170040", name: "XPS Пеноплэкс Комфорт 50 мм (1185х585)", thick: 50, lambda: 0.034, area: 0.693, price: 345, brand: "Пеноплэкс", noCheapen: true, availability: "in_stock", price_date: "2026-09-25" }
     ],
     // Демпферная (краевая) лента по периметру помещений тёплого пола: принимает
     // тепловое расширение стяжки и развязывает её со стенами. Нужна и под матом
