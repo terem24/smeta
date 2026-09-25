@@ -1626,6 +1626,10 @@ const RecognizeUI = {
         if (!el) return;
         const q = await this.checkQuota();
         if (!q) return;   // админ либо сервер лимитов промолчал
+        if (!q.personal && q.tariff === 'admin') {
+            el.textContent = `Запросов к распознаванию в этом месяце: ${q.used} (администратор — без ограничений)`;
+            return;
+        }
         const tariff = q.personal ? '' : (q.tariff === 'pro' ? ' (тариф «Профи»)' : q.tariff === 'base' ? ' (тариф «Базовый»)' : '');
         el.textContent = `Запросов к распознаванию в этом месяце: ${q.used} из ${q.limit}${tariff}, осталось ${q.left}`;
         if (q.left <= 3) el.style.color = q.left === 0 ? '#EF4444' : '#F59E0B';
