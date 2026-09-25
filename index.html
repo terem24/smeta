@@ -667,9 +667,11 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                     <span class="lk-rail-label">Объекты</span>
                 </button>
-                <button type="button" class="lk-rail-item" data-rail="orders" onclick="app.railGo('orders')" title="Заказы и счета">
+                <!-- Ключ data-rail="orders" не меняю — на него ссылаются push-уведомления
+                     (payload.open:"orders" в send-push), меняю только подпись -->
+                <button type="button" class="lk-rail-item" data-rail="orders" onclick="app.railGo('orders')" title="Документы: договор, акты, гарантийный талон">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                    <span class="lk-rail-label">Заказы</span>
+                    <span class="lk-rail-label">Документы</span>
                 </button>
                 <button type="button" class="lk-rail-item" data-rail="oprosniki" onclick="app.railGo('oprosniki')" title="Опросные листы">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
@@ -2974,9 +2976,11 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     <span class="lk-nav-label">Сводка</span>
                 </button>
-                <button type="button" class="lk-nav-item" data-tab="orders" title="Заказы и счета" onclick="app.setProfileTab('orders')">
+                <!-- Ключ data-tab="orders" не меняю — на него ссылаются push-уведомления
+                     (payload.open:"orders" в send-push), меняю только подпись -->
+                <button type="button" class="lk-nav-item" data-tab="orders" title="Документы: договор, акты, гарантийный талон" onclick="app.setProfileTab('orders')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                    <span class="lk-nav-label">Заказы и счета</span>
+                    <span class="lk-nav-label">Документы</span>
                 </button>
                 <!-- Постоянный архив заявок с oprosnik.html — раньше их было видно только во
                      всплывающем окне для новых (checkOprosInbox/showOprosInbox), после

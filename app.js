@@ -10858,6 +10858,7 @@ const app = {
                             ${getInvoiceBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'open')" title="Открыть расчёт в калькуляторе">Открыть</button>
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.lazy('reprice').then(() => Reprice.open('${item.id}'))" title="Сравнить цены сметы с сегодняшними">Цены</button>
+                            ${item.calc_id ? `<button class="lk-btn-sm" onclick="event.stopPropagation(); app.toggleObjectHistory('${item.calc_id}', '${item.id}')" title="История статусов: когда отправлено, открыто, согласовано">🕘 История</button>` : ''}
                             ${shareBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'download')" title="Скачать смету: PDF или Excel">Скачать</button>
                             ${canDelete ? `
@@ -10868,6 +10869,12 @@ const app = {
                         </div>
                     </td>
                 </tr>
+                ${item.calc_id ? `
+                <tr id="obj_history_${item.id}" style="display:none;">
+                    <td colspan="5" style="padding:0; background:var(--bg);">
+                        <div class="obj-history-body" style="padding:8px 14px 12px; font-size:11.5px;"></div>
+                    </td>
+                </tr>` : ''}
             `;
         });
 
@@ -12816,141 +12823,169 @@ const app = {
     // ссылку, чтобы проверить смету, и черновик уезжал бы в заказы сам собой.
     ORDER_EVENT_KEYS: ['sent', 'printed', 'invoice_requested', 'confirmed', 'needs_revision', 'refresh_requested', 'invoice_issued', 'rejected', 'invoice_reminder_sent', 'invoice_reminder_declined', 'paid'],
 
+    // Одна строка истории статусов: бейдж события, комментарий/версия КП, дата-время.
+    // Общий рендер для раскрывающейся истории в «Моих объектах» (toggleObjectHistory) —
+    // тот же список invoice_events, тот же вид, что раньше был только во вкладке «Заказы».
+    buildInvoiceHistoryRows: function (list, calcId) {
+        const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+        const fmt = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
+        return (list || []).map(ev => {
+            const m = EVENT_META[ev.event] || { label: ev.event, color: '#94A3B8' };
+            const comment = ev.meta && ev.meta.comment ? ev.meta.comment : '';
+            const evV = ev.meta && Number(ev.meta.kp_version);
+            return `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:4px 0; border-bottom:1px dashed var(--border);">
+                        <span style="display:inline-block; background:${m.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${m.label}</span>
+                        <span style="flex:1; font-size:11px; color:var(--text-main);">${evV ? `<span style="font-family:monospace; color:var(--text-sec);">КП № ${esc(calcId)}-${evV}</span>${comment ? ' · ' : ''}` : ''}${esc(comment)}</span>
+                        <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${fmt(ev.created_at)}</span>
+                    </div>`;
+        }).join('');
+    },
+
+    // Раскрывающаяся история статусов у строки объекта в «Моих объектах» — та же
+    // группа событий invoice_events, что и в бывшей вкладке «Заказы», но по клику и
+    // без отдельной вкладки. rowId — id строки сметы (уникален), calcId — по нему
+    // запрос к базе. Первое раскрытие грузит историю, дальше — просто показывает
+    // уже загруженное (holder.dataset.loaded).
+    toggleObjectHistory: async function (calcId, rowId) {
+        const tr = document.getElementById('obj_history_' + rowId);
+        if (!tr) return;
+        if (tr.style.display !== 'none') { tr.style.display = 'none'; return; }
+        tr.style.display = '';
+        const holder = tr.querySelector('.obj-history-body');
+        if (!holder || holder.dataset.loaded === '1') return;
+        holder.innerHTML = '⌛ Загрузка истории...';
+        try {
+            const me = await this.resolveCurrentUserForChat();
+            const email = (me && me.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            if (!email) { holder.innerHTML = '<span style="color:var(--text-sec); font-size:11.5px;">Не удалось определить аккаунт.</span>'; return; }
+            const { data, error } = await supabaseClient.from('invoice_events')
+                .select('event, created_at, meta')
+                .eq('user_email', email)
+                .eq('calc_id', calcId)
+                .in('event', this.ORDER_EVENT_KEYS)
+                .order('created_at', { ascending: true });
+            if (error) throw error;
+            const rows = data || [];
+            holder.innerHTML = rows.length
+                ? this.buildInvoiceHistoryRows(rows, calcId)
+                : '<span style="color:var(--text-sec); font-size:11.5px;">По этому объекту пока нет заказных событий.</span>';
+            holder.dataset.loaded = '1';
+        } catch (e) {
+            console.warn('[toggleObjectHistory]', e);
+            holder.innerHTML = '<span style="color:var(--text-sec); font-size:11.5px;">Не удалось загрузить историю.</span>';
+        }
+    },
+
+    // Раньше «Заказы и счета» — те же смены статусов, что теперь раскрываются прямо в
+    // «Моих объектах» (toggleObjectHistory), поэтому здесь их больше нет. Вкладка (ключ
+    // 'orders' в data-tab/data-rail/profile_tab_orders не менялся — на него ссылаются
+    // уже отправленные и будущие push-уведомления, payload.open:"orders") стала
+    // выбором объекта и чек-листом документов: что уже формировали (по отметке
+    // Docs.markGenerated в localStorage) и что можно сформировать. Сама генерация —
+    // через ту же единую форму Docs.openForOrder, что и раньше.
+    DOC_TYPES: [
+        { key: 'contract', label: 'Договор с приложениями' },
+        { key: 'act', label: 'Акт сдачи-приёмки' },
+        { key: 'warranty', label: 'Гарантийный талон' },
+        { key: 'pressure', label: 'Акт опрессовки' },
+        { key: 'hidden', label: 'Акт скрытых работ' },
+        { key: 'flush', label: 'Акт промывки' },
+        { key: 'heat', label: 'Акт прогрева' },
+    ],
+
     renderOrdersTab: async function () {
         const container = document.getElementById('profile_tab_orders');
         if (!container) return;
 
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const head = `<div class="lk-section-head">
-                          <h4>📋 Заказы и счета</h4>
+                          <h4>📄 Документы</h4>
                           <button type="button" class="lk-btn-sm" onclick="app.renderOrdersTab()">↻ Обновить</button>
                       </div>`;
-        container.innerHTML = head + `<div class="lk-empty">⌛ Загрузка статусов...</div>`;
+        container.innerHTML = head + `<div class="lk-empty">⌛ Загрузка объектов...</div>`;
 
-        // Локальная история запросов счёта — из неё берём суммы и возможность открыть смету
-        // обратно в калькулятор (сам state лежит только на этом устройстве)
-        let local = [];
-        try { local = JSON.parse(localStorage.getItem('requested_invoices')) || []; } catch (e) { }
-        const localByCalc = {};
-        local.forEach((inv, index) => { if (inv.calc_id) localByCalc[String(inv.calc_id)] = { inv, index }; });
+        if (!this.canUseDocs()) {
+            container.innerHTML = head + `<div class="lk-empty">Формирование документов недоступно на вашем тарифе.</div>`;
+            return;
+        }
 
-        // Статусы — те же события invoice_events, что видит админ в канбане, отфильтрованные
-        // по email монтажника. Не загрузились (нет сети/прав) — показываем локальный список.
-        let events = null;
+        let objects = [];
         try {
             const me = await this.resolveCurrentUserForChat();
-            // События пишутся по email из профиля (logInvoiceEvent) — если запись в users
-            // не нашлась, берём тот же email из локального профиля
-            const email = (me && me.email) || (this.state.tgUser && this.state.tgUser.email) || null;
-            if (email) {
-                // Только «заказные» события: черновиков (calculated/saved) у активного
-                // монтажника сотни, они бы вытеснили нужные строки из лимита и зря съели
-                // трафик Supabase
-                const { data, error } = await supabaseClient
-                    .from('invoice_events')
-                    .select('calc_id, event, project_name, created_at, meta')
-                    .eq('user_email', email)
-                    .in('event', this.ORDER_EVENT_KEYS)
-                    .order('created_at', { ascending: false })
-                    .limit(200);
-                if (error) throw error;
-                events = data || [];
-            }
+            if (!me) { container.innerHTML = head + `<div class="lk-empty">Войдите в аккаунт.</div>`; return; }
+            const { data, error } = await supabaseClient.from('estimates')
+                .select('project_name, calc_id:calc_data->>calc_id, created_at')
+                .eq('user_id', me.id)
+                .order('created_at', { ascending: false })
+                .limit(100);
+            if (error) throw error;
+            // Один объект может иметь несколько сохранённых версий с тем же номером КП —
+            // документы собираются по номеру, поэтому в списке он один (берём самую свежую)
+            const seenCalc = new Set();
+            objects = (data || []).filter(o => {
+                if (!o.calc_id || seenCalc.has(o.calc_id)) return false;
+                seenCalc.add(o.calc_id);
+                return true;
+            });
         } catch (e) {
-            console.warn('[renderOrdersTab] Статусы не загрузились:', e);
-        }
-
-        if (!events) {
-            container.innerHTML = head
-                + `<p class="lk-hint">Статусы сейчас недоступны — показана история с этого устройства.</p>`
-                + this.buildRequestedInvoicesHtml(true);
+            console.warn('[renderOrdersTab/Документы] Список объектов не загрузился:', e);
+            container.innerHTML = head + `<div class="lk-empty">Не удалось загрузить список объектов.</div>`;
             return;
         }
 
-        const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
-        const orderKeys = this.ORDER_EVENT_KEYS;
-
-        // Группируем события по расчёту: карточка = один объект, а не одно событие
-        const groups = {};
-        events.forEach(ev => {
-            const key = String(ev.calc_id || '');
-            if (!key) return;
-            if (!groups[key]) groups[key] = { calcId: key, name: '', last: null, statusEv: null, list: [] };
-            const g = groups[key];
-            g.list.push(ev);
-            if (!g.name && ev.project_name) g.name = ev.project_name;
-            if (!g.last) g.last = ev;
-            if (!g.statusEv && orderKeys.includes(ev.event)) g.statusEv = ev;
-        });
-
-        // В список попадают только сметы с «заказным» событием; плюс локальные запросы счёта,
-        // по которым событие в базу почему-то не записалось
-        const cards = Object.values(groups).filter(g => g.statusEv);
-        const seen = new Set(cards.map(g => g.calcId));
-        Object.keys(localByCalc).forEach(calcId => {
-            if (seen.has(calcId)) return;
-            const { inv } = localByCalc[calcId];
-            cards.push({ calcId, name: inv.projectName, last: null, statusEv: { event: 'invoice_requested', created_at: null }, list: [] });
-        });
-
-        cards.sort((a, b) => {
-            const ta = a.last ? new Date(a.last.created_at).getTime() : 0;
-            const tb = b.last ? new Date(b.last.created_at).getTime() : 0;
-            return tb - ta;
-        });
-
-        if (!cards.length) {
-            container.innerHTML = head + `<div class="lk-empty">Пока нет отправленных смет и запросов счёта.</div>`;
+        if (!objects.length) {
+            container.innerHTML = head + `<div class="lk-empty">Пока нет сохранённых объектов — документы собираются по смете.</div>`;
             return;
         }
+
+        const options = objects.map(o => `<option value="${esc(o.calc_id)}">${esc(o.project_name || 'Без названия')} · КП № ${esc(o.calc_id)}</option>`).join('');
+        container.innerHTML = head + `
+            <div class="lk-card" style="margin-bottom:12px;">
+                <label style="font-size:11px; color:var(--text-sec); font-weight:600; margin-bottom:6px; display:block;">Объект</label>
+                <select id="doc_tab_calc_select" class="auth-input" style="margin:0;" onchange="app.renderDocChecklist(this.value)">
+                    <option value="">— выберите объект —</option>
+                    ${options}
+                </select>
+            </div>
+            <div id="doc_tab_checklist"></div>
+        `;
+    },
+
+    // Чек-лист по выбранному в «Документах» объекту: 7 видов документов
+    // (this.DOC_TYPES — тот же набор, что кнопки в форме Docs.open, docs.js:651-667) и
+    // отметка «уже делали» по localStorage['docs_generated_'+calcId] (Docs.markGenerated).
+    // Сама генерация — в единой форме Docs.openForOrder, кнопка ниже чек-листа её
+    // и открывает; shareId она находит сама, если не передать.
+    renderDocChecklist: function (calcId) {
+        const holder = document.getElementById('doc_tab_checklist');
+        if (!holder) return;
+        if (!calcId) { holder.innerHTML = ''; return; }
+
+        let generated = {};
+        try { generated = JSON.parse(localStorage.getItem('docs_generated_' + calcId) || '{}'); } catch (e) { }
 
         const fmt = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+        const rows = this.DOC_TYPES.map(t => {
+            const at = generated[t.key];
+            const badge = at
+                ? `<span style="background:#10B981; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">Уже делали · ${fmt(at)}</span>`
+                : `<span style="background:var(--surface-light); color:var(--text-sec); font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap; border:1px solid var(--border);">Можно сформировать</span>`;
+            return `<div style="display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-bottom:1px dashed var(--border);">
+                        <span style="font-size:12.5px; color:var(--text-main);">${t.label}</span>
+                        ${badge}
+                    </div>`;
+        }).join('');
 
-        let html = '';
-        cards.forEach(g => {
-            const meta = this.kanbanEventView(g.statusEv.event, g.statusEv.meta);
-            const loc = localByCalc[g.calcId];
-            // Снимок сметы, ушедшей клиенту: по нему собираются документы. Его номер
-            // положен в meta события «отправлено» (см. logInvoiceEvent('sent')).
-            const shareEv = g.list.find(ev => ev.meta && ev.meta.shared_invoice_id);
-            const shareId = shareEv ? String(shareEv.meta.shared_invoice_id) : '';
-            const sums = loc ? `Оборудование: <b>${(loc.inv.eqSum || 0).toLocaleString('ru-RU')} ₽</b>${(loc.inv.worksSum > 0 && this.canUseWorks()) ? ` | Монтаж: <b>${(loc.inv.worksSum || 0).toLocaleString('ru-RU')} ₽</b>` : ''}` : '';
-
-            // Номер КП с версией: последняя известная версия по событиям объекта.
-            // Если текущий статус (одобрено, счёт) относится к более ранней версии —
-            // подписываем, к какой: монтажник мог после одобрения отправить правки.
-            const kpMaxV = g.list.reduce((mx, ev) => Math.max(mx, (ev.meta && Number(ev.meta.kp_version)) || 0), 0);
-            const kpCurV = g.statusEv && g.statusEv.meta ? Number(g.statusEv.meta.kp_version) || 0 : 0;
-            const kpLabel = `КП № ${esc(g.calcId)}${kpMaxV ? '-' + kpMaxV : ''}`
-                + (kpCurV && kpMaxV && kpCurV < kpMaxV ? ` <span style="color:#D97706;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${kpCurV}</span>` : '');
-
-            const historyRows = g.list.map(ev => {
-                const m = EVENT_META[ev.event] || { label: ev.event, color: '#94A3B8' };
-                const comment = ev.meta && ev.meta.comment ? ev.meta.comment : '';
-                const evV = ev.meta && Number(ev.meta.kp_version);
-                return `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:4px 0; border-bottom:1px dashed var(--border);">
-                            <span style="display:inline-block; background:${m.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${m.label}</span>
-                            <span style="flex:1; font-size:11px; color:var(--text-main);">${evV ? `<span style="font-family:monospace; color:var(--text-sec);">КП № ${esc(g.calcId)}-${evV}</span>${comment ? ' · ' : ''}` : ''}${esc(comment)}</span>
-                            <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${fmt(ev.created_at)}</span>
-                        </div>`;
-            }).join('');
-
-            html += `<div class="lk-card" style="display:flex; flex-direction:column; gap:6px;">
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-                            <strong style="font-size:13.5px; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(g.name || 'Без названия')}</strong>
-                            <span style="background:${meta.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${meta.label}</span>
-                        </div>
-                        <div style="font-size:11px; color:var(--text-sec); font-weight:500;">${kpLabel}${g.last ? ` · ${fmt(g.last.created_at)}` : ''}</div>
-                        ${sums ? `<div style="font-size:11.5px; color:var(--text-sec); border-top:1px dashed var(--border); padding-top:6px;">${sums}</div>` : ''}
-                        ${historyRows ? `<details style="margin-top:2px;"><summary style="cursor:pointer; font-size:11.5px; color:var(--text-sec);">История статусов (${g.list.length})</summary><div style="margin-top:6px;">${historyRows}</div></details>` : ''}
-                        <div style="display:flex; gap:6px; margin-top:4px;">
-                            ${loc ? `<button class="btn-subscribe" onclick="app.loadRequestedEstimate(${loc.index})" style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0;">Открыть смету</button>` : ''}
-                            ${this.canUseDocs() ? `<button class="btn-subscribe" onclick="app.lazy('docs').then(() => Docs.openForOrder('${esc(g.calcId)}', '${shareId || ''}'))"style="flex:1; height:32px; font-size:11.5px; margin:0; padding:0; background:var(--surface-light); color:var(--text-main); border:1px solid var(--border);">📄 Документы</button>` : ''}
-                        </div>
-                     </div>`;
-        });
-
-        container.innerHTML = head + html;
+        holder.innerHTML = `<div class="lk-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+                <strong style="font-size:12.5px; color:var(--text-main);">Документы по объекту</strong>
+                <button type="button" class="lk-btn-sm" onclick="app.renderDocChecklist('${calcId}')" title="Обновить отметки">↻</button>
+            </div>
+            ${rows}
+            <button class="btn-subscribe" style="width:100%; height:36px; margin-top:12px;"
+                onclick="app.lazy('docs').then(() => Docs.openForOrder('${calcId}'))">📄 Открыть документы</button>
+        </div>`;
     },
 
     // skipHead — когда заголовок раздела уже нарисован снаружи (фоллбек в renderOrdersTab)

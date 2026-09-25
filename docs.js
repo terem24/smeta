@@ -62,6 +62,21 @@ const Docs = {
         return this._ctx ? ('docs_contract_' + this._ctx.calcId) : null;
     },
 
+    // Отметка «этот документ по этому объекту уже формировали» — для вкладки
+    // «Документы» в кабинете (app.js: renderOrdersTab). Сами документы нигде не
+    // хранятся (print/printTech каждый раз заново собирают HTML), поэтому это не
+    // ссылка на файл, а просто факт и дата последнего нажатия. Пишем только для
+    // заказов из кабинета (_ctx задан из openForOrder) — у открытого в работе
+    // расчёта ещё нет объекта, к которому эту отметку привязать.
+    markGenerated: function (calcId, kind) {
+        if (!calcId || !kind) return;
+        const key = 'docs_generated_' + calcId;
+        let map = {};
+        try { map = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { }
+        map[kind] = new Date().toISOString();
+        try { localStorage.setItem(key, JSON.stringify(map)); } catch (e) { }
+    },
+
     read: function () {
         const key = this.storeKey();
         if (!key) return app.state.contract || {};
@@ -869,6 +884,7 @@ const Docs = {
         const num = d.number ? ' № ' + d.number : '';
         const file = kind === 'act' ? ('Акт сдачи-приёмки' + num)
             : (kind === 'warranty' ? 'Гарантийный талон' : ('Договор' + num));
+        if (this._ctx && this._ctx.calcId) this.markGenerated(this._ctx.calcId, kind);
         this.openDoc(html, file, 'Документы');
     },
 
@@ -1764,6 +1780,7 @@ const Docs = {
             flush: 'Акт промывки',
             heat: 'Акт прогрева'
         };
+        if (this._ctx && this._ctx.calcId) this.markGenerated(this._ctx.calcId, kind);
         this.openDoc(build(), names[kind], 'Акты');
     },
 
