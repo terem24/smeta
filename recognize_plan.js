@@ -699,6 +699,9 @@ const RecognizePlan = {
                 <div class="rec-tcheck-sub">Что к какой комнате отнесено — в строке под помещением, там же и поправить.
                   При переносе тёплый пол и приборы встанут в комнаты, сантехника — в «Водоснабжение» по помещениям.</div></div>
             </div>` : ''}
+          ${typeof RecognizeProject !== 'undefined' && RecognizeProject.city ? `
+            <div class="rec-tcheck ok"><div class="rec-tcheck-ico">📍</div>
+              <div style="flex:1">${RecognizeProject.cityLine()}</div></div>` : ''}
           ${typeof RecognizeProject !== 'undefined' ? RecognizeProject.reqsBlock() : ''}
           <div class="rec-toolbar">
             <button class="rec-btn-g" ${busy} onclick="RecognizePlan.selAll(true)">Отметить все</button>
@@ -769,7 +772,10 @@ const RecognizePlan = {
             if (r.windows === null) r.windows = 1;
             if (r.panoramic > r.windows) r.windows = r.panoramic;
         }
-        else if (field === 'outerWalls') {
+        // Окна с обмерного плана проекта: подогнать их список под правку.
+        if ((field === 'windows' || field === 'panoramic') && r.eng && r.eng.winSpec
+            && typeof RecognizeProject !== 'undefined') RecognizeProject.resizeWinSpec(r);
+        if (field === 'outerWalls') {
             const n = parseInt(val, 10);
             r.outerWalls = (n >= 1 && n <= 3) ? n : null;
         }
@@ -779,6 +785,13 @@ const RecognizePlan = {
             r.ownFloor = false;
             this.markStacked();
         }
+        this.renderReview();
+    },
+
+    /** Город из адреса проекта — подставить в расчёт или нет. */
+    setCityUse(v) {
+        if (typeof RecognizeProject === 'undefined') return;
+        RecognizeProject.setCityUse(v);
         this.renderReview();
     },
 
@@ -867,8 +880,13 @@ const RecognizePlan = {
         // грунту, а по тёплому — иначе оно получит лишние потери (см. markStacked).
         if (r.warmBelow) room.warmBelow = true;
         if (r.warmAbove) room.warmAbove = true;
-        // Лист отопления из комплекта проекта: системы и приборы — как там.
-        if (r.eng && typeof RecognizeProject !== 'undefined') RecognizeProject.fitRoom(room, r);
+        // Комплект листов проекта: окна — по обмерному плану (высоты,
+        // подоконники, окна в пол), затем системы и приборы — по листу
+        // отопления; приборы раскладываются уже по настоящим окнам.
+        if (r.eng && typeof RecognizeProject !== 'undefined') {
+            RecognizeProject.fitWindows(room, r);
+            RecognizeProject.fitRoom(room, r);
+        }
         return room;
     },
 
@@ -933,6 +951,7 @@ const RecognizePlan = {
             water: st.water, waterZones: st.waterZones || [], towelWarmer: st.towelWarmer || null,
             ventilationEnabled: st.ventilationEnabled, ventilationType: st.ventilationType,
             projectReqs: st.projectReqs || null,
+            selectedCity: st.selectedCity || null, region: st.region,
         }));
 
         const base = Date.now();
@@ -961,8 +980,9 @@ const RecognizePlan = {
         // Сантехника и полотенцесушители с листов проекта. Зоны водоснабжения
         // заменяются целиком: в проекте перечислены все приборы дома, и
         // шаблонные «Санузел 1», «Санузел 2» рядом с ними были бы лишними.
-        let waterZones = 0, towel = false, vent = '', reqs = 0;
+        let waterZones = 0, towel = false, vent = '', reqs = 0, city = '';
         if (typeof RecognizeProject !== 'undefined') {
+            city = RecognizeProject.applyCity(st);
             waterZones = RecognizeProject.applyWater(st, chosen);
             towel = RecognizeProject.applyTowel(st);
             vent = RecognizeProject.applyVent(st);
@@ -1032,6 +1052,7 @@ const RecognizePlan = {
         if (waterZones) parts.push(`Водоснабжение включено, приборы по помещениям: ${waterZones}`);
         if (towel) parts.push(`Полотенцесушители: ${st.towelWarmer.count}`);
         if (vent) parts.push(`Вентиляция: ${vent}`);
+        if (city) parts.push(`Город расчёта по адресу проекта: ${city}`);
         if (reqs) parts.push(`Требования из примечаний проекта: ${reqs} — плашкой в шапке сметы`);
         app.alert(parts.join('\n') +
             '\n\nПроверьте окна и системы отопления в карточках комнат. ' +
@@ -1068,6 +1089,7 @@ const RecognizePlan = {
             if (u.towelWarmer) st.towelWarmer = u.towelWarmer;
             st.ventilationEnabled = u.ventilationEnabled; st.ventilationType = u.ventilationType;
             if (u.projectReqs) st.projectReqs = u.projectReqs; else delete st.projectReqs;
+            st.selectedCity = u.selectedCity; st.region = u.region;
             if (typeof app.renderZonesUI === 'function') app.renderZonesUI();
         }
         this._undo = null;

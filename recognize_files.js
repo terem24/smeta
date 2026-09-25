@@ -846,6 +846,7 @@ const RecognizeFiles = {
 
         // Строки штампа повторяются на каждом листе: адрес, разработчики,
         // контакты. В подсказку модели они не нужны — считаем их по частоте.
+        const address = this.projectAddress(pages);
         const freq = new Map();
         pages.forEach(p => new Set(p.lines).forEach(s => freq.set(s, (freq.get(s) || 0) + 1)));
         const stamp = new Set([...freq].filter(([, n]) => n > pages.length / 2).map(([s]) => s));
@@ -875,7 +876,7 @@ const RecognizeFiles = {
 
         const visual = pages.filter(p => /^визуализац/i.test(p.title)).length;
         return { pages, rooms, found, visual, other: pdf.numPages - found.length - visual,
-            notes: this.collectNotes(pages) };
+            notes: this.collectNotes(pages), address };
     },
 
     /**
@@ -890,6 +891,59 @@ const RecognizeFiles = {
         const out = lines.filter(s => !stamp.has(s) &&
             !/^([hHнН]\s*=\s*)?\d{1,3}(\s\d{3})*$/.test(s) && s.length > 1);
         return out.join('\n').slice(0, this.SHEET_TEXT_MAX);
+    },
+
+    /**
+     * Адрес объекта: «Адрес: …» на обложке или две строки под «Расположение
+     * объекта» в штампе. По нему RecognizeProject выберет город расчёта —
+     * КП «Хвойной 3» считалось по Москве (−26 °C) при доме в Калининграде
+     * (−18 °C), и теплопотери вышли на шестую часть больше.
+     */
+    projectAddress(pages) {
+        for (const p of pages.slice(0, 4)) {
+            const hit = p.lines.find(s => /^адрес\s*(объекта)?\s*:/i.test(s));
+            if (hit) return hit.replace(/^адрес\s*(объекта)?\s*:\s*/i, '').trim();
+        }
+        for (const p of pages) {
+            const k = p.lines.findIndex(s => /^расположение\s+объекта$/i.test(s));
+            if (k >= 0) return p.lines.slice(k + 1, k + 3).join(' ').replace(/\s+/g, ' ').trim();
+        }
+        return '';
+    },
+
+    /**
+     * Подписи окон на обмерном плане: «Окна в пол (2 створки) hокна=2 400мм
+     * hот пола=0мм». Стоят на выносках за контуром дома, поэтому к комнате
+     * их относит модель по картинке; отсюда — точный текст, высоты и место
+     * подписи. Высоты — в метрах; у окна в пол без «hот пола» подоконник 0.
+     */
+    async pageWindowLabels(page) {
+        let c;
+        try { c = await page.getTextContent(); } catch (e) { return []; }
+        const vp = page.getViewport({ scale: 1 });
+        const items = c.items.map(t => String(t.str || '').replace(/\s+/g, ' ').trim());
+        // Начало подписи — «Окно (…», «Окна в пол…». pdf.js режет подпись на
+        // кусочки «h» / «окна» / «=1 370мм», и голое «окна» началом не считаем.
+        const START = /^окн[оа]\s+(\(|в\s)/i;
+        const out = [];
+        for (let i = 0; i < c.items.length; i++) {
+            if (!START.test(items[i]) || items[i].length > 60) continue;
+            // Текст подписи — сама строка и следующие, пока не началась
+            // следующая подпись окна.
+            let text = items[i];
+            for (let j = i + 1; j < items.length && j < i + 12 && !START.test(items[j]); j++) text += ' ' + items[j];
+            const mm = re => { const m = text.match(re); return m ? parseInt(m[1].replace(/\s/g, ''), 10) : null; };
+            const h = mm(/h\s*окна\s*=\s*([\d\s]+)/i);
+            let sill = mm(/h\s*от\s*пола\s*=\s*([\d\s]+)/i);
+            const floor = /в\s*пол/i.test(items[i]);
+            if (sill === null && floor) sill = 0;
+            if (!h) continue;
+            const t = c.items[i];
+            const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
+            out.push({ n: out.length + 1, s: items[i], h: h / 1000, sill: sill === null ? null : sill / 1000, floor,
+                x: Math.round(x / vp.width * 1000) / 10, y: Math.round(y / vp.height * 1000) / 10 });
+        }
+        return out;
     },
 
     // ------------------------------------------------------------------
@@ -1068,6 +1122,22 @@ const RecognizeFiles = {
         // комнат. roomWords[k] — лист set.rooms[k], он же снимок k для плана.
         set.roomWords = [];
         for (const p of set.rooms) set.roomWords.push(await this.pageWords(await pdf.getPage(p.num)));
+
+        // Лист с подписями окон (обычно обмерный план): высоты и отметки
+        // окон от пола — окна в пол на плане мебели не отличить от обычных.
+        // Только при одном листе помещений: этажи сводить не по чему.
+        set.winSheet = null;
+        if (set.rooms.length === 1) {
+            const cand = set.pages.find(p => p.kind === 'plan' && /h\s*окна\s*=/i.test(p.text || ''));
+            if (cand) {
+                const page = await pdf.getPage(cand.num);
+                const labels = await this.pageWindowLabels(page);
+                if (labels.length) {
+                    if (onProgress) onProgress(`готовлю лист ${cand.num}`);
+                    set.winSheet = { num: cand.num, title: cand.title, labels, img: await this.renderPage(page) };
+                }
+            }
+        }
         for (const kind of this.ENG_KINDS) {
             const list = set.found.filter(p => p.kind === kind && !inRoomsSet.has(p.num))
                 .slice(0, this.ENG_LIMIT[kind] || this.ENG_PER_KIND);

@@ -268,6 +268,202 @@ const RecognizeProject = {
         return sel.length;
     },
 
+    // ------------------------------------------------------------------
+    // Город расчёта по адресу объекта
+    // ------------------------------------------------------------------
+
+    /**
+     * Город из CITIES_DB по адресу из штампа или обложки. Сперва — город,
+     * названный в адресе словом («г. Истра»). Нет — по области
+     * (CITY_REGION_MAP): её центр, если он есть в справочнике
+     * (Калининград для «Калининградской обл.»), иначе первый её город.
+     * Возвращает { city, index, by } или null.
+     */
+    cityFromAddress(addr) {
+        if (!addr || typeof CITIES_DB === 'undefined') return null;
+        const norm = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim();
+        const a = norm(addr);
+        const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const asWord = n => new RegExp('(^|[^а-яa-z])' + esc(n) + '([^а-яa-z]|$)').test(a);
+        const all = CITIES_DB.map((city, index) => ({ city, index, key: norm(city.name) }));
+        const byName = all.filter(c => c.key.length > 2 && asWord(c.key)).sort((x, y) => y.key.length - x.key.length);
+        if (byName.length) return { city: byName[0].city, index: byName[0].index, by: 'город' };
+        if (typeof CITY_REGION_MAP === 'undefined') return null;
+        const stem = s => norm(s).replace(/область|обл\.?|край|республика|респ\.?|автономный|округ/g, ' ').replace(/\s+/g, ' ').trim();
+        const inRegion = all.filter(c => {
+            const reg = CITY_REGION_MAP[c.key];
+            const rs = reg ? stem(reg) : '';
+            return rs.length > 3 && a.includes(rs);
+        });
+        if (!inRegion.length) return null;
+        const center = inRegion.find(c => stem(CITY_REGION_MAP[c.key]).startsWith(c.key.slice(0, Math.max(4, c.key.length - 1)))) || inRegion[0];
+        return { city: center.city, index: center.index, by: 'область' };
+    },
+
+    /** Город проекта: найти и запомнить для экрана проверки. */
+    readCity(project) {
+        const hit = this.cityFromAddress(project && project.address);
+        this.city = hit ? Object.assign(hit, { address: project.address, use: true }) : null;
+    },
+
+    setCityUse(v) { if (this.city) this.city.use = !!v; },
+
+    cityLine() {
+        const c = this.city;
+        if (!c) return '';
+        const esc = s => String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const cur = (typeof app !== 'undefined' && app.state && app.state.selectedCity) ? app.state.selectedCity.name : '';
+        return `<label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer">
+            <input type="checkbox" ${c.use ? 'checked' : ''} style="margin-top:3px" onchange="RecognizePlan.setCityUse(this.checked)">
+            <span>Город в расчёте: <b>${esc(c.city.name)}</b> (${c.city.temp} °C, СП 131.13330.2020) — по адресу «${esc(c.address)}»${
+                cur && cur !== c.city.name ? `; сейчас в расчёте ${esc(cur)}` : ''}</span></label>`;
+    },
+
+    applyCity(st) {
+        const c = this.city;
+        if (!c || !c.use) return '';
+        st.selectedCity = c.city;
+        // Та же формула, что в app.selectCity: K = (20 − T_нар) / 45.
+        st.region = Math.round(((20 - c.city.temp) / 45) * 100);
+        return `${c.city.name} (${c.city.temp} °C)`;
+    },
+
+    // ------------------------------------------------------------------
+    // Окна по обмерному плану
+    //
+    // На плане мебели окно в пол не отличить от обычного, и модель путала:
+    // на «Хвойной 3» насчитала 11 окон, в одном прогоне с 2 панорамными в
+    // кухне, в другом без них. На обмерном плане у каждого окна подпись:
+    // «Окна в пол (2 створки) hокна=2 400мм hот пола=0мм» — 17 окон, 12 в
+    // пол. Подписи стоят на выносках за контуром дома, поэтому к комнате
+    // окно относит модель по картинке, а высоты берутся из текста PDF.
+    // ------------------------------------------------------------------
+
+    async readWindows(rows, project, onStatus) {
+        const ws = project && project.winSheet;
+        if (!ws || !ws.labels || !ws.labels.length) return { summary: [], warnings: [] };
+        const ui = RecognizeUI;
+        if (onStatus) onStatus(`Читаю лист ${ws.num} — окна…`);
+        const words = project.roomWords && project.roomWords.length === 1 ? project.roomWords[0] : null;
+        const pos = this.roomPositions(rows, words);
+        const list = rows.map((r, n) => `${n + 1}. ${r.name}${r.area > 0 ? `, ${this.fmt(r.area)} м²` : ''}` +
+            (pos[n] ? `, подпись на плане (${pos[n].x}%, ${pos[n].y}%)` : '')).join('\n');
+        const labels = ws.labels.map(l => `${l.n}. «${l.s}», высота ${this.fmt(l.h)} м, от пола ${
+            l.sill === null ? '—' : this.fmt(l.sill) + ' м'} — подпись в точке (${l.x}%, ${l.y}%)`).join('\n');
+        try {
+            const data = await ui.askModel([
+                { text: `Лист ${ws.num} «${ws.title}». Помещения дома (координаты подписей — с листа планировки, листы в одном масштабе и положении):\n${list}\n\n` +
+                    `Подписи окон на этом листе (текст и координаты взяты из PDF точно):\n${labels}\n\nВерни только JSON.` },
+                { inline_data: { mime_type: 'image/jpeg', data: ws.img } },
+            ], PROJECT_WINDOWS_PROMPT);
+            const cand = data?.candidates?.[0];
+            const text = cand?.content?.parts?.[0]?.text;
+            if (!text) throw new Error('пустой ответ');
+            const parsed = ui.parseModelJson(text, cand.finishReason);
+            return this.takeWindows(parsed, rows, ws);
+        } catch (e) {
+            if (e.quota) return { summary: [], warnings: [e.message] };
+            return { summary: [], warnings: [`лист ${ws.num} (окна) не прочитан: ${ui.cleanError(e.message).split('\n')[0]}`] };
+        }
+    },
+
+    takeWindows(parsed, rows, ws) {
+        const warnings = [];
+        const byN = new Map(ws.labels.map(l => [l.n, l]));
+        const used = new Set();
+        let nWin = 0, nFloor = 0;
+        (Array.isArray(parsed.rooms) ? parsed.rooms : []).forEach(x => {
+            const r = this.rowOf(rows, x && x.n);
+            if (!r) return;
+            const spec = [];
+            (Array.isArray(x.windows) ? x.windows : []).forEach(w => {
+                const l = byN.get(Math.round(this.num(w && w.label)));
+                if (!l || used.has(l.n)) return;
+                used.add(l.n);
+                const width = this.num(w.width);
+                spec.push({ h: l.h, sill: l.sill === null ? null : l.sill, floor: l.floor || (l.sill !== null && l.sill <= 0.3 && l.h >= 2),
+                    width: width > 300 ? Math.round(width) / 1000 : (width > 0.3 && width < 6 ? width : null) });
+            });
+            if (!spec.length) return;
+            r.eng = r.eng || {};
+            r.eng.winSpec = spec;
+            r.eng.winSheet = ws.num;
+            // Таблица проверки показывает то же, что уйдёт в расчёт.
+            r.windows = spec.length;
+            r.panoramic = spec.filter(s => s.floor).length;
+            nWin += spec.length;
+            nFloor += r.panoramic;
+        });
+        const lost = ws.labels.filter(l => !used.has(l.n));
+        if (lost.length) warnings.push(`лист ${ws.num}: окна без помещения — ${lost.map(l => `№${l.n} «${l.s}»`).join(', ')}` +
+            ' — добавьте их в «Окон» нужной строки');
+        if (Array.isArray(parsed.unclear)) parsed.unclear.filter(Boolean)
+            .forEach(u => warnings.push(`лист ${ws.num}: ${this.unclearText(u)}`));
+        return {
+            summary: [`Лист ${ws.num} «${ws.title}»: окон ${nWin} из ${ws.labels.length} подписанных, из них в пол ${nFloor} — высоты и подоконники по подписям листа.`],
+            warnings,
+        };
+    },
+
+    /** Пояснение модели строкой: бывает текстом, бывает объектом {label, reason}. */
+    unclearText(u) {
+        if (typeof u === 'string') return u;
+        if (u && typeof u === 'object') {
+            const parts = Object.entries(u).map(([k, v]) => (k === 'label' ? `окно №${v}` : String(v)));
+            return parts.join(' — ');
+        }
+        return String(u);
+    },
+
+    /**
+     * Окна строки поправили руками на экране проверки — подгоняем список
+     * окон с обмерного плана, а не выбрасываем: высоты и подоконники с
+     * листа остаются. Лишние окна срезаются с конца, недостающие повторяют
+     * последнее обычное; «из них панорамных» — первые N окон в пол.
+     */
+    resizeWinSpec(r) {
+        const spec = r.eng && r.eng.winSpec;
+        if (!spec) return;
+        const n = r.windows === null ? 1 : r.windows;
+        if (n <= 0) { r.eng.winSpec = null; return; }
+        const plain = spec.filter(s => !s.floor).slice(-1)[0] || { h: 1.5, sill: 0.8, floor: false, width: null };
+        const next = spec.slice(0, n);
+        while (next.length < n) next.push(Object.assign({}, plain));
+        let pan = Math.min(r.panoramic || 0, n);
+        const floorSpec = spec.find(s => s.floor) || { h: 2.4, sill: 0, floor: true, width: null };
+        next.sort((a, b) => (b.floor ? 1 : 0) - (a.floor ? 1 : 0));
+        next.forEach((s, k) => {
+            if (k < pan && !s.floor) Object.assign(s, { h: floorSpec.h, sill: floorSpec.sill, floor: true });
+            if (k >= pan && s.floor) Object.assign(s, { h: plain.h, sill: plain.sill, floor: false });
+        });
+        r.eng.winSpec = next;
+    },
+
+    /** Окна комнаты расчёта по обмерному плану — вместо окон по умолчанию. */
+    fitWindows(room, r) {
+        const spec = r.eng && r.eng.winSpec;
+        if (!spec || !spec.length) return;
+        const defW = (typeof app !== 'undefined' && typeof app.getDefaultWindowWidth === 'function')
+            ? app.getDefaultWindowWidth(r.area) : 1.5;
+        room.windows = spec.map((s, k) => {
+            const w = { id: room.id + k + 1, width: s.width || defW, isPan: !!s.floor, height: Math.round(s.h * 100) / 100 };
+            if (s.width) w.isManualWidth = true;
+            if (s.sill !== null && s.sill !== undefined) w.sill = Math.round(s.sill * 100) / 100;
+            return w;
+        });
+    },
+
+    winNotes(r) {
+        const spec = r.eng && r.eng.winSpec;
+        if (!spec || !spec.length) return [];
+        const groups = {};
+        spec.forEach(s => {
+            const k = s.floor ? `в пол ${this.fmt(s.h)} м` : `${this.fmt(s.h)} м, подок. ${s.sill === null ? '?' : this.fmt(s.sill)} м`;
+            groups[k] = (groups[k] || 0) + 1;
+        });
+        return [`окна по листу ${r.eng.winSheet}: ` + Object.entries(groups).map(([k, n]) => `${n} × ${k}`).join('; ')];
+    },
+
     SHEET_WHAT: { heat: 'отопления', water: 'сантехники', vent: 'вентиляции' },
     SHEET_TOPIC: {
         heat: 'отопление и тёплые полы',
@@ -520,8 +716,9 @@ const RecognizeProject = {
      */
     rowNotes(r) {
         const e = r.eng;
-        if (!e || !e.heatSheet) return [];
-        const out = [];
+        if (!e) return [];
+        const out = this.winNotes(r);
+        if (!e.heatSheet) return out;
         if (e.ufh && e.ufhArea && r.area > 0 && e.ufhArea > r.area) {
             out.push(`зона тёплого пола больше комнаты — в расчёт пойдёт ${this.fmt(r.area)} м²`);
         }
@@ -731,7 +928,7 @@ const RecognizeProject = {
         if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
     },
 
-    reset() { this.towel = null; this.vent = null; this.reqs = []; },
+    reset() { this.towel = null; this.vent = null; this.reqs = []; this.city = null; },
 };
 
 window.RecognizeProject = RecognizeProject;
@@ -821,3 +1018,15 @@ const PROJECT_NOTES_PROMPT = `Ты помогаешь монтажнику си�
 
 Только JSON:
 {"reqs":[{"sheet":14,"topic":"sewer","action":"add","text":"Стояки канализации обернуть шумоизоляцией — добавить изоляцию труб в раздел канализации","quote":"Канализационные стояки в санузлах выполнить в шумоизоляции"}]}`;
+
+const PROJECT_WINDOWS_PROMPT = `Ты разбираешь обмерный план (или план с подписями окон) частного дома. У каждого окна на листе есть подпись на выноске: тип, высота окна, высота от пола. Подписи вынесены за контур дома, от подписи к окну идёт линия-выноска. Тебе даны: картинка листа, список подписей окон с номерами и точными координатами подписей и список помещений с координатами их названий (с листа планировки того же дома — листы нарисованы в одном масштабе и положении, x — % ширины слева, y — % высоты сверху).
+
+Задача: каждое подписанное окно отнести к помещению, в наружную стену которого оно врезано.
+- Иди от подписи по выноске к окну на чертеже; помещение — то, внутри контура стен которого это окно, если смотреть изнутри дома. Координаты названий помещений помогают понять, где какое помещение.
+- Одна подпись — одно окно. Подписи-близнецы («Окна в пол (2 створки)» трижды подряд) — это разные окна, каждое по своей выноске.
+- width — ширина проёма окна в миллиметрах по размерной цепочке у этого окна, если она читается; не читается — null.
+- Окно, которое не удаётся отнести, опиши в unclear, номер не придумывай.
+
+Только JSON:
+{"rooms":[{"n":2,"windows":[{"label":3,"width":1550},{"label":4,"width":1550}]}],"unclear":[]}
+Помещения без окон не включай.`;

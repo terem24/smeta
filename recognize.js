@@ -1819,9 +1819,16 @@ const RecognizeUI = {
         if (this._project && typeof RecognizeProject !== 'undefined' && res.rows.length) {
             this.progressTo(2);
             RecognizeProject.reset();
+            // Город — по адресу из штампа, без модели.
+            RecognizeProject.readCity(this._project);
+            // Окна — с обмерного плана: высоты и окна в пол. До листа
+            // отопления: приборы потом раскладываются по этим окнам.
+            const w = await RecognizeProject.readWindows(res.rows, this._project, (t) => this.setStatus(t));
+            res.engSummary = w.summary.slice();
+            res.warnings = (res.warnings || []).concat(w.warnings);
             if (eng && eng.length) {
                 const e = await RecognizeProject.read(res.rows, this._project, (t) => this.setStatus(t));
-                res.engSummary = e.summary;
+                res.engSummary = res.engSummary.concat(e.summary);
                 res.warnings = (res.warnings || []).concat(e.warnings);
             }
             // Примечания со всех листов — одним текстовым запросом.
