@@ -12,47 +12,59 @@
   возвращает монтажнику (кнопки WhatsApp/Telegram). Калькулятор разбирает её в
   app.applyOprosFromUrl(): числа встают в расчёт, тексты — окном.
   Сервера нет: всё считается в браузере, никуда не отправляется само.
+
+  Оформление — упрощённая копия палитры/типографики калькулятора (style.css):
+  тот же primary #2563EB, шрифт Inter, радиусы и тени карточек. Сам style.css
+  сюда не подключаем — он весь заточен под разметку app.js и потащил бы за
+  собой лишнее; здесь только то, что нужно этой странице.
 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
 <style>
     :root {
-        --primary: #E31E24; --primary-dark: #C41A1F;
-        --text: #1F2937; --text-sec: #6B7280;
-        --border: #E5E7EB; --surface: #fff; --bg: #F3F4F6;
+        --primary: #2563EB; --primary-dark: #1D4ED8; --primary-light: #EFF6FF;
+        --text: #111827; --text-sec: #6B7280;
+        --border: #E5E7EB; --surface: #fff; --surface-light: #F9FAFB; --bg: #F3F4F6;
     }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); }
+    body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); }
     .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 48px; }
-    h1 { font-size: 22px; margin: 18px 0 6px; }
-    .sub { color: var(--text-sec); font-size: 14px; margin-bottom: 18px; line-height: 1.45; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 14px; }
-    .card h2 { font-size: 15px; margin: 0 0 12px; }
+    .logo-row { display: flex; align-items: center; gap: 8px; padding-top: 14px; }
+    .logo-row .mark { width: 30px; height: 30px; border-radius: 8px; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .logo-row .name { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; }
+    h1 { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; margin: 16px 0 6px; }
+    .sub { color: var(--text-sec); font-size: 13.5px; margin-bottom: 18px; line-height: 1.5; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .card h2 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 12px; color: var(--text); }
     label.f { display: block; font-size: 12.5px; font-weight: 600; color: var(--text-sec); margin: 10px 0 4px; }
     input[type=text], input[type=number], input[type=tel], textarea, select {
         width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px;
-        font-size: 15px; color: var(--text); background: #fff; outline: none;
+        font-family: inherit; font-size: 15px; color: var(--text); background: #fff; outline: none; transition: border-color .15s;
     }
     input:focus, textarea:focus, select:focus { border-color: var(--primary); }
     textarea { min-height: 64px; resize: vertical; }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .seg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-    .seg label { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: 13.5px; cursor: pointer; background: #fff; }
-    .seg label:has(input:checked) { border-color: var(--primary); background: #FEF2F2; font-weight: 600; }
+    .seg label { display: flex; align-items: center; gap: 7px; border: 1px solid var(--border); border-radius: 9px; padding: 9px 12px; font-size: 13.5px; cursor: pointer; background: #fff; transition: .15s; }
+    .seg label:has(input:checked) { border-color: var(--primary); background: var(--primary-light); font-weight: 600; color: var(--primary-dark); }
     .seg input { accent-color: var(--primary); margin: 0; }
-    .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 11px; background: var(--primary); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 6px; }
+    .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 10px; background: var(--primary); color: #fff; font-size: 15.5px; font-weight: 700; cursor: pointer; margin-top: 6px; box-shadow: 0 4px 6px -1px rgba(37,99,235,0.25); transition: background .15s; }
     .btn:hover { background: var(--primary-dark); }
     #result { display: none; }
     #result.on { display: block; }
-    .linkbox { word-break: break-all; font-size: 12px; color: var(--text-sec); background: var(--bg); border-radius: 9px; padding: 10px; margin: 10px 0; max-height: 90px; overflow: auto; }
+    .linkbox { word-break: break-all; font-size: 12px; color: var(--text-sec); background: var(--surface-light); border: 1px solid var(--border); border-radius: 9px; padding: 10px; margin: 10px 0; max-height: 90px; overflow: auto; }
     .share-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
-    .share-row a, .share-row button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 6px; border-radius: 9px; border: 1px solid var(--border); background: #fff; color: var(--text); font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
+    .share-row a, .share-row button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 6px; border-radius: 9px; border: 1px solid var(--border); background: #fff; color: var(--text); font-family: inherit; font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; }
     .share-row .wa { background: #25D366; border-color: #25D366; color: #fff; }
     .share-row .tg { background: #229ED9; border-color: #229ED9; color: #fff; }
-    .note { font-size: 12px; color: var(--text-sec); line-height: 1.45; margin-top: 8px; }
+    .note { font-size: 12px; color: var(--text-sec); line-height: 1.5; margin-top: 8px; }
     .ok-copied { color: #16A34A; font-size: 13px; font-weight: 600; display: none; margin-top: 6px; }
 </style>
 </head>
 <body>
 <div class="wrap">
+    <div class="logo-row"><div class="mark">🔥</div><div class="name">HeatCalc</div></div>
     <h1>Опросник для расчёта отопления</h1>
     <div class="sub">Ответьте на вопросы о вашем доме — монтажник получит данные и подготовит
         точный расчёт системы отопления. Заполнение займёт 3–5 минут. Данные никуда не
