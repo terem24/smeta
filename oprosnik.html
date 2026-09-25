@@ -168,9 +168,7 @@
             <label><input type="radio" name="f_hasProject" value="yes" onchange="toggleProjectMode()">Да, есть — пришлю монтажнику</label>
         </div>
 
-        <div class="note" id="f_projectNote" style="display:none; margin-top:10px;">Отлично, тогда
-            ничего ниже заполнять не нужно. Прикрепите файл проекта в том же сообщении WhatsApp
-            или Telegram, куда отправите ссылку в конце анкеты.</div>
+        <div class="note" id="f_projectNote" style="display:none; margin-top:10px;"></div>
 
         <div id="f_envelopeFields">
             <div class="note" style="margin:10px 0 4px;">Не обязательно знать точно — если не
@@ -335,11 +333,19 @@
     });
 
     // «Есть проект» — прячем весь блок подробностей о доме (не нужны, если и так
-    // придёт файл) и снимаем required со стены, иначе форма не даст её отправить
+    // придёт файл) и снимаем required со стены, иначе форма не даст её отправить.
+    // Текст подсказки разный: у персональной ссылки (?m=) анкета и так уходит сама
+    // (submitToInstaller), пересылать ничего не нужно — только файл отдельным
+    // сообщением; у обычной ссылки в конце экрана будет ссылка, которую заказчик
+    // должен переслать сам, вот к этому сообщению и предлагаем приложить файл.
     function toggleProjectMode() {
         var hasProject = radio('f_hasProject') === 'yes';
         document.getElementById('f_envelopeFields').style.display = hasProject ? 'none' : '';
-        document.getElementById('f_projectNote').style.display = hasProject ? 'block' : 'none';
+        var note = document.getElementById('f_projectNote');
+        note.style.display = hasProject ? 'block' : 'none';
+        note.textContent = installerCode
+            ? 'Отлично, тогда ничего ниже заполнять не нужно. Анкета и так уйдёт монтажнику сама — файл проекта пришлите ему отдельным сообщением в WhatsApp или Telegram.'
+            : 'Отлично, тогда ничего ниже заполнять не нужно. Прикрепите файл проекта в том же сообщении WhatsApp или Telegram, куда отправите ссылку в конце анкеты.';
         document.getElementById('f_wallMat').required = !hasProject;
     }
 
