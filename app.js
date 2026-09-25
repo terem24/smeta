@@ -40529,6 +40529,194 @@ const app = {
         };
     },
 
+    /**
+     * Готовность проекта: те же условия, по которым собирается комплект.
+     *
+     * Раньше они жили внутри openProjectSheets и проверялись в момент нажатия:
+     * первое непройденное выдавалось окном и обрывало выпуск, следующее — на
+     * следующем нажатии. Правила приходилось узнавать по одному, упираясь.
+     * Теперь список один, показывается целиком и до нажатия.
+     *
+     * Каждая строка: выполнено ли, что это даёт и куда идти, если нет.
+     */
+    projectChecks: function () {
+        const list = this.currentEquipmentList || [];
+        const plans = this.currentPlans();
+        const floors = (plans && plans.floors) || [];
+        const zn = f => (f && f.zones) || [];
+        const rooms = this.state.rooms || [];
+        const wantTp = (this.state.tp1 || 0) + (this.state.tp2 || 0) > 0;
+        const withImg = floors.filter(f => f && f.img);
+        const withScale = withImg.filter(f => f.pxPerM);
+        const marked = withScale.filter(f => zn(f).length || (f.rads || []).length ||
+            (f.fixtures || []).length);
+        const out = [];
+        out.push({
+            ok: list.length > 0,
+            t: 'Смета рассчитана',
+            yes: 'позиций: ' + list.length,
+            no: 'Задайте площадь и систему: спецификации всех разделов собираются из сметы.'
+        });
+        out.push({
+            ok: rooms.length > 0,
+            t: 'Помещения в подробном расчёте',
+            yes: 'комнат: ' + rooms.length,
+            no: 'Перечислите комнаты: из них берутся экспликация, расчёт теплопотерь и ' +
+                'подписи зон на плане. По их площадям редактор подбирает и масштаб.',
+            act: 'rooms', btn: 'Заполнить комнаты'
+        });
+        out.push({
+            ok: marked.length > 0,
+            t: 'План этажа: подложка, масштаб, разметка',
+            yes: 'размечено этажей: ' + marked.length,
+            no: !withImg.length
+                ? 'Загрузите подложку — фото, скан или PDF плана этажа.'
+                : !withScale.length
+                    ? 'Подложка есть, масштаба нет: без него не считаются площади зон и длины петель.'
+                    : 'Масштаб есть, разметки нет: обведите зоны или расставьте радиаторы.',
+            act: 'plan', btn: 'Открыть план этажей'
+        });
+        out.push({
+            ok: floors.some(f => zn(f).some(z => z.type === 'boiler')),
+            t: 'Котельная отмечена на плане',
+            no: 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
+                'компоновка котельной, туда же встаёт коллектор тёплого пола.',
+            act: 'plan', btn: 'Открыть план этажей'
+        });
+        if (wantTp) out.push({
+            ok: floors.some(f => zn(f).some(z => (z.type || 'tp') === 'tp')),
+            t: 'Помещения тёплого пола обведены',
+            no: 'В расчёте есть тёплый пол — обведите комнаты с ним: по контурам считаются ' +
+                'петли, шаг укладки и узел коллектора.',
+            act: 'plan', btn: 'Открыть план этажей'
+        });
+        return out;
+    },
+
+    /** Все ли условия выпуска выполнены. */
+    projectReady: function () { return this.projectChecks().every(c => c.ok); },
+
+    /** Переход к незакрытому пункту прямо из панели готовности. */
+    goProjectStep: function (act) {
+        if (act === 'plan') { this.openPlanEditor(); return; }
+        if (act !== 'rooms') return;
+        if (!this.state.detailedRooms) this.toggleDetailedRooms(true);
+        if (!this.state.showDetailedRoomsPanel) {
+            this.state.showDetailedRoomsPanel = true;
+            const chk = document.getElementById('chk_detailed_rooms_toggle');
+            if (chk) chk.checked = true;
+            this.syncUI();
+        }
+        // На телефоне параметры объекта лежат на отдельной вкладке — как в jumpToRoom.
+        if (this.isMobileLayout && this.isMobileLayout() && this.state.mobTab !== 'inputs') {
+            this.state.mobTab = 'inputs';
+            this.syncMobileUI();
+        }
+        const box = document.getElementById('blk_detailed_calc');
+        if (box) setTimeout(() => box.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+    },
+
+    /**
+     * Панель «Готовность проекта»: весь список условий разом.
+     *
+     * Открывается той же кнопкой «Проект», когда чего-то не хватает, — кнопка
+     * больше не отвечает отказом, а показывает, что осталось. Готово всё —
+     * панель не нужна, комплект собирается сразу.
+     */
+    showProjectReadiness: function () {
+        const checks = this.projectChecks();
+        const done = checks.filter(c => c.ok).length;
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        const card = document.createElement('div');
+        card.className = 'calc-dialog-card';
+        card.style.maxWidth = '560px';
+
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'calc-dialog-title';
+        titleEl.innerText = 'Готовность проекта: ' + done + ' из ' + checks.length;
+        card.appendChild(titleEl);
+
+        const lead = document.createElement('p');
+        lead.className = 'calc-dialog-message';
+        lead.innerText = done === checks.length
+            ? 'Всё на месте — комплект листов можно выпускать.'
+            : 'Комплект собирается из сметы и разметки плана. Осталось закрыть отмеченное.';
+        card.appendChild(lead);
+
+        let closed = false;
+        const close = () => {
+            if (closed) return;
+            closed = true;
+            document.removeEventListener('keydown', onKey);
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+        };
+        const onKey = (e) => { if (e.key === 'Escape') close(); };
+        document.addEventListener('keydown', onKey);
+        overlay.onclick = (e) => { if (e.target === overlay) close(); };
+
+        const listBox = document.createElement('div');
+        listBox.style.cssText = 'display:flex; flex-direction:column; gap:10px; margin:4px 0 6px; text-align:left;';
+        checks.forEach(c => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; gap:10px; align-items:flex-start; padding:10px 12px;' +
+                'border-radius:10px; background:var(--surface-light); border:1px solid var(--border);';
+            const mark = document.createElement('span');
+            mark.style.cssText = 'font-size:15px; line-height:1.3; font-weight:800; flex:0 0 auto;' +
+                'color:' + (c.ok ? '#10B981' : '#EF4444');
+            mark.innerText = c.ok ? '✓' : '•';
+            row.appendChild(mark);
+
+            const body = document.createElement('div');
+            body.style.cssText = 'flex:1 1 auto; min-width:0;';
+            const head = document.createElement('div');
+            head.style.cssText = 'font-weight:600; font-size:13.5px;' +
+                (c.ok ? ' color:var(--text-sec);' : '');
+            head.innerText = c.t + (c.ok && c.yes ? ' — ' + c.yes : '');
+            body.appendChild(head);
+            if (!c.ok) {
+                const note = document.createElement('div');
+                note.style.cssText = 'font-size:12px; line-height:1.45; color:var(--text-sec); margin-top:3px;';
+                note.innerText = c.no;
+                body.appendChild(note);
+                if (c.act) {
+                    const go = document.createElement('button');
+                    go.className = 'calc-dialog-btn calc-dialog-btn-cancel';
+                    go.style.cssText = 'margin-top:8px; padding:5px 12px; font-size:12px;';
+                    go.innerText = c.btn || 'Перейти';
+                    go.onclick = () => { close(); this.goProjectStep(c.act); };
+                    body.appendChild(go);
+                }
+            }
+            row.appendChild(body);
+            listBox.appendChild(row);
+        });
+        card.appendChild(listBox);
+
+        const btns = document.createElement('div');
+        btns.className = 'calc-dialog-buttons';
+        const okBtn = document.createElement('button');
+        okBtn.className = 'calc-dialog-btn calc-dialog-btn-confirm';
+        if (done === checks.length) {
+            okBtn.innerText = 'Выпустить проект';
+            okBtn.onclick = () => {
+                close();
+                setTimeout(() => this.openProjectSheets().catch(e => this.alert(
+                    'Не удалось открыть проект: ' + (e && e.message ? e.message : e), 'Проект')), 220);
+            };
+        } else {
+            okBtn.innerText = 'Понятно';
+            okBtn.onclick = close;
+        }
+        btns.appendChild(okBtn);
+        card.appendChild(btns);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+    },
+
     // Листы проекта (project_sheets.js): спецификация оборудования на листах А3
     // по текущей смете. Данные уходят через localStorage, страницу листов рисует
     // sheet_demo.html — по той же схеме, по какой invoice.html получает счёт.
@@ -40536,45 +40724,13 @@ const app = {
         if (window.SessionTrack) SessionTrack.screen('sheets');
         if (!this.canUseDesign()) { app.alert('Раздел проектирования вам пока не открыт. Его включает администратор.'); return; }
         const list = this.currentEquipmentList || [];
-        if (!list.length) { app.alert("Смета пуста — сначала рассчитайте объект."); return; }
-        // Без разметки планов проект не выпускаем. От планов зависит больше
-        // половины комплекта: сводные планы сетей и расчёт теплопотерь (MEP),
-        // планы и объёмные виды отопления и тёплого пола (О), узел коллектора
-        // ТП, планы водоснабжения и канализации со своими 3D-видами (В, К).
-        // Без них остаются титульные листы, общие данные и спецификации —
-        // это не проект.
-        const _plans = this.currentPlans();
-        const _ready = _plans && (_plans.floors || []).some(f => f && f.pxPerM &&
-            ((f.zones || []).length || (f.rads || []).length || (f.fixtures || []).length));
-        if (!_ready) {
-            app.alert(
-                'Без плана этажей проект не выпускается.\n\n' +
-                'От разметки плана зависят: сводные планы сетей и расчёт теплопотерь (MEP), ' +
-                'планы напольного и радиаторного отопления с объёмными видами и узел коллектора ' +
-                'тёплого пола (О), планы водоснабжения и канализации с объёмными видами (В, К).\n\n' +
-                'Откройте «План этажей», загрузите подложку, задайте масштаб и разметьте помещения.',
-                'Проект'
-            );
-            return;
-        }
-        // На сводном плане сетей обязательны котельная и помещения тёплого
-        // пола: без них лист теряет смысл — по нему собирается компоновка
-        // котельной и раскладка петель.
-        const _zones = f => (f && f.zones) || [];
-        const _need = [];
-        if (!(_plans.floors || []).some(f => _zones(f).some(z => z.type === 'boiler')))
-            _need.push('отметить помещение котельной (тип зоны «Котельная»)');
-        const _wantTp = (this.state.tp1 || 0) + (this.state.tp2 || 0) > 0;
-        if (_wantTp && !(_plans.floors || []).some(f => _zones(f).some(z => (z.type || 'tp') === 'tp')))
-            _need.push('обвести помещения с тёплым полом');
-        // Экспликация помещений на сводном плане берётся из подробного расчёта
-        if (!(this.state.rooms || []).length)
-            _need.push('заполнить помещения в подробном расчёте — из них строится экспликация');
-        if (_need.length) {
-            app.alert('На плане не хватает разметки:\n\n— ' + _need.join('\n— ') +
-                '\n\nБез неё сводный план сетей не выпускается.', 'Проект');
-            return;
-        }
+        // Условия выпуска — одним списком (projectChecks): смета, комнаты
+        // подробного расчёта, размеченный план, котельная, зоны тёплого пола.
+        // От них зависит больше половины комплекта: сводные планы сетей и
+        // расчёт теплопотерь (MEP), планы и объёмные виды отопления с узлом
+        // коллектора (О), планы водоснабжения и канализации (В, К). Чего-то
+        // нет — показываем панель готовности целиком, а не первый отказ.
+        if (!this.projectReady()) { this.showProjectReadiness(); return; }
         // Название не спрашиваем: калькулятор считает жилые дома, а площадь берётся
         // из расчёта (см. projectObjectTitle). Спрашиваем только адрес — он идёт на
         // титульный лист и даёт точку на карте проектов в админке.
@@ -40606,6 +40762,12 @@ const app = {
             // и канализация — отдельным разделом с «– В», у каждого свой
             // титульный лист и своя спецификация.
             codeBase: new Date().getFullYear() + ' – ' + (this.state.calc_id || 'HC'),
+            // Номер расчёта в открытую: планы страница листов читает из
+            // передаточного ключа хранилища, а он один на все вкладки и
+            // переживает смену объекта. Без метки комплект мог собраться из
+            // спецификации одного дома и планов другого — и никто бы этого
+            // не заметил. Сверку делает сама страница листов.
+            calcId: this.state.calc_id || null,
             code: new Date().getFullYear() + ' – ' + (this.state.calc_id || 'HC') + ' – О',
             // Площадь дописывается из текущего расчёта, а не хранится в названии
             object: this.projectObjectTitle(pName),

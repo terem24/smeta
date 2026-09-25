@@ -169,6 +169,30 @@ if (payload && payload.items && payload.items.length) {
       }
     });
   }
+  // Планы и смета — из одного объекта? Планы лежат в общем ключе хранилища
+  // ('floor_plans_v1'), смета — в своём; между ними мог смениться объект, и
+  // тогда комплект собрался бы из спецификации одного дома и планов другого.
+  // Молча рисовать такое нельзя: в штампе стоит шифр, по нему заказывают.
+  (function () {
+    var a = (plans && plans.forCalc != null) ? String(plans.forCalc) : '';
+    var b = (payload.calcId != null) ? String(payload.calcId) : '';
+    if (!a || !b || a === b) return;
+    document.body.innerHTML =
+      '<div style="max-width:560px;margin:80px auto;background:#fff;border-radius:12px;' +
+      'padding:28px 32px;font:15px/1.55 system-ui,sans-serif;color:#222;' +
+      'box-shadow:0 8px 30px rgba(0,0,0,.25)">' +
+      '<h2 style="margin:0 0 10px;font-size:19px">Планы и смета — от разных объектов</h2>' +
+      '<p style="margin:0 0 14px;color:#555">В браузере лежат планы этажей расчёта <b>№' +
+      a + '</b>, а смета пришла из расчёта <b>№' + b + '</b>. Комплект из двух объектов ' +
+      'сразу не собирается: в штампе каждого листа стоит шифр, по которому заказывают ' +
+      'оборудование.</p>' +
+      '<p style="margin:0 0 18px;color:#555">Откройте нужный расчёт в калькуляторе и ' +
+      'нажмите «Проект» заново — планы и смета снова сойдутся.</p>' +
+      '<a href="index.html" style="display:inline-block;padding:9px 18px;border-radius:8px;' +
+      'background:#ff6b35;color:#fff;text-decoration:none;font-weight:600">К калькулятору</a></div>';
+    throw new Error('plans/calc mismatch');
+  })();
+
   var room = (plans && window.projectPlans) ? projectPlans.boilerRoom(plans) : null;
   // Шаг укладки по этажам приходит из сметы (ufhSteps). У смет, отправленных
   // на листы до этого, его нет — тогда, как раньше, достаём одно число из
