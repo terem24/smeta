@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вентиляция в частном доме: расчёт и влияние на отопление | HeatCalc.ru</title>
+    <meta name="description" content="Как вентиляция влияет на теплопотери дома: формула нагрева приточного воздуха, кратность 0,35 против принудительной 1,0, что даёт рекуператор и сколько это в деньгах за сезон.">
+    <link rel="canonical" href="https://heatcalc.ru/ventilyatsiya-v-chastnom-dome/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/ventilyatsiya-v-chastnom-dome/">
+    <meta property="og:title" content="Вентиляция в частном доме: сколько тепла уносит">
+    <meta property="og:description" content="308 Вт из 1 305 в комнате 20 м² — больше, чем через кровлю. И это только естественный приток.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/ventilyatsiya-v-chastnom-dome/#webpage",
+      "url": "https://heatcalc.ru/ventilyatsiya-v-chastnom-dome/",
+      "name": "Вентиляция в частном доме: сколько тепла она уносит",
+      "description": "Как вентиляция влияет на теплопотери дома: формула нагрева приточного воздуха, кратность 0,35 против принудительной 1,0, что даёт рекуператор и сколько это в деньгах за сезон.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "вентиляция в частном доме"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Вентиляция в частном доме: сколько тепла она уносит",
+          "item": "https://heatcalc.ru/ventilyatsiya-v-chastnom-dome/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Сколько тепла уносит вентиляция?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Считается по формуле: объём помещения × кратность × 0,34 × разница температур. Комната 20 м² с потолком 2,7 в Москве теряет на нагрев приточного воздуха 308 Вт — больше, чем через кровлю (243 Вт) или через окно (212 Вт), и это почти четверть всех теплопотерь помещения."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какую кратность воздухообмена брать в расчёте?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "0,35 — средний воздухообмен жилого здания за отопительный период по СП 50.13330.2012, прил. Г. Для принудительной приточной вентиляции берут 1,0, с рекуператором — 0,25. Это не то же самое, что производительность вентиляции: она задаётся отдельно, по СП 55.13330.2016 — от 60 м³/ч на кухне и от 25 в санузле."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько экономит рекуператор?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "На доме объёмом 400 м³ разница между принудительной приточной вентиляцией и рекуператором — почти 5 кВт, то есть около 12 000 кВт·ч тепла за сезон в Петербурге. На газе это примерно 13 тысяч рублей в год, на электричестве — 68 тысяч. Поэтому окупаемость у него совсем разная в зависимости от топлива."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужны ли приточные клапаны при естественной вентиляции?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, с современными окнами обязательно. Раньше приток шёл через щели в деревянных рамах, а герметичные стеклопакеты превращают дом в термос: вытяжке неоткуда брать воздух, и каналы начинают опрокидываться. Клапаны ставят в стенах или в самих окнах."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что будет, если не учесть вентиляцию в расчёте?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Теплопотери выйдут на 20–30 % ниже реальных, и радиаторы окажутся меньше нужных. Котёл при этом может быть подобран верно, потому что его берут с запасом, — и дом будет мёрзнуть при исправном котле. Это самая частая причина, по которой «мощности хватает, а в комнатах холодно»."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/ventilyatsiya-v-chastnom-dome/#article",
+      "headline": "Вентиляция в частном доме: сколько тепла она уносит",
+      "description": "Как вентиляция влияет на теплопотери дома: формула нагрева приточного воздуха, кратность 0,35 против принудительной 1,0, что даёт рекуператор и сколько это в деньгах за сезон.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/ventilyatsiya-v-chastnom-dome/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-01-23",
+      "dateModified": "2027-01-23",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Вентиляция в частном доме: сколько тепла она уносит</nav>
+
+        <h1>Вентиляция в частном доме: сколько тепла она уносит</h1>
+
+        <p class="art-meta"><time datetime="2027-01-23">23 января 2027</time></p>
+
+        <p class="lead">Вентиляцию в расчёте отопления забывают чаще всего, а весит она больше кровли. Нагрев приточного воздуха — это отдельное слагаемое теплопотерь, и от выбранной схемы оно меняется втрое. Считаем и смотрим, что это в деньгах.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#formula">Формула</a></li>
+            <li><a href="#tri-shemy-i-ih-cena">Три схемы и их цена</a></li>
+            <li><a href="#chto-trebuet-norma">Что требует норма</a></li>
+            <li><a href="#estestvennaya-ventilyaciya">Естественная вентиляция</a></li>
+            <li><a href="#rekuperator">Рекуператор</a></li>
+            <li><a href="#chto-uchest-v-raschete-otopleniya">Что учесть в расчёте отопления</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="formula">Формула</h2>
+
+        <div class="formula">
+            <p><strong>Q</strong> = объём × кратность × 0,34 × (t внутри − t наружная)</p>
+            <p>Комната 20 м² с потолком 2,7 — объём 54 м³, Москва, ΔT = 48 °C:</p>
+            <p>54 × 0,35 × 0,34 × 48 = <strong>308 Вт</strong></p>
+        </div>
+
+        <p>Коэффициент 0,34 — теплоёмкость воздуха: 1,005 кДж/(кг·К) при плотности 1,2 кг/м³, делённые на 3600. Кратность 0,35 — средний воздухообмен жилого здания за отопительный период по СП 50.13330.2012, прил. Г.</p>
+
+        <div class="callout">
+            <p><strong>В той же комнате через кровлю уходит 243 Вт, а через окно 212.</strong> Вентиляция — 308, то есть больше любого отдельного ограждения и почти четверть всех теплопотерь помещения. При этом её систематически забывают: считают стены, окна, пол — и получают цифру на 20–30 % ниже реальной. Радиаторы по такому расчёту подбираются меньше нужных, а котёл при этом может оказаться верным, потому что его берут с запасом.</p>
+        </div>
+
+        <h2 id="tri-shemy-i-ih-cena">Три схемы и их цена</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Схема</th><th>Кратность</th><th>Комната 54 м³</th><th>Дом 400 м³</th></tr>
+                <tr><td>Естественная</td><td class="num">0,35</td><td class="num">308 Вт</td><td class="num">2 285 Вт</td></tr>
+                <tr><td>Принудительная приточная</td><td class="num">1,0</td><td class="num">881 Вт</td><td class="num">6 528 Вт</td></tr>
+                <tr><td>С рекуператором</td><td class="num">0,25</td><td class="num">220 Вт</td><td class="num">1 632 Вт</td></tr>
+            </table>
+        </div>
+        <p class="note">Первая строка — норматив для расчёта отопления. Принудительная и рекуператор — оценка по практике: точные числа зависят от производительности установки.</p>
+
+        <p>Разница между принудительной приточной и рекуператором — почти пять киловатт на доме 400 м³. За сезон в Петербурге это около 12 000 кВт·ч тепла: 13 тысяч рублей на газе и 68 тысяч на электричестве.</p>
+
+        <h2 id="chto-trebuet-norma">Что требует норма</h2>
+
+        <p>Не путать две вещи: кратность 0,35 — это <strong>средний воздухообмен для расчёта теплопотерь</strong>, а не производительность вентиляции. Производительность задаётся отдельно, по СП 55.13330.2016, п. 9.7:</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Помещение</th><th>Вытяжка</th></tr>
+                <tr><td>Кухня с газовой плитой</td><td>от 60 м³/ч</td></tr>
+                <tr><td>Санузел, ванная</td><td>от 25 м³/ч</td></tr>
+                <tr><td>Жилые комнаты</td><td>однократный воздухообмен</td></tr>
+            </table>
+        </div>
+        <p class="note">Это требования к самой вентиляции. В нагрузку на отопление они переводятся не напрямую: вытяжка работает не круглосуточно на максимуме.</p>
+
+        <h2 id="estestvennaya-ventilyaciya">Естественная вентиляция</h2>
+
+        <ul>
+            <li><strong>Вытяжные каналы</strong> из кухни и санузлов, выведенные выше кровли. Тяга создаётся разницей температур, поэтому летом она слабая, а зимой сильная — и зимой же уносит больше тепла.</li>
+            <li><strong>Приток</strong> через приточные клапаны в стенах или в окнах. Без него вытяжка не работает: воздуху неоткуда взяться, и каналы начинают «опрокидываться».</li>
+            <li><strong>Герметичные окна убили естественную схему.</strong> Раньше приток шёл через щели в деревянных рамах; с современными стеклопакетами дом становится термосом, и клапаны обязательны.</li>
+            <li><strong>Плюс:</strong> ничего не ломается и не требует электричества. <strong>Минус:</strong> зимой продувает сильнее нужного, летом не работает вовсе.</li>
+        </ul>
+
+        <h2 id="rekuperator">Рекуператор</h2>
+
+        <p>Приточно-вытяжная установка с теплообменником: уходящий тёплый воздух отдаёт тепло входящему холодному, не смешиваясь с ним. Отсюда кратность 0,25 вместо 1,0 в расчёте теплопотерь.</p>
+
+        <ul>
+            <li><strong>Окупается там, где дорогое тепло.</strong> На газе экономия около 13 тысяч за сезон, на электричестве — 68 тысяч. Это разные сроки окупаемости.</li>
+            <li><strong>Нужны воздуховоды</strong> — их закладывают вместе с остальными коммуникациями, до отделки. После ремонта развести их по дому почти невозможно.</li>
+            <li><strong>Место под установку</strong> и доступ к ней: фильтры меняют раз в несколько месяцев.</li>
+            <li><strong>Зимой нужен подогрев приточного воздуха</strong> или грамотная защита от обмерзания теплообменника — при −20 °C он обмерзает.</li>
+            <li><strong>Электричество</strong> на вентиляторы — круглосуточно, хотя и немного.</li>
+        </ul>
+
+        <h2 id="chto-uchest-v-raschete-otopleniya">Что учесть в расчёте отопления</h2>
+
+        <ol>
+            <li><strong>Считать вентиляцию отдельной строкой</strong> по объёму помещения, а не «накинуть 10 % на всё».</li>
+            <li><strong>Брать объём, а не площадь.</strong> Комната со вторым светом высотой 6 метров даёт вдвое больше, чем обычная той же площади.</li>
+            <li><strong>Учитывать температуру помещения.</strong> В гараже на +5 °C разница с улицей меньше, и вентиляция уносит меньше — при той же кратности.</li>
+            <li><strong>Помнить, что приборы подбираются по полной нагрузке</strong> помещения, включая вентиляцию. Расчёт «по ограждениям» даёт приборы на 20–30 % меньше нужных.</li>
+            <li><strong>Не завышать кратность «на всякий случай».</strong> Принудительная схема втрое дороже естественной по теплу, и закладывать её без реальной установки — способ переплатить за радиаторы.</li>
+        </ol>
+
+        <a class="cta" href="/">
+            Посчитать теплопотери дома
+            <small>Вентиляция считается отдельной строкой</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько тепла уносит вентиляция?</span></summary>
+            <div class="answer">
+                <p>Считается по формуле: объём помещения × кратность × 0,34 × разница температур. Комната 20 м² с потолком 2,7 в Москве теряет на нагрев приточного воздуха 308 Вт — больше, чем через кровлю (243 Вт) или через окно (212 Вт), и это почти четверть всех теплопотерь помещения.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какую кратность воздухообмена брать в расчёте?</span></summary>
+            <div class="answer">
+                <p>0,35 — средний воздухообмен жилого здания за отопительный период по СП 50.13330.2012, прил. Г. Для принудительной приточной вентиляции берут 1,0, с рекуператором — 0,25. Это не то же самое, что производительность вентиляции: она задаётся отдельно, по СП 55.13330.2016 — от 60 м³/ч на кухне и от 25 в санузле.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько экономит рекуператор?</span></summary>
+            <div class="answer">
+                <p>На доме объёмом 400 м³ разница между принудительной приточной вентиляцией и рекуператором — почти 5 кВт, то есть около 12 000 кВт·ч тепла за сезон в Петербурге. На газе это примерно 13 тысяч рублей в год, на электричестве — 68 тысяч. Поэтому окупаемость у него совсем разная в зависимости от топлива.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужны ли приточные клапаны при естественной вентиляции?</span></summary>
+            <div class="answer">
+                <p>Да, с современными окнами обязательно. Раньше приток шёл через щели в деревянных рамах, а герметичные стеклопакеты превращают дом в термос: вытяжке неоткуда брать воздух, и каналы начинают опрокидываться. Клапаны ставят в стенах или в самих окнах.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что будет, если не учесть вентиляцию в расчёте?</span></summary>
+            <div class="answer">
+                <p>Теплопотери выйдут на 20–30 % ниже реальных, и радиаторы окажутся меньше нужных. Котёл при этом может быть подобран верно, потому что его берут с запасом, — и дом будет мёрзнуть при исправном котле. Это самая частая причина, по которой «мощности хватает, а в комнатах холодно».</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=ventilyatsiya-v-chastnom-dome#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/gidravlicheskiy-raschet-otopleniya/">гидравлический расчёт системы отопления</a> · <a href="/otoplenie-dvuhetazhnogo-doma/">отопление двухэтажного дома: схема и стояки</a> · <a href="/kanalizatsiya-v-chastnom-dome/">канализация в частном доме: схема и уклоны</a> · <a href="/septik-ili-vygrebnaya-yama/">септик или станция очистки</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=ventilyatsiya-v-chastnom-dome">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

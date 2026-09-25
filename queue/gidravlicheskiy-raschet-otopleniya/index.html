@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гидравлический расчёт системы отопления: порядок и формулы | HeatCalc.ru</title>
+    <meta name="description" content="Гидравлический расчёт отопления по шагам: расход участка по мощности и перепаду, скорость по СП 60.13330.2020, потери давления, подбор насоса по рабочей точке и запас на балансировку.">
+    <link rel="canonical" href="https://heatcalc.ru/gidravlicheskiy-raschet-otopleniya/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/gidravlicheskiy-raschet-otopleniya/">
+    <meta property="og:title" content="Гидравлический расчёт отопления: что в нём считают">
+    <meta property="og:description" content="Расход, скорость, потери, насос. Четыре шага и две проверки на каждом диаметре.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/gidravlicheskiy-raschet-otopleniya/#webpage",
+      "url": "https://heatcalc.ru/gidravlicheskiy-raschet-otopleniya/",
+      "name": "Гидравлический расчёт отопления: что в нём считают",
+      "description": "Гидравлический расчёт отопления по шагам: расход участка по мощности и перепаду, скорость по СП 60.13330.2020, потери давления, подбор насоса по рабочей точке и запас на балансировку.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "гидравлический расчет отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Гидравлический расчёт отопления: что в нём считают",
+          "item": "https://heatcalc.ru/gidravlicheskiy-raschet-otopleniya/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Что считают в гидравлическом расчёте отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Четыре вещи по порядку: расход каждого участка по его мощности и перепаду температур, диаметр по допустимой скорости, потери давления самого нагруженного кольца и по ним — напор насоса. На выходе получаются диаметры труб, модель насоса и уставки расхода для балансировки приборов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как посчитать расход участка?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Мощность в ваттах разделить на 1,163 и на перепад температур. Прибор 1 320 Вт при перепаде 20 К требует 57 л/ч, ветка на 6 кВт — 258 л/ч. Считают от конца к началу: последний участок несёт нагрузку одного прибора, первый — всех, поэтому диаметр магистрали уменьшается к концу ветки."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какая скорость воды допустима в трубах отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По СП 60.13330.2020, табл. И.1 она зависит от количества арматуры на участке. Для магистрали с парой шаровых кранов — 1,2 м/с, для узла прибора с термостатическим и балансировочным клапанами — 1,0 м/с. Шумят не трубы, а завихрения на арматуре, поэтому чем её больше, тем медленнее должна идти вода."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему мало проверить только скорость?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Скорость отвечает за шум, но не за напор. Магистраль Ø25 может проходить по скорости — 1,15 м/с при пределе 1,2 — и при этом съедать 23 кПа из 76, которые даёт насос. Формально система проходит, фактически стоит на грани, и любая добавленная ветка её положит."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой запас по напору должен быть у насоса?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "20–30 % после всех потерь. Система с нулевым запасом работает ровно до первого изменения: добавили прибор, залили антифриз, забился фильтр — и дальние ветки встали. При этом избыточный напор тоже вреден: он шумит на клапанах, поэтому рабочая точка должна лежать в средней трети кривой насоса."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/gidravlicheskiy-raschet-otopleniya/#article",
+      "headline": "Гидравлический расчёт отопления: что в нём считают",
+      "description": "Гидравлический расчёт отопления по шагам: расход участка по мощности и перепаду, скорость по СП 60.13330.2020, потери давления, подбор насоса по рабочей точке и запас на балансировку.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/gidravlicheskiy-raschet-otopleniya/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-01-16",
+      "dateModified": "2027-01-16",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Гидравлический расчёт отопления: что в нём считают</nav>
+
+        <h1>Гидравлический расчёт отопления: что в нём считают</h1>
+
+        <p class="art-meta"><time datetime="2027-01-16">16 января 2027</time></p>
+
+        <p class="lead">Гидравлический расчёт отвечает на два вопроса: какого диаметра трубы и какой нужен насос. Без него диаметры берут «как обычно», и система либо шумит, либо не прогревает дальние ветки. Разбираем порядок по шагам.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#shag-1-rashod-kazhdogo-uchastka">Шаг 1: расход каждого участка</a></li>
+            <li><a href="#shag-2-skorost">Шаг 2: скорость</a></li>
+            <li><a href="#shag-3-poteri-davleniya">Шаг 3: потери давления</a></li>
+            <li><a href="#shag-4-nasos">Шаг 4: насос</a></li>
+            <li><a href="#chto-pokazyvaet-gotovyy-raschet">Что показывает готовый расчёт</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="shag-1-rashod-kazhdogo-uchastka">Шаг 1: расход каждого участка</h2>
+
+        <p>Всё начинается с мощности. Сколько тепла участок должен донести — столько воды через него и надо прогнать.</p>
+
+        <div class="formula">
+            <p><strong>Расход, л/ч</strong> = мощность, Вт ÷ (1,163 × перепад, К)</p>
+            <p>Прибор 1 320 Вт при перепаде 20 К: <strong>57 л/ч</strong></p>
+            <p>Ветка на 6 кВт при том же перепаде: <strong>258 л/ч</strong></p>
+        </div>
+
+        <p>Считают от конца к началу: последний участок несёт нагрузку одного прибора, первый — всех. Именно поэтому диаметр магистрали уменьшается к концу ветки, а труба одного диаметра по всей длине означает либо шум в начале, либо нехватку в конце.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Мощность участка</th><th>Перепад 20 К</th><th>Перепад 10 К</th><th>Перепад 5 К</th></tr>
+                <tr><td>1 кВт</td><td class="num">43 л/ч</td><td class="num">86 л/ч</td><td class="num">172 л/ч</td></tr>
+                <tr><td>5 кВт</td><td class="num">215 л/ч</td><td class="num">430 л/ч</td><td class="num">860 л/ч</td></tr>
+                <tr><td>10 кВт</td><td class="num">430 л/ч</td><td class="num">860 л/ч</td><td class="num">1 720 л/ч</td></tr>
+            </table>
+        </div>
+        <p class="note">Перепад решает всё. Тёплый пол работает на 5 К, и расход через него вчетверо больше, чем у радиаторного контура той же мощности.</p>
+
+        <h2 id="shag-2-skorost">Шаг 2: скорость</h2>
+
+        <p>Диаметр подбирают так, чтобы скорость не вышла за предел. Предел задаёт СП 60.13330.2020, табл. И.1, и зависит он от количества арматуры на участке: шумят не трубы, а завихрения на кранах и клапанах.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Сумма местных сопротивлений</th><th>Краны и вентили</th><th>Регулирующая арматура</th></tr>
+                <tr><td>до 5</td><td class="num">1,5 м/с</td><td class="num">1,5 м/с</td></tr>
+                <tr><td>до 10</td><td class="num">1,5 м/с</td><td class="num">1,2 м/с</td></tr>
+                <tr><td>до 15</td><td class="num">1,2 м/с</td><td class="num">1,0 м/с</td></tr>
+                <tr><td>до 20</td><td class="num">1,0 м/с</td><td class="num">0,8 м/с</td></tr>
+                <tr><td>до 30</td><td class="num">0,85 м/с</td><td class="num">0,65 м/с</td></tr>
+            </table>
+        </div>
+        <p class="note">Для жилой комнаты с допустимым уровнем звука 30 дБА — то есть для ночи.</p>
+
+        <p>Из таблицы получаются два рабочих предела. <strong>Магистраль</strong> — стояк или трасса до коллектора с парой шаровых кранов и отводами: сумма сопротивлений не выходит за 10, берётся 1,2 м/с. <strong>Узел прибора и луч к нему</strong> — там термостатический клапан, балансировочный и отводы, сумма уходит за 15–20, и предел падает до 1,0 м/с.</p>
+
+        <div class="callout">
+            <p><strong>Скорость — только половина проверки.</strong> Она отвечает за шум, но о напоре молчит. Магистраль Ø25 на графике 75/65 может проходить по шуму — 1,15 м/с при пределе 1,2 — и при этом съедать 23 кПа из 76, которые даёт насос. Формально система проходит, фактически стоит на грани: любая добавленная ветка её положит. Поэтому каждый диаметр проверяют дважды.</p>
+        </div>
+
+        <h2 id="shag-3-poteri-davleniya">Шаг 3: потери давления</h2>
+
+        <p>Потери складываются из трения о стенки и местных сопротивлений — отводов, тройников, кранов, клапанов.</p>
+
+        <div class="formula">
+            <p><strong>Потери участка</strong> = удельные потери × длина × коэффициент местных</p>
+            <p>Коэффициент местных для радиаторного кольца — <strong>1,25–1,3</strong></p>
+            <p>Коллектор с расходомерами и сервоприводами добавляет <strong>10 кПа</strong> сам по себе</p>
+        </div>
+
+        <p>Считают самое нагруженное кольцо — от насоса до дальнего прибора и обратно. Остальные кольца короче, и их разница выбирается балансировочными клапанами.</p>
+
+        <h2 id="shag-4-nasos">Шаг 4: насос</h2>
+
+        <div class="formula">
+            <p><strong>Напор, м</strong> = потери, кПа × 1,15 ÷ 9,81</p>
+            <p>Контур тёплого пола: петля 20 кПа + коллектор 10 + трасса 8 = 38 кПа</p>
+            <p>38 × 1,15 ÷ 9,81 = <strong>4,5 м</strong> → насос 25/60</p>
+        </div>
+
+        <ul>
+            <li><strong>Коэффициент 1,15</strong> — запас на неточность расчёта и загрязнение со временем. Больше закладывать не нужно: избыточный напор шумит на клапанах.</li>
+            <li><strong>Рабочая точка в средней трети кривой.</strong> У левого края насос избыточен, у правого работает на пределе и не даёт запаса на балансировку.</li>
+            <li><strong>Маркировка 25/60</strong> — это присоединение 25 мм и максимальный напор 6 метров, а не производительность. Смотреть надо кривую при своём расходе.</li>
+            <li><strong>Антифриз</strong> — требуемый напор ×1,54, характеристику проверяют на расходе ×1,1.</li>
+        </ul>
+
+        <h2 id="chto-pokazyvaet-gotovyy-raschet">Что показывает готовый расчёт</h2>
+
+        <ul>
+            <li><strong>Диаметр каждого участка</strong> — и обоснование, почему именно такой.</li>
+            <li><strong>Скорость и потери по участкам</strong> — видно, где система близка к пределу.</li>
+            <li><strong>Самое нагруженное кольцо</strong> — по нему подбирается насос.</li>
+            <li><strong>Расход каждого прибора</strong> — это и есть уставки для балансировки, а не «покрутим по ощущению».</li>
+            <li><strong>Запас насоса</strong> — сколько процентов остаётся после всех потерь.</li>
+        </ul>
+
+        <p>Последний пункт важнее прочих. Система с нулевым запасом работает ровно до первого изменения: добавили прибор, залили антифриз, забился фильтр — и дальние ветки встали. Нормальный запас по напору — 20–30 %.</p>
+
+        <a class="cta" href="/">
+            Посчитать гидравлику дома
+            <small>Расходы, диаметры и насос по каждому контуру</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что считают в гидравлическом расчёте отопления?</span></summary>
+            <div class="answer">
+                <p>Четыре вещи по порядку: расход каждого участка по его мощности и перепаду температур, диаметр по допустимой скорости, потери давления самого нагруженного кольца и по ним — напор насоса. На выходе получаются диаметры труб, модель насоса и уставки расхода для балансировки приборов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как посчитать расход участка?</span></summary>
+            <div class="answer">
+                <p>Мощность в ваттах разделить на 1,163 и на перепад температур. Прибор 1 320 Вт при перепаде 20 К требует 57 л/ч, ветка на 6 кВт — 258 л/ч. Считают от конца к началу: последний участок несёт нагрузку одного прибора, первый — всех, поэтому диаметр магистрали уменьшается к концу ветки.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какая скорость воды допустима в трубах отопления?</span></summary>
+            <div class="answer">
+                <p>По СП 60.13330.2020, табл. И.1 она зависит от количества арматуры на участке. Для магистрали с парой шаровых кранов — 1,2 м/с, для узла прибора с термостатическим и балансировочным клапанами — 1,0 м/с. Шумят не трубы, а завихрения на арматуре, поэтому чем её больше, тем медленнее должна идти вода.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему мало проверить только скорость?</span></summary>
+            <div class="answer">
+                <p>Скорость отвечает за шум, но не за напор. Магистраль Ø25 может проходить по скорости — 1,15 м/с при пределе 1,2 — и при этом съедать 23 кПа из 76, которые даёт насос. Формально система проходит, фактически стоит на грани, и любая добавленная ветка её положит.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой запас по напору должен быть у насоса?</span></summary>
+            <div class="answer">
+                <p>20–30 % после всех потерь. Система с нулевым запасом работает ровно до первого изменения: добавили прибор, залили антифриз, забился фильтр — и дальние ветки встали. При этом избыточный напор тоже вреден: он шумит на клапанах, поэтому рабочая точка должна лежать в средней трети кривой насоса.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=gidravlicheskiy-raschet-otopleniya#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/otoplenie-dvuhetazhnogo-doma/">отопление двухэтажного дома: схема и стояки</a> · <a href="/kakie-truby-dlya-otopleniya/">какие трубы выбрать для отопления</a> · <a href="/obratnyy-klapan-v-otoplenii/">обратный клапан и где он обязателен</a> · <a href="/podbor-tsirkulyatsionnogo-nasosa/">подбор циркуляционного насоса: напор и расход</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=gidravlicheskiy-raschet-otopleniya">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
