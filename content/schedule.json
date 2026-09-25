@@ -1299,10 +1299,10 @@
    "freq": 2208,
    "audience": "pro",
    "data_block": "диаметры из каталога",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-01",
    "published_at": null,
-   "words": 0
+   "words": 622
   },
   {
    "slug": "teplonositel-voda-ili-antifriz",
@@ -1635,10 +1635,10 @@
    "freq": 2000,
    "audience": "pro",
    "data_block": "оценка тыльной теплоотдачи",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-26",
    "published_at": null,
-   "words": 0
+   "words": 622
   },
   {
    "slug": "gruppa-bezopasnosti-kotla",
@@ -1803,10 +1803,10 @@
    "freq": 1900,
    "audience": "pro",
    "data_block": "правило узла на коллектор",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-24",
    "published_at": null,
-   "words": 0
+   "words": 551
   },
   {
    "slug": "stabilizator-i-ibp-dlya-kotla",
@@ -2209,10 +2209,10 @@
    "freq": 1200,
    "audience": "pro",
    "data_block": "расчёт теплосъёма",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-30",
    "published_at": null,
-   "words": 0
+   "words": 625
   },
   {
    "slug": "dvuhkonturnyy-kotel-ili-boyler",
@@ -2279,10 +2279,10 @@
    "freq": 900,
    "audience": "pro",
    "data_block": "уставки из нашей гидравлики",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-12",
    "published_at": null,
-   "words": 0
+   "words": 560
   },
   {
    "slug": "raschet-moshchnosti-kotla",
