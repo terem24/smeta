@@ -21159,13 +21159,19 @@ const app = {
 
         const list = rows.map((r, i) => {
             const works = (r.works || []).map(w => this.LEAD_WORK_LABELS[w] || w).join(', ');
-            // В журнале время записано по часам сервера (date('c') с его смещением),
-            // и оно отличается от московского. Показываем по часам того, кто смотрит.
+            // В журнале время записано по часам сервера (date('c') со своим
+            // смещением), и оно на час впереди московского. Показываем всегда по
+            // Москве: заявки разбирают отсюда, и время не должно зависеть ни от
+            // сервера, ни от того, откуда смотрят.
             let when = '';
             if (r.at) {
                 const d = new Date(r.at);
                 when = isNaN(d) ? String(r.at).replace('T', ' ').slice(0, 16)
-                    : d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                    : d.toLocaleString('ru-RU', {
+                        timeZone: 'Europe/Moscow',
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit'
+                    }) + ' МСК';
             }
             const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src)}</span>`
                 : '<span style="color:var(--text-sec); font-size:11px;">напрямую</span>';
