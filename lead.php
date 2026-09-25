@@ -8,8 +8,9 @@
  *
  * Почему здесь, а не из браузера. Уведомления сайта шлются в Телеграм прямо из app.js,
  * с токеном бота в открытом коде публичного репозитория. Для заявок так нельзя: в них
- * телефон и адрес заказчика. Токен и номер чата лежат рядом в lead_secret.php — файл
- * в .gitignore, кладётся на Beget руками вместе с этим:
+ * телефон и адрес заказчика. Токен берётся из tg_notify_secret.php — того же файла, что
+ * и у уведомлений сайта (tg_notify.php). Свой lead_secret.php рядом нужен, только если
+ * для заявок заведут отдельного бота: он в .gitignore и кладётся на Beget руками:
  *
  *     <?php return ['bot_token' => '…', 'chat_id' => '…'];
  *
@@ -152,9 +153,19 @@ if (!is_file($logFile)) {
 }
 $logged = @file_put_contents($logFile, json_encode($record, JSON_UNESCAPED_UNICODE) . "\n", FILE_APPEND | LOCK_EX) !== false;
 
+// Токен берём из того же файла, что и уведомления сайта (tg_notify_secret.php,
+// положен 25.09.2026 вместе с tg_notify.php). Свой lead_secret.php нужен только
+// если для заявок захотят отдельного бота — тогда он и будет главнее. Держать
+// один токен в двух файлах нельзя: при перевыпуске один из них протухнет молча.
 $sent = false;
-$secretFile = __DIR__ . '/lead_secret.php';
-$secret = is_file($secretFile) ? include $secretFile : null;
+$secret = null;
+foreach (['lead_secret.php', 'tg_notify_secret.php'] as $name) {
+    $file = __DIR__ . '/' . $name;
+    if (is_file($file)) {
+        $secret = include $file;
+        break;
+    }
+}
 if (is_array($secret) && !empty($secret['bot_token']) && !empty($secret['chat_id'])) {
     $text = "🔧 ЗАЯВКА НА МОНТАЖ № {$id}\n"
         . "Что: " . implode(', ', $works) . "\n"
