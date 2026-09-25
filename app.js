@@ -16286,23 +16286,28 @@ const app = {
 
         // Подвал с настройками показываем всегда: он же служит объяснением,
         // откуда взялись цифры выше.
+        // Шесть цифр настройки — такие же плитки, как «Клиенту / Себе / Остаётся»
+        // наверху: подпись мелким, значение крупным. Строкой в подбор они читались
+        // сплошным текстом, и было не видно, что это поля, которые правят.
         const inline = (field, label, val, suffix) => `
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 12px; color: var(--text-sec);">${label}</span>
-                <span class="editable-val" contenteditable="true"
-                    onblur="app.setMarginField('${field}', this.innerText)"
-                    onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
-                    style="font-size: 13px; font-weight: 700; color: var(--primary); border-bottom: 1px dashed var(--primary); padding: 0 4px; min-width: 26px; text-align: right;">${val}</span>
-                <span style="font-size: 12px; color: var(--text-sec);">${suffix}</span>
+            <div style="flex: 1 1 150px; min-width: 140px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 9px 12px;">
+                <div style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">${label}</div>
+                <div style="display: flex; align-items: baseline; gap: 5px; margin-top: 4px;">
+                    <span class="editable-val" contenteditable="true"
+                        onblur="app.setMarginField('${field}', this.innerText)"
+                        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"
+                        style="font-size: 16px; font-weight: 800; color: var(--primary); border-bottom: 1px dashed var(--primary); padding: 0 3px; min-width: 24px; text-align: right;">${val}</span>
+                    <span style="font-size: 12px; color: var(--text-sec);">${suffix}</span>
+                </div>
             </div>`;
         const settingsBlock = `
-            <div style="margin-top: 26px; border-top: 1px dashed var(--border); padding-top: 14px;">
+            <div style="margin-top: 26px; background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 13px 16px 15px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <div style="font-size: 12px; font-weight: 700; color: var(--text-sec); text-transform: uppercase; letter-spacing: .5px;">Как считается</div>
                     <button type="button" onclick="app.resetMarginSettings()"
                         style="font: inherit; font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: var(--text-sec); cursor: pointer;">Сбросить</button>
                 </div>
-                <div style="display: flex; flex-wrap: wrap; gap: 14px 26px; margin-top: 12px;">
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
                     ${inline('discStout', 'Скидка STOUT', m.discStout, '%')}
                     ${inline('discRommer', 'Скидка ROMMER', m.discRommer, '%')}
                     ${inline('discOther', 'Скидка на прочие', m.discOther, '%')}
@@ -16319,7 +16324,7 @@ const app = {
 
         if (!rep || !rep.client) {
             panel.innerHTML = `
-                <div style="max-width: 760px; margin: 20px auto 30px;">
+                <div class="money-wrap" style="margin: 6px 0 30px;">
                     <div class="empty-state-pad">
                         <div class="empty-state-hint">
                             <span class="empty-state-icon">💰</span>
@@ -16394,7 +16399,7 @@ const app = {
                </div>`
             : '';
         panel.innerHTML = `
-            <div style="max-width: 860px; margin: 6px auto 30px;">
+            <div class="money-wrap" style="margin: 6px 0 30px;">
                 ${kpHead}
                 <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;">
                     ${card('Клиенту', fmt(rep.client), 'var(--text-main)', 'оборудование и монтаж')}
@@ -36766,7 +36771,10 @@ const app = {
             const scheme = document.getElementById('dynamic_scheme');
             if (scheme) scheme.remove();
             if (panelRec) {
-                panelRec.style.display = 'block';
+                // Инлайн-стиль только снимаем: в style.css панель — flex-колонка
+                // во всю высоту листа, и display:block отменил бы её, а заглушка
+                // загрузки перестала бы тянуться, как на первых двух вкладках.
+                panelRec.style.display = '';
                 // Сюда попадаем ровно тогда, когда распознавание понадобилось —
                 // здесь его и грузим. Если фоновая догрузка успела раньше,
                 // промис отдаётся сразу и панель собирается без задержки.
@@ -36796,7 +36804,8 @@ const app = {
             }
             const _scheme = document.getElementById('dynamic_scheme');
             if (_scheme) _scheme.remove();
-            if (panelMoney) panelMoney.style.display = 'block';
+            // Как и у распознавания: display отдаём стилям, панель там flex-колонка.
+            if (panelMoney) panelMoney.style.display = '';
             this.render();
             return;
         }
