@@ -569,6 +569,11 @@ const RecognizeFiles = {
         const pdfjs = await this.loadPdfJs();
         const pdf = await pdfjs.getDocument({ data: buf }).promise;
 
+        // Дизайн-проект или рабочий проект — это не смета, а комплект листов,
+        // и первые двадцать страниц в нём почти всегда картинки интерьера.
+        const set = await this.projectSheets(pdf, onProgress);
+        if (set) return this.fromProjectSet(pdf, set, onProgress);
+
         const maxPages = forceImages ? 0 : Math.min(pdf.numPages, this.PDF_MAX_PAGES);
         let text = '';
         let probeChars = 0, probeOps = 0, probed = 0;
@@ -616,24 +621,235 @@ const RecognizeFiles = {
         // Скан: страницы уходят картинками и разбираются полистно, каждая
         // своим запросом. Прежний потолок в три страницы был занижен вчетверо
         // против фотографий и, как и текстовый, молчал о том, что отрезал.
-        const images = [];
-        const scanPages = Math.min(pdf.numPages, this.PDF_MAX_SCAN);
-        for (let i = 1; i <= scanPages; i++) {
-            if (onProgress) onProgress(`готовлю изображение страницы ${i} из ${scanPages}`);
+        // Страниц больше потолка — сначала отсеиваем фотографии и картинки:
+        // на них нет ни строк сметы, ни помещений, а место в двадцатке они
+        // занимают. Если страниц меньше потолка, берутся все, как раньше.
+        const sift = pdf.numPages > this.PDF_MAX_SCAN;
+        const images = [], pageNums = [];
+        let photos = 0, last = 0;
+        for (let i = 1; i <= pdf.numPages && images.length < this.PDF_MAX_SCAN; i++) {
+            if (onProgress) onProgress(`готовлю изображение страницы ${i} из ${pdf.numPages}`);
             const page = await pdf.getPage(i);
-            const vp = page.getViewport({ scale: 2 });
-            const canvas = document.createElement('canvas');
-            canvas.width = vp.width;
-            canvas.height = vp.height;
-            await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-            images.push(RecognizeFiles.shrink(canvas));
+            last = i;
+            if (sift && await this.isPhotoPage(page)) { photos++; continue; }
+            images.push(await this.renderPage(page));
+            pageNums.push(i);
         }
+        const tail = [];
+        if (photos) tail.push(`Пропущено страниц с фотографиями и картинками: ${photos}.`);
+        if (last < pdf.numPages) tail.push('Остальные добавьте отдельно кнопкой «+».');
         return {
             text: '', images,
-            note: [note, pdf.numPages > scanPages
-                ? pageNote(pdf.numPages, `взяты первые ${scanPages}`,
-                    'Остальные добавьте отдельно кнопкой «+».')
-                : ''].filter(Boolean).join(' '),
+            pageNames: sift ? pageNums.map(n => `стр. ${n}`) : null,
+            note: [note, last < pdf.numPages
+                ? pageNote(pdf.numPages, `взяты ${images.length}`, tail.join(' '))
+                : tail.join(' ')].filter(Boolean).join(' '),
+        };
+    },
+
+    /** Страница PDF картинкой для распознавания. */
+    async renderPage(page) {
+        const vp = page.getViewport({ scale: 2 });
+        const canvas = document.createElement('canvas');
+        canvas.width = vp.width;
+        canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        return RecognizeFiles.shrink(canvas);
+    },
+
+    /**
+     * Фотография или картинка интерьера, а не чертёж и не таблица.
+     *
+     * У чертежа и сметы почти весь лист белый: линии и буквы тонкие. У
+     * визуализации белого остаётся только рамка со штампом. Замерено на
+     * дизайн-проекте в 92 листа: у 45 визуализаций белого 30–35 %, у
+     * чертежей, таблиц и развёрток — от 44 % и выше. Вторым условием стоит
+     * цвет: серый скан бумажной сметы тоже бывает тёмным, но он не цветной.
+     */
+    async isPhotoPage(page) {
+        try {
+            const vp1 = page.getViewport({ scale: 1 });
+            const vp = page.getViewport({ scale: 200 / vp1.width });
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.max(1, Math.round(vp.width));
+            canvas.height = Math.max(1, Math.round(vp.height));
+            const ctx = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport: vp }).promise;
+            const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+            let white = 0, color = 0, n = 0;
+            for (let k = 0; k < d.length; k += 4) {
+                const r = d[k], g = d[k + 1], b = d[k + 2];
+                n++;
+                if (r > 235 && g > 235 && b > 235) white++;
+                else if (Math.max(r, g, b) - Math.min(r, g, b) > 40) color++;
+            }
+            return n > 0 && white / n < 0.40 && color / n > 0.03;
+        } catch (e) {
+            return false;   // не отрисовалась — пусть решает распознавание
+        }
+    },
+
+    // ======================================================================
+    // Комплект листов проекта
+    // ======================================================================
+
+    /**
+     * Название листа — первая подпись на странице, похожая на заголовок.
+     * В штампе оно стоит раньше подписей таблиц («Спецификация тёплых полов»
+     * идёт уже после «План тёплых полов и отопления»).
+     */
+    SHEET_TITLE_RE: /^(план|схема|обмерн|экспликац|визуализац|развёртк|развертк|потол|монтаж\s*объ|спецификац|ведомость|содержание|пояснительн|обложка|фасад|разрез|аксонометр)/i,
+
+    /** Оглавление и обложка — сами по себе ничего не дают. */
+    SHEET_CONTENTS_RE: /^(содержание|обложка|ведомость\s*(листов|рабочих|чертеж))/i,
+
+    /** Развёртки стен — высоты выводов, для расчёта помещений не нужны. */
+    SHEET_SKIP_RE: /развёртк|развертк/i,
+
+    /**
+     * Какие листы нужны расчёту. Порядок важен: «План тёплых полов 1 этажа»
+     * — это отопление, а не план этажа.
+     */
+    SHEET_KINDS: [
+        { kind: 'heat', label: 'отопление и тёплые полы',
+          re: /т[её]пл\S*\s*пол|отоплен|радиатор|конвектор|котельн|теплоснаб/i },
+        { kind: 'water', label: 'водоснабжение и канализация',
+          re: /сантех|водоснаб|водопровод|канализ|водоотвед/i },
+        { kind: 'vent', label: 'вентиляция и кондиционирование',
+          re: /вентиляц|кондиционир/i },
+        { kind: 'plan', label: 'планы помещений',
+          re: /экспликац|обмерн|планировочн|перепланировк|план\s*(\S+\s*)?этаж|поэтажн/i },
+    ],
+
+    /**
+     * Из нескольких планов одного дома помещения берём с одного — лучшего.
+     * Отдать модели все — значит получить один этаж трижды.
+     *
+     * Главное — экспликация: таблица помещений с названиями и площадями.
+     * Лист без неё бывает голым чертежом стен с размерами, и назвать комнаты
+     * модели не по чему. Экспликация «до перепланировки» (на обмерном плане)
+     * описывает дом до ремонта — она лучше пустого листа, но хуже новой.
+     * Дальше по названию: «план после перепланировки» и поэтажные планы —
+     * то, что будет; планировочное решение — эскиз; обмерный — то, что было.
+     *
+     * На «Хвойной 3» так выбирается лист 51 «План расстановки мебели»:
+     * 12 помещений после перепланировки, а лист 60 «План после
+     * перепланировки» — одни стены и размерные цепочки.
+     */
+    roomsScore(p) {
+        let s = 0;
+        if (p.expl) s += p.explBefore ? 4 : 10;
+        if (/после\s*перепланировк|план\s*(\S+\s*)?этаж|поэтажн/i.test(p.title)) s += 3;
+        else if (/планировочн/i.test(p.title)) s += 2;
+        else s += 1;
+        return s;
+    },
+
+    /** Строки текста страницы: pdf.js отдаёт кусочки, конец строки — hasEOL. */
+    async pageLines(page) {
+        let c;
+        try { c = await page.getTextContent(); } catch (e) { return []; }
+        const lines = [];
+        let cur = '';
+        for (const t of c.items) {
+            cur += t.str || '';
+            if (t.hasEOL) { lines.push(cur); cur = ''; }
+        }
+        if (cur) lines.push(cur);
+        return lines.map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+    },
+
+    /**
+     * Комплект листов проекта или нет.
+     *
+     * Признак — у большинства страниц есть название листа, среди них есть
+     * нужные расчёту и заметно больше ненужных. У сметы и КП названий листов
+     * нет, у плана этажа в один-два листа — не на чем судить: оба идут
+     * прежним путём.
+     *
+     * Возвращает { pages, rooms, found, visual, other } или null.
+     */
+    async projectSheets(pdf, onProgress) {
+        if (pdf.numPages < 6) return null;
+        const pages = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+            if (onProgress) onProgress(`смотрю названия листов: ${i} из ${pdf.numPages}`);
+            const page = await pdf.getPage(i);
+            const lines = await this.pageLines(page);
+            const title = lines.find(s => s.length <= 90 && this.SHEET_TITLE_RE.test(s)) || '';
+            let kind = null;
+            const usable = title && !this.SHEET_CONTENTS_RE.test(title) && !this.SHEET_SKIP_RE.test(title);
+            if (usable) {
+                const k = this.SHEET_KINDS.find(k => k.re.test(title));
+                if (k) kind = k.kind;
+            }
+            // Экспликация бывает и на листе с другим названием — на плане
+            // мебели, например. Такой лист тоже годится для помещений.
+            const expl = usable ? lines.find(s => s.length <= 90 && /^экспликац/i.test(s)) : null;
+            if (expl && !kind) kind = 'plan';
+            pages.push({ num: i, title, kind, expl: !!expl,
+                explBefore: !!expl && /до\s*перепланировк/i.test(expl) });
+        }
+
+        const titled = pages.filter(p => p.title).length;
+        const found = pages.filter(p => p.kind);
+        if (titled < pdf.numPages * 0.6 || !found.length || titled - found.length < 3) return null;
+
+        // Помещения читаются с планов. Нет планов — с листа отопления или
+        // сантехники: на них тот же план дома, только с другими пометками.
+        let rooms = found.filter(p => p.kind === 'plan');
+        if (rooms.length) {
+            // Лучших листов может быть несколько — это разные этажи.
+            const best = Math.max(...rooms.map(p => this.roomsScore(p)));
+            rooms = rooms.filter(p => this.roomsScore(p) === best);
+        } else {
+            rooms = found.filter(p => p.kind === 'heat');
+            if (!rooms.length) rooms = found.filter(p => p.kind === 'water');
+            if (!rooms.length) rooms = found.filter(p => p.kind === 'vent');
+        }
+        rooms = rooms.slice(0, this.PDF_MAX_SCAN);
+
+        const visual = pages.filter(p => /^визуализац/i.test(p.title)).length;
+        return { pages, rooms, found, visual, other: pdf.numPages - found.length - visual };
+    },
+
+    /** Короткая подпись листа: «62 «План теплых полов и отопления»». */
+    sheetLabel(p) {
+        return `${p.num} «${p.title.replace(/[«»"]/g, '')}»`;
+    },
+
+    async fromProjectSet(pdf, set, onProgress) {
+        const images = [];
+        for (let k = 0; k < set.rooms.length; k++) {
+            const p = set.rooms[k];
+            if (onProgress) onProgress(`готовлю лист ${p.num} (${k + 1} из ${set.rooms.length})`);
+            images.push(await this.renderPage(await pdf.getPage(p.num)));
+        }
+
+        const inRooms = new Set(set.rooms.map(p => p.num));
+        const rest = this.SHEET_KINDS
+            .map(k => ({ k, list: set.found.filter(p => p.kind === k.kind && !inRooms.has(p.num)) }))
+            .filter(g => g.list.length)
+            .map(g => `${g.k.label} — ${g.list.map(p => this.sheetLabel(p)).join(', ')}`);
+        const skipped = [
+            set.visual ? `визуализации — ${set.visual}` : '',
+            set.other ? `прочие листы (обложка, развёртки, потолки, электрика, отделка) — ${set.other}` : '',
+        ].filter(Boolean).join(', ');
+
+        const note = [
+            `В файле ${pdf.numPages} ${this.plural(pdf.numPages, 'страница', 'страницы', 'страниц')}. ` +
+            `Помещения читаю с ${set.rooms.length > 1 ? 'листов' : 'листа'} ${
+                set.rooms.map(p => this.sheetLabel(p)).join(', ')}.`,
+            rest.length ? `Найдены также листы: ${rest.join('; ')}.` : '',
+            skipped ? `Пропущено: ${skipped}.` : '',
+        ].filter(Boolean).join(' ');
+
+        return {
+            text: '', images,
+            pageNames: set.rooms.map(p => `лист ${this.sheetLabel(p)}`),
+            project: set,
+            noteHead: 'Комплект листов проекта',
+            note,
         };
     },
 
@@ -687,7 +903,9 @@ const RecognizeFiles = {
         if (kind === 'docx') return { kind, text: (await this.fromDocx(buf)).trim(), images: [] };
         if (kind === 'pdf') {
             const r = await this.fromPdf(buf, onProgress, !!(opts && opts.forceImages));
-            return { kind, text: r.text, images: r.images, note: r.note };
+            return { kind, text: r.text, images: r.images, note: r.note,
+                pageNames: r.pageNames || null, project: r.project || null,
+                noteHead: r.noteHead || '' };
         }
         throw new Error('Формат не поддерживается');
     },

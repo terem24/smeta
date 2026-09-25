@@ -428,8 +428,7 @@ const RecognizeUI = {
                 const r = await RecognizeFiles.extract(f, (m) => this.setStatus(m),
                     { forceImages: this._docKind === 'plan' });
                 if (r.images && r.images.length) {
-                    r.images.forEach((b, k) => this.noteImgName(b,
-                        r.images.length > 1 ? `${f.name} — стр. ${k + 1}` : f.name));
+                    this.notePdfNames(r, f.name);
                     added.push(...r.images);
                 }
                 else skipped++;
@@ -601,6 +600,8 @@ const RecognizeUI = {
         this._fileKind = null;
         this._imgWarn = null;   // замечания по кадру относились к тем снимкам
         this._fileNote = '';    // и замечание о неполном чтении — тоже
+        this._fileNoteHead = '';
+        this._project = null;
     },
 
     /**
@@ -718,6 +719,17 @@ const RecognizeUI = {
 
     imgNameOf(b) {
         return (this._imgNames && this._imgNames.get(this.imgKey(b))) || '';
+    },
+
+    /**
+     * Имена страниц PDF. Из комплекта листов берутся не первые подряд, а
+     * выбранные, и «стр. 1» тогда была бы неправдой: подписываем настоящим
+     * номером и названием листа.
+     */
+    notePdfNames(r, fileName) {
+        (r.images || []).forEach((b, k) => this.noteImgName(b,
+            r.pageNames && r.pageNames[k] ? `${fileName} — ${r.pageNames[k]}`
+                : r.images.length > 1 ? `${fileName} — стр. ${k + 1}` : fileName));
     },
 
     /**
@@ -857,8 +869,7 @@ const RecognizeUI = {
                 const r = await RecognizeFiles.extract(f, (m) => { if (onStatus) onStatus(m); },
                     { forceImages: true });
                 if (r.images && r.images.length) {
-                    r.images.forEach((b, k) => this.noteImgName(b,
-                        r.images.length > 1 ? `${f.name} — стр. ${k + 1}` : f.name));
+                    this.notePdfNames(r, f.name);
                     imgs.push(...r.images);
                 } else skipped++;
             } catch (e) {
@@ -951,7 +962,8 @@ const RecognizeUI = {
             const actions = host.querySelector('.rec-actions');
             if (actions) host.insertBefore(box, actions); else host.appendChild(box);
         }
-        box.innerHTML = `<b>Файл прочитан не полностью</b><div>${
+        box.innerHTML = `<b>${String(this._fileNoteHead || 'Файл прочитан не полностью')
+            .replace(/[&<>]/g, '')}</b><div>${
             String(this._fileNote).replace(/[&<>]/g, '')}</div>`;
     },
 
@@ -1107,14 +1119,26 @@ const RecognizeUI = {
             // страниц. Молчать об этом нельзя: неполная смета выглядит ровно
             // как полная, и заметить пропажу монтажнику не по чему.
             this._fileNote = r.note || '';
+            this._fileNoteHead = r.noteHead || '';
             if (this._fileNote) this.showFileNote();
 
-            if (r.images && r.images.length) {
-                r.images.forEach((b, k) => this.noteImgName(b,
-                    r.images.length > 1 ? `${file.name} — стр. ${k + 1}` : file.name));
-            }
+            // Комплект листов проекта: со сметой в нём нечего сверять, из
+            // него берутся помещения — сразу по правилам плана этажа.
+            this._project = r.project || null;
 
-            if (r.images && r.images.length > 1) {
+            if (r.images && r.images.length) this.notePdfNames(r, file.name);
+
+            if (this._project && r.images && r.images.length) {
+                this._imgs = r.images;
+                this._img = null;
+                this._fileKind = 'image';
+                const dl = document.getElementById('rec_docs');
+                if (dl) dl.style.display = 'none';
+                this.showImagesPreview();
+                this.setHead('plan');
+                this.setStatus('Комплект листов проекта — читаю помещения с ' +
+                    (r.images.length > 1 ? `${r.images.length} планов` : 'плана'));
+            } else if (r.images && r.images.length > 1) {
                 /**
                  * Многостраничный скан — это листы сметы, все до одного.
                  *
@@ -1610,14 +1634,15 @@ const RecognizeUI = {
         this._mergeInfo = '';
         this._apiCalls = 0;
         this._fromCache = 0;
-        this.progressStart(this._docKind === 'plan' ? 'plan' : !!this._text);
+        const asPlan = this._docKind === 'plan' || !!this._project;
+        this.progressStart(asPlan ? 'plan' : !!this._text);
 
         try {
             this.progressTo(1);
 
-            // План этажа выбран руками — сразу по правилам плана, без
-            // попытки прочитать лист как смету.
-            if (this._docKind === 'plan') {
+            // План этажа выбран руками или пришёл комплект листов проекта —
+            // сразу по правилам плана, без попытки прочитать лист как смету.
+            if (asPlan) {
                 await this.runPlan();
                 this._busy = false;
                 if (go) go.disabled = false;
