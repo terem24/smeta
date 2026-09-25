@@ -858,9 +858,14 @@ if (payload && payload.items && payload.items.length) {
       (first ? ' id="sec-' + mk + '"' : '') + '>' + s + '</div>';
   }).join('');
 
+  var secPrev = 0;
   document.getElementById('bar_secs').innerHTML = made.map(function (m) {
+    // Считаем листы так, как их видно при прокрутке: в шапке это навигация.
+    // Номер в штампе меньше на титульный — он в ГОСТ идёт нулевым, и сверять
+    // одно с другим не нужно.
+    var pages = m.to - secPrev; secPrev = m.to;
     return '<span class="sec"><a href="#sec-' + m.mk + '">' + MARKS_ORDER[m.mk] +
-      ' · ' + m.total + ' л.</a>' +
+      ' · ' + pages + ' л.</a>' +
       '<button title="Напечатать только этот раздел" onclick="printSection(\'' + m.mk +
       '\')">⎙</button></span>';
   }).join('');
