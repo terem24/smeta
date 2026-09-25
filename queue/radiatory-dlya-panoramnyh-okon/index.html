@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отопление панорамных окон: расчёт теплопотерь и приборы | HeatCalc.ru</title>
+    <meta name="description" content="Сколько тепла теряет панорамное остекление, почему тёплый пол не перехватывает холодный поток от стекла, что ставить вместо радиатора и во что обходится внутрипольный конвектор.">
+    <link rel="canonical" href="https://heatcalc.ru/radiatory-dlya-panoramnyh-okon/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=2">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/radiatory-dlya-panoramnyh-okon/">
+    <meta property="og:title" content="Отопление панорамных окон: сколько теряется">
+    <meta property="og:description" content="Витраж 3 × 2,5 м теряет вдвое больше стены той же площади. Чем это греть и почему пола мало.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/radiatory-dlya-panoramnyh-okon/#webpage",
+      "url": "https://heatcalc.ru/radiatory-dlya-panoramnyh-okon/",
+      "name": "Отопление панорамных окон: сколько теряется и чем греть",
+      "description": "Сколько тепла теряет панорамное остекление, почему тёплый пол не перехватывает холодный поток от стекла, что ставить вместо радиатора и во что обходится внутрипольный конвектор.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "отопление панорамных окон"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Отопление панорамных окон: сколько теряется и чем греть",
+          "item": "https://heatcalc.ru/radiatory-dlya-panoramnyh-okon/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Сколько тепла теряет панорамное окно?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Витраж 3 × 2,5 метра с двухкамерным стеклопакетом в Петербурге при расчётной −24 °C теряет около 676 Вт. Стена той же площади теряет 101 Вт — в семь раз меньше. С однокамерным стеклопакетом потери вырастают до 908 Вт, с трёхкамерным i-стеклом падают до 431."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Хватит ли тёплого пола у панорамного окна?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет, и не из-за мощности. Тёплый пол греет всю площадь равномерно и ограничен нормой по температуре поверхности — около 41 Вт с квадратного метра в жилой комнате. А холодный поток от стекла идёт узкой полосой вдоль остекления, и развернуть его может только прибор с восходящей конвекцией у самого стекла."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что ставить, если радиатор под окно не помещается?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Внутрипольный конвектор. Естественный даёт 502 Вт на два метра — этого хватает только на перехват потока, но не на отопление комнаты. С вентилятором тот же размер даёт 2 462 Вт. Если под окном есть хотя бы 40 см стены, дешевле поставить панельный радиатор высотой 300 мм: 6,7 рубля за ватт против 34."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как отопить комнату с витражом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Тремя источниками. Тёплый пол берёт базовую нагрузку — около 41 Вт с квадратного метра укладки. Конвектор или низкий радиатор у стекла перехватывает холодный поток. Радиатор на другой стене добирает пик, если нужно. Комната 25 м² с потерями 2 100 Вт закрывается полом на 18 м² и конвектором с вентилятором длиной 1,5 метра."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что заложить до стяжки при панорамном остеклении?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нишу под конвектор — прибор 190–240 мм по ширине и 75–80 по высоте плюс ножки, в готовый пол это не встроить. Дренаж для конденсата, который стекает со стекла прямо в решётку. Разрыв в раскладке тёплого пола вокруг ниши. И электропитание, если конвектор с вентилятором."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/radiatory-dlya-panoramnyh-okon/#article",
+      "headline": "Отопление панорамных окон: сколько теряется и чем греть",
+      "description": "Сколько тепла теряет панорамное остекление, почему тёплый пол не перехватывает холодный поток от стекла, что ставить вместо радиатора и во что обходится внутрипольный конвектор.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/radiatory-dlya-panoramnyh-okon/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-09-28",
+      "dateModified": "2027-09-28",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Отопление панорамных окон: сколько теряется и чем греть</nav>
+
+        <h1>Отопление панорамных окон: сколько теряется и чем греть</h1>
+
+        <p class="art-meta"><time datetime="2027-09-28">28 сентября 2027</time></p>
+
+        <p class="lead">Панорамное остекление создаёт две разные проблемы: много теряет и холодит по полу. Первую закрывает мощность, вторую — только прибор у самого стекла. Считаем потери и разбираем, чем их закрывать, когда ставить радиатор некуда.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#skolko-teryaet-osteklenie">Сколько теряет остекление</a></li>
+            <li><a href="#vtoraya-problema-holod-po-polu">Вторая проблема: холод по полу</a></li>
+            <li><a href="#chem-gret-esli-radiator-postavit-nekuda">Чем греть, если радиатор поставить некуда</a></li>
+            <li><a href="#rabochaya-kombinaciya">Рабочая комбинация</a></li>
+            <li><a href="#chto-uchest-zaranee">Что учесть заранее</a></li>
+            <li><a href="#chego-delat-ne-stoit">Чего делать не стоит</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="skolko-teryaet-osteklenie">Сколько теряет остекление</h2>
+
+        <p>Теплопотери через любое ограждение считаются одинаково: площадь, разница температур и сопротивление теплопередаче конструкции.</p>
+
+        <div class="formula">
+            <p><strong>Потери</strong> = площадь × (t внутри − t наружная) ÷ R</p>
+            <p>Витраж 3 × 2,5 м = 7,5 м², Петербург, расчётная −24 °C, в доме +22</p>
+            <p>Двухкамерный стеклопакет, R = 0,51: 7,5 × 46 ÷ 0,51 = <strong>676 Вт</strong></p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Конструкция</th><th>R</th><th>Потери через 7,5 м²</th></tr>
+                <tr><td>Одинарное стекло</td><td class="num">0,17</td><td class="num">2 029 Вт</td></tr>
+                <tr><td>Однокамерный стеклопакет</td><td class="num">0,38</td><td class="num">908 Вт</td></tr>
+                <tr><td>Двухкамерный стеклопакет</td><td class="num">0,51</td><td class="num">676 Вт</td></tr>
+                <tr><td>Трёхкамерный с i-стеклом</td><td class="num">0,80</td><td class="num">431 Вт</td></tr>
+                <tr><td>Стена: газобетон 300 + минвата 50</td><td class="num">3,41</td><td class="num">101 Вт</td></tr>
+            </table>
+        </div>
+        <p class="note">Значения сопротивления — из справочника материалов калькулятора. Последняя строка для сравнения: стена той же площади теряет в семь раз меньше, чем двухкамерный стеклопакет.</p>
+
+        <p>Отсюда первый вывод: витраж в комнате — это отдельный источник потерь, сопоставимый со всеми остальными ограждениями вместе взятыми. Комната 25 м² с таким остеклением теряет не 1 500 Вт, как соседняя без него, а 2 000–2 300.</p>
+
+        <h2 id="vtoraya-problema-holod-po-polu">Вторая проблема: холод по полу</h2>
+
+        <p>Она не решается мощностью. Воздух у стекла остывает, становится тяжелее и стекает вниз, растекаясь по полу. В комнате может быть +22 по термометру и при этом заметно тянуть по ногам.</p>
+
+        <div class="callout">
+            <p><strong>Тёплый пол этот поток не перехватывает.</strong> Он греет всю площадь равномерно и ограничен нормой по температуре поверхности: в жилой комнате около 41 Вт с квадратного метра. Поток от стекла идёт узкой полосой вдоль остекления, и нужен прибор именно там — с восходящей конвекцией, которая его развернёт. Пол работает на общую нагрузку, но сквозняк от витража остаётся.</p>
+        </div>
+
+        <h2 id="chem-gret-esli-radiator-postavit-nekuda">Чем греть, если радиатор поставить некуда</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Решение</th><th>Мощность</th><th>₽ за ватт</th><th>Когда</th></tr>
+                <tr><td>Радиатор высотой 300 мм</td><td>805 Вт на метр (тип 22)</td><td class="num">6,7</td><td>под окном есть 40 см стены</td></tr>
+                <tr><td>Внутрипольный конвектор без вентилятора</td><td>502 Вт на 2 м</td><td class="num">80,4</td><td>нужен только перехват потока</td></tr>
+                <tr><td>Внутрипольный конвектор с вентилятором</td><td>2 462 Вт на 2 м</td><td class="num">34,5</td><td>прибор основной в комнате</td></tr>
+                <tr><td>Два узких прибора по краям витража</td><td>по расчёту</td><td class="num">6,7–8,3</td><td>витраж не до пола, есть простенки</td></tr>
+            </table>
+        </div>
+        <p class="note">Мощности при стандартном перепаде 50 градусов. Цены за ватт — по каталогу на сентябрь 2026.</p>
+
+        <p>Обратите внимание на вторую строку. Естественный конвектор длиной два метра даёт 502 ватта — против 676, которые теряет витраж 7,5 м². То есть он не закрывает даже само остекление, не говоря об остальной комнате. Как единственный прибор он почти всегда мал.</p>
+
+        <h2 id="rabochaya-kombinaciya">Рабочая комбинация</h2>
+
+        <p>В комнате с панорамным остеклением обычно собирают три источника, и каждый делает своё.</p>
+
+        <ol>
+            <li><strong>Тёплый пол</strong> — базовая нагрузка и комфорт под ногами. В жилой комнате около 41 Вт с квадратного метра укладки.</li>
+            <li><strong>Прибор у стекла</strong> — внутрипольный конвектор или низкий радиатор. Его задача — перехватить поток, мощность вторична.</li>
+            <li><strong>Радиатор на другой стене</strong> — добирает пик в мороз, если первых двух не хватает.</li>
+        </ol>
+
+        <div class="formula">
+            <p>Комната 25 м² с витражом 7,5 м², теплопотери 2 100 Вт</p>
+            <p>Тёплый пол на 18 м² укладки: 18 × 41 = <strong>738 Вт</strong></p>
+            <p>Конвектор с вентилятором 1,5 м: <strong>1 711 Вт</strong></p>
+            <p>Итого 2 449 Вт — хватает с запасом, радиатор не нужен</p>
+        </div>
+
+        <h2 id="chto-uchest-zaranee">Что учесть заранее</h2>
+
+        <ul>
+            <li><strong>Нишу под конвектор — до стяжки.</strong> Прибор 190–240 мм по ширине и 75–80 по высоте плюс регулировочные ножки; в готовый пол это уже не встроить.</li>
+            <li><strong>Дренаж.</strong> На панорамном остеклении образуется конденсат, и стекает он прямо в решётку конвектора. Отвод в канализацию или поддон с уклоном обязателен.</li>
+            <li><strong>Разрыв в раскладке тёплого пола</strong> вокруг ниши: труба её обходит, и это учитывается при подсчёте площади укладки.</li>
+            <li><strong>Электропитание,</strong> если конвектор с вентилятором.</li>
+            <li><strong>Энергосберегающий стеклопакет.</strong> Разница между двухкамерным стеклопакетом и трёхкамерным с i-стеклом на витраже 7,5 м² — это 245 ватт, то есть половина естественного конвектора. Дешевле вложиться в стекло, чем потом греть.</li>
+            <li><strong>Шторы и рольставни.</strong> Ночью они заметно снижают потери — но только если не перекрывают прибор.</li>
+        </ul>
+
+        <h2 id="chego-delat-ne-stoit">Чего делать не стоит</h2>
+
+        <ul>
+            <li><strong>Рассчитывать только на тёплый пол.</strong> Он не перехватывает поток от стекла и упирается в норму по температуре поверхности.</li>
+            <li><strong>Ставить естественный конвектор как единственный прибор.</strong> Его 502 ватта на два метра не закрывают даже само остекление.</li>
+            <li><strong>Закрывать конвектор мебелью или ковром.</strong> Решётка должна быть открыта: через неё идёт весь воздухообмен прибора.</li>
+            <li><strong>Экономить на стеклопакете и добирать отоплением.</strong> Разница в потерях платится каждый сезон, а стеклопакет меняют один раз.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать комнату с витражом
+            <small>Теплопотери по помещениям и подбор приборов</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько тепла теряет панорамное окно?</span></summary>
+            <div class="answer">
+                <p>Витраж 3 × 2,5 метра с двухкамерным стеклопакетом в Петербурге при расчётной −24 °C теряет около 676 Вт. Стена той же площади теряет 101 Вт — в семь раз меньше. С однокамерным стеклопакетом потери вырастают до 908 Вт, с трёхкамерным i-стеклом падают до 431.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Хватит ли тёплого пола у панорамного окна?</span></summary>
+            <div class="answer">
+                <p>Нет, и не из-за мощности. Тёплый пол греет всю площадь равномерно и ограничен нормой по температуре поверхности — около 41 Вт с квадратного метра в жилой комнате. А холодный поток от стекла идёт узкой полосой вдоль остекления, и развернуть его может только прибор с восходящей конвекцией у самого стекла.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что ставить, если радиатор под окно не помещается?</span></summary>
+            <div class="answer">
+                <p>Внутрипольный конвектор. Естественный даёт 502 Вт на два метра — этого хватает только на перехват потока, но не на отопление комнаты. С вентилятором тот же размер даёт 2 462 Вт. Если под окном есть хотя бы 40 см стены, дешевле поставить панельный радиатор высотой 300 мм: 6,7 рубля за ватт против 34.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как отопить комнату с витражом?</span></summary>
+            <div class="answer">
+                <p>Тремя источниками. Тёплый пол берёт базовую нагрузку — около 41 Вт с квадратного метра укладки. Конвектор или низкий радиатор у стекла перехватывает холодный поток. Радиатор на другой стене добирает пик, если нужно. Комната 25 м² с потерями 2 100 Вт закрывается полом на 18 м² и конвектором с вентилятором длиной 1,5 метра.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что заложить до стяжки при панорамном остеклении?</span></summary>
+            <div class="answer">
+                <p>Нишу под конвектор — прибор 190–240 мм по ширине и 75–80 по высоте плюс ножки, в готовый пол это не встроить. Дренаж для конденсата, который стекает со стекла прямо в решётку. Разрыв в раскладке тёплого пола вокруг ниши. И электропитание, если конвектор с вентилятором.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/vnutripolnye-konvektory/">внутрипольные конвекторы: когда оправданы</a> · <a href="/gde-stavit-radiatory/">где ставить радиаторы и почему под окном</a> · <a href="/skolko-sektsiy-radiatora/">сколько секций радиатора нужно на комнату</a> · <a href="/bimetall-ili-alyuminiy/">биметаллические или алюминиевые радиаторы</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

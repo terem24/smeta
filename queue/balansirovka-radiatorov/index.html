@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Балансировка системы отопления: расчёт расходов и настройка | HeatCalc.ru</title>
+    <meta name="description" content="Как сбалансировать систему отопления: расчёт расхода через каждый радиатор, предварительная настройка клапанов, порядок работ и почему перепад 15–20 градусов — главный показатель.">
+    <link rel="canonical" href="https://heatcalc.ru/balansirovka-radiatorov/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=2">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/balansirovka-radiatorov/">
+    <meta property="og:title" content="Балансировка системы отопления: расчёт и порядок">
+    <meta property="og:description" content="Расход прибора считается из его мощности. Порядок настройки и что показывает перепад.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/balansirovka-radiatorov/#webpage",
+      "url": "https://heatcalc.ru/balansirovka-radiatorov/",
+      "name": "Балансировка системы отопления: расчёт и порядок настройки",
+      "description": "Как сбалансировать систему отопления: расчёт расхода через каждый радиатор, предварительная настройка клапанов, порядок работ и почему перепад 15–20 градусов — главный показатель.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "балансировка системы отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Балансировка системы отопления: расчёт и порядок настройки",
+          "item": "https://heatcalc.ru/balansirovka-radiatorov/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как рассчитать расход через радиатор?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Мощность прибора в ваттах разделить на 1,163 и на перепад температур. Радиатор 1 320 Вт при перепаде 20 К требует 57 литров в час, при перепаде 10 К — уже 114. Сумма расходов всех приборов даёт расход, который должен обеспечить насос."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "В каком порядке балансировать систему отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Стравить воздух со всех приборов, открыть клапаны полностью и снять термоголовки, вывести систему на рабочую температуру, затем душить ближние к котлу приборы по половине оборота, начиная с самого горячего. Пройти круг нужно дважды: прикрытие одного прибора перераспределяет воду по остальным."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой перепад должен быть между подачей и обраткой?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В мороз 15–20 градусов. Перепад около 5 означает избыточный расход: вода проскакивает приборы не остывая, котёл видит горячую обратку и тактует, а конденсационный теряет смысл. Перепад 30 и больше говорит о нехватке расхода — дальние приборы останутся холодными при любых настройках клапанов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли балансировать систему термоголовками?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. Термоголовка поддерживает температуру в комнате, а не распределяет расход между приборами, и работает поверх уже настроенной системы. Балансируют запорно-регулирующими клапанами на обратке приборов или клапанами на выходах коллектора при лучевой разводке."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему дальние радиаторы холодные?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Вода идёт по пути наименьшего сопротивления, и ближние приборы с короткой подводкой забирают больше, чем им нужно. Если после балансировки дальние всё равно холодные, причин обычно две: насосу не хватает производительности на суммарный расход, либо ветка слишком длинная и её надо разделить надвое."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/balansirovka-radiatorov/#article",
+      "headline": "Балансировка системы отопления: расчёт и порядок настройки",
+      "description": "Как сбалансировать систему отопления: расчёт расхода через каждый радиатор, предварительная настройка клапанов, порядок работ и почему перепад 15–20 градусов — главный показатель.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/balansirovka-radiatorov/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-07-29",
+      "dateModified": "2027-07-29",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Балансировка системы отопления: расчёт и порядок настройки</nav>
+
+        <h1>Балансировка системы отопления: расчёт и порядок настройки</h1>
+
+        <p class="art-meta"><time datetime="2027-07-29">29 июля 2027</time></p>
+
+        <p class="lead">Несбалансированная система узнаётся сразу: ближние к котлу комнаты жаркие, дальние холодные, а котёл при этом работает на полную. Лечится это не повышением температуры, а распределением расхода — и считается оно по понятной формуле.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#pochemu-bez-balansirovki-ne-rabotaet">Почему без балансировки не работает</a></li>
+            <li><a href="#skolko-vody-nuzhno-priboru">Сколько воды нужно прибору</a></li>
+            <li><a href="#chem-nastraivayut">Чем настраивают</a></li>
+            <li><a href="#poryadok-nastroyki">Порядок настройки</a></li>
+            <li><a href="#chto-meshaet-sbalansirovat">Что мешает сбалансировать</a></li>
+            <li><a href="#kak-ponyat-chto-poluchilos">Как понять, что получилось</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="pochemu-bez-balansirovki-ne-rabotaet">Почему без балансировки не работает</h2>
+
+        <p>Вода идёт по пути наименьшего сопротивления. Ближний к котлу прибор имеет короткую подводку и малое сопротивление — через него проходит больше воды, чем нужно. Дальнему достаётся остаток.</p>
+
+        <p>Компенсировать это температурой нельзя: подняв подачу, вы перетопите ближние комнаты раньше, чем прогреете дальние. Единственный способ — придушить тех, кто берёт лишнее.</p>
+
+        <h2 id="skolko-vody-nuzhno-priboru">Сколько воды нужно прибору</h2>
+
+        <div class="formula">
+            <p><strong>Расход, л/ч</strong> = мощность прибора, Вт ÷ (1,163 × перепад, К)</p>
+            <p>Радиатор 1 320 Вт при перепаде 20 К:</p>
+            <p>1 320 ÷ (1,163 × 20) = <strong>57 л/ч</strong> = 0,95 л/мин</p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Мощность прибора</th><th>Перепад 20 К</th><th>Перепад 15 К</th><th>Перепад 10 К</th></tr>
+                <tr><td>600 Вт</td><td class="num">26 л/ч</td><td class="num">34 л/ч</td><td class="num">52 л/ч</td></tr>
+                <tr><td>1 000 Вт</td><td class="num">43 л/ч</td><td class="num">57 л/ч</td><td class="num">86 л/ч</td></tr>
+                <tr><td>1 320 Вт</td><td class="num">57 л/ч</td><td class="num">76 л/ч</td><td class="num">114 л/ч</td></tr>
+                <tr><td>2 000 Вт</td><td class="num">86 л/ч</td><td class="num">115 л/ч</td><td class="num">172 л/ч</td></tr>
+            </table>
+        </div>
+        <p class="note">Чем уже перепад, тем больше воды надо прогнать через тот же прибор. Отсюда и требования к диаметрам, и к насосу.</p>
+
+        <p>Сумма расходов всех приборов — это расход, который должен обеспечить насос. Если он меньше, дальние приборы недополучат независимо от настройки клапанов: балансировка распределяет воду, но не создаёт её.</p>
+
+        <h2 id="chem-nastraivayut">Чем настраивают</h2>
+
+        <ul>
+            <li><strong>Запорно-регулирующий клапан на обратке прибора.</strong> Основной инструмент: у него есть предварительная настройка — число оборотов от закрытого положения.</li>
+            <li><strong>Клапаны на выходах коллектора</strong> при лучевой разводке. Удобнее всего: все настройки в одном месте, в шкафу.</li>
+            <li><strong>Балансировочный клапан на ветке</strong> — когда веток несколько и они сильно разные по длине.</li>
+            <li><strong>Скорость насоса.</strong> Грубая настройка: сначала выставляют её, потом распределяют между приборами.</li>
+        </ul>
+
+        <p>Термоголовка инструментом балансировки не является. Она поддерживает температуру в комнате, а не распределяет расход, и работает поверх уже настроенной системы.</p>
+
+        <h2 id="poryadok-nastroyki">Порядок настройки</h2>
+
+        <ol>
+            <li><strong>Заполнить и стравить воздух</strong> со всех приборов. Воздушная пробка выглядит как нехватка расхода, и настраивать до её удаления бессмысленно.</li>
+            <li><strong>Открыть все клапаны полностью</strong> и снять термоголовки: они закроются в процессе и собьют картину.</li>
+            <li><strong>Вывести систему на рабочую температуру</strong> и дать ей час.</li>
+            <li><strong>Пройти по дому и потрогать приборы.</strong> Ближние горячие, дальние тёплые — типовая стартовая картина.</li>
+            <li><strong>Придушить ближние</strong> — начиная с самого горячего, поворотами по половине оборота.</li>
+            <li><strong>Дать полчаса и повторить.</strong> Прикрытие одного прибора перераспределяет воду по остальным, и за один проход попасть невозможно.</li>
+            <li><strong>Вернуть термоголовки</strong> и записать настройки на схеме в шкафу.</li>
+        </ol>
+
+        <div class="callout">
+            <p><strong>Главный показатель — перепад между подачей и обраткой у котла.</strong> В мороз у правильно настроенной системы это 15–20 градусов. Перепад около 5 означает избыточный расход: вода проскакивает приборы не остывая, котёл видит горячую обратку и начинает тактовать, а конденсационный теряет смысл. Перепад 30 и больше — расхода не хватает, и дальние приборы останутся холодными, сколько ни крути клапаны.</p>
+        </div>
+
+        <h2 id="chto-meshaet-sbalansirovat">Что мешает сбалансировать</h2>
+
+        <ul>
+            <li><strong>Приборы сильно разной мощности на одной ветке.</strong> Радиатор на 600 Вт рядом с прибором на 2 000 — это расходы, отличающиеся втрое, и клапан малого приходится душить почти до упора.</li>
+            <li><strong>Тройниковая разводка с длинной веткой.</strong> Последний прибор в цепочке получает то, что осталось; иногда единственное решение — разделить ветку надвое.</li>
+            <li><strong>Насос без запаса.</strong> Балансировка добавляет сопротивление: придушенные клапаны — это дополнительные потери, и насос должен их продавить.</li>
+            <li><strong>Незамерзающий теплоноситель.</strong> Требуемый напор выше в полтора раза, и система, которая на воде балансировалась, на антифризе может не сойтись.</li>
+            <li><strong>Нет клапанов.</strong> Приборы, подключённые напрямую без арматуры, настроить нечем — только менять диаметры подводок.</li>
+        </ul>
+
+        <h2 id="kak-ponyat-chto-poluchilos">Как понять, что получилось</h2>
+
+        <ul>
+            <li><strong>Все приборы примерно одной температуры</strong> на ощупь при снятых термоголовках. Не одинаковой — примерно.</li>
+            <li><strong>Перепад у котла 15–20 градусов</strong> в мороз.</li>
+            <li><strong>Обратка каждого прибора заметно холоднее подачи.</strong> Если обратка горячая — через прибор идёт лишняя вода.</li>
+            <li><strong>Термоголовки в мороз открыты почти полностью,</strong> а в межсезонье прикрываются. Головка, всегда открытая до упора и не справляющаяся, — признак нехватки мощности прибора, а не балансировки.</li>
+            <li><strong>Котёл в межсезонье работает непрерывно на малой мощности</strong>, а не включается на минуту раз в четверть часа.</li>
+        </ul>
+
+        <p>И последнее: балансировку делают один раз, после пуска, и записывают. Настройки, которые «покрутили зимой и забыли», через год превращаются в загадку, а восстанавливать их придётся с нуля.</p>
+
+        <a class="cta" href="/">
+            Посчитать систему отопления
+            <small>Расходы и диаметры по каждому участку</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как рассчитать расход через радиатор?</span></summary>
+            <div class="answer">
+                <p>Мощность прибора в ваттах разделить на 1,163 и на перепад температур. Радиатор 1 320 Вт при перепаде 20 К требует 57 литров в час, при перепаде 10 К — уже 114. Сумма расходов всех приборов даёт расход, который должен обеспечить насос.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">В каком порядке балансировать систему отопления?</span></summary>
+            <div class="answer">
+                <p>Стравить воздух со всех приборов, открыть клапаны полностью и снять термоголовки, вывести систему на рабочую температуру, затем душить ближние к котлу приборы по половине оборота, начиная с самого горячего. Пройти круг нужно дважды: прикрытие одного прибора перераспределяет воду по остальным.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой перепад должен быть между подачей и обраткой?</span></summary>
+            <div class="answer">
+                <p>В мороз 15–20 градусов. Перепад около 5 означает избыточный расход: вода проскакивает приборы не остывая, котёл видит горячую обратку и тактует, а конденсационный теряет смысл. Перепад 30 и больше говорит о нехватке расхода — дальние приборы останутся холодными при любых настройках клапанов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли балансировать систему термоголовками?</span></summary>
+            <div class="answer">
+                <p>Нет. Термоголовка поддерживает температуру в комнате, а не распределяет расход между приборами, и работает поверх уже настроенной системы. Балансируют запорно-регулирующими клапанами на обратке приборов или клапанами на выходах коллектора при лучевой разводке.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему дальние радиаторы холодные?</span></summary>
+            <div class="answer">
+                <p>Вода идёт по пути наименьшего сопротивления, и ближние приборы с короткой подводкой забирают больше, чем им нужно. Если после балансировки дальние всё равно холодные, причин обычно две: насосу не хватает производительности на суммарный расход, либо ветка слишком длинная и её надо разделить надвое.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/radiatornyy-kollektor/">радиаторный коллектор: лучевая разводка</a> · <a href="/temperaturnyy-grafik-80-60/">температурный график 80/60 и 55/45</a> · <a href="/termogolovka-na-radiator/">термоголовка на радиатор: нужна ли каждому</a> · <a href="/bimetall-ili-alyuminiy/">биметаллические или алюминиевые радиаторы</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

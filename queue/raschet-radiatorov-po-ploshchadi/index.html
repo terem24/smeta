@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расчёт радиаторов по площади: сравнение с покомнатным | HeatCalc.ru</title>
+    <meta name="description" content="Правило «100 ватт на квадрат» и подбор радиаторов по площади: откуда оно взялось, насколько расходится с покомнатным расчётом на реальных комнатах и когда им всё-таки можно пользоваться.">
+    <link rel="canonical" href="https://heatcalc.ru/raschet-radiatorov-po-ploshchadi/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=2">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/raschet-radiatorov-po-ploshchadi/">
+    <meta property="og:title" content="Подбор радиаторов по площади: когда работает">
+    <meta property="og:description" content="Одна цифра на комнату с витражом и на внутреннюю спальню. Сравнение с расчётом по помещениям.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/raschet-radiatorov-po-ploshchadi/#webpage",
+      "url": "https://heatcalc.ru/raschet-radiatorov-po-ploshchadi/",
+      "name": "Подбор радиаторов по площади: когда работает и когда врёт",
+      "description": "Правило «100 ватт на квадрат» и подбор радиаторов по площади: откуда оно взялось, насколько расходится с покомнатным расчётом на реальных комнатах и когда им всё-таки можно пользоваться.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "подбор радиаторов по площади"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Подбор радиаторов по площади: когда работает и когда врёт",
+          "item": "https://heatcalc.ru/raschet-radiatorov-po-ploshchadi/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Работает ли правило «100 ватт на квадратный метр»?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Как оценка порядка величины для дома целиком — да: дом 150 м² потребует примерно 15 кВт, и это правдоподобно. По отдельным комнатам оно ошибается в разные стороны: внутренней спальне 20 м² нужно около 1 100 Вт вместо расчётных по правилу 2 000, а комнате той же площади с витражом — 2 300."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему по площади нельзя подбирать радиаторы?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Потому что площадь ничего не говорит об окнах и о расположении комнаты. Правило даёт одно и то же число внутренней спальне и комнате с панорамным остеклением, хотя реальные потери различаются вдвое. В спальне приборы окажутся вдвое больше нужных, а у витража их не хватит — и вскроется это в первый мороз."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что учитывает покомнатный расчёт?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Каждое ограждение отдельно со своим сопротивлением теплопередаче по СП 50.13330.2024, площадь и тип остекления, расчётную наружную температуру конкретного города по СП 131.13330.2020, нагрев приточного воздуха, надбавку на ориентацию по сторонам света и нужную температуру для типа помещения по ГОСТ 30494-2011."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда правилом по площади можно пользоваться?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Чтобы прикинуть бюджет на старте, пока непонятно, будет ли стройка. Чтобы проверить чужой расчёт на вменяемость: если проект даёт 40 кВт на дом 150 м², где-то ошибка. И когда исходных данных нет вовсе — ни плана, ни состава стен. Покупать приборы по нему нельзя."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как проверить, что приборы подобраны разумно?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Сложить паспортные мощности всех приборов и сравнить с мощностью котла. Сумма приборов всегда больше — их берут с округлением вверх, посекционно. Но если она больше вдвое, значит подбирали по площади, и половина денег ушла в запас, которым никто не пользуется."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/raschet-radiatorov-po-ploshchadi/#article",
+      "headline": "Подбор радиаторов по площади: когда работает и когда врёт",
+      "description": "Правило «100 ватт на квадрат» и подбор радиаторов по площади: откуда оно взялось, насколько расходится с покомнатным расчётом на реальных комнатах и когда им всё-таки можно пользоваться.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/raschet-radiatorov-po-ploshchadi/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-10-05",
+      "dateModified": "2027-10-05",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Подбор радиаторов по площади: когда работает и когда врёт</nav>
+
+        <h1>Подбор радиаторов по площади: когда работает и когда врёт</h1>
+
+        <p class="art-meta"><time datetime="2027-10-05">5 октября 2027</time></p>
+
+        <p class="lead">«Сто ватт на квадратный метр» — самое живучее правило в отоплении. Оно не бессмысленно: из него получаются числа того же порядка, что из расчёта. Проблема в том, что расходится оно именно там, где это дороже всего стоит. Сравниваем на конкретных комнатах.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#otkuda-vzyalos-pravilo">Откуда взялось правило</a></li>
+            <li><a href="#tri-komnaty-odnoy-ploschadi">Три комнаты одной площади</a></li>
+            <li><a href="#chto-uchityvaet-raschet-po-pomescheniyam">Что учитывает расчёт по помещениям</a></li>
+            <li><a href="#kogda-pravilom-vse-taki-mozhno-polzovatsya">Когда правилом всё-таки можно пользоваться</a></li>
+            <li><a href="#chto-proishodit-kogda-schitayut-po-ploschadi">Что происходит, когда считают по площади</a></li>
+            <li><a href="#skolko-stoit-poschitat-pravilno">Сколько стоит посчитать правильно</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="otkuda-vzyalos-pravilo">Откуда взялось правило</h2>
+
+        <p>Сто ватт на квадрат — это усреднённая удельная нагрузка для жилого дома средней полосы с потолком 2,7 метра и обычным утеплением. Как оценка порядка величины на стадии «прикинуть бюджет» она годится: дом 150 м² потребует примерно 15 кВт, и это правдоподобно.</p>
+
+        <p>Ломается правило на двух вещах: оно не знает про окна и не знает про то, где комната расположена.</p>
+
+        <h2 id="tri-komnaty-odnoy-ploschadi">Три комнаты одной площади</h2>
+
+        <p>Все три по 20 м², один дом, Петербург, расчётная наружная −24 °C.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Комната</th><th>По площади</th><th>По расчёту</th><th>Расхождение</th></tr>
+                <tr><td>Внутренняя спальня, одно окно</td><td class="num">2 000 Вт</td><td class="num">1 100 Вт</td><td class="num">−45 %</td></tr>
+                <tr><td>Угловая комната, два окна</td><td class="num">2 000 Вт</td><td class="num">1 700 Вт</td><td class="num">−15 %</td></tr>
+                <tr><td>Комната с витражом 7,5 м²</td><td class="num">2 000 Вт</td><td class="num">2 300 Вт</td><td class="num">+15 %</td></tr>
+            </table>
+        </div>
+        <p class="note">Разница между первой и третьей строкой — вдвое, при одинаковой площади. Правило даёт им одно и то же число.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда главная беда правила.</strong> Оно не просто неточно — оно ошибается в разные стороны в разных комнатах одного дома. В спальне приборы окажутся вдвое больше нужных, и деньги потрачены зря. В комнате с витражом их не хватит, и это вскроется в первый мороз. Суммарная мощность по дому при этом может сойтись почти точно — поэтому ошибка и не замечается на этапе подбора котла.</p>
+        </div>
+
+        <h2 id="chto-uchityvaet-raschet-po-pomescheniyam">Что учитывает расчёт по помещениям</h2>
+
+        <ul>
+            <li><strong>Каждое ограждение отдельно</strong> — стены, окна, пол, потолок, — со своим сопротивлением теплопередаче по СП 50.13330.2024.</li>
+            <li><strong>Площадь и тип остекления.</strong> Двухкамерный стеклопакет 7,5 м² теряет 676 Вт, стена той же площади — 101.</li>
+            <li><strong>Климат конкретного города</strong> — расчётная наружная температура по СП 131.13330.2020, для Петербурга −24 °C, для Краснодара −18, для Архангельска −31.</li>
+            <li><strong>Нагрев приточного воздуха</strong> — по кратности воздухообмена, отдельным слагаемым.</li>
+            <li><strong>Ориентацию по сторонам света</strong> — надбавка до 10 %.</li>
+            <li><strong>Тип помещения.</strong> В ванной поддерживают 25 °C, в коридоре 20, в спальне 20–22 — по ГОСТ 30494-2011.</li>
+        </ul>
+
+        <h2 id="kogda-pravilom-vse-taki-mozhno-polzovatsya">Когда правилом всё-таки можно пользоваться</h2>
+
+        <ol>
+            <li><strong>Прикинуть бюджет на старте.</strong> Пока непонятно, будет ли вообще стройка, точность не нужна.</li>
+            <li><strong>Проверить чужой расчёт на вменяемость.</strong> Если проект даёт 40 кВт на дом 150 м², где-то ошибка — правило это ловит.</li>
+            <li><strong>Типовые внутренние комнаты в утеплённом доме.</strong> Там расхождение наименьшее, и правило скорее завышает, чем занижает.</li>
+            <li><strong>Когда исходных данных нет вовсе</strong> — нет ни плана, ни состава стен. Тогда это единственное, что можно посчитать.</li>
+        </ol>
+
+        <p>Чего по нему делать нельзя — покупать приборы. Между «дом требует примерно 15 киловатт» и «в этой комнате нужно 13 секций» лежит весь расчёт.</p>
+
+        <h2 id="chto-proishodit-kogda-schitayut-po-ploschadi">Что происходит, когда считают по площади</h2>
+
+        <ul>
+            <li><strong>Приборы в спальнях избыточны.</strong> Не опасно, но лишние деньги: на доме это десятки тысяч рублей.</li>
+            <li><strong>В комнате с витражом не хватает.</strong> Обнаруживается в январе, исправляется добавлением прибора — а места под него не заложено.</li>
+            <li><strong>Котёл завышен.</strong> Если суммировать приборы вместо теплопотерь, котёл получается мощнее нужного и начинает тактовать.</li>
+            <li><strong>Тёплый пол не учтён.</strong> Правило не знает, что в комнате уже лежит пол, который берёт на себя 738 Вт, и радиатор нужен меньше.</li>
+            <li><strong>Балансировка не сходится.</strong> Приборы разной степени избыточности требуют очень разных расходов, и настроить такую систему сложнее.</li>
+        </ul>
+
+        <h2 id="skolko-stoit-poschitat-pravilno">Сколько стоит посчитать правильно</h2>
+
+        <p>Ничего: покомнатный расчёт есть в калькуляторе, и он бесплатный. Нужны план с размерами комнат, состав стен, тип остекления и город — те данные, которые и так известны к моменту, когда пора покупать приборы.</p>
+
+        <p>Результат — теплопотери по каждой комнате, подбор приборов с учётом тёплого пола и ориентации и смета с работами. На этом же расчёте подбирается котёл: не по сумме мощностей радиаторов, а по теплопотерям дома с запасом 1,15.</p>
+
+        <div class="callout">
+            <p><strong>Одна проверка, которая ловит большинство ошибок.</strong> Сложите паспортные мощности всех приборов и сравните с мощностью котла. Сумма приборов всегда больше — их подбирают с округлением вверх, посекционно. Но если она больше вдвое, значит приборы подбирали по площади, и половина денег ушла в запас, которым никто не пользуется.</p>
+        </div>
+
+        <a class="cta" href="/">
+            Посчитать по помещениям
+            <small>Теплопотери каждой комнаты и подбор приборов</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Работает ли правило «100 ватт на квадратный метр»?</span></summary>
+            <div class="answer">
+                <p>Как оценка порядка величины для дома целиком — да: дом 150 м² потребует примерно 15 кВт, и это правдоподобно. По отдельным комнатам оно ошибается в разные стороны: внутренней спальне 20 м² нужно около 1 100 Вт вместо расчётных по правилу 2 000, а комнате той же площади с витражом — 2 300.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему по площади нельзя подбирать радиаторы?</span></summary>
+            <div class="answer">
+                <p>Потому что площадь ничего не говорит об окнах и о расположении комнаты. Правило даёт одно и то же число внутренней спальне и комнате с панорамным остеклением, хотя реальные потери различаются вдвое. В спальне приборы окажутся вдвое больше нужных, а у витража их не хватит — и вскроется это в первый мороз.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что учитывает покомнатный расчёт?</span></summary>
+            <div class="answer">
+                <p>Каждое ограждение отдельно со своим сопротивлением теплопередаче по СП 50.13330.2024, площадь и тип остекления, расчётную наружную температуру конкретного города по СП 131.13330.2020, нагрев приточного воздуха, надбавку на ориентацию по сторонам света и нужную температуру для типа помещения по ГОСТ 30494-2011.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда правилом по площади можно пользоваться?</span></summary>
+            <div class="answer">
+                <p>Чтобы прикинуть бюджет на старте, пока непонятно, будет ли стройка. Чтобы проверить чужой расчёт на вменяемость: если проект даёт 40 кВт на дом 150 м², где-то ошибка. И когда исходных данных нет вовсе — ни плана, ни состава стен. Покупать приборы по нему нельзя.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как проверить, что приборы подобраны разумно?</span></summary>
+            <div class="answer">
+                <p>Сложить паспортные мощности всех приборов и сравнить с мощностью котла. Сумма приборов всегда больше — их берут с округлением вверх, посекционно. Но если она больше вдвое, значит подбирали по площади, и половина денег ушла в запас, которым никто не пользуется.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/skolko-sektsiy-radiatora/">сколько секций радиатора нужно на комнату</a> · <a href="/gde-stavit-radiatory/">где ставить радиаторы и почему под окном</a> · <a href="/bimetall-ili-alyuminiy/">биметаллические или алюминиевые радиаторы</a> · <a href="/zamena-radiatorov-v-dome/">замена радиаторов: что считать заранее</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

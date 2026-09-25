@@ -1831,10 +1831,10 @@
    "freq": 2200,
    "audience": "pro",
    "data_block": "расчёт по кольцам",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-29",
    "published_at": null,
-   "words": 0
+   "words": 615
   },
   {
    "slug": "kak-schitat-metrazh-trub",
@@ -1943,10 +1943,10 @@
    "freq": 2100,
    "audience": "owner",
    "data_block": "расчёт по помещению",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-17",
    "published_at": null,
-   "words": 0
+   "words": 550
   },
   {
    "slug": "skorost-vody-v-trubah",
@@ -2055,10 +2055,10 @@
    "freq": 1900,
    "audience": "owner",
    "data_block": "разница в смете",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-04",
    "published_at": null,
-   "words": 0
+   "words": 557
   },
   {
    "slug": "skrytaya-provodka-trub",
@@ -2125,10 +2125,10 @@
    "freq": 1600,
    "audience": "owner",
    "data_block": "сравнение по смете",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-16",
    "published_at": null,
-   "words": 0
+   "words": 528
   },
   {
    "slug": "krepleniya-trub",
@@ -2195,10 +2195,10 @@
    "freq": 900,
    "audience": "owner",
    "data_block": "теплопотери остекления",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-28",
    "published_at": null,
-   "words": 0
+   "words": 638
   },
   {
    "slug": "teplootdacha-teplogo-pola",
@@ -2237,10 +2237,10 @@
    "freq": 72,
    "audience": "owner",
    "data_block": "сравнение с покомнатным",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-10-05",
    "published_at": null,
-   "words": 0
+   "words": 592
   },
   {
    "slug": "teplyy-pol-na-vtorom-etazhe",

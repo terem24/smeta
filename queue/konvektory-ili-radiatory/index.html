@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конвекторы или радиаторы: что выбрать и сколько стоит | HeatCalc.ru</title>
+    <meta name="description" content="Чем конвектор отличается от радиатора: доля конвекции и излучения, инерция, цена за ватт по каталогу, где настенный конвектор выигрывает у радиатора и где проигрывает.">
+    <link rel="canonical" href="https://heatcalc.ru/konvektory-ili-radiatory/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=2">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/konvektory-ili-radiatory/">
+    <meta property="og:title" content="Конвекторы или радиаторы: сравнение по смете">
+    <meta property="og:description" content="Разница не в тепле, а в инерции и цене за ватт. Полное сравнение по каталогу.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/konvektory-ili-radiatory/#webpage",
+      "url": "https://heatcalc.ru/konvektory-ili-radiatory/",
+      "name": "Конвекторы или радиаторы: сравнение по смете",
+      "description": "Чем конвектор отличается от радиатора: доля конвекции и излучения, инерция, цена за ватт по каталогу, где настенный конвектор выигрывает у радиатора и где проигрывает.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "конвекторы или радиаторы"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Конвекторы или радиаторы: сравнение по смете",
+          "item": "https://heatcalc.ru/konvektory-ili-radiatory/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Чем конвектор отличается от радиатора?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Практически — количеством воды внутри и скоростью отклика. Секционный радиатор держит литры воды и реагирует на термоголовку полчаса, панельный прибор и конвектор — за минуты. Доля излучения против конвекции различается мало: любой современный прибор отдаёт тепло в основном с потоком воздуха."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что дешевле — конвекторы или радиаторы?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Радиаторы, и заметно. Стальной панельный тип 22 даёт 6,7 рубля за ватт, алюминиевая секция 8,3, биметалл 14,5. Внутрипольный конвектор с вентилятором — 34,5 рубля за ватт, без вентилятора 80,4. Разница между крайними вариантами двенадцатикратная."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда конвектор лучше радиатора?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "При панорамном остеклении, где прибор у стекла нужен, а места для радиатора нет. При низких подоконниках. В сезонном доме — мало воды внутри, быстрее прогрев. В доме с погодозависимой автоматикой и ночным понижением, где важен быстрый отклик. И с тепловым насосом: конвектор с вентилятором лучше сохраняет мощность при низкой температуре подачи."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли выбирать один тип приборов на весь дом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет, и обычно не выбирают. В жилых комнатах ставят панельные радиаторы под окнами, у витража — внутрипольный конвектор с тёплым полом, в санузлах полотенцесушитель, в коридорах и гардеробных только тёплый пол. Каждому месту подходит своё."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Шумит ли конвектор?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Конвектор с вентилятором на максимальных оборотах слышно — в спальне это имеет значение. Естественный конвектор бесшумен, как и радиатор. При этом вентилятор обычно включают только в мороз: в межсезонье прибор работает как обычный конвектор, тихо и с меньшей мощностью."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/konvektory-ili-radiatory/#article",
+      "headline": "Конвекторы или радиаторы: сравнение по смете",
+      "description": "Чем конвектор отличается от радиатора: доля конвекции и излучения, инерция, цена за ватт по каталогу, где настенный конвектор выигрывает у радиатора и где проигрывает.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/konvektory-ili-radiatory/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-09-16",
+      "dateModified": "2027-09-16",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Конвекторы или радиаторы: сравнение по смете</nav>
+
+        <h1>Конвекторы или радиаторы: сравнение по смете</h1>
+
+        <p class="art-meta"><time datetime="2027-09-16">16 сентября 2027</time></p>
+
+        <p class="lead">Формально любой современный отопительный прибор — конвектор: тепло от него уходит в основном с потоком воздуха, а не излучением. Разница между «радиатором» и «конвектором» в другом — в массе воды, скорости отклика и цене за ватт. Сравниваем по каталогу.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#chem-oni-otlichayutsya-na-samom-dele">Чем они отличаются на самом деле</a></li>
+            <li><a href="#cena-za-vatt">Цена за ватт</a></li>
+            <li><a href="#gde-vyigryvaet-konvektor">Где выигрывает конвектор</a></li>
+            <li><a href="#gde-vyigryvaet-radiator">Где выигрывает радиатор</a></li>
+            <li><a href="#chto-stoit-montazh">Что стоит монтаж</a></li>
+            <li><a href="#kak-obychno-i-delayut">Как обычно и делают</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="chem-oni-otlichayutsya-na-samom-dele">Чем они отличаются на самом деле</h2>
+
+        <p>И тот, и другой греют воздух. Секционный радиатор отдаёт чуть больше излучением за счёт развитой внешней поверхности, панельный и конвектор — почти всё конвекцией. На ощущениях в комнате это почти не сказывается: излучение заметно только рядом с очень горячим прибором.</p>
+
+        <p>Практическая разница в другом:</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Секционный радиатор</th><th>Панельный</th><th>Конвектор</th></tr>
+                <tr><td>Воды внутри</td><td>много</td><td>мало</td><td>очень мало</td></tr>
+                <tr><td>Выход на режим</td><td>часами</td><td>минутами</td><td>минутами</td></tr>
+                <tr><td>Отклик на термоголовку</td><td>медленный</td><td>быстрый</td><td>быстрый</td></tr>
+                <tr><td>Чувствителен к запылению</td><td>нет</td><td>немного</td><td>да, оребрение</td></tr>
+                <tr><td>Можно нарастить</td><td>да, секциями</td><td>нет</td><td>нет</td></tr>
+                <tr><td>₽ за ватт</td><td>8,3–14,5</td><td>6,7–8,4</td><td>34–80</td></tr>
+            </table>
+        </div>
+        <p class="note">Цены за ватт — по каталогу на сентябрь 2026, при стандартном перепаде 50 градусов. Конвекторы здесь внутрипольные: настенные ближе к панельным.</p>
+
+        <div class="callout">
+            <p><strong>Главное практическое отличие — инерция.</strong> Секционный радиатор держит внутри литры воды и остывает медленно: комната не проваливается при коротком отключении, но и на команду термоголовки реагирует полчаса. Панельный прибор и конвектор отзываются за минуты. Для дома с ночным понижением и автоматикой это важнее, чем разница в доле излучения.</p>
+        </div>
+
+        <h2 id="cena-za-vatt">Цена за ватт</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Прибор</th><th>Мощность (ΔT50)</th><th>Цена</th><th>₽ за ватт</th></tr>
+                <tr><td>Стальной панельный, тип 22, H500 L1000</td><td class="num">1 463 Вт</td><td class="num">9 804 ₽</td><td class="num">6,7</td></tr>
+                <tr><td>Алюминиевая секция</td><td class="num">107 Вт</td><td class="num">890 ₽</td><td class="num">8,3</td></tr>
+                <tr><td>Стальной панельный, тип 11, H500 L1000</td><td class="num">805 Вт</td><td class="num">6 748 ₽</td><td class="num">8,4</td></tr>
+                <tr><td>Биметалл TITAN</td><td class="num">128 Вт</td><td class="num">1 853 ₽</td><td class="num">14,5</td></tr>
+                <tr><td>Внутрипольный с вентилятором, 2 м</td><td class="num">2 462 Вт</td><td class="num">84 929 ₽</td><td class="num">34,5</td></tr>
+                <tr><td>Внутрипольный без вентилятора, 2 м</td><td class="num">502 Вт</td><td class="num">40 368 ₽</td><td class="num">80,4</td></tr>
+            </table>
+        </div>
+        <p class="note">Разница между крайними строками — двенадцатикратная. Внутрипольные конвекторы дороги не из-за конструкции прибора, а потому что их ставят там, где ничего другого не встанет.</p>
+
+        <h2 id="gde-vyigryvaet-konvektor">Где выигрывает конвектор</h2>
+
+        <ul>
+            <li><strong>Панорамное остекление.</strong> Прибора у стекла быть должно, а места нет — внутрипольный конвектор безальтернативен.</li>
+            <li><strong>Низкие подоконники.</strong> Настенный конвектор высотой 200 мм встаёт там, где радиатор не помещается.</li>
+            <li><strong>Сезонное жильё.</strong> Мало воды внутри — быстрее прогрев при приезде и меньше риск при разморозке.</li>
+            <li><strong>Дом с погодозависимой автоматикой и ночным понижением.</strong> Быстрый отклик позволяет реально экономить на расписании, а не сглаживать его инерцией.</li>
+            <li><strong>Тепловой насос.</strong> Конвектор с вентилятором сохраняет мощность при низкой температуре подачи лучше, чем радиатор: воздушный поток компенсирует малый напор температуры.</li>
+        </ul>
+
+        <h2 id="gde-vyigryvaet-radiator">Где выигрывает радиатор</h2>
+
+        <ul>
+            <li><strong>Цена за ватт.</strong> Панельный тип 22 — самое выгодное тепло в каталоге, и это обычный радиатор.</li>
+            <li><strong>Пыль.</strong> У конвектора развитое оребрение в узком коробе: оно собирает пыль, и чистить его сложнее, чем протереть панель.</li>
+            <li><strong>Возможность нарастить.</strong> Секционному прибору можно добавить секции, если расчёт оказался оптимистичным.</li>
+            <li><strong>Тишина.</strong> Конвектор с вентилятором на максимальных оборотах слышно. В спальне это имеет значение.</li>
+            <li><strong>Простота.</strong> Нет электрики, нет дренажа, нет ниши в стяжке.</li>
+        </ul>
+
+        <h2 id="chto-stoit-montazh">Что стоит монтаж</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж радиатора отопления (коллекторная)</td><td>точка</td><td class="num">6 500 ₽</td></tr>
+                <tr><td>Монтаж тройниковой разводки радиаторов</td><td>точка</td><td class="num">2 500 ₽</td></tr>
+                <tr><td>Монтаж внутрипольного конвектора</td><td>шт</td><td class="num">8 500 ₽</td></tr>
+                <tr><td>Монтаж механической термоголовки</td><td>шт</td><td class="num">350 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Базовые расценки, без стоимости приборов. Полный список — в <a href="/rascenki-na-montazh-otopleniya/">расценках на монтаж</a>.</p>
+
+        <p>Разница в монтаже небольшая — две тысячи. Основная разница в цене приборов, и она доходит до десятикратной.</p>
+
+        <h2 id="kak-obychno-i-delayut">Как обычно и делают</h2>
+
+        <p>В доме, посчитанном по помещениям, приборы редко бывают одного типа. Типовая раскладка выглядит так:</p>
+
+        <ul>
+            <li><strong>Жилые комнаты и спальни</strong> — панельные радиаторы под окнами. Лучшая цена за ватт и быстрый отклик на автоматику.</li>
+            <li><strong>Комната с витражом</strong> — внутрипольный конвектор у стекла плюс тёплый пол на базовую нагрузку.</li>
+            <li><strong>Санузлы и ванные</strong> — тёплый пол и полотенцесушитель, радиаторов нет.</li>
+            <li><strong>Коридоры, гардеробные</strong> — только тёплый пол.</li>
+            <li><strong>Кухня</strong> — тёплый пол, радиатор под окном по расчёту: готовка даёт своё тепло, и прибор нужен меньше.</li>
+        </ul>
+
+        <p>Вопрос «конвекторы или радиаторы» в такой раскладке распадается сам: каждому месту подходит своё, и выбирать один тип на весь дом незачем.</p>
+
+        <a class="cta" href="/">
+            Подобрать приборы по расчёту
+            <small>Расчёт по теплопотерям комнат</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем конвектор отличается от радиатора?</span></summary>
+            <div class="answer">
+                <p>Практически — количеством воды внутри и скоростью отклика. Секционный радиатор держит литры воды и реагирует на термоголовку полчаса, панельный прибор и конвектор — за минуты. Доля излучения против конвекции различается мало: любой современный прибор отдаёт тепло в основном с потоком воздуха.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что дешевле — конвекторы или радиаторы?</span></summary>
+            <div class="answer">
+                <p>Радиаторы, и заметно. Стальной панельный тип 22 даёт 6,7 рубля за ватт, алюминиевая секция 8,3, биметалл 14,5. Внутрипольный конвектор с вентилятором — 34,5 рубля за ватт, без вентилятора 80,4. Разница между крайними вариантами двенадцатикратная.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда конвектор лучше радиатора?</span></summary>
+            <div class="answer">
+                <p>При панорамном остеклении, где прибор у стекла нужен, а места для радиатора нет. При низких подоконниках. В сезонном доме — мало воды внутри, быстрее прогрев. В доме с погодозависимой автоматикой и ночным понижением, где важен быстрый отклик. И с тепловым насосом: конвектор с вентилятором лучше сохраняет мощность при низкой температуре подачи.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужно ли выбирать один тип приборов на весь дом?</span></summary>
+            <div class="answer">
+                <p>Нет, и обычно не выбирают. В жилых комнатах ставят панельные радиаторы под окнами, у витража — внутрипольный конвектор с тёплым полом, в санузлах полотенцесушитель, в коридорах и гардеробных только тёплый пол. Каждому месту подходит своё.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Шумит ли конвектор?</span></summary>
+            <div class="answer">
+                <p>Конвектор с вентилятором на максимальных оборотах слышно — в спальне это имеет значение. Естественный конвектор бесшумен, как и радиатор. При этом вентилятор обычно включают только в мороз: в межсезонье прибор работает как обычный конвектор, тихо и с меньшей мощностью.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/vnutripolnye-konvektory/">внутрипольные конвекторы: когда оправданы</a> · <a href="/stalnye-panelnye-radiatory/">стальные панельные радиаторы: типы 11, 22, 33</a> · <a href="/bimetall-ili-alyuminiy/">биметаллические или алюминиевые радиаторы</a> · <a href="/zamena-radiatorov-v-dome/">замена радиаторов: что считать заранее</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
