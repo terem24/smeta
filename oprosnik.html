@@ -185,10 +185,10 @@
                 <div><label class="f">Толщина утеплителя, мм</label><input type="number" id="f_wallInsThick" min="20" max="400" placeholder="100"></div>
                 <div></div>
             </div>
-            <div class="row2">
-                <div><label class="f">Пол 1 этажа</label><select id="f_floorMat"></select></div>
-                <div><label class="f">Кровля / чердак</label><select id="f_roofMat"></select></div>
-            </div>
+            <label class="f">Пол 1 этажа</label>
+            <select id="f_floorMat"></select>
+            <label class="f">Кровля / чердак</label>
+            <select id="f_roofMat"></select>
             <label class="f">Окна</label>
             <select id="f_glazing"></select>
             <label class="f">Комментарий по конструкции дома (необязательно)</label>
@@ -267,50 +267,58 @@
     // GLAZING_DB (catalog.js) — калькулятор ищет пришедшие значения именно по id. Полный
     // catalog.js (~750 КБ, весь товарный каталог) сюда не тащим, страница для заказчика
     // должна оставаться лёгкой; эти списки нормативные и меняются раз в несколько лет.
+    // Эмодзи вместо фото: реальных карточек материалов в проекте нет (ни в
+    // catalog.js, ни в подборе пирога стены самого калькулятора — там тоже
+    // только текст), а тянуть на лёгкую страницу заказчика внешние картинки
+    // ради этого не стали. Эмодзи хотя бы визуально отличают варианты друг от
+    // друга и не весят ничего.
     var WALL_OPTS = [
-        { id: '', name: 'Не знаю' },
-        { id: 'brick_clay', name: 'Кирпич полнотелый (глиняный)' },
-        { id: 'brick_hollow', name: 'Кирпич пустотелый' },
-        { id: 'gas_d400', name: 'Газобетон D400' },
-        { id: 'gas_d500', name: 'Газобетон D500' },
-        { id: 'gas_d600', name: 'Газобетон D600' },
-        { id: 'ceramic_block', name: 'Керамический блок (тёплая керамика)' },
-        { id: 'wood_pine', name: 'Брус деревянный (сосна/ель)' },
-        { id: 'concrete', name: 'Железобетон / монолит' }
+        { id: '', name: '❔ Не знаю' },
+        { id: 'brick_clay', name: '🧱 Кирпич полнотелый' },
+        { id: 'brick_hollow', name: '🧱 Кирпич пустотелый' },
+        { id: 'gas_d400', name: '⬜ Газобетон D400' },
+        { id: 'gas_d500', name: '⬜ Газобетон D500' },
+        { id: 'gas_d600', name: '⬜ Газобетон D600' },
+        { id: 'ceramic_block', name: '🟧 Керамич. блок' },
+        { id: 'wood_pine', name: '🪵 Брус деревянный' },
+        { id: 'concrete', name: '⬛ Ж/б / монолит' }
     ];
     var WALL_INS_OPTS = [
         { id: '', name: 'Нет' },
-        { id: 'minwool', name: 'Минеральная вата (базальт)' },
-        { id: 'polystyrene', name: 'Пенополистирол (пенопласт)' },
-        { id: 'xps', name: 'Экструдированный пенополистирол (XPS)' }
+        { id: 'minwool', name: '🧶 Мин. вата (базальт)' },
+        { id: 'polystyrene', name: '⬜ Пенопласт' },
+        { id: 'xps', name: '🟧 XPS (пеноплекс)' }
     ];
+    // Короткие подписи — как shortName в ROOF/FLOOR/GLAZING_MATERIALS_DB (catalog.js),
+    // только с эмодзи: длинное описание не влезает в select на узком экране (см.
+    // мобильную проверку 25.09.2026 — «Не знаю / другое» и подобное обрезалось).
     var ROOF_OPTS = [
-        { id: '', name: 'Не знаю' },
-        { id: 'roof_mw400', name: 'Мин. вата ~400 мм' },
-        { id: 'roof_mw350', name: 'Мин. вата ~350 мм' },
-        { id: 'roof_mw300', name: 'Мин. вата ~300 мм' },
-        { id: 'roof_mw250', name: 'Мин. вата ~250 мм' },
-        { id: 'roof_mw200', name: 'Мин. вата ~200 мм' },
-        { id: 'roof_mw150', name: 'Мин. вата ~150 мм' },
-        { id: 'roof_mw100', name: 'Мин. вата ~100 мм' },
-        { id: 'roof_wood_ins', name: 'Деревянное перекрытие утеплённое' },
-        { id: 'roof_concrete', name: 'Ж/б перекрытие без утепления' }
+        { id: '', name: '❔ Не знаю' },
+        { id: 'roof_mw400', name: '🧶 Мин.вата 400мм' },
+        { id: 'roof_mw350', name: '🧶 Мин.вата 350мм' },
+        { id: 'roof_mw300', name: '🧶 Мин.вата 300мм' },
+        { id: 'roof_mw250', name: '🧶 Мин.вата 250мм' },
+        { id: 'roof_mw200', name: '🧶 Мин.вата 200мм' },
+        { id: 'roof_mw150', name: '🧶 Мин.вата 150мм' },
+        { id: 'roof_mw100', name: '🧶 Мин.вата 100мм' },
+        { id: 'roof_wood_ins', name: '🪵 Дерев. утепл.' },
+        { id: 'roof_concrete', name: '⬛ Ж/б плита' }
     ];
     var FLOOR_OPTS = [
-        { id: '', name: 'Не знаю' },
-        { id: 'floor_ground_ins', name: 'По грунту, утеплён (XPS ~100 мм)' },
-        { id: 'floor_ground_ins50', name: 'По грунту, утеплён (XPS ~50 мм)' },
-        { id: 'floor_lags_ins', name: 'На лагах, утеплён (мин. вата ~150 мм)' },
-        { id: 'floor_basement_ins', name: 'Над холодным подвалом, утеплён' },
-        { id: 'floor_basement_bare', name: 'Над холодным подвалом, без утепления' },
-        { id: 'floor_heated', name: 'Над отапливаемым помещением' }
+        { id: '', name: '❔ Не знаю' },
+        { id: 'floor_ground_ins', name: '🟫 Грунт, XPS 100мм' },
+        { id: 'floor_ground_ins50', name: '🟫 Грунт, XPS 50мм' },
+        { id: 'floor_lags_ins', name: '🪵 Лаги, МВ 150мм' },
+        { id: 'floor_basement_ins', name: '🕳️ Подвал, утепл.' },
+        { id: 'floor_basement_bare', name: '🕳️ Подвал, не утепл.' },
+        { id: 'floor_heated', name: '🔥 Над тёплым' }
     ];
     var GLAZING_OPTS = [
-        { id: '', name: 'Не знаю' },
-        { id: 'glz_2cam', name: 'Двухкамерный стеклопакет' },
-        { id: 'glz_3cam', name: 'Трёхкамерный стеклопакет (энергосберегающий)' },
-        { id: 'glz_1cam', name: 'Однокамерный стеклопакет' },
-        { id: 'glz_single', name: 'Одинарное стекло' }
+        { id: '', name: '❔ Не знаю' },
+        { id: 'glz_2cam', name: '🪟 2-камерный' },
+        { id: 'glz_3cam', name: '🪟 3-кам. (энергосбер.)' },
+        { id: 'glz_1cam', name: '🪟 1-камерный' },
+        { id: 'glz_single', name: '🪟 Одинарное стекло' }
     ];
     function fillSelect(id, opts) {
         document.getElementById(id).innerHTML = opts.map(function (o) {
