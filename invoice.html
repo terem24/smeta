@@ -4179,6 +4179,17 @@
             else if (matVal === 1.5) wallMat = 'Дерево';
             document.getElementById('obj_mat').textContent = wallMat;
 
+            // Смета из распознавания (или без расчёта дома): площади нет — значит этажи,
+            // стены, теплопотери и регион тоже не известны, а подставлены по умолчанию.
+            // Клиенту такие «0 м² / Газобетон / 0.0 кВт» не показываем вовсе.
+            const houseUnknown = !(parseFloat(obj.area) > 0);
+            const hideObjItem = (id, hide) => {
+                const it = document.getElementById(id)?.closest('.obj-item');
+                if (it) it.style.display = hide ? 'none' : '';
+            };
+            ['obj_area', 'obj_floors', 'obj_mat', 'obj_region'].forEach(id => hideObjItem(id, houseUnknown));
+            hideObjItem('obj_power', houseUnknown || !(parseFloat(obj.power) > 0));
+
             // 3. Totals
             const totals = data.totals || {};
             document.getElementById('total_eq').textContent = `${(totals.equipment || 0).toLocaleString()} ₽`;
