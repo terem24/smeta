@@ -1520,6 +1520,8 @@ const app = {
             else if (d.fuel === 'el') s.fuels = ['el'];
             if (d.vent === true) { s.ventilationEnabled = true; s.ventilationType = 'forced'; }
             if (d.hw !== undefined) s.hotWater = !!d.hw;
+            if (d.auto === true) { s.boilerAuto = true; s.autoOn = true; }
+            if (d.watersource === 'well') s.well = true;
             // Город — та же формула коэффициента, что в selectCity
             if (d.city && typeof CITIES_DB !== 'undefined') {
                 const key = String(d.city).trim().toLowerCase();
@@ -1592,6 +1594,9 @@ const app = {
         put('Режим проживания', { all: 'круглогодичный', season: 'сезонный' }[d.live]);
         put('Стадия строительства', { none: 'ещё не приступил', box: 'возводится коробка', closed: 'закрыт тепловой контур' }[d.stage]);
         put('Приточная вентиляция с подогревом', d.vent === true ? 'да' : (d.vent === false ? 'нет' : ''));
+        put('Автоматика отопления', d.auto === true ? 'нужна' : '');
+        put('Горячая вода', d.hw === true ? 'нужна' : (d.hw === false ? 'не нужна' : ''));
+        put('Источник воды', { well: 'скважина / колодец', central: 'центральный водопровод' }[d.watersource]);
         if (d.hasProject) {
             L.push('Есть готовый проект/план дома — заказчик пришлёт файлом отдельно.');
         } else {

@@ -162,6 +162,27 @@
         </div>
         <label class="f">В каких помещениях нужен тёплый пол</label>
         <textarea id="f_tprooms" placeholder="Например: весь первый этаж; на втором — только санузлы"></textarea>
+        <label class="f">Нужна ли автоматика (управление отоплением с телефона, датчики)?</label>
+        <div class="seg">
+            <label><input type="radio" name="f_auto" value="no" checked>Не нужна</label>
+            <label><input type="radio" name="f_auto" value="yes">Нужна</label>
+            <label><input type="radio" name="f_auto" value="unknown">Не знаю</label>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>ГВС и водоснабжение</h2>
+        <label class="f">Нужна ли горячая вода (бойлер)?</label>
+        <div class="seg">
+            <label><input type="radio" name="f_hw" value="yes" checked>Да</label>
+            <label><input type="radio" name="f_hw" value="no">Нет</label>
+        </div>
+        <label class="f">Откуда вода</label>
+        <div class="seg">
+            <label><input type="radio" name="f_watersource" value="unknown" checked>Не знаю</label>
+            <label><input type="radio" name="f_watersource" value="well">Скважина / колодец</label>
+            <label><input type="radio" name="f_watersource" value="central">Центральный водопровод</label>
+        </div>
     </div>
 
     <div class="card">
@@ -455,6 +476,9 @@
             fuel: radio('f_fuel'), live: radio('f_live'), stage: radio('f_stage'),
             vent: radio('f_vent') === 'yes',
             tpRooms: val('f_tprooms'),
+            auto: radio('f_auto') === 'yes',
+            hw: radio('f_hw') === 'yes',
+            watersource: radio('f_watersource') === 'unknown' ? '' : radio('f_watersource'),
             hasProject: radio('f_hasProject') === 'yes',
             wall: val('f_wall'),
             wallMat: val('f_wallMat'), wallThick: parseInt(val('f_wallThick'), 10) || 0,
