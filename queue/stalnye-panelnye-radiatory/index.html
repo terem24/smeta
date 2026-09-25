@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Стальные панельные радиаторы: типы 11, 21, 22, 33 и подбор | HeatCalc.ru</title>
+    <meta name="description" content="Чем отличаются типы стальных панельных радиаторов 11, 21, 22 и 33: реальная теплоотдача и цена за ватт по каталогу, Compact или Ventil, где панельный выгоднее секционного и в чём его ограничения.">
+    <link rel="canonical" href="https://heatcalc.ru/stalnye-panelnye-radiatory/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=2">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/stalnye-panelnye-radiatory/">
+    <meta property="og:title" content="Стальные панельные радиаторы: типы 11, 21, 22, 33">
+    <meta property="og:description" content="Тип 22 даёт 6,7 ₽ за ватт — дешевле любой секции. Разбор типов, Compact против Ventil.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/stalnye-panelnye-radiatory/#webpage",
+      "url": "https://heatcalc.ru/stalnye-panelnye-radiatory/",
+      "name": "Стальные панельные радиаторы: типы 11, 21, 22, 33",
+      "description": "Чем отличаются типы стальных панельных радиаторов 11, 21, 22 и 33: реальная теплоотдача и цена за ватт по каталогу, Compact или Ventil, где панельный выгоднее секционного и в чём его ограничения.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "стальные панельные радиаторы"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Стальные панельные радиаторы: типы 11, 21, 22, 33",
+          "item": "https://heatcalc.ru/stalnye-panelnye-radiatory/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Что означают цифры 11, 21, 22 и 33 у панельных радиаторов?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Первая цифра — число водяных панелей, вторая — число рядов оребрения между ними. Тип 11 это одна панель и один ряд, тип 22 — две панели и два ряда, тип 33 — три и три. Чем больше цифры, тем мощнее прибор при той же длине и высоте, и тем сильнее он выступает от стены."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой тип панельного радиатора выгоднее?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Тип 22: при высоте 500 и длине 1 000 мм он даёт 1 463 Вт при перепаде 50 и стоит 9 804 ₽, то есть 6,7 рубля за ватт — дешевле алюминиевой секции (8,3) и биметалла (9,2–14,5). Тип 33 уже дороже за ватт, 7,3: третья панель добавляет мощности меньше, чем цены."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем Ventil отличается от Compact?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Способом подключения. У Compact подводки сбоку, у Ventil — снизу, и внутри уже стоит термостатический клапан. Мощность одинаковая, разница в цене около двух тысяч рублей на прибор. Ventil берут при скрытой разводке, когда трубы выходят из пола или стены прямо под радиатором."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли ставить панельные радиаторы в частном доме?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, и это чаще всего самый выгодный вариант по цене за ватт. Ограничение одно: стенка панели тонкая и чувствительна к кислороду в теплоносителе. В закрытой системе с трубой, имеющей кислородный барьер, проблемы нет. В открытой системе или при частой подпитке свежей водой лучше секционные приборы."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему паспортная мощность панельного радиатора больше реальной?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Паспортную указывают при перепаде 70 градусов между средней температурой прибора и комнатой — режим 90/70, на котором современные системы не работают. Реальная при стандартном перепаде 50 составляет 0,646 от неё: прибор с паспортными 2 265 Вт даёт 1 463. На графике 55/45 останется меньше половины и от этого числа."
+          }
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Стальные панельные радиаторы: типы 11, 21, 22, 33</nav>
+
+        <h1>Стальные панельные радиаторы: типы 11, 21, 22, 33</h1>
+
+        <p class="lead">Цифры в названии панельного радиатора — не модель, а конструкция: сколько в нём панелей и рядов оребрения. От них зависит и мощность, и глубина, и цена за ватт. Разбираем все четыре типа по каталогу и показываем, где панельный радиатор выгоднее секционного.</p>
+
+        <h2>Что означают цифры</h2>
+
+        <p>Первая цифра — число водяных панелей, вторая — число рядов оребрения между ними. Оребрение и делает основную работу: это гофрированные стальные полосы, приваренные к панелям и многократно увеличивающие площадь теплообмена.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Тип</th><th>Панелей</th><th>Рядов оребрения</th><th>Глубина</th></tr>
+                <tr><td>11</td><td class="num">1</td><td class="num">1</td><td>самый тонкий</td></tr>
+                <tr><td>21</td><td class="num">2</td><td class="num">1</td><td>средний</td></tr>
+                <tr><td>22</td><td class="num">2</td><td class="num">2</td><td>толще</td></tr>
+                <tr><td>33</td><td class="num">3</td><td class="num">3</td><td>самый толстый</td></tr>
+            </table>
+        </div>
+        <p class="note">Чем больше цифры, тем мощнее прибор при той же длине и высоте — и тем сильнее он выступает от стены.</p>
+
+        <h2>Сколько они дают и сколько стоят</h2>
+
+        <p>Все приборы — высота 500 мм, длина 1 000 мм, чтобы сравнение было честным. Мощность указана реальная, при перепаде 50 градусов.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Тип</th><th>Паспортная</th><th>Реальная (ΔT50)</th><th>Цена</th><th>₽ за ватт</th></tr>
+                <tr><td>11</td><td class="num">1 246 Вт</td><td class="num">805 Вт</td><td class="num">6 748 ₽</td><td class="num">8,4</td></tr>
+                <tr><td>21</td><td class="num">1 706 Вт</td><td class="num">1 102 Вт</td><td class="num">9 127 ₽</td><td class="num">8,3</td></tr>
+                <tr><td>22</td><td class="num">2 265 Вт</td><td class="num">1 463 Вт</td><td class="num">9 804 ₽</td><td class="num">6,7</td></tr>
+                <tr><td>33</td><td class="num">3 225 Вт</td><td class="num">2 082 Вт</td><td class="num">15 167 ₽</td><td class="num">7,3</td></tr>
+            </table>
+        </div>
+        <p class="note">Исполнение Compact с боковым подключением, цены каталога на сентябрь 2026. Паспортная мощность дана при перепаде 70 — она всегда больше реальной примерно в полтора раза.</p>
+
+        <div class="callout">
+            <p><strong>Тип 22 — лучшая цена за ватт во всём каталоге приборов.</strong> 6,7 рубля против 8,3 у алюминиевой секции и 9,2–14,5 у биметалла. Причина в конструкции: две панели с двумя рядами оребрения дают почти вдвое больше тепла, чем тип 11, а стоят всего в полтора раза дороже. Если прибор помещается по глубине — это самый выгодный вариант.</p>
+        </div>
+
+        <p>Тип 33 при этом уже дороже за ватт, чем 22: третья панель добавляет мощности меньше, чем цены, и прибор становится совсем глубоким. Берут его там, где нужно много тепла на короткой стене.</p>
+
+        <h2>Compact или Ventil</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Compact</th><th>Ventil</th></tr>
+                <tr><td>Подключение</td><td>боковое</td><td>нижнее, снизу прибора</td></tr>
+                <tr><td>Клапан внутри</td><td>нет</td><td>встроенный термостатический</td></tr>
+                <tr><td>Тип 22, H500 L1000</td><td>9 804 ₽</td><td>11 856 ₽</td></tr>
+                <tr><td>Что видно</td><td>подводки сбоку</td><td>только две трубки снизу</td></tr>
+            </table>
+        </div>
+        <p class="note">Разница в цене — около двух тысяч рублей на прибор, и это плата за встроенный клапан и аккуратный вид.</p>
+
+        <p>Ventil берут при скрытой разводке, когда трубы выходят из пола или стены прямо под прибором. Мощность у обоих исполнений одинаковая — отличается только подключение.</p>
+
+        <p>К прибору с нижним подключением нужен узел нижнего подключения — 800 ₽ монтажа — или Г-образная трубка за 900 ₽. Термоголовку на встроенный клапан ставят отдельно, 350 ₽.</p>
+
+        <h2>Где панельный лучше секционного</h2>
+
+        <ul>
+            <li><strong>Цена за ватт.</strong> Тип 22 дешевле любой секции в пересчёте на реальную мощность.</li>
+            <li><strong>Меньше воды внутри.</strong> Панельный радиатор быстрее прогревается и лучше слушается термоголовки: система реагирует на регулировку минутами, а не часами.</li>
+            <li><strong>Ровная поверхность.</strong> Проще мыть, и в межсекционных промежутках не скапливается пыль.</li>
+            <li><strong>Готовый типоразмер.</strong> Не надо считать секции — подбирается прибор целиком по длине и высоте.</li>
+        </ul>
+
+        <h2>И где хуже</h2>
+
+        <ul>
+            <li><strong>Нельзя нарастить.</strong> Секционный радиатор можно дособрать, если не хватило мощности; панельный придётся менять целиком.</li>
+            <li><strong>Тонкая сталь.</strong> Стенка панели тоньше, чем у секционных приборов, и к кислороду в теплоносителе она чувствительнее. В закрытой системе с трубой, имеющей кислородный барьер, это не проблема; в открытой системе или при частой подпитке свежей водой — проблема.</li>
+            <li><strong>Рабочее давление ниже.</strong> Для частного дома с его 1,5–2 барами это неважно, для квартиры с центральным отоплением — решающее.</li>
+            <li><strong>Сложнее промыть.</strong> Внутренние каналы узкие, и шлам из старой системы оседает в них охотно.</li>
+        </ul>
+
+        <h2>Как подобрать</h2>
+
+        <ol>
+            <li><strong>Посчитать теплопотери комнаты</strong> и вычесть то, что даёт тёплый пол, если он есть.</li>
+            <li><strong>Добавить надбавку на ориентацию</strong>: север, северо-восток и восток +10 %, юго-восток и запад +5 %.</li>
+            <li><strong>Взять длину не меньше 70 % ширины окна</strong> — это условие важнее экономии на типе.</li>
+            <li><strong>Подобрать тип под нужную мощность</strong> при этой длине, проверив глубину: тип 33 выступает от стены заметно.</li>
+            <li><strong>Проверить по своему графику.</strong> На 55/45 прибор отдаёт меньше половины от номинала при ΔT50, и тип 11 там почти всегда окажется слабым.</li>
+        </ol>
+
+        <div class="formula">
+            <p>Комната на север, теплопотери 1 200 Вт, окно 1,4 м → прибор от 1,0 м</p>
+            <p>С надбавкой на ориентацию: 1 200 × 1,10 = 1 320 Вт</p>
+            <p>График 80/60: нужно 1 320 ÷ 0,95 = 1 390 Вт по каталогу при ΔT50</p>
+            <p>Длина 1 000 мм: тип 22 даёт <strong>1 463 Вт</strong> — подходит</p>
+        </div>
+
+        <p>Тот же расчёт на графике 55/45 потребовал бы 2 810 Вт — это уже тип 33 на полтора метра длины. Низкотемпературная система дорожает не только котлом.</p>
+
+        <h2>Что учесть при монтаже</h2>
+
+        <ul>
+            <li><strong>Кронштейны по весу с водой.</strong> Тип 33 длиной полтора метра — это заметная масса, и гипсокартонная перегородка требует закладной.</li>
+            <li><strong>Зазор от стены и от подоконника</strong> — не меньше 3–5 см, иначе конвекция не идёт и прибор недодаёт.</li>
+            <li><strong>Воздухоотводчик в верхней пробке</strong> — панельный прибор завоздушивается охотнее секционного.</li>
+            <li><strong>Монтаж радиатора — 6 500 ₽ за точку</strong> при коллекторной разводке и 2 500 ₽ при тройниковой; это одинаково для панельных и секционных.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Подобрать радиаторы по расчёту
+            <small>Тип и типоразмер по теплопотерям комнат</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что означают цифры 11, 21, 22 и 33 у панельных радиаторов?</span></summary>
+            <div class="answer">
+                <p>Первая цифра — число водяных панелей, вторая — число рядов оребрения между ними. Тип 11 это одна панель и один ряд, тип 22 — две панели и два ряда, тип 33 — три и три. Чем больше цифры, тем мощнее прибор при той же длине и высоте, и тем сильнее он выступает от стены.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой тип панельного радиатора выгоднее?</span></summary>
+            <div class="answer">
+                <p>Тип 22: при высоте 500 и длине 1 000 мм он даёт 1 463 Вт при перепаде 50 и стоит 9 804 ₽, то есть 6,7 рубля за ватт — дешевле алюминиевой секции (8,3) и биметалла (9,2–14,5). Тип 33 уже дороже за ватт, 7,3: третья панель добавляет мощности меньше, чем цены.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем Ventil отличается от Compact?</span></summary>
+            <div class="answer">
+                <p>Способом подключения. У Compact подводки сбоку, у Ventil — снизу, и внутри уже стоит термостатический клапан. Мощность одинаковая, разница в цене около двух тысяч рублей на прибор. Ventil берут при скрытой разводке, когда трубы выходят из пола или стены прямо под радиатором.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли ставить панельные радиаторы в частном доме?</span></summary>
+            <div class="answer">
+                <p>Да, и это чаще всего самый выгодный вариант по цене за ватт. Ограничение одно: стенка панели тонкая и чувствительна к кислороду в теплоносителе. В закрытой системе с трубой, имеющей кислородный барьер, проблемы нет. В открытой системе или при частой подпитке свежей водой лучше секционные приборы.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему паспортная мощность панельного радиатора больше реальной?</span></summary>
+            <div class="answer">
+                <p>Паспортную указывают при перепаде 70 градусов между средней температурой прибора и комнатой — режим 90/70, на котором современные системы не работают. Реальная при стандартном перепаде 50 составляет 0,646 от неё: прибор с паспортными 2 265 Вт даёт 1 463. На графике 55/45 останется меньше половины и от этого числа.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/bimetall-ili-alyuminiy/">биметаллические или алюминиевые радиаторы</a> · <a href="/zamena-radiatorov-v-dome/">замена радиаторов: что считать заранее</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

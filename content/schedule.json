@@ -53,10 +53,10 @@
    "freq": 160434,
    "audience": "owner",
    "data_block": "сравнение по теплоотдаче и цене",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-10-06",
    "published_at": null,
-   "words": 0
+   "words": 847
   },
   {
    "slug": "polipropilen-dlya-otopleniya",
@@ -235,10 +235,10 @@
    "freq": 7200,
    "audience": "owner",
    "data_block": "расценки за точку",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-11-05",
    "published_at": null,
-   "words": 0
+   "words": 690
   },
   {
    "slug": "metalloplastikovaya-truba",
@@ -417,10 +417,10 @@
    "freq": 6800,
    "audience": "owner",
    "data_block": "подбор по теплоотдаче",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-05",
    "published_at": null,
-   "words": 0
+   "words": 713
   },
   {
    "slug": "sshityy-polietilen-pex",
