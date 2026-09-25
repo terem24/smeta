@@ -101,6 +101,13 @@ const RecognizeProject = {
                 : '';
             // Точное положение марок и подписей зон — из PDF, а не с картинки.
             const labels = (sh.labels || []);
+            const zoneSum = labels.filter(l => !l.mark)
+                .reduce((a, l) => a + (this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, '')) || 0), 0);
+            const zonesHint = zoneSum > 0
+                ? `Подписи зон тёплого пола «S=…» на листе дают в сумме ${this.fmt(zoneSum)} м². Если в спецификации тёплого пола ` +
+                  'больше — на листе есть заштрихованные зоны без подписи: найди их (часто это гардеробные, кладовые, ниши) ' +
+                  'и отнеси к помещениям с ufh=true, ufhArea=null и ufhApprox — своей оценкой площади по размерам на чертеже.\n\n'
+                : '';
             const labelsHint = labels.length
                 ? 'Положение надписей на листе (x — % ширины слева, y — % высоты сверху; взято из PDF точно): ' +
                   labels.map(l => `${l.s} (${l.x}%, ${l.y}%)`).join('; ') +
@@ -111,7 +118,7 @@ const RecognizeProject = {
                 const data = await ui.askModel([
                     { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
                         `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
-                        (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint +
+                        (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint + zonesHint +
                         (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
                         'Верни только JSON.' },
                     { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
@@ -381,18 +388,35 @@ const RecognizeProject = {
         scope.forEach(r => {
             r.eng = r.eng || {};
             r.eng.heatSheet = sh.num;       // лист прочитан: молчание о комнате — тоже ответ
-            r.eng.ufh = false; r.eng.ufhArea = null; r.eng.heaters = 0; r.eng.heaterType = null;
+            r.eng.ufh = false; r.eng.ufhArea = null; r.eng.ufhAreaSrc = null; r.eng.heaters = 0; r.eng.heaterType = null;
         });
         let ufhSum = 0, ufhRooms = 0, heaters = 0;
+        // Подписи зон «S=…м2» из PDF: площадь, которой среди них нет (ни
+        // одной подписи, ни суммы двух — у комнаты бывает две зоны), модель
+        // не прочитала, а оценила — такую считаем зоной без подписи.
+        const labelVals = (sh.labels || []).filter(l => !l.mark)
+            .map(l => this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, ''))).filter(v => v > 0);
+        const isLabel = a => !labelVals.length || labelVals.some((v, i) =>
+            Math.abs(v - a) < 0.02 || labelVals.some((u, j) => j > i && Math.abs(v + u - a) < 0.02));
+        const unlabeled = [];
         (Array.isArray(parsed.rooms) ? parsed.rooms : []).forEach(x => {
             const r = this.rowOf(rows, x && x.n, scope);
             if (!r) { if (x && x.name) warnings.push(`лист ${sh.num}: «${x.name}» не найдено среди помещений`); return; }
             if (x.ufh) {
                 r.eng.ufh = true;
                 const a = this.num(x.ufhArea);
-                r.eng.ufhArea = a > 0 ? Math.round(a * 100) / 100 : null;
                 ufhRooms++;
-                if (a > 0) ufhSum += a;
+                if (a > 0 && isLabel(a)) {
+                    r.eng.ufhArea = Math.round(a * 100) / 100;
+                    r.eng.ufhAreaSrc = 'label';
+                    ufhSum += a;
+                } else {
+                    // Зона заштрихована, а площадь не подписана (гардеробные
+                    // «Хвойной 3»): берём из остатка спецификации ниже.
+                    r.eng.ufhArea = null;
+                    r.eng._approx = this.num(x.ufhApprox) || (a > 0 ? a : null);
+                    unlabeled.push(r);
+                }
             }
             // Марки, отнесённые к помещению, надёжнее голого числа: их модель
             // нашла на листе поимённо, и лишний прибор без марки не пройдёт.
@@ -418,6 +442,23 @@ const RecognizeProject = {
         }
 
         const total = this.num(parsed.ufhTotal);
+
+        // Остаток спецификации — зонам без подписи: пропорционально оценке
+        // модели по чертежу (нет оценки — площади комнаты), не больше самой
+        // комнаты. Итога в спецификации нет — остаётся оценка модели.
+        if (unlabeled.length) {
+            const rest = total > 0 ? total - ufhSum : 0;
+            const weight = r => r.eng._approx > 0 ? r.eng._approx : (r.area > 0 ? r.area : 1);
+            const wSum = unlabeled.reduce((a, r) => a + weight(r), 0);
+            unlabeled.forEach(r => {
+                let a = rest > 0.2 ? rest * weight(r) / wSum : (r.eng._approx || null);
+                if (a > 0 && r.area > 0) a = Math.min(a, r.area);
+                r.eng.ufhArea = a > 0 ? Math.round(a * 100) / 100 : null;
+                r.eng.ufhAreaSrc = rest > 0.2 ? 'spec' : 'approx';
+                if (a > 0) ufhSum += a;
+                delete r.eng._approx;
+            });
+        }
         const parts = [];
         if (ufhRooms) {
             parts.push(`тёплый пол в ${ufhRooms} ${RecognizeUI.plural(ufhRooms, 'помещении', 'помещениях', 'помещениях')}` +
@@ -484,7 +525,9 @@ const RecognizeProject = {
         if (e.ufh && e.ufhArea && r.area > 0 && e.ufhArea > r.area) {
             out.push(`зона тёплого пола больше комнаты — в расчёт пойдёт ${this.fmt(r.area)} м²`);
         }
-        if (!e.ufh && !e.heaters) out.push(`на листе ${e.heatSheet} отопления нет — в расчёте будет радиатор`);
+        if (!e.ufh && !e.heaters) out.push(`на листе ${e.heatSheet} отопления нет — в расчёте без отопления`);
+        if (e.ufh && e.ufhAreaSrc === 'spec') out.push(`зона тёплого пола без подписи площади — ${this.fmt(e.ufhArea)} м² по остатку спецификации листа`);
+        if (e.ufh && e.ufhAreaSrc === 'approx') out.push(`зона тёплого пола без подписи площади — ${e.ufhArea ? this.fmt(e.ufhArea) + ' м² оценено по чертежу, проверьте' : 'площадь не определена, впишите'}`);
         if (e.heaters && e.heaterMarks && e.heaterMarks.length) out.push(`приборы на листе: ${e.heaterMarks.join(', ')}`);
         return out;
     },
@@ -548,6 +591,7 @@ const RecognizeProject = {
         } else if (field === 'ufhArea') {
             const a = this.num(val);
             e.ufhArea = a > 0 ? Math.round(a * 100) / 100 : null;
+            e.ufhAreaSrc = 'manual';
             if (e.ufhArea) e.ufh = true;
         } else if (field === 'heaters') {
             e.heaters = this.cnt(val);
@@ -603,10 +647,13 @@ const RecognizeProject = {
     fitRoom(room, r) {
         const e = r.eng;
         if (!e || !e.heatSheet) return;
+        // Лист прочитан — решает он. Ни прибора, ни зоны — по проекту
+        // помещение не отапливается (хоз. комната «Хвойной 3»): раньше сюда
+        // ставился радиатор «на всякий случай», и в смете прибавлялись
+        // приборы, которых в проекте нет.
         const sys = [];
         if (e.heaters) sys.push('rad');
         if (e.ufh) sys.push('tp');
-        if (!sys.length) sys.push('rad');
         room.sys = sys;
         if (e.ufh && e.ufhArea > 0 && e.ufhArea < room.area) room.tpArea = e.ufhArea;
 
@@ -618,9 +665,20 @@ const RecognizeProject = {
                 room.windows.push({ id: room.id + k + 1, width, isPan: false });
             }
         }
-        if (e.heaterType === 'floor_convector') {
-            room.windows.forEach((w, k) => { if (k < e.heaters) w.isPan = true; });
-        }
+        // Приборов меньше, чем окон: прибор получают столько окон, сколько
+        // приборов на листе, остальные — «без прибора» (app.render отдаёт их
+        // потери соседям). Конвектору в полу — сперва окна в пол, радиатору —
+        // сперва обычные. Без приборов вовсе — все окна без прибора: греет
+        // тёплый пол, или помещение не отапливается.
+        const conv = e.heaterType === 'floor_convector';
+        const key = w => conv ? (w.isPan ? 0 : 1) : (w.isPan ? 1 : 0);
+        const order = room.windows.map((w, k) => ({ w, k }))
+            .sort((a, b) => (key(a.w) - key(b.w)) || (a.k - b.k));
+        order.forEach(({ w }, n) => {
+            const heated = n < (e.heaters || 0);
+            if (heated) { delete w.noHeater; if (conv) w.isPan = true; }
+            else w.noHeater = true;
+        });
     },
 
     /** Были ли в разборе листы сантехники или отопления. */
@@ -684,6 +742,7 @@ const PROJECT_ENG_PROMPT = `Ты разбираешь лист инженерн�
 
 === heat — отопление и тёплые полы ===
 Тёплый пол на плане — заштрихованная зона (часто красной или косой штриховкой) с подписью площади «S=10,63м2». Для каждого помещения, где есть такая зона, укажи ufh=true и ufhArea — сумму подписанных площадей зон в этом помещении. Площадь бери из подписи на листе, не вычисляй.
+Зона бывает и без подписи площади (гардеробная, кладовая, ниша — штриховка есть, «S=» нет; рядом часто стоит терморегулятор). Это тоже тёплый пол: ufh=true, ufhArea=null, ufhApprox — оценка площади зоны по размерам на чертеже. Не пропускай такие зоны.
 Приборы отопления — радиаторы, конвекторы — обозначены марками (РД-1, Р-2, К-1, КВ-1…) и прямоугольниками у окон. heaters — сколько приборов в помещении. heaterType:
 - "floor_convector" — прибор утоплен в пол вдоль остекления (узкий прямоугольник у окна в пол, решётка в полу), или в спецификации написано «внутрипольный»;
 - "wall_convector" — настенный конвектор;
@@ -722,7 +781,8 @@ n — номер помещения из списка в запросе. Опр�
 === Формат ответа ===
 Только JSON, без пояснений.
 heat:
-{"rooms":[{"n":1,"name":"Кухня-гостиная","ufh":true,"ufhArea":57.54,"heaters":3,"heaterMarks":["Р-1","Р-2","Р-3"],"heaterType":"floor_convector"}],
+{"rooms":[{"n":1,"name":"Кухня-гостиная","ufh":true,"ufhArea":57.54,"heaters":3,"heaterMarks":["Р-1","Р-2","Р-3"],"heaterType":"floor_convector"},
+          {"n":4,"name":"Кладовая","ufh":true,"ufhArea":null,"ufhApprox":2.5,"heaters":0}],
  "towelRails":{"count":1,"type":"electric"},"ufhTotal":121.95,"unclear":[]}
 water:
 {"rooms":[{"n":5,"name":"Мастер-санузел","toilet":1,"bidet":0,"basin":1,"kitchenSink":0,"bath":1,"shower":1,"wash":0,"dish":0}],

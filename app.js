@@ -55840,10 +55840,14 @@ const app = {
             rooms.forEach(r => {
                 if ((parseInt(r.floor) || 1) !== floorNo) return;
                 const roomHasRad = !r.sys || r.sys.includes('rad');
-                (r.windows || []).forEach(w => {
+                const wins = r.windows || [];
+                const heat = wins.filter(w => !w.noHeater);
+                heat.forEach(w => {
                     if (w.isPan) nConv++;
                     else if (roomHasRad) nRad++;
                 });
+                // Все окна без прибора — один прибор на помещение (как в render).
+                if (wins.length && !heat.length && roomHasRad) nRad++;
             });
             if (nRad + nConv !== fl.rads)
                 warns.push('<b>' + floorNo + ' этаж</b>: приборов под окнами на плане ' + fl.rads +
@@ -56758,6 +56762,10 @@ const app = {
                             <label style="display:flex; align-items:center; gap:3px; cursor:pointer; color:var(--text-sec); margin-left:auto; white-space:nowrap;">
                                 <input type="checkbox" ${w.isPan ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'isPan', this.checked)" style="margin:0; width:12px; height:12px;">
                                 панорамное
+                            </label>
+                            <label style="display:flex; align-items:center; gap:3px; cursor:pointer; color:var(--text-sec); white-space:nowrap;" title="Под этим окном прибора нет (так в проекте): его теплопотери возьмут приборы под остальными окнами или тёплый пол">
+                                <input type="checkbox" ${w.noHeater ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'noHeater', this.checked)" style="margin:0; width:12px; height:12px;">
+                                без прибора
                             </label>
                             <span style="color:#EF4444; cursor:pointer; font-weight:700; padding:0 2px;" onclick="app.removeWindow(${r.id}, ${w.id})">✕</span>
                         </div>`).join('');
@@ -68321,10 +68329,25 @@ const app = {
                     // установки на помещение: стекла у него нет, поэтому вся
                     // нагрузка приходит долей ограждений и вентиляции, а правило
                     // ширины «50–90 % окна» к нему не применяется.
-                    const spots = (r.windows && r.windows.length)
-                        ? r.windows
+                    //
+                    // Окно без прибора (w.noHeater): по проекту под ним ничего не
+                    // стоит — в кухне-гостиной «Хвойной 3» четыре окна и три прибора,
+                    // в гардеробной с тёплым полом окно есть, а прибора нет. Его
+                    // стекло теряет тепло как прежде, и эти потери поровну берут на
+                    // себя приборы под остальными окнами. Нет ни одного окна с
+                    // прибором — одно место на помещение, как у комнаты без окон:
+                    // там решают радиаторы или тёплый пол по системам комнаты.
+                    const _wins = (r.windows && r.windows.length) ? r.windows : [];
+                    const _heatWins = _wins.filter(w => !w.noHeater);
+                    const spots = _heatWins.length
+                        ? _heatWins
                         : [{ id: 'noWin_' + r.id, width: 0, isPan: false, noWin: true }];
-                    spots.forEach((w, wIdx) => {
+                    const _glassLoss = w => roomLoss.R_glz > 0
+                        ? parseFloat(w.width || 1) * this.roomWinHeight(r, w) * roomLoss.dT / roomLoss.R_glz * roomLoss.n_glz * roomLoss.kOrient : 0;
+                    const _extraGlass = _wins.filter(w => w.noHeater).reduce((a, w) => a + _glassLoss(w), 0) / spots.length;
+                    spots.forEach((w, _hIdx) => {
+                        // Номер окна — по карточке комнаты, а не среди окон с прибором.
+                        const wIdx = w.noWin ? _hIdx : _wins.indexOf(w);
                         // Теплопотери через площадь конкретного стекла. У места
                         // установки в помещении без окон стекла нет: ширину 0
                         // нельзя пропускать через «|| 1», иначе комната получила бы
@@ -68343,7 +68366,8 @@ const app = {
                         let wShare = (roomLoss.Q_wall + roomLoss.Q_roof + roomLoss.Q_floor + roomLoss.Q_vent) / spots.length;
 
                         // Итоговая базовая теплопотребность этого оконного участка
-                        let totalWindowLoss = wLoss + wShare;
+                        // (+ доля стекла окон без прибора, см. _extraGlass)
+                        let totalWindowLoss = wLoss + wShare + _extraGlass;
                         let wLoad = totalWindowLoss;
 
                         if (roomHasTp && roomHasRad) {
