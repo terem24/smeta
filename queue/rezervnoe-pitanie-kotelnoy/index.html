@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бесперебойник для газового котла: расчёт автономии и выбор | HeatCalc.ru</title>
+    <meta name="description" content="ИБП для котельной: почему компьютерный не подходит, расчёт времени работы по ёмкости аккумулятора, что подключать, когда нужен генератор и как проверить систему до морозов.">
+    <link rel="canonical" href="https://heatcalc.ru/rezervnoe-pitanie-kotelnoy/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/rezervnoe-pitanie-kotelnoy/">
+    <meta property="og:title" content="Бесперебойник для газового котла: расчёт">
+    <meta property="og:description" content="100 А·ч даёт 5 часов на котле с насосом. Сутки — это четыре аккумулятора и центнер веса.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/rezervnoe-pitanie-kotelnoy/#webpage",
+      "url": "https://heatcalc.ru/rezervnoe-pitanie-kotelnoy/",
+      "name": "Бесперебойник для газового котла: расчёт и что защищать",
+      "description": "ИБП для котельной: почему компьютерный не подходит, расчёт времени работы по ёмкости аккумулятора, что подключать, когда нужен генератор и как проверить систему до морозов.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "бесперебойник для газового котла"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Бесперебойник для газового котла: расчёт и что защищать",
+          "item": "https://heatcalc.ru/rezervnoe-pitanie-kotelnoy/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какой ИБП нужен для газового котла?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "С чистой синусоидой на выходе и внешним аккумулятором. Дешёвые компьютерные ИБП выдают ступенчатое напряжение: насос на нём гудит и греется, а автоматика котла, определяющая пламя по ионизационному току, уходит в ошибку розжига. Встроенная батарея на 7 А·ч даёт двадцать минут вместо нескольких часов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как рассчитать время работы от бесперебойника?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ёмкость в ампер-часах умножить на 12 вольт, на 0,8 (допустимая глубина разряда) и на 0,85 (КПД преобразования), затем разделить на нагрузку в ваттах. Аккумулятор 100 А·ч при нагрузке 150 Вт даёт 5,4 часа. Сутки автономии потребуют четырёх таких аккумуляторов — больше ста килограммов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что подключать к ИБП котельной?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Котёл с автоматикой, насосы всех контуров, термостаты и сервоприводы, контроллер с GSM-модулем. Если запитать только котёл, он будет греть сам себя. А вот электрокотёл, ТЭН бойлера и любую нагревательную нагрузку подключать нельзя: это киловатты, которые посадят батарею мгновенно."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда вместо ИБП нужен генератор?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Когда отключения длятся сутки и дольше или случаются регулярно. ИБП рассчитан на несколько часов: его задача — чтобы дом не заметил типичное отключение и чтобы у вас было время запустить генератор. Для дома без присмотра зимой разумна связка: ИБП плюс оповещение, а при частых долгих отключениях — генератор с автозапуском."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как проверить резервное питание перед зимой?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Выключить автомат котельной и убедиться, что котёл, насосы и автоматика продолжают работать; дать поработать полчаса на реальной нагрузке. Проверить возраст аккумулятора — свинцовый живёт 3–5 лет, и к концу срока ёмкость заметно ниже номинальной. И убедиться, что после восстановления сети всё вернулось в режим само."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/rezervnoe-pitanie-kotelnoy/#article",
+      "headline": "Бесперебойник для газового котла: расчёт и что защищать",
+      "description": "ИБП для котельной: почему компьютерный не подходит, расчёт времени работы по ёмкости аккумулятора, что подключать, когда нужен генератор и как проверить систему до морозов.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/rezervnoe-pitanie-kotelnoy/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-19",
+      "dateModified": "2026-12-19",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Бесперебойник для газового котла: расчёт и что защищать</nav>
+
+        <h1>Бесперебойник для газового котла: расчёт и что защищать</h1>
+
+        <p class="art-meta"><time datetime="2026-12-19">19 декабря 2026</time></p>
+
+        <p class="lead">Отключение света зимой опаснее мороза: котёл встаёт, насос стоит, и дом остывает на 8–12 градусов за сутки. Бесперебойник закрывает типовое отключение за понятные деньги — если правильно посчитать ёмкость и не купить компьютерный.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#skolko-potreblyaet-kotelnaya">Сколько потребляет котельная</a></li>
+            <li><a href="#raschet-avtonomii">Расчёт автономии</a></li>
+            <li><a href="#pochemu-kompyuternyy-ne-podoydet">Почему компьютерный не подойдёт</a></li>
+            <li><a href="#chto-podklyuchat">Что подключать</a></li>
+            <li><a href="#kogda-nuzhen-generator">Когда нужен генератор</a></li>
+            <li><a href="#proverka-do-morozov">Проверка до морозов</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="skolko-potreblyaet-kotelnaya">Сколько потребляет котельная</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Потребитель</th><th>Мощность</th></tr>
+                <tr><td>Автоматика газового котла</td><td class="num">60–100 Вт</td></tr>
+                <tr><td>Циркуляционный насос</td><td class="num">50–70 Вт</td></tr>
+                <tr><td>Второй насос (пол или бойлер)</td><td class="num">50–70 Вт</td></tr>
+                <tr><td>Сервоприводы, термостаты</td><td class="num">до 20 Вт</td></tr>
+            </table>
+        </div>
+        <p class="note">Типовая котельная на резерве — 150–250 Вт. Немного, но без них дом не греется.</p>
+
+        <p>У насоса есть пусковой ток в несколько раз выше рабочего, поэтому по мощности ИБП берут с запасом примерно вдвое.</p>
+
+        <h2 id="raschet-avtonomii">Расчёт автономии</h2>
+
+        <div class="formula">
+            <p><strong>Время, ч</strong> = ёмкость, А·ч × 12 В × 0,8 × 0,85 ÷ нагрузка, Вт</p>
+            <p>Аккумулятор 100 А·ч при нагрузке 150 Вт:</p>
+            <p>100 × 12 × 0,8 × 0,85 ÷ 150 = <strong>5,4 часа</strong></p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Ёмкость</th><th>Нагрузка 150 Вт</th><th>Нагрузка 250 Вт</th></tr>
+                <tr><td>75 А·ч</td><td class="num">4,1 ч</td><td class="num">2,4 ч</td></tr>
+                <tr><td>100 А·ч</td><td class="num">5,4 ч</td><td class="num">3,3 ч</td></tr>
+                <tr><td>2 × 100 А·ч</td><td class="num">10,9 ч</td><td class="num">6,5 ч</td></tr>
+                <tr><td>4 × 100 А·ч</td><td class="num">21,8 ч</td><td class="num">13,1 ч</td></tr>
+            </table>
+        </div>
+        <p class="note">Коэффициент 0,8 — допустимая глубина разряда свинцового аккумулятора, 0,85 — КПД преобразования. Сутки автономии это больше ста килограммов батарей.</p>
+
+        <div class="callout">
+            <p><strong>ИБП не для того, чтобы пережить трёхдневное отключение.</strong> На это нужен генератор. Его задача — чтобы дом не заметил типичное отключение на несколько часов и чтобы у вас было время запустить генератор или приехать. Пять-шесть часов закрывают подавляющее большинство случаев, и гнаться за сутками обычно незачем.</p>
+        </div>
+
+        <h2 id="pochemu-kompyuternyy-ne-podoydet">Почему компьютерный не подойдёт</h2>
+
+        <ul>
+            <li><strong>Форма напряжения.</strong> Дешёвый ИБП выдаёт ступенчатое подобие синусоиды. Насос на нём гудит и греется, а автоматика котла, определяющая пламя по ионизационному току, уходит в ошибку розжига.</li>
+            <li><strong>Время переключения.</strong> Компьютерный переключается за 5–10 миллисекунд, и этого иногда достаточно, чтобы плата котла перезагрузилась.</li>
+            <li><strong>Встроенная батарея.</strong> Аккумулятор на 7 А·ч даёт двадцать минут вместо пяти часов, и заменить его на большой нельзя.</li>
+            <li><strong>Фаза и ноль.</strong> Котлу важна правильная полярность подключения; у дешёвых ИБП на выходе она не гарантирована.</li>
+        </ul>
+
+        <p>Нужен ИБП с чистой синусоидой и внешним аккумулятором. Многие модели для котлов имеют ещё и встроенный стабилизатор входного напряжения — тогда отдельный стабилизатор не нужен.</p>
+
+        <h2 id="chto-podklyuchat">Что подключать</h2>
+
+        <ol>
+            <li><strong>Котёл с его автоматикой</strong> — обязательно.</li>
+            <li><strong>Насосы всех контуров</strong> — отопления, тёплого пола, бойлера. Если запитать только котёл, он будет греть сам себя.</li>
+            <li><strong>Термостаты и сервоприводы</strong> — потребление копеечное, а без них зоны не откроются.</li>
+            <li><strong>Контроллер с GSM-модулем</strong> — чтобы оповещение об аварии ушло, пока ещё есть питание.</li>
+        </ol>
+
+        <p>Чего к этому же ИБП подключать нельзя — электрокотёл, ТЭН бойлера и любую нагревательную нагрузку. Это киловатты, которые аккумулятор не тянет: включение такого потребителя посадит батарею мгновенно.</p>
+
+        <h2 id="kogda-nuzhen-generator">Когда нужен генератор</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Ситуация</th><th>Решение</th></tr>
+                <tr><td>Свет пропадает на час-другой</td><td>ИБП на 100 А·ч</td></tr>
+                <tr><td>Отключения на полдня, несколько раз за зиму</td><td>ИБП на два аккумулятора</td></tr>
+                <tr><td>Отключения на сутки и дольше</td><td>генератор с автозапуском</td></tr>
+                <tr><td>Дом без присмотра зимой</td><td>ИБП плюс оповещение, а лучше генератор</td></tr>
+            </table>
+        </div>
+        <p class="note">Генератор дороже, шумит, требует топлива и обслуживания, но закрывает отключения любой длительности.</p>
+
+        <h2 id="proverka-do-morozov">Проверка до морозов</h2>
+
+        <ol>
+            <li><strong>Выключить автомат котельной</strong> и убедиться, что всё продолжает работать: котёл, насосы, автоматика.</li>
+            <li><strong>Дать поработать полчаса</strong> — проверить, что ИБП тянет реальную нагрузку, а не паспортную.</li>
+            <li><strong>Проверить возраст аккумулятора.</strong> Свинцовый живёт 3–5 лет, и к концу срока реальная ёмкость заметно ниже номинальной.</li>
+            <li><strong>Убедиться, что после восстановления сети всё вернулось</strong> в нормальный режим само, без ручного вмешательства.</li>
+            <li><strong>Проверить оповещение</strong> — оно должно уйти именно при пропадании сети, а не только при падении температуры.</li>
+        </ol>
+
+        <p>Эта проверка занимает час и делается в сентябре. В январе выясняется, что аккумулятор сел три года назад, и узнаётся это худшим способом.</p>
+
+        <a class="cta" href="/">
+            Собрать котельную
+            <small>Состав оборудования и работы</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой ИБП нужен для газового котла?</span></summary>
+            <div class="answer">
+                <p>С чистой синусоидой на выходе и внешним аккумулятором. Дешёвые компьютерные ИБП выдают ступенчатое напряжение: насос на нём гудит и греется, а автоматика котла, определяющая пламя по ионизационному току, уходит в ошибку розжига. Встроенная батарея на 7 А·ч даёт двадцать минут вместо нескольких часов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как рассчитать время работы от бесперебойника?</span></summary>
+            <div class="answer">
+                <p>Ёмкость в ампер-часах умножить на 12 вольт, на 0,8 (допустимая глубина разряда) и на 0,85 (КПД преобразования), затем разделить на нагрузку в ваттах. Аккумулятор 100 А·ч при нагрузке 150 Вт даёт 5,4 часа. Сутки автономии потребуют четырёх таких аккумуляторов — больше ста килограммов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что подключать к ИБП котельной?</span></summary>
+            <div class="answer">
+                <p>Котёл с автоматикой, насосы всех контуров, термостаты и сервоприводы, контроллер с GSM-модулем. Если запитать только котёл, он будет греть сам себя. А вот электрокотёл, ТЭН бойлера и любую нагревательную нагрузку подключать нельзя: это киловатты, которые посадят батарею мгновенно.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда вместо ИБП нужен генератор?</span></summary>
+            <div class="answer">
+                <p>Когда отключения длятся сутки и дольше или случаются регулярно. ИБП рассчитан на несколько часов: его задача — чтобы дом не заметил типичное отключение и чтобы у вас было время запустить генератор. Для дома без присмотра зимой разумна связка: ИБП плюс оповещение, а при частых долгих отключениях — генератор с автозапуском.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как проверить резервное питание перед зимой?</span></summary>
+            <div class="answer">
+                <p>Выключить автомат котельной и убедиться, что котёл, насосы и автоматика продолжают работать; дать поработать полчаса на реальной нагрузке. Проверить возраст аккумулятора — свинцовый живёт 3–5 лет, и к концу срока ёмкость заметно ниже номинальной. И убедиться, что после восстановления сети всё вернулось в режим само.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/dom-bez-otopleniya-zimoy/">дом без присмотра зимой: как уехать и не разморозить</a> · <a href="/odnotrubnaya-leningradka/">однотрубная система «ленинградка»: где ещё жива</a> · <a href="/datchiki-protechki/">датчики протечки и аварийное отключение</a> · <a href="/komnatnyy-termostat/">комнатный термостат: проводной или беспроводной</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

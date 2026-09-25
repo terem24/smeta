@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Из чего складывается цена монтажа отопления: разбор по позициям | HeatCalc.ru</title>
+    <meta name="description" content="Как устроены расценки на монтаж отопления: за что берут деньги по точкам, квадратам и комплектам, почему смета «за объект одной строкой» ничего не объясняет и как сравнить два предложения.">
+    <link rel="canonical" href="https://heatcalc.ru/iz-chego-skladyvaetsya-cena-montazha/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/iz-chego-skladyvaetsya-cena-montazha/">
+    <meta property="og:title" content="Цена монтажа отопления: из чего складывается">
+    <meta property="og:description" content="Точка, квадрат, комплект — три единицы, в которых считается всё. Разбор по позициям.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/iz-chego-skladyvaetsya-cena-montazha/#webpage",
+      "url": "https://heatcalc.ru/iz-chego-skladyvaetsya-cena-montazha/",
+      "name": "Цена монтажа отопления: из чего она складывается",
+      "description": "Как устроены расценки на монтаж отопления: за что берут деньги по точкам, квадратам и комплектам, почему смета «за объект одной строкой» ничего не объясняет и как сравнить два предложения.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "цена монтажа отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Цена монтажа отопления: из чего она складывается",
+          "item": "https://heatcalc.ru/iz-chego-skladyvaetsya-cena-montazha/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "В каких единицах считается монтаж отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В трёх: точка, квадратный метр и комплект. Точкой считают приборы и водоразбор — это всё, что соединяет прибор с системой. Квадратами — тёплый пол и утеплитель. Комплектами — котёл, узлы, гидравлику и опрессовку. Позиция, посчитанная не в этих единицах, требует расшифровки."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что входит в точку монтажа радиатора?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Крепления, две подводки от магистрали или коллектора, запорно-регулирующая арматура, воздухоотводчик, установка и подключение прибора. Стоит 6 500 ₽ при лучевой разводке и 2 500 ₽ при тройниковой. Длина подводки внутри комнаты на цену не влияет — состав работ одинаков."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему на маленьком доме цена за квадрат выше?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Из-за комплектных позиций. Котёл, дымоход, гидравлика и опрессовка дают около 65 тысяч рублей независимо от площади. На доме 150 м² это пятая часть сметы, на доме 60 м² — почти половина. Поэтому сравнивать объекты по цене за квадратный метр бессмысленно."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что не входит в смету на монтаж отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Материалы — это отдельный раздел, сопоставимый с работами по сумме. Стяжка поверх тёплого пола, штробление и заделка, электрика котельной, проект газоснабжения и пуск газа, демонтаж и промывка при переделке. Эти позиции всплывают отдельным счётом, поэтому спрашивать о них стоит заранее."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как сравнить две сметы на отопление?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Свести обе к точкам, квадратам и комплектам и сравнить состав, а не итог: сколько точек радиаторов, сколько квадратов пола, есть ли гидрострелка. Проверить мощность котла — если она вдвое больше теплопотерь, считали по площади. Уточнить температурный график и спросить, что не входит."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/iz-chego-skladyvaetsya-cena-montazha/#article",
+      "headline": "Цена монтажа отопления: из чего она складывается",
+      "description": "Как устроены расценки на монтаж отопления: за что берут деньги по точкам, квадратам и комплектам, почему смета «за объект одной строкой» ничего не объясняет и как сравнить два предложения.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/iz-chego-skladyvaetsya-cena-montazha/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-26",
+      "dateModified": "2026-12-26",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Цена монтажа отопления: из чего она складывается</nav>
+
+        <h1>Цена монтажа отопления: из чего она складывается</h1>
+
+        <p class="art-meta"><time datetime="2026-12-26">26 декабря 2026</time></p>
+
+        <p class="lead">Смета на отопление кажется непрозрачной, пока не знаешь, в каких единицах считается работа. Их всего три: точка, квадратный метр и комплект. Разбираем, что входит в каждую, и показываем, как по этой сетке сравнить два предложения.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#tri-edinicy-v-kotoryh-schitaetsya-vse">Три единицы, в которых считается всё</a></li>
+            <li><a href="#chto-takoe-tochka">Что такое точка</a></li>
+            <li><a href="#chto-schitaetsya-kvadratami">Что считается квадратами</a></li>
+            <li><a href="#chto-idet-komplektami">Что идёт комплектами</a></li>
+            <li><a href="#chego-v-rascenkah-net">Чего в расценках нет</a></li>
+            <li><a href="#kak-sravnit-dva-predlozheniya">Как сравнить два предложения</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="tri-edinicy-v-kotoryh-schitaetsya-vse">Три единицы, в которых считается всё</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Единица</th><th>Где применяется</th><th>Что входит</th></tr>
+                <tr><td>Точка</td><td>приборы, водоразбор, канализация</td><td>всё, что соединяет прибор с системой</td></tr>
+                <tr><td>Квадратный метр</td><td>тёплый пол, утеплитель</td><td>работа по площади укладки</td></tr>
+                <tr><td>Комплект</td><td>котёл, узлы, гидравлика, опрессовка</td><td>узел целиком, независимо от размера</td></tr>
+            </table>
+        </div>
+        <p class="note">Позиция, посчитанная не в этих единицах, — повод спросить, что именно в неё входит.</p>
+
+        <h2 id="chto-takoe-tochka">Что такое точка</h2>
+
+        <p>Точка — это один прибор со всем, что его соединяет с системой. Для радиатора: крепления, две подводки от магистрали или коллектора, запорно-регулирующая арматура, воздухоотводчик, установка и подключение.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж радиатора (лучевая разводка)</td><td>точка</td><td class="num">6 500 ₽</td></tr>
+                <tr><td>Монтаж радиатора (тройниковая)</td><td>точка</td><td class="num">2 500 ₽</td></tr>
+                <tr><td>Точка присоединения ХВС</td><td>точка</td><td class="num">3 700 ₽</td></tr>
+                <tr><td>Точка присоединения ГВС</td><td>точка</td><td class="num">4 500 ₽</td></tr>
+                <tr><td>Точка присоединения рециркуляции</td><td>точка</td><td class="num">3 700 ₽</td></tr>
+                <tr><td>Монтаж труб канализации</td><td>точка</td><td class="num">3 500 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Базовые расценки калькулятора. Полный прайс — в <a href="/rascenki-na-montazh-otopleniya/">расценках на монтаж</a>.</p>
+
+        <p>Длина подводки внутри комнаты на цену точки не влияет — состав работ одинаков. Отдельными строками идёт только то, что ставят не всегда: термоголовка, узел нижнего подключения, фиксаторы поворота.</p>
+
+        <h2 id="chto-schitaetsya-kvadratami">Что считается квадратами</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж трубы тёплого пола</td><td>м²</td><td class="num">750 ₽</td></tr>
+                <tr><td>Утеплитель под тёплый пол</td><td>м²</td><td class="num">350 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Считается по площади укладки, а не по площади комнаты: под мебелью без ножек и в отступах вдоль стен трубы нет.</p>
+
+        <p>Разница существеннее, чем кажется. От комнаты 20 м² под укладку остаётся около 16, на кухне с гарнитуром — 12–14. Смета, посчитанная по площади комнат, завышает объём работ на четверть.</p>
+
+        <h2 id="chto-idet-komplektami">Что идёт комплектами</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж газового котла</td><td>шт</td><td class="num">20 000 ₽</td></tr>
+                <tr><td>Коаксиальный дымоход</td><td>шт</td><td class="num">10 000 ₽</td></tr>
+                <tr><td>Отверстие под дымоход</td><td>шт</td><td class="num">6 000 ₽</td></tr>
+                <tr><td>Гидравлика: баки и предохранительные клапаны</td><td>компл</td><td class="num">9 000 ₽</td></tr>
+                <tr><td>Гидравлика: магистрали радиаторов</td><td>компл</td><td class="num">9 000 ₽</td></tr>
+                <tr><td>Гидравлика: до коллектора тёплого пола</td><td>компл</td><td class="num">15 000 ₽</td></tr>
+                <tr><td>Сборка и установка узла подмеса</td><td>шт</td><td class="num">6 000 ₽</td></tr>
+                <tr><td>Монтаж коллектора-гидрострелки</td><td>шт</td><td class="num">6 500 ₽</td></tr>
+                <tr><td>Опрессовка котельной</td><td>компл</td><td class="num">5 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Комплект не зависит от размера дома: гидравлика до коллектора тёплого пола стоит 15 000 ₽ и на 60 квадратах, и на 120.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда особенность, которая объясняет разницу цен на маленьких объектах.</strong> Комплектные позиции — котёл, дымоход, гидравлика, опрессовка — дают около 65 тысяч рублей независимо от площади. На доме 150 м² это пятая часть сметы, на доме 60 м² — почти половина. Поэтому удельная цена за квадрат у маленького дома всегда выше, и сравнивать объекты «по цене за метр» бессмысленно.</p>
+        </div>
+
+        <h2 id="chego-v-rascenkah-net">Чего в расценках нет</h2>
+
+        <ul>
+            <li><strong>Материалов.</strong> Труба, приборы, коллекторы, котёл — отдельный раздел сметы, сопоставимый с работами по сумме.</li>
+            <li><strong>Стяжки</strong> поверх тёплого пола — это работа бетонщиков.</li>
+            <li><strong>Штробления и заделки</strong> под скрытую подводку.</li>
+            <li><strong>Электрики котельной</strong> — линии от щита, автоматов, УЗО.</li>
+            <li><strong>Проекта газоснабжения и пуска газа</strong> — работа газораспределительной организации.</li>
+            <li><strong>Демонтажа и промывки</strong> при переделке существующей системы.</li>
+        </ul>
+
+        <h2 id="kak-sravnit-dva-predlozheniya">Как сравнить два предложения</h2>
+
+        <ol>
+            <li><strong>Свести обе сметы к точкам, квадратам и комплектам.</strong> Если позиции не раскладываются — просить расшифровку.</li>
+            <li><strong>Сравнить состав, а не итог.</strong> Сколько точек радиаторов, сколько квадратов пола, есть ли гидрострелка, какой объём бойлера.</li>
+            <li><strong>Проверить мощность котла.</strong> Если она вдвое больше теплопотерь, считали по площади, и завышено будет всё остальное.</li>
+            <li><strong>Уточнить температурный график.</strong> От него зависит число секций: на 55/45 радиатор отдаёт 47 % каталожной мощности, и предложение с меньшим числом приборов может просто игнорировать этот пересчёт.</li>
+            <li><strong>Спросить, что не входит.</strong> Именно эти позиции всплывают потом отдельным счётом.</li>
+        </ol>
+
+        <p>Смета, которая проходит эти пять проверок, сравнима с любой другой. Смета «отопление под ключ — 700 000 ₽» не сравнима ни с чем, и низкая цифра в ней означает не выгоду, а неполный состав.</p>
+
+        <a class="cta" href="/">
+            Собрать смету на свой дом
+            <small>Работы и материалы раздельно</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">В каких единицах считается монтаж отопления?</span></summary>
+            <div class="answer">
+                <p>В трёх: точка, квадратный метр и комплект. Точкой считают приборы и водоразбор — это всё, что соединяет прибор с системой. Квадратами — тёплый пол и утеплитель. Комплектами — котёл, узлы, гидравлику и опрессовку. Позиция, посчитанная не в этих единицах, требует расшифровки.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что входит в точку монтажа радиатора?</span></summary>
+            <div class="answer">
+                <p>Крепления, две подводки от магистрали или коллектора, запорно-регулирующая арматура, воздухоотводчик, установка и подключение прибора. Стоит 6 500 ₽ при лучевой разводке и 2 500 ₽ при тройниковой. Длина подводки внутри комнаты на цену не влияет — состав работ одинаков.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему на маленьком доме цена за квадрат выше?</span></summary>
+            <div class="answer">
+                <p>Из-за комплектных позиций. Котёл, дымоход, гидравлика и опрессовка дают около 65 тысяч рублей независимо от площади. На доме 150 м² это пятая часть сметы, на доме 60 м² — почти половина. Поэтому сравнивать объекты по цене за квадратный метр бессмысленно.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что не входит в смету на монтаж отопления?</span></summary>
+            <div class="answer">
+                <p>Материалы — это отдельный раздел, сопоставимый с работами по сумме. Стяжка поверх тёплого пола, штробление и заделка, электрика котельной, проект газоснабжения и пуск газа, демонтаж и промывка при переделке. Эти позиции всплывают отдельным счётом, поэтому спрашивать о них стоит заранее.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как сравнить две сметы на отопление?</span></summary>
+            <div class="answer">
+                <p>Свести обе к точкам, квадратам и комплектам и сравнить состав, а не итог: сколько точек радиаторов, сколько квадратов пола, есть ли гидрострелка. Проверить мощность котла — если она вдвое больше теплопотерь, считали по площади. Уточнить температурный график и спросить, что не входит.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/gazgolder-dlya-doma/">газгольдер: расход и окупаемость</a> · <a href="/rezervnoe-pitanie-kotelnoy/">резервное питание котельной</a> · <a href="/skolko-stoit-otoplenie-doma/">сколько стоит отопление частного дома под ключ</a> · <a href="/stoimost-ekspluatatsii/">во сколько обходится отопление за сезон</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

@@ -543,10 +543,10 @@
    "freq": 6400,
    "audience": "owner",
    "data_block": "расчёт времени работы",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-19",
    "published_at": null,
-   "words": 0
+   "words": 506
   },
   {
    "slug": "gazgolder-dlya-doma",
@@ -557,10 +557,10 @@
    "freq": 9200,
    "audience": "owner",
    "data_block": "цена кВт·ч СУГ",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-22",
    "published_at": null,
-   "words": 0
+   "words": 585
   },
   {
    "slug": "kanalizatsiya-v-chastnom-dome",
@@ -585,10 +585,10 @@
    "freq": 4200,
    "audience": "owner",
    "data_block": "прайс 97 работ",
-   "status": "planned",
+   "status": "queued",
    "date": "2026-12-26",
    "published_at": null,
-   "words": 0
+   "words": 521
   },
   {
    "slug": "tarify-na-otoplenie-s-1-yanvarya",

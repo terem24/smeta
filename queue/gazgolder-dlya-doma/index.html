@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Газгольдер для частного дома: расчёт объёма и обслуживание | HeatCalc.ru</title>
+    <meta name="description" content="Газгольдер для отопления дома: расчёт расхода за сезон, подбор объёма ёмкости, зимняя смесь и испаряющая способность, подземная установка против наземной, что проверять при заправке.">
+    <link rel="canonical" href="https://heatcalc.ru/gazgolder-dlya-doma/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=3">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/gazgolder-dlya-doma/">
+    <meta property="og:title" content="Газгольдер для дома: объём и заправки">
+    <meta property="og:description" content="3 843 литра за сезон на дом 150 м². Отсюда объём ёмкости и число визитов газовоза.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/gazgolder-dlya-doma/#webpage",
+      "url": "https://heatcalc.ru/gazgolder-dlya-doma/",
+      "name": "Газгольдер для дома: объём, заправки и испарение",
+      "description": "Газгольдер для отопления дома: расчёт расхода за сезон, подбор объёма ёмкости, зимняя смесь и испаряющая способность, подземная установка против наземной, что проверять при заправке.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "газгольдер для дома"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Газгольдер для дома: объём, заправки и испарение",
+          "item": "https://heatcalc.ru/gazgolder-dlya-doma/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какой объём газгольдера нужен для дома?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Такой, чтобы одной заправки хватало на сезон. Дому 150 м² с теплопотерями 10 кВт нужно около 3 843 литров за зиму, а ёмкости заполняют на 85 %: газгольдер на 4 850 литров реально вмещает 4 122 и закрывает сезон одной заправкой. Ёмкость на 2 700 литров потребует второй заправки как раз в феврале."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему зимой котёл на газгольдере уходит в ошибку?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Чаще всего не хватает испарения. В котёл идёт пар, который образуется в ёмкости сам, а его скорость падает с температурой и с уровнем жидкости. Бутан перестаёт испаряться около −0,5 °C, поэтому зимой нужна смесь с высокой долей пропана. Помогают подземная установка и испаритель, переводящий жидкую фазу в паровую принудительно."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Подземный газгольдер или наземный?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Подземный практичнее: грунт ниже глубины промерзания сохраняет плюсовую температуру, и испарение идёт стабильно всю зиму. Наземная ёмкость в холодном климате зимой плохо даёт пар, и ей нужен испаритель. Наземная дешевле в установке, но эта экономия возвращается первым же морозом."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли переделывать котёл под сжиженный газ?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да: меняют форсунки на комплект для сжиженного газа и перенастраивают давление в блоке автоматики. Комплект поставляет производитель котла, и возможность перевода указана в паспорте — у части моделей её нет. Требования к помещению котельной те же, что для магистрального газа."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что проверять при заправке газгольдера?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Состав смеси — зимой нужна пропановая, летняя не доживёт до серьёзного мороза. Уровень до и после по датчику: это единственный способ понять, сколько реально залито. Температуру и объём в документах — газ расширяется при нагреве, и объём приводят к стандартной температуре. И отсутствие утечек после заправки."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/gazgolder-dlya-doma/#article",
+      "headline": "Газгольдер для дома: объём, заправки и испарение",
+      "description": "Газгольдер для отопления дома: расчёт расхода за сезон, подбор объёма ёмкости, зимняя смесь и испаряющая способность, подземная установка против наземной, что проверять при заправке.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/gazgolder-dlya-doma/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-22",
+      "dateModified": "2026-12-22",
+      "author": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Газгольдер для дома: объём, заправки и испарение</nav>
+
+        <h1>Газгольдер для дома: объём, заправки и испарение</h1>
+
+        <p class="art-meta"><time datetime="2026-12-22">22 декабря 2026</time></p>
+
+        <p class="lead">Газгольдер — основной вариант там, где магистрального газа нет и не обещают. Котёл при этом почти тот же, а вот хозяйство вокруг другое: ёмкость во дворе, заправки по графику и испарение, которое зимой подводит. Считаем объём и разбираем, что с ним делать.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#skolko-nuzhno-za-sezon">Сколько нужно за сезон</a></li>
+            <li><a href="#zimnyaya-smes-i-isparenie">Зимняя смесь и испарение</a></li>
+            <li><a href="#chto-vhodit-v-hozyaystvo">Что входит в хозяйство</a></li>
+            <li><a href="#kotel-pod-szhizhennyy-gaz">Котёл под сжиженный газ</a></li>
+            <li><a href="#chto-proveryat-pri-zapravke">Что проверять при заправке</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="skolko-nuzhno-za-sezon">Сколько нужно за сезон</h2>
+
+        <div class="formula">
+            <p>Дом 150 м² в Петербурге, теплопотери 10 кВт</p>
+            <p>Тепла за сезон: <strong>24 400 кВт·ч</strong></p>
+            <p>24 400 ÷ (6,9 кВт·ч/л × КПД 0,92) = <strong>3 843 литра</strong></p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Ёмкость</th><th>Реальный залив (85 %)</th><th>Заправок за сезон</th></tr>
+                <tr><td class="num">2 700 л</td><td class="num">2 295 л</td><td class="num">1,7</td></tr>
+                <tr><td class="num">4 850 л</td><td class="num">4 122 л</td><td class="num">0,9</td></tr>
+                <tr><td class="num">6 400 л</td><td class="num">5 440 л</td><td class="num">0,7</td></tr>
+                <tr><td class="num">9 200 л</td><td class="num">7 820 л</td><td class="num">0,5</td></tr>
+            </table>
+        </div>
+        <p class="note">Ёмкость заполняют примерно на 85 %: над жидкостью должна оставаться паровая подушка, а газ ещё и расширяется при нагреве.</p>
+
+        <div class="callout">
+            <p><strong>Правило выбора объёма простое: одной заправки должно хватать на сезон.</strong> Газовоз зимой должен проехать к ёмкости и встать в нескольких метрах от неё — в снег и распутицу это отдельная задача, а срочная заправка в мороз стоит дороже плановой. Для дома 150 м² разумный минимум — 4 850 литров; меньшая ёмкость означает вторую заправку как раз в феврале.</p>
+        </div>
+
+        <h2 id="zimnyaya-smes-i-isparenie">Зимняя смесь и испарение</h2>
+
+        <p>В котёл идёт не жидкость, а пар, который образуется в ёмкости сам. Скорость испарения зависит от температуры и от площади зеркала жидкости — зимой и то, и другое работает против вас.</p>
+
+        <ul>
+            <li><strong>Бутан перестаёт испаряться</strong> примерно при −0,5 °C, пропан работает до −42. Поэтому зимой нужна смесь с высокой долей пропана; летняя смесь с большой долей бутана в январе просто не даёт пара.</li>
+            <li><strong>Чем ниже уровень, тем меньше зеркало.</strong> В конце сезона, на остатке, ёмкость может не выдавать нужный расход даже при правильной смеси.</li>
+            <li><strong>Подземная установка лучше наземной.</strong> Грунт ниже глубины промерзания сохраняет плюсовую температуру, и испарение идёт стабильно. Наземный газгольдер зимой — источник проблем.</li>
+            <li><strong>Испаритель</strong> переводит жидкую фазу в паровую принудительно. Нужен для больших мощностей и для наземных ёмкостей в холодном климате.</li>
+        </ul>
+
+        <p>Симптом нехватки испарения узнаваемый: в сильный мороз, когда котёл работает на полной мощности, он уходит в ошибку по пламени. Газ в ёмкости есть, а пара не хватает.</p>
+
+        <h2 id="chto-vhodit-v-hozyaystvo">Что входит в хозяйство</h2>
+
+        <ol>
+            <li><strong>Ёмкость и её размещение.</strong> Расстояния до дома, границ участка, колодцев и погребов нормируются — это проектная работа, а не «поставим за баней».</li>
+            <li><strong>Подъезд для газовоза</strong> круглый год. Шланг имеет конечную длину, и зимний проезд надо предусмотреть.</li>
+            <li><strong>Редуктор и регулятор давления</strong> — понижают давление в ёмкости до рабочего для котла.</li>
+            <li><strong>Конденсатосборник</strong> на газопроводе: в трубе от ёмкости к дому собирается конденсат тяжёлых фракций.</li>
+            <li><strong>Датчик уровня.</strong> Без него остаток определяется методом «стало холодно».</li>
+            <li><strong>Анодная защита</strong> для подземной ёмкости и её периодическая проверка.</li>
+        </ol>
+
+        <h2 id="kotel-pod-szhizhennyy-gaz">Котёл под сжиженный газ</h2>
+
+        <p>Сам котёл тот же, что на магистральном газе, но его переводят на другое топливо: меняют форсунки на комплект для сжиженного газа и перенастраивают давление в блоке автоматики.</p>
+
+        <ul>
+            <li><strong>Перенастройку делает специалист</strong> — у сжиженного газа другое давление и другая теплота сгорания; настройка на глаз даёт либо копоть, либо недогрев.</li>
+            <li><strong>Не всякий котёл переводится.</strong> Возможность указана в паспорте, у части моделей комплекта просто нет.</li>
+            <li><strong>Конденсационный котёл работает</strong> и даёт ту же прибавку КПД — а она здесь ценнее, чем на магистральном: топливо дороже, и каждый процент считается.</li>
+            <li><strong>Требования к помещению те же</strong> — по СП 402.1325800.2018: объём не менее 15 м³, легкосбрасываемое остекление 0,03 м² на кубометр, вентиляция кратностью 3.</li>
+        </ul>
+
+        <h2 id="chto-proveryat-pri-zapravke">Что проверять при заправке</h2>
+
+        <ul>
+            <li><strong>Состав смеси.</strong> Зимой нужна пропановая; летняя смесь, залитая в октябре, доживёт до первого серьёзного мороза.</li>
+            <li><strong>Уровень до и после.</strong> По датчику или по уровнемеру на ёмкости — это единственный способ понять, сколько реально залито.</li>
+            <li><strong>Температуру и объём в документах.</strong> Газ расширяется при нагреве, и объём приводят к стандартной температуре; расхождение бывает именно здесь.</li>
+            <li><strong>Отсутствие утечек</strong> после заправки — обмылить соединения.</li>
+        </ul>
+
+        <p>И разумная стратегия там, где магистральный газ обещают, но не в этом году: ставить котёл, который переводится с одного газа на другой, и закладывать подводку заранее. Тогда переход сведётся к замене форсунок и перенастройке, а не к новой котельной.</p>
+
+        <a class="cta" href="/">
+            Посчитать отопление дома
+            <small>Теплопотери и расход топлива за сезон</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой объём газгольдера нужен для дома?</span></summary>
+            <div class="answer">
+                <p>Такой, чтобы одной заправки хватало на сезон. Дому 150 м² с теплопотерями 10 кВт нужно около 3 843 литров за зиму, а ёмкости заполняют на 85 %: газгольдер на 4 850 литров реально вмещает 4 122 и закрывает сезон одной заправкой. Ёмкость на 2 700 литров потребует второй заправки как раз в феврале.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему зимой котёл на газгольдере уходит в ошибку?</span></summary>
+            <div class="answer">
+                <p>Чаще всего не хватает испарения. В котёл идёт пар, который образуется в ёмкости сам, а его скорость падает с температурой и с уровнем жидкости. Бутан перестаёт испаряться около −0,5 °C, поэтому зимой нужна смесь с высокой долей пропана. Помогают подземная установка и испаритель, переводящий жидкую фазу в паровую принудительно.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Подземный газгольдер или наземный?</span></summary>
+            <div class="answer">
+                <p>Подземный практичнее: грунт ниже глубины промерзания сохраняет плюсовую температуру, и испарение идёт стабильно всю зиму. Наземная ёмкость в холодном климате зимой плохо даёт пар, и ей нужен испаритель. Наземная дешевле в установке, но эта экономия возвращается первым же морозом.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужно ли переделывать котёл под сжиженный газ?</span></summary>
+            <div class="answer">
+                <p>Да: меняют форсунки на комплект для сжиженного газа и перенастраивают давление в блоке автоматики. Комплект поставляет производитель котла, и возможность перевода указана в паспорте — у части моделей её нет. Требования к помещению котельной те же, что для магистрального газа.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что проверять при заправке газгольдера?</span></summary>
+            <div class="answer">
+                <p>Состав смеси — зимой нужна пропановая, летняя не доживёт до серьёзного мороза. Уровень до и после по датчику: это единственный способ понять, сколько реально залито. Температуру и объём в документах — газ расширяется при нагреве, и объём приводят к стандартной температуре. И отсутствие утечек после заправки.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/rezervnoe-pitanie-kotelnoy/">резервное питание котельной</a> · <a href="/dom-bez-otopleniya-zimoy/">дом без присмотра зимой: как уехать и не разморозить</a> · <a href="/teplovoy-nasos-dlya-doma/">тепловой насос: работает ли в наши морозы</a> · <a href="/vozduh-voda-ili-geotermalnyy/">воздух-вода или геотермальный</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
