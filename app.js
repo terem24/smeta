@@ -11698,6 +11698,7 @@ const app = {
             // Какая смета сейчас на экране — для разбора «Что изменилось» под плашкой
             this._loadedEstimateId = id;
             this.state = this.stateForLoadedEstimate(loadedState);
+            this.migrateXpsKitIds();
             this.migrateSnowPipeSwap();
             this.migrateBoilerSectionTitles();
             this.migrateBoilerAutoLevel(loadedState);
@@ -34949,6 +34950,7 @@ const app = {
             // реальный проект администратора в localStorage/облаке.
             this._suppressSaveState = true;
             this.state = this.stateForLoadedEstimate(st);
+            this.migrateXpsKitIds();
             this.migrateSnowPipeSwap();
             this.migrateBoilerSectionTitles();
             this.migrateBoilerAutoLevel(st);
@@ -42769,6 +42771,7 @@ const app = {
                     delete savedState.customCompany;
 
                     this.state = this.stateForLoadedEstimate(savedState);
+                    this.migrateXpsKitIds();
                     this.migrateSnowPipeSwap();
                     this.migrateBoilerSectionTitles();
                     this.migrateBoilerAutoLevel(savedState);
@@ -42816,6 +42819,7 @@ const app = {
                 delete savedState.customCompany;
 
                 this.state = this.stateForLoadedEstimate(savedState);
+                this.migrateXpsKitIds();
                 this.migrateSnowPipeSwap();
                 this.migrateBoilerSectionTitles();
                 this.migrateBoilerAutoLevel(savedState);
@@ -45162,6 +45166,7 @@ const app = {
         // открывает — получилась бы смета без подвала и без панели. Тариф к тому же
         // мог кончиться между сеансами.
         if (this.state.viewMode === 'money' || this.state.viewMode === 'cheaper') this.state.viewMode = 'equipment';
+        this.migrateXpsKitIds();
         this.migrateSnowPipeSwap();
         this.migrateElCostDefaultOff();
         this.migrateBoilerSectionTitles();
@@ -45918,7 +45923,7 @@ const app = {
             this._ufhGeomCache = null;
         }
         else if (originalId.endsWith('_water') || (originalId.startsWith('SPX-0001-') && !originalId.endsWith('_rad'))) { this.state.waterPipeMaterial = (this.state.waterPipeMaterial === 'pex') ? 'metal_plastic' : 'pex'; }
-        else if (originalId.startsWith('SMF-0001') || originalId === '418318') { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
+        else if (originalId.startsWith('SMF-0001') || originalId === '147312') { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
         else if (originalId.startsWith('SCS-0001')) { if (this.state.wellAutoType === 'sirio') this.state.wellAutoType = 'top'; else if (this.state.wellAutoType === 'top') this.state.wellAutoType = 'base'; else this.state.wellAutoType = 'sirio'; }
         else if (originalId.startsWith('SCQ') || originalId.startsWith('SCN')) { this.state.convectorType = (this.state.convectorType === 'scq') ? 'scn' : 'scq'; }
         else if (originalId.startsWith('SVT') || originalId.startsWith('SVL')) { this.state.convConnectionType = (this.state.convConnectionType === 'straight') ? 'angled' : 'straight'; }
@@ -47816,7 +47821,7 @@ const app = {
                 };
             });
         }
-        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || item.originalId === '418318')) {
+        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || item.originalId === '147312')) {
             // В строке может стоять и мат ROMMER (его подставляет «Аналог») — тогда и в
             // таблице показываем его, иначе она предлагала бы вернуться на STOUT под видом
             // текущего выбора. Бренд берём из самой строки: посекционный «Аналог» глобальный
@@ -51595,8 +51600,8 @@ const app = {
             if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
             else this.state.waterPipeMaterial = 'metal_plastic';
         }
-        else if (originalId.startsWith('SMF-0001') || originalId === '418318') {
-            if (chosenId === '418318' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
+        else if (originalId.startsWith('SMF-0001') || originalId === '147312') {
+            if (chosenId === '147312' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
             else this.state.ufhBaseType = 'mat';
         }
         else if (originalId.startsWith('SCS-0001')) {
@@ -53314,6 +53319,37 @@ const app = {
         if (!this.state.elCostDefaultOn) return;
         delete this.state.elCostDefaultOn;
         this.state.showElCost = false;
+    },
+    /**
+     * Разовый перенос сохранённых смет: три розничные позиции набора XPS
+     * переехали на артикулы Петровича (418318 → 147312, 138605 → 166420,
+     * 160028 → 1230304), чтобы цену можно было сверить по ссылке магазина.
+     *
+     * Старый номер лежит в смете не только в списке позиций: им подписаны ручная
+     * замена (ключ и значение в swaps), правка количества и снятая галочка
+     * «не нужно». Без переноса у того, кто выбирал XPS руками, выбор отвалился бы
+     * к мату, а исправленное количество вернулось к расчётному.
+     */
+    XPS_KIT_ID_MOVES: { '418318': '147312', '138605': '166420', '160028': '1230304' },
+    migrateXpsKitIds: function () {
+        const map = this.XPS_KIT_ID_MOVES;
+        const s = this.state;
+        const sw = s.swaps;
+        if (sw) {
+            Object.keys(sw).forEach(k => {
+                let v = sw[k];
+                if (typeof v === 'string' && map[v]) v = map[v];
+                if (map[k]) { delete sw[k]; sw[map[k]] = v; }
+                else if (v !== sw[k]) sw[k] = v;
+            });
+        }
+        ['qtyOverrides', 'optItems'].forEach(key => {
+            const o = s[key];
+            if (!o) return;
+            Object.keys(o).forEach(k => {
+                if (map[k]) { o[map[k]] = o[k]; delete o[k]; }
+            });
+        });
     },
     migrateSnowPipeSwap: function () {
         const sw = this.state.swaps;
