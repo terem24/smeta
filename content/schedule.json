@@ -1971,10 +1971,10 @@
    "freq": 1800,
    "audience": "owner",
    "data_block": "полный расчёт 200 м²",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-03",
    "published_at": null,
-   "words": 0
+   "words": 1180
   },
   {
    "slug": "razvodka-vody-po-domu",
@@ -1985,10 +1985,10 @@
    "freq": 3200,
    "audience": "pro",
    "data_block": "цена точки из прайса",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-05",
    "published_at": null,
-   "words": 0
+   "words": 814
   },
   {
    "slug": "zonalnaya-avtomatika",
@@ -1999,10 +1999,10 @@
    "freq": 1800,
    "audience": "pro",
    "data_block": "числа из коллекторов",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-07",
    "published_at": null,
-   "words": 0
+   "words": 994
   },
   {
    "slug": "etapy-i-sroki-montazha",
