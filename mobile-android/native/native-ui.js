@@ -79,6 +79,15 @@
     // ------------------------------------------------------- «нет сети»
     var bar = null;
 
+    // Адреса, по которым проверяется связь: сайт, сервер приложения и база.
+    // Достаточно ответа любого — они лежат на разных доменах, и провайдер или
+    // VPN нередко режет что-то одно.
+    var CHECK_URLS = [
+        ['сайт', SITE + '/manifest.json'],
+        ['сервер', 'https://proxy.heatcalc.ru/user_creds.php'],
+        ['база', 'https://ahanbwugsmcyvrwbmtlx.supabase.co/rest/v1/']
+    ];
+
     var BAR_TEXT = '<span><b>Нет сети.</b> Расчёт, смета и печать работают. ' +
         'Цены и облако вернутся при подключении. <u>Проверить</u></span>';
 
@@ -101,11 +110,7 @@
 
     // Проверка по шагам: каждый адрес отдельно, результат — прямо в плашке.
     function diagnose() {
-        var checks = [
-            ['сайт', SITE + '/manifest.json'],
-            ['сервер', 'https://proxy.heatcalc.ru/user_creds.php'],
-            ['база', 'https://ahanbwugsmcyvrwbmtlx.supabase.co/rest/v1/']
-        ];
+        var checks = CHECK_URLS;
         var el = offlineBar();
         el.innerHTML = '<span>Проверяем связь…</span>';
 
@@ -163,11 +168,33 @@
         showOffline(false);
     }
 
+    // Сорвавшийся запрос — ещё не приговор. Ошибка fetch приходит не только когда
+    // нет сети: так же выглядят отказ по правам доступа (CORS), прерванный
+    // запрос и таймаут. Проверка в поле это и показала: плашка висела, а все три
+    // адреса отвечали. Поэтому перед показом молча стучимся по ним сами и
+    // показываем плашку, только если не ответил ни один.
+    var checking = false;
+
+    function checkAll() {
+        return Promise.all(CHECK_URLS.map(function (c) {
+            return origFetch(c[1], { method: 'GET', mode: 'no-cors', cache: 'no-store' })
+                .then(function () { return true; })
+                .catch(function () { return false; });
+        }));
+    }
+
     function netFail(url) {
         if (!OUR_HOSTS.test(String(url || ''))) return;
         if (Date.now() - lastOk < NET_OK_MS) return;
-        if (++fails < 2) return;
-        showOffline(true);
+        if (++fails < 2 || checking) return;
+
+        checking = true;
+        checkAll().then(function (res) {
+            checking = false;
+            var anyOk = res.some(Boolean);
+            if (anyOk) netOk();
+            else showOffline(true);
+        });
     }
 
     var origFetch = window.fetch;
