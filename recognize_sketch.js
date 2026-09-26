@@ -67,6 +67,8 @@ const RecognizeSketch = {
         this._deleted = [];
         this._pv = null;
         this._pvKey = '';
+        this._autoTurned = false;
+        this._rotating = false;
     },
 
     isSketchResult(parsed) {
@@ -213,14 +215,57 @@ const RecognizeSketch = {
         }
     },
 
-    startReview() {
+    async startReview() {
         RecognizeUI.progressStop();
         RecognizeUI.setStatus('');
         RecognizeUI.step(2);
         RecognizeUI.setHead('sketch');
         const st = app.state || {};
         if (!(st.area > 0) && !(this._area > 0)) this._area = this.areaGuess();
+        // Портретный снимок (телефон держат стоя) разворачиваем в альбом — как
+        // схема справа: обе картинки одной ориентации, сравнивать их проще.
+        // Куда у листа «верх», по рисунку не понять, поэтому рядом кнопка ⟳.
+        const sz = await this.imgSize(this._img);
+        if (sz && sz.h > sz.w) {
+            await this.rotate(true);
+            this._autoTurned = true;
+        }
         this.renderReview();
+    },
+
+    imgSize(b64) {
+        return new Promise((res) => {
+            const im = new Image();
+            im.onload = () => res({ w: im.width, h: im.height });
+            im.onerror = () => res(null);
+            im.src = 'data:image/jpeg;base64,' + b64;
+        });
+    },
+
+    /**
+     * Поворот на 90° по часовой: снимок и рамки вместе, без повторного
+     * распознавания. Точка (x, y) при таком повороте уходит в (1 − y, x),
+     * поэтому у рамки левый край — из прежнего низа, ширина и высота меняются
+     * местами. В архив уезжает уже повёрнутый снимок с повёрнутыми рамками —
+     * они согласованы.
+     */
+    async rotate(silent) {
+        if (!this._img || this._rotating) return;
+        this._rotating = true;
+        try {
+            const turned = await RecognizeUI.turnBase64(this._img);
+            if (!turned) return;
+            this._img = turned;
+            this._items.forEach(it => {
+                const b = it.box;
+                if (!b) return;
+                it.box = { x: 1 - (b.y + b.h), y: b.x, w: b.h, h: b.w };
+            });
+            this._autoTurned = false;
+            if (!silent) this.renderReview();
+        } finally {
+            this._rotating = false;
+        }
     },
 
     // ------------------------------------------------------------------
@@ -410,7 +455,10 @@ const RecognizeSketch = {
               <div class="rs-toolbar">
                 <button class="rec-btn-g ${this._draw ? 'rec-btn-accent' : ''}" onclick="RecognizeSketch.toggleDraw()"
                         title="Прибор не нашёлся — обведите его на эскизе">${this._draw ? '✕ Отменить' : '➕ Отметить прибор'}</button>
-                ${this._draw ? '<span class="rec-tcheck-sub">Обведите прибор на эскизе — протяните рамку</span>' : ''}
+                <button class="rec-btn-g" onclick="RecognizeSketch.rotate()"
+                        title="Повернуть снимок на 90° — рамки приборов повернутся вместе с ним">⟳ Повернуть</button>
+                ${this._draw ? '<span class="rec-tcheck-sub">Обведите прибор на эскизе — протяните рамку</span>'
+                    : this._autoTurned ? '<span class="rec-tcheck-sub">Снимок развёрнут в альбом под схему справа — ⟳, если лист лёг не той стороной</span>' : ''}
               </div>
               <div class="rs-stage${this._draw ? ' drawing' : ''}" id="rs_stage" onclick="RecognizeSketch.pick(-1)">
                 <img src="data:image/jpeg;base64,${this._img}" alt="эскиз котельной" draggable="false">

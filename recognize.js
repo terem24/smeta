@@ -2329,7 +2329,7 @@ const RecognizeUI = {
         this.progressTo(1);
         await RecognizeSketch.run(img);
         this.progressTo(3);
-        RecognizeSketch.startReview();
+        await RecognizeSketch.startReview();
     },
 
     /**
