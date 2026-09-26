@@ -1551,10 +1551,10 @@
    "freq": 1800,
    "audience": "owner",
    "data_block": "наши семь документов",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-27",
    "published_at": null,
-   "words": 0
+   "words": 919
   },
   {
    "slug": "dlina-petli-teplogo-pola",
@@ -1607,10 +1607,10 @@
    "freq": 3100,
    "audience": "pro",
    "data_block": "СП 61",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-05",
    "published_at": null,
-   "words": 0
+   "words": 804
   },
   {
    "slug": "luchevaya-sistema",
@@ -1621,10 +1621,10 @@
    "freq": 2100,
    "audience": "owner",
    "data_block": "разница в смете",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-08",
    "published_at": null,
-   "words": 0
+   "words": 747
   },
   {
    "slug": "reduktor-davleniya-vody",
