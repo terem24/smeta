@@ -12831,7 +12831,28 @@ body.dark-mode .rs-scheme { border-color: #334155; }
 /* ── Планы этажей ──
    Переключателя «Смету / План этажа» над зоной загрузки больше нет: вид листа
    определяется по самому листу (25.09.2026, см. RecognizeUI.syncDocKind). */
-.rec-head-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.rec-head-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: center; }
+
+/* Индикатор лимита распознаваний в углу вкладки. Подсказка — своя, через
+   data-tip: на телефоне наведения нет, а касание даёт :focus (tabindex). */
+.rec-quota {
+    position: relative; display: inline-flex; align-items: center; height: 32px; padding: 0 10px;
+    border-radius: 8px; font-size: 12.5px; font-weight: 600; white-space: nowrap; cursor: default; outline: none;
+    border: 1px solid var(--border, #e2e8f0); background: var(--surface-light, #f1f5f9); color: var(--text-main, #0f172a);
+}
+.rec-quota.warn { border-color: rgba(245, 158, 11, .5); background: rgba(245, 158, 11, .10); color: #b45309; }
+.rec-quota.bad { border-color: rgba(239, 68, 68, .5); background: rgba(239, 68, 68, .08); color: #b91c1c; }
+body.dark-mode .rec-quota.warn { color: #fbbf24; }
+body.dark-mode .rec-quota.bad { color: #f87171; }
+.rec-quota::after {
+    content: attr(data-tip); position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+    width: max-content; max-width: min(340px, 80vw); white-space: pre-line; text-align: left;
+    font-weight: 400; font-size: 12px; line-height: 1.45; padding: 8px 10px; border-radius: 8px;
+    color: var(--text-main, #0f172a); background: var(--surface, #fff); border: 1px solid var(--border, #e2e8f0);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .15); opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.rec-quota:hover::after, .rec-quota:focus::after, .rec-quota.open::after { opacity: 1; }
+body.dark-mode .rec-quota::after { background: #1e293b; border-color: #334155; color: #e2e8f0; }
 
 /* Строка листа в таблице помещений: этаж и потолок правятся на весь лист
    разом — один лист плана это один этаж. */

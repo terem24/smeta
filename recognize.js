@@ -145,6 +145,8 @@ const RecognizeUI = {
                     </div>
                   </div>
                   <div class="rec-head-btns">
+                    <span class="rec-quota ok" id="rec_quota_badge" tabindex="0" data-tip="Считаю остаток…"
+                          onclick="this.classList.toggle('open')" onblur="this.classList.remove('open')">🔍 …</span>
                     <button class="rec-btn-g" id="rec_undo_apply"
                             style="display:none" onclick="RecognizeUI.undoApply()">
                       ↶ Отменить прошлое распознавание</button>
@@ -226,6 +228,7 @@ const RecognizeUI = {
         if (up) up.style.display = (typeof RecognizePlan !== 'undefined' && RecognizePlan._undo) ? '' : 'none';
         const us = document.getElementById('rec_undo_sketch');
         if (us) us.style.display = (typeof RecognizeSketch !== 'undefined' && RecognizeSketch._undo) ? '' : 'none';
+        this.refreshQuotaBadge();
     },
 
     /** Возврат к смете после применения. */
@@ -1892,6 +1895,8 @@ const RecognizeUI = {
         if (this._timer) { clearInterval(this._timer); this._timer = null; }
         const box = document.getElementById('rec_progress');
         if (box) box.remove();
+        // Разбор кончился — запросы потрачены, остаток в углу надо обновить.
+        this.refreshQuotaBadge();
     },
 
     // ------------------------------------------------------------------
@@ -1946,6 +1951,9 @@ const RecognizeUI = {
         const el = document.getElementById('rec_quota');
         if (!el) return;
         const q = await this.checkQuota();
+        // Тот же ответ — в индикатор в углу вкладки, чтобы не спрашивать дважды.
+        this._quota = q; this._quotaAt = Date.now(); this._quotaCalls = this._apiCalls || 0;
+        this.renderQuotaBadge();
         if (!q) return;   // админ либо сервер лимитов промолчал
         if (!q.personal && q.tariff === 'admin') {
             el.textContent = `Запросов к распознаванию в этом месяце: ${q.used} (администратор — без ограничений)`;
@@ -2034,8 +2042,13 @@ const RecognizeUI = {
     /** Раз в секунду: отсчёт на экране загрузки и кнопка «Распознать». */
     tickBlock() {
         clearTimeout(this._blockTimer);
+        this.renderQuotaBadge();
         const el = document.getElementById('rec_block');
-        if (!el) return;
+        if (!el) {
+            // Экран проверки: строки отсчёта нет, но индикатор в углу живёт.
+            if (this.blockInfo()) this._blockTimer = setTimeout(() => this.tickBlock(), 1000);
+            return;
+        }
         const b = this.blockInfo();
         const go = document.getElementById('rec_go');
         if (!b) {
@@ -2050,6 +2063,69 @@ const RecognizeUI = {
         el.textContent = '⏳ ' + this.blockText(b);
         if (go) go.disabled = true;
         this._blockTimer = setTimeout(() => this.tickBlock(), 1000);
+    },
+
+    // ------------------------------------------------------------------
+    // Индикатор лимита в углу вкладки
+    //
+    // Виден на всех шагах, а не только на экране загрузки: «🔍 12 из 30»,
+    // при исчерпании — обратный отсчёт до снятия. Наведение (на телефоне —
+    // касание) показывает подробности: потрачено, тариф, когда обнулится.
+    // Остаток спрашиваем у сервера не чаще, чем меняется число запросов,
+    // и не реже раза в десять минут.
+    // ------------------------------------------------------------------
+
+    async refreshQuotaBadge(force) {
+        if (!document.getElementById('rec_quota_badge')) return;
+        const calls = this._apiCalls || 0;
+        const stale = !this._quotaAt || this._quotaCalls !== calls || Date.now() - this._quotaAt > 10 * 60000;
+        if (force || stale) {
+            this._quotaCalls = calls;
+            this._quotaAt = Date.now();
+            this._quota = await this.checkQuota();
+            const q = this._quota;
+            if (q && q.left <= 0 && (q.personal || q.tariff !== 'admin')) this.setBlock(this.nextMonthStart(), 'month');
+        }
+        this.renderQuotaBadge();
+    },
+
+    renderQuotaBadge() {
+        const el = document.getElementById('rec_quota_badge');
+        if (!el) return;
+        const q = this._quota, b = this.blockInfo();
+        const reset = new Date(this.nextMonthStart());
+        // Дата — по Москве: полночь МСК в браузере с другим поясом выпадала бы
+        // на «30 сентября» вместо «1 октября».
+        const resetStr = reset.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' }) +
+            ', 00:00 МСК — через ' + this.fmtLeft(reset.getTime() - Date.now());
+        const perSheet = 'Один лист — один запрос; комплект листов проекта — от шести.';
+        let text, cls = 'ok', tip;
+        if (b) {
+            text = '⏳ ' + this.fmtLeft(b.until - Date.now());
+            cls = 'bad';
+            tip = this.blockText(b);
+        } else if (!q) {
+            // Администратор либо сервер лимитов промолчал — ограничивать нечем.
+            text = '🔍 ∞';
+            tip = 'Лимит распознаваний не ограничен.' +
+                (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
+                `\nСчётчик месяца обнуляется ${resetStr}.\n${perSheet}`;
+        } else if (!q.personal && q.tariff === 'admin') {
+            text = `🔍 ${q.used} · ∞`;
+            tip = `Запросов в этом месяце: ${q.used}. Администратор — без ограничений.\nСчётчик обнуляется ${resetStr}.\n${perSheet}`;
+        } else {
+            text = `🔍 ${q.left} из ${q.limit}`;
+            cls = q.left <= 0 ? 'bad' : q.left <= 3 ? 'warn' : 'ok';
+            const tariff = q.personal ? 'личный лимит' : q.tariff === 'pro' ? 'тариф «Профи»'
+                : q.tariff === 'base' ? 'тариф «Базовый»' : 'тариф';
+            tip = `Распознаваний осталось: ${q.left} из ${q.limit} (${tariff}), потрачено ${q.used}.` +
+                `\nЛимит обнуляется ${resetStr}.\n${perSheet}` +
+                (q.tariff === 'base' && !q.personal ? '\nБольше — на тарифе «Профи» или по запросу администратору.'
+                    : '\nНужно больше — напишите администратору.');
+        }
+        el.textContent = text;
+        el.className = 'rec-quota ' + cls + (el.classList.contains('open') ? ' open' : '');
+        el.setAttribute('data-tip', tip);
     },
 
     async run() {
