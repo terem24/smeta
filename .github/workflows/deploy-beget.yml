@@ -66,6 +66,28 @@ jobs:
         if: steps.check.outputs.mode != 'off'
         uses: actions/checkout@v4
 
+      # Роботы (цены, тарифы) меняют эти файлы, не трогая ?v= в страницах.
+      # На Pages кэш был 10 минут, и правка доезжала сама. На Beget .js
+      # отдаёт nginx мимо .htaccess с кэшем на неделю — люди неделю видели бы
+      # старые цены. Поэтому в заливаемой копии (не в репозитории) к адресу
+      # дописывается отпечаток содержимого: файл не менялся — адрес тот же и
+      # лишней скачки нет; поменялся — адрес новый и браузер берёт свежий.
+      - name: Отпечатки файлов, которые обновляют роботы
+        if: steps.check.outputs.mode != 'off'
+        run: |
+          for f in catalog.js el_tariffs.js gas_tariffs.js dist_prices.js; do
+            [ -f "$f" ] || continue
+            h=$(md5sum "$f" | cut -c1-8)
+            fr=$(echo "$f" | sed 's/\./\\./g')
+            sed -i -E \
+              -e "s#(src=\"\\.?/?${fr}\\?v=[0-9.]+)\"#\\1\\&h=${h}\"#g" \
+              -e "s#(src=\"\\.?/?${fr})\"#\\1?h=${h}\"#g" \
+              index.html invoice.html oprosnik.html start24.html
+            echo "$f → h=$h"
+          done
+          grep -ohE 'src="[^"]*(catalog|el_tariffs|gas_tariffs|dist_prices)\.js[^"]*"' \
+            index.html invoice.html oprosnik.html start24.html | sort | uniq -c
+
       # Список исключений один на оба способа. Ничего лишнего на боевом
       # сервере — особенно php: на Beget он, в отличие от GitHub Pages,
       # по-настоящему исполняется, и копии прокси на сайте создали бы вторую
