@@ -21742,9 +21742,77 @@ const app = {
             r.name ? 'Имя: ' + r.name : '',
             r.phone ? 'Телефон: ' + r.phone : '',
             r.when ? 'Когда звонить: ' + r.when : '',
-            r.comment ? 'Комментарий: ' + r.comment : ''
+            r.comment ? 'Комментарий: ' + r.comment : '',
+            // Заявки со страницы /dom/ несут ответы заказчика: по ссылке мастер
+            // открывает у себя полную смету по дому (app.applyOprosFromUrl)
+            this.leadCalcUrl(r) ? 'Расчёт по дому: ' + this.leadCalcUrl(r) : ''
         ];
         return lines.filter(Boolean).join('\n');
+    },
+
+    leadCalcUrl: function (r) {
+        return r && /^[A-Za-z0-9_-]{8,2000}$/.test(r.calc || '') ? 'https://heatcalc.ru/?opros=' + r.calc : '';
+    },
+
+    // ── Кому передана заявка ────────────────────────────────────────────
+    // Журнал на Beget только дописывается, поэтому отметки владельца лежат в
+    // таблице lead_assignments (Supabase, только для администраторов) по id заявки.
+    LEAD_STATUSES: [
+        ['new', 'Новая'], ['sent', 'Передана мастеру'], ['contacted', 'Мастер связался'],
+        ['contract', 'Договор'], ['done', 'Смонтировано'], ['rejected', 'Отказ']
+    ],
+
+    loadLeadAssignments: async function () {
+        this._leadAssign = {};
+        this._leadInstallers = [];
+        try {
+            const { data } = await supabaseClient.from('lead_assignments')
+                .select('lead_id, installer_id, installer_name, status, updated_at');
+            (data || []).forEach(a => { this._leadAssign[a.lead_id] = a; });
+        } catch (e) { console.warn('[заявки] отметки не прочитаны:', e); }
+        // Кому передавать: зарегистрированные в Петербурге и области. Пилот идёт
+        // только там, остальные регионы пока без мастеров.
+        try {
+            const { data } = await supabaseClient.from('users')
+                .select('id, username, first_name, last_name, phone, region, activity_types, is_blocked')
+                .in('region', ['Санкт-Петербург', 'Ленинградская область']);
+            this._leadInstallers = (data || [])
+                .filter(u => !u.is_blocked)
+                .map(u => ({
+                    id: u.id,
+                    name: [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || 'без имени',
+                    phone: u.phone || '',
+                    installer: (u.activity_types || []).includes('Монтажник')
+                }))
+                // монтажники сверху, внутри — по имени
+                .sort((a, b) => (b.installer - a.installer) || a.name.localeCompare(b.name, 'ru'));
+        } catch (e) { console.warn('[заявки] список мастеров не прочитан:', e); }
+    },
+
+    saveLeadAssignment: async function (idx, field, value, el) {
+        const r = (this._leadsData || [])[idx];
+        if (!r || !r.id) return;
+        const cur = Object.assign({ lead_id: r.id, status: 'new' }, this._leadAssign[r.id] || {});
+        if (field === 'installer') {
+            const u = this._leadInstallers.find(x => x.id === value);
+            cur.installer_id = u ? u.id : null;
+            cur.installer_name = u ? u.name : null;
+            // выбрали мастера — заявка считается переданной, если статус ещё «Новая»
+            if (u && cur.status === 'new') cur.status = 'sent';
+        } else {
+            cur.status = value;
+        }
+        cur.updated_at = new Date().toISOString();
+        const row = { lead_id: cur.lead_id, installer_id: cur.installer_id || null, installer_name: cur.installer_name || null, status: cur.status, updated_at: cur.updated_at };
+        try {
+            const { error } = await supabaseClient.from('lead_assignments').upsert(row, { onConflict: 'lead_id' });
+            if (error) throw error;
+            this._leadAssign[r.id] = row;
+            this.renderAdminLeads();
+        } catch (e) {
+            console.warn('[заявки] отметка не сохранилась:', e);
+            if (el) { el.style.borderColor = '#DC2626'; el.title = 'Не сохранилось — попробуйте ещё раз'; }
+        }
     },
 
     copyLead: async function (idx, btn) {
@@ -21788,6 +21856,7 @@ const app = {
                 try { data = JSON.parse(raw.replace(/^﻿/, '')); }
                 catch (pe) { throw new Error('ответ не JSON (' + raw.length + ' байт)' + (raw ? ': ' + raw.slice(0, 120) : '')); }
                 this._leadsData = data.items || [];
+                await this.loadLeadAssignments();
             } catch (e) {
                 const denied = e && e.message === 'forbidden';
                 console.warn('[заявки] журнал не прочитан:', e);
@@ -21808,7 +21877,7 @@ const app = {
         if (!rows.length) {
             box.innerHTML = `<div style="padding:24px; color:var(--text-sec); font-size:13px; line-height:1.6;">
                 Заявок пока нет.<br>
-                Они приходят с формы на странице <a href="/montazh-otopleniya-spb/" target="_blank" style="color:var(--primary);">монтажа в СПб</a>, куда ведут ссылки из статей.
+                Они приходят с формы на странице <a href="/montazh-otopleniya-spb/" target="_blank" style="color:var(--primary);">монтажа в СПб</a>, куда ведут ссылки из статей, и со страницы заказчика <a href="/dom/" target="_blank" style="color:var(--primary);">/dom/</a>.
                 <button class="auth-btn-base" style="margin-left:10px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
             </div>`;
             return;
@@ -21818,7 +21887,7 @@ const app = {
         // приводят людей, а какие только читают.
         const bySrc = {};
         rows.forEach(r => {
-            const k = r.src || '— напрямую';
+            const k = r.src === 'dom' ? 'страница /dom/' : (r.src || '— напрямую');
             bySrc[k] = (bySrc[k] || 0) + 1;
         });
         const srcTop = Object.keys(bySrc).sort((a, b) => bySrc[b] - bySrc[a]).slice(0, 8);
@@ -21844,9 +21913,20 @@ const app = {
                         hour: '2-digit', minute: '2-digit'
                     }) + ' МСК';
             }
-            const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src)}</span>`
+            const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src === 'dom' ? 'страница /dom/' : r.src)}</span>`
                 : '<span style="color:var(--text-sec); font-size:11px;">напрямую</span>';
-            return `<div style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
+            const a = (this._leadAssign || {})[r.id] || {};
+            const st = a.status || 'new';
+            const selStyle = 'height:30px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main); font-size:12px; padding:0 8px; max-width:100%;';
+            const instOpts = '<option value="">— мастер не выбран —</option>' +
+                (this._leadInstallers || []).map(u => `<option value="${esc(u.id)}"${u.id === a.installer_id ? ' selected' : ''}>${esc(u.name)}${u.installer ? '' : ' (продавец)'}${u.phone ? ' · ' + esc(u.phone) : ''}</option>`).join('') +
+                // мастер мог уйти из региона или удалиться — имя всё равно показываем
+                (a.installer_id && !(this._leadInstallers || []).some(u => u.id === a.installer_id)
+                    ? `<option value="${esc(a.installer_id)}" selected>${esc(a.installer_name || 'мастер')}</option>` : '');
+            const stOpts = this.LEAD_STATUSES.map(([v, l]) => `<option value="${v}"${v === st ? ' selected' : ''}>${l}</option>`).join('');
+            const stColor = { new: '#F59E0B', sent: 'var(--primary)', contacted: 'var(--primary)', contract: '#10B981', done: '#10B981', rejected: 'var(--text-sec)' }[st];
+            const calcUrl = this.leadCalcUrl(r);
+            return `<div style="border:1px solid var(--border); border-left:3px solid ${stColor}; border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                     <div style="font-size:13px; color:var(--text-main);">
                         <b>${esc(r.name || 'без имени')}</b> · <a href="tel:${esc(r.phone || '')}" style="color:var(--primary); text-decoration:none;">${esc(r.phone || '')}</a>
@@ -21857,17 +21937,27 @@ const app = {
                     ${works ? '<b>Что:</b> ' + esc(works) + '<br>' : ''}
                     ${r.place ? '<b>Где:</b> ' + esc(r.place) + (r.area ? ', ' + esc(r.area) + ' м²' : '') + '<br>' : ''}
                     ${r.when ? '<b>Когда звонить:</b> ' + esc(r.when) + '<br>' : ''}
-                    ${r.comment ? '<b>Комментарий:</b> ' + esc(r.comment) : ''}
+                    ${r.comment ? '<b>Комментарий:</b> <span style="white-space:pre-line;">' + esc(r.comment) + '</span>' : ''}
                 </div>
-                <button class="auth-btn-base" style="margin-top:10px; width:auto; padding:0 14px; height:30px; font-size:12px;"
-                    onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+                    <select style="${selStyle} flex:1 1 220px;" title="Кому передана заявка" onchange="app.saveLeadAssignment(${i}, 'installer', this.value, this)"${r.id ? '' : ' disabled'}>${instOpts}</select>
+                    <select style="${selStyle} flex:0 1 180px; color:${stColor}; font-weight:600;" title="Что с заявкой" onchange="app.saveLeadAssignment(${i}, 'status', this.value, this)"${r.id ? '' : ' disabled'}>${stOpts}</select>
+                </div>
+                ${a.updated_at ? `<div style="font-size:11px; color:var(--text-sec); margin-top:6px;">Отметка от ${esc(new Date(a.updated_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))} МСК</div>` : ''}
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                    ${calcUrl ? `<a class="auth-btn-base" href="${esc(calcUrl)}" target="_blank" rel="noopener" style="width:auto; padding:0 14px; height:30px; font-size:12px; display:inline-flex; align-items:center; text-decoration:none;" title="Полная смета по ответам заказчика — в новой вкладке">Открыть в расчёте</a>` : ''}
+                    <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"
+                        onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+                </div>
             </div>`;
         }).join('');
 
         box.innerHTML = `
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
                 ${card('всего заявок', rows.length)}
-                ${card('со статей', rows.filter(r => r.src).length)}
+                ${card('не переданы мастеру', rows.filter(r => ((this._leadAssign || {})[r.id] || {}).status === undefined || ((this._leadAssign || {})[r.id] || {}).status === 'new').length)}
+                ${card('со страницы /dom/', rows.filter(r => r.src === 'dom').length)}
+                ${card('со статей', rows.filter(r => r.src && r.src !== 'dom' && !/^test/.test(r.src)).length)}
                 ${card('напрямую', rows.filter(r => !r.src).length)}
             </div>
             <div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light);">
