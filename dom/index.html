@@ -163,11 +163,13 @@
     .pack ul { margin-bottom: 0; }
 
     /* Кнопка заявки всегда под рукой, пока открыт результат */
-    .order-bar { position: sticky; bottom: 0; padding: 12px 0 16px; background: linear-gradient(to bottom, transparent, var(--bg) 30%); z-index: 5; }
+    /* --cookie-gap — высота cookie-баннера (cookie-consent.js), пока он на экране: он
+       лежит поверх всего и на телефоне закрывал и эту кнопку, и «Отправить заявку» */
+    .order-bar { position: sticky; bottom: var(--cookie-gap, 0px); padding: 12px 0 16px; background: linear-gradient(to bottom, transparent, var(--bg) 30%); z-index: 5; }
 
     /* Форма заявки — поверх страницы: снизу на телефоне, по центру на компьютере */
     .sheet-bg { position: fixed; inset: 0; z-index: 50; background: rgba(15,23,42,.45); display: flex; align-items: flex-end; justify-content: center; }
-    .sheet { position: relative; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; background: var(--surface); border-radius: 20px 20px 0 0; padding: 22px 20px 20px; box-shadow: 0 -10px 40px rgba(0,0,0,.2); animation: up .22s ease-out; }
+    .sheet { position: relative; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; background: var(--surface); border-radius: 20px 20px 0 0; padding: 22px 20px calc(20px + var(--cookie-gap, 0px)); box-shadow: 0 -10px 40px rgba(0,0,0,.2); animation: up .22s ease-out; }
     @media (min-width: 640px) { .sheet-bg { align-items: center; } .sheet { border-radius: 20px; } }
     @keyframes up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
     @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
@@ -294,6 +296,27 @@
         applyTheme(dark);
         try { localStorage.setItem('dom_theme', dark ? 'dark' : 'light'); } catch (e) { }
     });
+
+    // ── Cookie-баннер ────────────────────────────────────────────────────
+    // Баннер общий для сайта (cookie-consent.js), прибит к низу экрана и лежит поверх
+    // всего. Пока он виден, поднимаем над ним кнопку заявки и низ формы: иначе на
+    // телефоне нажатие по «Заказать монтаж» попадало в баннер.
+    function syncCookieGap() {
+        var b = document.querySelector('.hc-cookie-banner.show');
+        var gap = 0;
+        if (b) {
+            var r = b.getBoundingClientRect();
+            if (r.height) gap = Math.max(0, Math.round(window.innerHeight - r.top + 8));
+        }
+        document.body.style.setProperty('--cookie-gap', gap + 'px');
+    }
+    try {
+        new MutationObserver(function () { setTimeout(syncCookieGap, 50); })
+            .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+    } catch (e) { }
+    window.addEventListener('resize', syncCookieGap);
+    // Баннер выезжает с анимацией — перемерить, когда он встанет на место
+    [300, 1200, 2500].forEach(function (t) { setTimeout(syncCookieGap, t); });
 
     // ── Ответы ───────────────────────────────────────────────────────────
     // Ключи — как в опроснике (oprosnik.html), чтобы калькулятор разобрал их
@@ -489,7 +512,7 @@
         var L = [];
         if (p === 'econom') {
             L.push(gas ? (hw ? 'Двухконтурный газовый котёл — греет и дом, и воду' : 'Газовый котёл') :
-                'Электрокотёл' + (hw ? ' и водонагреватель от котла' : ''));
+                'Электрокотёл' + (hw ? ' и бойлер для горячей воды' : ''));
             if (rad) L.push('Стальные радиаторы ROMMER с боковым подключением');
             if (tp) L.push('Тёплый пол на первом этаже');
             L.push('Котельная на полипропиленовых трубах');
@@ -515,7 +538,7 @@
 
     var PACKS = ['econom', 'optimum', 'comfort'];
     var picked = 'optimum';
-    var lastPrices = null, lastCalc = null;
+    var lastPrices = null, lastCalc = null, placeAuto = '';
 
     function showResult() {
         $('progressBar').style.width = '100%';
@@ -560,7 +583,14 @@
             $('orderHint').textContent = A.region === 'spb'
                 ? 'Оставьте телефон — мастер позвонит, уточнит детали дома и посчитает точную смету.'
                 : 'Оставьте телефон — сообщим, когда в вашем регионе появится мастер.';
-            if (A.region === 'other' && A.city && !$('f_place').value.trim()) $('f_place').value = A.city;
+            // Город из вопроса о регионе подставляем в «Где дом», но только пока человек
+            // сам это поле не трогал: после «Изменить ответы» прежний город не должен
+            // остаться, если регион сменился
+            var place = $('f_place');
+            if (!place.value.trim() || place.value === placeAuto) {
+                placeAuto = A.region === 'other' ? (A.city || '') : '';
+                place.value = placeAuto;
+            }
             pickPack('optimum');
             $('orderOk').hidden = true; $('orderForm').hidden = false;
             show('result');
@@ -633,7 +663,9 @@
         if (!d) return 'Оставьте телефон — по нему позвонит мастер';
         if (body.length > 5 && /^(\d)\1+$/.test(body)) return 'Проверьте номер: в нём все цифры одинаковые';
         if (ruMask(raw) && d.length !== 11) return 'В номере 11 цифр: +7 и десять цифр номера';
-        if (!ruMask(raw) && d.length < 10) return 'Похоже, номер неполный — проверьте его';
+        // Приёмник заявок (lead.php) берёт только российские номера — говорим об этом
+        // сразу, а не общим «не получилось отправить» после ответа сервера
+        if (!ruMask(raw)) return 'Нужен российский номер: +7 и десять цифр';
         return '';
     }
     function checkName() {
