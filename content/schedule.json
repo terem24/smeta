@@ -1089,10 +1089,10 @@
    "freq": 3400,
    "audience": "owner",
    "data_block": "регламент",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-16",
    "published_at": null,
-   "words": 0
+   "words": 1180
   },
   {
    "slug": "shum-v-sisteme-otopleniya",
@@ -1103,10 +1103,10 @@
    "freq": 3400,
    "audience": "owner",
    "data_block": "скорость воды по СП 60",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-18",
    "published_at": null,
-   "words": 0
+   "words": 1149
   },
   {
    "slug": "upravlenie-kotlom-s-telefona",
