@@ -1523,10 +1523,10 @@
    "freq": 4200,
    "audience": "owner",
    "data_block": "цена кВт·ч по видам топлива",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-22",
    "published_at": null,
-   "words": 0
+   "words": 953
   },
   {
    "slug": "vytyazhka-v-sanuzle",
@@ -1537,10 +1537,10 @@
    "freq": 3600,
    "audience": "owner",
    "data_block": "СП 55 п. 9.7",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-25",
    "published_at": null,
-   "words": 0
+   "words": 837
   },
   {
    "slug": "kak-prinimat-rabotu",
