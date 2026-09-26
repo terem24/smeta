@@ -39,19 +39,7 @@
     // Пишем сразу, не дожидаясь разметки: до первой отрисовки успеет.
     var style = d.createElement('style');
     style.textContent = [
-        /* Плашка «нет сети». Висит над нижней панелью навигации, поверх всего. */
-        '.hc-offline-bar{position:fixed;left:50%;transform:translateX(-50%) translateY(120%);',
-        'bottom:calc(72px + env(safe-area-inset-bottom, 0px));z-index:100000;',
-        'max-width:calc(100vw - 24px);box-sizing:border-box;',
-        'display:flex;align-items:center;gap:8px;',
-        'padding:10px 16px;border-radius:22px;',
-        'background:#1F2937;color:#fff;font-size:13px;line-height:1.3;',
-        'box-shadow:0 6px 20px rgba(0,0,0,.35);',
-        'transition:transform .25s ease;pointer-events:none;}',
-        '.hc-offline-bar.show{transform:translateX(-50%) translateY(0);}',
-        '.hc-offline-bar b{font-weight:600;}',
-
-        /* Полоса «файл сохранён» — та же посадка, но с кнопками. */
+        /* Полоса «файл сохранён». */
         '.hc-saved-bar{position:fixed;left:50%;transform:translateX(-50%) translateY(160%);',
         'bottom:calc(72px + env(safe-area-inset-bottom, 0px));z-index:100001;',
         'max-width:calc(100vw - 24px);box-sizing:border-box;',
@@ -72,148 +60,25 @@
         'background:#2563EB;color:#fff;}',
 
         /* Печать: экранным плашкам на бумаге делать нечего. */
-        '@media print{.hc-offline-bar,.hc-saved-bar,.hc-shot{display:none !important;}}'
+        '@media print{.hc-saved-bar,.hc-shot{display:none !important;}}'
     ].join('');
     (d.head || d.documentElement).appendChild(style);
 
-    // ------------------------------------------------------- «нет сети»
-    var bar = null;
-
-    // Адреса, по которым проверяется связь: сайт, сервер приложения и база.
-    // Достаточно ответа любого — они лежат на разных доменах, и провайдер или
-    // VPN нередко режет что-то одно.
-    var CHECK_URLS = [
-        ['сайт', SITE + '/manifest.json'],
-        ['сервер', 'https://proxy.heatcalc.ru/user_creds.php'],
-        ['база', 'https://ahanbwugsmcyvrwbmtlx.supabase.co/rest/v1/']
-    ];
-
-    var BAR_TEXT = '<span><b>Нет сети.</b> Расчёт, смета и печать работают. ' +
-        'Цены и облако вернутся при подключении. <u>Проверить</u></span>';
-
-    function offlineBar() {
-        if (bar) return bar;
-        bar = d.createElement('div');
-        bar.className = 'hc-offline-bar';
-        // Без значка: в приложении их не показываем (см. .ui-emo в style.css).
-        bar.innerHTML = BAR_TEXT;
-        // По нажатию плашка рассказывает, что именно не проходит. Без этого
-        // «нет сети» — приговор без объяснения: у одних закрыт сайт, у других
-        // сервер приложения, у третьих мешает VPN, и по одному виду плашки
-        // отличить эти случаи нельзя ни пользователю, ни поддержке.
-        bar.style.pointerEvents = 'auto';
-        bar.style.cursor = 'pointer';
-        bar.onclick = diagnose;
-        d.body.appendChild(bar);
-        return bar;
-    }
-
-    // Проверка по шагам: каждый адрес отдельно, результат — прямо в плашке.
-    function diagnose() {
-        var checks = CHECK_URLS;
-        var el = offlineBar();
-        el.innerHTML = '<span>Проверяем связь…</span>';
-
-        Promise.all(checks.map(function (c) {
-            return origFetch(c[1], { method: 'GET', mode: 'no-cors', cache: 'no-store' })
-                .then(function () { return c[0] + ': есть'; })
-                .catch(function () { return c[0] + ': нет'; });
-        })).then(function (res) {
-            var ok = res.filter(function (r) { return /есть$/.test(r); }).length;
-            el.innerHTML = '<span><b>' + (ok ? 'Связь частично есть.' : 'Связи нет.') + '</b> ' +
-                res.join(', ') + '. Нажмите ещё раз, чтобы повторить.</span>';
-            if (ok) netOk();
-            clearTimeout(offlineTimer);
-            offlineTimer = setTimeout(function () {
-                el.innerHTML = BAR_TEXT;
-                updateNetwork();
-            }, 20000);
-        });
-    }
-
-    var offlineTimer = null;
-
-    function showOffline(on) {
-        var el = offlineBar();
-        // Кадр задержки нужен, чтобы браузер успел применить начальное
-        // положение и увидел именно переход, а не сразу конечное состояние.
-        requestAnimationFrame(function () { el.classList.toggle('show', !!on); });
-
-        // Пока плашка висит, раз в 15 секунд смотрим, не вернулась ли связь сама:
-        // событие online встроенный браузер присылает не всегда. Обычно плашку
-        // снимает первый же успешный ответ (см. netOk), это запасной путь.
-        clearTimeout(offlineTimer);
-        if (on) offlineTimer = setTimeout(updateNetwork, 15000);
-    }
-
-    // Плашку «нет сети» показываем только по факту неудачи, а не по подозрению.
+    // Плашки «нет сети» здесь больше нет, и это осознанно.
     //
-    // Раньше поводом были navigator.onLine и стук по проверочным адресам. Оба
-    // признака врут: встроенный браузер отвечает «офлайн» при живой сети, а
-    // проверочные адреса могут не открываться из-за VPN или блокировок
-    // провайдера — при этом приложение прекрасно работает через свой сервер.
-    // У пользователя плашка висела не снимаясь, хотя всё грузилось.
+    // Она обещала простое: предупредить, что цены и облако сейчас недоступны.
+    // На деле надёжного признака «связи нет» у встроенного браузера не нашлось.
+    // navigator.onLine отвечает «офлайн» при живой сети. Стук по своим адресам
+    // не проходит через VPN, хотя приложение прекрасно работает. Ошибка fetch
+    // приходит и от отказа по правам доступа, и от прерванного запроса. Каждый
+    // признак по отдельности и все вместе давали одно и то же: плашка висела
+    // там, где всё работало, и человек переставал ей верить.
     //
-    // Теперь единственный повод — сорвавшийся запрос к нашим адресам, и только
-    // второй подряд: одиночная осечка бывает у любого запроса. Любой успешный
-    // ответ гасит плашку немедленно.
-    var lastOk = 0;
-    var fails = 0;
-    var NET_OK_MS = 60000;
-    var OUR_HOSTS = /(heatcalc\.ru|supabase\.co)/i;
-
-    function netOk() {
-        lastOk = Date.now();
-        fails = 0;
-        showOffline(false);
-    }
-
-    // Сорвавшийся запрос — ещё не приговор. Ошибка fetch приходит не только когда
-    // нет сети: так же выглядят отказ по правам доступа (CORS), прерванный
-    // запрос и таймаут. Проверка в поле это и показала: плашка висела, а все три
-    // адреса отвечали. Поэтому перед показом молча стучимся по ним сами и
-    // показываем плашку, только если не ответил ни один.
-    var checking = false;
-
-    function checkAll() {
-        return Promise.all(CHECK_URLS.map(function (c) {
-            return origFetch(c[1], { method: 'GET', mode: 'no-cors', cache: 'no-store' })
-                .then(function () { return true; })
-                .catch(function () { return false; });
-        }));
-    }
-
-    function netFail(url) {
-        if (!OUR_HOSTS.test(String(url || ''))) return;
-        if (Date.now() - lastOk < NET_OK_MS) return;
-        if (++fails < 2 || checking) return;
-
-        checking = true;
-        checkAll().then(function (res) {
-            checking = false;
-            var anyOk = res.some(Boolean);
-            if (anyOk) netOk();
-            else showOffline(true);
-        });
-    }
-
-    var origFetch = window.fetch;
-    if (typeof origFetch === 'function') {
-        window.fetch = function (input, init) {
-            var url = (input && input.url) ? input.url : input;
-            var p = origFetch.apply(this, arguments);
-            try {
-                p.then(netOk, function () { netFail(url); });
-            } catch (e) { }
-            return p;
-        };
-    }
-
-    // Системные события связи: «сеть появилась» — повод убрать плашку сразу,
-    // «сеть пропала» сам по себе поводом не считаем (см. выше, признак врёт).
-    function updateNetwork() {
-        if (navigator.onLine) showOffline(false);
-    }
+    // Вреда от неё больше, чем пользы: когда связи действительно нет, это и так
+    // видно по пустому списку смет и сообщению об ошибке у конкретного действия.
+    // Поэтому убрана целиком, вместе с проверками. Возвращать — только с
+    // признаком, который не врёт (например, ответом самого приложения на
+    // попытку сохранить смету), и не раньше.
 
     // -------------------------------------------------- следы сайта в печати
     // В печатной сноске стоит QR-код на heatcalc.ru, который рисует чужой
@@ -561,15 +426,6 @@
     // ------------------------------------------------------------- запуск
     function start() {
         dropSiteMarks();
-        updateNetwork();
-        window.addEventListener('online', updateNetwork);
-        window.addEventListener('offline', updateNetwork);
-        // Вернулись к приложению — перепроверяем. Событий online/offline может
-        // и не быть: телефон переключился с Wi-Fi на сотовую сеть, пока
-        // приложение было свёрнуто.
-        d.addEventListener('visibilitychange', function () {
-            if (!d.hidden) updateNetwork();
-        });
         d.addEventListener('click', handleLink, true);
 
         // Приложение могли запустить прямо по ссылке возврата — тогда адрес
