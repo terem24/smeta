@@ -13530,9 +13530,9 @@ const app = {
         // полугода: «деньги на столе» и «ждут звонка» не должны теряться только
         // потому, что выбран короткий период.
         const HIST_DAYS = Math.max(P * 2, 180);
-        let rows = null, ests = [], failed = '';
+        let rows = null, ests = [], failed = '', meRow = null;
         try {
-            const me = await this.resolveCurrentUserForChat();
+            const me = meRow = await this.resolveCurrentUserForChat();
             const email = (me && me.email) || (this.state.tgUser && this.state.tgUser.email) || null;
             if (!email) {
                 container.innerHTML = head + `<p class="lk-hint">Войдите в аккаунт — показатели считаются по вашим сметам.</p>`;
@@ -13892,6 +13892,7 @@ const app = {
             + `<div class="lk-section-head sm-head"><h4>🏠 ${seller ? 'Средний заказ' : 'Средний объект'}</h4></div>`
             + objHtml
             + monthsHtml
+            + `<div id="installer_market"></div>`
             + `<div id="installer_sales"></div>`
             + `<div class="lk-section-head sm-head"><h4>⏳ Ждут вашего звонка</h4></div>`
             + staleHtml
@@ -13908,6 +13909,7 @@ const app = {
         // запрос за составом счетов, а числа выше должны появиться сразу.
         // Запрос один на все блоки — им нужен один и тот же состав.
         this.loadInstallerInvoiceExtras(cards.map(c => c.id));
+        this.renderInstallerMarket(meRow, ests);
     },
 
     /**
@@ -13950,6 +13952,159 @@ const app = {
         this.renderInstallerSales(rows);
         this.renderInstallerRepricing(rows);
         this.renderInstallerAvailability(rows);
+    },
+
+    /**
+     * «Вы и рынок»: свои цифры рядом с медианой других монтажников региона.
+     *
+     * Анонимно и только при достаточной выборке: меньше MARKET_MIN_PEERS
+     * человек — и по «медиане региона» легко узнать конкретного соседа. Если
+     * в регионе столько не набирается, сравниваем со всеми монтажниками сайта
+     * и так и подписываем.
+     *
+     * Считаем по людям, а не по сметам: сначала показатели каждого монтажника
+     * (₽/м² — отношением его сумм), потом медиана по ним. Иначе один человек с
+     * тридцатью сметами задавал бы «рынок» в одиночку.
+     *
+     * Только сохранённые в облаке сметы: других сумм в базе нет. Служебные
+     * учётки (admin, viewer), менеджеры дистрибьюторов и сам монтажник в
+     * выборку не входят.
+     */
+    MARKET_MIN_PEERS: 5,
+    MARKET_DAYS: 180,
+
+    renderInstallerMarket: async function (me, myEsts) {
+        const host = document.getElementById('installer_market');
+        if (!host || !me || !me.id) return;
+        const num = n => Number(n || 0).toLocaleString('ru-RU');
+        const seller = this.isSellerOnly();
+        const DAY = 86400000, since = Date.now() - this.MARKET_DAYS * DAY;
+        let region = '', rows = [];
+        try {
+            const { data: u } = await supabaseClient.from('users').select('region').eq('id', me.id).maybeSingle();
+            region = (u && u.region) || '';
+            const res = await this.fetchAllRows('estimates',
+                'user_id, created_at, eq_sum, works_sum, total_sum, calc_id:calc_data->>calc_id, area:calc_data->>area, users!inner(region, account_type)',
+                { order: 'created_at', cap: 20000, build: (qy) => qy.gte('created_at', new Date(since).toISOString()).neq('user_id', me.id) });
+            rows = (res.rows || []).filter(r => {
+                const t = r.users && r.users.account_type;
+                return t !== 'admin' && t !== 'viewer' && t !== 'manager';
+            });
+        } catch (e) {
+            console.warn('[показатели] рынок не прочитан:', e && e.message || e);
+            return;
+        }
+
+        const byUser = (list) => {
+            const m = {};
+            list.forEach(r => {
+                const area = parseFloat(String(r.area || '').replace(',', '.')) || 0;
+                const eq = parseFloat(r.eq_sum) || 0, works = parseFloat(r.works_sum) || 0;
+                if (!(eq + works)) return;
+                const U = m[r.user_id] || (m[r.user_id] = { area: 0, eqA: 0, worksA: 0, nA: 0, n: 0, calcs: [] });
+                // Пересохранение и версии КП дают несколько строк одной сметы
+                if (r.calc_id && U.calcs.indexOf(String(r.calc_id)) !== -1) return;
+                U.n++;
+                if (r.calc_id) U.calcs.push(String(r.calc_id));
+                if (area > 0) { U.area += area; U.eqA += eq; U.worksA += works; U.nA++; }
+            });
+            return m;
+        };
+        const sameRegion = region ? rows.filter(r => r.users && r.users.region === region) : [];
+        let peers = byUser(sameRegion), scope = region;
+        if (Object.keys(peers).length < this.MARKET_MIN_PEERS) { peers = byUser(rows); scope = ''; }
+        const peerList = Object.values(peers);
+        const head = `<div class="lk-section-head sm-head"><h4>📍 Вы и рынок</h4><small class="sm-head-note">${scope
+            ? 'монтажники региона «' + scope.replace(/</g, '&lt;') + '»' : 'все монтажники сайта'} · ${this.MARKET_DAYS} дней</small></div>`;
+        if (peerList.length < this.MARKET_MIN_PEERS) {
+            host.innerHTML = head + `<p class="lk-hint">Сравнение появится, когда наберётся ${this.MARKET_MIN_PEERS} монтажников с сохранёнными сметами — сейчас ${num(peerList.length)}. Меньше нельзя: по «средней» из двух-трёх человек легко узнать соседа.</p>`;
+            return;
+        }
+
+        // Доля смет, ушедших клиенту и дошедших до счёта, — по журналу событий
+        // этих же смет. Номеров немного (только облачные сметы), запрос лёгкий.
+        const allCalcs = [...new Set(peerList.flatMap(p => p.calcs).concat((myEsts || []).map(e => e.calc).filter(Boolean)))];
+        const reached = {};
+        try {
+            for (let i = 0; i < allCalcs.length; i += 80) {
+                const { data } = await supabaseClient.from('invoice_events').select('calc_id, event')
+                    .in('calc_id', allCalcs.slice(i, i + 80))
+                    .in('event', ['sent', 'printed', 'opened', 'invoice_requested', 'invoice_issued', 'paid']);
+                (data || []).forEach(r => {
+                    const R = reached[r.calc_id] || (reached[r.calc_id] = {});
+                    if (r.event === 'invoice_requested' || r.event === 'invoice_issued' || r.event === 'paid') R.inv = R.sent = true;
+                    else R.sent = true;
+                });
+            }
+        } catch (e) { /* без доли — остальное всё равно показываем */ }
+
+        const statsOf = (U) => ({
+            // Без работ в сметах (продавец, смета на одно оборудование) монтаж
+            // за м² не ноль, а «нет данных» — иначе середина съезжает к нулю.
+            worksM2: U.area && U.worksA > 0 ? U.worksA / U.area : null,
+            eqM2: U.area ? U.eqA / U.area : null,
+            area: U.nA ? U.area / U.nA : null,
+            sent: U.calcs.length ? U.calcs.filter(c => reached[c] && reached[c].sent).length / U.calcs.length * 100 : null,
+            inv: U.calcs.length ? U.calcs.filter(c => reached[c] && reached[c].inv).length / U.calcs.length * 100 : null
+        });
+        const mine = byUser((myEsts || []).filter(e => e.at >= since).map(e => ({
+            user_id: 'me', eq_sum: e.eq, works_sum: e.works, area: e.area, calc_id: e.calc
+        }))).me;
+        const my = mine ? statsOf(mine) : {};
+        const peerStats = peerList.map(statsOf);
+        const median = (arr) => {
+            const a = arr.filter(v => v != null).sort((x, y) => x - y);
+            // Та же защита, что и для всей выборки: по двум-трём значениям
+            // «середина» — это конкретный человек.
+            if (a.length < this.MARKET_MIN_PEERS) return null;
+            const k = Math.floor(a.length / 2);
+            return a.length % 2 ? a[k] : (a[k - 1] + a[k]) / 2;
+        };
+        // Место среди соседей: какая доля из них ниже вас.
+        const rank = (key, v) => {
+            const a = peerStats.map(s => s[key]).filter(x => x != null);
+            if (v == null || a.length < this.MARKET_MIN_PEERS) return '';
+            return Math.round(a.filter(x => x < v).length / a.length * 100);
+        };
+        const fmt = {
+            rub: v => v == null ? '—' : num(Math.round(v)) + ' ₽/м²',
+            m2: v => v == null ? '—' : Math.round(v) + ' м²',
+            pct: v => v == null ? '—' : Math.round(v) + '%'
+        };
+        // Для цены «выше рынка» — не хорошо и не плохо: это позиция, а не
+        // оценка. Поэтому цветом выделяем только доли (там больше — лучше).
+        const defs = [
+            seller ? null : { key: 'worksM2', label: 'Монтаж за м²', f: fmt.rub, tone: false, word: ['дешевле', 'дороже'] },
+            { key: 'eqM2', label: 'Оборудование за м²', f: fmt.rub, tone: false, word: ['дешевле', 'дороже'] },
+            { key: 'area', label: 'Площадь объекта', f: fmt.m2, tone: false, word: ['меньше', 'больше'] },
+            { key: 'sent', label: 'Сметы ушли клиенту', f: fmt.pct, tone: true, word: ['ниже', 'выше'], abs: true },
+            { key: 'inv', label: 'Дошли до счёта', f: fmt.pct, tone: true, word: ['ниже', 'выше'], abs: true }
+        ].filter(Boolean);
+        const rowsHtml = defs.map(d => {
+            const v = my[d.key], m = median(peerStats.map(s => s[d.key]));
+            let diff = '';
+            if (v != null && m != null && m) {
+                const delta = d.abs ? v - m : (v - m) / m * 100;
+                if (Math.abs(delta) < (d.abs ? 3 : 5)) diff = `<span class="sm-trend">как у всех</span>`;
+                else {
+                    const up = delta > 0;
+                    const cls = d.tone ? (up ? 'good' : 'bad') : '';
+                    diff = `<span class="sm-trend ${cls}">${d.word[up ? 1 : 0]} на ${Math.abs(Math.round(delta))}${d.abs ? ' п.' : '%'}</span>`;
+                }
+            }
+            const r = rank(d.key, v);
+            return `<tr><td>${d.label}</td><td><b>${d.f(v)}</b></td><td>${d.f(m)}</td><td>${diff}</td><td>${r === '' ? '—' : 'выше, чем у ' + r + '%'}</td></tr>`;
+        }).join('');
+
+        host.innerHTML = head
+            + `<div class="sm-table-wrap"><table class="sm-table">
+                <thead><tr><th>Показатель</th><th>Вы</th><th>Обычно у других</th><th>Разница</th><th>Место</th></tr></thead>
+                <tbody>${rowsHtml}</tbody></table></div>`
+            + `<p class="lk-hint" style="margin-top:6px;">
+                ${num(peerList.length)} ${this.plural(peerList.length, 'монтажник', 'монтажника', 'монтажников')} с сохранёнными сметами, без имён. «Обычно» — медиана по людям: у каждого свои ₽/м², потом середина.
+                ${mine ? '' : 'Ваших сохранённых смет за полгода нет — сравнивать пока не с чем.'}
+                ${scope ? '' : (region ? 'В вашем регионе меньше ' + this.MARKET_MIN_PEERS + ' монтажников — поэтому сравнение со всеми.' : 'Регион в анкете не указан — поэтому сравнение со всеми.')}
+               </p>`;
     },
 
     /**
