@@ -21779,14 +21779,25 @@ const app = {
                     cache: 'no-store'
                 });
                 if (res.status === 403) throw new Error('forbidden');
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
+                // Текстом, а не res.json(): при сбое сервер отдаёт пустоту или HTML,
+                // и без начала ответа причину было не узнать — вкладка писала только
+                // «не удалось», а запрос с чужим пропуском воспроизвести нельзя
+                const raw = await res.text();
+                if (!res.ok) throw new Error('HTTP ' + res.status + (raw ? ': ' + raw.slice(0, 120) : ''));
+                let data;
+                try { data = JSON.parse(raw.replace(/^﻿/, '')); }
+                catch (pe) { throw new Error('ответ не JSON (' + raw.length + ' байт)' + (raw ? ': ' + raw.slice(0, 120) : '')); }
                 this._leadsData = data.items || [];
             } catch (e) {
                 const denied = e && e.message === 'forbidden';
+                console.warn('[заявки] журнал не прочитан:', e);
+                // Вкладка только владельцу — причину показываем мелко прямо здесь:
+                // консоль он не откроет, а без неё сбой не разобрать
+                const why = denied ? '' : String((e && e.message) || e || '').slice(0, 200);
                 box.innerHTML = `<div style="padding:24px; color:var(--text-sec); font-size:13px; line-height:1.6;">
                     ${denied ? 'Журнал заявок доступен только владельцу.' : 'Не удалось прочитать журнал заявок.'}<br>
                     ${denied ? '' : 'Сами заявки от этого не теряются: каждая приходит в Телеграм и пишется в журнал на сервере.<br>'}
+                    ${why ? `<span style="font-size:11px; opacity:.75;">Причина: ${esc(why)}</span><br>` : ''}
                     <button class="auth-btn-base" style="margin-top:12px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
                 </div>`;
                 return;

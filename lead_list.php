@@ -90,4 +90,14 @@ for ($i = count($lines) - 1; $i >= 0 && count($items) < MAX_ROWS; $i--) {
     if (is_array($row)) $items[] = $row;
 }
 
-echo json_encode(['ok' => true, 'items' => $items], JSON_UNESCAPED_UNICODE);
+// Одна строка журнала с испорченной кодировкой (обрезанный UTF-8) роняла json_encode
+// целиком: он возвращал false, и браузер получал пустой ответ — вкладка «Заявки»
+// писала «не удалось прочитать», хотя все заявки были на месте. Битый символ
+// заменяем на «�», а если сломалось что-то другое — отвечаем ошибкой с причиной.
+$out = json_encode(['ok' => true, 'items' => $items], JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE);
+if ($out === false) {
+    http_response_code(500);
+    echo json_encode(['ok' => false, 'error' => 'encode: ' . json_last_error_msg()]);
+    exit;
+}
+echo $out;
