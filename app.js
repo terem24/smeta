@@ -11597,6 +11597,23 @@ const app = {
     showClientShareMessage: function (title, intro, msg, url) {
         this._shareMsg = { msg: msg, url: url };
         const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+        // На телефоне окно не помещалось на экран: два пояснения подряд, поле на пять строк
+        // и три кнопки разной ширины в одном ряду. Смысл окна — одно действие («скопировать
+        // сообщение»), остальное второстепенно: на мобильном убираем подписи, поле делаем
+        // ниже, а под главной кнопкой оставляем ровную пару второстепенных.
+        if (this.isMobileLayout()) {
+            this.showPlainModal(title, `
+            <textarea readonly rows="4" onclick="this.select()"
+                style="width:100%; box-sizing:border-box; font:inherit; font-size:12.5px; line-height:1.4; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); resize:none;">${esc(msg)}</textarea>
+            <button type="button" class="custom-modal-btn" style="width:100%; height:46px; margin-top:12px;" onclick="app.copyShareMsg('msg')">📋 Скопировать сообщение</button>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button type="button" class="custom-modal-btn" style="flex:1; width:auto; height:42px; margin:0; background:transparent; color:var(--primary); border:1px solid var(--primary);" onclick="app.copyShareMsg('url')">🔗 Ссылка</button>
+                <button type="button" class="custom-modal-btn" style="flex:1; width:auto; height:42px; margin:0; background:transparent; color:var(--text-main); border:1px solid var(--border);" onclick="window.open(app._shareMsg.url, '_blank')">Открыть</button>
+            </div>`);
+            return;
+        }
+
         this.showPlainModal(title, `
             ${intro || ''}
             <div style="font-size:12px; color:var(--text-sec); margin-bottom:6px;">Сообщение для клиента — вставьте в мессенджер или письмо:</div>
@@ -36046,10 +36063,26 @@ const app = {
                     if (insertError) console.error('[handleAuthSession] Запись пользователя не создана:', insertError.message);
                     upsertResult = newUList;
                 } else {
-                    await supabaseClient.from('users').update({ auth_user_id: authUserId, city: existingCity || uData.city || undefined, ...updatePayload }).eq('id', uData.id);
+                    // ФИО, дату рождения, регион и сферу деятельности эта ветка раньше не
+                    // писала вовсе — только город и служебные отметки. А попадают сюда как
+                    // раз те, у кого строка в users привязана к прежнему auth_user_id (переезд
+                    // с Google на Яндекс ID): на своём компьютере анкета оставалась в
+                    // localStorage и выглядела заполненной, а в базу не доезжала никогда. При
+                    // входе с телефона брать её было неоткуда, и анкету просили заново.
+                    // Пустыми полями строку не трогаем (regFieldsObj уже без undefined-ключей).
+                    const fallbackUpdate = { auth_user_id: authUserId, city: existingCity || uData.city || undefined, ...regFieldsObj, ...updatePayload };
+                    if (existingPhone) fallbackUpdate.phone = existingPhone;
+                    Object.keys(fallbackUpdate).forEach(k => { if (fallbackUpdate[k] === undefined) delete fallbackUpdate[k]; });
+                    await supabaseClient.from('users').update(fallbackUpdate).eq('id', uData.id);
                     upsertResult = [uData];
                     if (upsertResult[0]) {
                         upsertResult[0].city = existingCity || uData.city || '';
+                        // Строку читали до записи — вернём в неё то, что только что записали,
+                        // иначе анкета ниже снова сочтётся незаполненной.
+                        Object.keys(regFieldsObj).forEach(k => {
+                            if (regFieldsObj[k] !== undefined) upsertResult[0][k] = regFieldsObj[k];
+                        });
+                        if (existingPhone) upsertResult[0].phone = existingPhone;
                     }
                 }
             }
@@ -36753,20 +36786,41 @@ const app = {
 
         // 2. В фоне синхронизируем с Supabase без блокировки UI
         (async () => {
-            try {
-                let query = supabaseClient.from('users').update({
-                    username: name, phone: phone, city: city, email: email,
-                    last_name: lastName, first_name: firstName, middle_name: middleName,
-                    birth_date: birthDate || null, region: region, activity_types: activityTypes
-                });
-                if (tgUser.authUserId) query = query.eq('auth_user_id', tgUser.authUserId);
-                else if (tgUser.email) query = query.eq('email', tgUser.email);
-                const { error } = await query;
+            const fields = {
+                username: name, phone: phone, city: city, email: email,
+                last_name: lastName, first_name: firstName, middle_name: middleName,
+                birth_date: birthDate || null, region: region, activity_types: activityTypes
+            };
+            // Раньше ответ базы не смотрели: update по auth_user_id, не нашедший ни одной
+            // строки, — это не ошибка, и анкета молча оставалась только в этом браузере.
+            // На компьютере всё выглядело заполненным, а при входе с телефона поля брать
+            // было неоткуда, и анкету просили заново. Теперь считаем обновлённые строки и,
+            // если их нет, повторяем по почте — этого хватает, когда строка в users привязана
+            // к прежнему входу (переезд с Google на Яндекс ID).
+            const writeBy = async (col, val) => {
+                if (!val) return null;
+                const { data, error } = await supabaseClient.from('users').update(fields).eq(col, val).select('id');
                 if (error) throw error;
+                return (data && data.length) ? data.length : 0;
+            };
+            try {
+                let saved = await writeBy('auth_user_id', tgUser.authUserId);
+                if (!saved) saved = await writeBy('email', tgUser.email || email);
+                if (!saved) {
+                    console.error('[saveProfile] Анкета не записана: строка пользователя не найдена', {
+                        authUserId: tgUser.authUserId, email: tgUser.email || email
+                    });
+                    app.alert('Анкета сохранена на этом устройстве, но не записалась в вашу учётную запись — ' +
+                        'на другом устройстве её придётся заполнить заново. Напишите на dima24ba@gmail.com, мы поправим.',
+                        'Профиль сохранён не полностью');
+                    return;
+                }
                 if (tgUser.email) await supabaseClient.auth.updateUser({ data: { full_name: name, phone: phone } });
                 console.log("[saveProfile] Профиль успешно синхронизирован с облаком Supabase.");
             } catch (error) {
                 console.error('[saveProfile] Фоновая ошибка синхронизации профиля с Supabase:', error);
+                app.alert('Анкета сохранена на этом устройстве, но не ушла в вашу учётную запись — проверьте связь ' +
+                    'и нажмите «Сохранить» ещё раз.', 'Профиль сохранён не полностью');
             }
         })();
     },
@@ -39815,10 +39869,6 @@ const app = {
         const daysTimer = document.getElementById('share_opt_timer_days');
         if (cardTimer) cardTimer.style.display = actionType === 'share' ? 'flex' : 'none';
 
-        // Подсказка про опросник — туда же: при печати и в Excel данные уже есть, собирать их незачем
-        const blockOprosnik = document.getElementById('block_opt_oprosnik');
-        if (blockOprosnik) blockOprosnik.style.display = actionType === 'share' ? '' : 'none';
-
         // Вид файла Excel — только у выгрузки в Excel; каждый раз начинаем с разделов
         const excelLayoutBlock = document.getElementById('excel_layout_block');
         if (excelLayoutBlock) excelLayoutBlock.style.display = actionType === 'excel' ? 'block' : 'none';
@@ -39876,6 +39926,38 @@ const app = {
     closeShareOptionsModal: function () {
         const overlay = document.getElementById('share_options_modal_overlay');
         if (overlay) overlay.style.display = 'none';
+    },
+
+    // Ход создания ссылки на телефоне. Раньше его показывала только сама кнопка
+    // «Ссылка для клиента» внизу страницы: окно выбора разделов закрывалось, смета
+    // перерисовывалась, экран оказывался в другом месте — и человек видел
+    // неподвижный список, решая, что всё зависло. Поверх экрана этого не спрятать.
+    showShareProgress: function (messages) {
+        this.hideShareProgress();
+        const list = (messages && messages.length) ? messages : ['Формируем ссылку...'];
+        const ov = document.createElement('div');
+        ov.id = 'share_progress_overlay';
+        ov.style.cssText = 'position:fixed; inset:0; z-index:10050; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); padding:24px;';
+        ov.innerHTML = '<div style="background:var(--surface); color:var(--text-main); border:1px solid var(--border); border-radius:14px; padding:22px 20px; max-width:280px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,0.35);">' +
+            '<span style="display:inline-block; width:26px; height:26px; border:3px solid var(--primary); border-top-color:transparent; border-radius:50%; animation:stout-spin 0.8s linear infinite;"></span>' +
+            '<div id="share_progress_text" style="margin-top:14px; font-size:14px; font-weight:600; line-height:1.35;">' + list[0] + '</div>' +
+            '</div>';
+        document.body.appendChild(ov);
+        let idx = 0;
+        this._shareProgressTimer = setInterval(() => {
+            idx = (idx + 1) % list.length;
+            const t = document.getElementById('share_progress_text');
+            if (t) t.textContent = list[idx];
+        }, 3000);
+    },
+
+    hideShareProgress: function () {
+        if (this._shareProgressTimer) {
+            clearInterval(this._shareProgressTimer);
+            this._shareProgressTimer = null;
+        }
+        const ov = document.getElementById('share_progress_overlay');
+        if (ov) ov.remove();
     },
 
     // Вид файла Excel: 'sections' — с разделами, как в смете; 'flat' — списком, как счёт
@@ -41496,7 +41578,13 @@ const app = {
             this.saveState();
         }
 
+        // Перерисовка меняет высоту списка, и на телефоне экран уезжает к началу сметы —
+        // со стороны это выглядит как сбой. Возвращаем прокрутку на место.
+        const scrollBefore = window.scrollY || window.pageYOffset || 0;
         this.render();
+        if (scrollBefore) {
+            requestAnimationFrame(() => window.scrollTo(0, scrollBefore));
+        }
         // Версия КП: клиент увидит «№ 452712-3», его одобрение и запрос счёта
         // запишутся с этой версией
         const kpVersion = this.stampKpVersion('link');
@@ -41567,12 +41655,13 @@ const app = {
         const btn = document.getElementById('btn_share_trigger');
         let origHtml = "Ссылка для клиента";
         let shareStatusInterval = null;
+        // Быстрое сохранение может занять до 10с — сменяющиеся статусы дают понять,
+        // что процесс идёт, а не завис.
+        const shareStatusMessages = ["Проверяем артикулы...", "Подготавливаем оформление...", "Формируем ссылку..."];
+        if (this.isMobileLayout()) this.showShareProgress(shareStatusMessages);
         if (btn) {
             origHtml = btn.innerHTML;
             const spinnerHtml = `<span class="loading-spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:stout-spin 0.8s linear infinite; margin-right:8px; vertical-align:middle;"></span>`;
-            // Быстрое сохранение может занять до 10с — сменяющиеся статусы дают понять,
-            // что процесс идёт, а не завис.
-            const shareStatusMessages = ["Проверяем артикулы...", "Подготавливаем оформление...", "Формируем ссылку..."];
             let shareStatusIdx = 0;
             btn.innerHTML = spinnerHtml + shareStatusMessages[0];
             btn.disabled = true;
@@ -41752,6 +41841,7 @@ const app = {
             // в фоновую очередь — номер КП должен оставаться доступным для "Загрузить код".
             flushCloudSave();
             if (shareStatusInterval) clearInterval(shareStatusInterval);
+            this.hideShareProgress();
             if (btn) {
                 btn.innerHTML = origHtml;
                 btn.disabled = false;
