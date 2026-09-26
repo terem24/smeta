@@ -12022,8 +12022,21 @@ const app = {
                     error = retry.error;
                 }
                 if (!error) {
-                    // Сессия уже в localStorage. Перезагружаем страницу: обработчик
-                    // авторизации подхватит её штатно, как при обычном входе.
+                    // В приложении перезагрузка не срабатывала: страница остаётся
+                    // прежней, и человек видел «Не авторизован» при живой сессии.
+                    // Поэтому здесь подхватываем сессию сами, без перезагрузки.
+                    if (window.__HC_NATIVE__) {
+                        this._yandexExchanging = false;
+                        this._authHandling = false;
+                        const { data: sd } = await supabaseClient.auth.getSession();
+                        if (sd && sd.session) await this.handleAuthSession(sd.session);
+                        this.closeAuthModal();
+                        this.syncUI();
+                        this.render();
+                        return;
+                    }
+                    // На сайте оставляем перезагрузку: обработчик авторизации
+                    // подхватит сессию штатно, как при обычном входе.
                     // search сохраняем — в нём может быть ссылка на смету.
                     window.location.replace(window.location.pathname + window.location.search);
                     return;
@@ -36929,6 +36942,20 @@ const app = {
                 this.state.accountType = accType;
                 if (accType === 'pro' && !this.state.groupItems) {
                     this.state.groupItems = true; // По умолчанию группировка включена для PRO
+                }
+                // В приложении смету чаще показывают заказчику с экрана, поэтому после
+                // первого входа сразу включаем артикулы, группировку по разделам и фото
+                // товаров. Один раз: дальше это выбор монтажника, и снятые галочки
+                // следующий запуск не вернёт.
+                if (window.__HC_NATIVE__) {
+                    try {
+                        if (!localStorage.getItem('app_view_defaults')) {
+                            localStorage.setItem('app_view_defaults', '1');
+                            this.state.showSku = true;
+                            this.state.groupItems = true;
+                            this.state.showImages = true;
+                        }
+                    } catch (e) { }
                 }
                 this.state.tgUser.id = uRow.id;
                 this.state.tgUser.account_type = uRow.account_type || 'base';
