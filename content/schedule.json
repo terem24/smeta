@@ -1439,10 +1439,10 @@
    "freq": 4200,
    "audience": "pro",
    "data_block": "артикулы и цена за метр",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-08",
    "published_at": null,
-   "words": 0
+   "words": 803
   },
   {
    "slug": "otoplenie-doma-100-m2",
@@ -1453,10 +1453,10 @@
    "freq": 2200,
    "audience": "owner",
    "data_block": "полный расчёт 100 м²",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-11",
    "published_at": null,
-   "words": 0
+   "words": 983
   },
   {
    "slug": "skvazhina-ili-kolodets",
@@ -1467,10 +1467,10 @@
    "freq": 5200,
    "audience": "owner",
    "data_block": "сравнение по оборудованию",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-13",
    "published_at": null,
-   "words": 0
+   "words": 1048
   },
   {
    "slug": "termosmesitel-gvs",
