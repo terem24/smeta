@@ -173,7 +173,7 @@
       return [port(g, th[0]), port(g, th[1])];
     }
     if (/заглушк/i.test(n)) return [port(/ВР/.test(n) ? 'F' : 'M', t)];
-    if (/ниппел/i.test(n)) return [port('M', t, 2)];
+    if (/ниппел/i.test(n)) return th.length >= 2 ? [port('M', th[0]), port('M', th[1])] : [port('M', t, 2)];
     if (/крестовин/i.test(n)) return [port(/НР/.test(n) ? 'M' : 'F', t, 4)];
     if (/^тройник/i.test(n)) return [port(/НР/.test(n) && !/ВР/.test(n) ? 'M' : 'F', t, 3)];
 

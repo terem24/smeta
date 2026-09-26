@@ -3089,6 +3089,10 @@ const catalog = {
         42: { red: { id: "R09042215508", name: "Трубка K-FLEX ST 42/9, 2м", dn: 42, thick: 9, len: 2, price: 254, unit: "шт", brand: "K-FLEX", availability: "in_stock", price_date: "2026-09-22" } }
     },
     nipple_34: { id: "SFT-0003-003434", name: "Ниппель НН 3/4\"", price: 216, availability: "in_stock", price_date: "2026-09-20" },
+    // Предохранительный клапан бойлера RVS-0003-006015 — вход 1/2" ВР (паспорт ROMMER),
+    // крестовина узла В1 — 3/4" ВР: между ними ниппель переходной НР 3/4" × 1/2".
+    // Цена — прайс × 0,9, как у соседних ниппелей SFT-0004 в каталоге.
+    nipple_34_12: { id: "SFT-0004-003412", name: "Ниппель переходной 3/4\" x 1/2\" НР", price: 201, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
     // Переходные муфты (проставки) между патрубками котла 1" и группой быстрого монтажа —
     // паспорт STOUT POLIS, п. 6.2, Рис.5.
     pump_union_1: { id: "SPC-0010-000025", name: "Присоединительный комплект G 1 1/2\" x Rp 1\"", price: 555, brand: "STOUT", availability: "in_stock", price_date: "2026-09-20" },
