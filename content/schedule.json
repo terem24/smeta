@@ -865,10 +865,10 @@
    "freq": 9800,
    "audience": "owner",
    "data_block": "расценки на прокладку",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-06",
    "published_at": null,
-   "words": 0
+   "words": 639
   },
   {
    "slug": "estestvennaya-tsirkulyatsiya",
@@ -893,10 +893,10 @@
    "freq": 7600,
    "audience": "owner",
    "data_block": "состав по каталогу",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-11",
    "published_at": null,
-   "words": 0
+   "words": 632
   },
   {
    "slug": "davlenie-v-sisteme-gvs",
