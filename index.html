@@ -166,7 +166,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.19">
+    <link rel="stylesheet" href="style.css?v=4.20">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.23" defer></script>
@@ -1325,17 +1325,6 @@
                 </div>
             </div>
 
-            <!-- Заголовок тем же <h4>, что и «Тип котла» с «Типом отопления»:
-                 раньше здесь был мелкий .lbl-sub, и «Теплоноситель» читался как
-                 подпись к соседнему блоку, а не как самостоятельный выбор. -->
-            <h4 id="lbl_coolant" style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Теплоноситель</h4>
-            <div class="control-item" id="blk_coolant_wrap">
-                <div class="tabs" id="blk_coolant">
-                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
-                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
-                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)"><span class="ui-emo">❄️ </span>-40°C</div>
-                </div>
-            </div>
             <div id="blk_tp_sliders" style="display:none; border-top:1px dashed #E5E7EB; padding-top:15px;">
                 <div class="control-item">
                     <div class="label-row"><span class="lbl" id="lbl_tp1">Тёплый пол 1 этаж</span><span class="val"><span
@@ -1868,6 +1857,22 @@
             </div>
             <div id="blk_auto_fast_note" style="display:none; font-size:11px; line-height:1.5; color:var(--text-sec); padding:8px 0;">
                 Автоматика включена и посчитана в смете. Её настройки — в подробном режиме.
+            </div>
+
+            <!-- Теплоноситель стоит здесь, а не среди выбора систем: это свойство
+                 уже собранной системы, а не отдельный её узел. Виден только в
+                 подробном режиме (app.syncUI прячет и заголовок, и вкладки), и
+                 ниже него остаётся одно снеготаяние (владелец 26.09.2026).
+                 Заголовок тем же <h4>, что и «Тип котла» с «Типом отопления»:
+                 раньше здесь был мелкий .lbl-sub, и «Теплоноситель» читался как
+                 подпись к соседнему блоку, а не как самостоятельный выбор. -->
+            <h4 id="lbl_coolant" style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Теплоноситель</h4>
+            <div class="control-item" id="blk_coolant_wrap">
+                <div class="tabs" id="blk_coolant">
+                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
+                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
+                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)"><span class="ui-emo">❄️ </span>-40°C</div>
+                </div>
             </div>
 
             <!-- Снеготаяние: уличный контур на гликоле, развязанный с домом насосной
