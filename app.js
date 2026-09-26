@@ -20627,6 +20627,55 @@ const app = {
         return users.filter(u => !busy.has(String(u.id)));
     },
 
+    // Категория устройства по строке getDeviceName ("Android | Приложение",
+    // "Windows | Chrome"…): 'app' — вход через установленное приложение (метка
+    // window.__HC_NATIVE__ ставится в getDeviceName), 'mobile' — телефон/планшет
+    // через обычный мобильный сайт, 'desktop' — компьютер. Незнакомую строку не
+    // относим никуда, чтобы не путать "мобильный" с тем, чья ОС не распозналась.
+    deviceCategory: function (deviceStr) {
+        if (!deviceStr) return null;
+        const s = String(deviceStr);
+        if (/Приложение/.test(s)) return 'app';
+        if (/Android|iOS/.test(s)) return 'mobile';
+        if (/Windows|Mac|Linux/.test(s)) return 'desktop';
+        return null;
+    },
+
+    /**
+     * Фильтр списка по устройству: «кто заходил с телефона», «кто через приложение».
+     *
+     * Один last_device в users помнит только самый последний вход — человек,
+     * который вчера открыл приложение, а сегодня зашёл с компьютера, в фильтре
+     * "Приложение" по нему потерялся бы. Поэтому категорию считаем по всему
+     * журналу визитов (user_sessions.device) и берём объединение: если устройство
+     * встречалось хоть раз — считается, что человек им пользовался.
+     */
+    filterByDevice: async function (users, wantCategory) {
+        if (!users.length) return users;
+        const ids = users.map(u => String(u.id));
+        const seen = {}; // userId -> Set категорий
+        const addCat = (id, cat) => {
+            if (!cat) return;
+            if (!seen[id]) seen[id] = new Set();
+            seen[id].add(cat);
+        };
+        users.forEach(u => addCat(String(u.id), this.deviceCategory(u.last_device)));
+
+        const CHUNK = 100;
+        const jobs = [];
+        for (let i = 0; i < ids.length; i += CHUNK) {
+            const part = ids.slice(i, i + CHUNK);
+            jobs.push(supabaseClient.from('user_sessions').select('user_id, device')
+                .in('user_id', part).not('device', 'is', null)
+                .then(r => {
+                    if (r.error) throw r.error;
+                    (r.data || []).forEach(row => addCat(String(row.user_id), this.deviceCategory(row.device)));
+                }));
+        }
+        await Promise.all(jobs);
+        return users.filter(u => (seen[String(u.id)] || new Set()).has(wantCategory));
+    },
+
     /**
      * Строка «На сайте» в списке пользователей.
      *
@@ -21080,7 +21129,8 @@ const app = {
             activity: document.getElementById('admin_filter_activity')?.value || 'all',
             recog: document.getElementById('admin_filter_recog')?.value || 'all',
             suspect: document.getElementById('admin_filter_suspect')?.value || 'all',
-            idle: document.getElementById('admin_filter_idle')?.value || 'all'
+            idle: document.getElementById('admin_filter_idle')?.value || 'all',
+            device: document.getElementById('admin_filter_device')?.value || 'all'
         };
 
         const estSearchInputBefore = document.getElementById('admin_est_search_input');
@@ -21119,6 +21169,11 @@ const app = {
             // «Ходит, но не считает»: расчёты лежат в других таблицах, отбор по ним
             // тоже клиентский, и список нужен целиком.
             const isIdleFilter = ((this._pendingAdminFilters && this._pendingAdminFilters.idle) || 'all') === 'yes';
+            // Устройство, как и «ходит, но не считает», требует всего списка целиком: и
+            // само значение (категория устройства — компьютер/мобильный/приложение)
+            // считается на клиенте по журналу визитов, база о нём не знает.
+            const deviceFilter = (this._pendingAdminFilters && this._pendingAdminFilters.device) || 'all';
+            const isDeviceFilter = deviceFilter !== 'all';
 
             if (sortType === 'login_desc') {
                 query = query
@@ -21154,7 +21209,7 @@ const app = {
             let users = [];
             let totalUsers = 0;
 
-            if (isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter) {
+            if (isClientSort || isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter) {
                 let { data, error, count } = await query;
                 if (error) throw error;
                 users = data || [];
@@ -21180,6 +21235,9 @@ const app = {
             if (isIdleFilter) {
                 users = await this.filterIdleVisitors(users);
             }
+            if (isDeviceFilter) {
+                users = await this.filterByDevice(users, deviceFilter);
+            }
             // Сколько среди отобранных продавцов и сколько монтажников — для карточки
             // «Пользователей». Один человек может отметить обе сферы, поэтому числа
             // не обязаны складываться в общее. Когда отбор шёл на клиенте, список
@@ -21187,7 +21245,7 @@ const app = {
             // лёгких запроса-счётчика с теми же фильтрами, что и у таблицы.
             let sellersCount = 0, installersCount = 0;
             const hasActivity = (u, word) => (u.activity_types || []).some(a => String(a).toLowerCase().indexOf(word) !== -1);
-            if (isRecogFilter || isSuspectFilter || isIdleFilter) {
+            if (isRecogFilter || isSuspectFilter || isIdleFilter || isDeviceFilter) {
                 totalUsers = users.length;
                 sellersCount = users.filter(u => hasActivity(u, 'продав')).length;
                 installersCount = users.filter(u => hasActivity(u, 'монтаж')).length;
@@ -22856,6 +22914,7 @@ const app = {
             recog: 'all',
             suspect: 'all',
             idle: 'all',
+            device: 'all',
             search: ''
         };
         const tariffFilter = filters.tariff;
@@ -22866,6 +22925,7 @@ const app = {
         const recogFilter = filters.recog || 'all';
         const suspectFilter = filters.suspect || 'all';
         const idleFilter = filters.idle || 'all';
+        const deviceFilter = filters.device || 'all';
         const sortArrow = (key) => sortType === key + '_asc' ? ' ▲' : (sortType === key + '_desc' ? ' ▼' : '');
         // Проектирование: переключатели работают, только если на сервере лежит
         // обновлённый recognize_archive.php (см. designAccessSupported).
@@ -22941,6 +23001,15 @@ const app = {
                             <select id="admin_filter_idle" onchange="app.loadAdminData(0)" title="Заходил ${this.IDLE_MIN_VISITS} и более раз, но не начал ни одного расчёта и не сохранил ни одной сметы" style="background: var(--surface); color: var(--text-main); border: 1px solid ${idleFilter === 'yes' ? '#D97706' : 'var(--border)'}; border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${idleFilter === 'all' ? 'selected' : ''}>👣 Визиты: все</option>
                                 <option value="yes" ${idleFilter === 'yes' ? 'selected' : ''}>👣 Ходит, но не считает</option>
+                            </select>
+                            <!-- Категория устройства (компьютер/телефон/приложение) в базе не лежит —
+                                 её выводит клиент из журнала визитов (см. deviceCategory), поэтому
+                                 этому фильтру, как и "ходит, но не считает", нужен весь список целиком. -->
+                            <select id="admin_filter_device" onchange="app.loadAdminData(0)" title="По любому устройству, с которого хоть раз заходил — не только по последнему входу" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
+                                <option value="all" ${deviceFilter === 'all' ? 'selected' : ''}>📱 Устройство: все</option>
+                                <option value="desktop" ${deviceFilter === 'desktop' ? 'selected' : ''}>💻 Компьютер</option>
+                                <option value="mobile" ${deviceFilter === 'mobile' ? 'selected' : ''}>📱 Мобильный (сайт)</option>
+                                <option value="app" ${deviceFilter === 'app' ? 'selected' : ''}>📲 Приложение</option>
                             </select>
                             <select id="admin_filter_activity" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${activityFilter === 'all' ? 'selected' : ''}>Вся сфера деят-ти</option>
@@ -37995,6 +38064,20 @@ const app = {
         else if (/iPhone|iPad/i.test(ua)) os = "iOS";
         else if (/Android/i.test(ua)) os = "Android";
         else if (/Linux/i.test(ua)) os = "Linux";
+        // Модель телефона — только Android и только когда браузер её вообще отдал:
+        // формат UA "...; Android 13; SM-A505FN Build/...)", модель между версией ОС
+        // и "Build/". Часть Android-браузеров (Chrome с "reduced UA", некоторые сборки)
+        // строку сокращают до "Android 13; K)" — там модели нет, показывать нечего.
+        // iOS модель в UA не передаёт никогда (Apple её не отдаёт), поэтому для iPhone/iPad
+        // не пытаемся вовсе — гадать по User-Agent то, чего там нет, хуже, чем промолчать.
+        let model = '';
+        if (os === "Android") {
+            const m = ua.match(/Android\s+[\d.]+;\s*([^;)]+)\)/i);
+            if (m) {
+                const raw = m[1].replace(/\s*Build\/.*$/i, '').trim();
+                if (raw.length > 3 && !/^(K|wv)$/i.test(raw)) model = raw;
+            }
+        }
         let browser = "Браузер";
         // Внутри Android-приложения встроенный браузер — тот же Chrome, и по строке
         // агента приложение от мобильного сайта не отличить. Метку window.__HC_NATIVE__
@@ -38008,7 +38091,7 @@ const app = {
         else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = "Safari";
         else if (/Firefox/i.test(ua)) browser = "Firefox";
         else if (/Telegram/i.test(ua)) browser = "Telegram";
-        return os + " | " + browser;
+        return os + (model ? " (" + model + ")" : "") + " | " + browser;
     },
 
     deleteWork: async function (name) {
