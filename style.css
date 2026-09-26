@@ -1695,6 +1695,7 @@ body.html2pdf-printing .calculation-date {
 /* Кнопка бургера (скрыта на десктопе) */
 .menu-toggle-btn {
     display: none;
+    position: relative;
     align-items: center;
     justify-content: center;
     width: 40px;

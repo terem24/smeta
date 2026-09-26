@@ -12041,17 +12041,27 @@ const app = {
                     window.location.replace(window.location.pathname + window.location.search);
                     return;
                 }
-                console.warn("verifyOtp не сработал, пробуем переход по ссылке:", error);
+                console.warn("verifyOtp не сработал:", error);
+                throw new Error(error.message || "Ссылка входа не подтвердилась");
             }
 
-            // Запасной путь: прямой переход (сработает там, где supabase.co доступен)
-            window.location.replace(data.action_link);
+            // Токен не удалось вытащить из ссылки — раньше отсюда переходили прямо
+            // по data.action_link (он ведёт на *.supabase.co). У части людей это
+            // работало, но при просроченном или уже использованном токене (двойной
+            // клик, вернулись в старую вкладку, слишком медленная сеть) Supabase
+            // отвечает голым JSON прямо в адресе — человек видит на весь экран
+            // {"status":"error","errors":["Internal"]} без единого слова объяснения
+            // и с сайта уходит, не понимая, что случилось. Лучше явная ошибка внутри
+            // приложения, чем непонятная страница снаружи него.
+            throw new Error("Не удалось разобрать ссылку входа");
         } catch (err) {
             this._yandexExchanging = false;
             const preloader = document.getElementById('stout_preloader');
             if (preloader) preloader.remove();
             console.error("Ошибка входа через Яндекс:", err);
-            app.alert("Не удалось войти через Яндекс: " + err.message);
+            app.alert("Не удалось войти через Яндекс: " + err.message +
+                "\n\nПопробуйте нажать «Яндекс ID» ещё раз — при первом входе аккаунт " +
+                "создаётся автоматически, регистрироваться отдельно не нужно.");
         }
     },
 
@@ -12598,6 +12608,15 @@ const app = {
         if (cancelBtn) cancelBtn.style.display = forced ? 'none' : '';
         const incompleteBanner = document.getElementById('profile_incomplete_banner');
         if (incompleteBanner) incompleteBanner.style.display = forced ? 'block' : 'none';
+        // На телефоне #profile_nav — единственное меню кабинета (рейки слева там нет),
+        // и рисуется оно сеткой разделов НАД самой формой. В принудительном режиме
+        // переходить всё равно некуда — все разделы, кроме этой формы, заблокированы
+        // тем же forceComplete, — а сетка из 12 плиток отталкивала форму вниз за экран:
+        // человек видел меню, красную плашку и решал, что сайт сломался. Прячем меню
+        // целиком, пока анкета не сохранена; showAdminModal/railGo его не открывают
+        // заново, так что после сохранения оно возвращается само при следующем showProfileModal.
+        const profileNav = document.getElementById('profile_nav');
+        if (profileNav) profileNav.style.display = forced ? 'none' : '';
         document.getElementById('profile_last_name_input').value = tgUser.lastName || '';
         // Пока пользователь не разделит старое комбинированное имя на части сам — подставляем
         // его целиком в поле "Имя", чтобы не оставлять форму пустой для уже существующих аккаунтов
@@ -18281,17 +18300,31 @@ const app = {
             visibleNotifications.sort((a, b) => new Date(b.time) - new Date(a.time));
             this._notifications = visibleNotifications;
 
-            // Обновляем бейдж непрочитанных
+            // Обновляем бейдж непрочитанных. Колокольчик в шапке (notification_badge)
+            // на мобильном экране спрятан целиком (см. .header-main-controls в
+            // style.css) — он виден только внутри открытого гамбургер-меню и на
+            // вкладке «Профиль». Раньше это значило, что монтажник на вкладке
+            // «Дом» или «Смета» узнавал о новом сообщении только всплывающей
+            // карточкой (msg_toast) — если пропустил её, до следующего открытия
+            // профиля или меню он о письме просто не знал. Теперь тот же счётчик
+            // дублируется в бейдж на самой кнопке гамбургера (всегда на экране на
+            // мобильном) и сразу в бейдж вкладки «Профиль» — не только когда
+            // human открывает эту вкладку (см. updateProfileTabDetails).
             const unreadCount = visibleNotifications.filter(n => !n.isRead).length;
-            const badge = document.getElementById('notification_badge');
-            if (badge) {
+            [
+                document.getElementById('notification_badge'),
+                document.getElementById('menu_toggle_badge'),
+                document.getElementById('profile_notification_badge'),
+                document.getElementById('profile_menu_messages_badge')
+            ].forEach(badge => {
+                if (!badge) return;
                 if (unreadCount > 0) {
-                    badge.innerText = unreadCount;
+                    badge.innerText = unreadCount > 99 ? '99+' : unreadCount;
                     badge.style.display = 'flex';
                 } else {
                     badge.style.display = 'none';
                 }
-            }
+            });
             // Тот же счётчик на «Сообщениях» в левой панели — она берёт значение отсюда
             this.syncRailUI();
 
@@ -33233,19 +33266,19 @@ const app = {
         let h = `
                     <button class="btn-header-blue" style="margin-bottom: 20px; width: fit-content;" onclick="app.renderAdminMain()">← Назад</button>
                     <div style="background: var(--surface-light); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 30px;">
-                        <div style="display:flex; align-items:center; gap:20px; margin-bottom:25px;">
+                        <div style="display:flex; align-items:center; gap:20px; margin-bottom:25px; flex-wrap:wrap;">
                             ${user.avatar_url ? `<img src="${user.avatar_url}" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:2px solid var(--primary);">` : `<div style="width:80px; height:80px; border-radius:50%; background:var(--primary-light); display:flex; align-items:center; justify-content:center; font-size:40px; color:var(--primary);">👤</div>`}
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%;">
-                                <div class="user-main-contacts">
-                                    <h2 style="margin: 0; color: var(--text-main); font-size: 20px;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
-                                    <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 13px; color: var(--text-sec);">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; width: 100%; flex-wrap: wrap;">
+                                <div class="user-main-contacts" style="min-width:0;">
+                                    <h2 style="margin: 0; color: var(--text-main); font-size: 20px; overflow-wrap: anywhere;">${[user.last_name, user.first_name, user.middle_name].filter(Boolean).join(' ') || user.username || user.email || 'Без имени'}</h2>
+                                    <div style="display: flex; gap: 15px; margin-top: 5px; font-size: 13px; color: var(--text-sec); flex-wrap: wrap;">
                                         <span>📱 ${user.phone || '—'}</span>
                                         ${(user.account_type === 'pro' && user.demo_ends_at && new Date(user.demo_ends_at) < new Date()) ? '<b style="color:#EF4444;">⚠️ Тариф истёк</b>' : ''}
                                     </div>
                                     ${user.utm_source ? `<div style="display: inline-block; background: var(--primary-light); color: var(--primary); font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 10px; margin-top: 8px;">${user.utm_source}</div>` : ''}
                                 </div>
 
-                                <div class="user-location-block" style="text-align: right; font-size: 13px; min-width: 200px;">
+                                <div class="user-location-block" style="text-align: right; font-size: 13px; min-width: 200px; overflow-wrap: anywhere;">
                                     <div style="margin-bottom: 4px; color: var(--text-main);">
                                         📍 <span style="opacity: 0.7; font-size: 12px;">Город (рег.):</span> <b>${user.city || '—'}</b>
                                     </div>
@@ -36786,6 +36819,37 @@ const app = {
         }
     },
 
+    // Город и IP входа — в строку users отдельным запросом после того, как профиль
+    // уже записан (см. handleAuthSession). Каждому геосервису даём 6 секунд: не
+    // ответил — пробуем второй, не ответил и он — строка остаётся с прежними
+    // значениями, вход от этого не зависит.
+    stampLoginGeo: async function (authUserId) {
+        const ask = async (url) => {
+            const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : null;
+            try {
+                const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const geo = await res.json();
+                return { city: geo.city || '', ip: geo.ip || '' };
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        };
+        let geo = null;
+        for (const url of ['https://ipapi.co/json/', 'https://ipinfo.io/json']) {
+            try { geo = await ask(url); break; } catch (e) { }
+        }
+        if (!geo || (!geo.city && !geo.ip)) return;
+        try {
+            await supabaseClient.from('users')
+                .update({ location: geo.city || 'Не определен', registration_ip: geo.ip || '0.0.0.0' })
+                .eq('auth_user_id', authUserId);
+        } catch (e) {
+            console.warn('[stampLoginGeo] Город входа не записан:', e);
+        }
+    },
+
     handleAuthSession: async function (session, isGoogleCallback = false) {
         if (!session || !session.user) return;
 
@@ -36845,34 +36909,17 @@ const app = {
                 }
             }
 
-            let city = 'Не определен';
-            let clientIp = '0.0.0.0';
-            try {
-                const isLocal = (HC_LOCAL_DEV);
-                if (isLocal) {
-                    clientIp = '127.0.0.1';
-                    city = 'Локальный хост';
-                } else {
-                    try {
-                        const res = await fetch('https://ipapi.co/json/');
-                        if (!res.ok) throw new Error("HTTP error " + res.status);
-                        const geo = await res.json();
-                        city = geo.city || 'Не определен';
-                        clientIp = geo.ip || '0.0.0.0';
-                    } catch (primaryErr) {
-                        console.warn("Primary geo fetch failed, trying fallback...", primaryErr);
-                        try {
-                            const res = await fetch('https://ipinfo.io/json');
-                            if (!res.ok) throw new Error("HTTP error " + res.status);
-                            const geo = await res.json();
-                            city = geo.city || 'Не определен';
-                            clientIp = geo.ip || '0.0.0.0';
-                        } catch (fallbackErr) {
-                            console.warn("Fallback geo fetch also failed", fallbackErr);
-                        }
-                    }
-                }
-            } catch (e) { console.warn("Geo error", e); }
+            // Город и IP по геосервису раньше запрашивались ЗДЕСЬ, до записи профиля,
+            // и без предела ожидания. ipapi.co/ipinfo.io из РФ отвечают по 10–30 с
+            // (у lyubovzemtsova 26.09 строка в users появилась через 10 с после
+            // входа), а всё это время человек видит гостевой калькулятор: окно
+            // входа закрывается только в конце этого обработчика. На телефоне он
+            // решает, что вход не сработал, и закрывает вкладку — сессия в auth
+            // есть, строки в users нет. За сентябрь так потерялись 20 регистраций,
+            // 4 из 6 через Яндекс. Поэтому профиль пишем сразу, а город и IP
+            // дописываем следом отдельным запросом (stampLoginGeo), не задерживая вход.
+            let city = HC_LOCAL_DEV ? 'Локальный хост' : 'Не определен';
+            let clientIp = HC_LOCAL_DEV ? '127.0.0.1' : '0.0.0.0';
 
             let utm = localStorage.getItem('stout_utm') || '';
 
@@ -37056,6 +37103,7 @@ const app = {
             }
 
             let uRow = upsertResult ? upsertResult[0] : null;
+            if (uRow && !HC_LOCAL_DEV) this.stampLoginGeo(authUserId);
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
                 // калькулятором — выходим из сессии и возвращаем в неавторизованное состояние.
@@ -37922,6 +37970,11 @@ const app = {
 
     isJunkNameWord: function (word) {
         const w = String(word || '').toLowerCase().replace(/ё/g, 'е');
+        // Кусок без единой кириллической буквы — не слово, а декоративный значок
+        // (эмодзи, звёздочка), который люди иногда дописывают к фамилии в Яндекс
+        // ID/Google. Он не кириллица и не может ни пройти, ни провалить проверку
+        // на гласную — раньше проваливал её всегда и попадал в «наугад набрано».
+        if (!/[а-я]/.test(w)) return false;
         if (w.length < 2) return true;
         if (/(.)\1\1/.test(w)) return true;          // три одинаковые буквы подряд
         if (!/[аеиоуыэюя]/.test(w)) return true;     // слово без единой гласной
@@ -44727,11 +44780,20 @@ const app = {
             }
         }
 
-        // Синхронизируем бейдж уведомлений с главным бейджем в шапке
+        // Синхронизируем бейджи уведомлений с главным бейджем в шапке — на случай,
+        // если вкладка «Профиль» открылась раньше, чем отработал первый опрос
+        // fetchNotifications (там те же элементы обновляются и без переключения вкладки).
         const mainBadge = document.getElementById('notification_badge');
-        if (badgeEl && mainBadge) {
-            badgeEl.innerText = mainBadge.innerText;
-            badgeEl.style.display = mainBadge.style.display;
+        const menuBadge = document.getElementById('profile_menu_messages_badge');
+        if (mainBadge) {
+            if (badgeEl) {
+                badgeEl.innerText = mainBadge.innerText;
+                badgeEl.style.display = mainBadge.style.display;
+            }
+            if (menuBadge) {
+                menuBadge.innerText = mainBadge.innerText;
+                menuBadge.style.display = mainBadge.style.display;
+            }
         }
     },
 
@@ -47191,12 +47253,20 @@ const app = {
             // даётся ссылка в письмах и приглашениях. Вошедшему окно не показываем:
             // он уже внутри, ссылка для него просто открывает калькулятор.
             if (!session) this.openRegistrationFromUrl();
-            // Ветки «сессии нет» здесь намеренно нет: гостю ни окно быстрого старта,
-            // ни подсказки не показываем. Типовой объект он выбрать может — кнопка в
-            // центре пустой сметы на месте, — но сохранить смету, отправить её
-            // клиенту и зайти в разделы кабинета всё равно не выйдет без входа, и
-            // окно поверх экрана оказывается предложением, за которым сразу стоит
-            // ещё одно окно, про регистрацию.
+            // Раньше гостю окно входа не показывали вообще: сайт выглядел рабочим
+            // калькулятором, и то, что цены и сохранение сметы спрятаны за входом,
+            // становилось понятно только по клику на размытую цену. По жалобе —
+            // не очевидно, что нужно сначала войти или зарегистрироваться, — теперь
+            // окно открывается само при первом заходе гостя. Оно не блокирует
+            // калькулятор: крестиком или кликом мимо закрывается, как и раньше
+            // (см. auth_modal_overlay), а типовой объект выбрать и посчитать можно
+            // и не заходя в него.
+            // Не открываем поверх _yandexExchanging (страница вот-вот перезагрузится
+            // после возврата с Яндекса) и поверх уже открытого регистрацией по ?reg=1.
+            if (!session && !this._yandexExchanging &&
+                document.getElementById('auth_modal_overlay').style.display !== 'flex') {
+                this.showAuthModal();
+            }
             // Убрана логика Telegram (tgUser && !tgUser.isGoogle), так как
             // авторизация через Telegram Bot удалена из проекта.
             // Если в localStorage остался старый tgUser без isGoogle — он будет
