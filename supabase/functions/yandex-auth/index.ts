@@ -19,6 +19,14 @@ const corsHeaders = {
 // Куда разрешено возвращать пользователя после входа. Без этого списка функцию
 // можно было бы использовать для угона сессии: подсунуть свой redirect_uri и
 // получить ссылку входа, ведущую на чужой сайт.
+// Адрес возврата Android-приложения. У собственной схемы нет origin —
+// new URL("ru.heatcalc.app://oauth").origin даёт "null", и проверка по списку
+// origin'ов отвечала «Недопустимый адрес возврата» на каждый вход из приложения.
+// Поэтому такие адреса сверяем целиком, а не по домену.
+const ALLOWED_APP_REDIRECTS = [
+  "ru.heatcalc.app://oauth",
+];
+
 const ALLOWED_ORIGINS = [
   "https://heatcalc.ru",
   "https://www.heatcalc.ru",
@@ -114,14 +122,16 @@ Deno.serve(async (req) => {
 
     // redirect_uri обязан совпадать с тем, что браузер отправлял в Яндекс, но
     // принимаем только свои адреса
-    let origin = "";
-    try {
-      origin = new URL(redirectUri).origin;
-    } catch (_e) {
-      return json({ error: "Некорректный redirect_uri" }, 400);
-    }
-    if (!ALLOWED_ORIGINS.includes(origin)) {
-      return json({ error: "Недопустимый адрес возврата" }, 403);
+    if (!ALLOWED_APP_REDIRECTS.includes(redirectUri)) {
+      let origin = "";
+      try {
+        origin = new URL(redirectUri).origin;
+      } catch (_e) {
+        return json({ error: "Некорректный redirect_uri" }, 400);
+      }
+      if (!ALLOWED_ORIGINS.includes(origin)) {
+        return json({ error: "Недопустимый адрес возврата" }, 403);
+      }
     }
 
     // 1. Код → токен доступа Яндекса

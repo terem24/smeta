@@ -625,6 +625,10 @@ const workProExplanations = {
 // в опубликованной версии 1.2 висела панель переключения тарифа, подставлялся
 // тестовый PRO-аккаунт владельца, а ссылки клиенту собирались на https://localhost.
 // Метку __HC_NATIVE__ ставит native/native-ui.js — он грузится раньше app.js.
+// Идентификатор подставного аккаунта локальной разработки: по нему же его
+// вычищают из памяти браузера у тех, кто ставил версию приложения 1.2.
+const DEV_STUB_USER_ID = '0279a53c-452b-474f-8626-08be2c2b32da';
+
 const HC_LOCAL_DEV = !window.__HC_NATIVE__ &&
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
@@ -46785,6 +46789,15 @@ const app = {
             let stdFaucet = catalog.outdoor_faucet.find(x => x.id === "SVB-1007-200020");
             if (stdFaucet) stdFaucet.alts = faucetAlts;
         }
+        // Версия приложения 1.2 считала себя localhost и записывала в память
+        // браузера подставной аккаунт разработчика. Обновление его не стирает:
+        // без этой уборки первый запуск 1.3 встречал человека окном «Нужно войти
+        // заново» — про вход, которого он никогда не делал.
+        if (!HC_LOCAL_DEV && this.state.tgUser && this.state.tgUser.id === DEV_STUB_USER_ID) {
+            delete this.state.tgUser;
+            this.state.accountType = 'base';
+            this.saveState();
+        }
         // === ОБХОД АВТОРИЗАЦИИ ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ ===
         if (HC_LOCAL_DEV) {
             console.warn('[DEV MODE] Localhost detected — установлена PRO сессия для тестирования.');
@@ -46796,7 +46809,7 @@ const app = {
             const devAvatar = (this.state.tgUser && this.state.tgUser.avatar_url) || '';
             this.state.tgUser = {
                 avatar_url: devAvatar,
-                id: '0279a53c-452b-474f-8626-08be2c2b32da',
+                id: DEV_STUB_USER_ID,
                 first_name: "Dima Ibatullin",
                 username: "dima_ibatullin",
                 lastName: "Ibatullin",
