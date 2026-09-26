@@ -238,18 +238,22 @@ const RecognizeProject = {
         if (k === null || !project.roomWalls[k]) return null;
         const scope = project.roomWalls.length === 1 ? rows : rows.filter(r => r._sheet === k);
         const key = k + '|' + scope.map(r => r.name + ':' + r.area).join('|');
+        // Карта строится раз на лист, а строки у разных шагов — разные
+        // объекты с теми же названиями (помещения из PDF собираются до
+        // того, как появятся строки экрана проверки). Храним номера подписей
+        // в списке и привязываем карту к строкам того, кто спросил.
         this._maps = this._maps || new Map();
-        if (this._maps.has(key)) return this._maps.get(key);
+        const bind = got => got && got.map ? Object.assign({}, got.map, { rows: got.idx.map(i => scope[i]) }) : null;
+        if (this._maps.has(key)) return bind(this._maps.get(key));
         const pos = this.roomPositions(scope, project.roomWords && project.roomWords[k]);
-        const seeds = [], seedRows = [];
-        scope.forEach((r, i) => { if (pos[i]) { seeds.push({ name: r.name, x: pos[i].x, y: pos[i].y }); seedRows.push(r); } });
+        const seeds = [], idx = [];
+        scope.forEach((r, i) => { if (pos[i]) { seeds.push({ name: r.name, x: pos[i].x, y: pos[i].y }); idx.push(i); } });
         let map = null;
         if (seeds.length >= 2) {
             try { map = RecognizeGeo.buildFromWalls(project.roomWalls[k], seeds); } catch (e) { console.warn('Карта помещений:', e); map = null; }
         }
-        if (map) map.rows = seedRows;
-        this._maps.set(key, map);
-        return map;
+        this._maps.set(key, { map, idx });
+        return bind(this._maps.get(key));
     },
 
     rowAt(map, x, y, maxMm) {
@@ -310,6 +314,49 @@ const RecognizeProject = {
             if (extra.length) warnings.push(`в экспликации нет: ${extra.map(x => x.name).join(', ')} — не отмечено`);
         });
         return warnings;
+    },
+
+    /**
+     * Помещения листов проекта — без модели. Названия и площади — из
+     * экспликации, наружные стены — по карте помещений, окна — дальше по
+     * обмерному плану (readWindows). Для каждого листа помещений — ответ в
+     * том же виде, что у модели плана (RecognizePlan.normalizeSheet его
+     * примет), или null — этот лист читает модель, как прежде.
+     *
+     * Модель на этом листе шла 2–4 минуты и была самым долгим шагом, а всё,
+     * что она отсюда брала, в PDF лежит точно. Условие — есть экспликация,
+     * стены заливкой и обмерный план с подписями окон: без него окна
+     * считать не по чему, и лист остаётся модели.
+     */
+    HEATED_NOT_RE: /террас|балкон|лоджи|крыльц|веранд|навес|патио/i,
+
+    plansFromPdf(project) {
+        if (!project || !Array.isArray(project.roomTables) || typeof RecognizeGeo === 'undefined') return null;
+        const winOk = !!(project.winSheet && project.winSheet.labels && project.winSheet.labels.length);
+        if (!winOk || project.rooms.length !== 1) return null;
+        const out = project.rooms.map((p, k) => {
+            const tab = project.roomTables[k], walls = (project.roomWalls || [])[k];
+            if (!tab || !walls) return null;
+            const rows = tab.rows.map(t => ({ name: t.name, area: t.area, _sheet: k }));
+            const map = this.geoMap(rows, project, k);
+            if (!map) return null;
+            const floor = typeof RecognizeFiles !== 'undefined' ? RecognizeFiles.sheetFloor(p.title) : null;
+            return {
+                docKind: 'floor_plan', floorLabel: p.title || null, floor: typeof floor === 'number' ? floor : null,
+                ceilingH: null, hasTable: true, totalArea: tab.total, fromPdf: true,
+                rooms: tab.rows.map((t, i) => {
+                    const at = map.rows.indexOf(rows[i]);
+                    const o = at >= 0 ? RecognizeGeo.outerSides(map, at) : null;
+                    return {
+                        num: t.num, name: t.name, area: t.area, areaSrc: 'table', windows: null, panoramic: 0,
+                        outerWalls: o && o.count ? Math.min(3, o.count) : null, heated: !this.HEATED_NOT_RE.test(t.name), confidence: 1, note: null,
+                        _outerSides: o ? o.sides : null,
+                    };
+                }),
+                unclear: [],
+            };
+        });
+        return out.some(Boolean) ? out : null;
     },
 
     setSrc(r, field, v) {
@@ -724,7 +771,10 @@ const RecognizeProject = {
                 // оставалась цифра с первого чтения плана: у гардеробной
                 // «Хвойной 3» — окно, которого в проекте нет.
                 const hasSpec = r.eng && r.eng.winSpec && r.eng.winSpec.length;
-                if (!res.lost && !hasSpec) {
+                // Помещения собраны из PDF без модели (windows === null) —
+                // окна знает только обмерный план: нет своих подписей — 0,
+                // а не «1 по умолчанию» у каждой кладовой.
+                if ((!res.lost || r.windows === null) && !hasSpec) {
                     r.windows = 0; r.panoramic = 0;
                     if (allGeo) this.setSrc(r, 'windows', 'pdf');
                 }

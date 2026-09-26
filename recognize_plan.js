@@ -284,8 +284,13 @@ const RecognizePlan = {
             const name = names && names[i] ? names[i] : '';
             const at = off + i;    // место листа в общем наборе снимков
             try {
-                let parsed = this.cached(imgs[i]);
-                if (parsed) {
+                // Комплект листов проекта: помещения уже собраны из PDF
+                // (RecognizeProject.plansFromPdf) — модель этому листу не нужна.
+                const pre = opts && opts.preParsed ? opts.preParsed[i] : null;
+                let parsed = pre || this.cached(imgs[i]);
+                if (pre) {
+                    this.status(`Лист ${at + 1} — помещения из экспликации PDF`);
+                } else if (parsed) {
                     this._fromCache++;
                     this.status(`Лист ${at + 1} — из памяти`);
                 } else {
@@ -320,6 +325,11 @@ const RecognizePlan = {
 
                 const n = this.normalizeSheet(parsed, at, name, ui._sheetsTotal,
                     fallback === null || fallback === undefined ? null : fallback + sheets.length);
+                if (parsed.fromPdf) n.rows.forEach(r => {
+                    if (r.outerWalls === null) return;
+                    r.eng = r.eng || {};
+                    r.eng.src = Object.assign(r.eng.src || {}, { outerWalls: 'pdf' });
+                });
                 sheets.push(n.sheet);
                 rows.push(...n.rows);
                 if (!n.rows.length) warnings.push(`лист ${at + 1}: помещений не прочитано`);
@@ -715,7 +725,7 @@ const RecognizePlan = {
                              onchange="RecognizePlan.set(${n},'windows',this.value)"></td>
                   <td><input class="rec-f rec-f-s" type="number" step="1" min="0" value="${r.panoramic}"${pdfWin}
                              onchange="RecognizePlan.set(${n},'panoramic',this.value)"></td>
-                  <td><select class="rec-f" onchange="RecognizePlan.set(${n},'outerWalls',this.value)">
+                  <td><select class="rec-f"${src.outerWalls === 'pdf' ? ` style="${this.PDF_CELL}" title="По стенам листа: с этих сторон за стеной улица"` : ''} onchange="RecognizePlan.set(${n},'outerWalls',this.value)">
                         ${outerOpt('', 'авто', r.outerWalls)}${outerOpt(1, '1', r.outerWalls)}${outerOpt(2, '2', r.outerWalls)}${outerOpt(3, '3', r.outerWalls)}
                       </select></td>
                   <td><select class="rec-f" onchange="RecognizePlan.set(${n},'floor',this.value)">
@@ -841,7 +851,7 @@ const RecognizePlan = {
     set(i, field, val) {
         const r = this._rows[i];
         if (!r) return;
-        if ((field === 'name' || field === 'area') && r.eng && r.eng.src) delete r.eng.src[field];
+        if ((field === 'name' || field === 'area' || field === 'outerWalls') && r.eng && r.eng.src) delete r.eng.src[field];
         if (field === 'name') r.name = this.cleanName(val);
         else if (field === 'area') {
             const n = this.num(val);

@@ -2198,7 +2198,14 @@ const RecognizeUI = {
         }
         this.progressTo(1);
         RecognizePlan.reset();
-        const res = await RecognizePlan.run(imgs, imgs.map(b => this.imgNameOf(b)));
+        // Комплект листов проекта с экспликацией, стенами и обмерным планом —
+        // помещения собираются из PDF без модели: быстрее на 2–4 минуты и на
+        // запрос из лимита, а названия и площади точны.
+        let preParsed = null;
+        if (this._project && typeof RecognizeProject !== 'undefined') {
+            try { preParsed = RecognizeProject.plansFromPdf(this._project); } catch (e) { console.warn('Помещения из PDF:', e); preParsed = null; }
+        }
+        const res = await RecognizePlan.run(imgs, imgs.map(b => this.imgNameOf(b)), preParsed ? { preParsed } : undefined);
 
         // Комплект листов проекта: к помещениям — тёплые полы, приборы и
         // сантехника с листов инженерных систем.

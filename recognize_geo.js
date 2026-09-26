@@ -337,6 +337,40 @@ const RecognizeGeo = {
         return { w, h, reg, wall, names, mmPx, areas };
     },
 
+    /**
+     * Наружные стены комнаты n: с каких сторон (север/юг/запад/восток листа)
+     * за стеной — улица. От каждой точки комнаты у стены идём наружу сквозь
+     * стену (и проём окна) не дальше WALL_MM; дошли до улицы — эта сторона
+     * наружная в этой точке. Сторона считается, если так набирается не
+     * меньше метра стены: угол соседней комнаты или торец перегородки —
+     * не наружная стена. Возвращает { sides, count, lengthM }.
+     */
+    WALL_MM: 900,
+    outerSides(map, n) {
+        if (!map) return null;
+        const { w, h, reg, mmPx } = map;
+        const N = w * h, maxS = Math.ceil(this.WALL_MM / mmPx);
+        const dirs = [['N', -w], ['S', w], ['W', -1], ['E', 1]];
+        const hit = { N: 0, S: 0, W: 0, E: 0 };
+        for (let i = w; i < N - w; i++) {
+            if (reg[i] !== n) continue;
+            for (const [k, d] of dirs) {
+                if (reg[i + d] !== -3) continue;       // не у стены с этой стороны
+                let j = i + d;
+                for (let s = 1; s <= maxS; s++, j += d) {
+                    if (j < 0 || j >= N) break;
+                    const v = reg[j];
+                    if (v === -2) { hit[k]++; break; }
+                    if (v >= 0 && v !== n) break;       // за стеной соседняя комната
+                    if (v === n && s > 1) break;        // вернулись в свою
+                }
+            }
+        }
+        const minPx = 1000 / mmPx;
+        const sides = Object.keys(hit).filter(k => hit[k] >= minPx);
+        return { sides, count: sides.length, lengthM: Math.round(sides.reduce((a, k) => a + hit[k], 0) * mmPx / 100) / 10 };
+    },
+
     /** Ближайший к точке пиксель, свободный от раздутых стен. */
     nearest(reg, dist, w, h, fx, fy, rDoor, maxPx) {
         const cx = Math.round(fx), cy = Math.round(fy);

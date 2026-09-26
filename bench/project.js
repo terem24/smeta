@@ -102,10 +102,18 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
     }
     set.eng = eng;
 
+    // Помещения без модели (plansFromPdf): наружные стены по карте.
+    const pre = P.plansFromPdf(set);
+    if (pre && pre[0]) {
+        console.log('Помещения из PDF без модели: ' + pre[0].rooms.map(r => `${r.name} ${r.outerWalls ?? '—'}${r._outerSides ? ' (' + r._outerSides.join('') + ')' : ''}`).join(', '));
+    } else console.log('Помещения из PDF без модели: не собраны — лист читает модель');
+    const outerOf = {};
+    if (pre && pre[0]) pre[0].rooms.forEach(r => { outerOf[r.name] = r.outerWalls; });
+
     // Помещения — из экспликации PDF, как на сайте (fitExplication), будто
     // модель не прочитала ни одного. Таблицы нет — из эталона.
     let rows;
-    const res0 = { rows: [], sheets: [{}] };
+    const res0 = { rows: pre && pre[0] ? pre[0].rooms.map(r => ({ name: r.name, area: r.area, windows: null, panoramic: 0, outerWalls: r.outerWalls, _sheet: 0, num: r.num })) : [], sheets: [{}] };
     P.fitExplication(res0, set);
     if (res0.rows.length) {
         rows = res0.rows;
@@ -166,6 +174,7 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         const e = etOf(r), g = r.eng || {};
         if (!e) { bad.push(`${r.name}: лишнее помещение`); all++; return; }
         if ('area' in e) check(r.name, 'площадь', e.area, r.area);
+        if ('outerWalls' in e) check(r.name, 'наружных стен', e.outerWalls, outerOf[r.name] ?? null);
         if ('windows' in e) check(r.name, 'окон', e.windows, r.windows === null ? '—' : r.windows);
         if ('floorWin' in e) check(r.name, 'окон в пол', e.floorWin, r.panoramic || 0);
         if ('ufh' in e) {
