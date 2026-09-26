@@ -1677,10 +1677,10 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "пересчёт стоимости сезона",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-15",
    "published_at": null,
-   "words": null
+   "words": 933
   },
   {
    "slug": "pogodozavisimaya-avtomatika",
@@ -1691,10 +1691,10 @@
    "freq": 3200,
    "audience": "owner",
    "data_block": "расчёт экономии",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-17",
    "published_at": null,
-   "words": 0
+   "words": 969
   },
   {
    "slug": "dvuhzonnyy-schetchik",
@@ -1705,10 +1705,10 @@
    "freq": 2600,
    "audience": "owner",
    "data_block": "наш расчёт выгоды",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-19",
    "published_at": null,
-   "words": 0
+   "words": 841
   },
   {
    "slug": "kondensat-i-vlazhnost",
