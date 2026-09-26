@@ -1423,6 +1423,10 @@ const RecognizeFiles = {
                 set.eng.push({ kind, num: p.num, title: p.title, text: p.text,
                     roomSheet: kind === 'vent' ? null : this.pairRoomSheet(p, k, list.length, set.rooms),
                     labels: kind === 'heat' ? await this.pageLabels(page) : [],
+                    // Символы приборов — их длина на чертеже и есть ширина прибора.
+                    symbols: kind === 'heat' && typeof RecognizeGeo !== 'undefined'
+                        ? await RecognizeGeo.heaterSymbols(page).catch(() => []) : [],
+                    scale: typeof RecognizeGeo !== 'undefined' ? RecognizeGeo.scaleOf(p.text) : 100,
                     fixtures: kind === 'water' ? await this.pageFixtures(page) : null,
                     img: await this.renderPage(page) });
             }

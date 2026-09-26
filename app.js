@@ -70988,8 +70988,18 @@ const app = {
 
                             // === Правило ширины 50–90% от ширины окна (СНиП 41-01-2003, допускается до 90% при необходимости) ===
                             const secW = 0.08; // ширина секции Space/Titan = 80 мм
-                            const minSecsByW = Math.ceil((w.width * 0.50) / secW); // нижняя граница: 50%
-                            const maxSecsByW = Math.floor((w.width * 0.90) / secW); // верхняя граница: 90%
+                            // Радиатор в простенке у окна в пол (radInPier) правилу «50–90 %
+                            // ширины окна» не подчиняется: под витражом его нет, а место
+                            // задаёт простенок. pierW — ширина прибора по проекту (м, из
+                            // чертежа при распознавании): больше неё радиатор не встанет.
+                            // На «Хвойной 3» это правило давало на окно 1,52 м минимум 10
+                            // секций — все пять радиаторов выходили одинаковыми, по 13
+                            // секций (≈1 м), в простенок 378 мм.
+                            const _pierW = w.radInPier ? (parseFloat(w.pierW) || 0) : 0;
+                            const minSecsByW = w.radInPier ? 4 : Math.ceil((w.width * 0.50) / secW); // нижняя граница: 50%
+                            const maxSecsByW = w.radInPier
+                                ? (_pierW ? Math.max(4, Math.floor((_pierW + 0.04) / secW)) : 14)
+                                : Math.floor((w.width * 0.90) / secW); // верхняя граница: 90%
 
                             let reqSecsSpace = Math.max(4, Math.max(Math.ceil(reqPwr / p50_space), minSecsByW));
                             const minByPwrSpace = Math.max(4, Math.ceil(reqPwr / p50_space));
@@ -71277,6 +71287,26 @@ const app = {
                                 if (_cheapRadOn && !manualSwapId) {
                                     const _cp = this.cheapPanelFor(activeItem, reqPwr, w.width, _sillMaxH);
                                     if (_cp) { activeItem = _cp; factPower = _cp.power50; }
+                                }
+                            }
+
+                            // Простенок по проекту уже, чем нужный секционный прибор: честно
+                            // говорим, что полного соответствия нет, и что нужно — вертикальный
+                            // радиатор. Сами его не подставляем: ширины секций трубчатых и
+                            // дизайн-моделей в каталоге нет, а угадывать её нельзя.
+                            if (_pierW && !activeItem.isPanel && !activeItem.isDesignRad && activeItem.sec) {
+                                const _wmm = activeItem.sec * 80;
+                                if (_wmm > _pierW * 1000 + 40) {
+                                    // Одна плашка на все такие места, а не по плашке на окно.
+                                    app.tempWarns = app.tempWarns || [];
+                                    const _mark = 'радиаторы в простенках';
+                                    const _part = `${app.spotLabel(r, w, wIdx)} — ${reqReal} Вт, ${activeItem.sec} секц. ≈${_wmm} мм при простенке ${Math.round(_pierW * 1000)} мм`;
+                                    const _at = app.tempWarns.findIndex(t => t.includes(_mark));
+                                    if (_at < 0) {
+                                        app.tempWarns.push(`• <b>Нет полного соответствия проекту — ${_mark}.</b> Горизонтальные секционные нужной мощности шире места по проекту: ${_part}. Нужны вертикальные радиаторы — подберите кнопкой «Заменить» → «Дизайнерские» (TUBE QUADRO/ROUND, SEBINO, ANTEPRIMA, TONALE) или трубчатые ROMMER RST из прайса.`);
+                                    } else {
+                                        app.tempWarns[_at] = app.tempWarns[_at].replace('. Нужны вертикальные', `; ${_part}. Нужны вертикальные`);
+                                    }
                                 }
                             }
 
