@@ -1710,7 +1710,10 @@ const app = {
         put('Помещения с тёплым полом', d.tpRooms);
         put('Уже закуплено', d.bought);
         put('Комментарий', d.comment);
-        const intro = applied
+        const intro = this.oprosFromDom(d)
+            ? 'Заказчик посчитал дом на странице heatcalc.ru/dom/ и оставил заявку на монтаж. ' +
+              (applied ? 'Параметры уже подставлены в расчёт — уточните у заказчика окна, комнаты и стены.' : '')
+            : applied
             ? 'Заказчик заполнил опросник. Параметры объекта уже подставлены в расчёт, ' +
               'текстовые ответы ниже — прочитайте и учтите вручную.'
             : 'Что заполнил заказчик. Текущий расчёт не менялся — чтобы подставить ' +
@@ -1733,15 +1736,23 @@ const app = {
     // Сводка по анкете отдельным окном, а не app.alert: монтажнику нужно не только
     // прочитать ответы, но и забрать их текстом (перенести в переписку с заказчиком)
     // и посмотреть саму анкету — в каком виде её заполняли.
+    // Ответы пришли со страницы заказчика /dom/, а не из опросника. Там семь вопросов
+    // и нет имени с телефоном (они не кладутся в ссылку), поэтому анкета опросника по
+    // такой ссылке открывалась почти пустой — её и не предлагаем.
+    oprosFromDom: function (d) {
+        return !!d && (d.from === 'dom' || /^Страница заказчика \/dom\//.test(String(d.comment || '')));
+    },
+
     showOprosSummary: function (d, applied = true) {
         const txt = this.oprosSummaryText(d, applied);
-        const link = this.oprosViewLink(d);
+        const fromDom = this.oprosFromDom(d);
+        const link = fromDom ? '' : this.oprosViewLink(d);
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
         overlay.innerHTML = `
             <div class="calc-dialog-card" style="max-width:460px;">
-                <h3 class="calc-dialog-title" style="margin-bottom:10px;">Опросник заказчика</h3>
+                <h3 class="calc-dialog-title" style="margin-bottom:10px;">${fromDom ? 'Заявка со страницы заказчика' : 'Опросник заказчика'}</h3>
                 <div style="text-align:left; font-size:13px; line-height:1.5; white-space:pre-wrap; max-height:56vh; overflow:auto; margin-bottom:14px;">${esc(txt)}</div>
                 <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
                     <button type="button" class="auth-btn-base" style="height:36px; padding:0 14px; font-size:13px; background:var(--surface-light); color:var(--text-main);" data-act="copy">Скопировать</button>

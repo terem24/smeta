@@ -685,7 +685,7 @@
             city: A.region === 'spb' ? 'Санкт-Петербург' : A.city,
             area: A.area, floors: c.floors,
             rad: c.heat !== 'tp', tp: c.heat !== 'rad',
-            fuel: c.fuel, hw: !!c.hw, stage: A.stage,
+            fuel: c.fuel, hw: !!c.hw, stage: A.stage, from: 'dom',
             comment: 'Страница заказчика /dom/, вариант «' + PACK_NAMES[picked] + '»'
         };
         Object.keys(d).forEach(function (k) { if (d[k] === '' || d[k] == null) delete d[k]; });
