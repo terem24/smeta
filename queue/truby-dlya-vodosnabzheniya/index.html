@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Трубы для водоснабжения в доме: PEX, металлопластик, PPR | HeatCalc.ru</title>
+    <meta name="description" content="Какие трубы брать на водоснабжение частного дома: PEX-a, металлопластик и полипропилен с ценами за метр, почему 16 мм хватает при коллекторной разводке, изоляция ХВС и ГВС, расчёт метража.">
+    <link rel="canonical" href="https://heatcalc.ru/truby-dlya-vodosnabzheniya/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/truby-dlya-vodosnabzheniya/">
+    <meta property="og:title" content="Трубы для водоснабжения: холодная и горячая">
+    <meta property="og:description" content="При коллекторной разводке к каждой точке идёт 16 мм — и этого достаточно. Разбираем, почему.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/truby-dlya-vodosnabzheniya/#webpage",
+      "url": "https://heatcalc.ru/truby-dlya-vodosnabzheniya/",
+      "name": "Трубы для водоснабжения: холодная и горячая",
+      "description": "Какие трубы брать на водоснабжение частного дома: PEX-a, металлопластик и полипропилен с ценами за метр, почему 16 мм хватает при коллекторной разводке, изоляция ХВС и ГВС, расчёт метража.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "трубы для водоснабжения"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Трубы для водоснабжения: холодная и горячая",
+          "item": "https://heatcalc.ru/truby-dlya-vodosnabzheniya/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какие трубы лучше для водоснабжения в частном доме?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Для коллекторной разводки — PEX-a или металлопластик 16 мм: они гнутся и идут одним куском от гребёнки до точки, без соединений в стенах. Для тройниковой — армированный полипропилен: он дешевле по материалу, но требует сварки и фитинга на каждый поворот. PEX-a 16×2,2 стоит 190 ₽ за метр, металлопластик 157 ₽, полипропилен 20 мм — около 25 ₽."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Хватит ли трубы 16 мм на водоснабжение?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "При коллекторной разводке — да. К отдельной точке идёт расход одного прибора: смеситель раковины около 0,1 л/с, душ 0,12, ванна 0,25, и внутреннего диаметра 11–12 мм для этого достаточно с запасом. Считать диаметр нужно только на участке от узла ввода до гребёнок, где расход суммарный."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли изолировать трубу холодной воды?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нужно, и не для тепла. Вода из скважины круглый год холоднее воздуха в доме, поэтому на трубе выпадает конденсат: в стяжке это мокрый утеплитель, в стене сырое пятно, за подвесным потолком капель на гипсокартон. Выглядит как протечка при целой трубе. На ХВС идёт синяя трубка 18/6, на ГВС красная."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как посчитать метраж трубы на водоснабжение?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "По зонам: расстояние от гребёнки до зоны умножается на число точек и на 1,1 — запас на подъёмы и обходы. Горячая считается только по приборам со смесителем. С рециркуляцией ГВС идёт петлёй: расстояние берётся дважды, плюс два метра на каждую точку."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем отличается PEX-a от металлопластика?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "PEX-a имеет память формы: он держит малый радиус изгиба и восстанавливается после залома при нагреве. У металлопластика между слоями полиэтилена лежит алюминий — он ровнее ложится и держит форму после гибки, что удобно при прокладке по стене, но залом не прощает: перегнули — участок под замену."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/truby-dlya-vodosnabzheniya/#article",
+      "headline": "Трубы для водоснабжения: холодная и горячая",
+      "description": "Какие трубы брать на водоснабжение частного дома: PEX-a, металлопластик и полипропилен с ценами за метр, почему 16 мм хватает при коллекторной разводке, изоляция ХВС и ГВС, расчёт метража.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/truby-dlya-vodosnabzheniya/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-03-09",
+      "dateModified": "2027-03-09",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Трубы для водоснабжения: холодная и горячая</nav>
+
+        <h1>Трубы для водоснабжения: холодная и горячая</h1>
+
+        <p class="art-meta"><time datetime="2027-03-09">9 марта 2027</time></p>
+
+        <p class="lead">Труба для воды выбирается не по бренду, а по схеме разводки: при коллекторной хватает 16 мм на каждую точку, при тройниковой диаметры приходится считать. Разбираем материалы с ценами, изоляцию и метраж, который выходит на реальный дом.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#kollektornaya-ili-troynikovaya">Коллекторная или тройниковая</a></li>
+            <li><a href="#materialy-i-ceny">Материалы и цены</a></li>
+            <li><a href="#chem-oni-otlichayutsya-v-rabote">Чем они отличаются в работе</a></li>
+            <li><a href="#izolyaciya-raznye-zadachi">Изоляция: разные задачи</a></li>
+            <li><a href="#skolko-metrov-vyhodit">Сколько метров выходит</a></li>
+            <li><a href="#chto-esche-nuzhno-na-razvodku">Что ещё нужно на разводку</a></li>
+            <li><a href="#tipovye-oshibki">Типовые ошибки</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="kollektornaya-ili-troynikovaya">Коллекторная или тройниковая</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Коллекторная</th><th>Тройниковая</th></tr>
+                <tr><td>Как идёт труба</td><td>своя линия от гребёнки к каждой точке</td><td>один ствол с врезками</td></tr>
+                <tr><td>Диаметры</td><td>везде 16 мм</td><td>считаются от ствола к концу</td></tr>
+                <tr><td>Соединения в стене</td><td>нет вовсе</td><td>тройники в стене и под полом</td></tr>
+                <tr><td>Напор при одновременном разборе</td><td>стабильный</td><td>падает на дальней точке</td></tr>
+                <tr><td>Метраж трубы</td><td>больше</td><td>меньше</td></tr>
+                <tr><td>Отключить одну точку</td><td>краном на гребёнке</td><td>перекрыв весь ствол</td></tr>
+            </table>
+        </div>
+        <p class="note">Коллекторная тратит больше трубы, но не оставляет в стенах ни одного соединения — там, где до него всё равно не добраться. Тройниковая дешевле по материалу и остаётся вариантом для полипропилена, который проще сваривать, чем тянуть петлями.</p>
+
+        <div class="callout">
+            <p><strong>Почему 16 мм хватает.</strong> К отдельной точке идёт расход одного прибора: смеситель раковины — около 0,1 л/с, душ — 0,12, ванна — 0,25. На таком расходе внутреннего диаметра 11–12 мм достаточно с запасом, и скорость остаётся в разумных пределах. Считать диаметры при коллекторной схеме нужно только на участке от узла ввода до гребёнок — там расход суммарный.</p>
+        </div>
+
+        <h2 id="materialy-i-ceny">Материалы и цены</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Труба</th><th>Цена за метр</th><th>Соединение</th></tr>
+                <tr><td>PEX-a 16×2,2, серая</td><td class="num">190 ₽</td><td>аксиальный или пресс-фитинг</td></tr>
+                <tr><td>PEX-a 16×2,2, ROMMER</td><td class="num">96 ₽</td><td>аксиальный или пресс-фитинг</td></tr>
+                <tr><td>Металлопластик 16×2,0</td><td class="num">157 ₽</td><td>пресс-фитинг</td></tr>
+                <tr><td>Металлопластик 16×2,0, ROMMER</td><td class="num">91 ₽</td><td>пресс-фитинг</td></tr>
+                <tr><td>PP-R стекловолокно 20×2,8 PN 20</td><td class="num">25 ₽</td><td>сварка</td></tr>
+            </table>
+        </div>
+        <p class="note">Цены на сентябрь 2026 по каталогу; полипропилен пересчитан со штанги 4 метра. Разница между брендами внутри одного материала — почти вдвое, и это ровно тот случай, когда смету стоит посмотреть в двух вариантах.</p>
+
+        <p>PEX-a и металлопластик берут на коллекторную разводку: они гнутся, идут одним куском от гребёнки до точки и укладываются в стяжку. Полипропилен — материал тройниковой схемы: он не гнётся, соединяется сваркой и на каждый поворот требует фитинг.</p>
+
+        <h2 id="chem-oni-otlichayutsya-v-rabote">Чем они отличаются в работе</h2>
+
+        <ul>
+            <li><strong>PEX-a</strong> — сшитый полиэтилен с памятью формы. Держит изгиб на небольшом радиусе, восстанавливается после залома от нагрева, идеален для аксиальных фитингов, где труба надевается на штуцер и обжимается гильзой.</li>
+            <li><strong>Металлопластик</strong> — алюминиевый слой между двумя слоями полиэтилена. Ровно ложится и держит форму после гибки, поэтому его удобно вести по стене. Зато он не забывает залом: перегнули — участок под замену.</li>
+            <li><strong>Полипропилен</strong> дешевле всех по материалу и дороже по работе: сварка требует аппарата, времени и аккуратности, а перегретое соединение зарастает наплывом внутри — снаружи этого не видно.</li>
+            <li><strong>Армирование полипропилена обязательно</strong> для горячей воды: неармированная труба заметно удлиняется при нагреве. Стекловолокно или фольга — оба варианта подходят, но фольгированную надо зачищать под фитинг.</li>
+            <li><strong>Все три не любят прямого солнца.</strong> Открытый участок на улице или в неотапливаемом помещении требует не только изоляции, но и защиты от ультрафиолета.</li>
+        </ul>
+
+        <h2 id="izolyaciya-raznye-zadachi">Изоляция: разные задачи</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Линия</th><th>Трубка</th><th>Зачем</th></tr>
+                <tr><td>ХВС</td><td>18/6, синяя</td><td>от конденсата</td></tr>
+                <tr><td>ГВС</td><td>18/6, красная</td><td>от потерь тепла</td></tr>
+                <tr><td>Рециркуляция</td><td>18/6, красная</td><td>от потерь тепла в петле</td></tr>
+            </table>
+        </div>
+        <p class="note">Стенка 6 мм — складской размер: девятка в синем исполнении вообще не выпускается, а красная возится под заказ. Трубка идёт отрезками по 2 метра, и метраж в смете округляется до кратного двум.</p>
+
+        <p>Изоляция холодной воды — не перестраховка. Труба с водой из скважины круглый год холоднее воздуха в доме, и на ней выпадает конденсат: в стяжке это мокрый утеплитель, в стене — сырое пятно на штукатурке, за подвесным потолком — капель на гипсокартон. Причина выглядит как протечка, хотя труба цела.</p>
+
+        <h2 id="skolko-metrov-vyhodit">Сколько метров выходит</h2>
+
+        <div class="formula">
+            <p><strong>Холодная</strong> = расстояние до зоны × число точек × 1,1</p>
+            <p><strong>Горячая</strong> = то же, но только по точкам со смесителем</p>
+            <p><strong>С рециркуляцией</strong> = (расстояние × 2) + (точек × 2) — петля идёт туда и обратно</p>
+        </div>
+
+        <p>Коэффициент 1,1 — запас на подъёмы, обходы и укладку, без которого метража всегда не хватает на последней точке. Считается по зонам: санузел на втором этаже в двенадцати метрах от котельной и кухня в пяти дают совершенно разный метраж при одинаковом числе приборов.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Зона</th><th>Приборы</th><th>Точек ХВС</th><th>Точек ГВС</th></tr>
+                <tr><td>Санузел</td><td>раковина, душ, унитаз</td><td class="num">3</td><td class="num">2</td></tr>
+                <tr><td>Ванная</td><td>раковина, ванна, унитаз, стиральная</td><td class="num">4</td><td class="num">2</td></tr>
+                <tr><td>Кухня</td><td>раковина, посудомоечная</td><td class="num">2</td><td class="num">1</td></tr>
+                <tr><td>Гостевой туалет</td><td>раковина, унитаз</td><td class="num">2</td><td class="num">1</td></tr>
+            </table>
+        </div>
+        <p class="note">Унитаз, стиральная и посудомоечная машины — только холодная. Смеситель считается как две точки: своя линия на холодную и своя на горячую.</p>
+
+        <h2 id="chto-esche-nuzhno-na-razvodku">Что ещё нужно на разводку</h2>
+
+        <ul>
+            <li><strong>Гребёнки на каждый стояк воды</strong> — кухня на отдельном стояке получает свою. Стояку с одной точкой гребёнка не нужна: труба идёт прямо от крана узла ввода.</li>
+            <li><strong>Компенсатор гидроудара в торец коллектора.</strong> Скачок давления дают быстрозакрывающиеся клапаны: стиральная и посудомоечная машины, защита от протечки, однорычажные смесители. Ставится вертикально вверх — перевёрнутое положение не допускается.</li>
+            <li><strong>Краны на каждом выходе гребёнки</strong> — чтобы менять смеситель, не отключая дом.</li>
+            <li><strong>Гофра или защитная трубка</strong> в стяжке: она позволяет вытянуть трубу и заменить, не вскрывая пол.</li>
+            <li><strong>Настенные планки под смесители</strong> с межосевым 100 или 150 мм — по факту прибора, а не наугад.</li>
+            <li><strong>Полотенцесушитель</strong> подключают к ГВС только при рециркуляции: без неё он греет, лишь пока идёт вода.</li>
+        </ul>
+
+        <h2 id="tipovye-oshibki">Типовые ошибки</h2>
+
+        <ul>
+            <li><strong>Соединения в стяжке и в стене.</strong> При коллекторной разводке их не должно быть вовсе — именно за это она и стоит дороже по материалу.</li>
+            <li><strong>Холодная без изоляции.</strong> Конденсат мочит утеплитель и штукатурку, а выглядит это как протечка.</li>
+            <li><strong>Неармированный полипропилен на ГВС.</strong> Он удлиняется при нагреве настолько, что провисает между креплениями.</li>
+            <li><strong>Труба в бухтах вместо метров в смете.</strong> Бухта 200 метров на разводку в 140 — это шестьдесят метров, оплаченных зря.</li>
+            <li><strong>Один диаметр от ввода до последней точки.</strong> 16 мм хватает точке, но не стволу, в котором идёт вся вода дома.</li>
+            <li><strong>Опрессовка после отделки.</strong> По СП 73.13330.2016 водоснабжение проверяют давлением 1,5 рабочего с выдержкой 10 минут — до штукатурки и стяжки, а не после.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать водоснабжение дома
+            <small>Метраж, коллекторы и точки в смете</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какие трубы лучше для водоснабжения в частном доме?</span></summary>
+            <div class="answer">
+                <p>Для коллекторной разводки — PEX-a или металлопластик 16 мм: они гнутся и идут одним куском от гребёнки до точки, без соединений в стенах. Для тройниковой — армированный полипропилен: он дешевле по материалу, но требует сварки и фитинга на каждый поворот. PEX-a 16×2,2 стоит 190 ₽ за метр, металлопластик 157 ₽, полипропилен 20 мм — около 25 ₽.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Хватит ли трубы 16 мм на водоснабжение?</span></summary>
+            <div class="answer">
+                <p>При коллекторной разводке — да. К отдельной точке идёт расход одного прибора: смеситель раковины около 0,1 л/с, душ 0,12, ванна 0,25, и внутреннего диаметра 11–12 мм для этого достаточно с запасом. Считать диаметр нужно только на участке от узла ввода до гребёнок, где расход суммарный.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужно ли изолировать трубу холодной воды?</span></summary>
+            <div class="answer">
+                <p>Нужно, и не для тепла. Вода из скважины круглый год холоднее воздуха в доме, поэтому на трубе выпадает конденсат: в стяжке это мокрый утеплитель, в стене сырое пятно, за подвесным потолком капель на гипсокартон. Выглядит как протечка при целой трубе. На ХВС идёт синяя трубка 18/6, на ГВС красная.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как посчитать метраж трубы на водоснабжение?</span></summary>
+            <div class="answer">
+                <p>По зонам: расстояние от гребёнки до зоны умножается на число точек и на 1,1 — запас на подъёмы и обходы. Горячая считается только по приборам со смесителем. С рециркуляцией ГВС идёт петлёй: расстояние берётся дважды, плюс два метра на каждую точку.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем отличается PEX-a от металлопластика?</span></summary>
+            <div class="answer">
+                <p>PEX-a имеет память формы: он держит малый радиус изгиба и восстанавливается после залома при нагреве. У металлопластика между слоями полиэтилена лежит алюминий — он ровнее ложится и держит форму после гибки, что удобно при прокладке по стене, но залом не прощает: перегнули — участок под замену.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=truby-dlya-vodosnabzheniya#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/smeta-na-otoplenie-obrazets/">смета на отопление: образец и разделы</a> · <a href="/truba-pnd-vvod-vody/">труба пнд: ввод воды в дом</a> · <a href="/filtry-dlya-vody-v-dome/">фильтры для воды: какие ставить на вводе</a> · <a href="/polipropilen-dlya-otopleniya/">полипропилен для отопления: плюсы и границы</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=truby-dlya-vodosnabzheniya">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

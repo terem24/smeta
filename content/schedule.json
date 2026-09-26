@@ -1047,10 +1047,10 @@
    "freq": 7400,
    "audience": "owner",
    "data_block": "подбор по каталогу",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-09",
    "published_at": null,
-   "words": 0
+   "words": 826
   },
   {
    "slug": "shema-s-gidrostrelkoy",
@@ -1061,10 +1061,10 @@
    "freq": 2600,
    "audience": "pro",
    "data_block": "наш лист схемы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-11",
    "published_at": null,
-   "words": 0
+   "words": 874
   },
   {
    "slug": "podbor-skvazhinnogo-nasosa",
@@ -1075,10 +1075,10 @@
    "freq": 6800,
    "audience": "owner",
    "data_block": "наш расчёт напора",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-13",
    "published_at": null,
-   "words": 0
+   "words": 1262
   },
   {
    "slug": "anod-i-obsluzhivanie-boylera",
