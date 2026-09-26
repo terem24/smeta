@@ -33328,7 +33328,7 @@ const app = {
                                 <div style="display:grid; grid-template-columns:1fr 1.5fr; gap:8px;">
                                     <span style="color:var(--text-sec);">Зарегистрирован:</span> <span style="color:var(--text-main); font-weight:600;">${date}</span>
                                     <span style="color:var(--text-sec);">Последний визит:</span> <span style="color:var(--text-main); font-weight:600;">${lastVis}</span>
-                                    <span style="color:var(--text-sec);">Устройство:</span> <span style="color:var(--text-main); font-weight:600;">${user.last_device || 'Неизвестно'}</span>
+                                    <span style="color:var(--text-sec);">Устройство:</span> <span id="admin_user_devices" style="color:var(--text-main); font-weight:600;">${user.last_device || 'Неизвестно'} <span style="color:var(--text-sec); font-weight:400;">(последнее)</span></span>
                                     <span style="color:var(--text-sec);">На сайте:</span> <span title="${sessCard.title}" style="color:${sessCard.color === 'inherit' ? 'var(--text-main)' : sessCard.color}; font-weight:600; cursor:help;">${sessCard.text.replace('На сайте: ', '')}</span>
                                     <span style="color:var(--text-sec);">Был:</span> <span style="color:var(--text-main); font-weight:600; line-height:1.5;">${sessCard.screensHtml}</span>
                                     <span style="color:var(--text-sec);">Email:</span> <span style="color:var(--text-main); font-weight:600;">${user.email || '—'}</span>
@@ -33466,6 +33466,42 @@ const app = {
         document.getElementById('admin_content').innerHTML = h;
         this.renderAdminUserExtras(user.id);
         this.renderAdminUserChatSections(user);
+        this.renderAdminUserDevices(user.id);
+    },
+    // Строка «Устройство» в карточке показывает только последний вход (users.last_device,
+    // перезаписывается при каждом заходе) — по ней не видно, что человек заходит и с
+    // компьютера, и с телефона, и через APK. Журнал визитов (user_sessions.device, см.
+    // supabase/migrations/20260911_user_sessions.sql) хранит устройство на каждый визит,
+    // здесь сводим его в список «устройство — сколько визитов, когда в последний раз».
+    renderAdminUserDevices: async function (userId) {
+        const el = document.getElementById('admin_user_devices');
+        if (!el) return;
+        try {
+            const { data, error } = await supabaseClient.from('user_sessions')
+                .select('device, started_at').eq('user_id', userId)
+                .order('started_at', { ascending: false }).limit(300);
+            if (error) throw error;
+            const rows = (data || []).filter(r => r.device);
+            if (!rows.length) return; // истории нет — оставляем last_device как есть
+
+            const byDevice = {};
+            rows.forEach(r => {
+                const key = r.device;
+                if (!byDevice[key]) byDevice[key] = { count: 0, last: r.started_at };
+                byDevice[key].count++;
+                if (r.started_at > byDevice[key].last) byDevice[key].last = r.started_at;
+            });
+            const list = Object.keys(byDevice)
+                .sort((a, b) => new Date(byDevice[b].last) - new Date(byDevice[a].last))
+                .map(k => {
+                    const d = byDevice[k];
+                    const lastDate = new Date(d.last).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' });
+                    return `<div>${k} <span style="color:var(--text-sec); font-weight:400;">— ${d.count} ${this.plural(d.count, 'визит', 'визита', 'визитов')}, посл. ${lastDate}</span></div>`;
+                }).join('');
+            el.innerHTML = list;
+        } catch (e) {
+            // Оставляем last_device — тихая деградация, это вспомогательная справка, не основная функция
+        }
     },
     // То же, что монтажник видит у себя в личном кабинете на вкладках «Прайс-лист монтаж» и
     // «Своё оборудование» — только на чтение, для контроля админом. Хранится в
