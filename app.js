@@ -37002,20 +37002,7 @@ const app = {
                 if (accType === 'pro' && !this.state.groupItems) {
                     this.state.groupItems = true; // По умолчанию группировка включена для PRO
                 }
-                // В приложении смету чаще показывают заказчику с экрана, поэтому после
-                // первого входа сразу включаем артикулы, группировку по разделам и фото
-                // товаров. Один раз: дальше это выбор монтажника, и снятые галочки
-                // следующий запуск не вернёт.
-                if (window.__HC_NATIVE__) {
-                    try {
-                        if (!localStorage.getItem('app_view_defaults2')) {
-                            localStorage.setItem('app_view_defaults2', '1');
-                            this.state.showSku = true;
-                            this.state.groupItems = true;
-                            this.state.showImages = true;
-                        }
-                    } catch (e) { }
-                }
+                this.applyNativeViewDefaults();
                 this.state.tgUser.id = uRow.id;
                 this.state.tgUser.account_type = uRow.account_type || 'base';
                 this.state.tgUser.demo_ends_at = uRow.demo_ends_at;
@@ -40491,6 +40478,7 @@ const app = {
         }
 
         let chk = document.getElementById('chk_merge');
+        this.markViewTouched();
         this.state.groupItems = chk.checked;
         this.render();
     },
@@ -46957,6 +46945,11 @@ const app = {
             };
         }
         // ===================================================
+        // Артикулы, группировка и фото в приложении включены по умолчанию — до
+        // первой отрисовки, а не после входа: иначе первый экран показывает
+        // смету без них, и это выглядит как несработавшая настройка.
+        this.applyNativeViewDefaults();
+
         // Город из анкеты — до первой отрисовки, иначе смета успела бы посчитаться
         // по региону по умолчанию и тут же пересчиталась заново
         this.autofillCityFromProfile();
@@ -59527,6 +59520,10 @@ const app = {
         this.initPanelFocusTracking();
         const _ia = this._inputAnchorBefore();
         try { this._syncUIInner(); this.syncFineTune(); } finally { this._inputAnchorAfter(_ia); }
+        // Карточка «Войти в аккаунт» на вкладке «Профиль» рисуется отдельно и в
+        // общий пересчёт интерфейса не входила: после входа она так и оставалась
+        // с надписью «Не авторизован», пока человек не переключит вкладку.
+        if (typeof this.updateProfileTabDetails === 'function') this.updateProfileTabDetails();
     },
     // ─── «Тонкая настройка» — свёрнутые инженерные строки панели ─────────────
     // Перепад котлового контура, режим радиаторов, шаг и перепад тёплого пола
@@ -62367,12 +62364,40 @@ const app = {
         if (!this.checkAccess('pro', event)) return;
         this.state.coolant = t; this.syncUI(); this.render();
     },
+    /**
+     * Показ артикулов, группировки и фотографий в приложении.
+     *
+     * Смету с телефона чаще показывают заказчику прямо с экрана, поэтому в
+     * приложении все три включены по умолчанию. Раньше это была одноразовая
+     * отметка «уже применили» — и она подводила: стоило применению не сработать
+     * (например, отрисовка читала галочку, а не настройку), отметка всё равно
+     * оставалась, и включить их было уже некому.
+     *
+     * Теперь признак обратный: пока монтажник сам не трогал эти переключатели,
+     * они включены при каждом запуске. Тронул — его выбор, больше не спорим.
+     */
+    applyNativeViewDefaults: function () {
+        if (!window.__HC_NATIVE__) return;
+        try {
+            if (localStorage.getItem('hc_view_touched')) return;
+        } catch (e) { return; }
+        this.state.showSku = true;
+        this.state.groupItems = true;
+        this.state.showImages = true;
+    },
+
+    /** Монтажник сам щёлкнул переключателем показа — дальше решает он. */
+    markViewTouched: function () {
+        try { localStorage.setItem('hc_view_touched', '1'); } catch (e) { }
+    },
+
     toggleSku: function (event) {
         if (!this.checkAccess('pro', event)) {
             document.getElementById('chk_sku').checked = this.state.showSku;
             return;
         }
         setTimeout(() => {
+            this.markViewTouched();
             this.state.showSku = document.getElementById('chk_sku').checked;
             const panel = document.querySelector('.output-panel');
             if (this.state.showSku) panel.classList.add('show-sku-mode'); else panel.classList.remove('show-sku-mode');
@@ -62386,6 +62411,7 @@ const app = {
         }
         const chk = document.getElementById('chk_images');
         if (chk) {
+            this.markViewTouched();
             chk.checked = !chk.checked;
             this.state.showImages = chk.checked;
             this.saveState();
