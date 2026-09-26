@@ -2013,10 +2013,10 @@
    "freq": 1200,
    "audience": "builder",
    "data_block": "порядок из актов",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-10",
    "published_at": null,
-   "words": 0
+   "words": 792
   },
   {
    "slug": "vodyanoy-ili-elektricheskiy-teplyy-pol",
@@ -2069,10 +2069,10 @@
    "freq": 1700,
    "audience": "pro",
    "data_block": "СП 60 табл. И.1",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-19",
    "published_at": null,
-   "words": 0
+   "words": 871
   },
   {
    "slug": "otoplenie-doma-iz-gazobetona",
@@ -2083,10 +2083,10 @@
    "freq": 1600,
    "audience": "owner",
    "data_block": "R стены и мощность",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-21",
    "published_at": null,
-   "words": 0
+   "words": 939
   },
   {
    "slug": "schetchik-vody-v-dome",
