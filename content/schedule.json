@@ -935,10 +935,10 @@
    "freq": 5200,
    "audience": "owner",
    "data_block": "состав",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-18",
    "published_at": null,
-   "words": 0
+   "words": 859
   },
   {
    "slug": "peletnyy-kotel",
@@ -963,10 +963,10 @@
    "freq": 8600,
    "audience": "builder",
    "data_block": "состав работ",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-23",
    "published_at": null,
-   "words": 0
+   "words": 757
   },
   {
    "slug": "smeta-na-otoplenie-obrazets",
@@ -977,10 +977,10 @@
    "freq": 2600,
    "audience": "owner",
    "data_block": "9 разделов",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-25",
    "published_at": null,
-   "words": 0
+   "words": 824
   },
   {
    "slug": "montazh-radiatorov-spb",

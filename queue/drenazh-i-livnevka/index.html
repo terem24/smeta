@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Дренаж вокруг дома и ливнёвка: состав работ и уклоны | HeatCalc.ru</title>
+    <meta name="description" content="Дренаж вокруг дома и ливневая канализация: чем они отличаются, почему их нельзя объединять, уклоны и глубина, состав работ, куда девать воду и типовые ошибки.">
+    <link rel="canonical" href="https://heatcalc.ru/drenazh-i-livnevka/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/drenazh-i-livnevka/">
+    <meta property="og:title" content="Дренаж и ливнёвка вокруг дома">
+    <meta property="og:description" content="Две разные системы, которые нельзя соединять. Объединённая топит дом вместо того, чтобы его сушить.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/drenazh-i-livnevka/#webpage",
+      "url": "https://heatcalc.ru/drenazh-i-livnevka/",
+      "name": "Дренаж и ливнёвка вокруг дома",
+      "description": "Дренаж вокруг дома и ливневая канализация: чем они отличаются, почему их нельзя объединять, уклоны и глубина, состав работ, куда девать воду и типовые ошибки.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "дренаж вокруг дома"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Дренаж и ливнёвка вокруг дома",
+          "item": "https://heatcalc.ru/drenazh-i-livnevka/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Чем дренаж отличается от ливнёвки?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Дренаж отводит грунтовую воду: перфорированная труба в геотекстиле и щебне лежит ниже подошвы фундамента и работает круглый год. Ливнёвка собирает дождь и снеготаяние с крыши и площадок: гладкая труба без перфорации на глубине 0,3–0,7 метра, работает залпами. Это разные системы с разными уклонами."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли объединить дренаж и ливнёвку?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет. В ливневую трубу за десять минут сильного дождя приходит расход, которого дренаж никогда не видит. В объединённой системе эта вода заполняет дренажную трубу и выходит через перфорацию обратно в грунт у фундамента — дренаж начинает подводить воду вместо того, чтобы её отводить."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой уклон нужен дренажной трубе?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Дренажной трубе 110 мм достаточно 2 мм на метр, то есть 0,2 %: вода в ней идёт медленно и постоянно. Ливневой нужен канализационный уклон — 10 мм на метр для 110 мм и 8 мм для 160 мм, потому что она работает залпами. Отмостке дают 2–3 % от стены."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Куда отводить воду от дренажа?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Самотёком в придорожную канаву или водоём, если уклон позволяет и уровень воды в приёмнике ниже. Иначе в дренажный колодец с насосом — но тогда нужно электричество, а насос становится расходником. Фильтрующий колодец работает только в песчаном грунте. Главное — не выводить трубу «в угол участка»: вода вернётся в грунт и придёт к дому обратно."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли подключить ливнёвку к септику?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нельзя. Септик не рассчитан на залповый приход дождевой воды, а его биология — на определённую концентрацию стоков. Один сильный дождь выносит из септика ил и надолго останавливает очистку. Ливнёвка и дренаж всегда имеют собственный выпуск, отдельный от бытовой канализации."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/drenazh-i-livnevka/#article",
+      "headline": "Дренаж и ливнёвка вокруг дома",
+      "description": "Дренаж вокруг дома и ливневая канализация: чем они отличаются, почему их нельзя объединять, уклоны и глубина, состав работ, куда девать воду и типовые ошибки.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/drenazh-i-livnevka/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-02-23",
+      "dateModified": "2027-02-23",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Дренаж и ливнёвка вокруг дома</nav>
+
+        <h1>Дренаж и ливнёвка вокруг дома</h1>
+
+        <p class="art-meta"><time datetime="2027-02-23">23 февраля 2027</time></p>
+
+        <p class="lead">Дренаж и ливнёвка выглядят похоже — трубы в земле вокруг дома — и поэтому их часто делают одной системой. После первого сильного дождя выясняется, зачем их разделяют. Разбираем задачи, уклоны и состав работ.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#dve-raznye-zadachi">Две разные задачи</a></li>
+            <li><a href="#uklony-i-glubina">Уклоны и глубина</a></li>
+            <li><a href="#sostav-rabot">Состав работ</a></li>
+            <li><a href="#smotrovye-kolodcy">Смотровые колодцы</a></li>
+            <li><a href="#kuda-devat-vodu">Куда девать воду</a></li>
+            <li><a href="#chto-eto-daet-kotelnoy">Что это даёт котельной</a></li>
+            <li><a href="#tipovye-oshibki">Типовые ошибки</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="dve-raznye-zadachi">Две разные задачи</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Дренаж</th><th>Ливнёвка</th></tr>
+                <tr><td>Что отводит</td><td>грунтовую воду</td><td>дождь и снеготаяние с крыши и площадок</td></tr>
+                <tr><td>Откуда вода</td><td>из грунта, самотёком сквозь щебень</td><td>из водосточных труб и лотков</td></tr>
+                <tr><td>Труба</td><td>перфорированная, в геотекстиле</td><td>гладкая, без перфорации</td></tr>
+                <tr><td>Глубина</td><td>ниже подошвы фундамента</td><td>0,3–0,7 м, выше дренажа</td></tr>
+                <tr><td>Работает</td><td>круглый год</td><td>в дождь и оттепель</td></tr>
+            </table>
+        </div>
+        <p class="note">Дренаж собирает воду, ливнёвка её сбрасывает. Отсюда и запрет на объединение.</p>
+
+        <div class="callout">
+            <p><strong>Почему их не соединяют.</strong> В ливневую трубу за десять минут сильного дождя приходит расход, которого дренаж никогда не видит. Если системы объединены, эта вода упирается в дренажную трубу, заполняет её и начинает выходить через перфорацию — то есть закачивается обратно в грунт у самого фундамента. Дренаж в такие минуты работает наоборот: вместо отвода воды он её подводит. Дом, который годами стоял сухим, начинает подмокать именно после такой «оптимизации».</p>
+        </div>
+
+        <h2 id="uklony-i-glubina">Уклоны и глубина</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Элемент</th><th>Уклон</th><th>Ориентир</th></tr>
+                <tr><td>Дренажная труба 110 мм</td><td>2 мм на метр</td><td>0,2 %</td></tr>
+                <tr><td>Ливневая труба 110 мм</td><td>10 мм на метр</td><td>1 %, как у канализации</td></tr>
+                <tr><td>Ливневая труба 160 мм</td><td>8 мм на метр</td><td>0,8 %</td></tr>
+                <tr><td>Отмостка от стены</td><td>20–30 мм на метр</td><td>2–3 %</td></tr>
+                <tr><td>Лоток водоотводный</td><td>по дну лотка</td><td>уклон задан формой</td></tr>
+            </table>
+        </div>
+        <p class="note">Дренажу большой уклон не нужен: вода в нём идёт медленно и постоянно. Ливнёвке нужен канализационный — она работает залпами.</p>
+
+        <p>Глубина дренажа определяется фундаментом: труба должна лежать <strong>ниже подошвы</strong>, иначе она не понижает воду в нужном слое, а просто собирает то, что стекло сверху. На практике это 1,2–2,0 метра в зависимости от конструкции.</p>
+
+        <h2 id="sostav-rabot">Состав работ</h2>
+
+        <ol>
+            <li><strong>Траншея по периметру</strong> с проектным уклоном к нижней точке. Уклон проверяют нивелиром или лазерным уровнем, а не на глаз.</li>
+            <li><strong>Геотекстиль</strong> с запасом на обёртывание — он не даёт щебню заилиться грунтом.</li>
+            <li><strong>Щебень фракции 20–40</strong> подушкой 10–15 см. Мелкий и известковый не годятся: первый заиливается, второй растворяется.</li>
+            <li><strong>Перфорированная труба</strong> в фильтрующей обмотке, перфорация вниз-набок.</li>
+            <li><strong>Обсыпка щебнем</strong> сверху и с боков, затем завёртывание геотекстиля конвертом.</li>
+            <li><strong>Смотровые колодцы</strong> на каждом углу и на прямых участках через 20–25 метров.</li>
+            <li><strong>Песок и обратная засыпка</strong> — плодородный грунт в дренажную обсыпку не кладут.</li>
+            <li><strong>Ливнёвка отдельной траншеей</strong> выше дренажа, со своими колодцами и пескоуловителями.</li>
+            <li><strong>Отмостка</strong> с уклоном от стены — она снимает с дренажа половину нагрузки.</li>
+        </ol>
+
+        <h2 id="smotrovye-kolodcy">Смотровые колодцы</h2>
+
+        <p>Колодцы — единственная возможность обслуживать систему после засыпки. Без них дренаж становится одноразовым: он либо работает, либо нет, и выяснить, где именно забилось, можно только лопатой.</p>
+
+        <ul>
+            <li><strong>На каждом повороте</strong> — там заиливается в первую очередь.</li>
+            <li><strong>Через 20–25 метров</strong> на прямых участках: столько достаёт шланг промывки.</li>
+            <li><strong>С отстойной частью</strong> ниже лотка — песок осядет в колодце, а не в трубе.</li>
+            <li><strong>Крышка выше уровня земли</strong> и с уклоном грунта от неё, иначе колодец сам станет приёмником поверхностной воды.</li>
+            <li><strong>Промывка раз в несколько лет</strong> — обычная профилактика, а не ремонт.</li>
+        </ul>
+
+        <h2 id="kuda-devat-vodu">Куда девать воду</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Приёмник</th><th>Когда подходит</th><th>Ограничение</th></tr>
+                <tr><td>Придорожная канава, ров</td><td>есть по границе участка</td><td>нужен уклон до неё самотёком</td></tr>
+                <tr><td>Дренажный колодец с насосом</td><td>нет самотёчного выпуска</td><td>нужно электричество, насос — расходник</td></tr>
+                <tr><td>Фильтрующий колодец</td><td>песчаный грунт, вода уходит</td><td>не работает в глине</td></tr>
+                <tr><td>Пруд, водоём</td><td>есть на участке</td><td>уровень воды в нём должен быть ниже</td></tr>
+                <tr><td>Дождевой сад, поле рассеивания</td><td>ливнёвка, песчаный грунт</td><td>площадь и уклон от дома</td></tr>
+            </table>
+        </div>
+        <p class="note">Самая частая ошибка — вывести дренаж в никуда: труба уходит в угол участка и там заканчивается. Вода возвращается в грунт в десяти метрах от дома и приходит обратно.</p>
+
+        <div class="callout">
+            <p><strong>Куда нельзя.</strong> Ни дренаж, ни ливнёвку не подключают к бытовой канализации: септик не рассчитан на залповый приход дождевой воды, а его биология — на разбавление вчетверо. Один сильный дождь выносит из септика ил и надолго останавливает очистку. И в обратную сторону: колодец ливнёвки не используют как ревизию канализации.</p>
+        </div>
+
+        <h2 id="chto-eto-daet-kotelnoy">Что это даёт котельной</h2>
+
+        <p>Связь прямее, чем кажется. Сырое подполье или подвал — это не только грибок, но и конструкция с другим тепловым сопротивлением: мокрый утеплитель теряет свойства, а влажный грунт под плитой проводит тепло заметно лучше сухого.</p>
+
+        <ul>
+            <li><strong>Пол по грунту</strong> считается по зонам I–IV с сопротивлением грунта 2,1 / 4,3 / 8,6 / 14,2 м²·°C/Вт (СНиП 2.04.05-91*, прил. 9). Эти значения предполагают грунт, а не воду.</li>
+            <li><strong>Тёплый пол по грунту</strong> требует утеплителя не меньше R 1,25 по ГОСТ Р 70834-2023 — и вся его работа держится на том, что утеплитель сухой.</li>
+            <li><strong>Датчик протечки в подвале</strong> перестаёт что-либо значить, если там сыро постоянно.</li>
+            <li><strong>Скважинный насос и гидроаккумулятор</strong> в подтопляемом помещении живут недолго.</li>
+        </ul>
+
+        <h2 id="tipovye-oshibki">Типовые ошибки</h2>
+
+        <ul>
+            <li><strong>Дренаж выше подошвы фундамента.</strong> Работает как сборник верховодки, воду в грунте не понижает.</li>
+            <li><strong>Объединённый с ливнёвкой.</strong> В сильный дождь качает воду обратно в грунт у фундамента.</li>
+            <li><strong>Без геотекстиля или с обёрткой из плёнки.</strong> Щебень заиливается за пару сезонов, труба перестаёт принимать.</li>
+            <li><strong>Без колодцев.</strong> Систему нельзя ни проверить, ни промыть.</li>
+            <li><strong>Уклон на глаз.</strong> Провал на прямом участке собирает воду и ил именно там, где до него не добраться.</li>
+            <li><strong>Выпуск «в угол участка».</strong> Вода возвращается в грунт и приходит к дому обратно.</li>
+            <li><strong>Водосток прямо на отмостку.</strong> Вся вода с крыши бьёт в одну точку у стены — там и появляется первая трещина.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать канализацию и водоснабжение
+            <small>Наружные сети и точки подключения</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем дренаж отличается от ливнёвки?</span></summary>
+            <div class="answer">
+                <p>Дренаж отводит грунтовую воду: перфорированная труба в геотекстиле и щебне лежит ниже подошвы фундамента и работает круглый год. Ливнёвка собирает дождь и снеготаяние с крыши и площадок: гладкая труба без перфорации на глубине 0,3–0,7 метра, работает залпами. Это разные системы с разными уклонами.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли объединить дренаж и ливнёвку?</span></summary>
+            <div class="answer">
+                <p>Нет. В ливневую трубу за десять минут сильного дождя приходит расход, которого дренаж никогда не видит. В объединённой системе эта вода заполняет дренажную трубу и выходит через перфорацию обратно в грунт у фундамента — дренаж начинает подводить воду вместо того, чтобы её отводить.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой уклон нужен дренажной трубе?</span></summary>
+            <div class="answer">
+                <p>Дренажной трубе 110 мм достаточно 2 мм на метр, то есть 0,2 %: вода в ней идёт медленно и постоянно. Ливневой нужен канализационный уклон — 10 мм на метр для 110 мм и 8 мм для 160 мм, потому что она работает залпами. Отмостке дают 2–3 % от стены.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Куда отводить воду от дренажа?</span></summary>
+            <div class="answer">
+                <p>Самотёком в придорожную канаву или водоём, если уклон позволяет и уровень воды в приёмнике ниже. Иначе в дренажный колодец с насосом — но тогда нужно электричество, а насос становится расходником. Фильтрующий колодец работает только в песчаном грунте. Главное — не выводить трубу «в угол участка»: вода вернётся в грунт и придёт к дому обратно.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли подключить ливнёвку к септику?</span></summary>
+            <div class="answer">
+                <p>Нельзя. Септик не рассчитан на залповый приход дождевой воды, а его биология — на определённую концентрацию стоков. Один сильный дождь выносит из септика ил и надолго останавливает очистку. Ливнёвка и дренаж всегда имеют собственный выпуск, отдельный от бытовой канализации.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=drenazh-i-livnevka#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/gsm-modul-dlya-kotla/">gsm-модуль для котла: зачем в загородном доме</a> · <a href="/truba-pnd-vvod-vody/">труба пнд: ввод воды в дом</a> · <a href="/filtry-dlya-vody-v-dome/">фильтры для воды: какие ставить на вводе</a> · <a href="/septik-ili-vygrebnaya-yama/">септик или станция очистки</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=drenazh-i-livnevka">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
