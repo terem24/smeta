@@ -399,7 +399,12 @@ const RecognizeProject = {
                     marks.get(r).push(l.s);
                     // Где стоит прибор — чтобы отдать его ближайшему окну (fitRoom).
                     if (!pts.has(r)) pts.set(r, []);
-                    pts.get(r).push({ x: l.cx !== undefined ? l.cx : l.x, y: l.cy !== undefined ? l.cy : l.y });
+                    const pt = { x: l.cx !== undefined ? l.cx : l.x, y: l.cy !== undefined ? l.cy : l.y };
+                    // Ширина прибора по проекту — длина его символа рядом с маркой.
+                    const sym = (sh.symbols || []).map(q => ({ q, d: Math.hypot(q.cx - pt.x, (q.cy - pt.y) * map.h / map.w) }))
+                        .filter(o => o.d < 3).sort((a, b) => a.d - b.d)[0];
+                    if (sym) pt.wMm = Math.round(sym.q.longPt * 25.4 / 72 * (sh.scale || 100) * (map.lenK || 1));
+                    pts.get(r).push(pt);
                 }
             } else {
                 const a = this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, ''));
@@ -1514,6 +1519,7 @@ const RecognizeProject = {
         const byPlace = !!(e.heaterPts && e.heaterPts.length === (e.heaters || 0) && spec &&
             spec.length === room.windows.length && spec.every(s => s.wx !== undefined));
         let heatedIdx;
+        const widthOf = new Map();     // окно → ширина прибора по проекту, мм
         if (byPlace) {
             heatedIdx = new Set();
             e.heaterPts.forEach(p => {
@@ -1523,7 +1529,7 @@ const RecognizeProject = {
                     const d = Math.hypot(s.wx - p.x, s.wy - p.y);
                     if (d < bd) { bd = d; best = k; }
                 });
-                if (best >= 0) heatedIdx.add(best);
+                if (best >= 0) { heatedIdx.add(best); if (p.wMm) widthOf.set(best, p.wMm); }
             });
         } else {
             const key = w => conv ? (w.isPan ? 0 : 1) : (w.isPan ? 1 : 0);
@@ -1537,7 +1543,11 @@ const RecognizeProject = {
                 if (conv) { w.isPan = true; delete w.radInPier; }
                 // Радиатор у окна в пол — в простенке: калькулятор иначе
                 // поставил бы под витраж внутрипольный конвектор.
-                else if (w.isPan) w.radInPier = true;
+                else if (w.isPan) {
+                    w.radInPier = true;
+                    // Ширина прибора по проекту: шире калькулятор радиатор не поставит.
+                    if (widthOf.has(k)) w.pierW = Math.round(widthOf.get(k)) / 1000;
+                }
             } else w.noHeater = true;
         });
     },

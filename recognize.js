@@ -151,6 +151,9 @@ const RecognizeUI = {
                     <button class="rec-btn-g" id="rec_undo_plan"
                             style="display:none" onclick="RecognizePlan.undoApply()">
                       ↶ Вернуть комнаты</button>
+                    <button class="rec-btn-g" id="rec_undo_sketch"
+                            style="display:none" onclick="RecognizeSketch.undoApply()">
+                      ↶ Вернуть котельную</button>
                   </div>
                 </div>
                 <div class="rec-body" id="rec_body"></div>
@@ -160,6 +163,7 @@ const RecognizeUI = {
                 // Вставка работает, только пока вкладка открыта и мы на шаге загрузки.
                 if (app.state.viewMode !== 'recognize' || this._rows.length) return;
                 if (typeof RecognizePlan !== 'undefined' && RecognizePlan._rows.length) return;
+                if (typeof RecognizeSketch !== 'undefined' && RecognizeSketch._items.length) return;
 
                 // Поле ввода важнее: если курсор в нём, человек вставляет текст
                 // туда, а не в распознавание.
@@ -205,6 +209,8 @@ const RecognizeUI = {
         if (u) u.style.display = app._recognizeUndo ? '' : 'none';
         const up = document.getElementById('rec_undo_plan');
         if (up) up.style.display = (typeof RecognizePlan !== 'undefined' && RecognizePlan._undo) ? '' : 'none';
+        const us = document.getElementById('rec_undo_sketch');
+        if (us) us.style.display = (typeof RecognizeSketch !== 'undefined' && RecognizeSketch._undo) ? '' : 'none';
     },
 
     /** Возврат к смете после применения. */
@@ -262,6 +268,9 @@ const RecognizeUI = {
             // Комплект листов — не «план этажа»: читаются и отопление, и
             // сантехника, и примечания.
             if (t) t.textContent = this._project ? 'Распознавание проекта' : 'Распознавание плана этажа';
+            if (s3) s3.textContent = '3. В расчёт';
+        } else if (kind === 'sketch') {
+            if (t) t.textContent = 'Распознавание эскиза котельной';
             if (s3) s3.textContent = '3. В расчёт';
         } else if (kind === 'estimate') {
             if (t) t.textContent = 'Распознавание рукописной сметы';
@@ -751,8 +760,9 @@ const RecognizeUI = {
         // в уже очищенное состояние.
         if (this._busy) return;
         const planRows = (typeof RecognizePlan !== 'undefined') ? RecognizePlan._rows.length : 0;
+        const sketchItems = (typeof RecognizeSketch !== 'undefined') ? RecognizeSketch._items.length : 0;
         const hasWork = !!(this._rows && this._rows.length) || !!this._img ||
-            !!(this._imgs && this._imgs.length) || !!this._text || !!planRows;
+            !!(this._imgs && this._imgs.length) || !!this._text || !!planRows || !!sketchItems;
         // Состояние уже пустое, а таблица на экране осталась — так бывает
         // после сброса объекта из шапки. Спрашивать не о чем, очищать нечего:
         // просто возвращаем экран загрузки.
@@ -785,6 +795,7 @@ const RecognizeUI = {
         this._cmpDiscount = null;
         this._cmpApplyDiscount = false;
         if (typeof RecognizePlan !== 'undefined') RecognizePlan.reset();
+        if (typeof RecognizeSketch !== 'undefined') RecognizeSketch.reset();
 
         this.resetScreen();
     },
@@ -1681,8 +1692,9 @@ const RecognizeUI = {
     /** kind: true — текст, 'plan' — план этажа, иначе снимок сметы. */
     progressStart(kind) {
         const proj = kind === 'plan' && !!this._project;
-        this.STAGES = proj ? this.STAGES_PROJECT : kind === 'plan' ? this.STAGES_PLAN : (kind ? this.STAGES_TEXT : this.STAGES_IMG);
-        this._tips = proj ? this.TIPS_PROJECT : kind === 'plan' ? this.TIPS_PLAN : this.TIPS;
+        const sk = kind === 'sketch' && typeof RecognizeSketch !== 'undefined';
+        this.STAGES = sk ? RecognizeSketch.STAGES : proj ? this.STAGES_PROJECT : kind === 'plan' ? this.STAGES_PLAN : (kind ? this.STAGES_TEXT : this.STAGES_IMG);
+        this._tips = sk ? RecognizeSketch.TIPS : proj ? this.TIPS_PROJECT : kind === 'plan' ? this.TIPS_PLAN : this.TIPS;
         const host = document.getElementById('rec_body');
         if (!host) return;
         const box = document.createElement('div');
@@ -2197,6 +2209,12 @@ const RecognizeUI = {
                     if (go) go.disabled = false;
                     return;
                 }
+                if (!this._text && typeof RecognizeSketch !== 'undefined' && RecognizeSketch.isSketchResult(parsed)) {
+                    await this.runSketch();
+                    this._busy = false;
+                    if (go) go.disabled = false;
+                    return;
+                }
 
                 // В память кладём только разбор сметы: у плана этажа ответ
                 // другой формы, и оттуда он вернулся бы уже неузнаваемым.
@@ -2255,7 +2273,15 @@ const RecognizeUI = {
         if (this._project && typeof RecognizeProject !== 'undefined') {
             try { preParsed = RecognizeProject.plansFromPdf(this._project); } catch (e) { console.warn('Помещения из PDF:', e); preParsed = null; }
         }
-        const res = await RecognizePlan.run(imgs, imgs.map(b => this.imgNameOf(b)), preParsed ? { preParsed } : undefined);
+        let res;
+        try {
+            res = await RecognizePlan.run(imgs, imgs.map(b => this.imgNameOf(b)), preParsed ? { preParsed } : undefined);
+        } catch (e) {
+            // Эскиз от руки с линиями и пустотами догадка принимает за план
+            // этажа, а модель плана узнаёт в нём схему котельной.
+            if (e.sketch && !this._project) { await this.runSketch(); return; }
+            throw e;
+        }
 
         // Комплект листов проекта: к помещениям — тёплые полы, приборы и
         // сантехника с листов инженерных систем.
@@ -2284,6 +2310,26 @@ const RecognizeUI = {
         }
         this.progressTo(2);
         RecognizePlan.startReview(res);
+    },
+
+    /**
+     * Эскиз котельной от руки: модель сметы или плана сказала, что на снимке
+     * схема котельной, — читаем его по своим правилам, с рамками приборов.
+     * Эскиз — один лист: рамки лежат поверх одного снимка.
+     */
+    async runSketch() {
+        if (typeof RecognizeSketch === 'undefined') {
+            throw new Error('Разбор эскизов котельной не загрузился. Обновите страницу.');
+        }
+        const img = this._img || (this._imgs && this._imgs[0]);
+        if (!img) throw new Error('Нет снимка для распознавания.');
+        this.progressStop();
+        this.progressStart('sketch');
+        this.setStatus('Похоже, это эскиз котельной — читаю котлы, бойлеры и насосы');
+        this.progressTo(1);
+        await RecognizeSketch.run(img);
+        this.progressTo(3);
+        RecognizeSketch.startReview();
     },
 
     /**
@@ -7216,6 +7262,17 @@ const RECOGNIZE_PROMPT = `Ты разбираешь рукописные сме�
 в м², — верни ровно {"docKind":"floor_plan","items":[],"skipped":[]} и
 больше ничего: такой лист разбирается другими правилами. Список материалов,
 пусть и с планом на полях, — это смета.
+
+ЕСЛИ ЭТО НЕ СМЕТА, А ЭСКИЗ КОТЕЛЬНОЙ — нарисованная схема обвязки: котлы
+(прямоугольники с подписью «Эл», «Газ» и мощностью), бойлеры (цилиндры со
+змеевиком), насосы (кружки с треугольником), гидрострелка, трубы между ними, —
+верни ровно {"docKind":"boiler_sketch","items":[],"skipped":[]} и больше
+ничего. Несколько чисел или коротких пометок на полях эскиза (размеры,
+сокращения вроде «Кр-15», «муфты 20-12») сметой его не делают — это заметки
+к схеме, а не список материалов. Эскиз перестаёт им быть, только если на
+листе есть настоящая смета: несколько строк с названиями материалов и
+количествами, как обычно пишут монтажники, — тогда это смета, пусть и со
+схемой на полях.
 
 ДЮЙМЫ ПИШИ БЕЗ СИМВОЛА КАВЫЧКИ: 3/4, 1/2, 1, 1 1/4 — никогда 3/4" и не 3/4».
 Кавычка внутри строки JSON рвёт весь ответ, и смета не разбирается целиком.

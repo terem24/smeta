@@ -51675,6 +51675,14 @@ const app = {
             ...this._groupDesignRads(tonaleRads, 'tonale', 'universal'),
             ...this._groupDesignRads(tubeQuadroRads, 'tube_quadro', null),
             ...this._groupDesignRads(tubeRoundRads, 'tube_round', null),
+            // ROMMER RST: у серии три высоты и 1–3 колонки — своя группа на каждую
+            // пару (колонки, высота), иначе секции в группе не монотонны по мощности.
+            ...(typeof rommerRstRads === 'undefined' ? [] : Object.values(rommerRstRads.reduce((g, x) => {
+                const k = x.cols + '_' + x.nominalH;
+                (g[k] = g[k] || { arr: [], type: 'rommer_rst_' + k, h: this._designHeightNominal(x.height), color: 'white',
+                    bottom: true, universal: false, isDesign: true }).arr.push(x);
+                return g;
+            }, {})).map(s => { s.arr.sort((a, b) => a.sec - b.sec); return s; })),
         ];
     },
     _getRadMaterial: function (s) {
@@ -51682,7 +51690,7 @@ const app = {
         if (!s.arr || s.arr.length === 0) return 'all';
         const first = s.arr[0];
         const id = first.id || '';
-        if (id.startsWith('RRS-') || id.startsWith('QV') || id.startsWith('R40-')) return 'steel';
+        if (id.startsWith('RRS-') || id.startsWith('QV') || id.startsWith('R40-') || id.startsWith('RST-')) return 'steel';
         if (id.startsWith('SRA-') || id.startsWith('RAL-')) return 'aluminum';
         if (id.startsWith('SRB-') || id.startsWith('RBM-')) return 'bimetal';
         return 'all';
@@ -58403,6 +58411,49 @@ const app = {
      * воздуха, сверху — выход тёплого потока к стеклу). У панорамного окна и места
      * без окна подоконника нет — ограничения тоже.
      */
+    /**
+     * Радиатор в простенок по проекту (w.radInPier, ширина места w.pierW).
+     *
+     * Правила, согласованные с пользователем 26.09.2026:
+     *  1. Цель — соответствие проекту, а не цена. Жёсткие условия: прибор не шире
+     *     места по проекту (+15 мм на точность снятия с чертежа) и не слабее нужной
+     *     мощности reqPwr (паспортные ватты при ΔT 50, как у всего подбора).
+     *  2. Кандидаты — только серии с паспортной шириной секции (secMm): без неё
+     *     «влезет или нет» не проверить, такие предлагаются лишь для ручной замены.
+     *  3. Порядок брендов: STOUT → ROMMER → остальные. Внутри бренда — дешевле.
+     *  4. Никто не подошёл — null: пишем «нет полного соответствия проекту».
+     * Возвращает { item, power, brand, lenMm, note } или null.
+     */
+    PIER_RAD_TIERS: function () {
+        const white = arr => (arr || []).filter(x => !x.color || x.color === 'white');
+        return [
+            { brand: 'STOUT', arr: [].concat(white(typeof tonaleRads !== 'undefined' ? tonaleRads : []),
+                white(typeof anteprimaRads !== 'undefined' ? anteprimaRads : []),
+                white(typeof sebinoRads !== 'undefined' ? sebinoRads : [])) },
+            { brand: 'ROMMER', arr: typeof rommerRstRads !== 'undefined' ? rommerRstRads : [] },
+        ];
+    },
+    radLenMm: function (x) {
+        return x && x.secMm ? x.sec * x.secMm + (x.endMm || 0) : null;
+    },
+    pierRadPick: function (reqPwr, pierW) {
+        const maxMm = Math.round(pierW * 1000) + 15;
+        const tiers = this.PIER_RAD_TIERS();
+        const tried = [];
+        for (const t of tiers) {
+            const fit = t.arr.filter(x => {
+                const len = this.radLenMm(x);
+                return len && len <= maxMm && x.sec * (x.power50 || 0) >= reqPwr;
+            }).sort((a, b) => (a.price - b.price) || (a.sec - b.sec));
+            if (fit.length) {
+                const item = fit[0];
+                return { item, power: Math.round(item.sec * item.power50), brand: t.brand, lenMm: this.radLenMm(item),
+                    note: tried.length ? `у ${tried.join(', ')} в ${Math.round(pierW * 1000)} мм на эту мощность ничего нет` : '' };
+            }
+            tried.push(t.brand);
+        }
+        return null;
+    },
     radMaxHeightUnderSill: function (w) {
         if (!w || w.isPan || w.noWin) return null;
         return Math.round(this.winSill(w) * 1000) - 180;
@@ -70988,8 +71039,18 @@ const app = {
 
                             // === Правило ширины 50–90% от ширины окна (СНиП 41-01-2003, допускается до 90% при необходимости) ===
                             const secW = 0.08; // ширина секции Space/Titan = 80 мм
-                            const minSecsByW = Math.ceil((w.width * 0.50) / secW); // нижняя граница: 50%
-                            const maxSecsByW = Math.floor((w.width * 0.90) / secW); // верхняя граница: 90%
+                            // Радиатор в простенке у окна в пол (radInPier) правилу «50–90 %
+                            // ширины окна» не подчиняется: под витражом его нет, а место
+                            // задаёт простенок. pierW — ширина прибора по проекту (м, из
+                            // чертежа при распознавании): больше неё радиатор не встанет.
+                            // На «Хвойной 3» это правило давало на окно 1,52 м минимум 10
+                            // секций — все пять радиаторов выходили одинаковыми, по 13
+                            // секций (≈1 м), в простенок 378 мм.
+                            const _pierW = w.radInPier ? (parseFloat(w.pierW) || 0) : 0;
+                            const minSecsByW = w.radInPier ? 4 : Math.ceil((w.width * 0.50) / secW); // нижняя граница: 50%
+                            const maxSecsByW = w.radInPier
+                                ? (_pierW ? Math.max(4, Math.floor((_pierW + 0.04) / secW)) : 14)
+                                : Math.floor((w.width * 0.90) / secW); // верхняя граница: 90%
 
                             let reqSecsSpace = Math.max(4, Math.max(Math.ceil(reqPwr / p50_space), minSecsByW));
                             const minByPwrSpace = Math.max(4, Math.ceil(reqPwr / p50_space));
@@ -71280,6 +71341,38 @@ const app = {
                                 }
                             }
 
+                            // Простенок по проекту: вертикальный прибор по правилам pierRadPick
+                            // (STOUT → ROMMER, паспортная ширина и мощность). Ручная замена
+                            // главнее — её не трогаем.
+                            let _pierNote = '';
+                            if (_pierW && !manualSwapId) {
+                                const _wNow = activeItem.isPanel ? null : (this.radLenMm(activeItem) || (activeItem.sec ? activeItem.sec * 80 : null));
+                                if (_wNow == null || _wNow > _pierW * 1000 + 15) {
+                                    const _pp = this.pierRadPick(reqPwr, _pierW);
+                                    if (_pp) {
+                                        activeItem = { ..._pp.item };
+                                        factPower = _pp.power;
+                                        _pierNote = ` | в простенок по проекту до ${Math.round(_pierW * 1000)} мм: ${_pp.item.name.replace(/^Радиатор\s+/, '')}, ${_pp.lenMm} мм` +
+                                            (_pp.note ? ` (${_pp.note})` : '');
+                                    }
+                                }
+                            }
+                            if (_pierW && !activeItem.isPanel && activeItem.sec) {
+                                const _wmm = this.radLenMm(activeItem) || activeItem.sec * 80;
+                                if (_wmm > _pierW * 1000 + 40) {
+                                    // Одна плашка на все такие места, а не по плашке на окно.
+                                    app.tempWarns = app.tempWarns || [];
+                                    const _mark = 'радиаторы в простенках';
+                                    const _part = `${app.spotLabel(r, w, wIdx)} — ${reqReal} Вт, ${activeItem.sec} секц. ≈${_wmm} мм при простенке ${Math.round(_pierW * 1000)} мм`;
+                                    const _at = app.tempWarns.findIndex(t => t.includes(_mark));
+                                    if (_at < 0) {
+                                        app.tempWarns.push(`• <b>Нет полного соответствия проекту — ${_mark}.</b> В ассортименте (STOUT TONALE/ANTEPRIMA/SEBINO, ROMMER RST) нет прибора такой ширины на нужную мощность: ${_part}. Нужны вертикальные радиаторы — подберите кнопкой «Заменить» → «Дизайнерские», поставьте два прибора или уточните место у проектировщика.`);
+                                    } else {
+                                        app.tempWarns[_at] = app.tempWarns[_at].replace('. Нужны вертикальные', `; ${_part}. Нужны вертикальные`);
+                                    }
+                                }
+                            }
+
                             // Определяем сторону подключения ИМЕННО этого радиатора (а не общий
                             // state.radType) — для правильного разнесения обвязки ниже по коду,
                             // корректно даже при точечной замене на другую серию для одного окна.
@@ -71327,7 +71420,7 @@ const app = {
 
                             let margin = Math.round(((factPower - reqReal) / Math.max(1, reqReal)) * 100);
                             let marginColor = margin >= 0 ? '#10B981' : '#ef4444';
-                            let locInfo = `<span style="font-size:11px; line-height:1.2;">• <b>${app.spotLabel(r, w, wIdx)}</b>: ${w.noWin ? r.area + " м²" : w.width + "м"} | Требуются: <b>${reqReal} Вт</b>, подобран: <b>${factPower} Вт</b>, запас: <b style="color:${marginColor};">${margin}%</b>${_sillNote}</span>`;
+                            let locInfo = `<span style="font-size:11px; line-height:1.2;">• <b>${app.spotLabel(r, w, wIdx)}</b>: ${w.noWin ? r.area + " м²" : w.width + "м"} | Требуются: <b>${reqReal} Вт</b>, подобран: <b>${factPower} Вт</b>, запас: <b style="color:${marginColor};">${margin}%</b>${_sillNote}${_pierNote}</span>`;
 
                             let wDesc = locInfo + "|||" + devInfo;
                             // Подпись стороны подключения в самом названии строки — чтобы монтажник

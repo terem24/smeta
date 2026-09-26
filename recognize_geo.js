@@ -144,6 +144,40 @@ const RecognizeGeo = {
         return best && best.s > 30 ? best.c : null;
     },
 
+    /**
+     * Символы приборов на листе отопления: цветные вытянутые прямоугольники
+     * (на «Хвойной 3» — светло-зелёные 13,6 × 2,9 pt у марок РД, тем же
+     * цветом, что в «Спецификации приборов отопления»). Длина символа — ширина
+     * прибора по проекту: 378 мм. Возвращает [{ cx, cy, longPt }] в процентах
+     * листа и пунктах; масштаб в миллиметры переводит тот, кто знает поправку
+     * листа (RecognizeProject.geoHeat).
+     */
+    async heaterSymbols(page) {
+        const paths = await this.pagePaths(page);
+        if (!paths) return [];
+        const { wPt, hPt } = paths;
+        const byColor = new Map();
+        for (const f of paths.fills) {
+            const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/.exec(f.color);
+            if (!m) continue;
+            const [r, g, b] = [m[1], m[2], m[3]].map(h => parseInt(h, 16));
+            if (Math.max(r, g, b) - Math.min(r, g, b) < 25) continue;      // серое — стены, штриховки
+            for (const p of f.polys) {
+                if (p.length < 4 || p.length > 5) continue;
+                const xs = p.map(q => q[0] / 100 * wPt), ys = p.map(q => q[1] / 100 * hPt);
+                const dx = Math.max(...xs) - Math.min(...xs), dy = Math.max(...ys) - Math.min(...ys);
+                const long = Math.max(dx, dy), short = Math.min(dx, dy);
+                if (short < 0.5 || long < 4 || long > 60 || long / short < 2.5) continue;
+                if (!byColor.has(f.color)) byColor.set(f.color, []);
+                byColor.get(f.color).push({ cx: (Math.max(...xs) + Math.min(...xs)) / 2 / wPt * 100,
+                    cy: (Math.max(...ys) + Math.min(...ys)) / 2 / hPt * 100, longPt: Math.round(long * 10) / 10 });
+            }
+        }
+        delete page._geoPaths;
+        // Цвет символов приборов — тот, которым нарисовано больше двух вытянутых прямоугольников.
+        return [...byColor.values()].filter(a => a.length >= 2).flat();
+    },
+
     /** Масштаб листа из текста штампа: «1:100», «М 1:50». По умолчанию 1:100. */
     scaleOf(text) {
         const m = String(text || '').match(/1\s*:\s*(\d{2,3})\b/);

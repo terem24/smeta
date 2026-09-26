@@ -98,6 +98,8 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         const page = await pdf.getPage(p.num);
         eng.push({ kind, num: p.num, title: p.title, text: p.text, roomSheet: 0,
             labels: kind === 'heat' ? await F.pageLabels(page) : [],
+            symbols: kind === 'heat' ? await G.heaterSymbols(page) : [],
+            scale: G.scaleOf(p.text),
             fixtures: kind === 'water' ? await F.pageFixtures(page) : null });
     }
     set.eng = eng;
@@ -173,7 +175,7 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         const room = { id: 1000, area: r.area, windows: [] };
         P.fitWindows(room, r);
         P.fitRoom(room, r);
-        console.log(`  ${r.name}: ` + room.windows.map(w => w.noHeater ? '·' : (w.isPan ? (w.radInPier ? 'Р(в пол, простенок)' : 'К(конвектор)') : 'Р')).join(' '));
+        console.log(`  ${r.name}: ` + room.windows.map(w => w.noHeater ? '·' : (w.isPan ? (w.radInPier ? `Р(простенок ${w.pierW ? Math.round(w.pierW * 1000) + ' мм' : '?'})` : 'К(конвектор)') : 'Р')).join(' '));
     });
 
     // Сверка с эталоном.
