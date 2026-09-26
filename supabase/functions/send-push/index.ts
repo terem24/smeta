@@ -222,6 +222,10 @@ Deno.serve(async (req) => {
     let recipientUserIds: string[] = [];
     let title = "";
     let text = "";
+    // Дополнительная строка только для дубля в Telegram (в push внутрь приложения не
+    // попадает — там своя навигация по payload.open). Сейчас заполняется только у
+    // installer_reply: ссылка «Открыть переписку» сразу на нужный диалог в панели.
+    let tgLinkSuffix = "";
     const payload: Record<string, string> = { reason };
 
     if (reason === "manager_chat") {
@@ -305,6 +309,11 @@ Deno.serve(async (req) => {
       title = `Ответ: ${who}`;
       text = row.text || "Новый ответ монтажника";
       payload.open = "messages";
+      // Ссылка ведёт на тот же диалог, что открыл бы клик по колокольчику
+      // (app.openAdminReplyChat) — обрабатывает её app.js по параметрам ?admin_chat=/
+      // ?admin_msg= при загрузке страницы. Работает, если админ уже вошёл в этом
+      // браузере — иначе увидит «Доступ запрещён» и войдёт как обычно.
+      tgLinkSuffix = `\n\nОткрыть переписку: https://heatcalc.ru/?admin_chat=${encodeURIComponent(String(row.sender_id))}&admin_msg=${encodeURIComponent(rowId)}`;
     } else if (reason === "invoice_event") {
       const rows = await get(
         `invoice_events?id=eq.${encodeURIComponent(rowId)}&select=calc_id,event,project_name,created_at,meta&limit=1`,
@@ -572,7 +581,7 @@ Deno.serve(async (req) => {
             await fetch(`https://api.telegram.org/bot${tgBotToken}/sendMessage`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ chat_id: u.tg_chat_id, text: `${title}\n${text}`.trim().slice(0, 4000) }),
+              body: JSON.stringify({ chat_id: u.tg_chat_id, text: `${title}\n${text}${tgLinkSuffix}`.trim().slice(0, 4000) }),
             }).catch((e) => console.error("send-push: Telegram-отправка упала", e));
           }));
         }

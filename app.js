@@ -47145,6 +47145,17 @@ const app = {
             this.loadAdminEstimatePreview(previewEstId, new URLSearchParams(window.location.search).get('print') === '1');
         }
 
+        // Ссылка «Открыть переписку» из Telegram-дубля уведомления «Ответ монтажника»
+        // (send-push, ветка installer_reply) — ?admin_chat=<userId>&admin_msg=<id>.
+        // Работает, только если админ уже вошёл в этом браузере: права, как и выше
+        // у admin_estimate_preview, проверяет сам openAdminReplyChat → showAdminModal
+        // → hasAdminAccess; иначе просто увидит «Доступ запрещён».
+        const adminChatUserId = new URLSearchParams(window.location.search).get('admin_chat');
+        if (adminChatUserId) {
+            const adminMsgId = new URLSearchParams(window.location.search).get('admin_msg');
+            this.openAdminReplyChat(adminChatUserId, adminMsgId);
+        }
+
         // Запуск проверки соединения и опроса уведомлений
         // Опрос уведомлений. Раз в 2 минуты вместо получаса полуминутных проверок:
         // для «пришло сообщение / клиент ответил на смету» этого с запасом хватает,
