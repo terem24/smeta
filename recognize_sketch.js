@@ -409,6 +409,88 @@ const RecognizeSketch = {
 
         this.bindDraw();
         this.linkScheme();
+        this.mountVoice();
+    },
+
+    // ------------------------------------------------------------------
+    // Голос и текст в карточке прибора — те же правила разбора, что у
+    // «Умного заполнения» (regex по ключевым словам и числам, без модели):
+    // фраза уже сказана человеком вслух, второй раз спрашивать модель не за чем.
+    // ------------------------------------------------------------------
+
+    KIND_WORDS: [
+        ['tank', /бойлер|водонагреват/i],
+        ['hydro', /гидрострелк|гидравлическ\S*\s+раздел/i],
+        ['exp_tank', /расширительн\S*\s+бак/i],
+        ['manifold', /коллектор|гребёнк|гребенк/i],
+        ['boiler', /кот[её]л/i],
+        ['pump', /насос/i],
+    ],
+
+    /** Свободная фраза о приборе → {kind?, fuel?, power?, vol?, flow?, outputs?}. */
+    parseVoiceText(text) {
+        const raw = ' ' + String(text || '').toLowerCase().replace(/ё/g, 'е') + ' ';
+        // Числительные словами ("двести литров") — как в parseHouseQuery.
+        const t = (typeof app !== 'undefined' && app._numeralsToDigits) ? app._numeralsToDigits(raw) : raw;
+        const res = {};
+        for (const [kind, re] of this.KIND_WORDS) { if (re.test(t)) { res.kind = kind; break; } }
+        if (/электр|(?<![а-я])эл(?![а-я])/i.test(t)) res.fuel = 'el';
+        else if (/газов|(?<![а-я])газ(?![а-я])/i.test(t)) res.fuel = 'gas';
+        else if (/твердотопливн|дров[а-я]*|(?<![а-я])тт(?![а-я])/i.test(t)) res.fuel = 'solid';
+        const num = (re) => { const m = t.match(re); return m ? parseFloat(m[1].replace(',', '.')) : null; };
+        let v = num(/(\d+(?:[.,]\d+)?)\s*(?:квт|киловатт)/); if (v != null) res.power = v;
+        v = num(/(\d+(?:[.,]\d+)?)\s*(?:л|литр[а-я]*)(?![а-я])/); if (v != null) res.vol = v;
+        v = num(/(\d+(?:[.,]\d+)?)\s*(?:м3|м³|куб[а-я]*)/); if (v != null) res.flow = v;
+        v = num(/(\d+)\s*(?:выход[а-я]*|контур[а-я]*)/); if (v != null) res.outputs = Math.round(v);
+        return res;
+    },
+
+    /**
+     * Разобранная фраза ложится в прибор одним разом — не через set() по полю:
+     * тот перерисовывает экран (и пересчитывает пробную схему) на КАЖДЫЙ вызов,
+     * а из одной фразы полей выходит сразу несколько.
+     */
+    applyVoiceText(i, text) {
+        const it = this._items[i];
+        if (!it || !String(text || '').trim()) return;
+        const r = this.parseVoiceText(text);
+        if (!Object.keys(r).length) {
+            const mount = document.querySelector(`.rs-voice-mount[data-i="${i}"]`);
+            if (mount) {
+                const note = document.createElement('div');
+                note.className = 'rec-tcheck-sub';
+                note.textContent = 'Не разобрал — назовите прибор, тип и число с единицей: «электрический 12 квт».';
+                mount.parentElement.appendChild(note);
+                setTimeout(() => note.remove(), 4000);
+            }
+            return;
+        }
+        if (r.kind && r.kind !== it.kind) {
+            it.kind = r.kind;
+            if (it.kind !== 'boiler') { it.fuel = null; it.power = null; }
+            if (it.kind !== 'tank' && it.kind !== 'exp_tank') it.vol = null;
+            if (it.kind !== 'hydro') it.flow = null;
+            if (it.kind !== 'manifold') it.outputs = null;
+        }
+        if (r.fuel && it.kind === 'boiler') it.fuel = r.fuel;
+        if (r.power != null && it.kind === 'boiler') it.power = r.power;
+        if (r.vol != null && (it.kind === 'tank' || it.kind === 'exp_tank')) it.vol = r.vol;
+        if (r.flow != null && it.kind === 'hydro') it.flow = r.flow;
+        if (r.outputs != null && it.kind === 'manifold') it.outputs = r.outputs;
+        it.edited = true;
+        if (r.power != null && !(app.state.area > 0)) this._area = this.areaGuess() || this._area;
+        this.renderReview();
+    },
+
+    /** Кнопка микрофона в открытой карточке — тот же переиспользуемый компонент, что у «Умного заполнения». */
+    mountVoice() {
+        const mount = document.querySelector('.rs-voice-mount');
+        if (!mount || typeof app === 'undefined' || !app._createVoiceMicButton) return;
+        const i = +mount.dataset.i;
+        const mic = app._createVoiceMicButton((text) => this.applyVoiceText(i, text));
+        if (!mic) return;
+        mount.appendChild(mic.micBtn);
+        mount.appendChild(mic.micStatus);
     },
 
     // ------------------------------------------------------------------
@@ -503,6 +585,11 @@ const RecognizeSketch = {
               ${fields}
               ${it.note ? `<div class="rec-tcheck-sub">${esc(it.note)}</div>` : ''}
               ${this.SYM_OF[it.kind] ? '<div class="rec-tcheck-sub rs-onscheme"></div>' : ''}
+              <div class="rs-voice">
+                <input class="rec-f rs-voice-input" type="text" placeholder="Или скажите/напишите: «газовый 24 квт», «бойлер 200 литров»"
+                       onkeydown="if(event.key==='Enter'){event.preventDefault();RecognizeSketch.applyVoiceText(${i}, this.value); this.value='';}">
+                <span class="rs-voice-mount" data-i="${i}"></span>
+              </div>
               <div class="rs-card-acts">
                 <button class="rec-btn-g" onclick="RecognizeSketch.del(${i})">✕ Убрать прибор</button>
               </div>
