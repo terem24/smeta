@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расширительный бак ГВС: расчёт объёма и настройка | HeatCalc.ru</title>
+    <meta name="description" content="Зачем бойлеру расширительный бак ГВС: почему без него подкапывает предохранительный клапан, расчёт объёма по объёму бака и давлению, отличие от гидроаккумулятора и настройка.">
+    <link rel="canonical" href="https://heatcalc.ru/davlenie-v-sisteme-gvs/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/davlenie-v-sisteme-gvs/">
+    <meta property="og:title" content="Расширительный бак для водоснабжения: зачем и какой">
+    <meta property="og:description" content="Вода в баке на 200 литров при нагреве прибавляет 4 литра. Им некуда деваться.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/davlenie-v-sisteme-gvs/#webpage",
+      "url": "https://heatcalc.ru/davlenie-v-sisteme-gvs/",
+      "name": "Расширительный бак для водоснабжения: зачем и какой объём",
+      "description": "Зачем бойлеру расширительный бак ГВС: почему без него подкапывает предохранительный клапан, расчёт объёма по объёму бака и давлению, отличие от гидроаккумулятора и настройка.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "расширительный бак для водоснабжения"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Расширительный бак для водоснабжения: зачем и какой объём",
+          "item": "https://heatcalc.ru/davlenie-v-sisteme-gvs/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Зачем бойлеру расширительный бак?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Вода при нагреве с 10 до 60 градусов расширяется примерно на 2 %: в бойлере на 200 литров это 4 литра. Обратный клапан на входе холодной воды не даёт им уйти обратно в водопровод, а вода несжимаема — давление растёт до срабатывания предохранительного клапана. Расширительный бак принимает этот прирост."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой объём расширительного бака ГВС нужен?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ориентир — 10 % от объёма бойлера: 8 литров на бак 80 л, 10 на 100 л, 18 на 150 л, 24 на 200 л, 35 на 300 л. Запас нужен потому, что полезная ёмкость мембранного бака меньше номинальной и зависит от разницы между давлением заполнения и порогом предохранительного клапана."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему капает предохранительный клапан на бойлере?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Потому что расширяющейся при нагреве воде некуда деваться: либо расширительного бака нет, либо в нём спущен воздух. Признак характерный — клапан капает при каждом нагреве и перестаёт, когда вода остыла. Если капает постоянно, даже на холодной воде, седло уже изношено и клапан пора менять вместе с установкой бака."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем расширительный бак ГВС отличается от гидроаккумулятора?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Задачей. Гидроаккумулятор сглаживает пуски насоса и подбирается по частоте включений, расширительный бак принимает расширение горячей воды и берётся как 10 % от объёма бойлера. Оба для питьевой воды и внешне похожи, но бак отопления сюда не годится вовсе: у него другая мембрана."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какое давление выставлять в расширительном баке ГВС?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Равное рабочему давлению системы: при 3,5 бара в системе в баке тоже 3,5. Настраивают на сброшенной системе автомобильным манометром. Проверять раз в год — воздух постепенно уходит через мембрану, и спущенный бак работает так же, как отсутствующий."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/davlenie-v-sisteme-gvs/#article",
+      "headline": "Расширительный бак для водоснабжения: зачем и какой объём",
+      "description": "Зачем бойлеру расширительный бак ГВС: почему без него подкапывает предохранительный клапан, расчёт объёма по объёму бака и давлению, отличие от гидроаккумулятора и настройка.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/davlenie-v-sisteme-gvs/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-02-13",
+      "dateModified": "2027-02-13",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Расширительный бак для водоснабжения: зачем и какой объём</nav>
+
+        <h1>Расширительный бак для водоснабжения: зачем и какой объём</h1>
+
+        <p class="art-meta"><time datetime="2027-02-13">13 февраля 2027</time></p>
+
+        <p class="lead">Предохранительный клапан на бойлере подкапывает при каждом нагреве — жалоба настолько частая, что её считают нормой. Это не норма: воде, расширяющейся при нагреве, просто некуда деваться. Разбираем, почему так выходит и какой бак это лечит.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#otkuda-beretsya-davlenie">Откуда берётся давление</a></li>
+            <li><a href="#kakoy-obem">Какой объём</a></li>
+            <li><a href="#chem-on-otlichaetsya-ot-gidroakkumulyatora">Чем он отличается от гидроаккумулятора</a></li>
+            <li><a href="#nastroyka">Настройка</a></li>
+            <li><a href="#chto-stavyat-na-boyler-celikom">Что ставят на бойлер целиком</a></li>
+            <li><a href="#kak-ponyat-chto-baka-ne-hvataet">Как понять, что бака не хватает</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="otkuda-beretsya-davlenie">Откуда берётся давление</h2>
+
+        <p>Вода при нагреве расширяется примерно на 2 % — с 10 до 60 градусов. В открытой системе она просто вытеснилась бы обратно в водопровод, но на входе холодной воды в бойлер стоит обратный клапан: он нужен, чтобы горячая вода не пошла в холодную линию.</p>
+
+        <div class="formula">
+            <p><strong>Прирост объёма</strong> = объём бака × 0,02</p>
+            <p>Бойлер 200 литров: 200 × 0,02 = <strong>4 литра</strong></p>
+            <p>Эти четыре литра некуда деть — система замкнута обратным клапаном</p>
+        </div>
+
+        <p>Вода практически несжимаема, поэтому давление растёт до срабатывания предохранительного клапана на 6 бар. Он стравливает лишнее, давление падает — и всё повторяется при следующем нагреве. Клапан при этом работает как расходник: седло изнашивается, и через год-два он начинает подтекать постоянно.</p>
+
+        <div class="callout">
+            <p><strong>Отсюда правило: поставили обратный клапан — ставьте и расширительный бак.</strong> Это пара, и одно без другого работает плохо. Без обратного клапана горячая вода уходит в холодную линию, и в кране холодной идёт тёплая. Без расширительного бака давление сбрасывается через предохранительный клапан. Вместе они дают нормальную систему, где ничего не капает и не греется там, где не должно.</p>
+        </div>
+
+        <h2 id="kakoy-obem">Какой объём</h2>
+
+        <p>Бак должен принять прирост объёма при рабочем давлении системы. Практический ориентир — <strong>10 % от объёма бойлера</strong>, с запасом на неточность настройки.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Бойлер</th><th>Прирост при нагреве</th><th>Расширительный бак</th></tr>
+                <tr><td class="num">80 л</td><td class="num">1,6 л</td><td class="num">8 л</td></tr>
+                <tr><td class="num">100 л</td><td class="num">2,0 л</td><td class="num">10 л</td></tr>
+                <tr><td class="num">150 л</td><td class="num">3,0 л</td><td class="num">18 л</td></tr>
+                <tr><td class="num">200 л</td><td class="num">4,0 л</td><td class="num">24 л</td></tr>
+                <tr><td class="num">300 л</td><td class="num">6,0 л</td><td class="num">35 л</td></tr>
+            </table>
+        </div>
+        <p class="note">Полезная ёмкость мембранного бака меньше номинальной: она зависит от разницы между давлением заполнения и давлением срабатывания клапана. Отсюда и запас.</p>
+
+        <h2 id="chem-on-otlichaetsya-ot-gidroakkumulyatora">Чем он отличается от гидроаккумулятора</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th></th><th>Расширительный бак ГВС</th><th>Гидроаккумулятор ХВС</th></tr>
+                <tr><td>Задача</td><td>принять расширение горячей воды</td><td>сгладить пуски насоса</td></tr>
+                <tr><td>Объём</td><td>10 % от бойлера</td><td>по частоте включений насоса</td></tr>
+                <tr><td>Где стоит</td><td>на холодной линии к бойлеру</td><td>у узла ввода</td></tr>
+                <tr><td>Мембрана</td><td>пищевая, стойкая к нагреву</td><td>пищевая</td></tr>
+                <tr><td>Рабочая температура</td><td>выше</td><td>холодная вода</td></tr>
+            </table>
+        </div>
+        <p class="note">Оба для питьевой воды и внешне похожи, но задачи разные. Бак отопления сюда не подходит вовсе: у него другая мембрана.</p>
+
+        <p>Гидроаккумулятор частично сглаживает и расширение — если он стоит на той же линии и между ним и бойлером нет обратного клапана. Но рассчитывать на это не стоит: как только в схеме появляется обратный клапан у бойлера, участок оказывается отрезанным, и нужен свой бак.</p>
+
+        <h2 id="nastroyka">Настройка</h2>
+
+        <div class="formula">
+            <p><strong>Давление воздуха в баке</strong> = рабочее давление системы</p>
+            <p>Система на 3,5 бара → в баке <strong>3,5 бара</strong></p>
+            <p>Предохранительный клапан при этом на 6 бар</p>
+        </div>
+
+        <ol>
+            <li><strong>Сбросить давление</strong> в системе через любой кран горячей воды.</li>
+            <li><strong>Проверить ниппель</strong> автомобильным манометром.</li>
+            <li><strong>Довести до рабочего давления</strong> — подкачать или стравить.</li>
+            <li><strong>Заполнить и прогреть,</strong> посмотреть на манометр: при нагреве давление должно подрастать плавно и не доходить до шести бар.</li>
+            <li><strong>Записать обе цифры</strong> — в баке и порог клапана.</li>
+        </ol>
+
+        <p>Проверять раз в год: воздух постепенно уходит через мембрану, и спущенный бак перестаёт работать так же, как отсутствующий.</p>
+
+        <h2 id="chto-stavyat-na-boyler-celikom">Что ставят на бойлер целиком</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Элемент</th><th>Зачем</th></tr>
+                <tr><td>Обратный клапан на холодной</td><td>горячая вода не уходит в холодную линию</td></tr>
+                <tr><td>Предохранительный клапан 6 бар</td><td>защита бака от превышения давления</td></tr>
+                <tr><td>Расширительный бак ГВС</td><td>принимает расширение при нагреве</td></tr>
+                <tr><td>Запорная арматура с американками</td><td>бак снимается при обслуживании</td></tr>
+                <tr><td>Термостатический смеситель</td><td>защита от ожога при хранении 60 °C</td></tr>
+            </table>
+        </div>
+        <p class="note">Группа безопасности бойлера — это обратный и предохранительный клапаны в одном корпусе; расширительный бак идёт отдельно.</p>
+
+        <h2 id="kak-ponyat-chto-baka-ne-hvataet">Как понять, что бака не хватает</h2>
+
+        <ul>
+            <li><strong>Предохранительный клапан капает при каждом нагреве</strong> и перестаёт, когда вода остыла. Это главный признак.</li>
+            <li><strong>Давление скачет</strong> — в холодной системе 3,5, при нагреве уходит к шести.</li>
+            <li><strong>Из ниппеля бака идёт вода</strong> — мембрана порвана, бак под замену.</li>
+            <li><strong>Клапан капает постоянно,</strong> даже на холодной воде — седло уже изношено, менять надо и клапан.</li>
+            <li><strong>Бак есть, но не помогает</strong> — почти всегда спущен воздух: проверяется манометром на сброшенной системе.</li>
+        </ul>
+
+        <p>И одно замечание про воду в дренаж: капающий предохранительный клапан отводят в канализацию, а не в тазик. Но это способ убрать лужу, а не решить задачу — причина остаётся в отсутствующем или спущенном баке.</p>
+
+        <a class="cta" href="/">
+            Посчитать горячее водоснабжение
+            <small>Бойлер, обвязка и баки</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Зачем бойлеру расширительный бак?</span></summary>
+            <div class="answer">
+                <p>Вода при нагреве с 10 до 60 градусов расширяется примерно на 2 %: в бойлере на 200 литров это 4 литра. Обратный клапан на входе холодной воды не даёт им уйти обратно в водопровод, а вода несжимаема — давление растёт до срабатывания предохранительного клапана. Расширительный бак принимает этот прирост.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой объём расширительного бака ГВС нужен?</span></summary>
+            <div class="answer">
+                <p>Ориентир — 10 % от объёма бойлера: 8 литров на бак 80 л, 10 на 100 л, 18 на 150 л, 24 на 200 л, 35 на 300 л. Запас нужен потому, что полезная ёмкость мембранного бака меньше номинальной и зависит от разницы между давлением заполнения и порогом предохранительного клапана.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему капает предохранительный клапан на бойлере?</span></summary>
+            <div class="answer">
+                <p>Потому что расширяющейся при нагреве воде некуда деваться: либо расширительного бака нет, либо в нём спущен воздух. Признак характерный — клапан капает при каждом нагреве и перестаёт, когда вода остыла. Если капает постоянно, даже на холодной воде, седло уже изношено и клапан пора менять вместе с установкой бака.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем расширительный бак ГВС отличается от гидроаккумулятора?</span></summary>
+            <div class="answer">
+                <p>Задачей. Гидроаккумулятор сглаживает пуски насоса и подбирается по частоте включений, расширительный бак принимает расширение горячей воды и берётся как 10 % от объёма бойлера. Оба для питьевой воды и внешне похожи, но бак отопления сюда не годится вовсе: у него другая мембрана.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какое давление выставлять в расширительном баке ГВС?</span></summary>
+            <div class="answer">
+                <p>Равное рабочему давлению системы: при 3,5 бара в системе в баке тоже 3,5. Настраивают на сброшенной системе автомобильным манометром. Проверять раз в год — воздух постепенно уходит через мембрану, и спущенный бак работает так же, как отсутствующий.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=davlenie-v-sisteme-gvs#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/truba-pnd-vvod-vody/">труба пнд: ввод воды в дом</a> · <a href="/filtry-dlya-vody-v-dome/">фильтры для воды: какие ставить на вводе</a> · <a href="/estestvennaya-tsirkulyatsiya/">самотёчная система: когда она ещё работает</a> · <a href="/boyler-kosvennogo-nagreva/">бойлер косвенного нагрева: как подобрать объём</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=davlenie-v-sisteme-gvs">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

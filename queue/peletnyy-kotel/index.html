@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пеллетный котёл для дома: расход пеллет и стоимость сезона | HeatCalc.ru</title>
+    <meta name="description" content="Пеллетный котёл в частном доме: расход пеллет за сезон, объём бункера и как часто его загружать, требования к хранению, зола и обслуживание, сравнение с дровами и газом.">
+    <link rel="canonical" href="https://heatcalc.ru/peletnyy-kotel/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/peletnyy-kotel/">
+    <meta property="og:title" content="Пеллетный котёл: расход за сезон и что он требует">
+    <meta property="og:description" content="5,8 тонны за зиму. Это девять кубометров склада и загрузка бункера раз в три дня.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/peletnyy-kotel/#webpage",
+      "url": "https://heatcalc.ru/peletnyy-kotel/",
+      "name": "Пеллетный котёл: расход за сезон и что он требует",
+      "description": "Пеллетный котёл в частном доме: расход пеллет за сезон, объём бункера и как часто его загружать, требования к хранению, зола и обслуживание, сравнение с дровами и газом.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "пеллетный котел"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Пеллетный котёл: расход за сезон и что он требует",
+          "item": "https://heatcalc.ru/peletnyy-kotel/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Сколько пеллет нужно на сезон?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Дому 150 м² с теплопотерями 10 кВт в Петербурге — около 5,8 тонны: 24 400 кВт·ч тепла за сезон при теплоте сгорания 4,8 кВт·ч/кг и КПД котла 88 %. В объёме это примерно 8,9 кубометра, то есть помещение три на три метра под потолок или 385 мешков по 15 кг."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как часто нужно загружать бункер?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Зависит от его объёма. В мороз дом с теплопотерями 10 кВт сжигает 25–30 кг в сутки: встроенного бункера на 50 кг хватает на пару дней, бункера на 300 кг — на десять-двенадцать. Именно объём бункера определяет, останется ли котёл автоматическим или к нему придётся ходить через день."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как хранить пеллеты?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В сухом помещении с полом выше уровня земли, без конденсата на стенах и с подъездом для разгрузки. Пеллеты боятся влаги: отсыревшая гранула рассыпается в труху, забивает шнек и горит вдвое хуже. Под сезонный запас нужно около девяти кубометров — это отдельная кладовая или сухой гараж, а не угол в котельной."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как часто чистить пеллетный котёл?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Зольник раз в одну-две недели, теплообменник раз в месяц-два, горелку периодически от спёкшегося шлака, дымоход раз в сезон. Частота сильно зависит от качества гранул: у пеллет из чистой древесины золы меньше процента, у дешёвых с корой до трёх, и чистить приходится втрое чаще."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужен ли пеллетному котлу теплоаккумулятор?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Не обязательно, в отличие от дровяного: пеллетный модулирует мощность и работает по запросу, избытка тепла не возникает. Но буфер на 200–500 литров снижает тактование в межсезонье и число розжигов, а розжиг — самый изнашиваемый узел. При тёплом поле с зонами бак нужен: закрывшиеся зоны оставляют котёл без потребителя."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/peletnyy-kotel/#article",
+      "headline": "Пеллетный котёл: расход за сезон и что он требует",
+      "description": "Пеллетный котёл в частном доме: расход пеллет за сезон, объём бункера и как часто его загружать, требования к хранению, зола и обслуживание, сравнение с дровами и газом.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/peletnyy-kotel/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-02-20",
+      "dateModified": "2027-02-20",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Пеллетный котёл: расход за сезон и что он требует</nav>
+
+        <h1>Пеллетный котёл: расход за сезон и что он требует</h1>
+
+        <p class="art-meta"><time datetime="2027-02-20">20 февраля 2027</time></p>
+
+        <p class="lead">Пеллетный котёл — самый близкий к газовому по удобству из всех твердотопливных: подача автоматическая, температура держится ровно, подходить надо не каждый день. Но пять с лишним тонн топлива за сезон где-то должны лежать. Считаем расход и разбираем хозяйство.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#skolko-nuzhno-za-sezon">Сколько нужно за сезон</a></li>
+            <li><a href="#bunker-i-kak-chasto-ego-gruzit">Бункер и как часто его грузить</a></li>
+            <li><a href="#zola-i-obsluzhivanie">Зола и обслуживание</a></li>
+            <li><a href="#sravnenie-s-sosedyami">Сравнение с соседями</a></li>
+            <li><a href="#nuzhen-li-teploakkumulyator">Нужен ли теплоаккумулятор</a></li>
+            <li><a href="#chto-uchest-do-pokupki">Что учесть до покупки</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="skolko-nuzhno-za-sezon">Сколько нужно за сезон</h2>
+
+        <div class="formula">
+            <p>Дом 150 м² в Петербурге, теплопотери 10 кВт</p>
+            <p>Тепла за сезон: <strong>24 400 кВт·ч</strong></p>
+            <p>24 400 ÷ (4,8 кВт·ч/кг × КПД 0,88) = <strong>5 780 кг</strong></p>
+        </div>
+
+        <p>Почти шесть тонн. В объёме это около девяти кубометров при насыпной плотности порядка 650 кг/м³ — то есть помещение примерно три на три метра, забитое под потолок, или соответствующее число биг-бэгов.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Теплопотери дома</th><th>Пеллет за сезон</th><th>Объём</th><th>Мешков по 15 кг</th></tr>
+                <tr><td>7 кВт</td><td class="num">4,0 т</td><td class="num">6,2 м³</td><td class="num">270</td></tr>
+                <tr><td>10 кВт</td><td class="num">5,8 т</td><td class="num">8,9 м³</td><td class="num">385</td></tr>
+                <tr><td>15 кВт</td><td class="num">8,7 т</td><td class="num">13,4 м³</td><td class="num">580</td></tr>
+                <tr><td>20 кВт</td><td class="num">11,6 т</td><td class="num">17,8 м³</td><td class="num">770</td></tr>
+            </table>
+        </div>
+        <p class="note">Для Петербурга. В более холодном регионе при тех же теплопотерях расход выше пропорционально длительности отопительного периода.</p>
+
+        <div class="callout">
+            <p><strong>Главный вопрос не в котле, а в складе.</strong> Пеллеты боятся влаги: отсыревшая гранула рассыпается в труху, забивает шнек и горит вдвое хуже. Значит, нужно сухое помещение с полом выше уровня земли, без конденсата на стенах, с подъездом для разгрузки. Это не угол в котельной — это отдельная кладовая или сухой гараж.</p>
+        </div>
+
+        <h2 id="bunker-i-kak-chasto-ego-gruzit">Бункер и как часто его грузить</h2>
+
+        <p>Котёл берёт пеллеты из бункера шнеком. Объём бункера определяет, как часто к нему подходить.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Бункер</th><th>Запас при 10 кВт в мороз</th><th>В межсезонье</th></tr>
+                <tr><td class="num">50 кг (встроенный)</td><td class="num">около 2 суток</td><td class="num">4–5 суток</td></tr>
+                <tr><td class="num">150 кг</td><td class="num">5–6 суток</td><td class="num">две недели</td></tr>
+                <tr><td class="num">300 кг</td><td class="num">10–12 суток</td><td class="num">месяц</td></tr>
+                <tr><td class="num">500 кг и больше</td><td class="num">3 недели</td><td class="num">почти весь сезон</td></tr>
+            </table>
+        </div>
+        <p class="note">В мороз дом с теплопотерями 10 кВт сжигает около 25–30 кг пеллет в сутки. В октябре втрое меньше.</p>
+
+        <p>Встроенного бункера на 50 кг хватает на пару дней в январе — это ровно то, из-за чего пеллетный котёл перестаёт быть автоматическим. Внешний бункер на 300 кг переводит загрузку в режим «раз в неделю-полторы», и это совсем другая жизнь.</p>
+
+        <h2 id="zola-i-obsluzhivanie">Зола и обслуживание</h2>
+
+        <ul>
+            <li><strong>Зольник чистят раз в одну-две недели</strong> в зависимости от зольности пеллет. У хороших гранул из чистой древесины золы меньше одного процента, у дешёвых с корой — до трёх, и чистить приходится втрое чаще.</li>
+            <li><strong>Теплообменник</strong> — раз в месяц-два. У многих котлов есть автоматическая очистка, но раз в сезон его всё равно открывают.</li>
+            <li><strong>Горелку</strong> — периодически от спёкшегося шлака. Здесь качество пеллет решает больше всего: гранулы с высокой зольностью спекаются в корку.</li>
+            <li><strong>Дымоход</strong> — раз в сезон, как у любого твердотопливного.</li>
+            <li><strong>Электричество нужно постоянно:</strong> шнек, вентилятор, автоматика. При отключении света котёл встаёт — ИБП здесь не роскошь.</li>
+        </ul>
+
+        <h2 id="sravnenie-s-sosedyami">Сравнение с соседями</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Топливо</th><th>Расход за сезон</th><th>Что делать руками</th></tr>
+                <tr><td>Магистральный газ</td><td class="num">2 848 м³</td><td>ничего</td></tr>
+                <tr><td>Пеллеты</td><td class="num">5,8 т</td><td>загрузка бункера, зола</td></tr>
+                <tr><td>Дрова</td><td class="num">8,3 т</td><td>заготовка, топка дважды в сутки</td></tr>
+                <tr><td>Сжиженный газ</td><td class="num">3 843 л</td><td>заправки газовоза</td></tr>
+                <tr><td>Электричество</td><td class="num">24 400 кВт·ч</td><td>ничего, но дорого</td></tr>
+            </table>
+        </div>
+        <p class="note">Один и тот же дом 150 м² с теплопотерями 10 кВт. Цены на пеллеты не регулируются и сильно зависят от региона — подставьте свои.</p>
+
+        <p>Пеллеты выигрывают у дров по удобству: не надо топить дважды в сутки и колоть. Проигрывают магистральному газу по всему, кроме случая, когда газа нет. И требуют больше внимания, чем сжиженный газ, но обычно дешевле его в эксплуатации.</p>
+
+        <h2 id="nuzhen-li-teploakkumulyator">Нужен ли теплоаккумулятор</h2>
+
+        <p>В отличие от дровяного котла — не обязательно. Пеллетный модулирует мощность и работает по запросу, поэтому избытка тепла, который надо куда-то деть, не возникает.</p>
+
+        <ul>
+            <li><strong>Без бака котёл чаще тактует</strong> в межсезонье: нагрузка мала, а минимальная мощность горелки ограничена. Буфер на 200–500 литров сглаживает.</li>
+            <li><strong>С баком реже розжиг</strong> — а розжиг у пеллетного котла это самый изнашиваемый узел.</li>
+            <li><strong>Бак нужен обязательно,</strong> если в системе есть тёплый пол с зонами: закрывшиеся зоны оставляют котёл без потребителя.</li>
+        </ul>
+
+        <h2 id="chto-uchest-do-pokupki">Что учесть до покупки</h2>
+
+        <ol>
+            <li><strong>Где склад.</strong> Девять кубометров сухого помещения с подъездом — это первое, что надо найти, а не котёл.</li>
+            <li><strong>Как возят в вашем районе.</strong> Биг-бэги по тонне дешевле мешков, но их нужно чем-то разгружать и где-то держать.</li>
+            <li><strong>Качество пеллет.</strong> Разница между гранулами из чистой древесины и из отходов с корой — это частота чистки и ресурс горелки.</li>
+            <li><strong>Полноценный дымоход</strong> — утеплённая труба через кровлю с ревизией, не коаксиал.</li>
+            <li><strong>ИБП на автоматику</strong> — котёл без электричества не работает, а остывающий дом зимой обходится дороже бесперебойника.</li>
+        </ol>
+
+        <a class="cta" href="/">
+            Посчитать отопление дома
+            <small>Теплопотери и расход топлива за сезон</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько пеллет нужно на сезон?</span></summary>
+            <div class="answer">
+                <p>Дому 150 м² с теплопотерями 10 кВт в Петербурге — около 5,8 тонны: 24 400 кВт·ч тепла за сезон при теплоте сгорания 4,8 кВт·ч/кг и КПД котла 88 %. В объёме это примерно 8,9 кубометра, то есть помещение три на три метра под потолок или 385 мешков по 15 кг.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как часто нужно загружать бункер?</span></summary>
+            <div class="answer">
+                <p>Зависит от его объёма. В мороз дом с теплопотерями 10 кВт сжигает 25–30 кг в сутки: встроенного бункера на 50 кг хватает на пару дней, бункера на 300 кг — на десять-двенадцать. Именно объём бункера определяет, останется ли котёл автоматическим или к нему придётся ходить через день.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как хранить пеллеты?</span></summary>
+            <div class="answer">
+                <p>В сухом помещении с полом выше уровня земли, без конденсата на стенах и с подъездом для разгрузки. Пеллеты боятся влаги: отсыревшая гранула рассыпается в труху, забивает шнек и горит вдвое хуже. Под сезонный запас нужно около девяти кубометров — это отдельная кладовая или сухой гараж, а не угол в котельной.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как часто чистить пеллетный котёл?</span></summary>
+            <div class="answer">
+                <p>Зольник раз в одну-две недели, теплообменник раз в месяц-два, горелку периодически от спёкшегося шлака, дымоход раз в сезон. Частота сильно зависит от качества гранул: у пеллет из чистой древесины золы меньше процента, у дешёвых с корой до трёх, и чистить приходится втрое чаще.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли пеллетному котлу теплоаккумулятор?</span></summary>
+            <div class="answer">
+                <p>Не обязательно, в отличие от дровяного: пеллетный модулирует мощность и работает по запросу, избытка тепла не возникает. Но буфер на 200–500 литров снижает тактование в межсезонье и число розжигов, а розжиг — самый изнашиваемый узел. При тёплом поле с зонами бак нужен: закрывшиеся зоны оставляют котёл без потребителя.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=peletnyy-kotel#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/davlenie-v-sisteme-gvs/">давление в системе гвс и расширительный бак</a> · <a href="/truba-pnd-vvod-vody/">труба пнд: ввод воды в дом</a> · <a href="/filtry-dlya-vody-v-dome/">фильтры для воды: какие ставить на вводе</a> · <a href="/teplovoy-nasos-dlya-doma/">тепловой насос: работает ли в наши морозы</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=peletnyy-kotel">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

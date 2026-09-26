@@ -907,10 +907,10 @@
    "freq": 4100,
    "audience": "pro",
    "data_block": "расчёт бака",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-13",
    "published_at": null,
-   "words": 0
+   "words": 597
   },
   {
    "slug": "balansirovochnyy-klapan",
@@ -949,10 +949,10 @@
    "freq": 7800,
    "audience": "owner",
    "data_block": "цена кВт·ч",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-02-20",
    "published_at": null,
-   "words": 0
+   "words": 610
   },
   {
    "slug": "drenazh-i-livnevka",
