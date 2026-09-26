@@ -205,7 +205,8 @@ const RecognizeGeo = {
             if (a && b) opts.push(a + b - 1);
         }
         if (!opts.length) return null;
-        const m = Math.min(...opts) * mmPx / 1000;
+        // lenK — поправка масштаба по экспликации (RecognizeProject.geoMap).
+        const m = Math.min(...opts) * mmPx * (map.lenK || 1) / 1000;
         return m >= 0.4 && m <= 4.5 ? Math.round(m * 100) / 100 : null;
     },
 

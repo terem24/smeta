@@ -252,6 +252,21 @@ const RecognizeProject = {
         if (seeds.length >= 2) {
             try { map = RecognizeGeo.buildFromWalls(project.roomWalls[k], seeds); } catch (e) { console.warn('Карта помещений:', e); map = null; }
         }
+        // Масштаб в штампе («1:100») у выгруженного PDF бывает неверным: лист
+        // «Хвойной 3» выведен примерно в 1:79 — проём 1550 мм на листе
+        // выходил 1972 мм, окна в теплопотерях — на четверть шире. Сверяем
+        // по экспликации: площадь каждой комнаты на карте против площади в
+        // таблице; медиана отношений — поправка к длинам (корень из неё).
+        if (map) {
+            const ratios = [];
+            idx.forEach((i, n) => {
+                const a = scope[i].area, m = map.areas[n];
+                if (a > 1 && m > 1) ratios.push(a / m);
+            });
+            ratios.sort((a, b) => a - b);
+            const med = ratios.length >= 3 ? ratios[Math.floor(ratios.length / 2)] : 1;
+            map.lenK = med > 0.25 && med < 4 ? Math.sqrt(med) : 1;
+        }
         this._maps.set(key, { map, idx });
         return bind(this._maps.get(key));
     },
@@ -787,6 +802,20 @@ const RecognizeProject = {
             ws.labels.forEach(l => {
                 const r = l.wx !== undefined ? this.rowAt(map, l.wx, l.wy, 900) : null;
                 if (r) geo.push({ l, r, width: RecognizeGeo.gapWidth(map, l.wx, l.wy) });
+            });
+            // Два окна в одном проёме (мастер-санузел «Хвойной 3»: две створки
+            // в проёме 2,4 м) — ширина проёма на обоих. Концы выносок одной
+            // комнаты ближе друг к другу, чем ширина проёма, и ширина та же —
+            // это один проём, делим его поровну.
+            const pctToM = d => d / 100 * map.w * map.mmPx * (map.lenK || 1) / 1000;
+            const seen = new Set();
+            geo.forEach(g => {
+                if (seen.has(g) || !g.width) return;
+                const same = geo.filter(o => o.r === g.r && o.width && Math.abs(o.width - g.width) < 0.06 &&
+                    pctToM(Math.hypot(o.l.wx - g.l.wx, (o.l.wy - g.l.wy) * map.h / map.w)) < g.width);
+                if (same.length < 2) return;
+                const w = Math.round(g.width / same.length * 100) / 100;
+                same.forEach(o => { o.width = w; seen.add(o); });
             });
         }
         const geoParsed = extra => {

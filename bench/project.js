@@ -162,6 +162,12 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         }
     }
 
+    // Ширины окон по проёмам (winSpec) — стекло в теплопотерях.
+    rows.filter(r => r.eng && r.eng.winSpec).forEach(r => {
+        console.log(`  окна ${r.name}: ` + r.eng.winSpec.map(s => `${s.width === null ? '?' : s.width}×${s.h}`).join(', ') +
+            ` = ${fmt(r.eng.winSpec.reduce((a, s) => a + (s.width || 1.5) * s.h, 0))} м²`);
+    });
+
     // Какие окна получили приборы (так они уйдут в расчёт: fitWindows + fitRoom).
     rows.filter(r => r.eng && r.eng.heaters).forEach(r => {
         const room = { id: 1000, area: r.area, windows: [] };
@@ -188,6 +194,12 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         if ('ufh' in e) {
             if (e.ufh === true) check(r.name, 'тёплый пол', 'зона без подписи', g.ufh ? 'зона без подписи' : 'нет');
             else check(r.name, 'тёплый пол, м²', e.ufh || 0, g.ufh ? (g.ufhArea || 0) : 0);
+        }
+        if ('glass' in e) {
+            // Стекло окон (ширина по проёму × высота с обмера): ±5 %.
+            const gl = (g.winSpec || []).reduce((a, s) => a + (s.width || 1.5) * s.h, 0);
+            all++;
+            if (Math.abs(gl - e.glass) <= e.glass * 0.05) ok++; else bad.push(`${r.name}: стекло — эталон ${e.glass}, стенд ${fmt(gl)}`);
         }
         if ('heaters' in e) check(r.name, 'приборов', e.heaters, g.heaters || 0);
         if (e.heaters && e.heaterType) check(r.name, 'тип прибора', e.heaterType, g.heaterType || '—');
