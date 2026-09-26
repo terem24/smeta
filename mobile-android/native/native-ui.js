@@ -375,6 +375,15 @@
         }
     }
 
+    // Файл, который сохранила родная часть (печать PDF), показываем той же
+    // плашкой «Сохранено в Загрузки», что и обычные выгрузки: человеку всё равно,
+    // кто собрал файл, ему нужны «Открыть» и «Поделиться».
+    window.hcNativeShowSaved = function (res) {
+        if (!res || !res.uri) return;
+        last = { uri: res.uri, mime: res.mime || 'application/pdf', name: res.name, data: res.data || null };
+        showSaved(res);
+    };
+
     // Зовётся из MainActivity, когда браузер вернулся в уже открытое приложение.
     window.hcNativeUrlReady = takeNativeUrl;
 
