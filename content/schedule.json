@@ -1803,10 +1803,10 @@
    "freq": 2000,
    "audience": "owner",
    "data_block": "полный расчёт 150 м²",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-06",
    "published_at": null,
-   "words": 0
+   "words": 1016
   },
   {
    "slug": "letniy-vodoprovod",
@@ -1817,10 +1817,10 @@
    "freq": 3400,
    "audience": "owner",
    "data_block": "расценки",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-08",
    "published_at": null,
-   "words": 0
+   "words": 825
   },
   {
    "slug": "skolko-goryachey-vody-nuzhno",
@@ -1831,10 +1831,10 @@
    "freq": 1900,
    "audience": "owner",
    "data_block": "наш расчёт ГВС",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-10",
    "published_at": null,
-   "words": 0
+   "words": 869
   },
   {
    "slug": "dva-nasosa-v-sisteme",

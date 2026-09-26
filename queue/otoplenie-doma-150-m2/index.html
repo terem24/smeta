@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Отопление дома 150 кв м: полный расчёт и цена работ | HeatCalc.ru</title>
+    <meta name="description" content="Полный расчёт отопления дома 150 м²: теплопотери, мощность котла с учётом бойлера, объём системы и расширительный бак, состав по разделам, цена работ по позициям, расход топлива за сезон.">
+    <link rel="canonical" href="https://heatcalc.ru/otoplenie-doma-150-m2/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/otoplenie-doma-150-m2/">
+    <meta property="og:title" content="Отопление дома 150 м²: состав и смета">
+    <meta property="og:description" content="Мощность котла здесь задаёт бойлер, а не дом. И появляется гидрострелка.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/otoplenie-doma-150-m2/#webpage",
+      "url": "https://heatcalc.ru/otoplenie-doma-150-m2/",
+      "name": "Отопление дома 150 м²: состав и смета",
+      "description": "Полный расчёт отопления дома 150 м²: теплопотери, мощность котла с учётом бойлера, объём системы и расширительный бак, состав по разделам, цена работ по позициям, расход топлива за сезон.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "отопление дома 150 кв м"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Отопление дома 150 м²: состав и смета",
+          "item": "https://heatcalc.ru/otoplenie-doma-150-m2/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Сколько стоит отопление дома 150 м²?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Около 325 000 ₽ работ при лучевой разводке и 277 000 ₽ при тройниковой: котёл с бойлером и дымоходом 62 300 ₽, обвязка котельной с гидрострелкой и тремя насосными группами 70 500 ₽, двенадцать радиаторов 78 000 ₽, тёплый пол 80 м² с утеплителем и коллекторами 104 200 ₽, две опрессовки 10 000 ₽. Материалы считаются отдельно — обычно 350–500 тысяч."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой мощности котёл нужен на дом 150 м²?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "11,6 кВт, и это число задаёт бойлер, а не дом. По отоплению нужно 11,5 кВт (теплопотери 10 кВт с запасом 1,15), по нагреву бака на 200 литров — 11,6 кВт (0,0582 кВт на литр). Берётся большее из двух, а не сумма: приоритет ГВС останавливает отопление на время загрузки бака. Бак на 300 литров потребовал бы уже 17,5 кВт."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужна ли гидрострелка в доме 150 м²?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, в типовой конфигурации: контуров три — радиаторы, тёплый пол и загрузка бойлера, и у каждого свой насос со своим расходом. Совмещённый узел, то есть коллектор со встроенным разделителем, существует до трёх контуров и здесь ещё подходит. Четвёртый контур перевёл бы схему в модульную: отдельный коллектор плюс отдельная гидрострелка."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужен ли внешний расширительный бак на дом 150 м²?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да. Объём системы здесь около 112 литров (котёл, 180 метров радиаторной трубы, 587 метров трубы пола, коллекторы, плюс 15 % на арматуру), требуемый объём бака — 12 % от этого, то есть 13,4 литра. Встроенного в котёл бака на 6–8 литров уже не хватает. На незамерзающем теплоносителе бак берут ещё на 10 % больше."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько трубы нужно на тёплый пол в 80 м²?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "587 метров при шаге укладки 150 мм: площадь разделить на шаг в метрах и умножить на 1,1 — запас на развороты и подводку к коллектору. Делённый на предельную длину петли 87 метров, этот метраж даёт семь петель, то есть коллектор на 7–8 выходов. Предел петли задаёт гидравлика: скорость не выше 0,5 м/с и потери не больше 20 кПа."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько газа уходит на дом 150 м² за сезон?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "2 848 кубометров: дому нужно 24 400 кВт·ч тепла, при теплоте сгорания 9,31 кВт·ч/м³ по ГОСТ 5542-2014 и КПД котла 92 %. По тарифу Ленинградской области это около 26 500 ₽. Тот же дом на электричестве обойдётся в 139 000 ₽, на ночном тарифе — 83 000 ₽, с тепловым насосом — около 40 000 ₽."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/otoplenie-doma-150-m2/#article",
+      "headline": "Отопление дома 150 м²: состав и смета",
+      "description": "Полный расчёт отопления дома 150 м²: теплопотери, мощность котла с учётом бойлера, объём системы и расширительный бак, состав по разделам, цена работ по позициям, расход топлива за сезон.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/otoplenie-doma-150-m2/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-07-06",
+      "dateModified": "2027-07-06",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 1016,
+      "citation": [
+        {
+          "@type": "CreativeWork",
+          "name": "ГОСТ 5542-2014"
+        },
+        {
+          "@type": "CreativeWork",
+          "name": "СП 131.13330.2020"
+        }
+      ]
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Отопление дома 150 м²: состав и смета</nav>
+
+        <h1>Отопление дома 150 м²: состав и смета</h1>
+
+        <p class="art-meta"><time datetime="2027-07-06">6 июля 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Сколько стоит отопление дома 150 м²?</p>
+            <p>Около 325 000 ₽ работ при лучевой разводке и 277 000 ₽ при тройниковой: котёл с бойлером и дымоходом 62 300 ₽, обвязка котельной с гидрострелкой и тремя насосными группами 70 500 ₽, двенадцать радиаторов 78 000 ₽, тёплый пол 80 м² с утеплителем и коллекторами 104 200 ₽, опрессовки 10 000 ₽. Материалы считаются отдельно — обычно 350–500 тысяч. Теплопотери такого дома в Петербурге около 10 кВт, но мощность котла задаёт бойлер: 11,6 кВт.</p>
+        </div>
+
+        <p class="lead">Сто пятьдесят квадратов — та площадь, где система перестаёт быть простой: появляются два этажа, бойлер, три контура и гидрострелка. Разбираем полный расчёт по разделам с ценами и показываем два места, где эта конфигурация принципиально отличается от стометрового дома.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#ishodnye-dannye">Исходные данные</a></li>
+            <li><a href="#moschnost-kotla-zadaet-boyler">Мощность котла задаёт бойлер</a></li>
+            <li><a href="#obem-sistemy-i-rasshiritelnyy-bak">Объём системы и расширительный бак</a></li>
+            <li><a href="#tri-kontura-i-gidrostrelka">Три контура и гидрострелка</a></li>
+            <li><a href="#raboty-po-razdelam">Работы по разделам</a></li>
+            <li><a href="#rashod-za-sezon">Расход за сезон</a></li>
+            <li><a href="#chto-otlichaet-etu-ploschad">Что отличает эту площадь</a></li>
+            <li><a href="#chto-mozhno-otlozhit-a-chto-nelzya">Что можно отложить, а что нельзя</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="ishodnye-dannye">Исходные данные</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Параметр</th><th>Значение</th></tr>
+                <tr><td>Площадь</td><td>150 м², два этажа по 75 м²</td></tr>
+                <tr><td>Город</td><td>Санкт-Петербург, расчётная −24 °C</td></tr>
+                <tr><td>Стены</td><td>газобетон D500 300 мм + минвата 50 мм</td></tr>
+                <tr><td>Кровля</td><td>минвата 200 мм</td></tr>
+                <tr><td>Пол</td><td>по грунту, XPS 100 мм</td></tr>
+                <tr><td>Остекление</td><td>двухкамерный стеклопакет</td></tr>
+                <tr><td>Тёплый пол</td><td>весь первый этаж, 80 м² укладки</td></tr>
+                <tr><td>Радиаторы</td><td>12 приборов, преимущественно второй этаж</td></tr>
+                <tr><td>Горячая вода</td><td>бойлер косвенного нагрева 200 л</td></tr>
+            </table>
+        </div>
+        <p class="note">Типовая конфигурация для семьи из четырёх человек. Свои значения имеет смысл подставить в расчёт: замена окон или переход на каркас меняют теплопотери в разы.</p>
+
+        <h2 id="moschnost-kotla-zadaet-boyler">Мощность котла задаёт бойлер</h2>
+
+        <div class="formula">
+            <p>Теплопотери дома: <strong>10,0 кВт</strong></p>
+            <p>Условие по отоплению: 10,0 × 1,15 = <strong>11,5 кВт</strong></p>
+            <p>Условие по ГВС: 200 л × 0,0582 = <strong>11,6 кВт</strong></p>
+            <p>Берём <strong>большее</strong>: 11,6 кВт → типоразмер 12–13 кВт</p>
+        </div>
+
+        <div class="callout">
+            <p><strong>Первое отличие от стометрового дома.</strong> Там мощность определялась только отоплением. Здесь два условия сравнялись, и дальше решает бойлер: бак на 300 литров потребовал бы 17,5 кВт, то есть котёл на полтора типоразмера крупнее — и причина была бы не в доме, а в объёме горячей воды. Берётся при этом большее из двух чисел, а не их сумма: приоритет ГВС останавливает отопление на время загрузки бака, и за двадцать-тридцать минут дом не остывает.</p>
+        </div>
+
+        <h2 id="obem-sistemy-i-rasshiritelnyy-bak">Объём системы и расширительный бак</h2>
+
+        <div class="formula">
+            <p><strong>V</strong> = (котёл 6 л + радиаторная труба 180 м × 0,11 + труба пола 587 м × 0,113 + коллекторы 5 л) × 1,15</p>
+            <p>(6 + 19,8 + 66,3 + 5) × 1,15 = <strong>112 литров</strong></p>
+            <p><strong>Бак</strong> = 112 × 0,12 = <strong>13,4 литра</strong></p>
+        </div>
+
+        <p>Второе отличие. В доме 100 м² объём системы был 34 литра, и встроенного в котёл бака на 6–8 литров хватало. Здесь нужно 13,4 литра, и внешний расширительный бак становится обязательной позицией. На незамерзающем теплоносителе его берут ещё на 10 % больше.</p>
+
+        <p>Метраж трубы тёплого пола здесь тоже стоит пояснить: 80 м² укладки при шаге 150 мм — это 587 метров трубы (площадь ÷ шаг × запас 1,1). Делённый на предельную длину петли 87 метров, он даёт семь петель, то есть коллектор на 7–8 выходов. На два коллектора систему делят при большем метраже или при разных зонах.</p>
+
+        <h2 id="tri-kontura-i-gidrostrelka">Три контура и гидрострелка</h2>
+
+        <p>Контуром считается каждая пара патрубков на коллекторе котельной: радиаторы, тёплый пол и загрузка бойлера. Три контура со своими насосами — и гидроразделение становится обязательным.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Контур</th><th>Мощность</th><th>Перепад</th><th>Расход</th></tr>
+                <tr><td>Радиаторы 80/60</td><td class="num">6,0 кВт</td><td class="num">20 К</td><td class="num">0,26 м³/ч</td></tr>
+                <tr><td>Тёплый пол, первичная сторона</td><td class="num">6,4 кВт</td><td class="num">45 К</td><td class="num">0,12 м³/ч</td></tr>
+                <tr><td>Загрузка бойлера</td><td class="num">11,6 кВт</td><td class="num">20 К</td><td class="num">0,50 м³/ч</td></tr>
+            </table>
+        </div>
+        <p class="note">Сумма 0,88 м³/ч при паспортном пределе гидрострелки 3,0 м³/ч — запас большой. Расход тёплого пола считается по первичной стороне узла подмеса, а не по петлям: через стрелку идёт только горячая подмешиваемая доля.</p>
+
+        <p>Совмещённый узел — коллектор со встроенным разделителем — существует до трёх контуров, так что здесь он ещё подходит. Четвёртый контур, например снеготаяние или второй коллектор пола, перевёл бы схему в модульную: отдельный коллектор плюс отдельная гидрострелка.</p>
+
+        <h2 id="raboty-po-razdelam">Работы по разделам</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Раздел 1.1 — котёл и бойлер</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr>
+                <tr><td>Монтаж газового котла</td><td class="num">1</td><td class="num">20 000 ₽</td><td class="num">20 000 ₽</td></tr>
+                <tr><td>Коаксиальный дымоход</td><td class="num">1</td><td class="num">10 000 ₽</td><td class="num">10 000 ₽</td></tr>
+                <tr><td>Отверстие под дымоход</td><td class="num">1</td><td class="num">6 000 ₽</td><td class="num">6 000 ₽</td></tr>
+                <tr><td>Стабилизатор напряжения</td><td class="num">1</td><td class="num">1 500 ₽</td><td class="num">1 500 ₽</td></tr>
+                <tr><td>Монтаж водонагревателя</td><td class="num">1</td><td class="num">9 000 ₽</td><td class="num">9 000 ₽</td></tr>
+                <tr><td>Подключение бойлера, гидравлика</td><td class="num">компл</td><td class="num">12 000 ₽</td><td class="num">12 000 ₽</td></tr>
+                <tr><td>Запорная арматура и американки бойлера</td><td class="num">4</td><td class="num">950 ₽</td><td class="num">3 800 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Итого 62 300 ₽. При раздельном дымоходе через кровлю вместо коаксиала первые три строки заменяются одной — 25 000 ₽, и раздел вырастает до 71 300 ₽.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Раздел 1.2 — обвязка котельной</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr>
+                <tr><td>Монтаж коллектора и гидрострелки</td><td class="num">1</td><td class="num">12 000 ₽</td><td class="num">12 000 ₽</td></tr>
+                <tr><td>Монтаж насосной группы</td><td class="num">3</td><td class="num">6 500 ₽</td><td class="num">19 500 ₽</td></tr>
+                <tr><td>Сборка и установка узла подмеса</td><td class="num">1</td><td class="num">6 000 ₽</td><td class="num">6 000 ₽</td></tr>
+                <tr><td>Гидравлика: баки, предохранительные клапаны</td><td class="num">компл</td><td class="num">9 000 ₽</td><td class="num">9 000 ₽</td></tr>
+                <tr><td>Гидравлика: от котла до коллектора тёплого пола</td><td class="num">компл</td><td class="num">15 000 ₽</td><td class="num">15 000 ₽</td></tr>
+                <tr><td>Гидравлика: магистрали радиаторов</td><td class="num">компл</td><td class="num">9 000 ₽</td><td class="num">9 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Итого 70 500 ₽. Три насосные группы — по числу контуров: радиаторы, тёплый пол, загрузка бойлера.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Разделы 1.3 и 1.4 — приборы и пол</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr>
+                <tr><td>Радиаторы, лучевая разводка</td><td class="num">12</td><td class="num">6 500 ₽</td><td class="num">78 000 ₽</td></tr>
+                <tr><td>Тёплый пол: труба</td><td class="num">80 м²</td><td class="num">750 ₽</td><td class="num">60 000 ₽</td></tr>
+                <tr><td>Тёплый пол: утеплитель</td><td class="num">80 м²</td><td class="num">390 ₽</td><td class="num">31 200 ₽</td></tr>
+                <tr><td>Коллекторы тёплого пола</td><td class="num">2</td><td class="num">6 500 ₽</td><td class="num">13 000 ₽</td></tr>
+                <tr><td>Опрессовка котельной</td><td class="num">1</td><td class="num">5 000 ₽</td><td class="num">5 000 ₽</td></tr>
+                <tr><td>Опрессовка тёплого пола</td><td class="num">1</td><td class="num">5 000 ₽</td><td class="num">5 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Итого 192 200 ₽. Общая сумма по всем разделам — 325 000 ₽ при лучевой разводке. При тройниковой радиаторы считаются по 2 500 ₽ за точку, и сумма падает до 277 000 ₽.</p>
+
+        <h2 id="rashod-za-sezon">Расход за сезон</h2>
+
+        <div class="formula">
+            <p>Тепла за сезон: <strong>24 400 кВт·ч</strong></p>
+            <p>Газа: 24 400 ÷ (9,31 кВт·ч/м³ × КПД 0,92) = <strong>2 848 м³</strong></p>
+            <p>По тарифу Ленинградской области: около <strong>26 500 ₽</strong></p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Топливо</th><th>Расход за сезон</th><th>Стоимость</th></tr>
+                <tr><td>Магистральный газ</td><td>2 848 м³</td><td class="num">26 500 ₽</td></tr>
+                <tr><td>Электричество, тариф дома с электроотоплением</td><td>24 400 кВт·ч</td><td class="num">139 000 ₽</td></tr>
+                <tr><td>Электричество, ночная ставка</td><td>24 400 кВт·ч</td><td class="num">83 000 ₽</td></tr>
+                <tr><td>Сжиженный газ</td><td>3 843 л</td><td class="num">по цене поставщика</td></tr>
+                <tr><td>Пеллеты</td><td>5,8 т</td><td class="num">по цене поставщика</td></tr>
+                <tr><td>Дрова, влажность 20 %</td><td>8,3 т</td><td class="num">по цене поставщика</td></tr>
+                <tr><td>Тепловой насос, COP 3,5</td><td>7 000 кВт·ч</td><td class="num">40 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Расчёт по СП 131.13330.2020: для Петербурга 211 суток отопительного периода при средней −1,2 °C. Теплота сгорания газа 9,31 кВт·ч/м³ по ГОСТ 5542-2014.</p>
+
+        <h2 id="chto-otlichaet-etu-ploschad">Что отличает эту площадь</h2>
+
+        <ol>
+            <li><strong>Мощность котла определяется бойлером,</strong> а не отоплением. Решение об объёме бака принимают вместе с выбором котла, а не после.</li>
+            <li><strong>Внешний расширительный бак обязателен</strong> — встроенного в котёл уже не хватает при объёме системы 112 литров.</li>
+            <li><strong>Появляется гидрострелка.</strong> Три контура со своими насосами требуют гидроразделения, и это ещё 12 000 ₽ работ плюс узел.</li>
+            <li><strong>Два этажа — два коллектора отопления.</strong> Тянуть лучи со второго этажа к гребёнке первого значит добавить десятки метров трубы и лишнее сопротивление.</li>
+            <li><strong>Тёплый пол на весь первый этаж</strong> делает обвязку выгодной: узел подмеса один и на 80 квадратов, и на 11, но в первом случае он размазывается по большей площади.</li>
+            <li><strong>Автоматика начинает окупаться.</strong> Погодозависимость с уличным датчиком за 1 390 ₽ и комнатный термостат по цифровой шине за 3 500 ₽ работ — на этой мощности эффект уже заметен.</li>
+        </ol>
+
+        <h2 id="chto-mozhno-otlozhit-a-chto-nelzya">Что можно отложить, а что нельзя</h2>
+
+        <ul>
+            <li><strong>Нельзя откладывать рециркуляцию ГВС</strong> — это третья труба по всей разводке, после отделки её не проложить.</li>
+            <li><strong>Нельзя откладывать закладные</strong> под приборы, полотенцесушитель и инсталляции.</li>
+            <li><strong>Нельзя откладывать место</strong> под водоподготовку, гильзы в проходах и слив из котельной в канализацию.</li>
+            <li><strong>Можно отложить умные термоголовки</strong> — механические за 585 ₽ дают тот же эффект по теплу, а расписание добавляется заменой головки.</li>
+            <li><strong>Можно отложить зональную автоматику</strong> тёплого пола, если заранее заложены сервоприводные посадочные места на коллекторе.</li>
+            <li><strong>Можно отложить снеготаяние,</strong> но выход под него на коллекторе стоит предусмотреть: четвёртый контур переведёт схему в модульную, и лучше знать об этом заранее.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать свой дом 150 м²
+            <small>Расчёт по своим стенам, окнам и городу</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько стоит отопление дома 150 м²?</span></summary>
+            <div class="answer">
+                <p>Около 325 000 ₽ работ при лучевой разводке и 277 000 ₽ при тройниковой: котёл с бойлером и дымоходом 62 300 ₽, обвязка котельной с гидрострелкой и тремя насосными группами 70 500 ₽, двенадцать радиаторов 78 000 ₽, тёплый пол 80 м² с утеплителем и коллекторами 104 200 ₽, две опрессовки 10 000 ₽. Материалы считаются отдельно — обычно 350–500 тысяч.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой мощности котёл нужен на дом 150 м²?</span></summary>
+            <div class="answer">
+                <p>11,6 кВт, и это число задаёт бойлер, а не дом. По отоплению нужно 11,5 кВт (теплопотери 10 кВт с запасом 1,15), по нагреву бака на 200 литров — 11,6 кВт (0,0582 кВт на литр). Берётся большее из двух, а не сумма: приоритет ГВС останавливает отопление на время загрузки бака. Бак на 300 литров потребовал бы уже 17,5 кВт.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужна ли гидрострелка в доме 150 м²?</span></summary>
+            <div class="answer">
+                <p>Да, в типовой конфигурации: контуров три — радиаторы, тёплый пол и загрузка бойлера, и у каждого свой насос со своим расходом. Совмещённый узел, то есть коллектор со встроенным разделителем, существует до трёх контуров и здесь ещё подходит. Четвёртый контур перевёл бы схему в модульную: отдельный коллектор плюс отдельная гидрострелка.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли внешний расширительный бак на дом 150 м²?</span></summary>
+            <div class="answer">
+                <p>Да. Объём системы здесь около 112 литров (котёл, 180 метров радиаторной трубы, 587 метров трубы пола, коллекторы, плюс 15 % на арматуру), требуемый объём бака — 12 % от этого, то есть 13,4 литра. Встроенного в котёл бака на 6–8 литров уже не хватает. На незамерзающем теплоносителе бак берут ещё на 10 % больше.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько трубы нужно на тёплый пол в 80 м²?</span></summary>
+            <div class="answer">
+                <p>587 метров при шаге укладки 150 мм: площадь разделить на шаг в метрах и умножить на 1,1 — запас на развороты и подводку к коллектору. Делённый на предельную длину петли 87 метров, этот метраж даёт семь петель, то есть коллектор на 7–8 выходов. Предел петли задаёт гидравлика: скорость не выше 0,5 м/с и потери не больше 20 кПа.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько газа уходит на дом 150 м² за сезон?</span></summary>
+            <div class="answer">
+                <p>2 848 кубометров: дому нужно 24 400 кВт·ч тепла, при теплоте сгорания 9,31 кВт·ч/м³ по ГОСТ 5542-2014 и КПД котла 92 %. По тарифу Ленинградской области это около 26 500 ₽. Тот же дом на электричестве обойдётся в 139 000 ₽, на ночном тарифе — 83 000 ₽, с тепловым насосом — около 40 000 ₽.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=otoplenie-doma-150-m2#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/fitingi-press-ili-aksialnye/">фитинги: пресс или аксиальные</a> · <a href="/oshibki-pri-zakaze-inzhenerki/">пять ошибок при заказе инженерки</a> · <a href="/otoplenie-doma-100-m2/">отопление дома 100 м²: состав и смета</a> · <a href="/shema-otopleniya-chastnogo-doma/">схема отопления частного дома: какие бывают</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=otoplenie-doma-150-m2">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
