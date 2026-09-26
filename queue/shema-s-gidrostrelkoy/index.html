@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=6">
+    <link rel="stylesheet" href="/seo.css?v=7">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -150,7 +150,10 @@
         "@type": "Organization",
         "name": "HeatCalc.ru",
         "url": "https://heatcalc.ru/"
-      }
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 874,
+      "citation": []
     }
   ]
 }
@@ -180,6 +183,11 @@
         <h1>Схема с гидрострелкой и коллектором</h1>
 
         <p class="art-meta"><time datetime="2027-03-11">11 марта 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Зачем нужна гидрострелка и на какой расход её проверять?</p>
+            <p>Она нужна, чтобы насос котла и насосы контуров не мешали друг другу: в разделителе скорость воды падает почти до нуля, и контуры обмениваются теплом, но не давлением. Появляется она, когда контуров два и больше. Предел типового узла — 3,0 м³/ч, и его проверяют суммой вторичных контуров: радиаторы G = Q / (1,163 × ΔT), тёплый пол — по первичной стороне узла подмеса, а не по расходу петель.</p>
+        </div>
 
         <p class="lead">Гидрострелку ставят «чтобы развязать контуры», и на этом обычно заканчивают. Между тем у неё есть паспортный расход, который легко превысить одним радиаторным контуром. Разбираем схему, формулу проверки и состав узла.</p>
 

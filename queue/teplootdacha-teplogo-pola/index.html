@@ -14,7 +14,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=6">
+    <link rel="stylesheet" href="/seo.css?v=7">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -150,7 +150,15 @@
         "@type": "Organization",
         "name": "HeatCalc.ru",
         "url": "https://heatcalc.ru/"
-      }
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 625,
+      "citation": [
+        {
+          "@type": "CreativeWork",
+          "name": "СП 60.13330.2020"
+        }
+      ]
     }
   ]
 }
@@ -180,6 +188,11 @@
         <h1>Теплоотдача тёплого пола: откуда берутся ватты с квадрата</h1>
 
         <p class="art-meta"><time datetime="2027-09-30">30 сентября 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Сколько ватт с квадратного метра даёт тёплый пол?</p>
+            <p>В жилой комнате около 41 Вт/м², на кухне 64, в санузле и коридоре до 102 при шаге 100 мм, в ванной 56–64. Считается по EN 1264-2: q = 8,92 × (температура поверхности − температура воздуха)^1,1, то есть 8,92 × (26 − 22)^1,1 = 41 Вт/м² для жилой комнаты. Ограничение здесь не в трубе, а в норме: по СП 60.13330.2020 пол не теплее 26 °C при постоянном пребывании людей и 31 °C при временном.</p>
+        </div>
 
         <p class="lead">В рекламе тёплого пола называют 70–90 ватт с квадратного метра. Цифры честные, но относятся к трубе, а не к полу: в жилой комнате пол физически не отдаст больше 41 ватта. Разбираем, откуда берётся и то, и другое число, и по какой формуле считается теплоотдача.</p>
 
