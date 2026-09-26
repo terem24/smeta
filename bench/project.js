@@ -162,6 +162,14 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
         }
     }
 
+    // Какие окна получили приборы (так они уйдут в расчёт: fitWindows + fitRoom).
+    rows.filter(r => r.eng && r.eng.heaters).forEach(r => {
+        const room = { id: 1000, area: r.area, windows: [] };
+        P.fitWindows(room, r);
+        P.fitRoom(room, r);
+        console.log(`  ${r.name}: ` + room.windows.map(w => w.noHeater ? '·' : (w.isPan ? (w.radInPier ? 'Р(в пол, простенок)' : 'К(конвектор)') : 'Р')).join(' '));
+    });
+
     // Сверка с эталоном.
     let ok = 0, all = 0;
     const bad = [];

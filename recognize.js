@@ -1781,19 +1781,57 @@ const RecognizeUI = {
             const done = this._itemsSoFar || 0;
             // Ручной ввод строки в смету — поиск в прайсе, артикул, цена,
             // количество. Сорок секунд на позицию: оценка по нижней границе.
-            let saved = done ? Math.round(done * 40 / 60) : 0;
+            const saved = done ? Math.round(done * 40 / 60) : 0;
             // Комплект листов проекта: руками — это не 40 с на помещение, а
-            // разбор всех листов, окон, приборов, сантехники и примечаний.
-            if (this._project && typeof RecognizeProject !== 'undefined') {
-                try { saved = RecognizeProject.manualEstimate(this._project, null, 0).min; } catch (e) { /* как было */ }
+            // разбор всех листов, окон, приборов, сантехники и примечаний
+            // плюс сама смета. Итог — плашкой, «из чего» — строками по очереди
+            // (tickSaving), пока идёт ожидание: ценность видна, пока ждёшь.
+            // Плашка уже на месте — меняем только подсказку, иначе она
+            // «мигала» бы каждые пять секунд вместе со строкой.
+            if (this._savePlan && document.getElementById('rec_save_line')) {
+                const t = el.querySelector('.rec-tip');
+                if (t) t.innerHTML = tip;
+                this.tickSaving();
+                return;
             }
+            let plan = null;
+            if (this._project && typeof RecognizeProject !== 'undefined') {
+                try { plan = RecognizeProject.savingPlan(this._project, null, 0); } catch (e) { plan = null; }
+            }
+            this._savePlan = plan;
+            this._saveAt = -1;
             el.innerHTML = `<span class="rec-tip">${tip}</span>` +
                 `<span class="rec-tip-sec">${sec} с</span>` +
-                (saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}</span>` : '');
+                (plan && plan.total >= 5
+                    ? `<span class="rec-save-proj"><span class="rec-save-total">≈${RecognizeProject.roughTime(plan.total)} <small>работы руками</small></span>
+                         <span class="rec-save-line" id="rec_save_line"></span></span>`
+                    : (saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}</span>` : ''));
         } else {
             const s = el.querySelector('.rec-tip-sec');
             if (s) s.textContent = sec + ' с';
         }
+        this.tickSaving();
+    },
+
+    /**
+     * Строка «из чего» под итогом: шаги по очереди раз в три секунды, в
+     * конце — сложение «разбор + смета = итог». Новая строка въезжает
+     * анимацией (.rec-save-line), для этого элемент пересоздаётся.
+     */
+    tickSaving() {
+        const plan = this._savePlan;
+        const box = document.getElementById('rec_save_line');
+        if (!plan || !box) return;
+        const lines = plan.lines.concat([plan.totalLine]);
+        const i = Math.floor((Date.now() - this._t0) / 3000) % lines.length;
+        if (i === this._saveAt) return;
+        this._saveAt = i;
+        const last = i === lines.length - 1;
+        const next = document.createElement('span');
+        next.className = 'rec-save-line' + (last ? ' is-total' : '');
+        next.id = 'rec_save_line';
+        next.innerHTML = lines[i];
+        box.replaceWith(next);
     },
 
     progressTo(n) {

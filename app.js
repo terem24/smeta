@@ -57101,7 +57101,7 @@ const app = {
                 const wins = r.windows || [];
                 const heat = wins.filter(w => !w.noHeater);
                 heat.forEach(w => {
-                    if (w.isPan) nConv++;
+                    if (w.isPan && !w.radInPier) nConv++;
                     else if (roomHasRad) nRad++;
                 });
                 // Все окна без прибора — один прибор на помещение (как в render).
@@ -58021,6 +58021,10 @@ const app = {
                                 <input type="checkbox" ${w.isPan ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'isPan', this.checked)" style="margin:0; width:12px; height:12px;">
                                 панорамное
                             </label>
+                            ${w.isPan && !w.noHeater ? `<label style="display:flex; align-items:center; gap:3px; cursor:pointer; color:var(--text-sec); white-space:nowrap;" title="Прибор у этого окна — радиатор в простенке, а не внутрипольный конвектор (так бывает в проекте между витражами)">
+                                <input type="checkbox" ${w.radInPier ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'radInPier', this.checked)" style="margin:0; width:12px; height:12px;">
+                                радиатор в простенке
+                            </label>` : ''}
                             <label style="display:flex; align-items:center; gap:3px; cursor:pointer; color:var(--text-sec); white-space:nowrap;" title="Под этим окном прибора нет (так в проекте): его теплопотери возьмут приборы под остальными окнами или тёплый пол">
                                 <input type="checkbox" ${w.noHeater ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'noHeater', this.checked)" style="margin:0; width:12px; height:12px;">
                                 без прибора
@@ -69687,7 +69691,10 @@ const app = {
                         }
                         roomDemandSum += wLoad; // накапливаем потребность по помещению
 
-                        if (w.isPan) {
+                        // radInPier — у окна в пол прибор в простенке, радиатором (так в
+                        // проекте: РД-1…РД-3 «Хвойной 3» между витражами кухни). Без
+                        // отметки окну в пол по-прежнему достаётся внутрипольный конвектор.
+                        if (w.isPan && !w.radInPier) {
                             let reqPower70 = wLoad / 0.65 / kTv;
                             let dbAll = this.state.convectorType === 'scn' ? catalog.convectors_scn : catalog.convectors_scq;
                             // Автоподбор всегда идёт по базовой складской ширине/высоте (240×80 SCN,

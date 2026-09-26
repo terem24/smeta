@@ -373,14 +373,19 @@ const RecognizeProject = {
      */
     geoHeat(sh, scope, map) {
         if (!map || !(sh.labels || []).length) return null;
-        const zones = new Map(), marks = new Map();
+        const zones = new Map(), marks = new Map(), pts = new Map();
         const lostZ = [], lostM = [];
         for (const l of sh.labels) {
             const r = this.rowAt(map, l.cx !== undefined ? l.cx : l.x, l.cy !== undefined ? l.cy : l.y, 600);
             if (!r || !scope.includes(r)) { (l.mark ? lostM : lostZ).push(l.s); continue; }
             if (l.mark) {
                 if (!marks.has(r)) marks.set(r, []);
-                if (!marks.get(r).includes(l.s)) marks.get(r).push(l.s);
+                if (!marks.get(r).includes(l.s)) {
+                    marks.get(r).push(l.s);
+                    // Где стоит прибор — чтобы отдать его ближайшему окну (fitRoom).
+                    if (!pts.has(r)) pts.set(r, []);
+                    pts.get(r).push({ x: l.cx !== undefined ? l.cx : l.x, y: l.cy !== undefined ? l.cy : l.y });
+                }
             } else {
                 const a = this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, ''));
                 if (a > 0) zones.set(r, (zones.get(r) || 0) + a);
@@ -428,6 +433,7 @@ const RecognizeProject = {
                 e.heaterType = mk.length ? (types[0] || e.heaterType || 'radiator') : null;
                 e.heaters = mk.length;
                 e.heaterMarks = mk;
+                e.heaterPts = pts.get(r) || null;
                 n += mk.length;
                 this.setSrc(r, 'heaters', 'pdf');
             });
@@ -484,6 +490,45 @@ const RecognizeProject = {
         const hits = String(text || '').match(/полотенцесушител\S*\s*(электр\S*|водян\S*)/gi) || [];
         if (!hits.length) return null;
         return { count: hits.length, type: hits.every(h => /водян/i.test(h)) ? 'water' : 'electric' };
+    },
+
+    /**
+     * Сколько позиций будет в смете — пока распознавание идёт, её ещё нет.
+     * Оценка по составу проекта: котельная и общие материалы (~80), плюс на
+     * помещение, прибор отопления, марку сантехники и зону тёплого пола.
+     * На «Хвойной 3» даёт ~240 при 243 в готовом КП № 415033-1.
+     */
+    billGuess(project) {
+        const p = project || {};
+        const rooms = (p.roomTables || []).reduce((a, t) => a + (t ? t.rows.length : 0), 0);
+        const heat = (p.eng || []).filter(e => e.kind === 'heat');
+        const marks = heat.reduce((a, e) => a + (e.labels || []).filter(l => l.mark).length, 0);
+        const zones = heat.reduce((a, e) => a + (e.labels || []).filter(l => !l.mark).length, 0);
+        const fx = (p.eng || []).filter(e => e.kind === 'water').reduce((a, e) => a + (e.fixtures ? e.fixtures.marks.length : 0), 0);
+        return Math.round((80 + rooms * 3 + marks * 6 + fx * 5 + zones * 2) / 10) * 10;
+    },
+
+    /** «≈4,5 ч» — итог крупно: полчаса точности здесь достаточно. */
+    roughTime(min) {
+        if (min < 90) return `${Math.round(min / 5) * 5} мин`;
+        const h = Math.round(min / 30) / 2;
+        return `${String(h).replace('.', ',')} ч`;
+    },
+
+    /**
+     * Что показывать про ручную работу: итог и строки «из чего» по очереди.
+     * bill — число позиций готовой сметы; не передано — оценка billGuess.
+     */
+    savingPlan(project, rows, bill) {
+        const guessed = !(bill > 0);
+        const n = guessed ? this.billGuess(project) : bill;
+        const est = this.manualEstimate(project, rows, 0);
+        const billMin = Math.round(n * this.MANUAL_SEC.bill / 60);
+        const lines = est.parts.map(x => `${x.label} — <b>${RecognizeUI.handTime(x.min)}</b>`);
+        lines.push(`смета по проекту: ${guessed ? '≈' : ''}${n} ${RecognizeUI.plural(n, 'позиция', 'позиции', 'позиций')} по 40 с — <b>${RecognizeUI.handTime(billMin)}</b>`);
+        const total = est.min + billMin;
+        return { total, parse: est.min, billMin, bill: n, guessed, lines,
+            totalLine: `разбор ${RecognizeUI.handTime(est.min)} + смета ${RecognizeUI.handTime(billMin)} = <b>≈${this.roughTime(total)} руками</b>` };
     },
 
     /** Итог спецификации тёплого пола из текста листа: «Водяной тёплый пол … 121,95». */
@@ -901,6 +946,7 @@ const RecognizeProject = {
                 used.add(l.n);
                 const width = this.num(w.width);
                 spec.push({ h: l.h, sill: l.sill === null ? null : l.sill, floor: l.floor || (l.sill !== null && l.sill <= 0.3 && l.h >= 2),
+                    wx: l.wx, wy: l.wy,
                     width: width > 300 ? Math.round(width) / 1000 : (width > 0.3 && width < 6 ? width : null) });
             });
             if (!spec.length) return;
@@ -1430,13 +1476,40 @@ const RecognizeProject = {
         // сперва обычные. Без приборов вовсе — все окна без прибора: греет
         // тёплый пол, или помещение не отапливается.
         const conv = e.heaterType === 'floor_convector';
-        const key = w => conv ? (w.isPan ? 0 : 1) : (w.isPan ? 1 : 0);
-        const order = room.windows.map((w, k) => ({ w, k }))
-            .sort((a, b) => (key(a.w) - key(b.w)) || (a.k - b.k));
-        order.forEach(({ w }, n) => {
-            const heated = n < (e.heaters || 0);
-            if (heated) { delete w.noHeater; if (conv) w.isPan = true; }
-            else w.noHeater = true;
+        // Места приборов и окон известны из чертежа — прибор отдаётся
+        // ближайшему окну. На кухне «Хвойной 3» радиаторы РД-1…РД-3 стоят в
+        // простенках между витражами, а под двумя обычными окнами приборов
+        // нет; счёт «сперва обычные окна» ставил радиаторы именно туда, а
+        // витражам — внутрипольные конвекторы, которых в проекте нет.
+        const spec = e.winSpec;
+        const byPlace = !!(e.heaterPts && e.heaterPts.length === (e.heaters || 0) && spec &&
+            spec.length === room.windows.length && spec.every(s => s.wx !== undefined));
+        let heatedIdx;
+        if (byPlace) {
+            heatedIdx = new Set();
+            e.heaterPts.forEach(p => {
+                let best = -1, bd = Infinity;
+                spec.forEach((s, k) => {
+                    if (heatedIdx.has(k)) return;
+                    const d = Math.hypot(s.wx - p.x, s.wy - p.y);
+                    if (d < bd) { bd = d; best = k; }
+                });
+                if (best >= 0) heatedIdx.add(best);
+            });
+        } else {
+            const key = w => conv ? (w.isPan ? 0 : 1) : (w.isPan ? 1 : 0);
+            const order = room.windows.map((w, k) => ({ w, k }))
+                .sort((a, b) => (key(a.w) - key(b.w)) || (a.k - b.k));
+            heatedIdx = new Set(order.slice(0, e.heaters || 0).map(o => o.k));
+        }
+        room.windows.forEach((w, k) => {
+            if (heatedIdx.has(k)) {
+                delete w.noHeater;
+                if (conv) { w.isPan = true; delete w.radInPier; }
+                // Радиатор у окна в пол — в простенке: калькулятор иначе
+                // поставил бы под витраж внутрипольный конвектор.
+                else if (w.isPan) w.radInPier = true;
+            } else w.noHeater = true;
         });
     },
 

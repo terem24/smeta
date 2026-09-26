@@ -601,15 +601,17 @@ const RecognizePlan = {
 
     /** Строка «руками было бы» для проекта: сколько и из чего. */
     manualRow(P) {
-        let est;
-        try { est = P.manualEstimate(RecognizeUI._project, this._rows, 0); } catch (e) { return ''; }
-        if (!est || est.min < 5) return '';
-        const took = RecognizeUI._elapsed ? Math.max(1, Math.round(RecognizeUI._elapsed / 60000)) : null;
+        let plan;
+        try { plan = P.savingPlan(RecognizeUI._project, this._rows, 0); } catch (e) { return ''; }
+        if (!plan || plan.total < 5) return '';
+        const secs = RecognizeUI._elapsed ? Math.max(1, Math.round(RecognizeUI._elapsed / 1000)) : null;
+        const took = secs === null ? '' : secs < 90 ? `${secs} с` : `${Math.round(secs / 60)} мин`;
         return `<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border,#e2e8f0);font-size:13px">⏱
-            <span>Руками разбор этого проекта — около <b>${RecognizeUI.handTime(est.min)}</b>${took ? `, здесь — ${took} мин` : ''}.
+            <span>Руками это <b style="color:#16a34a">≈${P.roughTime(plan.total)}</b>: разбор проекта ${RecognizeUI.handTime(plan.parse)} и смета
+              ${plan.guessed ? '≈' : ''}${plan.bill} позиций ${RecognizeUI.handTime(plan.billMin)}${took ? `. Здесь — <b>${took}</b>` : ''}.
               <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--text-sec,#64748b)">из чего</summary>
-                ${est.parts.map(x => `<div style="color:var(--text-sec,#64748b)">${this.esc(x.label)} — ${RecognizeUI.handTime(x.min)}</div>`).join('')}
-                <div style="color:var(--text-sec,#64748b)">Смета по проекту после переноса — ещё больше: её позиции калькулятор подберёт сам.</div>
+                ${plan.lines.map(x => `<div style="color:var(--text-sec,#64748b)">${x}</div>`).join('')}
+                <div style="color:var(--text-sec,#64748b)">Нормы — по нижней границе: 10 с на лист, 1–1,5 мин на помещение, окно, зону и прибор, 40 с на марку и на позицию сметы, 2 мин на блок примечаний.</div>
               </details></span></div>`;
     },
 
@@ -1269,9 +1271,10 @@ const RecognizePlan = {
         if (resN) parts.push(`Проживающих: ${resN} (по спальням)`);
         if (reqs) parts.push(`Требования из примечаний проекта: ${reqs} — плашкой в шапке сметы`);
         if (manual && manual.min >= 5) {
+            // Одной строкой: раскладку «из чего» монтажник уже видел, пока
+            // шло распознавание, и на экране проверки.
             parts.push('');
-            parts.push(`⏱ Руками это около ${RecognizeUI.handTime(manual.min)}:`);
-            manual.parts.forEach(x => parts.push(`  · ${x.label} — ${RecognizeUI.handTime(x.min)}`));
+            parts.push(`⏱ Руками это около ${RecognizeUI.handTime(manual.min)}`);
         }
         // Помещения проекта уже распознаны — «Распознать комнаты» в редакторе
         // планов только путало: подложка лежит там для листов проекта.
