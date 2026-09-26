@@ -2099,6 +2099,13 @@ const RecognizeUI = {
         const resetStr = reset.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', timeZone: 'Europe/Moscow' }) +
             ', 00:00 МСК — через ' + this.fmtLeft(reset.getTime() - Date.now());
         const perSheet = 'Один лист — один запрос; комплект листов проекта — от шести.';
+        // Суточный лимит Google — на ключ, то есть общий на всех, и его остаток
+        // никто не считает: о нём узнаём по отказу. Честно показать можно
+        // только момент обнуления — полночь по тихоокеанскому времени.
+        const gReset = new Date(this.nextGoogleReset());
+        const dayLine = 'Суточный лимит распознавания общий на всех пользователей, обнуляется в ' +
+            gReset.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' }) +
+            ' МСК — через ' + this.fmtLeft(gReset.getTime() - Date.now()) + '.';
         let text, cls = 'ok', tip;
         if (b) {
             text = '⏳ ' + this.fmtLeft(b.until - Date.now());
@@ -2107,19 +2114,19 @@ const RecognizeUI = {
         } else if (!q) {
             // Администратор либо сервер лимитов промолчал — ограничивать нечем.
             text = '🔍 ∞';
-            tip = 'Лимит распознаваний не ограничен.' +
+            tip = 'Месячный лимит распознаваний не ограничен.' +
                 (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
-                `\nСчётчик месяца обнуляется ${resetStr}.\n${perSheet}`;
+                `\nСчётчик месяца обнуляется ${resetStr}.\n${dayLine}\n${perSheet}`;
         } else if (!q.personal && q.tariff === 'admin') {
             text = `🔍 ${q.used} · ∞`;
-            tip = `Запросов в этом месяце: ${q.used}. Администратор — без ограничений.\nСчётчик обнуляется ${resetStr}.\n${perSheet}`;
+            tip = `Запросов в этом месяце: ${q.used}. Администратор — без месячного ограничения.\nСчётчик обнуляется ${resetStr}.\n${dayLine}\n${perSheet}`;
         } else {
             text = `🔍 ${q.left} из ${q.limit}`;
             cls = q.left <= 0 ? 'bad' : q.left <= 3 ? 'warn' : 'ok';
             const tariff = q.personal ? 'личный лимит' : q.tariff === 'pro' ? 'тариф «Профи»'
                 : q.tariff === 'base' ? 'тариф «Базовый»' : 'тариф';
             tip = `Распознаваний осталось: ${q.left} из ${q.limit} (${tariff}), потрачено ${q.used}.` +
-                `\nЛимит обнуляется ${resetStr}.\n${perSheet}` +
+                `\nЛимит обнуляется ${resetStr}.\n${dayLine}\n${perSheet}` +
                 (q.tariff === 'base' && !q.personal ? '\nБольше — на тарифе «Профи» или по запросу администратору.'
                     : '\nНужно больше — напишите администратору.');
         }
