@@ -1635,10 +1635,10 @@
    "freq": 4800,
    "audience": "owner",
    "data_block": "состав узла ввода",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-10",
    "published_at": null,
-   "words": 0
+   "words": 828
   },
   {
    "slug": "gvs-ot-teplovogo-nasosa",
@@ -1649,10 +1649,10 @@
    "freq": 2600,
    "audience": "owner",
    "data_block": "сравнение стоимости",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-12",
    "published_at": null,
-   "words": 0
+   "words": 817
   },
   {
    "slug": "chastotnyy-nasos-ili-obychnyy",
@@ -1663,10 +1663,10 @@
    "freq": 1600,
    "audience": "owner",
    "data_block": "расчёт потребления",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-15",
    "published_at": null,
-   "words": 0
+   "words": 804
   },
   {
    "slug": "povyshenie-tarifov-s-1-iyulya",
