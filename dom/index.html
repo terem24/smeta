@@ -25,11 +25,17 @@
   • Ответы собираются в том же виде, что у опросника (oprosnik.html): калькулятор
     открывает их через app.applyOprosData — монтажник по заявке сразу получает
     полную смету, а не просто телефон.
-  • Заявка «Заказать монтаж» уходит оператору сайта, он передаёт её монтажнику
-    региона. Согласие на передачу — отдельный документ soglasie-zayavka.html.
+  • Заявка «Заказать монтаж» уходит в тот же lead.php (Beget), что и форма страницы
+    /montazh-otopleniya-spb/: журнал + сообщение владельцу в Телеграм, вкладка
+    «Заявки» в админке. Владелец передаёт её монтажнику региона. Вместе с заявкой
+    идут ответы в формате опросника (поле calc) — в сообщении из них ссылка
+    heatcalc.ru/?opros=…, открывающая полную смету. Имени и телефона в этой ссылке
+    нет: адрес страницы оседает в журналах серверов, персональным данным там не место.
+    Согласие на передачу — отдельный документ soglasie-zayavka.html.
 
   Оформление — палитра и типографика опросника (primary #2563EB, Inter), без эмодзи.
 -->
+<script src="/cookie-consent.js" defer></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
@@ -216,6 +222,11 @@
             <form id="orderForm" novalidate>
                 <div class="field"><label for="f_name">Как к вам обращаться</label><input type="text" id="f_name" autocomplete="name" placeholder="Имя"></div>
                 <div class="field"><label for="f_phone">Телефон</label><input type="tel" id="f_phone" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="+7 (___) ___-__-__"></div>
+                <div class="field"><label for="f_place">Где дом</label><input type="text" id="f_place" autocomplete="address-level2" placeholder="Посёлок или район, например Всеволожск"></div>
+                <!-- Ловушка для ботов: человек поле не видит и не заполняет -->
+                <div style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;" aria-hidden="true">
+                    <label for="f_website">Не заполняйте это поле</label><input type="text" id="f_website" tabindex="-1" autocomplete="off">
+                </div>
                 <div class="field"><label for="f_comment">Комментарий <span class="opt-mark">· необязательно</span></label><textarea id="f_comment" placeholder="Например: когда удобно звонить, адрес посёлка, что уже куплено"></textarea></div>
                 <label class="consent"><input type="checkbox" id="f_consent"><span>Согласен на <a href="../soglasie-zayavka.html" target="_blank" rel="noopener">обработку и передачу моих данных</a> мастеру для связи по заявке</span></label>
                 <button type="submit" class="btn" id="orderBtn">Отправить заявку</button>
@@ -523,6 +534,7 @@
             $('orderHint').textContent = A.region === 'spb'
                 ? 'Оставьте телефон — мастер позвонит, уточнит детали дома и посчитает точную смету.'
                 : 'Оставьте телефон — сообщим, когда в вашем регионе появится мастер.';
+            if (A.region === 'other' && A.city && !$('f_place').value.trim()) $('f_place').value = A.city;
             pickPack(picked, true);
             $('orderOk').hidden = true; $('orderForm').hidden = false;
             show('result');
@@ -577,42 +589,105 @@
         return '';
     }
 
-    // Ответы в виде анкеты опросника + что выбрал заказчик и какую цену видел
-    function buildLead() {
+    var PACK_NAMES = { econom: 'Эконом', optimum: 'Оптимум', comfort: 'Комфорт' };
+
+    // Ответы в формате опросника — для ссылки heatcalc.ru/?opros=… (app.applyOprosData).
+    // Имени и телефона здесь нет: ссылка — это адрес страницы, он оседает в журналах.
+    function calcPayload() {
         var c = answersForCalc();
         var d = {
-            name: nameEl.value.trim(), phone: phoneEl.value.trim(),
-            city: A.city || (A.region === 'spb' ? 'Санкт-Петербург' : ''),
+            city: A.region === 'spb' ? 'Санкт-Петербург' : A.city,
             area: A.area, floors: c.floors,
             rad: c.heat !== 'tp', tp: c.heat !== 'rad',
             fuel: c.fuel, hw: !!c.hw, stage: A.stage,
-            comment: $('f_comment').value.trim(),
-            source: 'dom', region: A.region, pack: picked,
-            fuelUnknown: A.fuel === 'unknown' || undefined,
-            heatAdvice: A.heat === 'advice' || undefined
+            comment: 'Страница заказчика /dom/, вариант «' + PACK_NAMES[picked] + '»'
         };
-        var v = lastPrices && lastPrices[picked];
-        if (v) d.priceSeen = v.map(function (x) { return Math.round(x / 1000) * 1000; });
-        if (PRICES && PRICES.built) d.priceBuilt = PRICES.built;
-        Object.keys(d).forEach(function (k) { if (d[k] === '' || d[k] === undefined) delete d[k]; });
-        return d;
+        Object.keys(d).forEach(function (k) { if (d[k] === '' || d[k] == null) delete d[k]; });
+        return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
     }
 
-    // Отправка заявки в базу подключается следующим шагом (RPC для заявок без
-    // монтажника). Пока — честно говорим, что не отправилось.
-    function submitLead(d) {
-        return Promise.reject(new Error('lead submit not wired yet'));
+    // Сводка ответов строкой — в комментарий заявки, чтобы из Телеграма всё было видно сразу
+    function answersText() {
+        var c = answersForCalc();
+        var v = lastPrices && lastPrices[picked];
+        var L = [];
+        L.push('Вариант: ' + PACK_NAMES[picked] + (v ? ', ' + range(v[0] + v[2], v[1] + v[3]) +
+            ' (оборудование ' + range(v[0], v[1]) + ', монтаж ' + range(v[2], v[3]) + ')' : ''));
+        L.push('Дом: ' + A.area + ' м², ' + (c.floors === 2 ? '2 этажа' : '1 этаж') + ', ' +
+            (A.fuel === 'el' ? 'электричество' : (A.fuel === 'unknown' ? 'газ — пока не ясно' : 'газ')) + ', ' +
+            { rad: 'радиаторы', tp: 'тёплый пол', 'rad+tp': 'тёплый пол и радиаторы' }[c.heat] +
+            (A.heat === 'advice' ? ' (просил посоветовать)' : '') + ', ' +
+            (c.hw ? 'горячая вода от котла' : 'вода отдельно'));
+        L.push('Этап: ' + ({ none: 'ещё не начали', box: 'строят коробку', closed: 'дом закрыт' }[A.stage] || '—'));
+        if (A.region !== 'spb') L.push('Регион вне СПб и ЛО: ' + (A.city || 'не указан'));
+        return L.join('\n');
+    }
+
+    // Откуда пришёл человек — та же метка ?src=, что у формы /montazh-otopleniya-spb/;
+    // без метки — «dom», чтобы в журнале заявки этой страницы было видно отдельно
+    function leadSource() {
+        var KEY = 'hc_lead_src', stored = '';
+        try { stored = sessionStorage.getItem(KEY) || ''; } catch (e) { }
+        var m = /[?&]src=([\w-]{1,64})/.exec(location.search);
+        if (m) { try { sessionStorage.setItem(KEY, m[1]); } catch (e) { } return m[1]; }
+        return stored || 'dom';
+    }
+
+    // Тот же приёмник, что у страницы монтажа: журнал на Beget + Телеграм владельцу
+    var LEAD_URL = 'https://proxy.heatcalc.ru/lead.php';
+    function submitLead() {
+        var c = answersForCalc();
+        var works = ['boiler'];
+        if (c.heat !== 'tp') works.push('heating');
+        if (c.heat !== 'rad') works.push('ufh');
+        var own = $('f_comment').value.trim().slice(0, 450);
+        var body = {
+            works: works,
+            place: $('f_place').value.trim(),
+            area: String(Math.max(1, Math.min(9999, Math.round(A.area)))),
+            name: nameEl.value.trim(),
+            phone: phoneEl.value.trim(),
+            comment: (own ? own + '\n—\n' : '') + answersText(),
+            website: $('f_website').value,
+            consent: true,
+            page: location.pathname + location.search,
+            src: leadSource(),
+            calc: calcPayload()
+        };
+        var ctrl = ('AbortController' in window) ? new AbortController() : null;
+        var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 15000);
+        return fetch(LEAD_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: ctrl ? ctrl.signal : undefined
+        }).then(function (res) {
+            clearTimeout(timer);
+            return res.json().catch(function () { return {}; }).then(function (data) {
+                if (res.status === 200 && data && data.ok) {
+                    // Цель Метрики — только если человек принял cookie (счётчик грузит cookie-consent.js)
+                    try { if (window.ym) window.ym(109490947, 'reachGoal', 'lead_dom'); } catch (e) { }
+                    return data;
+                }
+                var e = new Error('lead ' + res.status);
+                e.status = res.status;
+                throw e;
+            });
+        }, function (e) { clearTimeout(timer); throw e; });
     }
 
     $('orderForm').addEventListener('submit', function (e) {
         e.preventDefault();
-        var err = checkName() || checkPhone() || ($('f_consent').checked ? '' : 'Отметьте согласие на передачу данных мастеру — без него заявку не передать');
+        var err = checkName() || checkPhone() ||
+            ($('f_place').value.trim() ? '' : 'Напишите, где дом — посёлок или район') ||
+            ($('f_consent').checked ? '' : 'Отметьте согласие на передачу данных мастеру — без него заявку не передать');
         var box = $('orderErr');
         box.hidden = !err; box.textContent = err;
         if (err) return;
         var btn = $('orderBtn');
         btn.disabled = true; btn.textContent = 'Отправляем…';
-        submitLead(buildLead()).then(function () {
+        submitLead().then(function () {
             $('orderForm').hidden = true;
             var ok = $('orderOk');
             ok.hidden = false;
@@ -622,7 +697,9 @@
         }).catch(function (e2) {
             console.warn('заявка:', e2);
             box.hidden = false;
-            box.textContent = 'Не получилось отправить заявку. Попробуйте ещё раз через минуту.';
+            box.textContent = e2 && e2.status === 429
+                ? 'Слишком много заявок с этого адреса. Попробуйте через час или напишите в Телеграм: t.me/heatcalc'
+                : 'Не получилось отправить заявку. Попробуйте ещё раз через минуту или напишите в Телеграм: t.me/heatcalc';
         }).then(function () {
             btn.disabled = false; btn.textContent = 'Отправить заявку';
         });
