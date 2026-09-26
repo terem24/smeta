@@ -13023,17 +13023,22 @@ const app = {
             const me = await this.resolveCurrentUserForChat();
             const email = (me && me.email) || (this.state.tgUser && this.state.tgUser.email) || null;
             if (!email) { holder.innerHTML = '<span style="color:var(--text-sec); font-size:11.5px;">Не удалось определить аккаунт.</span>'; return; }
+            // Вся жизнь сметы: начат расчёт, сохранено, отправлено, открыто, одобрено.
+            // Действия клиента (открыл, одобрил, на доработку, запросил счёт) пишет
+            // invoice.html без входа — у них user_email пустой. Фильтр только по своей
+            // почте их прятал: в истории было одно «Отправлено», хотя статус «Одобрено».
+            const keys = ['recognized', 'calculated', 'saved', 'opened'].concat(this.ORDER_EVENT_KEYS);
             const { data, error } = await supabaseClient.from('invoice_events')
                 .select('event, created_at, meta')
-                .eq('user_email', email)
                 .eq('calc_id', calcId)
-                .in('event', this.ORDER_EVENT_KEYS)
+                .or(`user_email.eq.${email},user_email.is.null`)
+                .in('event', keys)
                 .order('created_at', { ascending: true });
             if (error) throw error;
             const rows = data || [];
             holder.innerHTML = rows.length
                 ? this.buildInvoiceHistoryRows(rows, calcId)
-                : '<span style="color:var(--text-sec); font-size:11.5px;">По этому объекту пока нет заказных событий.</span>';
+                : '<span style="color:var(--text-sec); font-size:11.5px;">По этому объекту пока нет событий.</span>';
             holder.dataset.loaded = '1';
         } catch (e) {
             console.warn('[toggleObjectHistory]', e);
