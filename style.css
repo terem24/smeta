@@ -12583,7 +12583,19 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 
 /* Эскиз котельной: слева снимок с рамками приборов, справа их карточки.
    Зелёная рамка — прочитано уверенно, янтарная — проверить. */
-.rs-wrap { display: grid; grid-template-columns: minmax(0, 3fr) minmax(260px, 2fr); gap: 14px; margin-top: 10px; align-items: start; }
+.rs-wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 14px; margin-top: 10px; align-items: start; }
+.rs-col-h { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-sec, #64748b); margin-bottom: 6px; }
+.rs-right .rs-col-h { margin-bottom: 8px; }
+.rs-scheme { border: 1px solid var(--border, #e2e8f0); border-radius: 8px; overflow: hidden; background: #fff; }
+.rs-scheme-svg { display: block; width: 100%; height: auto; }
+.rs-scheme-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: #64748b; background: var(--surface-light, #f1f5f9); }
+body.dark-mode .rs-scheme { border-color: #334155; }
+.rs-bill { margin-top: 8px; font-size: 12.5px; line-height: 1.45; color: var(--text-main, #0f172a); }
+.rs-pv-notes { margin-top: 8px; border: 1px solid rgba(245, 158, 11, .4); background: rgba(245, 158, 11, .08); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; line-height: 1.45; }
+.rs-pv-notes div + div { margin-top: 4px; }
+.rs-bottom { display: grid; grid-template-columns: minmax(0, 3fr) minmax(220px, 2fr); gap: 14px; margin-top: 12px; align-items: start; }
+.rs-bottom .rs-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; align-items: start; }
+.rs-side { display: flex; flex-direction: column; gap: 8px; }
 .rs-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
 .rs-stage { position: relative; line-height: 0; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; overflow: hidden; user-select: none; touch-action: pan-y; }
 .rs-stage img { width: 100%; height: auto; display: block; }
@@ -12617,7 +12629,7 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 .rs-area { border: 1px solid rgba(245, 158, 11, .4); background: rgba(245, 158, 11, .08); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .rs-area label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
 @media (max-width: 760px) {
-    .rs-wrap { grid-template-columns: 1fr; }
+    .rs-wrap, .rs-bottom { grid-template-columns: 1fr; }
 }
 
 /* Замечания по кадру. Стоят до кнопки «Распознать», а не после: переснять

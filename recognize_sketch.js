@@ -65,6 +65,8 @@ const RecognizeSketch = {
         this._calls = 0;
         this._fromCache = 0;
         this._deleted = [];
+        this._pv = null;
+        this._pvKey = '';
     },
 
     isSketchResult(parsed) {
@@ -339,6 +341,24 @@ const RecognizeSketch = {
         const canApply = this._items.some(it => ['boiler', 'tank', 'hydro'].includes(it.kind) && !this.missing(it))
             && (!needArea || this._area > 0) && !bad;
 
+        // Справа — схема обвязки из пробного расчёта. Без котла и площади
+        // калькулятор котёл не подбирает, и схемы у пробной сметы нет.
+        const hasBoiler = this._items.some(it => it.kind === 'boiler' && !this.missing(it));
+        const pv = (hasBoiler && (!needArea || this._area > 0)) ? this.preview()
+            : { svg: '', notes: [], bill: [], err: hasBoiler ? 'Впишите площадь дома — без неё котёл не подбирается.' : 'Укажите у котла тип и мощность — тогда здесь появится схема обвязки.' };
+        const font = (window.projectSheets && window.projectSheets.FONT) || "'ISOCPEUR','GOST type A','Arial Narrow',sans-serif";
+        const schemeHtml = pv.svg
+            ? `<svg xmlns="http://www.w3.org/2000/svg" class="sheet-a3 rs-scheme-svg" viewBox="0 0 420 297">
+                 <style>.sheet-a3 text{fill:#000;stroke:none}.sheet-a3 line,.sheet-a3 rect{stroke:#000;fill:none}</style>
+                 <rect x="0" y="0" width="420" height="297" style="fill:#fff;stroke:none"/>
+                 <g stroke-linecap="square" font-family="${font}" font-size="3.67">${pv.svg}</g>
+                 <g id="rs_marks"></g>
+               </svg>`
+            : `<div class="rs-scheme-empty">${esc(pv.err)}</div>`;
+        const billHtml = pv.bill.length ? `<div class="rs-bill"><b>В смету встанет:</b> ${
+            pv.bill.map(b => esc((b.q > 1 ? b.q + ' × ' : '') + b.name)).join(' · ')}</div>` : '';
+        const pvNotes = pv.notes.length ? `<div class="rs-pv-notes">${pv.notes.map(t => `<div>⚠ ${esc(t)}</div>`).join('')}</div>` : '';
+
         body.innerHTML = `
           <div class="rec-tcheck ${bad ? 'warn' : 'ok'}" style="display:block">
             <div style="display:flex;gap:10px;align-items:center">
@@ -353,6 +373,7 @@ const RecognizeSketch = {
           </div>
           <div class="rs-wrap">
             <div class="rs-left">
+              <div class="rs-col-h">Эскиз</div>
               <div class="rs-toolbar">
                 <button class="rec-btn-g ${this._draw ? 'rec-btn-accent' : ''}" onclick="RecognizeSketch.toggleDraw()"
                         title="Прибор не нашёлся — обведите его на эскизе">${this._draw ? '✕ Отменить' : '➕ Отметить прибор'}</button>
@@ -365,10 +386,18 @@ const RecognizeSketch = {
               </div>
             </div>
             <div class="rs-right">
-              <div class="rs-cards">${cards}</div>
+              <div class="rs-col-h">Как соберёт калькулятор</div>
+              <div class="rs-scheme" id="rs_scheme">${schemeHtml}</div>
+              ${billHtml}
+              ${pvNotes}
+            </div>
+          </div>
+          <div class="rs-bottom">
+            <div class="rs-cards">${cards}</div>
+            <div class="rs-side">
+              ${areaHtml}
               ${this._notes.length ? `<details class="rs-notes"><summary>Надписи на полях — в расчёт не идут (${this._notes.length})</summary>
                   ${this._notes.map(t => `<div>${esc(t)}</div>`).join('')}</details>` : ''}
-              ${areaHtml}
             </div>
           </div>
           <div class="rec-foot">
@@ -379,6 +408,58 @@ const RecognizeSketch = {
           </div>`;
 
         this.bindDraw();
+        this.linkScheme();
+    },
+
+    // ------------------------------------------------------------------
+    // Связь эскиза со схемой: k-й котёл эскиза — k-й котёл схемы (слева
+    // направо), так же бойлер, гидрострелка, насосы, баки. Все связанные
+    // приборы схемы обведены тонко, выбранный — ярко; нажатие на прибор схемы
+    // открывает его карточку.
+    // ------------------------------------------------------------------
+
+    SYM_OF: { boiler: 'boiler', tank: 'tank', hydro: 'hydro', pump: 'pump', exp_tank: 'exptank' },
+
+    /** Приборы схемы одного вида — без таблицы условных обозначений и вложенных символов. */
+    schemeSyms(svg, type) {
+        return [...svg.querySelectorAll(`g[data-sym="${type}"]`)]
+            .filter(g => !(g.parentElement && g.parentElement.closest('g[data-sym]')))
+            .map(g => { let b = null; try { b = g.getBBox(); } catch (e) { b = null; } return { g, b }; })
+            // Таблица УГО занимает левый край листа, до 128 мм.
+            .filter(s => s.b && s.b.width > 0 && s.b.x >= 128)
+            .sort((a, b) => (a.b.x - b.b.x) || (a.b.y - b.b.y));
+    },
+
+    linkScheme() {
+        const svg = document.querySelector('#rs_scheme svg');
+        const marks = svg && svg.querySelector('#rs_marks');
+        if (!svg || !marks) return;
+        const byType = {};
+        const seen = {};
+        let html = '';
+        this._items.forEach((it, i) => {
+            const type = this.SYM_OF[it.kind];
+            if (!type) return;
+            const list = byType[type] || (byType[type] = this.schemeSyms(svg, type));
+            const k = seen[type] = (seen[type] || 0) + 1;
+            const s = list[k - 1];
+            if (!s) return;
+            s.g.style.cursor = 'pointer';
+            s.g.onclick = (e) => { e.stopPropagation(); this.pick(i); };
+            const pad = 1.5, sel = i === this._sel;
+            html += `<rect x="${s.b.x - pad}" y="${s.b.y - pad}" width="${s.b.width + pad * 2}" height="${s.b.height + pad * 2}" rx="1"
+                style="fill:${sel ? 'rgba(2,132,199,.14)' : 'none'};stroke:${sel ? '#0284c7' : (this.isSure(it) ? '#16a34a' : '#f59e0b')};stroke-width:${sel ? 0.9 : 0.4};${sel ? '' : 'stroke-dasharray:1.5 1;'}pointer-events:none"/>`;
+        });
+        marks.innerHTML = html;
+        // Выбранный прибор, которого на схеме нет, — сказать об этом в карточке.
+        const it = this._items[this._sel];
+        const hint = document.querySelector('.rs-card.open .rs-onscheme');
+        if (it && hint) {
+            const type = this.SYM_OF[it.kind];
+            const k = this._items.slice(0, this._sel + 1).filter(x => x.kind === it.kind).length;
+            const has = type && byType[type] && byType[type][k - 1];
+            hint.textContent = has ? 'На схеме справа — обведён синим.' : 'На схеме справа этого прибора нет.';
+        }
     },
 
     cardHtml(it, i) {
@@ -421,6 +502,7 @@ const RecognizeSketch = {
                 </select></label>
               ${fields}
               ${it.note ? `<div class="rec-tcheck-sub">${esc(it.note)}</div>` : ''}
+              ${this.SYM_OF[it.kind] ? '<div class="rec-tcheck-sub rs-onscheme"></div>' : ''}
               <div class="rs-card-acts">
                 <button class="rec-btn-g" onclick="RecognizeSketch.del(${i})">✕ Убрать прибор</button>
               </div>
@@ -559,22 +641,20 @@ const RecognizeSketch = {
             .reduce((a, i) => a + Math.max(1, Math.round(+i.q) || 1), 0);
     },
 
-    apply() {
-        const st = app.state;
+    /**
+     * Приборы эскиза → поля расчёта. Одна функция и для пробного прогона
+     * (схема справа от эскиза), и для настоящего переноса: иначе схема
+     * показала бы не то, что уедет в смету.
+     * Возвращает { out, notes, el, hydro, pumps } — что перенесено и о чём
+     * сказать ещё до пересчёта.
+     */
+    toState(st) {
         const items = this._items.filter(it => !this.missing(it));
         const boilers = items.filter(it => it.kind === 'boiler');
         const tanks = items.filter(it => it.kind === 'tank');
-        const hydro = items.find(it => it.kind === 'hydro');
+        const hydro = items.find(it => it.kind === 'hydro') || null;
         const pumps = items.filter(it => it.kind === 'pump').length;
         const out = [], notes = [];
-
-        this._undo = JSON.parse(JSON.stringify({
-            fuels: st.fuels || [], elBoilerPower: st.elBoilerPower ?? null,
-            gasSwap: (st.swaps || {})['gas_boiler_auto'] ?? null,
-            hotWater: st.hotWater, res: st.res, tankVol: st.tankVol ?? null,
-            boilerType: st.boilerType, tankMount: st.tankMount, tankHeat: st.tankHeat,
-            boilerScheme: st.boilerScheme, area: st.area,
-        }));
 
         if (!(st.area > 0) && this._area > 0) {
             st.area = this._area;
@@ -632,6 +712,99 @@ const RecognizeSketch = {
             out.push('Схема с гидрострелкой' + (hydro.flow ? ` (на эскизе ${this.fmt(hydro.flow)} м³/ч)` : ''));
         }
 
+        // Насосы и гидрострелка на эскизе — это контуры отопления. Калькулятор
+        // ставит группы и стрелку только под потребителей, и в пустом расчёте
+        // без системы отопления их бы не было вовсе. Радиаторы — самый частый
+        // случай; монтажник переключит в левой панели, если у него тёплый пол.
+        if ((pumps || hydro) && !(st.systems || []).length) {
+            st.systems = ['rad'];
+            out.push('Отопление: радиаторы — тип отопления в расчёте не был задан, поправьте в левой панели');
+        }
+
+        return { out, notes, el, hydro, pumps };
+    },
+
+    /** Что сказать после пересчёта — по тому, что реально встало в смету. */
+    billNotes(r) {
+        const notes = [];
+        const list = (app.currentEquipmentList || []).filter(i => !i.isOpt);
+        // Каскад электрокотлов калькулятор собирает сам по теплопотерям — ручной
+        // мощности у каскада нет, поэтому говорим, что именно встало в смету.
+        if (r.el.length > 1) {
+            const got = list.filter(i => /котёл электрическ|котел электрическ/i.test(String(i.name || '')))
+                .map(i => (Math.round(+i.q) > 1 ? Math.round(+i.q) + ' × ' : '') + i.name);
+            notes.push(`На эскизе ${r.el.length} электрокотла (${r.el.map(b => this.fmt(b.power) + ' кВт').join(' + ')}), ` +
+                `калькулятор по теплопотерям поставил: ${got.join(', ') || 'ничего'}. Если нужны именно такие котлы — замените в смете.`);
+        }
+        if (r.hydro && !list.some(i => /гидрострел|гидравлическ\S*\s+(стрелк|раздел)/i.test(String(i.name || '')))) {
+            notes.push('Гидрострелка встанет в смету, когда в расчёте будут системы отопления — радиаторы или тёплый пол (левая панель, «Тип отопления»).');
+        }
+        if (r.pumps) {
+            const groups = this.billPumpGroups();
+            if (groups !== r.pumps) {
+                notes.push(`Насосов на эскизе: ${r.pumps}, насосных групп в смете: ${groups}. Группы подбираются по системам дома — радиаторы и тёплый пол по этажам; задайте их в левой панели.`);
+            }
+        }
+        return notes;
+    },
+
+    /**
+     * Пробный расчёт: поля эскиза кладутся в сам state, смета считается тихим
+     * прогоном (render(true) страницу не трогает), по ней строится схема —
+     * и state возвращается как был. Тот же приём, что у второй сметы режима
+     * «Подешевле» (computeCheapBaseline). После возврата смета считается ещё
+     * раз: иначе currentEquipmentList остался бы от пробного прогона.
+     */
+    preview() {
+        const key = JSON.stringify([this._items.map(it => this.snap(it)), this._area]);
+        if (this._pv && this._pvKey === key) return this._pv;
+        const pv = { svg: '', notes: [], bill: [], err: '' };
+        if (!window.projectScheme || typeof app.buildSchemeConfig !== 'function') {
+            pv.err = 'Модуль схемы ещё не загрузился — схема появится после обновления страницы.';
+            this._pv = pv; this._pvKey = key;
+            return pv;
+        }
+        const st = app.state;
+        const snapshot = JSON.parse(JSON.stringify(st));
+        app._cheapComparing = true;
+        try {
+            const r = this.toState(st);
+            app._boilerRangeCache = null;
+            app.render(true);
+            pv.notes = r.notes.concat(this.billNotes(r));
+            pv.bill = (app.currentEquipmentList || [])
+                .filter(i => !i.isOpt && /котёл|котел|бойлер|водонагреват|гидрострел|гидравлическ\S*\s+раздел|(насосн\S*\s+групп|групп\S*\s+насосн)/i.test(String(i.name || ''))
+                    && !/коллектор|кронштейн|комплект|бак для/i.test(String(i.name || '')))
+                .map(i => ({ q: Math.max(1, Math.round(+i.q) || 1), name: String(i.name || '') }));
+            const cfg = app.buildSchemeConfig();
+            if (cfg) pv.svg = window.projectScheme.build(cfg);
+            else pv.err = 'Котла в пробной смете нет — схема не строится. Укажите тип и мощность котла.';
+        } catch (e) {
+            console.warn('[эскиз] пробный расчёт:', e);
+            pv.err = 'Схему по эскизу построить не удалось.';
+        } finally {
+            Object.keys(st).forEach(k => { if (!(k in snapshot)) delete st[k]; });
+            Object.assign(st, snapshot);
+            app._boilerRangeCache = null;
+            try { app.render(true); } catch (e) { /* смета пересчитается при следующей отрисовке */ }
+            app._cheapComparing = false;
+        }
+        this._pv = pv; this._pvKey = key;
+        return pv;
+    },
+
+    apply() {
+        const st = app.state;
+        this._undo = JSON.parse(JSON.stringify({
+            fuels: st.fuels || [], elBoilerPower: st.elBoilerPower ?? null,
+            gasSwap: (st.swaps || {})['gas_boiler_auto'] ?? null,
+            hotWater: st.hotWater, res: st.res, tankVol: st.tankVol ?? null,
+            boilerType: st.boilerType, tankMount: st.tankMount, tankHeat: st.tankHeat,
+            boilerScheme: st.boilerScheme, area: st.area, systems: st.systems || [],
+        }));
+
+        const r = this.toState(st);
+
         RecognizeUI.step(3);
         this.archive();
 
@@ -639,28 +812,7 @@ const RecognizeSketch = {
         app.render();
         if (typeof app.saveState === 'function') app.saveState();
 
-        // Каскад электрокотлов калькулятор собирает сам по теплопотерям — ручной
-        // мощности у каскада нет, поэтому говорим, что именно встало в смету.
-        if (el.length > 1) {
-            const got = (app.currentEquipmentList || [])
-                .filter(i => !i.isOpt && /котёл электрическ|котел электрическ/i.test(String(i.name || '')))
-                .map(i => (Math.round(+i.q) > 1 ? Math.round(+i.q) + ' × ' : '') + i.name);
-            notes.push(`На эскизе ${el.length} электрокотла (${el.map(b => this.fmt(b.power) + ' кВт').join(' + ')}), ` +
-                `калькулятор по теплопотерям поставил: ${got.join(', ') || 'ничего'}. Если нужны именно такие котлы — замените в смете.`);
-        }
-
-        // Гидрострелку и насосные группы калькулятор ставит под потребителей:
-        // пока в расчёте нет ни радиаторов, ни тёплого пола, их в смете не будет.
-        if (hydro && !(app.currentEquipmentList || []).some(i => !i.isOpt && /гидрострел|гидравлическ\S*\s+(стрелк|раздел)/i.test(String(i.name || '')))) {
-            notes.push('Гидрострелка встанет в смету, когда в расчёте будут системы отопления — радиаторы или тёплый пол (левая панель, «Тип отопления»).');
-        }
-
-        if (pumps) {
-            const groups = this.billPumpGroups();
-            if (groups !== pumps) {
-                notes.push(`Насосов на эскизе: ${pumps}, насосных групп в смете: ${groups}. Группы подбираются по системам дома — радиаторы и тёплый пол по этажам; задайте их в левой панели.`);
-            }
-        }
+        const notes = r.notes.concat(this.billNotes(r));
 
         const undoBtn = document.getElementById('rec_undo_sketch');
         if (undoBtn) undoBtn.style.display = '';
@@ -672,14 +824,14 @@ const RecognizeSketch = {
         if (panel) panel.innerHTML = '';
         RecognizeUI.close();
 
-        app.alert('В расчёт перенесено:\n' + out.map(s => '• ' + s).join('\n') +
+        app.alert('В расчёт перенесено:\n' + r.out.map(s => '• ' + s).join('\n') +
             (notes.length ? '\n\nПроверьте:\n' + notes.map(s => '• ' + s).join('\n') : '') +
             '\n\nОбвязка котельной собрана по этим приборам. Вернуть как было — кнопка «↶ Вернуть котельную» во вкладке распознавания.', 'Готово');
     },
 
     async undoApply() {
         if (!this._undo || typeof app === 'undefined') return;
-        if (!await app.confirm('Вернуть котлы, бойлер и схему котельной такими, какими они были до переноса с эскиза?')) return;
+        if (!await app.confirm('Вернуть котлы, бойлер, тип отопления и схему котельной такими, какими они были до переноса с эскиза?')) return;
         const u = this._undo, st = app.state;
         st.fuels = u.fuels; st.elBoilerPower = u.elBoilerPower;
         st.swaps = st.swaps || {};
@@ -687,6 +839,7 @@ const RecognizeSketch = {
         st.hotWater = u.hotWater; st.res = u.res; st.tankVol = u.tankVol;
         st.boilerType = u.boilerType; st.tankMount = u.tankMount; st.tankHeat = u.tankHeat;
         st.boilerScheme = u.boilerScheme; st.area = u.area;
+        if (u.systems) st.systems = u.systems;
         this._undo = null;
         app.syncUI();
         app.render();
