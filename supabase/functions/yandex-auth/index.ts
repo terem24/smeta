@@ -320,7 +320,13 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         type: "magiclink",
         email,
-        redirect_to: redirectUri,
+        // Приложение по этой ссылке не переходит: оно достаёт из неё одноразовый
+        // токен и подтверждает его запросом к API. А собственная схема
+        // ru.heatcalc.app:// в списке разрешённых адресов Supabase Auth не значится,
+        // и с ней выдача ссылки могла упасть на пустом месте.
+        redirect_to: ALLOWED_APP_REDIRECTS.includes(redirectUri)
+          ? "https://heatcalc.ru/"
+          : redirectUri,
       }),
     });
     const linkData = await linkResp.json().catch(() => null);
