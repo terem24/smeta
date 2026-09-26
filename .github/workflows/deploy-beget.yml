@@ -18,9 +18,11 @@
 #   секрет BEGET_SSH_KEY        — закрытая половина ключа (на компьютере
 #                                 владельца: ~/.ssh/heatcalc_beget);
 #                                 открытая лежит на Beget в ~/.ssh/authorized_keys
-#   переменная BEGET_SITE_DIR   — папка сайта от домашней, по умолчанию
-#                                 new.heatcalc.ru/public_html. Переезд основного
-#                                 сайта = поменять её на heatcalc.ru/public_html
+#   переменная BEGET_SITE_DIRS  — папки сайта от домашней через пробел, по
+#                                 умолчанию обе: new.heatcalc.ru/public_html
+#                                 (проверочная копия) и heatcalc.ru/public_html
+#                                 (основной сайт; домен к ней прикрепляется
+#                                 в панели Beget при переезде)
 #   (запасной FTP) BEGET_FTP_HOST / _USER / _PASSWORD / _DIR
 #
 # Пока ничего не задано, задача честно пропускается и не мигает красным.
@@ -72,10 +74,10 @@ jobs:
         if: steps.check.outputs.mode == 'ssh'
         env:
           SSH_KEY: ${{ secrets.BEGET_SSH_KEY }}
-          SITE_DIR: ${{ vars.BEGET_SITE_DIR }}
+          SITE_DIRS: ${{ vars.BEGET_SITE_DIRS }}
         run: |
           set -o pipefail
-          [ -z "$SITE_DIR" ] && SITE_DIR="new.heatcalc.ru/public_html"
+          [ -z "$SITE_DIRS" ] && SITE_DIRS="heatcalc.ru/public_html new.heatcalc.ru/public_html"
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KEY" > ~/.ssh/beget
           chmod 600 ~/.ssh/beget
@@ -83,6 +85,8 @@ jobs:
           echo "v953008q.beget.tech ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL2mdvWDDbap1QDeEh8Yq7NqUNCJjpjVymb+9RqSBYYr" > ~/.ssh/known_hosts
           # Без --delete: удалённое из репозитория на сервере остаётся.
           # Права файлов не трогаем (-rlt без -p) — как было при FTP.
+          for SITE_DIR in $SITE_DIRS; do
+          echo "=== $SITE_DIR"
           rsync -rlt --checksum --omit-dir-times --itemize-changes \
             -e "ssh -i ~/.ssh/beget -o BatchMode=yes" \
             --exclude='.git*' --exclude='.claude/' --exclude='.agents/' \
@@ -92,6 +96,7 @@ jobs:
             --exclude='*.sql' --exclude='*.ps1' --exclude='CNAME' \
             --exclude='revit_catalog.json' --exclude='price_index.new.json' \
             ./ "v953008q@v953008q.beget.tech:$SITE_DIR/" | { grep -v '^\.' || true; } | tail -n 200
+          done
           rm -f ~/.ssh/beget
 
       - name: Залить изменившееся по FTP (запасной путь)
