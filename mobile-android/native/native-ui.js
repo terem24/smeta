@@ -134,8 +134,30 @@
         });
     }
 
+    // Главный признак связи — настоящие запросы приложения. Пока Supabase
+    // отвечает, а цены и вход работают, спорить с этим бессмысленно: сеть есть,
+    // что бы ни говорили navigator.onLine и проверочные адреса (их может резать
+    // провайдер или VPN). Поэтому любой успешный ответ гасит плашку.
+    var lastOk = 0;
+    var NET_OK_MS = 60000;
+
+    var origFetch = window.fetch;
+    if (typeof origFetch === 'function') {
+        window.fetch = function () {
+            var p = origFetch.apply(this, arguments);
+            try {
+                p.then(function () {
+                    lastOk = Date.now();
+                    showOffline(false);
+                }, function () { /* ошибка одного запроса ещё не значит «нет сети» */ });
+            } catch (e) { }
+            return p;
+        };
+    }
+
     function updateNetwork() {
         if (navigator.onLine) { showOffline(false); return; }
+        if (Date.now() - lastOk < NET_OK_MS) { showOffline(false); return; }
         probe().then(function (ok) { showOffline(!ok); });
     }
 
