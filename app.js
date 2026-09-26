@@ -12041,17 +12041,27 @@ const app = {
                     window.location.replace(window.location.pathname + window.location.search);
                     return;
                 }
-                console.warn("verifyOtp не сработал, пробуем переход по ссылке:", error);
+                console.warn("verifyOtp не сработал:", error);
+                throw new Error(error.message || "Ссылка входа не подтвердилась");
             }
 
-            // Запасной путь: прямой переход (сработает там, где supabase.co доступен)
-            window.location.replace(data.action_link);
+            // Токен не удалось вытащить из ссылки — раньше отсюда переходили прямо
+            // по data.action_link (он ведёт на *.supabase.co). У части людей это
+            // работало, но при просроченном или уже использованном токене (двойной
+            // клик, вернулись в старую вкладку, слишком медленная сеть) Supabase
+            // отвечает голым JSON прямо в адресе — человек видит на весь экран
+            // {"status":"error","errors":["Internal"]} без единого слова объяснения
+            // и с сайта уходит, не понимая, что случилось. Лучше явная ошибка внутри
+            // приложения, чем непонятная страница снаружи него.
+            throw new Error("Не удалось разобрать ссылку входа");
         } catch (err) {
             this._yandexExchanging = false;
             const preloader = document.getElementById('stout_preloader');
             if (preloader) preloader.remove();
             console.error("Ошибка входа через Яндекс:", err);
-            app.alert("Не удалось войти через Яндекс: " + err.message);
+            app.alert("Не удалось войти через Яндекс: " + err.message +
+                "\n\nПопробуйте нажать «Яндекс ID» ещё раз — при первом входе аккаунт " +
+                "создаётся автоматически, регистрироваться отдельно не нужно.");
         }
     },
 
@@ -36786,6 +36796,37 @@ const app = {
         }
     },
 
+    // Город и IP входа — в строку users отдельным запросом после того, как профиль
+    // уже записан (см. handleAuthSession). Каждому геосервису даём 6 секунд: не
+    // ответил — пробуем второй, не ответил и он — строка остаётся с прежними
+    // значениями, вход от этого не зависит.
+    stampLoginGeo: async function (authUserId) {
+        const ask = async (url) => {
+            const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+            const timer = ctrl ? setTimeout(() => ctrl.abort(), 6000) : null;
+            try {
+                const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const geo = await res.json();
+                return { city: geo.city || '', ip: geo.ip || '' };
+            } finally {
+                if (timer) clearTimeout(timer);
+            }
+        };
+        let geo = null;
+        for (const url of ['https://ipapi.co/json/', 'https://ipinfo.io/json']) {
+            try { geo = await ask(url); break; } catch (e) { }
+        }
+        if (!geo || (!geo.city && !geo.ip)) return;
+        try {
+            await supabaseClient.from('users')
+                .update({ location: geo.city || 'Не определен', registration_ip: geo.ip || '0.0.0.0' })
+                .eq('auth_user_id', authUserId);
+        } catch (e) {
+            console.warn('[stampLoginGeo] Город входа не записан:', e);
+        }
+    },
+
     handleAuthSession: async function (session, isGoogleCallback = false) {
         if (!session || !session.user) return;
 
@@ -36845,34 +36886,17 @@ const app = {
                 }
             }
 
-            let city = 'Не определен';
-            let clientIp = '0.0.0.0';
-            try {
-                const isLocal = (HC_LOCAL_DEV);
-                if (isLocal) {
-                    clientIp = '127.0.0.1';
-                    city = 'Локальный хост';
-                } else {
-                    try {
-                        const res = await fetch('https://ipapi.co/json/');
-                        if (!res.ok) throw new Error("HTTP error " + res.status);
-                        const geo = await res.json();
-                        city = geo.city || 'Не определен';
-                        clientIp = geo.ip || '0.0.0.0';
-                    } catch (primaryErr) {
-                        console.warn("Primary geo fetch failed, trying fallback...", primaryErr);
-                        try {
-                            const res = await fetch('https://ipinfo.io/json');
-                            if (!res.ok) throw new Error("HTTP error " + res.status);
-                            const geo = await res.json();
-                            city = geo.city || 'Не определен';
-                            clientIp = geo.ip || '0.0.0.0';
-                        } catch (fallbackErr) {
-                            console.warn("Fallback geo fetch also failed", fallbackErr);
-                        }
-                    }
-                }
-            } catch (e) { console.warn("Geo error", e); }
+            // Город и IP по геосервису раньше запрашивались ЗДЕСЬ, до записи профиля,
+            // и без предела ожидания. ipapi.co/ipinfo.io из РФ отвечают по 10–30 с
+            // (у lyubovzemtsova 26.09 строка в users появилась через 10 с после
+            // входа), а всё это время человек видит гостевой калькулятор: окно
+            // входа закрывается только в конце этого обработчика. На телефоне он
+            // решает, что вход не сработал, и закрывает вкладку — сессия в auth
+            // есть, строки в users нет. За сентябрь так потерялись 20 регистраций,
+            // 4 из 6 через Яндекс. Поэтому профиль пишем сразу, а город и IP
+            // дописываем следом отдельным запросом (stampLoginGeo), не задерживая вход.
+            let city = HC_LOCAL_DEV ? 'Локальный хост' : 'Не определен';
+            let clientIp = HC_LOCAL_DEV ? '127.0.0.1' : '0.0.0.0';
 
             let utm = localStorage.getItem('stout_utm') || '';
 
@@ -37056,6 +37080,7 @@ const app = {
             }
 
             let uRow = upsertResult ? upsertResult[0] : null;
+            if (uRow && !HC_LOCAL_DEV) this.stampLoginGeo(authUserId);
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
                 // калькулятором — выходим из сессии и возвращаем в неавторизованное состояние.
@@ -47191,12 +47216,20 @@ const app = {
             // даётся ссылка в письмах и приглашениях. Вошедшему окно не показываем:
             // он уже внутри, ссылка для него просто открывает калькулятор.
             if (!session) this.openRegistrationFromUrl();
-            // Ветки «сессии нет» здесь намеренно нет: гостю ни окно быстрого старта,
-            // ни подсказки не показываем. Типовой объект он выбрать может — кнопка в
-            // центре пустой сметы на месте, — но сохранить смету, отправить её
-            // клиенту и зайти в разделы кабинета всё равно не выйдет без входа, и
-            // окно поверх экрана оказывается предложением, за которым сразу стоит
-            // ещё одно окно, про регистрацию.
+            // Раньше гостю окно входа не показывали вообще: сайт выглядел рабочим
+            // калькулятором, и то, что цены и сохранение сметы спрятаны за входом,
+            // становилось понятно только по клику на размытую цену. По жалобе —
+            // не очевидно, что нужно сначала войти или зарегистрироваться, — теперь
+            // окно открывается само при первом заходе гостя. Оно не блокирует
+            // калькулятор: крестиком или кликом мимо закрывается, как и раньше
+            // (см. auth_modal_overlay), а типовой объект выбрать и посчитать можно
+            // и не заходя в него.
+            // Не открываем поверх _yandexExchanging (страница вот-вот перезагрузится
+            // после возврата с Яндекса) и поверх уже открытого регистрацией по ?reg=1.
+            if (!session && !this._yandexExchanging &&
+                document.getElementById('auth_modal_overlay').style.display !== 'flex') {
+                this.showAuthModal();
+            }
             // Убрана логика Telegram (tgUser && !tgUser.isGoogle), так как
             // авторизация через Telegram Bot удалена из проекта.
             // Если в localStorage остался старый tgUser без isGoogle — он будет
