@@ -12598,8 +12598,15 @@ body.dark-mode .rs-scheme { border-color: #334155; }
 .rs-bottom .rs-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 6px; align-items: start; }
 .rs-side { display: flex; flex-direction: column; gap: 8px; }
 .rs-toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
-.rs-stage { position: relative; line-height: 0; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; overflow: hidden; user-select: none; touch-action: pan-y; }
-.rs-stage img { width: 100%; height: auto; display: block; }
+/* display:inline-block — рамка тянется ровно под картинку, а не под всю
+   колонку: у вертикального снимка (телефон держат портретом) ширина 100%
+   давала огромную высоту, снимок не помещался на экран и терялся рядом с
+   невысокой альбомной схемой справа. Рамки приборов — в процентах от
+   .rs-stage, поэтому она обязана в точности совпадать с картинкой, а не
+   образовывать вокруг неё пустые поля (как было бы с object-fit:contain). */
+.rs-stage { position: relative; display: inline-block; max-width: 100%; line-height: 0; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; overflow: hidden; user-select: none; touch-action: pan-y; }
+.rs-left { text-align: center; }
+.rs-stage img { display: block; max-width: 100%; max-height: 65vh; width: auto; height: auto; }
 .rs-stage.drawing { cursor: crosshair; touch-action: none; }
 .rs-box { position: absolute; box-sizing: border-box; border: 2px solid #f59e0b; background: rgba(245, 158, 11, .10); border-radius: 4px; cursor: pointer; }
 .rs-box.ok { border-color: #16a34a; background: rgba(22, 163, 74, .10); }
