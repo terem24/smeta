@@ -1719,10 +1719,10 @@
    "freq": 2800,
    "audience": "owner",
    "data_block": "разбор",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-22",
    "published_at": null,
-   "words": 0
+   "words": 938
   },
   {
    "slug": "oshibki-pri-zakaze-inzhenerki",
@@ -1733,10 +1733,10 @@
    "freq": 1600,
    "audience": "owner",
    "data_block": "разбор",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-06-24",
    "published_at": null,
-   "words": 0
+   "words": 983
   },
   {
    "slug": "tylnye-poteri-teplogo-pola",
@@ -1789,10 +1789,10 @@
    "freq": 2800,
    "audience": "pro",
    "data_block": "что в нашей смете",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-03",
    "published_at": null,
-   "words": 0
+   "words": 741
   },
   {
    "slug": "otoplenie-doma-150-m2",
