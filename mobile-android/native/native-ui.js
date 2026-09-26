@@ -79,15 +79,51 @@
     // ------------------------------------------------------- «нет сети»
     var bar = null;
 
+    var BAR_TEXT = '<span><b>Нет сети.</b> Расчёт, смета и печать работают. ' +
+        'Цены и облако вернутся при подключении. <u>Проверить</u></span>';
+
     function offlineBar() {
         if (bar) return bar;
         bar = d.createElement('div');
         bar.className = 'hc-offline-bar';
         // Без значка: в приложении их не показываем (см. .ui-emo в style.css).
-        bar.innerHTML = '<span><b>Нет сети.</b> Расчёт, смета и печать работают. ' +
-            'Цены и облако вернутся при подключении.</span>';
+        bar.innerHTML = BAR_TEXT;
+        // По нажатию плашка рассказывает, что именно не проходит. Без этого
+        // «нет сети» — приговор без объяснения: у одних закрыт сайт, у других
+        // сервер приложения, у третьих мешает VPN, и по одному виду плашки
+        // отличить эти случаи нельзя ни пользователю, ни поддержке.
+        bar.style.pointerEvents = 'auto';
+        bar.style.cursor = 'pointer';
+        bar.onclick = diagnose;
         d.body.appendChild(bar);
         return bar;
+    }
+
+    // Проверка по шагам: каждый адрес отдельно, результат — прямо в плашке.
+    function diagnose() {
+        var checks = [
+            ['сайт', SITE + '/manifest.json'],
+            ['сервер', 'https://proxy.heatcalc.ru/user_creds.php'],
+            ['база', 'https://ahanbwugsmcyvrwbmtlx.supabase.co/rest/v1/']
+        ];
+        var el = offlineBar();
+        el.innerHTML = '<span>Проверяем связь…</span>';
+
+        Promise.all(checks.map(function (c) {
+            return origFetch(c[1], { method: 'GET', mode: 'no-cors', cache: 'no-store' })
+                .then(function () { return c[0] + ': есть'; })
+                .catch(function () { return c[0] + ': нет'; });
+        })).then(function (res) {
+            var ok = res.filter(function (r) { return /есть$/.test(r); }).length;
+            el.innerHTML = '<span><b>' + (ok ? 'Связь частично есть.' : 'Связи нет.') + '</b> ' +
+                res.join(', ') + '. Нажмите ещё раз, чтобы повторить.</span>';
+            if (ok) netOk();
+            clearTimeout(offlineTimer);
+            offlineTimer = setTimeout(function () {
+                el.innerHTML = BAR_TEXT;
+                updateNetwork();
+            }, 20000);
+        });
     }
 
     var offlineTimer = null;
