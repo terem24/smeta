@@ -217,6 +217,16 @@ def build(slug, publish=False):
 
     url = '%s/%s/' % (SITE, slug)
     body = '\n\n'.join(render_block(b) for b in art['blocks'])
+    # Блок прямого ответа. Стоит выше лида намеренно: ИИ-ответы Яндекса и Google
+    # цитируют первый фрагмент, который отвечает на запрос буквально, а лид у нас
+    # написан как зачин — он читается человеком, но моделью не извлекается.
+    # Формат жёсткий: вопрос — запросом, ответ — 2–3 предложения с числами и нормой.
+    answer = ''
+    if art.get('answer'):
+        answer = ('        <div class="short-answer">\n'
+                  '            <p class="short-answer-q">%s</p>\n'
+                  '            <p>%s</p>\n'
+                  '        </div>' % (esc(art['answer_q']), art['answer']))
     toc = render_toc(art['blocks'])
     pub_date = (meta.get('published_at') or meta['date'])[:10]
     meta_line = ('        <p class="art-meta"><time datetime="%s">%s</time></p>'
@@ -263,6 +273,7 @@ def build(slug, publish=False):
         ld=json.dumps(ld, ensure_ascii=False, indent=2),
         h1=esc(art['title']),
         meta_line=meta_line,
+        answer=answer,
         toc=toc,
         lead=art['lead'],
         body=body,
@@ -312,7 +323,7 @@ TEMPLATE = '''<!DOCTYPE html>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/seo.css?v=6">
+    <link rel="stylesheet" href="/seo.css?v=7">
 
     <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
          Флаг общий с калькулятором — stout_save.darkMode. -->
@@ -376,6 +387,8 @@ TEMPLATE = '''<!DOCTYPE html>
         <h1>{h1}</h1>
 
 {meta_line}
+
+{answer}
 
         <p class="lead">{lead}</p>
 

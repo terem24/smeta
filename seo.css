@@ -173,6 +173,30 @@ strong, b { color: var(--text-main); font-weight: 700; }
 /* Дата под заголовком: она же уходит в микроразметку Article и в сниппет. */
 .art-meta { font-size: 13px; color: var(--text-sec); margin: -8px 0 18px; }
 
+/* Блок прямого ответа — первое, что читает и человек, и модель. Стоит выше лида:
+   ИИ-ответы Яндекса и Google цитируют фрагмент, который отвечает на запрос буквально.
+   Оформлен как выделенная врезка, но без рамки-«плашки»: это часть текста статьи,
+   а не примечание, и выглядеть должен читаемо, а не как баннер. */
+.short-answer {
+    border-left: 3px solid var(--primary);
+    padding: 2px 0 2px 16px;
+    margin: 0 0 22px;
+}
+.short-answer-q {
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-sec);
+    margin: 0 0 6px;
+}
+.short-answer p:last-child {
+    font-size: 17px;
+    line-height: 1.55;
+    color: var(--text-main);
+    margin: 0;
+}
+
 /* Оглавление. Ставится только при четырёх и более разделах — см. render_toc. */
 .toc {
     border: 1px solid var(--border);
