@@ -1481,10 +1481,10 @@
    "freq": 2800,
    "audience": "pro",
    "data_block": "СП 30, клапан 3/4",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-15",
    "published_at": null,
-   "words": 0
+   "words": 877
   },
   {
    "slug": "poteri-davleniya-v-sisteme",
@@ -1495,10 +1495,10 @@
    "freq": 2100,
    "audience": "pro",
    "data_block": "местные сопротивления",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-18",
    "published_at": null,
-   "words": 0
+   "words": 928
   },
   {
    "slug": "opentherm-ili-rele",
@@ -1509,10 +1509,10 @@
    "freq": 3400,
    "audience": "pro",
    "data_block": "разница в работе",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-05-20",
    "published_at": null,
-   "words": 0
+   "words": 839
   },
   {
    "slug": "otoplenie-doma-bez-gaza",

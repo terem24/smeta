@@ -19,14 +19,18 @@
 
     python tools/check_article.py <slug> [--published]
 """
-import io, json, os, re, sys
+import html, io, json, os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MIN_WORDS = 600
 
 
 def norm(s):
-    return re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', s)).strip()
+    # html.unescape обязателен: в видимый текст кавычки уходят как &quot;
+    # (esc в сборщике), а в микроразметку — как есть. Без разэкранирования
+    # любой вопрос FAQ с дюймами («3/4"») давал ложное расхождение.
+    txt = html.unescape(re.sub(r'<[^>]+>', '', s))
+    return re.sub(r'\s+', ' ', txt).strip()
 
 
 def check(slug, published=False):
