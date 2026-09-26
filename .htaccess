@@ -1,0 +1,43 @@
+# Настройки сервера Beget (Apache). На GitHub Pages этот файл не действует.
+#
+# Зачем. Сайт переезжает с GitHub Pages на Beget (26.09.2026), и сервер
+# должен вести себя так же, как Pages, — иначе ломается то, что на Pages
+# работало само. Сверено прогоном «GitHub против new.heatcalc.ru» перед
+# переключением домена; всё, что ниже, — найденные там расхождения.
+#
+# Файл заливается в обе папки (heatcalc.ru и new.heatcalc.ru), поэтому
+# различия между ними решаются по имени хоста, а не двумя файлами.
+
+Options -MultiViews
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # http → https. Pages делал это сам. Apache у Beget стоит за nginx,
+    # поэтому смотрим на заголовок, который nginx передаёт; редиректим только
+    # при явном «http» — при пустом заголовке молчим, чтобы не зациклиться.
+    RewriteCond %{HTTP:X-Forwarded-Proto} =http
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Адрес без .html (heatcalc.ru/oprosnik) — Pages отдавал oprosnik.html.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME}.html -f
+    RewriteRule ^(.+)$ $1.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    # Проверочную копию поисковикам не показываем, основной сайт — показываем.
+    # Раньше запрет стоял без условия и при переезде уехал бы на heatcalc.ru.
+    SetEnvIfNoCase Host ^new\.heatcalc\.ru$ HC_TEST_COPY
+    Header set X-Robots-Tag "noindex, nofollow, noarchive" env=HC_TEST_COPY
+
+    # Кэш как на Pages: 10 минут. У Beget по умолчанию неделя — тогда правка
+    # скриптов без ?v= (boiler-3d.js и другие ленивые), главной страницы и
+    # price_index.json доезжала бы до людей неделю. Картинки — как у Beget.
+    <FilesMatch "\.(html|js|css|json|xml|txt|webmanifest)$">
+        Header unset Expires
+        Header set Cache-Control "max-age=600"
+    </FilesMatch>
+</IfModule>
