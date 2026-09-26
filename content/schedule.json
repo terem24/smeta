@@ -1887,10 +1887,10 @@
    "freq": 2400,
    "audience": "builder",
    "data_block": "СП 402",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-20",
    "published_at": null,
-   "words": 0
+   "words": 855
   },
   {
    "slug": "kak-proverit-smetu-podryadchika",
@@ -1901,10 +1901,10 @@
    "freq": 1400,
    "audience": "owner",
    "data_block": "сверка по нашей смете",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-22",
    "published_at": null,
-   "words": 0
+   "words": 991
   },
   {
    "slug": "uzel-podmesa-teplogo-pola",
@@ -1957,10 +1957,10 @@
    "freq": 2600,
    "audience": "owner",
    "data_block": "наш расчёт длин",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-31",
    "published_at": null,
-   "words": 0
+   "words": 853
   },
   {
    "slug": "otoplenie-doma-200-m2",
