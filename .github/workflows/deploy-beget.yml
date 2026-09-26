@@ -3,23 +3,27 @@
 # Зачем. Сайт раздаётся с GitHub Pages, а часть провайдеров начала резать
 # шифрованное соединение к адресам, на которых Pages стоит (185.199.108–111.x).
 # У таких пользователей сайт просто не открывается, и узнать об этом нельзя:
-# человек, до которого сайт не доехал, в статистику не попадает.
+# человек, до которого сайт не доехал, в статистику не попадает. Вторая
+# причина (26.09.2026) — репозиторий готовим к закрытию: GitHub Pages из
+# закрытого репозитория на бесплатном тарифе не работает, сайт будет жить
+# только на Beget, а GitHub останется мастерской (код + роботы цен).
 #
-# Пока это проверочная копия по адресу new.heatcalc.ru — основной сайт живёт
-# там же, где и жил, и ничего не меняется. Если решим переезжать совсем, менять
-# код не придётся: путь к папке сайта задан секретом BEGET_FTP_DIR, и переезд
-# сводится к правке одного секрета плюс смене адреса домена у регистратора.
+# Как заливаем. По SSH через rsync — шифровано, и уезжают только файлы,
+# у которых поменялось содержимое (--checksum: время файлов после checkout
+# всегда «сейчас», по нему сравнивать нельзя). Старый путь по FTP без
+# шифрования оставлен запасным: он включается, только если ключа SSH нет.
 #
-# Что нужно один раз завести в настройках репозитория
-# (Settings → Secrets and variables → Actions → New repository secret):
-#   BEGET_FTP_HOST      — адрес FTP-сервера Beget
-#   BEGET_FTP_USER      — логин FTP
-#   BEGET_FTP_PASSWORD  — пароль FTP
-#   BEGET_FTP_DIR       — папка сайта, например /new.heatcalc.ru/public_html/
-# Пароль вводится в GitHub и виден только ему: в код он не попадает и в
-# журнале выполнения затирается звёздочками.
+# Что заведено в настройках репозитория
+# (Settings → Secrets and variables → Actions):
+#   секрет BEGET_SSH_KEY        — закрытая половина ключа (на компьютере
+#                                 владельца: ~/.ssh/heatcalc_beget);
+#                                 открытая лежит на Beget в ~/.ssh/authorized_keys
+#   переменная BEGET_SITE_DIR   — папка сайта от домашней, по умолчанию
+#                                 new.heatcalc.ru/public_html. Переезд основного
+#                                 сайта = поменять её на heatcalc.ru/public_html
+#   (запасной FTP) BEGET_FTP_HOST / _USER / _PASSWORD / _DIR
 #
-# Пока секреты не заданы, задача честно пропускается и не мигает красным.
+# Пока ничего не задано, задача честно пропускается и не мигает красным.
 
 name: Выкладка на Beget
 
@@ -28,7 +32,7 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Две выкладки разом по одному FTP — верный способ получить полусайт.
+# Две выкладки разом — верный способ получить полусайт.
 # Ставим их в очередь, а не отменяем: отменённая на середине оставила бы
 # ровно то, чего мы избегаем.
 concurrency:
@@ -42,52 +46,66 @@ jobs:
       - name: Проверить, заведён ли доступ к хостингу
         id: check
         env:
+          SSH_KEY: ${{ secrets.BEGET_SSH_KEY }}
           HOST: ${{ secrets.BEGET_FTP_HOST }}
         run: |
-          if [ -z "$HOST" ]; then
-            echo "Секреты Beget не заданы — выкладка пропущена, это не ошибка."
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          if [ -n "$SSH_KEY" ]; then
+            echo "Заливка по SSH (шифрованная)."
+            echo "mode=ssh" >> "$GITHUB_OUTPUT"
+          elif [ -n "$HOST" ]; then
+            echo "::warning::Ключа SSH нет — заливка по FTP без шифрования."
+            echo "mode=ftp" >> "$GITHUB_OUTPUT"
           else
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Доступ к Beget не задан — выкладка пропущена, это не ошибка."
+            echo "mode=off" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Забрать файлы репозитория
-        if: steps.check.outputs.enabled == 'true'
+        if: steps.check.outputs.mode != 'off'
         uses: actions/checkout@v4
 
-      - name: Залить изменившееся на хостинг
-        if: steps.check.outputs.enabled == 'true'
+      # Список исключений один на оба способа. Ничего лишнего на боевом
+      # сервере — особенно php: на Beget он, в отличие от GitHub Pages,
+      # по-настоящему исполняется, и копии прокси на сайте создали бы вторую
+      # дверь к тем же данным. Исходники, стенды, планы (*.md) — тоже мимо.
+      - name: Залить изменившееся по SSH
+        if: steps.check.outputs.mode == 'ssh'
+        env:
+          SSH_KEY: ${{ secrets.BEGET_SSH_KEY }}
+          SITE_DIR: ${{ vars.BEGET_SITE_DIR }}
+        run: |
+          set -o pipefail
+          [ -z "$SITE_DIR" ] && SITE_DIR="new.heatcalc.ru/public_html"
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/beget
+          chmod 600 ~/.ssh/beget
+          # Отпечаток сервера закреплён: подменённый сервер ключ не получит.
+          echo "v953008q.beget.tech ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL2mdvWDDbap1QDeEh8Yq7NqUNCJjpjVymb+9RqSBYYr" > ~/.ssh/known_hosts
+          # Без --delete: удалённое из репозитория на сервере остаётся.
+          # Права файлов не трогаем (-rlt без -p) — как было при FTP.
+          rsync -rlt --checksum --omit-dir-times --itemize-changes \
+            -e "ssh -i ~/.ssh/beget -o BatchMode=yes" \
+            --exclude='.git*' --exclude='.claude/' --exclude='.agents/' \
+            --exclude='.github/' --exclude='mobile-android/' --exclude='supabase/' \
+            --exclude='bench/' --exclude='scratch/' --exclude='__pycache__/' \
+            --exclude='models/' --exclude='*.py' --exclude='*.php' --exclude='*.md' \
+            --exclude='*.sql' --exclude='*.ps1' --exclude='CNAME' \
+            --exclude='revit_catalog.json' --exclude='price_index.new.json' \
+            ./ "v953008q@v953008q.beget.tech:$SITE_DIR/" | { grep -v '^\.' || true; } | tail -n 200
+          rm -f ~/.ssh/beget
+
+      - name: Залить изменившееся по FTP (запасной путь)
+        if: steps.check.outputs.mode == 'ftp'
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.BEGET_FTP_HOST }}
           username: ${{ secrets.BEGET_FTP_USER }}
           password: ${{ secrets.BEGET_FTP_PASSWORD }}
           server-dir: ${{ secrets.BEGET_FTP_DIR }}
-          # Обычный FTP, без шифрования. Не от хорошей жизни — оба
-          # шифрованных варианта с Beget не поехали, проверено боевыми
-          # запусками:
-          #   ftps (шифрование поверх порта 21) — вход проходит, папки
-          #     создаются, первый файл уезжает, и на середине рвётся
-          #     управляющее соединение: ERR_SSL_BAD_RECORD_TYPE;
-          #   ftps-legacy (порт 990, шифрование с первой секунды) — на том
-          #     порту шифрованием не пахнет вовсе: wrong version number.
-          #
-          # Чем это плохо: пароль от FTP идёт по сети открытым текстом.
-          # Чем это терпимо: аккаунт заперт в папке проверочной копии
-          # (см. BEGET_FTP_DIR), к остальному хостингу — и особенно к
-          # proxy.heatcalc.ru с его прокси — доступа у него нет. Худшее, что
-          # может сделать перехвативший, — испортить копию, которая и так
-          # публична и пересобирается одной командой.
-          #
-          # Если однажды понадобится по-настоящему: включить SSH у этого
-          # аккаунта (галочка при его создании в панели Beget) и заменить
-          # весь этот шаг на rsync поверх ssh — он и шифрован, и быстрее.
+          # Обычный FTP: оба шифрованных варианта (ftps, ftps-legacy) с Beget
+          # не поехали — рвались на середине. Поэтому и перешли на SSH.
           protocol: ftp
-          # Картинок больше тринадцати тысяч, первая заливка долгая.
           timeout: 600000
-          # Ничего лишнего на боевом сервере. Особенно php: на Beget он,
-          # в отличие от GitHub Pages, по-настоящему исполняется, и копии
-          # прокси на сайте создали бы вторую дверь к тем же данным.
           exclude: |
             **/.git*
             **/.git*/**
@@ -110,7 +128,7 @@ jobs:
             **/price_index.new.json
 
       - name: Проверить, что сайт отвечает
-        if: steps.check.outputs.enabled == 'true'
+        if: steps.check.outputs.mode != 'off'
         continue-on-error: true
         run: |
           URL="${{ vars.BEGET_CHECK_URL }}"
