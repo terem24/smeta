@@ -11,7 +11,8 @@
   "cta_calc": "Посчитать тёплый пол своего дома",
   "cta_calc_note": "Метраж, петли, коллектор и теплоотдача по комнатам",
   "related": [
-    "kollektor-teplogo-pola"
+    "kollektor-teplogo-pola",
+    "oshibki-teplogo-pola"
   ],
   "blocks": [
     {

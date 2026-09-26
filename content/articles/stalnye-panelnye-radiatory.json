@@ -12,7 +12,8 @@
   "cta_calc_note": "Тип и типоразмер по теплопотерям комнат",
   "related": [
     "bimetall-ili-alyuminiy",
-    "zamena-radiatorov-v-dome"
+    "zamena-radiatorov-v-dome",
+    "raschet-radiatorov-po-ploshchadi"
   ],
   "blocks": [
     {

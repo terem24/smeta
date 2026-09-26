@@ -30,6 +30,9 @@ SITEMAP = os.path.join(ROOT, 'sitemap.xml')
 LLMS = os.path.join(ROOT, 'llms.txt')
 SITE = 'https://heatcalc.ru'
 MAX_PER_RUN = 1
+# Пересборка вышедших идёт молча: её вывод — сотни строк, а интересен
+# только итог и список не прошедших проверку.
+DEVNULL = open(os.devnull, 'w')
 
 
 def read(p):
@@ -81,6 +84,45 @@ def rmtree(path):
         os.rmdir(path)
 
 
+def refresh_published(data, skip):
+    """Пересобрать вышедшие статьи, чтобы в них появились ссылки на новичка.
+
+    Блок «Читать дальше» ставит ссылку вперёд только на статью, которая уже
+    опубликована: раньше её страницы ещё нет, и ссылка вела бы в 404. Значит,
+    ссылка на сегодняшнюю статью может появиться в соседях только после её
+    выхода — при пересборке. Без этого шага хвост расписания остался бы без
+    единой входящей ссылки: проверено на плане из 174 статей, тупиками
+    оказывались 23 последние.
+
+    Упавшая пересборка не должна ломать прогон: страницу возвращаем как была
+    и идём дальше. Сегодняшняя публикация уже состоялась, и терять её из-за
+    чужой страницы незачем.
+    """
+    done = failed = 0
+    for it in data['items']:
+        slug = it['slug']
+        if it.get('status') != 'published' or slug in skip:
+            continue
+        if not os.path.isfile(os.path.join(ROOT, 'content', 'articles', '%s.json' % slug)):
+            continue
+        page = os.path.join(ROOT, slug, 'index.html')
+        before = read(page) if os.path.isfile(page) else None
+        rc = subprocess.call([sys.executable, os.path.join(ROOT, 'tools', 'build_article.py'),
+                              slug, '--publish'], stdout=DEVNULL)
+        if rc == 0:
+            rc = subprocess.call([sys.executable, os.path.join(ROOT, 'tools', 'check_article.py'),
+                                  slug, '--published'], stdout=DEVNULL)
+        if rc != 0:
+            failed += 1
+            print('! пересборка %s не прошла проверку — страница оставлена прежней' % slug)
+            if before is not None:
+                write(page, before)
+            continue
+        if before is not None and read(page) != before:
+            done += 1
+    print('пересобрано вышедших: %d%s' % (done, (', с ошибкой: %d' % failed) if failed else ''))
+
+
 def main():
     dry = '--dry-run' in sys.argv
     today = datetime.date.today().isoformat()
@@ -93,6 +135,7 @@ def main():
         return 0
 
     published = 0
+    fresh = []
     for item in due:
         if published >= MAX_PER_RUN:
             print('остальные ждут следующего дня — не больше %d за прогон' % MAX_PER_RUN)
@@ -134,10 +177,15 @@ def main():
         add_to_llms(slug, item['title'], item['query'])
         item['status'] = 'published'
         item['published_at'] = today
+        fresh.append(slug)
         published += 1
 
     if published and not dry:
         write(SCHEDULE, json.dumps(data, ensure_ascii=False, indent=1))
+        # Порядок важен: сначала статус в расписании, потом пересборка —
+        # иначе соседи не увидят сегодняшнюю статью опубликованной и ссылку
+        # на неё не поставят.
+        refresh_published(data, skip=set(fresh))
     print('опубликовано: %d' % published)
     return 0
 

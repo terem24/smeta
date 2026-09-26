@@ -181,15 +181,23 @@ def faq_ld(faq):
     return items
 
 
-def related_links(meta, schedule, art):
+def related_links(meta, schedule, art, publish=False):
     """Ссылки на соседей: сначала заданные вручную, потом ближайшие по кластеру.
 
-    Ссылаемся только на уже опубликованные или запланированные раньше статьи —
-    ссылка на страницу, которой ещё нет, ведёт в 404 и портит и обход, и доверие.
+    Ссылка ставится только на страницу, которая будет на месте в тот момент,
+    когда эта страница станет видимой. Отсюда два разных правила.
+
+    Сосед выходит РАНЬШЕ — годится всегда: к нашей дате он уже на сайте.
+
+    Сосед выходит ПОЗЖЕ — годится, только если он уже опубликован, а мы
+    пересобираем уже опубликованную страницу. Именно так статьи конца
+    расписания получают входящие ссылки: publish_due.py после каждой
+    публикации пересобирает вышедшее раньше, и в нём появляется ссылка на
+    новичка. Без этого последние 23 статьи плана остались бы вовсе без
+    входящих ссылок — тупиками, до которых обходчику труднее добраться.
     """
     by_slug = {i['slug']: i for i in schedule['items']}
     mine = by_slug.get(meta['slug'], {})
-    picked, seen = [], {meta['slug']}
     mydate = mine.get('date') or ''
 
     def written(s):
@@ -202,20 +210,36 @@ def related_links(meta, schedule, art):
         на уже опубликованных страницах, которые никто не пересобирает.
         """
         return os.path.isfile(os.path.join(ROOT, 'content', 'articles', '%s.json' % s))
+
+    def available(s):
+        if s not in by_slug or not written(s):
+            return False
+        it = by_slug[s]
+        if (it['date'] or '9999') < mydate:
+            return True
+        return publish and it.get('status') == 'published'
+
+    picked, seen = [], {meta['slug']}
     for s in art.get('related', []):
-        # Заданные вручную соседи проходят ту же проверку по дате, что и подобранные
-        # автоматически: статья, которая выйдет позже, на момент публикации — 404.
-        if (s in by_slug and s not in seen and written(s)
-                and (by_slug[s]['date'] or '9999') < mydate):
+        if s not in seen and available(s):
             picked.append(by_slug[s]); seen.add(s)
+
     same = [i for i in schedule['items']
             if i['cluster_key'] == mine.get('cluster_key') and i['slug'] not in seen]
-    same.sort(key=lambda x: x['date'] or '')
-    for i in same:
+    # Соседи по кластеру: сначала ближайшие назад, потом ближайшие вперёд.
+    # Близкие по дате — это и близкие по теме внутри кластера, а заодно так
+    # ссылки расходятся ровнее: при сортировке от начала расписания весь вес
+    # доставался первым статьям кластера, а хвост оставался без входящих.
+    earlier = sorted([i for i in same if (i['date'] or '') < mydate],
+                     key=lambda x: x['date'] or '', reverse=True)
+    later = sorted([i for i in same if (i['date'] or '') > mydate],
+                   key=lambda x: x['date'] or '')
+    for i in earlier + later:
         if len(picked) >= 4:
             break
-        if (i['date'] or '') < (mine.get('date') or '') and written(i['slug']):
+        if available(i['slug']):
             picked.append(i); seen.add(i['slug'])
+
     # Всегда добавляем опорные страницы калькулятора — они опубликованы давно
     fixed = [('/smeta/', 'что входит в смету на отопление'),
              ('/raschet-teplopoter/', 'как считаются теплопотери дома')]
@@ -304,7 +328,7 @@ def build(slug, publish=False):
         lead=art['lead'],
         body=body,
         faq=render_faq(art['faq']),
-        related=related_links(meta, schedule, art),
+        related=related_links(meta, schedule, art, publish),
         # Метка источника: по ней видно, какая статья привела заявку. Без неё
         # заявка приходит обезличенной, и связь «статья → клиент» теряется
         # навсегда — восстановить её задним числом нечем. Параметр вычищается

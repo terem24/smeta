@@ -12,7 +12,8 @@
   "cta_calc_note": "Калькулятор подберёт типоразмер по площади",
   "related": [
     "kollektor-teplogo-pola",
-    "raschet-teplogo-pola"
+    "raschet-teplogo-pola",
+    "rashodomery-teplogo-pola"
   ],
   "blocks": [
     {
