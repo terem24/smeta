@@ -29,6 +29,28 @@ const supabaseKey = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
 // исходный код вместо ответа и ломал вход у всех. Теперь прокси вынесен на отдельный
 // поддомен proxy.heatcalc.ru с настоящим PHP-хостингом (Beget), сам сайт остаётся на GitHub Pages.
 function supabaseProxyFetch(input, init) {
+    const url0 = typeof input === 'string' ? input : input.url;
+    // Предел ожидания. На телефоне запрос, начатый перед сворачиванием или сменой
+    // сети, мог не вернуться никогда. Если это было обновление входа (/auth/),
+    // библиотека держит на нём общую очередь, и за ним вставали все обращения к
+    // базе: отправил одно сообщение — кнопка серая до перезахода. С пределом
+    // повисший запрос падает ошибкой, библиотека повторяет его сама, очередь идёт.
+    // Файлы (/storage/) и функции не ограничиваем: крупная загрузка честно долгая.
+    const limitMs = /\/auth\/v1\//.test(url0) ? 15000 : (/\/rest\/v1\//.test(url0) ? 40000 : 0);
+    if (limitMs && typeof AbortController !== 'undefined') {
+        const ctrl = new AbortController();
+        const outer = init && init.signal;
+        if (outer) {
+            if (outer.aborted) ctrl.abort();
+            else outer.addEventListener('abort', () => ctrl.abort(), { once: true });
+        }
+        const timer = setTimeout(() => ctrl.abort(), limitMs);
+        return supabaseProxyFetchRaw(input, Object.assign({}, init, { signal: ctrl.signal }))
+            .finally(() => clearTimeout(timer));
+    }
+    return supabaseProxyFetchRaw(input, init);
+}
+function supabaseProxyFetchRaw(input, init) {
     const host = window.location.hostname;
     // new.heatcalc.ru — проверочная копия сайта на Beget (см. allowedHosts выше).
     // Через прокси её пускаем по той же причине, что и основной адрес: иначе
@@ -596,6 +618,15 @@ const workProExplanations = {
     "монтаж радиатора": "Что будет выполнено: Навеска и обвязка радиатора отопления.\nРегламент/ГОСТ/СНиП: СП 73.13330.2016. Крепление кронштейнов по осям оконного проема строго по уровню, герметизация резьбовых соединений радиаторных пробок, установка воздухоотводчика."
 };
 
+
+// Локальная разработка — это машина разработчика, а не Android-приложение.
+// Внутри APK страница отдаётся встроенным сервером по адресу https://localhost,
+// поэтому все проверки «мы на localhost» срабатывали у пользователей магазина:
+// в опубликованной версии 1.2 висела панель переключения тарифа, подставлялся
+// тестовый PRO-аккаунт владельца, а ссылки клиенту собирались на https://localhost.
+// Метку __HC_NATIVE__ ставит native/native-ui.js — он грузится раньше app.js.
+const HC_LOCAL_DEV = !window.__HC_NATIVE__ &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 const app = {
     // === PREMIUM CUSTOM DIALOGS ===
@@ -6100,8 +6131,7 @@ const app = {
     // одинаковым условием — здесь она названа, чтобы новые места её повторяли,
     // а не выдумывали заново.
     isLocalhost: function () {
-        const h = window.location.hostname;
-        return h === 'localhost' || h === '127.0.0.1';
+        return HC_LOCAL_DEV;
     },
 
     // Тариф, выставленный вручную на локальной машине (см. mountLocalTariffSwitch).
@@ -7079,7 +7109,7 @@ const app = {
         const isGuest = !this.state.tgUser;
         const isPro = this.isPro();
 
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && !isGuest) {
             return true;
         }
@@ -7348,7 +7378,7 @@ const app = {
 
         try {
             // === ПРОВЕРКА АВТОРИЗАЦИИ ===
-            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            const isLocal = (HC_LOCAL_DEV);
 
             console.log("[saveToCloud] Запрашиваем сессию Supabase...");
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -7775,14 +7805,15 @@ const app = {
                             <a href="tel:${(d.manager_phone || '').replace(/[^+\\d]/g, '')}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${d.manager_phone || '—'}</a>
                         </div>
                     </div>
+                    <div id="manager_chat_btn_slot"></div>
                 </div>
                 <p class="lk-hint">💡 Счёт на оборудование выставляет компания <strong>${d.company_name}</strong>. При запросе счёта менеджер получит копию на email.</p>
+                <div id="manager_chat_wrapper" style="margin-top:20px;"></div>
                 <details style="margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;">
                     <summary style="cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-main);">🚚 Условия доставки и оплаты</summary>
                     <div style="margin-top: 10px;">${this.buildDeliveryPaymentHtml()}</div>
                 </details>
                 <div id="manager_comm_history_container" style="margin-top:20px;"></div>
-                <div id="manager_chat_wrapper" style="margin-top:20px;"></div>
             `;
             this.renderManagerCommHistory();
             this.initManagerChatIfAvailable(d.manager_email);
@@ -7891,12 +7922,20 @@ const app = {
         const me = await this.resolveCurrentUserForChat();
         if (!me) return;
 
+        // Кнопка в карточке контактов: чат стоит ниже, и без неё продавец или
+        // монтажник видел только почту и телефон — уходил звонить мимо калькулятора
+        const btnSlot = document.getElementById('manager_chat_btn_slot');
+        if (btnSlot) {
+            btnSlot.innerHTML = `<button type="button" class="auth-btn-base btn-email-submit" style="margin:14px 0 0; width:auto; height:36px; padding:0 18px; font-size:13px;"
+                onclick="const i = document.getElementById('manager_chat_input'); if (i) { i.scrollIntoView({ behavior: 'smooth', block: 'center' }); i.focus({ preventScroll: true }); }">💬 Написать менеджеру</button>`;
+        }
+
         wrapper.innerHTML = `
             <div class="lk-section-head" style="margin-top:4px;"><h4>💬 Чат с менеджером</h4></div>
             <div id="manager_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
             <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_chat_input" placeholder="Написать менеджеру..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_chat_send_btn" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+                <input type="text" id="manager_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать менеджеру..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                <button id="manager_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
             </div>
         `;
 
@@ -8219,16 +8258,21 @@ const app = {
         const text = input ? input.value.trim() : '';
         if (!text) return;
 
-        const sendBtn = document.getElementById(opts.sendBtnId);
-        if (sendBtn) sendBtn.disabled = true;
+        // Как в мессенджере: поле очищается сразу и остаётся в фокусе (клавиатура
+        // телефона не закрывается), кнопку не блокируем — от двойной отправки
+        // защищает флаг. Не ушло — текст возвращается в поле.
+        if (this._chatSending) return;
+        this._chatSending = true;
+        if (input) { input.value = ''; input.focus({ preventScroll: true }); }
         try {
-            await this.sendChatMessageRow(opts.installerId, opts.installerAuthId, opts.managerId, opts.managerAuthId, opts.viewerUserId, opts.viewerName, text);
-            if (input) input.value = '';
-            await this.refreshChatThread(opts);
+            await withTimeout(this.sendChatMessageRow(opts.installerId, opts.installerAuthId, opts.managerId, opts.managerAuthId, opts.viewerUserId, opts.viewerName, text), 20000);
+            this.refreshChatThread(opts);
         } catch (e) {
-            app.alert('Не удалось отправить сообщение: ' + e.message);
+            console.error('[чат] сообщение не отправилось:', e);
+            if (input && !input.value) input.value = text;
+            app.alert('Сообщение не отправилось. Проверьте связь и нажмите «Отправить» ещё раз.');
         } finally {
-            if (sendBtn) sendBtn.disabled = false;
+            this._chatSending = false;
         }
     },
 
@@ -8549,8 +8593,8 @@ const app = {
             <h4 style="margin:0 0 10px; font-size:14px; color:var(--text-main);">💬 ${instName}</h4>
             <div id="manager_installer_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
             <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_installer_chat_input" placeholder="Написать монтажнику..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_installer_chat_send_btn" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+                <input type="text" id="manager_installer_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать монтажнику..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                <button id="manager_installer_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
             </div>
         `;
         detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -10525,7 +10569,7 @@ const app = {
             if (!to) return;
 
             const projectName = (lastEvent && lastEvent.project_name) || 'Без названия';
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            const baseOrigin = HC_LOCAL_DEV
                 ? window.location.origin : 'https://heatcalc.ru';
             const calc = String((lastEvent && lastEvent.calc_id) || '');
             // Ссылка — на КП клиента (номер снимка из события «отправлено»). Номер
@@ -10761,7 +10805,7 @@ const app = {
 
 
     loadFromCloudList: async function () {
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         const { data: { session } } = await supabaseClient.auth.getSession();
         const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
 
@@ -11080,7 +11124,7 @@ const app = {
             } catch (e) { /* не нашли — ниже сделаем новую ссылку */ }
         }
         if (!shareId) { this.cloudRowAction(estimateId, 'share'); return; }
-        const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        const baseOrigin = (HC_LOCAL_DEV)
             ? window.location.origin : 'https://heatcalc.ru';
         const url = `${baseOrigin}/invoice.html?id=${shareId}`;
 
@@ -11251,7 +11295,7 @@ const app = {
             const worksSum = est.works_sum || 0;
             const total = eqSum + worksSum;
 
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
             // Ссылка — на КП, которое одобрил клиент (строка shared_invoices). Раньше
             // сюда шёл номер строки сметы из estimates: страница КП ищет по номеру
             // ссылки, и дистрибьютор получал «смета не найдена».
@@ -11669,7 +11713,7 @@ const app = {
         if (lkOverlay && lkOverlay.style.display === 'flex') this.closeProfileModal();
         try {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            const isLocal = (HC_LOCAL_DEV);
             const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
 
             // eq_sum и created_at — для плашки «цены изменились» (см. showRepriceNotice):
@@ -15472,6 +15516,12 @@ const app = {
         const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
         if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
         if (railWorkPrices) railWorkPrices.style.display = sellerNoWorks ? 'none' : '';
+        // «Документы» — договор подряда, акты, гарантия на монтаж. Без монтажа они
+        // ни к чему (решение владельца 26.09.2026): прячем по тому же признаку.
+        const navOrders = document.querySelector('#profile_nav .lk-nav-item[data-tab="orders"]');
+        const railOrders = rail.querySelector('.lk-rail-item[data-rail="orders"]');
+        if (navOrders) navOrders.style.display = sellerNoWorks ? 'none' : '';
+        if (railOrders) railOrders.style.display = sellerNoWorks ? 'none' : '';
 
         // Число непрочитанных берём готовым из бейджа конверта в шапке: считает его
         // loadNotifications, второй раз считать незачем
@@ -19043,26 +19093,33 @@ const app = {
         const replyTo = this._userReplyTo && String(this._userReplyTo).indexOf('local_') !== 0
             ? this._userReplyTo : null;
 
-        if (btn) btn.disabled = true;
+        // Как в мессенджере: сообщение сразу в переписке, поле пустое и в фокусе
+        // (клавиатура телефона не прячется), кнопка не блокируется — от двойной
+        // отправки защищает флаг. Не ушло — пузырь убираем, текст возвращаем в поле.
+        if (this._userChatSending) return;
+        this._userChatSending = true;
+        const localId = 'local_' + Date.now();
+        if (inp) { inp.value = ''; inp.focus({ preventScroll: true }); }
+        this._userReplyTo = null;
+        (this._msgCache = this._msgCache || []).push({
+            id: localId, sender_id: meId, recipient_id: null,
+            text: text, type: 'reply', parent_id: parentId, reply_to_id: replyTo,
+            created_at: new Date().toISOString()
+        });
+        this.renderUserChat();
         try {
-            await this.sendUserReply(parentId, text, true, replyTo);
-            if (inp) inp.value = '';
-            this._userReplyTo = null;
-            // Дорисовываем сразу, не дожидаясь следующего опроса базы
-            (this._msgCache = this._msgCache || []).push({
-                id: 'local_' + Date.now(), sender_id: meId, recipient_id: null,
-                text: text, type: 'reply', parent_id: parentId, reply_to_id: replyTo,
-                created_at: new Date().toISOString()
-            });
-            this.renderUserChat();
+            await withTimeout(this.sendUserReply(parentId, text, true, replyTo), 20000);
         } catch (e) {
             // Техническую причину — в журнал, человеку короткий текст и код, чтобы
             // было что назвать администратору, если повторится
             console.error('[переписка] сообщение не отправилось:', e);
+            this._msgCache = (this._msgCache || []).filter(m => m.id !== localId);
+            this.renderUserChat();
+            if (inp && !inp.value) inp.value = text;
             app.alert('Сообщение не отправилось. Проверьте связь и попробуйте ещё раз.'
                 + (e && e.code ? ' (код ' + e.code + ')' : ''));
         } finally {
-            if (btn) btn.disabled = false;
+            this._userChatSending = false;
         }
     },
 
@@ -21693,9 +21750,77 @@ const app = {
             r.name ? 'Имя: ' + r.name : '',
             r.phone ? 'Телефон: ' + r.phone : '',
             r.when ? 'Когда звонить: ' + r.when : '',
-            r.comment ? 'Комментарий: ' + r.comment : ''
+            r.comment ? 'Комментарий: ' + r.comment : '',
+            // Заявки со страницы /dom/ несут ответы заказчика: по ссылке мастер
+            // открывает у себя полную смету по дому (app.applyOprosFromUrl)
+            this.leadCalcUrl(r) ? 'Расчёт по дому: ' + this.leadCalcUrl(r) : ''
         ];
         return lines.filter(Boolean).join('\n');
+    },
+
+    leadCalcUrl: function (r) {
+        return r && /^[A-Za-z0-9_-]{8,2000}$/.test(r.calc || '') ? 'https://heatcalc.ru/?opros=' + r.calc : '';
+    },
+
+    // ── Кому передана заявка ────────────────────────────────────────────
+    // Журнал на Beget только дописывается, поэтому отметки владельца лежат в
+    // таблице lead_assignments (Supabase, только для администраторов) по id заявки.
+    LEAD_STATUSES: [
+        ['new', 'Новая'], ['sent', 'Передана мастеру'], ['contacted', 'Мастер связался'],
+        ['contract', 'Договор'], ['done', 'Смонтировано'], ['rejected', 'Отказ']
+    ],
+
+    loadLeadAssignments: async function () {
+        this._leadAssign = {};
+        this._leadInstallers = [];
+        try {
+            const { data } = await supabaseClient.from('lead_assignments')
+                .select('lead_id, installer_id, installer_name, status, updated_at');
+            (data || []).forEach(a => { this._leadAssign[a.lead_id] = a; });
+        } catch (e) { console.warn('[заявки] отметки не прочитаны:', e); }
+        // Кому передавать: зарегистрированные в Петербурге и области. Пилот идёт
+        // только там, остальные регионы пока без мастеров.
+        try {
+            const { data } = await supabaseClient.from('users')
+                .select('id, username, first_name, last_name, phone, region, activity_types, is_blocked')
+                .in('region', ['Санкт-Петербург', 'Ленинградская область']);
+            this._leadInstallers = (data || [])
+                .filter(u => !u.is_blocked)
+                .map(u => ({
+                    id: u.id,
+                    name: [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || 'без имени',
+                    phone: u.phone || '',
+                    installer: (u.activity_types || []).includes('Монтажник')
+                }))
+                // монтажники сверху, внутри — по имени
+                .sort((a, b) => (b.installer - a.installer) || a.name.localeCompare(b.name, 'ru'));
+        } catch (e) { console.warn('[заявки] список мастеров не прочитан:', e); }
+    },
+
+    saveLeadAssignment: async function (idx, field, value, el) {
+        const r = (this._leadsData || [])[idx];
+        if (!r || !r.id) return;
+        const cur = Object.assign({ lead_id: r.id, status: 'new' }, this._leadAssign[r.id] || {});
+        if (field === 'installer') {
+            const u = this._leadInstallers.find(x => x.id === value);
+            cur.installer_id = u ? u.id : null;
+            cur.installer_name = u ? u.name : null;
+            // выбрали мастера — заявка считается переданной, если статус ещё «Новая»
+            if (u && cur.status === 'new') cur.status = 'sent';
+        } else {
+            cur.status = value;
+        }
+        cur.updated_at = new Date().toISOString();
+        const row = { lead_id: cur.lead_id, installer_id: cur.installer_id || null, installer_name: cur.installer_name || null, status: cur.status, updated_at: cur.updated_at };
+        try {
+            const { error } = await supabaseClient.from('lead_assignments').upsert(row, { onConflict: 'lead_id' });
+            if (error) throw error;
+            this._leadAssign[r.id] = row;
+            this.renderAdminLeads();
+        } catch (e) {
+            console.warn('[заявки] отметка не сохранилась:', e);
+            if (el) { el.style.borderColor = '#DC2626'; el.title = 'Не сохранилось — попробуйте ещё раз'; }
+        }
     },
 
     copyLead: async function (idx, btn) {
@@ -21730,14 +21855,26 @@ const app = {
                     cache: 'no-store'
                 });
                 if (res.status === 403) throw new Error('forbidden');
-                if (!res.ok) throw new Error('HTTP ' + res.status);
-                const data = await res.json();
+                // Текстом, а не res.json(): при сбое сервер отдаёт пустоту или HTML,
+                // и без начала ответа причину было не узнать — вкладка писала только
+                // «не удалось», а запрос с чужим пропуском воспроизвести нельзя
+                const raw = await res.text();
+                if (!res.ok) throw new Error('HTTP ' + res.status + (raw ? ': ' + raw.slice(0, 120) : ''));
+                let data;
+                try { data = JSON.parse(raw.replace(/^﻿/, '')); }
+                catch (pe) { throw new Error('ответ не JSON (' + raw.length + ' байт)' + (raw ? ': ' + raw.slice(0, 120) : '')); }
                 this._leadsData = data.items || [];
+                await this.loadLeadAssignments();
             } catch (e) {
                 const denied = e && e.message === 'forbidden';
+                console.warn('[заявки] журнал не прочитан:', e);
+                // Вкладка только владельцу — причину показываем мелко прямо здесь:
+                // консоль он не откроет, а без неё сбой не разобрать
+                const why = denied ? '' : String((e && e.message) || e || '').slice(0, 200);
                 box.innerHTML = `<div style="padding:24px; color:var(--text-sec); font-size:13px; line-height:1.6;">
                     ${denied ? 'Журнал заявок доступен только владельцу.' : 'Не удалось прочитать журнал заявок.'}<br>
                     ${denied ? '' : 'Сами заявки от этого не теряются: каждая приходит в Телеграм и пишется в журнал на сервере.<br>'}
+                    ${why ? `<span style="font-size:11px; opacity:.75;">Причина: ${esc(why)}</span><br>` : ''}
                     <button class="auth-btn-base" style="margin-top:12px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
                 </div>`;
                 return;
@@ -21748,7 +21885,7 @@ const app = {
         if (!rows.length) {
             box.innerHTML = `<div style="padding:24px; color:var(--text-sec); font-size:13px; line-height:1.6;">
                 Заявок пока нет.<br>
-                Они приходят с формы на странице <a href="/montazh-otopleniya-spb/" target="_blank" style="color:var(--primary);">монтажа в СПб</a>, куда ведут ссылки из статей.
+                Они приходят с формы на странице <a href="/montazh-otopleniya-spb/" target="_blank" style="color:var(--primary);">монтажа в СПб</a>, куда ведут ссылки из статей, и со страницы заказчика <a href="/dom/" target="_blank" style="color:var(--primary);">/dom/</a>.
                 <button class="auth-btn-base" style="margin-left:10px; width:auto; padding:0 14px; height:32px; font-size:12px;" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
             </div>`;
             return;
@@ -21758,7 +21895,7 @@ const app = {
         // приводят людей, а какие только читают.
         const bySrc = {};
         rows.forEach(r => {
-            const k = r.src || '— напрямую';
+            const k = r.src === 'dom' ? 'страница /dom/' : (r.src || '— напрямую');
             bySrc[k] = (bySrc[k] || 0) + 1;
         });
         const srcTop = Object.keys(bySrc).sort((a, b) => bySrc[b] - bySrc[a]).slice(0, 8);
@@ -21784,9 +21921,20 @@ const app = {
                         hour: '2-digit', minute: '2-digit'
                     }) + ' МСК';
             }
-            const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src)}</span>`
+            const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src === 'dom' ? 'страница /dom/' : r.src)}</span>`
                 : '<span style="color:var(--text-sec); font-size:11px;">напрямую</span>';
-            return `<div style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
+            const a = (this._leadAssign || {})[r.id] || {};
+            const st = a.status || 'new';
+            const selStyle = 'height:30px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main); font-size:12px; padding:0 8px; max-width:100%;';
+            const instOpts = '<option value="">— мастер не выбран —</option>' +
+                (this._leadInstallers || []).map(u => `<option value="${esc(u.id)}"${u.id === a.installer_id ? ' selected' : ''}>${esc(u.name)}${u.installer ? '' : ' (продавец)'}${u.phone ? ' · ' + esc(u.phone) : ''}</option>`).join('') +
+                // мастер мог уйти из региона или удалиться — имя всё равно показываем
+                (a.installer_id && !(this._leadInstallers || []).some(u => u.id === a.installer_id)
+                    ? `<option value="${esc(a.installer_id)}" selected>${esc(a.installer_name || 'мастер')}</option>` : '');
+            const stOpts = this.LEAD_STATUSES.map(([v, l]) => `<option value="${v}"${v === st ? ' selected' : ''}>${l}</option>`).join('');
+            const stColor = { new: '#F59E0B', sent: 'var(--primary)', contacted: 'var(--primary)', contract: '#10B981', done: '#10B981', rejected: 'var(--text-sec)' }[st];
+            const calcUrl = this.leadCalcUrl(r);
+            return `<div style="border:1px solid var(--border); border-left:3px solid ${stColor}; border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                     <div style="font-size:13px; color:var(--text-main);">
                         <b>${esc(r.name || 'без имени')}</b> · <a href="tel:${esc(r.phone || '')}" style="color:var(--primary); text-decoration:none;">${esc(r.phone || '')}</a>
@@ -21797,17 +21945,27 @@ const app = {
                     ${works ? '<b>Что:</b> ' + esc(works) + '<br>' : ''}
                     ${r.place ? '<b>Где:</b> ' + esc(r.place) + (r.area ? ', ' + esc(r.area) + ' м²' : '') + '<br>' : ''}
                     ${r.when ? '<b>Когда звонить:</b> ' + esc(r.when) + '<br>' : ''}
-                    ${r.comment ? '<b>Комментарий:</b> ' + esc(r.comment) : ''}
+                    ${r.comment ? '<b>Комментарий:</b> <span style="white-space:pre-line;">' + esc(r.comment) + '</span>' : ''}
                 </div>
-                <button class="auth-btn-base" style="margin-top:10px; width:auto; padding:0 14px; height:30px; font-size:12px;"
-                    onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+                    <select style="${selStyle} flex:1 1 220px;" title="Кому передана заявка" onchange="app.saveLeadAssignment(${i}, 'installer', this.value, this)"${r.id ? '' : ' disabled'}>${instOpts}</select>
+                    <select style="${selStyle} flex:0 1 180px; color:${stColor}; font-weight:600;" title="Что с заявкой" onchange="app.saveLeadAssignment(${i}, 'status', this.value, this)"${r.id ? '' : ' disabled'}>${stOpts}</select>
+                </div>
+                ${a.updated_at ? `<div style="font-size:11px; color:var(--text-sec); margin-top:6px;">Отметка от ${esc(new Date(a.updated_at).toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }))} МСК</div>` : ''}
+                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+                    ${calcUrl ? `<a class="auth-btn-base" href="${esc(calcUrl)}" target="_blank" rel="noopener" style="width:auto; padding:0 14px; height:30px; font-size:12px; display:inline-flex; align-items:center; text-decoration:none;" title="Полная смета по ответам заказчика — в новой вкладке">Открыть в расчёте</a>` : ''}
+                    <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"
+                        onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+                </div>
             </div>`;
         }).join('');
 
         box.innerHTML = `
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
                 ${card('всего заявок', rows.length)}
-                ${card('со статей', rows.filter(r => r.src).length)}
+                ${card('не переданы мастеру', rows.filter(r => ((this._leadAssign || {})[r.id] || {}).status === undefined || ((this._leadAssign || {})[r.id] || {}).status === 'new').length)}
+                ${card('со страницы /dom/', rows.filter(r => r.src === 'dom').length)}
+                ${card('со статей', rows.filter(r => r.src && r.src !== 'dom' && !/^test/.test(r.src)).length)}
                 ${card('напрямую', rows.filter(r => !r.src).length)}
             </div>
             <div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light);">
@@ -30597,9 +30755,9 @@ const app = {
                          переписок им по-прежнему закрыто (см. кнопки с корзиной выше). -->
                     ${replyBarHtml}
                     <div class="admin-chat-compose">
-                        <textarea id="admin_msg_text" rows="1" placeholder="${esc(composePlaceholder)}" onkeydown="app.adminChatKeydown(event)"></textarea>
+                        <textarea id="admin_msg_text" rows="1" enterkeyhint="send" placeholder="${esc(composePlaceholder)}" onkeydown="app.adminChatKeydown(event)"></textarea>
                         <button class="emoji-open-btn" type="button" title="Смайлики" onclick="app.toggleEmojiPicker('admin_msg_text', this)">🙂</button>
-                        <button class="admin-chat-send" title="Отправить (Enter)" onclick="app.sendAdminMessage()">➤</button>
+                        <button class="admin-chat-send" title="Отправить (Enter)" onpointerdown="event.preventDefault()" onclick="app.sendAdminMessage()">➤</button>
                     </div>`)}
                 </div>
             </div>
@@ -35801,7 +35959,7 @@ const app = {
             //
             // Если сохранить не удалось (нет сети, Supabase заблокирован, RLS) — уходим на
             // прежнюю длинную #data=-ссылку: она открывается вообще без облака.
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
             let shortUrl = '';
             if (this.isValidUUID(estId)) {
                 try {
@@ -36498,7 +36656,7 @@ const app = {
             let city = 'Не определен';
             let clientIp = '0.0.0.0';
             try {
-                const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                const isLocal = (HC_LOCAL_DEV);
                 if (isLocal) {
                     clientIp = '127.0.0.1';
                     city = 'Локальный хост';
@@ -40398,7 +40556,7 @@ const app = {
             totals: totals
         };
         const encoded = await encodePayload(payload);
-        const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+        const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
         // "data" передаётся во фрагменте (#), а не в query (?), так как фрагмент не отправляется
         // на сервер — это позволяет избежать ошибки 414 "URI Too Long" для больших смет.
         return `${baseOrigin}/invoice.html#data=${encoded}`;
@@ -42120,7 +42278,7 @@ const app = {
         if (!this.checkAccess('base')) return;
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99", email: "test@installer.ru" };
         }
@@ -42161,7 +42319,7 @@ const app = {
         if (validDays === undefined || validDays === null) validDays = this.invoiceValidDaysDefault();
         validDays = Math.max(0, Math.min(this.INVOICE_VALID_DAYS_MAX, Math.round(Number(validDays)) || 0));
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99", email: "test@installer.ru" };
         }
@@ -42310,7 +42468,7 @@ const app = {
             object_info.client_comment = object_info.client_comment || null;
             object_info.status_updated_at = object_info.status_updated_at || null;
 
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
 
             // Сначала пробуем синхронно сохранить смету в shared_invoices — тогда ссылка
             // получится короткой (?id=...) и надёжно откроется в любом мессенджере: длинные
@@ -42530,7 +42688,7 @@ const app = {
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
 
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99" };
         }
@@ -42588,7 +42746,7 @@ const app = {
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99" };
         }
@@ -42773,7 +42931,7 @@ const app = {
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99" };
         }
@@ -43272,7 +43430,7 @@ const app = {
     sendEmail: async function () {
         console.log("[sendEmail] Функция запущенна.");
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99", email: "test@installer.ru" };
         }
@@ -43437,7 +43595,7 @@ const app = {
 
             // ГЕНЕРАЦИЯ / Upsert В ТАБЛИЦУ shared_invoices ДЛЯ СОЗДАНИЯ РАБОЧЕЙ ОНЛАЙН ССЫЛКИ КЛИЕНТА
             let shareId = this.state.shared_invoice_id;
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
             let viewUrl = "";
 
             try {
@@ -46617,7 +46775,7 @@ const app = {
             if (stdFaucet) stdFaucet.alts = faucetAlts;
         }
         // === ОБХОД АВТОРИЗАЦИИ ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ ===
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if (HC_LOCAL_DEV) {
             console.warn('[DEV MODE] Localhost detected — установлена PRO сессия для тестирования.');
             this.state.accountType = 'pro';
             this.state.groupItems = true; // По умолчанию группировка включена для PRO
@@ -75741,7 +75899,7 @@ const app = {
 
         // baseURL реального фронтенда profi-stout — уже включает "/api",
         // а вызовы идут с относительным путём вида "api/login" (без ведущего
-        const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const isLocal = HC_LOCAL_DEV;
         const BASE = isLocal ? 'https://profi-stout.promo-online.pro/api' : `${supabaseUrl}/functions/v1/stout-proxy?path=`;
         const APP_TOKEN = 'Pns2wxxcAnrd6z8vlero6OVNVtv8ksJVg-TsL3D7GOHPIRDnt2MU6VJ7tZshxhn_';
         const CREDS = { login: '+79826109548', password: '31Dim1988@' };
@@ -76170,7 +76328,7 @@ const app = {
             // дописывает сервер (tg_notify.php); здесь он нужен только письму и городу.
             let clientIp = 'Не определен';
             let clientCity = 'Не определен';
-            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            const isLocal = (HC_LOCAL_DEV);
             if (isLocal) {
                 clientIp = '127.0.0.1';
                 clientCity = 'Локальный хост';

@@ -110,7 +110,11 @@
     <meta name="theme-color" content="#2563EB">
     <script>
         if ('serviceWorker' in navigator) {
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            // В приложении адрес тоже localhost, но разгружать там нечего:
+            // Service Worker внутри APK не регистрируется, а перезагрузка страницы
+            // на старте выглядела бы как мигание.
+            const isLocal = !window.__HC_NATIVE__ &&
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
             if (isLocal) {
                 let cleared = false;
                 navigator.serviceWorker.getRegistrations().then(function (registrations) {
@@ -190,7 +194,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.87" defer></script>
+    <script src="app.js?v=9.92" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3510,9 +3514,9 @@
                      заполняется из renderUserReplyBar -->
                 <div id="user_chat_replybar"></div>
                 <div class="admin-chat-compose">
-                    <textarea id="user_chat_input" rows="1" placeholder="Сообщение администратору…" onkeydown="app.userChatKey(event)"></textarea>
+                    <textarea id="user_chat_input" rows="1" enterkeyhint="send" placeholder="Сообщение администратору…" onkeydown="app.userChatKey(event)"></textarea>
                     <button class="emoji-open-btn" type="button" title="Смайлики" onclick="app.toggleEmojiPicker('user_chat_input', this)">🙂</button>
-                    <button class="admin-chat-send" id="user_chat_send" title="Отправить (Enter)" onclick="app.sendUserChatMessage()">➤</button>
+                    <button class="admin-chat-send" id="user_chat_send" title="Отправить (Enter)" onpointerdown="event.preventDefault()" onclick="app.sendUserChatMessage()">➤</button>
                 </div>
             </div>
 
