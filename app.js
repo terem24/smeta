@@ -619,6 +619,15 @@ const workProExplanations = {
 };
 
 
+// Локальная разработка — это машина разработчика, а не Android-приложение.
+// Внутри APK страница отдаётся встроенным сервером по адресу https://localhost,
+// поэтому все проверки «мы на localhost» срабатывали у пользователей магазина:
+// в опубликованной версии 1.2 висела панель переключения тарифа, подставлялся
+// тестовый PRO-аккаунт владельца, а ссылки клиенту собирались на https://localhost.
+// Метку __HC_NATIVE__ ставит native/native-ui.js — он грузится раньше app.js.
+const HC_LOCAL_DEV = !window.__HC_NATIVE__ &&
+    (HC_LOCAL_DEV);
+
 const app = {
     // === PREMIUM CUSTOM DIALOGS ===
     alert: function (msg, title = "Внимание") {
@@ -6122,8 +6131,7 @@ const app = {
     // одинаковым условием — здесь она названа, чтобы новые места её повторяли,
     // а не выдумывали заново.
     isLocalhost: function () {
-        const h = window.location.hostname;
-        return h === 'localhost' || h === '127.0.0.1';
+        return HC_LOCAL_DEV;
     },
 
     // Тариф, выставленный вручную на локальной машине (см. mountLocalTariffSwitch).
@@ -7101,7 +7109,7 @@ const app = {
         const isGuest = !this.state.tgUser;
         const isPro = this.isPro();
 
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && !isGuest) {
             return true;
         }
@@ -7370,7 +7378,7 @@ const app = {
 
         try {
             // === ПРОВЕРКА АВТОРИЗАЦИИ ===
-            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            const isLocal = (HC_LOCAL_DEV);
 
             console.log("[saveToCloud] Запрашиваем сессию Supabase...");
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -10561,7 +10569,7 @@ const app = {
             if (!to) return;
 
             const projectName = (lastEvent && lastEvent.project_name) || 'Без названия';
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            const baseOrigin = HC_LOCAL_DEV
                 ? window.location.origin : 'https://heatcalc.ru';
             const calc = String((lastEvent && lastEvent.calc_id) || '');
             // Ссылка — на КП клиента (номер снимка из события «отправлено»). Номер
@@ -10797,7 +10805,7 @@ const app = {
 
 
     loadFromCloudList: async function () {
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         const { data: { session } } = await supabaseClient.auth.getSession();
         const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
 
@@ -11116,7 +11124,7 @@ const app = {
             } catch (e) { /* не нашли — ниже сделаем новую ссылку */ }
         }
         if (!shareId) { this.cloudRowAction(estimateId, 'share'); return; }
-        const baseOrigin = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        const baseOrigin = (HC_LOCAL_DEV)
             ? window.location.origin : 'https://heatcalc.ru';
         const url = `${baseOrigin}/invoice.html?id=${shareId}`;
 
@@ -11287,7 +11295,7 @@ const app = {
             const worksSum = est.works_sum || 0;
             const total = eqSum + worksSum;
 
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
             // Ссылка — на КП, которое одобрил клиент (строка shared_invoices). Раньше
             // сюда шёл номер строки сметы из estimates: страница КП ищет по номеру
             // ссылки, и дистрибьютор получал «смета не найдена».
@@ -11705,7 +11713,7 @@ const app = {
         if (lkOverlay && lkOverlay.style.display === 'flex') this.closeProfileModal();
         try {
             const { data: { session } } = await supabaseClient.auth.getSession();
-            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            const isLocal = (HC_LOCAL_DEV);
             const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
 
             // eq_sum и created_at — для плашки «цены изменились» (см. showRepriceNotice):
@@ -35951,7 +35959,7 @@ const app = {
             //
             // Если сохранить не удалось (нет сети, Supabase заблокирован, RLS) — уходим на
             // прежнюю длинную #data=-ссылку: она открывается вообще без облака.
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
             let shortUrl = '';
             if (this.isValidUUID(estId)) {
                 try {
@@ -36648,7 +36656,7 @@ const app = {
             let city = 'Не определен';
             let clientIp = '0.0.0.0';
             try {
-                const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                const isLocal = (HC_LOCAL_DEV);
                 if (isLocal) {
                     clientIp = '127.0.0.1';
                     city = 'Локальный хост';
@@ -40548,7 +40556,7 @@ const app = {
             totals: totals
         };
         const encoded = await encodePayload(payload);
-        const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+        const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
         // "data" передаётся во фрагменте (#), а не в query (?), так как фрагмент не отправляется
         // на сервер — это позволяет избежать ошибки 414 "URI Too Long" для больших смет.
         return `${baseOrigin}/invoice.html#data=${encoded}`;
@@ -42270,7 +42278,7 @@ const app = {
         if (!this.checkAccess('base')) return;
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99", email: "test@installer.ru" };
         }
@@ -42311,7 +42319,7 @@ const app = {
         if (validDays === undefined || validDays === null) validDays = this.invoiceValidDaysDefault();
         validDays = Math.max(0, Math.min(this.INVOICE_VALID_DAYS_MAX, Math.round(Number(validDays)) || 0));
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99", email: "test@installer.ru" };
         }
@@ -42460,7 +42468,7 @@ const app = {
             object_info.client_comment = object_info.client_comment || null;
             object_info.status_updated_at = object_info.status_updated_at || null;
 
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
 
             // Сначала пробуем синхронно сохранить смету в shared_invoices — тогда ссылка
             // получится короткой (?id=...) и надёжно откроется в любом мессенджере: длинные
@@ -42680,7 +42688,7 @@ const app = {
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
 
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99" };
         }
@@ -42738,7 +42746,7 @@ const app = {
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99" };
         }
@@ -42923,7 +42931,7 @@ const app = {
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99" };
         }
@@ -43422,7 +43430,7 @@ const app = {
     sendEmail: async function () {
         console.log("[sendEmail] Функция запущенна.");
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
-        const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        const isLocal = (HC_LOCAL_DEV);
         if (isLocal && (!tgUser || !tgUser.first_name || !this.isPhoneFilled(tgUser.phone))) {
             tgUser = { first_name: "Тестовый Монтажник", phone: "+7 (999) 999-99-99", email: "test@installer.ru" };
         }
@@ -43587,7 +43595,7 @@ const app = {
 
             // ГЕНЕРАЦИЯ / Upsert В ТАБЛИЦУ shared_invoices ДЛЯ СОЗДАНИЯ РАБОЧЕЙ ОНЛАЙН ССЫЛКИ КЛИЕНТА
             let shareId = this.state.shared_invoice_id;
-            const baseOrigin = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? window.location.origin : 'https://heatcalc.ru';
+            const baseOrigin = HC_LOCAL_DEV ? window.location.origin : 'https://heatcalc.ru';
             let viewUrl = "";
 
             try {
@@ -46767,7 +46775,7 @@ const app = {
             if (stdFaucet) stdFaucet.alts = faucetAlts;
         }
         // === ОБХОД АВТОРИЗАЦИИ ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ ===
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        if (HC_LOCAL_DEV) {
             console.warn('[DEV MODE] Localhost detected — установлена PRO сессия для тестирования.');
             this.state.accountType = 'pro';
             this.state.groupItems = true; // По умолчанию группировка включена для PRO
@@ -75891,7 +75899,7 @@ const app = {
 
         // baseURL реального фронтенда profi-stout — уже включает "/api",
         // а вызовы идут с относительным путём вида "api/login" (без ведущего
-        const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const isLocal = HC_LOCAL_DEV;
         const BASE = isLocal ? 'https://profi-stout.promo-online.pro/api' : `${supabaseUrl}/functions/v1/stout-proxy?path=`;
         const APP_TOKEN = 'Pns2wxxcAnrd6z8vlero6OVNVtv8ksJVg-TsL3D7GOHPIRDnt2MU6VJ7tZshxhn_';
         const CREDS = { login: '+79826109548', password: '31Dim1988@' };
@@ -76320,7 +76328,7 @@ const app = {
             // дописывает сервер (tg_notify.php); здесь он нужен только письму и городу.
             let clientIp = 'Не определен';
             let clientCity = 'Не определен';
-            const isLocal = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            const isLocal = (HC_LOCAL_DEV);
             if (isLocal) {
                 clientIp = '127.0.0.1';
                 clientCity = 'Локальный хост';

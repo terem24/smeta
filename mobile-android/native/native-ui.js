@@ -367,7 +367,10 @@
         // страница за время похода в браузер не перезагружалась.
         history.replaceState(null, d.title, location.pathname + query);
 
-        if (window.app && typeof app.handleYandexCallback === 'function') {
+        // app объявлен через const — на window его нет, и проверка window.app
+        // всегда была ложной: код возврата из Яндекса молча выбрасывался,
+        // вход в приложении не доходил до конца.
+        if (typeof app !== 'undefined' && typeof app.handleYandexCallback === 'function') {
             app.handleYandexCallback();
         }
     }

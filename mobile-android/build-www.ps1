@@ -36,6 +36,8 @@ $files = @(
     'el_tariffs.js',
     'gas_tariffs.js',
     'gamification.js',
+    'idle_hint.js',
+    'session_track.js',
     'install_app.js',
     'rate_app.js',
     'push.js',
@@ -48,6 +50,8 @@ $files = @(
     'recognize_files.js',
     'recognize_match.js',
     'recognize_plan.js',
+    'recognize_geo.js',
+    'recognize_project.js',
 
     # Эти шесть подключены в index.html, но в список не попадали — внутри
     # приложения их просто не было. Без них молча отваливались обучение,
