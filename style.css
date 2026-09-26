@@ -12590,6 +12590,7 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 .rs-scheme { border: 1px solid var(--border, #e2e8f0); border-radius: 8px; overflow: hidden; background: #fff; }
 .rs-scheme-svg { display: block; width: 100%; height: auto; }
 .rs-scheme-empty { padding: 40px 16px; text-align: center; font-size: 13px; color: #64748b; background: var(--surface-light, #f1f5f9); }
+.rs-quick { margin-top: 12px; display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; font-size: 12.5px; }
 body.dark-mode .rs-scheme { border-color: #334155; }
 .rs-bill { margin-top: 8px; font-size: 12.5px; line-height: 1.45; color: var(--text-main, #0f172a); }
 .rs-pv-notes { margin-top: 8px; border: 1px solid rgba(245, 158, 11, .4); background: rgba(245, 158, 11, .08); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; line-height: 1.45; }

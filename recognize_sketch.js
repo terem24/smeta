@@ -69,6 +69,7 @@ const RecognizeSketch = {
         this._pvKey = '';
         this._autoTurned = false;
         this._rotating = false;
+        this._warning = '';
     },
 
     isSketchResult(parsed) {
@@ -201,17 +202,21 @@ const RecognizeSketch = {
             parsed = ui.parseModelJson(text, cand.finishReason);
             if (!ui._parseWarning && this.isSketchResult(parsed)) this.remember(img, parsed);
         }
+        // Модель ничего не нашла — не тупик с ошибкой, а экран проверки без
+        // рамок: там есть «Отметить прибор», и монтажник обведёт котёл сам.
+        // Раньше здесь бросалась ошибка, и печатная схема оборудования
+        // (картинка из каталога) оставляла человека ни с чем.
         if (!this.isSketchResult(parsed)) {
-            const err = new Error('На снимке не нашлось схемы котельной.');
-            err.notSketch = true;
-            throw err;
+            this._items = [];
+            this._notes = [];
+            this._warning = 'На снимке не нашлось оборудования котельной — котлов, бойлеров, насосов, гидрострелки.';
+            return;
         }
         const n = this.normalize(parsed);
         this._items = n.items;
         this._notes = n.notes;
         if (!this._items.length) {
-            throw new Error('На эскизе не нашлось ни котла, ни бойлера, ни насосов. ' +
-                'Сфотографируйте лист целиком и поровнее — или отметьте приборы на эскизе вручную.');
+            this._warning = 'Приборов на снимке не нашлось. Сфотографируйте лист целиком и поровнее — или отметьте приборы вручную.';
         }
     },
 
@@ -327,13 +332,23 @@ const RecognizeSketch = {
             if (!it.fuel) return 'укажите тип котла';
             if (!it.power) return 'впишите мощность';
         }
-        if (it.kind === 'tank' && !it.vol) return 'впишите объём';
+        return '';
+    },
+
+    /**
+     * Чего не прочитано, но расчёту это не мешает: бойлер без объёма всё равно
+     * идёт в схему — объём калькулятор подбирает сам, по числу проживающих,
+     * как при обычном включении ГВС. Раньше такой бойлер считался неполным и
+     * на схему не попадал, хотя на эскизе был найден, — монтажник это заметил.
+     */
+    soft(it) {
+        if (it.kind === 'tank' && !it.vol) return 'объём не прочитан — подберём по числу проживающих; впишите, если он есть на эскизе';
         return '';
     },
 
     /** Зелёная рамка — прочитано уверенно или подтверждено руками, янтарная — проверить. */
     isSure(it) {
-        return !this.missing(it) && (it.edited || it.confidence >= 0.7);
+        return !this.missing(it) && !this.soft(it) && (it.edited || it.confidence >= 0.7);
     },
 
     /**
@@ -411,8 +426,17 @@ const RecognizeSketch = {
         // Справа — схема обвязки из пробного расчёта. Без котла и площади
         // калькулятор котёл не подбирает, и схемы у пробной сметы нет.
         const hasBoiler = this._items.some(it => it.kind === 'boiler' && !this.missing(it));
+        const anyBoiler = this._items.some(it => it.kind === 'boiler');
         const pv = (hasBoiler && (!needArea || this._area > 0)) ? this.preview()
-            : { svg: '', notes: [], bill: [], err: hasBoiler ? 'Впишите площадь дома — без неё котёл не подбирается.' : 'Укажите у котла тип и мощность — тогда здесь появится схема обвязки.' };
+            : { svg: '', notes: [], bill: [], err: hasBoiler ? 'Впишите площадь дома — без неё котёл не подбирается.'
+                : anyBoiler ? 'Укажите у котла тип и мощность — тогда здесь появится схема обвязки.'
+                : 'Котла на снимке нет — это часть обвязки, а схема строится от котла.' };
+        // Снимок без котла (коллектор с группами, гидрострелка) — не тупик:
+        // недостающее добавляется кнопкой, без рамки на снимке.
+        const quickAdd = !anyBoiler ? `<div class="rs-quick">Добавьте недостающее:
+            <button class="rec-btn-g" onclick="RecognizeSketch.addItem('boiler')">➕ Котёл</button>
+            ${this._items.some(it => it.kind === 'tank') ? '' : `<button class="rec-btn-g" onclick="RecognizeSketch.addItem('tank')">➕ Бойлер</button>`}
+          </div>` : '';
         const font = (window.projectSheets && window.projectSheets.FONT) || "'ISOCPEUR','GOST type A','Arial Narrow',sans-serif";
         const schemeHtml = pv.svg
             ? `<svg xmlns="http://www.w3.org/2000/svg" class="sheet-a3 rs-scheme-svg" viewBox="0 0 420 297">
@@ -421,7 +445,7 @@ const RecognizeSketch = {
                  <g stroke-linecap="square" font-family="${font}" font-size="3.67">${pv.svg}</g>
                  <g id="rs_marks"></g>
                </svg>`
-            : `<div class="rs-scheme-empty">${esc(pv.err)}</div>`;
+            : `<div class="rs-scheme-empty">${esc(pv.err)}${quickAdd}</div>`;
         const billHtml = pv.bill.length ? `<div class="rs-bill"><b>В смету встанет:</b> ${
             pv.bill.map(b => esc((b.q > 1 ? b.q + ' × ' : '') + b.name)).join(' · ')}</div>` : '';
         // На схеме нет символа для прибора, у которого не хватает данных: он
@@ -437,12 +461,14 @@ const RecognizeSketch = {
         const pvNotes = pvNotesList.length ? `<div class="rs-pv-notes">${pvNotesList.map(t => `<div>⚠ ${esc(t)}</div>`).join('')}</div>` : '';
 
         body.innerHTML = `
-          <div class="rec-tcheck ${bad ? 'warn' : 'ok'}" style="display:block">
+          <div class="rec-tcheck ${bad || !this._items.length ? 'warn' : 'ok'}" style="display:block">
             <div style="display:flex;gap:10px;align-items:center">
-              <div class="rec-tcheck-ico">${bad ? '!' : '✓'}</div>
-              <div style="font-weight:600">На эскизе: ${esc(sumLine || 'ничего')}</div>
+              <div class="rec-tcheck-ico">${bad || !this._items.length ? '!' : '✓'}</div>
+              <div style="font-weight:600">На эскизе: ${esc(sumLine || 'ничего не найдено')}</div>
             </div>
-            <div class="rec-tcheck-sub" style="margin-top:4px">${bad
+            <div class="rec-tcheck-sub" style="margin-top:4px">${!this._items.length
+                ? esc(this._warning || 'Приборов не найдено.') + ' Нажмите «➕ Отметить прибор» и обведите котёл, бойлер, насосы — дальше всё как обычно.'
+                : bad
                 ? `У ${bad} ${RecognizeUI.plural(bad, 'прибора', 'приборов', 'приборов')} не хватает данных — они отмечены на эскизе янтарным. Нажмите на рамку и допишите.`
                 : unsure
                     ? `Янтарным — прочитано неуверенно (${unsure}), проверьте. Нажмите на рамку, чтобы поправить.`
@@ -628,7 +654,7 @@ const RecognizeSketch = {
     cardHtml(it, i) {
         const esc = (s) => this.esc(s);
         const open = i === this._sel;
-        const miss = this.missing(it);
+        const miss = this.missing(it) || this.soft(it);
         const head = `<div class="rs-card-head" onclick="RecognizeSketch.pick(${open ? -1 : i})">
             <span class="rs-dot ${this.isSure(it) ? 'ok' : 'warn'}"></span>
             <b>${esc(this.title(it))}</b>
@@ -726,6 +752,17 @@ const RecognizeSketch = {
     // ------------------------------------------------------------------
     // Отметить прибор, которого модель не нашла: рамка протягивается по эскизу.
     // ------------------------------------------------------------------
+
+    /** Прибор без рамки на снимке — котёл или бойлер, которых на картинке нет. Карточка открывается сразу. */
+    addItem(kind) {
+        if (!this.KINDS[kind]) return;
+        this._items.push({ kind, fuel: null, power: null, vol: null, flow: null, outputs: null,
+            label: '', note: '', box: null, confidence: 1, edited: true, _hand: true });
+        this._sel = this._items.length - 1;
+        this.renderReview();
+        const card = document.querySelector('.rs-card.open');
+        if (card) try { card.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {}
+    },
 
     toggleDraw() {
         this._draw = !this._draw;
@@ -838,17 +875,29 @@ const RecognizeSketch = {
         if (el.length) fuels.push('el');
         if (fuels.length) st.fuels = fuels;
 
-        // Один электрокотёл — ровно той мощности, что на эскизе: ручной
-        // типоразмер подбор не переигрывает. Два и больше — каскад, его
-        // калькулятор собирает сам по теплопотерям, ручной мощности у каскада нет.
+        // Электрокотлы — ровно те, что на эскизе: ручной типоразмер подбор не
+        // переигрывает, а несколько одинаковых идут каскадом через
+        // state.elBoilerCount («два по 12»). Разные мощности калькулятор
+        // руками не собирает — тогда каскад подбирается по теплопотерям.
+        let elMixed = false;
         if (el.length === 1) {
             st.elBoilerPower = el[0].power;
+            st.elBoilerCount = null;
             out.push(`Электрокотёл ${this.fmt(el[0].power)} кВт`);
         } else if (el.length > 1) {
-            st.elBoilerPower = null;
-            out.push(`Электрокотлов: ${el.length}`);
+            elMixed = el.some(b => b.power !== el[0].power);
+            if (elMixed) {
+                st.elBoilerPower = null;
+                st.elBoilerCount = null;
+                out.push(`Электрокотлов: ${el.length}`);
+            } else {
+                st.elBoilerPower = el[0].power;
+                st.elBoilerCount = Math.min(4, el.length);
+                out.push(`Электрокотлы: ${el.length} × ${this.fmt(el[0].power)} кВт`);
+            }
         } else if (fuels.length) {
             st.elBoilerPower = null;
+            st.elBoilerCount = null;
         }
         if (gas.length) {
             const g = this.gasFor(Math.max.apply(null, gas.map(b => b.power)), tanks.length > 0);
@@ -861,17 +910,25 @@ const RecognizeSketch = {
         }
         if (solid.length) notes.push('Твердотопливный котёл калькулятор не подбирает — добавьте его в смету вручную.');
 
-        // Бойлер: ГВС включается, объём — ближайший в каталоге не меньше нарисованного.
+        // Бойлер: ГВС включается, объём — ближайший в каталоге не меньше
+        // нарисованного. Объём не прочитан — tankVol = null, и калькулятор
+        // подбирает бак сам, по числу проживающих (dhwTankPlan).
         if (tanks.length) {
-            const vol = Math.max.apply(null, tanks.map(t => t.vol));
-            const t = this.tankFor(vol);
+            const vols = tanks.map(t => t.vol).filter(v => v > 0);
             st.hotWater = true;
             if (!st.res) st.res = 3;
             st.tankMount = 'floor';
             st.tankHeat = 'cos';
-            if (t) { st.boilerType = t.type; st.tankVol = t.vol; }
-            out.push(`Бойлер ${t ? t.vol : this.fmt(vol)} л`);
-            if (t && !t.fits) notes.push(`Бойлера на ${this.fmt(vol)} л в каталоге нет — взят самый большой, ${t.vol} л.`);
+            if (vols.length) {
+                const vol = Math.max.apply(null, vols);
+                const t = this.tankFor(vol);
+                if (t) { st.boilerType = t.type; st.tankVol = t.vol; }
+                out.push(`Бойлер ${t ? t.vol : this.fmt(vol)} л`);
+                if (t && !t.fits) notes.push(`Бойлера на ${this.fmt(vol)} л в каталоге нет — взят самый большой, ${t.vol} л.`);
+            } else {
+                st.tankVol = null;
+                out.push('Бойлер — объём на эскизе не прочитан, калькулятор подобрал по числу проживающих');
+            }
             if (tanks.length > 1) notes.push(`На эскизе ${tanks.length} бойлера — калькулятор ставит один; второй добавьте в смету вручную.`);
         }
 
@@ -889,16 +946,17 @@ const RecognizeSketch = {
             out.push('Отопление: радиаторы — тип отопления в расчёте не был задан, поправьте в левой панели');
         }
 
-        return { out, notes, el, hydro, pumps };
+        return { out, notes, el, elMixed, hydro, pumps };
     },
 
     /** Что сказать после пересчёта — по тому, что реально встало в смету. */
     billNotes(r) {
         const notes = [];
         const list = (app.currentEquipmentList || []).filter(i => !i.isOpt);
-        // Каскад электрокотлов калькулятор собирает сам по теплопотерям — ручной
-        // мощности у каскада нет, поэтому говорим, что именно встало в смету.
-        if (r.el.length > 1) {
+        // Каскад из РАЗНЫХ мощностей калькулятор руками не собирает — подбирает
+        // по теплопотерям; говорим, что именно встало. Одинаковые котлы идут
+        // как на эскизе (elBoilerCount), плашка не нужна.
+        if (r.el.length > 1 && r.elMixed) {
             const got = list.filter(i => /котёл электрическ|котел электрическ/i.test(String(i.name || '')))
                 .map(i => (Math.round(+i.q) > 1 ? Math.round(+i.q) + ' × ' : '') + i.name);
             notes.push(`На эскизе ${r.el.length} электрокотла (${r.el.map(b => this.fmt(b.power) + ' кВт').join(' + ')}), ` +
@@ -964,7 +1022,7 @@ const RecognizeSketch = {
     apply() {
         const st = app.state;
         this._undo = JSON.parse(JSON.stringify({
-            fuels: st.fuels || [], elBoilerPower: st.elBoilerPower ?? null,
+            fuels: st.fuels || [], elBoilerPower: st.elBoilerPower ?? null, elBoilerCount: st.elBoilerCount ?? null,
             gasSwap: (st.swaps || {})['gas_boiler_auto'] ?? null,
             hotWater: st.hotWater, res: st.res, tankVol: st.tankVol ?? null,
             boilerType: st.boilerType, tankMount: st.tankMount, tankHeat: st.tankHeat,
@@ -1001,7 +1059,7 @@ const RecognizeSketch = {
         if (!this._undo || typeof app === 'undefined') return;
         if (!await app.confirm('Вернуть котлы, бойлер, тип отопления и схему котельной такими, какими они были до переноса с эскиза?')) return;
         const u = this._undo, st = app.state;
-        st.fuels = u.fuels; st.elBoilerPower = u.elBoilerPower;
+        st.fuels = u.fuels; st.elBoilerPower = u.elBoilerPower; st.elBoilerCount = u.elBoilerCount ?? null;
         st.swaps = st.swaps || {};
         if (u.gasSwap) st.swaps['gas_boiler_auto'] = u.gasSwap; else delete st.swaps['gas_boiler_auto'];
         st.hotWater = u.hotWater; st.res = u.res; st.tankVol = u.tankVol;
@@ -1062,7 +1120,7 @@ const RecognizeSketch = {
  * Правила разбора эскиза котельной. Условные знаки — те, которыми монтажники
  * рисуют котельную от руки; подписи на приборах важнее всего остального.
  */
-const BOILER_SKETCH_PROMPT = `Ты разбираешь ЭСКИЗЫ КОТЕЛЬНЫХ частного дома (Россия), нарисованные монтажником от руки: гидравлическую схему обвязки — котлы, бойлеры, гидрострелку, насосы. Цель — список КРУПНОГО оборудования с его параметрами и местом на снимке. Обвязку (трубы, краны, фильтры, фитинги) не перечисляй: её подберёт калькулятор.
+const BOILER_SKETCH_PROMPT = `Ты разбираешь СХЕМЫ КОТЕЛЬНЫХ частного дома (Россия): эскизы, нарисованные монтажником от руки, а также фотографии, картинки из каталогов и печатные схемы оборудования котельной — котлы, бойлеры, гидрострелку, насосы и насосные группы, коллектор. Цель — список КРУПНОГО оборудования с его параметрами и местом на снимке. Обвязку (трубы, краны, фильтры, фитинги) не перечисляй: её подберёт калькулятор. Котла на снимке может не быть вовсе (только коллектор с насосными группами и гидрострелкой) — это всё равно схема котельной.
 
 Верни СТРОГО JSON по схеме. Никакого текста вне JSON. Дробные числа — с точкой, без единиц измерения. Кавычки внутри строк не используй.
 
@@ -1090,7 +1148,7 @@ box_2d — рамка вокруг знака прибора вместе с е�
 1. КОТЁЛ (boiler) — прямоугольник или квадрат, обычно с подписью внутри или рядом. «Эл», «эл», «L», «ЭК», «Э», «электр» — электрический (fuel=el). «Газ», «Г», «ГК», «газ.» — газовый (gas). «ТТ», «дрова», «твёрд» — твердотопливный (solid). Число рядом — мощность в кВт (12, 24, 9). Тип не подписан — fuel=null.
 2. БОЙЛЕР (tank) — цилиндр, овал или вытянутый прямоугольник со ЗМЕЕВИКОМ внутри: спираль, петли, «ооо», волнистая линия. Число — объём в литрах (100, 200, 300, 1000).
 3. ГИДРОСТРЕЛКА (hydro) — узкий прямоугольник или толстая труба, к которой с одной стороны подходят котлы, с другой — насосы и коллектор. Число с «м3/ч», «м³/ч», «куб», «м3» — расход (flow).
-4. НАСОС (pump) — окружность с треугольником внутри (или с буквой Н). Каждый насос — отдельный item, даже если несколько стоят в ряд. Насос котла и насосная группа контура — тоже насосы.
+4. НАСОС (pump) — окружность с треугольником внутри (или с буквой Н). Каждый насос — отдельный item, даже если несколько стоят в ряд. Насос котла и насосная группа контура — тоже насосы. На фотографии или печатной схеме насосная группа — узел с насосом, кранами и термометрами, часто с подписью-выноской («Насосные группы DN25», «Astroflow»): каждая группа — отдельный pump, подпись — в label.
 5. РАСШИРИТЕЛЬНЫЙ БАК (exp_tank) — окружность или овал без треугольника и без змеевика на отводе от трубы, часто с числом литров.
 6. КОЛЛЕКТОР (manifold) — длинная труба-гребёнка, от которой отходят несколько контуров с насосами. outputs — сколько контуров от неё отходит.
 
@@ -1099,6 +1157,7 @@ box_2d — рамка вокруг знака прибора вместе с е�
 8. Лист может быть сфотографирован повёрнутым на 90° — читай подписи в любой ориентации.
 9. Не угадывай числа. Цифра неразборчива («12 или 72») — поле null, прочитанное — в label, сомнение — в note, confidence ниже 0.6.
 10. Стены помещения, двери, окна, мебель — не приборы. Две линии трубы — не прибор.
-11. Если на снимке НЕ схема котельной (смета списком, план этажа, счёт, фотография) — верни ровно {"docKind":"other","items":[]}.`;
+11. Подписи-выноски на печатных схемах и фото («Гидравлическая стрелка», «Распределительный коллектор», «Бойлер 200 л») — надёжнее символов: бери тип и число из них.
+12. Верни {"docKind":"other","items":[]} только если на снимке вовсе нет оборудования котельной — ни нарисованного, ни сфотографированного: смета списком, план этажа, счёт, фотография комнаты без оборудования.`;
 
 window.RecognizeSketch = RecognizeSketch;

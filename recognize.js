@@ -201,6 +201,21 @@ const RecognizeUI = {
             };
             document.addEventListener('paste', this._onPaste);
 
+            // Enter на экране загрузки — то же, что кнопка «Распознать»: после
+            // вставки снимка из буфера (Ctrl+V) рука уже на клавиатуре, и тянуться
+            // к кнопке незачем. Работает только пока кнопка видна и активна.
+            this._onKey = (e) => {
+                if (e.key !== 'Enter' || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
+                if (app.state.viewMode !== 'recognize' || this._busy) return;
+                const t = e.target;
+                if (t && (/^(INPUT|TEXTAREA|SELECT|BUTTON|A)$/.test(t.tagName) || t.isContentEditable)) return;
+                const go = document.getElementById('rec_go');
+                if (!go || go.disabled || go.offsetParent === null) return;
+                e.preventDefault();
+                this.run();
+            };
+            document.addEventListener('keydown', this._onKey);
+
             this.renderUpload();
             this.loadPriceIndex();
         }
