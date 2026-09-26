@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Сколько стоит отопление дома под ключ — калькулятор с ценами | HeatCalc.ru</title>
+<meta name="description" content="Посчитайте отопление частного дома за минуту: котёл, радиаторы, тёплый пол и монтаж. Три комплектации с ценами STOUT и ROMMER, заявка на монтаж проверенным мастерам в Санкт-Петербурге и области.">
+<link rel="canonical" href="https://heatcalc.ru/dom/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Сколько стоит отопление дома под ключ">
+<meta property="og:description" content="Котёл, радиаторы, тёплый пол и монтаж — три комплектации с ценами за минуту.">
+<meta property="og:url" content="https://heatcalc.ru/dom/">
+<meta property="og:image" content="https://heatcalc.ru/img/logo_HC.png">
+<link rel="icon" href="../img/favicon.png">
+<!--
+  Страница для заказчика — человека, который строит дом и с инженеркой сталкивается
+  впервые. Не калькулятор монтажника в упрощённом виде, а отдельная лёгкая страница:
+  app.js (27 тысяч строк) сюда не грузится.
+
+  Как устроено.
+  • Семь вопросов по одному на экран — только то, что заказчик знает сам.
+  • Цены не считаются здесь: их заранее посчитал настоящий render() по сетке типовых
+    домов (bench/dom_prices.js → prices.json рядом). Страница берёт две ближайшие по
+    площади точки и интерполирует. Поэтому цифры сходятся со сметой монтажника.
+  • Ответы собираются в том же виде, что у опросника (oprosnik.html): калькулятор
+    открывает их через app.applyOprosData — монтажник по заявке сразу получает
+    полную смету, а не просто телефон.
+  • Заявка «Заказать монтаж» уходит в тот же lead.php (Beget), что и форма страницы
+    /montazh-otopleniya-spb/: журнал + сообщение владельцу в Телеграм, вкладка
+    «Заявки» в админке. Владелец передаёт её монтажнику региона. Вместе с заявкой
+    идут ответы в формате опросника (поле calc) — в сообщении из них ссылка
+    heatcalc.ru/?opros=…, открывающая полную смету. Имени и телефона в этой ссылке
+    нет: адрес страницы оседает в журналах серверов, персональным данным там не место.
+    Согласие на передачу — отдельный документ soglasie-zayavka.html.
+
+  Оформление — палитра и типографика опросника (primary #2563EB, Inter), без эмодзи.
+-->
+<script src="/cookie-consent.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+    :root {
+        --primary: #2563EB; --primary-dark: #1D4ED8; --primary-light: #EFF6FF;
+        --text: #111827; --text-sec: #6B7280;
+        --border: #E5E7EB; --surface: #fff; --field: #F9FAFB; --bg: #F3F4F6;
+        --req: #DC2626; --accent: #F59E0B;
+        --ok-bg: #F0FDF4; --ok-border: #BBF7D0; --ok-text: #15803D;
+        --warn-bg: #FFFBEB; --warn-border: #FDE68A; --warn-text: #B45309;
+        --shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px -6px rgba(16,24,40,.08);
+    }
+    /* Тёмная — по часам 20:00–7:00 и тумблером, как в опроснике */
+    body.theme-dark {
+        --primary: #6366F1; --primary-dark: #818CF8; --primary-light: rgba(99,102,241,.15);
+        --text: #F3F4F6; --text-sec: #9CA3AF;
+        --border: #2A2A2A; --surface: #121212; --field: #1A1A1A; --bg: #000;
+        --req: #F87171; --accent: #FBBF24;
+        --ok-bg: rgba(34,197,94,.1); --ok-border: rgba(34,197,94,.3); --ok-text: #4ADE80;
+        --warn-bg: rgba(245,158,11,.1); --warn-border: rgba(245,158,11,.3); --warn-text: #FBBF24;
+        --shadow: none;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; font-family: 'Inter', system-ui, -apple-system, Arial, sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 0 16px; }
+    button { font-family: inherit; }
+
+    /* Шапка */
+    .topbar { display: flex; align-items: center; justify-content: space-between; padding: 18px 0 14px; }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+    .brand .mark { width: 34px; height: 34px; border-radius: 10px; background: var(--primary); display: flex; align-items: center; justify-content: center; }
+    .brand .mark svg { width: 18px; height: 18px; }
+    .brand .name { font-weight: 800; font-size: 15px; letter-spacing: -0.02em; line-height: 1.15; }
+    .brand .name .ru { color: var(--primary); }
+    .brand .tagline { font-size: 11px; color: var(--text-sec); font-weight: 500; }
+    .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .icon-btn svg { width: 17px; height: 17px; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 22px; margin-bottom: 14px; box-shadow: var(--shadow); }
+    .eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--primary); background: var(--primary-light); padding: 4px 10px; border-radius: 999px; }
+    h1 { font-size: 26px; line-height: 1.2; font-weight: 800; letter-spacing: -0.025em; margin: 12px 0 8px; }
+    .sub { color: var(--text-sec); font-size: 15px; line-height: 1.55; margin: 0; }
+    .ticks { list-style: none; padding: 0; margin: 18px 0 20px; display: flex; flex-direction: column; gap: 10px; }
+    .ticks li { display: flex; gap: 10px; font-size: 14.5px; line-height: 1.45; }
+    .ticks svg { width: 18px; height: 18px; flex-shrink: 0; color: var(--ok-text); margin-top: 1px; }
+
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; padding: 14px; border: none; border-radius: 14px; background: var(--primary); color: #fff; font-size: 16px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px -8px rgba(37,99,235,.55); transition: background .15s, transform .1s; text-decoration: none; }
+    .btn:hover { background: var(--primary-dark); }
+    .btn:active { transform: scale(.99); }
+    .btn[disabled] { opacity: .45; cursor: default; box-shadow: none; }
+    .btn.ghost { background: var(--field); color: var(--text); border: 1px solid var(--border); box-shadow: none; }
+    .btn.ghost:hover { border-color: var(--primary); background: var(--field); }
+
+    /* Мастер */
+    .step-top { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    .back { flex-shrink: 0; }
+    .progress { flex: 1; height: 6px; border-radius: 999px; background: var(--border); overflow: hidden; }
+    .progress i { display: block; height: 100%; width: 0; background: var(--primary); border-radius: 999px; transition: width .25s ease; }
+    .step-count { font-size: 12.5px; color: var(--text-sec); font-weight: 600; flex-shrink: 0; min-width: 44px; text-align: right; }
+    .q { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.25; margin: 0 0 6px; }
+    .q-hint { font-size: 14px; color: var(--text-sec); line-height: 1.5; margin: 0 0 18px; }
+    .opts { display: flex; flex-direction: column; gap: 10px; }
+    .opt { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 15px 16px; border: 1.5px solid var(--border); border-radius: 14px; background: var(--field); color: var(--text); cursor: pointer; transition: border-color .15s, background .15s; }
+    .opt:hover { border-color: var(--primary); }
+    .opt.on { border-color: var(--primary); background: var(--primary-light); }
+    .opt .t { font-size: 15.5px; font-weight: 700; line-height: 1.3; }
+    .opt .d { font-size: 13.5px; color: var(--text-sec); line-height: 1.45; margin-top: 3px; }
+    .opt .dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+    .opt.on .dot { border-color: var(--primary); background: var(--primary); }
+    .opt.on .dot::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+    .opt .body { flex: 1; min-width: 0; }
+
+    .area-box { display: flex; align-items: baseline; justify-content: center; gap: 8px; margin: 6px 0 16px; }
+    .area-box input { width: 150px; text-align: center; font-size: 40px; font-weight: 800; letter-spacing: -0.03em; border: none; border-bottom: 2px solid var(--border); background: transparent; color: var(--text); padding: 4px 0; outline: none; font-family: inherit; }
+    .area-box input:focus { border-color: var(--primary); }
+    .area-box span { font-size: 20px; font-weight: 700; color: var(--text-sec); }
+    input[type=range] { width: 100%; accent-color: var(--primary); margin: 0 0 6px; }
+    .range-scale { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-sec); margin-bottom: 18px; }
+
+    input[type=text], input[type=tel], textarea {
+        width: 100%; min-height: 48px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px;
+        font-family: inherit; font-size: 16px; color: var(--text); background: var(--field); outline: none;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    input::placeholder, textarea::placeholder { color: var(--text-sec); opacity: .7; }
+    input:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+    textarea { min-height: 80px; resize: vertical; line-height: 1.45; }
+    .field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+    .field label { font-size: 13.5px; font-weight: 600; }
+    .field .opt-mark { font-weight: 400; color: var(--text-sec); }
+    .city-other { margin-top: 12px; display: none; }
+    .city-other.on { display: block; }
+    .banner { padding: 12px 14px; border-radius: 12px; font-size: 13.5px; line-height: 1.5; margin: 14px 0 0; }
+    .banner.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); color: var(--warn-text); }
+    .banner.ok { background: var(--ok-bg); border: 1px solid var(--ok-border); color: var(--ok-text); font-weight: 600; }
+    .next-row { margin-top: 20px; }
+
+    /* Результат */
+    .res-head h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; margin: 0 0 6px; line-height: 1.25; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+    .chip { font-size: 12.5px; padding: 5px 10px; border-radius: 999px; background: var(--field); border: 1px solid var(--border); color: var(--text-sec); }
+    .link-btn { background: none; border: none; padding: 0; color: var(--primary); font-size: 13.5px; font-weight: 600; cursor: pointer; }
+    .packs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+    .pack { position: relative; background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
+    .pack.best { border-color: var(--primary); }
+    .pack .badge { position: absolute; top: -11px; left: 18px; font-size: 11.5px; font-weight: 700; color: #fff; background: var(--primary); padding: 3px 10px; border-radius: 999px; }
+    .pack h3 { font-size: 18px; font-weight: 800; margin: 0 0 2px; letter-spacing: -0.01em; }
+    .pack .for { font-size: 13px; color: var(--text-sec); margin: 0 0 12px; }
+    .pack .price { font-size: 26px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.15; }
+    .pack .price small { font-size: 15px; font-weight: 700; }
+    .pack .split { font-size: 12.5px; color: var(--text-sec); margin: 4px 0 14px; }
+    .pack ul { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 8px; }
+    .pack li { display: flex; gap: 9px; font-size: 14px; line-height: 1.45; }
+    .pack li svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ok-text); margin-top: 2px; }
+    .pack .btn { min-height: 48px; font-size: 15px; }
+    .fine { font-size: 12.5px; color: var(--text-sec); line-height: 1.55; }
+    .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.5; color: var(--text-sec); margin: 4px 0 16px; cursor: pointer; }
+    .consent input { width: 20px; height: 20px; flex-shrink: 0; margin: 0; accent-color: var(--primary); }
+    .consent a { color: var(--primary); }
+    .picked { font-size: 14px; background: var(--primary-light); color: var(--primary-dark); border-radius: 12px; padding: 11px 14px; margin: 0 0 16px; line-height: 1.45; }
+    body.theme-dark .picked { color: var(--text); }
+
+    .about h2 { font-size: 17px; font-weight: 800; margin: 0 0 10px; }
+    .about p { font-size: 14px; line-height: 1.6; color: var(--text-sec); margin: 0 0 10px; }
+    .footnote { text-align: center; font-size: 12px; color: var(--text-sec); padding: 6px 0 32px; }
+    .footnote a { color: inherit; }
+    [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+    <header class="topbar">
+        <a class="brand" href="/">
+            <div class="mark"><svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2c.5 3.2-1.3 5-2.8 6.6C7.6 10.3 6 12 6 14.8 6 18.3 8.7 22 12 22s6-3 6-6.6c0-2.3-1-4.1-2.3-5.4.1 1.6-.6 3-1.9 3.6.3-3.6-.7-8.3-1.8-11.6z"/></svg></div>
+            <div>
+                <div class="name">HeatCalc<span class="ru">.ru</span></div>
+                <div class="tagline">Калькулятор отопления</div>
+            </div>
+        </a>
+        <button type="button" class="icon-btn" id="themeToggle" aria-label="Сменить тему"></button>
+    </header>
+
+    <!-- Вход -->
+    <section class="card" id="intro">
+        <span class="eyebrow">Около минуты · 7 вопросов</span>
+        <h1>Сколько стоит отопление вашего дома под ключ</h1>
+        <p class="sub">Ответьте на несколько простых вопросов — покажем три варианта с ценой оборудования и монтажа.</p>
+        <ul class="ticks">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Считает тот же калькулятор, по которому работают монтажники</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Цены на оборудование STOUT и ROMMER и на монтаж</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Монтаж — проверенные мастера Санкт-Петербурга и области</li>
+        </ul>
+        <button type="button" class="btn" id="startBtn">Посчитать</button>
+    </section>
+
+    <!-- Шаги мастера -->
+    <section class="card" id="wizard" hidden>
+        <div class="step-top">
+            <button type="button" class="icon-btn back" id="backBtn" aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+            <div class="progress"><i id="progressBar"></i></div>
+            <div class="step-count" id="stepCount"></div>
+        </div>
+        <div id="stepBody"></div>
+    </section>
+
+    <!-- Результат -->
+    <div id="result" hidden>
+        <section class="card res-head">
+            <h2 id="resTitle"></h2>
+            <p class="sub" id="resSub"></p>
+            <div class="chips" id="resChips"></div>
+            <button type="button" class="link-btn" id="editBtn">Изменить ответы</button>
+            <div class="banner warn" id="resRegion" hidden></div>
+        </section>
+        <div class="packs" id="packs"></div>
+        <p class="fine" style="margin:0 0 14px; padding:0 4px;" id="resFine"></p>
+
+        <section class="card" id="order">
+            <h2 class="q" style="font-size:19px;">Заказать монтаж</h2>
+            <p class="q-hint" id="orderHint">Оставьте телефон — мастер позвонит, уточнит детали дома и посчитает точную смету.</p>
+            <div class="picked" id="orderPicked"></div>
+            <form id="orderForm" novalidate>
+                <div class="field"><label for="f_name">Как к вам обращаться</label><input type="text" id="f_name" autocomplete="name" placeholder="Имя"></div>
+                <div class="field"><label for="f_phone">Телефон</label><input type="tel" id="f_phone" inputmode="tel" autocomplete="tel" maxlength="18" placeholder="+7 (___) ___-__-__"></div>
+                <div class="field"><label for="f_place">Где дом</label><input type="text" id="f_place" autocomplete="address-level2" placeholder="Посёлок или район, например Всеволожск"></div>
+                <!-- Ловушка для ботов: человек поле не видит и не заполняет -->
+                <div style="position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden;" aria-hidden="true">
+                    <label for="f_website">Не заполняйте это поле</label><input type="text" id="f_website" tabindex="-1" autocomplete="off">
+                </div>
+                <div class="field"><label for="f_comment">Комментарий <span class="opt-mark">· необязательно</span></label><textarea id="f_comment" placeholder="Например: когда удобно звонить, адрес посёлка, что уже куплено"></textarea></div>
+                <label class="consent"><input type="checkbox" id="f_consent"><span>Согласен на <a href="../soglasie-zayavka.html" target="_blank" rel="noopener">обработку и передачу моих данных</a> мастеру для связи по заявке</span></label>
+                <button type="submit" class="btn" id="orderBtn">Отправить заявку</button>
+                <div class="banner warn" id="orderErr" hidden></div>
+            </form>
+            <div class="banner ok" id="orderOk" hidden></div>
+        </section>
+    </div>
+
+    <!-- Для поиска и для тех, кто хочет понять, откуда цифры -->
+    <section class="card about">
+        <h2>Как считается цена</h2>
+        <p>Мы заранее посчитали сотни типовых домов на профессиональном калькуляторе HeatCalc — с котлом, котельной, радиаторами или тёплым полом, трубами и монтажом. Для вашего дома берутся ближайшие варианты по площади и составу.</p>
+        <p>Цена показана вилкой: на этом шаге неизвестно, сколько в доме окон и комнат и как утеплены стены. Точную смету мастер посчитает по вашему дому — с планом и замером.</p>
+        <p>Водоснабжение, канализация и скважина в эту цену не входят — их мастер посчитает отдельно, если нужно.</p>
+    </section>
+
+    <div class="footnote">HeatCalc.ru — калькулятор отопления · <a href="../privacy-policy.html">Политика конфиденциальности</a></div>
+</div>
+
+<script>
+(function () {
+    'use strict';
+
+    // ── Тема ─────────────────────────────────────────────────────────────
+    var SUN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+    var MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+    function applyTheme(dark) {
+        document.body.classList.toggle('theme-dark', dark);
+        document.getElementById('themeToggle').innerHTML = dark ? SUN : MOON;
+    }
+    var saved = null;
+    try { saved = localStorage.getItem('dom_theme'); } catch (e) { }
+    var h = new Date().getHours();
+    applyTheme(saved ? saved === 'dark' : (h >= 20 || h < 7));
+    document.getElementById('themeToggle').addEventListener('click', function () {
+        var dark = !document.body.classList.contains('theme-dark');
+        applyTheme(dark);
+        try { localStorage.setItem('dom_theme', dark ? 'dark' : 'light'); } catch (e) { }
+    });
+
+    // ── Ответы ───────────────────────────────────────────────────────────
+    // Ключи — как в опроснике (oprosnik.html), чтобы калькулятор разобрал их
+    // тем же app.applyOprosData
+    var A = { region: '', city: '', area: 120, floors: 0, fuel: '', heat: '', hw: null, stage: '' };
+    var MAX_AREA = 360;
+
+    var STEPS = [
+        {
+            id: 'region', q: 'Где строите дом?',
+            hint: 'Монтаж делаем в Санкт-Петербурге и Ленинградской области. Из других регионов тоже можно посчитать.',
+            opts: [
+                { v: 'spb', t: 'Санкт-Петербург или Ленинградская область' },
+                { v: 'other', t: 'Другой регион' }
+            ]
+        },
+        { id: 'area', q: 'Какая площадь дома?', hint: 'Можно примерно. Складывается площадь всех этажей, которые будут отапливаться.' },
+        {
+            id: 'floors', q: 'Сколько этажей?', hint: 'Мансарда с комнатами — это второй этаж.',
+            opts: [
+                { v: 1, t: 'Один этаж' },
+                { v: 2, t: 'Два этажа', d: 'Или один этаж с жилой мансардой' }
+            ]
+        },
+        {
+            id: 'fuel', q: 'Будет ли в доме газ?', hint: 'От этого зависит, какой нужен котёл.',
+            opts: [
+                { v: 'gas', t: 'Да, магистральный газ', d: 'Уже подведён или подключение в планах' },
+                { v: 'el', t: 'Нет, только электричество' },
+                { v: 'unknown', t: 'Пока не знаю', d: 'Посчитаем газовый вариант — мастер подскажет по месту' }
+            ]
+        },
+        {
+            id: 'heat', q: 'Как хотите греть дом?', hint: 'Если сомневаетесь — выберите последний вариант.',
+            opts: [
+                { v: 'rad', t: 'Радиаторы', d: 'Привычные батареи под окнами — надёжно и дешевле всего' },
+                { v: 'tp', t: 'Тёплый пол', d: 'Греет снизу, радиаторов не видно. Трубы кладут до стяжки' },
+                { v: 'rad+tp', t: 'Тёплый пол и радиаторы', d: 'Частое решение: пол на первом этаже, радиаторы на втором' },
+                { v: 'advice', t: 'Не знаю — посоветуйте', d: 'Посчитаем самый частый вариант' }
+            ]
+        },
+        {
+            id: 'hw', q: 'Горячая вода — от котла?', hint: 'Для душа, кухни и ванной.',
+            opts: [
+                { v: true, t: 'Да, от котла', d: 'Котёл греет и дом, и воду' },
+                { v: false, t: 'Нет, будет отдельно', d: 'Электрический водонагреватель или уже есть' }
+            ]
+        },
+        {
+            id: 'stage', q: 'На каком этапе стройка?', hint: 'Так мастер поймёт, когда удобно приехать.',
+            opts: [
+                { v: 'none', t: 'Ещё не начали', d: 'Проект, фундамент' },
+                { v: 'box', t: 'Строим коробку' },
+                { v: 'closed', t: 'Дом закрыт — можно монтировать', d: 'Стены, крыша, окна готовы' }
+            ]
+        }
+    ];
+
+    var cur = 0;
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+    function show(id) {
+        ['intro', 'wizard', 'result'].forEach(function (x) { $(x).hidden = x !== id; });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function renderStep() {
+        var s = STEPS[cur];
+        $('progressBar').style.width = Math.round((cur / STEPS.length) * 100) + '%';
+        $('stepCount').textContent = (cur + 1) + ' из ' + STEPS.length;
+        var html = '<h2 class="q">' + esc(s.q) + '</h2><p class="q-hint">' + esc(s.hint) + '</p>';
+
+        if (s.id === 'area') {
+            html += '<div class="area-box"><input type="number" id="areaIn" inputmode="numeric" min="20" max="1000" value="' + A.area + '" aria-label="Площадь, м²"><span>м²</span></div>' +
+                '<input type="range" id="areaRange" min="40" max="400" step="5" value="' + Math.min(400, A.area) + '" aria-label="Площадь">' +
+                '<div class="range-scale"><span>40</span><span>150</span><span>250</span><span>400 м²</span></div>' +
+                '<div class="banner warn" id="areaWarn" hidden>Дом больше ' + MAX_AREA + ' м² считается индивидуально — покажем цену для ' + MAX_AREA + ' м², точную посчитает мастер.</div>' +
+                '<div class="next-row"><button type="button" class="btn" id="nextBtn">Дальше</button></div>';
+        } else {
+            html += '<div class="opts">' + s.opts.map(function (o, i) {
+                var on = A[s.id] === o.v;
+                return '<button type="button" class="opt' + (on ? ' on' : '') + '" data-i="' + i + '"><span class="dot"></span><span class="body"><span class="t">' + esc(o.t) + '</span>' +
+                    (o.d ? '<div class="d">' + esc(o.d) + '</div>' : '') + '</span></button>';
+            }).join('') + '</div>';
+            if (s.id === 'region') {
+                html += '<div class="city-other' + (A.region === 'other' ? ' on' : '') + '" id="cityBox"><div class="field" style="margin:0;"><label for="cityIn">Город или район</label>' +
+                    '<input type="text" id="cityIn" placeholder="Например, Тверь" value="' + esc(A.city) + '"></div>' +
+                    '<div class="next-row"><button type="button" class="btn" id="nextBtn">Дальше</button></div></div>';
+            }
+        }
+        $('stepBody').innerHTML = html;
+
+        if (s.id === 'area') {
+            var inp = $('areaIn'), rng = $('areaRange');
+            var sync = function (v, from) {
+                v = Math.round(Number(v) || 0);
+                A.area = v;
+                if (from !== 'in') inp.value = v;
+                if (from !== 'range') rng.value = Math.max(40, Math.min(400, v));
+                $('areaWarn').hidden = !(v > MAX_AREA);
+                $('nextBtn').disabled = !(v >= 20);
+            };
+            inp.addEventListener('input', function () { sync(inp.value, 'in'); });
+            rng.addEventListener('input', function () { sync(rng.value, 'range'); });
+            sync(A.area);
+            $('nextBtn').addEventListener('click', next);
+        } else {
+            Array.prototype.forEach.call(document.querySelectorAll('#stepBody .opt'), function (b) {
+                b.addEventListener('click', function () {
+                    var o = s.opts[+b.getAttribute('data-i')];
+                    A[s.id] = o.v;
+                    if (s.id === 'region' && o.v === 'other') {
+                        // другой регион — сначала город, потом дальше
+                        Array.prototype.forEach.call(document.querySelectorAll('#stepBody .opt'), function (x) { x.classList.toggle('on', x === b); });
+                        $('cityBox').classList.add('on');
+                        $('cityIn').focus();
+                        return;
+                    }
+                    if (s.id === 'region') { A.city = 'Санкт-Петербург'; }
+                    b.classList.add('on');
+                    setTimeout(next, 160);   // видно, что выбор принят
+                });
+            });
+            if (s.id === 'region' && $('nextBtn')) {
+                $('nextBtn').addEventListener('click', function () { A.city = ($('cityIn').value || '').trim(); next(); });
+            }
+        }
+    }
+
+    function next() {
+        if (cur < STEPS.length - 1) { cur++; renderStep(); }
+        else showResult();
+    }
+    $('backBtn').addEventListener('click', function () {
+        if (cur > 0) { cur--; renderStep(); } else show('intro');
+    });
+    $('startBtn').addEventListener('click', function () { cur = 0; show('wizard'); renderStep(); });
+    $('editBtn').addEventListener('click', function () { cur = 0; show('wizard'); renderStep(); });
+
+    // ── Цены ─────────────────────────────────────────────────────────────
+    var PRICES = null;
+    var pricesReady = fetch('prices.json', { cache: 'no-cache' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) { PRICES = d; })
+        .catch(function () { PRICES = null; });
+
+    // Что считаем по ответам. «Не знаю» — газ и частый вариант отопления
+    function answersForCalc() {
+        var heat = A.heat === 'advice' ? 'rad+tp' : A.heat;
+        return {
+            area: Math.min(MAX_AREA, Math.max(60, A.area)),
+            floors: A.floors || 1,
+            fuel: A.fuel === 'el' ? 'el' : 'gas',
+            heat: heat,
+            hw: A.hw ? 1 : 0
+        };
+    }
+
+    // Две ближайшие по площади точки сетки и линейная интерполяция между ними
+    function priceFor(c) {
+        if (!PRICES) return null;
+        var areas = PRICES.areas, lo = areas[0], hi = areas[areas.length - 1];
+        for (var i = 0; i < areas.length - 1; i++) {
+            if (c.area >= areas[i] && c.area <= areas[i + 1]) { lo = areas[i]; hi = areas[i + 1]; break; }
+        }
+        var key = function (a) { return [a, c.floors, c.fuel, c.heat, c.hw].join('|'); };
+        var pl = PRICES.prices[key(lo)], ph = PRICES.prices[key(hi)];
+        if (!pl || !ph) return null;
+        var t = hi === lo ? 0 : (c.area - lo) / (hi - lo);
+        var out = {};
+        ['econom', 'optimum', 'comfort'].forEach(function (p) {
+            if (!pl[p] || !ph[p]) return;
+            out[p] = pl[p].map(function (v, j) { return v + (ph[p][j] - v) * t; });
+        });
+        return out;
+    }
+
+    // 1 234 567 → «1,23 млн», 845 000 → «845 тыс.»
+    function money(x) {
+        if (x >= 1e6) return (Math.round(x / 1e4) / 100).toLocaleString('ru-RU', { minimumFractionDigits: 2 }) + ' млн';
+        return Math.round(x / 1e4) * 10 + ' тыс.';
+    }
+    function range(a, b) {
+        if (Math.abs(b - a) < 15000) return 'около ' + money((a + b) / 2) + ' ₽';
+        return money(a) + ' – ' + money(b) + ' ₽';
+    }
+
+    // ── Комплектации: что входит, простыми словами ───────────────────────
+    var TICK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+    function packInfo(p, c) {
+        var gas = c.fuel === 'gas', rad = c.heat !== 'tp', tp = c.heat !== 'rad', hw = !!c.hw;
+        var L = [];
+        if (p === 'econom') {
+            L.push(gas ? (hw ? 'Двухконтурный газовый котёл — греет и дом, и воду' : 'Газовый котёл') :
+                'Электрокотёл' + (hw ? ' и водонагреватель от котла' : ''));
+            if (rad) L.push('Стальные радиаторы ROMMER с боковым подключением');
+            if (tp) L.push('Тёплый пол на первом этаже');
+            L.push('Котельная на полипропиленовых трубах');
+            L.push('Управление — термостатом на котле');
+            return { name: 'Эконом', for: 'Надёжный минимум по разумной цене', list: L };
+        }
+        if (p === 'optimum') {
+            L.push((gas ? 'Газовый котёл' : 'Электрокотёл') + (hw ? ' и бойлер на 150 литров — горячей воды хватит на всех' : ''));
+            if (rad) L.push('Радиаторы STOUT с нижним подключением — трубы выходят из пола и не видны');
+            if (tp) L.push('Тёплый пол с отдельным узлом управления');
+            L.push('Автоматика по погоде — котёл сам подстраивается и экономит топливо');
+            L.push('Котельная из нержавеющей стали, гидрострелка и коллектор');
+            return { name: 'Оптимум', for: 'Разумный выбор для постоянного проживания', list: L };
+        }
+        L.push((gas ? 'Газовый котёл и резервный электрокотёл — дом не замёрзнет, если отключат газ' : 'Электрокотёл') +
+            (hw ? (gas ? '' : ' и бойлер на 150 литров') : ''));
+        if (gas && hw) L.push('Бойлер на 150 литров для горячей воды');
+        L.push('Тёплый пол по всему первому этажу' + (rad ? ', радиаторы STOUT на остальных' : ''));
+        L.push('Управление с телефона: своя температура в каждой комнате');
+        L.push('Котельная из нержавеющей стали AISI 316 — служит десятилетиями');
+        return { name: 'Комфорт', for: 'Максимум удобства и запас надёжности', list: L };
+    }
+
+    var picked = 'optimum';
+    var lastPrices = null;
+
+    function showResult() {
+        $('progressBar').style.width = '100%';
+        pricesReady.then(function () {
+            var c = answersForCalc();
+            var pr = priceFor(c);
+            lastPrices = pr;
+            var heatTxt = { rad: 'радиаторы', tp: 'тёплый пол', 'rad+tp': 'тёплый пол и радиаторы' }[c.heat];
+            $('resTitle').textContent = 'Отопление дома ' + A.area + ' м² под ключ';
+            $('resSub').textContent = 'Три варианта — от простого к самому удобному. Цена с оборудованием и монтажом.';
+            var chips = [
+                A.region === 'spb' ? 'СПб и область' : (A.city || 'Другой регион'),
+                A.area + ' м²', (A.floors === 2 ? '2 этажа' : '1 этаж'),
+                A.fuel === 'el' ? 'электричество' : (A.fuel === 'unknown' ? 'газ — пока не ясно' : 'газ'),
+                heatTxt, A.hw ? 'горячая вода от котла' : 'вода отдельно'
+            ];
+            $('resChips').innerHTML = chips.map(function (x) { return '<span class="chip">' + esc(x) + '</span>'; }).join('');
+            var reg = $('resRegion');
+            reg.hidden = A.region === 'spb';
+            reg.textContent = 'Цены посчитаны для Санкт-Петербурга — в вашем регионе могут отличаться. Мастера пока работают в Петербурге и области: оставьте заявку, и мы сообщим, когда появится мастер рядом с вами.';
+
+            if (!pr) {
+                $('packs').innerHTML = '<section class="card"><p class="sub">Не удалось загрузить цены. Оставьте заявку — мастер посчитает смету по вашему дому.</p></section>';
+            } else {
+                $('packs').innerHTML = ['econom', 'optimum', 'comfort'].map(function (p) {
+                    var v = pr[p]; if (!v) return '';
+                    var info = packInfo(p, c);
+                    return '<section class="pack' + (p === 'optimum' ? ' best' : '') + '">' +
+                        (p === 'optimum' ? '<span class="badge">Выбирают чаще</span>' : '') +
+                        '<h3>' + info.name + '</h3><p class="for">' + esc(info.for) + '</p>' +
+                        '<div class="price">' + range(v[0] + v[2], v[1] + v[3]) + '</div>' +
+                        '<div class="split">оборудование ' + range(v[0], v[1]) + ' · монтаж ' + range(v[2], v[3]) + '</div>' +
+                        '<ul>' + info.list.map(function (x) { return '<li>' + TICK + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>' +
+                        '<button type="button" class="btn' + (p === 'optimum' ? '' : ' ghost') + '" data-pack="' + p + '">Заказать монтаж</button>' +
+                        '</section>';
+                }).join('');
+                Array.prototype.forEach.call(document.querySelectorAll('#packs [data-pack]'), function (b) {
+                    b.addEventListener('click', function () { pickPack(b.getAttribute('data-pack')); });
+                });
+            }
+            var built = PRICES && PRICES.built ? new Date(PRICES.built).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' }) : '';
+            $('resFine').textContent = 'Цены ' + (built ? 'на ' + built + ', ' : '') + 'Санкт-Петербург. Это оценка по типовому дому; точную смету мастер посчитает по вашему плану.' +
+                (A.area > MAX_AREA ? ' Дом больше ' + MAX_AREA + ' м² — показана цена для ' + MAX_AREA + ' м².' : '');
+            $('orderHint').textContent = A.region === 'spb'
+                ? 'Оставьте телефон — мастер позвонит, уточнит детали дома и посчитает точную смету.'
+                : 'Оставьте телефон — сообщим, когда в вашем регионе появится мастер.';
+            if (A.region === 'other' && A.city && !$('f_place').value.trim()) $('f_place').value = A.city;
+            pickPack(picked, true);
+            $('orderOk').hidden = true; $('orderForm').hidden = false;
+            show('result');
+        });
+    }
+
+    function pickPack(p, silent) {
+        picked = p;
+        var names = { econom: 'Эконом', optimum: 'Оптимум', comfort: 'Комфорт' };
+        var v = lastPrices && lastPrices[p];
+        $('orderPicked').innerHTML = 'Вариант <b>' + names[p] + '</b>' + (v ? ' · ' + esc(range(v[0] + v[2], v[1] + v[3])) : '') +
+            '<br><span style="font-size:12.5px;">Выбрать другой можно в разговоре с мастером.</span>';
+        if (!silent) $('order').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ── Заявка ───────────────────────────────────────────────────────────
+    // Имя и телефон — те же проверки, что в опроснике
+    var nameEl = $('f_name'), phoneEl = $('f_phone');
+    function ruMask(raw) { var s = String(raw || '').trim(); return !s || /^(\+?7|8|9)/.test(s); }
+    function phoneDigits(raw) {
+        var d = String(raw || '').replace(/\D/g, '');
+        if (d.charAt(0) === '8') d = '7' + d.slice(1);
+        else if (d.charAt(0) === '9') d = '7' + d;
+        return d.slice(0, 11);
+    }
+    function phoneFormat(d) {
+        if (!d) return '';
+        var out = '+7';
+        if (d.length > 1) out += ' (' + d.slice(1, 4);
+        if (d.length >= 4) out += ')';
+        if (d.length > 4) out += ' ' + d.slice(4, 7);
+        if (d.length > 7) out += '-' + d.slice(7, 9);
+        if (d.length > 9) out += '-' + d.slice(9, 11);
+        return out;
+    }
+    phoneEl.addEventListener('input', function () {
+        if (ruMask(this.value)) this.value = phoneFormat(phoneDigits(this.value));
+    });
+    function checkPhone() {
+        var raw = phoneEl.value.trim(), d = raw.replace(/\D/g, '');
+        var body = ruMask(raw) ? d.slice(1) : d;
+        if (!d) return 'Оставьте телефон — по нему позвонит мастер';
+        if (body.length > 5 && /^(\d)\1+$/.test(body)) return 'Проверьте номер: в нём все цифры одинаковые';
+        if (ruMask(raw) && d.length !== 11) return 'В номере 11 цифр: +7 и десять цифр номера';
+        if (!ruMask(raw) && d.length < 10) return 'Похоже, номер неполный — проверьте его';
+        return '';
+    }
+    function checkName() {
+        var v = nameEl.value.trim(), letters = v.replace(/[^A-Za-zА-Яа-яЁё]/g, '');
+        if (!v) return 'Напишите, как к вам обращаться';
+        if (letters.length < 2) return 'Имя пишется буквами — хотя бы две';
+        return '';
+    }
+
+    var PACK_NAMES = { econom: 'Эконом', optimum: 'Оптимум', comfort: 'Комфорт' };
+
+    // Ответы в формате опросника — для ссылки heatcalc.ru/?opros=… (app.applyOprosData).
+    // Имени и телефона здесь нет: ссылка — это адрес страницы, он оседает в журналах.
+    function calcPayload() {
+        var c = answersForCalc();
+        var d = {
+            city: A.region === 'spb' ? 'Санкт-Петербург' : A.city,
+            area: A.area, floors: c.floors,
+            rad: c.heat !== 'tp', tp: c.heat !== 'rad',
+            fuel: c.fuel, hw: !!c.hw, stage: A.stage,
+            comment: 'Страница заказчика /dom/, вариант «' + PACK_NAMES[picked] + '»'
+        };
+        Object.keys(d).forEach(function (k) { if (d[k] === '' || d[k] == null) delete d[k]; });
+        return btoa(unescape(encodeURIComponent(JSON.stringify(d))))
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    // Сводка ответов строкой — в комментарий заявки, чтобы из Телеграма всё было видно сразу
+    function answersText() {
+        var c = answersForCalc();
+        var v = lastPrices && lastPrices[picked];
+        var L = [];
+        L.push('Вариант: ' + PACK_NAMES[picked] + (v ? ', ' + range(v[0] + v[2], v[1] + v[3]) +
+            ' (оборудование ' + range(v[0], v[1]) + ', монтаж ' + range(v[2], v[3]) + ')' : ''));
+        L.push('Дом: ' + A.area + ' м², ' + (c.floors === 2 ? '2 этажа' : '1 этаж') + ', ' +
+            (A.fuel === 'el' ? 'электричество' : (A.fuel === 'unknown' ? 'газ — пока не ясно' : 'газ')) + ', ' +
+            { rad: 'радиаторы', tp: 'тёплый пол', 'rad+tp': 'тёплый пол и радиаторы' }[c.heat] +
+            (A.heat === 'advice' ? ' (просил посоветовать)' : '') + ', ' +
+            (c.hw ? 'горячая вода от котла' : 'вода отдельно'));
+        L.push('Этап: ' + ({ none: 'ещё не начали', box: 'строят коробку', closed: 'дом закрыт' }[A.stage] || '—'));
+        if (A.region !== 'spb') L.push('Регион вне СПб и ЛО: ' + (A.city || 'не указан'));
+        return L.join('\n');
+    }
+
+    // Откуда пришёл человек — та же метка ?src=, что у формы /montazh-otopleniya-spb/;
+    // без метки — «dom», чтобы в журнале заявки этой страницы было видно отдельно
+    function leadSource() {
+        var KEY = 'hc_lead_src', stored = '';
+        try { stored = sessionStorage.getItem(KEY) || ''; } catch (e) { }
+        var m = /[?&]src=([\w-]{1,64})/.exec(location.search);
+        if (m) { try { sessionStorage.setItem(KEY, m[1]); } catch (e) { } return m[1]; }
+        return stored || 'dom';
+    }
+
+    // Тот же приёмник, что у страницы монтажа: журнал на Beget + Телеграм владельцу
+    var LEAD_URL = 'https://proxy.heatcalc.ru/lead.php';
+    function submitLead() {
+        var c = answersForCalc();
+        var works = ['boiler'];
+        if (c.heat !== 'tp') works.push('heating');
+        if (c.heat !== 'rad') works.push('ufh');
+        var own = $('f_comment').value.trim().slice(0, 450);
+        var body = {
+            works: works,
+            place: $('f_place').value.trim(),
+            area: String(Math.max(1, Math.min(9999, Math.round(A.area)))),
+            name: nameEl.value.trim(),
+            phone: phoneEl.value.trim(),
+            comment: (own ? own + '\n—\n' : '') + answersText(),
+            website: $('f_website').value,
+            consent: true,
+            page: location.pathname + location.search,
+            src: leadSource(),
+            calc: calcPayload()
+        };
+        var ctrl = ('AbortController' in window) ? new AbortController() : null;
+        var timer = setTimeout(function () { if (ctrl) ctrl.abort(); }, 15000);
+        return fetch(LEAD_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            signal: ctrl ? ctrl.signal : undefined
+        }).then(function (res) {
+            clearTimeout(timer);
+            return res.json().catch(function () { return {}; }).then(function (data) {
+                if (res.status === 200 && data && data.ok) {
+                    // Цель Метрики — только если человек принял cookie (счётчик грузит cookie-consent.js)
+                    try { if (window.ym) window.ym(109490947, 'reachGoal', 'lead_dom'); } catch (e) { }
+                    return data;
+                }
+                var e = new Error('lead ' + res.status);
+                e.status = res.status;
+                throw e;
+            });
+        }, function (e) { clearTimeout(timer); throw e; });
+    }
+
+    $('orderForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var err = checkName() || checkPhone() ||
+            ($('f_place').value.trim() ? '' : 'Напишите, где дом — посёлок или район') ||
+            ($('f_consent').checked ? '' : 'Отметьте согласие на передачу данных мастеру — без него заявку не передать');
+        var box = $('orderErr');
+        box.hidden = !err; box.textContent = err;
+        if (err) return;
+        var btn = $('orderBtn');
+        btn.disabled = true; btn.textContent = 'Отправляем…';
+        submitLead().then(function () {
+            $('orderForm').hidden = true;
+            var ok = $('orderOk');
+            ok.hidden = false;
+            ok.textContent = A.region === 'spb'
+                ? 'Заявка принята. Мастер позвонит в ближайший рабочий день.'
+                : 'Заявка принята. Сообщим, когда в вашем регионе появится мастер.';
+        }).catch(function (e2) {
+            console.warn('заявка:', e2);
+            box.hidden = false;
+            box.textContent = e2 && e2.status === 429
+                ? 'Слишком много заявок с этого адреса. Попробуйте через час или напишите в Телеграм: t.me/heatcalc'
+                : 'Не получилось отправить заявку. Попробуйте ещё раз через минуту или напишите в Телеграм: t.me/heatcalc';
+        }).then(function () {
+            btn.disabled = false; btn.textContent = 'Отправить заявку';
+        });
+    });
+})();
+</script>
+</body>
+</html>

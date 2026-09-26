@@ -95,6 +95,11 @@ $page     = clean(isset($in['page']) ? $in['page'] : '', 200);
 // человек попал на форму напрямую или из поиска.
 $src      = clean(isset($in['src']) ? $in['src'] : '', 64);
 $consent  = !empty($in['consent']);
+// Ответы заказчика в формате опросника (base64url JSON) — их присылает страница /dom/.
+// Из них собирается ссылка heatcalc.ru/?opros=…: калькулятор разбирает её сам
+// (app.applyOprosFromUrl) и открывает полную смету по дому. Берём только символы
+// base64url и ограничиваем длину — это данные для ссылки, а не произвольный текст.
+$calc     = isset($in['calc']) && is_string($in['calc']) && preg_match('/^[A-Za-z0-9_-]{8,2000}$/', $in['calc']) ? $in['calc'] : '';
 
 // Телефон — только российский: 11 цифр с 7 или 8 впереди, либо 10 цифр.
 $digits = preg_replace('/\D+/', '', $phoneRaw);
@@ -150,6 +155,7 @@ $record = [
     'src'     => $src,
     'consent' => true,
 ];
+if ($calc !== '') $record['calc'] = $calc;
 
 // Журнал — прежде уведомления: если Телеграм не ответит, заявка всё равно не потеряется.
 $logFile = __DIR__ . '/leads_log.php';
@@ -186,7 +192,8 @@ if (is_array($secret) && !empty($secret['bot_token']) && !empty($secret['chat_id
         . "Согласие на передачу мастеру: да\n"
         . ($src !== '' ? "Источник: {$src}
 " : '')
-        . ($page !== '' ? "Страница: {$page}" : '');
+        . ($page !== '' ? "Страница: {$page}" : '')
+        . ($calc !== '' ? "\nРасчёт по дому: https://heatcalc.ru/?opros={$calc}" : '');
 
     $ch = curl_init('https://api.telegram.org/bot' . $secret['bot_token'] . '/sendMessage');
     curl_setopt($ch, CURLOPT_POST, true);
