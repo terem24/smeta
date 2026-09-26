@@ -110,7 +110,11 @@
     <meta name="theme-color" content="#2563EB">
     <script>
         if ('serviceWorker' in navigator) {
-            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            // В приложении адрес тоже localhost, но разгружать там нечего:
+            // Service Worker внутри APK не регистрируется, а перезагрузка страницы
+            // на старте выглядела бы как мигание.
+            const isLocal = !window.__HC_NATIVE__ &&
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
             if (isLocal) {
                 let cleared = false;
                 navigator.serviceWorker.getRegistrations().then(function (registrations) {
