@@ -74280,7 +74280,7 @@ const app = {
                 <div class="empty-state-hint">
                     <span class="empty-state-icon">${_emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования.</div>` : ''}${qsBtn}
+                    ${_onboardOk ? `<div class="empty-state-text">Задайте параметры слева: ${_emptyWhich}.</div>` : ''}${qsBtn}
                 </div>
             </td></tr>`;
             sum = 0;
