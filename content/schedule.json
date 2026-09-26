@@ -2181,10 +2181,10 @@
    "freq": 1500,
    "audience": "builder",
    "data_block": "требования и акт скрытых работ",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-07",
    "published_at": null,
-   "words": 0
+   "words": 959
   },
   {
    "slug": "kollektor-vodosnabzheniya",
@@ -2195,10 +2195,10 @@
    "freq": 2400,
    "audience": "pro",
    "data_block": "число точек",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-09",
    "published_at": null,
-   "words": 0
+   "words": 875
   },
   {
    "slug": "servoprivody-teplogo-pola",
@@ -2251,10 +2251,10 @@
    "freq": 1300,
    "audience": "pro",
    "data_block": "шаг опор",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-18",
    "published_at": null,
-   "words": 0
+   "words": 960
   },
   {
    "slug": "uzel-vvoda-vody-v-dom",
@@ -2265,10 +2265,10 @@
    "freq": 2100,
    "audience": "pro",
    "data_block": "состав из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-09-21",
    "published_at": null,
-   "words": 0
+   "words": 965
   },
   {
    "slug": "teplyy-pol-v-vannoy",
