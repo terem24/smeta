@@ -6,14 +6,10 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Bundle;
-import android.os.CancellationSignal;
 import android.os.Environment;
-import android.os.ParcelFileDescriptor;
-import android.print.PageRange;
 import android.print.PrintAttributes;
+import android.print.HcPdfPrint;
 import android.print.PrintDocumentAdapter;
-import android.print.PrintDocumentInfo;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.MimeTypeMap;
@@ -218,38 +214,20 @@ public class HcNativePlugin extends Plugin {
                         call.reject("Не удалось освободить место под файл");
                         return;
                     }
-                    final ParcelFileDescriptor pfd = ParcelFileDescriptor.open(
-                        out,
-                        ParcelFileDescriptor.MODE_READ_WRITE
-                            | ParcelFileDescriptor.MODE_CREATE
-                            | ParcelFileDescriptor.MODE_TRUNCATE);
 
-                    adapter.onLayout(null, attrs, new CancellationSignal(),
-                        new PrintDocumentAdapter.LayoutResultCallback() {
-                            @Override
-                            public void onLayoutFinished(PrintDocumentInfo info, boolean changed) {
-                                adapter.onWrite(new PageRange[]{ PageRange.ALL_PAGES }, pfd,
-                                    new CancellationSignal(),
-                                    new PrintDocumentAdapter.WriteResultCallback() {
-                                        @Override
-                                        public void onWriteFinished(PageRange[] pages) {
-                                            finishPrint(call, out, pfd, name);
-                                        }
+                    // Сама печать — в HcPdfPrint: ответные объекты системного
+                    // адаптера можно создавать только из пакета android.print.
+                    HcPdfPrint.toFile(adapter, attrs, out, new HcPdfPrint.Done() {
+                        @Override
+                        public void ok(File file) {
+                            finishPrint(call, file, name);
+                        }
 
-                                        @Override
-                                        public void onWriteFailed(CharSequence error) {
-                                            closeQuietly(pfd);
-                                            call.reject("Печать не удалась: " + error);
-                                        }
-                                    });
-                            }
-
-                            @Override
-                            public void onLayoutFailed(CharSequence error) {
-                                closeQuietly(pfd);
-                                call.reject("Разметка страницы не удалась: " + error);
-                            }
-                        }, new Bundle());
+                        @Override
+                        public void fail(String error) {
+                            call.reject("Печать не удалась: " + error);
+                        }
+                    });
                 } catch (Exception e) {
                     call.reject("Не удалось напечатать PDF", e);
                 }
@@ -258,8 +236,7 @@ public class HcNativePlugin extends Plugin {
     }
 
     /** Готовый PDF из кэша перекладываем в «Загрузки» и убираем за собой. */
-    private void finishPrint(PluginCall call, File out, ParcelFileDescriptor pfd, String name) {
-        closeQuietly(pfd);
+    private void finishPrint(PluginCall call, File out, String name) {
         try {
             int size = (int) out.length();
             if (size <= 0) {
@@ -293,12 +270,6 @@ public class HcNativePlugin extends Plugin {
             //noinspection ResultOfMethodCallIgnored
             out.delete();
         }
-    }
-
-    private static void closeQuietly(ParcelFileDescriptor pfd) {
-        try {
-            if (pfd != null) pfd.close();
-        } catch (Exception ignored) { }
     }
 
     private static String ensurePdf(String name) {
