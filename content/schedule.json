@@ -1845,10 +1845,10 @@
    "freq": 1200,
    "audience": "pro",
    "data_block": "разделение контуров",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-13",
    "published_at": null,
-   "words": 0
+   "words": 784
   },
   {
    "slug": "snegotayanie-i-obogrev",
@@ -1859,10 +1859,10 @@
    "freq": 2800,
    "audience": "owner",
    "data_block": "наш расчёт контуров",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-15",
    "published_at": null,
-   "words": 0
+   "words": 1038
   },
   {
    "slug": "limit-moshchnosti-15-kvt",
@@ -1873,10 +1873,10 @@
    "freq": 1900,
    "audience": "owner",
    "data_block": "подбор по лимиту",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-07-17",
    "published_at": null,
-   "words": 0
+   "words": 937
   },
   {
    "slug": "ventilyatsiya-kotelnoy",
