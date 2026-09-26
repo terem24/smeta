@@ -194,7 +194,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=10.08" defer></script>
+    <script src="app.js?v=10.12" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -478,6 +478,7 @@
             <div class="site-header-right">
             <div id="tg-auth-container" class="header-auth-block"></div>
             <button class="menu-toggle-btn" onclick="app.toggleMenu()" title="Меню настроек">
+                <span id="menu_toggle_badge" style="display: none; position: absolute; top: -3px; right: -3px; background: #EF4444; color: white; border-radius: 50%; font-size: 8.5px; font-weight: 800; min-width: 15px; height: 15px; padding: 0 4px; align-items: center; justify-content: center; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4); line-height: 1; z-index: 10003;">0</span>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
             </button>
             <div class="header-main-controls">
@@ -2486,16 +2487,22 @@
                         </svg>
                     </div>
 
-                    <!-- Requested Invoices (Purchase History) Item -->
-                    <div class="profile-menu-item" onclick="app.showProfileModal(false, 'orders')" style="display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">
+                    <!-- Messages Item. Раньше здесь был прямой пункт «История заказов /
+                         запросов счёта» — она никуда не делась, до неё по-прежнему можно
+                         дойти через «Профиль (редактировать данные)» → вкладка «Заказы».
+                         Заменили на «Мои сообщения»: колокольчик наверху экрана на мобильном
+                         скрыт целиком (виден только внутри открытого гамбургер-меню), и без
+                         прямого пункта в меню монтажник не находил переписку с менеджером —
+                         только всплывающую карточку, которая сама пропадает через несколько
+                         секунд. Бейдж берёт то же число, что и колокольчик в шапке (см.
+                         fetchNotifications). -->
+                    <div class="profile-menu-item" onclick="app.openMessagesCenter()" style="display: flex; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.2s;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="22" height="22" style="color: var(--text-sec); flex-shrink: 0;">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
                         </svg>
-                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: var(--text-main); text-align: left;">История заказов / запросов счёта</span>
+                        <span style="flex-grow: 1; font-weight: 600; font-size: 14.5px; color: var(--text-main); text-align: left;">Мои сообщения</span>
+                        <span id="profile_menu_messages_badge" style="display: none; background: #EF4444; color: white; border-radius: 10px; font-size: 11px; font-weight: 800; min-width: 20px; height: 20px; padding: 0 6px; align-items: center; justify-content: center; line-height: 1;">0</span>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="color: var(--text-sec); opacity: 0.5;">
                             <polyline points="9 18 15 12 9 6"></polyline>
                         </svg>
