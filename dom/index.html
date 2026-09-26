@@ -140,10 +140,18 @@
     .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
     .chip { font-size: 12.5px; padding: 5px 10px; border-radius: 999px; background: var(--field); border: 1px solid var(--border); color: var(--text-sec); }
     .link-btn { background: none; border: none; padding: 0; color: var(--primary); font-size: 13.5px; font-weight: 600; cursor: pointer; }
-    .packs { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
-    .pack { position: relative; background: var(--surface); border: 1.5px solid var(--border); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); }
-    .pack.best { border-color: var(--primary); }
-    .pack .badge { position: absolute; top: -11px; left: 18px; font-size: 11.5px; font-weight: 700; color: #fff; background: var(--primary); padding: 3px 10px; border-radius: 999px; }
+    /* Варианты — вкладками: видно все три сразу, подробно — выбранный. Раньше
+       карточки шли столбиком, и до формы заявки приходилось долго листать */
+    .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .tab { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 12px 12px 11px; border: 1.5px solid var(--border); border-radius: 14px; background: var(--surface); color: var(--text); cursor: pointer; text-align: left; box-shadow: var(--shadow); transition: border-color .15s, background .15s; min-width: 0; }
+    .tab:hover { border-color: var(--primary); }
+    .tab.on { border-color: var(--primary); background: var(--primary-light); }
+    .tab .n { font-size: 14.5px; font-weight: 800; }
+    .tab .p { font-size: 12px; color: var(--text-sec); line-height: 1.3; }
+    .tab.on .p { color: var(--primary-dark); }
+    body.theme-dark .tab.on .p { color: var(--text); }
+    .tab .star { position: absolute; top: -9px; right: 8px; font-size: 10.5px; font-weight: 700; color: #fff; background: var(--primary); padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+    .pack { position: relative; background: var(--surface); border: 1.5px solid var(--primary); border-radius: 18px; padding: 20px; box-shadow: var(--shadow); margin-bottom: 12px; }
     .pack h3 { font-size: 18px; font-weight: 800; margin: 0 0 2px; letter-spacing: -0.01em; }
     .pack .for { font-size: 13px; color: var(--text-sec); margin: 0 0 12px; }
     .pack .price { font-size: 26px; font-weight: 800; letter-spacing: -0.025em; line-height: 1.15; }
@@ -152,7 +160,20 @@
     .pack ul { list-style: none; padding: 0; margin: 0 0 16px; display: flex; flex-direction: column; gap: 8px; }
     .pack li { display: flex; gap: 9px; font-size: 14px; line-height: 1.45; }
     .pack li svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--ok-text); margin-top: 2px; }
-    .pack .btn { min-height: 48px; font-size: 15px; }
+    .pack ul { margin-bottom: 0; }
+
+    /* Кнопка заявки всегда под рукой, пока открыт результат */
+    .order-bar { position: sticky; bottom: 0; padding: 12px 0 16px; background: linear-gradient(to bottom, transparent, var(--bg) 30%); z-index: 5; }
+
+    /* Форма заявки — поверх страницы: снизу на телефоне, по центру на компьютере */
+    .sheet-bg { position: fixed; inset: 0; z-index: 50; background: rgba(15,23,42,.45); display: flex; align-items: flex-end; justify-content: center; }
+    .sheet { position: relative; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto; background: var(--surface); border-radius: 20px 20px 0 0; padding: 22px 20px 20px; box-shadow: 0 -10px 40px rgba(0,0,0,.2); animation: up .22s ease-out; }
+    @media (min-width: 640px) { .sheet-bg { align-items: center; } .sheet { border-radius: 20px; } }
+    @keyframes up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .sheet { animation: none; } }
+    .sheet .close { position: absolute; top: 14px; right: 14px; }
+    .sheet h2 { font-size: 19px; font-weight: 800; margin: 0 44px 6px 0; }
+    body.sheet-open { overflow: hidden; }
     .fine { font-size: 12.5px; color: var(--text-sec); line-height: 1.55; }
     .consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.5; color: var(--text-sec); margin: 4px 0 16px; cursor: pointer; }
     .consent input { width: 20px; height: 20px; flex-shrink: 0; margin: 0; accent-color: var(--primary); }
@@ -212,11 +233,17 @@
             <button type="button" class="link-btn" id="editBtn">Изменить ответы</button>
             <div class="banner warn" id="resRegion" hidden></div>
         </section>
-        <div class="packs" id="packs"></div>
-        <p class="fine" style="margin:0 0 14px; padding:0 4px;" id="resFine"></p>
+        <div class="tabs" id="packTabs" role="tablist" aria-label="Варианты"></div>
+        <section class="pack" id="packCard" role="tabpanel"></section>
+        <p class="fine" style="margin:0 0 4px; padding:0 4px;" id="resFine"></p>
+        <div class="order-bar"><button type="button" class="btn" id="orderOpen">Заказать монтаж</button></div>
+    </div>
 
-        <section class="card" id="order">
-            <h2 class="q" style="font-size:19px;">Заказать монтаж</h2>
+    <!-- Заявка — поверх страницы -->
+    <div class="sheet-bg" id="order" hidden>
+        <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="orderTitle">
+            <button type="button" class="icon-btn close" id="orderClose" aria-label="Закрыть"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+            <h2 id="orderTitle">Заказать монтаж</h2>
             <p class="q-hint" id="orderHint">Оставьте телефон — мастер позвонит, уточнит детали дома и посчитает точную смету.</p>
             <div class="picked" id="orderPicked"></div>
             <form id="orderForm" novalidate>
@@ -233,7 +260,7 @@
                 <div class="banner warn" id="orderErr" hidden></div>
             </form>
             <div class="banner ok" id="orderOk" hidden></div>
-        </section>
+        </div>
     </div>
 
     <!-- Для поиска и для тех, кто хочет понять, откуда цифры -->
@@ -480,14 +507,15 @@
         L.push((gas ? 'Газовый котёл и резервный электрокотёл — дом не замёрзнет, если отключат газ' : 'Электрокотёл') +
             (hw ? (gas ? '' : ' и бойлер на 150 литров') : ''));
         if (gas && hw) L.push('Бойлер на 150 литров для горячей воды');
-        L.push('Тёплый пол по всему первому этажу' + (rad ? ', радиаторы STOUT на остальных' : ''));
+        L.push('Тёплый пол по всему первому этажу' + (rad ? (c.floors === 2 ? ', радиаторы STOUT на втором' : ', радиаторы STOUT там, где пол не положить') : ''));
         L.push('Управление с телефона: своя температура в каждой комнате');
         L.push('Котельная из нержавеющей стали AISI 316 — служит десятилетиями');
         return { name: 'Комфорт', for: 'Максимум удобства и запас надёжности', list: L };
     }
 
+    var PACKS = ['econom', 'optimum', 'comfort'];
     var picked = 'optimum';
-    var lastPrices = null;
+    var lastPrices = null, lastCalc = null;
 
     function showResult() {
         $('progressBar').style.width = '100%';
@@ -509,22 +537,20 @@
             reg.hidden = A.region === 'spb';
             reg.textContent = 'Цены посчитаны для Санкт-Петербурга — в вашем регионе могут отличаться. Мастера пока работают в Петербурге и области: оставьте заявку, и мы сообщим, когда появится мастер рядом с вами.';
 
+            lastCalc = c;
+            $('packTabs').hidden = !pr;
             if (!pr) {
-                $('packs').innerHTML = '<section class="card"><p class="sub">Не удалось загрузить цены. Оставьте заявку — мастер посчитает смету по вашему дому.</p></section>';
+                $('packCard').innerHTML = '<p class="sub" style="margin:0;">Не удалось загрузить цены. Оставьте заявку — мастер посчитает смету по вашему дому.</p>';
             } else {
-                $('packs').innerHTML = ['econom', 'optimum', 'comfort'].map(function (p) {
+                // На вкладке — имя и нижняя граница цены, подробности — в карточке под ними
+                $('packTabs').innerHTML = PACKS.map(function (p) {
                     var v = pr[p]; if (!v) return '';
-                    var info = packInfo(p, c);
-                    return '<section class="pack' + (p === 'optimum' ? ' best' : '') + '">' +
-                        (p === 'optimum' ? '<span class="badge">Выбирают чаще</span>' : '') +
-                        '<h3>' + info.name + '</h3><p class="for">' + esc(info.for) + '</p>' +
-                        '<div class="price">' + range(v[0] + v[2], v[1] + v[3]) + '</div>' +
-                        '<div class="split">оборудование ' + range(v[0], v[1]) + ' · монтаж ' + range(v[2], v[3]) + '</div>' +
-                        '<ul>' + info.list.map(function (x) { return '<li>' + TICK + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>' +
-                        '<button type="button" class="btn' + (p === 'optimum' ? '' : ' ghost') + '" data-pack="' + p + '">Заказать монтаж</button>' +
-                        '</section>';
+                    return '<button type="button" class="tab" role="tab" data-pack="' + p + '">' +
+                        (p === 'optimum' ? '<span class="star">Чаще</span>' : '') +
+                        '<span class="n">' + PACK_NAMES[p] + '</span>' +
+                        '<span class="p">от ' + esc(money(v[0] + v[2])) + ' ₽</span></button>';
                 }).join('');
-                Array.prototype.forEach.call(document.querySelectorAll('#packs [data-pack]'), function (b) {
+                Array.prototype.forEach.call(document.querySelectorAll('#packTabs [data-pack]'), function (b) {
                     b.addEventListener('click', function () { pickPack(b.getAttribute('data-pack')); });
                 });
             }
@@ -535,20 +561,48 @@
                 ? 'Оставьте телефон — мастер позвонит, уточнит детали дома и посчитает точную смету.'
                 : 'Оставьте телефон — сообщим, когда в вашем регионе появится мастер.';
             if (A.region === 'other' && A.city && !$('f_place').value.trim()) $('f_place').value = A.city;
-            pickPack(picked, true);
+            pickPack('optimum');
             $('orderOk').hidden = true; $('orderForm').hidden = false;
             show('result');
         });
     }
 
-    function pickPack(p, silent) {
+    // Выбранный вариант: подсветить вкладку, показать его карточку, подписать кнопку заявки
+    function pickPack(p) {
         picked = p;
-        var names = { econom: 'Эконом', optimum: 'Оптимум', comfort: 'Комфорт' };
+        Array.prototype.forEach.call(document.querySelectorAll('#packTabs .tab'), function (t) {
+            var on = t.getAttribute('data-pack') === p;
+            t.classList.toggle('on', on);
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+        });
         var v = lastPrices && lastPrices[p];
-        $('orderPicked').innerHTML = 'Вариант <b>' + names[p] + '</b>' + (v ? ' · ' + esc(range(v[0] + v[2], v[1] + v[3])) : '') +
+        if (v && lastCalc) {
+            var info = packInfo(p, lastCalc);
+            $('packCard').innerHTML = '<h3>' + info.name + '</h3><p class="for">' + esc(info.for) + '</p>' +
+                '<div class="price">' + range(v[0] + v[2], v[1] + v[3]) + '</div>' +
+                '<div class="split">оборудование ' + range(v[0], v[1]) + ' · монтаж ' + range(v[2], v[3]) + '</div>' +
+                '<ul>' + info.list.map(function (x) { return '<li>' + TICK + '<span>' + esc(x) + '</span></li>'; }).join('') + '</ul>';
+        }
+        $('orderOpen').textContent = 'Заказать монтаж · ' + PACK_NAMES[p];
+        $('orderPicked').innerHTML = 'Вариант <b>' + PACK_NAMES[p] + '</b>' + (v ? ' · ' + esc(range(v[0] + v[2], v[1] + v[3])) : '') +
             '<br><span style="font-size:12.5px;">Выбрать другой можно в разговоре с мастером.</span>';
-        if (!silent) $('order').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+
+    // Форма заявки поверх страницы: открывается кнопкой снизу, закрывается крестиком,
+    // кликом мимо и клавишей Esc
+    function openOrder() {
+        $('order').hidden = false;
+        document.body.classList.add('sheet-open');
+        setTimeout(function () { if ($('orderForm').hidden === false) nameEl.focus(); }, 250);
+    }
+    function closeOrder() {
+        $('order').hidden = true;
+        document.body.classList.remove('sheet-open');
+    }
+    $('orderOpen').addEventListener('click', openOrder);
+    $('orderClose').addEventListener('click', closeOrder);
+    $('order').addEventListener('click', function (e) { if (e.target === this) closeOrder(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('order').hidden) closeOrder(); });
 
     // ── Заявка ───────────────────────────────────────────────────────────
     // Имя и телефон — те же проверки, что в опроснике
