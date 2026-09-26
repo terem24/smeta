@@ -1431,6 +1431,9 @@ const catalog = {
     // приведёт к тем же цифрам. ecoTEC plus CS/1-5 на сайте нет вовсе (ни фото, ни
     // автообновления) — они «под заказ» и правятся руками по месячному прайсу.
     //
+    // dhwPorts у VU — подающая и обратная линии водонагревателя на самом аппарате
+    // (руководство turboTEC pro/plus 0020029243_03, п. 5.3.2); размер — по комплекту
+    // трубопроводов водонагревателя (принадлежности Vaillant), в руководстве не указан.
     // dhwValve — приоритетный переключающий (трёхходовой) клапан для бойлера ВСТРОЕН
     // в котёл: у всех одноконтурных VU этой линейки. Внешний комплект 3-х ходового
     // клапана им не нужен; dhwSensor — артикул датчика бойлера, который надо докупить
@@ -1445,17 +1448,17 @@ const catalog = {
         { id: "0010015263", name: "turboTEC plus VUW 242/5-5", price: 180763, power: 24, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
         { id: "0010015264", name: "turboTEC plus VUW 282/5-5", price: 199129, power: 28, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
         // Традиционные, одноконтурные VU — клапан бойлера встроен
-        { id: "0010015254", name: "turboTEC plus VU 202/5-5", price: 148039, power: 20, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "0010015255", name: "turboTEC plus VU 242/5-5", price: 162541, power: 24, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "0010015256", name: "turboTEC plus VU 282/5-5", price: 178416, power: 28, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "0010020413", name: "turboTEC plus VU 322/5-5", price: 187667, power: 32, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "0010015254", name: "turboTEC plus VU 202/5-5", price: 148039, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "0010015255", name: "turboTEC plus VU 242/5-5", price: 162541, power: 24, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "0010015256", name: "turboTEC plus VU 282/5-5", price: 178416, power: 28, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "0010020413", name: "turboTEC plus VU 322/5-5", price: 187667, power: 32, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", brand: "Vaillant", availability: "in_stock", price_date: "2026-09-22" },
         // Конденсационные, двухконтурные (60/100 PP)
         { id: "0010026102", name: "ecoTEC intro VUW 18/24 AS/1-1 (H-RU)", price: 160259, power: 18, circuits: 2, dhw: 11.5, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
         { id: "0010026103", name: "ecoTEC intro VUW 24/28 AS/1-1 (H-RU)", price: 168173, power: 24, circuits: 2, dhw: 13.4, dhwDt: 30, type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-09-22" },
         // Конденсационные, одноконтурные VU (60/100 PP) — клапан бойлера встроен
-        { id: "0010043977", name: "ecoTEC plus VU 20CS/1-5 (N-INT4)", price: 206801, power: 20, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0010043979", name: "ecoTEC plus VU 25CS/1-5 (N-INT4)", price: 218102, power: 25, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
-        { id: "0010043980", name: "ecoTEC plus VU 30CS/1-5 (N-INT4)", price: 238607, power: 30, circuits: 1, dhwValve: true, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" }
+        { id: "0010043977", name: "ecoTEC plus VU 20CS/1-5 (N-INT4)", price: 206801, power: 20, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
+        { id: "0010043979", name: "ecoTEC plus VU 25CS/1-5 (N-INT4)", price: 218102, power: 25, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" },
+        { id: "0010043980", name: "ecoTEC plus VU 30CS/1-5 (N-INT4)", price: 238607, power: 30, circuits: 1, dhwValve: true, dhwPorts: { n: 2 }, dhwSensor: "306257", type: "gas", cond: true, brand: "Vaillant", availability: "on_order", price_date: "2026-08-18" }
     ],
     // Аксессуары Vaillant, которые ставит подбор (см. render(), раздел 2.1):
     //   306257 — датчик бойлера NTC: одноконтурному VU вместо комплекта 3-х ходового
@@ -1490,11 +1493,14 @@ const catalog = {
         { id: "PNGB3520020L002", name: "Deluxe C Plus 2026 -20k", price: 53777, power: 20, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
         { id: "PNGB3520024L002", name: "Deluxe C Plus 2026 -24k", price: 49728, power: 24, circuits: 2, dhw: 13.8, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
         { id: "PNGB3520030L002", name: "Deluxe C Plus 2026 -30k", price: 57712, power: 30, circuits: 2, dhw: 17.2, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
-        // Deluxe One 2026 — одноконтурные, клапан встроен, датчик бойлера в комплекте
-        { id: "PNGB3500024L006", name: "Deluxe One 2026 -24k", price: 50209, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
-        { id: "PNGB3500030L010", name: "Deluxe One 2026 -30k", price: 58001, power: 30, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB3500035L010", name: "Deluxe One 2026 -35k", price: 59636, power: 35, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "PNGB3500040L006", name: "Deluxe One 2026 -40k", price: 62521, power: 40, circuits: 1, dhwValve: true, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
+        // Deluxe One 2026 — одноконтурные, клапан встроен, датчик бойлера в комплекте.
+        // dhwPorts — патрубки котла на бойлер: у Deluxe One ДВА, «Загрузка бойлера» и
+        // «Обратка бойлера», G1/2" (руководство Deluxe One 24/30/35/40K, стр. 36 и 63):
+        // обратка змеевика возвращается в котёл, а не в общую обратку.
+        { id: "PNGB3500024L006", name: "Deluxe One 2026 -24k", price: 50209, power: 24, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "on_order", price_date: "2026-09-22" },
+        { id: "PNGB3500030L010", name: "Deluxe One 2026 -30k", price: 58001, power: 30, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "PNGB3500035L010", name: "Deluxe One 2026 -35k", price: 59636, power: 35, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "PNGB3500040L006", name: "Deluxe One 2026 -40k", price: 62521, power: 40, circuits: 1, dhwValve: true, dhwPorts: { n: 2, size: '1/2"' }, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
         // NGB210 — бюджетные двухконтурные
         { id: "PNGB2100013L001", name: "NGB210-13K", price: 38186, power: 13, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
         { id: "PNGB2100016L001", name: "NGB210-16K", price: 38667, power: 16, circuits: 2, dhw: 13.7, type: "gas", brand: "Navien", availability: "in_stock", price_date: "2026-09-22" },
@@ -1963,6 +1969,8 @@ const catalog = {
     // считаются наружной резьбой. ROMMER GT (паспорт rommer_e750a8c2fb98): ХВС G3/4" НР,
     // предохранительный G1/2" НР, а ГВС, змеевик и рециркуляция — G3/4" ВР; на них
     // американка встаёт через ниппель (обвязка водонагревателя в app.js).
+    // Так же у нержавеющих STOUT DUPLEX SWH-4110 (паспорт stout_40ddc5574cba): ХВС G3/4" НР,
+    // клапан G1/2" НР, ГВС / змеевик / рециркуляция G3/4" ВР.
     tanks_optibase: [
         { id: "SWH-3110-000100", name: "Бойлер напольный 100л", ports: { cold: '3/4"', dhw: '3/4"', coil: '1"', recirc: '3/4"' }, vol: 100, price: 57183, rommer: { id: "RWH-2110-000150", name: "Бойлер напольный GT 150 л", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, price: 45265, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
         { id: "SWH-2110-000150", name: "Бойлер напольный OptiBase 150л", ports: { cold: '1"', dhw: '3/4"', coil: '1"', recirc: '1"' }, vol: 150, price: 55566, rommer: { id: "RWH-2110-000150", name: "Бойлер напольный GT 150 л", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, price: 45265, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
@@ -1978,7 +1986,7 @@ const catalog = {
         { id: "SWH-1110-000500", name: "Бойлер напольный 500л", ports: { cold: '1"', dhw: '1"', coil: '1"', recirc: '1"' }, vol: 500, price: 237980, rommer: { id: "RWH-2110-000500", name: "Бойлер напольный GT 500 л", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, price: 112078, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "on_order", price_date: "2026-09-23" }
     ],
     tanks_stainless: [
-        { id: "SWH-4110-050100", name: "Бойлер напольный 100л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"' }, vol: 100, price: 82831, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+        { id: "SWH-4110-050100", name: "Бойлер напольный 100л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, vol: 100, price: 82831, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
         { id: "SWH-4110-050150", name: "Бойлер напольный 150л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, vol: 150, price: 92815, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RWH-2110-000150", name: "Бойлер косвенного нагрева напольный GT 150 л, 35 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, price: 45265, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
         { id: "SWH-4110-050200", name: "Бойлер напольный 200л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, vol: 200, price: 104861, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23", rommer: { id: "RWH-2110-000200", name: "Бойлер косвенного нагрева напольный GT 200 л, 38 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, price: 50596, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
         { id: "SWH-4110-050300", name: "Бойлер напольный 300л (нержавейка) DUPLEX", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, vol: 300, price: 134984, brand: "STOUT", availability: "on_order", price_date: "2026-09-23", rommer: { id: "RWH-2110-000300", name: "Бойлер косвенного нагрева напольный GT 300 л, 49 кВт, без возм. уст. ТЭН", ports: { cold: '3/4"', dhw: '3/4"', coil: '3/4"', recirc: '3/4"', safety: '1/2"', fem: ['dhw', 'coil', 'recirc'] }, price: 78112, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" } },
@@ -2004,7 +2012,10 @@ const catalog = {
     ],
     exp_heating: [
         { id: "STH-0004-000018", name: "Расширительный бак для отопления 18л", vol: 18, color: "red", conn: "3/4", price: 2897, availability: "in_stock", price_date: "2026-09-23" },
-        { id: "STH-0006-000024", name: "Расширительный бак для отопления 24л", vol: 24, color: "red", conn: "1", price: 3050, availability: "in_stock", price_date: "2026-09-23" },
+        // 24 л — G3/4" НР (stout.ru, «Диаметр присоединительных патрубков»; в паспорте
+        // баков размера нет). До 27.09.2026 здесь стояло "1": в окне замены бак
+        // показывался на дюймовой резьбе, а смета подключала его узлом SVS-0008 3/4".
+        { id: "STH-0006-000024", name: "Расширительный бак для отопления 24л", vol: 24, color: "red", conn: "3/4", price: 3050, availability: "in_stock", price_date: "2026-09-23" },
         { id: "STH-0006-000050", name: "Расширительный бак для отопления 50л", vol: 50, color: "red", conn: "1", price: 6764, availability: "in_stock", price_date: "2026-09-23" },
         { id: "STH-0006-000080", name: "Расширительный бак для отопления 80л", vol: 80, color: "red", conn: "1", price: 10836, availability: "in_stock", price_date: "2026-09-23" },
         { id: "STH-0006-000100", name: "Расширительный бак для отопления 100л", vol: 100, color: "red", conn: "1", price: 12642, availability: "in_stock", price_date: "2026-09-23" }
@@ -2820,10 +2831,10 @@ const catalog = {
         { id: "SDG-0018-002503", name: "Коллектор-гидрострелка DN20 (3 конт)", price: 60561, availability: "in_stock", price_date: "2026-09-23" }
     ],
     hydro_dn25: [
-        { id: "SDG-0018-004002", name: "Коллектор-гидрострелка DN25 (2 конт)", price: 60235, rommer: [{ id: "RDG-0017-004002", name: "Стальной распределительный коллектор 2 контура", price: 11227, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, { id: "RDG-0015-004002", name: "Гидравлическая стрелка с накидными гайками 1 1/4″", price: 7256, brand: "ROMMER", rommer: { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: 21245, brand: "ROMMER",
+        { id: "SDG-0018-004002", name: "Коллектор-гидрострелка DN25 (2 конт)", price: 60235, rommer: [{ id: "RDG-0017-004002", name: "Стальной распределительный коллектор 2 контура", price: 11227, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, { id: "RDG-0015-004003", name: "Гидравлическая стрелка с накидными гайками 1 1/2″", price: 7828, brand: "ROMMER", rommer: { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: 21245, brand: "ROMMER",
   availability: 'in_stock',
   price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" }], availability: "in_stock", price_date: "2026-09-23" },
-        { id: "SDG-0018-004003", name: "Коллектор-гидрострелка DN25 (3 конт)", price: 68821, rommer: [{ id: "RDG-0017-004003", name: "Стальной распределительный коллектор 3 контура", price: 13862, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, { id: "RDG-0015-004002", name: "Гидравлическая стрелка с накидными гайками 1 1/4″", price: 7256, brand: "ROMMER", rommer: { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: 21245, brand: "ROMMER",
+        { id: "SDG-0018-004003", name: "Коллектор-гидрострелка DN25 (3 конт)", price: 68821, rommer: [{ id: "RDG-0017-004003", name: "Стальной распределительный коллектор 3 контура", price: 13862, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, { id: "RDG-0015-004003", name: "Гидравлическая стрелка с накидными гайками 1 1/2″", price: 7828, brand: "ROMMER", rommer: { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: 21245, brand: "ROMMER",
   availability: 'in_stock',
   price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" }], availability: "in_stock", price_date: "2026-09-23" },
         { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: 21245, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }
@@ -2857,7 +2868,22 @@ const catalog = {
     pumps_mix: [
         { id: "SPC-0011-2560130", brand: "STOUT", name: "Насос 25/60-130", price: 12666, rommer: { id: "RCP-0004-2560130", name: "Насос циркуляционный PROFI 25/60-130", price: 5507, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" }
     ],
-    hydro_arrow: { id: "SDG-0015-004001", name: "Гидравлическая стрелка 3 м³/ч", price: 23408, rommer: { id: "RDG-0015-004002", name: "Гидравлическая стрелка с накидными гайками 1 1/4″", price: 7256, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
+    // Соединение насосной группы с коллектором ROMMER RDG-0017: у коллектора сверху
+    // G1 1/2" НР («подключение контуров 1 1/2" наружная резьба», rommer_266bcb1de3b1),
+    // у групп STOUT и ROMMER снизу тоже G1 1/2" НР — напрямую не стыкуются. Нужна
+    // деталь с двумя накидными гайками; у ROMMER её нет, у STOUT — принадлежность
+    // коллекторов SDG-0019-000001. По 2 на группу. Цена — прайс × 0,8865, как у
+    // остальных позиций «STOUT ГБМ» (SDG-0001/0015/0018).
+    // Американка ВН 1/2" STOUT (та же серия SFT-0041, что 3/4" и 1") — на патрубки
+    // бойлера G1/2" у Navien Deluxe One. Цена — прайс × 0,9, как у SFT-0041-000034.
+    american_12: { id: "SFT-0041-000012", name: "Разъемное соед. американка ВН 1/2\"", price: 394, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    group_nut_joint_112: { id: "SDG-0019-000001", name: "Соединение с накидными гайками G1 1/2\" ВР – G1 1/2\" ВР", price: 1906, brand: "STOUT", availability: "in_stock", price_date: "2026-09-23" },
+    // Аналог ROMMER гидрострелки — RDG-0015-004003 (накидные гайки 1 1/2", межосевое
+    // 125). До 27.09.2026 стоял RDG-0015-004002 с гайками 1 1/4": он рассчитан на
+    // коллектор RDG-0016 (низ 1 1/4" НР), а в смете шёл к RDG-0017 и SDG-0016 с
+    // низом 1 1/2" НР — не стыковался (паспорта rommer_c954b11233c3, rommer_266bcb1de3b1).
+    // Цена — прайс × 0,9, как у RDG-0015-004002 (7256 / 8061,9).
+    hydro_arrow: { id: "SDG-0015-004001", name: "Гидравлическая стрелка 3 м³/ч", price: 23408, rommer: { id: "RDG-0015-004003", name: "Гидравлическая стрелка с накидными гайками 1 1/2″", price: 7828, brand: "ROMMER", availability: "in_stock", price_date: "2026-09-23" }, availability: "in_stock", price_date: "2026-09-23" },
     servo_rotary_sensor: { id: "SVM-0025-230017", name: "Сервопривод с датчиком", price: 43357, rommer: { id: "RVM-0015-230017", name: "Сервопривод с датчиком", price: 15459, brand: "ROMMER",
   availability: 'on_order',
   price_date: '2026-09-23' }, availability: "in_stock", price_date: "2026-09-23" },
