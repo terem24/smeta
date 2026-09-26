@@ -12115,7 +12115,7 @@ select.rec-btn-g { padding-right: 8px; }
 
 /* Проект: сколько это руками — итог плашкой и сменяющаяся строка «из чего». */
 .rec-save-proj {
-    margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
     padding: 6px 12px; border-radius: 10px; min-width: 250px; max-width: 100%;
     background: rgba(22, 163, 74, .10); border: 1px solid rgba(22, 163, 74, .35);
 }
@@ -12267,6 +12267,12 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
     transition: width var(--dur-slow, 400ms) var(--ease-out, ease);
 }
 .rec-pstages { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+/* Этапы слева, плашка «сколько руками» справа — на одной высоте. */
+.rec-prow { display: flex; align-items: flex-start; gap: 16px; }
+.rec-prow .rec-pstages { flex: 1 1 auto; min-width: 0; }
+.rec-pside { flex: 0 1 auto; margin-top: 10px; }
+.rec-pside:empty { display: none; }
+@media (max-width: 600px) { .rec-prow { flex-direction: column; gap: 0; } .rec-pside { width: 100%; } }
 .rec-pstage {
     display: flex; align-items: center; gap: 8px;
     font-size: 12.5px; color: var(--text-sec, #94a3b8);

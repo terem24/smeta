@@ -1690,13 +1690,20 @@ const RecognizeUI = {
         box.id = 'rec_progress';
         box.innerHTML = `
           <div class="rec-pbar"><div class="rec-pfill" id="rec_pfill"></div></div>
-          <div class="rec-pstages">
-            ${this.STAGES.map((s, i) =>
-              `<div class="rec-pstage" id="rec_st${i}"><span class="dot"></span><span>${s}</span></div>`
-            ).join('')}
+          <div class="rec-prow">
+            <div class="rec-pstages">
+              ${this.STAGES.map((s, i) =>
+                `<div class="rec-pstage" id="rec_st${i}"><span class="dot"></span><span>${s}</span></div>`
+              ).join('')}
+            </div>
+            <div class="rec-pside" id="rec_pside"></div>
           </div>
           <div class="rec-elapsed" id="rec_elapsed">0 с</div>`;
         host.appendChild(box);
+        // Индикатор встаёт под кнопкой «Распознать» — на ноутбуке он уходит
+        // под нижний край, и плашку «сколько это руками» надо искать
+        // прокруткой. Докручиваем до него сами, ровно насколько нужно.
+        try { box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {}
 
         this._t0 = Date.now();
         this._tipAt = 0;
@@ -1800,12 +1807,17 @@ const RecognizeUI = {
             }
             this._savePlan = plan;
             this._saveAt = -1;
+            const proj = plan && plan.total >= 5;
             el.innerHTML = `<span class="rec-tip">${tip}</span>` +
                 `<span class="rec-tip-sec">${sec} с</span>` +
-                (plan && plan.total >= 5
-                    ? `<span class="rec-save-proj"><span class="rec-save-total">≈${RecognizeProject.roughTime(plan.total)} <small>работы руками</small></span>
-                         <span class="rec-save-line" id="rec_save_line"></span></span>`
-                    : (saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}</span>` : ''));
+                (!proj && saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}</span>` : '');
+            // Плашка проекта — справа от этапов, на уровне полосы хода, а не
+            // строкой ниже: так она видна без прокрутки.
+            const side = document.getElementById('rec_pside');
+            if (proj && side) {
+                side.innerHTML = `<span class="rec-save-proj"><span class="rec-save-total">≈${RecognizeProject.roughTime(plan.total)} <small>работы руками</small></span>
+                         <span class="rec-save-line" id="rec_save_line"></span></span>`;
+            }
         } else {
             const s = el.querySelector('.rec-tip-sec');
             if (s) s.textContent = sec + ' с';
