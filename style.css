@@ -16626,3 +16626,100 @@ body.theme-yandex #auth_modal_overlay .btn-email-submit:hover {
         display: none;
     }
 }
+
+/* ---------- Окно «Готовим PDF / Excel» (выгрузка с телефона) ----------
+   Лист бумаги, на котором построчно проявляется содержимое, и полоса под ним.
+   Определённого прогресса у выгрузки нет: html2pdf и печать Android о ходе дела
+   не сообщают, поэтому честнее показать движение, чем врущие проценты. */
+.hc-export-card {
+    text-align: center;
+    align-items: center;
+    gap: 14px;
+    max-width: 340px;
+}
+
+.hc-export-doc {
+    position: relative;
+    width: 54px;
+    height: 68px;
+    margin: 2px auto 0;
+    border-radius: 6px;
+    background: var(--surface-light);
+    border: 1.5px solid var(--border);
+    box-shadow: 0 6px 16px rgba(15, 23, 42, .12);
+    overflow: hidden;
+}
+
+/* Загнутый уголок листа */
+.hc-export-doc::after {
+    content: '';
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 16px;
+    height: 16px;
+    background: var(--surface);
+    border-left: 1.5px solid var(--border);
+    border-bottom: 1.5px solid var(--border);
+    border-bottom-left-radius: 4px;
+}
+
+/* Строки текста: появляются одна за другой, как будто документ наполняется */
+.hc-export-doc i {
+    position: absolute;
+    left: 9px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--primary);
+    opacity: .25;
+    animation: hc-export-line 1.6s ease-in-out infinite;
+}
+
+.hc-export-doc i:nth-child(1) { top: 26px; width: 22px; animation-delay: 0s; }
+.hc-export-doc i:nth-child(2) { top: 36px; width: 34px; animation-delay: .18s; }
+.hc-export-doc i:nth-child(3) { top: 46px; width: 28px; animation-delay: .36s; }
+.hc-export-doc i:nth-child(4) { top: 56px; width: 18px; animation-delay: .54s; }
+
+@keyframes hc-export-line {
+    0%, 100% { opacity: .18; transform: translateX(0); }
+    40%      { opacity: .95; transform: translateX(2px); }
+}
+
+.hc-export-bar {
+    width: 100%;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    overflow: hidden;
+}
+
+.hc-export-bar i {
+    display: block;
+    width: 38%;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--primary);
+    animation: hc-export-slide 1.2s ease-in-out infinite;
+}
+
+@keyframes hc-export-slide {
+    0%   { transform: translateX(-110%); }
+    100% { transform: translateX(300%); }
+}
+
+body.dark-mode .hc-export-doc {
+    background: #1a1a1a;
+    border-color: #3a3a3a;
+}
+
+body.dark-mode .hc-export-doc::after {
+    background: #262626;
+    border-color: #3a3a3a;
+}
+
+/* Меньше движения — меньше анимации: остаётся статичный лист и полоса */
+@media (prefers-reduced-motion: reduce) {
+    .hc-export-doc i,
+    .hc-export-bar i { animation: none; }
+    .hc-export-bar i { width: 100%; opacity: .5; }
+}

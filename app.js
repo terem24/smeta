@@ -12805,6 +12805,41 @@ const app = {
     // только необратимый отпечаток, а копия на Beget снимается лишь при входе
     // после 07.09.2026 и отдаётся одному админу. Поэтому «не помню пароль»
     // решается тем, что его можно задать заново, не выходя из аккаунта.
+    /**
+     * Окно ожидания для выгрузок с телефона. PDF и Excel собираются не мгновенно,
+     * и голый кружок с подписью «Формируем PDF...» выглядел как зависание: не
+     * видно ни что происходит, ни сколько ждать.
+     */
+    showExportOverlay: function (kind) {
+        const title = kind === 'excel' ? 'Готовим Excel' : 'Готовим PDF';
+        const hint = kind === 'excel'
+            ? 'Собираем таблицу с оборудованием и работами.'
+            : 'Собираем смету со всеми разделами и фотографиями.';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay no-print';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card hc-export-card">
+                <div class="hc-export-doc" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                <h3 class="calc-dialog-title" style="margin:0;">${title}</h3>
+                <p class="calc-dialog-message" style="margin:0;">${hint} Обычно это несколько секунд.</p>
+                <div class="hc-export-bar"><i></i></div>
+            </div>`;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+        // Класс .html2pdf-printing гасит все .calc-dialog-overlay, чтобы модалки не
+        // попали в снимок страницы. Этому окну видимость возвращаем инлайново:
+        // !important в разметке бьёт !important из таблицы стилей.
+        overlay.style.setProperty('display', 'flex', 'important');
+
+        return {
+            close: function () {
+                overlay.classList.remove('active');
+                setTimeout(function () { overlay.remove(); }, 200);
+            }
+        };
+    },
+
     showSetPasswordModal: function (mode) {
         if (document.getElementById('set_password_card')) return;
         const isRecovery = mode === 'recovery';
@@ -42812,18 +42847,37 @@ const app = {
             // подключена в index.html. Используем ту же подготовку документа (prepareForPrint),
             // что и обычная печать, только без настоящего window.print(), поэтому
             // 'beforeprint'/'afterprint' вызываем вручную через одноимённые функции.
-            const overlay = document.createElement('div');
-            overlay.className = 'calc-dialog-overlay';
-            overlay.innerHTML = `<div class="calc-dialog-card" style="text-align:center;">
-                <span class="loading-spinner" style="display:inline-block; width:28px; height:28px; border:3px solid var(--primary); border-top-color:transparent; border-radius:50%; animation:stout-spin 0.8s linear infinite; margin-bottom:14px;"></span>
-                <p class="calc-dialog-message" style="margin:0;">Формируем PDF...</p>
-            </div>`;
-            document.body.appendChild(overlay);
-            setTimeout(() => overlay.classList.add('active'), 10);
-            // .html2pdf-printing ниже гасит все .calc-dialog-overlay (чтобы модалки не попали
-            // в PDF), а это как раз наш индикатор «Формируем PDF...». Инлайновый !important
-            // бьёт !important из таблицы стилей — индикатор остаётся видимым монтажнику.
-            overlay.style.setProperty('display', 'flex', 'important');
+            const overlay = this.showExportOverlay('pdf');
+
+            // В приложении PDF печатает сам Android — тем же механизмом, что «Печать»
+            // в браузере. html2pdf там не годится: он снимает вёрстку в холст, а смета
+            // на три десятка листов — это холст высотой под 76 000 точек. Встроенный
+            // браузер такой не создаёт и молча отдаёт пустой: файл получался из белых
+            // страниц. Родная печать отдаёт настоящий PDF с текстом, за секунды.
+            const hcNative = window.__HC_NATIVE__ && window.Capacitor && window.Capacitor.Plugins
+                ? window.Capacitor.Plugins.HcNative : null;
+            if (hcNative && hcNative.printPdf) {
+                prepareForPrint();
+                try {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                    await this.awaitPrintImages();
+                    const safeName = (document.title || this.state.projectName || 'Смета')
+                        .replace(/[\\\/:\*\?"<>\|]/g, '');
+                    const res = await hcNative.printPdf({ name: safeName + '.pdf' });
+                    this.logPrintedEvent('pdf');
+                    GRM.trackAction('pdf', this.state.calc_id);
+                    if (window.hcNativeShowSaved) window.hcNativeShowSaved(res);
+                    document.dispatchEvent(new CustomEvent('hc:pdf-done'));
+                } catch (err) {
+                    console.error('[executeDownload] Печать PDF не удалась:', err);
+                    app.alert('Не удалось сформировать PDF. Попробуйте ещё раз.');
+                } finally {
+                    cleanupAfterPrint();
+                    overlay.close();
+                    if (wasDark) document.body.classList.add('dark-mode');
+                }
+                return;
+            }
 
             prepareForPrint();
             // Набор правил для выгрузки с телефона: разворачивает смету в десктопную ширину и
@@ -42885,8 +42939,7 @@ const app = {
                 printBin.style.removeProperty('width');
                 printBin.style.removeProperty('max-width');
                 cleanupAfterPrint();
-                overlay.classList.remove('active');
-                setTimeout(() => overlay.remove(), 200);
+                overlay.close();
                 if (wasDark) document.body.classList.add('dark-mode');
             }
             return;
@@ -42991,6 +43044,12 @@ const app = {
         this.updateDocumentTitle();
         prepareForPrint();
 
+        // Книга собирается в один заход и на время сборки подвешивает экран.
+        // Окно ожидания показываем до неё и даём такт на отрисовку — иначе
+        // человек видит замерший калькулятор и жмёт кнопку второй раз.
+        const xlsOverlay = this.isMobileOrTablet() ? this.showExportOverlay('excel') : null;
+        if (xlsOverlay) await new Promise(resolve => setTimeout(resolve, 50));
+
         try {
             // Имя файла то же, что у PDF: заголовок страницы «КП №… объект - м2 (разделы)»
             const safeName = (document.title || this.state.projectName || 'Смета').replace(/[\\\/:\*\?"<>\|]/g, '');
@@ -43002,6 +43061,7 @@ const app = {
             app.alert('Не удалось сформировать файл Excel: ' + (err && err.message ? err.message : err));
         } finally {
             cleanupAfterPrint();
+            if (xlsOverlay) xlsOverlay.close();
             if (wasDark) document.body.classList.add('dark-mode');
         }
     },

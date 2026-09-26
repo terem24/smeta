@@ -6,10 +6,18 @@ import android.content.ContentValues;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Bundle;
+import android.os.CancellationSignal;
 import android.os.Environment;
+import android.os.ParcelFileDescriptor;
+import android.print.PageRange;
+import android.print.PrintAttributes;
+import android.print.PrintDocumentAdapter;
+import android.print.PrintDocumentInfo;
 import android.provider.MediaStore;
 import android.util.Base64;
 import android.webkit.MimeTypeMap;
+import android.webkit.WebView;
 
 import androidx.core.content.FileProvider;
 
@@ -20,6 +28,7 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.Locale;
@@ -87,6 +96,20 @@ public class HcNativePlugin extends Plugin {
         }
 
         try {
+            call.resolve(store(name, mime, bytes));
+        } catch (Exception e) {
+            // Причину прячем в журнал: человеку в окне она ничего не объяснит.
+            call.reject("Не удалось сохранить файл", e);
+        }
+    }
+
+    /**
+     * Кладёт готовые байты в «Загрузки» и отвечает, куда именно легло.
+     * Общий кусок для save() (файл собрал браузер) и printPdf() (файл собрал
+     * Android): место хранения и способ отдать его наружу у них одинаковые.
+     */
+    private JSObject store(String name, String mime, byte[] bytes) throws Exception {
+        {
             Uri uri;
             String where;
 
@@ -103,14 +126,12 @@ public class HcNativePlugin extends Plugin {
 
                 uri = cr.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
                 if (uri == null) {
-                    call.reject("Хранилище не отдало место под файл");
-                    return;
+                    throw new Exception("Хранилище не отдало место под файл");
                 }
 
                 OutputStream os = cr.openOutputStream(uri);
                 if (os == null) {
-                    call.reject("Не удалось открыть файл на запись");
-                    return;
+                    throw new Exception("Не удалось открыть файл на запись");
                 }
                 try {
                     os.write(bytes);
@@ -130,12 +151,10 @@ public class HcNativePlugin extends Plugin {
                 // «Поделиться» и «Открыть» работают так же.
                 File dir = getContext().getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
                 if (dir == null) {
-                    call.reject("Внешнее хранилище недоступно");
-                    return;
+                    throw new Exception("Внешнее хранилище недоступно");
                 }
                 if (!dir.exists() && !dir.mkdirs()) {
-                    call.reject("Не удалось создать папку для файла");
-                    return;
+                    throw new Exception("Не удалось создать папку для файла");
                 }
 
                 File file = new File(dir, name);
@@ -155,11 +174,136 @@ public class HcNativePlugin extends Plugin {
             res.put("name", name);
             res.put("mime", mime);
             res.put("where", where);
+            return res;
+        }
+    }
+
+    /**
+     * Печать страницы в PDF силами самого Android.
+     *
+     * Зачем не как в браузере. На сайте PDF собирает html2pdf: он делает снимок
+     * вёрстки в холст и кладёт картинку в документ. Смета на 30 с лишним листов —
+     * это холст высотой под 76 000 точек, а встроенный браузер Android такой не
+     * создаёт: возвращает пустой, и в файле выходят белые страницы. Плюс минуты
+     * ожидания и вес в десятки мегабайт.
+     *
+     * WebView умеет печатать сам — тем же механизмом, что «Печать» в Chrome:
+     * применяет @media print и отдаёт настоящий PDF с текстом, без холста.
+     * Обычно его показывают в системном окне печати, но адаптер можно вызвать
+     * напрямую и записать результат в файл.
+     *
+     * Страницу к печати готовит разметка (prepareForPrint в app.js) — здесь
+     * только снимок того, что уже на экране.
+     */
+    @PluginMethod
+    public void printPdf(final PluginCall call) {
+        final String name = safeName(ensurePdf(call.getString("name", "Смета")));
+
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    WebView web = (WebView) getBridge().getWebView();
+                    final PrintDocumentAdapter adapter =
+                        web.createPrintDocumentAdapter(name.replace(".pdf", ""));
+
+                    PrintAttributes attrs = new PrintAttributes.Builder()
+                        .setMediaSize(PrintAttributes.MediaSize.ISO_A4)
+                        .setResolution(new PrintAttributes.Resolution("pdf", "pdf", 300, 300))
+                        .setMinMargins(PrintAttributes.Margins.NO_MARGINS)
+                        .build();
+
+                    final File out = new File(getContext().getCacheDir(), "print.pdf");
+                    if (out.exists() && !out.delete()) {
+                        call.reject("Не удалось освободить место под файл");
+                        return;
+                    }
+                    final ParcelFileDescriptor pfd = ParcelFileDescriptor.open(
+                        out,
+                        ParcelFileDescriptor.MODE_READ_WRITE
+                            | ParcelFileDescriptor.MODE_CREATE
+                            | ParcelFileDescriptor.MODE_TRUNCATE);
+
+                    adapter.onLayout(null, attrs, new CancellationSignal(),
+                        new PrintDocumentAdapter.LayoutResultCallback() {
+                            @Override
+                            public void onLayoutFinished(PrintDocumentInfo info, boolean changed) {
+                                adapter.onWrite(new PageRange[]{ PageRange.ALL_PAGES }, pfd,
+                                    new CancellationSignal(),
+                                    new PrintDocumentAdapter.WriteResultCallback() {
+                                        @Override
+                                        public void onWriteFinished(PageRange[] pages) {
+                                            finishPrint(call, out, pfd, name);
+                                        }
+
+                                        @Override
+                                        public void onWriteFailed(CharSequence error) {
+                                            closeQuietly(pfd);
+                                            call.reject("Печать не удалась: " + error);
+                                        }
+                                    });
+                            }
+
+                            @Override
+                            public void onLayoutFailed(CharSequence error) {
+                                closeQuietly(pfd);
+                                call.reject("Разметка страницы не удалась: " + error);
+                            }
+                        }, new Bundle());
+                } catch (Exception e) {
+                    call.reject("Не удалось напечатать PDF", e);
+                }
+            }
+        });
+    }
+
+    /** Готовый PDF из кэша перекладываем в «Загрузки» и убираем за собой. */
+    private void finishPrint(PluginCall call, File out, ParcelFileDescriptor pfd, String name) {
+        closeQuietly(pfd);
+        try {
+            int size = (int) out.length();
+            if (size <= 0) {
+                call.reject("Пустой файл печати");
+                return;
+            }
+            byte[] bytes = new byte[size];
+            FileInputStream in = new FileInputStream(out);
+            try {
+                int read = 0;
+                while (read < size) {
+                    int n = in.read(bytes, read, size - read);
+                    if (n < 0) break;
+                    read += n;
+                }
+            } finally {
+                in.close();
+            }
+            JSObject res = store(name, "application/pdf", bytes);
+            res.put("size", size);
+            // Содержимое отдаём и разметке: кнопка «Поделиться» отправляет файл
+            // в мессенджер тем же путём, что и остальные выгрузки. Огромные файлы
+            // через мост не тащим — печатный PDF столько не весит, но мало ли.
+            if (size <= 8 * 1024 * 1024) {
+                res.put("data", Base64.encodeToString(bytes, Base64.NO_WRAP));
+            }
             call.resolve(res);
         } catch (Exception e) {
-            // Причину прячем в журнал: человеку в окне она ничего не объяснит.
-            call.reject("Не удалось сохранить файл", e);
+            call.reject("Не удалось сохранить PDF", e);
+        } finally {
+            //noinspection ResultOfMethodCallIgnored
+            out.delete();
         }
+    }
+
+    private static void closeQuietly(ParcelFileDescriptor pfd) {
+        try {
+            if (pfd != null) pfd.close();
+        } catch (Exception ignored) { }
+    }
+
+    private static String ensurePdf(String name) {
+        String n = (name == null || name.trim().isEmpty()) ? "Смета" : name.trim();
+        return n.toLowerCase(Locale.ROOT).endsWith(".pdf") ? n : n + ".pdf";
     }
 
     /**
