@@ -13759,13 +13759,15 @@ const app = {
                 + (stale.length > 8 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(stale.length - 8)}</p>` : '')
             : `<p class="lk-hint">Ничего не висит: по всем отправленным сметам есть движение.</p>`;
 
+        // Продавец монтаж не делает: строки про работы ему — пустые нули.
+        const seller = this.isSellerOnly();
         const objCell = (label, val, sub, tr) => `<div class="sm-cell"><span>${label}</span><b>${val}</b>${sub ? `<small>${sub}</small>` : ''}${tr || ''}</div>`;
         const objHtml = oCur.n
             ? `<div class="sm-cells">
                 ${objCell('Площадь', oCur.area ? Math.round(oCur.area) + ' м²' : '—', '', trend(oCur.area, oPrev.area, 'up'))}
-                ${objCell('Смета целиком', money(oCur.total), '', trend(oCur.total, oPrev.total, 'up'))}
+                ${objCell(seller ? 'Средний чек' : 'Смета целиком', money(oCur.total), '', trend(oCur.total, oPrev.total, 'up'))}
                 ${objCell('Оборудование', money(oCur.eq), rubM2(oCur.eqM2), trend(oCur.eqM2, oPrev.eqM2, 'up'))}
-                ${objCell('Монтаж', money(oCur.works), rubM2(oCur.worksM2), trend(oCur.worksM2, oPrev.worksM2, 'up'))}
+                ${seller ? '' : objCell('Монтаж', money(oCur.works), rubM2(oCur.worksM2), trend(oCur.worksM2, oPrev.worksM2, 'up'))}
                 ${mSet ? objCell('Ваш заработок ≈', money(oCur.margin), rubM2(oCur.marginM2), trend(oCur.margin, oPrev.margin, 'up')) : ''}
                </div>
                <p class="lk-hint" style="margin-top:6px;">По ${num(oCur.n)} ${this.plural(oCur.n, 'сохранённой смете', 'сохранённым сметам', 'сохранённым сметам')} за ${P} дней; ₽/м² — по сметам с указанной площадью.${mSet
@@ -13773,13 +13775,113 @@ const app = {
                     : (this.canUseMoney() ? ' Заведите проценты во вкладке «Деньги» — здесь появится и ваш заработок с объекта.' : '')}</p>`
             : `<p class="lk-hint">За ${P} дней сохранённых смет нет${ests.length ? '' : ' — средние считаются по сметам, сохранённым в облаке'}.</p>`;
 
+        // ── Что сделать сейчас ──────────────────────────────────────────────
+        // Числа выше отвечают «как дела», а монтажнику нужно ещё «кому звонить».
+        // Каждая подсказка — про конкретную смету и открывает её по нажатию.
+        // Порядок — по тому, насколько близко деньги: одобренные первыми.
+        const openedTimes = {}, lastOf = {};
+        rows.forEach(r => {
+            const t = new Date(r && r.created_at).getTime();
+            if (!r || !r.calc_id || isNaN(t)) return;
+            const id = String(r.calc_id);
+            if (r.event === 'opened') (openedTimes[id] || (openedTimes[id] = [])).push(t);
+            const L = lastOf[id] || (lastOf[id] = {});
+            if (!L[r.event] || t > L[r.event]) L[r.event] = t;
+        });
+        const actions = [];
+        const estLink = (id) => { const e = estOfCalc[id]; return e ? e.id : null; };
+        cards.forEach(c => {
+            const L = lastOf[c.id] || {};
+            const sentLast = Math.max(L.sent || 0, L.printed || 0);
+            const done = L.invoice_requested || L.invoice_issued || L.paid || L.rejected;
+            const name = c.project || 'Без названия';
+            if (done) return;
+            if (L.confirmed && now - L.confirmed < 60 * DAY) {
+                actions.push({ w: 1, color: '#10B981', icon: '✅', estId: estLink(c.id), name,
+                    text: `одобрена ${dayWord(L.confirmed)} — запросите счёт`, sum: sumOfCalc[c.id] || 0 });
+                return;
+            }
+            if (L.refresh_requested && L.refresh_requested > sentLast) {
+                actions.push({ w: 2, color: '#F97316', icon: '🔄', estId: estLink(c.id), name,
+                    text: `клиент просит обновить счёт (${dayWord(L.refresh_requested)})`, sum: sumOfCalc[c.id] || 0 });
+                return;
+            }
+            if (L.needs_revision && L.needs_revision > sentLast && now - L.needs_revision < 60 * DAY) {
+                actions.push({ w: 3, color: '#EF4444', icon: '✏️', estId: estLink(c.id), name,
+                    text: `клиент просил правки ${dayWord(L.needs_revision)}, исправленная не отправлена`, sum: sumOfCalc[c.id] || 0 });
+                return;
+            }
+            // «Горячий»: за последние трое суток открывал больше одного раза и
+            // ещё не ответил. Открытия в первые две минуты после отправки не
+            // считаем — это монтажник проверяет свою же ссылку.
+            const hot = (openedTimes[c.id] || []).filter(t => now - t < 3 * DAY && !(sentLast && t >= sentLast && t - sentLast < 120000));
+            if (hot.length >= 2 && !L.confirmed && !(L.needs_revision && L.needs_revision > sentLast)) {
+                actions.push({ w: 4, color: '#0EA5E9', icon: '🔥', estId: estLink(c.id), name,
+                    text: `клиент открывал смету ${hot.length} ${this.plural(hot.length, 'раз', 'раза', 'раз')} за 3 дня — самое время позвонить`, sum: sumOfCalc[c.id] || 0 });
+            }
+        });
+        actions.sort((x, y) => x.w - y.w || y.sum - x.sum);
+        const actionRow = (x) => `<div class="sm-row sm-link"${x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : ''}>
+                    <span class="sm-row-label">${x.icon} <b>${esc(x.name)}</b> <span style="color:${x.color};">— ${x.text}</span></span>
+                    <b>${x.sum ? money(x.sum) : ''}</b>
+                </div>`;
+        const actionsHtml = `<div class="lk-section-head sm-head"><h4>✅ Что сделать сейчас</h4></div>
+            <div id="installer_actions">${actions.slice(0, 8).map(actionRow).join('')}</div>
+            <div id="installer_actions_extra"></div>
+            ${actions.length ? '' : `<p class="lk-hint" id="installer_actions_empty">Срочного нет: одобренных без счёта, просьб о правках и «горячих» клиентов сейчас нет.</p>`}`;
+
+        // ── По месяцам ──────────────────────────────────────────────────────
+        // Растёт ли человек: одна строка на календарный месяц. Сметы — по
+        // первому действию, средние — по сохранённым сметам месяца, скорость —
+        // по отправкам, случившимся в этом месяце.
+        const MONTHS = P === 365 ? 12 : 6;
+        const monthKey = (t) => { const d = new Date(t); return d.getFullYear() * 12 + d.getMonth(); };
+        const curKey = monthKey(now);
+        const mRows = [];
+        for (let k = curKey; k > curKey - MONTHS; k--) {
+            const inM = (t) => !!t && monthKey(t) === k;
+            const mc = cards.filter(c => inM(c.firstAt));
+            const me = ests.filter(e => inM(e.at) && e.total > 0);
+            const ma = me.filter(e => e.area > 0), aSum = ma.reduce((s, e) => s + e.area, 0);
+            const spd = [];
+            cards.forEach(c => {
+                const a = minOf(c, CALC), b = minOf(c, SENT);
+                if (a && b && b >= a && inM(b)) spd.push(b - a);
+            });
+            const d = new Date(Math.floor(k / 12), k % 12, 1);
+            mRows.push({
+                label: d.toLocaleString('ru-RU', { month: 'short', year: '2-digit' }).replace(' г.', ''),
+                n: mc.length,
+                sent: mc.filter(c => c.first.sent || c.first.printed || c.first.opened).length,
+                inv: mc.filter(c => c.first.invoice_requested || c.first.invoice_issued || c.first.paid).length,
+                area: avg(ma.map(e => e.area)), total: avg(me.map(e => e.total)),
+                worksM2: aSum ? ma.reduce((s, e) => s + e.works, 0) / aSum : null,
+                speed: median(spd)
+            });
+        }
+        const monthsHtml = mRows.some(m => m.n || m.total)
+            ? `<div class="lk-section-head sm-head"><h4>📅 По месяцам</h4></div>
+               <div class="sm-table-wrap"><table class="sm-table">
+                <thead><tr><th>Месяц</th><th>Смет</th><th>Отправлено</th><th>До счёта</th><th>Площадь</th><th>${seller ? 'Средний чек' : 'Средняя смета'}</th>${seller ? '' : '<th>Монтаж, ₽/м²</th>'}<th title="Расчёт → отправка клиенту, медиана">Скорость</th></tr></thead>
+                <tbody>${mRows.map(m => `<tr>
+                    <td>${m.label}</td><td>${m.n || '—'}</td><td>${m.sent || '—'}</td>
+                    <td>${m.inv ? m.inv + (m.n ? ` <small>${Math.round(m.inv / m.n * 100)}%</small>` : '') : '—'}</td>
+                    <td>${m.area ? Math.round(m.area) + ' м²' : '—'}</td><td>${m.total ? money(m.total) : '—'}</td>
+                    ${seller ? '' : `<td>${m.worksM2 ? num(Math.round(m.worksM2)) : '—'}</td>`}<td>${m.speed != null ? dur(m.speed) : '—'}</td>
+                </tr>`).join('')}</tbody>
+               </table></div>`
+            : '';
+
         container.innerHTML = head
             + `<div class="sm-tiles">
                 ${tile('Смет', num(inv.cohortN), 'за ' + (P === 365 ? 'год' : P + ' дней'), trend(inv.cohortN, invPrev.cohortN, 'up'), 'Считаем от первого действия со сметой')}
                 ${tile('Дошло до счёта', num(fAuto ? fAuto.n : 0), convCur != null ? Math.round(convCur) + '% ваших смет' : '', trend(convCur, convPrev, 'up'))}
                 ${tile('Ждут ответа', num(stale.length), 'молчат ' + this.INSTALLER_STALE_DAYS + '+ дней')}
-                ${tile('Средний объект', oCur.area ? Math.round(oCur.area) + ' м²' : '—', oCur.total ? money(oCur.total) : '', trend(oCur.area, oPrev.area, 'up'))}
+                ${seller
+                    ? tile('Средний чек', oCur.total ? money(oCur.total) : '—', oCur.area ? Math.round(oCur.area) + ' м²' : '', trend(oCur.total, oPrev.total, 'up'))
+                    : tile('Средний объект', oCur.area ? Math.round(oCur.area) + ' м²' : '—', oCur.total ? money(oCur.total) : '', trend(oCur.area, oPrev.area, 'up'))}
                </div>`
+            + actionsHtml
             + `<div class="lk-section-head sm-head"><h4>💵 Деньги на столе</h4></div>`
             + `<div class="sm-tiles">
                 ${pot('Ждут решения клиента', pending, '#F97316', 'Отправлены, клиент ещё не одобрил и не вернул на доработку')}
@@ -13787,8 +13889,10 @@ const app = {
                </div>`
             + `<div class="lk-section-head sm-head"><h4>⏱ Скорость</h4><small class="sm-head-note">обычно (медиана) · к прошлым ${P === 365 ? 'году' : P + ' дням'}</small></div>`
             + speedRows
-            + `<div class="lk-section-head sm-head"><h4>🏠 Средний объект</h4></div>`
+            + `<div class="lk-section-head sm-head"><h4>🏠 ${seller ? 'Средний заказ' : 'Средний объект'}</h4></div>`
             + objHtml
+            + monthsHtml
+            + `<div id="installer_sales"></div>`
             + `<div class="lk-section-head sm-head"><h4>⏳ Ждут вашего звонка</h4></div>`
             + staleHtml
             + `<div id="installer_reprice"></div>`
@@ -13800,9 +13904,9 @@ const app = {
                 «Клиент открыл» отмечается, когда заказчик открывает вашу ссылку, — по ней видно, дошла смета до него или нет.
                </p>`;
 
-        // Цены и наличие считаются отдельно и после: это запрос за составом
-        // счетов, а числа выше должны появиться сразу. Запрос один на оба
-        // блока — и цене, и наличию нужен один и тот же состав счетов.
+        // Цены, наличие и «что продаёте» считаются отдельно и после: это
+        // запрос за составом счетов, а числа выше должны появиться сразу.
+        // Запрос один на все блоки — им нужен один и тот же состав.
         this.loadInstallerInvoiceExtras(cards.map(c => c.id));
     },
 
@@ -13820,17 +13924,124 @@ const app = {
             const CHUNK = 80;
             for (let i = 0; i < calcIds.length; i += CHUNK) {
                 const part = calcIds.slice(i, i + CHUNK);
+                // Искать по номеру КП, а не по id: id у shared_invoices — uuid, и
+                // запрос .in('id', ['554471', …]) падал на разборе uuid. Ошибка
+                // уходила в catch молча, и блоки цен и наличия не показывались
+                // никогда. Номер КП лежит в object_info.sequence_id.
                 const { data, error } = await supabaseClient.from('shared_invoices')
-                    .select('id, created_at, pn:object_info->>projectName, eq:items->equipment').in('id', part);
+                    .select('id, created_at, seq:object_info->>sequence_id, pn:object_info->>projectName, eq:items->equipment')
+                    .in('object_info->>sequence_id', part);
                 if (error) throw error;
                 rows.push(...(data || []));
             }
         } catch (e) {
-            return;   // оба блока вспомогательные, ломать ими вкладку незачем
+            console.warn('[показатели] состав смет не прочитан:', e && e.message || e);
+            return;   // блоки вспомогательные, ломать ими вкладку незачем
         }
+        // Смету могли отправлять несколько раз (новые версии КП) — берём
+        // последнюю отправку, иначе объект считался бы дважды.
+        const latest = {};
+        rows.forEach(r => {
+            const k = String(r.seq || r.id);
+            if (!latest[k] || new Date(r.created_at) > new Date(latest[k].created_at)) latest[k] = r;
+        });
+        rows = Object.values(latest);
         if (!rows.length) return;
+        this.renderInstallerSales(rows);
         this.renderInstallerRepricing(rows);
         this.renderInstallerAvailability(rows);
+    },
+
+    /**
+     * «Что вы продаёте» — по составу отправленных смет (shared_invoices).
+     *
+     * Монтажнику: доля брендов в деньгах, какие разделы есть почти в каждом
+     * объекте и сколько они стоят, типичная мощность котла. Продавцу вместо
+     * разделов важнее позиции: что спрашивают чаще всего — это его склад.
+     *
+     * Опциональные позиции (isOpt) не считаем: в итог сметы они не входят.
+     */
+    renderInstallerSales: function (rows) {
+        const host = document.getElementById('installer_sales');
+        if (!host || !rows || !rows.length) return;
+        const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+        const num = n => Number(n || 0).toLocaleString('ru-RU');
+        const money = (rub) => !rub ? '—'
+            : (rub >= 1e6 ? (rub / 1e6).toFixed(1).replace('.', ',') + ' млн ₽' : Math.round(rub / 1e3).toLocaleString('ru-RU') + ' тыс ₽');
+        const seller = this.isSellerOnly();
+
+        const brands = {}, sections = {}, items = {}, kw = [];
+        let total = 0, invN = 0;
+        rows.forEach(r => {
+            const eq = (Array.isArray(r.eq) ? r.eq : []).filter(it => it && !it.isOpt && (Number(it.sum) || 0) > 0);
+            if (!eq.length) return;
+            invN++;
+            const secSeen = {};
+            eq.forEach(it => {
+                const sum = Number(it.sum) || 0;
+                total += sum;
+                const b = String(it.brand || '').trim().toUpperCase();
+                const bk = b === 'STOUT' || b === 'ROMMER' ? b : 'Другие';
+                brands[bk] = (brands[bk] || 0) + sum;
+                // Номер раздела отрезаем: «1. Котёл + водонагреватель» → «Котёл + водонагреватель»
+                const sec = String(it.sectionTitle || 'Прочее').replace(/^\d+(\.\d+)*\.\s*/, '');
+                const S = sections[sec] || (sections[sec] = { n: 0, sum: 0 });
+                S.sum += sum;
+                if (!secSeen[sec]) { secSeen[sec] = 1; S.n++; }
+                const key = String(it.originalId || it.id || it.name);
+                const I = items[key] || (items[key] = { name: it.name || key, n: 0, q: 0, sum: 0, unit: it.unit || 'шт', seen: {} });
+                if (!I.seen[r.id]) { I.seen[r.id] = 1; I.n++; }
+                I.q += Number(it.q) || 0;
+                I.sum += sum;
+            });
+            // Мощность котла — из названия основного котла сметы: «Котёл … (24 кВт)»
+            const boiler = eq.filter(it => /^1\./.test(String(it.sectionTitle || '')) && /кот[её]л/i.test(it.name || '') && /(\d+(?:[.,]\d+)?)\s*кВт/i.test(it.name || ''))
+                .sort((a, b) => (Number(b.sum) || 0) - (Number(a.sum) || 0))[0];
+            if (boiler) kw.push(parseFloat(boiler.name.match(/(\d+(?:[.,]\d+)?)\s*кВт/i)[1].replace(',', '.')));
+        });
+        if (!invN || !total) return;
+
+        const pct = (v) => Math.round(v / total * 100);
+        const brandColors = { STOUT: 'var(--primary)', ROMMER: '#10B981', 'Другие': '#94A3B8' };
+        const brandBar = Object.keys(brands).sort((a, b) => brands[b] - brands[a])
+            .map(b => `<i style="width:${pct(brands[b])}%; background:${brandColors[b]};" title="${esc(b)}: ${pct(brands[b])}%"></i>`).join('');
+        const brandLegend = Object.keys(brands).sort((a, b) => brands[b] - brands[a])
+            .map(b => `<span><i style="background:${brandColors[b]};"></i>${esc(b)} ${pct(brands[b])}%</span>`).join('');
+
+        const kwSorted = kw.slice().sort((a, b) => a - b);
+        const kwMed = kwSorted.length ? kwSorted[Math.floor(kwSorted.length / 2)] : null;
+
+        let listHtml;
+        if (seller) {
+            const top = Object.values(items).sort((a, b) => b.n - a.n || b.sum - a.sum).slice(0, 10);
+            listHtml = `<p class="lk-hint" style="margin:8px 0 4px;">Чаще всего в ваших сметах — держите на складе:</p>`
+                + top.map(x => `<div class="sm-row">
+                        <span class="sm-row-label">${esc(x.name)}</span>
+                        <span class="sm-row-sub">${num(Math.round(x.q))} ${esc(x.unit)}</span>
+                        <b>${num(x.n)} из ${num(invN)}</b>
+                    </div>`).join('');
+        } else {
+            const secs = Object.keys(sections).map(k => Object.assign({ title: k }, sections[k]))
+                .sort((a, b) => b.n - a.n || b.sum - a.sum).slice(0, 8);
+            listHtml = `<p class="lk-hint" style="margin:8px 0 4px;">Разделы: в скольких сметах есть и сколько в среднем стоит оборудование раздела</p>`
+                + secs.map(x => `<div class="sm-row">
+                        <span class="sm-row-label">${esc(x.title)}</span>
+                        <span class="sm-bar"><i style="width:${Math.round(x.n / invN * 100)}%; background:var(--primary);"></i></span>
+                        <span class="sm-row-sub">${Math.round(x.n / invN * 100)}%</span>
+                        <b style="flex:0 0 80px; text-align:right;">${money(x.sum / x.n)}</b>
+                    </div>`).join('');
+        }
+
+        host.innerHTML = `<div class="lk-section-head sm-head"><h4>🧾 Что вы продаёте</h4><small class="sm-head-note">по ${num(invN)} ${this.plural(invN, 'отправленной смете', 'отправленным сметам', 'отправленным сметам')}</small></div>
+            <div class="sm-cells">
+                <div class="sm-cell" style="grid-column: span 2;"><span>Бренды в деньгах</span>
+                    <div class="sm-stack">${brandBar}</div>
+                    <div class="sm-legend">${brandLegend}</div>
+                </div>
+                <div class="sm-cell"><span>Оборудование в смете</span><b>${money(total / invN)}</b><small>в среднем</small></div>
+                ${kwMed ? `<div class="sm-cell"><span>Котёл обычно</span><b>${String(kwMed).replace('.', ',')} кВт</b><small>${num(kw.length)} ${this.plural(kw.length, 'смета', 'сметы', 'смет')} с котлом</small></div>` : ''}
+            </div>`
+            + listHtml;
     },
 
     /**
@@ -13896,6 +14107,19 @@ const app = {
         // предполагать только одну сторону.
         const grew = perInvoice.filter(x => x.pct >= this.INSTALLER_REPRICE_MIN_PCT)
             .sort((a, b) => b.diff - a.diff);
+
+        // Та же новость — строкой в «Что сделать сейчас»: звонить клиенту со
+        // старой ценой хуже, чем не звонить.
+        const act = document.getElementById('installer_actions_extra');
+        if (act && grew.length) {
+            const sum = grew.reduce((t, x) => t + x.diff, 0);
+            act.innerHTML = `<div class="sm-row sm-link" onclick="document.getElementById('installer_reprice').scrollIntoView({ behavior: 'smooth', block: 'start' })" title="Показать, какие сметы">
+                    <span class="sm-row-label">💸 <b>${num(grew.length)} ${this.plural(grew.length, 'смета', 'сметы', 'смет')}</b> <span style="color:#EF4444;">— подорожало оборудование, пересчитайте перед звонком</span></span>
+                    <b>${rub(sum)}</b>
+                </div>`;
+            const empty = document.getElementById('installer_actions_empty');
+            if (empty) empty.remove();
+        }
 
         host.innerHTML = `<div class="lk-section-head sm-head"><h4>💰 Сколько это стоит сегодня</h4></div>`
             + `<div class="sm-tiles" style="margin-bottom:8px;">
