@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Фильтры для воды в частном доме: подбор по анализу воды | HeatCalc.ru</title>
+    <meta name="description" content="Какие фильтры нужны в частном доме: механика, обезжелезивание, умягчение, питьевая доочистка. Что показывает анализ воды, как читать результат и во что обходится водоподготовка.">
+    <link rel="canonical" href="https://heatcalc.ru/filtry-dlya-vody-v-dome/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=6">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/filtry-dlya-vody-v-dome/">
+    <meta property="og:title" content="Фильтр для воды в частный дом: что ставить">
+    <meta property="og:description" content="Состав определяется анализом, а не каталогом. Что мерить и что из этого следует.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/filtry-dlya-vody-v-dome/#webpage",
+      "url": "https://heatcalc.ru/filtry-dlya-vody-v-dome/",
+      "name": "Фильтр для воды в частный дом: что ставить по анализу",
+      "description": "Какие фильтры нужны в частном доме: механика, обезжелезивание, умягчение, питьевая доочистка. Что показывает анализ воды, как читать результат и во что обходится водоподготовка.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "фильтр для воды в частный дом"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Фильтр для воды в частный дом: что ставить по анализу",
+          "item": "https://heatcalc.ru/filtry-dlya-vody-v-dome/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какие фильтры нужны в частном доме?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Состав определяется анализом воды, а не каталогом. Почти всегда ставят сетчатый фильтр грубой очистки после ввода, колбу с картриджем тонкой механики, байпас вокруг фильтров и редуктор давления. Дальше по анализу: обезжелезиватель при железе выше 0,3 мг/л, умягчитель при жёсткости выше 7 °Ж, аэрация при сероводороде."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда делать анализ воды?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "После бурения скважины: вода соседа через дорогу может отличаться принципиально, если скважины на разные горизонты. Перед забором пробы скважину прокачивают не меньше часа, иначе в бутылку попадёт застоявшаяся вода. Пробу везут в лабораторию в тот же день — железо окисляется за несколько часов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Чем опасна жёсткая вода?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Накипью на всём, что греет воду. ТЭН водонагревателя обрастает и перегорает, змеевик бойлера теряет теплоотдачу, теплообменник двухконтурного котла зарастает изнутри — это частая причина жалоб, что котёл стал хуже греть горячую воду. Контур отопления страдает меньше: там вода замкнутая и соли выпадают один раз."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что заложить под водоподготовку при монтаже?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Место с запасом — обезжелезиватель это не колба, а баллон около полутора метров высотой. Слив в канализацию для промывки обратным током, розетку для клапана управления, доступ со всех сторон для обслуживания. И байпас вокруг фильтров, чтобы менять картриджи, не оставляя дом без воды."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли поставить обратный осмос на весь дом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Не стоит. Он медленный и часть воды сбрасывает в дренаж, поэтому его место под кухонной мойкой, на питьевую воду и лёд. Для дома в целом задачи решают механика, обезжелезивание и умягчение — каждое по своему показателю из анализа."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/filtry-dlya-vody-v-dome/#article",
+      "headline": "Фильтр для воды в частный дом: что ставить по анализу",
+      "description": "Какие фильтры нужны в частном доме: механика, обезжелезивание, умягчение, питьевая доочистка. Что показывает анализ воды, как читать результат и во что обходится водоподготовка.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/filtry-dlya-vody-v-dome/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-02-11",
+      "dateModified": "2027-02-11",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      }
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Фильтр для воды в частный дом: что ставить по анализу</nav>
+
+        <h1>Фильтр для воды в частный дом: что ставить по анализу</h1>
+
+        <p class="art-meta"><time datetime="2027-02-11">11 февраля 2027</time></p>
+
+        <p class="lead">Фильтры нельзя подобрать заранее: пока нет анализа воды, любой набор — угадывание. Разбираем, что мерить после бурения, как читать результат и какое оборудование из каких цифр следует.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#snachala-analiz">Сначала анализ</a></li>
+            <li><a href="#chto-iz-chego-sleduet">Что из чего следует</a></li>
+            <li><a href="#chto-stavyat-pochti-vsegda">Что ставят почти всегда</a></li>
+            <li><a href="#chto-delaet-zhestkaya-voda">Что делает жёсткая вода</a></li>
+            <li><a href="#chto-uchest-pri-montazhe">Что учесть при монтаже</a></li>
+            <li><a href="#chego-delat-ne-stoit">Чего делать не стоит</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="snachala-analiz">Сначала анализ</h2>
+
+        <p>Скважина пробурена — из неё берут пробу и сдают в лабораторию. Делать это раньше бессмысленно: вода соседа через дорогу может отличаться принципиально, если скважины на разные горизонты.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Показатель</th><th>Норма для питьевой</th><th>Что означает превышение</th></tr>
+                <tr><td>Железо</td><td>до 0,3 мг/л</td><td>рыжие подтёки, налёт, вкус</td></tr>
+                <tr><td>Марганец</td><td>до 0,1 мг/л</td><td>чёрный налёт на сантехнике</td></tr>
+                <tr><td>Жёсткость</td><td>до 7 °Ж</td><td>накипь на ТЭНе и в теплообменнике</td></tr>
+                <tr><td>Сероводород</td><td>запах</td><td>запах тухлых яиц, коррозия</td></tr>
+                <tr><td>Мутность, взвесь</td><td>—</td><td>песок, ил, забитые аэраторы</td></tr>
+                <tr><td>pH</td><td>6–9</td><td>коррозия металлов или отложения</td></tr>
+            </table>
+        </div>
+        <p class="note">Полный набор шире, но состав водоподготовки определяют обычно эти показатели. Питьевые нормативы — СанПиН для питьевой воды.</p>
+
+        <div class="callout">
+            <p><strong>Пробу берут правильно.</strong> Сначала скважину прокачивают — не меньше часа, а лучше несколько, — иначе в бутылку попадёт застоявшаяся вода со дна и анализ покажет не то. Тару берут в лаборатории или используют стеклянную, промытую этой же водой без моющих средств. Пробу везут в тот же день: железо окисляется за несколько часов, и результат по нему поплывёт.</p>
+        </div>
+
+        <h2 id="chto-iz-chego-sleduet">Что из чего следует</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Проблема</th><th>Решение</th><th>Что занимает место</th></tr>
+                <tr><td>Песок, взвесь</td><td>механический фильтр, сетчатый и картриджный</td><td>колба 10 дюймов</td></tr>
+                <tr><td>Железо до 5 мг/л</td><td>обезжелезиватель с аэрацией</td><td>баллон 1–1,5 м высотой</td></tr>
+                <tr><td>Жёсткость выше 7 °Ж</td><td>умягчитель на ионообменной смоле</td><td>баллон плюс бак с солью</td></tr>
+                <tr><td>Сероводород</td><td>аэрация плюс сорбция</td><td>аэрационная колонна</td></tr>
+                <tr><td>Питьевая вода на кухню</td><td>обратный осмос</td><td>под мойкой</td></tr>
+            </table>
+        </div>
+        <p class="note">Баллонное оборудование требует места, канализации для промывки и электричества. Под него закладывают угол в котельной или отдельное помещение.</p>
+
+        <h2 id="chto-stavyat-pochti-vsegda">Что ставят почти всегда</h2>
+
+        <ol>
+            <li><strong>Сетчатый фильтр грубой очистки</strong> сразу после ввода — он ловит песок и защищает всё, что дальше. Промывается обратным током, обслуживания почти не требует.</li>
+            <li><strong>Колба с картриджем</strong> — тонкая механика, 20 или 5 микрон. Картридж меняют по перепаду давления или по графику.</li>
+            <li><strong>Байпас вокруг фильтров</strong> — чтобы менять картриджи, не оставляя дом без воды. Три крана, которые экономят много нервов.</li>
+            <li><strong>Редуктор давления</strong> — скважинный насос выдаёт что выдаёт, а фильтрам и смесителям нужно 3–4 бара.</li>
+            <li><strong>Манометры до и после</strong> — по перепаду видно, что картридж пора менять, а не «кажется, напор упал».</li>
+        </ol>
+
+        <h2 id="chto-delaet-zhestkaya-voda">Что делает жёсткая вода</h2>
+
+        <p>Жёсткость — это соли кальция и магния, которые выпадают в накипь при нагреве. Для отопления это отдельная история, и она объясняет, почему водоподготовка относится не только к водоснабжению.</p>
+
+        <ul>
+            <li><strong>ТЭН электрического водонагревателя</strong> обрастает накипью и перегорает: слой накипи работает как теплоизоляция, и нагреватель кипит в собственной шубе.</li>
+            <li><strong>Змеевик бойлера косвенного нагрева</strong> теряет теплоотдачу — бак греется всё дольше при исправном котле.</li>
+            <li><strong>Теплообменник двухконтурного котла</strong> зарастает изнутри, и горячая вода идёт слабее. Это одна из самых частых причин «котёл стал хуже греть».</li>
+            <li><strong>Контур отопления</strong> страдает меньше: там вода замкнутая, соли выпадают один раз и всё. Поэтому систему заполняют один раз и не подпитывают без нужды.</li>
+        </ul>
+
+        <p>Отсюда практическое правило: если вода жёсткая, умягчение окупается не столько комфортом, сколько ресурсом оборудования.</p>
+
+        <h2 id="chto-uchest-pri-montazhe">Что учесть при монтаже</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Цена</th></tr>
+                <tr><td>Монтаж гидравлики ХВС (узел ввода, фильтры, байпас)</td><td>компл</td><td class="num">20 000 ₽</td></tr>
+                <tr><td>Монтаж системы фильтрации Big Blue (колбы + картриджи)</td><td>компл</td><td class="num">3 500 ₽</td></tr>
+                <tr><td>Сборка узла ввода на монтажном каркасе</td><td>компл</td><td class="num">5 000 ₽</td></tr>
+                <tr><td>Установка редуктора давления</td><td>шт</td><td class="num">2 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Базовые расценки, без стоимости оборудования. Полный список — в <a href="/rascenki-na-montazh-otopleniya/">расценках на монтаж</a>.</p>
+
+        <ul>
+            <li><strong>Место с запасом.</strong> Анализ может потребовать обезжелезивание, а это не колба, а баллон полутора метров высотой. Угол под него закладывают заранее, даже если сейчас он не нужен.</li>
+            <li><strong>Слив в канализацию.</strong> Баллонное оборудование промывается обратным током и сбрасывает воду — без подключения к канализации оно не работает.</li>
+            <li><strong>Розетка.</strong> У клапана управления баллоном свой блок питания.</li>
+            <li><strong>Доступ со всех сторон.</strong> Картриджи меняют, соль в умягчитель досыпают, баллоны обслуживают.</li>
+            <li><strong>Порядок: механика — потом всё остальное.</strong> Песок, попавший в смолу умягчителя или в засыпку обезжелезивателя, выводит их из строя.</li>
+        </ul>
+
+        <h2 id="chego-delat-ne-stoit">Чего делать не стоит</h2>
+
+        <ul>
+            <li><strong>Покупать фильтры до анализа.</strong> Самая частая и самая дорогая ошибка: набор «как у соседа» может не решить вашу задачу и при этом занять место.</li>
+            <li><strong>Ставить обратный осмос на весь дом.</strong> Он медленный и сбрасывает часть воды в дренаж. Его место — под кухонной мойкой, на питьевую воду.</li>
+            <li><strong>Экономить на механике перед баллонами.</strong> Замена засыпки стоит дороже всех картриджей вместе взятых.</li>
+            <li><strong>Забывать про график обслуживания.</strong> Картридж, не менянный год, — это не фильтр, а источник.</li>
+        </ul>
+
+        <a class="cta" href="/">
+            Посчитать водоснабжение дома
+            <small>Узел ввода, разводка и точки</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какие фильтры нужны в частном доме?</span></summary>
+            <div class="answer">
+                <p>Состав определяется анализом воды, а не каталогом. Почти всегда ставят сетчатый фильтр грубой очистки после ввода, колбу с картриджем тонкой механики, байпас вокруг фильтров и редуктор давления. Дальше по анализу: обезжелезиватель при железе выше 0,3 мг/л, умягчитель при жёсткости выше 7 °Ж, аэрация при сероводороде.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда делать анализ воды?</span></summary>
+            <div class="answer">
+                <p>После бурения скважины: вода соседа через дорогу может отличаться принципиально, если скважины на разные горизонты. Перед забором пробы скважину прокачивают не меньше часа, иначе в бутылку попадёт застоявшаяся вода. Пробу везут в лабораторию в тот же день — железо окисляется за несколько часов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Чем опасна жёсткая вода?</span></summary>
+            <div class="answer">
+                <p>Накипью на всём, что греет воду. ТЭН водонагревателя обрастает и перегорает, змеевик бойлера теряет теплоотдачу, теплообменник двухконтурного котла зарастает изнутри — это частая причина жалоб, что котёл стал хуже греть горячую воду. Контур отопления страдает меньше: там вода замкнутая и соли выпадают один раз.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что заложить под водоподготовку при монтаже?</span></summary>
+            <div class="answer">
+                <p>Место с запасом — обезжелезиватель это не колба, а баллон около полутора метров высотой. Слив в канализацию для промывки обратным током, розетку для клапана управления, доступ со всех сторон для обслуживания. И байпас вокруг фильтров, чтобы менять картриджи, не оставляя дом без воды.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли поставить обратный осмос на весь дом?</span></summary>
+            <div class="answer">
+                <p>Не стоит. Он медленный и часть воды сбрасывает в дренаж, поэтому его место под кухонной мойкой, на питьевую воду и лёд. Для дома в целом задачи решают механика, обезжелезивание и умягчение — каждое по своему показателю из анализа.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=filtry-dlya-vody-v-dome#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/estestvennaya-tsirkulyatsiya/">самотёчная система: когда она ещё работает</a> · <a href="/elektroostoplenie-stoimost/">отопление электричеством: сколько выйдет в месяц</a> · <a href="/vodosnabzhenie-chastnogo-doma/">водоснабжение частного дома: с чего начать</a> · <a href="/nasosnaya-stantsiya/">насосная станция или скважинный насос</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=filtry-dlya-vody-v-dome">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
