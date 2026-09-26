@@ -136,7 +136,11 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
     for (const sh of eng) {
         const scope = rows;
         if (sh.kind === 'heat') {
-            P.takeHeat({ rooms: [], ufhTotal: et.ufhTotal || null }, rows, sh, scope);
+            const tot = P.ufhTotalOf(sh.text);
+            if (et.ufhTotal) console.log(`  Итог тёплого пола из текста листа: ${tot} (эталон ${et.ufhTotal})`);
+            // Модель на стенде отвечает пустым списком, как при сбое: марка РД
+            // должна дать радиатор и без неё.
+            P.takeHeat({ rooms: [], ufhTotal: tot }, rows, sh, scope);
             // Зоны без подписи модель отмечает сама; на стенде — из эталона.
             rows.forEach(r => { const e = etOf(r); if (e && e.ufh === true) { r.eng.ufh = true; r.eng.ufhArea = null; r.eng.ufhAreaSrc = 'spec'; } });
             const g = P.geoHeat(sh, scope, map);
@@ -169,6 +173,7 @@ const FIX = ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'];
             else check(r.name, 'тёплый пол, м²', e.ufh || 0, g.ufh ? (g.ufhArea || 0) : 0);
         }
         if ('heaters' in e) check(r.name, 'приборов', e.heaters, g.heaters || 0);
+        if (e.heaters && e.heaterType) check(r.name, 'тип прибора', e.heaterType, g.heaterType || '—');
         if ('fix' in e) FIX.forEach(k => check(r.name, k, (e.fix || {})[k] || 0, (g.fix || {})[k] || 0));
     });
     console.log(`\nСовпало ${ok} из ${all} (${Math.round(ok / all * 100)} %), ${fmt((Date.now() - t0) / 1000)} с`);

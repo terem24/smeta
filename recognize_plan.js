@@ -589,6 +589,20 @@ const RecognizePlan = {
         return Object.keys(out).length ? out : null;
     },
 
+    /** Строка «руками было бы» для проекта: сколько и из чего. */
+    manualRow(P) {
+        let est;
+        try { est = P.manualEstimate(RecognizeUI._project, this._rows, 0); } catch (e) { return ''; }
+        if (!est || est.min < 5) return '';
+        const took = RecognizeUI._elapsed ? Math.max(1, Math.round(RecognizeUI._elapsed / 60000)) : null;
+        return `<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-top:1px solid var(--border,#e2e8f0);font-size:13px">⏱
+            <span>Руками разбор этого проекта — около <b>${RecognizeUI.handTime(est.min)}</b>${took ? `, здесь — ${took} мин` : ''}.
+              <details style="display:inline"><summary style="display:inline;cursor:pointer;color:var(--text-sec,#64748b)">из чего</summary>
+                ${est.parts.map(x => `<div style="color:var(--text-sec,#64748b)">${this.esc(x.label)} — ${RecognizeUI.handTime(x.min)}</div>`).join('')}
+                <div style="color:var(--text-sec,#64748b)">Смета по проекту после переноса — ещё больше: её позиции калькулятор подберёт сам.</div>
+              </details></span></div>`;
+    },
+
     renderReview() {
         if (!this._busy) this._rows.forEach(r => { if (!r._orig) r._orig = this.snapRow(r); });
         const esc = this.esc;
@@ -741,6 +755,7 @@ const RecognizePlan = {
             P && (this._engSummary || []).length ? `<div style="${rowSt}">🔧 <span>${esc(P.totals(chosen))}
                 <span style="color:var(--text-sec,#64748b)">Что к какой комнате — в строке под помещением.</span></span></div>` : '',
             P && P.vent ? `<div style="${rowSt}">🌬️ ${P.ventSelect()}</div>` : '',
+            P && RecognizeUI._project ? this.manualRow(P) : '',
             this._rows.some(r => r.eng && r.eng.src && Object.values(r.eng.src).includes('pdf'))
                 ? `<div style="${rowSt}"><span style="display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid rgba(22,163,74,.55);background:rgba(22,163,74,.12);flex:none;margin-top:2px"></span>
                     <span>Зелёным — взято из чертежа точно, по координатам и стенам листа: это можно не перепроверять. Остальное прочитано по картинке — его проверьте.</span></div>` : '',
@@ -1210,6 +1225,17 @@ const RecognizePlan = {
             console.warn('[план] подложки не перенесены:', e.message);
         }
 
+        // Сколько это заняло бы руками — считаем до того, как набор листов
+        // проекта сброшен: смета уже посчитана, её позиции — тоже работа.
+        let manual = null;
+        if (RecognizeUI._project && typeof RecognizeProject !== 'undefined') {
+            try {
+                const bill = (app.currentEquipmentList || []).length + (app.currentWorksList || []).length;
+                manual = RecognizeProject.manualEstimate(RecognizeUI._project, chosen, bill);
+            } catch (e) { manual = null; }
+        }
+        const isProject = !!RecognizeUI._project;
+
         // Вкладка должна открыться чистой в следующий раз.
         RecognizeUI.dropDraft();
         RecognizeUI.clearFileState();
@@ -1232,9 +1258,17 @@ const RecognizePlan = {
         if (city) parts.push(`Город расчёта по адресу проекта: ${city}`);
         if (resN) parts.push(`Проживающих: ${resN} (по спальням)`);
         if (reqs) parts.push(`Требования из примечаний проекта: ${reqs} — плашкой в шапке сметы`);
+        if (manual && manual.min >= 5) {
+            parts.push('');
+            parts.push(`⏱ Руками это около ${RecognizeUI.handTime(manual.min)}:`);
+            manual.parts.forEach(x => parts.push(`  · ${x.label} — ${RecognizeUI.handTime(x.min)}`));
+        }
+        // Помещения проекта уже распознаны — «Распознать комнаты» в редакторе
+        // планов только путало: подложка лежит там для листов проекта.
+        if (isProject && planNote) planNote = '\n\nЛист плана положен подложкой в «План этажей».';
         app.alert(parts.join('\n') +
             '\n\nПроверьте окна и системы отопления в карточках комнат. ' +
-            'Вернуть комнаты как было — кнопка «↶ Вернуть комнаты» во вкладке распознавания.' + planNote);
+            'Вернуть комнаты как было — кнопка «↶ Вернуть комнаты» во вкладке распознавания.' + planNote, 'Готово');
     },
 
     /** Показать карточки комнат: расчёт по комнатам открыт, лента у первой карточки. */

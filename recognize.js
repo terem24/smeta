@@ -259,7 +259,9 @@ const RecognizeUI = {
         const t = document.getElementById('rec_title_text');
         const s3 = document.getElementById('rec_step3');
         if (kind === 'plan') {
-            if (t) t.textContent = 'Распознавание плана этажа';
+            // Комплект листов — не «план этажа»: читаются и отопление, и
+            // сантехника, и примечания.
+            if (t) t.textContent = this._project ? 'Распознавание проекта' : 'Распознавание плана этажа';
             if (s3) s3.textContent = '3. В расчёт';
         } else if (kind === 'estimate') {
             if (t) t.textContent = 'Распознавание рукописной сметы';
@@ -1659,10 +1661,28 @@ const RecognizeUI = {
         'Собираем комнаты для расчёта',
     ],
 
+    // Комплект листов проекта: этапы — те, что идут на самом деле
+    // (runPlan: помещения → окна и листы систем → примечания).
+    STAGES_PROJECT: [
+        'Отбираем листы проекта по штампам',
+        'Помещения и площади — из экспликации',
+        'Окна, тёплый пол, приборы, сантехника — по листам',
+        'Примечания и требования проекта',
+    ],
+    TIPS_PROJECT: [
+        () => 'Стены, подписи и марки берём из самого PDF — это точнее картинки',
+        () => 'Окна раскладываю по комнатам по концам выносок на обмерном плане',
+        () => 'Зоны тёплого пола — по подписям S=, приборы — по маркам РД',
+        () => 'Сантехника — по маркам и таблице спецификации: смеситель и раковина — один прибор',
+        () => 'Город и климат — по адресу из штампа',
+        () => 'Примечания со всех листов — чтобы требования проекта не потерялись',
+    ],
+
     /** kind: true — текст, 'plan' — план этажа, иначе снимок сметы. */
     progressStart(kind) {
-        this.STAGES = kind === 'plan' ? this.STAGES_PLAN : (kind ? this.STAGES_TEXT : this.STAGES_IMG);
-        this._tips = kind === 'plan' ? this.TIPS_PLAN : this.TIPS;
+        const proj = kind === 'plan' && !!this._project;
+        this.STAGES = proj ? this.STAGES_PROJECT : kind === 'plan' ? this.STAGES_PLAN : (kind ? this.STAGES_TEXT : this.STAGES_IMG);
+        this._tips = proj ? this.TIPS_PROJECT : kind === 'plan' ? this.TIPS_PLAN : this.TIPS;
         const host = document.getElementById('rec_body');
         if (!host) return;
         const box = document.createElement('div');
@@ -1761,7 +1781,12 @@ const RecognizeUI = {
             const done = this._itemsSoFar || 0;
             // Ручной ввод строки в смету — поиск в прайсе, артикул, цена,
             // количество. Сорок секунд на позицию: оценка по нижней границе.
-            const saved = done ? Math.round(done * 40 / 60) : 0;
+            let saved = done ? Math.round(done * 40 / 60) : 0;
+            // Комплект листов проекта: руками — это не 40 с на помещение, а
+            // разбор всех листов, окон, приборов, сантехники и примечаний.
+            if (this._project && typeof RecognizeProject !== 'undefined') {
+                try { saved = RecognizeProject.manualEstimate(this._project, null, 0).min; } catch (e) { /* как было */ }
+            }
             el.innerHTML = `<span class="rec-tip">${tip}</span>` +
                 `<span class="rec-tip-sec">${sec} с</span>` +
                 (saved >= 2 ? `<span class="rec-tip-save">вручную было бы ~${this.handTime(saved)}</span>` : '');
@@ -2196,6 +2221,7 @@ const RecognizeUI = {
                 res.warnings = (res.warnings || []).concat(e.warnings);
             }
             // Примечания со всех листов — одним текстовым запросом.
+            this.progressTo(3);
             const n = await RecognizeProject.readNotes(this._project, (t) => this.setStatus(t));
             res.warnings = (res.warnings || []).concat(n.warnings);
         }

@@ -55,6 +55,7 @@ const RecognizeProject = {
     async read(rows, project, onStatus) {
         const ui = RecognizeUI;
         const summary = [], warnings = [];
+        let modelOff = false;       // лимит кончился — дальше только по чертежу
         const posHint = 'Координаты подписей помещений взяты с листа планировки того же этажа: листы нарисованы в одном масштабе ' +
             'и положении, x — % ширины слева, y — % высоты сверху. Помещение, в котором стоит прибор или зона, — то, ' +
             'в чьих границах на этом листе оказывается её точка; ориентируйся по стенам на картинке и по этим координатам.\n\n';
@@ -116,37 +117,52 @@ const RecognizeProject = {
                   '. Марка прибора стоит у окна своего помещения — обычно ближе всего к подписи площади зоны тёплого пола ' +
                   'этого же помещения; помещение каждой марки определяй по этим координатам, а не по картинке.\n\n'
                 : '';
-            try {
-                const data = await ui.askModel([
-                    { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
-                        `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
-                        (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint + zonesHint +
-                        (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
-                        'Верни только JSON.' },
-                    { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
-                ], PROJECT_ENG_PROMPT);
-                const cand = data?.candidates?.[0];
-                const text = cand?.content?.parts?.[0]?.text;
-                if (!text) throw new Error('пустой ответ');
-                const parsed = ui.parseModelJson(text, cand.finishReason);
-                const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh, scopeRows)
-                    : sh.kind === 'vent' ? this.takeVent(parsed, sh)
-                    : this.takeWater(parsed, rows, sh, scopeRows);
-                // Поверх модели — раскладка по карте помещений, где она есть.
-                const map = sh.kind === 'vent' ? null : this.geoMap(rows, project, sh.roomSheet);
-                const geo = !map ? null : sh.kind === 'heat' ? this.geoHeat(sh, scopeRows, map) : this.geoWater(sh, scopeRows, map);
-                if (geo && geo.summary.length) {
-                    res.summary = res.summary.replace(/\.$/, '') + `; по чертежу: ${geo.summary.join(', ')}.`;
-                    // Предупреждения модели о числе марок и приборов после
-                    // раскладки по чертежу уже не про то.
-                    if (sh.kind === 'heat') res.warnings = res.warnings.filter(w => !/марок приборов на листе/.test(w));
+            // Раскладка по карте помещений модели не требует: если модель не
+            // ответила (лимит, сбой), зоны, приборы и сантехника по маркам всё
+            // равно встанут по комнатам. На «Хвойной 3» 26.09 часовой лимит
+            // оборвал лист сантехники — и вместе с моделью пропала и точная
+            // раскладка по чертежу, которой модель не нужна.
+            const map = sh.kind === 'vent' ? null : this.geoMap(rows, project, sh.roomSheet);
+            const canGeo = !!map && (sh.kind === 'heat' ? (sh.labels || []).length > 0 : !!(sh.fixtures && sh.fixtures.marks && sh.fixtures.marks.length));
+            let parsed = null, fail = null;
+            if (!modelOff) {
+                try {
+                    const data = await ui.askModel([
+                        { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
+                            `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
+                            (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint + zonesHint +
+                            (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
+                            'Верни только JSON.' },
+                        { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
+                    ], PROJECT_ENG_PROMPT);
+                    const cand = data?.candidates?.[0];
+                    const text = cand?.content?.parts?.[0]?.text;
+                    if (!text) throw new Error('пустой ответ');
+                    parsed = ui.parseModelJson(text, cand.finishReason);
+                } catch (e) {
+                    fail = e;
+                    if (e.quota) { modelOff = true; if (!warnings.includes(e.message)) warnings.push(e.message); }
+                    else warnings.push(`лист ${sh.num} (${what}) не прочитан по картинке: ${ui.cleanError(e.message).split('\n')[0]}`);
                 }
-                summary.push(res.summary);
-                warnings.push(...res.warnings, ...(geo ? geo.warnings : []));
-            } catch (e) {
-                if (e.quota) { warnings.push(e.message); break; }
-                warnings.push(`лист ${sh.num} (${what}) не прочитан: ${ui.cleanError(e.message).split('\n')[0]}`);
             }
+            if (!parsed && !canGeo) continue;
+            // Без модели — пустой ответ: остаётся только то, что взято из чертежа.
+            if (!parsed) parsed = sh.kind === 'heat' ? { rooms: [], ufhTotal: this.ufhTotalOf(sh.text), towelRails: this.towelsOf(sh.text) } : { rooms: [] };
+            if (sh.kind === 'heat' && !(this.num(parsed.ufhTotal) > 0)) parsed.ufhTotal = this.ufhTotalOf(sh.text);
+            const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh, scopeRows)
+                : sh.kind === 'vent' ? this.takeVent(parsed, sh)
+                : this.takeWater(parsed, rows, sh, scopeRows);
+            // Поверх модели — раскладка по карте помещений, где она есть.
+            const geo = !canGeo ? null : sh.kind === 'heat' ? this.geoHeat(sh, scopeRows, map) : this.geoWater(sh, scopeRows, map);
+            if (geo && geo.summary.length) {
+                res.summary = res.summary.replace(/\.$/, '') + `; по чертежу: ${geo.summary.join(', ')}.`;
+                // Предупреждения модели о числе марок и приборов после
+                // раскладки по чертежу уже не про то.
+                if (sh.kind === 'heat') res.warnings = res.warnings.filter(w => !/марок приборов на листе/.test(w));
+            }
+            if (fail && geo && geo.summary.length) res.summary = `Лист ${sh.num} «${sh.title}»: по чертежу — ${geo.summary.join(', ')} (картинка листа не прочитана).`;
+            summary.push(res.summary);
+            warnings.push(...res.warnings, ...(geo ? geo.warnings : []));
         }
         return { summary, warnings };
     },
@@ -361,7 +377,7 @@ const RecognizeProject = {
             let n = 0;
             scope.forEach(r => {
                 const e = r.eng, mk = marks.get(r) || [];
-                const types = mk.map(m => typeOf[m]).filter(Boolean);
+                const types = mk.map(m => this.heaterTypeOfMark(m) || typeOf[m]).filter(Boolean);
                 e.heaterType = mk.length ? (types[0] || e.heaterType || 'radiator') : null;
                 e.heaters = mk.length;
                 e.heaterMarks = mk;
@@ -374,6 +390,75 @@ const RecognizeProject = {
         if (lostZ.length) warnings.push(`лист ${sh.num}: подписи зон ${lostZ.join(', ')} не попали ни в одно помещение — зоны разложены по картинке, проверьте`);
         if (lostM.length) warnings.push(`лист ${sh.num}: марки ${lostM.join(', ')} не попали ни в одно помещение — приборы разложены по картинке, проверьте`);
         return { summary: out, warnings };
+    },
+
+    // ------------------------------------------------------------------
+    // Сколько это заняло бы руками
+    //
+    // Прежний счётчик считал 40 с на помещение: за проект на 92 листа — «~8
+    // мин», что обесценивает работу. Честная оценка по шагам, которые
+    // монтажник делает сам, по нижней границе. Норма на позицию сметы — та
+    // же, что у распознавания смет (40 с: найти в прайсе, артикул, цена,
+    // количество).
+    // ------------------------------------------------------------------
+
+    MANUAL_SEC: { page: 10, room: 90, window: 60, zone: 60, fixture: 40, note: 120, city: 180, bill: 40 },
+
+    /**
+     * { min, parts: [{ label, min }] } — разбор проекта руками. bill — число
+     * позиций готовой сметы (оборудование и работы), если она уже посчитана.
+     */
+    manualEstimate(project, rows, bill) {
+        const S = this.MANUAL_SEC, parts = [];
+        const add = (label, n, sec) => { if (n > 0) parts.push({ label: label(n), min: n * sec / 60 }); };
+        const pl = (n, a, b, c) => `${n} ${RecognizeUI.plural(n, a, b, c)}`;
+        const p = project || {};
+        add(n => `пролистать ${pl(n, 'лист', 'листа', 'листов')} и найти нужные`, (p.pages || []).length, S.page);
+        const nRooms = (rows && rows.length) || ((p.roomTables || []).reduce((a, t) => a + (t ? t.rows.length : 0), 0));
+        add(n => `${pl(n, 'помещение', 'помещения', 'помещений')}: название, площадь, стены`, nRooms, S.room);
+        add(n => `${pl(n, 'окно', 'окна', 'окон')}: комната, размер, высота`, p.winSheet ? p.winSheet.labels.length : 0, S.window);
+        const heat = (p.eng || []).filter(e => e.kind === 'heat').reduce((a, e) => a + (e.labels || []).length, 0);
+        add(n => `${pl(n, 'зона и прибор', 'зоны и приборы', 'зон и приборов')} отопления по комнатам`, heat, S.zone);
+        const fx = (p.eng || []).filter(e => e.kind === 'water').reduce((a, e) => a + (e.fixtures ? e.fixtures.marks.length : 0), 0);
+        add(n => `${pl(n, 'марка', 'марки', 'марок')} сантехники по спецификации`, fx, S.fixture);
+        add(n => `${pl(n, 'блок', 'блока', 'блоков')} примечаний прочитать и учесть`, (p.notes || []).length, S.note);
+        if (p.address) add(() => 'город и климат по адресу', 1, S.city);
+        add(n => `смета: ${pl(n, 'позиция', 'позиции', 'позиций')} подобрать в прайсе`, bill || 0, S.bill);
+        const min = Math.round(parts.reduce((a, x) => a + x.min, 0));
+        parts.forEach(x => { x.min = Math.max(1, Math.round(x.min)); });
+        return { min, parts };
+    },
+
+    /**
+     * Полотенцесушители из спецификации приборов текстом: «Полотенцесушитель
+     * электро». По строке на прибор — сколько строк, столько и штук.
+     */
+    towelsOf(text) {
+        const hits = String(text || '').match(/полотенцесушител\S*\s*(электр\S*|водян\S*)/gi) || [];
+        if (!hits.length) return null;
+        return { count: hits.length, type: hits.every(h => /водян/i.test(h)) ? 'water' : 'electric' };
+    },
+
+    /** Итог спецификации тёплого пола из текста листа: «Водяной тёплый пол … 121,95». */
+    ufhTotalOf(text) {
+        // Число отдельной строкой после заголовка таблицы — не «S=4,22м2» с плана.
+        const m = String(text || '').match(/спецификаци\S*\s+т[её]пл\S*\s+пол[\s\S]{0,200}?\n\s*(\d{1,4}[.,]\d{1,2})\s*(\n|$)/i);
+        const v = m ? this.num(m[1]) : null;
+        return v > 0 ? v : null;
+    },
+
+    /**
+     * Тип прибора по марке. РД / Р — радиатор: так их и обозначают, и на
+     * «Хвойной 3» РД-1…РД-5 — узкие радиаторы в простенках между окнами в
+     * пол, а модель по окнам в пол назвала их конвекторами в полу, и в КП
+     * ушли три внутрипольных конвектора с вентилятором по 62 тыс. КВ —
+     * конвектор внутрипольный. Прочие марки — как решила модель.
+     */
+    heaterTypeOfMark(mark) {
+        const p = String(mark || '').toUpperCase().replace(/-.*$/, '');
+        if (p === 'РД' || p === 'Р') return 'radiator';
+        if (p === 'КВ') return 'floor_convector';
+        return null;
     },
 
     /**
@@ -630,16 +715,18 @@ const RecognizeProject = {
             return { rooms, unclear: extra && extra.unclear };
         };
         const markGeo = res => {
-            const all = geo.length === ws.labels.length;
+            const allGeo = geo.length === ws.labels.length;
             rows.forEach(r => {
                 const mine = geo.filter(g => g.r === r).length;
                 if (mine && mine === (r.windows || 0)) this.setSrc(r, 'windows', 'pdf');
-                // Все окна листа разложены по чертежу, а у комнаты их нет —
-                // значит, окон у неё и правда нет.
-                if (all && !mine) {
+                // Все окна листа нашли комнату (по чертежу или моделью), а у
+                // этой их нет — значит, окон у неё и правда нет. Иначе
+                // оставалась цифра с первого чтения плана: у гардеробной
+                // «Хвойной 3» — окно, которого в проекте нет.
+                const hasSpec = r.eng && r.eng.winSpec && r.eng.winSpec.length;
+                if (!res.lost && !hasSpec) {
                     r.windows = 0; r.panoramic = 0;
-                    if (r.eng) r.eng.winSpec = null;
-                    this.setSrc(r, 'windows', 'pdf');
+                    if (allGeo) this.setSrc(r, 'windows', 'pdf');
                 }
             });
             res.summary = res.summary.map(t => t.replace(/\.$/, '') + (geo.length
@@ -784,6 +871,7 @@ const RecognizeProject = {
         return {
             summary: [`Лист ${ws.num} «${ws.title}»: окон ${nWin} из ${ws.labels.length} подписанных, из них в пол ${nFloor} — высоты и подоконники по подписям листа.`],
             warnings,
+            lost: lost.length,
         };
     },
 
@@ -1004,7 +1092,9 @@ const RecognizeProject = {
             r.eng.heaterMarks = mk;
             if (h) {
                 r.eng.heaters = h;
-                r.eng.heaterType = this.HEATER_NAMES[x.heaterType] ? x.heaterType : 'radiator';
+                // Марка точнее картинки: РД — радиатор, как бы ни стояли окна.
+                const byMark = mk.map(m => this.heaterTypeOfMark(m)).find(Boolean);
+                r.eng.heaterType = byMark || (this.HEATER_NAMES[x.heaterType] ? x.heaterType : 'radiator');
                 heaters += h;
             }
         });
