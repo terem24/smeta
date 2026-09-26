@@ -626,7 +626,7 @@ const workProExplanations = {
 // тестовый PRO-аккаунт владельца, а ссылки клиенту собирались на https://localhost.
 // Метку __HC_NATIVE__ ставит native/native-ui.js — он грузится раньше app.js.
 const HC_LOCAL_DEV = !window.__HC_NATIVE__ &&
-    (HC_LOCAL_DEV);
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 const app = {
     // === PREMIUM CUSTOM DIALOGS ===
