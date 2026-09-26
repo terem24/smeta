@@ -1299,10 +1299,10 @@
    "freq": 2400,
    "audience": "pro",
    "data_block": "состав из сметы",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-17",
    "published_at": null,
-   "words": 0
+   "words": 849
   },
   {
    "slug": "avtomatika-kotelnoy",
@@ -1313,10 +1313,10 @@
    "freq": 4600,
    "audience": "owner",
    "data_block": "два уровня из каталога",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-20",
    "published_at": null,
-   "words": 0
+   "words": 893
   },
   {
    "slug": "infrakrasnye-obogrevateli",
@@ -1327,10 +1327,10 @@
    "freq": 5400,
    "audience": "owner",
    "data_block": "сравнение затрат",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-22",
    "published_at": null,
-   "words": 0
+   "words": 845
   },
   {
    "slug": "razvodka-kanalizatsii",
