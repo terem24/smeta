@@ -10854,8 +10854,77 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     color: var(--text-sec);
 }
 
+#profile_tab_summary .sm-table-wrap {
+    overflow-x: auto;
+}
+
+#profile_tab_summary .sm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+#profile_tab_summary .sm-table th {
+    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-table td {
+    text-align: right;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-table th:first-child,
+#profile_tab_summary .sm-table td:first-child {
+    text-align: left;
+}
+
+#profile_tab_summary .sm-table small {
+    color: var(--text-sec);
+    font-size: 10.5px;
+}
+
+#profile_tab_summary .sm-stack {
+    display: flex;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 6px 0 4px;
+    background: rgba(127, 127, 127, .18);
+}
+
+#profile_tab_summary .sm-stack i {
+    display: block;
+    height: 8px;
+}
+
+#profile_tab_summary .sm-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-legend i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
 @media (max-width: 600px) {
     #profile_tab_summary .sm-row-sub { display: none; }
+    #profile_tab_summary .sm-cell[style*="span 2"] { grid-column: auto !important; }
     #profile_tab_summary .sm-bar { flex-basis: 30%; }
 }
 
