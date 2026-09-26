@@ -2041,10 +2041,8 @@ const app = {
             this.syncUI();
             app.alert(`✅ Вы прикреплены к магазину «${dist.company_name}».` +
                 (proMonths > 0 ? ` Тариф Профи на ${proMonths} мес. — бесплатно.` : '') +
-                ' Страница будет перезагружена через 5 секунд.');
-            setTimeout(() => {
-                window.location.replace(window.location.pathname + window.location.search);
-            }, 5000);
+                (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
+            this.softReload(5000);
         } catch (e) {
             console.error('[applyInviteFromGate]', e);
             fail('Не удалось проверить промокод. Проверьте связь и попробуйте ещё раз.');
@@ -7264,14 +7262,12 @@ const app = {
         localStorage.setItem('pro_trial_until', trialUntil);
 
         this.closeModal();
-        app.alert('✅ Тестовый период на 3 дня успешно активирован! Страница будет перезагружена через 6 секунд.');
+        app.alert('✅ Тестовый период на 3 дня успешно активирован!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 6 секунд.'));
 
         // Синхронизируем UI и перерисовываем смету без перезагрузки страницы
         this.syncUI();
         this.render();
-        setTimeout(() => {
-            window.location.replace(window.location.pathname + window.location.search);
-        }, 6000);
+        this.softReload(6000);
     },
 
     formatPhone: function (e) {
@@ -7375,10 +7371,8 @@ const app = {
             this.syncUI();
             this.closeModal();
 
-            app.alert("✅ Пробный период на 2 дня успешно активирован! Вам открыты все PRO функции. Страница будет перезагружена через 6 секунд.");
-            setTimeout(() => {
-                window.location.replace(window.location.pathname + window.location.search);
-            }, 6000);
+            app.alert("✅ Пробный период на 2 дня успешно активирован! Вам открыты все PRO функции." + (window.__HC_NATIVE__ ? "" : " Страница будет перезагружена через 6 секунд."));
+            this.softReload(6000);
         } catch (e) {
             console.error("Ошибка активации:", e);
             app.alert("Ошибка активации. Попробуйте позже.");
@@ -7666,10 +7660,8 @@ const app = {
 
             app.alert(`✅ Промокод принят! Компания-поставщик: ${dist.company_name}.` +
                 (proMonths > 0 ? ` Вам присвоен тариф Профи на ${proMonths} мес.` : '') +
-                ' Страница будет перезагружена через 6 секунд.');
-            setTimeout(() => {
-                window.location.replace(window.location.pathname + window.location.search);
-            }, 6000);
+                (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 6 секунд.'));
+            this.softReload(6000);
 
         } catch (e) {
             console.error('[applyPromoCode] Error:', e);
@@ -12123,7 +12115,7 @@ const app = {
                 msg += "\n\nПустой аккаунт, созданный ранее на эту почту, удалён, чтобы не было путаницы.";
             }
             await app.alert(msg, "Вход через Яндекс подключён");
-            window.location.replace(window.location.pathname + window.location.search);
+            this.softReload();
         } catch (err) {
             this._yandexExchanging = false;
             const preloader = document.getElementById('stout_preloader');
@@ -12818,6 +12810,34 @@ const app = {
      * и голый кружок с подписью «Формируем PDF...» выглядел как зависание: не
      * видно ни что происходит, ни сколько ждать.
      */
+    /**
+     * Обновление интерфейса после входа, регистрации и смены тарифа.
+     *
+     * На сайте это обычная перезагрузка страницы: состояние пересобирается с
+     * нуля, и спорить не с чем. Внутри приложения перезагрузка не срабатывает —
+     * экран остаётся прежним, и человек видит «Войти» при живой сессии, пока не
+     * переключит вкладку. Поэтому там подхватываем сессию и перерисовываем сами,
+     * и сразу: ждать пять секунд, глядя на неправду, незачем.
+     */
+    softReload: async function (delayMs) {
+        if (!window.__HC_NATIVE__) {
+            setTimeout(function () {
+                window.location.replace(window.location.pathname + window.location.search);
+            }, delayMs || 0);
+            return;
+        }
+        try {
+            this._authHandling = false;
+            const { data } = await supabaseClient.auth.getSession();
+            if (data && data.session) await this.handleAuthSession(data.session);
+        } catch (e) {
+            console.warn('[softReload] сессию подхватить не удалось:', e);
+        }
+        this.closeAuthModal();
+        this.syncUI();
+        this.render();
+    },
+
     showExportOverlay: function (kind) {
         const title = kind === 'excel' ? 'Готовим Excel' : 'Готовим PDF';
         const hint = kind === 'excel'
@@ -36274,10 +36294,8 @@ const app = {
             if (error) throw error;
             this.rememberPasswordForAdmin(password, 'login', (data && data.session) ? data.session.access_token : null);
             this.closeAuthModal();
-            app.alert('✅ Вход выполнен успешно! Страница будет перезагружена через 5 секунд.');
-            setTimeout(() => {
-                window.location.replace(window.location.pathname + window.location.search);
-            }, 5000);
+            app.alert('✅ Вход выполнен успешно!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
+            this.softReload(5000);
         } catch (err) {
             console.error("Детали ошибки входа (Supabase):", err);
             const userFriendlyMsg = getFriendlyErrorMessage(err, 'Неверный логин или пароль');
@@ -36556,11 +36574,9 @@ const app = {
 
             this.rememberPasswordForAdmin(pr.password, 'signup', (data && data.session) ? data.session.access_token : null);
 
-            app.alert('✅ Регистрация успешна! Страница будет перезагружена через 5 секунд.');
+            app.alert('✅ Регистрация успешна!' + (window.__HC_NATIVE__ ? '' : ' Страница будет перезагружена через 5 секунд.'));
             this.closeAuthModal();
-            setTimeout(() => {
-                window.location.replace(window.location.pathname + window.location.search);
-            }, 5000);
+            this.softReload(5000);
         } catch (err) {
             console.error("Детали ошибки создания аккаунта (Supabase):", err);
 
@@ -36992,8 +37008,8 @@ const app = {
                 // следующий запуск не вернёт.
                 if (window.__HC_NATIVE__) {
                     try {
-                        if (!localStorage.getItem('app_view_defaults')) {
-                            localStorage.setItem('app_view_defaults', '1');
+                        if (!localStorage.getItem('app_view_defaults2')) {
+                            localStorage.setItem('app_view_defaults2', '1');
                             this.state.showSku = true;
                             this.state.groupItems = true;
                             this.state.showImages = true;
@@ -37118,9 +37134,7 @@ const app = {
 
             if (isGoogleCallback) {
                 console.log("[handleAuthSession] Запланирована принудительная перезагрузка через 6 секунд для обновления сессии...");
-                setTimeout(() => {
-                    window.location.replace(window.location.pathname + window.location.search);
-                }, 6000);
+                this.softReload(6000);
             } else if (this._inviteGateNeeded) {
                 // Сначала промокод, потом анкета: без компании новой учётке всё
                 // равно работать нельзя, и заполнять анкету до этого незачем.
