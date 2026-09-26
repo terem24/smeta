@@ -578,6 +578,33 @@
             }
         }
 
+        /* Планшет в портрете (769–1100 px). Сюда не доставали ни мобильные правила
+           (они до 768), ни расчёт на широкий экран: карточка сжималась, а таблица
+           оставалась «настольной» и не влезала — правый край со суммой обрезался,
+           внизу появлялась полоса прокрутки. Уменьшаем поля и шрифт: таблица
+           помещается целиком, фотографии товаров остаются на месте. */
+        @media screen and (min-width: 769px) and (max-width: 1100px) {
+            .container {
+                padding: 24px 16px;
+            }
+
+            .spec-table { font-size: 11.5px; }
+            .spec-table th { padding: 8px 6px; font-size: 9.5px; }
+            .spec-table td { padding: 4px 6px; }
+
+            .col-idx { width: 26px; }
+            .col-img { width: 42px; }
+            .col-sku { width: 92px; font-size: 10.5px; }
+            .col-brand { width: 64px; font-size: 10px; }
+            .col-unit { width: 38px; }
+            .col-qty { width: 46px; }
+            .col-price { width: 78px; }
+            .col-sum { width: 86px; }
+
+            /* Длинные названия переносим, а не растягиваем таблицу вбок */
+            .col-name { word-break: break-word; }
+        }
+
         /* Floating Action Buttons */
         .fab-container {
             position: fixed;

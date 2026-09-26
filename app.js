@@ -7169,6 +7169,14 @@ const app = {
             return el && getComputedStyle(el).display !== 'none';
         });
         document.body.classList.toggle('modal-over-banner', open);
+
+        // Пока открыт кабинет, нижняя навигация «Дом / Смета / Профиль» не нужна:
+        // в самом кабинете есть свой ряд разделов, а полоса висит выше окна по
+        // слоям и закрывает кнопки «Сохранить» и «Отмена» — нажать их с телефона
+        // и планшета было физически нельзя.
+        const lk = document.getElementById('profile_modal_overlay');
+        document.body.classList.toggle('lk-open',
+            !!lk && getComputedStyle(lk).display !== 'none');
     },
 
     showModal: function (type) {
@@ -7799,7 +7807,7 @@ const app = {
         if (this.state.distributorId && this.state.distributorInfo) {
             const d = this.state.distributorInfo;
             subview.innerHTML = `
-                <div class="lk-section-head"><h4>🤝 Мой менеджер</h4></div>
+                <div class="lk-section-head"><h4><span class="ui-emo">🤝 </span>Мой менеджер</h4></div>
                 <div class="lk-card">
                     <div class="lk-card-label" style="margin-bottom:10px;">Контакты</div>
                     <div style="display: grid; gap: 8px; font-size: 13px;">
@@ -7866,7 +7874,7 @@ const app = {
 
             if (!events || !events.length) {
                 container.innerHTML = `
-                    <div class="lk-section-head" style="margin-top:4px;"><h4>📋 История общения</h4></div>
+                    <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">📋 </span>История общения</h4></div>
                     <div class="lk-empty">Пока нет событий по вашим сметам.</div>
                 `;
                 return;
@@ -7875,7 +7883,7 @@ const app = {
             const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
             let h = `
                 <div class="lk-section-head" style="margin-top:4px;">
-                    <h4>📋 История общения</h4>
+                    <h4><span class="ui-emo">📋 </span>История общения</h4>
                     <button type="button" class="lk-btn-sm lk-btn-danger" onclick="app.clearOwnInvoiceHistory()">🗑 Очистить историю</button>
                 </div>
                 <div class="lk-list" style="max-height:260px; overflow-y:auto;">`;
@@ -7946,7 +7954,7 @@ const app = {
         }
 
         wrapper.innerHTML = `
-            <div class="lk-section-head" style="margin-top:4px;"><h4>💬 Чат с менеджером</h4></div>
+            <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">💬 </span>Чат с менеджером</h4></div>
             <div id="manager_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
             <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
                 <input type="text" id="manager_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать менеджеру..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
@@ -8332,7 +8340,7 @@ const app = {
             if (m.sender_user_id !== me.id && !m.is_read) byInstaller[m.installer_user_id].unread++;
         });
 
-        let h = `<div class="lk-section-head"><h4>👥 Мои монтажники</h4></div><div class="lk-list">`;
+        let h = `<div class="lk-section-head"><h4><span class="ui-emo">👥 </span>Мои монтажники</h4></div><div class="lk-list">`;
         installers
             .slice()
             .sort((a, b) => {
@@ -8463,7 +8471,7 @@ const app = {
         const fAuto = inv.funnel[inv.autoLast || 0];
 
         host.innerHTML = `
-            <div class="lk-section-head"><h4>📊 Сводка по вашим монтажникам</h4></div>
+            <div class="lk-section-head"><h4><span class="ui-emo">📊 </span>Сводка по вашим монтажникам</h4></div>
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
                 ${tile('Монтажников', num(installers.length), num(active) + ' считали за 30 дней')}
                 ${tile('Ждут счёта', num(inv.waiting.length), 'запросили и ждут вас',
@@ -8471,9 +8479,9 @@ const app = {
                 ${tile('Смет за ' + this.MANAGER_SUMMARY_DAYS + ' дней', num(inv.cohortN),
                     'до запроса счёта дошло ' + (f0 ? Math.round((fAuto ? fAuto.n : 0) / f0 * 100) : 0) + '%')}
             </div>
-            <div class="lk-section-head" style="margin-top:4px;"><h4>🔔 Ждут от вас счёта</h4></div>
+            <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">🔔 </span>Ждут от вас счёта</h4></div>
             ${waitHtml}
-            <div class="lk-section-head" style="margin-top:18px;"><h4>📞 Кто затих</h4></div>
+            <div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📞 </span>Кто затих</h4></div>
             ${quietHtml}
             <div id="manager_price_gaps"></div>
             <p class="lk-hint" style="margin-top:10px;">
@@ -8518,7 +8526,7 @@ const app = {
 
         const withPrice = dists.find(d => d.price_list_key && typeof DIST_PRICES !== 'undefined' && DIST_PRICES[d.price_list_key]);
         if (!withPrice) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4>📦 Чего нет в вашем прайсе</h4></div>
+            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
                 <p class="lk-hint">Ваш прайс-лист в системе не загружен, сравнить не с чем. Пришлите выгрузку — и здесь появится список позиций, которые ваши монтажники ставят в счета, а вы их не возите.</p>`;
             return;
         }
@@ -8542,7 +8550,7 @@ const app = {
                 rows.push(...(data || []));
             }
         } catch (e) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4>📦 Чего нет в вашем прайсе</h4></div>
+            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
                 <p class="lk-hint">Состав счетов не прочитался (${esc((e && e.message) || e)}).</p>`;
             return;
         }
@@ -8569,12 +8577,12 @@ const app = {
 
         const list = Object.values(gaps).sort((a, b) => (b.invoices - a.invoices) || (b.qty - a.qty));
         if (!list.length) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4>📦 Чего нет в вашем прайсе</h4></div>
+            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
                 <p class="lk-hint">Всё, что монтажники ставят в счета, у вас есть — по ${num(seenInvoices)} ${this.plural(seenInvoices, 'счёту', 'счетам', 'счетам')} расхождений не нашлось.</p>`;
             return;
         }
         const top = list.slice(0, this.MANAGER_GAPS_LIMIT);
-        host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4>📦 Чего нет в вашем прайсе</h4></div>`
+        host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>`
             + top.map(g => `
                 <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
                     <div style="min-width:0; flex:1;">
@@ -13055,7 +13063,7 @@ const app = {
         ];
 
         container.innerHTML = `
-            <div class="lk-section-head"><h4>⭐ Подписка</h4></div>
+            <div class="lk-section-head"><h4><span class="ui-emo">⭐ </span>Подписка</h4></div>
             ${statusCard}
             <div class="lk-card-label" style="margin:16px 0 8px;">Что даёт тариф Профи</div>
             <div class="lk-list">
@@ -13186,7 +13194,7 @@ const app = {
 
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const head = `<div class="lk-section-head">
-                          <h4>📄 Документы</h4>
+                          <h4><span class="ui-emo">📄 </span>Документы</h4>
                           <button type="button" class="lk-btn-sm" onclick="app.renderOrdersTab()">↻ Обновить</button>
                       </div>`;
         container.innerHTML = head + `<div class="lk-empty">⌛ Загрузка объектов...</div>`;
@@ -13308,7 +13316,7 @@ const app = {
 
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const head = `<div class="lk-section-head">
-                          <h4>📋 Опросные листы</h4>
+                          <h4><span class="ui-emo">📋 </span>Опросные листы</h4>
                           <button type="button" class="lk-btn-sm" onclick="app.renderOprosnikiTab()">↻ Обновить</button>
                       </div>
                       <div class="no-print" style="margin: 14px 0; padding: 12px; font-size: 12px; color: var(--text-sec); line-height: 1.45; background: var(--surface); border-radius: 8px; border-left: 3px solid var(--primary);">
@@ -13626,7 +13634,7 @@ const app = {
         const periodBtns = this.INSTALLER_SUMMARY_PERIODS.map(d =>
             `<button type="button" class="lk-btn-sm${d === P ? ' is-active' : ''}" onclick="app.setInstallerSummaryPeriod(${d})">${d === 365 ? 'год' : d + ' дн.'}</button>`).join('');
         const head = `<div class="lk-section-head">
-                          <h4>📊 Мои показатели</h4>
+                          <h4><span class="ui-emo">📊 </span>Мои показатели</h4>
                           <div class="summary-period">${periodBtns}
                               <button type="button" class="lk-btn-sm" onclick="app.renderInstallerSummaryTab()" title="Пересчитать">↻</button>
                           </div>
@@ -13932,7 +13940,7 @@ const app = {
                     <span class="sm-row-label">${x.icon} <b>${esc(x.name)}</b> <span style="color:${x.color};">— ${x.text}</span></span>
                     <b>${x.sum ? money(x.sum) : ''}</b>
                 </div>`;
-        const actionsHtml = `<div class="lk-section-head sm-head"><h4>✅ Что сделать сейчас</h4></div>
+        const actionsHtml = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">✅ </span>Что сделать сейчас</h4></div>
             <div id="installer_actions">${actions.slice(0, 8).map(actionRow).join('')}</div>
             <div id="installer_actions_extra"></div>
             ${actions.length ? '' : `<p class="lk-hint" id="installer_actions_empty">Срочного нет: одобренных без счёта, просьб о правках и «горячих» клиентов сейчас нет.</p>`}`;
@@ -13967,7 +13975,7 @@ const app = {
             });
         }
         const monthsHtml = mRows.some(m => m.n || m.total)
-            ? `<div class="lk-section-head sm-head"><h4>📅 По месяцам</h4></div>
+            ? `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📅 </span>По месяцам</h4></div>
                <div class="sm-table-wrap"><table class="sm-table">
                 <thead><tr><th>Месяц</th><th>Смет</th><th>Отправлено</th><th>До счёта</th><th>Площадь</th><th>${seller ? 'Средний чек' : 'Средняя смета'}</th>${seller ? '' : '<th>Монтаж, ₽/м²</th>'}<th title="Расчёт → отправка клиенту, медиана">Скорость</th></tr></thead>
                 <tbody>${mRows.map(m => `<tr>
@@ -13989,23 +13997,23 @@ const app = {
                     : tile('Средний объект', oCur.area ? Math.round(oCur.area) + ' м²' : '—', oCur.total ? money(oCur.total) : '', trend(oCur.area, oPrev.area, 'up'))}
                </div>`
             + actionsHtml
-            + `<div class="lk-section-head sm-head"><h4>💵 Деньги на столе</h4></div>`
+            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">💵 </span>Деньги на столе</h4></div>`
             + `<div class="sm-tiles">
                 ${pot('Ждут решения клиента', pending, '#F97316', 'Отправлены, клиент ещё не одобрил и не вернул на доработку')}
                 ${pot('Одобрены, счёт не запрошен', approved, '#10B981', 'Клиент согласен — осталось запросить счёт')}
                </div>`
-            + `<div class="lk-section-head sm-head"><h4>⏱ Скорость</h4><small class="sm-head-note">обычно (медиана) · к прошлым ${P === 365 ? 'году' : P + ' дням'}</small></div>`
+            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">⏱ </span>Скорость</h4><small class="sm-head-note">обычно (медиана) · к прошлым ${P === 365 ? 'году' : P + ' дням'}</small></div>`
             + speedRows
-            + `<div class="lk-section-head sm-head"><h4>🏠 ${seller ? 'Средний заказ' : 'Средний объект'}</h4></div>`
+            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🏠 </span>${seller ? 'Средний заказ' : 'Средний объект'}</h4></div>`
             + objHtml
             + monthsHtml
             + `<div id="installer_market"></div>`
             + `<div id="installer_sales"></div>`
-            + `<div class="lk-section-head sm-head"><h4>⏳ Ждут вашего звонка</h4></div>`
+            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">⏳ </span>Ждут вашего звонка</h4></div>`
             + staleHtml
             + `<div id="installer_reprice"></div>`
             + `<div id="installer_avail"></div>`
-            + `<div class="lk-section-head sm-head"><h4>📈 Путь ваших смет</h4></div>`
+            + `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📈 </span>Путь ваших смет</h4></div>`
             + funnelHtml
             + `<p class="lk-hint" style="margin-top:8px;">
                 Ступень засчитана, если было её событие или любое следующее.
@@ -14121,7 +14129,7 @@ const app = {
         let peers = byUser(sameRegion), scope = region;
         if (Object.keys(peers).length < this.MARKET_MIN_PEERS) { peers = byUser(rows); scope = ''; }
         const peerList = Object.values(peers);
-        const head = `<div class="lk-section-head sm-head"><h4>📍 Вы и рынок</h4><small class="sm-head-note">${scope
+        const head = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📍 </span>Вы и рынок</h4><small class="sm-head-note">${scope
             ? 'монтажники региона «' + scope.replace(/</g, '&lt;') + '»' : 'все монтажники сайта'} · ${this.MARKET_DAYS} дней</small></div>`;
         if (peerList.length < this.MARKET_MIN_PEERS) {
             host.innerHTML = head + `<p class="lk-hint">Сравнение появится, когда наберётся ${this.MARKET_MIN_PEERS} монтажников с сохранёнными сметами — сейчас ${num(peerList.length)}. Меньше нельзя: по «средней» из двух-трёх человек легко узнать соседа.</p>`;
@@ -14294,7 +14302,7 @@ const app = {
                     </div>`).join('');
         }
 
-        host.innerHTML = `<div class="lk-section-head sm-head"><h4>🧾 Что вы продаёте</h4><small class="sm-head-note">по ${num(invN)} ${this.plural(invN, 'отправленной смете', 'отправленным сметам', 'отправленным сметам')}</small></div>
+        host.innerHTML = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">🧾 </span>Что вы продаёте</h4><small class="sm-head-note">по ${num(invN)} ${this.plural(invN, 'отправленной смете', 'отправленным сметам', 'отправленным сметам')}</small></div>
             <div class="sm-cells">
                 <div class="sm-cell" style="grid-column: span 2;"><span>Бренды в деньгах</span>
                     <div class="sm-stack">${brandBar}</div>
@@ -14383,7 +14391,7 @@ const app = {
             if (empty) empty.remove();
         }
 
-        host.innerHTML = `<div class="lk-section-head sm-head"><h4>💰 Сколько это стоит сегодня</h4></div>`
+        host.innerHTML = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">💰 </span>Сколько это стоит сегодня</h4></div>`
             + `<div class="sm-tiles" style="margin-bottom:8px;">
                 <div class="sm-tile">
                     <div class="sm-tile-label">Ваши сметы сегодня</div>
@@ -14467,7 +14475,7 @@ const app = {
         // целиком из своего оборудования. Говорить в такой ситуации нечего.
         if (!checked) return;
 
-        const head = `<div class="lk-section-head sm-head"><h4>📦 Под заказ</h4></div>`;
+        const head = `<div class="lk-section-head sm-head"><h4><span class="ui-emo">📦 </span>Под заказ</h4></div>`;
         const tile = (label, value, sub, accent) => `
             <div class="sm-tile">
                 <div class="sm-tile-label">${label}</div>
@@ -16896,7 +16904,7 @@ const app = {
         const curOpt = opts.find(o => o.v === cur);
         box.innerHTML = `
             <div class="lk-card" style="margin-top: 12px; text-align: left;">
-                <div class="lk-card-label" style="margin-bottom: 8px;">🎨 Оформление</div>
+                <div class="lk-card-label" style="margin-bottom: 8px;"><span class="ui-emo">🎨 </span>Оформление</div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">${btns}</div>
                 <div style="font-size: 11px; color: var(--text-sec); margin-top: 8px;">${curOpt ? curOpt.sub : ''} · настройка этого устройства</div>
             </div>`;
@@ -17512,7 +17520,7 @@ const app = {
 
         let html = `
             <div class="lk-section-head">
-                <h4>🔧 Прайс монтажа</h4>
+                <h4><span class="ui-emo">🔧 </span>Прайс монтажа</h4>
                 <button type="button" class="lk-btn-sm" onclick="app.resetAllInstallerWorkPrices()">Сбросить всё</button>
             </div>
             <p class="lk-hint" style="margin-bottom:8px;">Цены по умолчанию для новых смет; в самой смете цену можно поменять. ${updatedAtHtml}</p>
@@ -17603,7 +17611,7 @@ const app = {
 
         let html = `
             <div class="lk-section-head">
-                <h4>📦 Своё оборудование</h4>
+                <h4><span class="ui-emo">📦 </span>Своё оборудование</h4>
                 <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.addCustomEqPrompt();">+ Добавить позицию</button>
             </div>
             <p class="lk-hint">Позиции, которых нет в каталоге. Клик по строке добавит её в открытую смету.</p>`;

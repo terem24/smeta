@@ -16723,3 +16723,75 @@ body.dark-mode .hc-export-doc::after {
     .hc-export-bar i { animation: none; }
     .hc-export-bar i { width: 100%; opacity: .5; }
 }
+
+/* ---------- Кабинет на телефоне и планшете ----------
+   Разрешение планшета (портрет, до 1024 px) попадало между правилами: нижнюю
+   навигацию показывали ей, а окно кабинета оставалось «настольным». В итоге
+   кнопки «Сохранить» и «Отмена» уходили под полосу навигации, и нажать их было
+   нельзя, а сам ряд разделов кабинета дублировал ту же полосу.
+
+   Здесь кабинет разворачивается на весь экран, содержимое прокручивается
+   внутри него, кнопки прилипают к низу окна, а навигация на это время убирается.
+   Класс lk-open ставит app.syncModalOverlayClass. */
+@media screen and (max-width: 768px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+
+    body.lk-open .mobile-bottom-nav { display: none !important; }
+
+    #profile_modal_overlay .auth-modal-content {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        transform: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 0 !important;
+    }
+
+    #profile_modal_overlay .lk-layout {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    /* Содержимое раздела прокручивается внутри окна, а не уезжает за край экрана */
+    #profile_modal_overlay .lk-pane {
+        min-width: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Кнопки сохранения всегда на виду: до них не надо докручивать раздел до конца */
+    #profile_modal_overlay div[style*="border-top"] {
+        position: sticky !important;
+        bottom: 0 !important;
+        z-index: 3 !important;
+        background: var(--surface) !important;
+        margin-top: auto !important;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+    }
+
+    body.dark-mode #profile_modal_overlay div[style*="border-top"] {
+        background: #1E1E1E !important;
+    }
+}
+
+/* ---------- Значки в интерфейсе на телефоне и планшете ----------
+   На маленьком экране каждая строка на счету, и смайлик в заголовке съедает
+   место, ничего не сообщая: рядом и так написано словом. Обёртка .ui-emo уже
+   используется для темы «магазин» и гостей (см. правила выше) — здесь тот же
+   выключатель для мобильной вёрстки. Печать, PDF и смета не затронуты:
+   в них значков нет. */
+@media screen and (max-width: 768px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    .ui-emo { display: none !important; }
+}

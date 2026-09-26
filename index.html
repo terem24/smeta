@@ -3061,7 +3061,7 @@
             <!-- Тариф и его срок переехали в отдельный раздел «Подписка»
                  (app.renderSubscriptionTab) — здесь баннер дублировал ту же строку -->
 
-            <div class="lk-section-head"><h4>👤 Профиль</h4></div>
+            <div class="lk-section-head"><h4><span class="ui-emo">👤 </span>Профиль</h4></div>
 
             <div style="box-sizing: border-box; width: 100%;">
                 <div class="profile-grid" style="display: flex; gap: 15px; flex-wrap: wrap; text-align: left;">
@@ -3174,7 +3174,7 @@
             <!-- Реквизиты компании — отдельный раздел меню (раньше открывались кнопкой-
                  раскрывашкой внутри профиля). Поля сохраняются той же app.saveProfile. -->
             <div id="profile_tab_company" style="display:none; text-align:left;">
-                <div class="lk-section-head"><h4>🏢 Реквизиты компании</h4></div>
+                <div class="lk-section-head"><h4><span class="ui-emo">🏢 </span>Реквизиты компании</h4></div>
                 <p class="lk-hint">Логотип и реквизиты попадают в шапку коммерческого предложения и в счёт.</p>
 
                     <div class="lk-card">
@@ -3212,7 +3212,7 @@
                  «Сохранённые сметы» (app.renderCloudList пишет в активный контейнер) -->
             <div id="profile_tab_objects" style="display:none; text-align:left;">
                 <div class="lk-section-head">
-                    <h4>📁 Мои объекты</h4>
+                    <h4><span class="ui-emo">📁 </span>Мои объекты</h4>
                     <button type="button" class="lk-btn-sm" onclick="app.setProfileTab('objects')">↻ Обновить</button>
                 </div>
 
@@ -3224,7 +3224,7 @@
                     <!-- Срок действия счёта по ссылке клиенту. Значение по умолчанию для окна
                          «Создание ссылки для клиента»; 0 или пусто — таймер выключен. -->
                     <div class="lk-card" style="margin: 0;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">⏳ Счёт по ссылке действителен, дней</label>
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;"><span class="ui-emo">⏳ </span>Счёт по ссылке действителен, дней</label>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="number" id="profile_invoice_valid_days" class="auth-input" min="0" max="90" step="1" placeholder="2" onchange="app.setInvoiceValidDays(this.value.trim()); this.value = String(app.invoiceValidDaysDefault())" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center; flex-shrink: 0;">
                             <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">По умолчанию 2 дня. Поставьте 0 или очистите поле — таймера не будет. Перед каждой отправкой срок можно поменять прямо в окне ссылки.</span>
@@ -3234,7 +3234,7 @@
                     <!-- Напоминание «КП ушло клиенту, счёт не выставлен». Отправляет база раз в сутки
                          (supabase/migrations/20260914_kp_invoice_reminders.sql); 0 или пусто — выключено. -->
                     <div class="lk-card" style="margin: 0;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">🔔 Напомнить выставить счёт через, дней</label>
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;"><span class="ui-emo">🔔 </span>Напомнить выставить счёт через, дней</label>
                         <div style="display: flex; align-items: center; gap: 10px;">
                             <input type="number" id="profile_kp_reminder_days" class="auth-input" min="0" max="90" step="1" placeholder="10" onchange="app.setKpReminderDays(this.value.trim()); this.value = String(app.kpReminderDaysDefault())" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center; flex-shrink: 0;">
                             <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней. Поставьте 0 или очистите поле — напоминаний не будет.</span>
@@ -3244,7 +3244,7 @@
                     <!-- Личные уведомления в Telegram: подключение через бота (tg-webhook) и три
                          переключателя категорий (installer_settings.tgNotify, см. app.setTgNotify) -->
                     <div class="lk-card" style="margin: 0;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">📨 Уведомления в Telegram</label>
+                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;"><span class="ui-emo">📨 </span>Уведомления в Telegram</label>
                         <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
                             <span id="profile_tg_status" style="font-size: 12px;">Не подключено</span>
                             <button type="button" id="profile_tg_connect_btn" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить</button>
@@ -3321,7 +3321,7 @@
     <div id="cloud_list_modal_overlay" class="auth-modal-overlay" style="display: none; z-index: 99999;">
         <div class="auth-modal-content" style="max-width: 800px; width: 95%; max-height: 90vh; display: flex; flex-direction: column;">
             <span class="auth-modal-close" onclick="app.closeCloudListModal()">&times;</span>
-            <h3 class="auth-modal-title">📂 Сохраненные сметы</h3>
+            <h3 class="auth-modal-title"><span class="ui-emo">📂 </span>Сохраненные сметы</h3>
             <div id="cloud_list_content" style="overflow-y: auto; flex-grow: 1; padding-right: 5px;">
                 <div style="text-align: center; color: var(--text-sec); padding: 50px;">Загрузка списка...</div>
             </div>
@@ -3504,8 +3504,8 @@
                  По кнопке-конверту в шапке открывается переписка, у админов —
                  список уведомлений: переписка со всеми у них в панели управления. -->
             <div class="notif-tabs" id="notif_tabs">
-                <button class="notif-tab" id="notif_tab_chat" onclick="app.switchNotifTab('chat')">💬 Переписка</button>
-                <button class="notif-tab" id="notif_tab_list" onclick="app.switchNotifTab('list')">🔔 Уведомления<span class="notif-tab-badge" id="notif_tab_badge" style="display: none;">0</span></button>
+                <button class="notif-tab" id="notif_tab_chat" onclick="app.switchNotifTab('chat')"><span class="ui-emo">💬 </span>Переписка</button>
+                <button class="notif-tab" id="notif_tab_list" onclick="app.switchNotifTab('list')"><span class="ui-emo">🔔 </span>Уведомления<span class="notif-tab-badge" id="notif_tab_badge" style="display: none;">0</span></button>
             </div>
 
             <div id="notif_pane_chat" style="display: none; flex-direction: column; flex: 1; min-height: 0; margin: 0 -18px -18px; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px; overflow: hidden;">
