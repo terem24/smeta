@@ -64,6 +64,28 @@ def anchor(text):
     return out[:60].rstrip('-') or 'razdel'
 
 
+# Нормативные документы, на которые ссылается статья. Собираются из её же текста:
+# в citation попадает только то, что реально упомянуто, поэтому разойтись с текстом
+# разметка не может. Смысл поля — машиночитаемая ссылка на источник: ИИ-ответы
+# охотнее цитируют фрагмент, у которого источник назван и проверяем.
+NORM_RE = re.compile(
+    r'(?:СП|ГОСТ\s?Р|ГОСТ|СНиП|СанПиН|ПУЭ)\s?\d+(?:[.\-–]\d+)*\*?')
+
+
+def norms_cited(text):
+    found = []
+    for m in NORM_RE.findall(text):
+        n = re.sub(r'\s+', ' ', m).strip()
+        found.append(n)
+    # Убираем огрызки: «СП 60» при наличии «СП 60.13330.2020» — это та же ссылка,
+    # просто названная в тексте коротко. Оставляем самую полную запись.
+    out = []
+    for n in sorted(set(found), key=len, reverse=True):
+        if not any(o.startswith(n) and o != n for o in out):
+            out.append(n)
+    return sorted(out)
+
+
 def render_block(b):
     t = b.get('type')
     if t == 'h2':
@@ -259,7 +281,11 @@ def build(slug, publish=False):
              # автор, и это проверяемо (он же подписан автором материалов
              # на сайте производителя). Организация остаётся издателем.
              'author': {'@type': 'Person', 'name': 'Дмитрий Ибатуллин'},
-             'publisher': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'}},
+             'publisher': {'@type': 'Organization', 'name': 'HeatCalc.ru', 'url': SITE + '/'},
+             'isAccessibleForFree': True,
+             'wordCount': len(plain(body).split()),
+             'citation': [{'@type': 'CreativeWork', 'name': n}
+                          for n in norms_cited(plain(body) + ' ' + plain(render_faq(art['faq'])))]},
         ],
     }
 
