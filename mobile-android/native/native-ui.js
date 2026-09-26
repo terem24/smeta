@@ -388,6 +388,10 @@
         var open = [];
         var all = d.querySelectorAll(OVERLAYS);
         for (var i = 0; i < all.length; i++) {
+            // Окно входа (см. auth_modal_overlay) намеренно нельзя закрыть ни
+            // крестиком, ни кликом мимо — кнопка «Назад» не должна давать
+            // обходной путь к тому же самому.
+            if (all[i].id === 'auth_modal_overlay') continue;
             if (visible(all[i])) open.push(all[i]);
         }
 

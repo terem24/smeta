@@ -289,7 +289,7 @@
 </head>
 
 <body
-    onclick="if(event.target.id === 'auth_modal_overlay') app.closeAuthModal(); if(event.target.id === 'profile_modal_overlay') app.closeProfileModal(); if(event.target.id === 'email_success_modal_overlay') app.closeEmailSuccessModal();">
+    onclick="if(event.target.id === 'profile_modal_overlay') app.closeProfileModal(); if(event.target.id === 'email_success_modal_overlay') app.closeEmailSuccessModal();">
 
     <!-- ================== ТЕКСТ ДЛЯ ПОИСКОВЫХ И ИИ-РОБОТОВ ==================
          Весь интерфейс калькулятора строит JavaScript, поэтому в исходном HTML
@@ -441,8 +441,8 @@
              входа (img/logo_hc_flame.png), только «живое»: дышит лёгким пульсом
              масштаба и подсвечивается тёплым оранжевым свечением позади, как огонёк. -->
         <div style="position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; inset: -18px; border-radius: 50%; background: radial-gradient(circle, rgba(249,115,22,0.5) 0%, rgba(249,115,22,0) 70%); filter: blur(3px); animation: hc-preloader-glow 7s ease-in-out infinite;"></div>
-            <img src="img/logo_hc_flame.png" alt="HeatCalc" style="position: relative; width: 64px; height: 64px; object-fit: contain; animation: hc-preloader-breathe 7s ease-in-out infinite;">
+            <div style="position: absolute; inset: -18px; border-radius: 50%; background: radial-gradient(circle, rgba(249,115,22,0.5) 0%, rgba(249,115,22,0) 70%); filter: blur(3px); animation: hc-preloader-glow 4.8s ease-in-out infinite;"></div>
+            <img src="img/logo_hc_flame.png" alt="HeatCalc" style="position: relative; width: 64px; height: 64px; object-fit: contain; animation: hc-preloader-breathe 4.8s ease-in-out infinite;">
         </div>
         <div
             style="margin-top: 20px; color: #E5E7EB; font-family: system-ui, sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0.5px;">
@@ -2733,9 +2733,12 @@
     </div>
     </div>
     <div id="auth_modal_overlay" class="auth-modal-overlay" style="display: none;">
+        <!-- Ни крестика, ни клика мимо — окно входа обязательное: закрыть можно только
+             войдя (или программно, после успешного входа/регистрации, см. closeAuthModal
+             в остальном коде). Решение владельца 26.09.2026, распространяется на все
+             открытия этого окна, а не только на автопоказ гостю при заходе. -->
         <div class="auth-modal-content">
-            <span class="auth-modal-close" onclick="app.closeAuthModal()">&times;</span>
-            
+
             <!-- Main View (Login/Register Tabs) -->
             <div id="auth_main_view">
                 <!-- Окно входа по образцу vc.ru (владелец 25.09.2026): логотип, заголовок,
