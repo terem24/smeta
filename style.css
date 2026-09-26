@@ -16796,3 +16796,29 @@ body.dark-mode .hc-export-doc::after {
        screen and (max-width: 1024px) and (orientation: portrait) {
     .ui-emo { display: none !important; }
 }
+
+/* В приложении значков нет нигде, независимо от ширины экрана: планшет в
+   альбомной ориентации шире иного ноутбука, но это по-прежнему приложение,
+   а не сайт. Метку hc-native ставит native/native-ui.js. */
+.hc-native .ui-emo { display: none !important; }
+
+/* ---------- Заголовок объекта и переключатели над сметой ----------
+   У заголовка в разметке стоит width:100% — он контейнер для длинного имени
+   объекта. Во флексе это съедало всю строку, и четыре переключателя ломались
+   на два ряда даже там, где места вдоволь. Отдаём заголовку ровно столько,
+   сколько остаётся: в одну строку они встают сами, а на узком экране
+   переносятся — но уже по необходимости, а не всегда. */
+@media screen and (min-width: 769px) {
+    .header-row > .doc-title {
+        width: auto !important;
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .header-row .sku-control {
+        flex: 0 1 auto;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        row-gap: 6px;
+    }
+}
