@@ -10658,6 +10658,207 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     font-size: 12px;
 }
 
+/* ── «Мои показатели» (вкладка summary) ──────────────────────────────────
+   Кегли — как в таблице «Объектов»: 12 px текст, 11 px подписи. Плитки
+   нарочно низкие: раньше три плитки с цифрой 24 px занимали полэкрана. */
+#profile_tab_summary .summary-period {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+#profile_tab_summary .lk-btn-sm.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+#profile_tab_summary .sm-head {
+    margin-top: 16px;
+    justify-content: flex-start;
+}
+
+#profile_tab_summary .sm-head-note {
+    color: var(--text-sec);
+    font-size: 11px;
+}
+
+#profile_tab_summary .sm-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+#profile_tab_summary .sm-tile {
+    min-width: 0;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+
+#profile_tab_summary .sm-tile-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-tile-val {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-top: 2px;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-tile-sub {
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-tile-list {
+    margin-top: 6px;
+    border-top: 1px dashed var(--border);
+    padding-top: 4px;
+}
+
+#profile_tab_summary .sm-tile-list .sm-link {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11.5px;
+    padding: 2px 0;
+}
+
+#profile_tab_summary .sm-tile-list .sm-link span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-link[onclick] {
+    cursor: pointer;
+}
+
+#profile_tab_summary .sm-link[onclick]:hover span,
+#profile_tab_summary .sm-link[onclick]:hover b {
+    color: var(--primary);
+}
+
+#profile_tab_summary .sm-trend {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-trend.good { color: #10B981; }
+#profile_tab_summary .sm-trend.bad { color: #EF4444; }
+
+#profile_tab_summary .sm-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+}
+
+#profile_tab_summary .sm-row-label {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-row-val {
+    flex: 0 0 70px;
+    text-align: right;
+}
+
+#profile_tab_summary .sm-row-sub {
+    flex: 0 0 80px;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-row-trend {
+    flex: 0 0 70px;
+    text-align: right;
+}
+
+#profile_tab_summary .sm-cells {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+#profile_tab_summary .sm-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+#profile_tab_summary .sm-cell span,
+#profile_tab_summary .sm-cell small {
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-cell b {
+    font-size: 15px;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-funnel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+#profile_tab_summary .sm-funnel-row small {
+    color: var(--text-sec);
+    font-size: 11px;
+}
+
+#profile_tab_summary .sm-bar {
+    flex: 0 1 40%;
+    height: 6px;
+    background: rgba(127, 127, 127, .18);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+#profile_tab_summary .sm-bar i {
+    display: block;
+    height: 6px;
+    border-radius: 999px;
+}
+
+#profile_tab_summary .sm-funnel-n {
+    width: 34px;
+    text-align: right;
+}
+
+#profile_tab_summary .sm-funnel-pct {
+    width: 40px;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+@media (max-width: 600px) {
+    #profile_tab_summary .sm-row-sub { display: none; }
+    #profile_tab_summary .sm-bar { flex-basis: 30%; }
+}
+
 /* ── «Реквизиты компании» на полном экране ─────────────────────────────────
    Адрес и банковские реквизиты — 4–6 строк, а поля им заданы в 44px, и текст
    лежал под внутренней прокруткой. Место на полном экране есть, поэтому поле
