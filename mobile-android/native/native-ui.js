@@ -83,7 +83,8 @@
         if (bar) return bar;
         bar = d.createElement('div');
         bar.className = 'hc-offline-bar';
-        bar.innerHTML = '<span>📴</span><span><b>Нет сети.</b> Расчёт, смета и печать работают. ' +
+        // Без значка: в приложении их не показываем (см. .ui-emo в style.css).
+        bar.innerHTML = '<span><b>Нет сети.</b> Расчёт, смета и печать работают. ' +
             'Цены и облако вернутся при подключении.</span>';
         d.body.appendChild(bar);
         return bar;
@@ -97,72 +98,58 @@
         // положение и увидел именно переход, а не сразу конечное состояние.
         requestAnimationFrame(function () { el.classList.toggle('show', !!on); });
 
-        // Пока плашка висит, тихо перепроверяем связь: в поле она возвращается
-        // сама (поймалась вышка, включился вайфай), а событие online встроенный
-        // браузер присылает не всегда. Без этого плашка оставалась до
-        // перезапуска приложения.
+        // Пока плашка висит, раз в 15 секунд смотрим, не вернулась ли связь сама:
+        // событие online встроенный браузер присылает не всегда. Обычно плашку
+        // снимает первый же успешный ответ (см. netOk), это запасной путь.
         clearTimeout(offlineTimer);
         if (on) offlineTimer = setTimeout(updateNetwork, 15000);
     }
 
-    /**
-     * Проверка связи настоящим запросом.
-     *
-     * Одному navigator.onLine верить нельзя: встроенный браузер отвечает «нет
-     * сети» и там, где она есть. Разрешение ACCESS_NETWORK_STATE это чинит, но
-     * плашка, которая врёт про отсутствие интернета, — худшее, что можно
-     * показать человеку в поле, поэтому перед ней ещё и стучимся на свои адреса.
-     * Ответ не читаем: важен сам факт, что запрос дошёл.
-     *
-     * Адресов два, и достаточно любого. У части провайдеров закрыт именно
-     * heatcalc.ru (сайт на GitHub Pages), а сервер приложения на другом домене
-     * отвечает — цены и вход при этом работают, и «нет сети» в таком случае
-     * прямая неправда.
-     */
-    var PROBE_URLS = [SITE + '/manifest.json', 'https://proxy.heatcalc.ru/user_creds.php'];
+    // Плашку «нет сети» показываем только по факту неудачи, а не по подозрению.
+    //
+    // Раньше поводом были navigator.onLine и стук по проверочным адресам. Оба
+    // признака врут: встроенный браузер отвечает «офлайн» при живой сети, а
+    // проверочные адреса могут не открываться из-за VPN или блокировок
+    // провайдера — при этом приложение прекрасно работает через свой сервер.
+    // У пользователя плашка висела не снимаясь, хотя всё грузилось.
+    //
+    // Теперь единственный повод — сорвавшийся запрос к нашим адресам, и только
+    // второй подряд: одиночная осечка бывает у любого запроса. Любой успешный
+    // ответ гасит плашку немедленно.
+    var lastOk = 0;
+    var fails = 0;
+    var NET_OK_MS = 60000;
+    var OUR_HOSTS = /(heatcalc\.ru|supabase\.co)/i;
 
-    function probe() {
-        return new Promise(function (resolve) {
-            var left = PROBE_URLS.length;
-            var answered = false;
-            PROBE_URLS.forEach(function (url) {
-                fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
-                    .then(function () {
-                        if (!answered) { answered = true; resolve(true); }
-                    })
-                    .catch(function () {
-                        left--;
-                        if (left <= 0 && !answered) { answered = true; resolve(false); }
-                    });
-            });
-        });
+    function netOk() {
+        lastOk = Date.now();
+        fails = 0;
+        showOffline(false);
     }
 
-    // Главный признак связи — настоящие запросы приложения. Пока Supabase
-    // отвечает, а цены и вход работают, спорить с этим бессмысленно: сеть есть,
-    // что бы ни говорили navigator.onLine и проверочные адреса (их может резать
-    // провайдер или VPN). Поэтому любой успешный ответ гасит плашку.
-    var lastOk = 0;
-    var NET_OK_MS = 60000;
+    function netFail(url) {
+        if (!OUR_HOSTS.test(String(url || ''))) return;
+        if (Date.now() - lastOk < NET_OK_MS) return;
+        if (++fails < 2) return;
+        showOffline(true);
+    }
 
     var origFetch = window.fetch;
     if (typeof origFetch === 'function') {
-        window.fetch = function () {
+        window.fetch = function (input, init) {
+            var url = (input && input.url) ? input.url : input;
             var p = origFetch.apply(this, arguments);
             try {
-                p.then(function () {
-                    lastOk = Date.now();
-                    showOffline(false);
-                }, function () { /* ошибка одного запроса ещё не значит «нет сети» */ });
+                p.then(netOk, function () { netFail(url); });
             } catch (e) { }
             return p;
         };
     }
 
+    // Системные события связи: «сеть появилась» — повод убрать плашку сразу,
+    // «сеть пропала» сам по себе поводом не считаем (см. выше, признак врёт).
     function updateNetwork() {
-        if (navigator.onLine) { showOffline(false); return; }
-        if (Date.now() - lastOk < NET_OK_MS) { showOffline(false); return; }
-        probe().then(function (ok) { showOffline(!ok); });
+        if (navigator.onLine) showOffline(false);
     }
 
     // -------------------------------------------------- следы сайта в печати
