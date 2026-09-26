@@ -1101,7 +1101,11 @@
       // При насосной группе загрузки узел у котла не рисуется вовсе — группа
       // стоит на общей магистрали (см. блок после гребёнки). Врезка в стояк
       // одного газового котла читалась как «бойлер грузит только газовый».
-      b.load = hasLoad && cfg.fugas && first && (b.kind === 'gas' || !polis);
+      // dhwBuiltIn — клапан бойлера встроен в газовый котёл: узел загрузки
+      // рисуется у газового, как патрубок самого котла, без клапана.
+      b.load = hasLoad && first && (
+        (cfg.fugas && (b.kind === 'gas' || !polis)) ||
+        (cfg.dhwBuiltIn && b.kind === 'gas'));
       b.carrier = (i === carrierIdx) && twoCirc;
     });
     // POLIS — единственный источник, а бойлер есть: узел загрузки в смете
@@ -1245,7 +1249,19 @@
         ys += 7.44;
         if (cfg.el.gbm) o.push(leader(xs - 3.4, bBot + 13.1, 'ГБМ'));
       }
-      if (b.load) {
+      if (b.load && cfg.dhwBuiltIn && kind === 'gas') {
+        // Клапан приоритета внутри котла (Haier NeoSlim 1.x, Vaillant VU,
+        // Navien): у котла третий патрубок — «подача в змеевик бойлера»
+        // (руководство Haier, стр. 30, поз. B), он и идёт на линию загрузки.
+        // Арматуры на нём смета не кладёт — краны и американки стоят у
+        // змеевика, — поэтому и здесь только труба. Подача отопления идёт
+        // своим стояком без врезок.
+        o.push('<g data-hyd-part="load" data-hyd-dir="fwd" data-hyd-b="' + bi + '">');
+        o.push(vpipe(xls, bBot, mY.loadS, COL.loadS, [mY.supply, mY.ret]));
+        o.push('</g>');
+        o.push(diaV(xls, stemDiaY, dia));
+        o.push(arrowSym(xls, stemArrowDown, 'down'));
+      } else if (b.load) {
         var drawFugas = cfg.fugas && !(kind === 'el' && polis);
         if (drawFugas) {
           // Клапан приоритета — В РАЗРЫВ подачи котла: вход сверху от котла,

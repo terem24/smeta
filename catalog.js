@@ -1335,9 +1335,13 @@ const catalog = {
     // atmo: true — открытая камера сгорания (BAXI без «F»/«Fi» в названии).
     // Такие котлы автоподбор не берёт: обвязка калькулятора считает коаксиальный
     // дымоход 60/100, а им нужна дымовая труба. В таблице замены они остаются.
+    // dhwValve у одноконтурных NeoSlim 1.18/1.24 Ti — трёхходовой клапан бойлера
+    // встроен в гидроузел (руководство по монтажу, стр. 30, поз. A; выход B —
+    // подача в змеевик), датчик бойлера NTC в комплекте (стр. 37). Внешний
+    // комплект нужен только двухконтурным 2.18/2.24. См. dhwValve у boilers_vaillant.
     boilers_gas: [
-        { id: "GE0Q6QE0CRU", name: "Котёл газовый, одноконтурный (18 кВт)", article: "GE0Q6QE0CRU", price: 56091, power: 18, circuits: 1, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
-        { id: "GE0Q6RE0CRU", name: "Котёл газовый, одноконтурный (24 кВт)", article: "GE0Q6RE0CRU", price: 57117, power: 24, circuits: 1, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "GE0Q6QE0CRU", name: "Котёл газовый, одноконтурный (18 кВт)", article: "GE0Q6QE0CRU", price: 56091, power: 18, circuits: 1, dhwValve: true, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
+        { id: "GE0Q6RE0CRU", name: "Котёл газовый, одноконтурный (24 кВт)", article: "GE0Q6RE0CRU", price: 57117, power: 24, circuits: 1, dhwValve: true, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
         { id: "GE0Q6NE0CRU", name: "Котёл газовый, двухконтурный (18 кВт)", article: "GE0Q6NE0CRU", price: 57117, power: 18, circuits: 2, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" },
         { id: "GE0Q6PE0CRU", name: "Котёл газовый, двухконтурный (24 кВт)", article: "GE0Q6PE0CRU", price: 58097, power: 24, circuits: 2, type: "gas", brand: "Haier", availability: "in_stock", price_date: "2026-09-22" }
     ],
