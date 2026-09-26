@@ -1159,10 +1159,10 @@
    "freq": 2400,
    "audience": "owner",
    "data_block": "ГК РФ ст. 722 и 737",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-03-27",
    "published_at": null,
-   "words": 0
+   "words": 903
   },
   {
    "slug": "otoplenie-pod-klyuch-spb",
@@ -1215,10 +1215,10 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "что проверяют перед простоем",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-06",
    "published_at": null,
-   "words": null
+   "words": 843
   },
   {
    "slug": "skolko-sektsiy-radiatora",
@@ -1243,10 +1243,10 @@
    "freq": 4600,
    "audience": "pro",
    "data_block": "наш гидравлический расчёт",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-08",
    "published_at": null,
-   "words": 0
+   "words": 815
   },
   {
    "slug": "otoplenie-karkasnogo-doma",
