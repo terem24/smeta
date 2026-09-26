@@ -302,7 +302,7 @@
   function leaderFilter(fx, fy, size) { return leader(fx - 0.96, fy - 1.77, size); }
 
   /** Гидравлический разделитель для схемы. (x,y) — центр корпуса 9×20. */
-  function hydroSep(x, y, kw) {
+  function hydroSep(x, y, kw, noThermo) {
     var w = 9, h = 20, o = [];
     o.push(rrect(x - w / 2, y - h / 2, w, h, 1, { c: '#000', w: LW.sym }));
     if (kw) {
@@ -322,8 +322,13 @@
     // разделитель», ред. 3 от 17.05.2021, п. 3.1 — третий штуцер узла). Влево:
     // справа корпус зажат стояками вторичной пары, а слева на уровне середины
     // корпуса свободно — горизонтали к насосным группам идут выше и ниже.
-    o.push(pline([[x - w / 2, y], [x - w / 2 - 2.2, y]]));
-    o.push(gauge(x - w / 2 - 4.2, y, 'Т'));
+    // У коллектора со встроенным разделителем SDG-0018 гнёзд G 1/2" два — под
+    // воздухоотводчик и слив (паспорт, ред. 30.03.2023, п. 5 и 4.3.6), термометру
+    // места нет, и в смете его тогда нет (cfg.hydro.thermo === false).
+    if (!noThermo) {
+      o.push(pline([[x - w / 2, y], [x - w / 2 - 2.2, y]]));
+      o.push(gauge(x - w / 2 - 4.2, y, 'Т'));
+    }
     return o.join('');
   }
 
@@ -1193,6 +1198,9 @@
     // Левые границы линий загрузки: подача начинается на стояке первого
     // узла загрузки, обратка — на перемычке в общую обратку у левого торца
     var loadSx = null;
+    // Стояк «обратка бойлера» котла со своим патрубком — с него и начинается линия
+    // обратки загрузки (перемычки в общую обратку тогда нет).
+    var loadRBoilerX = null;
     // Правый край котловых стояков — по нему сажается сепаратор воздуха на
     // подаче (см. ниже): он должен встать ЗА котлом по потоку, но до отводов
     // и до гидрострелки, а полоса выносок Ø тянется вправо от каждого стояка.
@@ -1216,8 +1224,12 @@
       // патрубков из корпуса (по такой картинке узел собирали бы четырьмя
       // врезками в котёл). Носитель ГВС двухконтурного — исключение: у него
       // патрубков действительно четыре (О+ГВС).
-      var xs, xRet, xls = null, xg = null, xc = null;
+      var xs, xRet, xls = null, xg = null, xc = null, xlr = null;
+      // Котёл со своими патрубками «загрузка» и «обратка» бойлера (Navien Deluxe
+      // One, Vaillant VU) — четыре стояка, как у носителя ГВС двухконтурного.
+      var retToBoiler = b.load && cfg.dhwBuiltIn && cfg.dhwReturnToBoiler && kind === 'gas';
       if (b.carrier) { xs = bx + 3.03; xg = xs + st; xc = xs + 2 * st; xRet = xs + 3 * st; }
+      else if (retToBoiler) { xs = bx + 3.03; xls = xs + st; xlr = xs + 2 * st; xRet = xs + 3 * st; if (loadRBoilerX === null || xlr < loadRBoilerX) loadRBoilerX = xlr; }
       else if (b.load) { xs = bx + (b.w - 2 * st) / 2; xls = xs + st; xRet = xs + 2 * st; }
       else { xs = bx + (b.w - 9) / 2; xRet = xs + 9; }
       if (xls !== null && (loadSx === null || xls < loadSx)) loadSx = xls;
@@ -1229,7 +1241,9 @@
       var isPolis = (kind === 'el' && cfg.el && cfg.el.polis);
       // POLIS присоединяется 1" независимо от мощности котельной — это его
       // собственные патрубки, а не сечение магистрали.
-      var portSize = isPolis ? '1"' : mainThread;
+      // Патрубки котлов G3/4" (Haier, BAXI, Navien, STATUS) — краны и американки в смете
+      // 3/4" при любой мощности; раньше подпись шла по магистрали (от 30 кВт — 1").
+      var portSize = isPolis ? '1"' : '3/4"';
 
       // Группы маршрутов (data-hyd-part) — для подсветки пути воды на экране:
       // по наведению на стояк или котёл слой поверх схемы клонирует трубы
@@ -1261,6 +1275,16 @@
         o.push('</g>');
         o.push(diaV(xls, stemDiaY, dia));
         o.push(arrowSym(xls, stemArrowDown, 'down'));
+        if (cfg.dhwPortSize) o.push(leader(xls - 0.96, bBot + 4.6, cfg.dhwPortSize));
+        if (xlr !== null) {
+          // Обратка змеевика — в свой патрубок котла («обратка бойлера»), а не в
+          // общую обратку: перемычку у торца гребёнки тогда не рисуем (ниже).
+          o.push('<g data-hyd-part="load" data-hyd-dir="rev" data-hyd-b="' + bi + '">');
+          o.push(vpipe(xlr, bBot, mY.loadR, COL.loadR, [mY.supply, mY.ret, mY.loadS]));
+          o.push('</g>');
+          o.push(arrowSym(xlr, stemArrowUp, 'up'));
+          if (cfg.dhwPortSize) o.push(leader(xlr - 0.96, bBot + 4.6, cfg.dhwPortSize));
+        }
       } else if (b.load) {
         var drawFugas = cfg.fugas && !(kind === 'el' && polis);
         if (drawFugas) {
@@ -1322,7 +1346,7 @@
       o.push(leaderValve(xRet, bBot + 5.03, portSize));
       o.push(ln(xRet, bBot + 7.53, xRet, bBot + 9.6, { c: COL.ret, w: LW.pipe }));
       o.push(filterSym(xRet, bBot + 13.14));
-      o.push(leaderFilter(xRet, bBot + 13.14, mainThread));
+      o.push(leaderFilter(xRet, bBot + 13.14, '3/4"')); // фильтр RFW-0080 — 3/4" (catalog.filter_mag)
       o.push(ln(xRet, bBot + 16.67, xRet, bBot + 18.74, { c: COL.ret, w: LW.pipe }));
       o.push(ballValve(xRet, bBot + 21.24, true));
       o.push(leaderValve(xRet, bBot + 21.24, mainThread));
@@ -1355,7 +1379,10 @@
     // через фильтр того котла, который сейчас греет). Раньше она заходила в
     // котёл отдельным четвёртым патрубком, которого у котла нет.
     var jx = mLeft + 2.6;
-    if (hasLoad && !(cfg.loadPump && cfg.hydro)) {
+    // У котла со своим патрубком «обратка бойлера» перемычки нет — обратка змеевика
+    // уходит в котёл (см. xlr). Кроме случая, когда бойлер грузит ещё и резервный
+    // электрокотёл через внешний клапан (cfg.fugas): его обратке нужна перемычка.
+    if (hasLoad && !(cfg.loadPump && cfg.hydro) && !(cfg.dhwReturnToBoiler && !cfg.fugas)) {
       // при насосной группе на коллекторе (после гидрострелки) обратка
       // загрузки уходит во вторичный коллектор, а не в котловую обратку
       o.push('<g data-hyd-part="load" data-hyd-dir="rev">');
@@ -1397,7 +1424,7 @@
       o.push(hpipe(hydroX + 4.5, xu, secPair.ret, COL.ret));
       o.push(openArrow(xu - 0.8, secPair.ret, 'right', COL.ret));
       o.push('</g><g data-hyd-part="hydro" data-hyd-dir="none">');
-      o.push(hydroSep(hydroX, 167, cfg.hydro.kw));
+      o.push(hydroSep(hydroX, 167, cfg.hydro.kw, cfg.hydro.thermo === false));
       o.push('</g>');
       // датчик «Каскад» — на подаче за гидрострелкой (по нему контроллер
       // ведёт общую температуру каскада)
@@ -1683,7 +1710,7 @@
         o.push(txtM(loadRx + PAIR_STEP / 2 - 1, 274, 'загрузка бойлера', { size: SZ.dia, rotate: -90 }));
       } else {
       o.push(hpipe(loadSx !== null ? loadSx : mLeft, lx1, mY.loadS, COL.loadS));
-      o.push(hpipe(loadRx !== null ? loadRx : (hasLoad ? jx : mLeft), lx2, mY.loadR, COL.loadR));
+      o.push(hpipe(loadRx !== null ? loadRx : ((cfg.dhwReturnToBoiler && !cfg.fugas && loadRBoilerX !== null) ? loadRBoilerX : (hasLoad ? jx : mLeft)), lx2, mY.loadR, COL.loadR));
       o.push(diaH(lx1 - 2, mY.loadS, dia));
       o.push(diaH(lx1 - 2, mY.loadR, dia));
       o.push(vpipe(lx1, mY.loadS, pT1, COL.loadS, [mY.loadR, pB1]));

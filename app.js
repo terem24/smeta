@@ -532,7 +532,7 @@ document.addEventListener('DOMContentLoaded', installEmailjsProxy);
 // Глобальный маппинг замен для кнопки "Аналог"
 const ANALOG_MAP = {
     "SVC-0011-000020": "RVC-0001-000020",
-    "RDG-0015-004002": "RDG-1015-004003",
+    "RDG-0015-004003": "RDG-1015-004003",
     "SVB-0006-200020": "RBV-0007-2410220",
     "RCP-0005-152080": "RCP-0005-150480",
     "SFA-0020-000016": "RFA-0020-000016",
@@ -41806,6 +41806,10 @@ const app = {
             fugas: fugas,
             loadPump: loadPump,
             dhwBuiltIn: dhwBuiltIn,
+            // Обратка змеевика — в котёл (у котла свой патрубок «обратка бойлера»:
+            // Navien Deluxe One, Vaillant VU), а не в общую обратку (Haier NeoSlim 1.x).
+            dhwReturnToBoiler: dhwBuiltIn && !!(gasCat && gasCat.dhwPorts && gasCat.dhwPorts.n >= 2),
+            dhwPortSize: (dhwBuiltIn && gasCat && gasCat.dhwPorts && gasCat.dhwPorts.size) || null,
             rad: (s.systems || []).includes('rad'),
             tp: (s.systems || []).includes('tp'),
             // Сколько отводов рисовать и какой резьбой подписывать их арматуру.
@@ -41860,7 +41864,12 @@ const app = {
             // и в модульной схеме, где смета ставит отдельную позицию
             // «Гидравлическая стрелка N м³/ч» — её прежний шаблон не ловил, и на
             // схеме пропадали и стрелка, и насосы радиаторных групп.
-            hydro: has(/гидрострелк|гидравлическ\S*\s+(стрелк|раздел)/i) ? { kw: Math.ceil(power / 5) * 5 } : null,
+            // thermo — есть ли в смете контрольный термометр узла: у коллектора со
+            // встроенным разделителем SDG-0018 его нет (гнёзд 1/2" только два).
+            hydro: has(/гидрострелк|гидравлическ\S*\s+(стрелк|раздел)/i) ? {
+                kw: Math.ceil(power / 5) * 5,
+                thermo: spec.some(i => String(i.originalId || i.id) === ((catalog.hydro_thermometer || {}).id))
+            } : null,
             water: !!s.water || indirect,
             recirc: !!s.recirc,
             tankHeating: volOf(tankHeat),
@@ -47251,7 +47260,7 @@ const app = {
             else if (this.state.sewerType === 'comfort') this.state.sewerType = _sewerHasEconomy ? 'economy' : 'std';
             else this.state.sewerType = 'std';
         }
-        else if (originalId === 'RDG-0015-004002' || originalId === 'RDG-1015-004003') { this.state.hydroArrowType = (this.state.hydroArrowType === 'pro') ? 'standard' : 'pro'; }
+        else if (originalId === 'RDG-0015-004003' || originalId === 'RDG-1015-004003') { this.state.hydroArrowType = (this.state.hydroArrowType === 'pro') ? 'standard' : 'pro'; }
         else if (originalId === 'SDG-0120-001000' || originalId === 'SDG-0002-002001' || originalId === 'SDG-0002-002501' || originalId === 'SDG-0003-002001' || originalId === 'SDG-0003-002501' || originalId === 'SDG-0007-003201') {
             let tpArea = this.tpArea || 0;
             let brand = this.state.brandMode;
@@ -49458,11 +49467,11 @@ const app = {
                 });
             }
         }
-        else if (item.originalId === 'RDG-0015-004002' || item.originalId === 'RDG-1015-004003') {
-            let p0 = this.findCatalogItemById('RDG-0015-004002')?.price || catalog.hydro_arrow?.rommer?.price || 7256;
+        else if (item.originalId === 'RDG-0015-004003' || item.originalId === 'RDG-1015-004003') {
+            let p0 = this.findCatalogItemById('RDG-0015-004003')?.price || catalog.hydro_arrow?.rommer?.price || 7828;
             let p1 = this.findCatalogItemById('RDG-1015-004003')?.price || 21245;
             customAlts = [
-                { id: 'standard', name: 'Гидравлический разделитель (Стандарт)', brand: 'ROMMER', price: p0, imgId: 'RDG-0015-004002' },
+                { id: 'standard', name: 'Гидравлический разделитель (Стандарт)', brand: 'ROMMER', price: p0, imgId: 'RDG-0015-004003' },
                 { id: 'pro', name: 'Гидравлический разделитель (Pro с накидными гайками)', brand: 'ROMMER', price: p1, imgId: 'RDG-1015-004003' }
             ];
         }
@@ -52949,7 +52958,7 @@ const app = {
             else if (chosenId === 'economy') this.state.sewerType = 'economy'; // обычная ПП, не бесшумная (#13)
             else this.state.sewerType = 'std';
         }
-        else if (originalId === 'RDG-0015-004002' || originalId === 'RDG-1015-004003') {
+        else if (originalId === 'RDG-0015-004003' || originalId === 'RDG-1015-004003') {
             if (chosenId === 'pro' || chosenId.includes("RDG-1015-004003")) this.state.hydroArrowType = 'pro';
             else this.state.hydroArrowType = 'standard';
         }
@@ -66273,7 +66282,7 @@ const app = {
 
                 // Цены гидрострелок — из каталога (обновляет парсер), а не числом в коде:
                 // зашитые 16 722 и 6 596 ₽ отстали от каталожных 21 245 и 7 256 ₽.
-                if (finalItem.id === 'RDG-0015-004002' && this.state.hydroArrowType === 'pro') {
+                if (finalItem.id === 'RDG-0015-004003' && this.state.hydroArrowType === 'pro') {
                     const _pro = this.findCatalogItemById('RDG-1015-004003');
                     finalItem.id = "RDG-1015-004003";
                     finalItem.name = "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч";
@@ -66281,11 +66290,11 @@ const app = {
                     if (_pro && _pro.availability) finalItem.availability = _pro.availability;
                     finalItem.brand = "ROMMER";
                 }
-                if (finalItem.id === 'RDG-0015-004002' || finalItem.id === 'RDG-1015-004003') {
+                if (finalItem.id === 'RDG-0015-004003' || finalItem.id === 'RDG-1015-004003') {
                     const _p = (id, fb) => { const c = this.findCatalogItemById(id); return c ? c.price : fb; };
                     finalItem.originalId = finalItem.id;
                     finalItem.alts = [
-                        { id: "RDG-0015-004002", name: "Гидравлическая стрелка с накидными гайками 1 1/4″", price: _p('RDG-0015-004002', 7256), brand: "ROMMER" },
+                        { id: "RDG-0015-004003", name: "Гидравлическая стрелка с накидными гайками 1 1/2″", price: _p('RDG-0015-004003', 7828), brand: "ROMMER" },
                         { id: "RDG-1015-004003", name: "Гидравлическая стрелка 1 1/2\", 3,0 м³/ч", price: _p('RDG-1015-004003', 21245), brand: "ROMMER" }
                     ];
                 }
@@ -67921,8 +67930,15 @@ const app = {
                 // змеевик» (G 3/4", у Haier — руководство, стр. 29–30). Американка — как на
                 // подаче и обратке: котёл снимается без резки трубы. Переход на трубу —
                 // в блоке труб, вместе с остальным греющим контуром (27.09.2026).
-                if (catalog.american_34) addToBill({ ...catalog.american_34, originalId: 'SFT-0041-000034_coilport' }, 1,
-                    'Разъёмное соединение (американка) 3/4" на патрубке котла «подача в змеевик бойлера»: трёхходовой клапан встроен в котёл, греющий контур идёт прямо от этого патрубка.', grp);
+                // dhwPorts — сколько у котла патрубков на бойлер и какого размера: у Haier
+                // один (подача, 3/4"), у Navien Deluxe One и Vaillant VU два — подача и
+                // обратка змеевика (у Navien G1/2"). Без поля — как у Haier.
+                const _dp = boiler.dhwPorts || {};
+                const _dpN = _dp.n || 1, _dpSz = _dp.size || '3/4"';
+                const _dpUn = _dpSz === '1/2"' ? catalog.american_12 : catalog.american_34;
+                if (_dpUn) addToBill({ ..._dpUn, originalId: _dpUn.id + '_coilport' }, _dpN,
+                    `Разъёмное соединение (американка) ${_dpSz} на ${_dpN > 1 ? 'патрубках котла «загрузка» и «обратка» бойлера' : 'патрубке котла «подача в змеевик бойлера»'}: трёхходовой клапан встроен в котёл, греющий контур идёт прямо от ${_dpN > 1 ? 'них' : 'этого патрубка'}.` +
+                    (_dp.n && !_dp.size ? ` Размер патрубков — по комплекту трубопроводов водонагревателя производителя котла (в руководстве не указан), здесь принят 3/4".` : ''), grp);
                 return;
             }
             addToBill({ ...catalog.valves[0], originalId: 'SFB-0001-000001_tankload', alts: _tankLoadAlts }, 1, this.getDesc('fugas'), grp);
@@ -67933,6 +67949,14 @@ const app = {
         // сертифицированную систему), у остальных — универсальный ROMMER. Традиционные
         // котлы любого бренда идут на STOUT/ROMMER 60/100, как и раньше.
         const chimneyFor = (b) => this.chimneyKitFor(b);
+        // Обратный клапан каскада SVC-0011 — 3/4" ВР с обеих сторон (паспорт
+        // stout_5d5495cc674d): за краном ВР/НР он садится на его НР, а к переходнику
+        // трубы (тоже ВР) — только через ниппель. До 27.09.2026 ниппеля не было.
+        const addCheckNip = (grp) => {
+            const n = (catalog.water_input_node || []).find(x => x.id === 'SFT-0004-003434');
+            if (n) addToBill({ ...n, originalId: n.id + '_cascade_check' }, 1,
+                'Ниппель 3/4" НР между обратным клапаном котла (ВР/ВР) и переходником трубы.', grp);
+        };
         let _gasIdx = 0;
         selBoilers.forEach(b => {
             if (b.type === 'gas' && !rigDropped('gas')) {
@@ -67987,7 +68011,7 @@ const app = {
                 addToBill(catalog.american_34, 2, "Разъемное соед.", grp);
                 addToBill(withRommerAlt(catalog.ball_valve_34), 2, "Запорная арматура.", grp);
                 addToBill(withRommerAlt(catalog.filter_mag), 1, this.getDesc('filter_mag'), grp);
-                if (selBoilers.length > 1) addToBill(withRommerAlt(catalog.check_valve_34), 1, "Обратный клапан.", grp);
+                if (selBoilers.length > 1) { addToBill(withRommerAlt(catalog.check_valve_34), 1, "Обратный клапан.", grp); addCheckNip(grp); }
             }
         });
         // Регуляторы Vaillant — только когда автоматика STOUT (Thermatic) выключена:
@@ -68081,7 +68105,7 @@ const app = {
                     addToBill(withRommerAlt(catalog.ball_valve_34), 2, "Запорная арматура.", grp);
                 }
                 addToBill(withRommerAlt(catalog.filter_mag), 1, this.getDesc('filter_mag'), grp);
-                if (selBoilers.length > 1) addToBill(withRommerAlt(catalog.check_valve_34), 1, "Обратный клапан.", grp);
+                if (selBoilers.length > 1) { addToBill(withRommerAlt(catalog.check_valve_34), 1, "Обратный клапан.", grp); addCheckNip(grp); }
             }
         });
         // Сепаратор воздуха на подаче — один на систему, а не на котёл (см. комментарий
@@ -68404,27 +68428,28 @@ const app = {
                 _femNip('recirc', _recSz, 'рециркуляция ГВС, Т4', 1);
                 addToBill(_named(catalog.dhw_fittings[2], 'рециркуляция ГВС, Т4', 'recirc'), 1,
                     `Разъёмное соединение (американка) 3/4" на линии рециркуляции — снимается для обслуживания насоса. Патрубок рециркуляции бойлера — ${_recSz} по паспорту.`, grp);
-                addToBill(_named(catalog.dhw_fittings[3], 'рециркуляция ГВС, Т4', 'recirc'), 1,
-                    `Кран шаровой 3/4" на линии рециркуляции — отсекает контур рециркуляции от бойлера.`, grp);
+                // Узел Т4 по потоку, от разводки дома к бойлеру — как на принципиальной
+                // схеме: кран → обратный клапан → насос → кран → американка → [муфта] →
+                // патрубок. Два крана — чтобы насос менять, не сливая ни бойлер, ни
+                // кольцо рециркуляции дома (до 27.09.2026 в смете был один, у бойлера,
+                // а схема рисовала оба). Насосы ROMMER RCP-0005 — патрубки G1/2" ВР
+                // (паспорта серии), арматура узла — 3/4" ВР: к насосу с обеих сторон
+                // ниппель переходной НР 3/4" × 1/2". Кран ВР/ВР и обратный клапан ВР/ВР
+                // — через ниппель 3/4".
+                addToBill(_named(catalog.dhw_fittings[3], 'рециркуляция ГВС, Т4', 'recirc'), 2,
+                    `Краны шаровые 3/4" на линии рециркуляции — по обе стороны насоса: у бойлера и со стороны разводки дома. Насос снимается без слива бойлера и кольца рециркуляции.`, grp);
                 addToBill(_named(catalog.dhw_fittings[6], 'рециркуляция ГВС, Т4', 'recirc'), 1,
                     `Клапан обратный 3/4" на линии рециркуляции — не даёт горячей воде идти в обход насоса.`, grp);
-                // Стыки узла Т4 (проверка стыковки концов, 26.09.2026). Патрубок 1" НР
-                // (OptiBase 150/200) под американку 3/4" — через муфту ВР 1" × НР 3/4",
-                // как на Т3 и В1. Кран ВР/ВР и обратный клапан ВР/ВР — через ниппель.
                 if (_recSz === '1"') {
                     const _recRed = _mixFit('SFT-0007-000134');
                     if (_recRed) addToBill(_named(_recRed, 'рециркуляция ГВС, Т4', 'recirc_red'), 1,
                         `Муфта переходная ВР 1" × НР 3/4" на патрубке рециркуляции Т4: патрубок бойлера 1" НР, американка узла — 3/4".${_portNote(_recSz)}`, grp);
                 }
-                // Насосы рециркуляции ROMMER RCP-0005 (все три в каталоге) — патрубки
-                // G1/2" ВР (паспорта серии RCP-0005); обратный клапан узла — 3/4" ВР.
-                // Между ними ниппель переходной НР 3/4" × 1/2". Второй патрубок насоса
-                // смотрит в разводку рециркуляции дома.
-                if (catalog.nipple_34_12) addToBill(_named(catalog.nipple_34_12, 'рециркуляция ГВС, Т4', 'recirc_pump_nip'), 1,
-                    `Ниппель переходной НР 3/4" × 1/2" между обратным клапаном рециркуляции (3/4" ВР) и насосом (патрубки 1/2" ВР по паспорту RCP-0005).`, grp);
+                if (catalog.nipple_34_12) addToBill(_named(catalog.nipple_34_12, 'рециркуляция ГВС, Т4', 'recirc_pump_nip'), 2,
+                    `Ниппели переходные НР 3/4" × 1/2" с обеих сторон насоса рециркуляции: патрубки насоса 1/2" ВР (паспорт RCP-0005), обратный клапан и кран узла — 3/4" ВР.`, grp);
                 const _recNip = (catalog.water_input_node || []).find(x => x.id === 'SFT-0004-003434');
                 if (_recNip) addToBill(_named(_recNip, 'рециркуляция ГВС, Т4', 'recirc_nip'), 1,
-                    `Ниппель 3/4" НР между краном и обратным клапаном рециркуляции — у обоих внутренняя резьба.`, grp);
+                    `Ниппель 3/4" НР между нижним краном и обратным клапаном рециркуляции — у обоих внутренняя резьба.`, grp);
             }
         }
         let hasRad = this.state.systems.includes('rad');
@@ -69067,7 +69092,15 @@ const app = {
             // объекте видно, в каком режиме работает узел: равенство температур на
             // подаче первичного и вторичного контуров означает G1 = G2, разбег вверх —
             // избыток первички, вниз — избыток вторички (паспорт, п. 6 для SDG-0018).
-            if (catalog.hydro_thermometer) {
+            // Только у отдельной гидрострелки (SDG-0015: штуцеры под воздухоотводчик,
+            // дренаж и термометр — п. 3.1). У коллектора со встроенным разделителем
+            // SDG-0018 гнёзд G 1/2" два, и паспорт (ред. 30.03.2023, п. 5, чертёж 4.3.6)
+            // отдаёт их воздухоотводчику и сливному крану — термометру встать некуда.
+            // Температуры контуров там видны по термометрам на кранах насосных групп.
+            // Найдено проверкой стыковки концов, 27.09.2026.
+            const _hydroCombo = (this.currentSpec || []).some(x => x.group === grpHydro &&
+                /^(SDG-0018|RDG-0017)-/.test(String(x.originalId || x.id || '')));
+            if (catalog.hydro_thermometer && !_hydroCombo) {
                 addToBill({ ...catalog.hydro_thermometer, alts: catalog.hydro_thermometer_alts || [], noCheapenAlts: true },
                     1, this.getDesc('hydro_thermometer'), grpHydro);
             }
@@ -69264,6 +69297,21 @@ const app = {
                 if (catalog.plug_12) {
                     addToBill({ ...catalog.plug_12, sortRank: -0.05 },
                         gbmNodeQty, "Заглушка 1/2\" НР на свободный отвод второго узла на группе. По одной на группу.", grpHydro);
+                }
+            }
+
+            // Коллектор ROMMER RDG-0017 (аналог SDG-0018 в режиме ROMMER): сверху
+            // G1 1/2" НР, у насосных групп снизу тоже НР — соединяются деталью с двумя
+            // накидными гайками, по две на группу. У STOUT SDG-0018 гайки уже на
+            // коллекторе. Решаем по тому, что реально легло в смету: коллектор мог
+            // смениться и режимом бренда, и «Аналогом» раздела.
+            if (catalog.group_nut_joint_112) {
+                const _specH = (this.currentSpec || []).filter(x => x.group === grpHydro);
+                if (_specH.some(x => /^RDG-0017-/.test(String(x.id || '')))) {
+                    const _nGr = _specH.filter(x => /(групп\S*\s+насосн|насосн\S*\s+групп)/i.test(String(x.name || '')) && !/быстрого монтажа/i.test(String(x.name || '')))
+                        .reduce((a, x) => a + (Number(x.q) || 1), 0);
+                    if (_nGr > 0) addToBill({ ...catalog.group_nut_joint_112, sortRank: -0.9 }, _nGr * 2,
+                        `Соединение с накидными гайками G1 1/2" между коллектором ROMMER RDG-0017 и насосной группой: у обоих наружная резьба 1 1/2" (паспорта RDG-0017 и групп). По 2 на группу — подача и обратка.`, grpHydro);
                 }
             }
         }
@@ -69794,18 +69842,30 @@ const app = {
                 }
             }
 
+            // Что стоит на патрубках котла и во что вкручивается труба (27.09.2026,
+            // проверка стыковки концов). У всех котлов, кроме POLIS, — кран 3/4" ВР/НР
+            // после американки (патрубки G3/4": Haier, BAXI, Navien, STATUS), и труба
+            // приходит к нему переходом на ВР 3/4" при ЛЮБОМ диаметре трубы. До этого
+            // резьба бралась по трубе (28 и выше — 1") — и ВР 1" не наворачивалась на
+            // НР 3/4" крана. У POLIS 1": россыпью — кран с американкой (хвостовик НР),
+            // переход на ВР 1"; на группе быстрого монтажа — её выходы 1" ВР, переход
+            // на НАРУЖНУЮ резьбу 1".
+            const _bKey = b.noPump ? '1' : '3/4';
+            const _bMale = !!b.noPump && (this.state.polisKit || 'gbm') !== 'parts';
+            const _bPortL = _bKey === '1' ? '1"' : '3/4"';
+            const _bWhat = _bMale ? `выходы группы быстрого монтажа котла (${bName}, 1" ВР)` : `краны на патрубках котла (${bName}, НР ${_bPortL})`;
             if (isAnalog) {
                 // Обвязка ОДНОГО котла — по ЕГО типоразмеру: через неё идёт только его
                 // расход. На каскаде из двух котлов по 20 кВт магистраль уходит на 40-ю
                 // трубу, а подводка каждого остаётся 32-й.
                 if (_boilerSize === 22) {
-                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), 2, `Муфта комбинированная с внутренней резьбой 32х3/4" PP-RCT для подключения трубы к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
+                    addToBill(this.getPprItem(_bMale ? catalog.ppr_ekoplastik_adapter_mi : catalog.ppr_ekoplastik_adapter_fi, _bMale ? 'SZE03232RCT' : (_bKey === '1' ? 'SZI03232OKRCT' : 'SZI03225RCT')), 2, `Муфта комбинированная с ${_bMale ? 'наружной' : 'внутренней'} резьбой 32х${_bPortL} PP-RCT — на ${_bWhat}. Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, 'SKO03290RCT'), 2, `Угольник 90° PP-RCT 32 мм для поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow45, 'SKO03245RCT'), 2, `Угольник 45° PP-RCT 32 мм для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_tee, 'STK032RCTX'), 2, `Тройник PP-RCT 32 мм для создания ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
                 } else {
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_coupling_red, 'SRE14032RCT'), 2, `Муфта переходная 40х32 PP-RCT для перехода на диаметр 32 мм при подключении котла (${bName}). Требуется: 2 шт.`, grp);
-                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03232OKRCT'), 2, `Муфта комбинированная с внутренней резьбой 32х1" PP-RCT для подключения к патрубкам котла (${bName}). Требуется: 2 шт.`, grp);
+                    addToBill(this.getPprItem(_bMale ? catalog.ppr_ekoplastik_adapter_mi : catalog.ppr_ekoplastik_adapter_fi, _bMale ? 'SZE03232RCT' : (_bKey === '1' ? 'SZI03232OKRCT' : 'SZI03225RCT')), 2, `Муфта комбинированная с ${_bMale ? 'наружной' : 'внутренней'} резьбой 32х${_bPortL} PP-RCT — на ${_bWhat}. Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow90, 'SKO04090RCT'), 2, `Угольник 90° PP-RCT 40 мм для поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_elbow45, 'SKO04045RCT'), 2, `Угольник 45° PP-RCT 40 мм для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
                     addToBill(this.getPprItem(catalog.ppr_ekoplastik_tee_red, 'STKR04032RCT'), 2, `Тройник переходной 40х32х40 PP-RCT для ответвлений в контуре обвязки котла (${bName}). Требуется: 2 шт.`, grp);
@@ -69821,11 +69881,11 @@ const app = {
                 // через неё идёт только его расход (см. boilerSizes, perBoiler).
                 const _prD = mpD(_boilerSize);
                 const _prSm = mpD(22);
-                const _prPort = (_boilerSize === 22) ? '3/4' : '1';
-                const _prTh = bpThreadFor('fi', _prD, _prPort);
+                const _prPort = _bKey;
+                const _prTh = bpThreadFor(_bMale ? 'mi' : 'fi', _prD, _prPort);
                 bpPress(_prTh.item, 2,
-                    `Переходник с трубы ${_prD} на внутреннюю резьбу ${bpThLabel(_prTh.key)} для подключения ${_pressWord} трубы к патрубкам котла (${bName}).` +
-                    (_prTh.key !== _prPort ? ` <b>Внимание:</b> патрубок котла ${bpThLabel(_prPort)}, на трубе ${_prD} такой пары в линейке нет — нужен резьбовой переход (в смету не входит).` : ``) +
+                    `Переходник с трубы ${_prD} на ${_bMale ? 'наружную' : 'внутреннюю'} резьбу ${bpThLabel(_prTh.key)} — на ${_bWhat}.` +
+                    (_prTh.key !== _prPort ? ` <b>Внимание:</b> на трубе ${_prD} пары под ${bpThLabel(_prPort)} в линейке нет — нужен резьбовой переход (в смету не входит).` : ``) +
                     ` Требуется: 2 шт.`, grp, 1, _prD);
                 bpPress(bpFit('elbow90', _prD), 4,
                     `${bpWord('Угольник')} 90° ${bpSz(_prD)} для поворотов трубопровода и обхода препятствий при обвязке котла (${bName}). ${isStable ? 'Угол 45° в аксиальной линейке есть только на 32 мм, поэтому обходы для единообразия тоже собираются на 90°.' : 'Углов 45° в линейке металлопластика нет, поэтому обходы тоже собираются на 90°.'} Требуется: 4 шт.`, grp, 2, _prD);
@@ -69842,11 +69902,12 @@ const app = {
                 // газового котла — 3/4" (так в паспортах Haier и Baxi); точной пары
                 // «диаметр + резьба» в линейке может не быть, тогда ставим ту, что
                 // есть, и предупреждаем про резьбовой переход.
-                const _bPort = (_boilerSize >= 28) ? '1"' : '3/4"';
-                const _bTh = this.ssThreadFor('ss_adapter_fi', _boilerSize, (_boilerSize >= 28) ? '1' : '3/4');
-                addToBill(_bTh && this.ssFit('ss_adapter_fi', _boilerSize, _bTh), 2,
-                    `Переходник с пресс-соединения ${_boilerSize} на внутреннюю резьбу ${this.ssThreadLabel(_bTh)} для подключения нержавеющей трубы к патрубкам котла (${bName}).` +
-                    (this.ssThreadLabel(_bTh) !== _bPort ? ` <b>Внимание:</b> патрубок котла ${_bPort}, нужен резьбовой переход (в смету не входит).` : ``) +
+                const _bPort = _bPortL;
+                const _bArr = _bMale ? 'ss_adapter_mi' : 'ss_adapter_fi';
+                const _bTh = this.ssThreadFor(_bArr, _boilerSize, _bKey);
+                addToBill(_bTh && this.ssFit(_bArr, _boilerSize, _bTh), 2,
+                    `Переходник ВПр-${_bMale ? 'НР' : 'ВР'} ${_boilerSize}х${this.ssThreadLabel(_bTh)} — на ${_bWhat}.` +
+                    (this.ssThreadLabel(_bTh) !== _bPort ? ` <b>Внимание:</b> на трубе ${_boilerSize} пары под ${_bPort} в линейке нет — нужен резьбовой переход (в смету не входит).` : ``) +
                     ` Требуется: 2 шт.`, grp);
                 addToBill(this.ssFit('ss_elbow90_ff', _boilerSize), 2, `Пресс-угольник 90° В-В ${_boilerSize} для выполнения поворотов трубопровода при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
                 addToBill(this.ssFit('ss_elbow45', _boilerSize), 2, `Пресс-угольник 45° В-В ${_boilerSize} для обхода препятствий и плавных поворотов при обвязке котла (${bName}). Требуется: 2 шт.`, grp);
@@ -69911,13 +69972,34 @@ const app = {
             // его патрубка «подача в змеевик» (3/4"), и к американке на нём трубе нужен
             // ещё один переход на ВР 3/4". Внешнего комплекта нет — нет и его
             // присоединений (см. addTankLoadingKit).
-            const _coilFromPort = !tankNeedsPumpGroup && !rigDropped('gas') &&
-                selBoilers.some(b => b && b.type === 'gas' && b.dhwValve);
-            const _portNoteBoiler = ' Патрубок котла «подача в змеевик» — 3/4".';
+            const _cpBoiler = (!tankNeedsPumpGroup && !rigDropped('gas'))
+                ? selBoilers.find(b => b && b.type === 'gas' && b.dhwValve) : null;
+            const _coilFromPort = !!_cpBoiler;
+            // dhwPorts — патрубки котла на бойлер (см. addTankLoadingKit): у Haier один
+            // 3/4" (подача; обратка змеевика — в общую обратку), у Navien Deluxe One —
+            // «загрузка» и «обратка» G1/2", у Vaillant VU — две линии, размер не указан.
+            const _cpN = (_cpBoiler && _cpBoiler.dhwPorts && _cpBoiler.dhwPorts.n) || 1;
+            const _cpSz = (_cpBoiler && _cpBoiler.dhwPorts && _cpBoiler.dhwPorts.size) || '3/4"';
+            const _cpKey = _cpSz === '1/2"' ? '1/2' : '3/4';
+            const _cpWhat = _cpN > 1 ? 'патрубков котла «загрузка» и «обратка» бойлера' : 'патрубка котла «подача в змеевик бойлера»';
+            const _portNoteBoiler = ` Патрубок котла — ${_cpSz}${_cpN > 1 ? ', их два: подача и обратка змеевика возвращаются в котёл' : ''}.`;
+            // Перехода трубы на ВР 1/2" в линейке может не быть (28, ППР 32) — тогда ВР
+            // 3/4" и футорка НР 3/4" × ВР 1/2": в неё вкручивается хвостовик (НР 1/2")
+            // американки патрубка котла. Ниппель тут не годится — НР на НР.
+            const _cpNip = (thKey) => (_cpKey === '1/2' && thKey === '3/4') ? this.findCatalogItemById('SFT-0029-003412') : null;
+            const _cpNipAdd = (thKey) => {
+                const n = _cpNip(thKey);
+                if (n) addToBill({ ...n, originalId: n.id + '_coilport' }, _cpN,
+                    `Футорка НР 3/4" × ВР 1/2" между переходником трубы (ВР 3/4") и американкой на патрубке котла 1/2" (хвостовик американки — НР 1/2").`, grp);
+            };
 
             if (isAnalog) {
-                if (_coilFromPort) addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), 1,
-                    `Муфта комбинированная с ВР PP-RCT 32х3/4" — на американку патрубка котла «подача в змеевик бойлера» (клапан бойлера встроен в котёл).${_portNoteBoiler}`, grp);
+                // На трубе 32 муфты с ВР 1/2" нет — ВР 3/4" и ниппель переходной.
+                if (_coilFromPort) {
+                    addToBill(this.getPprItem(catalog.ppr_ekoplastik_adapter_fi, 'SZI03225RCT'), _cpN,
+                        `Муфта комбинированная с ВР PP-RCT 32х3/4" — на американку ${_cpWhat} (клапан бойлера встроен в котёл).${_portNoteBoiler}`, grp);
+                    _cpNipAdd('3/4');
+                }
                 // Греющий контур несёт мощность ЗМЕЕВИКА, а не котельной: типоразмер
                 // здесь свой (_coilSize), сверху ограничен магистралью.
                 // К крану змеевика (ВР/ВР, по размеру патрубка) — муфта с НАРУЖНОЙ
@@ -69956,10 +70038,11 @@ const app = {
                 // такой пары на этой трубе — на ВР меньшей резьбы и ниппель переходной
                 // (см. ту же развилку у нержавейки ниже).
                 if (_coilFromPort) {
-                    const _bpTh = bpThreadFor('fi', _prD, '3/4');
-                    bpPress(_bpTh.item, 1,
-                        `Переходник с трубы ${_prD} на внутреннюю резьбу ${bpThLabel(_bpTh.key)} — на американку патрубка котла «подача в змеевик бойлера» (клапан бойлера встроен в котёл).${_portNoteBoiler}` +
-                        (_bpTh.key !== '3/4' ? ` <b>Внимание:</b> нужен резьбовой переход 3/4"–${bpThLabel(_bpTh.key)} (в смету не входит).` : ``), grp, 1, _prD);
+                    const _bpTh = bpThreadFor('fi', _prD, _cpKey);
+                    bpPress(_bpTh.item, _cpN,
+                        `Переходник с трубы ${_prD} на внутреннюю резьбу ${bpThLabel(_bpTh.key)} — на американку ${_cpWhat} (клапан бойлера встроен в котёл).${_portNoteBoiler}` +
+                        (_bpTh.key !== _cpKey && !_cpNip(_bpTh.key) ? ` <b>Внимание:</b> нужен резьбовой переход ${_cpSz}–${bpThLabel(_bpTh.key)} (в смету не входит).` : ``), grp, 1, _prD);
+                    if (_bpTh.key !== _cpKey) _cpNipAdd(_bpTh.key);
                 }
                 const _coilMi = mpThread('mi', _prD, _coilKey);
                 if (_coilMi) {
@@ -69999,10 +70082,11 @@ const app = {
                 // наружная резьба размера крана; если такой пары на этой трубе нет
                 // (18х1"), — переход на ВР меньшей резьбы и ниппель переходной.
                 if (_coilFromPort) {
-                    const _bpTh = this.ssThreadFor('ss_adapter_fi', _coilSize, '3/4');
-                    addToBill(_bpTh && this.ssFit('ss_adapter_fi', _coilSize, _bpTh), 1,
-                        `Переходник ВПр-ВР ${_coilSize}х${this.ssThreadLabel(_bpTh)} — на американку патрубка котла «подача в змеевик бойлера» (клапан бойлера встроен в котёл).${_portNoteBoiler}` +
-                        (_bpTh !== '3/4' ? ` <b>Внимание:</b> нужен резьбовой переход 3/4"–${this.ssThreadLabel(_bpTh)} (в смету не входит).` : ``), grp);
+                    const _bpTh = this.ssThreadFor('ss_adapter_fi', _coilSize, _cpKey);
+                    addToBill(_bpTh && this.ssFit('ss_adapter_fi', _coilSize, _bpTh), _cpN,
+                        `Переходник ВПр-ВР ${_coilSize}х${this.ssThreadLabel(_bpTh)} — на американку ${_cpWhat} (клапан бойлера встроен в котёл).${_portNoteBoiler}` +
+                        (_bpTh !== _cpKey && !_cpNip(_bpTh) ? ` <b>Внимание:</b> нужен резьбовой переход ${_cpSz}–${this.ssThreadLabel(_bpTh)} (в смету не входит).` : ``), grp);
+                    if (_bpTh !== _cpKey) _cpNipAdd(_bpTh);
                 }
                 const _coilMi = this.ssFit('ss_adapter_mi', _coilSize, _coilKey);
                 if (_coilMi) {
