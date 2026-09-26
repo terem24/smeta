@@ -379,7 +379,17 @@ const RecognizeSketch = {
             : `<div class="rs-scheme-empty">${esc(pv.err)}</div>`;
         const billHtml = pv.bill.length ? `<div class="rs-bill"><b>В смету встанет:</b> ${
             pv.bill.map(b => esc((b.q > 1 ? b.q + ' × ' : '') + b.name)).join(' · ')}</div>` : '';
-        const pvNotes = pv.notes.length ? `<div class="rs-pv-notes">${pv.notes.map(t => `<div>⚠ ${esc(t)}</div>`).join('')}</div>` : '';
+        // На схеме нет символа для прибора, у которого не хватает данных: он
+        // не попадает в пробный расчёт (toState фильтрует missing). Без этой
+        // строки непонятно, почему прибор виден слева, а справа его нет —
+        // одна карточка «впишите объём» внизу экрана эту связь не показывает.
+        const missingList = this._items.filter(it => this.missing(it));
+        const missingNote = missingList.length
+            ? [`На схему справа не попал${missingList.length > 1 ? 'и' : ''}: ${
+                missingList.map(it => this.title(it)).join(', ')} — впишите недостающие данные в карточке слева.`]
+            : [];
+        const pvNotesList = pv.notes.concat(missingNote);
+        const pvNotes = pvNotesList.length ? `<div class="rs-pv-notes">${pvNotesList.map(t => `<div>⚠ ${esc(t)}</div>`).join('')}</div>` : '';
 
         body.innerHTML = `
           <div class="rec-tcheck ${bad ? 'warn' : 'ok'}" style="display:block">
