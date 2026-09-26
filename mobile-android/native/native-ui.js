@@ -85,11 +85,20 @@
         return bar;
     }
 
+    var offlineTimer = null;
+
     function showOffline(on) {
         var el = offlineBar();
         // Кадр задержки нужен, чтобы браузер успел применить начальное
         // положение и увидел именно переход, а не сразу конечное состояние.
         requestAnimationFrame(function () { el.classList.toggle('show', !!on); });
+
+        // Пока плашка висит, тихо перепроверяем связь: в поле она возвращается
+        // сама (поймалась вышка, включился вайфай), а событие online встроенный
+        // браузер присылает не всегда. Без этого плашка оставалась до
+        // перезапуска приложения.
+        clearTimeout(offlineTimer);
+        if (on) offlineTimer = setTimeout(updateNetwork, 15000);
     }
 
     /**
@@ -98,14 +107,31 @@
      * Одному navigator.onLine верить нельзя: встроенный браузер отвечает «нет
      * сети» и там, где она есть. Разрешение ACCESS_NETWORK_STATE это чинит, но
      * плашка, которая врёт про отсутствие интернета, — худшее, что можно
-     * показать человеку в поле, поэтому перед ней ещё и стучимся на сайт.
+     * показать человеку в поле, поэтому перед ней ещё и стучимся на свои адреса.
      * Ответ не читаем: важен сам факт, что запрос дошёл.
+     *
+     * Адресов два, и достаточно любого. У части провайдеров закрыт именно
+     * heatcalc.ru (сайт на GitHub Pages), а сервер приложения на другом домене
+     * отвечает — цены и вход при этом работают, и «нет сети» в таком случае
+     * прямая неправда.
      */
+    var PROBE_URLS = [SITE + '/manifest.json', 'https://proxy.heatcalc.ru/user_creds.php'];
+
     function probe() {
-        return fetch(SITE + '/manifest.json',
-            { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
-            .then(function () { return true; })
-            .catch(function () { return false; });
+        return new Promise(function (resolve) {
+            var left = PROBE_URLS.length;
+            var answered = false;
+            PROBE_URLS.forEach(function (url) {
+                fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
+                    .then(function () {
+                        if (!answered) { answered = true; resolve(true); }
+                    })
+                    .catch(function () {
+                        left--;
+                        if (left <= 0 && !answered) { answered = true; resolve(false); }
+                    });
+            });
+        });
     }
 
     function updateNetwork() {
