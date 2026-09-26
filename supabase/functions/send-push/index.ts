@@ -549,7 +549,10 @@ Deno.serve(async (req) => {
       "Клиент просит доработать смету",
     ]);
     let tgCategory: "kp" | "oprosnik" | "chat" | null = null;
-    if (reason === "manager_chat" || reason === "broadcast") tgCategory = "chat";
+    // installer_reply — ответ монтажника администрации; по описанию категории выше
+    // («...или с администрацией») тоже должен дублироваться, но был здесь пропущен —
+    // отсюда сообщения приходили только в приложение, а в Telegram молчали.
+    if (reason === "manager_chat" || reason === "broadcast" || reason === "installer_reply") tgCategory = "chat";
     else if (reason === "opros_lead") tgCategory = "oprosnik";
     else if ((reason === "invoice_event" || reason === "shared_invoice") && KP_DECISION_TITLES.has(title)) {
       tgCategory = "kp";
