@@ -3510,9 +3510,9 @@
                      заполняется из renderUserReplyBar -->
                 <div id="user_chat_replybar"></div>
                 <div class="admin-chat-compose">
-                    <textarea id="user_chat_input" rows="1" placeholder="Сообщение администратору…" onkeydown="app.userChatKey(event)"></textarea>
+                    <textarea id="user_chat_input" rows="1" enterkeyhint="send" placeholder="Сообщение администратору…" onkeydown="app.userChatKey(event)"></textarea>
                     <button class="emoji-open-btn" type="button" title="Смайлики" onclick="app.toggleEmojiPicker('user_chat_input', this)">🙂</button>
-                    <button class="admin-chat-send" id="user_chat_send" title="Отправить (Enter)" onclick="app.sendUserChatMessage()">➤</button>
+                    <button class="admin-chat-send" id="user_chat_send" title="Отправить (Enter)" onpointerdown="event.preventDefault()" onclick="app.sendUserChatMessage()">➤</button>
                 </div>
             </div>
 
