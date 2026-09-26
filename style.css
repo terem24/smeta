@@ -12631,6 +12631,11 @@ body.dark-mode .rs-scheme { border-color: #334155; }
 .rs-notes div { margin-top: 3px; }
 .rs-area { border: 1px solid rgba(245, 158, 11, .4); background: rgba(245, 158, 11, .08); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
 .rs-area label { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.rs-howto { margin-top: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 6px 10px; font-size: 12.5px; }
+.rs-howto summary { cursor: pointer; font-weight: 600; }
+.rs-howto-body { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+.rs-howto-row { display: flex; gap: 8px; align-items: flex-start; color: var(--text-sec, #64748b); }
+.rs-howto-ico { flex: none; width: 20px; text-align: center; font-size: 15px; color: var(--text-main, #0f172a); }
 @media (max-width: 760px) {
     .rs-wrap, .rs-bottom { grid-template-columns: 1fr; }
 }
