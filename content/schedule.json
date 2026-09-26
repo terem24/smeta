@@ -2097,10 +2097,10 @@
    "freq": 2600,
    "audience": "owner",
    "data_block": "узел ввода",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-24",
    "published_at": null,
-   "words": 0
+   "words": 877
   },
   {
    "slug": "elektrika-kotelnoy",
@@ -2111,10 +2111,10 @@
    "freq": 1600,
    "audience": "builder",
    "data_block": "ПУЭ 7",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-26",
    "published_at": null,
-   "words": 0
+   "words": 979
   },
   {
    "slug": "kogda-zakazyvat-inzhenerku",
@@ -2125,10 +2125,10 @@
    "freq": 1100,
    "audience": "builder",
    "data_block": "этапы стройки",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-08-28",
    "published_at": null,
-   "words": 0
+   "words": 946
   },
   {
    "slug": "styazhka-na-teplyy-pol",
