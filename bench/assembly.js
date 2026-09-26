@@ -19,7 +19,9 @@ const OBJECTS = [
     { title: '300 м², радиаторы + тёплый пол', o: { area: 300, res: 6, systems: ['rad', 'ufh'] } },
     { title: '200 м², ROMMER', o: { area: 200, systems: ['rad', 'ufh'], brandMode: 'rommer' } },
     { title: '200 м², металлопластик', o: { area: 200, systems: ['rad', 'ufh'], boilerPipeSystem: 'mp' } },
-    { title: '200 м², полипропилен', o: { area: 200, systems: ['rad', 'ufh'], boilerPipeSystem: 'ppr' } }
+    { title: '200 м², полипропилен', o: { area: 200, systems: ['rad', 'ufh'], boilerPipeSystem: 'ppr' } },
+    { title: '150 м², рециркуляция ГВС', o: { area: 150, recirc: true } },
+    { title: '150 м², рециркуляция ГВС, ROMMER', o: { area: 150, recirc: true, brandMode: 'rommer' } }
 ];
 
 const KIND = ac.KIND_RU;

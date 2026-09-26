@@ -63,11 +63,25 @@
     ports: [
       P('M', '1', 1, { role: 'вход ХВС' }),
       P('M', '1', 2, { role: 'змеевик' }),
-      P('M', '1', 1, EXT('рециркуляция (в дом или заглушка)')),
+      P('M', '1', 1, { ext: true, role: 'рециркуляция (в дом или заглушка)', usedIf: /_recirc/ }),
       P('M', '3/4', 1, { role: 'выход ГВС' })
     ]
   };
+  var ROMMER_GT = {
+    // Паспорт ROMMER GT (rommer_e750a8c2fb98): ХВС G3/4" НР, предохранительный
+    // G1/2" НР, ГВС / змеевик / рециркуляция — G3/4" ВР.
+    src: 'ROMMER GT, паспорт (rommer_e750a8c2fb98)',
+    ports: [
+      P('M', '3/4', 1, { role: 'вход ХВС' }),
+      P('F', '3/4', 2, { role: 'змеевик' }),
+      P('F', '3/4', 1, { role: 'выход ГВС' }),
+      P('F', '3/4', 1, { ext: true, role: 'рециркуляция (в дом или заглушка)', usedIf: /_recirc/ }),
+      P('M', '1/2', 1, { role: 'предохранительный клапан' })
+    ]
+  };
   var DEVICES = {
+    'RWH-2110-000150': ROMMER_GT, 'RWH-2110-000200': ROMMER_GT,
+    'RWH-2110-000300': ROMMER_GT, 'RWH-2110-000500': ROMMER_GT,
     'GE0Q6QE0CRU': HAIER_1X,
     'GE0Q6RE0CRU': HAIER_1X,
     'SWH-2110-000150': OPTIBASE_150_200,
@@ -84,6 +98,7 @@
     'RFW-0070-259525': { src: 'паспорт RFW-0070 (rommer_92bc260c9fa7)', ports: [P('U', '1', 2)] },
     'RFW-0080-256620': { src: 'паспорт RFW-0080 (rommer_d2dea43718a8)', ports: [P('U', '3/4', 2)] },
     'SVM-0125-186520': { src: 'паспорт SVM-0110/0120/0125 (stout_d05db7aaeb51)', ports: [P('M', '3/4', 3)] },
+    'SVM-0120-166020': { src: 'паспорт SVM-0110/0120/0125 (stout_d05db7aaeb51)', ports: [P('M', '3/4', 3)] },
     'RVS-0003-006015': { src: 'паспорт RVS-0003 (rommer_a2635d526ee4)',
       ports: [P('F', '1/2', 1, { role: 'вход' }), P('F', '3/4', 1, EXT('сброс в канализацию'))] },
     'SVC-0012-000020': { src: 'паспорт SVC-0012 (stout_884e9edd3a44)', ports: [P('F', '3/4', 2)] },
@@ -102,6 +117,11 @@
     'SDG-0018-004002': { src: 'паспорт SDG коллекторы, ред. 30.03.2023 (stout_49e828f28dc3)',
       slots: '1/2" ВР под КИП/воздухоотводчик/слив, число не указано',
       ports: [P('M', '1 1/2', 2, { role: 'к котлу' }), P('N', '1 1/2', 4, { role: 'к насосным группам' })] },
+    // Насосы рециркуляции ГВС ROMMER RCP-0005 — G1/2" ВР (паспорта серии RCP-0005);
+    // один патрубок — в разводку рециркуляции дома.
+    'RCP-0005-152080': { src: 'паспорт RCP-0005 PROFI (rommer_25de040cca57)', ports: [P('F', '1/2'), P('F', '1/2', 1, EXT('рециркуляция из дома'))] },
+    'RCP-0005-151780': { src: 'паспорт RCP-0005 PROFI (rommer_01839daa8561)', ports: [P('F', '1/2'), P('F', '1/2', 1, EXT('рециркуляция из дома'))] },
+    'RCP-0005-150480': { src: 'паспорт RCP-0005 (rommer_19501b531fce)', ports: [P('F', '1/2'), P('F', '1/2', 1, EXT('рециркуляция из дома'))] },
     'SIM-1001-635015': { src: 'паспорт термометров STOUT (stout_fbc3a558125d)', ports: [P('M', '1/2')] }
     // ASKON-MU-25M: паспорта с резьбами нет — не вносим.
   };
@@ -167,8 +187,11 @@
     if (!th.length) return null;
     var t = th[0];
 
-    // Муфта переходная ВР 1 1/2"х1" — две разные резьбы.
+    // Муфта переходная: «ВР 1 1/2"х1"» — обе внутренние; «ВР 1" × НР 3/4"» —
+    // исполнение у каждой резьбы своё, стоит перед ней.
     if (/муфта переходн/i.test(n) && th.length >= 2) {
+      var g2 = /(ВР|НР)\s*[\d\s\/]+["″']\s*[хx×]\s*(ВР|НР)/.exec(n);
+      if (g2) return [port(g2[1] === 'НР' ? 'M' : 'F', th[0]), port(g2[2] === 'НР' ? 'M' : 'F', th[1])];
       var g = /НР/.test(n) && !/ВР/.test(n) ? 'M' : 'F';
       return [port(g, th[0]), port(g, th[1])];
     }
@@ -198,9 +221,23 @@
     return id.replace(/_.*$/, '');
   }
 
+  /* Концы, которые по замыслу уходят из котельной, а не остаются без пары.
+   * Узнаются по ключу строки сметы (originalId) — назначение арматуры. Строки
+   * одного артикула смета склеивает, поэтому число — функция от строки.
+   *  - кран на входе ХВС: НР стороной к водопроводу дома; с ним склеивается
+   *    дренажный кран бойлера, у которого наружу смотрит НР под шланг;
+   *  - кран с накидной гайкой на выходе термосмесителя: НР — в разводку ГВС
+   *    (один из двух склеенных, второй стоит на холодном входе клапана). */
+  var EXT_ROWS = [
+    { re: /^SVB-0006-200020_cold$/, kind: 'M', size: '3/4', n: function (it) { return Number(it.q) || 1; }, role: 'вход ХВС из дома / шланг дренажа' },
+    { re: /^SVB-1009-000020_dhwmix/, kind: 'M', size: '3/4', n: function () { return 1; }, role: 'выход ГВС в разводку дома' }
+  ];
+
   /* Концы позиции: сперва таблица приборов (по артикулу), затем название. */
   function portsOf(it) {
-    var ids = [baseId(it), String(it.id || '')];
+    // Сначала настоящий артикул строки: в режиме ROMMER строка ходит под ключом
+    // STOUT-позиции (originalId), а стоит в ней бойлер GT со своими патрубками.
+    var ids = [String(it.id || ''), baseId(it)];
     for (var i = 0; i < ids.length; i++) {
       var d = DEVICES[ids[i]];
       if (d) return { ports: d.ports, src: d.src, from: 'passport', dhwValve: !!d.dhwValve, slots: d.slots };
@@ -224,11 +261,22 @@
       r.ports.forEach(function (p) {
         if (p.pipe) { pipe[p.size] = (pipe[p.size] || 0) + q; return; }
         var n = (p.qty || 1) * q;
-        if (p.ext) { ext.push({ it: it, p: p, n: n }); return; }
+        // usedIf — патрубок уходит наружу, только пока к нему ничего не подключено
+        // (рециркуляция: без насоса патрубок глушат, с насосом он в балансе).
+        var used = p.usedIf && (list || []).some(function (x) { return p.usedIf.test(String(x.originalId || '')); });
+        if (p.ext && !used) { ext.push({ it: it, p: p, n: n }); return; }
         var key = (p.kind === 'S' || p.kind === 'P' ? 'пресс ' + p.size : p.size + '"');
         var b = bal[key] || (bal[key] = { M: 0, F: 0, N: 0, S: 0, P: 0, U: 0, who: [] });
         b[p.kind] += n;
         b.who.push({ id: baseId(it), name: it.name, kind: p.kind, n: n, from: r.from });
+      });
+      // Концы этой строки, уходящие из котельной, — вычитаем из баланса.
+      EXT_ROWS.forEach(function (x) {
+        if (!x.re.test(String(it.originalId || ''))) return;
+        var b = bal[x.size + '"']; if (!b) return;
+        var k = x.n(it);
+        b[x.kind] -= k;
+        ext.push({ it: it, p: { kind: x.kind, size: x.size, role: x.role }, n: k });
       });
     });
 

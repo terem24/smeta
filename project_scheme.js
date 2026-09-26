@@ -1733,12 +1733,23 @@
         o.push(hpipe(bx1, bx1 + 4.1, armY + 8.9, COL.cold));
         o.push(safetyValve(bx1 + 6.6, armY + 8.9, true));
         o.push(leader(bx1 + 5.6, armY + 7.8, safetyThread));
+        // Дренажный кран бойлера — на том же узле В1, отвод вправо под
+        // предохранительным клапаном: своего сливного патрубка у бойлера нет,
+        // паспорт требует крана на обвязке (в смете — кран 3/4" НР/НР, 27.09.2026).
+        var drY = armY + 16;
+        o.push(hpipe(bx1, bx1 + 4.1, drY, COL.cold));
+        o.push(ballValve(bx1 + 6.6, drY, false));
+        o.push(leader(bx1 + 5.6, drY - 1.1, '3/4"'));
+        // Подпись — под краном, а не правее: правее при рециркуляции идёт стояк Т4.
+        o.push(txt(bx1 + 4.2, drY + 4.6, 'слив', { size: SZ.txt }));
         o.push(ln(bx1, armY + 6.4, bx1, checkY - 2.5, { c: COL.cold, w: LW.pipe }));
         o.push(checkValve(bx1, checkY, 'up'));
-        o.push(leaderCheck(bx1, checkY, coldThread));
+        // Узел В1 в смете собран на 3/4" при любом патрубке ХВС: у патрубка 1"
+        // стоит муфта ВР 1" × НР 3/4". Подпись — по арматуре, а не по патрубку.
+        o.push(leaderCheck(bx1, checkY, '3/4"'));
         o.push(ln(bx1, checkY + 2.5, bx1, yTopV, { c: COL.cold, w: LW.pipe }));
         o.push(ballValve(bx1, bottomValveY, true));
-        o.push(leaderValve(bx1, bottomValveY, coldThread));
+        o.push(leaderValve(bx1, bottomValveY, '3/4"'));
         o.push(diaV(bx1, bottomValveY - 7.2, sanDia));
         o.push(bottomMark(bx1, 'В1', 'up'));
         // расширительный бак ГВС — на своём отводе от В1, между обратным
@@ -1776,20 +1787,22 @@
         o.push(leader(bx2 - 0.96, mvY - 4.4, cfg.dhwMix));
       }
       // Т4: рециркуляция — кран у бойлера (иначе замена насоса требует
-      // слива бойлера), насос, обратный клапан, кран внизу
+      // слива бойлера), насос, обратный клапан, кран внизу. Арматура узла в
+      // смете — 3/4" при любом патрубке (у патрубка 1" муфта ВР 1" × НР 3/4"),
+      // поэтому подписи 3/4", а не размер патрубка (recircThread).
       if (cfg.recirc) {
         o.push(hpipe(bx3, tX - 1.5, pT4, COL.recirc));
         o.push(vpipe(bx3, pT4, 213.3, COL.recirc, loadDown ? [pT1, pT2, pB1] : [pT1, pB1, mY.loadR]));
         o.push(ballValve(bx3, 215.8, true));
-        o.push(leaderValve(bx3, 215.8, recircThread));
+        o.push(leaderValve(bx3, 215.8, '3/4"'));
         o.push(ln(bx3, 218.3, bx3, 223.1, { c: COL.recirc, w: LW.pipe }));
         o.push(pump(bx3, 226, 'up'));
         o.push(ln(bx3, 228.92, bx3, 230.5, { c: COL.recirc, w: LW.pipe }));
         o.push(checkValve(bx3, 233, 'up'));
-        o.push(leaderCheck(bx3, 233, recircThread));
+        o.push(leaderCheck(bx3, 233, '3/4"'));
         o.push(ln(bx3, 235.5, bx3, yTopV, { c: COL.recirc, w: LW.pipe }));
         o.push(ballValve(bx3, bottomValveY, true));
-        o.push(leaderValve(bx3, bottomValveY, recircThread));
+        o.push(leaderValve(bx3, bottomValveY, '3/4"'));
         o.push(diaV(bx3, bottomValveY - 7.2, recDia));
         o.push(bottomMark(bx3, 'Т4', 'up'));
       }
