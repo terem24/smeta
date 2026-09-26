@@ -1341,10 +1341,10 @@
    "freq": 3800,
    "audience": "pro",
    "data_block": "расценки за точку",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-24",
    "published_at": null,
-   "words": 0
+   "words": 874
   },
   {
    "slug": "na-chem-nelzya-ekonomit",
@@ -1355,10 +1355,10 @@
    "freq": 2100,
    "audience": "owner",
    "data_block": "разбор по позициям",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-27",
    "published_at": null,
-   "words": 0
+   "words": 1014
   },
   {
    "slug": "zapusk-vodosnabzheniya-posle-zimy",
@@ -1369,10 +1369,10 @@
    "freq": 0,
    "audience": "owner",
    "data_block": "давления по СП 73",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-27",
    "published_at": null,
-   "words": null
+   "words": 917
   },
   {
    "slug": "kotelnaya-pod-klyuch-spb",
