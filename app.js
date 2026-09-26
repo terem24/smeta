@@ -1924,7 +1924,7 @@ const app = {
                         background:${res.ok ? 'rgba(16,185,129,0.08)' : 'rgba(217,119,6,0.08)'};
                         border:1px solid ${res.ok ? 'rgba(16,185,129,0.35)' : 'rgba(217,119,6,0.35)'};
                         border-radius:12px; padding:10px 14px; margin:0 20px 10px;">
-                <span style="font-size:18px; line-height:1;">${res.ok ? '🏪' : '⚠️'}</span>
+                <span class="ui-emo" style="font-size:18px; line-height:1;">${res.ok ? '🏪' : '⚠️'}</span>
                 <span style="font-size:13px; color:var(--text-main); text-align:center;">${text}</span>
                 ${action}
                 <button type="button" style="${closeStyle}" title="Скрыть" onclick="app.closeInviteBanner()">×</button>
@@ -11597,6 +11597,23 @@ const app = {
     showClientShareMessage: function (title, intro, msg, url) {
         this._shareMsg = { msg: msg, url: url };
         const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+        // На телефоне окно не помещалось на экран: два пояснения подряд, поле на пять строк
+        // и три кнопки разной ширины в одном ряду. Смысл окна — одно действие («скопировать
+        // сообщение»), остальное второстепенно: на мобильном убираем подписи, поле делаем
+        // ниже, а под главной кнопкой оставляем ровную пару второстепенных.
+        if (this.isMobileLayout()) {
+            this.showPlainModal(title, `
+            <textarea readonly rows="4" onclick="this.select()"
+                style="width:100%; box-sizing:border-box; font:inherit; font-size:12.5px; line-height:1.4; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); resize:none;">${esc(msg)}</textarea>
+            <button type="button" class="custom-modal-btn" style="width:100%; height:46px; margin-top:12px;" onclick="app.copyShareMsg('msg')">📋 Скопировать сообщение</button>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <button type="button" class="custom-modal-btn" style="flex:1; width:auto; height:42px; margin:0; background:transparent; color:var(--primary); border:1px solid var(--primary);" onclick="app.copyShareMsg('url')">🔗 Ссылка</button>
+                <button type="button" class="custom-modal-btn" style="flex:1; width:auto; height:42px; margin:0; background:transparent; color:var(--text-main); border:1px solid var(--border);" onclick="window.open(app._shareMsg.url, '_blank')">Открыть</button>
+            </div>`);
+            return;
+        }
+
         this.showPlainModal(title, `
             ${intro || ''}
             <div style="font-size:12px; color:var(--text-sec); margin-bottom:6px;">Сообщение для клиента — вставьте в мессенджер или письмо:</div>
@@ -12975,12 +12992,22 @@ const app = {
             if (prev && prev.event === ev.event && prev.evV === evV && prev.comment === comment) {
                 prev.count++;
                 prev.created_at = ev.created_at;
+                prev.times.push(ev.created_at);
                 return;
             }
-            groups.push({ event: ev.event, evV: evV, comment: comment, created_at: ev.created_at, count: 1 });
+            groups.push({ event: ev.event, evV: evV, comment: comment, created_at: ev.created_at, count: 1, times: [ev.created_at] });
         });
+        // У схлопнутой строки справа только последнее время, а когда были
+        // остальные разы («открыл ×2» — во сколько первый?) — перечисляем рядом.
+        // Больше пяти — первое и три последних.
+        const fmtShort = (iso) => new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+        const timesText = (t) => {
+            const list = t.length > 5 ? [t[0], null].concat(t.slice(-3)) : t;
+            return list.map(x => x ? fmtShort(x) : '…').join(', ');
+        };
         return groups.map(g => {
             const m = EVENT_META[g.event] || { label: g.event, color: '#94A3B8' };
+            if (g.count > 1) g.comment = timesText(g.times) + (g.comment ? ' · ' + g.comment : '');
             return `<div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:4px 0; border-bottom:1px dashed var(--border);">
                         <span style="display:inline-block; background:${m.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px; white-space:nowrap;">${m.label}${g.count > 1 ? ' ×' + g.count : ''}</span>
                         <span style="flex:1; font-size:11px; color:var(--text-main);">${g.evV ? `<span style="font-family:monospace; color:var(--text-sec);">КП № ${esc(calcId)}-${g.evV}</span>${g.comment ? ' · ' : ''}` : ''}${esc(g.comment)}</span>
@@ -13006,17 +13033,22 @@ const app = {
             const me = await this.resolveCurrentUserForChat();
             const email = (me && me.email) || (this.state.tgUser && this.state.tgUser.email) || null;
             if (!email) { holder.innerHTML = '<span style="color:var(--text-sec); font-size:11.5px;">Не удалось определить аккаунт.</span>'; return; }
+            // Вся жизнь сметы: начат расчёт, сохранено, отправлено, открыто, одобрено.
+            // Действия клиента (открыл, одобрил, на доработку, запросил счёт) пишет
+            // invoice.html без входа — у них user_email пустой. Фильтр только по своей
+            // почте их прятал: в истории было одно «Отправлено», хотя статус «Одобрено».
+            const keys = ['recognized', 'calculated', 'saved', 'opened'].concat(this.ORDER_EVENT_KEYS);
             const { data, error } = await supabaseClient.from('invoice_events')
                 .select('event, created_at, meta')
-                .eq('user_email', email)
                 .eq('calc_id', calcId)
-                .in('event', this.ORDER_EVENT_KEYS)
+                .or(`user_email.eq.${email},user_email.is.null`)
+                .in('event', keys)
                 .order('created_at', { ascending: true });
             if (error) throw error;
             const rows = data || [];
             holder.innerHTML = rows.length
                 ? this.buildInvoiceHistoryRows(rows, calcId)
-                : '<span style="color:var(--text-sec); font-size:11.5px;">По этому объекту пока нет заказных событий.</span>';
+                : '<span style="color:var(--text-sec); font-size:11.5px;">По этому объекту пока нет событий.</span>';
             holder.dataset.loaded = '1';
         } catch (e) {
             console.warn('[toggleObjectHistory]', e);
@@ -13293,7 +13325,6 @@ const app = {
      * устройстве и есть у всех, включая Базовый тариф, — в отличие от облачных
      * смет, которые копятся только у Профи.
      */
-    INSTALLER_SUMMARY_DAYS: 120,
     INSTALLER_STALE_DAYS: 5,
     // Ниже этого движения не показываем: копеечные колебания прайса читаются
     // как «подорожало», а пересчитывать смету из-за полупроцента незачем.
@@ -13423,68 +13454,244 @@ const app = {
         return out;
     },
 
+    // Период «Моих показателей»: живёт в памяти вкладки, как и прочие взгляды
+    // на данные. Предыдущий период такой же длины нужен для стрелок «лучше/хуже».
+    _summaryDays: 90,
+    INSTALLER_SUMMARY_PERIODS: [30, 90, 365],
+
+    setInstallerSummaryPeriod: function (days) {
+        this._summaryDays = Number(days) || 90;
+        this.renderInstallerSummaryTab();
+    },
+
+    /**
+     * Сметы монтажника с площадью и суммами — для «Среднего объекта» и «Денег
+     * на столе». Одна строка на номер расчёта: пересохранение и копии дают
+     * несколько строк с одним calc_id, а объект один. Берём самую свежую.
+     */
+    fetchInstallerEstimates: async function (userId, days) {
+        if (!userId) return [];
+        const since = new Date(Date.now() - days * 86400000).toISOString();
+        const res = await this.fetchAllRows('estimates',
+            'id, created_at, total_sum, eq_sum, works_sum, calc_id:calc_data->>calc_id, area:calc_data->>area, brand:calc_data->>brandMode, pn:project_name',
+            { order: 'created_at', cap: 5000, build: (qy) => qy.eq('user_id', userId).gte('created_at', since) });
+        const byCalc = {};
+        (res.rows || []).forEach(e => {
+            const key = String(e.calc_id || e.id);
+            const prev = byCalc[key];
+            if (!prev || new Date(e.created_at) > new Date(prev.created_at)) byCalc[key] = e;
+        });
+        return Object.values(byCalc).map(e => {
+            const eq = parseFloat(e.eq_sum) || 0, works = parseFloat(e.works_sum) || 0;
+            return {
+                id: e.id, calc: e.calc_id ? String(e.calc_id) : '', name: e.pn || 'Без названия',
+                at: new Date(e.created_at).getTime(),
+                area: parseFloat(String(e.area || '').replace(',', '.')) || 0,
+                eq: eq, works: works, total: parseFloat(e.total_sum) || (eq + works),
+                brand: e.brand || 'stout'
+            };
+        });
+    },
+
+    /**
+     * Оценка заработка по одной сохранённой смете — по процентам из «Денег».
+     *
+     * Точный расчёт (marginReport) идёт по строкам открытой сметы: бренд каждой
+     * позиции, цена прайса до скидки клиенту, своя оплата бригады за каждую
+     * работу. В базе от сохранённой сметы лежат только итоги по оборудованию и
+     * работам, поэтому здесь приближение: скидка поставщика — по бренду всей
+     * сметы, бригаде — общая доля. Так и подписывается: «оценка».
+     */
+    estimateMarginOf: function (e, m) {
+        if (!m || !e || !e.total) return null;
+        const disc = (e.brand === 'rommer' ? m.discRommer : m.discStout) || 0;
+        const eqMargin = e.eq * disc / 100;
+        const worksMargin = e.works * (100 - (m.crewShare || 0)) / 100;
+        const overhead = (m.overheadFix || 0) + e.total * (m.overheadPct || 0) / 100;
+        return Math.round(eqMargin + worksMargin - overhead);
+    },
+
     renderInstallerSummaryTab: async function () {
         const container = document.getElementById('profile_tab_summary');
         if (!container) return;
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+        const P = this._summaryDays || 90;
+        const periodBtns = this.INSTALLER_SUMMARY_PERIODS.map(d =>
+            `<button type="button" class="lk-btn-sm${d === P ? ' is-active' : ''}" onclick="app.setInstallerSummaryPeriod(${d})">${d === 365 ? 'год' : d + ' дн.'}</button>`).join('');
         const head = `<div class="lk-section-head">
-                          <h4>📊 Сводка</h4>
-                          <button type="button" class="lk-btn-sm" onclick="app.renderInstallerSummaryTab()">↻ Обновить</button>
+                          <h4>📊 Мои показатели</h4>
+                          <div class="summary-period">${periodBtns}
+                              <button type="button" class="lk-btn-sm" onclick="app.renderInstallerSummaryTab()" title="Пересчитать">↻</button>
+                          </div>
                       </div>`;
         container.innerHTML = head + `<div class="lk-empty">⌛ Считаем ваши сметы…</div>`;
 
-        let rows = null, failed = '';
+        // История берётся за два периода: второй — для сравнения. Но не меньше
+        // полугода: «деньги на столе» и «ждут звонка» не должны теряться только
+        // потому, что выбран короткий период.
+        const HIST_DAYS = Math.max(P * 2, 180);
+        let rows = null, ests = [], failed = '', meRow = null;
         try {
-            const me = await this.resolveCurrentUserForChat();
+            const me = meRow = await this.resolveCurrentUserForChat();
             const email = (me && me.email) || (this.state.tgUser && this.state.tgUser.email) || null;
             if (!email) {
-                container.innerHTML = head + `<p class="lk-hint">Войдите в аккаунт — сводка считается по вашим сметам.</p>`;
+                container.innerHTML = head + `<p class="lk-hint">Войдите в аккаунт — показатели считаются по вашим сметам.</p>`;
                 return;
             }
-            // Здесь, в отличие от «Заказов», нужны и черновики: воронка
-            // начинается с сохранённого расчёта. И нужна ВСЯ история сметы, а
-            // не только свои строки — иначе выпадут «клиент открыл» (пишет
-            // анонимная страница) и «счёт выставлен» (пишет менеджер).
-            rows = await this.fetchInvoiceHistoryByEmails([email], this.INSTALLER_SUMMARY_DAYS);
+            // Нужна ВСЯ история сметы, а не только свои строки — иначе выпадут
+            // «клиент открыл» (пишет анонимная страница) и «счёт выставлен»
+            // (пишет менеджер). См. fetchInvoiceHistoryByEmails.
+            const jobs = [this.fetchInvoiceHistoryByEmails([email], HIST_DAYS)];
+            jobs.push(me && me.id
+                ? this.fetchInstallerEstimates(me.id, HIST_DAYS).catch(e => { console.warn('[показатели] сметы не прочитаны:', e); return []; })
+                : Promise.resolve([]));
+            [rows, ests] = await Promise.all(jobs);
         } catch (e) {
             failed = (e && e.message) || String(e);
         }
 
         if (!rows) {
-            container.innerHTML = head + `<p class="lk-hint">Сводка сейчас недоступна${failed ? ' (' + esc(failed) + ')' : ''}. Попробуйте обновить позже.</p>`;
+            console.warn('[показатели]', failed);
+            container.innerHTML = head + `<p class="lk-hint">Показатели сейчас недоступны. Попробуйте обновить позже.</p>`;
             return;
         }
 
-        // Суммы по сметам — из локальной истории запросов счёта
+        const DAY = 86400000, now = Date.now();
+        const curFrom = now - P * DAY, prevFrom = now - 2 * P * DAY;
+        const inCur = t => t >= curFrom, inPrev = t => t >= prevFrom && t < curFrom;
+
+        // Суммы по сметам: из базы (сохранённые сметы), а для тех, кого там
+        // нет (Базовый тариф копит сметы только на устройстве), — из локальной
+        // истории запросов счёта.
+        const sumOfCalc = {}, estOfCalc = {};
         let local = [];
         try { local = JSON.parse(localStorage.getItem('requested_invoices')) || []; } catch (e) { }
-        const sumOfCalc = {};
         local.forEach(inv => {
             if (!inv || !inv.calc_id) return;
             const s = Number(inv.total) || ((Number(inv.eqSum) || 0) + (Number(inv.worksSum) || 0)) || 0;
             if (s) sumOfCalc[String(inv.calc_id)] = s;
         });
+        ests.forEach(e => { if (e.calc) { estOfCalc[e.calc] = e; if (e.total) sumOfCalc[e.calc] = e.total; } });
 
-        const inv = this.buildInvoiceFunnel(rows, { sumOfCalc: sumOfCalc });
-        if (!inv.totalN) {
-            container.innerHTML = head + `<p class="lk-hint">За последние ${this.INSTALLER_SUMMARY_DAYS} дней смет не было. Посчитайте объект — и здесь появится, что с ним стало.</p>`;
+        const inv = this.buildInvoiceFunnel(rows, { sumOfCalc: sumOfCalc, cohortDays: P });
+        if (!inv.totalN && !ests.length) {
+            container.innerHTML = head + `<p class="lk-hint">За последние ${P} дней смет не было. Посчитайте объект — и здесь появится, что с ним стало.</p>`;
             return;
         }
+        const invPrev = this.buildInvoiceFunnel(rows, { sumOfCalc: sumOfCalc, cohortDays: 2 * P, keep: c => inPrev(c.firstAt) });
 
         const num = n => Number(n || 0).toLocaleString('ru-RU');
         const money = (rub) => !rub ? '—'
-            : (rub >= 1e6 ? (rub / 1e6).toFixed(1).replace('.', ',') + ' млн ₽'
+            : (Math.abs(rub) >= 1e6 ? (rub / 1e6).toFixed(1).replace('.', ',') + ' млн ₽'
                 : Math.round(rub / 1e3).toLocaleString('ru-RU') + ' тыс ₽');
+        const rubM2 = (v) => v ? Math.round(v).toLocaleString('ru-RU') + ' ₽/м²' : '—';
+        const median = (arr) => {
+            if (!arr.length) return null;
+            const a = arr.slice().sort((x, y) => x - y), k = Math.floor(a.length / 2);
+            return a.length % 2 ? a[k] : (a[k - 1] + a[k]) / 2;
+        };
+        const avg = (arr) => arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null;
+        const dur = (ms) => {
+            if (ms == null) return '—';
+            const h = ms / 3600000;
+            if (h < 1) return Math.max(1, Math.round(h * 60)) + ' мин';
+            if (h < 48) return Math.round(h) + ' ч';
+            return Math.round(h / 24) + ' дн.';
+        };
+        // Стрелка к прошлому периоду. better: 'up' — рост это хорошо (деньги,
+        // площадь), 'down' — хорошо падение (время). Меньше пяти процентов
+        // движения не показываем: это шум, а не перемена.
+        const trend = (cur, prev, better) => {
+            if (cur == null || prev == null || !prev) return '';
+            const pct = (cur - prev) / Math.abs(prev) * 100;
+            if (Math.abs(pct) < 5) return `<span class="sm-trend">как раньше</span>`;
+            const good = better === 'down' ? pct < 0 : pct > 0;
+            return `<span class="sm-trend ${good ? 'good' : 'bad'}" title="К предыдущим ${P} дням">${pct > 0 ? '▲' : '▼'} ${Math.abs(Math.round(pct))}%</span>`;
+        };
 
-        // ── Что висит без ответа ────────────────────────────────────────────
-        // Главная строка этой вкладки: смета ушла клиенту, прошло время, и
-        // ничего не происходит. Открытие ссылки различает два разных случая —
-        // «не смотрел» и «посмотрел и молчит»; разговор с клиентом в них
-        // разный, поэтому и подпись разная.
-        const DAY = 86400000, now = Date.now();
-        // Воронка хранит только ПЕРВОЕ событие каждого вида, а правку после
-        // отправки видно лишь по последнему сохранению. Без подписи
-        // пересохранённая смета выглядела так, будто с ней ничего не делали.
+        // ── Средний объект ──────────────────────────────────────────────────
+        const mSet = this.canUseMoney() ? this.marginSettings() : null;
+        const objStats = (list) => {
+            const withSum = list.filter(e => e.total > 0);
+            const withArea = withSum.filter(e => e.area > 0);
+            const margins = mSet ? withSum.map(e => this.estimateMarginOf(e, mSet)).filter(v => v != null) : [];
+            // ₽ за м² — отношением сумм, а не средним отношений: одна смета на
+            // 20 м² с котельной давала бы 30 тыс ₽/м² и тянула бы всё вверх.
+            const aSum = withArea.reduce((s, e) => s + e.area, 0);
+            return {
+                n: list.length,
+                area: avg(withArea.map(e => e.area)),
+                eq: avg(withSum.map(e => e.eq)), works: avg(withSum.map(e => e.works)), total: avg(withSum.map(e => e.total)),
+                eqM2: aSum ? withArea.reduce((s, e) => s + e.eq, 0) / aSum : null,
+                worksM2: aSum ? withArea.reduce((s, e) => s + e.works, 0) / aSum : null,
+                margin: avg(margins),
+                marginM2: (mSet && aSum) ? withArea.reduce((s, e) => s + (this.estimateMarginOf(e, mSet) || 0), 0) / aSum : null
+            };
+        };
+        const oCur = objStats(ests.filter(e => inCur(e.at)));
+        const oPrev = objStats(ests.filter(e => inPrev(e.at)));
+
+        // ── Скорость ────────────────────────────────────────────────────────
+        // Пара «от события до события» засчитывается в период, в котором она
+        // ЗАВЕРШИЛАСЬ: смета, отправленная давно и одобренная вчера, говорит
+        // о сегодняшней скорости. Берём медиану: одна смета, пролежавшая
+        // полгода, не должна перекрашивать всё.
+        const cards = inv.cards || [];
+        const minOf = (c, evs) => { let b = null; evs.forEach(e => { const t = c.first[e]; if (t && (b === null || t < b)) b = t; }); return b; };
+        const spanOf = (fromEv, toEv, inWin) => {
+            const vals = [];
+            cards.forEach(c => {
+                const a = minOf(c, fromEv), b = minOf(c, toEv);
+                if (a && b && b >= a && inWin(b)) vals.push(b - a);
+            });
+            return { v: median(vals), n: vals.length };
+        };
+        const CALC = ['calculated', 'recognized', 'saved'], SENT = ['sent', 'printed'];
+        const speedDefs = [
+            { label: 'Расчёт → отправка клиенту', hint: 'от первого расчёта до первой отправки ссылкой, PDF или Excel', from: CALC, to: SENT },
+            { label: 'Отправка → клиент открыл', hint: 'только для смет, ушедших ссылкой: PDF и Excel открытие не отмечают', from: ['sent'], to: ['opened'] },
+            { label: 'Отправка → ответ клиента', hint: 'одобрил, вернул на доработку или отклонил — это и есть ожидание клиента', from: SENT, to: ['confirmed', 'needs_revision', 'rejected'] },
+            { label: 'Расчёт → запрос счёта', hint: 'весь цикл сделки: от первого расчёта до запроса счёта', from: CALC, to: ['invoice_requested'] }
+        ];
+        const speedRows = speedDefs.map(s => {
+            const cur = spanOf(s.from, s.to, inCur), prev = spanOf(s.from, s.to, inPrev);
+            return `<div class="sm-row" title="${esc(s.hint)}">
+                        <span class="sm-row-label">${s.label}</span>
+                        <b class="sm-row-val">${dur(cur.v)}</b>
+                        <span class="sm-row-sub">${cur.n ? num(cur.n) + ' ' + this.plural(cur.n, 'смета', 'сметы', 'смет') : 'нет данных'}</span>
+                        <span class="sm-row-trend">${cur.n >= 2 && prev.n >= 2 ? trend(cur.v, prev.v, 'down') : ''}</span>
+                    </div>`;
+        }).join('');
+
+        // ── Деньги на столе ─────────────────────────────────────────────────
+        // Сметы, по которым решение ещё не принято, и одобренные без счёта.
+        // Старше 90 дней — уже не «на столе», а несбывшаяся сделка.
+        const pending = [], approved = [];
+        cards.forEach(c => {
+            const lastMove = Math.max(...Object.values(c.first));
+            if (now - lastMove > 90 * DAY) return;
+            const done = c.first.invoice_requested || c.first.invoice_issued || c.first.paid || c.first.rejected;
+            if (done) return;
+            const e = estOfCalc[c.id];
+            const item = { id: c.id, name: c.project || (e && e.name) || 'Без названия', sum: sumOfCalc[c.id] || 0,
+                margin: (mSet && e) ? this.estimateMarginOf(e, mSet) : null, estId: e ? e.id : null };
+            if (c.first.confirmed) approved.push(item);
+            else if ((c.first.sent || c.first.printed || c.first.opened) && !c.first.needs_revision) pending.push(item);
+        });
+        const tableSum = (arr, k) => arr.reduce((s, x) => s + (x[k] || 0), 0);
+        const pot = (label, arr, color, hint) => {
+            const s = tableSum(arr, 'sum'), mg = mSet ? tableSum(arr, 'margin') : 0;
+            const top = arr.slice().sort((a, b) => b.sum - a.sum).slice(0, 3);
+            return `<div class="sm-tile" title="${esc(hint)}">
+                        <div class="sm-tile-label">${label}</div>
+                        <div class="sm-tile-val" style="color:${arr.length ? color : 'var(--text-main)'};">${money(s)}</div>
+                        <div class="sm-tile-sub">${num(arr.length)} ${this.plural(arr.length, 'смета', 'сметы', 'смет')}${mSet && mg ? ` · ваших ≈ ${money(mg)}` : ''}</div>
+                        ${top.length ? `<div class="sm-tile-list">${top.map(x => `<div class="sm-link"${x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : ''}>
+                            <span>${esc(x.name)}</span><b>${x.sum ? money(x.sum) : ''}</b></div>`).join('')}</div>` : ''}
+                    </div>`;
+        };
+
+        // ── Висит без ответа (как было) ─────────────────────────────────────
         const lastSaved = {}, lastSent = {};
         rows.forEach(r => {
             const t = new Date(r && r.created_at).getTime();
@@ -13498,7 +13705,7 @@ const app = {
             return d <= 0 ? 'сегодня' : d === 1 ? 'вчера' : d + ' дн. назад';
         };
         const stale = [];
-        (inv.cards || []).forEach(c => {
+        cards.forEach(c => {
             const sent = c.first.sent || c.first.printed || null;
             const opened = c.first.opened || null;
             const moved = c.first.confirmed || c.first.invoice_requested || c.first.invoice_issued
@@ -13507,76 +13714,202 @@ const app = {
             const last = Math.max(sent || 0, opened || 0);
             const days = Math.floor((now - last) / DAY);
             if (days < this.INSTALLER_STALE_DAYS) return;
-            // Правка засчитывается, только если сохранили уже после того, как
-            // смета ушла клиенту: сохранения до отправки — обычная работа.
             const saved = lastSaved[c.id] || 0;
             const edited = saved > last
                 ? 'исправлена ' + dayWord(saved) + ((lastSent[c.id] || 0) > saved ? ', отправлена заново' : ', клиенту не отправлялась')
                 : '';
-            stale.push({ id: c.id, name: c.project || 'Без названия', days, opened: !!opened, sum: sumOfCalc[c.id] || 0, edited });
+            const e = estOfCalc[c.id];
+            stale.push({ id: c.id, name: c.project || 'Без названия', days, opened: !!opened, sum: sumOfCalc[c.id] || 0, edited, estId: e ? e.id : null });
         });
         stale.sort((a, b) => b.days - a.days);
 
-        const f0 = inv.funnel[0].n || 1;
+        const f0 = inv.funnel[0].n || 0;
         const fAuto = inv.funnel[inv.autoLast || 0];
-        const tile = (label, value, sub) => `
-            <div style="flex:1 1 150px; min-width:0; background:var(--surface-light); border:1px solid var(--border);
-                        border-radius:12px; padding:12px 14px;">
-                <div style="font-size:11.5px; color:var(--text-sec); font-weight:700;">${label}</div>
-                <div style="font-size:24px; font-weight:800; color:var(--text-main); line-height:1.1; margin-top:4px;">${value}</div>
-                <div style="font-size:11px; color:var(--text-sec); margin-top:3px;">${sub}</div>
+        const convCur = f0 ? (fAuto ? fAuto.n : 0) / f0 * 100 : null;
+        const pf0 = invPrev.funnel[0].n || 0;
+        const convPrev = pf0 ? (invPrev.funnel[invPrev.autoLast || 0].n || 0) / pf0 * 100 : null;
+
+        const tile = (label, value, sub, tr, hint) => `
+            <div class="sm-tile"${hint ? ` title="${esc(hint)}"` : ''}>
+                <div class="sm-tile-label">${label}</div>
+                <div class="sm-tile-val">${value}${tr ? ' ' + tr : ''}</div>
+                <div class="sm-tile-sub">${sub}</div>
             </div>`;
 
         const funnelHtml = inv.funnel.map((f, i) => {
             const prevN = i ? inv.funnel[i - 1].n : 0;
             const step = !i ? '' : (prevN ? Math.round(f.n / prevN * 100) + '%' : '—');
-            return `<div style="display:flex; align-items:center; gap:10px; margin-bottom:7px;">
-                    <div style="flex:1 1 46%; min-width:0; font-size:12.5px; color:var(--text-main);">${f.label}${f.manual
-                        ? `<br><small style="color:var(--text-sec);">ставит менеджер вручную</small>` : ''}</div>
-                    <div style="flex:1 1 28%; height:8px; background:rgba(127,127,127,.18); border-radius:999px; overflow:hidden;">
-                        <div style="width:${Math.max(2, Math.round(f.n / f0 * 100))}%; height:8px; border-radius:999px;
-                                    background:${i === 0 ? 'var(--primary)' : (f.n ? '#10B981' : '#EF4444')};"></div>
-                    </div>
-                    <div style="width:34px; text-align:right; font-size:12.5px; font-weight:700; color:var(--text-main);">${num(f.n)}</div>
-                    <div style="width:42px; text-align:right; font-size:11.5px; color:var(--text-sec);">${step}</div>
+            return `<div class="sm-funnel-row">
+                    <span class="sm-row-label">${f.label}${f.manual ? ` <small>· ставит менеджер</small>` : ''}</span>
+                    <span class="sm-bar"><i style="width:${Math.max(2, Math.round(f.n / (f0 || 1) * 100))}%; background:${i === 0 ? 'var(--primary)' : (f.n ? '#10B981' : '#EF4444')};"></i></span>
+                    <b class="sm-funnel-n">${num(f.n)}</b>
+                    <span class="sm-funnel-pct">${step}</span>
                 </div>`;
         }).join('');
 
         const staleHtml = stale.length
             ? stale.slice(0, 8).map(x => `
-                <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
-                    <div style="min-width:0; flex:1;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${esc(x.name)}</b>
+                <div class="sm-row sm-link"${x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : ''}>
+                    <span class="sm-row-label"><b>${esc(x.name)}</b>
                         <br><small style="color:${x.opened ? '#F97316' : 'var(--text-sec)'};">${x.opened
                             ? 'клиент открыл и молчит' : 'клиент так и не открыл'}${x.sum ? ' · ' + money(x.sum) : ''}</small>${x.edited
-                            ? `<br><small style="color:var(--primary);">✏️ ${x.edited}</small>` : ''}
-                    </div>
-                    <b style="flex:0 0 auto; font-size:12.5px; color:${x.days >= 14 ? '#EF4444' : '#F97316'};">${x.days} дн.</b>
+                            ? `<br><small style="color:var(--primary);">✏️ ${x.edited}</small>` : ''}</span>
+                    <b style="color:${x.days >= 14 ? '#EF4444' : '#F97316'};">${x.days} дн.</b>
                 </div>`).join('')
                 + (stale.length > 8 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(stale.length - 8)}</p>` : '')
             : `<p class="lk-hint">Ничего не висит: по всем отправленным сметам есть движение.</p>`;
 
+        // Продавец монтаж не делает: строки про работы ему — пустые нули.
+        const seller = this.isSellerOnly();
+        const objCell = (label, val, sub, tr) => `<div class="sm-cell"><span>${label}</span><b>${val}</b>${sub ? `<small>${sub}</small>` : ''}${tr || ''}</div>`;
+        const objHtml = oCur.n
+            ? `<div class="sm-cells">
+                ${objCell('Площадь', oCur.area ? Math.round(oCur.area) + ' м²' : '—', '', trend(oCur.area, oPrev.area, 'up'))}
+                ${objCell(seller ? 'Средний чек' : 'Смета целиком', money(oCur.total), '', trend(oCur.total, oPrev.total, 'up'))}
+                ${objCell('Оборудование', money(oCur.eq), rubM2(oCur.eqM2), trend(oCur.eqM2, oPrev.eqM2, 'up'))}
+                ${seller ? '' : objCell('Монтаж', money(oCur.works), rubM2(oCur.worksM2), trend(oCur.worksM2, oPrev.worksM2, 'up'))}
+                ${mSet ? objCell('Ваш заработок ≈', money(oCur.margin), rubM2(oCur.marginM2), trend(oCur.margin, oPrev.margin, 'up')) : ''}
+               </div>
+               <p class="lk-hint" style="margin-top:6px;">По ${num(oCur.n)} ${this.plural(oCur.n, 'сохранённой смете', 'сохранённым сметам', 'сохранённым сметам')} за ${P} дней; ₽/м² — по сметам с указанной площадью.${mSet
+                    ? ' Заработок — оценка по вашим процентам из «Денег» (скидка поставщика по бренду сметы, общая доля бригады, накладные); точная цифра — во вкладке «Деньги» открытой сметы.'
+                    : (this.canUseMoney() ? ' Заведите проценты во вкладке «Деньги» — здесь появится и ваш заработок с объекта.' : '')}</p>`
+            : `<p class="lk-hint">За ${P} дней сохранённых смет нет${ests.length ? '' : ' — средние считаются по сметам, сохранённым в облаке'}.</p>`;
+
+        // ── Что сделать сейчас ──────────────────────────────────────────────
+        // Числа выше отвечают «как дела», а монтажнику нужно ещё «кому звонить».
+        // Каждая подсказка — про конкретную смету и открывает её по нажатию.
+        // Порядок — по тому, насколько близко деньги: одобренные первыми.
+        const openedTimes = {}, lastOf = {};
+        rows.forEach(r => {
+            const t = new Date(r && r.created_at).getTime();
+            if (!r || !r.calc_id || isNaN(t)) return;
+            const id = String(r.calc_id);
+            if (r.event === 'opened') (openedTimes[id] || (openedTimes[id] = [])).push(t);
+            const L = lastOf[id] || (lastOf[id] = {});
+            if (!L[r.event] || t > L[r.event]) L[r.event] = t;
+        });
+        const actions = [];
+        const estLink = (id) => { const e = estOfCalc[id]; return e ? e.id : null; };
+        cards.forEach(c => {
+            const L = lastOf[c.id] || {};
+            const sentLast = Math.max(L.sent || 0, L.printed || 0);
+            const done = L.invoice_requested || L.invoice_issued || L.paid || L.rejected;
+            const name = c.project || 'Без названия';
+            if (done) return;
+            if (L.confirmed && now - L.confirmed < 60 * DAY) {
+                actions.push({ w: 1, color: '#10B981', icon: '✅', estId: estLink(c.id), name,
+                    text: `одобрена ${dayWord(L.confirmed)} — запросите счёт`, sum: sumOfCalc[c.id] || 0 });
+                return;
+            }
+            if (L.refresh_requested && L.refresh_requested > sentLast) {
+                actions.push({ w: 2, color: '#F97316', icon: '🔄', estId: estLink(c.id), name,
+                    text: `клиент просит обновить счёт (${dayWord(L.refresh_requested)})`, sum: sumOfCalc[c.id] || 0 });
+                return;
+            }
+            if (L.needs_revision && L.needs_revision > sentLast && now - L.needs_revision < 60 * DAY) {
+                actions.push({ w: 3, color: '#EF4444', icon: '✏️', estId: estLink(c.id), name,
+                    text: `клиент просил правки ${dayWord(L.needs_revision)}, исправленная не отправлена`, sum: sumOfCalc[c.id] || 0 });
+                return;
+            }
+            // «Горячий»: за последние трое суток открывал больше одного раза и
+            // ещё не ответил. Открытия в первые две минуты после отправки не
+            // считаем — это монтажник проверяет свою же ссылку.
+            const hot = (openedTimes[c.id] || []).filter(t => now - t < 3 * DAY && !(sentLast && t >= sentLast && t - sentLast < 120000));
+            if (hot.length >= 2 && !L.confirmed && !(L.needs_revision && L.needs_revision > sentLast)) {
+                actions.push({ w: 4, color: '#0EA5E9', icon: '🔥', estId: estLink(c.id), name,
+                    text: `клиент открывал смету ${hot.length} ${this.plural(hot.length, 'раз', 'раза', 'раз')} за 3 дня — самое время позвонить`, sum: sumOfCalc[c.id] || 0 });
+            }
+        });
+        actions.sort((x, y) => x.w - y.w || y.sum - x.sum);
+        const actionRow = (x) => `<div class="sm-row sm-link"${x.estId ? ` onclick="app.loadSingleEstimate('${x.estId}')" title="Открыть смету"` : ''}>
+                    <span class="sm-row-label">${x.icon} <b>${esc(x.name)}</b> <span style="color:${x.color};">— ${x.text}</span></span>
+                    <b>${x.sum ? money(x.sum) : ''}</b>
+                </div>`;
+        const actionsHtml = `<div class="lk-section-head sm-head"><h4>✅ Что сделать сейчас</h4></div>
+            <div id="installer_actions">${actions.slice(0, 8).map(actionRow).join('')}</div>
+            <div id="installer_actions_extra"></div>
+            ${actions.length ? '' : `<p class="lk-hint" id="installer_actions_empty">Срочного нет: одобренных без счёта, просьб о правках и «горячих» клиентов сейчас нет.</p>`}`;
+
+        // ── По месяцам ──────────────────────────────────────────────────────
+        // Растёт ли человек: одна строка на календарный месяц. Сметы — по
+        // первому действию, средние — по сохранённым сметам месяца, скорость —
+        // по отправкам, случившимся в этом месяце.
+        const MONTHS = P === 365 ? 12 : 6;
+        const monthKey = (t) => { const d = new Date(t); return d.getFullYear() * 12 + d.getMonth(); };
+        const curKey = monthKey(now);
+        const mRows = [];
+        for (let k = curKey; k > curKey - MONTHS; k--) {
+            const inM = (t) => !!t && monthKey(t) === k;
+            const mc = cards.filter(c => inM(c.firstAt));
+            const me = ests.filter(e => inM(e.at) && e.total > 0);
+            const ma = me.filter(e => e.area > 0), aSum = ma.reduce((s, e) => s + e.area, 0);
+            const spd = [];
+            cards.forEach(c => {
+                const a = minOf(c, CALC), b = minOf(c, SENT);
+                if (a && b && b >= a && inM(b)) spd.push(b - a);
+            });
+            const d = new Date(Math.floor(k / 12), k % 12, 1);
+            mRows.push({
+                label: d.toLocaleString('ru-RU', { month: 'short', year: '2-digit' }).replace(' г.', ''),
+                n: mc.length,
+                sent: mc.filter(c => c.first.sent || c.first.printed || c.first.opened).length,
+                inv: mc.filter(c => c.first.invoice_requested || c.first.invoice_issued || c.first.paid).length,
+                area: avg(ma.map(e => e.area)), total: avg(me.map(e => e.total)),
+                worksM2: aSum ? ma.reduce((s, e) => s + e.works, 0) / aSum : null,
+                speed: median(spd)
+            });
+        }
+        const monthsHtml = mRows.some(m => m.n || m.total)
+            ? `<div class="lk-section-head sm-head"><h4>📅 По месяцам</h4></div>
+               <div class="sm-table-wrap"><table class="sm-table">
+                <thead><tr><th>Месяц</th><th>Смет</th><th>Отправлено</th><th>До счёта</th><th>Площадь</th><th>${seller ? 'Средний чек' : 'Средняя смета'}</th>${seller ? '' : '<th>Монтаж, ₽/м²</th>'}<th title="Расчёт → отправка клиенту, медиана">Скорость</th></tr></thead>
+                <tbody>${mRows.map(m => `<tr>
+                    <td>${m.label}</td><td>${m.n || '—'}</td><td>${m.sent || '—'}</td>
+                    <td>${m.inv ? m.inv + (m.n ? ` <small>${Math.round(m.inv / m.n * 100)}%</small>` : '') : '—'}</td>
+                    <td>${m.area ? Math.round(m.area) + ' м²' : '—'}</td><td>${m.total ? money(m.total) : '—'}</td>
+                    ${seller ? '' : `<td>${m.worksM2 ? num(Math.round(m.worksM2)) : '—'}</td>`}<td>${m.speed != null ? dur(m.speed) : '—'}</td>
+                </tr>`).join('')}</tbody>
+               </table></div>`
+            : '';
+
         container.innerHTML = head
-            + `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
-                ${tile('Смет за ' + this.INSTALLER_SUMMARY_DAYS + ' дней', num(inv.cohortN), 'считаем от первого действия')}
-                ${tile('Дошло до счёта', num(fAuto ? fAuto.n : 0), f0 ? Math.round((fAuto ? fAuto.n : 0) / f0 * 100) + '% ваших смет' : '')}
-                ${tile('Ждут ответа', num(stale.length), 'отправлены и молчат ' + this.INSTALLER_STALE_DAYS + '+ дней')}
+            + `<div class="sm-tiles">
+                ${tile('Смет', num(inv.cohortN), 'за ' + (P === 365 ? 'год' : P + ' дней'), trend(inv.cohortN, invPrev.cohortN, 'up'), 'Считаем от первого действия со сметой')}
+                ${tile('Дошло до счёта', num(fAuto ? fAuto.n : 0), convCur != null ? Math.round(convCur) + '% ваших смет' : '', trend(convCur, convPrev, 'up'))}
+                ${tile('Ждут ответа', num(stale.length), 'молчат ' + this.INSTALLER_STALE_DAYS + '+ дней')}
+                ${seller
+                    ? tile('Средний чек', oCur.total ? money(oCur.total) : '—', oCur.area ? Math.round(oCur.area) + ' м²' : '', trend(oCur.total, oPrev.total, 'up'))
+                    : tile('Средний объект', oCur.area ? Math.round(oCur.area) + ' м²' : '—', oCur.total ? money(oCur.total) : '', trend(oCur.area, oPrev.area, 'up'))}
                </div>`
-            + `<div class="lk-section-head" style="margin-top:4px;"><h4>⏳ Ждут вашего звонка</h4></div>`
+            + actionsHtml
+            + `<div class="lk-section-head sm-head"><h4>💵 Деньги на столе</h4></div>`
+            + `<div class="sm-tiles">
+                ${pot('Ждут решения клиента', pending, '#F97316', 'Отправлены, клиент ещё не одобрил и не вернул на доработку')}
+                ${pot('Одобрены, счёт не запрошен', approved, '#10B981', 'Клиент согласен — осталось запросить счёт')}
+               </div>`
+            + `<div class="lk-section-head sm-head"><h4>⏱ Скорость</h4><small class="sm-head-note">обычно (медиана) · к прошлым ${P === 365 ? 'году' : P + ' дням'}</small></div>`
+            + speedRows
+            + `<div class="lk-section-head sm-head"><h4>🏠 ${seller ? 'Средний заказ' : 'Средний объект'}</h4></div>`
+            + objHtml
+            + monthsHtml
+            + `<div id="installer_market"></div>`
+            + `<div id="installer_sales"></div>`
+            + `<div class="lk-section-head sm-head"><h4>⏳ Ждут вашего звонка</h4></div>`
             + staleHtml
             + `<div id="installer_reprice"></div>`
             + `<div id="installer_avail"></div>`
-            + `<div class="lk-section-head" style="margin-top:18px;"><h4>📈 Путь ваших смет</h4></div>`
+            + `<div class="lk-section-head sm-head"><h4>📈 Путь ваших смет</h4></div>`
             + funnelHtml
-            + `<p class="lk-hint" style="margin-top:10px;">
+            + `<p class="lk-hint" style="margin-top:8px;">
                 Ступень засчитана, если было её событие или любое следующее.
                 «Клиент открыл» отмечается, когда заказчик открывает вашу ссылку, — по ней видно, дошла смета до него или нет.
                </p>`;
 
-        // Цены и наличие считаются отдельно и после: это запрос за составом
-        // счетов, а числа выше должны появиться сразу. Запрос один на оба
-        // блока — и цене, и наличию нужен один и тот же состав счетов.
-        this.loadInstallerInvoiceExtras((inv.cards || []).map(c => c.id));
+        // Цены, наличие и «что продаёте» считаются отдельно и после: это
+        // запрос за составом счетов, а числа выше должны появиться сразу.
+        // Запрос один на все блоки — им нужен один и тот же состав.
+        this.loadInstallerInvoiceExtras(cards.map(c => c.id));
+        this.renderInstallerMarket(meRow, ests);
     },
 
     /**
@@ -13593,17 +13926,277 @@ const app = {
             const CHUNK = 80;
             for (let i = 0; i < calcIds.length; i += CHUNK) {
                 const part = calcIds.slice(i, i + CHUNK);
+                // Искать по номеру КП, а не по id: id у shared_invoices — uuid, и
+                // запрос .in('id', ['554471', …]) падал на разборе uuid. Ошибка
+                // уходила в catch молча, и блоки цен и наличия не показывались
+                // никогда. Номер КП лежит в object_info.sequence_id.
                 const { data, error } = await supabaseClient.from('shared_invoices')
-                    .select('id, created_at, pn:object_info->>projectName, eq:items->equipment').in('id', part);
+                    .select('id, created_at, seq:object_info->>sequence_id, pn:object_info->>projectName, eq:items->equipment')
+                    .in('object_info->>sequence_id', part);
                 if (error) throw error;
                 rows.push(...(data || []));
             }
         } catch (e) {
-            return;   // оба блока вспомогательные, ломать ими вкладку незачем
+            console.warn('[показатели] состав смет не прочитан:', e && e.message || e);
+            return;   // блоки вспомогательные, ломать ими вкладку незачем
         }
+        // Смету могли отправлять несколько раз (новые версии КП) — берём
+        // последнюю отправку, иначе объект считался бы дважды.
+        const latest = {};
+        rows.forEach(r => {
+            const k = String(r.seq || r.id);
+            if (!latest[k] || new Date(r.created_at) > new Date(latest[k].created_at)) latest[k] = r;
+        });
+        rows = Object.values(latest);
         if (!rows.length) return;
+        this.renderInstallerSales(rows);
         this.renderInstallerRepricing(rows);
         this.renderInstallerAvailability(rows);
+    },
+
+    /**
+     * «Вы и рынок»: свои цифры рядом с медианой других монтажников региона.
+     *
+     * Анонимно и только при достаточной выборке: меньше MARKET_MIN_PEERS
+     * человек — и по «медиане региона» легко узнать конкретного соседа. Если
+     * в регионе столько не набирается, сравниваем со всеми монтажниками сайта
+     * и так и подписываем.
+     *
+     * Считаем по людям, а не по сметам: сначала показатели каждого монтажника
+     * (₽/м² — отношением его сумм), потом медиана по ним. Иначе один человек с
+     * тридцатью сметами задавал бы «рынок» в одиночку.
+     *
+     * Только сохранённые в облаке сметы: других сумм в базе нет. Служебные
+     * учётки (admin, viewer), менеджеры дистрибьюторов и сам монтажник в
+     * выборку не входят.
+     */
+    MARKET_MIN_PEERS: 5,
+    MARKET_DAYS: 180,
+
+    renderInstallerMarket: async function (me, myEsts) {
+        const host = document.getElementById('installer_market');
+        if (!host || !me || !me.id) return;
+        const num = n => Number(n || 0).toLocaleString('ru-RU');
+        const seller = this.isSellerOnly();
+        const DAY = 86400000, since = Date.now() - this.MARKET_DAYS * DAY;
+        let region = '', rows = [];
+        try {
+            const { data: u } = await supabaseClient.from('users').select('region').eq('id', me.id).maybeSingle();
+            region = (u && u.region) || '';
+            const res = await this.fetchAllRows('estimates',
+                'user_id, created_at, eq_sum, works_sum, total_sum, calc_id:calc_data->>calc_id, area:calc_data->>area, users!inner(region, account_type)',
+                { order: 'created_at', cap: 20000, build: (qy) => qy.gte('created_at', new Date(since).toISOString()).neq('user_id', me.id) });
+            rows = (res.rows || []).filter(r => {
+                const t = r.users && r.users.account_type;
+                return t !== 'admin' && t !== 'viewer' && t !== 'manager';
+            });
+        } catch (e) {
+            console.warn('[показатели] рынок не прочитан:', e && e.message || e);
+            return;
+        }
+
+        const byUser = (list) => {
+            const m = {};
+            list.forEach(r => {
+                const area = parseFloat(String(r.area || '').replace(',', '.')) || 0;
+                const eq = parseFloat(r.eq_sum) || 0, works = parseFloat(r.works_sum) || 0;
+                if (!(eq + works)) return;
+                const U = m[r.user_id] || (m[r.user_id] = { area: 0, eqA: 0, worksA: 0, nA: 0, n: 0, calcs: [] });
+                // Пересохранение и версии КП дают несколько строк одной сметы
+                if (r.calc_id && U.calcs.indexOf(String(r.calc_id)) !== -1) return;
+                U.n++;
+                if (r.calc_id) U.calcs.push(String(r.calc_id));
+                if (area > 0) { U.area += area; U.eqA += eq; U.worksA += works; U.nA++; }
+            });
+            return m;
+        };
+        const sameRegion = region ? rows.filter(r => r.users && r.users.region === region) : [];
+        let peers = byUser(sameRegion), scope = region;
+        if (Object.keys(peers).length < this.MARKET_MIN_PEERS) { peers = byUser(rows); scope = ''; }
+        const peerList = Object.values(peers);
+        const head = `<div class="lk-section-head sm-head"><h4>📍 Вы и рынок</h4><small class="sm-head-note">${scope
+            ? 'монтажники региона «' + scope.replace(/</g, '&lt;') + '»' : 'все монтажники сайта'} · ${this.MARKET_DAYS} дней</small></div>`;
+        if (peerList.length < this.MARKET_MIN_PEERS) {
+            host.innerHTML = head + `<p class="lk-hint">Сравнение появится, когда наберётся ${this.MARKET_MIN_PEERS} монтажников с сохранёнными сметами — сейчас ${num(peerList.length)}. Меньше нельзя: по «средней» из двух-трёх человек легко узнать соседа.</p>`;
+            return;
+        }
+
+        // Доля смет, ушедших клиенту и дошедших до счёта, — по журналу событий
+        // этих же смет. Номеров немного (только облачные сметы), запрос лёгкий.
+        const allCalcs = [...new Set(peerList.flatMap(p => p.calcs).concat((myEsts || []).map(e => e.calc).filter(Boolean)))];
+        const reached = {};
+        try {
+            for (let i = 0; i < allCalcs.length; i += 80) {
+                const { data } = await supabaseClient.from('invoice_events').select('calc_id, event')
+                    .in('calc_id', allCalcs.slice(i, i + 80))
+                    .in('event', ['sent', 'printed', 'opened', 'invoice_requested', 'invoice_issued', 'paid']);
+                (data || []).forEach(r => {
+                    const R = reached[r.calc_id] || (reached[r.calc_id] = {});
+                    if (r.event === 'invoice_requested' || r.event === 'invoice_issued' || r.event === 'paid') R.inv = R.sent = true;
+                    else R.sent = true;
+                });
+            }
+        } catch (e) { /* без доли — остальное всё равно показываем */ }
+
+        const statsOf = (U) => ({
+            // Без работ в сметах (продавец, смета на одно оборудование) монтаж
+            // за м² не ноль, а «нет данных» — иначе середина съезжает к нулю.
+            worksM2: U.area && U.worksA > 0 ? U.worksA / U.area : null,
+            eqM2: U.area ? U.eqA / U.area : null,
+            area: U.nA ? U.area / U.nA : null,
+            sent: U.calcs.length ? U.calcs.filter(c => reached[c] && reached[c].sent).length / U.calcs.length * 100 : null,
+            inv: U.calcs.length ? U.calcs.filter(c => reached[c] && reached[c].inv).length / U.calcs.length * 100 : null
+        });
+        const mine = byUser((myEsts || []).filter(e => e.at >= since).map(e => ({
+            user_id: 'me', eq_sum: e.eq, works_sum: e.works, area: e.area, calc_id: e.calc
+        }))).me;
+        const my = mine ? statsOf(mine) : {};
+        const peerStats = peerList.map(statsOf);
+        const median = (arr) => {
+            const a = arr.filter(v => v != null).sort((x, y) => x - y);
+            // Та же защита, что и для всей выборки: по двум-трём значениям
+            // «середина» — это конкретный человек.
+            if (a.length < this.MARKET_MIN_PEERS) return null;
+            const k = Math.floor(a.length / 2);
+            return a.length % 2 ? a[k] : (a[k - 1] + a[k]) / 2;
+        };
+        // Место среди соседей: какая доля из них ниже вас.
+        const rank = (key, v) => {
+            const a = peerStats.map(s => s[key]).filter(x => x != null);
+            if (v == null || a.length < this.MARKET_MIN_PEERS) return '';
+            return Math.round(a.filter(x => x < v).length / a.length * 100);
+        };
+        const fmt = {
+            rub: v => v == null ? '—' : num(Math.round(v)) + ' ₽/м²',
+            m2: v => v == null ? '—' : Math.round(v) + ' м²',
+            pct: v => v == null ? '—' : Math.round(v) + '%'
+        };
+        // Для цены «выше рынка» — не хорошо и не плохо: это позиция, а не
+        // оценка. Поэтому цветом выделяем только доли (там больше — лучше).
+        const defs = [
+            seller ? null : { key: 'worksM2', label: 'Монтаж за м²', f: fmt.rub, tone: false, word: ['дешевле', 'дороже'] },
+            { key: 'eqM2', label: 'Оборудование за м²', f: fmt.rub, tone: false, word: ['дешевле', 'дороже'] },
+            { key: 'area', label: 'Площадь объекта', f: fmt.m2, tone: false, word: ['меньше', 'больше'] },
+            { key: 'sent', label: 'Сметы ушли клиенту', f: fmt.pct, tone: true, word: ['ниже', 'выше'], abs: true },
+            { key: 'inv', label: 'Дошли до счёта', f: fmt.pct, tone: true, word: ['ниже', 'выше'], abs: true }
+        ].filter(Boolean);
+        const rowsHtml = defs.map(d => {
+            const v = my[d.key], m = median(peerStats.map(s => s[d.key]));
+            let diff = '';
+            if (v != null && m != null && m) {
+                const delta = d.abs ? v - m : (v - m) / m * 100;
+                if (Math.abs(delta) < (d.abs ? 3 : 5)) diff = `<span class="sm-trend">как у всех</span>`;
+                else {
+                    const up = delta > 0;
+                    const cls = d.tone ? (up ? 'good' : 'bad') : '';
+                    diff = `<span class="sm-trend ${cls}">${d.word[up ? 1 : 0]} на ${Math.abs(Math.round(delta))}${d.abs ? ' п.' : '%'}</span>`;
+                }
+            }
+            const r = rank(d.key, v);
+            return `<tr><td>${d.label}</td><td><b>${d.f(v)}</b></td><td>${d.f(m)}</td><td>${diff}</td><td>${r === '' ? '—' : 'выше, чем у ' + r + '%'}</td></tr>`;
+        }).join('');
+
+        host.innerHTML = head
+            + `<div class="sm-table-wrap"><table class="sm-table">
+                <thead><tr><th>Показатель</th><th>Вы</th><th>Обычно у других</th><th>Разница</th><th>Место</th></tr></thead>
+                <tbody>${rowsHtml}</tbody></table></div>`
+            + `<p class="lk-hint" style="margin-top:6px;">
+                ${num(peerList.length)} ${this.plural(peerList.length, 'монтажник', 'монтажника', 'монтажников')} с сохранёнными сметами, без имён. «Обычно» — медиана по людям: у каждого свои ₽/м², потом середина.
+                ${mine ? '' : 'Ваших сохранённых смет за полгода нет — сравнивать пока не с чем.'}
+                ${scope ? '' : (region ? 'В вашем регионе меньше ' + this.MARKET_MIN_PEERS + ' монтажников — поэтому сравнение со всеми.' : 'Регион в анкете не указан — поэтому сравнение со всеми.')}
+               </p>`;
+    },
+
+    /**
+     * «Что вы продаёте» — по составу отправленных смет (shared_invoices).
+     *
+     * Монтажнику: доля брендов в деньгах, какие разделы есть почти в каждом
+     * объекте и сколько они стоят, типичная мощность котла. Продавцу вместо
+     * разделов важнее позиции: что спрашивают чаще всего — это его склад.
+     *
+     * Опциональные позиции (isOpt) не считаем: в итог сметы они не входят.
+     */
+    renderInstallerSales: function (rows) {
+        const host = document.getElementById('installer_sales');
+        if (!host || !rows || !rows.length) return;
+        const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
+        const num = n => Number(n || 0).toLocaleString('ru-RU');
+        const money = (rub) => !rub ? '—'
+            : (rub >= 1e6 ? (rub / 1e6).toFixed(1).replace('.', ',') + ' млн ₽' : Math.round(rub / 1e3).toLocaleString('ru-RU') + ' тыс ₽');
+        const seller = this.isSellerOnly();
+
+        const brands = {}, sections = {}, items = {}, kw = [];
+        let total = 0, invN = 0;
+        rows.forEach(r => {
+            const eq = (Array.isArray(r.eq) ? r.eq : []).filter(it => it && !it.isOpt && (Number(it.sum) || 0) > 0);
+            if (!eq.length) return;
+            invN++;
+            const secSeen = {};
+            eq.forEach(it => {
+                const sum = Number(it.sum) || 0;
+                total += sum;
+                const b = String(it.brand || '').trim().toUpperCase();
+                const bk = b === 'STOUT' || b === 'ROMMER' ? b : 'Другие';
+                brands[bk] = (brands[bk] || 0) + sum;
+                // Номер раздела отрезаем: «1. Котёл + водонагреватель» → «Котёл + водонагреватель»
+                const sec = String(it.sectionTitle || 'Прочее').replace(/^\d+(\.\d+)*\.\s*/, '');
+                const S = sections[sec] || (sections[sec] = { n: 0, sum: 0 });
+                S.sum += sum;
+                if (!secSeen[sec]) { secSeen[sec] = 1; S.n++; }
+                const key = String(it.originalId || it.id || it.name);
+                const I = items[key] || (items[key] = { name: it.name || key, n: 0, q: 0, sum: 0, unit: it.unit || 'шт', seen: {} });
+                if (!I.seen[r.id]) { I.seen[r.id] = 1; I.n++; }
+                I.q += Number(it.q) || 0;
+                I.sum += sum;
+            });
+            // Мощность котла — из названия основного котла сметы: «Котёл … (24 кВт)»
+            const boiler = eq.filter(it => /^1\./.test(String(it.sectionTitle || '')) && /кот[её]л/i.test(it.name || '') && /(\d+(?:[.,]\d+)?)\s*кВт/i.test(it.name || ''))
+                .sort((a, b) => (Number(b.sum) || 0) - (Number(a.sum) || 0))[0];
+            if (boiler) kw.push(parseFloat(boiler.name.match(/(\d+(?:[.,]\d+)?)\s*кВт/i)[1].replace(',', '.')));
+        });
+        if (!invN || !total) return;
+
+        const pct = (v) => Math.round(v / total * 100);
+        const brandColors = { STOUT: 'var(--primary)', ROMMER: '#10B981', 'Другие': '#94A3B8' };
+        const brandBar = Object.keys(brands).sort((a, b) => brands[b] - brands[a])
+            .map(b => `<i style="width:${pct(brands[b])}%; background:${brandColors[b]};" title="${esc(b)}: ${pct(brands[b])}%"></i>`).join('');
+        const brandLegend = Object.keys(brands).sort((a, b) => brands[b] - brands[a])
+            .map(b => `<span><i style="background:${brandColors[b]};"></i>${esc(b)} ${pct(brands[b])}%</span>`).join('');
+
+        const kwSorted = kw.slice().sort((a, b) => a - b);
+        const kwMed = kwSorted.length ? kwSorted[Math.floor(kwSorted.length / 2)] : null;
+
+        let listHtml;
+        if (seller) {
+            const top = Object.values(items).sort((a, b) => b.n - a.n || b.sum - a.sum).slice(0, 10);
+            listHtml = `<p class="lk-hint" style="margin:8px 0 4px;">Чаще всего в ваших сметах — держите на складе:</p>`
+                + top.map(x => `<div class="sm-row">
+                        <span class="sm-row-label">${esc(x.name)}</span>
+                        <span class="sm-row-sub">${num(Math.round(x.q))} ${esc(x.unit)}</span>
+                        <b>${num(x.n)} из ${num(invN)}</b>
+                    </div>`).join('');
+        } else {
+            const secs = Object.keys(sections).map(k => Object.assign({ title: k }, sections[k]))
+                .sort((a, b) => b.n - a.n || b.sum - a.sum).slice(0, 8);
+            listHtml = `<p class="lk-hint" style="margin:8px 0 4px;">Разделы: в скольких сметах есть и сколько в среднем стоит оборудование раздела</p>`
+                + secs.map(x => `<div class="sm-row">
+                        <span class="sm-row-label">${esc(x.title)}</span>
+                        <span class="sm-bar"><i style="width:${Math.round(x.n / invN * 100)}%; background:var(--primary);"></i></span>
+                        <span class="sm-row-sub">${Math.round(x.n / invN * 100)}%</span>
+                        <b style="flex:0 0 80px; text-align:right;">${money(x.sum / x.n)}</b>
+                    </div>`).join('');
+        }
+
+        host.innerHTML = `<div class="lk-section-head sm-head"><h4>🧾 Что вы продаёте</h4><small class="sm-head-note">по ${num(invN)} ${this.plural(invN, 'отправленной смете', 'отправленным сметам', 'отправленным сметам')}</small></div>
+            <div class="sm-cells">
+                <div class="sm-cell" style="grid-column: span 2;"><span>Бренды в деньгах</span>
+                    <div class="sm-stack">${brandBar}</div>
+                    <div class="sm-legend">${brandLegend}</div>
+                </div>
+                <div class="sm-cell"><span>Оборудование в смете</span><b>${money(total / invN)}</b><small>в среднем</small></div>
+                ${kwMed ? `<div class="sm-cell"><span>Котёл обычно</span><b>${String(kwMed).replace('.', ',')} кВт</b><small>${num(kw.length)} ${this.plural(kw.length, 'смета', 'сметы', 'смет')} с котлом</small></div>` : ''}
+            </div>`
+            + listHtml;
     },
 
     /**
@@ -13670,20 +14263,32 @@ const app = {
         const grew = perInvoice.filter(x => x.pct >= this.INSTALLER_REPRICE_MIN_PCT)
             .sort((a, b) => b.diff - a.diff);
 
-        host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4>💰 Сколько это стоит сегодня</h4></div>`
-            + `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                <div style="flex:1 1 150px; background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:12px 14px;">
-                    <div style="font-size:11.5px; color:var(--text-sec); font-weight:700;">Ваши сметы сегодня</div>
-                    <div style="font-size:24px; font-weight:800; line-height:1.1; margin-top:4px;
-                                color:${pctAll > this.INSTALLER_REPRICE_MIN_PCT ? '#EF4444' : (pctAll < -this.INSTALLER_REPRICE_MIN_PCT ? '#10B981' : 'var(--text-main)')};">
+        // Та же новость — строкой в «Что сделать сейчас»: звонить клиенту со
+        // старой ценой хуже, чем не звонить.
+        const act = document.getElementById('installer_actions_extra');
+        if (act && grew.length) {
+            const sum = grew.reduce((t, x) => t + x.diff, 0);
+            act.innerHTML = `<div class="sm-row sm-link" onclick="document.getElementById('installer_reprice').scrollIntoView({ behavior: 'smooth', block: 'start' })" title="Показать, какие сметы">
+                    <span class="sm-row-label">💸 <b>${num(grew.length)} ${this.plural(grew.length, 'смета', 'сметы', 'смет')}</b> <span style="color:#EF4444;">— подорожало оборудование, пересчитайте перед звонком</span></span>
+                    <b>${rub(sum)}</b>
+                </div>`;
+            const empty = document.getElementById('installer_actions_empty');
+            if (empty) empty.remove();
+        }
+
+        host.innerHTML = `<div class="lk-section-head sm-head"><h4>💰 Сколько это стоит сегодня</h4></div>`
+            + `<div class="sm-tiles" style="margin-bottom:8px;">
+                <div class="sm-tile">
+                    <div class="sm-tile-label">Ваши сметы сегодня</div>
+                    <div class="sm-tile-val" style="color:${pctAll > this.INSTALLER_REPRICE_MIN_PCT ? '#EF4444' : (pctAll < -this.INSTALLER_REPRICE_MIN_PCT ? '#10B981' : 'var(--text-main)')};">
                         ${pctStr(pctAll)}
                     </div>
-                    <div style="font-size:11px; color:var(--text-sec); margin-top:3px;">оборудование, ${num(rows.length)} ${this.plural(rows.length, 'смета', 'сметы', 'смет')}</div>
+                    <div class="sm-tile-sub">оборудование, ${num(rows.length)} ${this.plural(rows.length, 'смета', 'сметы', 'смет')}</div>
                 </div>
-                <div style="flex:1 1 150px; background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:12px 14px;">
-                    <div style="font-size:11.5px; color:var(--text-sec); font-weight:700;">Разница в деньгах</div>
-                    <div style="font-size:24px; font-weight:800; line-height:1.1; margin-top:4px; color:var(--text-main);">${rub(newAll - oldAll)}</div>
-                    <div style="font-size:11px; color:var(--text-sec); margin-top:3px;">если пересчитать все разом</div>
+                <div class="sm-tile">
+                    <div class="sm-tile-label">Разница в деньгах</div>
+                    <div class="sm-tile-val">${rub(newAll - oldAll)}</div>
+                    <div class="sm-tile-sub">если пересчитать все разом</div>
                 </div>
                </div>`
             + (grew.length
@@ -13691,10 +14296,10 @@ const app = {
                     + grew.slice(0, 5).map(x => `
                     <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
                         <div style="min-width:0; flex:1;">
-                            <b style="font-size:12.5px; color:var(--text-main);">${esc(x.name)}</b>
+                            <b style="font-size:12px; color:var(--text-main);">${esc(x.name)}</b>
                             <br><small style="color:var(--text-sec);">от ${esc(x.when)} · было ${num(Math.round(x.old))} ₽</small>
                         </div>
-                        <b style="flex:0 0 auto; font-size:12.5px; color:#EF4444;">${rub(x.diff)}</b>
+                        <b style="flex:0 0 auto; font-size:12px; color:#EF4444;">${rub(x.diff)}</b>
                     </div>`).join('')
                 : `<p class="lk-hint">Заметно ничего не подорожало — можно отправлять как есть.</p>`)
             + `<p class="lk-hint" style="margin-top:8px;">
@@ -13755,15 +14360,14 @@ const app = {
         // целиком из своего оборудования. Говорить в такой ситуации нечего.
         if (!checked) return;
 
-        const head = `<div class="lk-section-head" style="margin-top:18px;"><h4>📦 Под заказ</h4></div>`;
+        const head = `<div class="lk-section-head sm-head"><h4>📦 Под заказ</h4></div>`;
         const tile = (label, value, sub, accent) => `
-            <div style="flex:1 1 150px; min-width:0; background:var(--surface-light); border:1px solid var(--border);
-                        border-radius:12px; padding:12px 14px;">
-                <div style="font-size:11.5px; color:var(--text-sec); font-weight:700;">${label}</div>
-                <div style="font-size:24px; font-weight:800; line-height:1.1; margin-top:4px; color:${accent || 'var(--text-main)'};">${value}</div>
-                <div style="font-size:11px; color:var(--text-sec); margin-top:3px;">${sub}</div>
+            <div class="sm-tile">
+                <div class="sm-tile-label">${label}</div>
+                <div class="sm-tile-val"${accent ? ` style="color:${accent};"` : ''}>${value}</div>
+                <div class="sm-tile-sub">${sub}</div>
             </div>`;
-        const tiles = `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+        const tiles = `<div class="sm-tiles" style="margin-bottom:8px;">
                 ${tile('Проверено счетов', num(recent.length), 'последних по дате')}
                 ${tile('С позициями под заказ', num(invoicesWithGap), 'сроки стоит уточнить', invoicesWithGap ? '#EAB308' : null)}
             </div>`;
@@ -13777,10 +14381,10 @@ const app = {
             + list.slice(0, 6).map(g => `
                 <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
                     <div style="min-width:0; flex:1;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${esc(g.name)}</b>
+                        <b style="font-size:12px; color:var(--text-main);">${esc(g.name)}</b>
                         <br><small style="color:var(--text-sec);">${esc(g.art)}</small>
                     </div>
-                    <b style="flex:0 0 auto; font-size:12.5px; color:#EAB308;">${num(g.invoices)} ${this.plural(g.invoices, 'счёт', 'счёта', 'счетов')}</b>
+                    <b style="flex:0 0 auto; font-size:12px; color:#EAB308;">${num(g.invoices)} ${this.plural(g.invoices, 'счёт', 'счёта', 'счетов')}</b>
                 </div>`).join('')
             + (list.length > 6 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(list.length - 6)} позиций</p>` : '')
             + `<p class="lk-hint" style="margin-top:8px;">
@@ -14904,7 +15508,14 @@ const app = {
         // syncRailUI зовётся на каждой перерисовке сметы, и мерить каждый раз —
         // лишняя работа для браузера.
         const shown = rail.querySelectorAll('.lk-rail-item:not([style*="display: none"])').length;
-        const sign = shown + '|' + (rail.classList.contains('dock-top') ? 'top' : 'left') + '|' + window.innerHeight;
+        // Видимость панели — тоже часть признака. До входа рейка скрыта
+        // (body.guest-mode), и fitRailToViewport на скрытой колонке только
+        // снимает --lk-scale. Остальные слагаемые при входе не меняются, так что
+        // без этого посадка после входа не пересчитывалась: множитель оставался
+        // единицей, развёрнутая наведением колонка не помещалась в экран и
+        // отращивала прокрутку — она пропадала только после перезагрузки.
+        const sign = shown + '|' + (rail.classList.contains('dock-top') ? 'top' : 'left') + '|' + window.innerHeight
+            + '|' + (this.isRailVisible() ? 'on' : 'off');
         if (sign !== this._railFitSign) {
             this._railFitSign = sign;
             this.fitRailToViewport();
@@ -27328,7 +27939,10 @@ const app = {
             return false;
         };
 
-        const cohort = list.filter(c => c.firstAt >= now - this.DASH_FUNNEL_COHORT_DAYS * DAY);
+        // Окно когорты можно задать снаружи: в кабинете монтажника период
+        // выбирают кнопками 30 / 90 / 365 дней.
+        const cohortDays = opts.cohortDays || this.DASH_FUNNEL_COHORT_DAYS;
+        const cohort = list.filter(c => c.firstAt >= now - cohortDays * DAY);
         const funnel = FLOW.map((s, i) => ({ label: s.label, manual: !!s.manual, n: cohort.filter(c => reached(c, i)).length }));
         // Последняя ступень, которую система отмечает САМА. Конверсию считают
         // по ней: ручная отметка меряет дисциплину нажатий, а не сделки.
@@ -36046,10 +36660,26 @@ const app = {
                     if (insertError) console.error('[handleAuthSession] Запись пользователя не создана:', insertError.message);
                     upsertResult = newUList;
                 } else {
-                    await supabaseClient.from('users').update({ auth_user_id: authUserId, city: existingCity || uData.city || undefined, ...updatePayload }).eq('id', uData.id);
+                    // ФИО, дату рождения, регион и сферу деятельности эта ветка раньше не
+                    // писала вовсе — только город и служебные отметки. А попадают сюда как
+                    // раз те, у кого строка в users привязана к прежнему auth_user_id (переезд
+                    // с Google на Яндекс ID): на своём компьютере анкета оставалась в
+                    // localStorage и выглядела заполненной, а в базу не доезжала никогда. При
+                    // входе с телефона брать её было неоткуда, и анкету просили заново.
+                    // Пустыми полями строку не трогаем (regFieldsObj уже без undefined-ключей).
+                    const fallbackUpdate = { auth_user_id: authUserId, city: existingCity || uData.city || undefined, ...regFieldsObj, ...updatePayload };
+                    if (existingPhone) fallbackUpdate.phone = existingPhone;
+                    Object.keys(fallbackUpdate).forEach(k => { if (fallbackUpdate[k] === undefined) delete fallbackUpdate[k]; });
+                    await supabaseClient.from('users').update(fallbackUpdate).eq('id', uData.id);
                     upsertResult = [uData];
                     if (upsertResult[0]) {
                         upsertResult[0].city = existingCity || uData.city || '';
+                        // Строку читали до записи — вернём в неё то, что только что записали,
+                        // иначе анкета ниже снова сочтётся незаполненной.
+                        Object.keys(regFieldsObj).forEach(k => {
+                            if (regFieldsObj[k] !== undefined) upsertResult[0][k] = regFieldsObj[k];
+                        });
+                        if (existingPhone) upsertResult[0].phone = existingPhone;
                     }
                 }
             }
@@ -36753,20 +37383,41 @@ const app = {
 
         // 2. В фоне синхронизируем с Supabase без блокировки UI
         (async () => {
-            try {
-                let query = supabaseClient.from('users').update({
-                    username: name, phone: phone, city: city, email: email,
-                    last_name: lastName, first_name: firstName, middle_name: middleName,
-                    birth_date: birthDate || null, region: region, activity_types: activityTypes
-                });
-                if (tgUser.authUserId) query = query.eq('auth_user_id', tgUser.authUserId);
-                else if (tgUser.email) query = query.eq('email', tgUser.email);
-                const { error } = await query;
+            const fields = {
+                username: name, phone: phone, city: city, email: email,
+                last_name: lastName, first_name: firstName, middle_name: middleName,
+                birth_date: birthDate || null, region: region, activity_types: activityTypes
+            };
+            // Раньше ответ базы не смотрели: update по auth_user_id, не нашедший ни одной
+            // строки, — это не ошибка, и анкета молча оставалась только в этом браузере.
+            // На компьютере всё выглядело заполненным, а при входе с телефона поля брать
+            // было неоткуда, и анкету просили заново. Теперь считаем обновлённые строки и,
+            // если их нет, повторяем по почте — этого хватает, когда строка в users привязана
+            // к прежнему входу (переезд с Google на Яндекс ID).
+            const writeBy = async (col, val) => {
+                if (!val) return null;
+                const { data, error } = await supabaseClient.from('users').update(fields).eq(col, val).select('id');
                 if (error) throw error;
+                return (data && data.length) ? data.length : 0;
+            };
+            try {
+                let saved = await writeBy('auth_user_id', tgUser.authUserId);
+                if (!saved) saved = await writeBy('email', tgUser.email || email);
+                if (!saved) {
+                    console.error('[saveProfile] Анкета не записана: строка пользователя не найдена', {
+                        authUserId: tgUser.authUserId, email: tgUser.email || email
+                    });
+                    app.alert('Анкета сохранена на этом устройстве, но не записалась в вашу учётную запись — ' +
+                        'на другом устройстве её придётся заполнить заново. Напишите на dima24ba@gmail.com, мы поправим.',
+                        'Профиль сохранён не полностью');
+                    return;
+                }
                 if (tgUser.email) await supabaseClient.auth.updateUser({ data: { full_name: name, phone: phone } });
                 console.log("[saveProfile] Профиль успешно синхронизирован с облаком Supabase.");
             } catch (error) {
                 console.error('[saveProfile] Фоновая ошибка синхронизации профиля с Supabase:', error);
+                app.alert('Анкета сохранена на этом устройстве, но не ушла в вашу учётную запись — проверьте связь ' +
+                    'и нажмите «Сохранить» ещё раз.', 'Профиль сохранён не полностью');
             }
         })();
     },
@@ -39815,10 +40466,6 @@ const app = {
         const daysTimer = document.getElementById('share_opt_timer_days');
         if (cardTimer) cardTimer.style.display = actionType === 'share' ? 'flex' : 'none';
 
-        // Подсказка про опросник — туда же: при печати и в Excel данные уже есть, собирать их незачем
-        const blockOprosnik = document.getElementById('block_opt_oprosnik');
-        if (blockOprosnik) blockOprosnik.style.display = actionType === 'share' ? '' : 'none';
-
         // Вид файла Excel — только у выгрузки в Excel; каждый раз начинаем с разделов
         const excelLayoutBlock = document.getElementById('excel_layout_block');
         if (excelLayoutBlock) excelLayoutBlock.style.display = actionType === 'excel' ? 'block' : 'none';
@@ -39876,6 +40523,38 @@ const app = {
     closeShareOptionsModal: function () {
         const overlay = document.getElementById('share_options_modal_overlay');
         if (overlay) overlay.style.display = 'none';
+    },
+
+    // Ход создания ссылки на телефоне. Раньше его показывала только сама кнопка
+    // «Ссылка для клиента» внизу страницы: окно выбора разделов закрывалось, смета
+    // перерисовывалась, экран оказывался в другом месте — и человек видел
+    // неподвижный список, решая, что всё зависло. Поверх экрана этого не спрятать.
+    showShareProgress: function (messages) {
+        this.hideShareProgress();
+        const list = (messages && messages.length) ? messages : ['Формируем ссылку...'];
+        const ov = document.createElement('div');
+        ov.id = 'share_progress_overlay';
+        ov.style.cssText = 'position:fixed; inset:0; z-index:10050; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.55); padding:24px;';
+        ov.innerHTML = '<div style="background:var(--surface); color:var(--text-main); border:1px solid var(--border); border-radius:14px; padding:22px 20px; max-width:280px; width:100%; text-align:center; box-shadow:0 12px 40px rgba(0,0,0,0.35);">' +
+            '<span style="display:inline-block; width:26px; height:26px; border:3px solid var(--primary); border-top-color:transparent; border-radius:50%; animation:stout-spin 0.8s linear infinite;"></span>' +
+            '<div id="share_progress_text" style="margin-top:14px; font-size:14px; font-weight:600; line-height:1.35;">' + list[0] + '</div>' +
+            '</div>';
+        document.body.appendChild(ov);
+        let idx = 0;
+        this._shareProgressTimer = setInterval(() => {
+            idx = (idx + 1) % list.length;
+            const t = document.getElementById('share_progress_text');
+            if (t) t.textContent = list[idx];
+        }, 3000);
+    },
+
+    hideShareProgress: function () {
+        if (this._shareProgressTimer) {
+            clearInterval(this._shareProgressTimer);
+            this._shareProgressTimer = null;
+        }
+        const ov = document.getElementById('share_progress_overlay');
+        if (ov) ov.remove();
     },
 
     // Вид файла Excel: 'sections' — с разделами, как в смете; 'flat' — списком, как счёт
@@ -41496,7 +42175,13 @@ const app = {
             this.saveState();
         }
 
+        // Перерисовка меняет высоту списка, и на телефоне экран уезжает к началу сметы —
+        // со стороны это выглядит как сбой. Возвращаем прокрутку на место.
+        const scrollBefore = window.scrollY || window.pageYOffset || 0;
         this.render();
+        if (scrollBefore) {
+            requestAnimationFrame(() => window.scrollTo(0, scrollBefore));
+        }
         // Версия КП: клиент увидит «№ 452712-3», его одобрение и запрос счёта
         // запишутся с этой версией
         const kpVersion = this.stampKpVersion('link');
@@ -41567,12 +42252,13 @@ const app = {
         const btn = document.getElementById('btn_share_trigger');
         let origHtml = "Ссылка для клиента";
         let shareStatusInterval = null;
+        // Быстрое сохранение может занять до 10с — сменяющиеся статусы дают понять,
+        // что процесс идёт, а не завис.
+        const shareStatusMessages = ["Проверяем артикулы...", "Подготавливаем оформление...", "Формируем ссылку..."];
+        if (this.isMobileLayout()) this.showShareProgress(shareStatusMessages);
         if (btn) {
             origHtml = btn.innerHTML;
             const spinnerHtml = `<span class="loading-spinner" style="display:inline-block; width:14px; height:14px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; animation:stout-spin 0.8s linear infinite; margin-right:8px; vertical-align:middle;"></span>`;
-            // Быстрое сохранение может занять до 10с — сменяющиеся статусы дают понять,
-            // что процесс идёт, а не завис.
-            const shareStatusMessages = ["Проверяем артикулы...", "Подготавливаем оформление...", "Формируем ссылку..."];
             let shareStatusIdx = 0;
             btn.innerHTML = spinnerHtml + shareStatusMessages[0];
             btn.disabled = true;
@@ -41752,6 +42438,7 @@ const app = {
             // в фоновую очередь — номер КП должен оставаться доступным для "Загрузить код".
             flushCloudSave();
             if (shareStatusInterval) clearInterval(shareStatusInterval);
+            this.hideShareProgress();
             if (btn) {
                 btn.innerHTML = origHtml;
                 btn.disabled = false;
@@ -57004,7 +57691,7 @@ const app = {
                 const wins = r.windows || [];
                 const heat = wins.filter(w => !w.noHeater);
                 heat.forEach(w => {
-                    if (w.isPan) nConv++;
+                    if (w.isPan && !w.radInPier) nConv++;
                     else if (roomHasRad) nRad++;
                 });
                 // Все окна без прибора — один прибор на помещение (как в render).
@@ -57924,6 +58611,10 @@ const app = {
                                 <input type="checkbox" ${w.isPan ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'isPan', this.checked)" style="margin:0; width:12px; height:12px;">
                                 панорамное
                             </label>
+                            ${w.isPan && !w.noHeater ? `<label style="display:flex; align-items:center; gap:3px; cursor:pointer; color:var(--text-sec); white-space:nowrap;" title="Прибор у этого окна — радиатор в простенке, а не внутрипольный конвектор (так бывает в проекте между витражами)">
+                                <input type="checkbox" ${w.radInPier ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'radInPier', this.checked)" style="margin:0; width:12px; height:12px;">
+                                радиатор в простенке
+                            </label>` : ''}
                             <label style="display:flex; align-items:center; gap:3px; cursor:pointer; color:var(--text-sec); white-space:nowrap;" title="Под этим окном прибора нет (так в проекте): его теплопотери возьмут приборы под остальными окнами или тёплый пол">
                                 <input type="checkbox" ${w.noHeater ? 'checked' : ''} onchange="app.updWindow(${r.id}, ${w.id}, 'noHeater', this.checked)" style="margin:0; width:12px; height:12px;">
                                 без прибора
@@ -57965,8 +58656,8 @@ const app = {
                         <div style="margin-top:8px;">
                             <div style="font-size:10px; color:var(--text-sec); font-weight:600; margin-bottom:3px;">Отопление</div>
                             <div style="display:flex;">
-                                <button onclick="app.toggleRoomSys(${r.id}, 'rad')" style="${hasRad ? segOn : segOff} border-radius:6px 0 0 6px;">🌡️ Радиаторы</button>
-                                <button onclick="app.toggleRoomSys(${r.id}, 'tp')" style="${hasTp ? segOn : segOff} border-left:0; border-radius:0 6px 6px 0;">♨️ Тёплый пол</button>
+                                <button onclick="app.toggleRoomSys(${r.id}, 'rad')" style="${hasRad ? segOn : segOff} border-radius:6px 0 0 6px;"><span class="ui-emo">🌡️ </span>Радиаторы</button>
+                                <button onclick="app.toggleRoomSys(${r.id}, 'tp')" style="${hasTp ? segOn : segOff} border-left:0; border-radius:0 6px 6px 0;"><span class="ui-emo">♨️ </span>Тёплый пол</button>
                             </div>
                             ${hasTp ? `<label style="${fLbl} margin-top:6px;" title="Сколько пола реально занято трубой: без отступов от стен, мебели, острова. Пусто — вся комната.">Площадь тёплого пола, м²
                                 <input type="number" class="room-num-input" style="${fInp}" step="0.1" min="0" max="${parseFloat(r.area) || 0}"
@@ -58025,7 +58716,7 @@ const app = {
                     parts.push('1 этаж — ' + fmtW(q1) + ' Вт');
                     parts.push('2 этаж — ' + fmtW(q2) + ' Вт');
                 }
-                hs.innerHTML = '🔥 Теплопотери помещений: ' +
+                hs.innerHTML = '<span class="ui-emo">🔥 </span>Теплопотери помещений: ' +
                     (parts.length ? parts.join(' · ') + ' · итого ' : '') +
                     '<b style="color:var(--text-main);">' + fmtW(q1 + q2) + ' Вт</b> ' +
                     '<span style="opacity:0.7;">(ограждения и вентиляция)</span>';
@@ -59619,13 +60310,17 @@ const app = {
             }
         }
 
+        // === БЛОКИРОВКИ ===
+        // Класс ставим до syncRailUI, а не после: до входа рейка скрыта правилом
+        // body.guest-mode, и мерить на скрытой колонке нечего. Пока класс
+        // снимался ниже, перерисовка сразу после входа успевала посчитать
+        // посадку по ещё спрятанной панели.
+        document.body.classList.toggle('guest-mode', isGuest);
+
         // Левая панель кабинета: доступ к админке, счётчик сообщений, подсветка раздела
         this.syncRailUI();
 
         if (document.getElementById('chk_dark')) document.getElementById('chk_dark').checked = this.state.darkMode; document.body.classList.toggle('dark-mode', this.state.darkMode && !this.isShopTheme());
-
-        // === БЛОКИРОВКИ ===
-        document.body.classList.toggle('guest-mode', isGuest);
 
         // Обучение — только вошедшим (кнопку в шапке гостю прячет body.guest-mode).
         // Если человек вышел из аккаунта с включённым обучением, карточка осталась бы
@@ -60571,7 +61266,7 @@ const app = {
                 </tr></tfoot>
             </table>${capNote}
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц ⚡</span>${tip}
+                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> ⚡</span></span>${tip}
             </div>${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
     },
     toggleGasCost: function (chk) {
@@ -60695,7 +61390,7 @@ const app = {
                 </tr></tfoot>
             </table>
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц 🔥</span>${tip}
+                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> 🔥</span></span>${tip}
             </div>${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'gas')}`;
     },
     // Доля выделенной мощности, которую котлу не отдают: свет, розетки и бытовая
@@ -64935,22 +65630,22 @@ const app = {
         // влияет. Вместо него полезнее показать сам объект — этаж и угловая.
         const _flatSum = this.isFlat();
         const _objChip = _flatSum
-            ? `<span class="param-item">🏢 Квартира: <b>${this.state.area} м²</b> (${this.flatPositionName()}${this.state.flatCorner ? ', угловая' : ''})</span>
-            <span class="param-item">🚪 Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
+            ? `<span class="param-item"><span class="ui-emo">🏢 </span>Квартира: <b>${this.state.area} м²</b> (${this.flatPositionName()}${this.state.flatCorner ? ', угловая' : ''})</span>
+            <span class="param-item"><span class="ui-emo">🚪 </span>Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
             : (parseFloat(this.state.area) > 0
-                ? `<span class="param-item">🏠 Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
-            <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`
+                ? `<span class="param-item"><span class="ui-emo">🏠 </span>Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
+            <span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>`
                 // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
                 // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
-                : `<span class="param-item">📋 Объект: <b>по заявке</b></span>`);
+                : `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`);
         const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
-            <span class="param-item">🔖 № КП: <b>${this.kpNumber() || '—'}</b></span>
-            ${this.cheapModeOn() ? '<span class="param-item">💡 Вариант: <b>подешевле</b></span>' : ''}
+            <span class="param-item"><span class="ui-emo">🔖 </span>№ КП: <b>${this.kpNumber() || '—'}</b></span>
+            ${this.cheapModeOn() ? '<span class="param-item"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>' : ''}
             ${_objChip}
-            ${_hasArea ? `<span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>` : ''}
-            <span class="param-item">📍 Регион: <b>${regionName}</b></span>
-            <span class="param-item param-date calculation-date">📅 Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
+            ${_hasArea ? `<span class="param-item"><span class="ui-emo">🔥 </span>Теплопотери: ${heatLossHtml}</span>` : ''}
+            <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>
+            <span class="param-item param-date calculation-date"><span class="ui-emo">📅 </span>Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
         `;
 
         let bill = [];
@@ -69586,7 +70281,10 @@ const app = {
                         }
                         roomDemandSum += wLoad; // накапливаем потребность по помещению
 
-                        if (w.isPan) {
+                        // radInPier — у окна в пол прибор в простенке, радиатором (так в
+                        // проекте: РД-1…РД-3 «Хвойной 3» между витражами кухни). Без
+                        // отметки окну в пол по-прежнему достаётся внутрипольный конвектор.
+                        if (w.isPan && !w.radInPier) {
                             let reqPower70 = wLoad / 0.65 / kTv;
                             let dbAll = this.state.convectorType === 'scn' ? catalog.convectors_scn : catalog.convectors_scq;
                             // Автоподбор всегда идёт по базовой складской ширине/высоте (240×80 SCN,
@@ -74173,13 +74871,13 @@ const app = {
                                margin-top: 12px; font: inherit; font-size: 13px; font-weight: 600;
                                padding: 10px 18px; border-radius: 10px; border: 1px dashed var(--primary);
                                background: transparent; color: var(--primary); cursor: pointer;">
-                        <span style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
+                        <span class="ui-emo" style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">
                     <span class="empty-state-icon">${_emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>` : ''}${qsBtn}
+                    ${_onboardOk ? `<div class="empty-state-text">Задайте параметры слева: ${_emptyWhich}.</div>` : ''}${qsBtn}
                 </div>
             </td></tr>`;
             sum = 0;

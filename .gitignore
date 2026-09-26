@@ -44,3 +44,7 @@ tg_notify_secret.php
 # В журнале телефоны заказчиков, репозиторий публичный.
 lead_secret.php
 leads_log.php
+# Эталоны распознавания проектов — это проекты заказчиков.
+bench/projects/
+bench/node_modules/
+bench/package*.json

@@ -55,6 +55,7 @@ const RecognizeProject = {
     async read(rows, project, onStatus) {
         const ui = RecognizeUI;
         const summary = [], warnings = [];
+        let modelOff = false;       // лимит кончился — дальше только по чертежу
         const posHint = 'Координаты подписей помещений взяты с листа планировки того же этажа: листы нарисованы в одном масштабе ' +
             'и положении, x — % ширины слева, y — % высоты сверху. Помещение, в котором стоит прибор или зона, — то, ' +
             'в чьих границах на этом листе оказывается её точка; ориентируйся по стенам на картинке и по этим координатам.\n\n';
@@ -116,28 +117,52 @@ const RecognizeProject = {
                   '. Марка прибора стоит у окна своего помещения — обычно ближе всего к подписи площади зоны тёплого пола ' +
                   'этого же помещения; помещение каждой марки определяй по этим координатам, а не по картинке.\n\n'
                 : '';
-            try {
-                const data = await ui.askModel([
-                    { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
-                        `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
-                        (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint + zonesHint +
-                        (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
-                        'Верни только JSON.' },
-                    { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
-                ], PROJECT_ENG_PROMPT);
-                const cand = data?.candidates?.[0];
-                const text = cand?.content?.parts?.[0]?.text;
-                if (!text) throw new Error('пустой ответ');
-                const parsed = ui.parseModelJson(text, cand.finishReason);
-                const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh, scopeRows)
-                    : sh.kind === 'vent' ? this.takeVent(parsed, sh)
-                    : this.takeWater(parsed, rows, sh, scopeRows);
-                summary.push(res.summary);
-                warnings.push(...res.warnings);
-            } catch (e) {
-                if (e.quota) { warnings.push(e.message); break; }
-                warnings.push(`лист ${sh.num} (${what}) не прочитан: ${ui.cleanError(e.message).split('\n')[0]}`);
+            // Раскладка по карте помещений модели не требует: если модель не
+            // ответила (лимит, сбой), зоны, приборы и сантехника по маркам всё
+            // равно встанут по комнатам. На «Хвойной 3» 26.09 часовой лимит
+            // оборвал лист сантехники — и вместе с моделью пропала и точная
+            // раскладка по чертежу, которой модель не нужна.
+            const map = sh.kind === 'vent' ? null : this.geoMap(rows, project, sh.roomSheet);
+            const canGeo = !!map && (sh.kind === 'heat' ? (sh.labels || []).length > 0 : !!(sh.fixtures && sh.fixtures.marks && sh.fixtures.marks.length));
+            let parsed = null, fail = null;
+            if (!modelOff) {
+                try {
+                    const data = await ui.askModel([
+                        { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
+                            `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
+                            (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint + zonesHint +
+                            (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
+                            'Верни только JSON.' },
+                        { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
+                    ], PROJECT_ENG_PROMPT);
+                    const cand = data?.candidates?.[0];
+                    const text = cand?.content?.parts?.[0]?.text;
+                    if (!text) throw new Error('пустой ответ');
+                    parsed = ui.parseModelJson(text, cand.finishReason);
+                } catch (e) {
+                    fail = e;
+                    if (e.quota) { modelOff = true; if (!warnings.includes(e.message)) warnings.push(e.message); }
+                    else warnings.push(`лист ${sh.num} (${what}) не прочитан по картинке: ${ui.cleanError(e.message).split('\n')[0]}`);
+                }
             }
+            if (!parsed && !canGeo) continue;
+            // Без модели — пустой ответ: остаётся только то, что взято из чертежа.
+            if (!parsed) parsed = sh.kind === 'heat' ? { rooms: [], ufhTotal: this.ufhTotalOf(sh.text), towelRails: this.towelsOf(sh.text) } : { rooms: [] };
+            if (sh.kind === 'heat' && !(this.num(parsed.ufhTotal) > 0)) parsed.ufhTotal = this.ufhTotalOf(sh.text);
+            const res = sh.kind === 'heat' ? this.takeHeat(parsed, rows, sh, scopeRows)
+                : sh.kind === 'vent' ? this.takeVent(parsed, sh)
+                : this.takeWater(parsed, rows, sh, scopeRows);
+            // Поверх модели — раскладка по карте помещений, где она есть.
+            const geo = !canGeo ? null : sh.kind === 'heat' ? this.geoHeat(sh, scopeRows, map) : this.geoWater(sh, scopeRows, map);
+            if (geo && geo.summary.length) {
+                res.summary = res.summary.replace(/\.$/, '') + `; по чертежу: ${geo.summary.join(', ')}.`;
+                // Предупреждения модели о числе марок и приборов после
+                // раскладки по чертежу уже не про то.
+                if (sh.kind === 'heat') res.warnings = res.warnings.filter(w => !/марок приборов на листе/.test(w));
+            }
+            if (fail && geo && geo.summary.length) res.summary = `Лист ${sh.num} «${sh.title}»: по чертежу — ${geo.summary.join(', ')} (картинка листа не прочитана).`;
+            summary.push(res.summary);
+            warnings.push(...res.warnings, ...(geo ? geo.warnings : []));
         }
         return { summary, warnings };
     },
@@ -171,12 +196,421 @@ const RecognizeProject = {
         const onPlan = cand.filter(w => !column(w));
         const dup = {};
         rows.forEach(r => { const k = norm(r.name); dup[k] = (dup[k] || 0) + 1; });
-        return rows.map(r => {
+        // Середина надписи точнее её левого края: длинное «Кухня-гостиная»
+        // начинается у самой стены.
+        const at = w => ({ x: w.cx !== undefined ? w.cx : w.x, y: w.cy !== undefined ? w.cy : w.y });
+        const out = rows.map(r => {
             const k = norm(r.name);
             if (dup[k] > 1) return null;
             const hits = onPlan.filter(w => norm(w.s) === k);
-            return hits.length === 1 ? { x: hits[0].x, y: hits[0].y } : null;
+            return hits.length === 1 ? at(hits[0]) : null;
         });
+        // Название на плане не подписано (или подписано иначе) — ищем по
+        // площади «3,02 м²» под номером комнаты. В экспликации площади без
+        // «м²», их regex не берёт.
+        rows.forEach((r, i) => {
+            if (out[i] || !(r.area > 0)) return;
+            const a = (Math.round(r.area * 100) / 100).toFixed(2);
+            const re = new RegExp('^' + a.replace('.', '[.,]') + '\\s*м');
+            const hits = words.filter(w => re.test(w.s));
+            if (hits.length === 1 && !rows.some((o, j) => j !== i && o.area > 0 && Math.abs(o.area - r.area) < 0.005)) out[i] = at(hits[0]);
+        });
+        return out;
+    },
+
+    // ------------------------------------------------------------------
+    // Карта помещений (RecognizeGeo)
+    //
+    // Где стоит окно, прибор или зона тёплого пола — вопрос геометрии, а не
+    // зрения: стены листа помещений лежат в PDF заливкой, подписи комнат,
+    // марки и концы выносок — текстом и линиями с координатами. Модель по
+    // картинке путала соседние комнаты (коридор без окон, три окна в
+    // кабинете, раковина «лишняя»). Всё, что карта разложила, ставится
+    // поверх ответа модели и помечается r.eng.src[поле] = 'pdf' — на экране
+    // проверки такие ячейки зелёные, их можно не перепроверять.
+    // ------------------------------------------------------------------
+
+    _maps: null,
+
+    geoMap(rows, project, k) {
+        if (typeof RecognizeGeo === 'undefined' || !project || !Array.isArray(project.roomWalls)) return null;
+        if (k === null || k === undefined) k = project.roomWalls.length === 1 ? 0 : null;
+        if (k === null || !project.roomWalls[k]) return null;
+        const scope = project.roomWalls.length === 1 ? rows : rows.filter(r => r._sheet === k);
+        const key = k + '|' + scope.map(r => r.name + ':' + r.area).join('|');
+        // Карта строится раз на лист, а строки у разных шагов — разные
+        // объекты с теми же названиями (помещения из PDF собираются до
+        // того, как появятся строки экрана проверки). Храним номера подписей
+        // в списке и привязываем карту к строкам того, кто спросил.
+        this._maps = this._maps || new Map();
+        const bind = got => got && got.map ? Object.assign({}, got.map, { rows: got.idx.map(i => scope[i]) }) : null;
+        if (this._maps.has(key)) return bind(this._maps.get(key));
+        const pos = this.roomPositions(scope, project.roomWords && project.roomWords[k]);
+        const seeds = [], idx = [];
+        scope.forEach((r, i) => { if (pos[i]) { seeds.push({ name: r.name, x: pos[i].x, y: pos[i].y }); idx.push(i); } });
+        let map = null;
+        if (seeds.length >= 2) {
+            try { map = RecognizeGeo.buildFromWalls(project.roomWalls[k], seeds); } catch (e) { console.warn('Карта помещений:', e); map = null; }
+        }
+        this._maps.set(key, { map, idx });
+        return bind(this._maps.get(key));
+    },
+
+    rowAt(map, x, y, maxMm) {
+        if (!map || x === undefined || y === undefined) return null;
+        const i = RecognizeGeo.roomAt(map, x, y, maxMm);
+        return i >= 0 ? map.rows[i] : null;
+    },
+
+    /**
+     * Названия и площади — дословно из экспликации PDF
+     * (RecognizeFiles.pageExplication). Строки модели сверяются с таблицей
+     * по названию, затем по площади; чего модель не прочитала — добавляется,
+     * лишнее остаётся неотмеченным с пометкой. Порядок — как в таблице.
+     * Вызывать до окон и инженерных листов: они ссылаются на строки.
+     */
+    fitExplication(res, project) {
+        const tabs = project && project.roomTables;
+        if (!Array.isArray(tabs) || !tabs.some(Boolean) || !res || !Array.isArray(res.rows)) return [];
+        const warnings = [];
+        const norm = s => String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^а-яa-z0-9]/g, '');
+        tabs.forEach((tab, k) => {
+            if (!tab) return;
+            const own = res.rows.filter(r => tabs.length === 1 || r._sheet === k);
+            if (!own.length && tabs.length > 1) return;
+            const tpl = own[0] || res.rows[0] || {};
+            const used = new Set(), ordered = [];
+            let added = 0;
+            tab.rows.forEach(t => {
+                let r = own.find(x => !used.has(x) && norm(x.name) === norm(t.name))
+                    || own.find(x => !used.has(x) && x.area > 0 && Math.abs(x.area - t.area) < 0.015);
+                if (!r) {
+                    added++;
+                    r = { _sheet: tpl._sheet !== undefined ? tpl._sheet : k, _sel: true, num: '', name: '', nameGuessed: false,
+                        area: null, areaSrc: null, dims: '', windows: null, panoramic: 0, outerWalls: null, orient: null,
+                        doubleHeight: false, heated: true, floorRaw: tpl.floorRaw !== undefined ? tpl.floorRaw : 1,
+                        floor: tpl.floor !== undefined ? tpl.floor : 1, ownFloor: false, confidence: 1,
+                        note: 'добавлено из экспликации — на плане модель его не нашла' };
+                }
+                used.add(r);
+                r.num = t.num; r.name = t.name; r.area = t.area; r.areaSrc = 'table'; r.nameGuessed = false;
+                this.setSrc(r, 'name', 'pdf');
+                this.setSrc(r, 'area', 'pdf');
+                ordered.push(r);
+            });
+            const extra = own.filter(x => !used.has(x));
+            extra.forEach(x => {
+                x._sel = false;
+                x.note = [x.note, 'в экспликации такого помещения нет — в расчёт не отмечено'].filter(Boolean).join('; ');
+                ordered.push(x);
+            });
+            const at = own.length ? res.rows.indexOf(own[0]) : res.rows.length;
+            const rest = res.rows.filter(r => !own.includes(r));
+            const pos = rest.filter((r, i) => res.rows.indexOf(r) < at).length;
+            rest.splice(pos, 0, ...ordered);
+            res.rows = rest;
+            if (res.sheets && res.sheets[k]) res.sheets[k].totalArea = tab.total;
+            if (added) warnings.push(`экспликация: ${added} ${RecognizeUI.plural(added, 'помещение добавлено', 'помещения добавлены', 'помещений добавлено')} из таблицы — на плане их не нашли`);
+            if (extra.length) warnings.push(`в экспликации нет: ${extra.map(x => x.name).join(', ')} — не отмечено`);
+        });
+        return warnings;
+    },
+
+    /**
+     * Помещения листов проекта — без модели. Названия и площади — из
+     * экспликации, наружные стены — по карте помещений, окна — дальше по
+     * обмерному плану (readWindows). Для каждого листа помещений — ответ в
+     * том же виде, что у модели плана (RecognizePlan.normalizeSheet его
+     * примет), или null — этот лист читает модель, как прежде.
+     *
+     * Модель на этом листе шла 2–4 минуты и была самым долгим шагом, а всё,
+     * что она отсюда брала, в PDF лежит точно. Условие — есть экспликация,
+     * стены заливкой и обмерный план с подписями окон: без него окна
+     * считать не по чему, и лист остаётся модели.
+     */
+    HEATED_NOT_RE: /террас|балкон|лоджи|крыльц|веранд|навес|патио/i,
+
+    plansFromPdf(project) {
+        if (!project || !Array.isArray(project.roomTables) || typeof RecognizeGeo === 'undefined') return null;
+        const winOk = !!(project.winSheet && project.winSheet.labels && project.winSheet.labels.length);
+        if (!winOk || project.rooms.length !== 1) return null;
+        const out = project.rooms.map((p, k) => {
+            const tab = project.roomTables[k], walls = (project.roomWalls || [])[k];
+            if (!tab || !walls) return null;
+            const rows = tab.rows.map(t => ({ name: t.name, area: t.area, _sheet: k }));
+            const map = this.geoMap(rows, project, k);
+            if (!map) return null;
+            const floor = typeof RecognizeFiles !== 'undefined' ? RecognizeFiles.sheetFloor(p.title) : null;
+            return {
+                docKind: 'floor_plan', floorLabel: p.title || null, floor: typeof floor === 'number' ? floor : null,
+                ceilingH: null, hasTable: true, totalArea: tab.total, fromPdf: true,
+                rooms: tab.rows.map((t, i) => {
+                    const at = map.rows.indexOf(rows[i]);
+                    const o = at >= 0 ? RecognizeGeo.outerSides(map, at) : null;
+                    return {
+                        num: t.num, name: t.name, area: t.area, areaSrc: 'table', windows: null, panoramic: 0,
+                        outerWalls: o && o.count ? Math.min(3, o.count) : null, heated: !this.HEATED_NOT_RE.test(t.name), confidence: 1, note: null,
+                        _outerSides: o ? o.sides : null,
+                    };
+                }),
+                unclear: [],
+            };
+        });
+        return out.some(Boolean) ? out : null;
+    },
+
+    setSrc(r, field, v) {
+        r.eng = r.eng || {};
+        r.eng.src = r.eng.src || {};
+        r.eng.src[field] = v;
+    },
+
+    /**
+     * Зоны тёплого пола и приборы отопления — по карте. Подписи «S=…» и
+     * марки «РД-N» стоят внутри своих комнат. Перекладываем, только если
+     * своя комната нашлась у каждой подписи (у зон) и у каждой марки (у
+     * приборов): частичная раскладка хуже модели целиком.
+     */
+    geoHeat(sh, scope, map) {
+        if (!map || !(sh.labels || []).length) return null;
+        const zones = new Map(), marks = new Map(), pts = new Map();
+        const lostZ = [], lostM = [];
+        for (const l of sh.labels) {
+            const r = this.rowAt(map, l.cx !== undefined ? l.cx : l.x, l.cy !== undefined ? l.cy : l.y, 600);
+            if (!r || !scope.includes(r)) { (l.mark ? lostM : lostZ).push(l.s); continue; }
+            if (l.mark) {
+                if (!marks.has(r)) marks.set(r, []);
+                if (!marks.get(r).includes(l.s)) {
+                    marks.get(r).push(l.s);
+                    // Где стоит прибор — чтобы отдать его ближайшему окну (fitRoom).
+                    if (!pts.has(r)) pts.set(r, []);
+                    pts.get(r).push({ x: l.cx !== undefined ? l.cx : l.x, y: l.cy !== undefined ? l.cy : l.y });
+                }
+            } else {
+                const a = this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, ''));
+                if (a > 0) zones.set(r, (zones.get(r) || 0) + a);
+            }
+        }
+        const out = [];
+        if (zones.size && !lostZ.length) {
+            let labeled = 0;
+            const unl = [];
+            scope.forEach(r => {
+                const e = r.eng;
+                if (zones.has(r)) {
+                    e.ufh = true; e.ufhArea = Math.round(zones.get(r) * 100) / 100; e.ufhAreaSrc = 'label';
+                    labeled += e.ufhArea;
+                    this.setSrc(r, 'ufh', 'pdf');
+                } else if (e.ufhAreaSrc === 'label') {
+                    // Модель отдала сюда подписанную зону чужой комнаты.
+                    e.ufh = false; e.ufhArea = null; e.ufhAreaSrc = null;
+                    this.setSrc(r, 'ufh', 'pdf');
+                } else if (e.ufh) unl.push(r);
+            });
+            // Зоны без подписи (гардеробные) — остаток спецификации заново:
+            // сумма подписанных после раскладки могла измениться.
+            const total = sh._ufhTotal;
+            if (unl.length && total > labeled + 0.2) {
+                const wt = r => r.eng.ufhArea > 0 ? r.eng.ufhArea : (r.area > 0 ? r.area : 1);
+                const wSum = unl.reduce((a, r) => a + wt(r), 0);
+                const rest = total - labeled;
+                unl.forEach(r => {
+                    let a = rest * wt(r) / wSum;
+                    if (r.area > 0) a = Math.min(a, r.area);
+                    r.eng.ufhArea = Math.round(a * 100) / 100;
+                    r.eng.ufhAreaSrc = 'spec';
+                });
+            }
+            out.push(`зоны тёплого пола — по подписям S= и стенам листа (${zones.size} ${RecognizeUI.plural(zones.size, 'помещение', 'помещения', 'помещений')})`);
+        }
+        if (marks.size && !lostM.length) {
+            const typeOf = {};
+            scope.forEach(r => (r.eng.heaterMarks || []).forEach(m => { if (r.eng.heaterType) typeOf[m] = r.eng.heaterType; }));
+            let n = 0;
+            scope.forEach(r => {
+                const e = r.eng, mk = marks.get(r) || [];
+                const types = mk.map(m => this.heaterTypeOfMark(m) || typeOf[m]).filter(Boolean);
+                e.heaterType = mk.length ? (types[0] || e.heaterType || 'radiator') : null;
+                e.heaters = mk.length;
+                e.heaterMarks = mk;
+                e.heaterPts = pts.get(r) || null;
+                n += mk.length;
+                this.setSrc(r, 'heaters', 'pdf');
+            });
+            out.push(`приборы ${n} — по маркам и стенам листа`);
+        }
+        const warnings = [];
+        if (lostZ.length) warnings.push(`лист ${sh.num}: подписи зон ${lostZ.join(', ')} не попали ни в одно помещение — зоны разложены по картинке, проверьте`);
+        if (lostM.length) warnings.push(`лист ${sh.num}: марки ${lostM.join(', ')} не попали ни в одно помещение — приборы разложены по картинке, проверьте`);
+        return { summary: out, warnings };
+    },
+
+    // ------------------------------------------------------------------
+    // Сколько это заняло бы руками
+    //
+    // Прежний счётчик считал 40 с на помещение: за проект на 92 листа — «~8
+    // мин», что обесценивает работу. Честная оценка по шагам, которые
+    // монтажник делает сам, по нижней границе. Норма на позицию сметы — та
+    // же, что у распознавания смет (40 с: найти в прайсе, артикул, цена,
+    // количество).
+    // ------------------------------------------------------------------
+
+    MANUAL_SEC: { page: 10, room: 90, window: 60, zone: 60, fixture: 40, note: 120, city: 180, bill: 40 },
+
+    /**
+     * { min, parts: [{ label, min }] } — разбор проекта руками. bill — число
+     * позиций готовой сметы (оборудование и работы), если она уже посчитана.
+     */
+    manualEstimate(project, rows, bill) {
+        const S = this.MANUAL_SEC, parts = [];
+        const add = (label, n, sec) => { if (n > 0) parts.push({ label: label(n), min: n * sec / 60 }); };
+        const pl = (n, a, b, c) => `${n} ${RecognizeUI.plural(n, a, b, c)}`;
+        const p = project || {};
+        add(n => `пролистать ${pl(n, 'лист', 'листа', 'листов')} и найти нужные`, (p.pages || []).length, S.page);
+        const nRooms = (rows && rows.length) || ((p.roomTables || []).reduce((a, t) => a + (t ? t.rows.length : 0), 0));
+        add(n => `${pl(n, 'помещение', 'помещения', 'помещений')}: название, площадь, стены`, nRooms, S.room);
+        add(n => `${pl(n, 'окно', 'окна', 'окон')}: комната, размер, высота`, p.winSheet ? p.winSheet.labels.length : 0, S.window);
+        const heat = (p.eng || []).filter(e => e.kind === 'heat').reduce((a, e) => a + (e.labels || []).length, 0);
+        add(n => `${pl(n, 'зона и прибор', 'зоны и приборы', 'зон и приборов')} отопления по комнатам`, heat, S.zone);
+        const fx = (p.eng || []).filter(e => e.kind === 'water').reduce((a, e) => a + (e.fixtures ? e.fixtures.marks.length : 0), 0);
+        add(n => `${pl(n, 'марка', 'марки', 'марок')} сантехники по спецификации`, fx, S.fixture);
+        add(n => `${pl(n, 'блок', 'блока', 'блоков')} примечаний прочитать и учесть`, (p.notes || []).length, S.note);
+        if (p.address) add(() => 'город и климат по адресу', 1, S.city);
+        add(n => `смета: ${pl(n, 'позиция', 'позиции', 'позиций')} подобрать в прайсе`, bill || 0, S.bill);
+        const min = Math.round(parts.reduce((a, x) => a + x.min, 0));
+        parts.forEach(x => { x.min = Math.max(1, Math.round(x.min)); });
+        return { min, parts };
+    },
+
+    /**
+     * Полотенцесушители из спецификации приборов текстом: «Полотенцесушитель
+     * электро». По строке на прибор — сколько строк, столько и штук.
+     */
+    towelsOf(text) {
+        const hits = String(text || '').match(/полотенцесушител\S*\s*(электр\S*|водян\S*)/gi) || [];
+        if (!hits.length) return null;
+        return { count: hits.length, type: hits.every(h => /водян/i.test(h)) ? 'water' : 'electric' };
+    },
+
+    /**
+     * Сколько позиций будет в смете — пока распознавание идёт, её ещё нет.
+     * Оценка по составу проекта: котельная и общие материалы (~80), плюс на
+     * помещение, прибор отопления, марку сантехники и зону тёплого пола.
+     * На «Хвойной 3» даёт ~240 при 243 в готовом КП № 415033-1.
+     */
+    billGuess(project) {
+        const p = project || {};
+        const rooms = (p.roomTables || []).reduce((a, t) => a + (t ? t.rows.length : 0), 0);
+        const heat = (p.eng || []).filter(e => e.kind === 'heat');
+        const marks = heat.reduce((a, e) => a + (e.labels || []).filter(l => l.mark).length, 0);
+        const zones = heat.reduce((a, e) => a + (e.labels || []).filter(l => !l.mark).length, 0);
+        const fx = (p.eng || []).filter(e => e.kind === 'water').reduce((a, e) => a + (e.fixtures ? e.fixtures.marks.length : 0), 0);
+        return Math.round((80 + rooms * 3 + marks * 6 + fx * 5 + zones * 2) / 10) * 10;
+    },
+
+    /** «≈4,5 ч» — итог крупно: полчаса точности здесь достаточно. */
+    roughTime(min) {
+        if (min < 90) return `${Math.round(min / 5) * 5} мин`;
+        const h = Math.round(min / 30) / 2;
+        return `${String(h).replace('.', ',')} ч`;
+    },
+
+    /**
+     * Что показывать про ручную работу: итог и строки «из чего» по очереди.
+     * bill — число позиций готовой сметы; не передано — оценка billGuess.
+     */
+    savingPlan(project, rows, bill) {
+        const guessed = !(bill > 0);
+        const n = guessed ? this.billGuess(project) : bill;
+        const est = this.manualEstimate(project, rows, 0);
+        const billMin = Math.round(n * this.MANUAL_SEC.bill / 60);
+        const lines = est.parts.map(x => `${x.label} — <b>${RecognizeUI.handTime(x.min)}</b>`);
+        lines.push(`смета по проекту: ${guessed ? '≈' : ''}${n} ${RecognizeUI.plural(n, 'позиция', 'позиции', 'позиций')} по 40 с — <b>${RecognizeUI.handTime(billMin)}</b>`);
+        const total = est.min + billMin;
+        return { total, parse: est.min, billMin, bill: n, guessed, lines,
+            totalLine: `разбор ${RecognizeUI.handTime(est.min)} + смета ${RecognizeUI.handTime(billMin)} = <b>≈${this.roughTime(total)} руками</b>` };
+    },
+
+    /** Итог спецификации тёплого пола из текста листа: «Водяной тёплый пол … 121,95». */
+    ufhTotalOf(text) {
+        // Число отдельной строкой после заголовка таблицы — не «S=4,22м2» с плана.
+        const m = String(text || '').match(/спецификаци\S*\s+т[её]пл\S*\s+пол[\s\S]{0,200}?\n\s*(\d{1,4}[.,]\d{1,2})\s*(\n|$)/i);
+        const v = m ? this.num(m[1]) : null;
+        return v > 0 ? v : null;
+    },
+
+    /**
+     * Тип прибора по марке. РД / Р — радиатор: так их и обозначают, и на
+     * «Хвойной 3» РД-1…РД-5 — узкие радиаторы в простенках между окнами в
+     * пол, а модель по окнам в пол назвала их конвекторами в полу, и в КП
+     * ушли три внутрипольных конвектора с вентилятором по 62 тыс. КВ —
+     * конвектор внутрипольный. Прочие марки — как решила модель.
+     */
+    heaterTypeOfMark(mark) {
+        const p = String(mark || '').toUpperCase().replace(/-.*$/, '');
+        if (p === 'РД' || p === 'Р') return 'radiator';
+        if (p === 'КВ') return 'floor_convector';
+        return null;
+    },
+
+    /**
+     * Тип прибора по строке спецификации сантехники. Смеситель и сам прибор
+     * — две марки одного прибора: считаем по большему из двух (раковина и
+     * смеситель к ней — одна раковина). Гигиенический душ — не душ.
+     */
+    fixKind(t) {
+        const s = String(t || '').toLowerCase().replace(/ё/g, 'е');
+        if (/гигиен/.test(s)) return null;
+        if (/унитаз/.test(s)) return /биде/.test(s) ? 'toiletHot' : 'toilet';
+        if (/инсталляц/.test(s)) return 'toilet';
+        if (/стиральн/.test(s)) return 'wash';
+        if (/посудомо/.test(s)) return 'dish';
+        if (/смесител|термостат/.test(s)) return /ванн/.test(s) ? 'bathMix' : /душ/.test(s) ? 'showerMix' : 'basinMix';
+        if (/биде/.test(s)) return 'bidet';
+        if (/трап/.test(s)) return 'drain';
+        if (/ванн/.test(s)) return 'bath';
+        if (/лейк|ручн\S*\s+душ/.test(s)) return 'showerHand';
+        if (/душ/.test(s)) return 'shower';
+        if (/раковин|умывальник|мойк/.test(s)) return 'basin';
+        return null;
+    },
+
+    /**
+     * Сантехника по маркам плана и спецификации — поверх модели. Стиральные,
+     * посудомоечные и трапы на «Хвойной 3» подписаны выносками за стенами
+     * дома, без марок, — их оставляем модели, если в спецификации их нет.
+     */
+    geoWater(sh, scope, map) {
+        const fx = sh.fixtures;
+        if (!map || !fx || !fx.marks || !fx.marks.length) return null;
+        const per = new Map(), lost = [];
+        for (const m of fx.marks) {
+            const r = this.rowAt(map, m.cx, m.cy, 600);
+            if (!r || !scope.includes(r)) { lost.push(m.s); continue; }
+            if (!per.has(r)) per.set(r, []);
+            per.get(r).push(this.fixKind(fx.spec[m.s]));
+        }
+        if (lost.length) {
+            return { summary: [], warnings: [`лист ${sh.num}: марки сантехники ${lost.join(', ')} не попали ни в одно помещение — сантехника разложена по картинке, проверьте`] };
+        }
+        const specKinds = new Set(Object.values(fx.spec).map(t => this.fixKind(t)));
+        scope.forEach(r => {
+            const kinds = per.get(r) || [];
+            const c = k => kinds.filter(x => x === k).length;
+            const f = Object.assign({}, ...this.FIX_KEYS.map(k => ({ [k]: 0 })), r.eng.fix || {});
+            f.toiletHot = c('toiletHot');
+            f.toilet = c('toilet') + c('toiletHot');
+            f.bidet = c('bidet');
+            f.bath = Math.max(c('bath'), c('bathMix'));
+            f.shower = Math.max(c('shower'), c('showerHand'), c('showerMix'));
+            f.basin = Math.max(c('basin'), c('basinMix'));
+            if (specKinds.has('drain')) f.drain = c('drain');
+            if (specKinds.has('wash')) f.wash = c('wash');
+            if (specKinds.has('dish')) f.dish = c('dish') + (r.eng.robot || 0);
+            r.eng.fix = this.FIX_KEYS.some(k => f[k]) ? f : null;
+            this.setSrc(r, 'fix', 'pdf');
+        });
+        return { summary: [`сантехника — по маркам спецификации и стенам листа (${fx.marks.length} ${RecognizeUI.plural(fx.marks.length, 'марка', 'марки', 'марок')})`], warnings: [] };
     },
 
     // ------------------------------------------------------------------
@@ -343,28 +777,158 @@ const RecognizeProject = {
         const ws = project && project.winSheet;
         if (!ws || !ws.labels || !ws.labels.length) return { summary: [], warnings: [] };
         const ui = RecognizeUI;
+
+        // Сперва по карте помещений: конец выноски каждого окна — в стене
+        // своей комнаты. Все окна нашли комнату — модель не нужна (и запрос
+        // из лимита не тратится); часть — модель читает остальные.
+        const map = this.geoMap(rows, project, 0);
+        const geo = [];
+        if (map) {
+            ws.labels.forEach(l => {
+                const r = l.wx !== undefined ? this.rowAt(map, l.wx, l.wy, 900) : null;
+                if (r) geo.push({ l, r, width: RecognizeGeo.gapWidth(map, l.wx, l.wy) });
+            });
+        }
+        const geoParsed = extra => {
+            const byRow = new Map();
+            geo.forEach(g => {
+                if (!byRow.has(g.r)) byRow.set(g.r, []);
+                byRow.get(g.r).push({ label: g.l.n, width: g.width });
+            });
+            const taken = new Set(geo.map(g => g.l.n));
+            const rooms = [...byRow].map(([r, windows]) => ({ n: rows.indexOf(r) + 1, windows }));
+            // Окна, которые разложила модель, — только из тех, что карта не нашла.
+            ((extra && extra.rooms) || []).forEach(x => {
+                const ws2 = (x.windows || []).filter(w => !taken.has(Math.round(this.num(w && w.label))));
+                if (!ws2.length) return;
+                const same = rooms.find(o => o.n === Math.round(this.num(x.n)));
+                if (same) same.windows.push(...ws2); else rooms.push({ n: x.n, windows: ws2 });
+            });
+            return { rooms, unclear: extra && extra.unclear };
+        };
+        const markGeo = res => {
+            const allGeo = geo.length === ws.labels.length;
+            rows.forEach(r => {
+                const mine = geo.filter(g => g.r === r).length;
+                if (mine && mine === (r.windows || 0)) this.setSrc(r, 'windows', 'pdf');
+                // Все окна листа нашли комнату (по чертежу или моделью), а у
+                // этой их нет — значит, окон у неё и правда нет. Иначе
+                // оставалась цифра с первого чтения плана: у гардеробной
+                // «Хвойной 3» — окно, которого в проекте нет.
+                const hasSpec = r.eng && r.eng.winSpec && r.eng.winSpec.length;
+                // Помещения собраны из PDF без модели (windows === null) —
+                // окна знает только обмерный план: нет своих подписей — 0,
+                // а не «1 по умолчанию» у каждой кладовой.
+                if ((!res.lost || r.windows === null) && !hasSpec) {
+                    r.windows = 0; r.panoramic = 0;
+                    if (allGeo) this.setSrc(r, 'windows', 'pdf');
+                }
+            });
+            res.summary = res.summary.map(t => t.replace(/\.$/, '') + (geo.length
+                ? `; ${geo.length} из ${ws.labels.length} — по концам выносок и стенам листа, без модели.` : '.'));
+            return res;
+        };
+        if (geo.length && geo.length === ws.labels.length) return markGeo(this.takeWindows(geoParsed(null), rows, ws));
+
         if (onStatus) onStatus(`Читаю лист ${ws.num} — окна…`);
         const words = project.roomWords && project.roomWords.length === 1 ? project.roomWords[0] : null;
         const pos = this.roomPositions(rows, words);
         const list = rows.map((r, n) => `${n + 1}. ${r.name}${r.area > 0 ? `, ${this.fmt(r.area)} м²` : ''}` +
             (pos[n] ? `, подпись на плане (${pos[n].x}%, ${pos[n].y}%)` : '')).join('\n');
         const labels = ws.labels.map(l => `${l.n}. «${l.s}», высота ${this.fmt(l.h)} м, от пола ${
-            l.sill === null ? '—' : this.fmt(l.sill) + ' м'} — подпись в точке (${l.x}%, ${l.y}%)`).join('\n');
+            l.sill === null ? '—' : this.fmt(l.sill) + ' м'} — подпись в точке (${l.x}%, ${l.y}%)` +
+            (l.wx !== undefined ? `; само окно (конец выноски, из PDF точно) — в точке (${l.wx}%, ${l.wy}%)` : '')).join('\n');
+        // Крупный кадр дома с метками: красные «№» у подписей окон, синие
+        // «номер. Название» в помещениях. Не вышло — лист целиком, как прежде.
+        let img = ws.img, marked = false, imgRooms = null;
+        if (ws.crop) {
+            try { img = await this.markWindowsImage(ws, rows, pos); marked = true; } catch (e) { img = ws.img; }
+            // Второй кадр — та же рамка с листа помещений (после перепланировки).
+            if (marked && ws.cropRooms) {
+                try { imgRooms = await this.markWindowsImage(ws, rows, pos, ws.cropRooms, true); } catch (e) { imgRooms = null; }
+            }
+        }
         try {
             const data = await ui.askModel([
                 { text: `Лист ${ws.num} «${ws.title}». Помещения дома (координаты подписей — с листа планировки, листы в одном масштабе и положении):\n${list}\n\n` +
-                    `Подписи окон на этом листе (текст и координаты взяты из PDF точно):\n${labels}\n\nВерни только JSON.` },
-                { inline_data: { mime_type: 'image/jpeg', data: ws.img } },
+                    `Подписи окон на этом листе (текст и координаты взяты из PDF точно):\n${labels}\n\n` +
+                    (marked ? 'На картинке — только дом, крупно. Красная метка «№N» стоит у подписи окна N; синяя метка «N. Название» — ' +
+                        'в помещении N списка. Иди по выноске от красной метки к окну и смотри, в стене какого помещения (синей метки) оно. ' +
+                        'Координаты в тексте — по всему листу, а не по картинке.\n\n' : '') +
+                    (imgRooms ? `Картинок две, в одном кадре и с одинаковыми метками. Первая — этот лист ${ws.num} с выносками к окнам ` +
+                        `(он может показывать дом до перепланировки). Вторая — лист ${ws.roomsNum}, стены после перепланировки, выносок на нём нет; ` +
+                        'на ней красная точка «№N» стоит прямо в окне N — это конец его выноски, найденный в PDF. ' +
+                        'Помещение окна — то, в чьей наружной стене стоит точка на второй картинке: смотри на перегородки рядом с точкой, ' +
+                        'а не на расстояние до синих меток. Окна без точки ищи по выноске на первой картинке.\n\n' : '') +
+                    'Верни только JSON.' },
+                { inline_data: { mime_type: 'image/jpeg', data: img } },
+                ...(imgRooms ? [{ inline_data: { mime_type: 'image/jpeg', data: imgRooms } }] : []),
             ], PROJECT_WINDOWS_PROMPT);
             const cand = data?.candidates?.[0];
             const text = cand?.content?.parts?.[0]?.text;
             if (!text) throw new Error('пустой ответ');
             const parsed = ui.parseModelJson(text, cand.finishReason);
-            return this.takeWindows(parsed, rows, ws);
+            return geo.length ? markGeo(this.takeWindows(geoParsed(parsed), rows, ws)) : this.takeWindows(parsed, rows, ws);
         } catch (e) {
+            // Модель не ответила — то, что разложено по чертежу, всё равно в деле.
+            if (geo.length) {
+                const res = markGeo(this.takeWindows(geoParsed(null), rows, ws));
+                res.warnings.push(e.quota ? e.message : `лист ${ws.num}: окна без выноски не прочитаны — ${ui.cleanError(e.message).split('\n')[0]}`);
+                return res;
+            }
             if (e.quota) return { summary: [], warnings: [e.message] };
             return { summary: [], warnings: [`лист ${ws.num} (окна) не прочитан: ${ui.cleanError(e.message).split('\n')[0]}`] };
         }
+    },
+
+    /**
+     * Кадр обмерного плана с метками для модели. Координаты подписей окон
+     * и помещений — в процентах листа, кадр — рамка ws.crop.box в тех же
+     * процентах: пересчёт линейный. Метки полупрозрачные, чтобы не закрыть
+     * выноски, и стоят чуть в стороне от точки подписи — сама подпись
+     * остаётся читаемой.
+     */
+    async markWindowsImage(ws, rows, pos, src, atWindow) {
+        const box = ws.crop.box;
+        const b64 = src || ws.crop.b64;
+        const im = new Image();
+        await new Promise((ok, err) => { im.onload = ok; im.onerror = () => err(new Error('кадр не открылся')); im.src = 'data:image/jpeg;base64,' + b64; });
+        const c = document.createElement('canvas');
+        c.width = im.naturalWidth; c.height = im.naturalHeight;
+        const g = c.getContext('2d');
+        g.drawImage(im, 0, 0);
+        const X = x => (x - box.x0) / (box.x1 - box.x0) * c.width;
+        const Y = y => (y - box.y0) / (box.y1 - box.y0) * c.height;
+        const fs = Math.max(14, Math.round(c.width / 90));
+        const tag = (text, x, y, fill) => {
+            g.font = `bold ${fs}px Arial, sans-serif`;
+            const w = g.measureText(text).width + fs * 0.6, h = fs * 1.35;
+            g.globalAlpha = 0.85;
+            g.fillStyle = fill;
+            g.fillRect(x, y - h / 2, w, h);
+            g.globalAlpha = 1;
+            g.fillStyle = '#fff';
+            g.textBaseline = 'middle';
+            g.fillText(text, x + fs * 0.3, y);
+        };
+        ws.labels.forEach(l => {
+            const t = `№${l.n}`;
+            g.font = `bold ${fs}px Arial, sans-serif`;
+            // На плане после перепланировки выносок нет — метка ставится в
+            // само окно (конец выноски, найденный в PDF): красная точка и номер.
+            if (atWindow && l.wx !== undefined) {
+                const cx = X(l.wx), cy = Y(l.wy);
+                g.globalAlpha = 0.9; g.fillStyle = '#dc2626';
+                g.beginPath(); g.arc(cx, cy, fs * 0.45, 0, Math.PI * 2); g.fill();
+                g.globalAlpha = 1;
+                tag(t, cx + fs * 0.6, cy - fs * 0.9, '#dc2626');
+                return;
+            }
+            if (atWindow) return;       // точки нет — на втором кадре не гадаем
+            tag(t, X(l.x) - g.measureText(t).width - fs * 1.2, Y(l.y) - fs * 0.4, '#dc2626');
+        });
+        rows.forEach((r, k) => { if (pos[k]) tag(`${k + 1}. ${r.name}`, X(pos[k].x), Y(pos[k].y) + fs * 1.3, '#1d4ed8'); });
+        return c.toDataURL('image/jpeg', 0.85).split(',')[1];
     },
 
     takeWindows(parsed, rows, ws) {
@@ -382,6 +946,7 @@ const RecognizeProject = {
                 used.add(l.n);
                 const width = this.num(w.width);
                 spec.push({ h: l.h, sill: l.sill === null ? null : l.sill, floor: l.floor || (l.sill !== null && l.sill <= 0.3 && l.h >= 2),
+                    wx: l.wx, wy: l.wy,
                     width: width > 300 ? Math.round(width) / 1000 : (width > 0.3 && width < 6 ? width : null) });
             });
             if (!spec.length) return;
@@ -402,6 +967,7 @@ const RecognizeProject = {
         return {
             summary: [`Лист ${ws.num} «${ws.title}»: окон ${nWin} из ${ws.labels.length} подписанных, из них в пол ${nFloor} — высоты и подоконники по подписям листа.`],
             warnings,
+            lost: lost.length,
         };
     },
 
@@ -622,7 +1188,9 @@ const RecognizeProject = {
             r.eng.heaterMarks = mk;
             if (h) {
                 r.eng.heaters = h;
-                r.eng.heaterType = this.HEATER_NAMES[x.heaterType] ? x.heaterType : 'radiator';
+                // Марка точнее картинки: РД — радиатор, как бы ни стояли окна.
+                const byMark = mk.map(m => this.heaterTypeOfMark(m)).find(Boolean);
+                r.eng.heaterType = byMark || (this.HEATER_NAMES[x.heaterType] ? x.heaterType : 'radiator');
                 heaters += h;
             }
         });
@@ -638,6 +1206,7 @@ const RecognizeProject = {
         }
 
         const total = this.num(parsed.ufhTotal);
+        sh._ufhTotal = total > 0 ? total : null;
 
         // Остаток спецификации — зонам без подписи: пропорционально оценке
         // модели по чертежу (нет оценки — площади комнаты), не больше самой
@@ -779,14 +1348,16 @@ const RecognizeProject = {
                     onchange="${on},'${field}',this.value)">`;
         const x = (field, val) => `<button type="button" title="Убрать" style="border:0;background:none;color:inherit;cursor:pointer;padding:0 4px;font-size:13px;line-height:1"
                     onclick="${on},'${field}',${val})">×</button>`;
+        const src = e.src || {};
+        const pdf = f => src[f] === 'pdf' ? `;${RecognizePlan.PDF_CELL}" title="${RecognizePlan.PDF_TIP}` : '';
         const parts = [];
         if (read.heat) {
             parts.push(e.ufh
-                ? `<span style="${pill}">♨️ тёплый пол ${num('ufhArea', e.ufhArea, 50, 0.01)} м²${x('ufh', 'false')}</span>`
+                ? `<span style="${pill}${e.ufhAreaSrc === 'label' ? pdf('ufh') : ''}">♨️ тёплый пол ${num('ufhArea', e.ufhArea, 50, 0.01)} м²${x('ufh', 'false')}</span>`
                 : `<button type="button" style="${ghost}" onclick="${on},'ufh',true)">+ тёплый пол</button>`);
             const typeOpt = (v) => `<option value="${v}" ${(e.heaterType || 'radiator') === v ? 'selected' : ''}>${this.HEATER_NAMES[v]}</option>`;
             parts.push(e.heaters
-                ? `<span style="${pill}">🔥 ${num('heaters', e.heaters, 26)}
+                ? `<span style="${pill}${pdf('heaters')}">🔥 ${num('heaters', e.heaters, 26)}
                      <select style="border:0;background:transparent;color:inherit;font:inherit;padding:0;cursor:pointer" onchange="${on},'heaterType',this.value)">
                        ${typeOpt('floor_convector')}${typeOpt('wall_convector')}${typeOpt('radiator')}</select>${x('heaters', 0)}</span>`
                 : `<button type="button" style="${ghost}" onclick="${on},'heaters',1)">+ прибор</button>`);
@@ -794,7 +1365,10 @@ const RecognizeProject = {
         if (read.water) {
             const f = e.fix || {};
             const have = this.FIX_KEYS.filter(k => f[k] > 0);
-            have.forEach(k => parts.push(`<span style="${pill}">${this.FIX_SHORT[k]} ${num('fix.' + k, f[k], 24)}${x('fix.' + k, 0)}</span>`));
+            // Трап, стиральная и посудомоечная берутся из спецификации, только
+            // если они там есть, — иначе их разложила модель.
+            const fixPdf = k => src.fix === 'pdf' && ['toilet', 'toiletHot', 'basin', 'bath', 'shower', 'bidet'].includes(k);
+            have.forEach(k => parts.push(`<span style="${pill}${fixPdf(k) ? pdf('fix') : ''}">${this.FIX_SHORT[k]} ${num('fix.' + k, f[k], 24)}${x('fix.' + k, 0)}</span>`));
             const rest = this.FIX_KEYS.filter(k => !(f[k] > 0));
             if (rest.length) parts.push(`<select style="${ghost}" onchange="if(this.value){${on},'fix.'+this.value,1)}">
                 <option value="">+ сантехника</option>${rest.map(k => `<option value="${k}">${this.FIX_SHORT[k]}</option>`).join('')}</select>`);
@@ -807,6 +1381,12 @@ const RecognizeProject = {
     /** Правка из строки под помещением. */
     setEng(r, field, val) {
         const e = r.eng || (r.eng = {});
+        // Поправлено руками — зелёная отметка «из чертежа» снимается.
+        if (e.src) {
+            if (field === 'ufh' || field === 'ufhArea') delete e.src.ufh;
+            else if (field === 'heaters' || field === 'heaterType') delete e.src.heaters;
+            else if (field.startsWith('fix.')) delete e.src.fix;
+        }
         if (field === 'ufh') {
             e.ufh = !!val;
             if (!e.ufh) e.ufhArea = null;
@@ -896,13 +1476,40 @@ const RecognizeProject = {
         // сперва обычные. Без приборов вовсе — все окна без прибора: греет
         // тёплый пол, или помещение не отапливается.
         const conv = e.heaterType === 'floor_convector';
-        const key = w => conv ? (w.isPan ? 0 : 1) : (w.isPan ? 1 : 0);
-        const order = room.windows.map((w, k) => ({ w, k }))
-            .sort((a, b) => (key(a.w) - key(b.w)) || (a.k - b.k));
-        order.forEach(({ w }, n) => {
-            const heated = n < (e.heaters || 0);
-            if (heated) { delete w.noHeater; if (conv) w.isPan = true; }
-            else w.noHeater = true;
+        // Места приборов и окон известны из чертежа — прибор отдаётся
+        // ближайшему окну. На кухне «Хвойной 3» радиаторы РД-1…РД-3 стоят в
+        // простенках между витражами, а под двумя обычными окнами приборов
+        // нет; счёт «сперва обычные окна» ставил радиаторы именно туда, а
+        // витражам — внутрипольные конвекторы, которых в проекте нет.
+        const spec = e.winSpec;
+        const byPlace = !!(e.heaterPts && e.heaterPts.length === (e.heaters || 0) && spec &&
+            spec.length === room.windows.length && spec.every(s => s.wx !== undefined));
+        let heatedIdx;
+        if (byPlace) {
+            heatedIdx = new Set();
+            e.heaterPts.forEach(p => {
+                let best = -1, bd = Infinity;
+                spec.forEach((s, k) => {
+                    if (heatedIdx.has(k)) return;
+                    const d = Math.hypot(s.wx - p.x, s.wy - p.y);
+                    if (d < bd) { bd = d; best = k; }
+                });
+                if (best >= 0) heatedIdx.add(best);
+            });
+        } else {
+            const key = w => conv ? (w.isPan ? 0 : 1) : (w.isPan ? 1 : 0);
+            const order = room.windows.map((w, k) => ({ w, k }))
+                .sort((a, b) => (key(a.w) - key(b.w)) || (a.k - b.k));
+            heatedIdx = new Set(order.slice(0, e.heaters || 0).map(o => o.k));
+        }
+        room.windows.forEach((w, k) => {
+            if (heatedIdx.has(k)) {
+                delete w.noHeater;
+                if (conv) { w.isPan = true; delete w.radInPier; }
+                // Радиатор у окна в пол — в простенке: калькулятор иначе
+                // поставил бы под витраж внутрипольный конвектор.
+                else if (w.isPan) w.radInPier = true;
+            } else w.noHeater = true;
         });
     },
 
@@ -960,7 +1567,7 @@ const RecognizeProject = {
         if (!(st.systems || []).includes('tp')) st.systems = (st.systems || []).concat('tp');
     },
 
-    reset() { this.towel = null; this.vent = null; this.reqs = []; this.city = null; },
+    reset() { this.towel = null; this.vent = null; this.reqs = []; this.city = null; this._maps = null; },
 };
 
 window.RecognizeProject = RecognizeProject;

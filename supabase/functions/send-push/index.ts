@@ -479,7 +479,18 @@ Deno.serve(async (req) => {
       }
       if (!row.user_id) return json({ status: "skipped", reason: "owner-unknown" });
 
-      recipientUserIds = [String(row.user_id)];
+      // В shared_invoices.user_id лежит идентификатор из auth (auth.users.id): строку
+      // пишет браузер под сессией. Вся остальная функция — получатели, push_tokens,
+      // tg_chat_id — работает с users.id, поэтому переводим одно в другое. Без этого
+      // перевода список получателей выходил пустым и ответ клиента на смету не доезжал
+      // ни в Telegram, ни на телефон.
+      const ownerRows = await get(
+        `users?auth_user_id=eq.${encodeURIComponent(String(row.user_id))}&select=id&limit=1`,
+      );
+      const ownerId = Array.isArray(ownerRows) && ownerRows[0] ? String(ownerRows[0].id) : "";
+      if (!ownerId) return json({ status: "skipped", reason: "owner-unknown" });
+
+      recipientUserIds = [ownerId];
       title = status === "confirmed"
         ? "Клиент согласовал смету"
         : (status === "refresh_requested" ? "Срок счёта вышел: клиент просит обновить" : "Клиент просит доработать смету");

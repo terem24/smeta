@@ -10658,6 +10658,276 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     font-size: 12px;
 }
 
+/* ── «Мои показатели» (вкладка summary) ──────────────────────────────────
+   Кегли — как в таблице «Объектов»: 12 px текст, 11 px подписи. Плитки
+   нарочно низкие: раньше три плитки с цифрой 24 px занимали полэкрана. */
+#profile_tab_summary .summary-period {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+#profile_tab_summary .lk-btn-sm.is-active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+#profile_tab_summary .sm-head {
+    margin-top: 16px;
+    justify-content: flex-start;
+}
+
+#profile_tab_summary .sm-head-note {
+    color: var(--text-sec);
+    font-size: 11px;
+}
+
+#profile_tab_summary .sm-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+#profile_tab_summary .sm-tile {
+    min-width: 0;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+}
+
+#profile_tab_summary .sm-tile-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-tile-val {
+    font-size: 18px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-top: 2px;
+    color: var(--text-main);
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-tile-sub {
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-tile-list {
+    margin-top: 6px;
+    border-top: 1px dashed var(--border);
+    padding-top: 4px;
+}
+
+#profile_tab_summary .sm-tile-list .sm-link {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 11.5px;
+    padding: 2px 0;
+}
+
+#profile_tab_summary .sm-tile-list .sm-link span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-link[onclick] {
+    cursor: pointer;
+}
+
+#profile_tab_summary .sm-link[onclick]:hover span,
+#profile_tab_summary .sm-link[onclick]:hover b {
+    color: var(--primary);
+}
+
+#profile_tab_summary .sm-trend {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-trend.good { color: #10B981; }
+#profile_tab_summary .sm-trend.bad { color: #EF4444; }
+
+#profile_tab_summary .sm-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+}
+
+#profile_tab_summary .sm-row-label {
+    flex: 1;
+    min-width: 0;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-row-val {
+    flex: 0 0 70px;
+    text-align: right;
+}
+
+#profile_tab_summary .sm-row-sub {
+    flex: 0 0 80px;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-row-trend {
+    flex: 0 0 70px;
+    text-align: right;
+}
+
+#profile_tab_summary .sm-cells {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+}
+
+#profile_tab_summary .sm-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+}
+
+#profile_tab_summary .sm-cell span,
+#profile_tab_summary .sm-cell small {
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-cell b {
+    font-size: 15px;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-funnel-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+#profile_tab_summary .sm-funnel-row small {
+    color: var(--text-sec);
+    font-size: 11px;
+}
+
+#profile_tab_summary .sm-bar {
+    flex: 0 1 40%;
+    height: 6px;
+    background: rgba(127, 127, 127, .18);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+#profile_tab_summary .sm-bar i {
+    display: block;
+    height: 6px;
+    border-radius: 999px;
+}
+
+#profile_tab_summary .sm-funnel-n {
+    width: 34px;
+    text-align: right;
+}
+
+#profile_tab_summary .sm-funnel-pct {
+    width: 40px;
+    text-align: right;
+    font-size: 11px;
+    color: var(--text-sec);
+}
+
+#profile_tab_summary .sm-table-wrap {
+    overflow-x: auto;
+}
+
+#profile_tab_summary .sm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+}
+
+#profile_tab_summary .sm-table th {
+    text-align: right;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-sec);
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+#profile_tab_summary .sm-table td {
+    text-align: right;
+    padding: 5px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-table th:first-child,
+#profile_tab_summary .sm-table td:first-child {
+    text-align: left;
+}
+
+#profile_tab_summary .sm-table small {
+    color: var(--text-sec);
+    font-size: 10.5px;
+}
+
+#profile_tab_summary .sm-stack {
+    display: flex;
+    height: 8px;
+    border-radius: 999px;
+    overflow: hidden;
+    margin: 6px 0 4px;
+    background: rgba(127, 127, 127, .18);
+}
+
+#profile_tab_summary .sm-stack i {
+    display: block;
+    height: 8px;
+}
+
+#profile_tab_summary .sm-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-main);
+}
+
+#profile_tab_summary .sm-legend i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
+@media (max-width: 600px) {
+    #profile_tab_summary .sm-row-sub { display: none; }
+    #profile_tab_summary .sm-cell[style*="span 2"] { grid-column: auto !important; }
+    #profile_tab_summary .sm-bar { flex-basis: 30%; }
+}
+
 /* ── «Реквизиты компании» на полном экране ─────────────────────────────────
    Адрес и банковские реквизиты — 4–6 строк, а поля им заданы в 44px, и текст
    лежал под внутренней прокруткой. Место на полном экране есть, поэтому поле
@@ -11842,6 +12112,24 @@ select.rec-btn-g { padding-right: 8px; }
 .rec-tip { font-weight: 600; }
 .rec-tip-sec { opacity: .5; font-variant-numeric: tabular-nums; }
 .rec-tip-save { margin-left: auto; color: #16a34a; font-weight: 600; }
+
+/* Проект: сколько это руками — итог плашкой и сменяющаяся строка «из чего». */
+.rec-save-proj {
+    margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+    padding: 6px 12px; border-radius: 10px; min-width: 250px; max-width: 100%;
+    background: rgba(22, 163, 74, .10); border: 1px solid rgba(22, 163, 74, .35);
+}
+.rec-save-total { color: #16a34a; font-weight: 800; font-size: 15px; white-space: nowrap; }
+.rec-save-total small { font-weight: 600; font-size: 11.5px; opacity: .85; }
+.rec-save-line {
+    font-size: 12px; color: var(--text-main, #0f172a); text-align: right;
+    animation: recSaveIn .45s ease-out both;
+}
+.rec-save-line b { color: #16a34a; }
+.rec-save-line.is-total { font-weight: 700; color: #16a34a; }
+@keyframes recSaveIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .rec-save-line { animation: none; } }
+@media (max-width: 600px) { .rec-save-proj { margin-left: 0; align-items: flex-start; min-width: 0; width: 100%; } .rec-save-line { text-align: left; } }
 
 /* Готовый лист виден сразу — галочкой на самой миниатюре. */
 .rec-thumb.sheet-done::after,
@@ -16321,4 +16609,20 @@ body.theme-yandex #auth_modal_overlay .btn-email-submit,
 body.theme-yandex #auth_modal_overlay .btn-email-submit:hover {
     background: #3B82F6;
     border-color: #3B82F6;
+}
+
+/* ================== ЗНАЧКИ-ЭМОДЗИ НА КНОПКАХ И ПЛАШКАХ ==================
+   Обёртка .ui-emo стоит на эмодзи в колонке параметров (вкладки топлива,
+   типа отопления и теплоносителя, подписи «Пирог стены», «Материал кровли»
+   и т. д., карточка помещения, прогноз стоимости), в строке параметров над
+   сметой (№ КП, Объект, Регион, Дата) и на плашке приглашения магазина.
+   У продавцов (тема «магазин») и до входа (тема «Профи» у гостя) значков
+   не показываем — оформление там строже (владелец 26.09.2026). Пробел
+   входит внутрь обёртки, иначе после скрытия остаётся двойной отступ.
+   Печать и PDF не трогаем: правило только для экрана. */
+@media screen {
+    body.theme-shop .ui-emo,
+    body.guest-mode .ui-emo {
+        display: none;
+    }
 }
