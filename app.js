@@ -14921,7 +14921,14 @@ const app = {
         // syncRailUI зовётся на каждой перерисовке сметы, и мерить каждый раз —
         // лишняя работа для браузера.
         const shown = rail.querySelectorAll('.lk-rail-item:not([style*="display: none"])').length;
-        const sign = shown + '|' + (rail.classList.contains('dock-top') ? 'top' : 'left') + '|' + window.innerHeight;
+        // Видимость панели — тоже часть признака. До входа рейка скрыта
+        // (body.guest-mode), и fitRailToViewport на скрытой колонке только
+        // снимает --lk-scale. Остальные слагаемые при входе не меняются, так что
+        // без этого посадка после входа не пересчитывалась: множитель оставался
+        // единицей, развёрнутая наведением колонка не помещалась в экран и
+        // отращивала прокрутку — она пропадала только после перезагрузки.
+        const sign = shown + '|' + (rail.classList.contains('dock-top') ? 'top' : 'left') + '|' + window.innerHeight
+            + '|' + (this.isRailVisible() ? 'on' : 'off');
         if (sign !== this._railFitSign) {
             this._railFitSign = sign;
             this.fitRailToViewport();
@@ -59709,13 +59716,17 @@ const app = {
             }
         }
 
+        // === БЛОКИРОВКИ ===
+        // Класс ставим до syncRailUI, а не после: до входа рейка скрыта правилом
+        // body.guest-mode, и мерить на скрытой колонке нечего. Пока класс
+        // снимался ниже, перерисовка сразу после входа успевала посчитать
+        // посадку по ещё спрятанной панели.
+        document.body.classList.toggle('guest-mode', isGuest);
+
         // Левая панель кабинета: доступ к админке, счётчик сообщений, подсветка раздела
         this.syncRailUI();
 
         if (document.getElementById('chk_dark')) document.getElementById('chk_dark').checked = this.state.darkMode; document.body.classList.toggle('dark-mode', this.state.darkMode && !this.isShopTheme());
-
-        // === БЛОКИРОВКИ ===
-        document.body.classList.toggle('guest-mode', isGuest);
 
         // Обучение — только вошедшим (кнопку в шапке гостю прячет body.guest-mode).
         // Если человек вышел из аккаунта с включённым обучением, карточка осталась бы
@@ -74263,13 +74274,13 @@ const app = {
                                margin-top: 12px; font: inherit; font-size: 13px; font-weight: 600;
                                padding: 10px 18px; border-radius: 10px; border: 1px dashed var(--primary);
                                background: transparent; color: var(--primary); cursor: pointer;">
-                        <span style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
+                        <span class="ui-emo" style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">
                     <span class="empty-state-icon">${_emptyIcon}</span>
                     <div class="empty-state-title">Параметры ${_emptyWhat} не заданы</div>
-                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования — либо нажмите «✨ ИИ-заполнение» и опишите объект словами.</div>` : ''}${qsBtn}
+                    ${_onboardOk ? `<div class="empty-state-text">Измените параметры слева (${_emptyWhich}), чтобы начать подбор оборудования.</div>` : ''}${qsBtn}
                 </div>
             </td></tr>`;
             sum = 0;
