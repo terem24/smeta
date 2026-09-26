@@ -162,7 +162,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.13">
+    <link rel="stylesheet" href="style.css?v=4.14">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.23" defer></script>
@@ -190,7 +190,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=9.79" defer></script>
+    <script src="app.js?v=9.80" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -841,7 +841,7 @@
                         onclick="app.refineAreasFromPlan()"
                         onmouseover="this.style.background='#3B82F6'; this.style.color='#fff';"
                         onmouseout="this.style.background='#EFF6FF'; this.style.color='#3B82F6';"
-                        title="Переписать площади комнат по зонам, обведённым в редакторе планов">📐 Уточнить площади
+                        title="Переписать площади комнат по зонам, обведённым в редакторе планов"><span class="ui-emo">📐 </span>Уточнить площади
                         по плану</button>
                 </div>
 
@@ -932,7 +932,7 @@
                 <!-- Конструктор пирога стены (СП 50.13330) -->
                 <div class="control-item toggle-item" id="wall_layers_header_wrapper" style="display: none; margin-top: 12px; margin-bottom: 6px; width: 100%;">
                     <div class="label-row" style="margin-bottom: 0; width: 100%;">
-                        <span class="lbl">🧱 Пирог стены</span>
+                        <span class="lbl"><span class="ui-emo">🧱 </span>Пирог стены</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_wall_layers_toggle" onchange="app.toggleWallLayersPanel(this.checked, event)">
                             <span class="slider"></span>
@@ -966,7 +966,7 @@
                 <!-- Материал кровли (PRO, детальный режим) -->
                 <div class="control-item toggle-item" id="blk_roof_mat_wrapper" style="display: none; margin-top: 12px;">
                     <div class="label-row" style="margin-bottom: 0; width: 100%;">
-                        <span class="lbl">🏠 Материал кровли</span>
+                        <span class="lbl"><span class="ui-emo">🏠 </span>Материал кровли</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_roof_toggle" onchange="app.toggleRoofPanel(this.checked, event)">
                             <span class="slider"></span>
@@ -990,7 +990,7 @@
                 <!-- Материал пола (PRO, детальный режим) -->
                 <div class="control-item toggle-item" id="blk_floor_mat_wrapper" style="display: none; margin-top: 10px;">
                     <div class="label-row" style="margin-bottom: 0; width: 100%;">
-                        <span class="lbl">🏗️ Материал пола</span>
+                        <span class="lbl"><span class="ui-emo">🏗️ </span>Материал пола</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_floor_toggle" onchange="app.toggleFloorPanel(this.checked, event)">
                             <span class="slider"></span>
@@ -1014,7 +1014,7 @@
                 <!-- Тип остекления (PRO, детальный режим) -->
                 <div class="control-item toggle-item" id="blk_glazing_wrapper" style="display: none; margin-top: 10px;">
                     <div class="label-row" style="margin-bottom: 0; width: 100%;">
-                        <span class="lbl">🪟 Тип остекления</span>
+                        <span class="lbl"><span class="ui-emo">🪟 </span>Тип остекления</span>
                         <label class="switch">
                             <input type="checkbox" id="chk_glazing_toggle" onchange="app.toggleGlazingPanel(this.checked, event)">
                             <span class="slider"></span>
@@ -1039,7 +1039,7 @@
 
                 <div class="control-item toggle-item" id="blk_ventilation_wrapper" style="display: none; margin-top: 15px;">
                     <div class="label-row" style="position:relative;">
-                        <span class="lbl" style="display:flex; align-items:center; gap:4px;">💨 Тип вентиляции<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Воздухообмен учитывается всегда: без него дом недогреется. По умолчанию — естественный приток 0,35 ч⁻¹, норма для жилых помещений. Переключатель нужен, чтобы задать другой тип: принудительный или с рекуператором.</div></span></span>
+                        <span class="lbl" style="display:flex; align-items:center; gap:4px;"><span class="ui-emo">💨 </span>Тип вентиляции<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Воздухообмен учитывается всегда: без него дом недогреется. По умолчанию — естественный приток 0,35 ч⁻¹, норма для жилых помещений. Переключатель нужен, чтобы задать другой тип: принудительный или с рекуператором.</div></span></span>
                         <label class="switch">
                             <input type="checkbox" id="chk_vent" onchange="app.toggleVentilation(this.checked, event)">
                             <span class="slider"></span>
@@ -1075,8 +1075,8 @@
                 <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип котла</h4>
                 <div class="control-item">
                     <div class="tabs">
-                        <div class="tab multi-active" id="fuel_el" onclick="app.toggleFuel('el')">⚡ Электро</div>
-                        <div class="tab" id="fuel_gas" onclick="app.toggleFuel('gas')">🔥 Газ</div>
+                        <div class="tab multi-active" id="fuel_el" onclick="app.toggleFuel('el')"><span class="ui-emo">⚡ </span>Электро</div>
+                        <div class="tab" id="fuel_gas" onclick="app.toggleFuel('gas')"><span class="ui-emo">🔥 </span>Газ</div>
                     </div>
                 </div>
             </div>
@@ -1094,7 +1094,7 @@
                      ужимается многоточием, а не переносится: строка должна
                      остаться одной при любом городе и любом тарифе. -->
                 <div id="blk_el_group_head" onclick="app.toggleElGroup(event)">
-                    <span class="lbl" style="white-space:nowrap;">⚡ Электросеть</span>
+                    <span class="lbl" style="white-space:nowrap;"><span class="ui-emo">⚡ </span>Электросеть</span>
                     <span id="el_group_sum"></span>
                     <svg id="el_group_arrow" viewBox="0 0 24 24" width="16" height="16" fill="none"
                         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
@@ -1116,7 +1116,7 @@
                     <!-- Подсказку про остаток мощности собирает app.updElLimitHint()
                          в #el_limit_tip — тем же компонентом, что подсказки остальной
                          панели: на десктопе по наведению, на телефоне по нажатию. -->
-                    <span class="lbl">Ограничение мощности на участок, кВт ⚡<span
+                    <span class="lbl">Ограничение мощности на участок, кВт<span class="ui-emo"> ⚡</span><span
                             id="el_limit_tip"></span></span>
                     <!-- Ползунок постоянно на виду не нужен: мощность ввода — цифра
                          известная, её обычно просто вписывают. Поэтому как у площади
@@ -1155,7 +1155,7 @@
             <div class="control-item" id="blk_el_phase" style="display:none;">
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Сеть
-                        на объекте ⚡<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Сколько фаз заведено на объект. На одной фазе котёл берёт втрое больший ток — сечение силового кабеля считается по нему, а котлы мощнее 9 кВт однофазными не бывают.<div class="tip-p"><b>220 В.</b> Одна фаза, 220 В. Так подключаются только котлы до 9 кВт.</div><div class="tip-p"><b>380 В.</b> Три фазы, 380 В. Штатное подключение для всей линейки электрокотлов.</div></div></span></span>
+                        на объекте<span class="ui-emo"> ⚡</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Сколько фаз заведено на объект. На одной фазе котёл берёт втрое больший ток — сечение силового кабеля считается по нему, а котлы мощнее 9 кВт однофазными не бывают.<div class="tip-p"><b>220 В.</b> Одна фаза, 220 В. Так подключаются только котлы до 9 кВт.</div><div class="tip-p"><b>380 В.</b> Три фазы, 380 В. Штатное подключение для всей линейки электрокотлов.</div></div></span></span>
                     <div class="tabs" style="font-size:11px; flex:0 0 auto;">
                         <div class="tab el-phase-tab" data-phase="220" onclick="app.setElPhase('220')"
                             style="min-width:58px;">220 В</div>
@@ -1264,8 +1264,8 @@
             <h4 style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Тип отопления</h4>
             <div class="control-item">
                 <div class="tabs">
-                    <div class="tab multi-active" id="sys_rad" onclick="app.toggleSys('rad', event)">🌡️ Радиаторы</div>
-                    <div class="tab" id="sys_tp" onclick="app.toggleSys('tp', event)">♨️ Тёплый пол</div>
+                    <div class="tab multi-active" id="sys_rad" onclick="app.toggleSys('rad', event)"><span class="ui-emo">🌡️ </span>Радиаторы</div>
+                    <div class="tab" id="sys_tp" onclick="app.toggleSys('tp', event)"><span class="ui-emo">♨️ </span>Тёплый пол</div>
                 </div>
             </div>
 
@@ -1327,9 +1327,9 @@
             <h4 id="lbl_coolant" style="margin-bottom: 6px; font-size: 13px; font-weight: 600; text-transform: none; letter-spacing: normal; color: var(--text-main);">Теплоноситель</h4>
             <div class="control-item" id="blk_coolant_wrap">
                 <div class="tabs" id="blk_coolant">
-                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)">💧 Вода</div>
-                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)">❄️ -30°C</div>
-                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)">❄️ -40°C</div>
+                    <div class="tab cool-tab active" data-type="water" onclick="app.setCoolant('water', event)"><span class="ui-emo">💧 </span>Вода</div>
+                    <div class="tab cool-tab" data-type="eco30" onclick="app.setCoolant('eco30', event)"><span class="ui-emo">❄️ </span>-30°C</div>
+                    <div class="tab cool-tab" data-type="pro65" onclick="app.setCoolant('pro65', event)"><span class="ui-emo">❄️ </span>-40°C</div>
                 </div>
             </div>
             <div id="blk_tp_sliders" style="display:none; border-top:1px dashed #E5E7EB; padding-top:15px;">
@@ -1965,7 +1965,7 @@
             <div class="control-item toggle-item" id="blk_el_cost" style="display:none;">
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления ⚡<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Один тариф.</b> Один тариф круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночная зона 23:00–07:00 по своей цене.</div></div></span></span>
+                        отопления<span class="ui-emo"> ⚡</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление электричеством: расход и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Один тариф.</b> Один тариф круглые сутки.</div><div class="tip-p"><b>День-ночь.</b> Двухтарифный счётчик: ночная зона 23:00–07:00 по своей цене.</div></div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_el_cost"
                             onchange="app.toggleElCost(this.checked)"><span class="slider"></span></label>
                 </div>
@@ -2057,7 +2057,7 @@
             <div class="control-item toggle-item" id="blk_gas_cost" style="display:none;">
                 <div class="label-row" style="position:relative;">
                     <span class="lbl" style="display:flex; align-items:center; gap:4px;">Стоимость
-                        отопления 🔥<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход в кубометрах или литрах и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов. Тарифом не регулируется — цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы. Тариф устанавливает регион, подставляется по выбранному городу.</div></div></span></span>
+                        отопления<span class="ui-emo"> 🔥</span><span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Во сколько обойдётся отопление газом: расход в кубометрах или литрах и счёт по месяцам, итог за отопительный сезон.<div class="tip-p"><b>Сжиженный.</b> Пропан-бутан из газгольдера или баллонов. Тарифом не регулируется — цену задаёт поставщик.</div><div class="tip-p"><b>Магистральный.</b> Газ из трубы. Тариф устанавливает регион, подставляется по выбранному городу.</div></div></span></span>
                     <label class="switch"><input type="checkbox" id="chk_gas_cost"
                             onchange="app.toggleGasCost(this.checked)"><span class="slider"></span></label>
                 </div>

@@ -1924,7 +1924,7 @@ const app = {
                         background:${res.ok ? 'rgba(16,185,129,0.08)' : 'rgba(217,119,6,0.08)'};
                         border:1px solid ${res.ok ? 'rgba(16,185,129,0.35)' : 'rgba(217,119,6,0.35)'};
                         border-radius:12px; padding:10px 14px; margin:0 20px 10px;">
-                <span style="font-size:18px; line-height:1;">${res.ok ? '🏪' : '⚠️'}</span>
+                <span class="ui-emo" style="font-size:18px; line-height:1;">${res.ok ? '🏪' : '⚠️'}</span>
                 <span style="font-size:13px; color:var(--text-main); text-align:center;">${text}</span>
                 ${action}
                 <button type="button" style="${closeStyle}" title="Скрыть" onclick="app.closeInviteBanner()">×</button>
@@ -58055,8 +58055,8 @@ const app = {
                         <div style="margin-top:8px;">
                             <div style="font-size:10px; color:var(--text-sec); font-weight:600; margin-bottom:3px;">Отопление</div>
                             <div style="display:flex;">
-                                <button onclick="app.toggleRoomSys(${r.id}, 'rad')" style="${hasRad ? segOn : segOff} border-radius:6px 0 0 6px;">🌡️ Радиаторы</button>
-                                <button onclick="app.toggleRoomSys(${r.id}, 'tp')" style="${hasTp ? segOn : segOff} border-left:0; border-radius:0 6px 6px 0;">♨️ Тёплый пол</button>
+                                <button onclick="app.toggleRoomSys(${r.id}, 'rad')" style="${hasRad ? segOn : segOff} border-radius:6px 0 0 6px;"><span class="ui-emo">🌡️ </span>Радиаторы</button>
+                                <button onclick="app.toggleRoomSys(${r.id}, 'tp')" style="${hasTp ? segOn : segOff} border-left:0; border-radius:0 6px 6px 0;"><span class="ui-emo">♨️ </span>Тёплый пол</button>
                             </div>
                             ${hasTp ? `<label style="${fLbl} margin-top:6px;" title="Сколько пола реально занято трубой: без отступов от стен, мебели, острова. Пусто — вся комната.">Площадь тёплого пола, м²
                                 <input type="number" class="room-num-input" style="${fInp}" step="0.1" min="0" max="${parseFloat(r.area) || 0}"
@@ -58115,7 +58115,7 @@ const app = {
                     parts.push('1 этаж — ' + fmtW(q1) + ' Вт');
                     parts.push('2 этаж — ' + fmtW(q2) + ' Вт');
                 }
-                hs.innerHTML = '🔥 Теплопотери помещений: ' +
+                hs.innerHTML = '<span class="ui-emo">🔥 </span>Теплопотери помещений: ' +
                     (parts.length ? parts.join(' · ') + ' · итого ' : '') +
                     '<b style="color:var(--text-main);">' + fmtW(q1 + q2) + ' Вт</b> ' +
                     '<span style="opacity:0.7;">(ограждения и вентиляция)</span>';
@@ -60661,7 +60661,7 @@ const app = {
                 </tr></tfoot>
             </table>${capNote}
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц ⚡</span>${tip}
+                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> ⚡</span></span>${tip}
             </div>${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'el')}`;
     },
     toggleGasCost: function (chk) {
@@ -60785,7 +60785,7 @@ const app = {
                 </tr></tfoot>
             </table>
             <div style="position:relative; margin-top:6px; padding:6px 8px; background:var(--primary-light); border-radius:6px; font-size:11px; font-weight:700; color:var(--primary); display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц 🔥</span>${tip}
+                <span>В среднем ${money(r.avgMonthCost)} ₽ в месяц<span class="ui-emo"> 🔥</span></span>${tip}
             </div>${this.boilerAutoSaveHtml(r.seasonCost, r.activeMonths, 'gas')}`;
     },
     // Доля выделенной мощности, которую котлу не отдают: свет, розетки и бытовая
@@ -65025,22 +65025,22 @@ const app = {
         // влияет. Вместо него полезнее показать сам объект — этаж и угловая.
         const _flatSum = this.isFlat();
         const _objChip = _flatSum
-            ? `<span class="param-item">🏢 Квартира: <b>${this.state.area} м²</b> (${this.flatPositionName()}${this.state.flatCorner ? ', угловая' : ''})</span>
-            <span class="param-item">🚪 Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
+            ? `<span class="param-item"><span class="ui-emo">🏢 </span>Квартира: <b>${this.state.area} м²</b> (${this.flatPositionName()}${this.state.flatCorner ? ', угловая' : ''})</span>
+            <span class="param-item"><span class="ui-emo">🚪 </span>Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
             : (parseFloat(this.state.area) > 0
-                ? `<span class="param-item">🏠 Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
-            <span class="param-item">👨‍👩‍👧 Проживающих: <b>${this.state.res}</b></span>`
+                ? `<span class="param-item"><span class="ui-emo">🏠 </span>Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
+            <span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>`
                 // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
                 // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
-                : `<span class="param-item">📋 Объект: <b>по заявке</b></span>`);
+                : `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`);
         const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
-            <span class="param-item">🔖 № КП: <b>${this.kpNumber() || '—'}</b></span>
-            ${this.cheapModeOn() ? '<span class="param-item">💡 Вариант: <b>подешевле</b></span>' : ''}
+            <span class="param-item"><span class="ui-emo">🔖 </span>№ КП: <b>${this.kpNumber() || '—'}</b></span>
+            ${this.cheapModeOn() ? '<span class="param-item"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>' : ''}
             ${_objChip}
-            ${_hasArea ? `<span class="param-item">🔥 Теплопотери: ${heatLossHtml}</span>` : ''}
-            <span class="param-item">📍 Регион: <b>${regionName}</b></span>
-            <span class="param-item param-date calculation-date">📅 Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
+            ${_hasArea ? `<span class="param-item"><span class="ui-emo">🔥 </span>Теплопотери: ${heatLossHtml}</span>` : ''}
+            <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>
+            <span class="param-item param-date calculation-date"><span class="ui-emo">📅 </span>Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
         `;
 
         let bill = [];
