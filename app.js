@@ -29,6 +29,28 @@ const supabaseKey = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';
 // исходный код вместо ответа и ломал вход у всех. Теперь прокси вынесен на отдельный
 // поддомен proxy.heatcalc.ru с настоящим PHP-хостингом (Beget), сам сайт остаётся на GitHub Pages.
 function supabaseProxyFetch(input, init) {
+    const url0 = typeof input === 'string' ? input : input.url;
+    // Предел ожидания. На телефоне запрос, начатый перед сворачиванием или сменой
+    // сети, мог не вернуться никогда. Если это было обновление входа (/auth/),
+    // библиотека держит на нём общую очередь, и за ним вставали все обращения к
+    // базе: отправил одно сообщение — кнопка серая до перезахода. С пределом
+    // повисший запрос падает ошибкой, библиотека повторяет его сама, очередь идёт.
+    // Файлы (/storage/) и функции не ограничиваем: крупная загрузка честно долгая.
+    const limitMs = /\/auth\/v1\//.test(url0) ? 15000 : (/\/rest\/v1\//.test(url0) ? 40000 : 0);
+    if (limitMs && typeof AbortController !== 'undefined') {
+        const ctrl = new AbortController();
+        const outer = init && init.signal;
+        if (outer) {
+            if (outer.aborted) ctrl.abort();
+            else outer.addEventListener('abort', () => ctrl.abort(), { once: true });
+        }
+        const timer = setTimeout(() => ctrl.abort(), limitMs);
+        return supabaseProxyFetchRaw(input, Object.assign({}, init, { signal: ctrl.signal }))
+            .finally(() => clearTimeout(timer));
+    }
+    return supabaseProxyFetchRaw(input, init);
+}
+function supabaseProxyFetchRaw(input, init) {
     const host = window.location.hostname;
     // new.heatcalc.ru — проверочная копия сайта на Beget (см. allowedHosts выше).
     // Через прокси её пускаем по той же причине, что и основной адрес: иначе
@@ -7775,14 +7797,15 @@ const app = {
                             <a href="tel:${(d.manager_phone || '').replace(/[^+\\d]/g, '')}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${d.manager_phone || '—'}</a>
                         </div>
                     </div>
+                    <div id="manager_chat_btn_slot"></div>
                 </div>
                 <p class="lk-hint">💡 Счёт на оборудование выставляет компания <strong>${d.company_name}</strong>. При запросе счёта менеджер получит копию на email.</p>
+                <div id="manager_chat_wrapper" style="margin-top:20px;"></div>
                 <details style="margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;">
                     <summary style="cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-main);">🚚 Условия доставки и оплаты</summary>
                     <div style="margin-top: 10px;">${this.buildDeliveryPaymentHtml()}</div>
                 </details>
                 <div id="manager_comm_history_container" style="margin-top:20px;"></div>
-                <div id="manager_chat_wrapper" style="margin-top:20px;"></div>
             `;
             this.renderManagerCommHistory();
             this.initManagerChatIfAvailable(d.manager_email);
@@ -7891,12 +7914,20 @@ const app = {
         const me = await this.resolveCurrentUserForChat();
         if (!me) return;
 
+        // Кнопка в карточке контактов: чат стоит ниже, и без неё продавец или
+        // монтажник видел только почту и телефон — уходил звонить мимо калькулятора
+        const btnSlot = document.getElementById('manager_chat_btn_slot');
+        if (btnSlot) {
+            btnSlot.innerHTML = `<button type="button" class="auth-btn-base btn-email-submit" style="margin:14px 0 0; width:auto; height:36px; padding:0 18px; font-size:13px;"
+                onclick="const i = document.getElementById('manager_chat_input'); if (i) { i.scrollIntoView({ behavior: 'smooth', block: 'center' }); i.focus({ preventScroll: true }); }">💬 Написать менеджеру</button>`;
+        }
+
         wrapper.innerHTML = `
             <div class="lk-section-head" style="margin-top:4px;"><h4>💬 Чат с менеджером</h4></div>
             <div id="manager_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
             <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_chat_input" placeholder="Написать менеджеру..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_chat_send_btn" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+                <input type="text" id="manager_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать менеджеру..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                <button id="manager_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
             </div>
         `;
 
@@ -8219,16 +8250,21 @@ const app = {
         const text = input ? input.value.trim() : '';
         if (!text) return;
 
-        const sendBtn = document.getElementById(opts.sendBtnId);
-        if (sendBtn) sendBtn.disabled = true;
+        // Как в мессенджере: поле очищается сразу и остаётся в фокусе (клавиатура
+        // телефона не закрывается), кнопку не блокируем — от двойной отправки
+        // защищает флаг. Не ушло — текст возвращается в поле.
+        if (this._chatSending) return;
+        this._chatSending = true;
+        if (input) { input.value = ''; input.focus({ preventScroll: true }); }
         try {
-            await this.sendChatMessageRow(opts.installerId, opts.installerAuthId, opts.managerId, opts.managerAuthId, opts.viewerUserId, opts.viewerName, text);
-            if (input) input.value = '';
-            await this.refreshChatThread(opts);
+            await withTimeout(this.sendChatMessageRow(opts.installerId, opts.installerAuthId, opts.managerId, opts.managerAuthId, opts.viewerUserId, opts.viewerName, text), 20000);
+            this.refreshChatThread(opts);
         } catch (e) {
-            app.alert('Не удалось отправить сообщение: ' + e.message);
+            console.error('[чат] сообщение не отправилось:', e);
+            if (input && !input.value) input.value = text;
+            app.alert('Сообщение не отправилось. Проверьте связь и нажмите «Отправить» ещё раз.');
         } finally {
-            if (sendBtn) sendBtn.disabled = false;
+            this._chatSending = false;
         }
     },
 
@@ -8549,8 +8585,8 @@ const app = {
             <h4 style="margin:0 0 10px; font-size:14px; color:var(--text-main);">💬 ${instName}</h4>
             <div id="manager_installer_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
             <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_installer_chat_input" placeholder="Написать монтажнику..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_installer_chat_send_btn" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+                <input type="text" id="manager_installer_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать монтажнику..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                <button id="manager_installer_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
             </div>
         `;
         detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -15472,6 +15508,12 @@ const app = {
         const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
         if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
         if (railWorkPrices) railWorkPrices.style.display = sellerNoWorks ? 'none' : '';
+        // «Документы» — договор подряда, акты, гарантия на монтаж. Без монтажа они
+        // ни к чему (решение владельца 26.09.2026): прячем по тому же признаку.
+        const navOrders = document.querySelector('#profile_nav .lk-nav-item[data-tab="orders"]');
+        const railOrders = rail.querySelector('.lk-rail-item[data-rail="orders"]');
+        if (navOrders) navOrders.style.display = sellerNoWorks ? 'none' : '';
+        if (railOrders) railOrders.style.display = sellerNoWorks ? 'none' : '';
 
         // Число непрочитанных берём готовым из бейджа конверта в шапке: считает его
         // loadNotifications, второй раз считать незачем
@@ -19043,26 +19085,33 @@ const app = {
         const replyTo = this._userReplyTo && String(this._userReplyTo).indexOf('local_') !== 0
             ? this._userReplyTo : null;
 
-        if (btn) btn.disabled = true;
+        // Как в мессенджере: сообщение сразу в переписке, поле пустое и в фокусе
+        // (клавиатура телефона не прячется), кнопка не блокируется — от двойной
+        // отправки защищает флаг. Не ушло — пузырь убираем, текст возвращаем в поле.
+        if (this._userChatSending) return;
+        this._userChatSending = true;
+        const localId = 'local_' + Date.now();
+        if (inp) { inp.value = ''; inp.focus({ preventScroll: true }); }
+        this._userReplyTo = null;
+        (this._msgCache = this._msgCache || []).push({
+            id: localId, sender_id: meId, recipient_id: null,
+            text: text, type: 'reply', parent_id: parentId, reply_to_id: replyTo,
+            created_at: new Date().toISOString()
+        });
+        this.renderUserChat();
         try {
-            await this.sendUserReply(parentId, text, true, replyTo);
-            if (inp) inp.value = '';
-            this._userReplyTo = null;
-            // Дорисовываем сразу, не дожидаясь следующего опроса базы
-            (this._msgCache = this._msgCache || []).push({
-                id: 'local_' + Date.now(), sender_id: meId, recipient_id: null,
-                text: text, type: 'reply', parent_id: parentId, reply_to_id: replyTo,
-                created_at: new Date().toISOString()
-            });
-            this.renderUserChat();
+            await withTimeout(this.sendUserReply(parentId, text, true, replyTo), 20000);
         } catch (e) {
             // Техническую причину — в журнал, человеку короткий текст и код, чтобы
             // было что назвать администратору, если повторится
             console.error('[переписка] сообщение не отправилось:', e);
+            this._msgCache = (this._msgCache || []).filter(m => m.id !== localId);
+            this.renderUserChat();
+            if (inp && !inp.value) inp.value = text;
             app.alert('Сообщение не отправилось. Проверьте связь и попробуйте ещё раз.'
                 + (e && e.code ? ' (код ' + e.code + ')' : ''));
         } finally {
-            if (btn) btn.disabled = false;
+            this._userChatSending = false;
         }
     },
 
@@ -30608,9 +30657,9 @@ const app = {
                          переписок им по-прежнему закрыто (см. кнопки с корзиной выше). -->
                     ${replyBarHtml}
                     <div class="admin-chat-compose">
-                        <textarea id="admin_msg_text" rows="1" placeholder="${esc(composePlaceholder)}" onkeydown="app.adminChatKeydown(event)"></textarea>
+                        <textarea id="admin_msg_text" rows="1" enterkeyhint="send" placeholder="${esc(composePlaceholder)}" onkeydown="app.adminChatKeydown(event)"></textarea>
                         <button class="emoji-open-btn" type="button" title="Смайлики" onclick="app.toggleEmojiPicker('admin_msg_text', this)">🙂</button>
-                        <button class="admin-chat-send" title="Отправить (Enter)" onclick="app.sendAdminMessage()">➤</button>
+                        <button class="admin-chat-send" title="Отправить (Enter)" onpointerdown="event.preventDefault()" onclick="app.sendAdminMessage()">➤</button>
                     </div>`)}
                 </div>
             </div>
