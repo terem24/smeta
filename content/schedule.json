@@ -1257,10 +1257,10 @@
    "freq": 2400,
    "audience": "owner",
    "data_block": "теплопотери по пирогу стены",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-10",
    "published_at": null,
-   "words": 0
+   "words": 1030
   },
   {
    "slug": "vvod-vody-zimoy",
@@ -1271,10 +1271,10 @@
    "freq": 5400,
    "audience": "owner",
    "data_block": "расценки на ввод",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-13",
    "published_at": null,
-   "words": 0
+   "words": 906
   },
   {
    "slug": "obvyazka-boylera",
@@ -1285,10 +1285,10 @@
    "freq": 3100,
    "audience": "pro",
    "data_block": "состав узла",
-   "status": "planned",
+   "status": "queued",
    "date": "2027-04-15",
    "published_at": null,
-   "words": 0
+   "words": 965
   },
   {
    "slug": "nasosnaya-gruppa",
