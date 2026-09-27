@@ -212,6 +212,10 @@
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
     <script src="project_plans.js?v=1.15" defer></script>
+    <!-- Подписка Профи: цены и ссылки на оплату, акции, региональные цены,
+         учёт заявок и оплат, вкладка «Оплата подписки» в панели. Нужен и вне
+         панели: окно тарифа и окно оплаты берут цены отсюда. -->
+    <script src="subscription.js?v=1.0" defer></script>
     <!-- Отложенные модули. Ничего из перечисленного ниже при открытии страницы
          не нужно: распознавание, документы, выгрузка в Excel, разбор цен,
          QR-код и библиотека печати в PDF. Раньше они грузились вместе с
@@ -2906,6 +2910,8 @@
             <p style="color: var(--text-sec); font-size: 13px; margin-bottom: 10px;" id="planName">Тариф: Профи 1 месяц</p>
             
             <div id="qrcode_container"></div>
+            <!-- Подпись под QR — из вкладки «Оплата подписки» (app.openPaymentModal) -->
+            <p id="pay_modal_note" style="display: none; font-size: 12px; color: var(--text-sec); margin: 8px 0 0; line-height: 1.4;"></p>
             
             <a href="#" id="pay_link_btn" target="_blank" class="btn-subscribe" style="margin-bottom: 12px; text-decoration: none; display: flex; align-items: center; justify-content: center; height: 44px;"><span class="ui-emo">🔗 </span>Оплатить по ссылке</a>
             
