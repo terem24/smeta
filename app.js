@@ -1146,7 +1146,7 @@ const app = {
     currentAuthTab: 'login',
     pendingRegistration: null,
     adminData: { users: [], estimates: [], recentEstimates: [], userEstimates: [] },
-    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
+    state: { objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: false, optItems: {}, rigOff: {}, qtyOverrides: {}, darkMode: false, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: false, collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", ufhMixType: 'std', ufhDT: null, sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150', radRegime: 'r8060', servoType: null, snowMelt: false, snowZones: [], snowCtrl: 'sensor', snowInBoilerPower: true, showSnowPanel: false, snowPipe: 'thin', autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null } },
 
     lastSavedStateString: "",
 
@@ -44363,7 +44363,7 @@ const app = {
 
         // Полный сброс данных расчета
         this.state = {
-            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
+            objectType: 'house', flatPosition: 'middle', flatCorner: false, flatHotRiser: true, flatRiser: 'riser', flatRooms: 2, flatRoomsManual: false, flatResManual: false, flatHouse: 'brick', flatBaths: 1, houseBaths: 1, flatSewer: false, flatUfhKind: 'electric', flatUfhCover: 'tile', flatUfhCtrl: 'mech', flatUfhZones: 1, waterInput: false, outdoorFaucet: 0, bigBlueFilter: false, waterFilterLevel: 'none', waterReducer: false, waterMeter: true, waterLeakGuard: true, waterFrame: false, heatingFeed: false, convConnectionType: 'straight', detailedRooms: false, rooms: [], convectorType: 'scq', well: false, wellDepth: 30, wellDist: 15, wellAutoType: 'sirio', h1: 2.7, h2: 2.7, viewMode: 'equipment', showScheme: currentShowScheme, optItems: {}, qtyOverrides: {}, darkMode: currentDarkMode, area: 0, floors: 1, region: 100, selectedCity: null, mat: 1.0, lastQuickMat: null, wallCustom: false, wallLayersEnabled: false, wallLayers: [{ matId: "gas_d500", thick: 300 }, { matId: "minwool", thick: 50 }], fuels: ['el'], systems: [], hotWater: false, recirc: false, res: 0, win: 10, tp1: 0, tp2: 0, ufhStep1: 150, ufhStep2: 150, showSku: false, coolant: 'water', groupItems: (currentAccType === 'pro'), collapsedGroups: [], disabledSections: [], revealedToggles: [], swaps: {}, showSwapFor: null, radType: 'space', headType: 'gas', connectionType: 'angled', boilerType: 'optibase', tankMount: 'floor', tankHeat: 'cos', tankVol: null, tankSwapMount: null, tankSwapHeat: null, tankSwapVol: null, ufhZones: 1, ufhCtrl: 'mech', pumpType: 'default', boilerSeries: 'status', boilerSeriesManual: false, elBoilerPower: null, elBoilerCount: null, elPowerLimit: 15, elPowerLimitOff: false, elPhase: '380', elTariff: 6, elTariffNight: 3, elTariffMode: 'day_night', showElCost: false, showGasCost: false, gasTariffMode: 'main', gasTariff: null, gasTariffManual: false, lpgTariff: 26, polisKit: 'gbm', radBottomKit: 'gtube', hydroType: 'combo', boilerScheme: 'auto', pipeType: 'insulated', ufhPipeMaterial: 'pex', waterPipeMaterial: 'pex', ufhBaseType: 'mat', radManifoldType: 'standard', waterManifoldType: 'standard', water: false, waterZones: [], ufhAuto: false, boilerAuto: false, boilerAutoLevel: 'auto', leakProtect: false, leakSensors: null, feedType: 'manual', airControl: false, airDeviceType: 'sensor', airLink: 'wired', airSensors: null, ctrlPanel: false, servoAutoSwapped: false, projectName: "", brandMode: "stout", pprSystemBrand: "proaqua", boilerPipeSystem: null, boilerDT: 20, customWorks: {}, showImages: true, eqDiscount: 0, worksDiscount: 0, chimneyType: 'standard', chimneySystem: 'coax', chimneyExit: 'wall', chimneyMore: false, chimneyLen: null, chimneyBends: 0, hydroArrowType: 'standard', ventilationEnabled: false, ventilationType: 'natural', sewerType: 'std', towelWarmer: { enabled: false, type: 'electric', count: null, modelId: 'SHQ-J2RR-008050', color: 'all', series: 'all' }, roofEnabled: false, roofMatId: 'roof_mw150', floorEnabled: false, floorMatId: 'floor_ground_ins', glazingEnabled: false, glazingMatId: 'glz_2cam', showDetailedRoomsPanel: false, showWallLayersPanel: false, sectionAnalog: {}, sectionScheme: {}, last_saved_date: "", sewerClampsType: 'standard', sewerClampsD58Type: 'standard', boilerFrameType: 'profile_single', expansionTankMountType: 'standard', pipeMountType: 'hidden', boilerFrameFastenerType: 'anchor', mountPlateSingleType: 'SAC-0022-600001', mountPlateDouble100Type: 'SAC-0022-600100', mountPlateDouble150Type: 'SAC-0022-600150',
             autoOn: false, zoneAuto: { radMode: 'none', link: 'wired', sys: 'auto', req: null },
             // ВОЗВРАЩАЕМ АВТОРИЗАЦИЮ И ТАРИФ НА МЕСТО
             tgUser: currentTgUser,
@@ -45950,6 +45950,56 @@ const app = {
         this.saveState(); this.syncUI(); this.render();
     },
 
+    HOUSE_BATHS_MAX: 5,
+
+    houseBaths: function () {
+        const n = parseInt(this.state.houseBaths);
+        if (!n || n < 1) return 1;
+        return Math.min(n, this.HOUSE_BATHS_MAX);
+    },
+
+    houseSimpleWater: function () {
+        return !this.isFlat() && !this.state.detailedRooms;
+    },
+
+    // Быстрый режим дома: кухня + N санузлов типовым набором (как в квартире).
+    // Приборы поштучно правятся только в подробном режиме.
+    buildHouseWaterZones: function () {
+        const n = this.houseBaths();
+        const zones = [{
+            id: 1, name: 'Кухня', dist: 6,
+            fixtures: { toilet: 0, basin: 1, bath: 0, shower: 0, wash: 0, dish: 1 }
+        }];
+        for (let i = 0; i < n; i++) {
+            zones.push(i === 0
+                ? { id: 2, name: 'Санузел 1', dist: 6,
+                    fixtures: { toilet: 1, basin: 1, bath: 1, shower: 0, wash: 1, dish: 0 } }
+                : { id: 2 + i, name: 'Санузел ' + (i + 1), dist: 8 + (i - 1) * 2,
+                    fixtures: { toilet: 1, basin: 1, bath: 0, shower: 1, wash: 0, dish: 0 } });
+        }
+        return zones;
+    },
+
+    // Зоны могли прийти из подробного режима или старого сохранения: счётчик
+    // подстраивается под них, пересборка — только по нажатию стрелки.
+    syncHouseWaterMode: function () {
+        if (!this.houseSimpleWater()) return;
+        const zones = this.state.waterZones || [];
+        if (!zones.length) { this.state.waterZones = this.buildHouseWaterZones(); return; }
+        const baths = zones.filter(z => ((z.fixtures || {}).toilet || 0) > 0).length;
+        const n = Math.min(Math.max(baths, 1), this.HOUSE_BATHS_MAX);
+        if (this.state.houseBaths !== n) this.state.houseBaths = n;
+    },
+
+    updHouseBaths: function (d) {
+        let n = this.houseBaths() + d;
+        if (n < 1) n = 1;
+        if (n > this.HOUSE_BATHS_MAX) n = this.HOUSE_BATHS_MAX;
+        this.state.houseBaths = n;
+        this.state.waterZones = this.buildHouseWaterZones();
+        this.saveState(); this.syncUI(); this.render();
+    },
+
     /**
      * Название прибора с подписью стороны подключения — ровно один раз.
      *
@@ -46156,6 +46206,9 @@ const app = {
         // Быстрый режим квартиры: вместо списка приборов — жильцы и санузлы
         const simpleWater = this.flatSimpleWater();
         if (document.body) document.body.classList.toggle('flat-water-simple', simpleWater);
+        // Быстрый режим дома: вместо списка приборов — только счётчик санузлов
+        const houseSimpleWater = this.houseSimpleWater();
+        if (document.body) document.body.classList.toggle('house-water-simple', houseSimpleWater);
         // Класс режима расчёта — чтобы CSS мог прятать то, что спрашивают только
         // в подробном (тип труб канализации и подобное).
         if (document.body) document.body.classList.toggle('calc-detailed', !!this.state.detailedRooms);
@@ -46174,6 +46227,11 @@ const app = {
                 wDesc.innerHTML = '<span class="ui-emo">🚿 </span>Считаем точки: ' + parts.join('; ') +
                     '. Другой набор — включите «Подробный» режим.';
             }
+        }
+        if (houseSimpleWater) {
+            if (this.state.water) this.syncHouseWaterMode();
+            const bathsEl = document.getElementById('val_house_baths');
+            if (bathsEl) bathsEl.innerText = this.houseBaths();
         }
         const pos = this.state.flatPosition || 'middle';
         document.querySelectorAll('.flat-pos-tab').forEach(t => {
@@ -47043,7 +47101,7 @@ const app = {
                 });
             });
         }
-        let xpsAlt = catalog.xps_kit[0]; catalog.mats.forEach(m => { m.alts = [xpsAlt]; }); catalog.xps_kit[0].alts = catalog.mats;
+        let xpsAlt = this.ufhBaseXps(); catalog.mats.forEach(m => { m.alts = [xpsAlt]; }); catalog.xps_kit[0].alts = catalog.mats;
         if (catalog.well_auto) { let waAlts = catalog.well_auto; catalog.well_auto.forEach(a => { a.alts = waAlts; }); }
         // Демпферная лента: 100х8 дешевле 150х10, но это не «та же лента подешевле» —
         // узкая не перекрывает высоту пирога с 50 мм утеплителя и 70 мм стяжки.
@@ -47465,7 +47523,7 @@ const app = {
             this._ufhGeomCache = null;
         }
         else if (originalId.endsWith('_water') || (originalId.startsWith('SPX-0001-') && !originalId.endsWith('_rad'))) { this.state.waterPipeMaterial = (this.state.waterPipeMaterial === 'pex') ? 'metal_plastic' : 'pex'; }
-        else if (originalId.startsWith('SMF-0001') || originalId === '147312') { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
+        else if (originalId.startsWith('SMF-0001') || this.isXpsBaseId(originalId)) { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
         else if (originalId.startsWith('SCS-0001')) { if (this.state.wellAutoType === 'sirio') this.state.wellAutoType = 'top'; else if (this.state.wellAutoType === 'top') this.state.wellAutoType = 'base'; else this.state.wellAutoType = 'sirio'; }
         else if (originalId.startsWith('SCQ') || originalId.startsWith('SCN')) { this.state.convectorType = (this.state.convectorType === 'scq') ? 'scn' : 'scq'; }
         else if (originalId.startsWith('SVT') || originalId.startsWith('SVL')) { this.state.convConnectionType = (this.state.convConnectionType === 'straight') ? 'angled' : 'straight'; }
@@ -49363,7 +49421,7 @@ const app = {
                 };
             });
         }
-        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || item.originalId === '147312')) {
+        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || this.isXpsBaseId(item.originalId))) {
             // В строке может стоять и мат ROMMER (его подставляет «Аналог») — тогда и в
             // таблице показываем его, иначе она предлагала бы вернуться на STOUT под видом
             // текущего выбора. Бренд берём из самой строки: посекционный «Аналог» глобальный
@@ -49371,7 +49429,7 @@ const app = {
             let _matCat = catalog.mats ? catalog.mats[0] : null;
             let _matR = (String(item.brand || '').toUpperCase() === 'ROMMER' && _matCat && _matCat.rommer) ? _matCat.rommer : null;
             let p_mat = (_matR ? _matR.price : _matCat?.price) || 991;
-            let p_xps = catalog.xps_kit ? catalog.xps_kit[0]?.price || 299 : 299;
+            let p_xps = this.ufhBaseXps()?.price || 299;
             // Мат продаётся штукой 0,88 м², лист XPS — 0,68 м², поэтому цены «за штуку»
             // рядом не сравнить. Даём две цены за м²: самого мата или листа и всей
             // системы — с тем, что render() докладывает к ней в раздел 4.2 (запас 5 %,
@@ -49380,7 +49438,7 @@ const app = {
             // % и сортировка идут по цене системы.
             const _matArea = (_matR ? _matR.area : _matCat?.area) || 0.88;
             const _xk = catalog.xps_kit || [];
-            const _xpsArea = _xk[0]?.area || 0.6844;
+            const _xpsArea = this.ufhBaseXps()?.area || 0.6844;
             const _tpA = (Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0);
             const _pipePerM2 = (_tpA > 0 && this.tpMeters > 0) ? this.tpMeters / _tpA : 6.7;
             const _sheetsM2 = 1.05 / _xpsArea;
@@ -53154,8 +53212,8 @@ const app = {
             if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
             else this.state.waterPipeMaterial = 'metal_plastic';
         }
-        else if (originalId.startsWith('SMF-0001') || originalId === '147312') {
-            if (chosenId === '147312' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
+        else if (originalId.startsWith('SMF-0001') || this.isXpsBaseId(originalId)) {
+            if (chosenId === '147312' || chosenId === '170040' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
             else this.state.ufhBaseType = 'mat';
         }
         else if (originalId.startsWith('SCS-0001')) {
@@ -53809,7 +53867,7 @@ const app = {
         if (typeof FLOOR_MATERIALS_DB !== 'undefined') {
             var defFloor = FLOOR_MATERIALS_DB.find(function (m) { return m.id === 'floor_ground_ins'; }) || FLOOR_MATERIALS_DB[0] || { R: defaultFloorR };
             var selFloor = s.floorEnabled ? (FLOOR_MATERIALS_DB.find(function (m) { return m.id === s.floorMatId; }) || defFloor) : defFloor;
-            R_floor = selFloor.R;
+            R_floor = selFloor.R + (selFloor.R > 0 ? this.floorLayersR() : 0);
         } else { R_floor = defaultFloorR; }
 
         if (typeof GLAZING_DB !== 'undefined') {
@@ -56062,6 +56120,12 @@ const app = {
     UFH_INS_LAMBDA: 0.034,   // расчётная теплопроводность плит XPS, Вт/(м·°С) — карточка товара
     UFH_INS_R_MAT: 0.53,     // мат с бобышками: EPS 20 мм при λ 0,038
     /** Ряд плит добора от тонкой к толстой: { thick, r, item }. */
+    ufhBaseXps: function () {
+        return (catalog.ufh_ins_plates || []).find(p => p.id === '170040') || catalog.xps_kit[0];
+    },
+    isXpsBaseId: function (id) {
+        return id === '147312' || (id === '170040' && this.state.ufhBaseType === 'xps');
+    },
     ufhInsGrid: function () {
         return (catalog.ufh_ins_plates || []).map(p => ({
             thick: p.thick,
@@ -56121,17 +56185,34 @@ const app = {
             const fl = p[0], area = p[1];
             if (!(area > 0)) return;
             const req = this.ufhInsReq(fl);
-            const layers = (base.r >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - base.r);
-            layers.forEach(l => {
-                const k = String(l.thick);
-                if (!byThick[k]) byThick[k] = { item: l.item, thick: l.thick, r: l.r, area: 0, floors: [] };
-                byThick[k].area += area;
-                if (byThick[k].floors.indexOf(fl) < 0) byThick[k].floors.push(fl);
-            });
+            const own = this.ufhInsOwnR(fl);
+            const have = base.r + own;
+            const layers = ((s.ufhInsNoAdd && s.detailedRooms) || have >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - have);
+            const touch = (g, kind) => {
+                const k = String(g.thick);
+                if (!byThick[k]) byThick[k] = { item: g.item, thick: g.thick, r: g.r, area: 0, floors: [], cnt: {} };
+                const B = byThick[k];
+                B.area += area;
+                B[kind] = (B[kind] || 0) + area;
+                B.cnt[fl] = (B.cnt[fl] || 0) + 1;
+                if (B.floors.indexOf(fl) < 0) B.floors.push(fl);
+            };
+            if (s.ufhBaseType === 'xps') {
+                const bi = this.ufhBaseXps();
+                touch({ thick: bi.thick || 50, r: (bi.thick || 50) / 1000 / (bi.lambda || this.UFH_INS_LAMBDA), item: bi }, 'baseArea');
+            }
+            layers.forEach(l => touch(l, 'addedArea'));
+            if (s.detailedRooms && !s.ufhInsNoAdd) {
+                const grid = this.ufhInsGrid();
+                this.floorLayersOf(fl).forEach(ol => {
+                    if (ol.matId !== 'xps' || !(parseInt(ol.thick) > 0) || !grid.length) return;
+                    touch(grid.reduce((b, x) => Math.abs(x.thick - ol.thick) < Math.abs(b.thick - ol.thick) ? x : b, grid[0]), 'mineArea');
+                });
+            }
             if (layers.length > maxAdd) maxAdd = layers.length;
             floors.push({
-                fl: fl, area: area, req: req, rBase: base.r,
-                rTotal: base.r + layers.reduce((x, l) => x + l.r, 0),
+                fl: fl, area: area, req: req, rBase: base.r, own: own,
+                rTotal: have + layers.reduce((x, l) => x + l.r, 0),
                 layers: layers,
                 add: layers.reduce((x, l) => x + l.thick, 0)
             });
@@ -56169,9 +56250,8 @@ const app = {
         let out = `<br><b>Утепление под трубой (ГОСТ Р 70834-2023, п. 9.1.5, табл. 2):</b><br>`;
         plan.floors.forEach(f => {
             const ok = f.rTotal >= f.req.r - 0.005;
-            const st = f.layers.length
-                ? `${plan.base.label} + ${f.layers.map(l => l.thick + ' мм').join(' + ')}`
-                : plan.base.label;
+            const st = plan.base.label + (f.own > 0 ? ` + ваш утеплитель в слоях пола (R ${n(f.own)})` : '') +
+                f.layers.map(l => ' + ' + l.thick + ' мм').join('');
             out += `• ${f.fl} этаж (${f.req.why}): норма ${n(f.req.r)} — уложено ${st}, ` +
                 `<b style="color:${ok ? '#22C55E' : '#F59E0B'};">R = ${n(f.rTotal)} м²·°С/Вт</b>.<br>`;
         });
@@ -56219,11 +56299,12 @@ const app = {
             const m = FLOOR_MATERIALS_DB.find(x => x.id === matId);
             if (m) rConstr = m.R;
         }
+        rConstr += this.floorLayersR(true);
         // Утеплитель берём тот, что реально лёг в смету: основание плюс слои добора.
         const plan = this._ufhInsPlan;
         const pf1 = plan && plan.floors.find(f => f.fl === 1);
         const rBase = pf1 ? pf1.rTotal
-            : ((s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT);
+            : ((s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT) + this.ufhInsOwnR();
         const dT = (this._ufhBal && this._ufhBal.dT) || this.UFH_DTS[0];
         const tw = this.ufhSupply(dT) - dT / 2;
         const qBack = Math.max(0, (tw - 5) / (rBase + rConstr));
@@ -60081,6 +60162,7 @@ const app = {
         }
         const hasTp = this.state.systems.includes('tp'); document.getElementById('sys_rad').className = this.state.systems.includes('rad') ? 'tab multi-active' : 'tab'; document.getElementById('sys_tp').className = hasTp ? 'tab multi-active' : 'tab';
         document.getElementById('blk_tp_sliders').style.display = hasTp ? 'block' : 'none';
+        this.renderFloorLayers(1); this.renderFloorLayers(2);
         // Снеготаяние живёт только в подробном режиме: концентрация гликоля и
         // поправка на климат считаются от расчётной зимней температуры города, а
         // город выбирается там же. В быстром режиме тумблер прячем, но состояние
@@ -60538,7 +60620,8 @@ const app = {
             const selText = document.querySelector('#floor_mat_selected span');
             if (selText) selText.innerText = selFloor.name;
             const lblR = document.getElementById('lbl_floor_r');
-            if (lblR) lblR.innerText = `R = ${selFloor.R.toFixed(2)} м²·°C/Вт`;
+            const layersR = selFloor.R > 0 ? this.floorLayersR() : 0;
+            if (lblR) lblR.innerText = `R = ${(selFloor.R + layersR).toFixed(2)} м²·°C/Вт` + (layersR > 0 ? ` (основание ${selFloor.R.toFixed(2)} + слои ${layersR.toFixed(2)})` : '');
 
             const dropOpts = document.getElementById('dropdown_options_floor');
             if (dropOpts) {
@@ -61360,6 +61443,153 @@ const app = {
         if (wallCoef > 3.0) wallCoef = 3.0;
 
         this.state.mat = wallCoef;
+    },
+
+    UFH_INS_LAYER_IDS: ['xps', 'polystyrene', 'minwool'],
+
+    floorLayersOf: function (fl) {
+        const s = this.state;
+        return (fl === 2 ? s.floorLayers2 : s.floorLayers) || [];
+    },
+
+    // Сопротивление слоёв пола 1 этажа в теплопотерях. skipUfh — без утеплителя,
+    // который зачтён как утепление под трубой тёплого пола (он уже сидит в ufhInsPlan).
+    floorLayersR: function (skipUfh) {
+        const s = this.state;
+        if (!s.floorEnabled) return 0;
+        return (s.floorLayers || []).reduce((acc, l) => {
+            if (skipUfh && this.UFH_INS_LAYER_IDS.indexOf(l.matId) >= 0) return acc;
+            const m = FLOOR_LAYER_MATERIALS_DB.find(x => x.id === l.matId);
+            return m ? acc + (parseInt(l.thick) || 0) / 1000 / m.lambda : acc;
+        }, 0);
+    },
+
+    // Утеплитель из слоёв пола этажа fl, который лежит под трубой тёплого пола.
+    ufhInsOwnR: function (fl) {
+        if (!this.state.detailedRooms) return 0;
+        return this.floorLayersOf(fl || 1).reduce((acc, l) => {
+            if (this.UFH_INS_LAYER_IDS.indexOf(l.matId) < 0) return acc;
+            const m = FLOOR_LAYER_MATERIALS_DB.find(x => x.id === l.matId);
+            return m ? acc + (parseInt(l.thick) || 0) / 1000 / m.lambda : acc;
+        }, 0);
+    },
+
+    // Что даёт утеплитель из слоёв пола тёплому полу этажа fl: для панели слоёв.
+    ufhInsStatus: function (fl) {
+        const s = this.state;
+        const area = fl === 2 ? (s.floors === 2 ? parseFloat(s.tp2) : 0) : parseFloat(s.tp1);
+        if (!(area > 0)) return null;
+        const req = this.ufhInsReq(fl);
+        const base = (s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT;
+        const own = this.ufhInsOwnR(fl);
+        return { req: req, base: base, own: own, total: base + own, ok: base + own >= req.r - 0.005 };
+    },
+
+    setUfhInsNoAdd: function (v) {
+        this.state.ufhInsNoAdd = !!v;
+        this.syncUI();
+        this.saveState();
+        this.render();
+    },
+
+    renderFloorLayers: function (fl) {
+        const box = document.getElementById('floor_layers_box_' + fl);
+        if (!box) return;
+        const s = this.state;
+        const st = this.ufhInsStatus(fl);
+        const hasTp = (s.systems || []).includes('tp');
+        box.style.display = (hasTp && st && s.detailedRooms) ? 'flex' : 'none';
+        const list = document.getElementById('floor_layers_list_' + fl);
+        if (!list) return;
+        const layers = this.floorLayersOf(fl);
+        list.innerHTML = layers.map((l, idx) => {
+            const opts = FLOOR_LAYER_MATERIALS_DB.map(m =>
+                `<option value="${m.id}"${m.id === l.matId ? ' selected' : ''}>${m.name}</option>`).join('');
+            return `<div style="display:flex; flex-direction:column; gap:6px; background: var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="flex-shrink:0; width:14px; text-align:center; font-size:11px; font-weight:700; color:var(--text-sec);">${idx + 1}</span>
+                    <select onchange="app.updateFloorLayer(${fl}, ${idx}, 'matId', this.value)" style="flex:1; min-width:0; font-size:12.5px; padding:6px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">${opts}</select>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding-left:22px;">
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:11.5px; color:var(--text-sec);">Толщина:</span>
+                        <select onchange="app.updateFloorLayer(${fl}, ${idx}, 'thick', this.value)" style="width:72px; font-size:12.5px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface-light); color:var(--text-main);">${this.floorLayerThicks(l.matId, l.thick).map(v => `<option value="${v}"${v === (parseInt(l.thick) || 0) ? ' selected' : ''}>${v}</option>`).join('')}</select>
+                        <span style="font-size:11.5px; color:var(--text-sec);">мм</span>
+                    </div>
+                    <button onclick="app.removeFloorLayer(${fl}, ${idx})" aria-label="Удалить слой" style="background:transparent; border:none; color:#EF4444; font-size:18px; cursor:pointer; line-height:1; padding:4px; opacity:0.7;">×</button>
+                </div>
+            </div>`;
+        }).join('');
+        const sum = document.getElementById('lbl_floor_layers_sum_' + fl);
+        if (sum) {
+            const th = layers.reduce((a, l) => a + (parseInt(l.thick) || 0), 0);
+            sum.innerText = layers.length ? `Слои: ${th} мм` : '';
+        }
+        const eff = document.getElementById('lbl_floor_layers_effect_' + fl);
+        if (eff) {
+            const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
+            let html = '';
+            if (st) {
+                const tail = `R ${n(st.total)} из ${n(st.req.r)} м²·°C/Вт`;
+                if (st.ok) html = `<span style="color:#22C55E;">✓ Хватает: ${tail}</span>`;
+                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Не хватает: ${tail}. Плиты в смету не добавлены.</span>`;
+                else html = `<span style="color:#F59E0B;">Не хватает: ${tail}. Недостающее добавлено в смету.</span>`;
+                if (!st.ok && !s.ufhInsNoAdd) {
+                    const add = this.ufhInsLayers(st.req.r - st.base - st.own);
+                    if (add.length) html += `<div style="color:var(--text-sec); margin-top:2px;">В смету: ${add.map(l => 'XPS ' + l.thick + ' мм (R ' + n(l.r) + ')').join(' + ')}</div>`;
+                }
+            }
+            eff.innerHTML = html;
+        }
+        const nb = document.getElementById('floor_ins_noadd_row_' + fl);
+        if (nb) nb.style.display = ((st && !st.ok) || s.ufhInsNoAdd) ? 'flex' : 'none';
+        const cb = document.getElementById('chk_ufh_ins_noadd_' + fl);
+        if (cb) cb.checked = !!s.ufhInsNoAdd;
+    },
+
+    addFloorLayer: function (fl) {
+        const key = fl === 2 ? 'floorLayers2' : 'floorLayers';
+        if (!this.state[key]) this.state[key] = [];
+        this.state[key].push({ matId: 'xps', thick: 50 });
+        this.syncUI();
+        this.saveState();
+        this.render();
+    },
+
+    removeFloorLayer: function (fl, idx) {
+        const key = fl === 2 ? 'floorLayers2' : 'floorLayers';
+        if (!this.state[key]) return;
+        this.state[key].splice(idx, 1);
+        this.syncUI();
+        this.saveState();
+        this.render();
+    },
+
+    floorLayerThicks: function (matId, cur) {
+        let list;
+        if (matId === 'xps') list = (catalog.ufh_ins_plates || []).map(p => p.thick);
+        else if (matId === 'polystyrene') list = [20, 30, 40, 50, 60, 80, 100, 150, 200];
+        else if (matId === 'minwool') list = [50, 100, 150, 200];
+        else if (matId === 'screed') list = [30, 40, 50, 60, 70, 80, 100];
+        else list = [100, 150, 200, 250, 300];
+        list = list.slice();
+        cur = parseInt(cur) || 0;
+        if (cur > 0 && list.indexOf(cur) < 0) list.push(cur);
+        return list.sort((a, b) => a - b);
+    },
+    updateFloorLayer: function (fl, idx, field, value) {
+        const l = this.floorLayersOf(fl)[idx];
+        if (!l) return;
+        if (field === 'thick') {
+            l.thick = Math.min(Math.max(parseInt(value) || 0, 0), 500);
+        } else {
+            l.matId = value;
+            const ok = this.floorLayerThicks(value, 0);
+            if (ok.indexOf(parseInt(l.thick)) < 0) l.thick = ok.reduce((b, x) => Math.abs(x - l.thick) < Math.abs(b - l.thick) ? x : b, ok[0]);
+        }
+        this.syncUI();
+        this.saveState();
+        this.render();
     },
 
     addWallLayer: function () {
@@ -62489,6 +62719,10 @@ const app = {
     renderZonesUI: function () {
         const container = document.getElementById('zones_list');
         if (!container) return;
+        if (this.houseSimpleWater()) {
+            container.innerHTML = "";
+            return;
+        }
         container.innerHTML = "";
         const labels = { basin: "🚰 Раковина", shower: "🚿 Душ", bath: "🛁 Ванна", toilet: "🚽 Унитаз", toiletHot: "🚽 из них с биде (ГВС)", bidet: "🚻 Биде", wash: "🧺 Стиралка", dish: "🍽️ ПММ", drain: "🕳️ Трап в полу" };
         this.state.waterZones.forEach((z, idx) => {
@@ -65656,7 +65890,7 @@ const app = {
                                 const _ok = f.rTotal >= f.req.r - 0.005;
                                 return `• Утепление под трубой, ${f.fl} этаж (${f.req.why}): норма ГОСТ Р 70834-2023 (табл. 2) — ${_n(f.req.r)}, ` +
                                     `<b style="color:${_ok ? '#22C55E' : '#F59E0B'};">уложено R = ${_n(f.rTotal)} м²·°С/Вт</b>` +
-                                    (f.layers.length ? ` (${_pl.base.label} + ${f.layers.map(l => l.thick + ' мм').join(' + ')})` : ` (${_pl.base.label})`) + `.<br>`;
+                                    (f.layers.length || f.own > 0 ? ` (${_pl.base.label}${f.own > 0 ? ' + ваш утеплитель в слоях пола R ' + _n(f.own) : ''}${f.layers.map(l => ' + ' + l.thick + ' мм').join('')})` : ` (${_pl.base.label})`) + `.<br>`;
                             }).join('');
                         }
                         const _bk = this.ufhBackLoss();
@@ -65683,7 +65917,7 @@ const app = {
                 const flStr = (L.floors || []).map(f => f + ' этаж').join(' и ');
                 const baseLbl = (plan && plan.base) ? plan.base.label : 'основание';
                 return `<span style="${styles}"><span style="${head}">Плита утеплителя ${L.thick} мм</span>` +
-                    `<b>Зачем:</b> Добор теплоизоляции до нормы: ${baseLbl} в одиночку требуемое сопротивление не даёт, и тепло уходит вниз мимо помещения.<br>` +
+                    `<b>Зачем:</b> ${(L.mineArea > 0 && !(L.addedArea > 0)) ? 'Слой утепления из пирога пола — вы добавили его в блоке «Утепление под трубой».' : `Добор теплоизоляции до нормы: ${baseLbl} в одиночку требуемое сопротивление не даёт, и тепло уходит вниз мимо помещения.`}<br>` +
                     `<b>Куда:</b> На подготовленное основание, ${flStr || '1 этаж'}; поверх плиты — ${baseLbl} с трубой. Из нескольких материалов сверху кладётся менее сжимаемый (ГОСТ Р 70834-2023, п. 9.1.7), поэтому мягкая подложка — всегда нижним слоем.<br>` +
                     `<b>Расчёт:</b> ${Math.round(L.area)} м² тёплого пола + 5 % на подрезку, полезная площадь плиты ${String(L.item && L.item.area || 0).replace('.', ',')} м².` +
                     this.ufhInsNote() + `</span>`;
@@ -66563,6 +66797,8 @@ const app = {
             itemsToAdd.forEach(entry => {
                 let finalItem = entry.itm;
                 let finalQty = entry.q * _setMul;
+
+                if (item.layerNote && finalItem.name) finalItem = Object.assign({}, finalItem, { name: finalItem.name + ' ' + item.layerNote });
 
                 // Remove "Бастион" from stabilizer names
                 if (finalItem.name && (finalItem.name.includes('Бастион') || finalItem.name.includes('бастион') || (finalItem.id && finalItem.id.startsWith('SST-')))) {
@@ -73184,7 +73420,7 @@ const app = {
             this._ufhInsPlan = _insPlan;
 
             if (this.state.ufhBaseType === 'mat') {
-                let mt = catalog.mats[0]; mt.alts = [catalog.xps_kit[0]];
+                let mt = catalog.mats[0]; mt.alts = [this.ufhBaseXps()];
                 // Мат ROMMER мельче стаутовского (полезные 0,72 м² против 0,88), поэтому при
                 // включённом «Аналоге» количество считаем по его площади — иначе на пол не хватит.
                 // Решение о замене принимает addToBill, здесь повторяем его условие.
@@ -73197,7 +73433,7 @@ const app = {
                 let mc = Math.ceil((tpArea / _matArea) * 1.05);
                 addToBill(mt, mc, this.getDesc('ufh_mat', tpArea), grpIns);
             }
-            else { let xpsItem = catalog.xps_kit[0]; xpsItem.alts = catalog.mats; let sheets = Math.ceil((tpArea / xpsItem.area) * 1.05); addToBill(xpsItem, sheets, this.getDesc('ufh_xps', tpArea), grpIns); if (catalog.ufh_mat && catalog.ufh_mat[0]) { let matRolls = Math.ceil(tpArea / catalog.ufh_mat[0].pack_m2); addToBill(catalog.ufh_mat[0], matRolls, `Подложка 3 мм, ${tpArea} м² (рулон 30 м²).`, grpIns); } let totalDowels = Math.ceil(tpArea * 5); addToBill(catalog.xps_kit[1], Math.ceil(totalDowels / 100), `Дюбеля.`, grpIns); let totalStaples = Math.ceil(tpMeters * 2.5); addToBill(catalog.xps_kit[2], Math.ceil(totalStaples / 25), `Скобы.`, grpIns); let tapeRolls = Math.ceil((sheets * 1.76 * 1.1) / 50); addToBill(catalog.xps_kit[3], tapeRolls, `Скотч.`, grpIns); }
+            else { let xpsItem = this.ufhBaseXps(); let sheets = Math.ceil((tpArea / xpsItem.area) * 1.05); if (catalog.ufh_mat && catalog.ufh_mat[0]) { let matRolls = Math.ceil(tpArea / catalog.ufh_mat[0].pack_m2); addToBill(catalog.ufh_mat[0], matRolls, `Подложка 3 мм, ${tpArea} м² (рулон 30 м²).`, grpIns); } let totalDowels = Math.ceil(tpArea * 5); addToBill(catalog.xps_kit[1], Math.ceil(totalDowels / 100), `Дюбеля.`, grpIns); let totalStaples = Math.ceil(tpMeters * 2.5); addToBill(catalog.xps_kit[2], Math.ceil(totalStaples / 25), `Скобы.`, grpIns); let tapeRolls = Math.ceil((sheets * 1.76 * 1.1) / 50); addToBill(catalog.xps_kit[3], tapeRolls, `Скотч.`, grpIns); }
 
             // Плиты добора. Слои идут отдельными строками по толщине: монтажнику
             // важно, что под основание ложится именно 30 мм, а не «утеплитель».
@@ -73207,7 +73443,11 @@ const app = {
                     .forEach(k => {
                         const L = _insPlan.byThick[k];
                         const sh = Math.ceil((L.area / L.item.area) * 1.05);
-                        addToBill(L.item, sh, this.getDesc('ufh_ins_plate', L, _insPlan), grpIns);
+                        const nl = Math.max.apply(null, Object.keys(L.cnt || {}).map(f => L.cnt[f]).concat([1]));
+                        const word = nl === 1 ? 'слой' : (nl < 5 ? 'слоя' : 'слоёв');
+                        const it = Object.assign({}, L.item, { layerNote: `(${nl} ${word})` });
+                        if (L.baseArea > 0) it.alts = catalog.mats.concat([catalog.xps_kit[0]]);
+                        addToBill(it, sh, L.baseArea > 0 ? this.getDesc('ufh_xps', tpArea) : this.getDesc('ufh_ins_plate', L, _insPlan), grpIns);
                     });
             }
 
@@ -73286,6 +73526,15 @@ const app = {
                     `<div class="tip-p">Коллектору «${_bal.worst.label}» нужно <b>${_need} м</b>, а насос ${_bal.pump.label} на расходе ${_bal.worst.flow.toFixed(2).replace('.', ',')} м³/ч даёт <b>${_have} м</b>.</div>` +
                     `<div class="tip-p"><b>Что делать:</b> разделить этот коллектор на два или укоротить петли, увеличив их число.</div>` +
                     `<div class="tip-p">Разбор по слагаемым — в подсказке «i» насосной группы тёплого пола.</div>`);
+            }
+            if (_insPlan && this.state.ufhInsNoAdd && this.state.detailedRooms) {
+                const _short = _insPlan.floors.filter(f => f.rTotal < f.req.r - 0.005);
+                if (_short.length) {
+                    const _n2 = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
+                    warn = (warn || '') + this.noteBox('warn', 'Утеплителя под тёплым полом не хватает.',
+                        `Плиты в смету не добавлены (утеплитель уже на объекте): ${_short.map(f => `${f.fl} этаж — R ${_n2(f.rTotal)} при норме ${_n2(f.req.r)}`).join('; ')}.`,
+                        `<div class="tip-p">Норма — ГОСТ Р 70834-2023, п. 9.1.5, табл. 2 (${_short.map(f => f.req.why).join('; ')}). Без нужного слоя тепло уходит вниз мимо помещения. Проверьте, что имеющегося утеплителя хватает, либо снимите отметку в блоке «Материал пола» — недостающие плиты добавятся в смету.</div>`);
+                }
             }
             flushBill("4. Водяной тёплый пол", warn);
         }

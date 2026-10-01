@@ -685,8 +685,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && !empty($_GET['quota'])) {
     echo json_encode([
         'ok' => true, 'user' => $user, 'tariff' => $tariff, 'personal' => $personal,
         'limit' => $limit, 'used' => $used, 'left' => max(0, $limit - $used),
+        'daily' => dailyCalls($ARCHIVE_DIR),
     ], JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+/**
+ * Сколько обращений к Google было сегодня на весь сайт — пишет gemini_proxy.php
+ * (noteDailyCall) в archive/daily_calls.json, сутки по тихоокеанскому времени.
+ * Файла нет или он за другой день — нули.
+ */
+function dailyCalls($archiveDir) {
+    $date = (new DateTime('now', new DateTimeZone('America/Los_Angeles')))->format('Y-m-d');
+    $out = ['date' => $date, 'total' => 0, 'models' => new stdClass(), 'modes' => new stdClass()];
+    $file = $archiveDir . '/daily_calls.json';
+    if (!is_readable($file)) $file = sys_get_temp_dir() . '/hc_gemini_daily.json';
+    if (!is_readable($file)) return $out;
+    $data = json_decode(@file_get_contents($file), true);
+    if (!is_array($data) || ($data['date'] ?? '') !== $date) return $out;
+    $models = is_array($data['models'] ?? null) ? $data['models'] : [];
+    $out['models'] = $models ?: new stdClass();
+    $out['modes'] = (is_array($data['modes'] ?? null) && $data['modes']) ? $data['modes'] : new stdClass();
+    $out['total'] = array_sum(array_map('intval', $models));
+    return $out;
 }
 
 /**
