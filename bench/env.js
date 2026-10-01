@@ -33,17 +33,35 @@ const path = require('path');
 
 const noop = () => {};
 
+// classList с памятью. Заглушка «всё в никуда» ломала код, который полагается на
+// состояние: syncYandexTheme зовёт applyTheme, пока класс theme-yandex не появился,
+// а applyTheme зовёт syncYandexTheme обратно — на настоящей странице второй заход
+// видит класс и гаснет, а на заглушке класса не было никогда, и init() падал
+// переполнением стека (стенд с тех пор не доходил до конца init()).
+const mkClassList = () => {
+    const set = new Set();
+    return {
+        add: (...c) => { c.forEach(x => set.add(x)); },
+        remove: (...c) => { c.forEach(x => set.delete(x)); },
+        toggle: (c, force) => {
+            const on = force === undefined ? !set.has(c) : !!force;
+            if (on) set.add(c); else set.delete(c);
+            return on;
+        },
+        contains: (c) => set.has(c)
+    };
+};
+
 // Элемент-заглушка. Свойства, в которые пишет код (innerHTML, value, checked),
 // хранятся по-настоящему: иначе не проверить, что именно туда положили.
 const mkEl = () => new Proxy({
     style: { setProperty: noop, removeProperty: noop, getPropertyValue: () => '' },
-    dataset: {}, value: '', innerHTML: '', textContent: '', checked: false,
+    dataset: {}, value: '', innerHTML: '', textContent: '', checked: false, classList: mkClassList(),
     // syncUI ходит по вкладкам через .children[i] — список должен быть непустым.
     get children() { return Array.from({ length: 8 }, () => mkEl()); }
 }, {
     get: (t, k) => {
         if (k in t) return t[k];
-        if (k === 'classList') return { add: noop, remove: noop, toggle: noop, contains: () => false };
         // parentNode — не null, а простой узел: init() вставляет через него панели
         // (setParamsDock, меню разделов), и на null всё падало, не дойдя до конца.
         // Свой parentNode у него уже null — иначе цикл «поднимайся до корня» завис бы.
@@ -109,7 +127,10 @@ const ctx = {
 // then отдаёт ПУСТОЙ ответ, а не undefined: init() ждёт getSession() и запросы к
 // таблицам, и без обещания обрывался на первом же. Форма ответа как у supabase-js
 // ({ data, error }), внутри пусто — сети здесь нет и быть не должно.
-const EMPTY = { data: { session: null, user: null }, error: null, count: 0 };
+// data — пустой МАССИВ с полями session/user: запросы к таблицам делают
+// (data || []).forEach(...), а getSession() читает data.session; объект вместо
+// массива ронял чтение настроек сайта («.forEach is not a function»).
+const EMPTY = { data: Object.assign([], { session: null, user: null }), error: null, count: 0 };
 const chain = new Proxy(function () {}, {
     get: (t, k) => {
         if (k === 'then') return (res, rej) => Promise.resolve(res ? res(EMPTY) : EMPTY);
@@ -164,8 +185,16 @@ if (app.__initError) {
 // Доступ к странице-заглушке: нужен, чтобы прочитать, что код в неё записал.
 app.__doc = doc;
 
+// Исходное состояние после init(): к нему __setup возвращает объект перед каждым
+// расчётом. Раньше параметры накладывались на то, что осталось от прошлого
+// объекта, — recirc: true из одного прогона тихо оставался включённым в следующих,
+// и результат зависел от порядка объектов в списке.
+const __baseState = JSON.parse(JSON.stringify(app.state));
+
 /** Состояние объекта: только то, что задаёт расчёт, остальное — по умолчанию. */
 app.__setup = function (over) {
+    Object.keys(this.state).forEach(k => { delete this.state[k]; });
+    Object.assign(this.state, JSON.parse(JSON.stringify(__baseState)));
     Object.assign(this.state, {
         area: 200, floors: 1, region: 100, fuels: ['gas'], res: 5,
         hotWater: true, systems: ['rad'], water: false, snowMelt: false,
