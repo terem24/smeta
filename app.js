@@ -45950,21 +45950,53 @@ const app = {
         this.saveState(); this.syncUI(); this.render();
     },
 
+    HOUSE_BATHS_MAX: 5,
+
     houseBaths: function () {
         const n = parseInt(this.state.houseBaths);
         if (!n || n < 1) return 1;
-        return Math.min(n, this.FLAT_BATHS_MAX);
+        return Math.min(n, this.HOUSE_BATHS_MAX);
     },
 
     houseSimpleWater: function () {
         return !this.isFlat() && !this.state.detailedRooms;
     },
 
+    // Быстрый режим дома: кухня + N санузлов типовым набором (как в квартире).
+    // Приборы поштучно правятся только в подробном режиме.
+    buildHouseWaterZones: function () {
+        const n = this.houseBaths();
+        const zones = [{
+            id: 1, name: 'Кухня', dist: 6,
+            fixtures: { toilet: 0, basin: 1, bath: 0, shower: 0, wash: 0, dish: 1 }
+        }];
+        for (let i = 0; i < n; i++) {
+            zones.push(i === 0
+                ? { id: 2, name: 'Санузел 1', dist: 6,
+                    fixtures: { toilet: 1, basin: 1, bath: 1, shower: 0, wash: 1, dish: 0 } }
+                : { id: 2 + i, name: 'Санузел ' + (i + 1), dist: 8 + (i - 1) * 2,
+                    fixtures: { toilet: 1, basin: 1, bath: 0, shower: 1, wash: 0, dish: 0 } });
+        }
+        return zones;
+    },
+
+    // Зоны могли прийти из подробного режима или старого сохранения: счётчик
+    // подстраивается под них, пересборка — только по нажатию стрелки.
+    syncHouseWaterMode: function () {
+        if (!this.houseSimpleWater()) return;
+        const zones = this.state.waterZones || [];
+        if (!zones.length) { this.state.waterZones = this.buildHouseWaterZones(); return; }
+        const baths = zones.filter(z => ((z.fixtures || {}).toilet || 0) > 0).length;
+        const n = Math.min(Math.max(baths, 1), this.HOUSE_BATHS_MAX);
+        if (this.state.houseBaths !== n) this.state.houseBaths = n;
+    },
+
     updHouseBaths: function (d) {
         let n = this.houseBaths() + d;
         if (n < 1) n = 1;
-        if (n > this.FLAT_BATHS_MAX) n = this.FLAT_BATHS_MAX;
+        if (n > this.HOUSE_BATHS_MAX) n = this.HOUSE_BATHS_MAX;
         this.state.houseBaths = n;
+        this.state.waterZones = this.buildHouseWaterZones();
         this.saveState(); this.syncUI(); this.render();
     },
 
@@ -46197,6 +46229,7 @@ const app = {
             }
         }
         if (houseSimpleWater) {
+            if (this.state.water) this.syncHouseWaterMode();
             const bathsEl = document.getElementById('val_house_baths');
             if (bathsEl) bathsEl.innerText = this.houseBaths();
         }
