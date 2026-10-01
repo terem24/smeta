@@ -1445,6 +1445,43 @@ const RecognizeFiles = {
     ENG_LIMIT: { vent: 1 },
     ENG_SHORT: { heat: 'отопление и тёплые полы', water: 'сантехника', vent: 'вентиляция' },
 
+    /**
+     * Листы рабочего проекта, с которых приборы к комнатам не привязать:
+     * обложка раздела («Система отопления»), спецификация, 3D-вид, узлы,
+     * котельная, сводная схема сетей.
+     */
+    ENG_SKIP_GOST_RE: /^система\s|спецификац|3d|\bвид\b|узел|узлы|обвязк|схема\s+сетей|аксонометр|ведомост|общие\s+данные|титул|компоновк|котельн/i,
+
+    /**
+     * Какие листы системы читать вслед за помещениями.
+     *
+     * В дизайн-проекте лист отопления один-два, и они идут первыми — берём
+     * по порядку. В рабочем проекте раздел начинается с обложки «Система
+     * отопления» и сводной схемы котельной, а планы с приборами идут дальше:
+     * по порядку модели доставались обложки, и привязывать приборы было не
+     * с чего. Здесь — планы по этажам: отоплению по два на этаж (радиаторы
+     * и тёплый пол обычно на разных листах), остальным по одному.
+     */
+    engSheets(set, kind, inRooms) {
+        const all = set.found.filter(p => p.kind === kind && !inRooms.has(p.num));
+        const plain = all.slice(0, this.ENG_LIMIT[kind] || this.ENG_PER_KIND);
+        if (!set.gost) return plain;
+        const plans = all.filter(p => /план/i.test(p.title) && !this.ENG_SKIP_GOST_RE.test(p.title));
+        if (!plans.length) return plain;
+        if (kind === 'vent') return plans.slice(0, 1);
+        const perFloor = kind === 'heat' ? 2 : 1;
+        const byFloor = new Map();
+        for (const p of plans) {
+            const f = this.sheetFloor(p.title);
+            const key = f === null ? '?' : String(f);
+            if (!byFloor.has(key)) byFloor.set(key, []);
+            if (byFloor.get(key).length < perFloor) byFloor.get(key).push(p);
+        }
+        // Этажей в частном доме не больше трёх; каждый лист — запрос к модели.
+        const floors = Math.min(3, Math.max(1, set.rooms.length));
+        return [].concat(...byFloor.values()).slice(0, perFloor * floors);
+    },
+
     /** Короткая подпись листа: «62 «План теплых полов и отопления»». */
     sheetLabel(p) {
         return `${p.num} «${p.title.replace(/[«»"]/g, '')}»`;
@@ -1561,8 +1598,7 @@ const RecognizeFiles = {
             }
         }
         for (const kind of this.ENG_KINDS) {
-            const list = set.found.filter(p => p.kind === kind && !inRoomsSet.has(p.num))
-                .slice(0, this.ENG_LIMIT[kind] || this.ENG_PER_KIND);
+            const list = this.engSheets(set, kind, inRoomsSet);
             for (let k = 0; k < list.length; k++) {
                 const p = list[k];
                 if (onProgress) onProgress(`готовлю лист ${p.num}`);
