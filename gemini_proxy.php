@@ -194,6 +194,41 @@ function checkRateLimit($mode, $maxPerHour) {
 
 checkRateLimit($mode, $limits['rate']);
 
+/**
+ * Суточный счётчик обращений к Google — по моделям и режимам.
+ *
+ * Суточный лимит Google стоит на ключ, то есть общий на всех пользователей,
+ * и остаток по нему Google не отдаёт: узнаём по отказу. Считаем сами все
+ * попытки (у Google неудачные тоже идут в счёт); сутки — по тихоокеанскому
+ * времени, как у него. Файл читает recognize_archive.php (?quota=1) —
+ * оттуда цифра попадает в индикатор в углу вкладки распознавания.
+ */
+function dailyCallsPath() {
+    $dir = __DIR__ . '/archive';
+    return (is_dir($dir) && is_writable($dir))
+        ? $dir . '/daily_calls.json'
+        : sys_get_temp_dir() . '/hc_gemini_daily.json';
+}
+
+function noteDailyCall($model, $mode) {
+    $date = (new DateTime('now', new DateTimeZone('America/Los_Angeles')))->format('Y-m-d');
+    $fh = @fopen(dailyCallsPath(), 'c+');
+    if (!$fh) return;
+    if (!flock($fh, LOCK_EX)) { fclose($fh); return; }
+    $data = json_decode(stream_get_contents($fh), true);
+    if (!is_array($data) || ($data['date'] ?? '') !== $date) {
+        $data = ['date' => $date, 'models' => [], 'modes' => []];
+    }
+    $data['models'][$model] = ($data['models'][$model] ?? 0) + 1;
+    $data['modes'][$mode] = ($data['modes'][$mode] ?? 0) + 1;
+    ftruncate($fh, 0);
+    rewind($fh);
+    fwrite($fh, json_encode($data, JSON_UNESCAPED_UNICODE));
+    fflush($fh);
+    flock($fh, LOCK_UN);
+    fclose($fh);
+}
+
 // Формируем payload для Gemini API
 $generationConfig = ["responseMimeType" => "application/json"];
 
@@ -230,6 +265,8 @@ $model = $MODELS[$mode];
 if (!empty($requestData['model']) && in_array($requestData['model'], $ALLOWED_MODELS, true)) {
     $model = $requestData['model'];
 }
+
+noteDailyCall($model, $mode);
 
 relay($RELAY_URL, $RELAY_TOKEN, [
     'apiKey' => $GEMINI_API_KEY,

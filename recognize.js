@@ -1928,6 +1928,11 @@ const RecognizeUI = {
 
     async checkQuota() {
         if (typeof app.hasAdminAccess === 'function' && app.hasAdminAccess()) return null;
+        return this.fetchQuota();
+    },
+
+    /** Тот же запрос без оговорки про администратора — для индикатора в углу. */
+    async fetchQuota() {
         try {
             const url = 'https://proxy.heatcalc.ru/recognize_archive.php?quota=1&user=' +
                 encodeURIComponent(this.userKey());
@@ -2082,9 +2087,12 @@ const RecognizeUI = {
         if (force || stale) {
             this._quotaCalls = calls;
             this._quotaAt = Date.now();
-            this._quota = await this.checkQuota();
+            // Администратору тоже спрашиваем — ради суточного счётчика по сайту;
+            // блокировать его месячным лимитом нельзя (checkQuota для него молчит).
+            this._quota = await this.fetchQuota();
             const q = this._quota;
-            if (q && q.left <= 0 && (q.personal || q.tariff !== 'admin')) this.setBlock(this.nextMonthStart(), 'month');
+            const admin = typeof app.hasAdminAccess === 'function' && app.hasAdminAccess();
+            if (!admin && q && q.left <= 0 && (q.personal || q.tariff !== 'admin')) this.setBlock(this.nextMonthStart(), 'month');
         }
         this.renderQuotaBadge();
     },
@@ -2103,16 +2111,36 @@ const RecognizeUI = {
         // никто не считает: о нём узнаём по отказу. Честно показать можно
         // только момент обнуления — полночь по тихоокеанскому времени.
         const gReset = new Date(this.nextGoogleReset());
-        const dayLine = 'Суточный лимит распознавания общий на всех пользователей, обнуляется в ' +
-            gReset.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' }) +
-            ' МСК — через ' + this.fmtLeft(gReset.getTime() - Date.now()) + '.';
+        const gWhen = gReset.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' }) +
+            ' МСК — через ' + this.fmtLeft(gReset.getTime() - Date.now());
+        // Сколько сегодня ушло на весь сайт — считает прокси (daily_calls.json).
+        // Пока серверный файл не обновлён, поля daily нет — строка без цифры.
+        const d = q && q.daily && typeof q.daily.total === 'number' ? q.daily : null;
+        const dayLine = (d ? `Сегодня на всём сайте: ${d.total} запросов. ` : '') +
+            'Суточный лимит общий на всех пользователей, обнуляется в ' + gWhen + '.';
+        const admin = typeof app.hasAdminAccess === 'function' && app.hasAdminAccess();
         let text, cls = 'ok', tip;
         if (b) {
             text = '⏳ ' + this.fmtLeft(b.until - Date.now());
             cls = 'bad';
             tip = this.blockText(b);
+        } else if (admin) {
+            // Администратору — суточный расход по сайту: месячного лимита у него
+            // нет, а упирается он именно в сутки Google. Порог бесплатного тарифа
+            // ~20 запросов на модель в сутки — ориентир, Google его не подтверждает.
+            const perModel = d ? Object.keys(d.models || {}).map(m => `• ${m}: ${d.models[m]} из ~20`) : [];
+            const top = d ? Math.max(0, ...Object.values(d.models || {}).map(Number)) : 0;
+            text = d ? `🔍 ${d.total} сегодня` : '🔍 ∞';
+            cls = top >= 20 ? 'bad' : top >= 15 ? 'warn' : 'ok';
+            tip = (d ? `Запросов к распознаванию сегодня на всём сайте: ${d.total}` +
+                        (d.modes && d.modes.recognize != null ? ` (распознавание ${d.modes.recognize}, помощник ${d.modes.chat || 0})` : '') + '.' +
+                        (perModel.length ? '\nПо моделям, порог бесплатного тарифа ~20 в сутки на каждую:\n' + perModel.join('\n') : '')
+                     : 'Суточный счётчик по сайту ещё не включён на сервере.') +
+                (q && q.used != null ? `\nВ этом месяце вами: ${q.used} — месячного лимита у администратора нет.` : '') +
+                (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
+                `\nСутки Google обнуляются в ${gWhen}.\n${perSheet}`;
         } else if (!q) {
-            // Администратор либо сервер лимитов промолчал — ограничивать нечем.
+            // Сервер лимитов промолчал — ограничивать нечем.
             text = '🔍 ∞';
             tip = 'Месячный лимит распознаваний не ограничен.' +
                 (this._apiCalls ? `\nЗа этот разбор: ${this._apiCalls}.` : '') +
