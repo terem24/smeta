@@ -1228,8 +1228,20 @@ const RecognizeProject = {
         scope = scope || rows;
         scope.forEach(r => {
             r.eng = r.eng || {};
+            // В рабочем проекте у этажа два листа отопления: тёплый пол и
+            // радиаторы отдельно. Второй лист дополняет первый, а не стирает:
+            // иначе лист радиаторов затирал тёплый пол, и холл с лестницей
+            // уходили «без отопления». Тот же лист повторно — заново.
+            const seen = r.eng.heatSheets || [];
+            if (seen.length && !seen.includes(sh.num)) {
+                r.eng.heatSheets = seen.concat(sh.num);
+                r.eng.heatSheet = r.eng.heatSheets.join(', ');
+                return;
+            }
+            r.eng.heatSheets = [sh.num];
             r.eng.heatSheet = sh.num;       // лист прочитан: молчание о комнате — тоже ответ
             r.eng.ufh = false; r.eng.ufhArea = null; r.eng.ufhAreaSrc = null; r.eng.heaters = 0; r.eng.heaterType = null;
+            r.eng.heaterMarks = [];
         });
         let ufhSum = 0, ufhRooms = 0, heaters = 0;
         // Подписи зон «S=…м2» из PDF: площадь, которой среди них нет (ни
@@ -1264,9 +1276,12 @@ const RecognizeProject = {
             const mk = Array.isArray(x.heaterMarks)
                 ? [...new Set(x.heaterMarks.map(s => String(s).trim()).filter(Boolean))] : [];
             const h = mk.length ? Math.min(20, mk.length) : this.cnt(x.heaters);
-            r.eng.heaterMarks = mk;
+            // С двух листов одного этажа марки собираются вместе, а приборов —
+            // сколько насчитал лист, где их больше: один прибор, показанный
+            // на обоих листах, не должен стать двумя.
+            r.eng.heaterMarks = [...new Set([...(r.eng.heaterMarks || []), ...mk])];
             if (h) {
-                r.eng.heaters = h;
+                r.eng.heaters = Math.max(r.eng.heaters || 0, h);
                 // Марка точнее картинки: РД — радиатор, как бы ни стояли окна.
                 const byMark = mk.map(m => this.heaterTypeOfMark(m)).find(Boolean);
                 r.eng.heaterType = byMark || (this.HEATER_NAMES[x.heaterType] ? x.heaterType : 'radiator');
@@ -1377,7 +1392,7 @@ const RecognizeProject = {
         if (e.ufh && e.ufhArea && r.area > 0 && e.ufhArea > r.area) {
             out.push(`зона тёплого пола больше комнаты — в расчёт пойдёт ${this.fmt(r.area)} м²`);
         }
-        if (!e.ufh && !e.heaters) out.push(`на листе ${e.heatSheet} отопления нет — в расчёте без отопления`);
+        if (!e.ufh && !e.heaters) out.push(`${(e.heatSheets || []).length > 1 ? 'на листах' : 'на листе'} ${e.heatSheet} отопления нет — в расчёте без отопления`);
         if (e.ufh && e.ufhAreaSrc === 'spec') out.push(`зона тёплого пола без подписи площади — ${this.fmt(e.ufhArea)} м² по остатку спецификации листа`);
         if (e.ufh && e.ufhAreaSrc === 'approx') out.push(`зона тёплого пола без подписи площади — ${e.ufhArea ? this.fmt(e.ufhArea) + ' м² оценено по чертежу, проверьте' : 'площадь не определена, впишите'}`);
         if (e.heaters && e.heaterMarks && e.heaterMarks.length) out.push(`приборы на листе: ${e.heaterMarks.join(', ')}`);
