@@ -56179,7 +56179,7 @@ const app = {
             const fl = p[0], area = p[1];
             if (!(area > 0)) return;
             const req = this.ufhInsReq(fl);
-            const own = fl === 1 ? this.ufhInsOwnR() : 0;
+            const own = this.ufhInsOwnR(fl);
             const have = base.r + own;
             const layers = (s.ufhInsNoAdd || have >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - have);
             layers.forEach(l => {
@@ -60141,6 +60141,7 @@ const app = {
         }
         const hasTp = this.state.systems.includes('tp'); document.getElementById('sys_rad').className = this.state.systems.includes('rad') ? 'tab multi-active' : 'tab'; document.getElementById('sys_tp').className = hasTp ? 'tab multi-active' : 'tab';
         document.getElementById('blk_tp_sliders').style.display = hasTp ? 'block' : 'none';
+        this.renderFloorLayers(1); this.renderFloorLayers(2);
         // Снеготаяние живёт только в подробном режиме: концентрация гликоля и
         // поправка на климат считаются от расчётной зимней температуры города, а
         // город выбирается там же. В быстром режиме тумблер прячем, но состояние
@@ -60600,7 +60601,6 @@ const app = {
             const lblR = document.getElementById('lbl_floor_r');
             const layersR = selFloor.R > 0 ? this.floorLayersR() : 0;
             if (lblR) lblR.innerText = `R = ${(selFloor.R + layersR).toFixed(2)} м²·°C/Вт` + (layersR > 0 ? ` (основание ${selFloor.R.toFixed(2)} + слои ${layersR.toFixed(2)})` : '');
-            this.renderFloorLayers(selFloor.R > 0);
 
             const dropOpts = document.getElementById('dropdown_options_floor');
             if (dropOpts) {
@@ -61426,8 +61426,13 @@ const app = {
 
     UFH_INS_LAYER_IDS: ['xps', 'polystyrene', 'minwool'],
 
-    // Сопротивление слоёв пола. skipUfh — без утеплителя, который зачтён как
-    // утепление под трубой тёплого пола (он уже сидит в ufhInsPlan).
+    floorLayersOf: function (fl) {
+        const s = this.state;
+        return (fl === 2 ? s.floorLayers2 : s.floorLayers) || [];
+    },
+
+    // Сопротивление слоёв пола 1 этажа в теплопотерях. skipUfh — без утеплителя,
+    // который зачтён как утепление под трубой тёплого пола (он уже сидит в ufhInsPlan).
     floorLayersR: function (skipUfh) {
         const s = this.state;
         if (!s.floorEnabled) return 0;
@@ -61438,20 +61443,23 @@ const app = {
         }, 0);
     },
 
-    // Утеплитель из слоёв пола 1 этажа, который лежит под трубой тёплого пола.
-    ufhInsOwnR: function () {
-        const s = this.state;
-        if (!s.floorEnabled || s.floorMatId === 'floor_heated') return 0;
-        return this.floorLayersR(false) - this.floorLayersR(true);
+    // Утеплитель из слоёв пола этажа fl, который лежит под трубой тёплого пола.
+    ufhInsOwnR: function (fl) {
+        return this.floorLayersOf(fl || 1).reduce((acc, l) => {
+            if (this.UFH_INS_LAYER_IDS.indexOf(l.matId) < 0) return acc;
+            const m = FLOOR_LAYER_MATERIALS_DB.find(x => x.id === l.matId);
+            return m ? acc + (parseInt(l.thick) || 0) / 1000 / m.lambda : acc;
+        }, 0);
     },
 
-    // Что даёт утеплитель из слоёв пола тёплому полу 1 этажа: для панели пола.
-    ufhInsStatus: function () {
+    // Что даёт утеплитель из слоёв пола тёплому полу этажа fl: для панели слоёв.
+    ufhInsStatus: function (fl) {
         const s = this.state;
-        if (!((parseFloat(s.tp1) || 0) > 0)) return null;
-        const req = this.ufhInsReq(1);
+        const area = fl === 2 ? (s.floors === 2 ? parseFloat(s.tp2) : 0) : parseFloat(s.tp1);
+        if (!(area > 0)) return null;
+        const req = this.ufhInsReq(fl);
         const base = (s.ufhBaseType === 'xps') ? 0.05 / this.UFH_INS_LAMBDA : this.UFH_INS_R_MAT;
-        const own = this.ufhInsOwnR();
+        const own = this.ufhInsOwnR(fl);
         return { req: req, base: base, own: own, total: base + own, ok: base + own >= req.r - 0.005 };
     },
 
@@ -61462,74 +61470,77 @@ const app = {
         this.render();
     },
 
-    renderFloorLayers: function (show) {
-        const box = document.getElementById('floor_layers_box');
+    renderFloorLayers: function (fl) {
+        const box = document.getElementById('floor_layers_box_' + fl);
         if (!box) return;
-        box.style.display = show ? 'flex' : 'none';
-        const list = document.getElementById('floor_layers_list');
+        const s = this.state;
+        const st = this.ufhInsStatus(fl);
+        const hasTp = (s.systems || []).includes('tp');
+        box.style.display = (hasTp && st) ? 'flex' : 'none';
+        const list = document.getElementById('floor_layers_list_' + fl);
         if (!list) return;
-        const layers = this.state.floorLayers || [];
+        const layers = this.floorLayersOf(fl);
         list.innerHTML = layers.map((l, idx) => {
             const opts = FLOOR_LAYER_MATERIALS_DB.map(m =>
                 `<option value="${m.id}"${m.id === l.matId ? ' selected' : ''}>${m.name}</option>`).join('');
             return `<div style="display:flex; flex-direction:column; gap:6px; background: var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px;">
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span style="flex-shrink:0; width:14px; text-align:center; font-size:11px; font-weight:700; color:var(--text-sec);">${idx + 1}</span>
-                    <select onchange="app.updateFloorLayer(${idx}, 'matId', this.value)" style="flex:1; min-width:0; font-size:12.5px; padding:6px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">${opts}</select>
+                    <select onchange="app.updateFloorLayer(${fl}, ${idx}, 'matId', this.value)" style="flex:1; min-width:0; font-size:12.5px; padding:6px; border:1px solid var(--border); border-radius:8px; background:var(--surface-light); color:var(--text-main);">${opts}</select>
                 </div>
                 <div style="display:flex; align-items:center; justify-content:space-between; padding-left:22px;">
                     <div style="display:flex; align-items:center; gap:6px;">
                         <span style="font-size:11.5px; color:var(--text-sec);">Толщина:</span>
-                        <input type="number" min="5" max="500" step="5" value="${l.thick}" onchange="app.updateFloorLayer(${idx}, 'thick', this.value)" style="width:64px; font-size:12.5px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface-light); color:var(--text-main);">
+                        <input type="number" min="5" max="500" step="5" value="${l.thick}" onchange="app.updateFloorLayer(${fl}, ${idx}, 'thick', this.value)" style="width:64px; font-size:12.5px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface-light); color:var(--text-main);">
                         <span style="font-size:11.5px; color:var(--text-sec);">мм</span>
                     </div>
-                    <button onclick="app.removeFloorLayer(${idx})" aria-label="Удалить слой" style="background:transparent; border:none; color:#EF4444; font-size:18px; cursor:pointer; line-height:1; padding:4px; opacity:0.7;">×</button>
+                    <button onclick="app.removeFloorLayer(${fl}, ${idx})" aria-label="Удалить слой" style="background:transparent; border:none; color:#EF4444; font-size:18px; cursor:pointer; line-height:1; padding:4px; opacity:0.7;">×</button>
                 </div>
             </div>`;
         }).join('');
-        const sum = document.getElementById('lbl_floor_layers_sum');
+        const sum = document.getElementById('lbl_floor_layers_sum_' + fl);
         if (sum) {
             const th = layers.reduce((a, l) => a + (parseInt(l.thick) || 0), 0);
-            sum.innerText = layers.length ? `Слои: ${th} мм, R = ${this.floorLayersR().toFixed(2)} м²·°C/Вт` : '';
+            sum.innerText = layers.length ? `Слои: ${th} мм` : '';
         }
-        const eff = document.getElementById('lbl_floor_layers_effect');
+        const eff = document.getElementById('lbl_floor_layers_effect_' + fl);
         if (eff) {
-            const st = this.ufhInsStatus();
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                const tail = `под трубой ${n(st.total)} (подложка ${n(st.base)}${st.own > 0 ? ' + ваш утеплитель ' + n(st.own) : ''}) при норме ${n(st.req.r)} м²·°C/Вт — ГОСТ Р 70834-2023, табл. 2`;
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Тёплому полу утеплителя хватает: ${tail}. Докупать плиты не нужно.</span>`;
-                else if (this.state.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Утеплителя под тёплым полом не хватает: ${tail}. В смету плиты не добавляются — утеплитель уже на объекте; проверьте, что его хватает.</span>`;
-                else html = `<span style="color:#F59E0B;">Утеплителя под тёплым полом не хватает: ${tail}. Недостающие плиты добавлены в смету (раздел «4.2»). Каждый слой XPS, пенопласта или минваты выше уменьшает этот добор.</span>`;
+                const tail = `под трубой R ${n(st.total)} (подложка ${n(st.base)}${st.own > 0 ? ' + ваш утеплитель ' + n(st.own) : ''}) при норме ${n(st.req.r)} м²·°C/Вт — ГОСТ Р 70834-2023, табл. 2`;
+                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает: ${tail}. Докупать плиты не нужно.</span>`;
+                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Утеплителя не хватает: ${tail}. В смету плиты не добавляются — утеплитель уже на объекте; проверьте, что его хватает.</span>`;
+                else html = `<span style="color:#F59E0B;">Утеплителя не хватает: ${tail}. Недостающие плиты добавлены в смету (раздел «4.2»). Каждый слой XPS, пенопласта или минваты выше уменьшает этот добор.</span>`;
             }
             eff.innerHTML = html;
-            const nb = document.getElementById('floor_ins_noadd_row');
-            if (nb) nb.style.display = ((st && !st.ok) || this.state.ufhInsNoAdd) ? 'flex' : 'none';
-            const cb = document.getElementById('chk_ufh_ins_noadd');
-            if (cb) cb.checked = !!this.state.ufhInsNoAdd;
         }
+        const nb = document.getElementById('floor_ins_noadd_row_' + fl);
+        if (nb) nb.style.display = ((st && !st.ok) || s.ufhInsNoAdd) ? 'flex' : 'none';
+        const cb = document.getElementById('chk_ufh_ins_noadd_' + fl);
+        if (cb) cb.checked = !!s.ufhInsNoAdd;
     },
 
-    addFloorLayer: function () {
-        if (!this.state.floorLayers) this.state.floorLayers = [];
-        this.state.floorLayers.push({ matId: 'xps', thick: 50 });
-        this.state.floorEnabled = true;
+    addFloorLayer: function (fl) {
+        const key = fl === 2 ? 'floorLayers2' : 'floorLayers';
+        if (!this.state[key]) this.state[key] = [];
+        this.state[key].push({ matId: 'xps', thick: 50 });
         this.syncUI();
         this.saveState();
         this.render();
     },
 
-    removeFloorLayer: function (idx) {
-        if (!this.state.floorLayers) return;
-        this.state.floorLayers.splice(idx, 1);
+    removeFloorLayer: function (fl, idx) {
+        const key = fl === 2 ? 'floorLayers2' : 'floorLayers';
+        if (!this.state[key]) return;
+        this.state[key].splice(idx, 1);
         this.syncUI();
         this.saveState();
         this.render();
     },
 
-    updateFloorLayer: function (idx, field, value) {
-        const l = (this.state.floorLayers || [])[idx];
+    updateFloorLayer: function (fl, idx, field, value) {
+        const l = this.floorLayersOf(fl)[idx];
         if (!l) return;
         if (field === 'thick') {
             let n = parseInt(value);
