@@ -37677,6 +37677,26 @@ const app = {
             app.alert('Не удалось удалить учётку: ' + e.message);
         }
     },
+    // Ошибка заполнения анкеты: окошко с причиной, красная рамка на поле и прокрутка к нему.
+    // Рамка гаснет, как только человек начал править поле.
+    profileFieldError: function (id, message) {
+        app.alert(message);
+        const el = document.getElementById(id);
+        if (!el) return;
+        const mark = (id === 'profile_act_installer')
+            ? (document.getElementById('profile_act_installer').closest('div') || el)
+            : el;
+        mark.setAttribute('aria-invalid', 'true');
+        const off = () => {
+            mark.removeAttribute('aria-invalid');
+            el.removeEventListener('input', off); el.removeEventListener('change', off);
+            if (mark !== el) mark.removeEventListener('change', off);
+        };
+        el.addEventListener('input', off); el.addEventListener('change', off);
+        if (mark !== el) mark.addEventListener('change', off);
+        try { mark.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) { }
+    },
+
     saveProfile: async function () {
         let lastName = document.getElementById('profile_last_name_input').value.trim();
         let firstName = document.getElementById('profile_first_name_input').value.trim();
@@ -37716,19 +37736,25 @@ const app = {
         document.getElementById('profile_last_name_input').value = lastName;
         document.getElementById('profile_first_name_input').value = firstName;
         document.getElementById('profile_middle_name_input').value = middleName;
+        // Каждая ошибка подсвечивает свое поле и подводит к нему экран (profileFieldError):
+        // на телефоне форма длинная, и по одному тексту в окошке не понять, где искать
         const nameErr = this.checkNamePart(lastName, 'Фамилия')
             || this.checkNamePart(firstName, 'Имя')
             || this.checkNamePart(middleName, 'Отчество');
-        if (nameErr) { app.alert(nameErr); return; }
+        if (nameErr) {
+            const nameField = this.checkNamePart(lastName, 'Фамилия') ? 'profile_last_name_input'
+                : this.checkNamePart(firstName, 'Имя') ? 'profile_first_name_input' : 'profile_middle_name_input';
+            this.profileFieldError(nameField, nameErr); return;
+        }
         const phoneErr = this.checkPhoneValue(phone);
-        if (phoneErr) { app.alert(phoneErr); return; }
-        if (!birthDate) { app.alert('Пожалуйста, укажите дату рождения.'); return; }
+        if (phoneErr) { this.profileFieldError('profile_phone_input', phoneErr); return; }
+        if (!birthDate) { this.profileFieldError('profile_birth_date_input', 'Пожалуйста, укажите дату рождения.'); return; }
         const profileAge = this.calcAge(birthDate);
-        if (profileAge < 18 || profileAge > this.PROFILE_MAX_AGE) { app.alert('Возраст должен быть от 18 до ' + this.PROFILE_MAX_AGE + ' лет.'); return; }
-        if (!region) { app.alert('Пожалуйста, укажите регион.'); return; }
-        if (!city) { app.alert('Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { app.alert('Пожалуйста, введите корректный email.'); return; }
-        if (activityTypes.length === 0) { app.alert('Выберите сферу деятельности: монтажник или продавец.'); return; }
+        if (profileAge < 18 || profileAge > this.PROFILE_MAX_AGE) { this.profileFieldError('profile_birth_date_input', 'Возраст должен быть от 18 до ' + this.PROFILE_MAX_AGE + ' лет.'); return; }
+        if (!region) { this.profileFieldError('profile_region_input', 'Пожалуйста, укажите регион.'); return; }
+        if (!city) { this.profileFieldError('profile_city_input', 'Пожалуйста, укажите ваш город. Это необходимо для формирования смет.'); return; }
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { this.profileFieldError('profile_email_input', 'Пожалуйста, введите корректный email.'); return; }
+        if (activityTypes.length === 0) { this.profileFieldError('profile_act_installer', 'Выберите сферу деятельности: монтажник или продавец.'); return; }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         if (!tgUser || (!tgUser.authUserId && !tgUser.email && !tgUser.id)) return;

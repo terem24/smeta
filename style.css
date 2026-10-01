@@ -16978,3 +16978,14 @@ body.dark-mode .hc-export-doc::after {
         row-gap: 6px;
     }
 }
+
+/* Анкета профиля: поле с ошибкой заполнения (app.profileFieldError) */
+#profile_modal_overlay input[aria-invalid="true"] {
+    border-color: #DC2626 !important;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2) !important;
+}
+#profile_modal_overlay div[aria-invalid="true"] {
+    outline: 2px solid #DC2626;
+    outline-offset: 4px;
+    border-radius: 10px;
+}
