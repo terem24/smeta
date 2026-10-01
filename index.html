@@ -166,7 +166,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.27">
+    <link rel="stylesheet" href="style.css?v=4.28">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.28" defer></script>
@@ -3219,7 +3219,7 @@
                             </div>
                         </div>
 
-                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 8px;">
+                        <div class="profile-3col-grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 8px;">
                             <div>
                                 <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Фамилия</label>
                                 <input type="text" id="profile_last_name_input" class="auth-input" placeholder="Иванов" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
@@ -3293,6 +3293,10 @@
 
             <!-- Способ входа в аккаунт и привязка Яндекс ID — заполняет app.renderProfileLoginMethod -->
             <div id="profile_login_method"></div>
+
+            <!-- «Выйти» на телефоне убрана из меню разделов (там её легко задеть) и
+                 живёт здесь; на широком экране остаётся пункт меню .lk-nav-logout -->
+            <button type="button" class="lk-profile-logout" onclick="app.logout()">Выйти из аккаунта</button>
 
             <!-- Выбор оформления — перк тарифа «Профи», остальным темы решает аудитория.
                  Заполняет app.renderThemeChoiceCard, без тарифа блок скрыт. -->

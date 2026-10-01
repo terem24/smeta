@@ -11470,19 +11470,35 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
         text-align: center;
     }
 
-    /* «Выйти» — во всю ширину последней строкой, чтобы не путался с разделами */
-    .lk-nav-logout {
-        position: static;
-        grid-column: 1 / -1;
-        flex-direction: row;
-        gap: 8px;
-        min-height: 42px;
-        margin-top: 0;
-        padding: 0;
-        background: transparent;
-        border-radius: 10px;
-        font-size: 13px;
+    /* «Выйти» из меню убрана: на телефоне она в разделе «Профиль» (.lk-profile-logout) */
+    .lk-nav-logout { display: none; }
+
+    .lk-profile-logout { display: block !important; }
+}
+
+/* Телефон лёжа: то же — «Выйти» только в профиле */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    .lk-nav-logout { display: none; }
+    .lk-profile-logout { display: block !important; }
+    body #profile_modal_overlay .profile-3col-grid {
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: 0 8px !important;
     }
+}
+
+.lk-profile-logout {
+    display: none;
+    width: 100%;
+    height: 44px;
+    margin: 4px 0 14px;
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 12px;
+    background: transparent;
+    color: #EF4444;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
 }
 
 /* Планшет стоймя: в четыре колонки ячейка растягивается почти до 190 px под
@@ -16852,9 +16868,14 @@ body.dark-mode .hc-export-doc::after {
    внутри него, кнопки прилипают к низу окна, а навигация на это время убирается.
    Класс lk-open ставит app.syncModalOverlayClass. */
 @media screen and (max-width: 768px),
-       screen and (max-width: 1024px) and (orientation: portrait) {
+       screen and (max-width: 1024px) and (orientation: portrait),
+       screen and (orientation: landscape) and (max-height: 500px) {
 
     body.lk-open .mobile-bottom-nav { display: none !important; }
+
+    /* Плавающая кнопка «умного заполнения» (z-index выше окон) лежала поверх
+       кабинета и закрывала поля и кнопку «Сохранить» */
+    body.lk-open .ai-parse-fab { display: none !important; }
 
     #profile_modal_overlay .auth-modal-content {
         position: fixed !important;
@@ -16875,17 +16896,35 @@ body.dark-mode .hc-export-doc::after {
         padding: calc(14px + env(safe-area-inset-top, 0px)) 14px 0 !important;
     }
 
+    /* Прокручивается весь кабинет целиком (сетка разделов + форма), а не одна форма:
+       сетка разделов занимает ~280 px, и форме оставалось окошко в половину экрана,
+       в котором кнопку «Сохранить» приходилось искать. Кнопки ниже липнут к низу
+       экрана, пока форма в поле зрения. */
     #profile_modal_overlay .lk-layout {
         flex: 1 1 auto;
         min-height: 0;
-    }
-
-    /* Содержимое раздела прокручивается внутри окна, а не уезжает за край экрана */
-    #profile_modal_overlay .lk-pane {
-        min-width: 0;
         overflow-y: auto;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    #profile_modal_overlay .lk-pane {
+        flex: 1 0 auto;
+        min-width: 0;
+        overflow: visible;
+    }
+
+    /* Фамилия / имя / отчество в три колонки на 375 px не читаются */
+    #profile_modal_overlay .profile-3col-grid {
+        grid-template-columns: 1fr !important;
+        gap: 0 !important;
+    }
+
+    /* Поля плотнее: форма профиля длинная, а за экран её видно не больше 6–7 полей */
+    #profile_modal_overlay .auth-input {
+        height: 42px !important;
+        margin-bottom: 10px !important;
     }
 
     /* Кнопки сохранения всегда на виду: до них не надо докручивать раздел до конца */
