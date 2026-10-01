@@ -56123,7 +56123,7 @@ const app = {
             const req = this.ufhInsReq(fl);
             const own = this.ufhInsOwnR(fl);
             const have = base.r + own;
-            const layers = (s.ufhInsNoAdd || have >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - have);
+            const layers = ((s.ufhInsNoAdd && s.detailedRooms) || have >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - have);
             layers.forEach(l => {
                 const k = String(l.thick);
                 if (!byThick[k]) byThick[k] = { item: l.item, thick: l.thick, r: l.r, area: 0, floors: [] };
@@ -61387,6 +61387,7 @@ const app = {
 
     // Утеплитель из слоёв пола этажа fl, который лежит под трубой тёплого пола.
     ufhInsOwnR: function (fl) {
+        if (!this.state.detailedRooms) return 0;
         return this.floorLayersOf(fl || 1).reduce((acc, l) => {
             if (this.UFH_INS_LAYER_IDS.indexOf(l.matId) < 0) return acc;
             const m = FLOOR_LAYER_MATERIALS_DB.find(x => x.id === l.matId);
@@ -61418,7 +61419,7 @@ const app = {
         const s = this.state;
         const st = this.ufhInsStatus(fl);
         const hasTp = (s.systems || []).includes('tp');
-        box.style.display = (hasTp && st) ? 'flex' : 'none';
+        box.style.display = (hasTp && st && s.detailedRooms) ? 'flex' : 'none';
         const list = document.getElementById('floor_layers_list_' + fl);
         if (!list) return;
         const layers = this.floorLayersOf(fl);
@@ -61450,10 +61451,14 @@ const app = {
             const n = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
             let html = '';
             if (st) {
-                const tail = `под трубой R ${n(st.total)} (подложка ${n(st.base)}${st.own > 0 ? ' + ваш утеплитель ' + n(st.own) : ''}) при норме ${n(st.req.r)} м²·°C/Вт — ГОСТ Р 70834-2023, табл. 2`;
-                if (st.ok) html = `<span style="color:#22C55E;">✓ Утеплителя хватает: ${tail}. Докупать плиты не нужно.</span>`;
-                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Утеплителя не хватает: ${tail}. В смету плиты не добавляются — утеплитель уже на объекте; проверьте, что его хватает.</span>`;
-                else html = `<span style="color:#F59E0B;">Утеплителя не хватает: ${tail}. Недостающие плиты добавлены в смету (раздел «4.2»). Каждый слой XPS, пенопласта или минваты выше уменьшает этот добор.</span>`;
+                const tail = `R ${n(st.total)} из ${n(st.req.r)} м²·°C/Вт`;
+                if (st.ok) html = `<span style="color:#22C55E;">✓ Хватает: ${tail}</span>`;
+                else if (s.ufhInsNoAdd) html = `<span style="color:#F59E0B;">⚠ Не хватает: ${tail}. Плиты в смету не добавлены.</span>`;
+                else html = `<span style="color:#F59E0B;">Не хватает: ${tail}. Недостающее добавлено в смету.</span>`;
+                if (!st.ok && !s.ufhInsNoAdd) {
+                    const add = this.ufhInsLayers(st.req.r - st.base - st.own);
+                    if (add.length) html += `<div style="color:var(--text-sec); margin-top:2px;">В смету: ${add.map(l => 'XPS ' + l.thick + ' мм (R ' + n(l.r) + ')').join(' + ')}</div>`;
+                }
             }
             eff.innerHTML = html;
         }
@@ -73421,7 +73426,7 @@ const app = {
                     `<div class="tip-p"><b>Что делать:</b> разделить этот коллектор на два или укоротить петли, увеличив их число.</div>` +
                     `<div class="tip-p">Разбор по слагаемым — в подсказке «i» насосной группы тёплого пола.</div>`);
             }
-            if (_insPlan && this.state.ufhInsNoAdd) {
+            if (_insPlan && this.state.ufhInsNoAdd && this.state.detailedRooms) {
                 const _short = _insPlan.floors.filter(f => f.rTotal < f.req.r - 0.005);
                 if (_short.length) {
                     const _n2 = v => (Math.round(v * 100) / 100).toString().replace('.', ',');
