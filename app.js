@@ -4223,8 +4223,8 @@ const app = {
                             this.render();
                             addBubble('assistant', `<i>Название объекта изменено на: "${cmd.data.note}"</i>`);
                         } else if (cmd.action === 'open_pro_pricing') {
-                            const month = this.proPaymentLinks.month;
-                            const year = this.proPaymentLinks.year;
+                            const month = this.proPlan('month');
+                            const year = this.proPlan('year');
                             const link = (plan) => `<a href="${plan.url}" target="_blank" rel="noopener">${plan.tariffName} — ${this.formatCurrencyAmount(plan.rub)}</a>`;
                             addBubble('assistant', `<i>Открываю окно тарифа Профи...</i><br>Оплатить сразу по ссылке:<br>📅 ${link(month)}<br>📆 ${link(year)}`);
                             setTimeout(() => this.showModal('pro'), 800);
@@ -5153,8 +5153,8 @@ const app = {
             // фразе площадь/этажность и т.п.
             if (this.detectProTariffIntent(text)) {
                 note('pro');
-                const month = this.proPaymentLinks.month;
-                const year = this.proPaymentLinks.year;
+                const month = this.proPlan('month');
+                const year = this.proPlan('year');
                 const link = (plan) => `<a href="${plan.url}" target="_blank" rel="noopener">${plan.tariffName} — ${this.formatCurrencyAmount(plan.rub)}</a>`;
                 addBubble('assistant', `Открываю окно тарифа Профи — там же можно сразу оплатить.<br>📅 ${link(month)}<br>📆 ${link(year)}`);
                 // Закрываем чат перед открытием тарифов — иначе окно тарифов открывается
@@ -7213,6 +7213,13 @@ const app = {
             }
             if (title) title.innerHTML = "Подписка Профи";
             if (text) text.innerHTML = "Преимущества подписки: подбор всех разделов (котельная, радиаторы, теплый пол, водоснабжение, канализация) монтажные работы, артикулы, подбор аналогов, формирование кп в pdf, excel.";
+            // Текст и карточки тарифов — из вкладки «Оплата подписки» (цены, акции, региональные цены)
+            if (typeof Subscription !== 'undefined') {
+                try {
+                    if (text) text.textContent = Subscription.benefitsText(Subscription.userAccount());
+                    Subscription.syncCards();
+                } catch (e) { console.warn('[подписка] окно тарифа по умолчанию:', e); }
+            }
 
             let cards = document.querySelector('.tariff-cards');
             if (cards) cards.style.display = 'flex';
@@ -21625,6 +21632,7 @@ const app = {
         { id: 'inactive', icon: '📨', label: 'Напоминания', hint: 'Кто давно не заходил и вернулся ли' },
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
+        { id: 'subscription', icon: '💳', label: 'Оплата подписки', hint: 'Цены и ссылки на оплату, QR, акции, регионы, кто запрашивал и кто оплатил' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'branches', icon: '🏬', label: 'Филиалы', hint: 'Схема компании: ссылки, монтажники, работа менеджеров' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
@@ -21648,7 +21656,7 @@ const app = {
     // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
     // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
     // клиентская здесь только чтобы не показывать пустую вкладку.
-    OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill', 'articles', 'leads'],
+    OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -22847,6 +22855,13 @@ const app = {
         if (this._adminTab === 'articles') {
             content.innerHTML = navHtml + '<div id="admin_articles_box"></div>';
             this.renderAdminArticles();
+            return;
+        }
+
+        if (this._adminTab === 'subscription') {
+            content.innerHTML = navHtml + '<div id="admin_subscription_box"></div>';
+            if (typeof Subscription !== 'undefined') Subscription.render();
+            else content.insertAdjacentHTML('beforeend', '<div style="color:#EF4444; font-size:13px;">Модуль подписки (subscription.js) не загрузился — обновите страницу.</div>');
             return;
         }
 
@@ -76725,6 +76740,18 @@ const app = {
         year: { url: "https://tbank.ru/cf/7tE93xi7saP", tariffName: "Профи 1 год", rub: 48000 }
     },
 
+    // Цена и ссылка тарифа для этого человека: настройки вкладки «Оплата подписки»
+    // (subscription.js — региональная цена, акции), а без модуля — зашитые выше.
+    // Возвращает { url, tariffName, rub, months, promo, id }.
+    proPlan: function (type) {
+        if (typeof Subscription !== 'undefined') {
+            const r = Subscription.resolve(type);
+            if (r) return { id: r.id, url: r.url, tariffName: r.tariffName, rub: r.rub, months: r.months, promo: r.promo ? (r.promo.title || 'акция') : null };
+        }
+        const p = this.proPaymentLinks[type];
+        return p ? { id: type, url: p.url, tariffName: p.tariffName, rub: p.rub, months: type === 'year' ? 12 : 1, promo: null } : null;
+    },
+
     openPaymentModal(type) {
         const overlay = document.getElementById('payment_modal_overlay');
         const subtitle = document.getElementById('planName');
@@ -76744,20 +76771,29 @@ const app = {
             return;
         }
 
-        const plan = this.proPaymentLinks[type];
+        const plan = this.proPlan(type);
         if (!plan) return;
         const url = plan.url;
         const tariffName = plan.tariffName;
         const price = this.formatCurrencyAmount(plan.rub) + (this.pricingCurrency === 'KZT' ? ' (спишется в рублях)' : '');
+        // Что именно предложили — для заявки «Я оплатил» и уведомления владельцу
+        this._currentPaymentPlan = Object.assign({}, plan, { type: type });
 
         subtitle.innerText = `Тариф: ${tariffName} (${price})`;
-        if (linkBtn) linkBtn.href = url;
+        // Ссылки может не быть (тариф без ссылки в настройках) — тогда остаётся QR-подпись и «Я оплатил»
+        if (linkBtn) { linkBtn.href = url || '#'; linkBtn.style.display = url ? 'flex' : 'none'; }
+        const noteEl = document.getElementById('pay_modal_note');
+        if (noteEl) {
+            const note = (typeof Subscription !== 'undefined') ? Subscription.settings().note : '';
+            noteEl.textContent = note || '';
+            noteEl.style.display = note ? 'block' : 'none';
+        }
 
         // Clear old QR
         qrContainer.innerHTML = "";
 
         // Generate new QR using qrcode.js
-        try {
+        if (url) try {
             new QRCode(qrContainer, {
                 text: url,
                 width: 200,
@@ -77117,8 +77153,23 @@ async function notifyPayment() {
     }
 
     // === 1. ОТПРАВКА В TELEGRAM ===
-    const messageText = `Пользователь: ${emailInput}\nТариф: ${tariffNameText}\nПроверьте поступление в Т-Банке.`;
+    const offered = app._currentPaymentPlan || null;
+    const messageText = `Пользователь: ${emailInput}\nТариф: ${tariffNameText}`
+        + (offered && offered.rub ? `\nК оплате: ${Math.round(offered.rub).toLocaleString('ru-RU')} ₽` : '')
+        + (offered && offered.promo ? `\nАкция: ${offered.promo}` : '')
+        + `\nПроверьте поступление в Т-Банке. Подтвердить: панель → «Оплата подписки».`;
     sendOwnerTelegram('pro_request', messageText);
+
+    // === 1а. СТРОКА В УЧЁТЕ (вкладка «Оплата подписки») ===
+    if (typeof Subscription !== 'undefined') {
+        Subscription.logRequest({
+            email: emailInput,
+            plan: offered ? (offered.id || offered.type) : null,
+            months: offered ? offered.months : null,
+            rub: offered ? offered.rub : null,
+            promo: offered ? offered.promo : null
+        });
+    }
 
     // === 2. ОТПРАВКА НА EMAIL (через EmailJS с обновленным шаблоном) ===
     const emailjsServiceID = 'service_o11b4ej';
