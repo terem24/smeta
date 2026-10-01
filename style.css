@@ -16989,3 +16989,22 @@ body.dark-mode .hc-export-doc::after {
     outline-offset: 4px;
     border-radius: 10px;
 }
+
+/* Дата рождения в анкете профиля: нативное поле даты центрировало текст и брало
+   свою высоту — приводим к виду соседних полей (текст слева, та же высота) */
+#profile_modal_overlay #profile_birth_date_input {
+    -webkit-appearance: none;
+    appearance: none;
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+#profile_modal_overlay #profile_birth_date_input::-webkit-date-and-time-value {
+    text-align: left;
+}
+#profile_modal_overlay #profile_birth_date_input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.7;
+}
