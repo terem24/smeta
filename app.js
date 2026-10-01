@@ -56186,8 +56186,21 @@ const app = {
                 const k = String(l.thick);
                 if (!byThick[k]) byThick[k] = { item: l.item, thick: l.thick, r: l.r, area: 0, floors: [] };
                 byThick[k].area += area;
+                byThick[k].addedArea = (byThick[k].addedArea || 0) + area;
                 if (byThick[k].floors.indexOf(fl) < 0) byThick[k].floors.push(fl);
             });
+            if (s.detailedRooms && !s.ufhInsNoAdd) {
+                const grid = this.ufhInsGrid();
+                this.floorLayersOf(fl).forEach(ol => {
+                    if (ol.matId !== 'xps' || !(parseInt(ol.thick) > 0) || !grid.length) return;
+                    const g = grid.reduce((b, x) => Math.abs(x.thick - ol.thick) < Math.abs(b.thick - ol.thick) ? x : b, grid[0]);
+                    const k = String(g.thick);
+                    if (!byThick[k]) byThick[k] = { item: g.item, thick: g.thick, r: g.r, area: 0, floors: [] };
+                    byThick[k].area += area;
+                    byThick[k].mineArea = (byThick[k].mineArea || 0) + area;
+                    if (byThick[k].floors.indexOf(fl) < 0) byThick[k].floors.push(fl);
+                });
+            }
             if (layers.length > maxAdd) maxAdd = layers.length;
             floors.push({
                 fl: fl, area: area, req: req, rBase: base.r, own: own,
@@ -61492,7 +61505,7 @@ const app = {
                 <div style="display:flex; align-items:center; justify-content:space-between; padding-left:22px;">
                     <div style="display:flex; align-items:center; gap:6px;">
                         <span style="font-size:11.5px; color:var(--text-sec);">Толщина:</span>
-                        <input type="number" min="5" max="500" step="5" value="${l.thick}" onchange="app.updateFloorLayer(${fl}, ${idx}, 'thick', this.value)" style="width:64px; font-size:12.5px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface-light); color:var(--text-main);">
+                        <select onchange="app.updateFloorLayer(${fl}, ${idx}, 'thick', this.value)" style="width:72px; font-size:12.5px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; background:var(--surface-light); color:var(--text-main);">${this.floorLayerThicks(l.matId, l.thick).map(v => `<option value="${v}"${v === (parseInt(l.thick) || 0) ? ' selected' : ''}>${v}</option>`).join('')}</select>
                         <span style="font-size:11.5px; color:var(--text-sec);">мм</span>
                     </div>
                     <button onclick="app.removeFloorLayer(${fl}, ${idx})" aria-label="Удалить слой" style="background:transparent; border:none; color:#EF4444; font-size:18px; cursor:pointer; line-height:1; padding:4px; opacity:0.7;">×</button>
@@ -61544,15 +61557,27 @@ const app = {
         this.render();
     },
 
+    floorLayerThicks: function (matId, cur) {
+        let list;
+        if (matId === 'xps') list = (catalog.ufh_ins_plates || []).map(p => p.thick);
+        else if (matId === 'polystyrene') list = [20, 30, 40, 50, 60, 80, 100, 150, 200];
+        else if (matId === 'minwool') list = [50, 100, 150, 200];
+        else if (matId === 'screed') list = [30, 40, 50, 60, 70, 80, 100];
+        else list = [100, 150, 200, 250, 300];
+        list = list.slice();
+        cur = parseInt(cur) || 0;
+        if (cur > 0 && list.indexOf(cur) < 0) list.push(cur);
+        return list.sort((a, b) => a - b);
+    },
     updateFloorLayer: function (fl, idx, field, value) {
         const l = this.floorLayersOf(fl)[idx];
         if (!l) return;
         if (field === 'thick') {
-            let n = parseInt(value);
-            if (isNaN(n) || n < 0) n = 0;
-            l.thick = Math.min(n, 500);
+            l.thick = Math.min(Math.max(parseInt(value) || 0, 0), 500);
         } else {
             l.matId = value;
+            const ok = this.floorLayerThicks(value, 0);
+            if (ok.indexOf(parseInt(l.thick)) < 0) l.thick = ok.reduce((b, x) => Math.abs(x - l.thick) < Math.abs(b - l.thick) ? x : b, ok[0]);
         }
         this.syncUI();
         this.saveState();
@@ -65884,7 +65909,7 @@ const app = {
                 const flStr = (L.floors || []).map(f => f + ' этаж').join(' и ');
                 const baseLbl = (plan && plan.base) ? plan.base.label : 'основание';
                 return `<span style="${styles}"><span style="${head}">Плита утеплителя ${L.thick} мм</span>` +
-                    `<b>Зачем:</b> Добор теплоизоляции до нормы: ${baseLbl} в одиночку требуемое сопротивление не даёт, и тепло уходит вниз мимо помещения.<br>` +
+                    `<b>Зачем:</b> ${(L.mineArea > 0 && !(L.addedArea > 0)) ? 'Слой утепления из пирога пола — вы добавили его в блоке «Утепление под трубой».' : `Добор теплоизоляции до нормы: ${baseLbl} в одиночку требуемое сопротивление не даёт, и тепло уходит вниз мимо помещения.`}<br>` +
                     `<b>Куда:</b> На подготовленное основание, ${flStr || '1 этаж'}; поверх плиты — ${baseLbl} с трубой. Из нескольких материалов сверху кладётся менее сжимаемый (ГОСТ Р 70834-2023, п. 9.1.7), поэтому мягкая подложка — всегда нижним слоем.<br>` +
                     `<b>Расчёт:</b> ${Math.round(L.area)} м² тёплого пола + 5 % на подрезку, полезная площадь плиты ${String(L.item && L.item.area || 0).replace('.', ',')} м².` +
                     this.ufhInsNote() + `</span>`;
