@@ -1634,6 +1634,20 @@
                         <div class="info-card" id="desc_flat_water" style="font-size:11px;"></div>
                     </div>
 
+                    <!-- Быстрый режим дома: один счётчик вместо списка санузлов.
+                         Показывается по классу body.house-water-simple. -->
+                    <div id="blk_house_water_simple" style="display:none; flex-direction:column; gap:10px;">
+                        <div class="control-card"
+                            style="position:relative; width:100%; display:flex; flex-direction:row; justify-content:space-between; padding:12px 15px; align-items:center;">
+                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Кол-во санузлов<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Тип и количество приборов (ванна, душ, унитаз) можно выбрать в подробном режиме.</div></span></span>
+                            <div class="stepper" style="width:100px;">
+                                <button class="step-btn" onclick="app.updHouseBaths(-1)">−</button>
+                                <div class="step-val" id="val_house_baths">1</div>
+                                <button class="step-btn" onclick="app.updHouseBaths(1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="zones_list"></div>
                     <button id="btn_add_zone"
                         style="margin: 5px auto 5px auto; display: block; width: fit-content; padding: 5px 16px; font-size: 11px; font-weight: 700; background: var(--primary-light); border: 1px dashed var(--primary); color: var(--primary); border-radius: 20px; cursor: pointer; transition: 0.2s;"
