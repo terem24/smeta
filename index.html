@@ -166,7 +166,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.26">
+    <link rel="stylesheet" href="style.css?v=4.27">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.28" defer></script>
@@ -194,7 +194,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=10.18" defer></script>
+    <script src="app.js?v=10.19" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1643,6 +1643,20 @@
                             </div>
                         </div>
                         <div class="info-card" id="desc_flat_water" style="font-size:11px;"></div>
+                    </div>
+
+                    <!-- Быстрый режим дома: один счётчик вместо списка санузлов.
+                         Показывается по классу body.house-water-simple. -->
+                    <div id="blk_house_water_simple" style="display:none; flex-direction:column; gap:10px;">
+                        <div class="control-card"
+                            style="position:relative; width:100%; display:flex; flex-direction:row; justify-content:space-between; padding:12px 15px; align-items:center;">
+                            <span class="lbl" style="display:flex; align-items:center; gap:4px; font-size:12px;">Кол-во санузлов<span class="tooltip-wrapper tip-panel-wrap"><i class="info-icon" tabindex="0" role="button" aria-label="Подробнее">i</i><div class="tooltip-content tip-panel">Тип и количество приборов (ванна, душ, унитаз) можно выбрать в подробном режиме.</div></span></span>
+                            <div class="stepper" style="width:100px;">
+                                <button class="step-btn" onclick="app.updHouseBaths(-1)">−</button>
+                                <div class="step-val" id="val_house_baths">1</div>
+                                <button class="step-btn" onclick="app.updHouseBaths(1)">+</button>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="zones_list"></div>
