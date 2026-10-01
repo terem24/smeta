@@ -6354,6 +6354,7 @@ const catalog = {
         { id: "PA22522P", article: "PA22522P", price: 890, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 50х1 1/2", unit: "шт", price_date: "2026-10-20" },
         { id: "PA22523P", article: "PA22523P", price: 1283, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 50х2", unit: "шт", price_date: "2026-10-20" },
         { id: "PA22524P", article: "PA22524P", price: 1285, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная ВР PP-R 63х2", unit: "шт", price_date: "2026-10-20" },
+        { id: "PA22526", article: "PA22526", price: 2619, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ ВР PP-R 75х2 1/2", unit: "шт", price_date: "2026-10-01" },
         { id: "PA22528", article: "PA22528", price: 4279, brand: "ProAqua", availability: "in_stock", name: "Муфта комбинированная под ключ ВР PP-R 90х3", unit: "шт", price_date: "2026-10-20" }
     ],
     ppr_proaqua_adapter_mi: [
