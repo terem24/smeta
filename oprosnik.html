@@ -87,6 +87,12 @@
     label.f .opt { font-weight: 400; color: var(--text-sec); }
     .hint { font-size: 12.5px; color: var(--text-sec); line-height: 1.45; }
     .req { color: var(--req); }
+    .err-msg { color: #DC2626; font-size: 13px; font-weight: 600; line-height: 1.35; }
+    [aria-invalid="true"] { border-color: #DC2626 !important; box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15); }
+    .err-bar { background: #FEF2F2; border: 1px solid #FCA5A5; color: #991B1B; border-radius: 12px; padding: 10px 14px; margin-bottom: 10px; font-size: 13.5px; line-height: 1.4; max-height: 34vh; overflow-y: auto; }
+    .err-bar ul { margin: 6px 0 0; padding-left: 18px; }
+    .err-bar a { color: inherit; font-weight: 700; text-decoration: underline; }
+    @media (prefers-color-scheme: dark) { .err-bar { background: #3B1212; border-color: #7F1D1D; color: #FECACA; } .err-msg { color: #F87171; } }
 
     input[type=text], input[type=number], input[type=tel], textarea, select {
         width: 100%; min-height: 46px; padding: 11px 14px; border: 1px solid var(--border); border-radius: 12px;
@@ -335,6 +341,7 @@
     </form>
 
     <div class="submit-bar">
+        <div id="errBar" class="err-bar" role="alert" style="display:none;"></div>
         <button class="btn" onclick="buildLink()">Отправить монтажнику</button>
     </div>
 
@@ -648,10 +655,74 @@
             });
     }
 
-    function buildLink() {
+    // Проверка обязательных полей. Системный «пузырь» reportValidity на телефоне то не
+    // показывается, то гаснет за липкой кнопкой — человек жмёт «Отправить», ничего не
+    // происходит, и непонятно почему. Поэтому ошибки рисуем сами: красная подпись под
+    // полем, сводка над кнопкой и прокрутка к первому незаполненному.
+    function fieldTitle(el) {
+        var lb = document.querySelector('label[for="' + el.id + '"]');
+        return lb ? lb.textContent.replace(/[*·].*$/, '').trim() : el.id;
+    }
+    function fieldProblem(el) {
+        var v = el.validity;
+        if (v.valid) return '';
+        if (v.customError) return el.validationMessage;
+        if (v.valueMissing) return 'Заполните это поле';
+        if (v.rangeUnderflow || v.rangeOverflow) return 'Допустимо от ' + el.min + ' до ' + el.max;
+        return el.validationMessage || 'Проверьте значение';
+    }
+    function clearFieldError(el) {
+        el.removeAttribute('aria-invalid');
+        var m = el.parentNode.querySelector('.err-msg[data-for="' + el.id + '"]');
+        if (m) m.remove();
+    }
+    function showFieldError(el, text) {
+        clearFieldError(el);
+        el.setAttribute('aria-invalid', 'true');
+        var m = document.createElement('div');
+        m.className = 'err-msg';
+        m.setAttribute('data-for', el.id);
+        m.textContent = text;
+        el.insertAdjacentElement('afterend', m);
+        var off = function () { clearFieldError(el); el.removeEventListener('input', off); el.removeEventListener('change', off); refreshErrBar(); };
+        el.addEventListener('input', off);
+        el.addEventListener('change', off);
+    }
+    function refreshErrBar() {
+        var bar = document.getElementById('errBar');
+        if (!bar) return;
+        var left = document.querySelectorAll('#oprosForm [aria-invalid="true"]');
+        if (!left.length) bar.style.display = 'none';
+    }
+    function validateForm() {
         var form = document.getElementById('oprosForm');
         checkName(); checkPhone();
-        if (!form.reportValidity()) return;
+        var bad = [];
+        Array.prototype.forEach.call(form.querySelectorAll('input, select, textarea'), function (el) {
+            clearFieldError(el);
+            if (el.type === 'radio' || el.type === 'checkbox' || el.disabled || !el.id) return;
+            var p = fieldProblem(el);
+            if (p) { showFieldError(el, p); bad.push(el); }
+        });
+        var bar = document.getElementById('errBar');
+        if (!bad.length) { bar.style.display = 'none'; return true; }
+        bar.innerHTML = '<b>Не заполнено, без этого анкету не отправить:</b><ul>' +
+            bad.map(function (el) { return '<li><a href="#' + el.id + '" data-go="' + el.id + '">' + fieldTitle(el) + '</a></li>'; }).join('') + '</ul>';
+        bar.style.display = 'block';
+        bad[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        try { bad[0].focus({ preventScroll: true }); } catch (e) { }
+        return false;
+    }
+    document.getElementById('errBar').addEventListener('click', function (e) {
+        var a = e.target.closest ? e.target.closest('a[data-go]') : null;
+        if (!a) return;
+        e.preventDefault();
+        var el = document.getElementById(a.getAttribute('data-go'));
+        if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); try { el.focus({ preventScroll: true }); } catch (x) { } }
+    });
+
+    function buildLink() {
+        if (!validateForm()) return;
         var d = {
             name: val('f_name'), phone: val('f_phone'), city: val('f_city'), address: val('f_address'),
             area: parseFloat(val('f_area')) || 0,
