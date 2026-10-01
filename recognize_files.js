@@ -723,6 +723,68 @@ const RecognizeFiles = {
      */
     SHEET_TITLE_RE: /^(план|схема|обмерн|экспликац|визуализац|развёртк|развертк|потол|монтаж\s*объ|спецификац|ведомость|содержание|пояснительн|обложка|фасад|разрез|аксонометр)/i,
 
+    /**
+     * Графы основной надписи и прочий служебный текст штампа: сами
+     * названием листа быть не могут.
+     */
+    STAMP_WORD_RE: /^(формат|лист|листов|изм\.|кол\.?\s?уч|согласовано|инв\.|взам\.|стади|масштаб|разработал|разраб\.|проверил|проектировал|н\.?\s?контр|утверд|гип|заказчик|подп|дата|№\s?док|рабочая\s+документаци|примечани)/i,
+
+    /** Адрес объекта в штампе стоит там же и названием листа не является. */
+    STAMP_ADDR_RE: /(обл\.|область|р-н|район|ул\.|улица|пос\.|посёл|поселок|д\.\s?\d|уч\.\s?\d|кв-л|квартал\s*\d|г\.\s?[А-ЯЁ])/i,
+
+    /**
+     * Должности из штампа. Фамилия и графа слипаются в одну строку
+     * («ГалицинРазработал»), поэтому ищем слово где угодно, не только в начале.
+     */
+    STAMP_ROLE_RE: /(разработал|разраб\.|проверил|проектировал|нормоконтр|н\.\s?контр|утвердил|гип\b|нач\.\s?отд)/i,
+
+    /**
+     * Строка таблицы, а не название: у части проектов штамп идёт не последним,
+     * и снизу оказывается строка экспликации («2.07 Гардероб 5.66 м² 231 Вт»)
+     * или её итог («1 этаж 4816 Вт»).
+     */
+    TABLE_ROW_RE: /(м²|м2|\bВт\b|\bм³|м3\/ч)|^\d+[.,]\d+\s|^\d+\s*этаж/i,
+
+    /**
+     * Название листа рабочего проекта.
+     *
+     * В дизайн-проекте оно стоит первой строкой-заголовком (SHEET_TITLE_RE).
+     * В рабочем проекте по ГОСТ 21.101 основная надпись — в правом нижнем
+     * углу, и графа 1 «наименование документа» идёт последней: pdf.js отдаёт
+     * её последней строкой листа, сразу за шифром («2024-544R - В В-04» →
+     * «Этаж 01. 3D вид водоснабжения»). На 243 рабочих проектах из чата
+     * проектировщиков прежнее правило опознало комплект листов ровно у
+     * одного — название просто не там, где его искали.
+     *
+     * Прежний путь остаётся первым: на дизайн-проектах ничего не меняется.
+     */
+    sheetTitle(lines, gost) {
+        const head = () => lines.find(s => s.length <= 90 && this.SHEET_TITLE_RE.test(s)) || '';
+        if (!gost) {
+            const h = head();
+            if (h) return h;
+        }
+        // Десять строк снизу: у части проектов под штампом оказывается ещё
+        // таблица или примечание, и название лежит не последней строкой.
+        for (let i = lines.length - 1; i >= 0 && i >= lines.length - 10; i--) {
+            const s = (lines[i] || '').trim();
+            if (!s || s.length > 90 || s.length < 4) continue;
+            // Название — русскими словами; шифр, номер листа и логотип
+            // латиницей отсеиваются этим же условием.
+            if (!/[А-Яа-яЁё]{3}/.test(s)) continue;
+            // Название листа начинается с заглавной или с номера этажа;
+            // строчная буква в начале — это обрывок примечания («потолком.»).
+            if (/^[а-яё]/.test(s)) continue;
+            if (this.STAMP_WORD_RE.test(s) || this.STAMP_ADDR_RE.test(s)) continue;
+            if (this.STAMP_ROLE_RE.test(s) || this.TABLE_ROW_RE.test(s)) continue;
+            return s;
+        }
+        return gost ? head() : '';
+    },
+
+    /** Основная надпись по ГОСТ 21.101 — признак рабочего проекта. */
+    STAMP_GOST_RE: /(Кол\.?\s?уч|Изм\.|№\s?док|N\s?докум|Подп\.\s?и\s?дата|Инв\.\s?№\s?подл|Взам\.\s?инв)/i,
+
     /** Оглавление и обложка — сами по себе ничего не дают. */
     SHEET_CONTENTS_RE: /^(содержание|обложка|ведомость\s*(листов|рабочих|чертеж))/i,
 
@@ -779,7 +841,30 @@ const RecognizeFiles = {
             if (t.hasEOL) { lines.push(cur); cur = ''; }
         }
         if (cur) lines.push(cur);
-        return lines.map(s => s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+        return lines.map(s => this.undouble(s.replace(/\s+/g, ' ').trim())).filter(Boolean);
+    },
+
+    /**
+     * Лист, нарисованный дважды.
+     *
+     * Часть проектов выгружена так, что каждая надпись лежит в PDF двумя
+     * одинаковыми объектами подряд, и строка склеивается в «ЭтажЭтаж 01.01.
+     * СводныйСводный планплан сетейсетей». Ни название листа, ни строки
+     * экспликации после этого не читаются.
+     *
+     * Схлопываем, только если удвоено большинство слов строки: в одном слове
+     * удвоенная половина — это обычное русское слово («мама»), а в целой
+     * строке — наверняка двойная прорисовка.
+     */
+    undouble(s) {
+        const t = s.split(' ');
+        let dbl = 0;
+        const out = t.map(w => {
+            const h = w.length / 2;
+            if (w.length >= 2 && w.length % 2 === 0 && w.slice(0, h) === w.slice(h)) { dbl++; return w.slice(0, h); }
+            return w;
+        });
+        return dbl >= Math.max(2, Math.ceil(t.length * 0.6)) ? out.join(' ') : s;
     },
 
     /**
@@ -953,6 +1038,55 @@ const RecognizeFiles = {
             if (total !== null && Math.abs(sum - total) > 0.05) continue;   // что-то прочитано не так
             return { rows: out, total: total !== null ? total : Math.round(sum * 100) / 100 };
         }
+        return this.explicationFromLines(await this.pageLines(page));
+    },
+
+    /** Шапка таблицы: «№ Наименование Площадь Теплопотери». */
+    EXPL_HEAD_RE: /^(№|N|поз\.?)[^а-яё]{0,5}(наименован|помещен|назначен)/i,
+    /** Строка: «2.5 Душевая, С/у 3.98 м² 190 Вт» — мощность бывает, бывает нет. */
+    EXPL_ROW_RE: /^(\d{1,3}(?:[.,]\d{1,2})?)\s+(\D.*?)\s+(\d{1,4}[.,]\d{1,2})\s*м[²2]\s*(?:(\d{1,5})\s*Вт)?$/i,
+    /** Итог под таблицей: «79.66 м² 4952 Вт». */
+    EXPL_TOTAL_RE: /^(\d{1,5}[.,]\d{1,2})\s*м[²2]\s*(?:(\d{1,6})\s*Вт)?$/i,
+
+    /**
+     * Экспликация, прочитанная по строкам, а не по координатам.
+     *
+     * В рабочих проектах из Revit pdf.js режет текст по складам: заголовок
+     * «Экспликация» приходит кусками «Эк» + «спликация», и столбцы по
+     * координатам не собрать. Зато строка таблицы склеивается целиком —
+     * «2.5 Душевая, С/у 3.98 м² 190 Вт», — и читается правилом.
+     *
+     * Четвёртый столбец — теплопотери помещения, посчитанные проектировщиком.
+     * Для нас это и проверка своего расчёта, и готовые числа, если проект
+     * загружают в калькулятор.
+     */
+    explicationFromLines(lines) {
+        for (let h = 0; h < lines.length; h++) {
+            if (!this.EXPL_HEAD_RE.test(lines[h])) continue;
+            const rows = [];
+            let total = null, heatTotal = null;
+            for (let i = h + 1; i < lines.length; i++) {
+                const m = lines[i].match(this.EXPL_ROW_RE);
+                if (m) {
+                    rows.push({ num: m[1], name: m[2].trim(),
+                        area: parseFloat(m[3].replace(',', '.')),
+                        heat: m[4] ? parseInt(m[4], 10) : null });
+                    continue;
+                }
+                const t = lines[i].match(this.EXPL_TOTAL_RE);
+                if (t && rows.length) {
+                    total = parseFloat(t[1].replace(',', '.'));
+                    heatTotal = t[2] ? parseInt(t[2], 10) : null;
+                }
+                break;
+            }
+            if (rows.length < 2) continue;
+            const sum = rows.reduce((a, r) => a + r.area, 0);
+            // Итог таблицы обязан сойтись — иначе строки прочитаны не все.
+            if (total !== null && Math.abs(sum - total) > 0.05) continue;
+            return { rows, total: total !== null ? total : Math.round(sum * 100) / 100,
+                heatTotal, src: 'lines' };
+        }
         return null;
     },
 
@@ -968,12 +1102,22 @@ const RecognizeFiles = {
      */
     async projectSheets(pdf, onProgress) {
         if (pdf.numPages < 6) return null;
-        const pages = [];
+        const sheets = [];
         for (let i = 1; i <= pdf.numPages; i++) {
             if (onProgress) onProgress(`смотрю названия листов: ${i} из ${pdf.numPages}`);
-            const page = await pdf.getPage(i);
-            const lines = await this.pageLines(page);
-            const title = lines.find(s => s.length <= 90 && this.SHEET_TITLE_RE.test(s)) || '';
+            sheets.push(await this.pageLines(await pdf.getPage(i)));
+        }
+        // Где искать название листа, решается один раз на весь комплект:
+        // по основной надписи ГОСТ 21.101 («Изм. Кол.уч. Лист №док.») видно,
+        // что это рабочий проект, а не дизайн-проект. Иначе на листе плана
+        // раньше штампа попадётся заголовок таблицы — «Экспликация
+        // помещений», «Спецификация» — и названием станет он.
+        const gost = sheets.filter(l => l.some(s => this.STAMP_GOST_RE.test(s))).length > pdf.numPages / 2;
+
+        const pages = [];
+        for (let i = 1; i <= pdf.numPages; i++) {
+            const lines = sheets[i - 1];
+            const title = this.sheetTitle(lines, gost);
             let kind = null;
             const usable = title && !this.SHEET_CONTENTS_RE.test(title) && !this.SHEET_SKIP_RE.test(title);
             if (usable) {
@@ -1020,7 +1164,7 @@ const RecognizeFiles = {
 
         const visual = pages.filter(p => /^визуализац/i.test(p.title)).length;
         return { pages, rooms, found, visual, other: pdf.numPages - found.length - visual,
-            notes: this.collectNotes(pages), address };
+            notes: this.collectNotes(pages), address, gost };
     },
 
     /**
@@ -1317,6 +1461,9 @@ const RecognizeFiles = {
         if (/мансард|чердак/.test(s)) return 'm';
         const m = s.match(/(\d)\s*-?\s*(?:й|го|ого|ый|ой)?\s*этаж/);
         if (m) return +m[1];
+        // В рабочем проекте этаж подписывают наоборот: «Этаж 01. План отопления».
+        const m2 = s.match(/этаж\s*№?\s*0*(\d)/);
+        if (m2) return +m2[1];
         if (/перв[а-я]*\s*этаж/.test(s)) return 1;
         if (/втор[а-я]*\s*этаж/.test(s)) return 2;
         if (/трет[а-я]*\s*этаж/.test(s)) return 3;

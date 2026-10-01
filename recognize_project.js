@@ -309,6 +309,7 @@ const RecognizeProject = {
                 }
                 used.add(r);
                 r.num = t.num; r.name = t.name; r.area = t.area; r.areaSrc = 'table'; r.nameGuessed = false;
+                if (t.heat) r.heatPdf = t.heat;
                 this.setSrc(r, 'name', 'pdf');
                 this.setSrc(r, 'area', 'pdf');
                 ordered.push(r);
@@ -346,7 +347,12 @@ const RecognizeProject = {
     HEATED_NOT_RE: /террас|балкон|лоджи|крыльц|веранд|навес|патио/i,
 
     plansFromPdf(project) {
-        if (!project || !Array.isArray(project.roomTables) || typeof RecognizeGeo === 'undefined') return null;
+        if (!project || !Array.isArray(project.roomTables)) return null;
+        if (project.gost) {
+            const byTable = this.plansFromTables(project);
+            if (byTable) return byTable;
+        }
+        if (typeof RecognizeGeo === 'undefined') return null;
         const winOk = !!(project.winSheet && project.winSheet.labels && project.winSheet.labels.length);
         if (!winOk || project.rooms.length !== 1) return null;
         const out = project.rooms.map((p, k) => {
@@ -372,6 +378,45 @@ const RecognizeProject = {
             };
         });
         return out.some(Boolean) ? out : null;
+    },
+
+    /**
+     * Помещения рабочего проекта — из экспликации листов, без модели и без
+     * карты стен.
+     *
+     * В проекте по ГОСТ 21.101 экспликация напечатана на самом листе плана:
+     * «2.5 Душевая, С/у 3.98 м² 190 Вт». Названия, площади и этаж там точные,
+     * а итог таблицы сходится — проверять их моделью незачем. Окна остаются
+     * неизвестными (windows: null): на этих листах их никто не подписывает,
+     * монтажник заполнит сам или их добавит разбор листа отопления.
+     *
+     * Условие жёсткое: таблица должна прочитаться на КАЖДОМ листе помещений.
+     * Прочитана на одном этаже из двух — отдаём листы модели целиком, иначе
+     * половина дома уедет в расчёт, а половина нет.
+     *
+     * Четвёртый столбец — теплопотери, посчитанные проектировщиком. Мы их не
+     * подменяем своим расчётом: они едут рядом (heatPdf) и показывают,
+     * расходимся ли мы с проектом.
+     */
+    plansFromTables(project) {
+        const tabs = project.roomTables || [];
+        if (!tabs.length || !tabs.every(t => t && t.rows && t.rows.length)) return null;
+        return project.rooms.map((p, k) => {
+            const tab = tabs[k];
+            const floor = typeof RecognizeFiles !== 'undefined' ? RecognizeFiles.sheetFloor(p.title) : null;
+            return {
+                docKind: 'floor_plan', floorLabel: p.title || null,
+                floor: typeof floor === 'number' ? floor : null,
+                ceilingH: null, hasTable: true, totalArea: tab.total, fromPdf: true,
+                rooms: tab.rows.map(t => ({
+                    num: t.num, name: t.name, area: t.area, areaSrc: 'table',
+                    windows: null, panoramic: 0, outerWalls: null,
+                    heated: !this.HEATED_NOT_RE.test(t.name),
+                    heatPdf: t.heat || null, confidence: 1, note: null,
+                })),
+                unclear: [],
+            };
+        });
     },
 
     setSrc(r, field, v) {

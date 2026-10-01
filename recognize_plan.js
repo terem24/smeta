@@ -243,6 +243,9 @@ const RecognizePlan = {
                 floor: this.calcFloor(fr),
                 ownFloor,
                 confidence: conf === null ? 1 : conf,
+                // Теплопотери помещения из экспликации рабочего проекта —
+                // число проектировщика, не наш расчёт. Едет рядом для сверки.
+                heatPdf: this.num(r.heatPdf),
                 note: r.note ? String(r.note).trim() : '',
             };
         });
