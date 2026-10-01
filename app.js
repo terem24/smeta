@@ -47101,7 +47101,7 @@ const app = {
                 });
             });
         }
-        let xpsAlt = catalog.xps_kit[0]; catalog.mats.forEach(m => { m.alts = [xpsAlt]; }); catalog.xps_kit[0].alts = catalog.mats;
+        let xpsAlt = this.ufhBaseXps(); catalog.mats.forEach(m => { m.alts = [xpsAlt]; }); catalog.xps_kit[0].alts = catalog.mats;
         if (catalog.well_auto) { let waAlts = catalog.well_auto; catalog.well_auto.forEach(a => { a.alts = waAlts; }); }
         // Демпферная лента: 100х8 дешевле 150х10, но это не «та же лента подешевле» —
         // узкая не перекрывает высоту пирога с 50 мм утеплителя и 70 мм стяжки.
@@ -47523,7 +47523,7 @@ const app = {
             this._ufhGeomCache = null;
         }
         else if (originalId.endsWith('_water') || (originalId.startsWith('SPX-0001-') && !originalId.endsWith('_rad'))) { this.state.waterPipeMaterial = (this.state.waterPipeMaterial === 'pex') ? 'metal_plastic' : 'pex'; }
-        else if (originalId.startsWith('SMF-0001') || originalId === '147312') { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
+        else if (originalId.startsWith('SMF-0001') || this.isXpsBaseId(originalId)) { this.state.ufhBaseType = (this.state.ufhBaseType === 'mat') ? 'xps' : 'mat'; }
         else if (originalId.startsWith('SCS-0001')) { if (this.state.wellAutoType === 'sirio') this.state.wellAutoType = 'top'; else if (this.state.wellAutoType === 'top') this.state.wellAutoType = 'base'; else this.state.wellAutoType = 'sirio'; }
         else if (originalId.startsWith('SCQ') || originalId.startsWith('SCN')) { this.state.convectorType = (this.state.convectorType === 'scq') ? 'scn' : 'scq'; }
         else if (originalId.startsWith('SVT') || originalId.startsWith('SVL')) { this.state.convConnectionType = (this.state.convConnectionType === 'straight') ? 'angled' : 'straight'; }
@@ -49421,7 +49421,7 @@ const app = {
                 };
             });
         }
-        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || item.originalId === '147312')) {
+        else if (item.originalId && (item.originalId.startsWith('SMF-0001') || this.isXpsBaseId(item.originalId))) {
             // В строке может стоять и мат ROMMER (его подставляет «Аналог») — тогда и в
             // таблице показываем его, иначе она предлагала бы вернуться на STOUT под видом
             // текущего выбора. Бренд берём из самой строки: посекционный «Аналог» глобальный
@@ -49429,7 +49429,7 @@ const app = {
             let _matCat = catalog.mats ? catalog.mats[0] : null;
             let _matR = (String(item.brand || '').toUpperCase() === 'ROMMER' && _matCat && _matCat.rommer) ? _matCat.rommer : null;
             let p_mat = (_matR ? _matR.price : _matCat?.price) || 991;
-            let p_xps = catalog.xps_kit ? catalog.xps_kit[0]?.price || 299 : 299;
+            let p_xps = this.ufhBaseXps()?.price || 299;
             // Мат продаётся штукой 0,88 м², лист XPS — 0,68 м², поэтому цены «за штуку»
             // рядом не сравнить. Даём две цены за м²: самого мата или листа и всей
             // системы — с тем, что render() докладывает к ней в раздел 4.2 (запас 5 %,
@@ -49438,7 +49438,7 @@ const app = {
             // % и сортировка идут по цене системы.
             const _matArea = (_matR ? _matR.area : _matCat?.area) || 0.88;
             const _xk = catalog.xps_kit || [];
-            const _xpsArea = _xk[0]?.area || 0.6844;
+            const _xpsArea = this.ufhBaseXps()?.area || 0.6844;
             const _tpA = (Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0);
             const _pipePerM2 = (_tpA > 0 && this.tpMeters > 0) ? this.tpMeters / _tpA : 6.7;
             const _sheetsM2 = 1.05 / _xpsArea;
@@ -53212,8 +53212,8 @@ const app = {
             if (chosenId.includes("SPX") || chosenId === 'pex') this.state.waterPipeMaterial = 'pex';
             else this.state.waterPipeMaterial = 'metal_plastic';
         }
-        else if (originalId.startsWith('SMF-0001') || originalId === '147312') {
-            if (chosenId === '147312' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
+        else if (originalId.startsWith('SMF-0001') || this.isXpsBaseId(originalId)) {
+            if (chosenId === '147312' || chosenId === '170040' || chosenId === 'xps') this.state.ufhBaseType = 'xps';
             else this.state.ufhBaseType = 'mat';
         }
         else if (originalId.startsWith('SCS-0001')) {
@@ -56120,6 +56120,12 @@ const app = {
     UFH_INS_LAMBDA: 0.034,   // расчётная теплопроводность плит XPS, Вт/(м·°С) — карточка товара
     UFH_INS_R_MAT: 0.53,     // мат с бобышками: EPS 20 мм при λ 0,038
     /** Ряд плит добора от тонкой к толстой: { thick, r, item }. */
+    ufhBaseXps: function () {
+        return (catalog.ufh_ins_plates || []).find(p => p.id === '170040') || catalog.xps_kit[0];
+    },
+    isXpsBaseId: function (id) {
+        return id === '147312' || (id === '170040' && this.state.ufhBaseType === 'xps');
+    },
     ufhInsGrid: function () {
         return (catalog.ufh_ins_plates || []).map(p => ({
             thick: p.thick,
@@ -56182,23 +56188,25 @@ const app = {
             const own = this.ufhInsOwnR(fl);
             const have = base.r + own;
             const layers = ((s.ufhInsNoAdd && s.detailedRooms) || have >= req.r - 0.005) ? [] : this.ufhInsLayers(req.r - have);
-            layers.forEach(l => {
-                const k = String(l.thick);
-                if (!byThick[k]) byThick[k] = { item: l.item, thick: l.thick, r: l.r, area: 0, floors: [] };
-                byThick[k].area += area;
-                byThick[k].addedArea = (byThick[k].addedArea || 0) + area;
-                if (byThick[k].floors.indexOf(fl) < 0) byThick[k].floors.push(fl);
-            });
+            const touch = (g, kind) => {
+                const k = String(g.thick);
+                if (!byThick[k]) byThick[k] = { item: g.item, thick: g.thick, r: g.r, area: 0, floors: [], cnt: {} };
+                const B = byThick[k];
+                B.area += area;
+                B[kind] = (B[kind] || 0) + area;
+                B.cnt[fl] = (B.cnt[fl] || 0) + 1;
+                if (B.floors.indexOf(fl) < 0) B.floors.push(fl);
+            };
+            if (s.ufhBaseType === 'xps') {
+                const bi = this.ufhBaseXps();
+                touch({ thick: bi.thick || 50, r: (bi.thick || 50) / 1000 / (bi.lambda || this.UFH_INS_LAMBDA), item: bi }, 'baseArea');
+            }
+            layers.forEach(l => touch(l, 'addedArea'));
             if (s.detailedRooms && !s.ufhInsNoAdd) {
                 const grid = this.ufhInsGrid();
                 this.floorLayersOf(fl).forEach(ol => {
                     if (ol.matId !== 'xps' || !(parseInt(ol.thick) > 0) || !grid.length) return;
-                    const g = grid.reduce((b, x) => Math.abs(x.thick - ol.thick) < Math.abs(b.thick - ol.thick) ? x : b, grid[0]);
-                    const k = String(g.thick);
-                    if (!byThick[k]) byThick[k] = { item: g.item, thick: g.thick, r: g.r, area: 0, floors: [] };
-                    byThick[k].area += area;
-                    byThick[k].mineArea = (byThick[k].mineArea || 0) + area;
-                    if (byThick[k].floors.indexOf(fl) < 0) byThick[k].floors.push(fl);
+                    touch(grid.reduce((b, x) => Math.abs(x.thick - ol.thick) < Math.abs(b.thick - ol.thick) ? x : b, grid[0]), 'mineArea');
                 });
             }
             if (layers.length > maxAdd) maxAdd = layers.length;
@@ -66790,6 +66798,8 @@ const app = {
                 let finalItem = entry.itm;
                 let finalQty = entry.q * _setMul;
 
+                if (item.layerNote && finalItem.name) finalItem = Object.assign({}, finalItem, { name: finalItem.name + ' ' + item.layerNote });
+
                 // Remove "Бастион" from stabilizer names
                 if (finalItem.name && (finalItem.name.includes('Бастион') || finalItem.name.includes('бастион') || (finalItem.id && finalItem.id.startsWith('SST-')))) {
                     finalItem.name = finalItem.name.replace(/бастион/gi, '').replace(/\s+/g, ' ').trim();
@@ -73410,7 +73420,7 @@ const app = {
             this._ufhInsPlan = _insPlan;
 
             if (this.state.ufhBaseType === 'mat') {
-                let mt = catalog.mats[0]; mt.alts = [catalog.xps_kit[0]];
+                let mt = catalog.mats[0]; mt.alts = [this.ufhBaseXps()];
                 // Мат ROMMER мельче стаутовского (полезные 0,72 м² против 0,88), поэтому при
                 // включённом «Аналоге» количество считаем по его площади — иначе на пол не хватит.
                 // Решение о замене принимает addToBill, здесь повторяем его условие.
@@ -73423,7 +73433,7 @@ const app = {
                 let mc = Math.ceil((tpArea / _matArea) * 1.05);
                 addToBill(mt, mc, this.getDesc('ufh_mat', tpArea), grpIns);
             }
-            else { let xpsItem = catalog.xps_kit[0]; xpsItem.alts = catalog.mats; let sheets = Math.ceil((tpArea / xpsItem.area) * 1.05); addToBill(xpsItem, sheets, this.getDesc('ufh_xps', tpArea), grpIns); if (catalog.ufh_mat && catalog.ufh_mat[0]) { let matRolls = Math.ceil(tpArea / catalog.ufh_mat[0].pack_m2); addToBill(catalog.ufh_mat[0], matRolls, `Подложка 3 мм, ${tpArea} м² (рулон 30 м²).`, grpIns); } let totalDowels = Math.ceil(tpArea * 5); addToBill(catalog.xps_kit[1], Math.ceil(totalDowels / 100), `Дюбеля.`, grpIns); let totalStaples = Math.ceil(tpMeters * 2.5); addToBill(catalog.xps_kit[2], Math.ceil(totalStaples / 25), `Скобы.`, grpIns); let tapeRolls = Math.ceil((sheets * 1.76 * 1.1) / 50); addToBill(catalog.xps_kit[3], tapeRolls, `Скотч.`, grpIns); }
+            else { let xpsItem = this.ufhBaseXps(); let sheets = Math.ceil((tpArea / xpsItem.area) * 1.05); if (catalog.ufh_mat && catalog.ufh_mat[0]) { let matRolls = Math.ceil(tpArea / catalog.ufh_mat[0].pack_m2); addToBill(catalog.ufh_mat[0], matRolls, `Подложка 3 мм, ${tpArea} м² (рулон 30 м²).`, grpIns); } let totalDowels = Math.ceil(tpArea * 5); addToBill(catalog.xps_kit[1], Math.ceil(totalDowels / 100), `Дюбеля.`, grpIns); let totalStaples = Math.ceil(tpMeters * 2.5); addToBill(catalog.xps_kit[2], Math.ceil(totalStaples / 25), `Скобы.`, grpIns); let tapeRolls = Math.ceil((sheets * 1.76 * 1.1) / 50); addToBill(catalog.xps_kit[3], tapeRolls, `Скотч.`, grpIns); }
 
             // Плиты добора. Слои идут отдельными строками по толщине: монтажнику
             // важно, что под основание ложится именно 30 мм, а не «утеплитель».
@@ -73433,7 +73443,11 @@ const app = {
                     .forEach(k => {
                         const L = _insPlan.byThick[k];
                         const sh = Math.ceil((L.area / L.item.area) * 1.05);
-                        addToBill(L.item, sh, this.getDesc('ufh_ins_plate', L, _insPlan), grpIns);
+                        const nl = Math.max.apply(null, Object.keys(L.cnt || {}).map(f => L.cnt[f]).concat([1]));
+                        const word = nl === 1 ? 'слой' : (nl < 5 ? 'слоя' : 'слоёв');
+                        const it = Object.assign({}, L.item, { layerNote: `(${nl} ${word})` });
+                        if (L.baseArea > 0) it.alts = catalog.mats.concat([catalog.xps_kit[0]]);
+                        addToBill(it, sh, L.baseArea > 0 ? this.getDesc('ufh_xps', tpArea) : this.getDesc('ufh_ins_plate', L, _insPlan), grpIns);
                     });
             }
 
