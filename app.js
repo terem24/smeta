@@ -77510,6 +77510,14 @@ body.dark-mode .swap-hy-line.bad .swap-hy-tag{background:rgba(217,154,154,.16);c
                 itemsHtml += `<div class="zone-row"><span style="font-size:11px;">${name}</span><div class="stepper"><button class="step-btn" onclick="app.updZoneFixture(${z.id}, '${key}', -1)">−</button><div class="step-val">${val}</div><button class="step-btn" onclick="app.updZoneFixture(${z.id}, '${key}', 1)">+</button></div></div>`;
 
             }
+            // Итог точек санузла — монтажник считает работу «за точку». Счёт тот же,
+            // что в разделе 5 сметы: смеситель — ХВС+ГВС, унитаз, стиральная и ПММ —
+            // только ХВС, унитаз с биде — ещё и ГВС.
+            const _f = z.fixtures || {};
+            const _th = this.toiletHotOf(_f);
+            const _hot = (_f.basin || 0) + (_f.shower || 0) + (_f.bath || 0) + (_f.bidet || 0) + _th;
+            const _cold = (_f.toilet || 0) - _th + (_f.wash || 0) + (_f.dish || 0) + _hot;
+            itemsHtml += `<div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:11px; font-weight:700; color:var(--text-sec);">Водорозеток: ХВС ${_cold}, ГВС ${_hot}</div>`;
             let html = `<div class="zone-card"><div class="zone-header"><span class="zone-title" contenteditable="true" onblur="app.state.waterZones[${idx}].name=this.innerText">${z.name}</span><div class="zone-remove" onclick="app.removeZone(${z.id})">×</div></div><div style="margin-bottom:10px; font-size:11px; display:flex; align-items:center; gap:5px;"><span>Трасса (м):</span><input type="number" class="zone-input" value="${z.dist}" onchange="app.updZoneDist(${z.id}, this.value)">${this.state.floors === 2 ? `<span style="margin-left:8px;">Этаж:</span><select class="zone-input" style="width:auto;" onchange="app.updZoneLevel(${z.id}, this.value)"><option value=""${z.level ? '' : ' selected'}>наверху</option><option value="1"${z.level === 1 ? ' selected' : ''}>1</option><option value="2"${z.level === 2 ? ' selected' : ''}>2</option></select>` : ''}</div>${itemsHtml}</div>`;
             container.insertAdjacentHTML('beforeend', html);
         });
