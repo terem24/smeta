@@ -194,7 +194,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=10.17" defer></script>
+    <script src="app.js?v=10.18" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -1094,17 +1094,6 @@
                         <div id="dropdown_options_floor" class="custom-dropdown-options" style="display: none; position: absolute; top: calc(100% + 4px); left: 0; width: 100%; max-height: 250px; overflow-y: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; box-sizing: border-box;">
                         </div>
                     </div>
-                    <div id="floor_layers_box" style="display: none; flex-direction: column; gap: 6px; margin-top: 6px;">
-                        <span style="font-size: 11px; color: var(--text-sec);">Слои пирога поверх основания (снизу вверх): утеплитель, пеноплэкс с трубами, мат, стяжка.</span>
-                        <div id="floor_layers_list" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                        <button class="btn-add-layer" onclick="app.addFloorLayer()" style="width: 100%; padding: 8px; background: transparent; border: 1px dashed var(--primary); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: 12.5px;">+ Добавить слой</button>
-                        <span id="lbl_floor_layers_sum" style="font-size: 11px; color: var(--text-main); font-weight: 500;"></span>
-                        <span id="lbl_floor_layers_effect" style="font-size: 11px; line-height: 1.4;"></span>
-                        <label id="floor_ins_noadd_row" style="display: none; align-items: flex-start; gap: 6px; font-size: 11.5px; color: var(--text-main); cursor: pointer;">
-                            <input type="checkbox" id="chk_ufh_ins_noadd" onchange="app.setUfhInsNoAdd(this.checked)" style="margin-top: 2px;">
-                            <span>Утеплитель уже на объекте — не добавлять плиты в смету</span>
-                        </label>
-                    </div>
                 </div>
 
                 <!-- Тип остекления (PRO, детальный режим) -->
@@ -1483,6 +1472,30 @@
                                 onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">0</span>
                             м²</span></div><input type="range" id="inp_tp2" min="0" max="150" value="0"
                         oninput="app.updTp(2,this.value)">
+                </div>
+                <div id="floor_layers_box_1" style="display: none; flex-direction: column; gap: 6px; margin: 6px 0 12px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-light);">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">Утепление под трубой, 1 этаж</span>
+                    <span style="font-size: 11px; color: var(--text-sec);">Что уже лежит под системой (снизу вверх): утеплитель, пеноплэкс с трубами. Мат или плита подложки выбираются отдельно и считаются сами.</span>
+                    <div id="floor_layers_list_1" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                    <button class="btn-add-layer" onclick="app.addFloorLayer(1)" style="width: 100%; padding: 8px; background: transparent; border: 1px dashed var(--primary); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: 12.5px;">+ Добавить слой</button>
+                    <span id="lbl_floor_layers_sum_1" style="font-size: 11px; color: var(--text-main); font-weight: 500;"></span>
+                    <span id="lbl_floor_layers_effect_1" style="font-size: 11px; line-height: 1.4;"></span>
+                    <label id="floor_ins_noadd_row_1" style="display: none; align-items: flex-start; gap: 6px; font-size: 11.5px; color: var(--text-main); cursor: pointer;">
+                        <input type="checkbox" id="chk_ufh_ins_noadd_1" onchange="app.setUfhInsNoAdd(this.checked)" style="margin-top: 2px;">
+                        <span>Утеплитель уже на объекте — не добавлять плиты в смету</span>
+                    </label>
+                </div>
+                <div id="floor_layers_box_2" style="display: none; flex-direction: column; gap: 6px; margin: 6px 0 12px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-light);">
+                    <span style="font-size: 12px; font-weight: 600; color: var(--text-main);">Утепление под трубой, 2 этаж</span>
+                    <span style="font-size: 11px; color: var(--text-sec);">Что лежит на плите перекрытия под системой 2 этажа. Под ним отапливаемый первый этаж, норма ниже.</span>
+                    <div id="floor_layers_list_2" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                    <button class="btn-add-layer" onclick="app.addFloorLayer(2)" style="width: 100%; padding: 8px; background: transparent; border: 1px dashed var(--primary); color: var(--primary); border-radius: 8px; cursor: pointer; font-size: 12.5px;">+ Добавить слой</button>
+                    <span id="lbl_floor_layers_sum_2" style="font-size: 11px; color: var(--text-main); font-weight: 500;"></span>
+                    <span id="lbl_floor_layers_effect_2" style="font-size: 11px; line-height: 1.4;"></span>
+                    <label id="floor_ins_noadd_row_2" style="display: none; align-items: flex-start; gap: 6px; font-size: 11.5px; color: var(--text-main); cursor: pointer;">
+                        <input type="checkbox" id="chk_ufh_ins_noadd_2" onchange="app.setUfhInsNoAdd(this.checked)" style="margin-top: 2px;">
+                        <span>Утеплитель уже на объекте — не добавлять плиты в смету</span>
+                    </label>
                 </div>
                 <!-- Инженерные настройки свёрнуты: большинство оставляет их по умолчанию.
                      Сводка значений в заголовке — чтобы нестандартный выбор был виден и в
