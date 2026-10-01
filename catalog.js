@@ -992,7 +992,17 @@ const FLOOR_MATERIALS_DB = [
     { id: "floor_lags_ins", name: "Пол на лагах, мин. вата 150 мм", shortName: "Лаги МВ 150мм", R: 3.20 },
     { id: "floor_basement_ins", name: "Пол над холодным подвалом (утеплённый)", shortName: "Подвал утепл.", R: 2.50 },
     { id: "floor_basement_bare", name: "Пол над холодным подвалом (без утепления)", shortName: "Подвал", R: 0.80 },
-    { id: "floor_heated", name: "Пол над отапливаемым помещением", shortName: "Над теплым", R: 0.00 }
+    { id: "floor_heated", name: "Пол над отапливаемым помещением", shortName: "Над теплым", R: 0.00 },
+    { id: "floor_ground_bare", name: "Пол по грунту без утеплителя (утепление — слоями ниже)", shortName: "Грунт, слои", R: 0.15 }
+];
+
+// Слои пирога пола поверх основания (λ, Вт/м·°C)
+const FLOOR_LAYER_MATERIALS_DB = [
+    { id: "xps", name: "Экструдированный пенополистирол (XPS / Пеноплэкс)", lambda: 0.032 },
+    { id: "polystyrene", name: "Пенополистирол (пенопласт, EPS)", lambda: 0.041 },
+    { id: "minwool", name: "Минеральная вата (базальт)", lambda: 0.042 },
+    { id: "screed", name: "Стяжка цементно-песчаная", lambda: 0.93 },
+    { id: "concrete", name: "Железобетон / монолит", lambda: 2.04 }
 ];
 
 // Остекление / окна (R, м²·°C/Вт)
