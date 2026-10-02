@@ -271,6 +271,16 @@
   var SNAKE_BELOW_M = 1.2;    // участок уже — змейка, шире — улитка
   var LEAD_PIPE_M = 0.035;    // шаг труб в пучке: 16 мм в изоляции 6 мм, с зазором
   var MIN_RECT_M2 = 0.5;      // участок меньше — не греем (обрезки у стен и колонн)
+  // Второй участок комнаты — своя петля, только если не меньше 1 м² и 0,5 м в
+  // ширину. Подбор по корпусу Galf (13 домов, 03.10.2026): покрытие площади
+  // от порога почти не зависит (70–71 %), а петель 181 → 137 (у проектировщиков
+  // 124) и подводки 46 → 35 % трубы (у них 29 %). Жёстче (1,5 м², 8 %) — петель
+  // меньше, чем у проектировщиков, и трубы 0,63 от их длины.
+  var SIDE_RECT_M2 = 1.0, SIDE_RECT_MIN_W = 0.5;
+  // Зазор между участками соседних петель, клеток. Без зазора (пробовали
+  // 03.10.2026) покрытие комнаты растёт лишь на 1–2 %, а пучку подводок
+  // становится негде пройти между петлями — появляются наложения. Клетка.
+  var SLAB_GAP = 1;
   var MAX_LOOP_M = 100;       // предел длины одной петли 16×2,0 мм — запасное значение
   // цена прохода пучка по клетке: свободный проход, край петли, середина петли
   var COST_FREE = 1, COST_OUT = 2, COST_EDGE = 8, COST_IN = 60, COST_TURN = 3, COST_DRAWN = 0.3;
@@ -420,9 +430,16 @@
     var minCells = MIN_RECT_M2 / (CELL_M * CELL_M);
     for (var it = 0; it < 8; it++) {
       var r = maxRect(g, ok, bb);
-      if (!r || r.area < minCells || (rects.length && r.area < cellsTotal * 0.04)) break;
+      if (!r || r.area < minCells) break;
+      // Второй и дальше участок — своя петля со своей парой подводок через
+      // полдома. Обрезку неправильного контура (выступ, ниша) её не даём:
+      // на корпусе Galf такие петли по 15–18 м грели по метру с небольшим,
+      // а подводки к ним шли длиннее самих петель. Плечо Г-образной комнаты
+      // (несколько м²) — по-прежнему своя петля.
+      if (rects.length && (r.area < cellsTotal * 0.04 || r.area * CELL_M * CELL_M < SIDE_RECT_M2 ||
+          Math.min(r.x1 - r.x0, r.y1 - r.y0) + 1 < SIDE_RECT_MIN_W / CELL_M)) break;
       rects.push(r);
-      for (y = r.y0 - 1; y <= r.y1 + 1; y++) for (x = r.x0 - 1; x <= r.x1 + 1; x++)
+      for (y = r.y0 - SLAB_GAP; y <= r.y1 + SLAB_GAP; y++) for (x = r.x0 - SLAB_GAP; x <= r.x1 + SLAB_GAP; x++)
         if (x >= 0 && y >= 0 && x < g.W && y < g.H) ok[y * g.W + x] = 0;
     }
     return rects;
@@ -456,8 +473,8 @@
     }
     if (best && (best.nx > 1 && best.ny > 1)) {
       var cut = function (from, len, n) {
-        var use = len - (n - 1), o = [], pos = from;
-        for (var i = 0; i < n; i++) { var l = Math.floor(use / n) + (i < use % n ? 1 : 0); o.push([pos, pos + l - 1]); pos += l + 1; }
+        var use = len - (n - 1) * SLAB_GAP, o = [], pos = from;
+        for (var i = 0; i < n; i++) { var l = Math.floor(use / n) + (i < use % n ? 1 : 0); o.push([pos, pos + l - 1]); pos += l + SLAB_GAP; }
         return o;
       };
       var xs = cut(r.x0, W, best.nx), ys = cut(r.y0, H, best.ny), res = [];
@@ -470,12 +487,12 @@
     var horiz = (r.x1 - r.x0) >= (r.y1 - r.y0);
     var L = horiz ? r.x1 - r.x0 + 1 : r.y1 - r.y0 + 1;
     k = Math.max(1, Math.min(k, Math.floor((L + 1) / 4)));      // петля не уже 0,3 м
-    var use = L - (k - 1), out = [], pos = horiz ? r.x0 : r.y0;
+    var use = L - (k - 1) * SLAB_GAP, out = [], pos = horiz ? r.x0 : r.y0;
     for (var i = 0; i < k; i++) {
       var len = Math.floor(use / k) + (i < use % k ? 1 : 0);
       out.push(horiz ? { x0: pos, x1: pos + len - 1, y0: r.y0, y1: r.y1 }
                      : { x0: r.x0, x1: r.x1, y0: pos, y1: pos + len - 1 });
-      pos += len + 1;
+      pos += len + SLAB_GAP;
     }
     return out;
   }

@@ -47,12 +47,13 @@ const MM_PX = 25.4 / 72 / ZOOM * 100;               // мм натуры на п
 
 // ── картинка → маска стен ─────────────────────────────────────────────────
 function wallMask(rgb, W, H) {
-  const N = W * H, raw = new Uint8Array(N), red = new Uint8Array(N);
+  const N = W * H, raw = new Uint8Array(N), red = new Uint8Array(N), blue = new Uint8Array(N);
   for (let i = 0; i < N; i++) {
     const r = rgb[3 * i], g = rgb[3 * i + 1], b = rgb[3 * i + 2];
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
     if (mx < 120 && mx - mn < 35) raw[i] = 1;                    // чёрное и тёмно-серое
     if (r > 120 && r - g > 45 && r - b > 45) red[i] = 1;          // подача петель
+    if (b > 120 && b - r > 45 && b - g > 30) blue[i] = 1;         // обратка петель
   }
   const step = (a, op) => {
     const b = new Uint8Array(N);
@@ -66,7 +67,24 @@ function wallMask(rgb, W, H) {
   // закрытие на 3 px сплавляет пары линий, открытие на 1 px снимает текст и размерные линии
   const closed = rep(rep(raw, 1, 3), 0, 3);
   const wall = rep(rep(closed, 0, 1), 1, 1);
-  return { wall, red };
+  return { wall, red, blue };
+}
+
+/**
+ * Длина цветной трубы (подача + обратка) внутри зоны, пиксели. Трубы на листах
+ * идут по осям, поэтому длина линии ≈ число начал горизонтальных отрезков
+ * (вертикальная линия даёт по одному на строку) плюс вертикальных — от толщины
+ * линии это не зависит. Подводки на листах корпуса — серый пучок, сюда не входят.
+ */
+function pipePx(mask, inZone, W, H) {
+  let n = 0;
+  for (let y = 1; y < H; y++) for (let x = 1; x < W; x++) {
+    const i = y * W + x;
+    if (!mask[i] || !inZone[i]) continue;
+    if (!mask[i - 1]) n++;
+    if (!mask[i - W]) n++;
+  }
+  return n;
 }
 
 // ── область карты → прямоугольный контур по сетке g пикселей ───────────────
@@ -177,7 +195,7 @@ for (const m of meta) {
   if (!m.L.length) { row.fail = 'нет длин петель'; continue; }
   const rgb = fs.readFileSync(path.join(dir, m.id + '.rgb'));
   const W = m.w, H = m.h;
-  const { wall, red } = wallMask(rgb, W, H);
+  const { wall, red, blue } = wallMask(rgb, W, H);
   // Карту строит RecognizeGeo по многоугольникам стен — подаём ей готовую маску
   // вместо заливки; масштаб подбирается так, чтобы пиксель был MM_PX натуры.
   Geo.fillEvenOdd = (dst) => { for (let i = 0; i < dst.length; i++) dst[i] = wall[i]; };
@@ -281,6 +299,23 @@ for (const m of meta) {
     }
   }); });
   row.ourN = ourN; row.ourM = Math.round(ourM); row.est = est; row.leadM = Math.round(leadM);
+  // Покрытие — труба петель на м² зоны против полного заполнения (1 / шаг):
+  // наше — по нашей раскладке без подводок, проектировщика — по цветным трубам
+  // его листа внутри тех же зон.
+  {
+    const inZone = new Uint8Array(W * H);
+    const pipIn = (x, y, P) => { let c = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) if ((P[a][1] > y) !== (P[b][1] > y) && x < (P[b][0] - P[a][0]) * (y - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c; return c; };
+    zones.forEach(z => {
+      const xs = z.pts.map(p => p[0]), ys = z.pts.map(p => p[1]);
+      for (let y = Math.max(0, Math.floor(Math.min(...ys))); y <= Math.min(H - 1, Math.ceil(Math.max(...ys))); y++)
+        for (let x = Math.max(0, Math.floor(Math.min(...xs))); x <= Math.min(W - 1, Math.ceil(Math.max(...xs))); x++)
+          if (pipIn(x + 0.5, y + 0.5, z.pts)) inZone[y * W + x] = 1;
+    });
+    const full = row.zoneA / (step / 1000);
+    row.designLoopM = Math.round((pipePx(red, inZone, W, H) + pipePx(blue, inZone, W, H)) / pxPerM);
+    row.covDesign = Math.round(row.designLoopM / full * 100);
+    row.covOur = Math.round((ourM - leadM) / full * 100);
+  }
   // отпечаток всей геометрии (трубы и пучок) — сверять ускорения «результат тот же»
   let hsh = 0;
   const mix = v => { hsh = (Math.imul(hsh ^ Math.round(v * 100), 2654435761) + 1) >>> 0; };
@@ -346,6 +381,10 @@ if (ok.length) {
   if (D.length) {
     console.log(`Плотность трубы (м на м² тёплого пола), ${D.length} этажей: наша медиана ${q(D.map(r => Math.round(r.ourM / r.zoneA * 10) / 10), 0.5)}, ` +
       `у проектировщика ${q(D.map(r => Math.round(r.designM / r.tpA * 10) / 10), 0.5)}; наша / их: медиана ${q(dr, 0.5)}, 25–75 % ${q(dr, 0.25)}–${q(dr, 0.75)}`);
+    const C = D.filter(r => r.realRooms && r.covDesign > 0);
+    if (C.length) console.log(`Покрытие площади петлями (${C.length} этажей из обычных комнат): у проектировщика медиана ` +
+      `${q(C.map(r => r.covDesign), 0.5)} % (25–75 % ${q(C.map(r => r.covDesign), 0.25)}–${q(C.map(r => r.covDesign), 0.75)}), ` +
+      `у нас ${q(C.map(r => r.covOur), 0.5)} % (${q(C.map(r => r.covOur), 0.25)}–${q(C.map(r => r.covOur), 0.75)})`);
     const Dr = D.filter(r => r.realRooms);
     const drr = Dr.map(r => Math.round((r.ourM / r.zoneA) / (r.designM / r.tpA) * 100) / 100);
     if (Dr.length) console.log(`  из них этажи из обычных комнат (${Dr.length}): наша / их медиана ${q(drr, 0.5)}, 25–75 % ${q(drr, 0.25)}–${q(drr, 0.75)}`);
