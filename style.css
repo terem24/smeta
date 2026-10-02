@@ -17347,6 +17347,109 @@ body.theme-yandex #admin_modal_overlay {
     #ad_peek { width: 100%; border-radius: 0; }
 }
 
+/* Общий поиск (Ctrl+K) и кнопка в шапке панели */
+.admin-search-btn {
+    position: absolute;
+    top: 18px;
+    right: 94px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px 0 9px;
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: 8px;
+    color: var(--text-sec);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 5;
+}
+.admin-search-btn:hover { color: var(--text-main); border-color: var(--text-sec); }
+.admin-search-btn kbd, .ad-search-foot kbd {
+    font: inherit;
+    font-size: 10.5px;
+    padding: 1px 5px;
+    border: 1px solid var(--ad-line);
+    border-radius: 4px;
+    color: var(--text-sec);
+    background: var(--surface);
+    margin-right: 3px;
+}
+body.theme-yandex .admin-search-btn { border-radius: 999px; }
+#ad_search {
+    position: absolute;
+    inset: 0;
+    z-index: 40;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: inherit;
+}
+.ad-search-box {
+    width: min(640px, calc(100% - 24px));
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+    overflow: hidden;
+}
+#ad_search_input {
+    height: 48px;
+    padding: 0 18px;
+    border: 0 !important;
+    border-bottom: 1px solid var(--ad-line) !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--text-main);
+    font-size: 15px;
+    outline: none;
+    box-shadow: none !important;
+}
+.ad-search-res { overflow: auto; padding: 6px; }
+.ad-search-grp {
+    padding: 10px 10px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-sec);
+}
+.ad-search-it {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.ad-search-it b { font-size: 13px; font-weight: 600; color: var(--text-main); }
+.ad-search-it span { font-size: 11.5px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-search-it.sel { background: var(--primary-light); }
+.ad-search-it.sel b { color: var(--primary); }
+.ad-search-foot {
+    display: flex;
+    gap: 16px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--ad-line);
+    font-size: 11px;
+    color: var(--text-sec);
+}
+.ad-row-link { cursor: pointer; border-radius: 6px; }
+.ad-row-link:hover { background: var(--primary-light); }
+@media screen and (max-width: 768px) {
+    .admin-search-btn span, .admin-search-btn kbd { display: none; }
+    .admin-search-btn { padding: 0 8px; right: 90px; }
+    #ad_search { padding-top: 6vh; }
+}
+
 /* Сворачиваемый блок (форма «Добавить промокод»): строка-кнопка, внутри — карточка */
 details.ad-collapse {
     background: var(--surface-light);
