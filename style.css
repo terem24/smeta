@@ -12598,6 +12598,55 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 .rec-tcheck.bad { border-color: rgba(239, 68, 68, .4); background: rgba(239, 68, 68, .07); }
 .rec-tcheck.bad .rec-tcheck-ico { background: #ef4444; }
 
+/* Разбор комплекта листов проекта (RecognizeUI.projectCardHtml): карточка в
+   цвете темы, а не зелёная плашка «сходится» — это не итог проверки, а то,
+   что ИИ взял из проекта в работу. Все цвета — переменные темы: блок сам
+   подстраивается под ночную, «Профи» и тему бренда. */
+.rec-proj {
+    margin-bottom: 14px; padding: 16px 18px; border-radius: 14px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: var(--surface, #fff);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--surface)) 0%, var(--surface) 60%);
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+}
+.rec-proj-head { display: flex; gap: 12px; align-items: center; }
+.rec-proj-ico {
+    flex: 0 0 38px; width: 38px; height: 38px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb);
+}
+.rec-proj-title { font-size: 16px; font-weight: 700; color: var(--text-main, #111827); }
+.rec-proj-sub { margin-top: 2px; font-size: 12.5px; color: var(--text-sec, #6b7280); }
+.rec-proj-sheets {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 6px 22px;
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border, #e5e7eb);
+}
+.rec-proj-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12.5px; }
+.rec-proj-row span { color: var(--text-sec, #6b7280); }
+.rec-proj-row b { color: var(--text-main, #111827); font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.rec-proj-choice { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border, #e5e7eb); }
+.rec-proj-ask { font-size: 14px; font-weight: 600; color: var(--text-main, #111827); }
+.rec-proj-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 10px; }
+.rec-proj-opt {
+    display: flex; flex-direction: column; gap: 8px; padding: 14px 15px; border-radius: 12px;
+    border: 1px solid var(--border, #e5e7eb); background: var(--surface-light, #f9fafb);
+    transition: border-color .15s;
+}
+.rec-proj-opt:hover { border-color: var(--primary, #2563eb); }
+.rec-proj-opt-head { display: flex; align-items: center; gap: 8px; font-size: 14.5px; color: var(--text-main, #111827); }
+.rec-proj-opt-ico { display: flex; color: var(--primary, #2563eb); }
+.rec-proj-time {
+    margin-left: auto; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600; white-space: nowrap;
+    background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb);
+}
+.rec-proj-opt-text { font-size: 13px; line-height: 1.45; color: var(--text-sec, #6b7280); }
+.rec-proj-opt-when { font-size: 12.5px; color: var(--text-main, #111827); }
+.rec-proj-opt-when span {
+    margin-right: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    color: var(--text-sec, #6b7280);
+}
+.rec-proj-opt .calc-dialog-btn { margin-top: auto; align-self: flex-start; }
+
 /* Эскиз котельной: слева снимок с рамками приборов, справа их карточки.
    Зелёная рамка — прочитано уверенно, янтарная — проверить. */
 .rs-wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 14px; margin-top: 10px; align-items: start; }

@@ -1226,10 +1226,11 @@ const RecognizeUI = {
         // всё, что нужно, остальное пропущено нарочно. Оранжевая рамка
         // «прочитан не полностью» тут пугала зря; зелёная плашка — та же,
         // что у итогов на экране проверки.
+        // Карточка в цветах темы (--primary), а не зелёная плашка «сходится»:
+        // это не итог проверки, а разбор проекта — что взято в работу.
         if (this._project) {
-            box.className = 'rec-tcheck ok';
-            box.innerHTML = `<div class="rec-tcheck-ico">✓</div><div><div>${esc(this._fileNoteHead || 'Комплект листов проекта')}</div>
-                <div class="rec-tcheck-sub">${esc(this._fileNote)}</div>${this.specChoiceHtml()}</div>`;
+            box.className = 'rec-proj';
+            box.innerHTML = this.projectCardHtml() + this.specChoiceHtml();
             if (this.hasSpecChoice()) { const go = document.getElementById('rec_go'); if (go) go.style.display = 'none'; }
             return;
         }
@@ -1255,32 +1256,70 @@ const RecognizeUI = {
         return !!(this._project && this._project.spec && this._project.spec.length);
     },
 
+    // Значки — линией в цвет темы: эмодзи на карточках выглядели конструктором.
+    PROJ_ICONS: {
+        ai: '<path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z"/><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8z"/>',
+        list: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+        house: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>',
+    },
+    projIcon(name) {
+        return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${this.PROJ_ICONS[name]}</svg>`;
+    },
+
+    /**
+     * Шапка разбора проекта: что ИИ взял в работу — по разделам, с номерами
+     * листов. Раньше это была одна строка мелким текстом в зелёной плашке.
+     */
+    projectCardHtml() {
+        const p = this._project || {};
+        const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const total = (p.pages || []).length;
+        const eng = p.eng || [];
+        // «л. 24, 26» — номера листов; нет листов этого раздела — строки нет.
+        const sheets = arr => arr.length ? 'л. ' + [...new Set(arr)].sort((a, b) => a - b).join(', ') : '';
+        const specPages = (p.spec || []).map(r => r.page).filter(Boolean);
+        const rows = [
+            ['Помещения и площади', sheets((p.rooms || []).map(x => x.num))],
+            ['Отопление и тёплые полы', sheets(eng.filter(e => e.kind === 'heat').map(e => e.num))],
+            ['Водоснабжение и канализация', sheets(eng.filter(e => e.kind === 'water').map(e => e.num))],
+            ['Вентиляция', sheets(eng.filter(e => e.kind === 'vent').map(e => e.num))],
+            ['Спецификация', (p.spec || []).length ? `${p.spec.length} ${this.plural(p.spec.length, 'позиция', 'позиции', 'позиций')}` +
+                (specPages.length ? ` · ${sheets(specPages)}` : '') : ''],
+            ['Примечания', (p.notes || []).length ? `${p.notes.length} ${this.plural(p.notes.length, 'блок', 'блока', 'блоков')}` : ''],
+        ].filter(r => r[1]);
+        const used = new Set([...(p.rooms || []).map(x => x.num), ...eng.map(e => e.num)]).size;
+        const sub = total ? `Листы отобраны по штампам: в работу ${used} из ${total}, остальные для сметы не нужны.` : esc(this._fileNote);
+        return `<div class="rec-proj-head">
+                <div class="rec-proj-ico">${this.projIcon('ai')}</div>
+                <div>
+                  <div class="rec-proj-title">Проект разобран</div>
+                  <div class="rec-proj-sub">${sub}</div>
+                </div>
+            </div>
+            <div class="rec-proj-sheets">${rows.map(([k, v]) => `<div class="rec-proj-row"><span>${k}</span><b>${esc(v)}</b></div>`).join('')}</div>`;
+    },
+
     specChoiceHtml() {
         if (!this.hasSpecChoice()) return '';
-        const n = this._project.spec.length;
-        const card = 'display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--border,#cbd5e1);border-radius:10px;background:var(--surface,transparent)';
-        const when = 'font-size:12.5px;color:var(--text-main,inherit)';
-        return `<div class="rec-spec-choice" style="margin-top:10px">
-            <div style="font-weight:600">В проекте есть спецификация (${n} ${this.plural(n, 'позиция', 'позиции', 'позиций')}). Выберите, как собрать смету, — одно из двух, иначе оборудование задвоится:</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:8px">
-              <div style="${card}">
-                <div style="font-weight:700">📋 Смета по проекту</div>
-                <div class="rec-tcheck-sub">Оборудование из спецификации проектировщика: по артикулу — точно, остальное — аналоги с пометкой «проверьте».</div>
-                <div style="${when}"><b>Когда:</b> заказчик хочет ровно по проекту.</div>
-                <div class="rec-tcheck-sub">≈10 секунд, листы не распознаются.</div>
-                <button class="calc-dialog-btn calc-dialog-btn-confirm" style="margin-top:auto;align-self:flex-start"
-                        title="Смета из таблицы спецификации проектировщика — без расчёта теплопотерь"
-                        onclick="RecognizeUI.startSpecReview()">Смета по проекту</button>
-              </div>
-              <div style="${card}">
-                <div style="font-weight:700">🏠 Свой расчёт по помещениям</div>
-                <div class="rec-tcheck-sub">Читаем с листов помещения, тёплый пол и приборы, считаем теплопотери и подбираем наше оборудование: котёл, радиаторы, тёплый пол.</div>
-                <div style="${when}"><b>Когда:</b> проверить проект или поставить своё оборудование.</div>
-                <div class="rec-tcheck-sub">≈1–2 минуты.</div>
-                <button class="calc-dialog-btn calc-dialog-btn-confirm" style="margin-top:auto;align-self:flex-start"
-                        title="Распознать листы проекта и посчитать по теплопотерям помещений"
-                        onclick="RecognizeUI.run()">Посчитать по помещениям</button>
-              </div>
+        const opt = (icon, title, text, when, time, btn, tip, onclick) => `
+              <div class="rec-proj-opt">
+                <div class="rec-proj-opt-head"><span class="rec-proj-opt-ico">${this.projIcon(icon)}</span><b>${title}</b><span class="rec-proj-time">${time}</span></div>
+                <div class="rec-proj-opt-text">${text}</div>
+                <div class="rec-proj-opt-when"><span>Когда</span>${when}</div>
+                <button class="calc-dialog-btn calc-dialog-btn-confirm" title="${tip}" onclick="${onclick}">${btn}</button>
+              </div>`;
+        return `<div class="rec-proj-choice">
+            <div class="rec-proj-ask">Как собрать смету? Выберите одно — иначе оборудование задвоится.</div>
+            <div class="rec-proj-opts">
+              ${opt('list', 'Смета по проекту',
+                  'Оборудование из спецификации проектировщика: по артикулу — точно, остальное — аналоги с пометкой «проверьте».',
+                  'заказчик хочет ровно по проекту', '≈10 с', 'Смета по проекту',
+                  'Смета из таблицы спецификации проектировщика — без расчёта теплопотерь', 'RecognizeUI.startSpecReview()')}
+              ${opt('house', 'Свой расчёт по помещениям',
+                  'ИИ читает с листов помещения, тёплый пол и приборы, считает теплопотери и подбирает наше оборудование: котёл, радиаторы, тёплый пол.',
+                  'проверить проект или поставить своё оборудование', '≈1–2 мин', 'Посчитать по помещениям',
+                  'Распознать листы проекта и посчитать по теплопотерям помещений', 'RecognizeUI.run()')}
             </div>
         </div>`;
     },
