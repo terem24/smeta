@@ -20483,6 +20483,7 @@ const app = {
         this.loadAdminData();
     },
     closeAdminModal: function () {
+        this.closeUserPeek();
         document.getElementById('admin_modal_overlay').style.display = 'none';
         // Данные разделов держим только пока панель открыта: следующее открытие
         // должно показать свежие, а не то, что успело устареть за день. Обнуляем
@@ -20977,11 +20978,15 @@ const app = {
         // загрузку, — список смет для неё тянем здесь. Один раз за открытие
         // панели: дальше его отмечает estimatesLoaded в adminData.
         const withEstimates = this._adminTab === 'estimates' && !(this.adminData && this.adminData.estimatesLoaded);
-        const out = { allUsersDropdown: [], allMessages: [], distributors: [], estimates: null };
+        // dropdownAvatars — есть ли в списке людей фото (avatar_url). Фото нужны только
+        // мессенджеру; с 19.08.2026 своё фото лежит в этом поле data:-строкой (~10 КБ), и
+        // список из сотни человек вместе с ними весил 125 КБ при КАЖДОМ открытии панели.
+        // Без фото — несколько КБ. Мессенджер, зайдя в раздел, просит список с фото сам.
+        const out = { allUsersDropdown: [], allMessages: [], distributors: [], estimates: null, dropdownAvatars: withMessages };
 
         try {
             const { data } = await supabaseClient.from('users')
-                .select('id, username, email, phone, region, city, avatar_url, account_type')
+                .select('id, username, email, phone, region, city, account_type' + (withMessages ? ', avatar_url' : ''))
                 .order('username', { ascending: true });
             out.allUsersDropdown = data || [];
             if (this.isScopedAdmin()) {
@@ -21108,9 +21113,16 @@ const app = {
         // Последнее событие по каждому расчёту — из него берётся отметка статуса
         const latestInvoiceEvents = {};
         try {
-            const { data: evList } = await supabaseClient.from('invoice_events')
-                .select('calc_id, event')
-                .order('created_at', { ascending: true });
+            // Только события тех расчётов, что показаны в таблице (50 последних). Раньше читалась
+            // вся история событий: база отдаёт не больше 1000 строк за запрос, так что у
+            // старых и новых расчётов статус мог браться неверно, а трафик шёл впустую.
+            const calcIds = [...new Set(recentEstimates.map(e => e.calc_data && e.calc_data.calc_id).filter(Boolean).map(String))];
+            const { data: evList } = calcIds.length
+                ? await supabaseClient.from('invoice_events')
+                    .select('calc_id, event')
+                    .in('calc_id', calcIds)
+                    .order('created_at', { ascending: true })
+                : { data: [] };
             if (evList) {
                 evList.forEach(e => {
                     // Технические отметки статусом сметы не являются (см. ADMIN_KANBAN_TECH_EVENTS)
@@ -21142,7 +21154,7 @@ const app = {
             this.adminData = Object.assign(
                 { users: [], userEstimates: [], recentEstimates: [], totalUsers: 0, totalEstimates: 0, totalEq: 0, totalWorks: 0, messageReceipts: null },
                 this.adminData || {},
-                { allUsersDropdown: lists.allUsersDropdown, distributors: lists.distributors },
+                { allUsersDropdown: lists.allUsersDropdown, distributors: lists.distributors, dropdownAvatars: lists.dropdownAvatars },
                 (this._adminTab === 'messages') ? { messages: lists.allMessages } : {},
                 lists.estimates ? Object.assign({ estimatesLoaded: true }, lists.estimates) : {},
                 homeTotals || {}
@@ -21356,10 +21368,12 @@ const app = {
                         byId[String(u.id)] = String(u.id);
                         if (u.email) byEmail[String(u.email).trim().toLowerCase()] = String(u.id);
                     });
-                    const evSel = 'calc_id, user_id, user_email, event';
+                    const evSel = 'calc_id, user_id, user_email';
                     const emails = Object.keys(byEmail);
                     const queries = [supabaseClient.from('invoice_events').select(evSel).in('user_id', userIds.map(String))];
-                    if (emails.length) queries.push(supabaseClient.from('invoice_events').select(evSel).in('user_email', emails));
+                    // По почте — только события без user_id (старые): у остальных есть и то и другое,
+                    // и без этого условия каждая такая строка приходила дважды (125 КБ вместо ~60).
+                    if (emails.length) queries.push(supabaseClient.from('invoice_events').select(evSel).in('user_email', emails).is('user_id', null));
                     let evRows = [];
                     (await Promise.all(queries)).forEach(r => { if (r && r.data) evRows = evRows.concat(r.data); });
 
@@ -21506,16 +21520,16 @@ const app = {
             // 6. Fetch Lightweight list of all users for the message composer dropdown selection
             let allUsersDropdown = [];
             try {
-                // avatar_url — ради фотографий в списке диалогов вкладки «Сообщения».
-                // Это одна короткая строка-адрес на человека (сотня байт), картинки
-                // лежат не в Supabase, а на стороне Google/Яндекса/Telegram, поэтому
-                // на расход трафика базы это практически не влияет.
+                // avatar_url здесь НЕТ (02.10.2026): раньше он был «ради фотографий в списке
+                // диалогов», но с 19.08 своё фото лежит в нём data:-строкой в ~10 КБ, и список
+                // весил 125 КБ при каждом открытии. Мессенджер получает список с фото сам,
+                // при входе в раздел (loadAdminLightData, dropdownAvatars).
                 // account_type — чтобы отличить письмо наблюдателя от письма
                 // администрации и развести их по разным перепискам (renderAdminMessages).
                 // activity_types — чтобы разложить сметы по сферам в карточке сводки,
                 // не отправляя ради этого отдельный запрос за теми же людьми.
                 let { data } = await supabaseClient.from('users')
-                    .select('id, username, email, phone, region, city, avatar_url, account_type, activity_types')
+                    .select('id, username, email, phone, region, city, account_type, activity_types')
                     .order('username', { ascending: true });
                 allUsersDropdown = data || [];
                 this.autoCleanupDatabaseUsers(allUsersDropdown);
@@ -21549,24 +21563,10 @@ const app = {
                 });
             } catch (e) { console.warn('[админка] сметы по сферам не посчитаны:', e); }
 
-            // 7. Fetch all messages (broadcasts, private and replies) for history listing
-            let allMessages = [];
-            try {
-                let { data } = await supabaseClient.from('messages')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                allMessages = data || [];
-                // Переписка — только со своими монтажниками. Объявления для
-                // всех (recipient_id = null) сюда не попадают: рассылка платформы
-                // к переписке компании отношения не имеет.
-                if (this.isScopedAdmin()) {
-                    const mine = new Set(this.managerUserIds());
-                    const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
-                    if (meId) mine.add(String(meId));
-                    allMessages = allMessages.filter(m => mine.has(String(m.sender_id)) || mine.has(String(m.recipient_id)));
-                }
-            } catch (e) { console.warn("Could not load messages history:", e); }
-
+            // 7. Переписку (messages) здесь больше не читаем (02.10.2026): список пользователей
+            // в ней не нуждается, а `select('*')` по всей таблице весил 121 КБ при каждом входе
+            // во вкладку. Вкладка «Сообщения» грузит её сама, при первом открытии
+            // (см. switchAdminTab → loadAdminLightData).
 
             // 8. Fetch distributors list
             let distributors = [];
@@ -21608,7 +21608,7 @@ const app = {
                 sharedStatusesAdmin,
                 latestInvoiceEvents,
                 allUsersDropdown,
-                messages: allMessages,
+                dropdownAvatars: false,
                 // null = «ещё не загружали». Квитанции для галочек тянутся лениво, только
                 // при открытии вкладки «Сообщения» — незачем гонять трафик тем, кто зашёл
                 // в админку посмотреть статистику
@@ -23061,6 +23061,7 @@ const app = {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         const content = document.getElementById('admin_content');
         if (!content) return;
+        this.closeUserPeek();
         this.watchAdminStyle();
 
         // Возвращаем обычную раскладку вкладки: «Сообщения» переводят #admin_content
@@ -23365,6 +23366,26 @@ const app = {
         const designRegionOn = !!(designOk && bulkRegionSel &&
             this.regionFlagFor(this._recognitionAccess.design.regions, bulkRegionSel));
 
+        // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
+        // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
+        const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, device: deviceFilter };
+        const nonDefault = {};
+        Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
+        const activeCount = Object.keys(nonDefault).length;
+        const sameF = f => { const a = Object.keys(nonDefault), b = Object.keys(f); return a.length === b.length && b.every(k => nonDefault[k] === f[k]); };
+        const views = this.loadUsersViews();
+        const segChip = (label, onclick, active, extra) => `<button class="ad-chip${active ? ' active' : ''}" onclick="${onclick}">${label}${extra || ''}</button>`;
+        const segHtml = `
+            <div class="ad-chips">
+                ${this.USERS_SEGMENTS.map(s => segChip(s.label, `app.applyUsersSegment('${s.id}')`, sameF(s.f) && !this._pendingAdminSearch)).join('')}
+                ${views.map((v, i) => segChip(escH(v.n), `app.applyUsersView(${i})`, sameF(v.f || {}) && (v.s || '') === (this._pendingAdminSearch || ''),
+                    `<span class="ad-chip-x" title="Удалить этот вид" onclick="event.stopPropagation(); app.deleteUsersView(${i})">×</span>`)).join('')}
+                <button class="ad-chip ad-chip-add" onclick="app.saveUsersView()" title="Запомнить текущие фильтры под своим именем">+ Сохранить вид</button>
+            </div>`;
+        const filtersOpen = this._usersFiltersOpen || activeCount > 0;
+        const dense = this.usersDense();
+
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
@@ -23373,10 +23394,13 @@ const app = {
                         <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                     </div>
                     
+                    <h3>Пользователи</h3>
+                    ${segHtml}
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                        <h4 style="margin: 0; white-space: nowrap;">👥 Пользователи</h4>
                         <div class="admin-filter-row admin-users-filters" style="display: flex; gap: 8px; width: auto; flex-grow: 1; justify-content: flex-end; flex-wrap: wrap;">
                             <input type="text" id="admin_search_input" placeholder="🔍 Поиск по имени..." style="width: 180px; min-width: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 12px; outline: none; height: 34px; box-sizing: border-box;" onkeyup="app.debouncedAdminSearch()">
+                            <button class="admin-btn ad-filters-btn${filtersOpen ? ' active' : ''}" onclick="app.toggleUsersFilters(this)" title="Показать или скрыть фильтры">Фильтры${activeCount ? ` <span class="ad-count ad-count-on">${activeCount}</span>` : ''}</button>
+                            <div id="admin_filters_panel" class="ad-filters${filtersOpen ? ' open' : ''}">
                             <select id="admin_filter_tariff" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${tariffFilter === 'all' ? 'selected' : ''}>Все тарифы</option>
                                 <option value="base" ${tariffFilter === 'base' ? 'selected' : ''}>Базовый</option>
@@ -23444,6 +23468,7 @@ const app = {
                                 <option value="Монтажник" ${activityFilter === 'Монтажник' ? 'selected' : ''}>Монтажник</option>
                                 <option value="Продавец" ${activityFilter === 'Продавец' ? 'selected' : ''}>Продавец</option>
                             </select>
+                            </div>
                             <select id="sort-installers" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="default" ${sortType === 'default' ? 'selected' : ''}>Сортировка</option>
                                 <option value="login_desc" ${sortType === 'login_desc' ? 'selected' : ''}>Вход: сначала новые</option>
@@ -23457,7 +23482,8 @@ const app = {
                                 <option value="tariff_asc" ${sortType === 'tariff_asc' ? 'selected' : ''}>Тариф: Базовый→Профи</option>
                                 <option value="tariff_desc" ${sortType === 'tariff_desc' ? 'selected' : ''}>Тариф: Профи→Базовый</option>
                             </select>
-                            <button class="btn-header-blue" style="background: #10B981; color: white; border-color: #10B981; font-weight: bold; padding: 0 15px; height: 34px; border-radius: 8px; font-size: 12px; flex-shrink: 0;" onclick="app.exportAdminToExcel()">📊 Excel</button>
+                            <button class="admin-btn" onclick="app.toggleUsersDense(this)" title="Плотность строк таблицы">${dense ? 'Обычная плотность' : 'Компактно'}</button>
+                            <button class="admin-btn" onclick="app.exportAdminToExcel()" title="Выгрузить список в Excel">Excel</button>
                         </div>
                     </div>
 
@@ -23500,6 +23526,7 @@ const app = {
                                 <span id="${capId}" class="admin-bulk-cap" style="color:${on ? '#10B981' : 'var(--text-sec)'};">${disabled && !isViewer ? (noRegion ? '' : 'нет доступа') : (on ? 'включено' : 'выключено')}</span>
                             </span>`;
                         return `
+                    <details class="ad-collapse ad-bulk"><summary>Массовые действия над выборкой (${totalUsers})</summary>
                     <div class="admin-bulk-row">
                         <div class="admin-bulk-line">
                             <span class="admin-bulk-label">🏢 Массово назначить дистрибьютора отфильтрованным (${totalUsers}):</span>
@@ -23545,13 +23572,14 @@ const app = {
                             </div>
                             ${designOk ? '' : `<span style="font-size:10.5px; color:#D97706;">${designOffHint}</span>`}
                         </div>
-                    </div>`;
+                    </div>
+                    </details>`;
                     })()}
 
                     <!-- Ширины заданы явно и таблица фиксированной раскладки:
                          при авторазметке колонки прыгали от строки к строке,
                          а длинные названия дистрибьюторов рвали выравнивание. -->
-                    <table class="inv-table" style="margin-bottom: 30px; table-layout: fixed; width: 100%; min-width: 1295px;">
+                    <table class="inv-table ad-sticky${dense ? ' ad-dense' : ''}" style="margin-bottom: 30px; table-layout: fixed; width: 100%; min-width: 1295px;">
                         <thead><tr>
                             <th style="width:30px;">#</th>
                             <th style="width:280px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('name')" title="Сортировать по имени">Имя / Контакты${sortArrow('name')}</th>
@@ -23617,7 +23645,7 @@ const app = {
             // Доступ приостановлен за долгое отсутствие. Отдельно от блокировки:
             // тут никто ничего не нарушал, и снимается это другой кнопкой.
             if (u.frozen_at) {
-                const delOn = new Date(new Date(u.frozen_at).getTime() + 10 * 864e5);
+                const delOn = new Date(new Date(u.frozen_at).getTime() + app.inactivityDays().delete * 864e5);
                 badge += `<br><span title="Приостановлен ${new Date(u.frozen_at).toLocaleDateString('ru-RU')} за долгое отсутствие. Удаление ${delOn.toLocaleDateString('ru-RU')}, если не вернуть доступ." style="color:#fff; background:#0EA5E9; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px; cursor:help;">🧊 ЗАМОРОЖЕН</span>`;
             }
             let name = this.getAdminUserDisplayName(u);
@@ -23721,7 +23749,7 @@ const app = {
             const sess = this.sessionSummary(u);
             const sessionLine = `<span title="${sess.title}" style="color:${sess.color};">${sess.text}</span>`;
 
-            h += `<tr class="active-row admin-list-row" data-search="${searchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.viewAdminUser('${u.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
+            h += `<tr class="active-row admin-list-row" data-search="${searchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.openUserPeek('${u.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
@@ -23979,7 +24007,8 @@ const app = {
         // панели. Что уже загружено — не перезапрашиваем: «Пользователей» отмечает
         // сам набор users, переписку — массив messages.
         const needHeavy = this.adminTabNeedsHeavyData(tab) && !(this.adminData && Array.isArray(this.adminData.users) && this.adminData.users.length);
-        const needMessages = (tab === 'messages') && !(this.adminData && Array.isArray(this.adminData.messages));
+        // Мессенджеру нужен список людей с фото: если он загружен без них — берём заново
+        const needMessages = (tab === 'messages') && !(this.adminData && Array.isArray(this.adminData.messages) && this.adminData.dropdownAvatars);
         const needEstimates = (tab === 'estimates') && !(this.adminData && this.adminData.estimatesLoaded);
         const needLists = !(this.adminData && Array.isArray(this.adminData.distributors));
         if (needHeavy || needMessages || needEstimates || needLists) {
@@ -31491,9 +31520,14 @@ const app = {
         // саму строку вкладок — после второй перерисовки из админки было не выйти.
         // На телефоне вместо ряда вкладок стоит строка возврата в меню разделов —
         // сохранять надо её, иначе из мессенджера некуда выйти.
-        const nav = document.getElementById('admin_nav_tabs') || content.querySelector('.admin-mob-bar');
+        // Навигация двухуровневая (см. ADMIN_GROUPS): ряд групп и ряд вкладок группы. У раздела
+        // «Сообщения» вкладка одна, второго ряда нет, и сохранять надо именно ряд групп —
+        // раньше уцелевал только #admin_nav_tabs, и из мессенджера было не выйти.
+        const navEls = ['admin_nav_groups', 'admin_nav_tabs'].map(id => document.getElementById(id)).filter(Boolean);
+        const mobBar = content.querySelector('.admin-mob-bar');
+        if (mobBar) navEls.push(mobBar);
         content.innerHTML = '';
-        if (nav) content.appendChild(nav);
+        navEls.forEach(n => content.appendChild(n));
 
         // Мессенджер тянется на всю оставшуюся высоту: делаем вкладку колонкой,
         // прокрутка остаётся внутри самого чата, а не у всей вкладки.
@@ -33755,6 +33789,141 @@ const app = {
         link.click();
         document.body.removeChild(link);
     },
+    // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', device: 'all' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', device: 'admin_filter_device' },
+    USERS_SEGMENTS: [
+        { id: 'all', label: 'Все', f: {} },
+        { id: 'pro', label: 'Профи', f: { tariff: 'pro' } },
+        { id: 'base', label: 'Базовые', f: { tariff: 'base' } },
+        { id: 'expired', label: 'Срок истёк', f: { expiry: 'expired' } },
+        { id: 'nodist', label: 'Без дистрибьютора', f: { dist: 'none' } },
+        { id: 'idle', label: 'Ходят, но не считают', f: { idle: 'yes' } },
+        { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } }
+    ],
+
+    // Выставить фильтры списка (всё, чего нет в f, — по умолчанию) и перечитать список
+    applyUsersFilters: function (f, search) {
+        Object.keys(this.USERS_FILTER_IDS).forEach(k => {
+            const el = document.getElementById(this.USERS_FILTER_IDS[k]);
+            if (el) el.value = (f && f[k] !== undefined) ? f[k] : this.USERS_FILTER_DEFAULTS[k];
+        });
+        const inp = document.getElementById('admin_search_input');
+        if (inp) inp.value = search || '';
+        this._pendingAdminSearch = search || '';
+        this.loadAdminData(0);
+    },
+    applyUsersSegment: function (id) {
+        const s = this.USERS_SEGMENTS.find(x => x.id === id);
+        if (s) this.applyUsersFilters(s.f, '');
+    },
+
+    // Свои виды лежат в браузере администратора (localStorage): у каждого свои наборы
+    loadUsersViews: function () {
+        try { const v = JSON.parse(localStorage.getItem('admin_users_views_v1') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    },
+    saveUsersViews: function (v) {
+        try { localStorage.setItem('admin_users_views_v1', JSON.stringify(v)); } catch (e) { }
+    },
+    saveUsersView: function () {
+        const f = {};
+        Object.keys(this.USERS_FILTER_IDS).forEach(k => {
+            const el = document.getElementById(this.USERS_FILTER_IDS[k]);
+            if (el && el.value !== this.USERS_FILTER_DEFAULTS[k]) f[k] = el.value;
+        });
+        const s = (document.getElementById('admin_search_input') || {}).value || '';
+        if (!Object.keys(f).length && !s) { app.alert('Сначала выберите фильтры или введите поиск — их и запомню.'); return; }
+        const n = window.prompt('Как назвать этот вид списка?');
+        if (!n || !n.trim()) return;
+        const v = this.loadUsersViews();
+        v.push({ n: n.trim().slice(0, 30), f, s });
+        this.saveUsersViews(v);
+        this.renderAdminMain();
+    },
+    applyUsersView: function (i) {
+        const v = this.loadUsersViews()[i];
+        if (v) this.applyUsersFilters(v.f || {}, v.s || '');
+    },
+    deleteUsersView: function (i) {
+        const v = this.loadUsersViews();
+        v.splice(i, 1);
+        this.saveUsersViews(v);
+        this.renderAdminMain();
+    },
+    toggleUsersFilters: function (btn) {
+        const p = document.getElementById('admin_filters_panel');
+        if (!p) return;
+        p.classList.toggle('open');
+        this._usersFiltersOpen = p.classList.contains('open');
+        if (btn) btn.classList.toggle('active', this._usersFiltersOpen);
+    },
+    usersDense: function () {
+        try { return localStorage.getItem('admin_users_dense') === '1'; } catch (e) { return false; }
+    },
+    toggleUsersDense: function (btn) {
+        const on = !this.usersDense();
+        try { localStorage.setItem('admin_users_dense', on ? '1' : '0'); } catch (e) { }
+        const t = document.querySelector('#admin_content table.ad-sticky');
+        if (t) t.classList.toggle('ad-dense', on);
+        if (btn) btn.textContent = on ? 'Обычная плотность' : 'Компактно';
+    },
+
+    // Быстрый просмотр: боковая панель с главным о человеке, не выходя из списка. Полная
+    // карточка (viewAdminUser) занимает весь экран панели, и после неё надо заново искать
+    // место в списке, поэтому клик по строке открывает эту панель, а полная — по кнопке.
+    openUserPeek: function (userId) {
+        const u = (this.adminData.users || []).find(x => String(x.id) === String(userId));
+        if (!u) { this.viewAdminUser(userId); return; }
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const name = [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') || u.username || u.email || 'Без имени';
+        const ests = (this.adminData.userEstimates || []).filter(e => String(e.user_id) === String(userId));
+        const fmtD = d => d ? new Date(d).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        const money = v => Number(v || 0).toLocaleString('ru-RU') + ' ₽';
+        const roleName = { admin: 'Администратор', viewer: 'Наблюдатель', manager: 'Менеджер', pro: 'Профи' }[u.account_type] || 'Базовый';
+        const ends = u.demo_ends_at && new Date(u.demo_ends_at).getFullYear() < 2090 ? ' до ' + new Date(u.demo_ends_at).toLocaleDateString('ru-RU') : (u.demo_ends_at ? ' навсегда' : '');
+        const eqSum = ests.reduce((a, e) => a + (Number(e.eq_sum) || 0), 0);
+        const wkSum = ests.reduce((a, e) => a + (Number(e.works_sum) || 0), 0);
+        const dist = (this.adminData.distributors || []).find(d => String(d.id) === String(u.distributor_id));
+        const rowKV = (k, v) => v ? `<div class="ad-kv"><span>${k}</span><b>${v}</b></div>` : '';
+        const mins = u.sess_sec ? Math.round(u.sess_sec / 60) : 0;
+        const jq = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+        this.closeUserPeek();
+        const host = document.querySelector('#admin_modal_overlay .auth-modal-content');
+        if (!host) { this.viewAdminUser(userId); return; }
+        const el = document.createElement('aside');
+        el.id = 'ad_peek';
+        el.innerHTML = `
+            <div class="ad-peek-h">
+                <div><div class="ad-peek-name">${esc(name)}</div><div class="ad-peek-sub">${esc(roleName)}${esc(ends)}${u.is_blocked ? ' · заблокирован' : ''}</div></div>
+                <button class="ad-peek-x" onclick="app.closeUserPeek()" title="Закрыть (Esc)">×</button>
+            </div>
+            <div class="ad-peek-b">
+                <div class="ad-peek-sec">Контакты</div>
+                ${rowKV('Телефон', esc(u.phone))}${rowKV('Почта', esc(u.email))}${rowKV('Регион', esc([u.region, u.city].filter(Boolean).join(', ')))}
+                ${rowKV('Дистрибьютор', esc(dist ? dist.company_name : ''))}
+                <div class="ad-peek-sec">Работа в калькуляторе</div>
+                ${rowKV('Смет сохранено', String(ests.length))}${rowKV('Оборудование', ests.length ? money(eqSum) : '')}${rowKV('Монтаж', wkSum ? money(wkSum) : '')}
+                ${rowKV('Визитов', u.sess_visits ? String(u.sess_visits) : '')}${rowKV('Время на сайте', mins ? mins + ' мин' : '')}
+                <div class="ad-peek-sec">История</div>
+                ${rowKV('Регистрация', fmtD(u.created_at))}${rowKV('Последний вход', fmtD(u.last_visited))}${rowKV('Устройство', esc(u.last_device))}
+            </div>
+            <div class="ad-peek-f">
+                <button class="admin-btn ad-peek-main" onclick="app.closeUserPeek(); app.viewAdminUser('${jq(u.id)}')">Полная карточка</button>
+                <button class="admin-btn" onclick="app.closeUserPeek(); app.adminMessageUser('${jq(u.id)}', '${jq(name)}')">Написать</button>
+                <button class="admin-btn" onclick="app.closeUserPeek(); app.adminViewUserEstimates('${jq(name)}')">Сметы</button>
+            </div>`;
+        host.appendChild(el);
+        if (!this._peekEscBound) {
+            this._peekEscBound = true;
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('ad_peek')) { this.closeUserPeek(); e.stopPropagation(); } }, true);
+        }
+    },
+    closeUserPeek: function () {
+        const el = document.getElementById('ad_peek');
+        if (el) el.remove();
+    },
+
     viewAdminUser: async function (userId) {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         let user = this.adminData.users.find(u => String(u.id) === String(userId));
@@ -33896,8 +34065,8 @@ const app = {
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
                             ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
-                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 25 дней.
-                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 10 * 864e5).toLocaleDateString('ru-RU')}.
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше ${app.inactivityDays().freeze} дней.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + app.inactivityDays().delete * 864e5).toLocaleDateString('ru-RU')}.
                                 <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
                             </div>` : ''}
                             ${(() => {
@@ -34236,11 +34405,17 @@ const app = {
         if (this._adminInstallerExtras && !force) return this._adminInstallerExtras;
         // Свои расценки и своё оборудование — это две вкладки над одной выборкой,
         // поэтому урезаем её здесь, в одном месте на обе.
+        //
+        // Читаем четыре нужных поля настроек, а не весь installer_settings: в нём лежит
+        // ещё блок `company` (логотип и реквизиты компании, data:-строки) — на 02.10.2026
+        // 266 КБ из 362 КБ всех настроек, и обе вкладки их не показывают. 446 → ~100 КБ.
         const { data, error } = await this.scopeAdminQuery(supabaseClient.from('users')
-            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings'), 'id');
+            .select('id, username, first_name, last_name, middle_name, email, region, account_type, ' +
+                'wp:installer_settings->workPrices, eqlib:installer_settings->equipmentLibrary, ' +
+                'swlog:installer_settings->swapLog, dllog:installer_settings->deletionLog'), 'id');
         if (error) throw error;
         const rows = (data || []).map(u => {
-            const s = u.installer_settings || {};
+            const s = { workPrices: u.wp, equipmentLibrary: u.eqlib, swapLog: u.swlog, deletionLog: u.dllog };
             return {
                 id: u.id,
                 name: this.getAdminUserDisplayName(u),
@@ -34650,11 +34825,57 @@ const app = {
     // кого в итоге удалили. Журнал лежит в закрытых таблицах, поэтому читаем не
     // напрямую, а функцией inactivity_report: она сама проверяет, что зовёт
     // администратор (см. миграцию 20260910_inactivity_report.sql).
+    // Сроки лежат в app_settings (inactivity_days) и читаются ночным проходом в базе
+    // (20261002_inactivity_days_setting.sql). Нет записи или миграция не выполнена —
+    // прежние 20 / 25 / 10. Значение кэшируется; первое обращение подтягивает свежее.
+    inactivityDays: function () {
+        const def = { warn: 20, freeze: 25, delete: 10 };
+        if (!this._inactCfg) {
+            this._inactCfg = def;
+            if (!this._inactCfgLoading) this.loadInactivityDays();
+        }
+        return this._inactCfg;
+    },
+
+    loadInactivityDays: async function () {
+        this._inactCfgLoading = true;
+        try {
+            const { data } = await supabaseClient.from('app_settings')
+                .select('value').eq('key', 'inactivity_days').maybeSingle();
+            const v = (data && data.value) || {};
+            const n = (x, d) => { x = parseInt(x, 10); return x >= 1 && x <= 365 ? x : d; };
+            const warn = n(v.warn, 20);
+            this._inactCfg = { warn, freeze: Math.max(n(v.freeze, 25), warn), delete: n(v.delete, 10) };
+        } catch (e) { /* остаются значения по умолчанию */ }
+    },
+
+    saveInactivityDays: async function () {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять сроки запрещено.'); return; }
+        const get = id => parseInt((document.getElementById(id) || {}).value, 10);
+        const warn = get('inact_warn'), freeze = get('inact_freeze'), del = get('inact_delete');
+        const ok = x => x >= 1 && x <= 365;
+        if (!ok(warn) || !ok(freeze) || !ok(del)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
+        if (freeze < warn) { app.alert('Заморозка не может быть раньше письма: поставьте её на тот же день или позже.'); return; }
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const value = { warn, freeze, delete: del };
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'inactivity_days', value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this._inactCfg = value;
+            this.renderAdminInactiveBody();
+            app.alert('Сроки сохранены. Ночная проверка будет работать по новым числам. Если письма и заморозки в базе не меняются — выполните миграцию 20261002_inactivity_days_setting.sql.');
+        } catch (e) {
+            app.alert('Не удалось сохранить сроки: ' + (e.message || e));
+        }
+    },
+
     renderAdminInactive: async function () {
         const content = document.getElementById('admin_content');
         if (!content) return;
         content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
         const root = () => document.getElementById('admin_inactive_root');
+        await this.loadInactivityDays();
         try {
             const { data, error } = await supabaseClient.rpc('inactivity_report');
             if (error) throw error;
@@ -34687,6 +34908,7 @@ const app = {
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
         const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
+        const cfg = this.inactivityDays();
 
         const returned = rows.filter(r => r.returned_at).length;
         const frozen = rows.filter(r => r.stage === 'frozen').length;
@@ -34701,10 +34923,16 @@ const app = {
             <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
                 <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
             </div>
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:16px; line-height:1.5;">
-                Письмо уходит после 20 дней молчания, доступ приостанавливается на 25-й день,
-                учётка удаляется через 10 дней заморозки. Пока действует Профи, счётчик стоит
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; line-height:1.5;">
+                Письмо уходит после ${cfg.warn} дней молчания, доступ приостанавливается на ${cfg.freeze}-й день,
+                учётка удаляется через ${cfg.delete} дней заморозки. Пока действует Профи, счётчик стоит
                 и считается заново от дня окончания тарифа. Проверка идёт каждую ночь.
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; font-size:12px; color:var(--text-main);">
+                <label>Письмо, дней молчания <input type="number" id="inact_warn" min="1" max="365" value="${cfg.warn}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <label>Заморозка, на день <input type="number" id="inact_freeze" min="1" max="365" value="${cfg.freeze}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <label>Удаление, дней после заморозки <input type="number" id="inact_delete" min="1" max="365" value="${cfg.delete}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveInactivityDays()">Сохранить сроки</button>
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
                 <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
@@ -34763,7 +34991,7 @@ const app = {
                 outcome = 'Вернулся ' + dt(r.returned_at);
                 color = '#10B981';
             } else if (r.stage === 'frozen') {
-                const delOn = new Date(new Date(r.frozen_at).getTime() + 10 * 864e5);
+                const delOn = new Date(new Date(r.frozen_at).getTime() + app.inactivityDays().delete * 864e5);
                 outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
                 color = '#0EA5E9';
             } else {
@@ -37697,7 +37925,7 @@ const app = {
                 this.saveState();
                 this.syncUI();
                 this.render();
-                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на dima24ba@gmail.com, и мы вернём доступ в тот же день.');
+                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, и мы вернём доступ в тот же день.');
                 return;
             }
             if (uRow) {

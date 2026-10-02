@@ -17268,6 +17268,85 @@ body.theme-yandex #admin_modal_overlay {
 .ad-map-link span { font-size: 11px; color: var(--text-sec); }
 .ad-map-link:hover { background: var(--primary-light); }
 .ad-map-link:hover b { color: var(--primary); }
+/* Список пользователей: срезы-чипы, панель фильтров, плотность, быстрый просмотр */
+.ad-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.ad-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--ad-line);
+    background: var(--surface-light);
+    color: var(--text-sec);
+    font: inherit;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.ad-chip:hover { color: var(--text-main); border-color: var(--text-sec); }
+.ad-chip.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+.ad-chip-add { border-style: dashed; background: transparent; }
+.ad-chip-x { font-size: 15px; line-height: 1; opacity: 0.6; }
+.ad-chip-x:hover { opacity: 1; color: #EF4444; }
+#admin_content .admin-users-filters { justify-content: flex-start !important; align-items: center; }
+#admin_content #admin_search_input { flex: 1 1 240px; width: auto !important; max-width: 420px; }
+.ad-filters {
+    display: none;
+    order: 10;
+    flex: 0 0 100%;
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+    gap: 8px;
+    padding: 12px;
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+}
+.ad-filters.open { display: grid; }
+.ad-filters select { width: 100%; max-width: none !important; }
+.ad-filters-btn.active { border-color: var(--primary); color: var(--primary); }
+.ad-filters-btn .ad-count { margin-left: 2px; }
+#admin_content table.ad-sticky thead th {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--surface);
+}
+#admin_content table.ad-dense td { padding-top: 3px !important; padding-bottom: 3px !important; font-size: 11.5px; }
+#admin_content table.ad-dense td * { line-height: 1.25; }
+#ad_peek {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(380px, 100%);
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border-left: 1px solid var(--ad-line);
+    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.25);
+    border-radius: 0 12px 12px 0;
+}
+.ad-peek-h { display: flex; justify-content: space-between; gap: 10px; padding: 18px 18px 12px; border-bottom: 1px solid var(--ad-line); }
+.ad-peek-name { font-size: 16px; font-weight: 700; color: var(--text-main); }
+.ad-peek-sub { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
+.ad-peek-x { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--ad-line); background: var(--surface-light); color: var(--text-sec); font-size: 18px; line-height: 1; cursor: pointer; }
+.ad-peek-x:hover { color: var(--text-main); border-color: var(--text-sec); }
+.ad-peek-b { flex: 1; overflow: auto; padding: 4px 18px 16px; }
+.ad-peek-sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-sec); margin: 16px 0 6px; }
+.ad-kv { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-bottom: 1px solid var(--ad-line); font-size: 13px; }
+.ad-kv span { color: var(--text-sec); flex: 0 0 auto; }
+.ad-kv b { font-weight: 600; color: var(--text-main); text-align: right; word-break: break-word; }
+.ad-peek-f { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 18px; border-top: 1px solid var(--ad-line); }
+.ad-peek-main { background: var(--primary) !important; color: #fff !important; border-color: var(--primary) !important; }
+@media screen and (max-width: 768px) {
+    .ad-filters { grid-template-columns: 1fr 1fr; }
+    #ad_peek { width: 100%; border-radius: 0; }
+}
+
 /* Сворачиваемый блок (форма «Добавить промокод»): строка-кнопка, внутри — карточка */
 details.ad-collapse {
     background: var(--surface-light);
