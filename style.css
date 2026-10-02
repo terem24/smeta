@@ -14961,13 +14961,15 @@ body.dark-mode #hyd_card .hyd-card__p {
         filter: none;
     }
 
-    body.theme-shop .footer-btns .btn-primary-action {
+    body.theme-shop .footer-btns .btn-primary-action,
+    body.theme-shop .quick-start-cta {
         background-color: var(--primary);
         border-color: var(--primary);
         color: #fff;
     }
 
-    body.theme-shop .footer-btns .btn-primary-action:hover {
+    body.theme-shop .footer-btns .btn-primary-action:hover,
+    body.theme-shop .quick-start-cta:hover {
         background-color: var(--shop-blue-dark);
         border-color: var(--shop-blue-dark);
         filter: none;
@@ -15606,6 +15608,7 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-stout.dark-mode .mode-tab.active,
     body.brand-stout.dark-mode input:checked + .slider,
     body.brand-stout.dark-mode .footer-btns .btn-primary-action,
+    body.brand-stout.dark-mode .quick-start-cta,
     body.brand-stout.dark-mode .lk-rail-item.active,
     body.brand-stout.dark-mode .btn-ctrl.is-on,
     body.brand-stout.dark-mode .btn-ctrl.is-on:hover,
@@ -15694,6 +15697,7 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-rommer.dark-mode .mode-tab.active,
     body.brand-rommer.dark-mode input:checked + .slider,
     body.brand-rommer.dark-mode .footer-btns .btn-primary-action,
+    body.brand-rommer.dark-mode .quick-start-cta,
     body.brand-rommer.dark-mode .lk-rail-item.active,
     body.brand-rommer.dark-mode .btn-ctrl.is-on,
     body.brand-rommer.dark-mode .btn-ctrl.is-on:hover,
@@ -15790,7 +15794,8 @@ body.dark-mode #hyd_card .hyd-card__p {
         background: var(--bt-fill);
     }
 
-    body.theme-brand .footer-btns .btn-primary-action:hover {
+    body.theme-brand .footer-btns .btn-primary-action:hover,
+    body.theme-brand .quick-start-cta:hover {
         background-color: var(--bt-primary-hover);
         border-color: var(--bt-primary-hover);
         filter: none;
@@ -16374,6 +16379,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
 
     /* ---------- Кнопки — пилюли ---------- */
     body.theme-yandex .footer-btns .btn-primary-action,
+    body.theme-yandex .quick-start-cta,
     body.theme-yandex .footer-btns .btn-secondary-action,
     body.theme-yandex .custom-modal-btn,
     body.theme-yandex .calc-dialog-btn-confirm,
@@ -16390,7 +16396,8 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
         border-radius: 999px;
     }
 
-    body.theme-yandex .footer-btns .btn-primary-action {
+    body.theme-yandex .footer-btns .btn-primary-action,
+    body.theme-yandex .quick-start-cta {
         color: var(--ya-on-primary);
     }
 
@@ -16403,7 +16410,8 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
         color: var(--ya-on-primary) !important;
     }
 
-    body.theme-yandex .footer-btns .btn-primary-action:hover {
+    body.theme-yandex .footer-btns .btn-primary-action:hover,
+    body.theme-yandex .quick-start-cta:hover {
         filter: none;
         opacity: 0.85;
     }
@@ -16707,6 +16715,7 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     body.theme-yandex.dark-mode .tab.multi-active,
     body.theme-yandex.dark-mode .mode-tab.active,
     body.theme-yandex.dark-mode .footer-btns .btn-primary-action,
+    body.theme-yandex.dark-mode .quick-start-cta,
     body.theme-yandex.dark-mode .custom-modal-btn,
     body.theme-yandex.dark-mode .calc-dialog-btn-confirm,
     body.theme-yandex.dark-mode .btn-ctrl.is-on,
@@ -17364,6 +17373,62 @@ body.theme-yandex #admin_modal_overlay {
     #ad_peek { width: 100%; border-radius: 0; }
 }
 
+/* Заглушка «Загрузка…» в панели: логотип-огонёк, как при загрузке калькулятора
+   (#stout_preloader в index.html), с тем же медленным «дыханием» и тёплым свечением */
+.ad-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 56px 0;
+    text-align: center;
+    color: var(--text-sec);
+    font-size: 13px;
+    font-weight: 600;
+}
+.ad-loader-logo {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.ad-loader-logo::before {
+    content: "";
+    position: absolute;
+    inset: -16px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(249, 115, 22, 0.5) 0%, rgba(249, 115, 22, 0) 70%);
+    filter: blur(3px);
+    animation: ad-loader-glow 4.8s ease-in-out infinite;
+}
+.ad-loader-logo img {
+    position: relative;
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+    animation: ad-loader-breathe 4.8s ease-in-out infinite;
+}
+/* Ключевые кадры свои: у загрузчика калькулятора они лежат внутри #stout_preloader и уходят
+   вместе с ним, когда его убирают со страницы */
+@keyframes ad-loader-breathe {
+    0% { transform: scale(1); }
+    42% { transform: scale(1.05); }
+    58% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+@keyframes ad-loader-glow {
+    0% { opacity: 0.55; transform: scale(0.92); }
+    42% { opacity: 0.9; transform: scale(1.08); }
+    58% { opacity: 0.9; transform: scale(1.08); }
+    100% { opacity: 0.55; transform: scale(0.92); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ad-loader-logo::before, .ad-loader-logo img { animation: none; }
+}
+
 /* Полоса разделов дашборда: прилипает к верху прокручиваемой панели */
 .ad-sticky-nav {
     position: sticky;
@@ -17912,3 +17977,13 @@ body.dark-mode #admin_content .btn-icon {
 .quick-start-cta:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 40%, transparent); }
 .quick-start-cta:active { transform: translateY(0); }
 .quick-start-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 50%, transparent); outline-offset: 2px; }
+/* Заливку и цвет текста по темам берут общие правила главной кнопки («Ссылка для
+   клиента», .footer-btns .btn-primary-action) — «Быстрый старт» вписан в те же списки
+   селекторов. В темах, где --primary светлый (Яндекс, тёмные бренды), свечение из
+   него вышло бы белым, поэтому там тень выключена. */
+body.theme-yandex .quick-start-cta,
+body.theme-yandex .quick-start-cta:hover,
+body.brand-stout.dark-mode .quick-start-cta,
+body.brand-stout.dark-mode .quick-start-cta:hover,
+body.brand-rommer.dark-mode .quick-start-cta,
+body.brand-rommer.dark-mode .quick-start-cta:hover { box-shadow: none; }
