@@ -8801,8 +8801,10 @@ const app = {
                 <h3 style="margin: 0 0 16px; color: var(--text-main);">🏢 Дистрибьюторы</h3>
                 ${regModeHtml}
 
-                <div style="background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 14px; font-size: 14px; color: var(--text-main);" id="dist_form_title">➕ Добавить промокод</h4>
+                <!-- Форма свёрнута: раньше открывалась на 12 полей раньше самого списка
+                     компаний. Раскрывается кнопкой «Добавить промокод» и при «Изменить». -->
+                <details id="dist_form_details" class="ad-collapse">
+                    <summary id="dist_form_title">Добавить промокод</summary>
                     <input type="hidden" id="dist_edit_id">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                         <div>
@@ -8875,7 +8877,7 @@ const app = {
                         <button class="auth-btn-base btn-email-submit" style="height: 36px; padding: 0 20px; font-size: 13px; ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.saveDistributor()">💾 Сохранить</button>
                         <button class="auth-btn-base" style="height: 36px; padding: 0 16px; font-size: 13px; background: var(--surface-light); color: var(--text-sec);" onclick="app.resetDistributorForm()">✕ Отмена</button>
                     </div>
-                </div>
+                </details>
 
                 <table class="inv-table">
                     <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;" title="Монтажников привязано / лимит приглашений">Приглашено</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
@@ -10783,8 +10785,10 @@ const app = {
         if (document.getElementById('dist_own_prices')) document.getElementById('dist_own_prices').value = dist.use_own_prices ? '1' : '0';
         if (document.getElementById('dist_price_list')) document.getElementById('dist_price_list').value = dist.price_list_key || '';
         const titleEl = document.getElementById('dist_form_title');
-        if (titleEl) titleEl.textContent = '✏️ Редактировать промокод';
-        // Прокручиваем к форме
+        if (titleEl) titleEl.textContent = 'Редактировать промокод';
+        // Форма свёрнута по умолчанию — раскрываем и прокручиваем к ней
+        const det = document.getElementById('dist_form_details');
+        if (det) det.open = true;
         document.getElementById('dist_form_title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
@@ -10805,7 +10809,7 @@ const app = {
         if (document.getElementById('dist_own_prices')) document.getElementById('dist_own_prices').value = '0';
         if (document.getElementById('dist_price_list')) document.getElementById('dist_price_list').value = '';
         const titleEl = document.getElementById('dist_form_title');
-        if (titleEl) titleEl.textContent = '➕ Добавить промокод';
+        if (titleEl) titleEl.textContent = 'Добавить промокод';
     },
 
     deleteDistributor: async function (id) {
@@ -21639,9 +21643,9 @@ const app = {
         { id: 'subscription', icon: '💳', label: 'Оплата подписки', hint: 'Цены и ссылки на оплату, QR, акции, регионы, кто запрашивал и кто оплатил' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'branches', icon: '🏬', label: 'Филиалы', hint: 'Схема компании: ссылки, монтажники, работа менеджеров' },
-        { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
-        { id: 'equipment', icon: '🧰', label: 'Своё оборудование', hint: 'Добавленное, удалённое, замены' },
-        { id: 'successors', icon: '🔁', label: 'Замены позиций', hint: 'Снятые с поставки и чем заменить' },
+        { id: 'pricelist', icon: '💵', label: 'Прайс-лист', sub: 'Цены работ', hint: 'Свои расценки монтажников' },
+        { id: 'equipment', icon: '🧰', label: 'Своё оборудование', sub: 'Оборудование', hint: 'Добавленное, удалённое, замены' },
+        { id: 'successors', icon: '🔁', label: 'Замены позиций', sub: 'Замены', hint: 'Снятые с поставки и чем заменить' },
         { id: 'recognition', icon: '🔍', label: 'Распознавание', hint: 'Архив смет и месячные лимиты' },
         { id: 'plans', icon: '📐', label: 'Планы этажей', hint: 'Подложки планов на сервере' },
         { id: 'projects', icon: '📁', label: 'Проекты', hint: 'Выпущенные комплекты листов' },
@@ -21703,7 +21707,12 @@ const app = {
     // Группы с теми вкладками, которые роль видит; пустые группы выпадают.
     // Порядок вкладок внутри группы — как в ряду (его можно менять перетаскиванием).
     adminVisibleGroups: function (defs) {
-        const out = this.ADMIN_GROUPS.map(g => ({ id: g.id, label: g.label, icon: g.icon, defs: defs.filter(t => g.tabs.indexOf(t.id) >= 0) }));
+        // Порядок внутри группы задан списком tabs: перетаскивание вкладок отключено,
+        // потому что общий плоский порядок больше не виден — вкладки показываются по группам
+        const out = this.ADMIN_GROUPS.map(g => ({
+            id: g.id, label: g.label, icon: g.icon,
+            defs: defs.filter(t => g.tabs.indexOf(t.id) >= 0).sort((a, b) => g.tabs.indexOf(a.id) - g.tabs.indexOf(b.id))
+        }));
         // Раздел, которого нет в группах (добавили позже), не должен пропасть из панели
         const rest = defs.filter(t => this.adminGroupOf(t.id) === 'other');
         if (rest.length) out.push({ id: 'other', label: 'Прочее', icon: 'dashboard', defs: rest });
@@ -23122,8 +23131,9 @@ const app = {
         // тогда «Своё оборудование» режется многоточием, а короткие держат лишнее.
         // Администратор может перетащить вкладку — порядок общий для всех (bindAdminTabDrag).
         // touch-action: none — иначе палец на планшете вместо перетаскивания листал бы панель.
-        const canReorder = this.canReorderAdminTabs();
-        this.bindAdminTabDrag(content);
+        // Перетаскивание вкладок отключено с введением групп (см. ADMIN_GROUPS): порядок
+        // внутри группы задан в коде, а сохранённый плоский порядок больше ничего не меняет.
+        const canReorder = false;
         // Два уровня: группы (Клиенты, Продажи, Каталог…) и вкладки текущей группы.
         // У группы из одной вкладки (Сообщения, Контент) второго ряда нет.
         const groups = this.adminVisibleGroups(ADMIN_TAB_DEFS);
@@ -23137,7 +23147,7 @@ const app = {
             ${curGroup.defs.length > 1 ? `
             <div id="admin_nav_tabs">
                 ${curGroup.defs.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.hint || t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none;' : ''}" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.label}</span></button>
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.hint || t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none;' : ''}" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.sub || t.label}</span></button>
                 `).join('')}
             </div>` : ''}
         `;
@@ -24100,7 +24110,8 @@ const app = {
                 ${g.defs.filter(t => t.id !== 'home').map(t => `<button class="ad-map-link" onclick="app.switchAdminTab('${t.id}')"><b>${t.label}</b><span>${esc(t.hint || '')}</span></button>`).join('')}
             </div>`).join('');
 
-        const today = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+        const todayRaw = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+        const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
         box.innerHTML = `
             <div class="ad-page-h">
                 <div><h3>Центр внимания</h3><div class="ad-sub">${esc(today)} · что требует действия сегодня</div></div>

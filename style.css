@@ -17183,7 +17183,7 @@ body.theme-yandex #admin_modal_overlay {
     margin-bottom: 16px;
 }
 .ad-page-h h3 { margin: 0 !important; }
-.ad-sub { color: var(--text-sec); font-size: 12px; margin-top: 2px; text-transform: capitalize; }
+.ad-sub { color: var(--text-sec); font-size: 12px; margin-top: 2px; }
 .ad-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -17268,6 +17268,35 @@ body.theme-yandex #admin_modal_overlay {
 .ad-map-link span { font-size: 11px; color: var(--text-sec); }
 .ad-map-link:hover { background: var(--primary-light); }
 .ad-map-link:hover b { color: var(--primary); }
+/* Сворачиваемый блок (форма «Добавить промокод»): строка-кнопка, внутри — карточка */
+details.ad-collapse {
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    margin-bottom: 16px;
+}
+details.ad-collapse > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+}
+details.ad-collapse > summary::-webkit-details-marker { display: none; }
+details.ad-collapse > summary::before {
+    content: "+";
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1;
+}
+details.ad-collapse[open] > summary::before { content: "−"; }
+details.ad-collapse[open] > summary { border-bottom: 1px solid var(--ad-line); }
+details.ad-collapse > :not(summary) { margin: 16px; }
+details.ad-collapse > div:not(summary) { margin-bottom: 16px; }
 .admin-mob-group {
     padding: 12px 14px 4px;
     font-size: 11px;
