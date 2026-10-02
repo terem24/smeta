@@ -21957,7 +21957,7 @@ const app = {
     // таблице lead_assignments (Supabase, только для администраторов) по id заявки.
     LEAD_STATUSES: [
         ['new', 'Новая'], ['sent', 'Передана мастеру'], ['contacted', 'Мастер связался'],
-        ['contract', 'Договор'], ['done', 'Смонтировано'], ['rejected', 'Отказ']
+        ['contract', 'Договор'], ['done', 'Смонтировано'], ['rejected', 'Отказ'], ['archive', 'Архив']
     ],
 
     loadLeadAssignments: async function () {
@@ -22010,6 +22010,116 @@ const app = {
         } catch (e) {
             console.warn('[заявки] отметка не сохранилась:', e);
             if (el) { el.style.borderColor = '#DC2626'; el.title = 'Не сохранилось — попробуйте ещё раз'; }
+        }
+    },
+
+    // Тестовые заявки: по ним не звонят, и они портят счётчики источников
+    isTestLead: function (r) {
+        return /^test/i.test(r.src || '') || /^тест/i.test(r.name || '') || /ТЕСТОВАЯ/.test(r.comment || '');
+    },
+
+    leadSrcLabel: function (r) {
+        return r.src === 'dom' ? 'страница /dom/' : (r.src || '— напрямую');
+    },
+
+    // Удаление. mode 'ids' — заявки по id, 'all' — весь журнал. Строки журнала
+    // стирает сервер (lead_list.php, POST; перед «всем» кладёт копию рядом),
+    // отметки «кому передана» — Supabase.
+    deleteLeads: async function (mode, ids, question, btn, needWord) {
+        const rows = this._leadsData || [];
+        if (mode === 'ids' && !ids.length) return;
+        if (needWord) {
+            const w = window.prompt(question + '\n\nДля подтверждения введите слово «удалить»:');
+            if (!w || w.trim().toLowerCase() !== 'удалить') return;
+        } else if (!window.confirm(question)) return;
+        const was = btn ? btn.innerText : '';
+        if (btn) { btn.disabled = true; btn.innerText = 'Удаляем…'; }
+        try {
+            const token = await this.recognitionToken();
+            const res = await fetch(this.LEADS_URL, {
+                method: 'POST',
+                headers: Object.assign({ 'Content-Type': 'application/json' }, token ? { 'Authorization': 'Bearer ' + token } : {}),
+                body: JSON.stringify(mode === 'all' ? { all: true } : { ids: ids })
+            });
+            const out = await res.json().catch(() => null);
+            if (!res.ok || !out || !out.ok) throw new Error((out && out.error) || ('HTTP ' + res.status));
+            const gone = mode === 'all' ? rows.map(x => x.id).filter(Boolean) : ids;
+            try {
+                if (gone.length) await supabaseClient.from('lead_assignments').delete().in('lead_id', gone);
+            } catch (e) { console.warn('[заявки] отметки не удалены:', e); }
+            gone.forEach(id => { delete this._leadAssign[id]; if (this._leadSel) this._leadSel.delete(id); });
+            const set = new Set(gone);
+            this._leadsData = mode === 'all' ? [] : rows.filter(x => !set.has(x.id));
+            this.renderAdminLeads();
+        } catch (e) {
+            console.warn('[заявки] не удалилось:', e);
+            if (btn) { btn.disabled = false; btn.innerText = was; }
+            window.alert('Не удалось удалить: ' + String((e && e.message) || e).slice(0, 120));
+        }
+    },
+
+    deleteLead: function (idx, btn) {
+        const r = (this._leadsData || [])[idx];
+        if (!r || !r.id) return;
+        this.deleteLeads('ids', [r.id], 'Удалить заявку «' + (r.name || 'без имени') + '»? Это нельзя отменить.', btn);
+    },
+
+    deleteSelectedLeads: function (btn) {
+        const ids = Array.from(this._leadSel || []);
+        this.deleteLeads('ids', ids, 'Удалить выбранные заявки (' + ids.length + ')? Это нельзя отменить.', btn);
+    },
+
+    deleteTestLeads: function (btn) {
+        const ids = (this._leadsData || []).filter(r => r.id && this.isTestLead(r)).map(r => r.id);
+        this.deleteLeads('ids', ids, 'Удалить тестовые заявки (' + ids.length + ')? Это нельзя отменить.', btn);
+    },
+
+    deleteAllLeads: function (btn) {
+        this.deleteLeads('all', [], 'Удалить ВСЕ заявки (' + (this._leadsData || []).length + ')? Копия журнала останется на сервере, но из кабинета вернуть их нельзя.', btn, true);
+    },
+
+    // Фильтры вкладки
+    setLeadFilter: function (key, val) {
+        const f = this._leadFilter || (this._leadFilter = { status: 'active', src: '', q: '', test: false });
+        f[key] = val;
+        this.renderAdminLeads();
+    },
+
+    toggleLeadSel: function (id, on) {
+        const sel = this._leadSel || (this._leadSel = new Set());
+        if (on) sel.add(id); else sel.delete(id);
+        const n = sel.size;
+        ['lead_sel_del', 'lead_sel_arc'].forEach(k => {
+            const el = document.getElementById(k);
+            if (el) { el.disabled = !n; el.innerText = (k === 'lead_sel_del' ? 'Удалить выбранные' : 'В архив') + (n ? ' (' + n + ')' : ''); }
+        });
+    },
+
+    toggleLeadSelAll: function (on) {
+        const sel = this._leadSel || (this._leadSel = new Set());
+        (this._leadShownIds || []).forEach(id => { if (on) sel.add(id); else sel.delete(id); });
+        this.renderAdminLeads();
+    },
+
+    archiveSelectedLeads: async function (btn) {
+        const ids = Array.from(this._leadSel || []);
+        if (!ids.length) return;
+        const now = new Date().toISOString();
+        const rowsUp = ids.map(id => {
+            const a = this._leadAssign[id] || {};
+            return { lead_id: id, installer_id: a.installer_id || null, installer_name: a.installer_name || null, status: 'archive', updated_at: now };
+        });
+        if (btn) btn.disabled = true;
+        try {
+            const { error } = await supabaseClient.from('lead_assignments').upsert(rowsUp, { onConflict: 'lead_id' });
+            if (error) throw error;
+            rowsUp.forEach(r => { this._leadAssign[r.lead_id] = r; });
+            this._leadSel.clear();
+            this.renderAdminLeads();
+        } catch (e) {
+            console.warn('[заявки] архив не сохранился:', e);
+            if (btn) btn.disabled = false;
+            window.alert('Не удалось отправить в архив — попробуйте ещё раз.');
         }
     },
 
@@ -22081,21 +22191,43 @@ const app = {
             return;
         }
 
+        const f = this._leadFilter || (this._leadFilter = { status: 'active', src: '', q: '', test: false });
+        const sel = this._leadSel || (this._leadSel = new Set());
+        const asg = id => (this._leadAssign || {})[id] || {};
+        const testCount = rows.filter(r => this.isTestLead(r)).length;
+        // Тестовые заявки по умолчанию не считаем и не показываем
+        const pool = rows.map((r, i) => ({ r, i })).filter(x => f.test || !this.isTestLead(x.r));
+
         // Сводка по источникам: ради неё вкладка и нужна — видно, какие статьи
         // приводят людей, а какие только читают.
         const bySrc = {};
-        rows.forEach(r => {
-            const k = r.src === 'dom' ? 'страница /dom/' : (r.src || '— напрямую');
+        pool.forEach(({ r }) => {
+            const k = this.leadSrcLabel(r);
             bySrc[k] = (bySrc[k] || 0) + 1;
         });
         const srcTop = Object.keys(bySrc).sort((a, b) => bySrc[b] - bySrc[a]).slice(0, 8);
+
+        const qq = (f.q || '').trim().toLowerCase();
+        const qd = qq.replace(/\D/g, '');
+        const shownItems = pool.filter(({ r }) => {
+            const st = asg(r.id).status || 'new';
+            if (f.status === 'active' ? st === 'archive' : (f.status !== 'all' && f.status !== st)) return false;
+            if (f.src && this.leadSrcLabel(r) !== f.src) return false;
+            if (qq) {
+                const hay = [r.name, r.place, r.comment, r.phone].join(' ').toLowerCase();
+                if (!hay.includes(qq) && !(qd.length >= 3 && String(r.phone || '').replace(/\D/g, '').includes(qd))) return false;
+            }
+            return true;
+        });
+        this._leadShownIds = shownItems.map(x => x.r.id).filter(Boolean);
+        const selShown = this._leadShownIds.filter(id => sel.has(id)).length;
 
         const card = (label, value) => `<div style="flex:1; min-width:120px; background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
             <div style="font-size:22px; font-weight:700; color:var(--text-main);">${value}</div>
             <div style="font-size:11px; color:var(--text-sec); margin-top:2px;">${label}</div>
         </div>`;
 
-        const list = rows.map((r, i) => {
+        const list = shownItems.map(({ r, i }) => {
             const works = (r.works || []).map(w => this.LEAD_WORK_LABELS[w] || w).join(', ');
             // В журнале время записано по часам сервера (date('c') со своим
             // смещением), и оно на час впереди московского. Показываем всегда по
@@ -22111,6 +22243,13 @@ const app = {
                         hour: '2-digit', minute: '2-digit'
                     }) + ' МСК';
             }
+            // Возраст заявки: «новая» дольше суток и «передана» дольше двух суток — красным
+            const stNow = (asg(r.id).status || 'new');
+            const baseT = stNow === 'sent' ? (asg(r.id).updated_at || r.at) : r.at;
+            const ageD = baseT && !isNaN(new Date(baseT)) ? Math.floor((Date.now() - new Date(baseT)) / 86400000) : null;
+            const stale = ageD !== null && ((stNow === 'new' && ageD >= 1) || (stNow === 'sent' && ageD >= 2));
+            const ageHtml = ageD === null || stNow === 'archive' || stNow === 'done' || stNow === 'rejected' ? '' : `<span style="${stale ? 'color:#DC2626; font-weight:700;' : ''}">${stNow === 'sent' ? 'у мастера' : 'ждёт'} ${ageD < 1 ? 'меньше суток' : ageD + ' дн.'}${stale ? ' ⚠' : ''}</span>`;
+            const isTest = this.isTestLead(r);
             const src = r.src ? `<span style="display:inline-block; background:var(--primary-light); color:var(--primary); border-radius:6px; padding:2px 8px; font-size:11px;">${esc(r.src === 'dom' ? 'страница /dom/' : r.src)}</span>`
                 : '<span style="color:var(--text-sec); font-size:11px;">напрямую</span>';
             const a = (this._leadAssign || {})[r.id] || {};
@@ -22122,14 +22261,15 @@ const app = {
                 (a.installer_id && !(this._leadInstallers || []).some(u => u.id === a.installer_id)
                     ? `<option value="${esc(a.installer_id)}" selected>${esc(a.installer_name || 'мастер')}</option>` : '');
             const stOpts = this.LEAD_STATUSES.map(([v, l]) => `<option value="${v}"${v === st ? ' selected' : ''}>${l}</option>`).join('');
-            const stColor = { new: '#F59E0B', sent: 'var(--primary)', contacted: 'var(--primary)', contract: '#10B981', done: '#10B981', rejected: 'var(--text-sec)' }[st];
+            const stColor = { new: '#F59E0B', sent: 'var(--primary)', contacted: 'var(--primary)', contract: '#10B981', done: '#10B981', rejected: 'var(--text-sec)', archive: 'var(--text-sec)' }[st];
             const calcUrl = this.leadCalcUrl(r);
             return `<div style="border:1px solid var(--border); border-left:3px solid ${stColor}; border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                     <div style="font-size:13px; color:var(--text-main);">
-                        <b>${esc(r.name || 'без имени')}</b> · <a href="tel:${esc(r.phone || '')}" style="color:var(--primary); text-decoration:none;">${esc(r.phone || '')}</a>
+                        <input type="checkbox" style="margin-right:8px; vertical-align:middle;"${r.id ? '' : ' disabled'}${sel.has(r.id) ? ' checked' : ''} onchange="app.toggleLeadSel('${esc(r.id)}', this.checked)">
+                        ${isTest ? '<span style="display:inline-block; background:#F59E0B; color:#fff; border-radius:6px; padding:1px 7px; font-size:10px; font-weight:700; margin-right:6px;">ТЕСТ</span>' : ''}<b>${esc(r.name || 'без имени')}</b> · <a href="tel:${esc(r.phone || '')}" style="color:var(--primary); text-decoration:none;">${esc(r.phone || '')}</a>
                     </div>
-                    <div style="font-size:11px; color:var(--text-sec);">${esc(when)} ${src}</div>
+                    <div style="font-size:11px; color:var(--text-sec); text-align:right;">${esc(when)} ${src}${ageHtml ? '<br>' + ageHtml : ''}</div>
                 </div>
                 <div style="font-size:12px; color:var(--text-sec); margin-top:8px; line-height:1.6;">
                     ${works ? '<b>Что:</b> ' + esc(works) + '<br>' : ''}
@@ -22146,29 +22286,48 @@ const app = {
                     ${calcUrl ? `<a class="auth-btn-base" href="${esc(calcUrl)}" target="_blank" rel="noopener" style="width:auto; padding:0 14px; height:30px; font-size:12px; display:inline-flex; align-items:center; text-decoration:none;" title="Полная смета по ответам заказчика — в новой вкладке">Открыть в расчёте</a>` : ''}
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"
                         onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+                    <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"${r.id ? '' : ' disabled'}
+                        onclick="app.saveLeadAssignment(${i}, 'status', '${st === 'archive' ? 'new' : 'archive'}', this)">${st === 'archive' ? 'Вернуть из архива' : 'В архив'}</button>
+                    <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px; color:#DC2626;"${r.id ? '' : ' disabled'}
+                        onclick="app.deleteLead(${i}, this)">Удалить</button>
                 </div>
             </div>`;
         }).join('');
 
+        const inp = 'height:32px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main); font-size:12px; padding:0 10px;';
+        const chip = (label, n, on, js) => `<span onclick="${js}" style="cursor:pointer; display:inline-block; margin:0 6px 6px 0; padding:3px 10px; border-radius:999px; font-size:12px; border:1px solid ${on ? 'var(--primary)' : 'var(--border)'}; background:${on ? 'var(--primary-light)' : 'var(--surface)'}; color:${on ? 'var(--primary)' : 'var(--text-main)'};">${esc(label)} — <b>${n}</b></span>`;
+        const stAll = [['active', 'Активные'], ['all', 'Все, с архивом']].concat(this.LEAD_STATUSES);
+        const btnS = 'width:auto; padding:0 14px; height:32px; font-size:12px;';
+
         box.innerHTML = `
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
-                ${card('всего заявок', rows.length)}
-                ${card('не переданы мастеру', rows.filter(r => ((this._leadAssign || {})[r.id] || {}).status === undefined || ((this._leadAssign || {})[r.id] || {}).status === 'new').length)}
-                ${card('со страницы /dom/', rows.filter(r => r.src === 'dom').length)}
-                ${card('со статей', rows.filter(r => r.src && r.src !== 'dom' && !/^test/.test(r.src)).length)}
-                ${card('напрямую', rows.filter(r => !r.src).length)}
+                ${card('всего заявок', pool.length)}
+                ${card('не переданы мастеру', pool.filter(({ r }) => (asg(r.id).status || 'new') === 'new').length)}
+                ${card('со страницы /dom/', pool.filter(({ r }) => r.src === 'dom').length)}
+                ${card('со статей', pool.filter(({ r }) => r.src && r.src !== 'dom' && !/^test/.test(r.src)).length)}
+                ${card('напрямую', pool.filter(({ r }) => !r.src).length)}
             </div>
             <div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light);">
-                <div style="font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-sec); margin-bottom:8px;">Откуда приходят</div>
-                <div style="font-size:12px; color:var(--text-main); line-height:1.8;">
-                    ${srcTop.map(k => `${esc(k)} — <b>${bySrc[k]}</b>`).join(' · ')}
+                <div style="font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-sec); margin-bottom:8px;">Откуда приходят <span style="text-transform:none; letter-spacing:0;">— нажмите, чтобы отфильтровать</span></div>
+                <div>
+                    ${srcTop.map(k => chip(k, bySrc[k], f.src === k, `app.setLeadFilter('src', ${JSON.stringify(f.src === k ? '' : k).replace(/"/g, '&quot;')})`)).join('')}
                 </div>
             </div>
-            <div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
-                <button class="auth-btn-base" style="width:auto; padding:0 14px; height:32px; font-size:12px;"
-                    onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+                <select style="${inp}" onchange="app.setLeadFilter('status', this.value)">${stAll.map(([v, l]) => `<option value="${v}"${v === f.status ? ' selected' : ''}>${l}</option>`).join('')}</select>
+                <input type="search" placeholder="Имя, телефон, адрес — и Enter" value="${esc(f.q)}" style="${inp} flex:1 1 200px;" onchange="app.setLeadFilter('q', this.value)">
+                ${testCount ? `<label style="font-size:12px; color:var(--text-sec); white-space:nowrap;"><input type="checkbox"${f.test ? ' checked' : ''} onchange="app.setLeadFilter('test', this.checked)"> тестовые (${testCount})</label>` : ''}
             </div>
-            ${list}`;
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px;">
+                <label style="font-size:12px; color:var(--text-sec); white-space:nowrap;"><input type="checkbox"${selShown && selShown === this._leadShownIds.length ? ' checked' : ''} onchange="app.toggleLeadSelAll(this.checked)"> выбрать все (${shownItems.length})</label>
+                <button id="lead_sel_arc" class="auth-btn-base" style="${btnS}"${sel.size ? '' : ' disabled'} onclick="app.archiveSelectedLeads(this)">В архив${sel.size ? ' (' + sel.size + ')' : ''}</button>
+                <button id="lead_sel_del" class="auth-btn-base" style="${btnS} color:#DC2626;"${sel.size ? '' : ' disabled'} onclick="app.deleteSelectedLeads(this)">Удалить выбранные${sel.size ? ' (' + sel.size + ')' : ''}</button>
+                <span style="flex:1;"></span>
+                ${testCount ? `<button class="auth-btn-base" style="${btnS} color:#DC2626;" onclick="app.deleteTestLeads(this)">Удалить тестовые (${testCount})</button>` : ''}
+                <button class="auth-btn-base" style="${btnS} color:#DC2626;" onclick="app.deleteAllLeads(this)">Удалить все</button>
+                <button class="auth-btn-base" style="${btnS}" onclick="app._leadsData=null; app.renderAdminLeads()">Обновить</button>
+            </div>
+            ${list || '<div style="padding:20px; text-align:center; color:var(--text-sec); font-size:13px;">По этим условиям заявок нет.</div>'}`;
     },
 
     ARTICLES_URL: '/content/schedule.json',

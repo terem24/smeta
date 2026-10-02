@@ -25,7 +25,7 @@ if (in_array($origin, $ALLOWED_ORIGINS, true)) {
     header('Access-Control-Allow-Origin: ' . $origin);
     header('Vary: Origin');
 }
-header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json; charset=UTF-8');
 
@@ -82,6 +82,49 @@ if (!is_file($logFile)) {
 // (Сам тег закрытия PHP в комментарии «//» писать нельзя: он заканчивает скрипт,
 // и дальше сервер отдавал браузеру исходный текст этого файла вместо заявок.)
 // чтения через веб. Читаем с конца: свежие заявки нужнее старых.
+// Удаление: POST {"ids":["…"]} убирает заявки по id, POST {"all":true} — весь журнал.
+// Служебная первая строка остаётся. Файл переписывается под блокировкой, чтобы
+// заявка, пришедшая в эту секунду через lead.php, не потерялась.
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $body = json_decode(file_get_contents('php://input'), true);
+    $all = is_array($body) && !empty($body['all']);
+    $ids = (is_array($body) && isset($body['ids']) && is_array($body['ids'])) ? array_map('strval', $body['ids']) : [];
+    if (!$all && !$ids) {
+        http_response_code(400);
+        echo json_encode(['ok' => false, 'error' => 'nothing to delete']);
+        exit;
+    }
+    $fh = @fopen($logFile, 'c+');
+    if (!$fh || !flock($fh, LOCK_EX)) {
+        http_response_code(500);
+        echo json_encode(['ok' => false, 'error' => 'lock']);
+        exit;
+    }
+    // Перед «удалить всё» — копия журнала рядом (первая строка «php exit» копируется
+    // вместе с файлом, так что через веб копия не читается)
+    if ($all) {
+        @copy($logFile, __DIR__ . '/leads_log_backup_' . date('Ymd_His') . '.php');
+    }
+    $keep = ["<?php exit; ?>"];
+    $removed = 0;
+    while (($ln = fgets($fh)) !== false) {
+        $ln = trim($ln);
+        if ($ln === '' || $ln[0] !== '{') continue;
+        $r = json_decode($ln, true);
+        $rid = (is_array($r) && isset($r['id'])) ? (string)$r['id'] : null;
+        if ($all || ($rid !== null && in_array($rid, $ids, true))) { $removed++; continue; }
+        $keep[] = $ln;
+    }
+    ftruncate($fh, 0);
+    rewind($fh);
+    fwrite($fh, implode("\n", $keep) . "\n");
+    fflush($fh);
+    flock($fh, LOCK_UN);
+    fclose($fh);
+    echo json_encode(['ok' => true, 'removed' => $removed]);
+    exit;
+}
+
 $lines = @file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 if (!is_array($lines)) $lines = [];
 $items = [];
