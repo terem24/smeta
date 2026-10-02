@@ -9406,14 +9406,14 @@ const app = {
             const cards = filtered.filter(p => stageOf(p.current) === s).sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt));
             const totalSum = cards.reduce((acc, c) => acc + (c.totalSum || 0), 0);
             return `
-                        <div ondragover="app.kanbanDragOver(event, this)" ondragleave="app.kanbanDragLeave(event, this)" ondrop="app.kanbanDrop(event, this, '${s.key}')" style="border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.12); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
-                            <div style="background:${s.color}; color:#fff; padding:10px 12px; display:flex; flex-direction:column; gap:4px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:0.3px;">
+                        <div ondragover="app.kanbanDragOver(event, this)" ondragleave="app.kanbanDragLeave(event, this)" ondrop="app.kanbanDrop(event, this, '${s.key}')" style="border-radius:12px; overflow:hidden; border:1px solid var(--border); display:flex; flex-direction:column; max-height:600px; min-width:260px; flex:1 1 0%;">
+                            <div style="background:var(--surface-light); border-top:3px solid ${s.color}; color:var(--text-main); padding:10px 12px; display:flex; flex-direction:column; gap:4px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;">
                                     <span>${s.label}</span>
-                                    <span style="background:rgba(255,255,255,0.25); padding:2px 8px; border-radius:12px; font-size:11px; font-weight:800;">${cards.length} шт.</span>
+                                    <span style="background:var(--surface); border:1px solid var(--border); color:var(--text-sec); padding:1px 8px; border-radius:12px; font-size:11px; font-weight:600;">${cards.length} шт.</span>
                                 </div>
-                                <div style="font-size:13px; font-weight:800; color:rgba(255,255,255,0.95); display:flex; align-items:center; justify-content:space-between; margin-top:2px;">
-                                    <span style="font-size:10px; text-transform:uppercase; opacity:0.8; font-weight:600;">Сумма:</span>
+                                <div style="font-size:13px; font-weight:700; color:var(--text-main); display:flex; align-items:center; justify-content:space-between; margin-top:2px;">
+                                    <span style="font-size:11px; text-transform:uppercase; color:var(--text-sec); font-weight:600;">Сумма:</span>
                                     <span>${totalSum.toLocaleString('ru-RU')} ₽</span>
                                 </div>
                             </div>
@@ -21684,7 +21684,57 @@ const app = {
     // каждый раздел ради оттенка незачем. Здесь любая такая плашка, где бы она ни
     // появилась, приводится к мягкому виду: тот же цвет, но тонкой заливкой и текстом.
     // Следит за панелью наблюдатель — разделы перерисовываются сами и часто.
+    // Ведущие эмодзи в заголовках, подписях и кнопках раздела: каждый раздел начинал
+    // свой заголовок картинкой другого цвета. Убираем только при тексте дальше —
+    // кнопка из одного эмодзи (выбор смайла в чате) остаётся как есть.
+    cleanAdminEmoji: function (root) {
+        const re = /^[\s‍️]*(?:\p{Extended_Pictographic}[️‍]*)+\s*/u;
+        // Подсказки в полях и пункты выпадающих списков фильтров («🔍 Поиск…», «⚠ Анкета: любая»)
+        root.querySelectorAll('input[placeholder], select option').forEach(el => {
+            if (el.dataset.emo || el.closest('.emoji-picker, [class*="chat"]')) return;
+            if (el.tagName === 'INPUT') {
+                const p = el.getAttribute('placeholder') || '';
+                if (re.test(p) && p.replace(re, '').trim().length > 1) { el.setAttribute('placeholder', p.replace(re, '')); el.dataset.emo = '1'; }
+            } else if (re.test(el.textContent) && el.textContent.replace(re, '').trim().length > 1) {
+                el.textContent = el.textContent.replace(re, ''); el.dataset.emo = '1';
+            }
+        });
+        root.querySelectorAll('h3, h4, h5, th, button:not(.admin-tab-btn):not(.admin-action-btn), summary, label').forEach(el => {
+            // Кнопки-иконки (значок в .btn-icon, подпись спрятана) — значок и есть кнопка
+            if (el.dataset.emo || el.querySelector('.btn-icon') || el.closest('.emoji-picker, .emoji-set, #emoji_panel, [class*="chat"]')) return;
+            const n = el.firstChild;
+            // Эмодзи может стоять как отдельным текстом, так и в начале первого узла,
+            // либо в собственном <span> (так сверстаны заголовки со значком)
+            if (n && n.nodeType === 3 && re.test(n.nodeValue)) {
+                const rest = n.nodeValue.replace(re, '');
+                if (rest.trim().length > 1 || el.childNodes.length > 1) { n.nodeValue = rest; el.dataset.emo = '1'; }
+            } else if (n && n.nodeType === 1 && n.children.length === 0 && /^[\s‍️]*(?:\p{Extended_Pictographic}[️‍]*)+\s*$/u.test(n.textContent || '') && (el.textContent || '').replace(n.textContent, '').trim().length > 1) {
+                n.remove(); el.dataset.emo = '1';
+            }
+        });
+    },
+
     softenAdminChips: function (root) {
+        this.cleanAdminEmoji(root);
+        // Кнопки с цветом, заданным числом (зелёный «Excel», оранжевый и т. п.): красные —
+        // остаются красными, все прочие становятся цветом темы. Кнопки на var(--primary)
+        // — главные действия — не трогаем.
+        root.querySelectorAll('button[style*="background"], a[style*="background"]').forEach(el => {
+            if (el.dataset.soft || el.classList.contains('admin-tab-btn')) return;
+            const st = el.style;
+            const col = (st.color || '').replace(/\s/g, '').toLowerCase();
+            if (col !== '#fff' && col !== '#ffffff' && col !== 'white' && col !== 'rgb(255,255,255)') return;
+            const bg = st.backgroundColor;
+            if (!bg || bg === 'transparent') return;
+            const m = bg.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+            if (!m) return;
+            el.dataset.soft = '1';
+            const red = +m[1] > 190 && +m[2] < 110 && +m[3] < 110;
+            const c = red ? bg : 'var(--primary)';
+            st.background = 'color-mix(in srgb, ' + c + ' 14%, transparent)';
+            st.color = c;
+            st.border = '1px solid color-mix(in srgb, ' + c + ' 30%, transparent)';
+        });
         const sel = 'span[style*="background"], b[style*="background"], small[style*="background"], div[style*="background"], i[style*="background"]';
         root.querySelectorAll(sel).forEach(el => {
             if (el.dataset.soft || el.children.length || el.closest('button, a, input, select')) return;
@@ -26445,7 +26495,10 @@ const app = {
         const tile = (id, grad, label, value, sub, p) => {
             const wide = sp(id) >= 2;
             const big = wide ? 30 : 23;
-            return st.tiles === 'plain'
+            // Градиентные плитки убраны (02.10.2026): панель в одном стиле, поэтому
+            // «простая» плитка — единственная; поле style.tiles осталось в сохранённых
+            // раскладках, но больше ничего не меняет.
+            return true
                 ? card(`<div style="font-size:13px; font-weight:800; color:var(--text-sec);">${label}</div>
                     <div style="font-size:${big}px; font-weight:800; color:var(--text-main); line-height:1.05; margin-top:10px;">${value}</div>
                     <div style="display:flex; align-items:center; gap:8px; margin-top:6px; flex-wrap:wrap;">
