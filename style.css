@@ -17065,3 +17065,16 @@ body.dark-mode .hc-export-doc::after {
     cursor: pointer;
     opacity: 0.7;
 }
+
+/* Анкета профиля на планшете (600–1024 px): в одну колонку поля растягивались на всю
+   ширину (до 700 px на «Имя»), хотя места хватает на пары и тройку в ряд */
+@media screen and (min-width: 600px) and (max-width: 1024px) {
+    body #profile_modal_overlay .profile-2col-grid {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 0 14px !important;
+    }
+    body #profile_modal_overlay .profile-3col-grid {
+        grid-template-columns: 1fr 1fr 1fr !important;
+        gap: 0 14px !important;
+    }
+}
