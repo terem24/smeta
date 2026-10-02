@@ -20569,6 +20569,9 @@ const app = {
         document.body.classList.add('admin-modal-open');
         this.startAdminMobileLabels();
         this.watchAdminViewport();
+        // Наблюдатель за оформлением включаем сразу, а не при первой отрисовке раздела:
+        // иначе самая первая заглушка «Загрузка…» осталась бы простым текстом
+        this.watchAdminStyle();
         // Кнопка общего поиска рядом с переключателем темы; тот же поиск открывает Ctrl+K
         const searchHost = document.querySelector('#admin_modal_overlay .auth-modal-content');
         if (searchHost && !document.getElementById('admin_search_btn')) {
@@ -21911,7 +21914,26 @@ const app = {
         });
     },
 
+    // Все заглушки «Загрузка…» панели получают тот же значок, что крутится при загрузке самого
+    // калькулятора (логотип-огонёк со свечением, см. #stout_preloader в index.html). Заглушек
+    // два десятка и все пишутся строкой прямо в разделах, поэтому переделывать каждую
+    // не нужно: любая такая строка, где бы она ни появилась, оформляется здесь.
+    decorateAdminLoaders: function (root) {
+        root.querySelectorAll('div, p, span').forEach(el => {
+            // .ad-loader — уже оформленная заглушка и её подпись (она сама подходит под шаблон)
+            if (el.dataset.ldr || el.children.length || el.closest('.ad-loader, .admin-chat-wrap')) return;
+            const t = (el.textContent || '').trim();
+            if (t.length > 70 || !/^(Загрузка|Загружаем)[^<]*(…|\.\.\.)$/.test(t)) return;
+            el.dataset.ldr = '1';
+            el.classList.add('ad-loader');
+            el.removeAttribute('style');
+            el.innerHTML = '<div class="ad-loader-logo"><img src="img/logo_hc_flame.png" alt="" draggable="false"></div><div class="ad-loader-t"></div>';
+            el.lastChild.textContent = t;
+        });
+    },
+
     softenAdminChips: function (root) {
+        this.decorateAdminLoaders(root);
         this.cleanAdminEmoji(root);
         // Кнопки с цветом, заданным числом (зелёный «Excel», оранжевый и т. п.): красные —
         // остаются красными, все прочие становятся цветом темы. Кнопки на var(--primary)
@@ -21957,6 +21979,8 @@ const app = {
             clearTimeout(timer);
             timer = setTimeout(() => { try { this.softenAdminChips(root); } catch (e) { } }, 30);
         }).observe(root, { childList: true, subtree: true });
+        // Заглушка, уже стоящая в панели к моменту запуска наблюдателя
+        try { this.decorateAdminLoaders(root); } catch (e) { }
     },
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
