@@ -297,16 +297,22 @@ body {
     line-height: 1.4;
 }
 
-/* Масштаб страницы: -20% */
+/* Масштаб страницы: -20%. Число лежит в --ui-zoom: кнопка «Aa» в шапке
+   (app.cycleUiScale) меняет его для тех, кому мелко. Всё, что компенсирует
+   масштаб (высоты в vh), считается от этой же переменной. */
+:root {
+    --ui-zoom: 0.8;
+}
+
 #page_scale_wrapper {
-    zoom: 0.8;
+    zoom: var(--ui-zoom, 0.8);
 }
 
 /* Исправляем конфликт scale и position: fixed.  */
 /* Раньше трансформ был на body, что ломало координаты всех модальных окон */
 @media screen and (max-width: 1550px) {
     #page_scale_wrapper {
-        zoom: 0.8;
+        zoom: var(--ui-zoom, 0.8);
     }
 }
 
@@ -334,7 +340,7 @@ body {
     position: sticky;
     top: 10px;
     /* 125vh = 100vh / zoom(0.8) — компенсация масштаба, чтобы панель заняла весь экран */
-    max-height: calc(125vh - 60px);
+    max-height: calc(100vh / var(--ui-zoom, 0.8) - 60px);
     overflow-y: auto;
 }
 
@@ -344,7 +350,7 @@ body {
    приходилось листать правую колонку со сметой. Поэтому прокрутка своя —
    как в подробном режиме. */
 .input-panel.fast-mode {
-    max-height: calc(125vh - 60px);
+    max-height: calc(100vh / var(--ui-zoom, 0.8) - 60px);
     overflow-y: auto;
 }
 
@@ -10204,7 +10210,7 @@ body.dark-mode .empty-state-pad {
            пустого места. 125vh — это 100 % экрана: страница идёт в масштабе 0.8
            (#page_scale_wrapper), и vh надо делить на него же. Вычитаем шапку сайта
            с полями страницы. */
-        min-height: calc(125vh - 95px);
+        min-height: calc(100vh / var(--ui-zoom, 0.8) - 95px);
     }
 
     body.empty-fit .doc-header-rule {
@@ -10265,7 +10271,7 @@ body.dark-mode .empty-state-pad {
        отступами; точное число под живую высоту шапки ставит app.js. */
     .input-panel,
     .input-panel.fast-mode {
-        max-height: calc(125vh - 130px);
+        max-height: calc(100vh / var(--ui-zoom, 0.8) - 130px);
         padding: 12px 14px;
     }
 
@@ -13370,7 +13376,7 @@ body.dark-mode .rec-quota::after { background: #1e293b; border-color: #334155; c
        отработал, действует запасная формула. 125vh, а не 100vh: единицы vh
        считаются от окна, а колонка живёт внутри #page_scale_wrapper с zoom: 0.8,
        и 100vh дали бы только 80 % высоты окна. */
-    max-height: var(--lk-rail-max-h, calc(125vh - var(--sticky-header-h, 70px) - 30px));
+    max-height: var(--lk-rail-max-h, calc(100vh / var(--ui-zoom, 0.8) - var(--sticky-header-h, 70px) - 30px));
     overflow-y: auto;
     /* Гасим часть общего 20-пиксельного зазора .container: без этого панель
        отъедала бы у сметы сотню пикселей ширины вместо необходимых восьмидесяти */
@@ -17806,4 +17812,19 @@ body.dark-mode #admin_content .btn-icon {
 /* Карточки плоские: граница вместо тени, как в современных CRM */
 #admin_content div[style*="box-shadow"] {
     box-shadow: none !important;
+}
+
+
+/* Кнопка «Aa» — размер интерфейса. На телефоне страница и так в натуральную
+   величину (zoom: 1), там увеличивают системным шрифтом, поэтому кнопка скрыта. */
+#btn_ui_scale { position: relative; }
+#btn_ui_scale .ui-scale-badge {
+    position: absolute; right: -2px; bottom: -2px;
+    min-width: 14px; padding: 0 3px; border-radius: 7px;
+    background: var(--primary, #2563EB); color: #fff;
+    font-size: 9px; font-weight: 700; line-height: 14px; text-align: center;
+    pointer-events: none;
+}
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    #btn_ui_scale { display: none !important; }
 }
