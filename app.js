@@ -40315,7 +40315,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '3',
+    BIG_TEXT_CSS_V: '4',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -77526,12 +77526,8 @@ const app = {
             // остаются значок и заголовок.
             const _onboardOk = this.onboardingAllowed();
             const qsBtn = (_onboardOk && this.isCalcEmpty()) ? `
-                    <button type="button" id="quick_start_row" class="no-print" onclick="app.showQuickStart()"
-                        style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-                               margin-top: 12px; font: inherit; font-size: 13px; font-weight: 600;
-                               padding: 10px 18px; border-radius: 10px; border: 1px dashed var(--primary);
-                               background: transparent; color: var(--primary); cursor: pointer;">
-                        <span class="ui-emo" style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
+                    <button type="button" id="quick_start_row" class="no-print quick-start-cta" onclick="app.showQuickStart()">
+                        <span class="ui-emo">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">

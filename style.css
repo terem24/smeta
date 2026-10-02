@@ -17896,3 +17896,19 @@ body.dark-mode #admin_content .btn-icon {
     background: transparent; color: inherit; border: 1px solid var(--border, #e5e7eb);
 }
 .ui-scale-reset:hover { border-color: var(--primary, #2563EB); }
+
+/* «Быстрый старт» на пустой смете — главное действие экрана: залитая, крупнее прежней
+   контурной. id #quick_start_row нужен режиму обучения (tour.js), поэтому разметку
+   не меняли, только вид. */
+.quick-start-cta {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    margin-top: 16px; padding: 14px 28px; border-radius: 12px; cursor: pointer;
+    font: inherit; font-size: 15px; font-weight: 700;
+    background: var(--primary); color: #fff; border: 1px solid var(--primary);
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--primary) 30%, transparent);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+.quick-start-cta .ui-emo { font-size: 18px; }
+.quick-start-cta:hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 8px 20px color-mix(in srgb, var(--primary) 40%, transparent); }
+.quick-start-cta:active { transform: translateY(0); }
+.quick-start-cta:focus-visible { outline: 3px solid color-mix(in srgb, var(--primary) 50%, transparent); outline-offset: 2px; }

@@ -113,7 +113,7 @@
         // Ставим до отрисовки, чтобы страница не прыгала с 0.8 на выбранный.
         try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1450; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
         // Крупный текст (big_text.css) — тоже до отрисовки
-        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=3'; document.head.appendChild(_l); } } catch (e) {}
+        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=4'; document.head.appendChild(_l); } } catch (e) {}
     </script>
     <script>
         if ('serviceWorker' in navigator) {
