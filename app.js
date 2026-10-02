@@ -4664,6 +4664,38 @@ const app = {
         if (panel.style.flex !== wantFlex) panel.style.flex = wantFlex;
         if (panel.style.maxHeight !== wantMaxH) panel.style.maxHeight = wantMaxH;
     },
+    // Строка «№ КП / Объект / Теплопотери / Регион / Дата» над сметой. Пункты в ней
+    // не переносятся внутри себя, поэтому, когда все не помещаются в линию, на вторую
+    // строку уезжала одна «Дата» (особенно с крупным текстом или при развёрнутой
+    // ленте слева). Сначала прячем значки-эмодзи (они съедают ~100 px) — и строка
+    // остаётся одной; перенос остаётся только на крайний случай, когда не хватает и так.
+    // Проверка по факту, а не по ширине окна: содержимое разное (регион, «Вариант:
+    // подешевле», квартира с этажом).
+    fitDocSummary: function () {
+        const ds = document.getElementById('doc_summary');
+        if (!ds) return;
+        const wraps = () => {
+            const items = [...ds.querySelectorAll('.param-item')].filter(e => e.offsetWidth > 0);
+            if (items.length < 2) return false;
+            const first = items[0].offsetTop;
+            return items.some(e => Math.abs(e.offsetTop - first) > 6);
+        };
+        ds.classList.remove('ds-compact');
+        if (wraps()) ds.classList.add('ds-compact');
+        // Размер колонки сметы меняется при ресайзе окна, раскрытии ленты, смене масштаба
+        if (!this._dsObserved) {
+            this._dsObserved = true;
+            // Таймером, а не requestAnimationFrame: в фоновой вкладке кадры не рисуются
+            let lastW = 0, tm = 0;
+            const again = () => { clearTimeout(tm); tm = setTimeout(() => this.fitDocSummary(), 30); };
+            window.addEventListener('resize', again);
+            const out = document.querySelector('.output-panel');
+            if (out && window.ResizeObserver) {
+                new ResizeObserver(() => { const w = out.offsetWidth; if (w !== lastW) { lastW = w; again(); } }).observe(out);
+            }
+        }
+    },
+
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
     syncEmptyFitPanelScale: function (recalc) { this.fitParamsPanel(recalc); },
     // Отложенный пересчёт: за одну отрисовку панель трогают десятки раз, а ответ
@@ -40412,12 +40444,15 @@ const app = {
             if (!document.getElementById('big_text_css')) {
                 const l = document.createElement('link');
                 l.id = 'big_text_css'; l.rel = 'stylesheet'; l.href = 'big_text.css?v=' + this.BIG_TEXT_CSS_V;
+                // Шрифты меняются, когда файл догрузился, — строку над сметой мерим после этого
+                l.onload = () => this.fitDocSummary();
                 document.head.appendChild(l);
             }
         } else {
             root.removeAttribute('data-big-text');
         }
         this.updateUiScaleButton(this.uiZoom());
+        this.fitDocSummary();
         // Шрифты поменялись — колонки и липкие панели пересчитывают высоты
         try { window.dispatchEvent(new Event('resize')); } catch (e) { }
     },
@@ -68214,6 +68249,7 @@ const app = {
             <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>
             <span class="param-item param-date calculation-date"><span class="ui-emo">📅 </span>Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
         `;
+        this.fitDocSummary();
 
         let bill = [];
         let currentSectionTitle = '';

@@ -777,6 +777,21 @@ body.dark-mode .tab.tab-cheaper.active {
     display: none;
 }
 
+/* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
+   (и прячет значки, где они есть), чтобы «Дата» не уезжала одна на вторую строку.
+   На печати у строки свои правила (@media print ниже), поэтому только для экрана. */
+@media screen {
+    .doc-summary.ds-compact {
+        gap: 8px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .doc-summary.ds-compact .ui-emo {
+        display: none;
+    }
+}
+
 /* Строка параметров объекта липнет к нижнему краю шапки: при прокрутке сметы
    площадь, теплопотери и регион остаются перед глазами. Высоту шапки в
    --sticky-header-h пишет handleScroll в index.html — при прокрутке шапка
