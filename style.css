@@ -17354,6 +17354,20 @@ body.theme-yandex #admin_modal_overlay {
     #ad_peek { width: 100%; border-radius: 0; }
 }
 
+/* Статус-таблетки: цвет текста и мягкая заливка того же цвета — одинаково в обеих темах */
+.ad-pill {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.ad-pill.ok { color: #10B981; background: color-mix(in srgb, #10B981 15%, transparent); }
+.ad-pill.bad { color: #EF4444; background: color-mix(in srgb, #EF4444 15%, transparent); }
+.ad-pill.warn { color: #D97706; background: color-mix(in srgb, #D97706 15%, transparent); }
+.dist-table td:nth-child(3) { min-width: 230px; }
+
 /* «Тарифы»: изменённая относительно исходного ячейка помечена точкой в углу */
 #admin_tariffs_box td.tf-c { position: relative; }
 #admin_tariffs_box td.tf-c::after {

@@ -8733,14 +8733,47 @@ const app = {
             ? `<span style="font-size:10px; color:var(--text-sec);">ИНН ${d.inn}</span><br>`
             : `<span style="font-size:10px; color:#EF4444; font-weight:700;" title="Без ИНН по компании не собрать официальные данные — откройте «Изменить» и заполните">ИНН не указан</span><br>`;
 
+        // Срезы и поиск по списку компаний (по данным карточек; число приглашённых
+        // подгружается позже отдельным запросом, поэтому среза «лимит исчерпан» нет)
+        const distF = this._distFilter || 'all';
+        const distQ = String(this._distQ || '').trim().toLowerCase();
+        const DIST_GROUPS = [
+            { id: 'all', label: 'Все', test: () => true },
+            { id: 'active', label: 'Активные', test: d => !!d.is_active },
+            { id: 'off', label: 'Выключены', test: d => !d.is_active },
+            { id: 'pro', label: 'Выдают PRO', test: d => Number(d.pro_months) > 0 },
+            { id: 'own', label: 'Свои цены', test: d => !!d.use_own_prices },
+            { id: 'noinn', label: 'Без ИНН', test: d => !d.inn }
+        ];
+        const shown = dists.filter(d => {
+            const g = DIST_GROUPS.find(x => x.id === distF) || DIST_GROUPS[0];
+            if (!g.test(d)) return false;
+            if (!distQ) return true;
+            return [d.company_name, d.promo_code, d.manager_name, d.manager_email, d.director_email, (d.regions || []).join(' '), d.inn].join(' ').toLowerCase().indexOf(distQ) >= 0;
+        });
+        const distChips = DIST_GROUPS.map(g => {
+            const n = dists.filter(g.test).length;
+            return `<button class="ad-chip${distF === g.id ? ' active' : ''}" onclick="app.setDistFilter('${g.id}')">${g.label} <span class="ad-chip-n">${n}</span></button>`;
+        }).join('');
+        const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const distStats = `
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${statTile('Компаний', dists.length, `активных: ${dists.filter(d => d.is_active).length}`)}
+                ${statTile('Выдают PRO по промокоду', dists.filter(d => Number(d.pro_months) > 0).length, 'месяцы тарифа при активации')}
+                ${statTile('Со своими ценами', dists.filter(d => d.use_own_prices).length, 'монтажники видят их прайс')}
+                ${statTile('Без ИНН', dists.filter(d => !d.inn).length, 'отчётность не собрать')}
+            </div>`;
+
         let tableRows = '';
         if (dists.length === 0) {
             tableRows = '<tr><td colspan="10" style="text-align:center; padding: 30px; color: var(--text-sec);">Промокодов нет. Добавьте первый.</td></tr>';
+        } else if (!shown.length) {
+            tableRows = '<tr><td colspan="10" style="text-align:center; padding: 30px; color: var(--text-sec);">Ничего не найдено.</td></tr>';
         } else {
-            dists.forEach((d, i) => {
+            shown.forEach((d, i) => {
                 const statusBadge = d.is_active
-                    ? '<span style="background:#D1FAE5; color:#059669; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;">Активен</span>'
-                    : '<span style="background:#FEE2E2; color:#EF4444; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;">Выкл</span>';
+                    ? '<span class="ad-pill ok">Активен</span>'
+                    : '<span class="ad-pill bad">Выкл</span>';
                 const validUntilText = d.valid_until ? new Date(d.valid_until).toLocaleDateString('ru-RU') : '∞';
                 const regionsText = (d.regions && d.regions.length) ? d.regions.join(', ') : '—';
                 const pl = d.price_list_key ? priceLists[d.price_list_key] : null;
@@ -8749,14 +8782,14 @@ const app = {
                 const priceCell = d.use_own_prices
                     ? (pl
                         ? `<span style="color:#059669; font-weight:700;">Свои</span><br><span style="font-size:10px; color:var(--text-sec);">${pl.title || d.price_list_key}</span>`
-                        : `<span style="color:#EF4444; font-weight:700;" title="Свои цены включены, но прайс-лист не выбран — монтажники видят цены Терем-онлайн">Свои ⚠️</span>`)
+                        : `<span style="color:#EF4444; font-weight:700;" title="Свои цены включены, но прайс-лист не выбран — монтажники видят цены Терем-онлайн">Свои — нет прайса</span>`)
                     : `<span style="color:var(--text-sec);">Терем</span>`;
                 tableRows += `<tr>
                     <td style="color:var(--text-sec);">${i + 1}</td>
-                    <td><b>${d.company_name || '—'}</b><br>${innCell(d)}<span style="font-size:10px; color:var(--text-sec);">📍 ${regionsText}</span></td>
+                    <td><b>${d.company_name || '—'}</b><br>${innCell(d)}<span style="font-size:10px; color:var(--text-sec);">${regionsText}</span></td>
                     <td style="font-weight:700; color:var(--primary); font-size:13px; letter-spacing:0.05em;">${d.promo_code}
                         <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">${this.inviteButtonsHtml(d, true)}</div></td>
-                    <td><div style="font-size:12px;">${d.manager_name || '—'}<br><span style="color:var(--text-sec);">${d.manager_email || ''}</span><br><span style="color:var(--text-sec);">${d.manager_phone || ''}</span>${d.director_email ? `<br><span style="color:var(--text-sec);">👁 ${d.director_email}</span>` : ''}</div></td>
+                    <td><div style="font-size:12px;">${d.manager_name || '—'}<br><span style="color:var(--text-sec);">${d.manager_email || ''}</span><br><span style="color:var(--text-sec);">${d.manager_phone || ''}</span>${d.director_email ? `<br><span style="color:var(--text-sec);" title="Руководитель: видит смету, работу менеджеров и меняет статусы счетов">рук.: ${d.director_email}</span>` : ''}</div></td>
                     <td style="text-align:center;">${Number(d.pro_months) > 0
                         ? `<b style="color:var(--primary);">${d.pro_months}</b>`
                         : '<span style="color:var(--text-sec);" title="Промокод только привязывает монтажника к дистрибьютору, тариф не выдаётся">без PRO</span>'
@@ -8768,9 +8801,9 @@ const app = {
                     <td style="text-align:right; min-width:150px;">
                         <!-- Две строки: три кнопки в одну не влезали и наезжали на «Статус» -->
                         <div style="display:grid; grid-template-columns:1fr auto; gap:6px; justify-items:stretch;">
-                            <button class="admin-btn" style="height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} onclick="app.editDistributor('${d.id}')">✏️ Изменить</button>
+                            <button class="admin-btn" style="height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} onclick="app.editDistributor('${d.id}')">Изменить</button>
                             <button class="admin-btn danger" style="height:28px; font-size:11px; margin:0;" ${isViewer ? 'disabled' : ''} onclick="app.deleteDistributor('${d.id}')">🗑</button>
-                            <button class="admin-btn" data-dist-brand="${d.id}" style="grid-column:1 / -1; height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} title="Логотип и реквизиты в КП, ссылке клиенту и шапке — всем учёткам этой компании вместо ТЕРЕМ" onclick="app.openDistBrandModal('${d.id}')">🎨 Реквизиты</button>
+                            <button class="admin-btn" data-dist-brand="${d.id}" style="grid-column:1 / -1; height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} title="Логотип и реквизиты в КП, ссылке клиенту и шапке — всем учёткам этой компании вместо ТЕРЕМ" onclick="app.openDistBrandModal('${d.id}')">Реквизиты</button>
                         </div>
                     </td>
                 </tr>`;
@@ -8782,8 +8815,7 @@ const app = {
         // карточки компаний и так не показываются.
         const inviteOnly = this.inviteOnlyRegistration();
         const regModeHtml = `
-                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; background:${inviteOnly ? 'rgba(217,119,6,0.08)' : 'rgba(16,185,129,0.08)'}; border:1px solid ${inviteOnly ? 'rgba(217,119,6,0.35)' : 'rgba(16,185,129,0.35)'}; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
-                    <span style="font-size:18px; line-height:1;">${inviteOnly ? '🔒' : '🔓'}</span>
+                <div class="ad-card" style="flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px 16px; margin-bottom:14px; border-left:3px solid ${inviteOnly ? '#D97706' : '#10B981'};">
                     <div style="flex:1 1 260px;">
                         <div style="font-size:13.5px; font-weight:700; color:var(--text-main);">Регистрация новых монтажников: ${inviteOnly ? 'только по промокоду' : 'свободная'}</div>
                         <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">${inviteOnly
@@ -8791,14 +8823,17 @@ const app = {
                             : 'Как раньше: промокод в форме необязателен, любой может зарегистрироваться сам. Включите режим «по промокоду», когда карточки магазинов и учётки менеджеров будут готовы.'}</div>
                     </div>
                     <select ${isViewer ? 'disabled' : ''} onchange="app.setRegistrationMode(this.value)" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); font-size:13px; font-weight:600;">
-                        <option value="open" ${inviteOnly ? '' : 'selected'}>🔓 Свободная</option>
-                        <option value="invite" ${inviteOnly ? 'selected' : ''}>🔒 Только по промокоду</option>
+                        <option value="open" ${inviteOnly ? '' : 'selected'}>Свободная</option>
+                        <option value="invite" ${inviteOnly ? 'selected' : ''}>Только по промокоду</option>
                     </select>
                 </div>`;
 
         content.innerHTML += `
             <div style="margin-bottom: 20px;">
-                <h3 style="margin: 0 0 16px; color: var(--text-main);">🏢 Дистрибьюторы</h3>
+                <div class="ad-page-h">
+                    <div><h3>Дистрибьюторы</h3><div class="ad-sub">Компании-партнёры: промокоды, менеджеры, свои цены и доступ монтажников</div></div>
+                </div>
+                ${isViewer ? '' : distStats}
                 ${regModeHtml}
 
                 <!-- Форма свёрнута: раньше открывалась на 12 полей раньше самого списка
@@ -8879,14 +8914,19 @@ const app = {
                     </div>
                 </details>
 
-                <table class="inv-table">
+                ${isViewer ? '' : `<div class="ad-chips">${distChips}</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <input type="text" id="admin_dist_search" value="${String(this._distQ || '').replace(/"/g, '&quot;')}" placeholder="Поиск по компании, промокоду, менеджеру, региону"
+                           style="flex:1 1 280px; max-width:460px;" oninput="app.setDistQuery(this.value)">
+                </div>`}
+                <table class="inv-table ad-sticky dist-table">
                     <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;" title="Монтажников привязано / лимит приглашений">Приглашено</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
                     <tbody>${tableRows}</tbody>
                 </table>
             </div>
         `;
         // Счётчики мест — отдельным запросом после отрисовки
-        if (dists.length) this.fillInviteStats(dists.map(d => d.id));
+        if (shown.length) this.fillInviteStats(shown.map(d => d.id));
         // Отметить, у каких компаний уже заданы свои реквизиты
         this.fillDistBrandMarks();
     },
@@ -10762,6 +10802,22 @@ const app = {
         } catch (e) {
             app.alert('Ошибка: ' + e.message);
         }
+    },
+
+    // Срезы и поиск по списку компаний: перерисовка вкладки целиком (renderAdminMain собирает
+    // навигацию и вызывает renderAdminDistributors), поиск — после паузы, с возвратом курсора
+    setDistFilter: function (id) {
+        this._distFilter = id;
+        this.renderAdminMain();
+    },
+    setDistQuery: function (q) {
+        this._distQ = q;
+        clearTimeout(this._distQT);
+        this._distQT = setTimeout(() => {
+            this.renderAdminMain();
+            const el = document.getElementById('admin_dist_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 250);
     },
 
     editDistributor: function (id) {
