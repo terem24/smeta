@@ -24,8 +24,8 @@
   'use strict';
 
   var AVAIL = { x0: 100, y0: 24, x1: 405, y1: 266 };  // поле под подложку, мм листа
-  var COLT = { tp: '#ff8000', rad: '#d22222', boiler: '#5577aa', wc: '#0b7285' };
-  var NAMES = { tp: 'Тёплый пол', rad: 'Радиаторы', boiler: 'Котельная', wc: 'Санузел' };
+  var COLT = { tp: '#ff8000', rad: '#d22222', boiler: '#5577aa', wc: '#0b7285', cold: '#7a7a7a' };
+  var NAMES = { tp: 'Тёплый пол', rad: 'Радиаторы', boiler: 'Котельная', wc: 'Санузел', cold: 'Без обогрева' };
 
   function n(v) { return Math.round(v * 100) / 100; }
   function esc(s) {
@@ -182,7 +182,8 @@
     (f.zones || []).forEach(function (z) {
       var col = COLT[z.type]; used[z.type] = 1;
       var fill = z.type === 'tp' ? 'url(#tpH' + num + ')'
-        : z.type === 'boiler' ? 'rgba(85,119,170,0.18)' : 'none';
+        : z.type === 'boiler' ? 'rgba(85,119,170,0.18)'
+        : z.type === 'cold' ? '#ffffff' : 'none';     // без обогрева — штриховку ТП перекрываем
       o.push('<polygon points="' + polyPts(z.pts, t.X, t.Y) + '" style="fill:' + fill +
         ';stroke:' + col + ';stroke-width:0.5' +
         (z.type === 'rad' ? ';stroke-dasharray:2.2,1.2' : '') + '"/>');
@@ -499,6 +500,10 @@
    * участка, соседние петли — через шаг, как на листах проектов.
    */
   function loopInRect(R, s, kind, entry) {
+    if (kind === 'spiral') {
+      var S = spiralS(R, s, entry);
+      if (S) return S;                 // мала для S — встречной парой с разворотом
+    }
     var gx0 = R[0] + s, gy0 = R[1] + s, gx1 = R[2] - s, gy1 = R[3] - s;
     var W = gx1 - gx0, H = gy1 - gy0;
     if (W < -1e-6 && H < -1e-6) return null;
@@ -518,6 +523,58 @@
     var sup = offsetOrtho(P, s / 2), ret = offsetOrtho(P, -s / 2);
     if (!sup || !ret) return null;
     return { guide: P, sup: sup, ret: ret.reverse(), kind: kind };
+  }
+
+  /**
+   * Улитка с S-разворотом в центре — как на листах проектов.
+   *
+   * Подача (S1) закручивается внутрь, обратка — та же спираль, повёрнутая на
+   * 180° вокруг центра (S2), идёт наружу между её витками. В центре они
+   * сходятся двумя встречными разворотами — буквой S. Чтобы оба конца вышли
+   * рядом, у ввода, спираль строится в рамке, расширенной на шаг с двух
+   * сторон, а два крайних отрезка обратки (они как раз в этом расширении)
+   * отрезаются. Витки одной трубы — через 2 шага, соседние трубы — через шаг,
+   * крайние — в полшага от края участка.
+   *
+   * Ядро — три линии (S, поперёк 4k+2 трубы) или пять (двойное S, 4k+4):
+   * так поперёк ложится любое чётное число труб, и пустого края остаётся не
+   * больше одной трубы. Узко (меньше 6 труб) — null.
+   */
+  function spiralS(R, s, entry) {
+    var tr = (R[3] - R[1]) > (R[2] - R[0]);
+    var Wr = tr ? R[3] - R[1] : R[2] - R[0], Hr = tr ? R[2] - R[0] : R[3] - R[1];
+    var c = Math.floor(Hr / s + 1e-6), use = c - (c % 2);
+    var core5 = use % 4 === 0, k = core5 ? (use - 4) / 4 : (use - 2) / 4;
+    if (k < 1) return null;
+    var Wc = Wr + s, Hc = (4 * k + (core5 ? 5 : 3)) * s;   // рамка построения
+    var v0 = (Hr - (use - 1) * s) / 2;                       // остаток — поровну к краям
+    var fx = entry ? Math.abs(entry[0] - R[2]) < Math.abs(entry[0] - R[0]) : false;
+    var fy = entry ? Math.abs(entry[1] - R[3]) < Math.abs(entry[1] - R[1]) : false;
+    var map = function (q) {
+      var u = q[0] - s, v = v0 + (q[1] - s / 2);
+      var dx = tr ? v : u, dy = tr ? u : v;
+      return [fx ? R[2] - dx : R[0] + dx, fy ? R[3] - dy : R[1] + dy];
+    };
+    var h = s / 2, S1 = [[h, h]], i;
+    for (i = 0; i <= k; i++) {
+      S1.push([Wc - (h + 2 * s * i), h + 2 * s * i]);
+      if (i === k) break;
+      S1.push([Wc - (h + 2 * s * i), Hc - (3 * h + 2 * s * i)]);
+      S1.push([3 * h + 2 * s * i, Hc - (3 * h + 2 * s * i)]);
+      S1.push([3 * h + 2 * s * i, h + 2 * s * (i + 1)]);
+    }
+    var E1 = S1[S1.length - 1], xl = h + 2 * s * k, xr = E1[0], y = E1[1];
+    if (xr - xl < s) return null;                      // центру не хватает длины
+    // ядро: разворот вниз, назад, (ещё два разворота у пятилинейного) — к E2
+    var core = core5
+      ? [[xr, y + s], [xl, y + s], [xl, y + 2 * s], [xr, y + 2 * s], [xr, y + 3 * s], [xl, y + 3 * s]]
+      : [[xr, y + s], [xl, y + s]];
+    var mi = core5 ? 3 : 1;                             // середина ядра — граница подачи и обратки
+    var M = [(core[mi - 1][0] + core[mi][0]) / 2, core[mi][1]];
+    var S2 = S1.map(function (q) { return [Wc - q[0], Hc - q[1]]; }).slice(2);
+    var sup = S1.concat(core.slice(0, mi), [M]).map(map);
+    var ret = [M].concat(core.slice(mi), S2.reverse()).map(map);
+    return { guide: [map([h, s])], sup: sup, ret: ret, kind: 'spiral' };
   }
 
   /** Отрезки пучка: клетки трасс → прямые участки с числом петель в них */
@@ -572,7 +629,8 @@
       .filter(function (Z) { return Z.z.type === 'tp' && Z.z.pts && Z.z.pts.length >= 3; });
     if (!zs.length) return out;
     var key = JSON.stringify([f.pxPerM, f.coll || null, f.leads || null, stepMm, lim,
-      zs.map(function (Z) { return [Z.i, Z.z.pts, Z.z.lay || '', Z.z.name || '']; })]);
+      zs.map(function (Z) { return [Z.i, Z.z.pts, Z.z.lay || '', Z.z.name || '']; }),
+      (f.zones || []).filter(function (z) { return z.type === 'cold'; }).map(function (z) { return z.pts; })]);
     for (var ci = 0; ci < loopsCache.length; ci++) if (loopsCache[ci].key === key) return loopsCache[ci].val;
     var val = layFloor(f, zs, stepMm, lim);
     loopsCache.unshift({ key: key, val: val });
@@ -586,16 +644,31 @@
     var ppm = f.pxPerM, s = stepMm / 1000 * ppm;
     var g = floorGrid(f, zs.map(function (Z) { return Z.z; }));
     var N = g ? g.W * g.H : 0;
+    // Места без обогрева (лестница, колонна, ванна, встроенный шкаф) —
+    // зоны типа 'cold' поверх тёплого пола: петли их обходят, пучок тоже.
+    if (g) {
+      g.cold = new Uint8Array(N);
+      (f.zones || []).forEach(function (z) {
+        if (z.type !== 'cold' || !z.pts || z.pts.length < 3) return;
+        var bb = bbox(z.pts), c0 = cellAt(g, [bb[0], bb[1]]), c1 = cellAt(g, [bb[2], bb[3]]), x, y;
+        for (y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++)
+          for (x = c0 % g.W; x <= c1 % g.W; x++)
+            if (pip(cellXY(g, y * g.W + x), z.pts)) g.cold[y * g.W + x] = 1;
+      });
+    }
     // клетки зон: чей центр внутри полигона (последняя зона главнее)
     var own = g ? new Int32Array(N) : null, info = {};
     if (g) zs.forEach(function (Z) {
       var bb = bbox(Z.z.pts), x, y, c0 = cellAt(g, [bb[0], bb[1]]), c1 = cellAt(g, [bb[2], bb[3]]);
-      var X0 = c0 % g.W, Y0 = Math.floor(c0 / g.W), X1 = c1 % g.W, Y1 = Math.floor(c1 / g.W), n = 0;
+      var X0 = c0 % g.W, Y0 = Math.floor(c0 / g.W), X1 = c1 % g.W, Y1 = Math.floor(c1 / g.W), n = 0, all = 0;
       for (y = Y0; y <= Y1; y++) for (x = X0; x <= X1; x++) {
         var k = y * g.W + x;
-        if (pip(cellXY(g, k), Z.z.pts)) { own[k] = Z.i + 1; n++; }
+        if (!pip(cellXY(g, k), Z.z.pts)) continue;
+        all++;
+        if (g.cold[k]) continue;
+        own[k] = Z.i + 1; n++;
       }
-      info[Z.i] = { bb: [X0, Y0, X1, Y1], cells: n };
+      info[Z.i] = { bb: [X0, Y0, X1, Y1], cells: n, all: all };
     });
     // прямоугольники зон — от раскладки не зависят, считаем один раз
     if (g) zs.forEach(function (Z) {
@@ -619,7 +692,9 @@
       if (!grow) break;
     }
     zs.forEach(function (Z) {
-      var S = areaM2(Z.z, f), lp = res && res.byZone[Z.i] && res.byZone[Z.i].length ? res.byZone[Z.i] : null;
+      // площадь обогрева — без мест «без обогрева» внутри зоны
+      var I = info[Z.i], S = areaM2(Z.z, f) * (I && I.all ? I.cells / I.all : 1);
+      var lp = res && res.byZone[Z.i] && res.byZone[Z.i].length ? res.byZone[Z.i] : null;
       if (!lp) {
         // Оценка по площади: та же формула, что в смете без планов.
         var est = S / (stepMm / 1000) * 1.05, k = Math.max(1, Math.ceil(est / lim));
@@ -658,7 +733,7 @@
       var kx = k % g.W, ky = Math.floor(k / g.W);
       var outside = kx < zb[0] || ky < zb[1] || kx > zb[2] || ky > zb[3];
       cost[k] = slabOf[k] >= 0 ? (edge[k] ? COST_EDGE : COST_IN) :
-        (own[k] ? COST_FREE : (outside ? COST_IN : COST_OUT));
+        (g.cold[k] || outside ? COST_IN : (own[k] ? COST_FREE : COST_OUT));
     }
     // нарисованные монтажником подводки — желательная трасса
     (f.leads || []).forEach(function (L) {
@@ -1431,6 +1506,15 @@
     var anyAuto = bundle.length > 0;
     var rows = [], flowSum = 0, byLoss = false;
     rooms = (rooms || []).filter(function (r) { return (r.floor || 1) === num; });
+    // места без обогрева (лестница, колонна) — серым контуром с перекрестьем
+    (f.zones || []).forEach(function (z) {
+      if (z.type !== 'cold' || !z.pts || z.pts.length < 3) return;
+      o.push('<polygon points="' + polyPts(z.pts, t.X, t.Y) + '" style="fill:rgba(120,120,120,0.10);stroke:' +
+        COLT.cold + ';stroke-width:0.35"/>');
+      var b = bbox(z.pts);
+      o.push('<path d="' + pathD([[b[0], b[1]], [b[2], b[3]]], t) + pathD([[b[2], b[1]], [b[0], b[3]]], t) +
+        '" style="fill:none;stroke:' + COLT.cold + ';stroke-width:0.2"/>');
+    });
     drawBundle(o, bundle, t, f, 1);
     // Петли считает общий расчёт: ровно те же числа уходят в смету и в
     // таблицу контуров на листе узла коллектора.

@@ -206,6 +206,7 @@
     <option value="tp">Тёплый пол</option>
     <option value="boiler">Котельная</option>
     <option value="wc">Санузел</option>
+    <option value="cold" title="Лестница, колонна, ванна, встроенный шкаф: петли тёплого пола и подводки обходят это место">Без обогрева</option>
   </select>
   <select id="northsel" onchange="setNorth(this.value)" title="Куда на этом плане смотрит север. По нему расчёт сам определяет, на какую сторону выходит каждая комната: на север и восток теплопотери выше.">
     <option value="">Север: не указан</option>
@@ -277,7 +278,9 @@ var scaleCur = null, scaleFree = false;   // след масштабной ли�
 var imgFailed = {};   // этажи, чью подложку не удалось забрать с сервера
 var polyCur = null, closeTs = 0, undoStack = [];
 var TYPES = { tp: ['Тёплый пол', '#ff8000'], rad: ['Радиаторы', '#d22'],
-  boiler: ['Котельная', '#5577aa'], wc: ['Санузел', '#0b7285'] };
+  boiler: ['Котельная', '#5577aa'], wc: ['Санузел', '#0b7285'],
+  // лестница, колонна, ванна, шкаф внутри тёплого пола — петли и подводки обходят
+  cold: ['Без обогрева', '#888888'] };
 // Сантехприборы: подпись, буква на значке и габарит в мм (вдоль стены × от
 // стены). Габариты нужны и для привязки к стене, и для значка на листах.
 var FIXT = {
@@ -2497,7 +2500,7 @@ function tpLoops(f, stepMm) {
   if (!window.projectPlans || !projectPlans.floorLoops || !f.pxPerM) return {};
   var key = stepMm + '|' + (f.coll ? f.coll.x + ',' + f.coll.y : '-') + '|' +
     JSON.stringify((f.zones || []).map(function (z) {
-      return z.type === 'tp' ? [z.pts, z.lay || ''] : 0;
+      return z.type === 'tp' ? [z.pts, z.lay || ''] : z.type === 'cold' ? ['cold', z.pts] : 0;
     })) + '|' + JSON.stringify(f.leads || []);
   if (loopCache.key === key) return loopCache.val;
   if (dragZ) return loopCache.val;            // тянут край — пересчёт по отпусканию
