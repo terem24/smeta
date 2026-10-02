@@ -35080,7 +35080,42 @@ const app = {
             const n = (x, d) => { x = parseInt(x, 10); return x >= 1 && x <= 365 ? x : d; };
             const warn = n(v.warn, 20);
             this._inactCfg = { warn, freeze: Math.max(n(v.freeze, 25), warn), delete: n(v.delete, 10) };
+            const { data: nd } = await supabaseClient.from('app_settings')
+                .select('value').eq('key', 'onboarding_nudges').maybeSingle();
+            const o = (nd && nd.value) || {};
+            const d3 = n(o.day3, 3);
+            this._nudgeCfg = { enabled: o.enabled === true, day3: d3, day14: Math.max(n(o.day14, 14), d3 + 1), day45: n(o.day45, 45) };
         } catch (e) { /* остаются значения по умолчанию */ }
+    },
+
+    // Рассылка тем, кто заходит, но не считает (20261002_onboarding_nudges.sql).
+    // По умолчанию выключена: включает администратор.
+    nudgeCfg: function () {
+        return this._nudgeCfg || { enabled: false, day3: 3, day14: 14, day45: 45 };
+    },
+
+    saveOnboardingNudges: async function () {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять рассылку запрещено.'); return; }
+        const get = id => parseInt((document.getElementById(id) || {}).value, 10);
+        const day3 = get('nudge_day3'), day14 = get('nudge_day14'), day45 = get('nudge_day45');
+        const enabled = !!(document.getElementById('nudge_enabled') || {}).checked;
+        const ok = x => x >= 1 && x <= 365;
+        if (!ok(day3) || !ok(day14) || !ok(day45)) { app.alert('Сроки рассылки — целые числа от 1 до 365 дней.'); return; }
+        if (day14 <= day3) { app.alert('Второе письмо должно идти позже первого: поставьте больше дней.'); return; }
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const value = { enabled, day3, day14, day45 };
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'onboarding_nudges', value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this._nudgeCfg = value;
+            this.renderAdminInactiveBody();
+            app.alert(enabled
+                ? 'Рассылка включена. Первые письма уйдут сегодня в 10:00 по Москве.'
+                : 'Рассылка выключена. Настройки сохранены, ничего отправляться не будет.');
+        } catch (e) {
+            app.alert('Не удалось сохранить рассылку: ' + (e.message || e) + '. Если миграция 20261002_onboarding_nudges.sql ещё не выполнена — выполните её.');
+        }
     },
 
     saveInactivityDays: async function () {
@@ -35143,6 +35178,7 @@ const app = {
         const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
         const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
         const cfg = this.inactivityDays();
+        const nudge = this.nudgeCfg();
 
         const returned = rows.filter(r => r.returned_at).length;
         const frozen = rows.filter(r => r.stage === 'frozen').length;
@@ -35167,6 +35203,18 @@ const app = {
                 <label>Заморозка, на день <input type="number" id="inact_freeze" min="1" max="365" value="${cfg.freeze}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
                 <label>Удаление, дней после заморозки <input type="number" id="inact_delete" min="1" max="365" value="${cfg.delete}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
                 <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveInactivityDays()">Сохранить сроки</button>
+            </div>
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:6px; line-height:1.5;">
+                <b>Рассылка тем, кто заходит, но не считает.</b> Письмо и сообщение в кабинет: новичкам без смет,
+                давним без смет и тем, у кого последняя смета давно. Раз в сутки в 10:00 по Москве, не чаще одного письма
+                в неделю на человека, Профи и замороженным не пишем.
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; font-size:12px; color:var(--text-main);">
+                <label><input type="checkbox" id="nudge_enabled" ${nudge.enabled ? 'checked' : ''} ${isViewer ? 'disabled' : ''}> Рассылка включена</label>
+                <label>Новичку без смет, через дней <input type="number" id="nudge_day3" min="1" max="365" value="${nudge.day3}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <label>Вопрос «что не получилось», дней <input type="number" id="nudge_day14" min="1" max="365" value="${nudge.day14}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <label>Давняя смета, дней назад <input type="number" id="nudge_day45" min="1" max="365" value="${nudge.day45}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveOnboardingNudges()">Сохранить рассылку</button>
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
                 <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
