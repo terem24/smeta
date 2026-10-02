@@ -18209,6 +18209,7 @@ body.theme-yandex #profile_modal_overlay {
 @media screen and (max-width: 768px) and (min-height: 501px),
        screen and (max-width: 1024px) and (orientation: portrait) {
     .lk-nav-search { grid-column: 1 / -1; margin: 0; }
+    #lk_search_btn { display: none; }
     .lk-nav-search kbd { display: none; }
     .lk-mob-bar {
         display: flex;
@@ -18306,3 +18307,5 @@ body.theme-yandex #profile_modal_overlay {
         grid-column: 1 / -1;
     }
 }
+
+#lk_search_btn { right: 56px; top: 12px; }

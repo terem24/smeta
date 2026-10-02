@@ -14832,8 +14832,6 @@ const app = {
     //   only   — 'nav': пункта на панели нет
     CABINET_MENU: [
         { id: 'calc', kind: 'act', group: 'calc', nav: 'Расчёт', short: 'Расчёт', rail: 'Расчёт', title: 'Вернуться к расчёту сметы', icon: '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="11" x2="8.01" y2="11"></line><line x1="12" y1="11" x2="12.01" y2="11"></line><line x1="16" y1="11" x2="16.01" y2="11"></line><line x1="8" y1="15" x2="8.01" y2="15"></line><line x1="12" y1="15" x2="12.01" y2="15"></line><line x1="16" y1="15" x2="16.01" y2="15"></line><line x1="8" y1="19" x2="12" y2="19"></line>' },
-        // Только на панели: в окне кабинета у поиска своя кнопка над меню
-        { id: 'search', kind: 'search', group: 'calc', only: 'rail', rail: 'Поиск', title: 'Поиск по разделам и сметам (Ctrl+K)', icon: '<circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path>' },
         { id: 'home', kind: 'tab', group: 'calc', nav: 'Главная', short: 'Главная', rail: 'Главная', title: 'Что требует внимания: ответы клиентов, сообщения, незавершённое', icon: '<path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-5h4v5"></path>' },
         { id: 'messages', kind: 'act', group: 'calc', nav: 'Сообщения', short: 'Сообщения', rail: 'Сообщения', title: 'Сообщения и уведомления', icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>', badge: true },
         { id: 'objects', kind: 'tab', group: 'objects', cap: 'Работа', nav: 'Мои объекты', short: 'Объекты', rail: 'Объекты', title: 'Мои объекты — сохранённые сметы', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
@@ -14880,6 +14878,18 @@ const app = {
             }).join('')}</div>`).join(''));
         }
 
+        // Кнопка поиска в углу окна кабинета, рядом с крестиком (на телефоне — над меню разделов)
+        const lkHost = document.querySelector('#profile_modal_overlay .auth-modal-content');
+        if (lkHost && !document.getElementById('lk_search_btn')) {
+            const sb = document.createElement('button');
+            sb.id = 'lk_search_btn';
+            sb.type = 'button';
+            sb.className = 'admin-search-btn';
+            sb.title = 'Поиск по разделам кабинета и своим сметам (Ctrl+K)';
+            sb.innerHTML = '<svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Поиск</span><kbd>Ctrl K</kbd>';
+            sb.addEventListener('click', () => this.openCabinetSearch());
+            lkHost.appendChild(sb);
+        }
         if (!this._lkSearchKeyBound) {
             this._lkSearchKeyBound = true;
             document.addEventListener('keydown', e => {
@@ -15011,7 +15021,7 @@ const app = {
         const el = document.createElement('div');
         el.id = 'lk_search';
         el.innerHTML = `<div class="ad-search-box" role="dialog" aria-label="Поиск по кабинету">
-                <input id="lk_search_input" type="text" autocomplete="off" placeholder="Раздел или смета…">
+                <input id="lk_search_input" type="text" autocomplete="off" placeholder="Название раздела, сметы или номер КП…">
                 <div id="lk_search_res" class="ad-search-res"></div>
                 <div class="ad-search-foot"><span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span><span><kbd>Enter</kbd> открыть</span><span><kbd>Esc</kbd> закрыть</span></div>
             </div>`;
@@ -15083,11 +15093,19 @@ const app = {
         let last = '', h = '';
         s.items.forEach((it, i) => {
             if (it.kind !== last) { h += `<div class="ad-search-grp">${LABEL[it.kind]}</div>`; last = it.kind; }
-            h += `<div class="ad-search-it${i === s.sel ? ' sel' : ''}" onmouseenter="app._lkSearch.sel=${i}; app.cabinetSearchRender()" onmousedown="event.preventDefault(); app.cabinetSearchOpen(${i})"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></div>`;
+            h += `<div class="ad-search-it${i === s.sel ? ' sel' : ''}" onmousemove="app.cabinetSearchHover(${i})" onmousedown="event.preventDefault()" onclick="app.cabinetSearchOpen(${i})"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></div>`;
         });
         box.innerHTML = h;
         const cur = box.querySelector('.ad-search-it.sel');
         if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+    },
+
+    // Наведение мыши только подсвечивает строку: перерисовка списка под курсором съедала клик
+    cabinetSearchHover: function (i) {
+        const s = this._lkSearch, box = document.getElementById('lk_search_res');
+        if (!s || !box || s.sel === i) return;
+        s.sel = i;
+        box.querySelectorAll('.ad-search-it').forEach((el, k) => el.classList.toggle('sel', k === i));
     },
 
     cabinetSearchOpen: function (i) {
