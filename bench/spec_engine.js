@@ -85,6 +85,20 @@ console.log('\nПочему отклонены (по виду причины):')
 [...why].sort((a, b) => b[1] - a[1]).slice(0, 12).forEach(([k, n]) => console.log(`  ${String(n).padStart(5)}  ${k}`));
 
 // Та же выборка, что в spec_analog.js: ненайденные bench/spec.js, каждая 160-я.
+// --grep <regex>: что получили строки с таким названием (по одной на уникальное).
+const GREP = flag('--grep');
+if (GREP) {
+    const rx = new RegExp(GREP, 'i'), seen = new Set();
+    console.log(`\nСтроки «${GREP}»:`);
+    for (const o of res) {
+        if (!rx.test(o.r['наименование']) || seen.has(o.r['наименование'])) continue;
+        seen.add(o.r['наименование']);
+        const m = o.x.m;
+        console.log(`  ${m ? (m.byArticle ? 'КОД ' : 'АНЛГ') : 'НЕТ '} | ${o.r['наименование'].slice(0, 70).padEnd(70)} → ` +
+            (m ? `${m.item.id} ${String(m.item.name).slice(0, 40)}` : String(o.x.why).slice(0, 60)));
+    }
+}
+
 // --offset N даёт ДРУГУЮ выборку того же шага: защиты настраивались на выборке 0,
 // и честная проверка — на строках, которых при настройке не видели.
 const OFFSET = +(flag('--offset') || 0);

@@ -291,7 +291,9 @@ const RecognizeUI = {
             if (t) t.textContent = 'Распознавание эскиза котельной';
             if (s3) s3.textContent = '3. В расчёт';
         } else if (kind === 'estimate') {
-            if (t) t.textContent = 'Распознавание рукописной сметы';
+            // Спецификация рабочего проекта — не рукописная смета: её прочитала
+            // программа, и монтажник должен видеть, откуда взялись строки.
+            if (t) t.textContent = this._specMode ? 'Смета по спецификации проекта' : 'Распознавание рукописной сметы';
             if (s3) s3.textContent = '3. В смету';
         } else {
             if (t) t.textContent = 'Распознавание сметы или плана этажа';
@@ -843,6 +845,7 @@ const RecognizeUI = {
 
     /** Поля загруженного файла — без обращения к разметке экрана загрузки. */
     clearFileState() {
+        this._specMode = false;   // следующий файл — уже не спецификация проекта
         this._img = null;
         this._imgs = null;
         this._file = null;
@@ -1411,6 +1414,7 @@ const RecognizeUI = {
             // него берутся помещения — сразу по правилам плана этажа. Ставим
             // до сводки: по нему она выбирает вид.
             this._project = r.project || null;
+            this._specMode = false;
 
             this._fileNote = r.note || '';
             this._fileNoteHead = r.noteHead || '';
@@ -3631,6 +3635,7 @@ const RecognizeUI = {
         const spec = (this._project && this._project.spec) || [];
         if (!spec.length || typeof RecognizeMatch === 'undefined' || !RecognizeMatch.specItem) return false;
         this._fileNote = '';
+        this._specMode = true;     // заголовок экрана: «Смета по спецификации проекта»
         this.startReview({ items: spec.map(r => RecognizeMatch.specItem(r)) });
         return true;
     },
