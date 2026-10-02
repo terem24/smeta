@@ -17348,6 +17348,52 @@ body.theme-yandex #admin_modal_overlay {
     #ad_peek { width: 100%; border-radius: 0; }
 }
 
+/* Формы настроек внутри сворачиваемых блоков: подписанные поля сеткой, кнопка справа */
+.ad-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 12px 16px;
+    align-items: end;
+}
+.ad-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--text-sec); }
+.ad-field input[type="number"] { width: 100%; }
+.ad-field.ad-check { flex-direction: row; align-items: center; gap: 8px; color: var(--text-main); min-height: 34px; }
+.ad-form-act { display: flex; align-items: flex-end; }
+#admin_content .admin-btn.ad-primary:not([style*="background"]) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+#admin_content .admin-btn.ad-primary:not([style*="background"]):hover:not(:disabled) { filter: brightness(0.92); background: var(--primary); color: #fff; border-color: var(--primary); }
+@media screen and (min-width: 1025px) {
+    #admin_content .admin-stat-grid.stat-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+}
+
+/* Шкала расхода лимита (Распознавание) и свёрнутый блок опасных действий */
+.ad-quota { display: flex; flex-direction: column; gap: 5px; min-width: 190px; }
+.ad-meter { height: 6px; border-radius: 999px; background: var(--surface); border: 1px solid var(--ad-line); overflow: hidden; }
+.ad-meter i { display: block; height: 100%; background: var(--primary); border-radius: 999px; }
+.ad-meter.warn i { background: #F59E0B; }
+.ad-meter.bad i { background: #EF4444; }
+.ad-quota-t { font-size: 12px; color: var(--text-main); white-space: nowrap; }
+details.ad-danger-zone { position: relative; }
+details.ad-danger-zone > summary {
+    list-style: none;
+    cursor: pointer;
+    height: 34px;
+    display: inline-flex;
+    align-items: center;
+    padding: 0 12px;
+    border: 1px dashed var(--ad-line);
+    border-radius: var(--ad-radius);
+    color: var(--text-sec);
+    font-size: 12px;
+    font-weight: 600;
+}
+details.ad-danger-zone > summary::-webkit-details-marker { display: none; }
+details.ad-danger-zone[open] > summary { color: #EF4444; border-color: #EF4444; }
+details.ad-danger-zone > .admin-btn { position: absolute; right: 0; top: 40px; z-index: 5; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+
 /* Общий поиск (Ctrl+K) и кнопка в шапке панели */
 .admin-search-btn {
     position: absolute;

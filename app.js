@@ -35233,6 +35233,9 @@ const app = {
     renderAdminInactiveBody: function () {
         const root = document.getElementById('admin_inactive_root');
         if (!root) return;
+        // Контейнер сначала служит заглушкой «Загрузка…» по центру — для содержимого сбрасываем
+        root.style.textAlign = 'left';
+        root.style.padding = '0';
         const rows = this._inactiveReport || [];
         const isViewer = this.isReadOnlyAdmin();
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
@@ -35251,56 +35254,49 @@ const app = {
         // она говорит, работает напоминание или люди ушли насовсем.
         const share = rows.length ? Math.round(returned * 100 / rows.length) : 0;
 
+        // Две настройки — в свёрнутых блоках с подписанными полями: раньше десяток полей
+        // и кнопок стояли строками над самими цифрами, и результат уезжал за экран
+        const dis = isViewer ? 'disabled' : '';
+        const field = (label, id, val) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="1" max="365" value="${val}" ${dis}></label>`;
+        const saveBtn = (label, fn) => `<button class="admin-btn ad-primary" ${dis} onclick="${fn}">${label}</button>`;
+        const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+
         let h = `
-            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
-                <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
+            <div class="ad-page-h">
+                <div><h3>Напоминания неактивным</h3>
+                    <div class="ad-sub">Письмо после ${cfg.warn} дней молчания · доступ приостанавливается на ${cfg.freeze}-й день · учётка удаляется через ${cfg.delete} дней заморозки.
+                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.</div></div>
             </div>
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; line-height:1.5;">
-                Письмо уходит после ${cfg.warn} дней молчания, доступ приостанавливается на ${cfg.freeze}-й день,
-                учётка удаляется через ${cfg.delete} дней заморозки. Пока действует Профи, счётчик стоит
-                и считается заново от дня окончания тарифа. Проверка идёт каждую ночь.
+            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${statTile('Отправлено', rows.length, '&nbsp;')}
+                ${statTile('Вернулись', returned, `${share}% от всех`)}
+                ${statTile('Молчат', silent, 'письмо ушло, ответа нет')}
+                ${statTile('Заморожены', frozen, 'доступ приостановлен')}
+                ${statTile('Удалены', deleted, 'учётки удалены')}
             </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; font-size:12px; color:var(--text-main);">
-                <label>Письмо, дней молчания <input type="number" id="inact_warn" min="1" max="365" value="${cfg.warn}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Заморозка, на день <input type="number" id="inact_freeze" min="1" max="365" value="${cfg.freeze}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Удаление, дней после заморозки <input type="number" id="inact_delete" min="1" max="365" value="${cfg.delete}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveInactivityDays()">Сохранить сроки</button>
-            </div>
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:6px; line-height:1.5;">
-                <b>Рассылка тем, кто заходит, но не считает.</b> Письмо и сообщение в кабинет: новичкам без смет,
-                давним без смет и тем, у кого последняя смета давно. Раз в сутки в 10:00 по Москве, не чаще одного письма
-                в неделю на человека, Профи и замороженным не пишем.
-            </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; font-size:12px; color:var(--text-main);">
-                <label><input type="checkbox" id="nudge_enabled" ${nudge.enabled ? 'checked' : ''} ${isViewer ? 'disabled' : ''}> Рассылка включена</label>
-                <label>Новичку без смет, через дней <input type="number" id="nudge_day3" min="1" max="365" value="${nudge.day3}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Вопрос «что не получилось», дней <input type="number" id="nudge_day14" min="1" max="365" value="${nudge.day14}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Давняя смета, дней назад <input type="number" id="nudge_day45" min="1" max="365" value="${nudge.day45}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveOnboardingNudges()">Сохранить рассылку</button>
-            </div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Отправлено</div>
-                    <div style="font-size:20px; font-weight:800; color:var(--text-main);">${rows.length}</div>
+            <details class="ad-collapse">
+                <summary>Сроки неактивности</summary>
+                <div class="ad-form-grid">
+                    ${field('Письмо, дней молчания', 'inact_warn', cfg.warn)}
+                    ${field('Заморозка, на день', 'inact_freeze', cfg.freeze)}
+                    ${field('Удаление, дней после заморозки', 'inact_delete', cfg.delete)}
+                    <div class="ad-form-act">${saveBtn('Сохранить сроки', 'app.saveInactivityDays()')}</div>
                 </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Вернулись</div>
-                    <div style="font-size:20px; font-weight:800; color:#10B981;">${returned}</div>
-                    <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${share}% от всех</div>
+            </details>
+            <details class="ad-collapse">
+                <summary>Рассылка тем, кто заходит, но не считает${nudge.enabled ? '' : ' — выключена'}</summary>
+                <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
+                    Письмо и сообщение в кабинет: новичкам без смет, давним без смет и тем, у кого последняя смета давно.
+                    Раз в сутки в 10:00 по Москве, не чаще одного письма в неделю на человека; Профи и замороженным не пишем.
                 </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Молчат</div>
-                    <div style="font-size:20px; font-weight:800; color:#D97706;">${silent}</div>
+                <div class="ad-form-grid">
+                    <label class="ad-field ad-check"><input type="checkbox" id="nudge_enabled" ${nudge.enabled ? 'checked' : ''} ${dis}><span>Рассылка включена</span></label>
+                    ${field('Новичку без смет, через дней', 'nudge_day3', nudge.day3)}
+                    ${field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)}
+                    ${field('Давняя смета, дней назад', 'nudge_day45', nudge.day45)}
+                    <div class="ad-form-act">${saveBtn('Сохранить рассылку', 'app.saveOnboardingNudges()')}</div>
                 </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Заморожены</div>
-                    <div style="font-size:20px; font-weight:800; color:#0EA5E9;">${frozen}</div>
-                </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Удалены</div>
-                    <div style="font-size:20px; font-weight:800; color:#EF4444;">${deleted}</div>
-                </div>
-            </div>`;
+            </details>`;
 
         if (!rows.length) {
             h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
@@ -35310,7 +35306,7 @@ const app = {
             return;
         }
 
-        h += `<div style="overflow-x:auto;"><table class="admin-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+        h += `<div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
             <thead><tr style="text-align:left; color:var(--text-sec);">
                 <th style="padding:8px;">Кто</th>
                 <th style="padding:8px;">Регион</th>
@@ -35909,6 +35905,9 @@ const app = {
     renderAdminRecognitionBody: function () {
         const root = document.getElementById('admin_recognition_root');
         if (!root) return;
+        // Контейнер сначала служит заглушкой «Загрузка…» по центру — для содержимого сбрасываем
+        root.style.textAlign = 'left';
+        root.style.padding = '0';
 
         // Место на диске и копилка промахов подбора считаются сервером по всему
         // архиву — это показатели платформы, а не компании. Тому, у кого панель
@@ -35972,13 +35971,33 @@ const app = {
             ? d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
             : '—';
 
-        const body = sorted.map((g, gi) => {
+        // Лимит и остаток каждого монтажника считаем сразу для всех: по ним строятся
+        // и сводные плитки, и срезы, и строка таблицы. Персональный лимит перекрывает
+        // общий; у админов лимита нет вовсе.
+        sorted.forEach(g => {
+            g.personal = limitsCfg.limits[g.key];
+            g.limit = g.personal === undefined ? this.recognitionDefaultLimit(g.key).limit : g.personal;
+            g.left = Math.max(0, g.limit - g.month);
+        });
+        const recF = this._recogFilter || 'all';
+        const recQ = String(this._recogQ || '').trim().toLowerCase();
+        const recCount = {
+            all: sorted.length,
+            out: sorted.filter(g => g.left === 0).length,
+            active: sorted.filter(g => g.month > 0).length,
+            idle: sorted.filter(g => g.month === 0).length
+        };
+        const shownGroups = sorted.filter(g =>
+            (recF === 'all' || (recF === 'out' && g.left === 0) || (recF === 'active' && g.month > 0) || (recF === 'idle' && g.month === 0)) &&
+            (!recQ || String(g.key).toLowerCase().indexOf(recQ) >= 0 || String(g.region || '').toLowerCase().indexOf(recQ) >= 0));
+
+        const body = shownGroups.map((g, gi) => {
             const isOpen = !!open[g.key];
-            // Персональный лимит перекрывает общий; у админов лимита нет вовсе.
-            const personal = limitsCfg.limits[g.key];
-            const limit = personal === undefined ? this.recognitionDefaultLimit(g.key).limit : personal;
-            const left = Math.max(0, limit - g.month);
+            const personal = g.personal, limit = g.limit, left = g.left;
             const leftColor = left === 0 ? '#EF4444' : (left <= 5 ? '#F59E0B' : 'var(--text-sec)');
+            // Шкала расхода месячного лимита: красная при нуле остатка, жёлтая на исходе
+            const meterPct = limit > 0 ? Math.min(100, Math.round(g.month * 100 / limit)) : 0;
+            const meterCls = left === 0 ? 'bad' : (left <= 5 ? 'warn' : '');
             const keyEsc = esc(g.key).replace(/'/g, "\\'");
 
             const pickedAll = g.rows.length && g.rows.every(r => picked[r.json]);
@@ -35994,13 +36013,16 @@ const app = {
                 <td style="${tdStyle} white-space:nowrap;">распознаваний: <b>${g.rows.length}</b>
                     <button class="row-icon-btn" title="Изменить месячный лимит распознаваний"
                             style="display:inline-flex; vertical-align:middle; padding:2px 4px;"
-                            onclick="event.stopPropagation(); app.setRecognitionLimit('${keyEsc}')">✏️</button></td>
+                            onclick="event.stopPropagation(); app.setRecognitionLimit('${keyEsc}')">✎</button></td>
                 <td style="${tdStyle} white-space:nowrap;">${g.bytes ? mb(g.bytes) : '—'}</td>
-                <td style="${tdStyle} text-align:center;" colspan="3">
-                    за месяц: <b title="Запросов к модели: многолистная смета стоит нескольких">${g.month}</b> из ${limit}${personal !== undefined ? ' (свой)' : ''}${
-                        g.monthRecs && g.monthRecs !== g.month
-                            ? ` <span style="color:var(--text-sec);">за ${g.monthRecs} ${this.plural(g.monthRecs, 'загрузку', 'загрузки', 'загрузок')}</span>` : ''} ·
-                    <span style="color:${leftColor};">осталось ${left}</span></td>
+                <td style="${tdStyle}" colspan="3">
+                    <div class="ad-quota">
+                        <div class="ad-meter ${meterCls}"><i style="width:${meterPct}%"></i></div>
+                        <div class="ad-quota-t"><b title="Запросов к модели: многолистная смета стоит нескольких">${g.month}</b> из ${limit}${personal !== undefined ? ' · свой' : ''}${
+                            g.monthRecs && g.monthRecs !== g.month
+                                ? ` <span style="color:var(--text-sec);">· за ${g.monthRecs} ${this.plural(g.monthRecs, 'загрузку', 'загрузки', 'загрузок')}</span>` : ''}
+                            <span style="color:${leftColor};">· осталось ${left}</span></div>
+                    </div></td>
                 <td style="${tdStyle} white-space:nowrap;">${fmtDate(g.last)}</td>
                 <td style="${tdStyle}"></td>
             </tr>`;
@@ -36020,7 +36042,7 @@ const app = {
 
                 const est = r.calcId ? byCalcId[String(r.calcId)] : null;
                 const openBtn = est
-                    ? `<button class="row-icon-btn" onclick="app.viewAdminEstimate('${est.id}')" title="Открыть расчёт">📂 Открыть</button>`
+                    ? `<button class="row-icon-btn" onclick="app.viewAdminEstimate('${est.id}')" title="Открыть расчёт">Открыть</button>`
                     : `<span style="color:var(--text-sec);" title="${r.calcId ? 'Расчёт № ' + esc(r.calcId) + ' не найден среди сохранённых' : 'Номер расчёта не сохранён'}">—</span>`;
 
                 return `<tr${picked[r.json] ? ' style="background:var(--primary-light);"' : ''}>
@@ -36117,7 +36139,7 @@ const app = {
               <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 12px;
                           background:var(--surface-light); cursor:pointer; font-size:12.5px;"
                    onclick="app.toggleRecognitionManual()">
-                <b>${manualOpen ? '▾' : '▸'} ✋ Ручные замены</b>
+                <b>${manualOpen ? '▾' : '▸'} Ручные замены</b>
                 <span style="color:var(--text-sec);">разных: ${manualList.length} · случаев: ${manualTotal}</span>
                 <span style="color:var(--text-sec);" title="Строки, которые монтажник подобрал руками через поиск по каталогу. То, что повторяется, стоит дописать в каталог.">ⓘ</span>
                 ${serverOld ? `<span style="color:#D97706; font-weight:700;"
@@ -36210,7 +36232,7 @@ const app = {
               <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 12px;
                           background:var(--surface-light); cursor:pointer; font-size:12.5px;"
                    onclick="app.toggleRecognitionGaps()">
-                <b>${gapsOpen ? '▾' : '▸'} 🕳 Чего не хватает подбору</b>
+                <b>${gapsOpen ? '▾' : '▸'} Чего не хватает подбору</b>
                 ${S ? `<span style="color:var(--text-sec);">не разобрали: ${(S.topUnparsed || []).length} ·
                         не нашли: ${(S.topNoMatch || []).length}${
                         S.totals && S.totals.sysMiss ? ` · «своего нет»: ${S.totals.sysMiss}` : ''}</span>`
@@ -36247,13 +36269,16 @@ const app = {
                 <span style="color:var(--text-sec);">файлы смет: ${st.originals} шт, ${mb(st.originalsBytes)}</span>
                 <span style="color:var(--text-sec);">разборы: ${st.jsons} шт, ${mb(st.jsonBytes)}</span>
                 ${st.diskFree ? `<span style="color:var(--text-sec);">свободно на диске: ${(st.diskFree / 1073741824).toFixed(1)} ГБ</span>` : ''}
-                <span style="margin-left:auto; display:flex; gap:8px;">
+                <span style="margin-left:auto; display:flex; gap:8px; align-items:center;">
                     <button class="admin-btn"
                             title="Удалить фотографии и PDF старше 90 дней. Разборы останутся, записи из таблицы не исчезнут"
                             onclick="app.purgeRecognitionFiles('originals', 90)">Очистить файлы старше 90 дней</button>
-                    <button class="admin-btn danger"
-                            title="Удалить все загруженные файлы. Разборы и статистика останутся"
-                            onclick="app.purgeRecognitionFiles('originals', 0)">Очистить все файлы</button>
+                    <!-- Удаление всего — отдельно и свёрнуто: рядом с рабочей кнопкой его легко нажать по ошибке -->
+                    <details class="ad-danger-zone"><summary>Опасные действия</summary>
+                        <button class="admin-btn danger"
+                                title="Удалить все загруженные файлы. Разборы и статистика останутся"
+                                onclick="app.purgeRecognitionFiles('originals', 0)">Очистить все файлы</button>
+                    </details>
                 </span>
             </div>` : '';
 
@@ -36274,19 +36299,38 @@ const app = {
                         onclick="app.clearRecognitionPicks()">Снять выделение</button>
             </div>` : '';
 
+        // Сводка за месяц: сколько запросов к модели ушло, у скольких монтажников лимит исчерпан
+        const monthCalls = sorted.reduce((a, g) => a + g.month, 0);
+        const monthLoads = sorted.reduce((a, g) => a + g.monthRecs, 0);
+        const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const statsHtml = `
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${statTile('Монтажников с распознаванием', sorted.length, `записей в архиве: ${rows.length}`)}
+                ${statTile('Запросов к модели за месяц', monthCalls, `загрузок: ${monthLoads}`)}
+                ${statTile('Лимит исчерпан', recCount.out, `из ${sorted.length} монтажников`)}
+                ${statTile('Архив', st ? mb(st.originalsBytes + st.jsonBytes) : '—', st && st.diskFree ? `свободно на диске: ${(st.diskFree / 1073741824).toFixed(1)} ГБ` : '&nbsp;')}
+            </div>`;
+        const recChip = (id, label) => `<button class="ad-chip${recF === id ? ' active' : ''}" onclick="app.setRecognitionFilter('${id}')">${label} <span class="ad-chip-n">${recCount[id]}</span></button>`;
+        const filtersHtml = `
+            <div class="ad-chips">${recChip('all', 'Все')}${recChip('active', 'Работали в этом месяце')}${recChip('idle', 'Без запросов в этом месяце')}${recChip('out', 'Лимит исчерпан')}</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                <input type="text" id="admin_recog_search" value="${esc(this._recogQ || '')}" placeholder="Поиск по почте или региону"
+                       style="flex:1 1 260px; max-width:420px;" oninput="app.setRecognitionQuery(this.value)">
+            </div>`;
+
         root.innerHTML = `
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                <h3 style="margin:0; color:var(--text-main);">🔍 Распознавание смет</h3>
-                <span style="color:var(--text-sec); font-size:12.5px;">монтажников: ${sorted.length} · записей: ${rows.length}</span>
-                <button class="admin-btn" style="margin-left:auto;"
-                        onclick="app.renderAdminRecognition()">Обновить</button>
+            <div class="ad-page-h">
+                <div><h3>Распознавание смет</h3><div class="ad-sub">Кто и сколько распознаёт, остаток месячного лимита, что не нашлось в каталоге</div></div>
+                <button class="admin-btn" onclick="app.renderAdminRecognition()">Обновить</button>
             </div>
+            ${statsHtml}
+            ${filtersHtml}
             ${platformWide ? diskHtml : ''}
             ${manualHtml}
             ${platformWide ? gapsHtml : ''}
             ${pickedHtml}
             <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse;">
+                <table class="ad-sticky" style="width:100%; border-collapse:collapse;">
                     <thead><tr>
                         <th style="${thStyle} width:34px;"></th>
                         <th style="${thStyle}">#</th>
@@ -36302,6 +36346,21 @@ const app = {
                     <tbody>${body || `<tr><td colspan="10" style="text-align:center; padding:30px; color:var(--text-sec);">Распознаваний пока нет.</td></tr>`}</tbody>
                 </table>
             </div>`;
+    },
+
+    setRecognitionFilter: function (id) {
+        this._recogFilter = id;
+        this.renderAdminRecognitionBody();
+    },
+    // Поиск перерисовывает тело при каждом знаке, поэтому возвращаем фокус и курсор в поле
+    setRecognitionQuery: function (q) {
+        this._recogQ = q;
+        clearTimeout(this._recogQT);
+        this._recogQT = setTimeout(() => {
+            this.renderAdminRecognitionBody();
+            const el = document.getElementById('admin_recog_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 200);
     },
 
     /** Снять все отметки, не трогая ничего в архиве. */
