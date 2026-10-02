@@ -21648,6 +21648,70 @@ const app = {
         { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' }
     ],
 
+    // Значки разделов — одноцветные линейные, берут цвет текста (currentColor).
+    // Эмодзи в ряду вкладок рисовались каждый своим цветом, и панель выглядела пёстрой;
+    // у разделов, которых здесь нет, остаётся эмодзи из ADMIN_TAB_DEFS.
+    ADMIN_TAB_SVG: {
+        stats: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+        estimates: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>',
+        messages: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+        inactive: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+        distributors: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
+        tariffs: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+        subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+        kanban: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/>',
+        branches: '<rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/>',
+        pricelist: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+        equipment: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94z"/>',
+        successors: '<path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+        recognition: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+        plans: '<path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0z"/><path d="M14.5 12.5l2-2M11.5 9.5l2-2M8.5 6.5l2-2M17.5 15.5l2-2"/>',
+        projects: '<path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>',
+        dashboard: '<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',
+        analytics: '<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
+        aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
+        articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
+        leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'
+    },
+
+    adminIcon: function (t) {
+        const p = t && this.ADMIN_TAB_SVG[t.id];
+        return p ? `<svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true">${p}</svg>` : (t && t.icon) || '';
+    },
+
+    // Цветные плашки-статусы в разделах рисуются инлайн: белый текст на сплошной
+    // заливке. Десятки таких плашек разных цветов и дают «пёструю» панель, а переписывать
+    // каждый раздел ради оттенка незачем. Здесь любая такая плашка, где бы она ни
+    // появилась, приводится к мягкому виду: тот же цвет, но тонкой заливкой и текстом.
+    // Следит за панелью наблюдатель — разделы перерисовываются сами и часто.
+    softenAdminChips: function (root) {
+        const sel = 'span[style*="background"], b[style*="background"], small[style*="background"], div[style*="background"], i[style*="background"]';
+        root.querySelectorAll(sel).forEach(el => {
+            if (el.dataset.soft || el.children.length || el.closest('button, a, input, select')) return;
+            const st = el.style;
+            const txt = (el.textContent || '').trim();
+            if (!txt || txt.length > 34) return;
+            const col = (st.color || '').replace(/\s/g, '').toLowerCase();
+            if (col !== '#fff' && col !== '#ffffff' && col !== 'white' && col !== 'rgb(255,255,255)') return;
+            const bg = st.backgroundColor;
+            if (!bg || bg === 'transparent' || /^rgba\([^)]*,\s*0(\.\d+)?\)$/.test(bg)) return;
+            el.dataset.soft = '1';
+            st.background = 'color-mix(in srgb, ' + bg + ' 15%, transparent)';
+            st.color = bg;
+        });
+    },
+
+    watchAdminStyle: function () {
+        const root = document.getElementById('admin_content');
+        if (!root || root._softWatch) return;
+        root._softWatch = true;
+        let timer = 0;
+        new MutationObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { try { this.softenAdminChips(root); } catch (e) { } }, 30);
+        }).observe(root, { childList: true, subtree: true });
+    },
+
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
     // поэтому и закрыт он тем же ключом. Список один, чтобы права не разъехались.
     // «Умное заполнение» — журнал диалогов монтажников с окном ✨, тоже только владельцу.
@@ -22604,7 +22668,7 @@ const app = {
         const always = `<span style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; background:rgba(16,185,129,.14); color:#0F8A5F;">всегда</span>`;
         const head = `<tr><th style="${th} text-align:left; padding-left:12px;">Раздел</th><th style="${th} ${sep}">Владелец</th>${roles.map(r => `<th style="${th}">${esc(r.label)}</th>`).join('')}</tr>`;
         const body = this.orderedAdminTabDefs().map(t => `<tr>
-                <td style="${td} text-align:left; padding-left:12px;"><div style="font-size:12.5px; font-weight:600; color:var(--text-main); white-space:nowrap;">${t.icon} ${esc(t.label)}</div><div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
+                <td style="${td} text-align:left; padding-left:12px;"><div style="font-size:12.5px; font-weight:600; color:var(--text-main); white-space:nowrap; display:flex; align-items:center; gap:7px;">${this.adminIcon(t)} ${esc(t.label)}</div><div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
                 <td style="${td} ${sep}">${always}</td>
                 ${roles.map(r => {
                     const v = this.adminTabCell(r.id, t.id);
@@ -22713,7 +22777,7 @@ const app = {
 
         // Разделы — из констант панели, поэтому таблица не может устареть
         const tabRows = this.orderedAdminTabDefs().map(t => `<tr>
-                <td style="${tdName}">${t.icon} ${esc(t.label)}<div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
+                <td style="${tdName}">${this.adminIcon(t)} ${esc(t.label)}<div style="font-size:11px; color:var(--text-sec);">${esc(t.hint || '')}</div></td>
                 ${cols.map(c => `<td style="${td}">${this.tabVisibleFor(t.id, c.role, c.owner)
                     ? (c.role === 'viewer' || c.role === 'manager' ? pill('part', 'свои') : pill('full', 'вся платформа'))
                     : pill('none', 'нет')}</td>`).join('')}
@@ -22808,7 +22872,7 @@ const app = {
 
         const items = this.adminTabDefs().map(t => `
             <div class="admin-mob-item" onclick="app.switchAdminTab('${t.id}')">
-                <span class="admin-mob-ico">${t.icon}</span>
+                <span class="admin-mob-ico">${this.adminIcon(t)}</span>
                 <span class="admin-mob-body"><b>${t.label}</b><small>${t.hint || ''}</small></span>
                 ${(t.id === 'messages' && unread) ? `<span class="admin-mob-badge">${unread}</span>` : ''}
                 <span class="admin-mob-arrow">›</span>
@@ -22892,6 +22956,7 @@ const app = {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         const content = document.getElementById('admin_content');
         if (!content) return;
+        this.watchAdminStyle();
 
         // Возвращаем обычную раскладку вкладки: «Сообщения» переводят #admin_content
         // в колонку с overflow:hidden ради чата во всю высоту, и без сброса
@@ -22946,7 +23011,7 @@ const app = {
             navHtml = `
             <div class="admin-mob-bar">
                 <button class="admin-mob-back" onclick="app.adminGoHome()">‹ Разделы</button>
-                <span class="admin-mob-cur">${cur.icon} ${cur.label}</span>
+                <span class="admin-mob-cur">${this.adminIcon(cur)} ${cur.label}</span>
             </div>
         `;
         } else {
@@ -22965,7 +23030,7 @@ const app = {
         navHtml = `
             <div id="admin_nav_tabs" style="display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-shrink: 0; width: 100%; flex-wrap: wrap;">
                 ${ADMIN_TAB_DEFS.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none; ' : ''}margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${t.icon}<span class="admin-tab-label"> ${t.label}</span></button>
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none; ' : ''}margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.label}</span></button>
                 `).join('')}
             </div>
         `;

@@ -17078,3 +17078,166 @@ body.dark-mode .hc-export-doc::after {
         gap: 0 14px !important;
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Панель управления: единый вид «CRM» (02.10.2026)
+
+   Разделы рисуются инлайн-стилями из app.js, и у каждого вырос свой язык:
+   цветные эмодзи во вкладках, чёрные линии под заголовками таблиц (.inv-table
+   брал #000), карточки с жёстко прописанным светлым фоном (в тёмной теме они
+   светились белыми), фиолетовые «посещённые» ссылки, кнопки разной высоты и
+   обводки. Здесь всё это сводится к одному набору: цвета и шрифт берутся только
+   из переменных текущей темы (--primary, --surface, --border…), поэтому вид
+   сам следует за темой — калькулятор, «магазин», «Профи», ночная.
+   Инлайн-стили разделов не трогаем: слой перекрывает только то, что у них
+   общее, и всё, что раздел задал сам (цвет опасной кнопки, фон), остаётся.
+   Цветные плашки приводит к мягкому виду app.softenAdminChips. */
+#admin_modal_overlay {
+    --ad-radius: 8px;
+    --ad-field-radius: 8px;
+    --ad-card-radius: 12px;
+}
+body.theme-yandex #admin_modal_overlay {
+    --ad-radius: 999px;
+    --ad-field-radius: 12px;
+    --ad-card-radius: 16px;
+}
+
+/* Значки разделов: линейные, цвета текста */
+.ad-ico {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+.admin-mob-ico .ad-ico {
+    width: 18px;
+    height: 18px;
+    color: var(--text-sec);
+}
+.admin-mob-cur .ad-ico {
+    vertical-align: -3px;
+}
+
+/* Ряд вкладок: плоские, активная — мягкая заливка цвета темы */
+#admin_nav_tabs {
+    gap: 4px !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 18px !important;
+}
+#admin_nav_tabs .admin-tab-btn {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 7px;
+    height: 32px !important;
+    padding: 0 12px !important;
+    border-radius: var(--ad-radius) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    color: var(--text-sec) !important;
+    font-weight: 600 !important;
+    transition: background 0.15s, color 0.15s;
+}
+#admin_nav_tabs .admin-tab-btn:hover:not(.active) {
+    background: var(--surface-light) !important;
+    color: var(--text-main) !important;
+}
+#admin_nav_tabs .admin-tab-btn.active {
+    background: var(--primary-light) !important;
+    color: var(--primary) !important;
+}
+
+/* Карточки-показатели */
+#admin_content .control-card,
+#admin_content .admin-stat-grid .control-card {
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: var(--ad-card-radius);
+}
+#admin_content div[style*="border:1px solid var(--border)"][style*="border-radius:10px"],
+#admin_content div[style*="border: 1px solid var(--border)"][style*="border-radius: 10px"] {
+    border-radius: var(--ad-card-radius) !important;
+}
+
+/* Таблицы: тонкая линия вместо чёрной, подсветка строки под курсором */
+#admin_content .inv-table th {
+    color: var(--text-sec);
+    border-bottom: 1px solid var(--border);
+    letter-spacing: 0.04em;
+}
+#admin_content .inv-table td {
+    border-bottom: 1px solid var(--border);
+}
+#admin_content .inv-table tbody tr:hover > td:not([style*="background"]) {
+    background: var(--surface-light);
+}
+
+/* Кнопки: одна обводка, один наведённый вид. Кнопки со своим фоном (главные
+   действия, опасные) не трогаем — у них фон задан самим разделом. */
+#admin_content .auth-btn-base:not([style*="background"]),
+#admin_content .admin-btn:not([style*="background"]) {
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: var(--ad-radius);
+    font-size: 12px;
+    font-weight: 600;
+}
+#admin_content .auth-btn-base:not([style*="background"]):hover:not(:disabled),
+#admin_content .admin-btn:not([style*="background"]):hover:not(:disabled) {
+    background: var(--primary-light);
+    border-color: transparent;
+    color: var(--primary);
+}
+
+#admin_content .admin-btn.danger:not([style*="background"]),
+#admin_content .admin-btn.danger:not([style*="background"]):hover:not(:disabled) {
+    color: #EF4444;
+}
+body.theme-yandex #admin_content .admin-btn.danger:not([style*="background"]),
+body.theme-yandex #admin_content .admin-btn.danger:not([style*="background"]):hover:not(:disabled) {
+    color: var(--ya-red);
+}
+
+/* Поля ввода */
+#admin_content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]),
+#admin_content select,
+#admin_content textarea {
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: var(--ad-field-radius);
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+#admin_content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):focus,
+#admin_content select:focus,
+#admin_content textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Ссылки: один цвет, без фиолетовых «посещённых» */
+#admin_content a:not([class]):not([style*="background"]) {
+    color: var(--primary);
+    text-decoration: none;
+}
+#admin_content a:not([class]):not([style*="background"]):hover {
+    text-decoration: underline;
+}
+
+/* Заголовки и прокрутка */
+#admin_content h3,
+#admin_content h4 {
+    color: var(--text-main);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+#admin_content {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
