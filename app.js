@@ -33277,9 +33277,14 @@ const app = {
                 panels.some(isVentil) ? { kind: 'bottom', url: this.RAD_PANEL_SHEETS.bottom } : null,
                 panels.some(i => !isVentil(i)) ? { kind: 'side', url: this.RAD_PANEL_SHEETS.side } : null
             ].filter(Boolean),
-            // Трубчатых радиаторов в каталоге нет — лист встаёт, когда такой прибор
-            // пришёл распознаванием, спецификацией проекта или добавлен руками.
-            radTubular: devs.some(i => inRads(i) && /трубчат|arbonia|гармони|charleston|tubus/i.test(nameOf(i)))
+            // Трубчатые в каталоге — среди дизайнерских (замена радиатора →
+            // «Дизайнерские»): ROMMER RST («трубчатый» в названии) и STOUT TUBE
+            // ROUND/QUADRO (слова «трубчатый» в названии нет). Ещё приходят
+            // распознаванием и спецификацией проекта. На листе узел нижнего
+            // подключения, поэтому боковое подключение лист не получает.
+            radTubular: devs.some(i => inRads(i) &&
+                /трубчат|STOUT TUBE|arbonia|гармони|charleston|tubus/i.test(nameOf(i)) &&
+                !/боков/i.test(nameOf(i)))
                 ? this.RAD_TUBULAR_SHEET : null,
             // Внутрипольный конвектор — только при прямом подключении: у всех 20
             // образцов корпуса клапан прямой, а угловой на листе разошёлся бы со
