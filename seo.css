@@ -492,6 +492,9 @@ footer.bottom p:last-child { margin-bottom: 0; }
 .lead-form input:focus,
 .lead-form textarea:focus { border-color: var(--primary); }
 .lead-form [aria-invalid="true"] { border-color: #DC2626; }
+/* Блоки без своей рамки (выбор работ, согласие) при ошибке — красная обводка, чтобы на телефоне было видно, что не заполнено */
+.lead-form input[aria-invalid="true"], .lead-form textarea[aria-invalid="true"] { box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.18); }
+.lead-form fieldset[aria-invalid="true"], .lead-form .lf-consent[aria-invalid="true"] { outline: 2px solid #DC2626; outline-offset: 4px; border-radius: 12px; }
 html.dark-mode .lead-form input[type="text"],
 html.dark-mode .lead-form input[type="tel"],
 html.dark-mode .lead-form input[type="number"],

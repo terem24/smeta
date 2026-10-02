@@ -16,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- ?v= — только на этой странице: в seo.css добавлены правила формы заявки,
          и закэшированная без них версия оставила бы форму без оформления. -->
-    <link rel="stylesheet" href="/seo.css?v=2">
+    <link rel="stylesheet" href="/seo.css?v=3">
 
     <!-- Тему ставим до первой отрисовки. Флаг общий с калькулятором — stout_save.darkMode. -->
     <script>
@@ -451,6 +451,28 @@
                 if (!consent.checked) problems.push('без согласия на передачу данных мастеру заявку отправить нельзя');
                 if (problems.length) {
                     setError('Заявка не отправлена: ' + problems.join('; ') + '.');
+                    // Подводим экран к первому незаполненному: сообщение лежит под кнопкой
+                    // и на телефоне уезжает за край, непонятно, что не так
+                    var worksBox = form.querySelector('fieldset');
+                    var consentBox = form.querySelector('.lf-consent');
+                    var targets = [];
+                    if (!works.length) targets.push(worksBox);
+                    if (!place.value.trim()) targets.push(place);
+                    if (!name.value.trim()) targets.push(name);
+                    if (badPhone) targets.push(phone);
+                    if (badArea) targets.push(area);
+                    if (!consent.checked) targets.push(consentBox);
+                    targets.forEach(function (el) {
+                        if (el === worksBox || el === consentBox) {
+                            el.setAttribute('aria-invalid', 'true');
+                            var clear = function () { el.removeAttribute('aria-invalid'); form.removeEventListener('change', clear); };
+                            form.addEventListener('change', clear);
+                        }
+                    });
+                    if (targets[0]) {
+                        targets[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        if (targets[0].tagName === 'INPUT') { try { targets[0].focus({ preventScroll: true }); } catch (e4) { } }
+                    }
                     return;
                 }
 
