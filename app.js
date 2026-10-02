@@ -15385,7 +15385,8 @@ const app = {
         const keys = groups.map(g => g.dataset.group);
         // Порядок из разметки запоминаем при первом заходе: к нему надо вернуться,
         // когда своей раскладки нет (вышли из аккаунта, зашли под другим)
-        if (!this._railDefaultGroupOrder) this._railDefaultGroupOrder = keys.slice();
+        // Умолчание: «Расчёт и сообщения» → «Работа» (objects) → «Настройки» (account) → служебное
+        if (!this._railDefaultGroupOrder) this._railDefaultGroupOrder = ['calc', 'objects', 'account', 'service'].filter(k => keys.includes(k)).concat(keys.filter(k => !['calc', 'objects', 'account', 'service'].includes(k)));
 
         const layout = this.railLayout().groups;
         const saved = (Array.isArray(layout) && layout.length) ? layout : this._railDefaultGroupOrder;
