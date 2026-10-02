@@ -8733,14 +8733,47 @@ const app = {
             ? `<span style="font-size:10px; color:var(--text-sec);">ИНН ${d.inn}</span><br>`
             : `<span style="font-size:10px; color:#EF4444; font-weight:700;" title="Без ИНН по компании не собрать официальные данные — откройте «Изменить» и заполните">ИНН не указан</span><br>`;
 
+        // Срезы и поиск по списку компаний (по данным карточек; число приглашённых
+        // подгружается позже отдельным запросом, поэтому среза «лимит исчерпан» нет)
+        const distF = this._distFilter || 'all';
+        const distQ = String(this._distQ || '').trim().toLowerCase();
+        const DIST_GROUPS = [
+            { id: 'all', label: 'Все', test: () => true },
+            { id: 'active', label: 'Активные', test: d => !!d.is_active },
+            { id: 'off', label: 'Выключены', test: d => !d.is_active },
+            { id: 'pro', label: 'Выдают PRO', test: d => Number(d.pro_months) > 0 },
+            { id: 'own', label: 'Свои цены', test: d => !!d.use_own_prices },
+            { id: 'noinn', label: 'Без ИНН', test: d => !d.inn }
+        ];
+        const shown = dists.filter(d => {
+            const g = DIST_GROUPS.find(x => x.id === distF) || DIST_GROUPS[0];
+            if (!g.test(d)) return false;
+            if (!distQ) return true;
+            return [d.company_name, d.promo_code, d.manager_name, d.manager_email, d.director_email, (d.regions || []).join(' '), d.inn].join(' ').toLowerCase().indexOf(distQ) >= 0;
+        });
+        const distChips = DIST_GROUPS.map(g => {
+            const n = dists.filter(g.test).length;
+            return `<button class="ad-chip${distF === g.id ? ' active' : ''}" onclick="app.setDistFilter('${g.id}')">${g.label} <span class="ad-chip-n">${n}</span></button>`;
+        }).join('');
+        const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const distStats = `
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${statTile('Компаний', dists.length, `активных: ${dists.filter(d => d.is_active).length}`)}
+                ${statTile('Выдают PRO по промокоду', dists.filter(d => Number(d.pro_months) > 0).length, 'месяцы тарифа при активации')}
+                ${statTile('Со своими ценами', dists.filter(d => d.use_own_prices).length, 'монтажники видят их прайс')}
+                ${statTile('Без ИНН', dists.filter(d => !d.inn).length, 'отчётность не собрать')}
+            </div>`;
+
         let tableRows = '';
         if (dists.length === 0) {
             tableRows = '<tr><td colspan="10" style="text-align:center; padding: 30px; color: var(--text-sec);">Промокодов нет. Добавьте первый.</td></tr>';
+        } else if (!shown.length) {
+            tableRows = '<tr><td colspan="10" style="text-align:center; padding: 30px; color: var(--text-sec);">Ничего не найдено.</td></tr>';
         } else {
-            dists.forEach((d, i) => {
+            shown.forEach((d, i) => {
                 const statusBadge = d.is_active
-                    ? '<span style="background:#D1FAE5; color:#059669; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;">Активен</span>'
-                    : '<span style="background:#FEE2E2; color:#EF4444; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700;">Выкл</span>';
+                    ? '<span class="ad-pill ok">Активен</span>'
+                    : '<span class="ad-pill bad">Выкл</span>';
                 const validUntilText = d.valid_until ? new Date(d.valid_until).toLocaleDateString('ru-RU') : '∞';
                 const regionsText = (d.regions && d.regions.length) ? d.regions.join(', ') : '—';
                 const pl = d.price_list_key ? priceLists[d.price_list_key] : null;
@@ -8749,14 +8782,14 @@ const app = {
                 const priceCell = d.use_own_prices
                     ? (pl
                         ? `<span style="color:#059669; font-weight:700;">Свои</span><br><span style="font-size:10px; color:var(--text-sec);">${pl.title || d.price_list_key}</span>`
-                        : `<span style="color:#EF4444; font-weight:700;" title="Свои цены включены, но прайс-лист не выбран — монтажники видят цены Терем-онлайн">Свои ⚠️</span>`)
+                        : `<span style="color:#EF4444; font-weight:700;" title="Свои цены включены, но прайс-лист не выбран — монтажники видят цены Терем-онлайн">Свои — нет прайса</span>`)
                     : `<span style="color:var(--text-sec);">Терем</span>`;
                 tableRows += `<tr>
                     <td style="color:var(--text-sec);">${i + 1}</td>
-                    <td><b>${d.company_name || '—'}</b><br>${innCell(d)}<span style="font-size:10px; color:var(--text-sec);">📍 ${regionsText}</span></td>
+                    <td><b>${d.company_name || '—'}</b><br>${innCell(d)}<span style="font-size:10px; color:var(--text-sec);">${regionsText}</span></td>
                     <td style="font-weight:700; color:var(--primary); font-size:13px; letter-spacing:0.05em;">${d.promo_code}
                         <div style="display:flex; flex-wrap:wrap; gap:4px; margin-top:6px;">${this.inviteButtonsHtml(d, true)}</div></td>
-                    <td><div style="font-size:12px;">${d.manager_name || '—'}<br><span style="color:var(--text-sec);">${d.manager_email || ''}</span><br><span style="color:var(--text-sec);">${d.manager_phone || ''}</span>${d.director_email ? `<br><span style="color:var(--text-sec);">👁 ${d.director_email}</span>` : ''}</div></td>
+                    <td><div style="font-size:12px;">${d.manager_name || '—'}<br><span style="color:var(--text-sec);">${d.manager_email || ''}</span><br><span style="color:var(--text-sec);">${d.manager_phone || ''}</span>${d.director_email ? `<br><span style="color:var(--text-sec);" title="Руководитель: видит смету, работу менеджеров и меняет статусы счетов">рук.: ${d.director_email}</span>` : ''}</div></td>
                     <td style="text-align:center;">${Number(d.pro_months) > 0
                         ? `<b style="color:var(--primary);">${d.pro_months}</b>`
                         : '<span style="color:var(--text-sec);" title="Промокод только привязывает монтажника к дистрибьютору, тариф не выдаётся">без PRO</span>'
@@ -8768,9 +8801,9 @@ const app = {
                     <td style="text-align:right; min-width:150px;">
                         <!-- Две строки: три кнопки в одну не влезали и наезжали на «Статус» -->
                         <div style="display:grid; grid-template-columns:1fr auto; gap:6px; justify-items:stretch;">
-                            <button class="admin-btn" style="height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} onclick="app.editDistributor('${d.id}')">✏️ Изменить</button>
+                            <button class="admin-btn" style="height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} onclick="app.editDistributor('${d.id}')">Изменить</button>
                             <button class="admin-btn danger" style="height:28px; font-size:11px; margin:0;" ${isViewer ? 'disabled' : ''} onclick="app.deleteDistributor('${d.id}')">🗑</button>
-                            <button class="admin-btn" data-dist-brand="${d.id}" style="grid-column:1 / -1; height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} title="Логотип и реквизиты в КП, ссылке клиенту и шапке — всем учёткам этой компании вместо ТЕРЕМ" onclick="app.openDistBrandModal('${d.id}')">🎨 Реквизиты</button>
+                            <button class="admin-btn" data-dist-brand="${d.id}" style="grid-column:1 / -1; height:28px; font-size:11px; margin:0; white-space:nowrap;" ${isViewer ? 'disabled' : ''} title="Логотип и реквизиты в КП, ссылке клиенту и шапке — всем учёткам этой компании вместо ТЕРЕМ" onclick="app.openDistBrandModal('${d.id}')">Реквизиты</button>
                         </div>
                     </td>
                 </tr>`;
@@ -8782,8 +8815,7 @@ const app = {
         // карточки компаний и так не показываются.
         const inviteOnly = this.inviteOnlyRegistration();
         const regModeHtml = `
-                <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px 16px; background:${inviteOnly ? 'rgba(217,119,6,0.08)' : 'rgba(16,185,129,0.08)'}; border:1px solid ${inviteOnly ? 'rgba(217,119,6,0.35)' : 'rgba(16,185,129,0.35)'}; border-radius:12px; padding:12px 16px; margin-bottom:16px;">
-                    <span style="font-size:18px; line-height:1;">${inviteOnly ? '🔒' : '🔓'}</span>
+                <div class="ad-card" style="flex-direction:row; flex-wrap:wrap; align-items:center; gap:10px 16px; margin-bottom:14px; border-left:3px solid ${inviteOnly ? '#D97706' : '#10B981'};">
                     <div style="flex:1 1 260px;">
                         <div style="font-size:13.5px; font-weight:700; color:var(--text-main);">Регистрация новых монтажников: ${inviteOnly ? 'только по промокоду' : 'свободная'}</div>
                         <div style="font-size:11.5px; line-height:1.4; color:var(--text-sec);">${inviteOnly
@@ -8791,14 +8823,17 @@ const app = {
                             : 'Как раньше: промокод в форме необязателен, любой может зарегистрироваться сам. Включите режим «по промокоду», когда карточки магазинов и учётки менеджеров будут готовы.'}</div>
                     </div>
                     <select ${isViewer ? 'disabled' : ''} onchange="app.setRegistrationMode(this.value)" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); font-size:13px; font-weight:600;">
-                        <option value="open" ${inviteOnly ? '' : 'selected'}>🔓 Свободная</option>
-                        <option value="invite" ${inviteOnly ? 'selected' : ''}>🔒 Только по промокоду</option>
+                        <option value="open" ${inviteOnly ? '' : 'selected'}>Свободная</option>
+                        <option value="invite" ${inviteOnly ? 'selected' : ''}>Только по промокоду</option>
                     </select>
                 </div>`;
 
         content.innerHTML += `
             <div style="margin-bottom: 20px;">
-                <h3 style="margin: 0 0 16px; color: var(--text-main);">🏢 Дистрибьюторы</h3>
+                <div class="ad-page-h">
+                    <div><h3>Дистрибьюторы</h3><div class="ad-sub">Компании-партнёры: промокоды, менеджеры, свои цены и доступ монтажников</div></div>
+                </div>
+                ${isViewer ? '' : distStats}
                 ${regModeHtml}
 
                 <!-- Форма свёрнута: раньше открывалась на 12 полей раньше самого списка
@@ -8879,14 +8914,19 @@ const app = {
                     </div>
                 </details>
 
-                <table class="inv-table">
+                ${isViewer ? '' : `<div class="ad-chips">${distChips}</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <input type="text" id="admin_dist_search" value="${String(this._distQ || '').replace(/"/g, '&quot;')}" placeholder="Поиск по компании, промокоду, менеджеру, региону"
+                           style="flex:1 1 280px; max-width:460px;" oninput="app.setDistQuery(this.value)">
+                </div>`}
+                <table class="inv-table ad-sticky dist-table">
                     <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;" title="Монтажников привязано / лимит приглашений">Приглашено</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
                     <tbody>${tableRows}</tbody>
                 </table>
             </div>
         `;
         // Счётчики мест — отдельным запросом после отрисовки
-        if (dists.length) this.fillInviteStats(dists.map(d => d.id));
+        if (shown.length) this.fillInviteStats(shown.map(d => d.id));
         // Отметить, у каких компаний уже заданы свои реквизиты
         this.fillDistBrandMarks();
     },
@@ -9005,6 +9045,17 @@ const app = {
             if (!data || data.length < page) return { rows: out, capped: false };
         }
         return { rows: out, capped: true };
+    },
+
+    // Поиск по планировщику: перерисовка карточек без повторного чтения базы (skipFetch)
+    setKanbanQuery: function (q) {
+        this._kanbanQ = q;
+        clearTimeout(this._kanbanQT);
+        this._kanbanQT = setTimeout(async () => {
+            await this.renderAdminKanban(true);
+            const el = document.getElementById('kanban_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 250);
     },
 
     /**
@@ -9344,13 +9395,37 @@ const app = {
         const abandonedCount = filtered.filter(p => p.abandoned).length;
         if (!this._kanbanShowAbandoned) filtered = filtered.filter(p => !p.abandoned);
 
+        // Поиск по названию, монтажнику и номеру КП — в пределах уже выбранных фильтров
+        const kq = String(this._kanbanQ || '').trim().toLowerCase();
+        if (kq) filtered = filtered.filter(p => [p.project_name, p.user_name, p.calc_id].join(' ').toLowerCase().indexOf(kq) >= 0);
+
         const STAGES = this.ADMIN_KANBAN_STAGES;
         const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
         const stageOf = (event) => STAGES.find(s => s.events.includes(event));
 
-        const filterHtml = `
+        // Сводка над колонками: сколько проектов и денег в работе. «В работе» — всё, что дошло
+        // до согласования или оплаты (две последние колонки); «Расчёты» и «Распознано» — ещё
+        // не сделка. Считается по уже отфильтрованным карточкам.
+        const stageStat = (st) => {
+            const list = st ? filtered.filter(p => stageOf(p.current) === st) : [];
+            return { n: list.length, sum: list.reduce((a, c) => a + (c.totalSum || 0), 0) };
+        };
+        const stApproval = stageStat(STAGES[STAGES.length - 2]), stPay = stageStat(STAGES[STAGES.length - 1]);
+        const rub = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        const kTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const kanbanStats = `
+            <div class="ad-page-h"><div><h3>Планировщик</h3><div class="ad-sub">Сметы по этапам сделки: от разбора документа до запроса счёта</div></div></div>
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${kTile('Проектов', filtered.length, 'с учётом фильтров')}
+                ${kTile('В работе', rub(stApproval.sum + stPay.sum), `${stApproval.n + stPay.n} проектов: согласование и оплата`)}
+                ${kTile('Запрошен счёт', rub(stPay.sum), `${stPay.n} проектов в оплату`)}
+                ${kTile('Брошенные расчёты', abandonedCount, this._kanbanShowAbandoned ? 'показаны в колонке «Расчёты»' : 'скрыты, включаются галочкой')}
+            </div>`;
+
+        const filterHtml = kanbanStats + `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-                <div style="font-size:13px; color:var(--text-sec);">Проекты: <b style="color:var(--text-main);">${filtered.length}</b></div>
+                <input type="text" id="kanban_search" value="${String(this._kanbanQ || '').replace(/"/g, '&quot;')}" placeholder="Поиск по проекту, монтажнику, № КП"
+                       style="flex:1 1 220px; max-width:340px;" oninput="app.setKanbanQuery(this.value)">
                 <div class="admin-filter-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <select id="kanban_installer_filter" onchange="app.renderAdminKanban(true)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; outline: none; cursor: pointer;">
                         <!-- В скобках — сколько людей в списке, а не сколько у них
@@ -9376,7 +9451,7 @@ const app = {
                                onchange="app.toggleKanbanAbandoned(this.checked)" style="cursor:pointer;">
                         Брошенные расчёты (${abandonedCount})
                     </label>
-                    <button class="btn-header-blue" onclick="app.renderAdminKanban(false, true)" title="Перечитать всю историю заново" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
+                    <button class="admin-btn" onclick="app.renderAdminKanban(false, true)" title="Перечитать всю историю заново">Обновить</button>
                 </div>
             </div>
         `;
@@ -9427,14 +9502,14 @@ const app = {
                 // Номер КП с версией. Если текущий статус (одобрено, запрошен счёт)
                 // относится к более ранней версии — подпись, по какой именно.
                 const curV = c.currentMeta && Number(c.currentMeta.kp_version);
-                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${c.copiedFrom ? ` <span style="color:#7C3AED; font-family:inherit;" title="Копия чужой сметы, а не новый заказ">· 📎 копия ${c.copiedFrom}</span>` : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
+                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${c.copiedFrom ? ` <span style="color:#7C3AED; font-family:inherit;" title="Копия чужой сметы, а не новый заказ">· копия ${c.copiedFrom}</span>` : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
                 return `
                                     <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" ${canDrag(c) ? `draggable="true" ondragstart="app.kanbanDragStart(event, '${c.calc_id}')" ondragend="app._kanbanDragId = null" title="Перетащите в другую колонку, чтобы сменить этап"` : ''} style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
                                         <div style="font-weight:700; color:var(--text-main); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.project_name || 'Без названия'}</div>
                                         ${kpLine}
-                                        ${c.fromRecognition ? `<div style="display:inline-block; background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; margin-bottom:6px; letter-spacing:0.02em;">🔍 РАСПОЗНАВАНИЕ</div>` : ''}
+                                        ${c.fromRecognition ? `<div style="display:inline-block; background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; margin-bottom:6px; letter-spacing:0.02em;">РАСПОЗНАВАНИЕ</div>` : ''}
                                         <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                                            <div style="width:20px; height:20px; border-radius:50%; background:${this.avatarColorFor(c.user_name || '?')}; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
+                                            <div style="width:20px; height:20px; border-radius:50%; background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
                                             <div style="color:var(--text-sec); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.user_name || '— (клиент)'}</div>
                                         </div>
                                         <div style="font-weight:700; color:var(--primary); margin-bottom:8px; font-size:13px;">${(c.totalSum || 0).toLocaleString('ru-RU')} ₽</div>
@@ -10762,6 +10837,22 @@ const app = {
         } catch (e) {
             app.alert('Ошибка: ' + e.message);
         }
+    },
+
+    // Срезы и поиск по списку компаний: перерисовка вкладки целиком (renderAdminMain собирает
+    // навигацию и вызывает renderAdminDistributors), поиск — после паузы, с возвратом курсора
+    setDistFilter: function (id) {
+        this._distFilter = id;
+        this.renderAdminMain();
+    },
+    setDistQuery: function (q) {
+        this._distQ = q;
+        clearTimeout(this._distQT);
+        this._distQT = setTimeout(() => {
+            this.renderAdminMain();
+            const el = document.getElementById('admin_dist_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 250);
     },
 
     editDistributor: function (id) {
@@ -22760,6 +22851,7 @@ const app = {
 
         const myAcc = this.tariffAccount(), myPlan = this.tariffPlan();
         let body = '';
+        let matrixChanged = 0;
         this.TARIFF_ACCOUNTS.forEach(a => {
             body += `<tr><td colspan="${feats.length + 1}" style="padding:10px 12px 6px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface-light);">
                     <b style="font-size:13px; color:var(--text-main);">${esc(a.label)}</b>
@@ -22774,7 +22866,10 @@ const app = {
                         const ctl = f.locked
                             ? `<span title="${esc(f.hint)}" style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; background:rgba(16,185,129,.14); color:#0F8A5F;">всегда</span>`
                             : (f.list ? segment(a.id, p.id, f.id, v) : toggle(a.id, p.id, f.id, v));
-                        return `<td style="${td} ${firstOfGroup.has(f.id) ? sep : ''}">${ctl}${changed ? '<div title="Отличается от исходного значения" style="font-size:9.5px; color:var(--primary); margin-top:2px;">изменено</div>' : ''}</td>`;
+                        if (changed) matrixChanged++;
+                        // Изменённая ячейка помечена точкой в углу: подпись «изменено» под каждым
+                        // переключателем была шумом и растягивала строки
+                        return `<td class="${changed ? 'tf-c' : ''}"${changed ? ' title="Отличается от исходного значения"' : ''} style="${td} ${firstOfGroup.has(f.id) ? sep : ''}">${ctl}</td>`;
                     }).join('')}
                 </tr>`;
             });
@@ -22783,31 +22878,49 @@ const app = {
         const t = this.appSettings && this.appSettings.tariffs;
         const hasSaved = !!(t && t.cells && Object.keys(t.cells).length);
 
-        box.innerHTML = `
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
-                <h3 style="margin:0; color:var(--text-main);">🎚 Тарифы</h3>
-                <span id="admin_tariffs_status" style="font-size:12px;"></span>
-                <button class="admin-btn" style="margin-left:auto;" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetTariffs()">Вернуть исходные</button>
-            </div>
-            <p style="margin:0 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-sec); max-width:900px;">
+        // Три части вкладки — тарифы, оформление, разделы панели — показываются по одной:
+        // вместе они давали страницу в три экрана с прокруткой вслепую
+        const sec = this._tariffSection || 'matrix';
+        let tabsChanged = 0;
+        this.orderedAdminTabDefs().forEach(tt => this.ADMIN_TAB_ROLES.forEach(r => {
+            if ((this.adminTabCell(r.id, tt.id) === 'on') !== this.adminTabDefault(tt.id, r.id, false)) tabsChanged++;
+        }));
+        const secChip = (id, label, n) => `<button class="ad-chip${sec === id ? ' active' : ''}" onclick="app.setTariffSection('${id}')">${label}${n ? ` <span class="ad-chip-n" title="Изменено относительно исходных значений">${n}</span>` : ''}</button>`;
+        const secChips = `<div class="ad-chips">${secChip('matrix', 'Тарифы и функции', matrixChanged)}${secChip('appearance', 'Оформление', 0)}${secChip('sections', 'Разделы панели по ролям', tabsChanged)}</div>`;
+
+        const matrixHtml = `
+            <div class="ad-sub" style="margin:0 0 12px; max-width:900px; line-height:1.5;">
                 Что открыто каждой учётной записи на её тарифе. Изменения сохраняются сразу и доходят до людей при следующем
-                открытии сайта или возвращении на вкладку. ${canEdit ? '' : '<b style="color:#D97706;">Менять таблицу может только администратор.</b>'}
-            </p>
-            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
-                <table style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
+                открытии сайта или возвращении на вкладку. Точка в углу ячейки — значение отличается от исходного.
+                ${canEdit ? '' : '<b style="color:#D97706;">Менять таблицу может только администратор.</b>'}
             </div>
-            <div style="margin-top:14px; padding:12px 14px; background:var(--surface-light); border-left:3px solid var(--primary); border-radius:8px; font-size:12px; line-height:1.6; color:var(--text-sec); max-width:900px;">
-                <b style="color:var(--text-main);">Как читать таблицу</b><br>
+            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
+                <table class="tf-table" style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
+            </div>
+            <details class="ad-collapse" style="margin-top:14px; max-width:900px;"><summary>Как читать таблицу</summary>
+            <div style="padding:0; font-size:12px; line-height:1.6; color:var(--text-sec);">
                 <b>Всем</b> — открыто всем в строке. <b>Нет</b> — закрыто всем в строке.
                 <b>По доступу</b> — решают переключатели доступа, как раньше: компании в «Дистрибьюторах», региону в «Пользователях»; администратору открыто по должности.<br>
                 <b>Личная отметка</b> распознавания или проекта в карточке человека сильнее таблицы: включена — откроется, даже если в строке «Нет»; снята — закроется, даже если «Всем».<br>
                 <b>Монтаж</b> можно открыть поштучно: личной отметкой в столбце «Монтаж» раздела «Пользователи» или всей компании переключателем 🛠 в «Дистрибьюторах». Обе сильнее таблицы.<br>
                 <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
                 <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
+            </div></details>`;
+
+        box.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Тарифы и доступ</h3>
+                    <div class="ad-sub">Что открыто каждой учётной записи, оформление сайта и разделы панели для ролей <span id="admin_tariffs_status" style="margin-left:6px;"></span></div></div>
+                ${sec === 'matrix' ? `<button class="admin-btn" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetTariffs()">Вернуть исходные</button>` : ''}
             </div>
-            ${this.adminAppearanceBlockHtml()}
-            ${this.adminTabsTableHtml(esc, th, td, sep)}`;
+            ${secChips}
+            ${sec === 'matrix' ? matrixHtml : (sec === 'appearance' ? this.adminAppearanceBlockHtml() : this.adminTabsTableHtml(esc, th, td, sep))}`;
         this.renderAdminTariffsStatus();
+    },
+
+    setTariffSection: function (id) {
+        this._tariffSection = id;
+        this.renderAdminTariffs();
     },
 
     // Вторая таблица вкладки «Тарифы»: какие разделы панели видит каждая роль
@@ -22828,13 +22941,13 @@ const app = {
                 ${roles.map(r => {
                     const v = this.adminTabCell(r.id, t.id);
                     const changed = (v === 'on') !== this.adminTabDefault(t.id, r.id, false);
-                    return `<td style="${td}">${toggle(r.id, t.id, v === 'on')}${changed ? '<div title="Отличается от исходного значения" style="font-size:9.5px; color:var(--primary); margin-top:2px;">изменено</div>' : ''}</td>`;
+                    return `<td class="${changed ? 'tf-c' : ''}"${changed ? ' title="Отличается от исходного значения"' : ''} style="${td}">${toggle(r.id, t.id, v === 'on')}</td>`;
                 }).join('')}
             </tr>`).join('');
         const t = this.appSettings && this.appSettings.tariffs;
         const hasSaved = !!(t && t.tabs && Object.keys(t.tabs).some(k => Object.keys(t.tabs[k] || {}).length));
         return `
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 12px;">
                 <h3 style="margin:0; color:var(--text-main);">🗂 Разделы панели управления</h3>
                 <button class="admin-btn" style="margin-left:auto;" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetAdminTabs()">Вернуть исходные</button>
             </div>
@@ -24421,8 +24534,8 @@ const app = {
         // ── Фильтр по региону ───────────────────────────────────────────────
         if (regionList.length) {
             h += `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;">
-                <button class="admin-btn" style="${!region ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
-                ${regionList.map(r => `<button class="admin-btn" style="${region === r ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('${esc(r).replace(/'/g, "\\'")}')">${esc(r)}</button>`).join('')}
+                <button class="ad-chip${!region ? ' active' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
+                ${regionList.map(r => `<button class="ad-chip${region === r ? ' active' : ''}" onclick="app.setAnalyticsRegion('${esc(r).replace(/'/g, "\\'")}')">${esc(r)}</button>`).join('')}
             </div>`;
         }
 
@@ -24565,7 +24678,7 @@ const app = {
                         title="${title}" onclick="app.cycleAnalyticsOwnFilter('${brand}')">${label}${mark}</th>`;
         };
 
-        const cmpBtn = (m, label) => `<button class="admin-btn" style="${backMonths === m ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
+        const cmpBtn = (m, label) => `<button class="ad-chip${backMonths === m ? ' active' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
         h += `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 8px;">
                 <h4 style="margin:0; color:var(--text-main);">Наши места по категориям${region ? ` — ${esc(region)}` : ''}</h4>
                 ${hasHistory
@@ -25843,7 +25956,23 @@ const app = {
         // предпросмотры выключенных блоков — иначе выбирать пришлось бы
         // вслепую, по одному названию.
         const B = this.dashBuildBlocks();
-        wrap.innerHTML = this.dashHeaderHtml() + this.dashLayoutHtml(B) + this.dashGalleryHtml(B);
+        wrap.innerHTML = this.dashHeaderHtml() + this.dashNavHtml(B) + this.dashLayoutHtml(B) + this.dashGalleryHtml(B);
+    },
+
+    // Дашборд — это 8 000 px блоков, и листать их вслепую неудобно. Полоса разделов прилипает
+    // к верху и ведёт к нужному месту; показывается только в обычном режиме (в режиме правки
+    // у разделов свои заголовки с кнопками) и только для разделов, где есть что показать.
+    dashNavHtml: function (B) {
+        if (this._dashEdit) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const secs = this.dashLayout().sections.filter(s => s.title && s.items.some(w => B[w.id]));
+        if (secs.length < 2) return '';
+        return `<div class="ad-chips ad-sticky-nav">${secs.map(s => `<button class="ad-chip" onclick="app.dashScrollTo('${s.id}')">${esc(s.title)}</button>`).join('')}</div>`;
+    },
+
+    dashScrollTo: function (sid) {
+        const el = document.getElementById('dash_sec_' + sid);
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
     // ══ Раскладка дашборда ════════════════════════════════════════════════════
@@ -26445,11 +26574,11 @@ const app = {
 
         if (regionList.length) {
             h += `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-                <button class="admin-btn" style="${!region ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
-                ${regionList.map(r => `<button class="admin-btn" style="${region === r ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('${q(r)}')">${esc(r)}</button>`).join('')}
+                <button class="ad-chip${!region ? ' active' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
+                ${regionList.map(r => `<button class="ad-chip${region === r ? ' active' : ''}" onclick="app.setAnalyticsRegion('${q(r)}')">${esc(r)}</button>`).join('')}
             </div>`;
         }
-        const cmpBtn = (m, label) => `<button class="admin-btn" style="${back === m ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
+        const cmpBtn = (m, label) => `<button class="ad-chip${back === m ? ' active' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
         h += `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:${edit ? 10 : 16}px;">
                 <span style="font-size:12px; color:var(--text-sec);">сравнивать:</span>
                 ${cmpBtn(1, 'с прошлым месяцем')}${cmpBtn(3, 'с кварталом')}${cmpBtn(12, 'с годом назад')}
@@ -26563,7 +26692,7 @@ const app = {
 
             if (!edit && !cells.replace(/\s/g, '')) return '';
 
-            return `<div style="margin-bottom:${edit ? 22 : 18}px;">
+            return `<div id="dash_sec_${s.id}" style="margin-bottom:${edit ? 22 : 18}px; scroll-margin-top:64px;">
                     ${head}
                     <div ${edit ? `data-dash-grid data-dash-sec="${s.id}"` : ''}
                          style="display:grid; grid-template-columns:repeat(${cols}, minmax(0,1fr)); gap:${gap}px;
@@ -35233,6 +35362,9 @@ const app = {
     renderAdminInactiveBody: function () {
         const root = document.getElementById('admin_inactive_root');
         if (!root) return;
+        // Контейнер сначала служит заглушкой «Загрузка…» по центру — для содержимого сбрасываем
+        root.style.textAlign = 'left';
+        root.style.padding = '0';
         const rows = this._inactiveReport || [];
         const isViewer = this.isReadOnlyAdmin();
         const esc = s => String(s ?? '').replace(/[&<>"]/g,
@@ -35251,56 +35383,49 @@ const app = {
         // она говорит, работает напоминание или люди ушли насовсем.
         const share = rows.length ? Math.round(returned * 100 / rows.length) : 0;
 
+        // Две настройки — в свёрнутых блоках с подписанными полями: раньше десяток полей
+        // и кнопок стояли строками над самими цифрами, и результат уезжал за экран
+        const dis = isViewer ? 'disabled' : '';
+        const field = (label, id, val) => `<label class="ad-field"><span>${label}</span><input type="number" id="${id}" min="1" max="365" value="${val}" ${dis}></label>`;
+        const saveBtn = (label, fn) => `<button class="admin-btn ad-primary" ${dis} onclick="${fn}">${label}</button>`;
+        const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+
         let h = `
-            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
-                <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
+            <div class="ad-page-h">
+                <div><h3>Напоминания неактивным</h3>
+                    <div class="ad-sub">Письмо после ${cfg.warn} дней молчания · доступ приостанавливается на ${cfg.freeze}-й день · учётка удаляется через ${cfg.delete} дней заморозки.
+                    Пока действует Профи, счётчик стоит. Проверка идёт каждую ночь.</div></div>
             </div>
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; line-height:1.5;">
-                Письмо уходит после ${cfg.warn} дней молчания, доступ приостанавливается на ${cfg.freeze}-й день,
-                учётка удаляется через ${cfg.delete} дней заморозки. Пока действует Профи, счётчик стоит
-                и считается заново от дня окончания тарифа. Проверка идёт каждую ночь.
+            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${statTile('Отправлено', rows.length, '&nbsp;')}
+                ${statTile('Вернулись', returned, `${share}% от всех`)}
+                ${statTile('Молчат', silent, 'письмо ушло, ответа нет')}
+                ${statTile('Заморожены', frozen, 'доступ приостановлен')}
+                ${statTile('Удалены', deleted, 'учётки удалены')}
             </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; font-size:12px; color:var(--text-main);">
-                <label>Письмо, дней молчания <input type="number" id="inact_warn" min="1" max="365" value="${cfg.warn}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Заморозка, на день <input type="number" id="inact_freeze" min="1" max="365" value="${cfg.freeze}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Удаление, дней после заморозки <input type="number" id="inact_delete" min="1" max="365" value="${cfg.delete}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveInactivityDays()">Сохранить сроки</button>
-            </div>
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:6px; line-height:1.5;">
-                <b>Рассылка тем, кто заходит, но не считает.</b> Письмо и сообщение в кабинет: новичкам без смет,
-                давним без смет и тем, у кого последняя смета давно. Раз в сутки в 10:00 по Москве, не чаще одного письма
-                в неделю на человека, Профи и замороженным не пишем.
-            </div>
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; font-size:12px; color:var(--text-main);">
-                <label><input type="checkbox" id="nudge_enabled" ${nudge.enabled ? 'checked' : ''} ${isViewer ? 'disabled' : ''}> Рассылка включена</label>
-                <label>Новичку без смет, через дней <input type="number" id="nudge_day3" min="1" max="365" value="${nudge.day3}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Вопрос «что не получилось», дней <input type="number" id="nudge_day14" min="1" max="365" value="${nudge.day14}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <label>Давняя смета, дней назад <input type="number" id="nudge_day45" min="1" max="365" value="${nudge.day45}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
-                <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveOnboardingNudges()">Сохранить рассылку</button>
-            </div>
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Отправлено</div>
-                    <div style="font-size:20px; font-weight:800; color:var(--text-main);">${rows.length}</div>
+            <details class="ad-collapse">
+                <summary>Сроки неактивности</summary>
+                <div class="ad-form-grid">
+                    ${field('Письмо, дней молчания', 'inact_warn', cfg.warn)}
+                    ${field('Заморозка, на день', 'inact_freeze', cfg.freeze)}
+                    ${field('Удаление, дней после заморозки', 'inact_delete', cfg.delete)}
+                    <div class="ad-form-act">${saveBtn('Сохранить сроки', 'app.saveInactivityDays()')}</div>
                 </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Вернулись</div>
-                    <div style="font-size:20px; font-weight:800; color:#10B981;">${returned}</div>
-                    <div style="font-size:10px; color:var(--text-sec); margin-top:2px;">${share}% от всех</div>
+            </details>
+            <details class="ad-collapse">
+                <summary>Рассылка тем, кто заходит, но не считает${nudge.enabled ? '' : ' — выключена'}</summary>
+                <div class="ad-sub" style="margin:0 16px 4px; max-width:760px;">
+                    Письмо и сообщение в кабинет: новичкам без смет, давним без смет и тем, у кого последняя смета давно.
+                    Раз в сутки в 10:00 по Москве, не чаще одного письма в неделю на человека; Профи и замороженным не пишем.
                 </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Молчат</div>
-                    <div style="font-size:20px; font-weight:800; color:#D97706;">${silent}</div>
+                <div class="ad-form-grid">
+                    <label class="ad-field ad-check"><input type="checkbox" id="nudge_enabled" ${nudge.enabled ? 'checked' : ''} ${dis}><span>Рассылка включена</span></label>
+                    ${field('Новичку без смет, через дней', 'nudge_day3', nudge.day3)}
+                    ${field('Вопрос «что не получилось», дней', 'nudge_day14', nudge.day14)}
+                    ${field('Давняя смета, дней назад', 'nudge_day45', nudge.day45)}
+                    <div class="ad-form-act">${saveBtn('Сохранить рассылку', 'app.saveOnboardingNudges()')}</div>
                 </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Заморожены</div>
-                    <div style="font-size:20px; font-weight:800; color:#0EA5E9;">${frozen}</div>
-                </div>
-                <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
-                    <div style="font-size:11px; color:var(--text-sec); text-transform:uppercase; font-weight:700;">Удалены</div>
-                    <div style="font-size:20px; font-weight:800; color:#EF4444;">${deleted}</div>
-                </div>
-            </div>`;
+            </details>`;
 
         if (!rows.length) {
             h += `<div style="padding:30px; text-align:center; color:var(--text-sec);">
@@ -35310,7 +35435,7 @@ const app = {
             return;
         }
 
-        h += `<div style="overflow-x:auto;"><table class="admin-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+        h += `<div style="overflow-x:auto;"><table class="inv-table ad-sticky" style="width:100%; border-collapse:collapse; font-size:12px;">
             <thead><tr style="text-align:left; color:var(--text-sec);">
                 <th style="padding:8px;">Кто</th>
                 <th style="padding:8px;">Регион</th>
@@ -35909,6 +36034,9 @@ const app = {
     renderAdminRecognitionBody: function () {
         const root = document.getElementById('admin_recognition_root');
         if (!root) return;
+        // Контейнер сначала служит заглушкой «Загрузка…» по центру — для содержимого сбрасываем
+        root.style.textAlign = 'left';
+        root.style.padding = '0';
 
         // Место на диске и копилка промахов подбора считаются сервером по всему
         // архиву — это показатели платформы, а не компании. Тому, у кого панель
@@ -35972,13 +36100,33 @@ const app = {
             ? d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
             : '—';
 
-        const body = sorted.map((g, gi) => {
+        // Лимит и остаток каждого монтажника считаем сразу для всех: по ним строятся
+        // и сводные плитки, и срезы, и строка таблицы. Персональный лимит перекрывает
+        // общий; у админов лимита нет вовсе.
+        sorted.forEach(g => {
+            g.personal = limitsCfg.limits[g.key];
+            g.limit = g.personal === undefined ? this.recognitionDefaultLimit(g.key).limit : g.personal;
+            g.left = Math.max(0, g.limit - g.month);
+        });
+        const recF = this._recogFilter || 'all';
+        const recQ = String(this._recogQ || '').trim().toLowerCase();
+        const recCount = {
+            all: sorted.length,
+            out: sorted.filter(g => g.left === 0).length,
+            active: sorted.filter(g => g.month > 0).length,
+            idle: sorted.filter(g => g.month === 0).length
+        };
+        const shownGroups = sorted.filter(g =>
+            (recF === 'all' || (recF === 'out' && g.left === 0) || (recF === 'active' && g.month > 0) || (recF === 'idle' && g.month === 0)) &&
+            (!recQ || String(g.key).toLowerCase().indexOf(recQ) >= 0 || String(g.region || '').toLowerCase().indexOf(recQ) >= 0));
+
+        const body = shownGroups.map((g, gi) => {
             const isOpen = !!open[g.key];
-            // Персональный лимит перекрывает общий; у админов лимита нет вовсе.
-            const personal = limitsCfg.limits[g.key];
-            const limit = personal === undefined ? this.recognitionDefaultLimit(g.key).limit : personal;
-            const left = Math.max(0, limit - g.month);
+            const personal = g.personal, limit = g.limit, left = g.left;
             const leftColor = left === 0 ? '#EF4444' : (left <= 5 ? '#F59E0B' : 'var(--text-sec)');
+            // Шкала расхода месячного лимита: красная при нуле остатка, жёлтая на исходе
+            const meterPct = limit > 0 ? Math.min(100, Math.round(g.month * 100 / limit)) : 0;
+            const meterCls = left === 0 ? 'bad' : (left <= 5 ? 'warn' : '');
             const keyEsc = esc(g.key).replace(/'/g, "\\'");
 
             const pickedAll = g.rows.length && g.rows.every(r => picked[r.json]);
@@ -35994,13 +36142,16 @@ const app = {
                 <td style="${tdStyle} white-space:nowrap;">распознаваний: <b>${g.rows.length}</b>
                     <button class="row-icon-btn" title="Изменить месячный лимит распознаваний"
                             style="display:inline-flex; vertical-align:middle; padding:2px 4px;"
-                            onclick="event.stopPropagation(); app.setRecognitionLimit('${keyEsc}')">✏️</button></td>
+                            onclick="event.stopPropagation(); app.setRecognitionLimit('${keyEsc}')">✎</button></td>
                 <td style="${tdStyle} white-space:nowrap;">${g.bytes ? mb(g.bytes) : '—'}</td>
-                <td style="${tdStyle} text-align:center;" colspan="3">
-                    за месяц: <b title="Запросов к модели: многолистная смета стоит нескольких">${g.month}</b> из ${limit}${personal !== undefined ? ' (свой)' : ''}${
-                        g.monthRecs && g.monthRecs !== g.month
-                            ? ` <span style="color:var(--text-sec);">за ${g.monthRecs} ${this.plural(g.monthRecs, 'загрузку', 'загрузки', 'загрузок')}</span>` : ''} ·
-                    <span style="color:${leftColor};">осталось ${left}</span></td>
+                <td style="${tdStyle}" colspan="3">
+                    <div class="ad-quota">
+                        <div class="ad-meter ${meterCls}"><i style="width:${meterPct}%"></i></div>
+                        <div class="ad-quota-t"><b title="Запросов к модели: многолистная смета стоит нескольких">${g.month}</b> из ${limit}${personal !== undefined ? ' · свой' : ''}${
+                            g.monthRecs && g.monthRecs !== g.month
+                                ? ` <span style="color:var(--text-sec);">· за ${g.monthRecs} ${this.plural(g.monthRecs, 'загрузку', 'загрузки', 'загрузок')}</span>` : ''}
+                            <span style="color:${leftColor};">· осталось ${left}</span></div>
+                    </div></td>
                 <td style="${tdStyle} white-space:nowrap;">${fmtDate(g.last)}</td>
                 <td style="${tdStyle}"></td>
             </tr>`;
@@ -36020,7 +36171,7 @@ const app = {
 
                 const est = r.calcId ? byCalcId[String(r.calcId)] : null;
                 const openBtn = est
-                    ? `<button class="row-icon-btn" onclick="app.viewAdminEstimate('${est.id}')" title="Открыть расчёт">📂 Открыть</button>`
+                    ? `<button class="row-icon-btn" onclick="app.viewAdminEstimate('${est.id}')" title="Открыть расчёт">Открыть</button>`
                     : `<span style="color:var(--text-sec);" title="${r.calcId ? 'Расчёт № ' + esc(r.calcId) + ' не найден среди сохранённых' : 'Номер расчёта не сохранён'}">—</span>`;
 
                 return `<tr${picked[r.json] ? ' style="background:var(--primary-light);"' : ''}>
@@ -36117,7 +36268,7 @@ const app = {
               <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 12px;
                           background:var(--surface-light); cursor:pointer; font-size:12.5px;"
                    onclick="app.toggleRecognitionManual()">
-                <b>${manualOpen ? '▾' : '▸'} ✋ Ручные замены</b>
+                <b>${manualOpen ? '▾' : '▸'} Ручные замены</b>
                 <span style="color:var(--text-sec);">разных: ${manualList.length} · случаев: ${manualTotal}</span>
                 <span style="color:var(--text-sec);" title="Строки, которые монтажник подобрал руками через поиск по каталогу. То, что повторяется, стоит дописать в каталог.">ⓘ</span>
                 ${serverOld ? `<span style="color:#D97706; font-weight:700;"
@@ -36210,7 +36361,7 @@ const app = {
               <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 12px;
                           background:var(--surface-light); cursor:pointer; font-size:12.5px;"
                    onclick="app.toggleRecognitionGaps()">
-                <b>${gapsOpen ? '▾' : '▸'} 🕳 Чего не хватает подбору</b>
+                <b>${gapsOpen ? '▾' : '▸'} Чего не хватает подбору</b>
                 ${S ? `<span style="color:var(--text-sec);">не разобрали: ${(S.topUnparsed || []).length} ·
                         не нашли: ${(S.topNoMatch || []).length}${
                         S.totals && S.totals.sysMiss ? ` · «своего нет»: ${S.totals.sysMiss}` : ''}</span>`
@@ -36247,13 +36398,16 @@ const app = {
                 <span style="color:var(--text-sec);">файлы смет: ${st.originals} шт, ${mb(st.originalsBytes)}</span>
                 <span style="color:var(--text-sec);">разборы: ${st.jsons} шт, ${mb(st.jsonBytes)}</span>
                 ${st.diskFree ? `<span style="color:var(--text-sec);">свободно на диске: ${(st.diskFree / 1073741824).toFixed(1)} ГБ</span>` : ''}
-                <span style="margin-left:auto; display:flex; gap:8px;">
+                <span style="margin-left:auto; display:flex; gap:8px; align-items:center;">
                     <button class="admin-btn"
                             title="Удалить фотографии и PDF старше 90 дней. Разборы останутся, записи из таблицы не исчезнут"
                             onclick="app.purgeRecognitionFiles('originals', 90)">Очистить файлы старше 90 дней</button>
-                    <button class="admin-btn danger"
-                            title="Удалить все загруженные файлы. Разборы и статистика останутся"
-                            onclick="app.purgeRecognitionFiles('originals', 0)">Очистить все файлы</button>
+                    <!-- Удаление всего — отдельно и свёрнуто: рядом с рабочей кнопкой его легко нажать по ошибке -->
+                    <details class="ad-danger-zone"><summary>Опасные действия</summary>
+                        <button class="admin-btn danger"
+                                title="Удалить все загруженные файлы. Разборы и статистика останутся"
+                                onclick="app.purgeRecognitionFiles('originals', 0)">Очистить все файлы</button>
+                    </details>
                 </span>
             </div>` : '';
 
@@ -36274,19 +36428,38 @@ const app = {
                         onclick="app.clearRecognitionPicks()">Снять выделение</button>
             </div>` : '';
 
+        // Сводка за месяц: сколько запросов к модели ушло, у скольких монтажников лимит исчерпан
+        const monthCalls = sorted.reduce((a, g) => a + g.month, 0);
+        const monthLoads = sorted.reduce((a, g) => a + g.monthRecs, 0);
+        const statTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const statsHtml = `
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${statTile('Монтажников с распознаванием', sorted.length, `записей в архиве: ${rows.length}`)}
+                ${statTile('Запросов к модели за месяц', monthCalls, `загрузок: ${monthLoads}`)}
+                ${statTile('Лимит исчерпан', recCount.out, `из ${sorted.length} монтажников`)}
+                ${statTile('Архив', st ? mb(st.originalsBytes + st.jsonBytes) : '—', st && st.diskFree ? `свободно на диске: ${(st.diskFree / 1073741824).toFixed(1)} ГБ` : '&nbsp;')}
+            </div>`;
+        const recChip = (id, label) => `<button class="ad-chip${recF === id ? ' active' : ''}" onclick="app.setRecognitionFilter('${id}')">${label} <span class="ad-chip-n">${recCount[id]}</span></button>`;
+        const filtersHtml = `
+            <div class="ad-chips">${recChip('all', 'Все')}${recChip('active', 'Работали в этом месяце')}${recChip('idle', 'Без запросов в этом месяце')}${recChip('out', 'Лимит исчерпан')}</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                <input type="text" id="admin_recog_search" value="${esc(this._recogQ || '')}" placeholder="Поиск по почте или региону"
+                       style="flex:1 1 260px; max-width:420px;" oninput="app.setRecognitionQuery(this.value)">
+            </div>`;
+
         root.innerHTML = `
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
-                <h3 style="margin:0; color:var(--text-main);">🔍 Распознавание смет</h3>
-                <span style="color:var(--text-sec); font-size:12.5px;">монтажников: ${sorted.length} · записей: ${rows.length}</span>
-                <button class="admin-btn" style="margin-left:auto;"
-                        onclick="app.renderAdminRecognition()">Обновить</button>
+            <div class="ad-page-h">
+                <div><h3>Распознавание смет</h3><div class="ad-sub">Кто и сколько распознаёт, остаток месячного лимита, что не нашлось в каталоге</div></div>
+                <button class="admin-btn" onclick="app.renderAdminRecognition()">Обновить</button>
             </div>
+            ${statsHtml}
+            ${filtersHtml}
             ${platformWide ? diskHtml : ''}
             ${manualHtml}
             ${platformWide ? gapsHtml : ''}
             ${pickedHtml}
             <div style="overflow-x:auto;">
-                <table style="width:100%; border-collapse:collapse;">
+                <table class="ad-sticky" style="width:100%; border-collapse:collapse;">
                     <thead><tr>
                         <th style="${thStyle} width:34px;"></th>
                         <th style="${thStyle}">#</th>
@@ -36302,6 +36475,21 @@ const app = {
                     <tbody>${body || `<tr><td colspan="10" style="text-align:center; padding:30px; color:var(--text-sec);">Распознаваний пока нет.</td></tr>`}</tbody>
                 </table>
             </div>`;
+    },
+
+    setRecognitionFilter: function (id) {
+        this._recogFilter = id;
+        this.renderAdminRecognitionBody();
+    },
+    // Поиск перерисовывает тело при каждом знаке, поэтому возвращаем фокус и курсор в поле
+    setRecognitionQuery: function (q) {
+        this._recogQ = q;
+        clearTimeout(this._recogQT);
+        this._recogQT = setTimeout(() => {
+            this.renderAdminRecognitionBody();
+            const el = document.getElementById('admin_recog_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 200);
     },
 
     /** Снять все отметки, не трогая ничего в архиве. */
@@ -40051,11 +40239,172 @@ const app = {
         this.state.darkMode = dark;
         document.body.classList.toggle('dark-mode', dark && !this.isShopTheme());
         this.updateThemeButton(mode);
+        this.applyUiScale();
+        if (!this._bigTextApplied) { this._bigTextApplied = true; this.applyBigText(); }
         // Тема «Яндекс» живёт поверх: ей нужно знать, ночь сейчас или день (цвет строки состояния)
         if (this.syncYandexTheme) this.syncYandexTheme();
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
         // раз в минуту, и писать состояние каждый раз незачем.
         if (changed) this.saveState();
+    },
+
+    // Размер интерфейса для тех, кому мелко (большой монитор, слабое зрение). Страница
+    // живёт в zoom 0.8 (#page_scale_wrapper); кнопка «Aa» в шапке крутит этот множитель
+    // по кругу. Хранится на устройстве, а не в смете: на ноутбуке и на мониторе нужно
+    // разное. Остальной код zoom читает из вычисленного стиля, поэтому подстраивается сам.
+    UI_ZOOM_KEY: 'hc_ui_zoom',
+    UI_ZOOM_STEPS: [0.8, 0.9, 1, 1.12],
+    // Минимальная ширина вёрстки (в единицах до zoom), с которой нет ни горизонтального
+    // скролла, ни переносов в кнопках и вкладках. Замер 03.10.2026 (роль «Профи»):
+    // окно 1280 px — переносы уже со 113 %, 1366 — с 125 %, от 1536 — чисто на всех.
+    // Скролл появляется раньше (около 1012), но переносы портят вид раньше скролла.
+    UI_MIN_LAYOUT_W: 1450,
+
+    // Выбранный человеком размер (то, что лежит в localStorage)
+    uiZoomChosen: function () {
+        let z = NaN;
+        try { z = parseFloat(localStorage.getItem(this.UI_ZOOM_KEY)); } catch (e) { }
+        return this.UI_ZOOM_STEPS.includes(z) ? z : this.UI_ZOOM_STEPS[0];
+    },
+
+    // Размеры, которые по ширине окна помещаются. Меньше стандартного 0.8 не уходим.
+    uiZoomSteps: function () {
+        const max = window.innerWidth / this.UI_MIN_LAYOUT_W;
+        const ok = this.UI_ZOOM_STEPS.filter(z => z <= max);
+        return ok.length ? ok : [this.UI_ZOOM_STEPS[0]];
+    },
+
+    // Действующий размер: выбранный, но не больше того, что влезает в окно
+    uiZoom: function () {
+        const chosen = this.uiZoomChosen();
+        const ok = this.uiZoomSteps().filter(z => z <= chosen);
+        return ok.length ? ok[ok.length - 1] : this.UI_ZOOM_STEPS[0];
+    },
+
+    applyUiScale: function () {
+        if (!this._uiScaleBound) {
+            this._uiScaleBound = true;
+            // Окно сузили или расширили — размер подстраивается (выбор человека не трогаем)
+            window.addEventListener('resize', () => this.applyUiScale());
+        }
+        const z = this.uiZoom();
+        const changed = this._uiZoomApplied !== z;
+        this._uiZoomApplied = z;
+        document.documentElement.style.setProperty('--ui-zoom', z);
+        this.updateUiScaleButton(z);
+        // Шапка, колонки и липкие панели считают размеры от zoom — пересчитать после смены.
+        // Только при реальной смене: событие resize слушаем сами, иначе зациклимся.
+        if (changed) { try { window.dispatchEvent(new Event('resize')); } catch (e) { } }
+    },
+
+    updateUiScaleButton: function (z) {
+        const btn = document.getElementById('btn_ui_scale');
+        if (!btn) return;
+        const pct = Math.round(z / this.UI_ZOOM_STEPS[0] * 100);
+        const big = this.bigText();
+        btn.title = 'Размер текста и элементов' + (pct !== 100 ? ' · масштаб ' + pct + '%' : '') + (big ? ' · крупный текст' : '');
+        let badge = btn.querySelector('.ui-scale-badge');
+        const label = pct !== 100 ? pct + '%' : (big ? '+' : '');
+        if (!label) { if (badge) badge.remove(); return; }
+        if (!badge) { badge = document.createElement('span'); badge.className = 'ui-scale-badge'; btn.appendChild(badge); }
+        badge.textContent = label;
+    },
+
+    // Режим «Крупный текст»: поднимает только мелкие шрифты (11–12 px при zoom 0.8 дают
+    // на экране 9–10 px), раскладку не трогает — поэтому работает на любом окне, где
+    // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
+    // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
+    BIG_TEXT_KEY: 'hc_big_text',
+    BIG_TEXT_CSS_V: '3',
+
+    bigText: function () {
+        try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
+    },
+
+    applyBigText: function () {
+        const on = this.bigText();
+        const root = document.documentElement;
+        if (on) {
+            root.setAttribute('data-big-text', '');
+            if (!document.getElementById('big_text_css')) {
+                const l = document.createElement('link');
+                l.id = 'big_text_css'; l.rel = 'stylesheet'; l.href = 'big_text.css?v=' + this.BIG_TEXT_CSS_V;
+                document.head.appendChild(l);
+            }
+        } else {
+            root.removeAttribute('data-big-text');
+        }
+        this.updateUiScaleButton(this.uiZoom());
+        // Шрифты поменялись — колонки и липкие панели пересчитывают высоты
+        try { window.dispatchEvent(new Event('resize')); } catch (e) { }
+    },
+
+    setBigText: function (on) {
+        try { localStorage.setItem(this.BIG_TEXT_KEY, on ? '1' : '0'); } catch (e) { }
+        this.applyBigText();
+        this.renderUiScaleMenu();
+    },
+
+    setUiZoom: function (z) {
+        try { localStorage.setItem(this.UI_ZOOM_KEY, String(z)); } catch (e) { }
+        this.applyUiScale();
+        this.renderUiScaleMenu();
+    },
+
+    resetUiScale: function () {
+        try { localStorage.removeItem(this.UI_ZOOM_KEY); localStorage.setItem(this.BIG_TEXT_KEY, '0'); } catch (e) { }
+        this.applyBigText();
+        this.applyUiScale();
+        this.renderUiScaleMenu();
+    },
+
+    // Меню у кнопки «Aa». Лежит в body, а не в обёртке страницы: обёртка в zoom, и
+    // меню от неё получило бы чужой размер текста — а оно как раз для тех, кому мелко.
+    toggleUiScaleMenu: function (ev) {
+        if (ev) ev.stopPropagation();
+        const open = document.getElementById('ui_scale_menu');
+        if (open) { open.remove(); return; }
+        const menu = document.createElement('div');
+        menu.id = 'ui_scale_menu';
+        menu.className = 'ui-scale-menu no-print';
+        menu.addEventListener('click', e => e.stopPropagation());
+        document.body.appendChild(menu);
+        this.renderUiScaleMenu();
+        const close = (e) => {
+            if (e && e.type === 'keydown' && e.key !== 'Escape') return;
+            const m = document.getElementById('ui_scale_menu');
+            if (m) m.remove();
+            document.removeEventListener('click', close);
+            document.removeEventListener('keydown', close);
+        };
+        setTimeout(() => { document.addEventListener('click', close); document.addEventListener('keydown', close); }, 0);
+    },
+
+    renderUiScaleMenu: function () {
+        const menu = document.getElementById('ui_scale_menu');
+        const btn = document.getElementById('btn_ui_scale');
+        if (!menu || !btn) return;
+        const r = btn.getBoundingClientRect();
+        menu.style.top = Math.round(r.bottom + 8) + 'px';
+        menu.style.left = Math.max(8, Math.min(Math.round(r.left - 40), window.innerWidth - 300)) + 'px';
+        const cur = this.uiZoom(), chosen = this.uiZoomChosen(), allowed = this.uiZoomSteps();
+        const steps = this.UI_ZOOM_STEPS.map(z => {
+            const pct = Math.round(z / this.UI_ZOOM_STEPS[0] * 100);
+            const ok = allowed.includes(z);
+            const on = z === cur;
+            return `<button type="button" class="ui-scale-step${on ? ' on' : ''}" ${ok ? '' : 'disabled'} onclick="app.setUiZoom(${z})" title="${ok ? '' : 'Не помещается в это окно'}">${pct}%</button>`;
+        }).join('');
+        const hint = chosen > cur ? '<div class="ui-scale-note">Выбранный размер не помещается в окно — показан наибольший из возможных.</div>' : '';
+        const big = this.bigText();
+        menu.innerHTML = `
+            <div class="ui-scale-title">Размер интерфейса</div>
+            <div class="ui-scale-label">Масштаб страницы</div>
+            <div class="ui-scale-steps">${steps}</div>${hint}
+            <label class="ui-scale-row">
+                <span><b>Крупный текст</b><small>Увеличивает мелкие подписи, расположение не меняется</small></span>
+                <input type="checkbox" ${big ? 'checked' : ''} onchange="app.setBigText(this.checked)">
+            </label>
+            <button type="button" class="ui-scale-reset" onclick="app.resetUiScale()">Сбросить</button>`;
     },
 
     themeModeInfo: function (mode) {

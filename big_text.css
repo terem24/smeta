@@ -1,0 +1,1265 @@
+/* Сгенерировано tools/gen_big_text.py — руками не править. Режим «Крупный текст». */
+@media screen {
+  html[data-big-text] body { font-size: 16.5px; }
+
+  html[data-big-text] h2 { font-size: 21px; }
+
+  html[data-big-text] h3 { font-size: 17.5px; }
+
+  html[data-big-text] #el_group_sum { font-size: 15px; }
+
+  html[data-big-text] .lbl { font-size: 16.5px; }
+
+  html[data-big-text] .lbl-sub { font-size: 14px; }
+
+  html[data-big-text] .fine-tune-head { font-size: 14px; }
+
+  html[data-big-text] .fine-tune-arrow { font-size: 15.5px; }
+
+  html[data-big-text] .step-btn { font-size: 19.5px; }
+
+  html[data-big-text] .step-val { font-size: 15.5px; }
+
+  html[data-big-text] .tab { font-size: 15.5px; }
+
+  html[data-big-text] .info-card { font-size: 15px; }
+
+  html[data-big-text] .doc-title { font-size: 17.5px; }
+
+  html[data-big-text] .doc-summary { font-size: 15px; }
+
+  html[data-big-text] .sku-label { font-size: 14px; }
+
+  html[data-big-text] .inv-table { font-size: 15.5px; }
+
+  html[data-big-text] .inv-table th { font-size: 14px; }
+
+  html[data-big-text] .port-tag { font-size: 15px; }
+
+  html[data-big-text] .eq-badge-text { font-size: 14px; }
+
+  html[data-big-text] .eq-badge-reset { font-size: 16.5px; }
+
+  html[data-big-text] .col-idx { font-size: 14px; }
+
+  html[data-big-text] .col-name { font-size: 15.5px; }
+
+  html[data-big-text] .col-sku { font-size: 15px; }
+
+  html[data-big-text] .inv-table td.col-art { font-size: 15px; }
+
+  html[data-big-text] .col-brand { font-size: 15px; }
+
+  html[data-big-text] .col-unit { font-size: 15px; }
+
+  html[data-big-text] .col-price { font-size: 15.5px; }
+
+  html[data-big-text] .col-sum { font-size: 15.5px; }
+
+  html[data-big-text] .row-sec td { font-size: 15px; }
+
+  html[data-big-text] .row-subtotal td { font-size: 15px; }
+
+  html[data-big-text] .group-header td { font-size: 14px; }
+
+  html[data-big-text] .btn-base { font-size: 17px; }
+
+  html[data-big-text] .download-menu-item { font-size: 17px; }
+
+  html[data-big-text] .download-menu-hint { font-size: 15px; }
+
+  @media (hover: hover) and (pointer: fine) {
+    html[data-big-text] .footer-btns [data-tip]::before { font-size: 15px; }
+  }
+  html[data-big-text] .col-brand { font-size: 15px; }
+
+  html[data-big-text] .col-unit { font-size: 15px; }
+
+  html[data-big-text] .col-price { font-size: 15.5px; }
+
+  html[data-big-text] .col-sum { font-size: 15.5px; }
+
+  html[data-big-text] .row-sec td { font-size: 15px; }
+
+  html[data-big-text] .row-subtotal td { font-size: 15px; }
+
+  html[data-big-text] .group-header td { font-size: 14px; }
+
+  html[data-big-text] .btn-base { font-size: 17px; }
+
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .doc-summary { font-size: 13px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .doc-summary .param-item b { font-size: 15px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .main-view-tabs .tab { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] body.work-mode .work-del-btn { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .col-name { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .col-sku { font-size: 14px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .col-price { font-size: 17.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .qty-wrap { font-size: 17px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .qty-wrap .opt-btn { font-size: 21px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .col-unit { font-size: 14px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .row-subtotal td { font-size: 17.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .footer-btns .btn-base { font-size: 18px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .download-menu-item { font-size: 17.5px; }
+  }
+  html[data-big-text] .qty-num-input { font-size: 16.5px; }
+
+  html[data-big-text] .price-num-input { font-size: 16.5px; }
+
+  html[data-big-text] .qty-step { font-size: 18px; }
+
+  html[data-big-text] .warn-box { font-size: 14px; }
+
+  html[data-big-text] .note-box { font-size: 15px; }
+
+  html[data-big-text] .sec-explain { font-size: 15px; }
+
+  html[data-big-text] .note-box .note-ico { font-size: 15.5px; }
+
+  html[data-big-text] .ph-top { font-size: 17px; }
+
+  html[data-big-text] .ph-main { font-size: 14px; }
+
+  html[data-big-text] .zone-title { font-size: 16.5px; }
+
+  html[data-big-text] .zone-remove { font-size: 19.5px; }
+
+  html[data-big-text] .zone-row .step-btn { font-size: 18px; }
+
+  html[data-big-text] .zone-row .step-val { font-size: 15px; }
+
+  html[data-big-text] .zone-input { font-size: 15.5px; }
+
+  html[data-big-text] .btn-add-zone { font-size: 15.5px; }
+
+  html[data-big-text] .btn-add-custom { font-size: 15.5px; }
+
+  html[data-big-text] .info-icon { font-size: 13px; }
+
+  html[data-big-text] .expand-locs-btn { font-size: 15px; }
+
+  html[data-big-text] .tooltip-content { font-size: 15px; }
+
+  html[data-big-text] .opt-btn { font-size: 17px; }
+
+  html[data-big-text] .work-del-btn { font-size: 17px; }
+
+  html[data-big-text] .btn-header-blue { font-size: 16.5px; }
+
+  html[data-big-text] .tab.locked-guest::after,
+  html[data-big-text] .tab.locked-pro::after { font-size: 15.5px; }
+
+  html[data-big-text] .custom-modal-title { font-size: 19.5px; }
+
+  html[data-big-text] .custom-modal-text { font-size: 16.5px; }
+
+  html[data-big-text] .custom-modal-btn { font-size: 17px; }
+
+  html[data-big-text] .auth-modal-title { font-size: 21px; }
+
+  html[data-big-text] .admin-btn { font-size: 15.5px; }
+
+  html[data-big-text] .admin-bulk-cap { font-size: 14px; }
+
+  html[data-big-text] .admin-bulk-label { font-size: 15px; }
+
+  html[data-big-text] .admin-bulk-row select { font-size: 15.5px; }
+
+  html[data-big-text] .admin-action-btn { font-size: 15px; }
+
+  html[data-big-text] .admin-mob-ico { font-size: 19.5px; }
+
+  html[data-big-text] .admin-mob-body b { font-size: 17.5px; }
+
+  html[data-big-text] .admin-mob-body small { font-size: 15.5px; }
+
+  html[data-big-text] .admin-mob-badge { font-size: 15px; }
+
+  html[data-big-text] .admin-mob-arrow { font-size: 22px; }
+
+  html[data-big-text] .admin-mob-back { font-size: 16px; }
+
+  html[data-big-text] .admin-mob-cur { font-size: 17px; }
+
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_modal_overlay .auth-modal-title { font-size: 18px; }
+  }
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content table td { font-size: 16px; }
+  }
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content table td::before { font-size: 14px; }
+  }
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content .admin-stat-grid .control-card > span:nth-child(2) { font-size: 19px; }
+  }
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content h3 { font-size: 18px; }
+  }
+  @media screen and (max-width: 899.98px) {
+    html[data-big-text] #admin_content h4 { font-size: 17px; }
+  }
+  html[data-big-text] .auth-input,
+  html[data-big-text] .auth-btn-base { font-size: 17px; }
+
+  html[data-big-text] #auth_modal_overlay .auth-input { font-size: 17.5px; }
+
+  html[data-big-text] #auth_modal_overlay .btn-email-submit { font-size: 18px; }
+
+  html[data-big-text] .reg-field-label { font-size: 15px; }
+
+  html[data-big-text] .reg-activity-chip { font-size: 15.5px; }
+
+  html[data-big-text] #auth_modal_overlay.register-mode .auth-input { font-size: 16px; }
+
+  html[data-big-text] #auth_modal_overlay.register-mode .reg-field-label { font-size: 14px; }
+
+  html[data-big-text] #auth_modal_overlay.register-mode .reg-activity-chip { font-size: 15px; }
+
+  @media screen and (max-width: 600px) {
+    html[data-big-text] #auth_modal_overlay.register-mode .auth-input { font-size: 17px; }
+  }
+  @media screen and (max-width: 600px) {
+    html[data-big-text] #auth_modal_overlay.register-mode .reg-field-label { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 600px) {
+    html[data-big-text] #auth_modal_overlay.register-mode .reg-activity-chip { font-size: 16.5px; }
+  }
+  html[data-big-text] .auth-divider { font-size: 15px; }
+
+  html[data-big-text] #auth_method_view .auth-btn-base { font-size: 17.5px; }
+
+  html[data-big-text] .yandex-logo-badge { font-size: 15.5px; }
+
+  html[data-big-text] .header-totals-block { font-size: 15.5px; }
+
+  html[data-big-text] .inv-table.swap-two td.two-name { font-size: 16.5px; }
+
+  html[data-big-text] .inv-table.swap-two .two-sub { font-size: 15px; }
+
+  html[data-big-text] .inv-table.swap-two .two-val { font-size: 16.5px; }
+
+  html[data-big-text] .inv-table.swap-two .two-pct { font-size: 15px; }
+
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .mob-nav-item { font-size: 15px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] input[type=number],
+    html[data-big-text] input[type=text] { font-size: 18px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .inv-table td.col-name { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .inv-table td.col-sum { font-size: 17px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .inv-table td.col-price { font-size: 15px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] body:not(.work-mode) .output-panel.show-sku-mode .inv-table td.col-sku:not(.hidden-col) { font-size: 14.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] body.hide-images-mode .inv-table td.col-name { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .inv-table.swap-two .two-lbl { font-size: 14.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .inv-table.swap-two .two-val { font-size: 17px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .row-sec td { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] body.dark-mode .row-sec td { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .group-header td { font-size: 15px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .row-subtotal td { font-size: 15px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_modal_overlay .auth-modal-title { font-size: 21px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_modal_overlay .auth-input { font-size: 17.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_modal_overlay label { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #toggle_branding_btn { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_modal_overlay div[style*="border-top"] button { font-size: 17.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #cloud_list_modal_overlay .auth-modal-title { font-size: 21px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #cloud_list_content th { font-size: 15px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #cloud_list_content td { font-size: 16.5px; }
+  }
+  html[data-big-text] #custom_modal_text { font-size: 16.5px; }
+
+  html[data-big-text] .currency-toggle-btn { font-size: 15.5px; }
+
+  html[data-big-text] .btn-trial-14 { font-size: 15px; }
+
+  html[data-big-text] .tariff-card h3 { font-size: 15px; }
+
+  html[data-big-text] .tariff-card .price-sub { font-size: 15.5px; }
+
+  html[data-big-text] .badge { font-size: 14px; }
+
+  html[data-big-text] .btn-subscribe { font-size: 16.5px; }
+
+  html[data-big-text] .pro-form-container label { font-size: 15.5px; }
+
+  html[data-big-text] .modal-subscription-wrapper p { font-size: 17px; }
+
+  html[data-big-text] .modal-subscription-wrapper .pro-form-input { font-size: 18px; }
+
+  html[data-big-text] .modal-subscription-wrapper .btn-subscribe { font-size: 19.5px; }
+
+  html[data-big-text] .modal-subscription-wrapper .btn-close-minimal { font-size: 17px; }
+
+  html[data-big-text] .mobile-sidebar .sku-label { font-size: 16.5px; }
+
+  @media screen and (max-height: 660px) {
+    html[data-big-text] .mobile-sidebar .sku-label { font-size: 15.5px; }
+  }
+  @media screen and (max-height: 660px) {
+    html[data-big-text] .mobile-sidebar .mobile-header-totals { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .mobile-header-totals { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .m-total-eq span { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .m-total-work span { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    @media screen and (max-width: 480px) {
+      html[data-big-text] .mobile-header-totals { font-size: 15px; }
+    }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    @media screen and (max-width: 360px) {
+      html[data-big-text] .mobile-header-totals { font-size: 14px; }
+    }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .mobile-sidebar .footer-btns .btn-base { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .mobile-sidebar .download-menu-item { font-size: 16.5px; }
+  }
+  html[data-big-text] .auth-tab { font-size: 17.5px; }
+
+  html[data-big-text] .status-badge-cabinet { font-size: 15px; }
+
+  html[data-big-text] .calc-dialog-title { font-size: 18px; }
+
+  html[data-big-text] .calc-dialog-message { font-size: 17px; }
+
+  html[data-big-text] .calc-dialog-input { font-size: 18px; }
+
+  html[data-big-text] .calc-dialog-btn { font-size: 17px; }
+
+  html[data-big-text] .eq-mic-btn { font-size: 18px; }
+
+  html[data-big-text] .eq-mic-status { font-size: 15px; }
+
+  html[data-big-text] .eq-search-nomatch { font-size: 15.5px; }
+
+  html[data-big-text] .ai-parse-intent-msg { font-size: 16.5px; }
+
+  html[data-big-text] .eq-search-item-name { font-size: 16.5px; }
+
+  html[data-big-text] .eq-search-item-meta { font-size: 15px; }
+
+  html[data-big-text] .eq-search-manual { font-size: 15.5px; }
+
+  html[data-big-text] .eq-search-label { font-size: 17px; }
+
+  html[data-big-text] .calc-toast-icon { font-size: 22px; }
+
+  html[data-big-text] .calc-toast-title { font-size: 16.5px; }
+
+  html[data-big-text] .calc-toast-body { font-size: 15.5px; }
+
+  html[data-big-text] .calc-toast-close { font-size: 17px; }
+
+  html[data-big-text] .msg-toast-time { font-size: 14px; }
+
+  html[data-big-text] .msg-toast-input { font-size: 15.5px; }
+
+  html[data-big-text] .msg-toast-send { font-size: 15.5px; }
+
+  html[data-big-text] .msg-toast-actions button { font-size: 15px; }
+
+  html[data-big-text] .msg-toast-sent { font-size: 15.5px; }
+
+  html[data-big-text] .msg-toast-err { font-size: 15px; }
+
+  @media screen and (max-width: 480px) {
+    html[data-big-text] .msg-toast-input { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 480px) {
+    html[data-big-text] .msg-toast-actions button { font-size: 15.5px; }
+  }
+  html[data-big-text] .btn-get-invoice { font-size: 15px; }
+
+  html[data-big-text] body.html2pdf-printing .inv-table td,
+  html[data-big-text] body.html2pdf-printing .inv-table th { font-size: 15px; }
+
+  html[data-big-text] body.html2pdf-printing .inv-table td.col-sku:not(.hidden-col) { font-size: 14px; }
+
+  html[data-big-text] body.html2pdf-printing .inv-table thead th { font-size: 14px; }
+
+  html[data-big-text] .desktop-feedback-btn { font-size: 15px; }
+
+  html[data-big-text] .ai-parse-fab { font-size: 15.5px; }
+
+  html[data-big-text] .ai-chat-bubble { font-size: 16.5px; }
+
+  html[data-big-text] .ai-chat-bubble .ai-parse-preview-title { font-size: 14.5px; }
+
+  html[data-big-text] .ai-chat-bubble .ai-parse-preview-item { font-size: 16.5px; }
+
+  html[data-big-text] .ai-parse-preview-title { font-size: 15px; }
+
+  html[data-big-text] .ai-parse-preview-item { font-size: 16.5px; }
+
+  html[data-big-text] .ai-chat-product-name { font-size: 16px; }
+
+  html[data-big-text] .ai-chat-product-meta { font-size: 15px; }
+
+  html[data-big-text] .ai-chat-product-passport { font-size: 15px; }
+
+  html[data-big-text] .ai-chat-product-add { font-size: 15.5px; }
+
+  html[data-big-text] .feedback-header h2 { font-size: 21px; }
+
+  html[data-big-text] .feedback-cat-icon { font-size: 18px; }
+
+  html[data-big-text] .feedback-cat-label { font-size: 14.5px; }
+
+  html[data-big-text] .feedback-input,
+  html[data-big-text] .feedback-textarea { font-size: 16.5px; }
+
+  html[data-big-text] .feedback-file-icon { font-size: 17px; }
+
+  html[data-big-text] .feedback-file-text { font-size: 15px; }
+
+  html[data-big-text] .cookie-banner-text { font-size: 15.5px; }
+
+  html[data-big-text] .cookie-banner-btn { font-size: 15.5px; }
+
+  html[data-big-text] .city-suggestion-item { font-size: 16.5px; }
+
+  html[data-big-text] .city-suggestion-temp { font-size: 16px; }
+
+  html[data-big-text] .city-suggestion-country { font-size: 15px; }
+
+  html[data-big-text] .wall-layer-num { font-size: 15px; }
+
+  html[data-big-text] .wall-layer-select { font-size: 16px; }
+
+  html[data-big-text] .wall-layer-thick { font-size: 15.5px; }
+
+  html[data-big-text] .wall-layer-unit { font-size: 15px; }
+
+  html[data-big-text] .wall-layer-del { font-size: 18px; }
+
+  html[data-big-text] .mode-tab { font-size: 16px; }
+
+  html[data-big-text] .custom-dropdown-option { font-size: 16px; }
+
+  html[data-big-text] .wall-layer-thick { font-size: 15.5px; }
+
+  html[data-big-text] .wall-layer-unit { font-size: 15px; }
+
+  html[data-big-text] .wall-layer-del { font-size: 18px; }
+
+  html[data-big-text] .mode-tab { font-size: 16px; }
+
+  html[data-big-text] .custom-dropdown-option { font-size: 16px; }
+
+  html[data-big-text] .scheme-zoom-btn { font-size: 16px; }
+
+  html[data-big-text] #scheme_zoom_overlay .scheme-zoom-bar button { font-size: 18px; }
+
+  html[data-big-text] .sec-analog-label,
+  html[data-big-text] .sec-toggle-label { font-size: 13px; }
+
+  html[data-big-text] .swap-option-name { font-size: 17px; }
+
+  html[data-big-text] .swap-option-brand { font-size: 15px; }
+
+  html[data-big-text] .swap-option-price { font-size: 17px; }
+
+  html[data-big-text] .cw-title { font-size: 16.5px; }
+
+  html[data-big-text] .cw-pts { font-size: 22px; }
+
+  html[data-big-text] .cw-pts-label { font-size: 15.5px; }
+
+  html[data-big-text] .cw-xp-label { font-size: 15px; }
+
+  html[data-big-text] .cw-achieve { font-size: 15px; }
+
+  html[data-big-text] .cw-rating-medal { font-size: 22px; }
+
+  html[data-big-text] .cw-rating-icon { font-size: 17.5px; }
+
+  html[data-big-text] .cw-rating-label { font-size: 14.5px; }
+
+  html[data-big-text] .cw-rating-position { font-size: 16.5px; }
+
+  html[data-big-text] .cw-rating-sub { font-size: 14px; }
+
+  html[data-big-text] .cw-rating-refresh { font-size: 17px; }
+
+  html[data-big-text] .cw-details-summary { font-size: 15px; }
+
+  html[data-big-text] .empty-state-title { font-size: 17.5px; }
+
+  html[data-big-text] .empty-state-text { font-size: 16.5px; }
+
+  html[data-big-text] .cw-rules-summary { font-size: 15px; }
+
+  html[data-big-text] .cw-rules-content { font-size: 15px; }
+
+  html[data-big-text] .cw-status-promo { font-size: 15.5px; }
+
+  html[data-big-text] .contest-toast { font-size: 16.5px; }
+
+  html[data-big-text] .ct-icon { font-size: 21px; }
+
+  html[data-big-text] .ct-title { font-size: 16.5px; }
+
+  html[data-big-text] .ct-sub { font-size: 15.5px; }
+
+  html[data-big-text] .fill-pct-val { font-size: 15px; }
+
+  html[data-big-text] .header-fill-bar-marker { font-size: 14px; }
+
+  html[data-big-text] #profile_tab_oprosniki,
+  html[data-big-text] #profile_tab_objects,
+  html[data-big-text] #profile_tab_orders,
+  html[data-big-text] #profile_tab_summary { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_oprosniki .lk-section-head h4,
+  html[data-big-text] #profile_tab_objects .lk-section-head h4,
+  html[data-big-text] #profile_tab_orders .lk-section-head h4,
+  html[data-big-text] #profile_tab_summary .lk-section-head h4 { font-size: 16.5px; }
+
+  html[data-big-text] #profile_tab_oprosniki .lk-btn-sm,
+  html[data-big-text] #profile_tab_objects .lk-btn-sm,
+  html[data-big-text] #profile_tab_orders .lk-btn-sm,
+  html[data-big-text] #profile_tab_summary .lk-btn-sm { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_objects table,
+  html[data-big-text] #profile_tab_summary table { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-head-note { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-tile-label { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-tile-val { font-size: 19.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-tile-sub { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-tile-list .sm-link { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-trend { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-row { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-row-sub { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-cell span,
+  html[data-big-text] #profile_tab_summary .sm-cell small { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-cell b { font-size: 17.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-funnel-row { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-funnel-row small { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-funnel-pct { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-table { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-table th { font-size: 15px; }
+
+  html[data-big-text] #profile_tab_summary .sm-table small { font-size: 14.5px; }
+
+  html[data-big-text] #profile_tab_summary .sm-legend { font-size: 15px; }
+
+  html[data-big-text] .lk-nav-avatar { font-size: 16.5px; }
+
+  html[data-big-text] .lk-nav-name { font-size: 16.5px; }
+
+  html[data-big-text] .lk-nav-tariff { font-size: 15px; }
+
+  html[data-big-text] .lk-nav-item { font-size: 16.5px; }
+
+  html[data-big-text] .lk-section-head h4 { font-size: 17px; }
+
+  html[data-big-text] .lk-hint { font-size: 15.5px; }
+
+  html[data-big-text] .lk-card-label { font-size: 15px; }
+
+  html[data-big-text] .lk-subhead { font-size: 16px; }
+
+  html[data-big-text] .lk-row { font-size: 16px; }
+
+  html[data-big-text] .lk-empty { font-size: 16.5px; }
+
+  html[data-big-text] #profile_tab_workprices .lk-row,
+  html[data-big-text] #profile_tab_equipment .lk-row { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_workprices .lk-subhead,
+  html[data-big-text] #profile_tab_equipment .lk-subhead { font-size: 15.5px; }
+
+  html[data-big-text] #profile_tab_equipment .lk-empty { font-size: 15.5px; }
+
+  @media screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_modal_overlay .auth-input { font-size: 16.5px; }
+  }
+  html[data-big-text] .lk-btn-sm { font-size: 15.5px; }
+
+  @media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    html[data-big-text] .lk-nav-item { font-size: 14.5px; }
+  }
+  html[data-big-text] .lk-profile-logout { font-size: 17px; }
+
+  html[data-big-text] .grm-empty { font-size: 17px; }
+
+  html[data-big-text] .grm-empty-sm { font-size: 16.5px; }
+
+  html[data-big-text] .grm-section-head h3 { font-size: 17.5px; }
+
+  html[data-big-text] .grm-avatar { font-size: 22px; }
+
+  html[data-big-text] .grm-name { font-size: 19px; }
+
+  html[data-big-text] .grm-sub { font-size: 15.5px; }
+
+  html[data-big-text] .grm-title-chip { font-size: 15px; }
+
+  html[data-big-text] .grm-xp-lbl { font-size: 15px; }
+
+  html[data-big-text] .grm-countdown { font-size: 15.5px; }
+
+  html[data-big-text] .grm-lb-tab { font-size: 16px; }
+
+  html[data-big-text] .grm-lb-row { font-size: 17px; }
+
+  html[data-big-text] .grm-lb-rank { font-size: 17.5px; }
+
+  html[data-big-text] .grm-lb-xp { font-size: 16.5px; }
+
+  html[data-big-text] .grm-you { font-size: 14px; }
+
+  html[data-big-text] .grm-prize-note { font-size: 16.5px; }
+
+  html[data-big-text] .grm-prize-head { font-size: 17px; }
+
+  html[data-big-text] .grm-prize-row { font-size: 16.5px; }
+
+  html[data-big-text] .grm-prize-my { font-size: 15.5px; }
+
+  html[data-big-text] .grm-prize-my b { font-size: 17px; }
+
+  html[data-big-text] .grm-badge-count { font-size: 16.5px; }
+
+  html[data-big-text] .grm-badge-title { font-size: 16px; }
+
+  html[data-big-text] .grm-badge-hint { font-size: 14.5px; }
+
+  html[data-big-text] .grm-badge-progress-txt { font-size: 14px; }
+
+  html[data-big-text] .grm-feed-row { font-size: 16.5px; }
+
+  html[data-big-text] .grm-feed-dot { font-size: 19px; }
+
+  html[data-big-text] .grm-fire { font-size: 15.5px; }
+
+  html[data-big-text] .grm-toast { font-size: 17px; }
+
+  html[data-big-text] .grm-guest-title { font-size: 21px; }
+
+  html[data-big-text] .grm-guest-text { font-size: 17px; }
+
+  html[data-big-text] .grm-guest-btn { font-size: 17px; }
+
+  html[data-big-text] .rec-sel-bar { font-size: 16px; }
+
+  html[data-big-text] .rec-sel-bar .rec-sel-section { font-size: 16px; }
+
+  html[data-big-text] .rec-sel-bar button { font-size: 16px; }
+
+  html[data-big-text] .rec-title { font-size: 19px; }
+
+  html[data-big-text] .rec-steps { font-size: 16px; }
+
+  html[data-big-text] .rec-drop-t { font-size: 17.5px; }
+
+  html[data-big-text] .rec-drop-s { font-size: 16px; }
+
+  html[data-big-text] .rec-prev-del { font-size: 16.5px; }
+
+  html[data-big-text] .rec-status { font-size: 16px; }
+
+  html[data-big-text] .rec-err { font-size: 16px; }
+
+  html[data-big-text] .rec-panel-stat { font-size: 16px; }
+
+  html[data-big-text] .rec-selbar-n { font-size: 16px; }
+
+  html[data-big-text] .rec-btn-g { font-size: 16px; }
+
+  html[data-big-text] .rec-switch { font-size: 16px; }
+
+  html[data-big-text] .rec-save-total { font-size: 17.5px; }
+
+  html[data-big-text] .rec-save-total small { font-size: 15.5px; }
+
+  html[data-big-text] .rec-save-line { font-size: 15.5px; }
+
+  html[data-big-text] .rec-thumb.sheet-done::after,
+  html[data-big-text] .rec-thumb.sheet-fail::after { font-size: 16.5px; }
+
+  html[data-big-text] .rec-saved { font-size: 16.5px; }
+
+  html[data-big-text] .rec-miss > summary { font-size: 16.5px; }
+
+  html[data-big-text] .rec-miss-b ul { font-size: 16px; }
+
+  html[data-big-text] .rec-table { font-size: 16px; }
+
+  html[data-big-text] .rec-raw { font-size: 15.5px; }
+
+  html[data-big-text] .rec-art { font-size: 15px; }
+
+  html[data-big-text] .rec-table tr.rec-docsec td { font-size: 15.5px; }
+
+  html[data-big-text] .rec-nohave { font-size: 15.5px; }
+
+  html[data-big-text] .rec-f { font-size: 15.5px; }
+
+  html[data-big-text] .rec-tbtn { font-size: 14.5px; }
+
+  html[data-big-text] .rec-acts button { font-size: 16.5px; }
+
+  html[data-big-text] .rec-total { font-size: 17px; }
+
+  html[data-big-text] .rec-total b { font-size: 19.5px; }
+
+  html[data-big-text] .rec-pstage { font-size: 16px; }
+
+  html[data-big-text] .rec-elapsed { font-size: 15.5px; }
+
+  html[data-big-text] .rec-hit { font-size: 16px; }
+
+  @media (max-width: 700px) {
+    html[data-big-text] .rec-table { font-size: 15.5px; }
+  }
+  @media (max-width: 700px) {
+    html[data-big-text] .rec-steps { font-size: 15.5px; }
+  }
+  html[data-big-text] .rec-cmp-val { font-size: 21px; }
+
+  html[data-big-text] .rec-cmp-lbl { font-size: 15px; }
+
+  html[data-big-text] .rec-cmp-note { font-size: 16px; }
+
+  html[data-big-text] .rec-cmp-note { font-size: 15.5px; }
+
+  html[data-big-text] .rec-cmp-sub { font-size: 15px; }
+
+  html[data-big-text] .rec-cmp-apply { font-size: 16.5px; }
+
+  html[data-big-text] .rec-cmp-warn { font-size: 15.5px; }
+
+  html[data-big-text] .rec-pricebad-note { font-size: 15px; }
+
+  html[data-big-text] .rec-sugg-h { font-size: 16.5px; }
+
+  html[data-big-text] .rec-sugg-main { font-size: 16px; }
+
+  html[data-big-text] .rec-sugg-guess { font-size: 14.5px; }
+
+  html[data-big-text] .rec-tab { font-size: 16.5px; }
+
+  html[data-big-text] .rec-tab em { font-size: 15.5px; }
+
+  html[data-big-text] .rec-tab i { font-size: 15.5px; }
+
+  html[data-big-text] .rec-grand-main { font-size: 18px; }
+
+  html[data-big-text] .rec-grand-main b { font-size: 20px; }
+
+  html[data-big-text] .rec-grand-lbl { font-size: 15px; }
+
+  html[data-big-text] .rec-grand-delta { font-size: 17.5px; }
+
+  html[data-big-text] .rec-grand-sub { font-size: 15.5px; }
+
+  html[data-big-text] .rec-tcheck { font-size: 17px; }
+
+  html[data-big-text] .rec-tcheck-ico { font-size: 16.5px; }
+
+  html[data-big-text] .rec-tcheck-sub { font-size: 16px; }
+
+  html[data-big-text] .rec-proj-title { font-size: 17.5px; }
+
+  html[data-big-text] .rec-proj-sub { font-size: 16px; }
+
+  html[data-big-text] .rec-proj-row { font-size: 15.5px; }
+
+  html[data-big-text] .rec-proj-ask { font-size: 16px; }
+
+  html[data-big-text] .rec-proj-opt-head { font-size: 17px; }
+
+  html[data-big-text] .rec-proj-time { font-size: 15px; }
+
+  html[data-big-text] .rec-proj-opt-text { font-size: 16px; }
+
+  @media (max-width: 760px) {
+    html[data-big-text] .rec-proj-row { font-size: 15.5px; }
+  }
+  html[data-big-text] .rs-col-h { font-size: 15.5px; }
+
+  html[data-big-text] .rs-scheme-empty { font-size: 16.5px; }
+
+  html[data-big-text] .rs-quick { font-size: 16px; }
+
+  html[data-big-text] .rs-bill { font-size: 16px; }
+
+  html[data-big-text] .rs-pv-notes { font-size: 16px; }
+
+  html[data-big-text] .rs-tag { font-size: 15px; }
+
+  html[data-big-text] .rs-card-head { font-size: 16.5px; }
+
+  html[data-big-text] .rs-miss { font-size: 15.5px; }
+
+  html[data-big-text] .rs-card-body { font-size: 16px; }
+
+  html[data-big-text] .rs-voice-input { font-size: 16px; }
+
+  html[data-big-text] .rs-notes { font-size: 16px; }
+
+  html[data-big-text] .rs-area { font-size: 16.5px; }
+
+  html[data-big-text] .rs-howto { font-size: 16px; }
+
+  html[data-big-text] .rs-howto-ico { font-size: 17.5px; }
+
+  html[data-big-text] .rec-frame { font-size: 16px; }
+
+  html[data-big-text] .rec-frame-tag { font-size: 13px; }
+
+  html[data-big-text] .rec-thumb-turn,
+  html[data-big-text] .rec-prev-turn { font-size: 15px; }
+
+  html[data-big-text] .rec-prev-turn { font-size: 16.5px; }
+
+  html[data-big-text] .rec-alt { font-size: 15.5px; }
+
+  html[data-big-text] .rec-draft { font-size: 16.5px; }
+
+  html[data-big-text] .rec-search-all { font-size: 16.5px; }
+
+  html[data-big-text] .rec-allclear { font-size: 17px; }
+
+  html[data-big-text] .rec-missing-hd { font-size: 16.5px; }
+
+  html[data-big-text] .rec-work-tag { font-size: 14.5px; }
+
+  html[data-big-text] .rec-doc-ic { font-size: 14px; }
+
+  html[data-big-text] .rec-doc-name { font-size: 14.5px; }
+
+  html[data-big-text] .rec-doc-sub { font-size: 14px; }
+
+  html[data-big-text] .rec-thumb span { font-size: 15px; }
+
+  html[data-big-text] .rec-thumb-del { font-size: 15.5px; }
+
+  html[data-big-text] .rec-dup-tag { font-size: 14px; }
+
+  html[data-big-text] .rec-dupnote { font-size: 16px; }
+
+  html[data-big-text] .rec-quota { font-size: 16px; }
+
+  html[data-big-text] .rec-quota::after { font-size: 15.5px; }
+
+  html[data-big-text] .rec-plan-group-row { font-size: 16px; }
+
+  html[data-big-text] .rec-plan-notes { font-size: 15.5px; }
+
+  html[data-big-text] .admin-chat-side-head input { font-size: 16.5px; }
+
+  html[data-big-text] .admin-chat-clear { font-size: 17px; }
+
+  html[data-big-text] .admin-chat-ava { font-size: 19px; }
+
+  html[data-big-text] .admin-chat-name { font-size: 16.5px; }
+
+  html[data-big-text] .admin-chat-time { font-size: 15px; }
+
+  html[data-big-text] .admin-chat-prev { font-size: 16px; }
+
+  html[data-big-text] .admin-chat-badge { font-size: 15px; }
+
+  html[data-big-text] .admin-chat-newhdr { font-size: 15.5px; }
+
+  html[data-big-text] .admin-chat-head .admin-chat-ava { font-size: 17.5px; }
+
+  html[data-big-text] .admin-chat-back { font-size: 22px; }
+
+  html[data-big-text] .admin-chat-headname { font-size: 17px; }
+
+  html[data-big-text] .admin-chat-headsub { font-size: 15.5px; }
+
+  html[data-big-text] .admin-chat-day { font-size: 15.5px; }
+
+  html[data-big-text] .admin-chat-empty { font-size: 16px; }
+
+  html[data-big-text] .admin-chat-recip-head input { font-size: 16.5px; }
+
+  html[data-big-text] .admin-chat-recip-note { font-size: 15.5px; }
+
+  html[data-big-text] .admin-chat-sender { font-size: 16px; }
+
+  html[data-big-text] .admin-chat-text { font-size: 16.5px; }
+
+  html[data-big-text] .admin-chat-metatime { font-size: 15px; }
+
+  html[data-big-text] .admin-chat-del { font-size: 14.5px; }
+
+  html[data-big-text] .admin-chat-reply { font-size: 15.5px; }
+
+  html[data-big-text] .chat-quote { font-size: 15.5px; }
+
+  html[data-big-text] .chat-quote-name { font-size: 15.5px; }
+
+  html[data-big-text] .chat-replybar-icon { font-size: 17.5px; }
+
+  html[data-big-text] .admin-chat-compose textarea { font-size: 16.5px; }
+
+  html[data-big-text] .admin-chat-send { font-size: 18px; }
+
+  html[data-big-text] .emoji-open-btn { font-size: 20px; }
+
+  html[data-big-text] .emoji-tab { font-size: 17.5px; }
+
+  html[data-big-text] .emoji-set-name { font-size: 14.5px; }
+
+  html[data-big-text] .emoji-grid button { font-size: 21px; }
+
+  html[data-big-text] .emoji-grid-empty { font-size: 15.5px; }
+
+  html[data-big-text] .notif-tab { font-size: 15.5px; }
+
+  html[data-big-text] .notif-tab-badge { font-size: 13.5px; }
+
+  html[data-big-text] #notif_pane_chat .admin-chat-compose textarea { font-size: 16.5px; }
+
+  html[data-big-text] .user-chat-from { font-size: 15.5px; }
+
+  html[data-big-text] .admin-chat-readonly { font-size: 15.5px; }
+
+  html[data-big-text] .lk-rail-item { font-size: calc(15.5px * var(--lk-scale, 1)); }
+
+  html[data-big-text] .lk-rail-badge { font-size: 13.5px; }
+
+  html[data-big-text] .lk-rail-edit-hint { font-size: 15.5px; }
+
+  html[data-big-text] .hdr-obj-switch .btn-ctrl { font-size: 19px; }
+
+  html[data-big-text] #hyd_card { font-size: 16.5px; }
+
+  html[data-big-text] #hyd_card .hyd-card__t { font-size: 17px; }
+
+  html[data-big-text] #hyd_card .hyd-card__s { font-size: 15px; }
+
+  html[data-big-text] #hyd_card .hyd-card__x { font-size: 16.5px; }
+
+  html[data-big-text] #hyd_hint { font-size: 16px; }
+
+  html[data-big-text] #hyd_hint .hyd-hint__t { font-size: 16.5px; }
+
+  html[data-big-text] #hyd_hint .hyd-hint__f { font-size: 15px; }
+
+  html[data-big-text] #hyd_hint .hyd-hint__c { font-size: 15px; }
+
+  html[data-big-text] #hyd_card .hyd-card__p { font-size: 16px; }
+
+  html[data-big-text] .scheme-hints-btn { font-size: 16px; }
+
+  html[data-big-text] #scheme_zoom_overlay .scheme-zoom-bar .scheme-zoom-hints { font-size: 16.5px; }
+
+  @media screen {
+    html[data-big-text] body.theme-shop .inv-table { font-size: 16px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop .inv-table th { font-size: 15px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop .lbl,
+    html[data-big-text] body.theme-shop .control-item h3,
+    html[data-big-text] body.theme-shop .control-item h4 { font-size: 16.5px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop .doc-title { font-size: 19.5px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop .tab,
+    html[data-big-text] body.theme-shop .mode-tab { font-size: 16px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop tr.group-header:not([style]) td { font-size: 15px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop tr.group-header[style] td { font-size: 14.5px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop .btn-base,
+    html[data-big-text] body.theme-shop .footer-btns .btn-base { font-size: 15.5px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-shop .custom-modal-btn,
+    html[data-big-text] body.theme-shop .calc-dialog-btn-confirm,
+    html[data-big-text] body.theme-shop .btn-email-submit { font-size: 15.5px; }
+  }
+  html[data-big-text] .savings-pop { font-size: 15.5px; }
+
+  html[data-big-text] .savings-pop .sp-head { font-size: 17px; }
+
+  html[data-big-text] .savings-pop .sp-sub { font-size: 15px; }
+
+  html[data-big-text] .savings-pop .sp-n { font-size: 14px; }
+
+  html[data-big-text] .savings-pop .sp-title { font-size: 14.5px; }
+
+  html[data-big-text] .savings-pop .sp-sum { font-size: 15px; }
+
+  html[data-big-text] .savings-pop .sp-note { font-size: 15px; }
+
+  html[data-big-text] .savings-pop .sp-foot { font-size: 14.5px; }
+
+  html[data-big-text] .cheaper-panel { font-size: 16px; }
+
+  html[data-big-text] .cr-card .cr-l { font-size: 15px; }
+
+  html[data-big-text] .cr-card .cr-v { font-size: 22px; }
+
+  html[data-big-text] .cr-card .cr-s { font-size: 15px; }
+
+  html[data-big-text] .cr-h { font-size: 16.5px; }
+
+  html[data-big-text] .cr-title { font-size: 17.5px; }
+
+  html[data-big-text] .cr-line { font-size: 15.5px; }
+
+  html[data-big-text] .cr-scheme { font-size: 15.5px; }
+
+  html[data-big-text] .cr-table { font-size: 15.5px; }
+
+  html[data-big-text] .cr-table th { font-size: 14.5px; }
+
+  html[data-big-text] .cr-sku { font-size: 15px; }
+
+  html[data-big-text] .cr-note { font-size: 15.5px; }
+
+  @media screen {
+    html[data-big-text] body.theme-yandex .doc-title { font-size: 19px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-yandex .input-panel h3 { font-size: 17px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-yandex .inv-table th { font-size: 15px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-yandex .row-sec td { font-size: 16px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-yandex .group-header td { font-size: 15.5px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-yandex .sec-analog-label,
+    html[data-big-text] body.theme-yandex .sec-toggle-label { font-size: 14px; }
+  }
+  @media screen {
+    html[data-big-text] body.theme-yandex .site-header-left::after { font-size: 20px; }
+  }
+  html[data-big-text] .admin-group-btn { font-size: 16.5px; }
+
+  html[data-big-text] .ad-sub { font-size: 15.5px; }
+
+  html[data-big-text] .ad-card-title { font-size: 16.5px; }
+
+  html[data-big-text] .ad-count { font-size: 15.5px; }
+
+  html[data-big-text] .ad-card-note { font-size: 15.5px; }
+
+  html[data-big-text] .ad-row { font-size: 15.5px; }
+
+  html[data-big-text] .ad-row-main b { font-size: 16.5px; }
+
+  html[data-big-text] .ad-section-h { font-size: 15.5px; }
+
+  html[data-big-text] .ad-map-title { font-size: 15.5px; }
+
+  html[data-big-text] .ad-map-link b { font-size: 16.5px; }
+
+  html[data-big-text] .ad-map-link span { font-size: 15px; }
+
+  html[data-big-text] .ad-chip { font-size: 15.5px; }
+
+  html[data-big-text] .ad-chip-n { font-size: 15px; }
+
+  html[data-big-text] .ad-chip-x { font-size: 17.5px; }
+
+  html[data-big-text] #admin_content table.ad-dense td { font-size: 15.5px; }
+
+  html[data-big-text] .ad-peek-name { font-size: 18px; }
+
+  html[data-big-text] .ad-peek-sub { font-size: 15.5px; }
+
+  html[data-big-text] .ad-peek-x { font-size: 19.5px; }
+
+  html[data-big-text] .ad-peek-sec { font-size: 15px; }
+
+  html[data-big-text] .ad-kv { font-size: 16.5px; }
+
+  html[data-big-text] .ad-pill { font-size: 15px; }
+
+  html[data-big-text] .ad-field { font-size: 15.5px; }
+
+  html[data-big-text] .ad-quota-t { font-size: 15.5px; }
+
+  html[data-big-text] details.ad-danger-zone > summary { font-size: 15.5px; }
+
+  html[data-big-text] .admin-search-btn { font-size: 15.5px; }
+
+  html[data-big-text] .admin-search-btn kbd,
+  html[data-big-text] .ad-search-foot kbd { font-size: 14.5px; }
+
+  html[data-big-text] #ad_search_input { font-size: 17.5px; }
+
+  html[data-big-text] .ad-search-grp { font-size: 15px; }
+
+  html[data-big-text] .ad-search-it b { font-size: 16.5px; }
+
+  html[data-big-text] .ad-search-it span { font-size: 15.5px; }
+
+  html[data-big-text] .ad-search-foot { font-size: 15px; }
+
+  html[data-big-text] details.ad-collapse > summary { font-size: 16.5px; }
+
+  html[data-big-text] details.ad-collapse > summary::before { font-size: 19.5px; }
+
+  html[data-big-text] .admin-mob-group { font-size: 15px; }
+
+  html[data-big-text] #admin_nav_tabs .admin-tab-btn { font-size: 16px; }
+
+  html[data-big-text] #admin_content .auth-btn-base:not([style*="background"]),
+  html[data-big-text] #admin_content .admin-btn:not([style*="background"]) { font-size: 15.5px; }
+
+  html[data-big-text] #admin_content [style*="font-size:9.5px"],
+  html[data-big-text] #admin_content [style*="font-size: 9.5px"],
+  html[data-big-text] #admin_content [style*="font-size:10px"],
+  html[data-big-text] #admin_content [style*="font-size: 10px"],
+  html[data-big-text] #admin_content [style*="font-size:10.5px"],
+  html[data-big-text] #admin_content [style*="font-size: 10.5px"] { font-size: 15px; }
+
+  html[data-big-text] #admin_content [style*="font-size:11.5px"],
+  html[data-big-text] #admin_content [style*="font-size: 11.5px"] { font-size: 15.5px; }
+
+  html[data-big-text] #admin_content [style*="font-size:12.5px"],
+  html[data-big-text] #admin_content [style*="font-size: 12.5px"] { font-size: 16.5px; }
+
+  html[data-big-text] #admin_content h3 { font-size: 19px; }
+
+  html[data-big-text] #admin_content h4 { font-size: 17px; }
+
+  html[data-big-text] #admin_content input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]),
+  html[data-big-text] #admin_content select { font-size: 16.5px; }
+
+  html[data-big-text] #admin_content .admin-stat-grid .control-card > span:nth-child(1) { font-size: 15.5px; }
+
+  html[data-big-text] #admin_content .admin-stat-grid .control-card > span:nth-child(2) { font-size: 22px; }
+
+  html[data-big-text] #btn_ui_scale .ui-scale-badge { font-size: 13px; }
+
+  html[data-big-text] .ui-scale-title { font-size: 17.5px; }
+
+  html[data-big-text] .ui-scale-label { font-size: 16.5px; }
+
+  html[data-big-text] .ui-scale-note { font-size: 16px; }
+
+  html[data-big-text] .ui-scale-row small { font-size: 16px; }
+
+  /* инлайновые font-size */
+  html[data-big-text] [style*="font-size:8.5px"], html[data-big-text] [style*="font-size: 8.5px"] { font-size: 12.5px !important; }
+  html[data-big-text] [style*="font-size:9px"], html[data-big-text] [style*="font-size: 9px"] { font-size: 13px !important; }
+  html[data-big-text] [style*="font-size:9.5px"], html[data-big-text] [style*="font-size: 9.5px"] { font-size: 13.5px !important; }
+  html[data-big-text] [style*="font-size:10px"], html[data-big-text] [style*="font-size: 10px"] { font-size: 14px !important; }
+  html[data-big-text] [style*="font-size:10.5px"], html[data-big-text] [style*="font-size: 10.5px"] { font-size: 14.5px !important; }
+  html[data-big-text] [style*="font-size:11px"], html[data-big-text] [style*="font-size: 11px"] { font-size: 15px !important; }
+  html[data-big-text] [style*="font-size:11.5px"], html[data-big-text] [style*="font-size: 11.5px"] { font-size: 15.5px !important; }
+  html[data-big-text] [style*="font-size:12px"], html[data-big-text] [style*="font-size: 12px"] { font-size: 15.5px !important; }
+  html[data-big-text] [style*="font-size:12.5px"], html[data-big-text] [style*="font-size: 12.5px"] { font-size: 16px !important; }
+  html[data-big-text] [style*="font-size:13px"], html[data-big-text] [style*="font-size: 13px"] { font-size: 16.5px !important; }
+  html[data-big-text] [style*="font-size:13.5px"], html[data-big-text] [style*="font-size: 13.5px"] { font-size: 16.5px !important; }
+  html[data-big-text] [style*="font-size:14px"], html[data-big-text] [style*="font-size: 14px"] { font-size: 17px !important; }
+  html[data-big-text] [style*="font-size:14.5px"], html[data-big-text] [style*="font-size: 14.5px"] { font-size: 17.5px !important; }
+  html[data-big-text] [style*="font-size:15px"], html[data-big-text] [style*="font-size: 15px"] { font-size: 17.5px !important; }
+  html[data-big-text] [style*="font-size:16px"], html[data-big-text] [style*="font-size: 16px"] { font-size: 18px !important; }
+  html[data-big-text] [style*="font-size:17px"], html[data-big-text] [style*="font-size: 17px"] { font-size: 19px !important; }
+  html[data-big-text] [style*="font-size:18px"], html[data-big-text] [style*="font-size: 18px"] { font-size: 19.5px !important; }
+  html[data-big-text] [style*="font-size:20px"], html[data-big-text] [style*="font-size: 20px"] { font-size: 21px !important; }
+  html[data-big-text] [style*="font-size:21px"], html[data-big-text] [style*="font-size: 21px"] { font-size: 21.5px !important; }
+  html[data-big-text] [style*="font-size:22px"], html[data-big-text] [style*="font-size: 22px"] { font-size: 22px !important; }
+}
