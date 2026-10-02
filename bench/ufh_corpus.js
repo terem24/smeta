@@ -239,6 +239,12 @@ for (const m of meta) {
     }
   }); });
   row.ourN = ourN; row.ourM = Math.round(ourM); row.est = est; row.leadM = Math.round(leadM);
+  // отпечаток всей геометрии (трубы и пучок) — сверять ускорения «результат тот же»
+  let hsh = 0;
+  const mix = v => { hsh = (Math.imul(hsh ^ Math.round(v * 100), 2654435761) + 1) >>> 0; };
+  FL.forEach(Z => Z.loops.forEach(l => { (l.sup || []).concat(l.ret || []).forEach(p => { mix(p[0]); mix(p[1]); }); mix(l.lenM || 0); }));
+  (FL.bundle || []).forEach(sg => { mix(sg.a[0]); mix(sg.a[1]); mix(sg.b[0]); mix(sg.b[1]); mix(sg.n); });
+  row.hash = hsh.toString(16);
   // этаж из комнат обычного размера: карта стенда не слила полдома в одну «комнату»
   row.realRooms = FL.every(Z => Z.area <= 60);
   row.overLim = 0; row.overLimRoom = 0;

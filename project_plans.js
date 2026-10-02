@@ -360,6 +360,33 @@
     return [g.ox + (k % g.W + 0.5) * g.c, g.oy + (Math.floor(k / g.W) + 0.5) * g.c];
   }
 
+  /**
+   * Клетки, чей центр внутри многоугольника, — построчно: пересечения строки с
+   * рёбрами считаются той же формулой и с тем же правилом, что в pip(), так
+   * что набор клеток совпадает с проверкой каждой клетки по отдельности, а
+   * работы в разы меньше. cb(k) — на каждую клетку; возвращает рамку
+   * [X0, Y0, X1, Y1] (клетки габарита многоугольника).
+   */
+  function polyCells(g, pts, cb) {
+    var bb = bbox(pts), c0 = cellAt(g, [bb[0], bb[1]]), c1 = cellAt(g, [bb[2], bb[3]]);
+    var X0 = c0 % g.W, Y0 = Math.floor(c0 / g.W), X1 = c1 % g.W, Y1 = Math.floor(c1 / g.W);
+    var xs = [], x, y, a, b, i;
+    for (y = Y0; y <= Y1; y++) {
+      var py = g.oy + (y + 0.5) * g.c;
+      xs.length = 0;
+      for (a = 0, b = pts.length - 1; a < pts.length; b = a++)
+        if ((pts[a][1] > py) !== (pts[b][1] > py))
+          xs.push((pts[b][0] - pts[a][0]) * (py - pts[a][1]) / (pts[b][1] - pts[a][1]) + pts[a][0]);
+      if (!xs.length) continue;
+      for (x = X0; x <= X1; x++) {
+        var px = g.ox + (x + 0.5) * g.c, cnt = 0;
+        for (i = 0; i < xs.length; i++) if (px < xs[i]) cnt++;
+        if (cnt & 1) cb(y * g.W + x);
+      }
+    }
+    return [X0, Y0, X1, Y1];
+  }
+
   /** Самый большой прямоугольник из клеток ok[] в рамке bb (клетки, включительно) */
   function maxRect(g, ok, bb) {
     var w = bb[2] - bb[0] + 1, hgt = new Int32Array(w), best = null, x, y;
@@ -420,10 +447,16 @@
   }
 
   /** Двоичная куча для поиска трассы */
-  function Heap() { this.k = []; this.v = []; }
+  function Heap() { this.k = new Float64Array(1024); this.v = new Int32Array(1024); this.n = 0; }
   Heap.prototype.push = function (key, val) {
-    var k = this.k, v = this.v, i = k.length;
-    k.push(key); v.push(val);
+    // типизированные массивы с ростом вдвое: на больших этажах в куче сотни
+    // тысяч состояний, обычные массивы с push/pop там были главным тормозом
+    if (this.n === this.k.length) {
+      var nk = new Float64Array(this.k.length * 2), nv = new Int32Array(this.v.length * 2);
+      nk.set(this.k); nv.set(this.v); this.k = nk; this.v = nv;
+    }
+    var k = this.k, v = this.v, i = this.n++;
+    k[i] = key; v[i] = val;
     while (i > 0) {
       var p = (i - 1) >> 1;
       if (k[p] <= k[i]) break;
@@ -431,13 +464,13 @@
     }
   };
   Heap.prototype.pop = function () {
-    var k = this.k, v = this.v, top = v[0], tk = k[0], lk = k.pop(), lv = v.pop();
-    if (k.length) {
-      k[0] = lk; v[0] = lv;
+    var k = this.k, v = this.v, top = v[0], tk = k[0], n = --this.n;
+    if (n) {
+      k[0] = k[n]; v[0] = v[n];
       for (var i = 0; ;) {
         var l = 2 * i + 1, r = l + 1, m = i;
-        if (l < k.length && k[l] < k[m]) m = l;
-        if (r < k.length && k[r] < k[m]) m = r;
+        if (l < n && k[l] < k[m]) m = l;
+        if (r < n && k[r] < k[m]) m = r;
         if (m === i) break;
         var t = k[m]; k[m] = k[i]; k[i] = t; t = v[m]; v[m] = v[i]; v[i] = t; i = m;
       }
@@ -451,15 +484,23 @@
    * трубу ведут прямо и вдоль стен. Источник один, поэтому трассы к разным
    * петлям сходятся в общий ствол — это и есть пучок.
    */
-  function routeAll(g, cost, src) {
+  // goal[k] — номер участка, если клетка k на его краю (иначе −1), nGoal —
+  // сколько участков. Поиск останавливается, когда у каждого участка уже
+  // разобрано состояние на краю и очередь ушла дальше самого дальнего из них:
+  // всё, что разбирается позже, длиннее — на выбор ввода это не влияет, и
+  // результат тот же, что у полного прохода, только без обхода всего этажа.
+  function routeAll(g, cost, src, goal, nGoal) {
     var N = g.W * g.H, dist = new Float64Array(N * 4), prev = new Int32Array(N * 4), d;
     dist.fill(Infinity); prev.fill(-1);
     var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1], h = new Heap();
+    var reached = goal ? new Uint8Array(nGoal) : null, left = nGoal || 0, far = -Infinity;
     for (d = 0; d < 4; d++) { dist[src * 4 + d] = 0; h.push(0, src * 4 + d); }
-    while (h.k.length) {
+    while (h.n) {
       var s = h.pop(), ds = h.lastKey;
       if (ds > dist[s]) continue;
+      if (goal && !left && ds > far) break;
       var k = s >> 2, dir = s & 3, x = k % g.W, y = (k - x) / g.W;
+      if (goal && goal[k] >= 0 && !reached[goal[k]]) { reached[goal[k]] = 1; left--; far = Math.max(far, ds); }
       for (d = 0; d < 4; d++) {
         if (d === ((dir + 2) & 3)) continue;
         var nx = x + DX[d], ny = y + DY[d];
@@ -658,25 +699,19 @@
       g.cold = new Uint8Array(N);
       (f.zones || []).forEach(function (z) {
         if (z.type !== 'cold' || !z.pts || z.pts.length < 3) return;
-        var bb = bbox(z.pts), c0 = cellAt(g, [bb[0], bb[1]]), c1 = cellAt(g, [bb[2], bb[3]]), x, y;
-        for (y = Math.floor(c0 / g.W); y <= Math.floor(c1 / g.W); y++)
-          for (x = c0 % g.W; x <= c1 % g.W; x++)
-            if (pip(cellXY(g, y * g.W + x), z.pts)) g.cold[y * g.W + x] = 1;
+        polyCells(g, z.pts, function (k) { g.cold[k] = 1; });
       });
     }
     // клетки зон: чей центр внутри полигона (последняя зона главнее)
     var own = g ? new Int32Array(N) : null, info = {};
     if (g) zs.forEach(function (Z) {
-      var bb = bbox(Z.z.pts), x, y, c0 = cellAt(g, [bb[0], bb[1]]), c1 = cellAt(g, [bb[2], bb[3]]);
-      var X0 = c0 % g.W, Y0 = Math.floor(c0 / g.W), X1 = c1 % g.W, Y1 = Math.floor(c1 / g.W), n = 0, all = 0;
-      for (y = Y0; y <= Y1; y++) for (x = X0; x <= X1; x++) {
-        var k = y * g.W + x;
-        if (!pip(cellXY(g, k), Z.z.pts)) continue;
+      var n = 0, all = 0;
+      var B = polyCells(g, Z.z.pts, function (k) {
         all++;
-        if (g.cold[k]) continue;
+        if (g.cold[k]) return;
         own[k] = Z.i + 1; n++;
-      }
-      info[Z.i] = { bb: [X0, Y0, X1, Y1], cells: n, all: all };
+      });
+      info[Z.i] = { bb: B, cells: n, all: all };
     });
     // прямоугольники зон — от раскладки не зависят, считаем один раз
     if (g) zs.forEach(function (Z) {
@@ -739,10 +774,14 @@
       });
     });
     // цена клетки для трассы; за габаритом зон — улица, туда трубу не ведём
-    var cost = new Float32Array(N), k, zb = [g.W, g.H, -1, -1];
-    for (k = 0; k < N; k++) if (own[k]) {
-      var cx = k % g.W, cy = Math.floor(k / g.W);
-      zb = [Math.min(zb[0], cx), Math.min(zb[1], cy), Math.max(zb[2], cx), Math.max(zb[3], cy)];
+    var cost = new Float32Array(N), k, zb = g.zb;
+    if (!zb) {                                  // габарит зон от круга к кругу не меняется
+      zb = [g.W, g.H, -1, -1];
+      for (k = 0; k < N; k++) if (own[k]) {
+        var cx = k % g.W, cy = Math.floor(k / g.W);
+        zb = [Math.min(zb[0], cx), Math.min(zb[1], cy), Math.max(zb[2], cx), Math.max(zb[3], cy)];
+      }
+      g.zb = zb;
     }
     for (k = 0; k < N; k++) {
       var kx = k % g.W, ky = Math.floor(k / g.W);
@@ -762,7 +801,10 @@
       }
     });
     var src = f.coll ? cellAt(g, [f.coll.x, f.coll.y]) : -1;
-    var R = src >= 0 ? routeAll(g, cost, src) : null;
+    // края участков — цели поиска: дойдя до всех, поиск останавливается
+    var goal = new Int32Array(N).fill(-1);
+    for (k = 0; k < N; k++) if (edge[k] && slabOf[k] >= 0) goal[k] = slabOf[k];
+    var R = src >= 0 ? routeAll(g, cost, src, goal, slabs.length) : null;
     // трасса к каждой петле — до ближайшей клетки её края
     var paths = slabs.map(function (sl, id) {
       if (!R) return null;
@@ -790,11 +832,13 @@
       for (var yy = y0 - rr; yy <= y0 + rr; yy++) for (var xx = x0 - rr; xx <= x0 + rr; xx++)
         if (xx >= 0 && yy >= 0 && xx < g.W && yy < g.H) blocked[yy * g.W + xx] = 1;
     }
-    var byZone = {}, used = [];
+    var byZone = {}, used = [], okBuf = new Uint8Array(N);
     slabs.forEach(function (sl, id) {
-      var b = sl.r, ok = new Uint8Array(N), x, y;
-      for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) if (!blocked[y * g.W + x]) ok[y * g.W + x] = 1;
+      // один буфер на все участки: размечаем свой прямоугольник и после стираем
+      var b = sl.r, ok = okBuf, x, y;
+      for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) ok[y * g.W + x] = blocked[y * g.W + x] ? 0 : 1;
       var r = maxRect(g, ok, [b.x0, b.y0, b.x1, b.y1]);
+      for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) ok[y * g.W + x] = 0;
       if (!r || r.area * CELL_M * CELL_M < 0.2) return;
       var Rp = [g.ox + r.x0 * g.c, g.oy + r.y0 * g.c, g.ox + (r.x1 + 1) * g.c, g.oy + (r.y1 + 1) * g.c];
       var P = paths[id], entry = P ? cellXY(g, P.cells[P.cells.length - 1]) : (f.coll ? [f.coll.x, f.coll.y] : null);
