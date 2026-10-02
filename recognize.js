@@ -1224,11 +1224,34 @@ const RecognizeUI = {
         if (this._project) {
             box.className = 'rec-tcheck ok';
             box.innerHTML = `<div class="rec-tcheck-ico">✓</div><div><div>${esc(this._fileNoteHead || 'Комплект листов проекта')}</div>
-                <div class="rec-tcheck-sub">${esc(this._fileNote)}</div></div>`;
+                <div class="rec-tcheck-sub">${esc(this._fileNote)}</div>${this.specChoiceHtml()}</div>`;
             return;
         }
         box.className = 'rec-frame';
         box.innerHTML = `<b>${esc(this._fileNoteHead || 'Файл прочитан не полностью')}</b><div>${esc(this._fileNote)}</div>`;
+    },
+
+    /**
+     * Выбор дороги для рабочего проекта со спецификацией.
+     *
+     * В таком проекте есть и помещения (для нашего расчёта), и спецификация
+     * проектировщика. Возьми обе — котёл, трубы и коллекторы придут дважды. Поэтому
+     * монтажник выбирает одно: смету по спецификации (сразу, без модели) или
+     * расчёт по помещениям — прежней кнопкой «Распознать» (решение владельца
+     * 02.10.2026). Нет спецификации — блока нет, всё как раньше.
+     */
+    specChoiceHtml() {
+        const n = (this._project && this._project.spec && this._project.spec.length) || 0;
+        if (!n) return '';
+        return `<div class="rec-spec-choice" style="margin-top:10px">
+            <div style="font-weight:600">В проекте есть спецификация: ${n} ${this.plural(n, 'позиция', 'позиции', 'позиций')}.
+                Выберите одно — иначе оборудование задвоится:</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px">
+                <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.startSpecReview()">Смета по спецификации проекта</button>
+                <span class="rec-tcheck-sub">позиции из проекта: по артикулу — точно, остальное — аналогом с пометкой «проверьте». Сразу, без распознавания картинок.</span>
+            </div>
+            <div class="rec-tcheck-sub" style="margin-top:6px">или «Распознать» ниже — расчёт по помещениям: наше оборудование по теплопотерям дома.</div>
+        </div>`;
     },
 
     /** Строка с замечаниями по кадру под миниатюрами. */
