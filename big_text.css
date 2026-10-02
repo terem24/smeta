@@ -1258,4 +1258,17 @@
   html[data-big-text] [style*="font-size:20px"], html[data-big-text] [style*="font-size: 20px"] { font-size: 21px !important; }
   html[data-big-text] [style*="font-size:21px"], html[data-big-text] [style*="font-size: 21px"] { font-size: 21.5px !important; }
   html[data-big-text] [style*="font-size:22px"], html[data-big-text] [style*="font-size: 22px"] { font-size: 22px !important; }
+  /* ручные добавки (tools/gen_big_text.py, EXTRA) */
+  html[data-big-text] .inv-table th.col-sku,
+  html[data-big-text] .inv-table td.col-sku,
+  html[data-big-text] .inv-table td.col-art {
+    width: 136px;
+    min-width: 136px;
+    font-size: 13.5px;
+  }
+  html[data-big-text] .inv-table th.col-brand,
+  html[data-big-text] .inv-table td.col-brand {
+    width: 86px;
+    min-width: 86px;
+  }
 }

@@ -777,6 +777,21 @@ body.dark-mode .tab.tab-cheaper.active {
     display: none;
 }
 
+/* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
+   (и прячет значки, где они есть), чтобы «Дата» не уезжала одна на вторую строку.
+   На печати у строки свои правила (@media print ниже), поэтому только для экрана. */
+@media screen {
+    .doc-summary.ds-compact {
+        gap: 8px;
+        padding-left: 8px;
+        padding-right: 8px;
+    }
+
+    .doc-summary.ds-compact .ui-emo {
+        display: none;
+    }
+}
+
 /* Строка параметров объекта липнет к нижнему краю шапки: при прокрутке сметы
    площадь, теплопотери и регион остаются перед глазами. Высоту шапки в
    --sticky-header-h пишет handleScroll в index.html — при прокрутке шапка
@@ -18224,4 +18239,70 @@ body.theme-yandex #profile_modal_overlay {
     .lk-layout:not(.lk-menu-open) .lk-nav { display: none; }
     .lk-layout.lk-menu-open .lk-pane { display: none; }
     .lk-layout.lk-forced .lk-mob-bar { display: none; }
+
+/* ---------- Профиль на широком экране: без вертикальной прокрутки ----------
+   Одна колонка полей с аватаркой отдельной строкой и двумя карточками внизу не
+   помещалась в окно (617 px при видимых 548 на 1280×720). Здесь поля идут сеткой
+   из 12 колонок: аватар + ФИО; телефон, почта, дата рождения, промокод; город,
+   регион, сфера. Обёртки старых сеток (.profile-3col-grid / .profile-2col-grid)
+   становятся display: contents — их ячейки ложатся прямо в сетку карточки.
+   «Вход в аккаунт» и «Оформление» встают рядом. Ниже 1000 px — прежняя вёрстка. */
+@media screen and (min-width: 1000px) {
+    #profile_tab_requisites .profile-main-card {
+        display: grid !important;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        column-gap: 10px;
+        row-gap: 0;
+        align-items: start;
+    }
+
+    #profile_tab_requisites .profile-main-card > .lk-card-label {
+        grid-column: 1 / -1;
+    }
+
+    #profile_tab_requisites .profile-main-card .profile-3col-grid,
+    #profile_tab_requisites .profile-main-card .profile-2col-grid {
+        display: contents !important;
+    }
+
+    #profile_tab_requisites .profile-main-card .profile-photo-row {
+        grid-column: span 3;
+        margin-bottom: 6px !important;
+        align-self: center;
+    }
+
+    #profile_tab_requisites .profile-main-card .profile-3col-grid > div,
+    #profile_tab_requisites .profile-main-card .profile-2col-grid > div {
+        grid-column: span 3;
+        min-width: 0;
+    }
+
+    #profile_tab_requisites .profile-main-card .profile-geo-grid > div,
+    #profile_tab_requisites .profile-main-card .profile-activity {
+        grid-column: span 4;
+        min-width: 0;
+    }
+
+    /* Нижний ряд: способ входа слева, оформление справа */
+    #profile_tab_requisites {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        column-gap: 15px;
+        align-items: start;
+    }
+
+    #profile_tab_requisites > * {
+        grid-column: 1 / -1;
+    }
+
+    #profile_tab_requisites > #profile_login_method,
+    #profile_tab_requisites > #profile_theme_choice {
+        grid-column: span 1;
+    }
+
+    /* Оформление скрыто (тариф без выбора) — вход в аккаунт занимает всю ширину */
+    #profile_tab_requisites > #profile_login_method:has(~ #profile_theme_choice[style*="display: none"]),
+    #profile_tab_requisites > #profile_login_method:has(~ #profile_theme_choice[style*="display:none"]) {
+        grid-column: 1 / -1;
+    }
 }

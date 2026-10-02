@@ -113,7 +113,7 @@
         // Ставим до отрисовки, чтобы страница не прыгала с 0.8 на выбранный.
         try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1450; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
         // Крупный текст (big_text.css) — тоже до отрисовки
-        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=6'; document.head.appendChild(_l); } } catch (e) {}
+        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=7'; document.head.appendChild(_l); } } catch (e) {}
     </script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -173,7 +173,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.51">
+    <link rel="stylesheet" href="style.css?v=4.52">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.28" defer></script>
@@ -201,7 +201,7 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
-    <script src="app.js?v=10.54" defer></script>
+    <script src="app.js?v=10.56" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -3045,14 +3045,14 @@
                 <div class="profile-grid" style="display: flex; gap: 15px; flex-wrap: wrap; text-align: left;">
 
                     <!-- Left Column (General info) -->
-                    <div class="lk-card" style="flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start;">
+                    <div class="lk-card profile-main-card" style="flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start;">
                         <div class="lk-card-label" style="margin-bottom: 10px;">Основные данные</div>
 
                         <!-- Фото профиля. Видно в шапке сайта, в переписке с менеджером, в рейтинге
                              и в админке — везде читается users.avatar_url. Своё фото уменьшается до
                              160 px и хранится в том же поле data:-строкой (app.setProfilePhoto):
                              отдельного файлового хранилища у проекта нет. -->
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div class="profile-photo-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
                             <div id="profile_photo_box" onclick="document.getElementById('profile_photo_file').click()" title="Нажмите, чтобы выбрать фото" style="width: 56px; height: 56px; flex: 0 0 56px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; overflow: hidden; cursor: pointer; border: 1px solid var(--border);">
                                 <span id="profile_photo_initial">·</span>
                                 <img id="profile_photo_img" alt="" style="display: none; width: 100%; height: 100%; object-fit: cover;">
@@ -3107,7 +3107,7 @@
                             </div>
                         </div>
 
-                        <div class="profile-2col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
+                        <div class="profile-2col-grid profile-geo-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
                             <div>
                                 <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Ваш город (для смет)</label>
                                 <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="profile_city_list" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
@@ -3120,7 +3120,7 @@
                             </div>
                         </div>
 
-                        <div>
+                        <div class="profile-activity">
                             <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Сфера деятельности</label>
                             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:center;">
                                 <!-- Одно из двух, а не галочки: сфера решает, какие вкладки
