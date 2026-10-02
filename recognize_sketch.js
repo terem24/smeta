@@ -17,7 +17,8 @@
 
 const RecognizeSketch = {
 
-    CACHE_KEY: 'rec_sketch_v1',
+    // v2: в памяти лежат объединённые двойные чтения, одиночные из v1 не годятся.
+    CACHE_KEY: 'rec_sketch_v2',
     CACHE_MAX: 20,
 
     KINDS: {
@@ -70,6 +71,7 @@ const RecognizeSketch = {
         this._autoTurned = false;
         this._rotating = false;
         this._warning = '';
+        this._readInfo = null;
     },
 
     isSketchResult(parsed) {
@@ -180,7 +182,138 @@ const RecognizeSketch = {
         return Object.keys(d).length ? d : null;
     },
 
-    /** Один снимок — один запрос. Бросает ошибку с notSketch, если модель схемы не увидела. */
+    /** Одно чтение эскиза моделью. Возвращает { parsed, warn }. */
+    async readOnce(img) {
+        const ui = RecognizeUI;
+        const data = await ui.askModel([
+            { text: 'Разбери этот эскиз котельной по правилам. Верни только JSON.' },
+            { inline_data: { mime_type: 'image/jpeg', data: img } },
+        ], BOILER_SKETCH_PROMPT);
+        const cand = data?.candidates?.[0];
+        const text = cand?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('Разбор эскиза вернулся пустым. Попробуйте ещё раз.');
+        const parsed = ui.parseModelJson(text, cand.finishReason);
+        return { parsed, warn: !!ui._parseWarning };
+    },
+
+    // ------------------------------------------------------------------
+    // Двойное чтение. На рукописном эскизе модель нестабильна и при
+    // temperature 0: на одном и том же фото три чтения подряд дали 5, 5 и
+    // 11 приборов и мощность то 12, то 24 кВт. Поэтому читаем дважды и
+    // объединяем: найденное в обоих чтениях — уверенное (зелёное); найденное
+    // в одном и числа, прочитанные по-разному, — янтарные, с пометкой.
+    // ------------------------------------------------------------------
+
+    /** Рамка модели [ymin, xmin, ymax, xmax] (0–1000) → {x0, y0, x1, y1} в долях листа. */
+    rawBox(r) {
+        const b = this.toBox(r && r.box_2d);
+        return b ? { x0: b.x, y0: b.y, x1: b.x + b.w, y1: b.y + b.h } : null;
+    },
+
+    /** Пересечение рамок: iou и доля каждой, лежащая внутри другой. */
+    overlap(a, b) {
+        const w = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+        const h = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+        const inter = (w > 0 && h > 0) ? w * h : 0;
+        const aa = (a.x1 - a.x0) * (a.y1 - a.y0), ab = (b.x1 - b.x0) * (b.y1 - b.y0);
+        return { iou: inter / ((aa + ab - inter) || 1), inA: inter / (aa || 1), inB: inter / (ab || 1), aa, ab };
+    },
+
+    /** Объединение двух чтений в один ответ того же вида, что отдаёт модель. */
+    mergeReads(a, b) {
+        const wrap = (p) => (Array.isArray(p && p.items) ? p.items : [])
+            .filter(r => r && this.KINDS[r.kind]).map(r => ({ r, box: this.rawBox(r), taken: false, group: false }));
+        const A = wrap(a), B = wrap(b);
+        const conf = (x) => { const c = +x.r.confidence; return isNaN(c) ? 0.5 : c; };
+
+        // Групповая рамка («все насосы одной рамкой») против отдельных рамок
+        // другого чтения: оставляем отдельные, групповую отбрасываем.
+        const markGroups = (X, Y) => X.forEach(x => {
+            if (!x.box) return;
+            const inside = Y.filter(y => y.box && y.r.kind === x.r.kind && this.overlap(x.box, y.box).inB >= 0.7
+                && this.overlap(x.box, y.box).aa >= 1.5 * this.overlap(x.box, y.box).ab);
+            if (inside.length >= 2) x.group = true;
+        });
+        markGroups(A, B); markGroups(B, A);
+
+        // Пары одного вида по наибольшему пересечению.
+        const pairs = [];
+        A.forEach((x, i) => B.forEach((y, j) => {
+            if (x.group || y.group || x.r.kind !== y.r.kind || !x.box || !y.box) return;
+            const o = this.overlap(x.box, y.box).iou;
+            if (o >= 0.25) pairs.push({ i, j, o });
+        }));
+        pairs.sort((p, q) => q.o - p.o);
+        const matched = [];
+        pairs.forEach(p => {
+            if (A[p.i].taken || B[p.j].taken) return;
+            A[p.i].taken = B[p.j].taken = true;
+            matched.push([A[p.i], B[p.j]]);
+        });
+        // Без рамок — по порядку внутри вида.
+        Object.keys(this.KINDS).forEach(k => {
+            const xs = A.filter(x => !x.taken && !x.group && !x.box && x.r.kind === k);
+            const ys = B.filter(y => !y.taken && !y.group && !y.box && y.r.kind === k);
+            for (let n = 0; n < Math.min(xs.length, ys.length); n++) { xs[n].taken = ys[n].taken = true; matched.push([xs[n], ys[n]]); }
+        });
+
+        const FIELD = { power: 'мощность, кВт', vol: 'объём, л', flow: 'расход, м³/ч', outputs: 'выходов' };
+        const items = [];
+        let conflicts = 0;
+        matched.forEach(([x, y]) => {
+            const hi = conf(x) >= conf(y) ? x : y, lo = hi === x ? y : x;
+            const m = Object.assign({}, hi.r);
+            const diff = [];
+            Object.keys(FIELD).forEach(f => {
+                const vx = this.num(x.r[f]), vy = this.num(y.r[f]);
+                if (vx != null && vy != null && vx !== vy) { diff.push(`${FIELD[f]} — ${vx} и ${vy}`); m[f] = this.num(hi.r[f]); }
+                else m[f] = vx != null ? vx : vy;
+            });
+            const fx = /^(el|gas|solid)$/.test(String(x.r.fuel || '')) ? x.r.fuel : null;
+            const fy = /^(el|gas|solid)$/.test(String(y.r.fuel || '')) ? y.r.fuel : null;
+            if (fx && fy && fx !== fy) { diff.push(`тип котла — ${fx} и ${fy}`); m.fuel = hi.r.fuel; } else m.fuel = fx || fy || null;
+            m.label = hi.r.label || lo.r.label || '';
+            if (x.box && y.box) {
+                m.box_2d = [(x.box.y0 + y.box.y0) / 2, (x.box.x0 + y.box.x0) / 2, (x.box.y1 + y.box.y1) / 2, (x.box.x1 + y.box.x1) / 2].map(v => Math.round(v * 1000));
+            }
+            if (diff.length) {
+                conflicts++;
+                m.confidence = 0.5;
+                m.note = ('Два чтения разошлись: ' + diff.join('; ') + '. ' + (m.note || '')).trim();
+            } else {
+                m.confidence = Math.min(1, Math.max(conf(x), conf(y)) + 0.05);
+            }
+            items.push(m);
+        });
+        let only = 0, byGroup = 0;
+        // Прибор, лежащий внутри групповой рамки ДРУГОГО чтения («все насосы
+        // одной рамкой»), подтверждён этим чтением — это не «найден только в
+        // одном», иначе все насосы краснели бы, хотя оба чтения их видели.
+        const coveredBy = (x, others) => others.some(g => g.group && g.box && x.box && g.r.kind === x.r.kind
+            && this.overlap(g.box, x.box).inB >= 0.5);
+        [[A, B], [B, A]].forEach(([mine, other]) => mine.forEach(x => {
+            if (x.taken || x.group) return;
+            if (coveredBy(x, other)) {
+                byGroup++;
+                items.push(Object.assign({}, x.r, { confidence: Math.min(1, conf(x) + 0.05) }));
+                return;
+            }
+            only++;
+            items.push(Object.assign({}, x.r, {
+                confidence: Math.min(conf(x), 0.6),
+                note: ('Найден только при одном из двух чтений — проверьте, есть ли он на эскизе. ' + (x.r.note || '')).trim(),
+            }));
+        }));
+
+        const seen = new Set(), notes = [];
+        [...(a.notes || []), ...(b.notes || [])].forEach(s => {
+            const t = String(s || '').trim(), k = t.toLowerCase().replace(/[\s.,-]+/g, '');
+            if (t && !seen.has(k)) { seen.add(k); notes.push(t); }
+        });
+        return { docKind: 'boiler_sketch', items, notes, _merge: { both: matched.length + byGroup, only, conflicts } };
+    },
+
+    /** Один снимок — два чтения. Бросает ошибку, если не получилось ни одно. */
     async run(img) {
         const ui = RecognizeUI;
         this.reset();
@@ -189,19 +322,28 @@ const RecognizeSketch = {
         if (parsed) {
             this._fromCache = 1;
         } else {
-            ui.setStatus('Читаю эскиз котельной…');
+            ui.setStatus('Читаю эскиз котельной — дважды, чтобы ничего не пропустить…');
             const before = ui._apiCalls || 0;
-            const data = await ui.askModel([
-                { text: 'Разбери этот эскиз котельной по правилам. Верни только JSON.' },
-                { inline_data: { mime_type: 'image/jpeg', data: img } },
-            ], BOILER_SKETCH_PROMPT);
+            const rs = await Promise.allSettled([this.readOnce(img), this.readOnce(img)]);
             this._calls += (ui._apiCalls || 0) - before;
-            const cand = data?.candidates?.[0];
-            const text = cand?.content?.parts?.[0]?.text;
-            if (!text) throw new Error('Разбор эскиза вернулся пустым. Попробуйте ещё раз.');
-            parsed = ui.parseModelJson(text, cand.finishReason);
-            if (!ui._parseWarning && this.isSketchResult(parsed)) this.remember(img, parsed);
+            const ok = rs.filter(r => r.status === 'fulfilled').map(r => r.value);
+            // Не получилось ни одно чтение — отдаём ошибку первого (в ней может
+            // быть признак лимита: err.quota).
+            if (!ok.length) throw rs[0].reason;
+            const sk = ok.filter(r => this.isSketchResult(r.parsed));
+            if (sk.length === 2) {
+                parsed = this.mergeReads(sk[0].parsed, sk[1].parsed);
+                if (!sk[0].warn && !sk[1].warn) this.remember(img, parsed);
+            } else if (sk.length === 1) {
+                // Второе чтение упало или не увидело схему — работаем по одному,
+                // но в память не кладём: пусть в следующий раз прочитается снова.
+                parsed = sk[0].parsed;
+                parsed._merge = { single: true };
+            } else {
+                parsed = ok[0].parsed;
+            }
         }
+        this._readInfo = (parsed && parsed._merge) || null;
         // Модель ничего не нашла — не тупик с ошибкой, а экран проверки без
         // рамок: там есть «Отметить прибор», и монтажник обведёт котёл сам.
         // Раньше здесь бросалась ошибка, и печатная схема оборудования
@@ -276,6 +418,19 @@ const RecognizeSketch = {
     // ------------------------------------------------------------------
     // Экран проверки
     // ------------------------------------------------------------------
+
+    /** Что дало двойное чтение — одной строкой под сводкой. */
+    readInfoHtml() {
+        const m = this._readInfo;
+        if (!m || !this._items.length) return '';
+        const t = m.single
+            ? 'Эскиз прочитан один раз — второе чтение не удалось, проверьте, все ли приборы найдены.'
+            : `Эскиз прочитан дважды и сведён: в обоих чтениях совпало ${m.both}` +
+              (m.only ? `, только в одном — ${m.only}` : '') +
+              (m.conflicts ? `, цифры разошлись у ${m.conflicts}` : '') +
+              (m.only || m.conflicts ? ' — они отмечены янтарным, проверьте.' : '.');
+        return `<div class="rec-tcheck-sub" style="margin-top:3px">${this.esc(t)}</div>`;
+    },
 
     /**
      * Памятка «как рисовать» — те же условные знаки, что читает модель
@@ -473,6 +628,7 @@ const RecognizeSketch = {
                 : unsure
                     ? `Янтарным — прочитано неуверенно (${unsure}), проверьте. Нажмите на рамку, чтобы поправить.`
                     : 'Нажмите на рамку, чтобы поправить прибор. Обвязку по этим приборам калькулятор соберёт сам.'}</div>
+            ${this.readInfoHtml()}
           </div>
           ${this.howToHtml()}
           <div class="rs-wrap">

@@ -20569,6 +20569,9 @@ const app = {
         document.body.classList.add('admin-modal-open');
         this.startAdminMobileLabels();
         this.watchAdminViewport();
+        // Наблюдатель за оформлением включаем сразу, а не при первой отрисовке раздела:
+        // иначе самая первая заглушка «Загрузка…» осталась бы простым текстом
+        this.watchAdminStyle();
         // Кнопка общего поиска рядом с переключателем темы; тот же поиск открывает Ctrl+K
         const searchHost = document.querySelector('#admin_modal_overlay .auth-modal-content');
         if (searchHost && !document.getElementById('admin_search_btn')) {
@@ -21911,7 +21914,33 @@ const app = {
         });
     },
 
+    // Заглушка «Загрузка…» всей вкладки получает тот же значок, что крутится при загрузке самого
+    // калькулятора (логотип-огонёк со свечением, см. #stout_preloader в index.html). Заглушек
+    // два десятка и все пишутся строкой прямо в разделах, поэтому переделывать каждую
+    // не нужно: любая такая строка оформляется здесь.
+    //
+    // Только заглушки уровня вкладки — прямые дети панели или их обёртки. Мелкие «Загружаем…»
+    // внутри карточек (в «Центре внимания» их четыре сразу) остаются текстом: четыре
+    // вертящихся логотипа на одном экране — шум, нужен один, по центру вкладки. И не больше
+    // одного на экране: следующая заглушка ждёт, пока предыдущая исчезнет.
+    decorateAdminLoaders: function (root) {
+        if (root.querySelector('.ad-loader')) return;
+        const cands = root.querySelectorAll(':scope > div, :scope > div > div');
+        for (const el of cands) {
+            if (el.dataset.ldr || el.children.length || el.closest('.admin-chat-wrap')) continue;
+            const t = (el.textContent || '').trim();
+            if (t.length > 70 || !/^(Загрузка|Загружаем)[^<]*(…|\.\.\.)$/.test(t)) continue;
+            el.dataset.ldr = '1';
+            el.classList.add('ad-loader');
+            el.removeAttribute('style');
+            el.innerHTML = '<div class="ad-loader-logo"><img src="img/logo_hc_flame.png" alt="" draggable="false"></div><div class="ad-loader-t"></div>';
+            el.lastChild.textContent = t;
+            break;
+        }
+    },
+
     softenAdminChips: function (root) {
+        this.decorateAdminLoaders(root);
         this.cleanAdminEmoji(root);
         // Кнопки с цветом, заданным числом (зелёный «Excel», оранжевый и т. п.): красные —
         // остаются красными, все прочие становятся цветом темы. Кнопки на var(--primary)
@@ -21957,6 +21986,8 @@ const app = {
             clearTimeout(timer);
             timer = setTimeout(() => { try { this.softenAdminChips(root); } catch (e) { } }, 30);
         }).observe(root, { childList: true, subtree: true });
+        // Заглушка, уже стоящая в панели к моменту запуска наблюдателя
+        try { this.decorateAdminLoaders(root); } catch (e) { }
     },
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
@@ -35878,8 +35909,11 @@ const app = {
             const data = await r.json();
             // defaultPro и tariffs — с 25.09.2026 (лимит по тарифу); старый
             // сервер их не шлёт, тогда один общий лимит, как раньше.
+            // defaultAdmin обязателен: без него recognitionDefaultLimit не узнаёт
+            // администратора и показывает ему лимит «Базовый» (5), хотя сервер
+            // считает его безлимитным.
             if (data.ok) this._adminRecognitionLimits = { default: data.default, defaultPro: data.defaultPro,
-                limits: data.limits || {}, tariffs: data.tariffs || {} };
+                defaultAdmin: data.defaultAdmin, limits: data.limits || {}, tariffs: data.tariffs || {} };
         } catch (e) {
             console.warn('[архив] лимиты не получены:', e.message);
         }
