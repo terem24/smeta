@@ -248,10 +248,12 @@ for (const m of meta) {
   // этаж из комнат обычного размера: карта стенда не слила полдома в одну «комнату»
   row.realRooms = FL.every(Z => Z.area <= 60);
   row.overLim = 0; row.overLimRoom = 0;
+  row.halls = FL.filter(Z => Z.area > 60 && Z.area <= 150).length;
   FL.forEach(Z => Z.loops.forEach(l => {
     if (!l.sup || l.lenM <= PP.loopLimit(step) + 0.5) return;
     row.overLim++;
     if (Z.area <= 60) row.overLimRoom++;          // комната обычного размера, а не растёкшаяся карта
+    else if (Z.area <= 150) row.overLimHall = (row.overLimHall || 0) + 1;   // большой зал — бывает и настоящий
   }));
   row.snake = 0; row.spiral = 0;
   FL.forEach(Z => Z.loops.forEach(l => { if (l.kind) row[l.kind]++; }));
@@ -281,7 +283,8 @@ if (done.length) {
     `с наложением пучка ${real.filter(r => r.bandX).length}, с незаложенными зонами ${real.filter(r => r.est).length}, ` +
     `петель ${real.reduce((a, r) => a + r.ourN, 0)}, комнат ${real.reduce((a, r) => a + r.tpRooms, 0)}`);
   console.log(`Петли длиннее предела: ${done.reduce((a, r) => a + r.overLim, 0)} на ${done.filter(r => r.overLim).length} этажах ` +
-    `(в комнатах до 60 м²: ${done.reduce((a, r) => a + r.overLimRoom, 0)} на ${done.filter(r => r.overLimRoom).length}); ` +
+    `(в комнатах до 60 м²: ${done.reduce((a, r) => a + r.overLimRoom, 0)} на ${done.filter(r => r.overLimRoom).length}; ` +
+    `в залах 60–150 м²: ${done.reduce((a, r) => a + (r.overLimHall || 0), 0)}; залов таких ${done.reduce((a, r) => a + (r.halls || 0), 0)}); ` +
     `улиток ${done.reduce((a, r) => a + r.spiral, 0)}, змеек ${done.reduce((a, r) => a + r.snake, 0)}; ` +
     `время раскладки: медиана ${q(done.map(r => r.ms), 0.5)} мс, макс ${Math.max(...done.map(r => r.ms))} мс`);
 }

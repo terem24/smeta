@@ -428,11 +428,45 @@
     return rects;
   }
 
-  // Участок делится полосами вдоль длинной стороны. Сетку почти квадратных
-  // плиток (как в больших залах у проектировщиков) пробовали 03.10.2026 на
-  // корпусе Galf: к плиткам в середине пучок подводок пробирается только
-  // поверх соседних петель — наложений стало в 2–4 раза больше. Вернули полосы.
+  /**
+   * Участок на k петель: сетка nx × ny почти квадратных плиток — так большие
+   * залы делят проектировщики (улитка в каждой плитке); в узком коридоре
+   * сетка вырождается в полосы. Лишняя плитка сверх k — штраф: каждая петля
+   * тянет к коллектору свою пару подводок. Между плитками — клетка зазора,
+   * по ней идёт пучок, и петли вокруг него ужимаются (вырезка в layRound).
+   *
+   * Первая проба сетки (03.10.2026) дала наложения пучка на петли — их
+   * давали концы улиток, выступавшие за участок; после того исправления
+   * корпус Galf с сеткой — 0 наложений на 74 этажах (bench/ufh_corpus.js).
+   */
+  var TILE_ROWS = 99;           // рядов плиток поперёк короткой стороны
   function splitRect(r, k) {
+    var W = r.x1 - r.x0 + 1, H = r.y1 - r.y0 + 1, MIN = 4;   // плитка не меньше 0,4 м
+    var wide = W >= H, Lg = wide ? W : H, Sh = wide ? H : W;
+    var capS = Math.min(TILE_ROWS, Math.floor((Sh + 1) / (MIN + 1)) || 1);
+    var cap = (Math.floor((Lg + 1) / (MIN + 1)) || 1) * capS;
+    k = Math.max(1, Math.min(k, cap));
+    var best = null;
+    for (var nS = 1; nS <= capS; nS++) {
+      var nL = Math.ceil(k / nS);
+      if (nL * (MIN + 1) - 1 > Lg) continue;
+      var tL = (Lg - (nL - 1)) / nL, tS = (Sh - (nS - 1)) / nS;
+      var s = Math.max(tL / tS, tS / tL) + 1.0 * (nL * nS - k);
+      if (!best || s < best.s) best = { s: s, nx: wide ? nL : nS, ny: wide ? nS : nL };
+    }
+    if (best && (best.nx > 1 && best.ny > 1)) {
+      var cut = function (from, len, n) {
+        var use = len - (n - 1), o = [], pos = from;
+        for (var i = 0; i < n; i++) { var l = Math.floor(use / n) + (i < use % n ? 1 : 0); o.push([pos, pos + l - 1]); pos += l + 1; }
+        return o;
+      };
+      var xs = cut(r.x0, W, best.nx), ys = cut(r.y0, H, best.ny), res = [];
+      ys.forEach(function (yy) { xs.forEach(function (xx) { res.push({ x0: xx[0], x1: xx[1], y0: yy[0], y1: yy[1] }); }); });
+      return res;
+    }
+    return splitStrips(r, k);
+  }
+  function splitStrips(r, k) {
     var horiz = (r.x1 - r.x0) >= (r.y1 - r.y0);
     var L = horiz ? r.x1 - r.x0 + 1 : r.y1 - r.y0 + 1;
     k = Math.max(1, Math.min(k, Math.floor((L + 1) / 4)));      // петля не уже 0,3 м
@@ -724,7 +758,7 @@
       });
     });
     var res = null;
-    for (var round = 0; round < 4 && g; round++) {
+    for (var round = 0; round < 8 && g; round++) {
       res = layRound(f, g, own, zs, info, s, lim);
       // Петля длиннее предела — у её участка больше петель: сразу во столько
       // раз, во сколько перебор (огромный зал за один проход, а не по одной).
