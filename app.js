@@ -20978,11 +20978,15 @@ const app = {
         // загрузку, — список смет для неё тянем здесь. Один раз за открытие
         // панели: дальше его отмечает estimatesLoaded в adminData.
         const withEstimates = this._adminTab === 'estimates' && !(this.adminData && this.adminData.estimatesLoaded);
-        const out = { allUsersDropdown: [], allMessages: [], distributors: [], estimates: null };
+        // dropdownAvatars — есть ли в списке людей фото (avatar_url). Фото нужны только
+        // мессенджеру; с 19.08.2026 своё фото лежит в этом поле data:-строкой (~10 КБ), и
+        // список из сотни человек вместе с ними весил 125 КБ при КАЖДОМ открытии панели.
+        // Без фото — несколько КБ. Мессенджер, зайдя в раздел, просит список с фото сам.
+        const out = { allUsersDropdown: [], allMessages: [], distributors: [], estimates: null, dropdownAvatars: withMessages };
 
         try {
             const { data } = await supabaseClient.from('users')
-                .select('id, username, email, phone, region, city, avatar_url, account_type')
+                .select('id, username, email, phone, region, city, account_type' + (withMessages ? ', avatar_url' : ''))
                 .order('username', { ascending: true });
             out.allUsersDropdown = data || [];
             if (this.isScopedAdmin()) {
@@ -21109,9 +21113,16 @@ const app = {
         // Последнее событие по каждому расчёту — из него берётся отметка статуса
         const latestInvoiceEvents = {};
         try {
-            const { data: evList } = await supabaseClient.from('invoice_events')
-                .select('calc_id, event')
-                .order('created_at', { ascending: true });
+            // Только события тех расчётов, что показаны в таблице (50 последних). Раньше читалась
+            // вся история событий: база отдаёт не больше 1000 строк за запрос, так что у
+            // старых и новых расчётов статус мог браться неверно, а трафик шёл впустую.
+            const calcIds = [...new Set(recentEstimates.map(e => e.calc_data && e.calc_data.calc_id).filter(Boolean).map(String))];
+            const { data: evList } = calcIds.length
+                ? await supabaseClient.from('invoice_events')
+                    .select('calc_id, event')
+                    .in('calc_id', calcIds)
+                    .order('created_at', { ascending: true })
+                : { data: [] };
             if (evList) {
                 evList.forEach(e => {
                     // Технические отметки статусом сметы не являются (см. ADMIN_KANBAN_TECH_EVENTS)
@@ -21143,7 +21154,7 @@ const app = {
             this.adminData = Object.assign(
                 { users: [], userEstimates: [], recentEstimates: [], totalUsers: 0, totalEstimates: 0, totalEq: 0, totalWorks: 0, messageReceipts: null },
                 this.adminData || {},
-                { allUsersDropdown: lists.allUsersDropdown, distributors: lists.distributors },
+                { allUsersDropdown: lists.allUsersDropdown, distributors: lists.distributors, dropdownAvatars: lists.dropdownAvatars },
                 (this._adminTab === 'messages') ? { messages: lists.allMessages } : {},
                 lists.estimates ? Object.assign({ estimatesLoaded: true }, lists.estimates) : {},
                 homeTotals || {}
@@ -21357,7 +21368,7 @@ const app = {
                         byId[String(u.id)] = String(u.id);
                         if (u.email) byEmail[String(u.email).trim().toLowerCase()] = String(u.id);
                     });
-                    const evSel = 'calc_id, user_id, user_email, event';
+                    const evSel = 'calc_id, user_id, user_email';
                     const emails = Object.keys(byEmail);
                     const queries = [supabaseClient.from('invoice_events').select(evSel).in('user_id', userIds.map(String))];
                     if (emails.length) queries.push(supabaseClient.from('invoice_events').select(evSel).in('user_email', emails));
@@ -21507,16 +21518,16 @@ const app = {
             // 6. Fetch Lightweight list of all users for the message composer dropdown selection
             let allUsersDropdown = [];
             try {
-                // avatar_url — ради фотографий в списке диалогов вкладки «Сообщения».
-                // Это одна короткая строка-адрес на человека (сотня байт), картинки
-                // лежат не в Supabase, а на стороне Google/Яндекса/Telegram, поэтому
-                // на расход трафика базы это практически не влияет.
+                // avatar_url здесь НЕТ (02.10.2026): раньше он был «ради фотографий в списке
+                // диалогов», но с 19.08 своё фото лежит в нём data:-строкой в ~10 КБ, и список
+                // весил 125 КБ при каждом открытии. Мессенджер получает список с фото сам,
+                // при входе в раздел (loadAdminLightData, dropdownAvatars).
                 // account_type — чтобы отличить письмо наблюдателя от письма
                 // администрации и развести их по разным перепискам (renderAdminMessages).
                 // activity_types — чтобы разложить сметы по сферам в карточке сводки,
                 // не отправляя ради этого отдельный запрос за теми же людьми.
                 let { data } = await supabaseClient.from('users')
-                    .select('id, username, email, phone, region, city, avatar_url, account_type, activity_types')
+                    .select('id, username, email, phone, region, city, account_type, activity_types')
                     .order('username', { ascending: true });
                 allUsersDropdown = data || [];
                 this.autoCleanupDatabaseUsers(allUsersDropdown);
@@ -21550,24 +21561,10 @@ const app = {
                 });
             } catch (e) { console.warn('[админка] сметы по сферам не посчитаны:', e); }
 
-            // 7. Fetch all messages (broadcasts, private and replies) for history listing
-            let allMessages = [];
-            try {
-                let { data } = await supabaseClient.from('messages')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-                allMessages = data || [];
-                // Переписка — только со своими монтажниками. Объявления для
-                // всех (recipient_id = null) сюда не попадают: рассылка платформы
-                // к переписке компании отношения не имеет.
-                if (this.isScopedAdmin()) {
-                    const mine = new Set(this.managerUserIds());
-                    const meId = (this._meRow && this._meRow.id) || (this._currentUserRow && this._currentUserRow.id);
-                    if (meId) mine.add(String(meId));
-                    allMessages = allMessages.filter(m => mine.has(String(m.sender_id)) || mine.has(String(m.recipient_id)));
-                }
-            } catch (e) { console.warn("Could not load messages history:", e); }
-
+            // 7. Переписку (messages) здесь больше не читаем (02.10.2026): список пользователей
+            // в ней не нуждается, а `select('*')` по всей таблице весил 121 КБ при каждом входе
+            // во вкладку. Вкладка «Сообщения» грузит её сама, при первом открытии
+            // (см. switchAdminTab → loadAdminLightData).
 
             // 8. Fetch distributors list
             let distributors = [];
@@ -21609,7 +21606,7 @@ const app = {
                 sharedStatusesAdmin,
                 latestInvoiceEvents,
                 allUsersDropdown,
-                messages: allMessages,
+                dropdownAvatars: false,
                 // null = «ещё не загружали». Квитанции для галочек тянутся лениво, только
                 // при открытии вкладки «Сообщения» — незачем гонять трафик тем, кто зашёл
                 // в админку посмотреть статистику
@@ -24008,7 +24005,8 @@ const app = {
         // панели. Что уже загружено — не перезапрашиваем: «Пользователей» отмечает
         // сам набор users, переписку — массив messages.
         const needHeavy = this.adminTabNeedsHeavyData(tab) && !(this.adminData && Array.isArray(this.adminData.users) && this.adminData.users.length);
-        const needMessages = (tab === 'messages') && !(this.adminData && Array.isArray(this.adminData.messages));
+        // Мессенджеру нужен список людей с фото: если он загружен без них — берём заново
+        const needMessages = (tab === 'messages') && !(this.adminData && Array.isArray(this.adminData.messages) && this.adminData.dropdownAvatars);
         const needEstimates = (tab === 'estimates') && !(this.adminData && this.adminData.estimatesLoaded);
         const needLists = !(this.adminData && Array.isArray(this.adminData.distributors));
         if (needHeavy || needMessages || needEstimates || needLists) {
