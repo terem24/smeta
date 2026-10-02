@@ -259,8 +259,9 @@
                 </div>
                 <div class="field"><label for="f_comment">Комментарий <span class="opt-mark">· необязательно</span></label><textarea id="f_comment" placeholder="Например: когда удобно звонить, адрес посёлка, что уже куплено"></textarea></div>
                 <label class="consent"><input type="checkbox" id="f_consent"><span>Согласен на <a href="../soglasie-zayavka.html" target="_blank" rel="noopener">обработку и передачу моих данных</a> мастеру для связи по заявке</span></label>
+                <!-- Сообщение об ошибке — над кнопкой: под ней на телефоне оно уезжало за край экрана -->
+                <div class="banner warn" id="orderErr" role="alert" style="margin: 0 0 12px;" hidden></div>
                 <button type="submit" class="btn" id="orderBtn">Отправить заявку</button>
-                <div class="banner warn" id="orderErr" hidden></div>
             </form>
             <div class="banner ok" id="orderOk" hidden></div>
         </div>
