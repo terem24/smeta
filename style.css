@@ -17585,7 +17585,7 @@ details.ad-danger-zone > .admin-btn { position: absolute; right: 0; top: 40px; z
     margin-right: 3px;
 }
 body.theme-yandex .admin-search-btn { border-radius: 999px; }
-#ad_search {
+#ad_search, #lk_search {
     position: absolute;
     inset: 0;
     z-index: 40;
@@ -17607,7 +17607,7 @@ body.theme-yandex .admin-search-btn { border-radius: 999px; }
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     overflow: hidden;
 }
-#ad_search_input {
+#ad_search_input, #lk_search_input {
     height: 48px;
     padding: 0 18px;
     border: 0 !important;
@@ -18041,28 +18041,7 @@ body.theme-yandex #profile_modal_overlay {
 }
 
 /* Меню кабинета: два блока с подписями — «Работа» и «Настройки», как на панели слева.
-   Порядок на экране задаёт order; разметка исторически другая. */
-.lk-nav > .lk-nav-user { order: 0; }
-.lk-nav > [data-rail="calc"] { order: 1; }
-.lk-nav > [data-rail="messages"] { order: 2; }
-.lk-nav > .lk-nav-cap[data-cap="work"] { order: 3; }
-.lk-nav > [data-tab="objects"] { order: 4; }
-.lk-nav > [data-tab="oprosniki"] { order: 5; }
-.lk-nav > [data-tab="orders"] { order: 6; }
-.lk-nav > [data-tab="summary"] { order: 7; }
-.lk-nav > .lk-nav-cap[data-cap="settings"] { order: 8; }
-.lk-nav > [data-tab="requisites"] { order: 9; }
-.lk-nav > [data-tab="company"] { order: 10; }
-.lk-nav > [data-tab="manager"] { order: 11; }
-.lk-nav > [data-tab="subscription"] { order: 12; }
-.lk-nav > [data-tab="installers"] { order: 13; }
-.lk-nav > [data-tab="workprices"] { order: 14; }
-.lk-nav > [data-tab="equipment"] { order: 15; }
-.lk-nav > [data-rail="admin"] { order: 20; }
-.lk-nav > .lk-nav-rating { order: 21; }
-.lk-nav > .lk-nav-spacer { order: 30; }
-.lk-nav > .lk-nav-logout { order: 31; }
-
+   Состав и порядок — таблица app.CABINET_MENU (одна на панель и на это меню). */
 .lk-nav-cap {
     margin: 12px 8px 4px;
     font-size: 11px;
@@ -18072,7 +18051,6 @@ body.theme-yandex #profile_modal_overlay {
     color: var(--text-sec);
     text-align: left;
 }
-.lk-nav > .lk-nav-cap[data-cap="work"] { margin-top: 10px; }
 
 /* Пункты — как вкладки админки: активный окрашен цветом бренда, без рамки-плашки */
 .lk-nav-item { border-radius: var(--ad-radius, 8px); }
@@ -18172,11 +18150,78 @@ body.theme-yandex #profile_modal_overlay {
 @media screen and (max-width: 768px) and (min-height: 501px),
        screen and (max-width: 1024px) and (orientation: portrait) {
     .lk-nav-cap { grid-column: 1 / -1; margin: 8px 2px 0; }
-    .lk-nav > .lk-nav-cap[data-cap="work"] { margin-top: 4px; }
     .lk-nav-item { border-color: var(--ad-line, var(--border)); font-size: 11px; min-height: 52px; padding: 6px 2px; }
     .lk-nav-item.active { border-color: var(--primary); }
 }
 /* Лёжа, в ряду иконок, подписи блоков не нужны */
 @media screen and (orientation: landscape) and (max-height: 500px) {
     .lk-nav-cap { display: none; }
+}
+
+/* Поиск по кабинету: кнопка над меню (в сетке телефона — на всю строку) */
+.lk-nav-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 34px;
+    margin: 0 0 8px;
+    padding: 0 10px;
+    border: 1px solid var(--ad-line, var(--border));
+    border-radius: var(--ad-radius, 8px);
+    background: var(--surface);
+    color: var(--text-sec);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.lk-nav-search:hover { color: var(--text-main); border-color: var(--text-sec); }
+.lk-nav-search .ad-ico { width: 15px; height: 15px; }
+.lk-nav-search span { flex: 1; }
+.lk-nav-search kbd {
+    font: inherit;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--ad-line, var(--border));
+    color: var(--text-sec);
+}
+
+/* Телефон и планшет стоймя: меню и раздел по очереди, полоса «‹ Разделы» сверху раздела */
+.lk-mob-bar { display: none; }
+@media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    .lk-nav-search { grid-column: 1 / -1; margin: 0; }
+    .lk-nav-search kbd { display: none; }
+    .lk-mob-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        margin: 0 0 10px;
+        padding: 0 40px 8px 0;
+        background: var(--surface);
+        border-bottom: 1px solid var(--ad-line, var(--border));
+    }
+    .lk-mob-back {
+        flex: 0 0 auto;
+        height: 36px;
+        padding: 0 14px;
+        border: 1px solid var(--ad-line, var(--border));
+        border-radius: var(--ad-radius, 8px);
+        background: var(--surface-light);
+        color: var(--text-main);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .lk-mob-cur { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 700; color: var(--text-main); }
+    .lk-layout:not(.lk-menu-open) .lk-nav { display: none; }
+    .lk-layout.lk-menu-open .lk-pane { display: none; }
+    .lk-layout.lk-forced .lk-mob-bar { display: none; }
 }
