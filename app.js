@@ -14854,7 +14854,6 @@ const app = {
         { id: 'admin', kind: 'act', group: 'service', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' },
         // Рейтинг — отдельная страница (/rating/): на панели открывается во врезке, в окне кабинета — ссылкой
         { id: 'rating', kind: 'act', group: 'service', link: '/rating/', nav: 'Баллы и рейтинг', short: 'Баллы', rail: 'Рейтинг', title: 'Баллы, значки и рейтинг', navTitle: 'Баллы и рейтинг', icon: '<path d="M7 4h10v4a5 5 0 0 1-10 0V4z"></path><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5v1A3.5 3.5 0 0 0 6.5 11H7"></path><path d="M17 5h2.5A1.5 1.5 0 0 1 21 6.5v1A3.5 3.5 0 0 1 17.5 11H17"></path><path d="M12 13v4"></path><path d="M9 21h6"></path><path d="M10 17h4"></path>' },
-        { id: 'logout', kind: 'logout', group: 'service', nav: 'Выйти', short: 'Выйти', rail: 'Выйти', title: 'Выйти из аккаунта', navTitle: 'Выйти из аккаунта', icon: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line>' }
     ],
 
     buildCabinetMenus: function () {
