@@ -17289,6 +17289,7 @@ body.theme-yandex #admin_modal_overlay {
 .ad-chip:hover { color: var(--text-main); border-color: var(--text-sec); }
 .ad-chip.active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
 .ad-chip-add { border-style: dashed; background: transparent; }
+.ad-chip-n { font-size: 11px; font-weight: 700; opacity: 0.7; }
 .ad-chip-x { font-size: 15px; line-height: 1; opacity: 0.6; }
 .ad-chip-x:hover { opacity: 1; color: #EF4444; }
 #admin_content .admin-users-filters { justify-content: flex-start !important; align-items: center; }

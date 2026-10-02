@@ -21104,13 +21104,17 @@ const app = {
      * показывать. Статусы и события, наоборот, необязательны — без них строка
      * просто останется с отметкой «Сохранена».
      */
-    loadAdminEstimatesData: async function () {
+    // offset/limit — страница: «Расчёты» показывают 50 последних смет, остальные подгружаются
+    // кнопкой «Показать ещё» (loadMoreAdminEstimates) по 50 штук.
+    loadAdminEstimatesData: async function (offset, limit) {
+        offset = offset || 0;
+        limit = limit || 50;
         // Точечные JSON-поля вместо полного calc_data: в нём лежит вся смета
         // целиком, а таблице нужны номер расчёта, счёт, площадь и адрес
         let recentQuery = supabaseClient.from('estimates')
             .select('id, project_name, eq_sum, works_sum, total_sum, created_at, users(username, phone, email), calc_id:calc_data->>calc_id, shared_invoice_id:calc_data->>shared_invoice_id, area:calc_data->>area, from_recognition:calc_data->>from_recognition, addr:calc_data->projectAddress, share_id, kp_ver:calc_data->>kpVersion')
             .order('created_at', { ascending: false })
-            .limit(50);
+            .range(offset, offset + limit - 1);
         recentQuery = this.scopeQueryToManager(recentQuery, 'user_id');
         const { data: rows, error } = await recentQuery;
         if (error) throw error;
@@ -21157,6 +21161,32 @@ const app = {
         }
 
         return { recentEstimates, sharedStatusesAdmin, latestInvoiceEvents };
+    },
+
+    setEstimatesGroup: function (id) {
+        this._estGroup = id;
+        this.renderAdminEstimates();
+    },
+
+    // «Показать ещё» во вкладке «Расчёты»: следующая страница смет вместе со статусами
+    // только этих смет (счета по ссылкам и события по их номерам расчёта)
+    loadMoreAdminEstimates: async function (btn) {
+        if (btn) { btn.disabled = true; btn.textContent = 'Загружаем…'; }
+        try {
+            const have = (this.adminData.recentEstimates || []).length;
+            const more = await this.loadAdminEstimatesData(have, 50);
+            const known = new Set((this.adminData.recentEstimates || []).map(e => String(e.id)));
+            const fresh = more.recentEstimates.filter(e => !known.has(String(e.id)));
+            this.adminData.recentEstimates = (this.adminData.recentEstimates || []).concat(fresh);
+            this.adminData.sharedStatusesAdmin = Object.assign({}, this.adminData.sharedStatusesAdmin, more.sharedStatusesAdmin);
+            this.adminData.latestInvoiceEvents = Object.assign({}, this.adminData.latestInvoiceEvents, more.latestInvoiceEvents);
+            // Меньше страницы — дальше смет нет
+            if (more.recentEstimates.length < 50) this.adminData.estimatesAllLoaded = true;
+        } catch (e) {
+            console.warn('[расчёты] ещё не загрузились:', e);
+            app.alert('Не удалось загрузить ещё: ' + (e.message || e));
+        }
+        this.renderAdminEstimates();
     },
 
     loadAdminData: async function (offset = 0) {
@@ -30839,16 +30869,47 @@ const app = {
             return 0;
         });
 
+        // Срезы по этапу сделки. Статусы смета получает из событий и из ссылки клиенту
+        // (getStatus выше); здесь они сводятся в шесть понятных групп со счётчиками
+        const EST_GROUPS = [
+            { id: 'all', label: 'Все' },
+            { id: 'saved', label: 'Сохранены', keys: ['saved', 'calculated', 'recognized'] },
+            { id: 'sent', label: 'Отправлены клиенту', keys: ['sent', 'printed'] },
+            { id: 'invoice', label: 'Счёт', keys: ['invoice_requested', 'invoice_issued', 'refresh_requested', 'invoice_reminder_sent', 'invoice_reminder_declined'] },
+            { id: 'done', label: 'Одобрены / оплачены', keys: ['confirmed', 'paid'] },
+            { id: 'bad', label: 'На доработке / отклонены', keys: ['needs_revision', 'rejected'] }
+        ];
+        const groupOfStatus = (st) => {
+            const g = EST_GROUPS.find(x => x.keys && x.keys.indexOf(st) >= 0);
+            return g ? g.id : 'saved';
+        };
+        const estF = this._estGroup || 'all';
+        const gCount = {};
+        sortedEstimates.forEach(e => { const g = groupOfStatus(getStatus(e)); gCount[g] = (gCount[g] || 0) + 1; });
+        const visibleEstimates = estF === 'all' ? sortedEstimates : sortedEstimates.filter(e => groupOfStatus(getStatus(e)) === estF);
+        const sumOf = (e) => parseFloat(e.total_sum) || ((parseFloat(e.eq_sum) || 0) + (parseFloat(e.works_sum) || 0));
+        const visSum = visibleEstimates.reduce((a, e) => a + sumOf(e), 0);
+        const chipsHtml = `<div class="ad-chips">${EST_GROUPS.map(g => {
+            const n = g.id === 'all' ? sortedEstimates.length : (gCount[g.id] || 0);
+            return `<button class="ad-chip${estF === g.id ? ' active' : ''}" onclick="app.setEstimatesGroup('${g.id}')">${g.label} <span class="ad-chip-n">${n}</span></button>`;
+        }).join('')}</div>`;
+        // Страница неполная (меньше 50) или помечена как последняя — больше смет в базе нет
+        const allIn = !!this.adminData.estimatesAllLoaded || sortedEstimates.length < 50;
+        const moreBtn = allIn ? '' : `<button class="admin-btn" style="margin-top:12px;" onclick="app.loadMoreAdminEstimates(this)">Показать ещё 50</button>`;
+        const sumLine = `<div class="ad-sub" style="margin:0 0 10px;">Показано ${visibleEstimates.length} из ${sortedEstimates.length} загруженных · на сумму ${Math.round(visSum).toLocaleString('ru-RU')} ₽${allIn ? ' · это все сметы' : ''}</div>`;
+
         const thStyle = 'cursor:pointer; user-select:none; white-space:nowrap;';
 
         let h = `
             <div style="margin-bottom: 20px;">
+                ${chipsHtml}
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                    <h3 style="margin: 0; color: var(--text-main);">📋 Все расчёты (сметы)</h3>
+                    <h3 style="margin: 0; color: var(--text-main);">Все расчёты (сметы)</h3>
                     <input type="text" id="admin_est_search_input" placeholder="🔍 Поиск по названию, монтажнику или № КП..." value="${searchInputBefore.replace(/"/g, '&quot;')}" style="width: 100%; max-width: 400px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 13px; outline: none;" onkeyup="app.filterAdminEstimatesTable(this.value)">
                 </div>
+                ${sumLine}
 
-                <table class="inv-table">
+                <table class="inv-table ad-sticky">
                     <thead>
                         <tr>
                             <th style="width:30px;">#</th>
@@ -30862,10 +30923,10 @@ const app = {
                     <tbody>
         `;
 
-        if (sortedEstimates.length === 0) {
-            h += '<tr><td colspan="6" style="text-align:center; padding: 30px; color: var(--text-sec);">Смет пока нет.</td></tr>';
+        if (visibleEstimates.length === 0) {
+            h += `<tr><td colspan="6" style="text-align:center; padding: 30px; color: var(--text-sec);">${sortedEstimates.length ? 'В этой группе смет нет.' : 'Смет пока нет.'}</td></tr>`;
         } else {
-            sortedEstimates.forEach((e, i) => {
+            visibleEstimates.forEach((e, i) => {
                 let date = new Date(e.created_at).toLocaleDateString();
                 const time = new Date(e.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
                 const rawSum = parseFloat(e.total_sum) || ((parseFloat(e.eq_sum) || 0) + (parseFloat(e.works_sum) || 0));
@@ -30927,6 +30988,7 @@ const app = {
         h += `
                     </tbody>
                 </table>
+                ${moreBtn}
             </div>
         `;
 
