@@ -870,7 +870,9 @@ const RecognizeUI = {
     setGoReady(ready) {
         const go = document.getElementById('rec_go');
         if (!go) return;
-        go.style.display = ready ? '' : 'none';
+        // При выборе «смета по проекту / свой расчёт» у каждой дороги своя
+        // кнопка в карточке — третья кнопка внизу только путала.
+        go.style.display = ready && !this.hasSpecChoice() ? '' : 'none';
         go.disabled = !ready;
     },
 
@@ -1228,6 +1230,7 @@ const RecognizeUI = {
             box.className = 'rec-tcheck ok';
             box.innerHTML = `<div class="rec-tcheck-ico">✓</div><div><div>${esc(this._fileNoteHead || 'Комплект листов проекта')}</div>
                 <div class="rec-tcheck-sub">${esc(this._fileNote)}</div>${this.specChoiceHtml()}</div>`;
+            if (this.hasSpecChoice()) { const go = document.getElementById('rec_go'); if (go) go.style.display = 'none'; }
             return;
         }
         box.className = 'rec-frame';
@@ -1240,20 +1243,45 @@ const RecognizeUI = {
      * В таком проекте есть и помещения (для нашего расчёта), и спецификация
      * проектировщика. Возьми обе — котёл, трубы и коллекторы придут дважды. Поэтому
      * монтажник выбирает одно: смету по спецификации (сразу, без модели) или
-     * расчёт по помещениям — прежней кнопкой «Распознать» (решение владельца
-     * 02.10.2026). Нет спецификации — блока нет, всё как раньше.
+     * расчёт по помещениям (решение владельца 02.10.2026). Нет спецификации —
+     * блока нет, всё как раньше.
+     *
+     * Две равные карточки рядом, в каждой — когда её выбирать. Раньше вторая
+     * дорога была общей кнопкой «Распознать» под миниатюрами, а объяснение —
+     * мелкой строкой: владелец не понял, в чём разница и почему кнопки в
+     * разных местах. Кнопку «Распознать» при этом блоке прячем (setGoReady).
      */
+    hasSpecChoice() {
+        return !!(this._project && this._project.spec && this._project.spec.length);
+    },
+
     specChoiceHtml() {
-        const n = (this._project && this._project.spec && this._project.spec.length) || 0;
-        if (!n) return '';
+        if (!this.hasSpecChoice()) return '';
+        const n = this._project.spec.length;
+        const card = 'display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--border,#cbd5e1);border-radius:10px;background:var(--surface,transparent)';
+        const when = 'font-size:12.5px;color:var(--text-main,inherit)';
         return `<div class="rec-spec-choice" style="margin-top:10px">
-            <div style="font-weight:600">В проекте есть спецификация: ${n} ${this.plural(n, 'позиция', 'позиции', 'позиций')}.
-                Выберите одно — иначе оборудование задвоится:</div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px">
-                <button class="calc-dialog-btn calc-dialog-btn-confirm" onclick="RecognizeUI.startSpecReview()">Смета по спецификации проекта</button>
-                <span class="rec-tcheck-sub">позиции из проекта: по артикулу — точно, остальное — аналогом с пометкой «проверьте». Сразу, без распознавания картинок.</span>
+            <div style="font-weight:600">В проекте есть спецификация (${n} ${this.plural(n, 'позиция', 'позиции', 'позиций')}). Выберите, как собрать смету, — одно из двух, иначе оборудование задвоится:</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-top:8px">
+              <div style="${card}">
+                <div style="font-weight:700">📋 Смета по проекту</div>
+                <div class="rec-tcheck-sub">Оборудование из спецификации проектировщика: по артикулу — точно, остальное — аналоги с пометкой «проверьте».</div>
+                <div style="${when}"><b>Когда:</b> заказчик хочет ровно по проекту.</div>
+                <div class="rec-tcheck-sub">≈10 секунд, листы не распознаются.</div>
+                <button class="calc-dialog-btn calc-dialog-btn-confirm" style="margin-top:auto;align-self:flex-start"
+                        title="Смета из таблицы спецификации проектировщика — без расчёта теплопотерь"
+                        onclick="RecognizeUI.startSpecReview()">Смета по проекту</button>
+              </div>
+              <div style="${card}">
+                <div style="font-weight:700">🏠 Свой расчёт по помещениям</div>
+                <div class="rec-tcheck-sub">Читаем с листов помещения, тёплый пол и приборы, считаем теплопотери и подбираем наше оборудование: котёл, радиаторы, тёплый пол.</div>
+                <div style="${when}"><b>Когда:</b> проверить проект или поставить своё оборудование.</div>
+                <div class="rec-tcheck-sub">≈1–2 минуты.</div>
+                <button class="calc-dialog-btn calc-dialog-btn-confirm" style="margin-top:auto;align-self:flex-start"
+                        title="Распознать листы проекта и посчитать по теплопотерям помещений"
+                        onclick="RecognizeUI.run()">Посчитать по помещениям</button>
+              </div>
             </div>
-            <div class="rec-tcheck-sub" style="margin-top:6px">или «Распознать» ниже — расчёт по помещениям: наше оборудование по теплопотерям дома.</div>
         </div>`;
     },
 
