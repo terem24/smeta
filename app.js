@@ -20483,6 +20483,7 @@ const app = {
         this.loadAdminData();
     },
     closeAdminModal: function () {
+        this.closeUserPeek();
         document.getElementById('admin_modal_overlay').style.display = 'none';
         // Данные разделов держим только пока панель открыта: следующее открытие
         // должно показать свежие, а не то, что успело устареть за день. Обнуляем
@@ -23061,6 +23062,7 @@ const app = {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         const content = document.getElementById('admin_content');
         if (!content) return;
+        this.closeUserPeek();
         this.watchAdminStyle();
 
         // Возвращаем обычную раскладку вкладки: «Сообщения» переводят #admin_content
@@ -23365,6 +23367,26 @@ const app = {
         const designRegionOn = !!(designOk && bulkRegionSel &&
             this.regionFlagFor(this._recognitionAccess.design.regions, bulkRegionSel));
 
+        // Быстрые срезы и сохранённые виды списка: девять фильтров в одну строку превращали
+        // экран в панель самолёта, а нужные сочетания приходилось выставлять заново.
+        const escH = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const curF = { tariff: tariffFilter, expiry: expiryFilter, region: regionFilter, dist: distFilter, activity: activityFilter, recog: recogFilter, suspect: suspectFilter, idle: idleFilter, device: deviceFilter };
+        const nonDefault = {};
+        Object.keys(curF).forEach(k => { if (curF[k] !== this.USERS_FILTER_DEFAULTS[k]) nonDefault[k] = curF[k]; });
+        const activeCount = Object.keys(nonDefault).length;
+        const sameF = f => { const a = Object.keys(nonDefault), b = Object.keys(f); return a.length === b.length && b.every(k => nonDefault[k] === f[k]); };
+        const views = this.loadUsersViews();
+        const segChip = (label, onclick, active, extra) => `<button class="ad-chip${active ? ' active' : ''}" onclick="${onclick}">${label}${extra || ''}</button>`;
+        const segHtml = `
+            <div class="ad-chips">
+                ${this.USERS_SEGMENTS.map(s => segChip(s.label, `app.applyUsersSegment('${s.id}')`, sameF(s.f) && !this._pendingAdminSearch)).join('')}
+                ${views.map((v, i) => segChip(escH(v.n), `app.applyUsersView(${i})`, sameF(v.f || {}) && (v.s || '') === (this._pendingAdminSearch || ''),
+                    `<span class="ad-chip-x" title="Удалить этот вид" onclick="event.stopPropagation(); app.deleteUsersView(${i})">×</span>`)).join('')}
+                <button class="ad-chip ad-chip-add" onclick="app.saveUsersView()" title="Запомнить текущие фильтры под своим именем">+ Сохранить вид</button>
+            </div>`;
+        const filtersOpen = this._usersFiltersOpen || activeCount > 0;
+        const dense = this.usersDense();
+
         let h = `
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
@@ -23373,10 +23395,13 @@ const app = {
                         <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                     </div>
                     
+                    <h3>Пользователи</h3>
+                    ${segHtml}
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                        <h4 style="margin: 0; white-space: nowrap;">👥 Пользователи</h4>
                         <div class="admin-filter-row admin-users-filters" style="display: flex; gap: 8px; width: auto; flex-grow: 1; justify-content: flex-end; flex-wrap: wrap;">
                             <input type="text" id="admin_search_input" placeholder="🔍 Поиск по имени..." style="width: 180px; min-width: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); color: var(--text-main); font-size: 12px; outline: none; height: 34px; box-sizing: border-box;" onkeyup="app.debouncedAdminSearch()">
+                            <button class="admin-btn ad-filters-btn${filtersOpen ? ' active' : ''}" onclick="app.toggleUsersFilters(this)" title="Показать или скрыть фильтры">Фильтры${activeCount ? ` <span class="ad-count ad-count-on">${activeCount}</span>` : ''}</button>
+                            <div id="admin_filters_panel" class="ad-filters${filtersOpen ? ' open' : ''}">
                             <select id="admin_filter_tariff" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="all" ${tariffFilter === 'all' ? 'selected' : ''}>Все тарифы</option>
                                 <option value="base" ${tariffFilter === 'base' ? 'selected' : ''}>Базовый</option>
@@ -23444,6 +23469,7 @@ const app = {
                                 <option value="Монтажник" ${activityFilter === 'Монтажник' ? 'selected' : ''}>Монтажник</option>
                                 <option value="Продавец" ${activityFilter === 'Продавец' ? 'selected' : ''}>Продавец</option>
                             </select>
+                            </div>
                             <select id="sort-installers" onchange="app.loadAdminData(0)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 0 10px; font-size: 12px; outline: none; cursor: pointer; height: 34px; box-sizing: border-box;">
                                 <option value="default" ${sortType === 'default' ? 'selected' : ''}>Сортировка</option>
                                 <option value="login_desc" ${sortType === 'login_desc' ? 'selected' : ''}>Вход: сначала новые</option>
@@ -23457,7 +23483,8 @@ const app = {
                                 <option value="tariff_asc" ${sortType === 'tariff_asc' ? 'selected' : ''}>Тариф: Базовый→Профи</option>
                                 <option value="tariff_desc" ${sortType === 'tariff_desc' ? 'selected' : ''}>Тариф: Профи→Базовый</option>
                             </select>
-                            <button class="btn-header-blue" style="background: #10B981; color: white; border-color: #10B981; font-weight: bold; padding: 0 15px; height: 34px; border-radius: 8px; font-size: 12px; flex-shrink: 0;" onclick="app.exportAdminToExcel()">📊 Excel</button>
+                            <button class="admin-btn" onclick="app.toggleUsersDense(this)" title="Плотность строк таблицы">${dense ? 'Обычная плотность' : 'Компактно'}</button>
+                            <button class="admin-btn" onclick="app.exportAdminToExcel()" title="Выгрузить список в Excel">Excel</button>
                         </div>
                     </div>
 
@@ -23500,6 +23527,7 @@ const app = {
                                 <span id="${capId}" class="admin-bulk-cap" style="color:${on ? '#10B981' : 'var(--text-sec)'};">${disabled && !isViewer ? (noRegion ? '' : 'нет доступа') : (on ? 'включено' : 'выключено')}</span>
                             </span>`;
                         return `
+                    <details class="ad-collapse ad-bulk"><summary>Массовые действия над выборкой (${totalUsers})</summary>
                     <div class="admin-bulk-row">
                         <div class="admin-bulk-line">
                             <span class="admin-bulk-label">🏢 Массово назначить дистрибьютора отфильтрованным (${totalUsers}):</span>
@@ -23545,13 +23573,14 @@ const app = {
                             </div>
                             ${designOk ? '' : `<span style="font-size:10.5px; color:#D97706;">${designOffHint}</span>`}
                         </div>
-                    </div>`;
+                    </div>
+                    </details>`;
                     })()}
 
                     <!-- Ширины заданы явно и таблица фиксированной раскладки:
                          при авторазметке колонки прыгали от строки к строке,
                          а длинные названия дистрибьюторов рвали выравнивание. -->
-                    <table class="inv-table" style="margin-bottom: 30px; table-layout: fixed; width: 100%; min-width: 1295px;">
+                    <table class="inv-table ad-sticky${dense ? ' ad-dense' : ''}" style="margin-bottom: 30px; table-layout: fixed; width: 100%; min-width: 1295px;">
                         <thead><tr>
                             <th style="width:30px;">#</th>
                             <th style="width:280px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('name')" title="Сортировать по имени">Имя / Контакты${sortArrow('name')}</th>
@@ -23721,7 +23750,7 @@ const app = {
             const sess = this.sessionSummary(u);
             const sessionLine = `<span title="${sess.title}" style="color:${sess.color};">${sess.text}</span>`;
 
-            h += `<tr class="active-row admin-list-row" data-search="${searchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.viewAdminUser('${u.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
+            h += `<tr class="active-row admin-list-row" data-search="${searchStr}" style="cursor: pointer; transition: 0.2s;" onclick="app.openUserPeek('${u.id}')" onmouseover="this.style.background='var(--primary-light)'" onmouseout="this.style.background='transparent'">
                         <!-- Нумерация сквозная по всему списку, а не по странице: на второй
                              странице отсчёт снова с 1 сбивал с толку (44 записи → 1…44) -->
                         <td style="color:var(--text-sec);">${this._adminOffset + i + 1}</td>
@@ -33714,6 +33743,141 @@ const app = {
         link.click();
         document.body.removeChild(link);
     },
+    // ═══ Список пользователей: срезы, сохранённые виды, плотность, быстрый просмотр ═══
+    USERS_FILTER_DEFAULTS: { tariff: 'all', expiry: 'all', region: '', dist: 'all', activity: 'all', recog: 'all', suspect: 'all', idle: 'all', device: 'all' },
+    USERS_FILTER_IDS: { tariff: 'admin_filter_tariff', expiry: 'admin_filter_expiry', region: 'admin_filter_region', dist: 'admin_filter_dist', activity: 'admin_filter_activity', recog: 'admin_filter_recog', suspect: 'admin_filter_suspect', idle: 'admin_filter_idle', device: 'admin_filter_device' },
+    USERS_SEGMENTS: [
+        { id: 'all', label: 'Все', f: {} },
+        { id: 'pro', label: 'Профи', f: { tariff: 'pro' } },
+        { id: 'base', label: 'Базовые', f: { tariff: 'base' } },
+        { id: 'expired', label: 'Срок истёк', f: { expiry: 'expired' } },
+        { id: 'nodist', label: 'Без дистрибьютора', f: { dist: 'none' } },
+        { id: 'idle', label: 'Ходят, но не считают', f: { idle: 'yes' } },
+        { id: 'suspect', label: 'Сомнительные анкеты', f: { suspect: 'yes' } }
+    ],
+
+    // Выставить фильтры списка (всё, чего нет в f, — по умолчанию) и перечитать список
+    applyUsersFilters: function (f, search) {
+        Object.keys(this.USERS_FILTER_IDS).forEach(k => {
+            const el = document.getElementById(this.USERS_FILTER_IDS[k]);
+            if (el) el.value = (f && f[k] !== undefined) ? f[k] : this.USERS_FILTER_DEFAULTS[k];
+        });
+        const inp = document.getElementById('admin_search_input');
+        if (inp) inp.value = search || '';
+        this._pendingAdminSearch = search || '';
+        this.loadAdminData(0);
+    },
+    applyUsersSegment: function (id) {
+        const s = this.USERS_SEGMENTS.find(x => x.id === id);
+        if (s) this.applyUsersFilters(s.f, '');
+    },
+
+    // Свои виды лежат в браузере администратора (localStorage): у каждого свои наборы
+    loadUsersViews: function () {
+        try { const v = JSON.parse(localStorage.getItem('admin_users_views_v1') || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    },
+    saveUsersViews: function (v) {
+        try { localStorage.setItem('admin_users_views_v1', JSON.stringify(v)); } catch (e) { }
+    },
+    saveUsersView: function () {
+        const f = {};
+        Object.keys(this.USERS_FILTER_IDS).forEach(k => {
+            const el = document.getElementById(this.USERS_FILTER_IDS[k]);
+            if (el && el.value !== this.USERS_FILTER_DEFAULTS[k]) f[k] = el.value;
+        });
+        const s = (document.getElementById('admin_search_input') || {}).value || '';
+        if (!Object.keys(f).length && !s) { app.alert('Сначала выберите фильтры или введите поиск — их и запомню.'); return; }
+        const n = window.prompt('Как назвать этот вид списка?');
+        if (!n || !n.trim()) return;
+        const v = this.loadUsersViews();
+        v.push({ n: n.trim().slice(0, 30), f, s });
+        this.saveUsersViews(v);
+        this.renderAdminMain();
+    },
+    applyUsersView: function (i) {
+        const v = this.loadUsersViews()[i];
+        if (v) this.applyUsersFilters(v.f || {}, v.s || '');
+    },
+    deleteUsersView: function (i) {
+        const v = this.loadUsersViews();
+        v.splice(i, 1);
+        this.saveUsersViews(v);
+        this.renderAdminMain();
+    },
+    toggleUsersFilters: function (btn) {
+        const p = document.getElementById('admin_filters_panel');
+        if (!p) return;
+        p.classList.toggle('open');
+        this._usersFiltersOpen = p.classList.contains('open');
+        if (btn) btn.classList.toggle('active', this._usersFiltersOpen);
+    },
+    usersDense: function () {
+        try { return localStorage.getItem('admin_users_dense') === '1'; } catch (e) { return false; }
+    },
+    toggleUsersDense: function (btn) {
+        const on = !this.usersDense();
+        try { localStorage.setItem('admin_users_dense', on ? '1' : '0'); } catch (e) { }
+        const t = document.querySelector('#admin_content table.ad-sticky');
+        if (t) t.classList.toggle('ad-dense', on);
+        if (btn) btn.textContent = on ? 'Обычная плотность' : 'Компактно';
+    },
+
+    // Быстрый просмотр: боковая панель с главным о человеке, не выходя из списка. Полная
+    // карточка (viewAdminUser) занимает весь экран панели, и после неё надо заново искать
+    // место в списке, поэтому клик по строке открывает эту панель, а полная — по кнопке.
+    openUserPeek: function (userId) {
+        const u = (this.adminData.users || []).find(x => String(x.id) === String(userId));
+        if (!u) { this.viewAdminUser(userId); return; }
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const name = [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') || u.username || u.email || 'Без имени';
+        const ests = (this.adminData.userEstimates || []).filter(e => String(e.user_id) === String(userId));
+        const fmtD = d => d ? new Date(d).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        const money = v => Number(v || 0).toLocaleString('ru-RU') + ' ₽';
+        const roleName = { admin: 'Администратор', viewer: 'Наблюдатель', manager: 'Менеджер', pro: 'Профи' }[u.account_type] || 'Базовый';
+        const ends = u.demo_ends_at && new Date(u.demo_ends_at).getFullYear() < 2090 ? ' до ' + new Date(u.demo_ends_at).toLocaleDateString('ru-RU') : (u.demo_ends_at ? ' навсегда' : '');
+        const eqSum = ests.reduce((a, e) => a + (Number(e.eq_sum) || 0), 0);
+        const wkSum = ests.reduce((a, e) => a + (Number(e.works_sum) || 0), 0);
+        const dist = (this.adminData.distributors || []).find(d => String(d.id) === String(u.distributor_id));
+        const rowKV = (k, v) => v ? `<div class="ad-kv"><span>${k}</span><b>${v}</b></div>` : '';
+        const mins = u.sess_sec ? Math.round(u.sess_sec / 60) : 0;
+        const jq = s => String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+        this.closeUserPeek();
+        const host = document.querySelector('#admin_modal_overlay .auth-modal-content');
+        if (!host) { this.viewAdminUser(userId); return; }
+        const el = document.createElement('aside');
+        el.id = 'ad_peek';
+        el.innerHTML = `
+            <div class="ad-peek-h">
+                <div><div class="ad-peek-name">${esc(name)}</div><div class="ad-peek-sub">${esc(roleName)}${esc(ends)}${u.is_blocked ? ' · заблокирован' : ''}</div></div>
+                <button class="ad-peek-x" onclick="app.closeUserPeek()" title="Закрыть (Esc)">×</button>
+            </div>
+            <div class="ad-peek-b">
+                <div class="ad-peek-sec">Контакты</div>
+                ${rowKV('Телефон', esc(u.phone))}${rowKV('Почта', esc(u.email))}${rowKV('Регион', esc([u.region, u.city].filter(Boolean).join(', ')))}
+                ${rowKV('Дистрибьютор', esc(dist ? dist.company_name : ''))}
+                <div class="ad-peek-sec">Работа в калькуляторе</div>
+                ${rowKV('Смет сохранено', String(ests.length))}${rowKV('Оборудование', ests.length ? money(eqSum) : '')}${rowKV('Монтаж', wkSum ? money(wkSum) : '')}
+                ${rowKV('Визитов', u.sess_visits ? String(u.sess_visits) : '')}${rowKV('Время на сайте', mins ? mins + ' мин' : '')}
+                <div class="ad-peek-sec">История</div>
+                ${rowKV('Регистрация', fmtD(u.created_at))}${rowKV('Последний вход', fmtD(u.last_visited))}${rowKV('Устройство', esc(u.last_device))}
+            </div>
+            <div class="ad-peek-f">
+                <button class="admin-btn ad-peek-main" onclick="app.closeUserPeek(); app.viewAdminUser('${jq(u.id)}')">Полная карточка</button>
+                <button class="admin-btn" onclick="app.closeUserPeek(); app.adminMessageUser('${jq(u.id)}', '${jq(name)}')">Написать</button>
+                <button class="admin-btn" onclick="app.closeUserPeek(); app.adminViewUserEstimates('${jq(name)}')">Сметы</button>
+            </div>`;
+        host.appendChild(el);
+        if (!this._peekEscBound) {
+            this._peekEscBound = true;
+            document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('ad_peek')) { this.closeUserPeek(); e.stopPropagation(); } }, true);
+        }
+    },
+    closeUserPeek: function () {
+        const el = document.getElementById('ad_peek');
+        if (el) el.remove();
+    },
+
     viewAdminUser: async function (userId) {
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
         let user = this.adminData.users.find(u => String(u.id) === String(userId));
