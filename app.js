@@ -20452,13 +20452,13 @@ const app = {
         if (titleEl) {
             const role = this.getAdminRole();
             if (role === 'viewer') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#EF4444; background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">👁 Режим просмотра</span>';
+                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#EF4444; background:#FEE2E2; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Режим просмотра</span>';
             } else if (role === 'manager') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#0F766E; background:#CCFBF1; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">🤝 Менеджер</span>';
+                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#0F766E; background:#CCFBF1; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Менеджер</span>';
             } else if (role === 'super_admin') {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#10B981; background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">👑 Владелец</span>';
+                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#10B981; background:#ECFDF5; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Владелец</span>';
             } else {
-                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#3B82F6; background:#EFF6FF; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">⚙️ Администратор</span>';
+                titleEl.innerHTML = 'Панель управления <span style="font-size:12px; color:#3B82F6; background:#EFF6FF; padding:3px 8px; border-radius:6px; margin-left:10px; font-weight:700; text-transform:none; letter-spacing:0; vertical-align:middle;">Администратор</span>';
             }
         }
         document.getElementById('admin_modal_overlay').style.display = 'flex';
@@ -23478,11 +23478,11 @@ const app = {
             }
 
             if (u.account_type === 'viewer') {
-                badge = `<span style="color:#8B5CF6; font-weight:bold;">Наблюдатель 👁</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
+                badge = `<span style="color:#8B5CF6; font-weight:bold;">Наблюдатель</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
             } else if (u.account_type === 'manager') {
-                badge = `<span style="color:#0F766E; font-weight:bold;">Менеджер 🤝</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
+                badge = `<span style="color:#0F766E; font-weight:bold;">Менеджер</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
             } else if (u.account_type === 'admin') {
-                badge = `<span style="color:#10B981; font-weight:bold;">Администратор ⚙️</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
+                badge = `<span style="color:#10B981; font-weight:bold;">Администратор</span><br><span style="font-size:10px; color:var(--text-sec);">Тариф: ${tariffLabelShort}</span>`;
             } else if (u.account_type === 'pro') {
                 badge = tariffLabel;
             } else {
@@ -33637,17 +33637,17 @@ const app = {
                                         </label>
                                         <select id="admin_edit_tariff" ${isViewer ? 'disabled' : ''} onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${user.account_type === 'base' ? 'selected' : ''}>Базовый</option>
-                                            <option value="pro" ${user.account_type === 'pro' ? 'selected' : ''}>Профи ⭐️</option>
-                                            ${this.getAdminRole() === 'super_admin' || user.account_type === 'admin' ? `<option value="admin" ${user.account_type === 'admin' ? 'selected' : ''}>Администратор ⚙️</option>` : ''}
-                                            ${this.getAdminRole() === 'super_admin' || user.account_type === 'viewer' ? `<option value="viewer" ${user.account_type === 'viewer' ? 'selected' : ''}>Наблюдатель 👁</option>` : ''}
-                                            ${this.getAdminRole() === 'super_admin' || user.account_type === 'manager' ? `<option value="manager" ${user.account_type === 'manager' ? 'selected' : ''}>Менеджер 🤝</option>` : ''}
+                                            <option value="pro" ${user.account_type === 'pro' ? 'selected' : ''}>Профи</option>
+                                            ${this.getAdminRole() === 'super_admin' || user.account_type === 'admin' ? `<option value="admin" ${user.account_type === 'admin' ? 'selected' : ''}>Администратор</option>` : ''}
+                                            ${this.getAdminRole() === 'super_admin' || user.account_type === 'viewer' ? `<option value="viewer" ${user.account_type === 'viewer' ? 'selected' : ''}>Наблюдатель</option>` : ''}
+                                            ${this.getAdminRole() === 'super_admin' || user.account_type === 'manager' ? `<option value="manager" ${user.account_type === 'manager' ? 'selected' : ''}>Менеджер</option>` : ''}
                                         </select>
                                     </div>
                                     <div id="admin_edit_role_tariff_wrapper" style="display: ${['admin', 'viewer', 'manager'].includes(user.account_type) ? 'block' : 'none'};">
                                         <label style="display:block; font-size:11px; color:var(--text-sec); margin-bottom:4px;">Тариф для роли</label>
                                         <select id="admin_edit_role_tariff" ${isViewer ? 'disabled' : ''} onchange="app.onAdminEditTariffChange()" style="width:100%; padding:6px; border-radius:6px; background:var(--bg); color:var(--text-main); border:1px solid var(--border); font-size:12px;">
                                             <option value="base" ${!(user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'selected' : ''}>Базовый</option>
-                                            <option value="pro" ${(user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'selected' : ''}>Профи ⭐️</option>
+                                            <option value="pro" ${(user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'selected' : ''}>Профи</option>
                                         </select>
                                     </div>
                                     <div id="admin_edit_date_wrapper" style="display: ${user.account_type === 'pro' || (['admin', 'viewer', 'manager'].includes(user.account_type) && user.demo_ends_at && new Date(user.demo_ends_at) > new Date()) ? 'block' : 'none'};">
