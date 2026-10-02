@@ -8801,8 +8801,10 @@ const app = {
                 <h3 style="margin: 0 0 16px; color: var(--text-main);">🏢 Дистрибьюторы</h3>
                 ${regModeHtml}
 
-                <div style="background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-                    <h4 style="margin: 0 0 14px; font-size: 14px; color: var(--text-main);" id="dist_form_title">➕ Добавить промокод</h4>
+                <!-- Форма свёрнута: раньше открывалась на 12 полей раньше самого списка
+                     компаний. Раскрывается кнопкой «Добавить промокод» и при «Изменить». -->
+                <details id="dist_form_details" class="ad-collapse">
+                    <summary id="dist_form_title">Добавить промокод</summary>
                     <input type="hidden" id="dist_edit_id">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
                         <div>
@@ -8875,7 +8877,7 @@ const app = {
                         <button class="auth-btn-base btn-email-submit" style="height: 36px; padding: 0 20px; font-size: 13px; ${isViewer ? 'opacity: 0.5; cursor: not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.saveDistributor()">💾 Сохранить</button>
                         <button class="auth-btn-base" style="height: 36px; padding: 0 16px; font-size: 13px; background: var(--surface-light); color: var(--text-sec);" onclick="app.resetDistributorForm()">✕ Отмена</button>
                     </div>
-                </div>
+                </details>
 
                 <table class="inv-table">
                     <thead><tr><th style="width:30px;">#</th><th>Компания</th><th>Промокод</th><th>Менеджер</th><th>PRO мес.</th><th style="text-align:center;" title="Монтажников привязано / лимит приглашений">Приглашено</th><th style="text-align:center;">Цены</th><th style="text-align:center;">Доступ монтажникам</th><th>Статус</th><th style="text-align:right;">Действия</th></tr></thead>
@@ -10783,8 +10785,10 @@ const app = {
         if (document.getElementById('dist_own_prices')) document.getElementById('dist_own_prices').value = dist.use_own_prices ? '1' : '0';
         if (document.getElementById('dist_price_list')) document.getElementById('dist_price_list').value = dist.price_list_key || '';
         const titleEl = document.getElementById('dist_form_title');
-        if (titleEl) titleEl.textContent = '✏️ Редактировать промокод';
-        // Прокручиваем к форме
+        if (titleEl) titleEl.textContent = 'Редактировать промокод';
+        // Форма свёрнута по умолчанию — раскрываем и прокручиваем к ней
+        const det = document.getElementById('dist_form_details');
+        if (det) det.open = true;
         document.getElementById('dist_form_title')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
@@ -10805,7 +10809,7 @@ const app = {
         if (document.getElementById('dist_own_prices')) document.getElementById('dist_own_prices').value = '0';
         if (document.getElementById('dist_price_list')) document.getElementById('dist_price_list').value = '';
         const titleEl = document.getElementById('dist_form_title');
-        if (titleEl) titleEl.textContent = '➕ Добавить промокод';
+        if (titleEl) titleEl.textContent = 'Добавить промокод';
     },
 
     deleteDistributor: async function (id) {
@@ -20473,6 +20477,9 @@ const app = {
         document.body.classList.add('admin-modal-open');
         this.startAdminMobileLabels();
         this.watchAdminViewport();
+        // Тяжёлый набор данных нужен только «Пользователям»: владельцу панель открывается
+        // «Центром внимания», и грузить ради него всех монтажников незачем
+        if (!this._adminTab && !this.isAdminMobile() && this.tabVisibleFor('home', this.getAdminRole(), this.isAnalyticsOwner())) this._adminTab = 'home';
         this.loadAdminData();
     },
     closeAdminModal: function () {
@@ -21626,6 +21633,7 @@ const app = {
     // на большом экране и список-меню на телефоне (buildAdminMobileHome), поэтому
     // он лежит здесь, а не внутри renderAdminMain. hint виден только в меню.
     ADMIN_TAB_DEFS: [
+        { id: 'home', icon: '🏠', label: 'Центр внимания', hint: 'Что требует действия сегодня' },
         { id: 'stats', icon: '👥', label: 'Пользователи', hint: 'Монтажники, тарифы, доступы' },
         { id: 'estimates', icon: '📋', label: 'Расчёты', hint: 'Все сохранённые сметы' },
         { id: 'messages', icon: '💬', label: 'Сообщения', hint: 'Переписка и уведомления' },
@@ -21635,9 +21643,9 @@ const app = {
         { id: 'subscription', icon: '💳', label: 'Оплата подписки', hint: 'Цены и ссылки на оплату, QR, акции, регионы, кто запрашивал и кто оплатил' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'branches', icon: '🏬', label: 'Филиалы', hint: 'Схема компании: ссылки, монтажники, работа менеджеров' },
-        { id: 'pricelist', icon: '💵', label: 'Прайс-лист', hint: 'Свои расценки монтажников' },
-        { id: 'equipment', icon: '🧰', label: 'Своё оборудование', hint: 'Добавленное, удалённое, замены' },
-        { id: 'successors', icon: '🔁', label: 'Замены позиций', hint: 'Снятые с поставки и чем заменить' },
+        { id: 'pricelist', icon: '💵', label: 'Прайс-лист', sub: 'Цены работ', hint: 'Свои расценки монтажников' },
+        { id: 'equipment', icon: '🧰', label: 'Своё оборудование', sub: 'Оборудование', hint: 'Добавленное, удалённое, замены' },
+        { id: 'successors', icon: '🔁', label: 'Замены позиций', sub: 'Замены', hint: 'Снятые с поставки и чем заменить' },
         { id: 'recognition', icon: '🔍', label: 'Распознавание', hint: 'Архив смет и месячные лимиты' },
         { id: 'plans', icon: '📐', label: 'Планы этажей', hint: 'Подложки планов на сервере' },
         { id: 'projects', icon: '📁', label: 'Проекты', hint: 'Выпущенные комплекты листов' },
@@ -21652,6 +21660,7 @@ const app = {
     // Эмодзи в ряду вкладок рисовались каждый своим цветом, и панель выглядела пёстрой;
     // у разделов, которых здесь нет, остаётся эмодзи из ADMIN_TAB_DEFS.
     ADMIN_TAB_SVG: {
+        home: '<path d="M3 10.5L12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>',
         stats: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
         estimates: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/>',
         messages: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
@@ -21672,6 +21681,49 @@ const app = {
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
         leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'
+    },
+
+    // Разделы панели в группах. Двадцать вкладок в два ряда без порядка — это «конструктор»,
+    // а не рабочее место: связанное лежит в разных концах (прайс и оборудование монтажников,
+    // три списка смет, тарифы и оплата). Группы сводят их в восемь разделов, а вкладки
+    // остаются подразделами — идентификаторы и отрисовщики вкладок те же, поэтому права
+    // («Тарифы» → разделы роли), порядок перетаскиванием и старые ссылки работают как раньше.
+    ADMIN_GROUPS: [
+        { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
+        { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
+        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects'] },
+        { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
+        { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'equipment', 'successors'] },
+        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription'] },
+        { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
+        { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
+    ],
+
+    adminGroupOf: function (tabId) {
+        const g = this.ADMIN_GROUPS.find(x => x.tabs.indexOf(tabId) >= 0);
+        return g ? g.id : 'other';
+    },
+
+    // Группы с теми вкладками, которые роль видит; пустые группы выпадают.
+    // Порядок вкладок внутри группы — как в ряду (его можно менять перетаскиванием).
+    adminVisibleGroups: function (defs) {
+        // Порядок внутри группы задан списком tabs: перетаскивание вкладок отключено,
+        // потому что общий плоский порядок больше не виден — вкладки показываются по группам
+        const out = this.ADMIN_GROUPS.map(g => ({
+            id: g.id, label: g.label, icon: g.icon,
+            defs: defs.filter(t => g.tabs.indexOf(t.id) >= 0).sort((a, b) => g.tabs.indexOf(a.id) - g.tabs.indexOf(b.id))
+        }));
+        // Раздел, которого нет в группах (добавили позже), не должен пропасть из панели
+        const rest = defs.filter(t => this.adminGroupOf(t.id) === 'other');
+        if (rest.length) out.push({ id: 'other', label: 'Прочее', icon: 'dashboard', defs: rest });
+        return out.filter(g => g.defs.length);
+    },
+
+    switchAdminGroup: function (gid) {
+        const g = this.adminVisibleGroups(this.adminTabDefs()).find(x => x.id === gid);
+        if (!g) return;
+        const last = (this._adminGroupLast || {})[gid];
+        this.switchAdminTab(g.defs.some(t => t.id === last) ? last : g.defs[0].id);
     },
 
     adminIcon: function (t) {
@@ -21770,7 +21822,7 @@ const app = {
     // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
     // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
     // клиентская здесь только чтобы не показывать пустую вкладку.
-    OWNER_ONLY_TABS: ['dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription'],
+    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -22920,13 +22972,16 @@ const app = {
                 <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${n(d.totalWorks)} ₽</span></div>
             </div>`;
 
-        const items = this.adminTabDefs().map(t => `
+        // Разделы по группам — тем же порядком, что и на большом экране
+        const items = this.adminVisibleGroups(this.adminTabDefs()).map(g => `
+            <div class="admin-mob-group">${g.label}</div>
+            ${g.defs.map(t => `
             <div class="admin-mob-item" onclick="app.switchAdminTab('${t.id}')">
                 <span class="admin-mob-ico">${this.adminIcon(t)}</span>
                 <span class="admin-mob-body"><b>${t.label}</b><small>${t.hint || ''}</small></span>
                 ${(t.id === 'messages' && unread) ? `<span class="admin-mob-badge">${unread}</span>` : ''}
                 <span class="admin-mob-arrow">›</span>
-            </div>`).join('');
+            </div>`).join('')}`).join('');
 
         return cards + `<div class="admin-mob-list">${items}</div>`;
     },
@@ -23018,7 +23073,8 @@ const app = {
         // На телефоне ряда вкладок нет вовсе: панель открывается списком разделов,
         // и пустой _adminTab как раз означает «сейчас показан этот список».
         const mobile = this.isAdminMobile();
-        if (!this._adminTab && !mobile) this._adminTab = 'stats';
+        // Владелец начинает с «Центра внимания», остальные — с «Пользователей»
+        if (!this._adminTab && !mobile) this._adminTab = this.tabVisibleFor('home', this.getAdminRole(), this.isAnalyticsOwner()) ? 'home' : 'stats';
 
         const { users, userEstimates, recentEstimates, totalUsers, totalEstimates, totalEq, totalWorks, sellersCount, installersCount, estSellers, estInstallers, estWithWorks, estWithEq } = this.adminData;
 
@@ -23075,17 +23131,34 @@ const app = {
         // тогда «Своё оборудование» режется многоточием, а короткие держат лишнее.
         // Администратор может перетащить вкладку — порядок общий для всех (bindAdminTabDrag).
         // touch-action: none — иначе палец на планшете вместо перетаскивания листал бы панель.
-        const canReorder = this.canReorderAdminTabs();
-        this.bindAdminTabDrag(content);
+        // Перетаскивание вкладок отключено с введением групп (см. ADMIN_GROUPS): порядок
+        // внутри группы задан в коде, а сохранённый плоский порядок больше ничего не меняет.
+        const canReorder = false;
+        // Два уровня: группы (Клиенты, Продажи, Каталог…) и вкладки текущей группы.
+        // У группы из одной вкладки (Сообщения, Контент) второго ряда нет.
+        const groups = this.adminVisibleGroups(ADMIN_TAB_DEFS);
+        const curGroup = groups.find(g => g.defs.some(t => t.id === this._adminTab)) || groups[0];
         navHtml = `
-            <div id="admin_nav_tabs" style="display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; flex-shrink: 0; width: 100%; flex-wrap: wrap;">
-                ${ADMIN_TAB_DEFS.map(t => `
-                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none; ' : ''}margin: 0; padding: 0 12px; height: 34px; font-size: 12px; font-weight: bold; flex: 0 0 auto; width: auto; max-width: none; white-space: nowrap; background:${this._adminTab === t.id ? 'var(--primary)' : 'var(--surface-light)'}; color: ${this._adminTab === t.id ? 'white' : 'var(--text-sec)'}; border: 1px solid ${this._adminTab === t.id ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.label}</span></button>
+            <div id="admin_nav_groups" role="tablist">
+                ${groups.map(g => `
+                    <button class="admin-group-btn${g === curGroup ? ' active' : ''}" role="tab" aria-selected="${g === curGroup}" onclick="app.switchAdminGroup('${g.id}')">${this.adminIcon({ id: g.icon })}<span>${g.label}</span></button>
                 `).join('')}
             </div>
+            ${curGroup.defs.length > 1 ? `
+            <div id="admin_nav_tabs">
+                ${curGroup.defs.map(t => `
+                    <button id="admin_tab_${t.id}" class="auth-btn-base admin-tab-btn${this._adminTab === t.id ? ' active' : ''}" title="${t.hint || t.label}${canReorder ? ' — перетащите, чтобы поменять порядок для всех' : ''}" style="${canReorder ? 'touch-action: none;' : ''}" onclick="app.switchAdminTab('${t.id}')">${this.adminIcon(t)}<span class="admin-tab-label"> ${t.sub || t.label}</span></button>
+                `).join('')}
+            </div>` : ''}
         `;
         }
         navHtml += scopeWarnHtml;
+
+        if (this._adminTab === 'home') {
+            content.innerHTML = navHtml + '<div id="admin_home_box"></div>';
+            this.renderAdminHome();
+            return;
+        }
 
         if (this._adminTab === 'messages') {
             content.innerHTML = navHtml;
@@ -23899,6 +23972,8 @@ const app = {
         // консоли или старой ссылки обязан упереться в ту же проверку, что и вёрстка.
         if (!this.tabVisibleFor(tab, this.getAdminRole(), this.isAnalyticsOwner())) return;
         this._adminTab = tab;
+        // В группу возвращаемся на ту вкладку, где были (см. switchAdminGroup)
+        (this._adminGroupLast || (this._adminGroupLast = {}))[this.adminGroupOf(tab)] = tab;
         this._estBackKanbanCalc = null;
         // Данные раздела грузим при переходе в него, а не все сразу при открытии
         // панели. Что уже загружено — не перезапрашиваем: «Пользователей» отмечает
@@ -23916,6 +23991,135 @@ const app = {
         // осталась прокрутка предыдущего
         const c = document.getElementById('admin_content');
         if (c) c.scrollTop = 0;
+    },
+
+    // ═══ «Центр внимания» ═════════════════════════════════════════════════
+    // Стартовый экран владельца: не «что есть», а «что требует действия сегодня».
+    // Каждая карточка — одно дело и переход в раздел, где его делают. Данные грузятся
+    // каждая сама и друг друга не ждут: медленная карточка не держит остальные.
+    renderAdminHome: function () {
+        const box = document.getElementById('admin_home_box');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const st = this._homeState || (this._homeState = {});
+        const load = (key, fn) => {
+            if (st[key] !== undefined) return;
+            st[key] = 'loading';
+            fn().then(v => { st[key] = v; })
+                .catch(e => { console.warn('[центр внимания] ' + key + ':', e); st[key] = { error: String((e && e.message) || e) }; })
+                .then(() => { if (this._adminTab === 'home') this.renderAdminHome(); });
+        };
+
+        load('leads', async () => {
+            const token = await this.recognitionToken();
+            const res = await fetch(this.LEADS_URL, { headers: token ? { 'Authorization': 'Bearer ' + token } : {}, cache: 'no-store' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const j = JSON.parse((await res.text()).replace(/^﻿/, ''));
+            this._leadsData = j.items || [];
+            await this.loadLeadAssignments();
+            return { ok: true };
+        });
+        load('pro', async () => {
+            const now = new Date();
+            const { data, error } = await supabaseClient.from('users')
+                .select('id, username, first_name, last_name, email, demo_ends_at')
+                .gte('demo_ends_at', now.toISOString())
+                .lte('demo_ends_at', new Date(now.getTime() + 7 * 864e5).toISOString())
+                .order('demo_ends_at', { ascending: true }).limit(20);
+            if (error) throw error;
+            return { rows: data || [] };
+        });
+        load('succ', async () => {
+            const { count, error } = await supabaseClient.from('catalog_successors')
+                .select('id', { count: 'exact', head: true }).eq('status', 'new');
+            if (error) throw error;
+            return { n: count || 0 };
+        });
+
+        const nameOf = u => [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || u.email || 'без имени';
+        const day = 864e5;
+        const card = (o) => {
+            const s = o.state;
+            let body;
+            if (s === undefined || s === 'loading') body = '<div class="ad-card-note">Загружаем…</div>';
+            else if (s && s.error) body = `<div class="ad-card-note ad-warn">Не загрузилось: ${esc(s.error)}</div>`;
+            else body = o.body;
+            const urgent = o.n > 0 && o.urgent;
+            return `
+            <div class="ad-card">
+                <div class="ad-card-h">
+                    <span class="ad-card-title">${o.title}</span>
+                    ${o.n != null ? `<span class="ad-count${urgent ? ' ad-count-bad' : (o.n ? ' ad-count-on' : '')}">${o.n}</span>` : ''}
+                </div>
+                <div class="ad-card-b">${body}</div>
+                <button class="admin-btn ad-card-act" onclick="app.switchAdminTab('${o.tab}')">${o.action} <span aria-hidden="true">→</span></button>
+            </div>`;
+        };
+        const row = (main, sub, right, cls) => `
+            <div class="ad-row">
+                <div class="ad-row-main"><b>${esc(main)}</b>${sub ? `<span>${esc(sub)}</span>` : ''}</div>
+                <div class="ad-row-r${cls ? ' ' + cls : ''}">${right}</div>
+            </div>`;
+        const ok = t => `<div class="ad-card-note ad-ok">✓ ${t}</div>`;
+
+        // Заявки: ждут мастера, и сколько ждут
+        let leadsN = null, leadsBody = '';
+        if (st.leads && st.leads.ok) {
+            const asg = id => (this._leadAssign || {})[id] || {};
+            const list = (this._leadsData || []).filter(r => !this.isTestLead(r))
+                .filter(r => { const s = asg(r.id).status || 'new'; return s === 'new' || s === 'sent'; })
+                .map(r => {
+                    const a = asg(r.id), s = a.status || 'new';
+                    const base = s === 'sent' ? (a.updated_at || r.at) : r.at;
+                    const age = base && !isNaN(new Date(base)) ? Math.floor((Date.now() - new Date(base)) / day) : 0;
+                    return { r, s, age, late: (s === 'new' && age >= 1) || (s === 'sent' && age >= 2) };
+                })
+                .sort((x, y) => (y.late - x.late) || (y.age - x.age));
+            leadsN = list.filter(x => x.late).length;
+            leadsBody = list.length
+                ? list.slice(0, 5).map(x => row(x.r.name || 'без имени', (x.r.place || '') + (x.r.src && x.r.src !== 'dom' ? ' · ' + x.r.src : ''),
+                    (x.s === 'sent' ? 'у мастера ' : 'ждёт ') + (x.age < 1 ? 'меньше суток' : x.age + ' дн.'), x.late ? 'ad-bad' : '')).join('')
+                + (list.length > 5 ? `<div class="ad-card-note">и ещё ${list.length - 5}</div>` : '')
+                : ok('Все заявки в работе, просроченных нет');
+        }
+
+        const proRows = (st.pro && st.pro.rows) || [];
+        const proBody = proRows.length
+            ? proRows.slice(0, 5).map(u => {
+                const left = Math.max(0, Math.ceil((new Date(u.demo_ends_at) - Date.now()) / day));
+                return row(nameOf(u), new Date(u.demo_ends_at).toLocaleDateString('ru-RU'), left <= 1 ? 'завтра или раньше' : 'через ' + left + ' дн.', left <= 2 ? 'ad-bad' : '');
+            }).join('') + (proRows.length > 5 ? `<div class="ad-card-note">и ещё ${proRows.length - 5}</div>` : '')
+            : ok('В ближайшие 7 дней Профи ни у кого не заканчивается');
+
+        const succN = st.succ && st.succ.n;
+        const unread = (this._notifications || []).filter(x => !x.isRead).length;
+
+        const cards = [
+            card({ title: 'Заявки на монтаж', n: leadsN, urgent: true, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
+            card({ title: 'Профи заканчивается', n: proRows.length, urgent: true, state: st.pro, body: proBody, tab: 'stats', action: 'Открыть пользователей' }),
+            card({ title: 'Замены позиций', n: succN == null ? null : succN, urgent: false, state: st.succ,
+                body: succN ? `<div class="ad-card-note">Новых замен снятых позиций, которые ждут решения: <b>${succN}</b>.</div>` : ok('Новых замен нет'), tab: 'successors', action: 'Открыть замены' }),
+            card({ title: 'Сообщения', n: unread, urgent: false, state: 'ready',
+                body: unread ? `<div class="ad-card-note">Непрочитанных уведомлений: <b>${unread}</b>.</div>` : ok('Непрочитанного нет'), tab: 'messages', action: 'Открыть сообщения' })
+        ].join('');
+
+        // Карта разделов: то, что раньше было двадцатью вкладками в два ряда
+        const map = this.adminVisibleGroups(this.adminTabDefs()).filter(g => g.id !== 'overview' || g.defs.length > 1).map(g => `
+            <div class="ad-map-group">
+                <div class="ad-map-title">${this.adminIcon({ id: g.icon })}<span>${g.label}</span></div>
+                ${g.defs.filter(t => t.id !== 'home').map(t => `<button class="ad-map-link" onclick="app.switchAdminTab('${t.id}')"><b>${t.label}</b><span>${esc(t.hint || '')}</span></button>`).join('')}
+            </div>`).join('');
+
+        const todayRaw = new Date().toLocaleDateString('ru-RU', { weekday: 'long', day: 'numeric', month: 'long' });
+        const today = todayRaw.charAt(0).toUpperCase() + todayRaw.slice(1);
+        box.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Центр внимания</h3><div class="ad-sub">${esc(today)} · что требует действия сегодня</div></div>
+                <button class="admin-btn" onclick="app._homeState=null; app._leadsData=null; app.renderAdminHome()">Обновить</button>
+            </div>
+            <div class="ad-cards">${cards}</div>
+            <h4 class="ad-section-h">Все разделы</h4>
+            <div class="ad-map">${map}</div>`;
     },
 
     // «Написать» из карточки монтажника — открываем вкладку сообщений сразу на его диалоге

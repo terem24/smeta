@@ -17124,12 +17124,190 @@ body.theme-yandex #admin_modal_overlay {
     vertical-align: -3px;
 }
 
-/* Ряд вкладок: плоские, активная — мягкая заливка цвета темы */
-#admin_nav_tabs {
-    gap: 4px !important;
-    padding-bottom: 12px !important;
-    margin-bottom: 18px !important;
+/* Навигация в два уровня: группы (подчёркнутый ряд) и вкладки группы (плашки) */
+#admin_nav_groups {
+    display: flex;
+    gap: 2px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--ad-line);
+    margin-bottom: 14px;
+    flex-shrink: 0;
+    width: 100%;
 }
+.admin-group-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 42px;
+    padding: 0 14px;
+    margin-bottom: -1px;
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    color: var(--text-sec);
+    font: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+}
+.admin-group-btn .ad-ico { width: 16px; height: 16px; }
+.admin-group-btn:hover { color: var(--text-main); }
+.admin-group-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+#admin_nav_tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px !important;
+    margin-bottom: 18px !important;
+    flex-shrink: 0;
+    width: 100%;
+}
+#admin_nav_tabs .admin-tab-btn {
+    margin: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+/* «Центр внимания» и общие части страниц раздела */
+.ad-page-h {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+.ad-page-h h3 { margin: 0 !important; }
+.ad-sub { color: var(--text-sec); font-size: 12px; margin-top: 2px; }
+.ad-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 12px;
+    margin-bottom: 22px;
+}
+.ad-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    padding: 14px 16px;
+    min-width: 0;
+}
+.ad-card-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ad-card-title { font-size: 13px; font-weight: 700; color: var(--text-main); }
+.ad-count {
+    min-width: 24px;
+    text-align: center;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-sec);
+    background: var(--surface);
+    border: 1px solid var(--ad-line);
+}
+.ad-count-on { color: var(--primary); border-color: var(--primary); }
+.ad-count-bad { color: #EF4444; border-color: #EF4444; background: color-mix(in srgb, #EF4444 12%, transparent); }
+.ad-card-b { flex: 1; }
+.ad-card-note { font-size: 12px; color: var(--text-sec); line-height: 1.5; padding: 4px 0; }
+.ad-card-note.ad-ok { color: #10B981; }
+.ad-card-note.ad-warn { color: #D97706; }
+.ad-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--ad-line);
+    font-size: 12px;
+}
+.ad-row:last-child { border-bottom: 0; }
+.ad-row-main { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ad-row-main b { color: var(--text-main); font-weight: 600; font-size: 13px; }
+.ad-row-main span { color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ad-row-r { flex: 0 0 auto; color: var(--text-sec); }
+.ad-row-r.ad-bad { color: #EF4444; font-weight: 600; }
+.ad-card-act { align-self: flex-start; }
+.ad-section-h { margin: 0 0 10px !important; color: var(--text-sec) !important; font-size: 12px !important; text-transform: uppercase !important; letter-spacing: 0.06em; }
+.ad-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+}
+.ad-map-group {
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    padding: 10px 12px 6px;
+    background: var(--surface);
+}
+.ad-map-title { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; color: var(--text-main); margin-bottom: 4px; }
+.ad-map-link {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    text-align: left;
+    gap: 1px;
+    padding: 7px 8px;
+    margin: 0 -8px;
+    width: calc(100% + 16px);
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: var(--text-main);
+    font: inherit;
+    cursor: pointer;
+}
+.ad-map-link b { font-size: 13px; font-weight: 600; }
+.ad-map-link span { font-size: 11px; color: var(--text-sec); }
+.ad-map-link:hover { background: var(--primary-light); }
+.ad-map-link:hover b { color: var(--primary); }
+/* Сворачиваемый блок (форма «Добавить промокод»): строка-кнопка, внутри — карточка */
+details.ad-collapse {
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    margin-bottom: 16px;
+}
+details.ad-collapse > summary {
+    list-style: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--primary);
+}
+details.ad-collapse > summary::-webkit-details-marker { display: none; }
+details.ad-collapse > summary::before {
+    content: "+";
+    font-size: 18px;
+    font-weight: 500;
+    line-height: 1;
+}
+details.ad-collapse[open] > summary::before { content: "−"; }
+details.ad-collapse[open] > summary { border-bottom: 1px solid var(--ad-line); }
+details.ad-collapse > :not(summary) { margin: 16px; }
+details.ad-collapse > div:not(summary) { margin-bottom: 16px; }
+.admin-mob-group {
+    padding: 12px 14px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-sec);
+}
+.admin-mob-group:first-child { padding-top: 6px; }
+
+/* Ряд вкладок группы: плоские, активная — мягкая заливка цвета темы */
 #admin_nav_tabs .admin-tab-btn {
     display: inline-flex !important;
     align-items: center;
