@@ -414,6 +414,8 @@ if (payload && payload.items && payload.items.length) {
       oDefs.push({ url: q.url, title: 'Узел обвязки панельного радиатора' +
         (q.kind === 'side' ? ' (боковое подключение)' : ' (нижнее подключение)') });
     });
+    if (NS.radTubular) oDefs.push({ url: NS.radTubular, title: 'Узел обвязки трубчатого радиатора' });
+    if (NS.convFloor) oDefs.push({ url: NS.convFloor, title: 'Узел обвязки внутрипольного конвектора' });
     oNodes = oDefs.map(function (d, i) {
       return { title: d.title, svg: projectSheets.imageSheet({ url: d.url,
         code: MARK.o.code, sheet: numOf('o')(oManStart + i) }) };
