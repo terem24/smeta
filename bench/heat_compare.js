@@ -20,11 +20,11 @@ const data = JSON.parse(fs.readFileSync(file, 'utf8'));
 
 // Наши допущения по умолчанию — снимаются со стенда, а не копируются руками.
 process.chdir(path.join(__dirname, '..'));
-let OURS = { R_wall: 1.8, R_glz: 0.51, R_roof: 3.95, R_floorConstr: 2.8, n_vent: 0.35, H: 2.7 };
+let OURS = { R_wall: 1.8, R_glz: 0.51, R_roof: 3.95, R_floorConstr: 2.8, R_door: 0.7, n_vent: 0.35, H: 2.7 };
 try {
     const app = require('./env.js');
     const L = app.getRoomHeatLoss({ id: 1, name: 'Гостиная', area: 20, floor: 1, windows: [{ width: 1.5 }] });
-    OURS = { R_wall: L.R_wall, R_glz: L.R_glz, R_roof: L.R_roof, R_floorConstr: L.R_floorConstr, n_vent: L.n_vent, H: app.state.h1 || 2.7 };
+    OURS = { R_wall: L.R_wall, R_glz: L.R_glz, R_roof: L.R_roof, R_floorConstr: L.R_floorConstr, R_door: L.R_door || 0.7, n_vent: L.n_vent, H: app.state.h1 || 2.7 };
 } catch (e) { console.warn('env.js не поднялся, беру значения по умолчанию:', e.message); }
 const R_ZONES = [2.1, 4.3, 8.6, 14.2];
 
@@ -81,7 +81,8 @@ for (const pr of projects) {
             T += theirsQ; T0 += theirs0;
             let o = 0;
             if (k === 'окно') o = r.area * d / OURS.R_glz;
-            else if (k === 'стена' || k === 'дверь') o = r.area * d / OURS.R_wall;   // дверей в нашем расчёте нет — она в стене
+            else if (k === 'стена') o = r.area * d / OURS.R_wall;
+            else if (k === 'дверь') o = r.area * d / OURS.R_door;
             else if (k === 'кровля') o = r.area * d / OURS.R_roof;
             else if (k === 'пол') {
                 // Зоны по грунту, как в getRoomHeatLoss: полосы 2 м по наружному периметру комнаты.
@@ -112,7 +113,7 @@ console.log('\nСОСТАВЛЯЮЩИЕ (одна геометрия, ΔT про
 console.log('составляющая  строк   Σ площади   R проектировщика (медиана; 25–75 %)   наш R   их Вт     наши Вт   наши/их');
 for (const k of ['стена', 'окно', 'дверь', 'кровля', 'пол']) {
     const c = comp[k]; if (!c) continue;
-    const ourR = { 'стена': OURS.R_wall, 'окно': OURS.R_glz, 'дверь': OURS.R_wall, 'кровля': OURS.R_roof, 'пол': OURS.R_floorConstr + ' + грунт' }[k];
+    const ourR = { 'стена': OURS.R_wall, 'окно': OURS.R_glz, 'дверь': OURS.R_door, 'кровля': OURS.R_roof, 'пол': OURS.R_floorConstr + ' + грунт' }[k];
     console.log(`${k.padEnd(12)} ${String(c.n).padStart(5)} ${f1(c.A).padStart(11)}   ${f2(median(c.R))} (${f2(q(c.R, 0.25))}–${f2(q(c.R, 0.75))})`.padEnd(66) +
         ` ${String(ourR).padStart(10)} ${String(Math.round(c.theirs)).padStart(9)} ${String(Math.round(c.ours)).padStart(9)}   ${f2(c.ours / c.theirs)}`);
 }
