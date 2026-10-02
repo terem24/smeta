@@ -123,6 +123,7 @@
   .zone input[type=text] { flex: 1 1 60px; min-width: 0; padding: 2px 5px; font-size: 12px; }
   .zone .ar { color: var(--text-main); font-size: 11.5px; white-space: nowrap; flex: 0 0 auto;
               font-variant-numeric: tabular-nums; }
+  .zone select.lay { flex: 0 0 auto; padding: 1px 2px; font-size: 11px; max-width: 74px; }
   .zone .del { color: var(--text-sec); cursor: pointer; font-weight: 700; padding: 0 2px;
                flex: 0 0 auto; }
   .zone .del:hover { color: #e06c5f; }
@@ -205,6 +206,7 @@
     <option value="tp">Тёплый пол</option>
     <option value="boiler">Котельная</option>
     <option value="wc">Санузел</option>
+    <option value="cold" title="Лестница, колонна, ванна, встроенный шкаф: петли тёплого пола и подводки обходят это место">Без обогрева</option>
   </select>
   <select id="northsel" onchange="setNorth(this.value)" title="Куда на этом плане смотрит север. По нему расчёт сам определяет, на какую сторону выходит каждая комната: на север и восток теплопотери выше.">
     <option value="">Север: не указан</option>
@@ -245,7 +247,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.13"></script>
+<script src="project_plans.js?v=1.14"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -276,7 +278,9 @@ var scaleCur = null, scaleFree = false;   // след масштабной ли�
 var imgFailed = {};   // этажи, чью подложку не удалось забрать с сервера
 var polyCur = null, closeTs = 0, undoStack = [];
 var TYPES = { tp: ['Тёплый пол', '#ff8000'], rad: ['Радиаторы', '#d22'],
-  boiler: ['Котельная', '#5577aa'], wc: ['Санузел', '#0b7285'] };
+  boiler: ['Котельная', '#5577aa'], wc: ['Санузел', '#0b7285'],
+  // лестница, колонна, ванна, шкаф внутри тёплого пола — петли и подводки обходят
+  cold: ['Без обогрева', '#888888'] };
 // Сантехприборы: подпись, буква на значке и габарит в мм (вдоль стены × от
 // стены). Габариты нужны и для привязки к стене, и для значка на листах.
 var FIXT = {
@@ -2496,15 +2500,18 @@ function tpLoops(f, stepMm) {
   if (!window.projectPlans || !projectPlans.floorLoops || !f.pxPerM) return {};
   var key = stepMm + '|' + (f.coll ? f.coll.x + ',' + f.coll.y : '-') + '|' +
     JSON.stringify((f.zones || []).map(function (z) {
-      return z.type === 'tp' ? z.pts : 0;
+      return z.type === 'tp' ? [z.pts, z.lay || ''] : z.type === 'cold' ? ['cold', z.pts] : 0;
     })) + '|' + JSON.stringify(f.leads || []);
   if (loopCache.key === key) return loopCache.val;
   if (dragZ) return loopCache.val;            // тянут край — пересчёт по отпусканию
   var out = {};
   try {
-    projectPlans.floorLoops(f, stepMm).forEach(function (Z) {
+    var FL = projectPlans.floorLoops(f, stepMm);
+    FL.forEach(function (Z) {
       if (Z.loops && Z.loops.length && Z.loops[0].sup) out[Z.i] = Z.loops;
     });
+    // пучок подводок от коллектора — рисуется отдельно, под зонами
+    Object.defineProperty(out, 'bundle', { value: FL.bundle || [], enumerable: false });
   } catch (e) { console.error('[plan_editor] петли:', e); return loopCache.val; }
   loopCache = { key: key, val: out };
   return out;
@@ -2590,6 +2597,14 @@ function draw() {
   var k = cs();
   var stepMm = UFH_STEP[cur] || 150;
   var loops = tpLoops(f, stepMm);
+  // Пучок подводок — тёмная полоса, как на листе «Тёплый пол»
+  (loops.bundle || []).forEach(function (sg) {
+    cx.beginPath();
+    cx.moveTo(sg.a[0] * k, sg.a[1] * k); cx.lineTo(sg.b[0] * k, sg.b[1] * k);
+    cx.lineWidth = Math.max(1.5, sg.n * 2 * 0.02 * (f.pxPerM || 100) * k);
+    cx.strokeStyle = 'rgba(77,63,102,.85)'; cx.lineCap = 'square';
+    cx.stroke();
+  });
   f.zones.forEach(function (z, i) {
     var col = TYPES[z.type][1];
     var lp = loops[i];
@@ -3374,6 +3389,23 @@ function renderZones() {
       draw();
     };
     d.appendChild(inp);
+    // Вид укладки: по умолчанию улитка, в узком месте змейка — как в проектах;
+    // монтажник может задать своё для зоны.
+    if (z.type === 'tp') {
+      var ls = document.createElement('select'); ls.className = 'lay';
+      ls.title = 'Укладка петель: «авто» — улитка, а в узком месте (уже 1,2 м) змейка';
+      [['', 'авто'], ['spiral', 'улитка'], ['snake', 'змейка']].forEach(function (o) {
+        var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1];
+        if ((z.lay || '') === o[0]) op.selected = true;
+        ls.appendChild(op);
+      });
+      ls.onchange = function () {
+        pushUndo('zones');
+        if (ls.value) z.lay = ls.value; else delete z.lay;
+        draw();
+      };
+      d.appendChild(ls);
+    }
     var ar = document.createElement('span'); ar.className = 'ar';
     if (z.type === 'wc') {
       var card = wcCardOf(z.name);
