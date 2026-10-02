@@ -1173,6 +1173,8 @@
 
   html[data-big-text] .ad-kv { font-size: 16.5px; }
 
+  html[data-big-text] .ad-loader { font-size: 16.5px; }
+
   html[data-big-text] .ad-pill { font-size: 15px; }
 
   html[data-big-text] .ad-field { font-size: 15.5px; }
