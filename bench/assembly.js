@@ -33,6 +33,17 @@ OBJECTS.forEach(({ title, o }) => {
     app.__setup(o);
     const r = ac.check(app.currentEquipmentList);
     console.log('\n=== ' + title + ' ===');
+    if (mode === 'chains') {
+        const ch = require('../assembly_chains.js').run(app.currentEquipmentList, ac);
+        ch.chains.forEach(c => {
+            console.log('  ' + (c.ok ? '✓' : '✗') + ' ' + c.name + (c.ok ? '' : '\n      ' + c.problem));
+            if (!c.ok || process.argv[3] === 'links') console.log('      ' + c.links.join('  →  '));
+        });
+        if (ch.dangling.length) console.log('  висят без пары: ' + ch.dangling.join('; '));
+        ch.notDescribed.forEach(t => console.log('  · не описано: ' + t));
+        if (ch.unclaimed.length) console.log('  вне цепочек: ' + ch.unclaimed.map(u => u.n + '×' + ' ' + u.name).join('; '));
+        return;
+    }
     if (mode === 'ports') {
         app.currentEquipmentList.filter(it => /^[12]\./.test(String(it.sectionTitle || ''))).forEach(it => {
             const p = ac.portsOf(it);
