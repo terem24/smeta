@@ -76,7 +76,7 @@
 <script src="project_scheme.js?v=4.51"></script>
 <script src="boiler_wall.js?v=1.0"></script>
 <script src="project_layout.js?v=4.17"></script>
-<script src="project_plans.js?v=4.28"></script>
+<script src="project_plans.js?v=4.29"></script>
 <script src="project_nodes.js?v=4.15"></script>
 <!-- Узел коллектора ТП: рисуется вектором и берёт петли из project_plans.js,
      поэтому подключается после него. -->
@@ -233,8 +233,18 @@ if (payload && payload.items && payload.items.length) {
       expRooms.push({ id: r.id, name: r.name, area: r.area, q: r.total, floor: fi + 1 });
     });
   });
+  // Труба тёплого пола — из сметы, для «Общих условий» на плане напольного
+  // отопления («металлопластиковая ø16×2,0 мм» и т. п. — как в проектах)
+  var ufhPipe = '';
+  (payload.items || []).some(function (i) {
+    var nm = String(i.name || '');
+    if (/труб/i.test(nm) && /16\s*[xх×*]\s*2/i.test(nm) && !/изоляц|гофр/i.test(nm)) {
+      ufhPipe = nm.replace(/\s+/g, ' ').trim(); return true;
+    }
+    return false;
+  });
   var planOpts = {
-    stepMm: tpStep, steps: tpSteps, rooms: expRooms,
+    stepMm: tpStep, steps: tpSteps, rooms: expRooms, ufhPipe: ufhPipe,
     floorLayers: (payload.gd && payload.gd.floorScheme) ? payload.gd.floorScheme.layers : null,
     wallLayers: (payload.gd && payload.gd.wallLayers) ? payload.gd.wallLayers : null
   };

@@ -1498,17 +1498,131 @@
     });
   }
 
-  function tpBody(f, num, stepMm, rooms) {
-    var t = fit(f), o = [];
+  // ═══ Лист «Этаж N. План напольного отопления» ════════════════════════════
+  // Оформление — по листам проектов корпуса Galf: план в середине, у каждой
+  // петли табличка на полях («Контур N / Шаг / L / расход») с выноской к
+  // точке на петле, размеры петель синим, экспликация помещений справа
+  // вверху, «Общие условия» списком внизу, обозначения Т11/Т21 над штампом.
+
+  var TP_PLAN = { x0: 64, y0: 24, x1: 292, y1: 248 };   // поле плана, мм листа
+  var TP_CARD = { w: 34, gap: 1.8 };
+  var COL_DIM = '#1f4fe0';
+
+  /** Точка на ломаной на доле frac её длины */
+  function pointAt(P, frac) {
+    var L = lenPoly(P) * frac, i;
+    for (i = 1; i < P.length; i++) {
+      var d = Math.hypot(P[i][0] - P[i - 1][0], P[i][1] - P[i - 1][1]);
+      if (L <= d && d > 0) return [P[i - 1][0] + (P[i][0] - P[i - 1][0]) * L / d, P[i - 1][1] + (P[i][1] - P[i - 1][1]) * L / d];
+      L -= d;
+    }
+    return P[P.length - 1];
+  }
+
+  /** Размерная линия чертежа: засечки 45°, число над линией (мм) */
+  function dimLine(o, a, b, label, vert) {
+    var sz = 2.2;
+    o.push('<line x1="' + n(a[0]) + '" y1="' + n(a[1]) + '" x2="' + n(b[0]) + '" y2="' + n(b[1]) +
+      '" style="stroke:' + COL_DIM + ';stroke-width:0.18"/>');
+    [a, b].forEach(function (p) {
+      o.push('<line x1="' + n(p[0] - 0.9) + '" y1="' + n(p[1] + 0.9) + '" x2="' + n(p[0] + 0.9) + '" y2="' +
+        n(p[1] - 0.9) + '" style="stroke:' + COL_DIM + ';stroke-width:0.3"/>');
+    });
+    var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    if (vert) o.push('<text x="' + n(mx - 0.7) + '" y="' + n(my) + '" font-size="' + sz + '" text-anchor="middle"' +
+      ' transform="rotate(-90 ' + n(mx - 0.7) + ' ' + n(my) + ')" style="fill:' + COL_DIM + '">' + esc(label) + '</text>');
+    else o.push(txt(mx, my - 0.7, label, { size: sz, anchor: 'middle', fill: COL_DIM }));
+  }
+
+  /**
+   * Таблички контуров по двум колонкам: петли левой половины плана — слева,
+   * правой — справа; в колонке — по высоте своей точки, без наложений.
+   */
+  function placeCards(cards, cx, rowH, cols, fr) {
+    var TP_COL = cols || { left: 24, right: 298 };
+    var W = TP_CARD.w, H = rowH * 4, step = H + TP_CARD.gap, top = TP_PLAN.y0, bot = TP_PLAN.y1;
+    var cap = Math.max(1, Math.floor((bot - top + TP_CARD.gap) / step));
+    var L = cards.filter(function (c) { return c.p[0] < cx; }), R = cards.filter(function (c) { return c.p[0] >= cx; });
+    // переполненная колонка отдаёт ближние к середине таблички соседней
+    var move = function (from, to) {
+      from.sort(function (a, b) { return Math.abs(a.p[0] - cx) - Math.abs(b.p[0] - cx); });
+      while (from.length > cap && to.length < cap) to.push(from.shift());
+    };
+    move(L, R); move(R, L);
+    // Колонка длиннее самого плана — выноски пошли бы вкось. Лишние таблички
+    // (нижних петель — под план, верхних — над ним) ставим строкой с
+    // вертикальными выносками, как на листах проектов с большим числом петель.
+    var rows = { B: [], T: [] };
+    if (fr) {
+      fr.rx0 = TP_COL.left + W + 3; fr.rx1 = TP_COL.right - 3;
+      fr.rowCap = Math.max(0, Math.floor((fr.rx1 - fr.rx0 + TP_CARD.gap) / (W + TP_CARD.gap)));
+      fr.yB = Math.min(bot - H, fr.pB + 6); fr.yT = Math.max(top, fr.pT - 6 - H);
+      fr.okB = fr.yB >= fr.pB + 3; fr.okT = fr.yT + H <= fr.pT - 3;
+    }
+    // Выноска горизонтальна, если линия под первой строкой таблички проходит
+    // через свою петлю. Петля — отрезок по высоте [верх, низ]; раздаём места
+    // «по раннему концу»: так в свою петлю попадает больше всего выносок.
+    var lo = function (c) { return c.bb ? c.bb[1] + 1.2 : c.p[1]; };
+    var hi = function (c) { return c.bb ? c.bb[3] - 1.2 : c.p[1]; };
+    var layCol = function (A, X) {
+      A.sort(function (a, b) { return hi(a) - hi(b) || lo(a) - lo(b); });
+      A.forEach(function (c, i) {
+        c.x = X; c.side = X === TP_COL.left ? 'L' : 'R';
+        var want = Math.min(Math.max(lo(c), c.p[1] - 0.25 * (hi(c) - lo(c))), hi(c)) - rowH;
+        c.y = Math.max(i ? A[i - 1].y + step : TP_PLAN.y0, Math.min(want, TP_PLAN.y1 - H));
+      });
+      for (var i = A.length - 1; i >= 0; i--) {       // упёрлись в низ — поджимаем вверх
+        var lim = i === A.length - 1 ? TP_PLAN.y1 - H : A[i + 1].y - step;
+        if (A[i].y > lim) A[i].y = Math.max(TP_PLAN.y0, lim);
+      }
+    };
+    var layRow = function (A, Y, side) {
+      A.sort(function (a, b) { return a.p[0] - b.p[0]; });
+      A.forEach(function (c, k) {
+        c.side = side; c.y = Y;
+        c.x = Math.max(k ? A[k - 1].x + W + TP_CARD.gap : fr.rx0, Math.min(c.p[0] - W / 2, fr.rx1 - W));
+      });
+      for (var i = A.length - 1; i >= 0; i--) {
+        var lim = i === A.length - 1 ? fr.rx1 - W : A[i + 1].x - W - TP_CARD.gap;
+        if (A[i].x > lim) A[i].x = Math.max(fr.rx0, lim);
+      }
+    };
+    // Табличка не дотянулась до своей петли — переезжает в строку над или под
+    // планом (пока там есть место), и колонки раскладываются заново.
+    for (var it = 0; it < 12; it++) {
+      layCol(L, TP_COL.left); layCol(R, TP_COL.right);
+      if (!fr || !fr.rowCap) break;
+      var moved = false;
+      [L, R].forEach(function (A) {
+        for (var k = A.length - 1; k >= 0; k--) {
+          var c = A[k], ay = c.y + rowH;
+          if (ay >= lo(c) - 0.3 && ay <= hi(c) + 0.3) continue;
+          var up = c.p[1] < (fr.pT + fr.pB) / 2;
+          var to = up && fr.okT && rows.T.length < fr.rowCap ? rows.T
+            : (fr.okB && rows.B.length < fr.rowCap ? rows.B : (fr.okT && rows.T.length < fr.rowCap ? rows.T : null));
+          if (!to) continue;
+          to.push(A.splice(k, 1)[0]); moved = true;
+          break;                                     // по одной: остальные могут встать после перекладки
+        }
+      });
+      if (!moved) break;
+    }
+    if (fr && fr.rowCap) { layRow(rows.B, fr.yB, 'B'); layRow(rows.T, fr.yT, 'T'); }
+    return L.length <= cap && R.length <= cap;
+  }
+
+  function tpBody(f, num, stepMm, rooms, opts) {
+    opts = opts || {};
+    var t = fit(f, TP_PLAN), o = [];
     o.push(imageTag(f, t, 0.32));
-    var anyLead = (f.leads || []).some(function (L) { return L.pts && L.pts.length > 1; });
     var bundle = floorLoops(f, stepMm, loopLimit(stepMm)).bundle || [];
-    var anyAuto = bundle.length > 0;
-    var rows = [], flowSum = 0, byLoss = false;
+    var anyAuto = bundle.length > 0, anyCold = false;
+    var flowSum = 0, cards = [], ppm = f.pxPerM || 100, Ex0 = 340;   // Ex0 — левый край экспликации
     rooms = (rooms || []).filter(function (r) { return (r.floor || 1) === num; });
     // места без обогрева (лестница, колонна) — серым контуром с перекрестьем
     (f.zones || []).forEach(function (z) {
       if (z.type !== 'cold' || !z.pts || z.pts.length < 3) return;
+      anyCold = true;
       o.push('<polygon points="' + polyPts(z.pts, t.X, t.Y) + '" style="fill:rgba(120,120,120,0.10);stroke:' +
         COLT.cold + ';stroke-width:0.35"/>');
       var b = bbox(z.pts);
@@ -1518,81 +1632,181 @@
     drawBundle(o, bundle, t, f, 1);
     // Петли считает общий расчёт: ровно те же числа уходят в смету и в
     // таблицу контуров на листе узла коллектора.
+    var dims = [];
     loopRows(f, stepMm, rooms).forEach(function (R) {
       var z = (f.zones || [])[R.zi], lp = R.loop;
-      if (R.byLoss) byLoss = true;
       if (R.li === 0) {
         o.push('<polygon points="' + polyPts(z.pts, t.X, t.Y) + '" style="fill:none;stroke:' +
           COLT.tp + ';stroke-width:0.45;stroke-dasharray:1.6,1.2"/>');
         // зона узкая — геометрия не строится, кладём встречной змейкой по габариту
         if (R.est) o.push(serpentine(z, t, f, stepMm, 'tpz' + num + '_' + R.zi));
       }
+      var dot;
       if (lp.sup) {
         var sE = lp.sup[lp.sup.length - 1], rS = lp.ret[0];
-        var rr1 = stepMm / 1000 * (f.pxPerM || 100) * t.s * 0.5;   // радиус гиба — полшага
+        var rr1 = stepMm / 1000 * ppm * t.s * 0.5;   // радиус гиба — полшага
         o.push('<path d="' + pathR(lp.sup, t, rr1) + '" style="fill:none;stroke:' + COL_SUP +
           ';stroke-width:0.5;stroke-linejoin:round;stroke-linecap:round"/>');
         o.push('<path d="' + pathD([sE, rS], t) + '" style="fill:none;stroke:' + COL_RET + ';stroke-width:0.5"/>');
         o.push('<path d="' + pathR(lp.ret, t, rr1) + '" style="fill:none;stroke:' + COL_RET +
           ';stroke-width:0.5;stroke-linejoin:round;stroke-linecap:round"/>');
-      }
-      // Номер: у одной петли — в центре зоны, у поделённой — на своей полосе.
-      // У зоны без геометрии полос нет: значок ставим один, на всю зону.
-      if (lp.sup || R.li === 0) {
-        var mark = (R.k > 1 && lp.sup) ? lp.sup[Math.floor(lp.sup.length / 2)] : centroid(z.pts);
-        o.push('<circle cx="' + n(t.X(mark[0])) + '" cy="' + n(t.Y(mark[1])) + '" r="3.4"' +
-          ' style="fill:#ffffff;stroke:' + COLT.tp + ';stroke-width:0.4"/>');
-        o.push(txt(t.X(mark[0]), t.Y(mark[1]) + 1.2,
-          (R.est && R.k > 1) ? (R.no + '…' + (R.no + R.k - 1)) : R.no,
-          { size: (R.est && R.k > 1) ? 2.6 : 3.4, anchor: 'middle' }));
+        dot = pointAt(lp.sup, 0.72);                  // точка выноски — на внутренних витках
+        // размеры петли по крайним трубам — синим, «уточнить при монтаже»
+        var bb = bbox(lp.sup.concat(lp.ret));
+        var X0 = t.X(bb[0]), X1 = t.X(bb[2]), Y0 = t.Y(bb[1]), Y1 = t.Y(bb[3]);
+        var mm = function (px) { return String(Math.round(px / ppm * 100) * 10); };
+        if (X1 - X0 > 9) dims.push([[X0, Y0 + (Y1 - Y0) * 0.16], [X1, Y0 + (Y1 - Y0) * 0.16], mm(bb[2] - bb[0]), false]);
+        if (Y1 - Y0 > 9) dims.push([[X0 + (X1 - X0) * 0.16, Y0], [X0 + (X1 - X0) * 0.16, Y1], mm(bb[3] - bb[1]), true]);
+      } else {
+        var c0 = centroid(z.pts);
+        dot = [c0[0], c0[1] + (R.li - (R.k - 1) / 2) * 0.4 * ppm];
       }
       flowSum += R.flow;
-      rows.push([R.no, R.name, num1(R.area), R.step, R.m, num1(R.flow)]);
+      // для табличек: середина петли (по ней колонка и порядок) и сама труба —
+      // точку выноски потом ставим на ней на высоте таблички
+      var lpS = lp.sup ? lp.sup.map(function (q) { return [t.X(q[0]), t.Y(q[1])]; }) : null;
+      var lb = lpS ? bbox(lpS) : null;
+      cards.push({ p: lb ? [(lb[0] + lb[2]) / 2, (lb[1] + lb[3]) / 2] : [t.X(dot[0]), t.Y(dot[1])],
+        dot: [t.X(dot[0]), t.Y(dot[1])], poly: lpS, bb: lb,
+        lines: ['Контур ' + R.no, 'Шаг ' + R.step + ' мм',
+        'L = ' + num1(lp.lenM || R.m) + ' м', num1(R.flow) + ' л/мин'] });
     });
+    dims.forEach(function (D) { dimLine(o, D[0], D[1], D[2], D[3]); });
     if (f.coll) collectorMark(f.coll, t, f, o);
-    // таблица петель слева
-    var Lx = 22, Ty = 40, W = [7, 27, 12, 13, 15, 16], rh = 6.4;
-    var Wsum = W.reduce(function (a, b) { return a + b; }, 0);
-    o.push(txt(Lx + Wsum / 2, Ty - 2.4, 'Петли тёплого пола', { size: 4.2, anchor: 'middle' }));
-    var hdr = ['№', 'Помещение', 'S, м²', 'Шаг, мм', 'Длина, м', 'G, л/мин'];
-    var all = [hdr].concat(rows);
-    all.forEach(function (r, ri) {
-      var y = Ty + ri * rh, x = Lx;
-      o.push('<rect x="' + n(Lx) + '" y="' + n(y) + '" width="' + n(Wsum) + '" height="' + rh +
-        '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
-      r.forEach(function (cell, ci) {
-        o.push(txt(x + W[ci] / 2, y + rh / 2 + 1.2, cell, { size: ri ? 3.2 : 3.4, anchor: 'middle' }));
-        if (ri === 0 && ci) o.push('<line x1="' + n(x) + '" y1="' + n(Ty) + '" x2="' + n(x) +
-          '" y2="' + n(Ty + all.length * rh) + '" style="stroke:#000;stroke-width:0.15"/>');
-        x += W[ci];
+
+    // таблички контуров с выносками: колонки — у края самого плана, а не поля
+    var zx = [];
+    (f.zones || []).forEach(function (z) { (z.pts || []).forEach(function (p) { zx.push(t.X(p[0])); }); });
+    var pL = zx.length ? Math.min.apply(null, zx) : TP_PLAN.x0, pR = zx.length ? Math.max.apply(null, zx) : TP_PLAN.x1;
+    var cols = { left: Math.max(24, pL - 6 - TP_CARD.w), right: Math.min(Ex0 - 4 - TP_CARD.w, pR + 6) };
+    var zy = [];
+    (f.zones || []).forEach(function (z) { (z.pts || []).forEach(function (p) { zy.push(t.Y(p[1])); }); });
+    var span = zy.length ? Math.max.apply(null, zy) - Math.min.apply(null, zy) : 200;
+    var rowH = 4.4, mid = (pL + pR) / 2;
+    // табличек в колонке больше, чем помещается по высоте плана, — сразу
+    // плотные: так они остаются рядом со своими петлями, выноски короче
+    var perCol = Math.ceil(cards.length / 2);
+    if (perCol * (4 * rowH + TP_CARD.gap) > span + 30) rowH = 3.3;
+    var fr = { pT: zy.length ? Math.min.apply(null, zy) : TP_PLAN.y0, pB: zy.length ? Math.max.apply(null, zy) : TP_PLAN.y1 };
+    if (!placeCards(cards, mid, rowH, cols, fr)) {
+      rowH = 3.3;                                     // много петель — таблички плотнее
+      placeCards(cards, mid, rowH, cols, fr);
+    }
+    cards.forEach(function (c) {
+      var W = TP_CARD.w, ay = c.y + rowH;
+      var ex = c.side === 'L' ? c.x + W : c.x, edge = c.side === 'L' ? Math.min(pL - 2, c.x + W + 3) : Math.max(pR + 2, c.x - 3);
+      // Выноска горизонтальная, как в проектах: точка — на трубе петли на высоте
+      // таблички (ближайшая к середине петли). Горизонтальные выноски друг друга
+      // не пересекают. Петля не дотягивается по высоте — выноска с изломом.
+      c.p = c.dot;
+      if (c.side === 'B' || c.side === 'T') {
+        // строка под/над планом: выноска вертикальная, точка — на трубе петли
+        var ax = Math.max(c.x + 2, Math.min(c.x + W - 2, c.dot[0]));
+        var ey = c.side === 'B' ? c.y : c.y + rowH * 4, hit = null;
+        if (c.poly && ax > c.bb[0] + 0.3 && ax < c.bb[2] - 0.3) {
+          var cym = (c.bb[1] + c.bb[3]) / 2;
+          for (var j = 1; j < c.poly.length; j++) {
+            var a2 = c.poly[j - 1], b2 = c.poly[j];
+            if ((a2[0] - ax) * (b2[0] - ax) > 0 || Math.abs(b2[0] - a2[0]) < 1e-6) continue;
+            var yv = a2[1] + (b2[1] - a2[1]) * (ax - a2[0]) / (b2[0] - a2[0]);
+            if (!hit || Math.abs(yv - cym) < Math.abs(hit[1] - cym)) hit = [ax, yv];
+          }
+        }
+        if (hit) c.p = hit;
+        var vpath = hit ? [[ax, ey], hit] : [[ax, ey], [ax, (ey + c.p[1]) / 2], c.p];
+        o.push('<polyline points="' + vpath.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' ') +
+          '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+      } else if (c.poly) {
+        // высота точки — у таблички, а если петля ниже/выше — ближайшая в петле
+        var yy0 = Math.max(c.bb[1] + 1.2, Math.min(c.bb[3] - 1.2, ay));
+        var cxm = (c.bb[0] + c.bb[2]) / 2, best = null;
+        for (var i = 1; i < c.poly.length; i++) {
+          var a = c.poly[i - 1], b = c.poly[i];
+          if ((a[1] - yy0) * (b[1] - yy0) > 0 || Math.abs(b[1] - a[1]) < 1e-6) continue;
+          var x = a[0] + (b[0] - a[0]) * (yy0 - a[1]) / (b[1] - a[1]);
+          if (!best || Math.abs(x - cxm) < Math.abs(best[0] - cxm)) best = [x, yy0];
+        }
+        if (best) c.p = best;
+      }
+      if (c.side === 'L' || c.side === 'R') {
+        var path = Math.abs(ay - c.p[1]) < 0.4 ? [[ex, ay], c.p] : [[ex, ay], [edge, ay], c.p];
+        o.push('<polyline points="' + path.map(function (p) { return n(p[0]) + ',' + n(p[1]); }).join(' ') +
+          '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+      }
+      o.push('<circle cx="' + n(c.p[0]) + '" cy="' + n(c.p[1]) + '" r="0.75" style="fill:#000"/>');
+      o.push('<rect x="' + n(c.x) + '" y="' + n(c.y) + '" width="' + W + '" height="' + n(rowH * 4) +
+        '" style="fill:#ffffff;stroke:#000;stroke-width:0.22"/>');
+      c.lines.forEach(function (s, i) {
+        if (i) o.push('<line x1="' + n(c.x) + '" y1="' + n(c.y + rowH * i) + '" x2="' + n(c.x + W) + '" y2="' +
+          n(c.y + rowH * i) + '" style="stroke:#000;stroke-width:0.15"/>');
+        o.push(txt(c.x + 1.6, c.y + rowH * i + rowH * 0.72, s, { size: rowH > 4 ? 3.0 : 2.4 }));
       });
     });
-    var ny = Ty + all.length * rh + 5;
-    o.push(txt(Lx, ny, 'Длины петель — по нарисованной укладке (подача и обратка' +
-      (anyLead || anyAuto ? ', подводки от коллектора' : '') + ');', { size: 3.0 }));
-    o.push(txt(Lx, ny + 4, 'петля длиннее ' + loopLimit(stepMm) +
-      ' м разделена; эти же длины и число петель — в смете.', { size: 3.0 }));
-    // Расход: по нему выставляют расходомеры на подающей гребёнке, поэтому
-    // рядом с таблицей объясняем, из чего он получен, и даём сумму по этажу.
-    o.push(txt(Lx, ny + 8, 'Расход G = Q / (c × ΔT) при ΔT = ' + ufhDt() + ' °C, ' +
-      'c = ' + String(UFH_C).replace('.', ',') + ' Вт·ч/(кг·°C);', { size: 3.0 }));
-    o.push(txt(Lx, ny + 12, 'Q — ' + (byLoss ? 'теплопотери помещения, но не выше' : 'по площади зоны и') +
-      ' ' + qUdeFor(stepMm) + ' Вт/м² (шаг ' + stepMm + ' мм).', { size: 3.0 }));
-    o.push(txt(Lx, ny + 16, 'Суммарный расход по коллектору: ' + num1(flowSum) + ' л/мин (' +
-      (flowSum * 0.06).toFixed(2).replace('.', ',') + ' м³/ч).', { size: 3.0 }));
-    // условные обозначения: подача/обратка встречной спирали
-    var ly = ny + 23;
-    o.push(txt(Lx, ly, 'Условные обозначения', { size: 3.6 }));
-    [['Подача', COL_SUP], ['Обратка', COL_RET]].forEach(function (r, i) {
-      var yy = ly + 4.6 + i * 5;
-      o.push('<line x1="' + n(Lx) + '" y1="' + n(yy) + '" x2="' + n(Lx + 9) + '" y2="' + n(yy) +
-        '" style="stroke:' + r[1] + ';stroke-width:0.6"/>');
-      o.push(txt(Lx + 11.5, yy + 1.1, r[0], { size: 3.0 }));
+
+    // экспликация помещений этажа — справа вверху, как в проектах
+    var Ex = Ex0, Ey = 30, EW = [8, 32, 15, 19], erh = 5;
+    var EWs = EW.reduce(function (a, b) { return a + b; }, 0);
+    var eRows = rooms.length
+      ? rooms.map(function (r, i) {
+          return [num + '.' + (i + 1), r.name || '', num1(+r.area || 0) + ' м²', r.q > 0 ? Math.round(r.q) + ' Вт' : '—'];
+        })
+      : floorLoops(f, stepMm, loopLimit(stepMm)).map(function (Z, i) {
+          return [num + '.' + (i + 1), Z.name || 'зона ' + (i + 1), num1(Z.area) + ' м²', '—'];
+        });
+    var sumA = 0, sumQ = 0;
+    rooms.forEach(function (r) { sumA += +r.area || 0; sumQ += +r.q || 0; });
+    o.push(txt(Ex + EWs / 2, Ey - 2.4, 'Экспликация помещений ' + num + ' этажа', { size: 3.4, anchor: 'middle' }));
+    var eAll = [['№', 'Наименование', 'Площадь', 'Теплопотери']].concat(eRows);
+    if (rooms.length) eAll.push(['', 'Итого', num1(sumA) + ' м²', Math.round(sumQ) + ' Вт']);
+    var eLines = rooms.length ? eAll.length - 1 : eAll.length;      // строка «Итого» — без колонок
+    eAll.forEach(function (r, ri) {
+      var y = Ey + ri * erh, x = Ex;
+      o.push('<rect x="' + n(Ex) + '" y="' + n(y) + '" width="' + n(EWs) + '" height="' + erh +
+        '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+      r.forEach(function (cell, ci) {
+        var s = String(cell);
+        if (ci === 1 && s.length > 20) s = s.slice(0, 19) + '…';
+        o.push(txt(x + EW[ci] / 2, y + erh * 0.7, s, { size: 2.6, anchor: 'middle' }));
+        if (ri === 0 && ci) o.push('<line x1="' + n(x) + '" y1="' + n(Ey) + '" x2="' + n(x) + '" y2="' +
+          n(Ey + eLines * erh) + '" style="stroke:#000;stroke-width:0.15"/>');
+        x += EW[ci];
+      });
     });
-    o.push(txt(228, 273.8, 'Укладка построена автоматически: трассировку уточнить при монтаже.', { size: 3.0 }));
-    if (anyAuto) o.push(txt(228, 269.6, 'Подводки от коллектора проложены автоматически, пучком, — трассу по коридорам уточнить.', { size: 3.0 }));
+
+    // общие условия — внизу слева, как в проектах
+    var pipe = opts.ufhPipe ? opts.ufhPipe : 'по спецификации';
+    var notes = [
+      'Трубопроводы напольного отопления — ' + pipe + ';',
+      'Подводящие участки трубопроводов проложить в теплоизоляции толщиной 6 мм в слое ЭППС;',
+      'Шаг укладки тёплого пола ' + stepMm + ' мм, кроме случаев, указанных отдельно;',
+      'Стыки теплоизоляции проклеить армированной лентой;',
+      'Размеры, нанесённые синим цветом, уточнить при монтаже;',
+      'Отступ контуров тёплого пола от стен 100 мм, кроме случаев, указанных отдельно;',
+      'Расход G = Q / (c × ΔT), ΔT = ' + ufhDt() + ' °C; по коллектору ' + num1(flowSum) + ' л/мин (' +
+        (flowSum * 0.06).toFixed(2).replace('.', ',') + ' м³/ч); длины контуров — с подводками, как в смете.'
+    ];
+    if (anyAuto) notes.push('Укладка и трасса подводок построены автоматически — уточнить при монтаже.');
+    var Ny = 254;
+    o.push(txt(24, Ny, 'Общие условия по системе напольного отопления:', { size: 3.2 }));
+    notes.forEach(function (s, i) { o.push(txt(24, Ny + 3.9 * (i + 1), (i + 1) + '. ' + s, { size: 2.7 })); });
+
+    // условные обозначения систем трубопроводов — над штампом справа
+    var leg = [['Т11 — подающий трубопровод напольного отопления', COL_SUP, 'line'],
+      ['Т21 — обратный трубопровод напольного отопления', COL_RET, 'line']];
+    if (anyAuto) leg.push(['Подводки к контурам в теплоизоляции', COL_BUNDLE, 'band']);
+    if (anyCold) leg.push(['Место без обогрева', COLT.cold, 'box']);
+    var Lx2 = 300, Ly2 = 274 - 4.2 * leg.length;
+    o.push(txt(Lx2, Ly2 - 2, 'Условные обозначения систем трубопроводов:', { size: 3.0 }));
+    leg.forEach(function (r, i) {
+      var yy = Ly2 + 2 + i * 4.2;
+      if (r[2] === 'box') o.push('<rect x="' + Lx2 + '" y="' + n(yy - 1.4) + '" width="9" height="2.8" style="fill:rgba(120,120,120,0.1);stroke:' + r[1] + ';stroke-width:0.3"/>');
+      else o.push('<line x1="' + Lx2 + '" y1="' + n(yy) + '" x2="' + (Lx2 + 9) + '" y2="' + n(yy) +
+        '" style="stroke:' + r[1] + ';stroke-width:' + (r[2] === 'band' ? 1.4 : 0.6) + '"/>');
+      o.push(txt(Lx2 + 11, yy + 1, r[0], { size: 2.6 }));
+    });
     return o.join('');
   }
+
 
   // ═══ Листы водоснабжения и канализации ══════════════════════════════════
   // Приборы и стояк расставлены в редакторе планов, трассы посчитаны там же
@@ -2807,12 +3021,13 @@
         });
       }
       if (want('tp') && (f.zones || []).some(function (z) { return z.type === 'tp'; })) {
-        var t2 = 'Тёплый пол ' + (i + 1) + ' этажа';
+        // название — как в проектах: «Этаж 01. План напольного отопления»
+        var t2 = 'Этаж ' + String(i + 1).padStart(2, '0') + '. План напольного отопления';
         out.push({
           kind: 'tp', title: t2,
           svg: window.projectSheets.sheet({
             code: opts.code, sheet: fmt(num++),
-            body: title(t2) + tpBody(f, i + 1, st, opts.rooms)
+            body: title(t2) + tpBody(f, i + 1, st, opts.rooms, opts)
           })
         });
       }
