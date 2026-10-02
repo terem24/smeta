@@ -2210,9 +2210,12 @@ const RecognizeUI = {
         // Сколько сегодня ушло на весь сайт — считает прокси (daily_calls.json).
         // Пока серверный файл не обновлён, поля daily нет — строка без цифры.
         const d = q && q.daily && typeof q.daily.total === 'number' ? q.daily : null;
-        const dayLine = (d ? `Сегодня на всём сайте: ${d.total} запросов. ` : '') +
-            'Суточный лимит общий на всех пользователей, обнуляется в ' + gWhen + '.';
         const admin = typeof app.hasAdminAccess === 'function' && app.hasAdminAccess();
+        // Загрузку сервиса показываем только администратору: клиенту цифра
+        // «сколько запросов на сайте» не нужна, ему важно, когда лимит снимется.
+        const seeSite = admin || !!(q && q.tariff === 'admin' && !q.personal);
+        const dayLine = (d && seeSite ? `Сегодня на всём сайте: ${d.total} запросов. ` : '') +
+            'Суточный лимит распознавания общий на всех пользователей, обнуляется в ' + gWhen + '.';
         let text, cls = 'ok', tip;
         if (b) {
             text = '⏳ ' + this.fmtLeft(b.until - Date.now());
