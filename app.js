@@ -42712,7 +42712,7 @@ const app = {
             if (error) throw error;
             this._inactCfg = value;
             this.renderAdminInactiveBody();
-            app.alert('Сроки сохранены. Ночная проверка будет работать по новым числам. Если письма и заморозки в базе не меняются — выполните миграцию 20261002_inactivity_days_setting.sql.');
+            app.alert('Сроки сохранены. Ночная проверка будет работать по новым числам.');
         } catch (e) {
             app.alert('Не удалось сохранить сроки: ' + (e.message || e));
         }
