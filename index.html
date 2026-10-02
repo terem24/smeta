@@ -111,7 +111,7 @@
     <script>
         // Размер интерфейса выбирается кнопкой «Aa» (app.cycleUiScale) и лежит на устройстве.
         // Ставим до отрисовки, чтобы страница не прыгала с 0.8 на выбранный.
-        try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1040; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
+        try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1450; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
     </script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -629,7 +629,10 @@
                 </button>
                 <!-- Иконку и подсказку проставляет app.updateThemeButton по текущему режиму
                      (светлая / тёмная / авто по закату); здесь — только вид до загрузки. -->
-                <!-- Размер интерфейса: по кругу 100 / 112 / 125 / 140 %. Иконку-бейдж и подсказку
+                <!-- Перегородка: размер и тема — отдельный блок, не смешанный с кнопками файла. -->
+                <div class="header-divider header-divider-block"></div>
+
+                <!-- Размер интерфейса: по кругу 100 / 113 / 125 / 140 %. Иконку-бейдж и подсказку
                      проставляет app.updateUiScaleButton. Только десктоп (см. style.css). -->
                 <button class="btn-ctrl" id="btn_ui_scale" onclick="app.cycleUiScale()"
                     title="Размер текста и элементов">

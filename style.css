@@ -3380,6 +3380,16 @@ body.dark-mode .stout-logo-img {
     background: var(--border);
 }
 
+/* Перегородка перед блоком «размер + тема»: выше и жирнее обычной, чтобы блок читался отдельным */
+.header-divider-block {
+    width: 2px;
+    height: 32px;
+    border-radius: 1px;
+    margin: 0 4px;
+    background: var(--text-muted, var(--border));
+    opacity: 0.45;
+}
+
 .header-auth-block {
     display: flex;
     align-items: center;
