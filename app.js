@@ -20477,6 +20477,28 @@ const app = {
         document.body.classList.add('admin-modal-open');
         this.startAdminMobileLabels();
         this.watchAdminViewport();
+        // Кнопка общего поиска рядом с переключателем темы; тот же поиск открывает Ctrl+K
+        const searchHost = document.querySelector('#admin_modal_overlay .auth-modal-content');
+        if (searchHost && !document.getElementById('admin_search_btn')) {
+            const sb = document.createElement('button');
+            sb.id = 'admin_search_btn';
+            sb.type = 'button';
+            sb.className = 'admin-search-btn';
+            sb.title = 'Поиск по панели: люди, сметы, заявки, разделы (Ctrl+K)';
+            sb.innerHTML = '<svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Поиск</span><kbd>Ctrl K</kbd>';
+            sb.addEventListener('click', () => this.openAdminSearch());
+            searchHost.appendChild(sb);
+        }
+        if (!this._adSearchKeyBound) {
+            this._adSearchKeyBound = true;
+            document.addEventListener('keydown', e => {
+                const ov = document.getElementById('admin_modal_overlay');
+                if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 'k' && ov && ov.style.display === 'flex') {
+                    e.preventDefault();
+                    this.openAdminSearch();
+                }
+            });
+        }
         // Тяжёлый набор данных нужен только «Пользователям»: владельцу панель открывается
         // «Центром внимания», и грузить ради него всех монтажников незачем
         if (!this._adminTab && !this.isAdminMobile() && this.tabVisibleFor('home', this.getAdminRole(), this.isAnalyticsOwner())) this._adminTab = 'home';
@@ -20484,6 +20506,7 @@ const app = {
     },
     closeAdminModal: function () {
         this.closeUserPeek();
+        this.closeAdminSearch();
         document.getElementById('admin_modal_overlay').style.display = 'none';
         // Данные разделов держим только пока панель открыта: следующее открытие
         // должно показать свежие, а не то, что успело устареть за день. Обнуляем
@@ -33872,7 +33895,10 @@ const app = {
     // карточка (viewAdminUser) занимает весь экран панели, и после неё надо заново искать
     // место в списке, поэтому клик по строке открывает эту панель, а полная — по кнопке.
     openUserPeek: function (userId) {
-        const u = (this.adminData.users || []).find(x => String(x.id) === String(userId));
+        // Человека может не быть на текущей странице списка (нашли поиском): берём краткую
+        // строку из списка собеседников — контакты и тариф в ней есть, остальное дозагрузит панель
+        const u = (this.adminData.users || []).find(x => String(x.id) === String(userId))
+            || (this.adminData.allUsersDropdown || []).find(x => String(x.id) === String(userId));
         if (!u) { this.viewAdminUser(userId); return; }
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const name = [u.last_name, u.first_name, u.middle_name].filter(Boolean).join(' ') || u.username || u.email || 'Без имени';
@@ -33907,6 +33933,7 @@ const app = {
                 ${rowKV('Визитов', u.sess_visits ? String(u.sess_visits) : '')}${rowKV('Время на сайте', mins ? mins + ' мин' : '')}
                 <div class="ad-peek-sec">История</div>
                 ${rowKV('Регистрация', fmtD(u.created_at))}${rowKV('Последний вход', fmtD(u.last_visited))}${rowKV('Устройство', esc(u.last_device))}
+                <div id="ad_peek_ext"><div class="ad-peek-sec">Сметы и события</div><div class="ad-card-note">Загружаем…</div></div>
             </div>
             <div class="ad-peek-f">
                 <button class="admin-btn ad-peek-main" onclick="app.closeUserPeek(); app.viewAdminUser('${jq(u.id)}')">Полная карточка</button>
@@ -33914,6 +33941,7 @@ const app = {
                 <button class="admin-btn" onclick="app.closeUserPeek(); app.adminViewUserEstimates('${jq(name)}')">Сметы</button>
             </div>`;
         host.appendChild(el);
+        this.loadPeekExtras(u);
         if (!this._peekEscBound) {
             this._peekEscBound = true;
             document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('ad_peek')) { this.closeUserPeek(); e.stopPropagation(); } }, true);
@@ -33922,6 +33950,212 @@ const app = {
     closeUserPeek: function () {
         const el = document.getElementById('ad_peek');
         if (el) el.remove();
+    },
+
+    // «Карточка 360°»: к быстрому просмотру человека добавляются его последние сметы,
+    // события и заявки. Грузятся только при открытии панели и только по этому человеку:
+    // до 8 смет и до 10 событий на запрос (несколько КБ), ничего не опрашивается.
+    loadPeekExtras: async function (u) {
+        const token = this._peekToken = (this._peekToken || 0) + 1;
+        const box = () => (this._peekToken === token) ? document.getElementById('ad_peek_ext') : null;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const fmtDay = d => d ? new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
+        const money = v => Number(v || 0).toLocaleString('ru-RU') + ' ₽';
+        try {
+            const uid = String(u.id);
+            const [ests, evA, evB] = await Promise.all([
+                supabaseClient.from('estimates')
+                    .select('id, project_name, total_sum, created_at, calc_id:calc_data->>calc_id')
+                    .eq('user_id', uid).order('created_at', { ascending: false }).limit(8),
+                supabaseClient.from('invoice_events')
+                    .select('calc_id, event, project_name, created_at')
+                    .eq('user_id', uid).order('created_at', { ascending: false }).limit(15),
+                // Старые события подписаны только почтой (до колонки user_id)
+                u.email ? supabaseClient.from('invoice_events')
+                    .select('calc_id, event, project_name, created_at')
+                    .eq('user_email', u.email).is('user_id', null).order('created_at', { ascending: false }).limit(5)
+                    : Promise.resolve({ data: [] })
+            ]);
+            const b = box();
+            if (!b) return;
+            const tech = this.ADMIN_KANBAN_TECH_EVENTS || [];
+            const meta = this.ADMIN_KANBAN_EVENT_META || {};
+            const events = [].concat(evA.data || [], evB.data || [])
+                .filter(e => tech.indexOf(e.event) < 0)
+                .sort((x, y) => new Date(y.created_at) - new Date(x.created_at)).slice(0, 8);
+            const estRows = (ests.data || []).map(e => `
+                <div class="ad-row ad-row-link" onclick="app.closeUserPeek(); app.viewAdminEstimate('${esc(e.id)}')" title="Открыть смету">
+                    <div class="ad-row-main"><b>${esc(e.project_name || 'Без названия')}</b><span>${esc(e.calc_id ? 'КП № ' + e.calc_id + ' · ' : '')}${fmtDay(e.created_at)}</span></div>
+                    <div class="ad-row-r">${money(e.total_sum)}</div>
+                </div>`).join('');
+            const evRows = events.map(e => `
+                <div class="ad-row">
+                    <div class="ad-row-main"><b>${esc((meta[e.event] && meta[e.event].label) || e.event)}</b><span>${esc(e.project_name || '')}</span></div>
+                    <div class="ad-row-r">${fmtDay(e.created_at)}</div>
+                </div>`).join('');
+            // Заявки на монтаж с тем же телефоном — если журнал уже читали (владелец)
+            const digits = String(u.phone || '').replace(/\D/g, '').slice(-10);
+            const leads = digits.length >= 10 ? (this._leadsData || []).filter(r => String(r.phone || '').replace(/\D/g, '').slice(-10) === digits && !this.isTestLead(r)) : [];
+            const leadRows = leads.slice(0, 3).map(r => `
+                <div class="ad-row ad-row-link" onclick="app.closeUserPeek(); app.adminOpenLeads('${esc(r.name || r.phone || '')}')" title="Открыть заявки">
+                    <div class="ad-row-main"><b>${esc(r.place || 'Заявка')}</b><span>${esc(r.name || '')}</span></div>
+                    <div class="ad-row-r">${fmtDay(r.at)}</div>
+                </div>`).join('');
+            b.innerHTML = `
+                <div class="ad-peek-sec">Последние сметы</div>${estRows || '<div class="ad-card-note">Смет нет</div>'}
+                <div class="ad-peek-sec">Последние события</div>${evRows || '<div class="ad-card-note">Событий нет</div>'}
+                ${leadRows ? `<div class="ad-peek-sec">Заявки на монтаж</div>${leadRows}` : ''}`;
+        } catch (e) {
+            console.warn('[карточка 360°] не загрузилось:', e);
+            const b = box();
+            if (b) b.innerHTML = '<div class="ad-peek-sec">Сметы и события</div><div class="ad-card-note ad-warn">Не удалось загрузить</div>';
+        }
+    },
+
+    adminOpenLeads: function (q) {
+        const f = this._leadFilter || (this._leadFilter = { status: 'active', src: '', q: '', test: false });
+        f.q = q || '';
+        this.switchAdminTab('leads');
+    },
+
+    // ═══ Общий поиск (Ctrl+K): разделы, люди, заявки, сметы ═══════════════════
+    // Люди и разделы ищутся в памяти — список собеседников уже загружен при открытии
+    // панели, трафика нет. Сметы: свои 50 последних — в памяти, остальные — коротким
+    // запросом (до 8 строк) после паузы в наборе, и только от трёх знаков.
+    openAdminSearch: function () {
+        const host = document.querySelector('#admin_modal_overlay .auth-modal-content');
+        if (!host || document.getElementById('ad_search')) { const i = document.getElementById('ad_search_input'); if (i) i.focus(); return; }
+        this.closeUserPeek();
+        const el = document.createElement('div');
+        el.id = 'ad_search';
+        el.innerHTML = `
+            <div class="ad-search-box" role="dialog" aria-label="Поиск по панели">
+                <input id="ad_search_input" type="text" autocomplete="off" placeholder="Человек, смета, заявка или раздел…">
+                <div id="ad_search_res" class="ad-search-res"></div>
+                <div class="ad-search-foot"><span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span><span><kbd>Enter</kbd> открыть</span><span><kbd>Esc</kbd> закрыть</span></div>
+            </div>`;
+        el.addEventListener('mousedown', e => { if (e.target === el) this.closeAdminSearch(); });
+        host.appendChild(el);
+        this._adSearch = { q: '', items: [], sel: 0, remote: [], tok: 0 };
+        const inp = document.getElementById('ad_search_input');
+        inp.addEventListener('input', () => this.adminSearchRun(inp.value));
+        inp.addEventListener('keydown', e => {
+            const n = this._adSearch.items.length;
+            if (e.key === 'ArrowDown') { e.preventDefault(); this._adSearch.sel = Math.min(n - 1, this._adSearch.sel + 1); this.adminSearchRender(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); this._adSearch.sel = Math.max(0, this._adSearch.sel - 1); this.adminSearchRender(); }
+            else if (e.key === 'Enter') { e.preventDefault(); this.adminSearchOpen(this._adSearch.sel); }
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.closeAdminSearch(); }
+        });
+        inp.focus();
+        this.adminSearchRun('');
+        // Журнал заявок — владельцу, один раз за открытие панели
+        if (!this._leadsData && this.isAnalyticsOwner() && !this._searchLeadsTried) {
+            this._searchLeadsTried = true;
+            (async () => {
+                try {
+                    const token = await this.recognitionToken();
+                    const res = await fetch(this.LEADS_URL, { headers: token ? { 'Authorization': 'Bearer ' + token } : {}, cache: 'no-store' });
+                    if (!res.ok) return;
+                    const j = JSON.parse((await res.text()).replace(/^﻿/, ''));
+                    this._leadsData = j.items || [];
+                    if (document.getElementById('ad_search')) this.adminSearchRun(document.getElementById('ad_search_input').value);
+                } catch (e) { /* без заявок поиск работает */ }
+            })();
+        }
+    },
+
+    closeAdminSearch: function () {
+        const el = document.getElementById('ad_search');
+        if (el) el.remove();
+    },
+
+    adminSearchRun: function (raw) {
+        const s = this._adSearch;
+        if (!s) return;
+        s.q = raw;
+        const q = raw.trim().toLowerCase().replace(/ё/g, 'е');
+        const tokens = q.split(/\s+/).filter(Boolean);
+        const digits = q.replace(/\D/g, '');
+        const norm = x => String(x == null ? '' : x).toLowerCase().replace(/ё/g, 'е');
+        const hit = (hay) => { const h = norm(hay); return tokens.every(t => h.indexOf(t) >= 0); };
+        const items = [];
+
+        // Разделы — при пустом запросе показываем их все как меню быстрого перехода
+        const defs = this.adminTabDefs();
+        defs.filter(t => !tokens.length || hit(t.label + ' ' + (t.sub || '') + ' ' + (t.hint || ''))).slice(0, tokens.length ? 5 : 8).forEach(t => {
+            items.push({ kind: 'section', title: t.label, sub: t.hint || '', icon: t, act: () => this.switchAdminTab(t.id) });
+        });
+
+        if (tokens.length) {
+            // Люди
+            const people = (this.adminData.allUsersDropdown || []).filter(u =>
+                hit([u.username, u.email, u.phone, u.region, u.city].join(' ')) ||
+                (digits.length >= 4 && String(u.phone || '').replace(/\D/g, '').indexOf(digits) >= 0));
+            people.slice(0, 6).forEach(u => items.push({ kind: 'user', title: u.username || u.email || 'Без имени', sub: [u.email, u.phone, u.region].filter(Boolean).join(' · '), act: () => this.openUserPeek(u.id) }));
+            // Заявки
+            ((this._leadsData || []).filter(r => !this.isTestLead(r) && (hit([r.name, r.phone, r.place, r.comment, r.src].join(' ')) ||
+                (digits.length >= 4 && String(r.phone || '').replace(/\D/g, '').indexOf(digits) >= 0)))).slice(0, 4)
+                .forEach(r => items.push({ kind: 'lead', title: r.name || 'Заявка', sub: [r.place, r.phone].filter(Boolean).join(' · '), act: () => this.adminOpenLeads(r.name || r.phone || '') }));
+            // Сметы: свои 50 последних и страница списка — в памяти
+            const seen = new Set();
+            const own = [].concat(this.adminData.recentEstimates || [], this.adminData.userEstimates || []).filter(e => {
+                if (!e || seen.has(String(e.id))) return false;
+                seen.add(String(e.id));
+                const cid = e.calc_data && e.calc_data.calc_id;
+                return hit([e.project_name, cid, e.users && (Array.isArray(e.users) ? (e.users[0] || {}).username : e.users.username)].join(' '));
+            });
+            own.slice(0, 5).forEach(e => items.push({ kind: 'estimate', title: e.project_name || 'Без названия', sub: (e.calc_data && e.calc_data.calc_id ? 'КП № ' + e.calc_data.calc_id + ' · ' : '') + Number(e.total_sum || 0).toLocaleString('ru-RU') + ' ₽', act: () => this.viewAdminEstimate(e.id) }));
+            // Остальные сметы — с сервера, после паузы и от трёх знаков
+            (s.remote || []).filter(e => !seen.has(String(e.id))).slice(0, 5)
+                .forEach(e => items.push({ kind: 'estimate', title: e.project_name || 'Без названия', sub: (e.calc_id ? 'КП № ' + e.calc_id + ' · ' : '') + Number(e.total_sum || 0).toLocaleString('ru-RU') + ' ₽', act: () => this.viewAdminEstimate(e.id) }));
+            clearTimeout(s.timer);
+            if (q.length >= 3) {
+                const tok = ++s.tok;
+                s.timer = setTimeout(async () => {
+                    try {
+                        // Запрос чистим от знаков, которыми PostgREST разделяет условия
+                        const safe = q.replace(/[,()%*:\\"']/g, ' ').trim();
+                        if (safe.length < 3) return;
+                        let qy = supabaseClient.from('estimates')
+                            .select('id, project_name, total_sum, calc_id:calc_data->>calc_id')
+                            .or(`project_name.ilike.%${safe}%,calc_data->>calc_id.eq.${safe}`)
+                            .order('created_at', { ascending: false }).limit(8);
+                        qy = this.scopeQueryToManager(qy, 'user_id');
+                        const { data } = await qy;
+                        if (tok !== s.tok || !document.getElementById('ad_search')) return;
+                        s.remote = data || [];
+                        this.adminSearchRun(document.getElementById('ad_search_input').value);
+                    } catch (e) { console.warn('[поиск] сметы:', e); }
+                }, 450);
+            } else { s.remote = []; }
+        }
+        s.items = items;
+        s.sel = Math.min(s.sel, Math.max(0, items.length - 1));
+        this.adminSearchRender();
+    },
+
+    adminSearchRender: function () {
+        const s = this._adSearch, box = document.getElementById('ad_search_res');
+        if (!s || !box) return;
+        const esc = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const LABEL = { section: 'Разделы', user: 'Люди', lead: 'Заявки', estimate: 'Сметы' };
+        if (!s.items.length) { box.innerHTML = '<div class="ad-card-note" style="padding:14px 16px;">Ничего не найдено</div>'; return; }
+        let last = '', h = '';
+        s.items.forEach((it, i) => {
+            if (it.kind !== last) { h += `<div class="ad-search-grp">${LABEL[it.kind]}</div>`; last = it.kind; }
+            h += `<div class="ad-search-it${i === s.sel ? ' sel' : ''}" data-i="${i}" onmouseenter="app._adSearch.sel=${i}; app.adminSearchRender()" onmousedown="event.preventDefault(); app.adminSearchOpen(${i})">
+                <b>${esc(it.title)}</b><span>${esc(it.sub)}</span></div>`;
+        });
+        box.innerHTML = h;
+        const cur = box.querySelector('.ad-search-it.sel');
+        if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+    },
+
+    adminSearchOpen: function (i) {
+        const it = this._adSearch && this._adSearch.items[i];
+        if (!it) return;
+        this.closeAdminSearch();
+        it.act();
     },
 
     viewAdminUser: async function (userId) {
