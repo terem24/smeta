@@ -17381,7 +17381,9 @@ body.theme-yandex #admin_modal_overlay {
     align-items: center;
     justify-content: center;
     gap: 16px;
-    padding: 56px 0;
+    /* Один логотип по центру вкладки: заглушка занимает свободную высоту под навигацией */
+    min-height: min(52vh, 440px);
+    padding: 24px 0;
     text-align: center;
     color: var(--text-sec);
     font-size: 13px;

@@ -21914,22 +21914,29 @@ const app = {
         });
     },
 
-    // Все заглушки «Загрузка…» панели получают тот же значок, что крутится при загрузке самого
+    // Заглушка «Загрузка…» всей вкладки получает тот же значок, что крутится при загрузке самого
     // калькулятора (логотип-огонёк со свечением, см. #stout_preloader в index.html). Заглушек
     // два десятка и все пишутся строкой прямо в разделах, поэтому переделывать каждую
-    // не нужно: любая такая строка, где бы она ни появилась, оформляется здесь.
+    // не нужно: любая такая строка оформляется здесь.
+    //
+    // Только заглушки уровня вкладки — прямые дети панели или их обёртки. Мелкие «Загружаем…»
+    // внутри карточек (в «Центре внимания» их четыре сразу) остаются текстом: четыре
+    // вертящихся логотипа на одном экране — шум, нужен один, по центру вкладки. И не больше
+    // одного на экране: следующая заглушка ждёт, пока предыдущая исчезнет.
     decorateAdminLoaders: function (root) {
-        root.querySelectorAll('div, p, span').forEach(el => {
-            // .ad-loader — уже оформленная заглушка и её подпись (она сама подходит под шаблон)
-            if (el.dataset.ldr || el.children.length || el.closest('.ad-loader, .admin-chat-wrap')) return;
+        if (root.querySelector('.ad-loader')) return;
+        const cands = root.querySelectorAll(':scope > div, :scope > div > div');
+        for (const el of cands) {
+            if (el.dataset.ldr || el.children.length || el.closest('.admin-chat-wrap')) continue;
             const t = (el.textContent || '').trim();
-            if (t.length > 70 || !/^(Загрузка|Загружаем)[^<]*(…|\.\.\.)$/.test(t)) return;
+            if (t.length > 70 || !/^(Загрузка|Загружаем)[^<]*(…|\.\.\.)$/.test(t)) continue;
             el.dataset.ldr = '1';
             el.classList.add('ad-loader');
             el.removeAttribute('style');
             el.innerHTML = '<div class="ad-loader-logo"><img src="img/logo_hc_flame.png" alt="" draggable="false"></div><div class="ad-loader-t"></div>';
             el.lastChild.textContent = t;
-        });
+            break;
+        }
     },
 
     softenAdminChips: function (root) {
