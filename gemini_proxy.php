@@ -203,30 +203,44 @@ checkRateLimit($mode, $limits['rate']);
  * времени, как у него. Файл читает recognize_archive.php (?quota=1) —
  * оттуда цифра попадает в индикатор в углу вкладки распознавания.
  */
-function dailyCallsPath() {
+/** Куда писать счётчик: сначала archive рядом со скриптом, иначе временная папка. */
+function dailyCallsPaths() {
+    $paths = [];
     $dir = __DIR__ . '/archive';
-    return (is_dir($dir) && is_writable($dir))
-        ? $dir . '/daily_calls.json'
-        : sys_get_temp_dir() . '/hc_gemini_daily.json';
+    if (is_dir($dir) && is_writable($dir)) $paths[] = $dir . '/daily_calls.json';
+    $paths[] = sys_get_temp_dir() . '/hc_gemini_daily.json';
+    $paths[] = __DIR__ . '/daily_calls.json';
+    return $paths;
 }
 
+/**
+ * Записывает один вызов. Возвращает строку-статус: 'ok:<куда>' или 'fail:<почему>' —
+ * её прокси кладёт в заголовок X-Daily-Counter, чтобы по ответу сервера было видно,
+ * что файл новый и пишет ли он (иначе «счётчик 0» не отличить от старого файла).
+ */
 function noteDailyCall($model, $mode) {
     $date = (new DateTime('now', new DateTimeZone('America/Los_Angeles')))->format('Y-m-d');
-    $fh = @fopen(dailyCallsPath(), 'c+');
-    if (!$fh) return;
-    if (!flock($fh, LOCK_EX)) { fclose($fh); return; }
-    $data = json_decode(stream_get_contents($fh), true);
-    if (!is_array($data) || ($data['date'] ?? '') !== $date) {
-        $data = ['date' => $date, 'models' => [], 'modes' => []];
+    $why = [];
+    foreach (dailyCallsPaths() as $i => $path) {
+        $fh = @fopen($path, 'c+');
+        if (!$fh) { $why[] = "open#$i"; continue; }
+        if (!flock($fh, LOCK_EX)) { fclose($fh); $why[] = "lock#$i"; continue; }
+        $data = json_decode(stream_get_contents($fh), true);
+        if (!is_array($data) || ($data['date'] ?? '') !== $date) {
+            $data = ['date' => $date, 'models' => [], 'modes' => []];
+        }
+        $data['models'][$model] = ($data['models'][$model] ?? 0) + 1;
+        $data['modes'][$mode] = ($data['modes'][$mode] ?? 0) + 1;
+        ftruncate($fh, 0);
+        rewind($fh);
+        $n = fwrite($fh, json_encode($data, JSON_UNESCAPED_UNICODE));
+        fflush($fh);
+        flock($fh, LOCK_UN);
+        fclose($fh);
+        if ($n === false) { $why[] = "write#$i"; continue; }
+        return 'ok:' . ($i === 0 && strpos($path, '/archive/') !== false ? 'archive' : ($i === 0 ? 'tmp' : 'tmp#' . $i));
     }
-    $data['models'][$model] = ($data['models'][$model] ?? 0) + 1;
-    $data['modes'][$mode] = ($data['modes'][$mode] ?? 0) + 1;
-    ftruncate($fh, 0);
-    rewind($fh);
-    fwrite($fh, json_encode($data, JSON_UNESCAPED_UNICODE));
-    fflush($fh);
-    flock($fh, LOCK_UN);
-    fclose($fh);
+    return 'fail:' . implode(',', $why);
 }
 
 // Формируем payload для Gemini API
@@ -266,7 +280,7 @@ if (!empty($requestData['model']) && in_array($requestData['model'], $ALLOWED_MO
     $model = $requestData['model'];
 }
 
-noteDailyCall($model, $mode);
+header('X-Daily-Counter: ' . noteDailyCall($model, $mode));
 
 relay($RELAY_URL, $RELAY_TOKEN, [
     'apiKey' => $GEMINI_API_KEY,
