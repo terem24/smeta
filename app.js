@@ -40110,11 +40110,80 @@ const app = {
         this.state.darkMode = dark;
         document.body.classList.toggle('dark-mode', dark && !this.isShopTheme());
         this.updateThemeButton(mode);
+        this.applyUiScale();
         // Тема «Яндекс» живёт поверх: ей нужно знать, ночь сейчас или день (цвет строки состояния)
         if (this.syncYandexTheme) this.syncYandexTheme();
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
         // раз в минуту, и писать состояние каждый раз незачем.
         if (changed) this.saveState();
+    },
+
+    // Размер интерфейса для тех, кому мелко (большой монитор, слабое зрение). Страница
+    // живёт в zoom 0.8 (#page_scale_wrapper); кнопка «Aa» в шапке крутит этот множитель
+    // по кругу. Хранится на устройстве, а не в смете: на ноутбуке и на мониторе нужно
+    // разное. Остальной код zoom читает из вычисленного стиля, поэтому подстраивается сам.
+    UI_ZOOM_KEY: 'hc_ui_zoom',
+    UI_ZOOM_STEPS: [0.8, 0.9, 1, 1.12],
+    // Минимальная ширина вёрстки (в единицах до zoom), с которой калькулятор не даёт
+    // горизонтального скролла: замер 1012 px (1134 экранных при zoom 1.12), с запасом.
+    UI_MIN_LAYOUT_W: 1040,
+
+    // Выбранный человеком размер (то, что лежит в localStorage)
+    uiZoomChosen: function () {
+        let z = NaN;
+        try { z = parseFloat(localStorage.getItem(this.UI_ZOOM_KEY)); } catch (e) { }
+        return this.UI_ZOOM_STEPS.includes(z) ? z : this.UI_ZOOM_STEPS[0];
+    },
+
+    // Размеры, которые по ширине окна помещаются. Меньше стандартного 0.8 не уходим.
+    uiZoomSteps: function () {
+        const max = window.innerWidth / this.UI_MIN_LAYOUT_W;
+        const ok = this.UI_ZOOM_STEPS.filter(z => z <= max);
+        return ok.length ? ok : [this.UI_ZOOM_STEPS[0]];
+    },
+
+    // Действующий размер: выбранный, но не больше того, что влезает в окно
+    uiZoom: function () {
+        const chosen = this.uiZoomChosen();
+        const ok = this.uiZoomSteps().filter(z => z <= chosen);
+        return ok.length ? ok[ok.length - 1] : this.UI_ZOOM_STEPS[0];
+    },
+
+    applyUiScale: function () {
+        if (!this._uiScaleBound) {
+            this._uiScaleBound = true;
+            // Окно сузили или расширили — размер подстраивается (выбор человека не трогаем)
+            window.addEventListener('resize', () => this.applyUiScale());
+        }
+        const z = this.uiZoom();
+        const changed = this._uiZoomApplied !== z;
+        this._uiZoomApplied = z;
+        document.documentElement.style.setProperty('--ui-zoom', z);
+        this.updateUiScaleButton(z);
+        // Шапка, колонки и липкие панели считают размеры от zoom — пересчитать после смены.
+        // Только при реальной смене: событие resize слушаем сами, иначе зациклимся.
+        if (changed) window.dispatchEvent(new Event('resize'));
+    },
+
+    updateUiScaleButton: function (z) {
+        const btn = document.getElementById('btn_ui_scale');
+        if (!btn) return;
+        const pct = Math.round(z / this.UI_ZOOM_STEPS[0] * 100);
+        const steps = this.uiZoomSteps();
+        const next = steps[(steps.indexOf(z) + 1) % steps.length];
+        btn.title = `Размер текста и элементов: ${pct}%. Нажмите, чтобы сделать ${Math.round(next / this.UI_ZOOM_STEPS[0] * 100)}%`;
+        let badge = btn.querySelector('.ui-scale-badge');
+        if (pct === 100) { if (badge) badge.remove(); return; }
+        if (!badge) { badge = document.createElement('span'); badge.className = 'ui-scale-badge'; btn.appendChild(badge); }
+        badge.textContent = pct + '%';
+    },
+
+    cycleUiScale: function () {
+        const steps = this.uiZoomSteps();
+        const cur = this.uiZoom();
+        const next = steps[(steps.indexOf(cur) + 1) % steps.length];
+        try { localStorage.setItem(this.UI_ZOOM_KEY, String(next)); } catch (e) { }
+        this.applyUiScale();
     },
 
     themeModeInfo: function (mode) {

@@ -109,6 +109,11 @@
     <link rel="manifest" href="manifest.json?v=2">
     <meta name="theme-color" content="#2563EB">
     <script>
+        // Размер интерфейса выбирается кнопкой «Aa» (app.cycleUiScale) и лежит на устройстве.
+        // Ставим до отрисовки, чтобы страница не прыгала с 0.8 на выбранный.
+        try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1040; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
+    </script>
+    <script>
         if ('serviceWorker' in navigator) {
             // В приложении адрес тоже localhost, но разгружать там нечего:
             // Service Worker внутри APK не регистрируется, а перезагрузка страницы
@@ -624,6 +629,15 @@
                 </button>
                 <!-- Иконку и подсказку проставляет app.updateThemeButton по текущему режиму
                      (светлая / тёмная / авто по закату); здесь — только вид до загрузки. -->
+                <!-- Размер интерфейса: по кругу 100 / 112 / 125 / 140 %. Иконку-бейдж и подсказку
+                     проставляет app.updateUiScaleButton. Только десктоп (см. style.css). -->
+                <button class="btn-ctrl" id="btn_ui_scale" onclick="app.cycleUiScale()"
+                    title="Размер текста и элементов">
+                    <svg viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <text x="1" y="19" font-size="17" font-weight="700" font-family="Inter, sans-serif">A</text>
+                        <text x="13.5" y="19" font-size="11" font-weight="700" font-family="Inter, sans-serif">A</text>
+                    </svg>
+                </button>
                 <button class="btn-ctrl" id="btn_theme" onclick="app.cycleThemeMode()"
                     title="Переключить тему">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
