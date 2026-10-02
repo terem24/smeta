@@ -40253,9 +40253,11 @@ const app = {
     // разное. Остальной код zoom читает из вычисленного стиля, поэтому подстраивается сам.
     UI_ZOOM_KEY: 'hc_ui_zoom',
     UI_ZOOM_STEPS: [0.8, 0.9, 1, 1.12],
-    // Минимальная ширина вёрстки (в единицах до zoom), с которой калькулятор не даёт
-    // горизонтального скролла: замер 1012 px (1134 экранных при zoom 1.12), с запасом.
-    UI_MIN_LAYOUT_W: 1040,
+    // Минимальная ширина вёрстки (в единицах до zoom), с которой нет ни горизонтального
+    // скролла, ни переносов в кнопках и вкладках. Замер 03.10.2026 (роль «Профи»):
+    // окно 1280 px — переносы уже со 113 %, 1366 — с 125 %, от 1536 — чисто на всех.
+    // Скролл появляется раньше (около 1012), но переносы портят вид раньше скролла.
+    UI_MIN_LAYOUT_W: 1450,
 
     // Выбранный человеком размер (то, что лежит в localStorage)
     uiZoomChosen: function () {
@@ -40297,6 +40299,8 @@ const app = {
     updateUiScaleButton: function (z) {
         const btn = document.getElementById('btn_ui_scale');
         if (!btn) return;
+        // Окно узкое, и больше стандартного ничего не помещается — кнопка была бы пустой
+        btn.style.display = this.uiZoomSteps().length < 2 ? 'none' : '';
         const pct = Math.round(z / this.UI_ZOOM_STEPS[0] * 100);
         const steps = this.uiZoomSteps();
         const next = steps[(steps.indexOf(z) + 1) % steps.length];
