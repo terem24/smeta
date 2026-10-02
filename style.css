@@ -17348,6 +17348,16 @@ body.theme-yandex #admin_modal_overlay {
     #ad_peek { width: 100%; border-radius: 0; }
 }
 
+/* Кнопки-слова в строках «Напоминаний» («Карточка», «Вернуть»): общий стиль .admin-action-btn
+   рассчитан на квадрат-иконку 28 px, и подпись вылезала за него и налезала на соседнюю */
+#admin_inactive_root .admin-action-btn {
+    width: auto !important;
+    min-width: 28px;
+    padding: 0 10px !important;
+    white-space: nowrap;
+}
+#admin_inactive_root td:last-child { white-space: nowrap; }
+
 /* Формы настроек внутри сворачиваемых блоков: подписанные поля сеткой, кнопка справа */
 .ad-form-grid {
     display: grid;
