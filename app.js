@@ -14724,6 +14724,7 @@ const app = {
     setProfileTab: function (tab) {
         const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment'];
         if (!tabs.includes(tab)) tab = 'requisites';
+        tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
         // висящие подписки и не обновлять невидимую панель
         if (this._activeProfileTab !== tab && (this._activeProfileTab === 'manager' || this._activeProfileTab === 'installers')) {
@@ -14736,14 +14737,18 @@ const app = {
         if (lkLay) lkLay.classList.remove('lk-menu-open');
         const mobCur = document.getElementById('lk_mob_cur');
         if (mobCur) {
-            const mi = this.CABINET_MENU.find(x => x.id === tab);
-            mobCur.textContent = mi ? mi.nav : '';
+            const parent = this.cabinetParentOf(tab);
+            const mi = this.CABINET_MENU.find(x => x.id === parent);
+            const sub = (this.CABINET_SUBTABS[parent] || []).find(x => x.id === tab);
+            mobCur.textContent = mi ? (mi.nav + (sub && this.cabinetVisibleSubtabs(parent).length > 1 ? ' · ' + sub.label : '')) : '';
         }
+        this.renderCabinetSubtabs(tab);
 
         const navBar = document.getElementById('profile_nav');
         if (navBar) {
+            const navParent = this.cabinetParentOf(tab);
             navBar.querySelectorAll('.lk-nav-item').forEach(el => {
-                el.classList.toggle('active', el.dataset.tab === tab);
+                el.classList.toggle('active', el.dataset.tab === navParent);
             });
         }
         tabs.forEach(t => {
@@ -14801,7 +14806,14 @@ const app = {
     // У «Подписки» своего пункта в панели нет (раздел скрыт до конца обкатки тарифа),
     // но подсветить логично соседний — иначе панель выглядит так, будто кабинет закрыт.
     RAIL_TAB_ALIAS: {
-        subscription: 'requisites'
+        subscription: 'requisites',
+        // Разделы внутри пунктов меню (см. CABINET_SUBTABS): подсвечиваем пункт-родитель
+        summary: 'home',
+        oprosniki: 'objects',
+        orders: 'objects',
+        company: 'requisites',
+        manager: 'requisites',
+        equipment: 'workprices'
     },
 
     // Все разделы занимают одно и то же место на экране, поэтому при переходе то,
@@ -14832,27 +14844,61 @@ const app = {
     //   only   — 'nav': пункта на панели нет
     CABINET_MENU: [
         { id: 'calc', kind: 'act', group: 'calc', nav: 'Расчёт', short: 'Расчёт', rail: 'Расчёт', title: 'Вернуться к расчёту сметы', icon: '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="11" x2="8.01" y2="11"></line><line x1="12" y1="11" x2="12.01" y2="11"></line><line x1="16" y1="11" x2="16.01" y2="11"></line><line x1="8" y1="15" x2="8.01" y2="15"></line><line x1="12" y1="15" x2="12.01" y2="15"></line><line x1="16" y1="15" x2="16.01" y2="15"></line><line x1="8" y1="19" x2="12" y2="19"></line>' },
-        { id: 'home', kind: 'tab', group: 'calc', nav: 'Главная', short: 'Главная', rail: 'Главная', title: 'Что требует внимания: ответы клиентов, сообщения, незавершённое', icon: '<path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-5h4v5"></path>' },
+        { id: 'home', kind: 'tab', group: 'calc', nav: 'Главная', short: 'Главная', rail: 'Главная', title: 'Что требует внимания и мои показатели', icon: '<path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-5h4v5"></path>' },
         { id: 'messages', kind: 'act', group: 'calc', nav: 'Сообщения', short: 'Сообщения', rail: 'Сообщения', title: 'Сообщения и уведомления', icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>', badge: true },
-        { id: 'objects', kind: 'tab', group: 'objects', cap: 'Работа', nav: 'Мои объекты', short: 'Объекты', rail: 'Объекты', title: 'Мои объекты — сохранённые сметы', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
-        { id: 'oprosniki', kind: 'tab', group: 'objects', nav: 'Опросные листы', short: 'Опросники', rail: 'Опросники', title: 'Опросные листы', icon: '<path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>' },
-        // Ключ orders не меняем — на него ссылаются push-уведомления (payload.open:"orders")
-        { id: 'orders', kind: 'tab', group: 'objects', nav: 'Документы', short: 'Документы', rail: 'Документы', title: 'Документы: договор, акты, гарантийный талон', icon: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line>' },
-        { id: 'summary', kind: 'tab', group: 'objects', nav: 'Мои показатели', short: 'Показатели', rail: 'Показатели', title: 'Мои показатели: скорость, средний объект, деньги на столе', icon: '<line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line>' },
-        { id: 'requisites', kind: 'tab', group: 'account', cap: 'Настройки', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные', navTitle: 'Профиль', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
-        { id: 'company', kind: 'tab', group: 'account', nav: 'Реквизиты компании', short: 'Реквизиты', rail: 'Реквизиты', title: 'Реквизиты компании и логотип', icon: '<path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M10 21v-5h4v5"></path><path d="M9 10h.01"></path><path d="M15 10h.01"></path>' },
-        { id: 'manager', kind: 'tab', group: 'account', nav: 'Мой менеджер', short: 'Менеджер', rail: 'Менеджер', title: 'Мой менеджер, условия доставки и оплаты', icon: '<path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path>' },
-        // Скрыт до конца обкатки тарифа; на панели пункта нет
-        { id: 'subscription', kind: 'tab', group: 'account', only: 'nav', hide: true, nav: 'Подписка', short: 'Подписка', title: 'Подписка', icon: '<path d="M12 2l2.6 6.6L21 9.3l-5 4.5 1.4 6.8L12 17.3 6.6 20.6 8 13.8 3 9.3l6.4-.7z"></path>' },
+        { id: 'objects', kind: 'tab', group: 'objects', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
+        { id: 'requisites', kind: 'tab', group: 'account', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
+        { id: 'workprices', kind: 'tab', group: 'account', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
         // Только менеджерам дистрибьюторов: показ включают refreshManagerTabVisibility и syncRailUI
         { id: 'installers', kind: 'tab', group: 'account', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
-        { id: 'workprices', kind: 'tab', group: 'account', nav: 'Прайс монтажа', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж', navTitle: 'Прайс монтажа', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
-        { id: 'equipment', kind: 'tab', group: 'account', nav: 'Своё оборудование', short: 'Замены', rail: 'Замены', title: 'Своё оборудование и замены', navTitle: 'Своё оборудование', icon: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line>' },
         // Владельцу и админам — показ включает syncRailUI по hasAdminAccess()
-        { id: 'admin', kind: 'act', group: 'service', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' },
-        // Рейтинг — отдельная страница (/rating/): на панели открывается во врезке, в окне кабинета — ссылкой
-        { id: 'rating', kind: 'act', group: 'service', link: '/rating/', nav: 'Баллы и рейтинг', short: 'Баллы', rail: 'Рейтинг', title: 'Баллы, значки и рейтинг', navTitle: 'Баллы и рейтинг', icon: '<path d="M7 4h10v4a5 5 0 0 1-10 0V4z"></path><path d="M7 5H4.5A1.5 1.5 0 0 0 3 6.5v1A3.5 3.5 0 0 0 6.5 11H7"></path><path d="M17 5h2.5A1.5 1.5 0 0 1 21 6.5v1A3.5 3.5 0 0 1 17.5 11H17"></path><path d="M12 13v4"></path><path d="M9 21h6"></path><path d="M10 17h4"></path>' },
+        { id: 'admin', kind: 'act', group: 'service', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' }
     ],
+
+    // Внутри пункта меню — вкладки-чипы над содержимым: пунктов в меню семь, а разделов
+    // за ними одиннадцать. Ключи разделов (profile_tab_<id>, data-tab, push open:"orders")
+    // не менялись — меняется только то, как они сгруппированы на экране.
+    CABINET_SUBTABS: {
+        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }],
+        objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
+        requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
+        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }]
+    },
+
+    // Пункт меню, под которым живёт раздел (подсветка в меню и на панели)
+    cabinetParentOf: function (tab) {
+        const subs = this.CABINET_SUBTABS;
+        for (const k of Object.keys(subs)) { if (subs[k].some(s => s.id === tab)) return k; }
+        return (this.RAIL_TAB_ALIAS && this.RAIL_TAB_ALIAS[tab]) || tab;
+    },
+
+    // Вкладки пункта с учётом тарифа: продавцу без монтажа прайс и документы не показываем
+    // (решения владельца 10.09 и 26.09.2026 — тот же признак canUseWorks, что и раньше у пунктов меню)
+    cabinetVisibleSubtabs: function (parent) {
+        const subs = this.CABINET_SUBTABS[parent] || [];
+        const noWorks = !this.canUseWorks();
+        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')));
+    },
+
+    // Раздел, скрытый от этого человека, заменяем первым доступным в том же пункте
+    cabinetResolveTab: function (tab) {
+        const parent = this.cabinetParentOf(tab);
+        const subs = this.CABINET_SUBTABS[parent];
+        if (!subs) return tab;
+        const vis = this.cabinetVisibleSubtabs(parent);
+        if (vis.some(s => s.id === tab) || !vis.length) return tab;
+        return vis[0].id;
+    },
+
+    renderCabinetSubtabs: function (tab) {
+        const bar = document.getElementById('lk_subtabs');
+        if (!bar) return;
+        const parent = this.cabinetParentOf(tab);
+        const vis = this.cabinetVisibleSubtabs(parent);
+        bar.innerHTML = vis.length > 1
+            ? vis.map(s => `<button type="button" class="ad-chip${s.id === tab ? ' active' : ''}" onclick="app.setProfileTab('${s.id}')">${s.label}</button>`).join('')
+            : '';
+    },
 
     buildCabinetMenus: function () {
         const rail = document.getElementById('lk_rail');
@@ -15002,6 +15048,7 @@ const app = {
             + (failed ? '<div class="ad-card-note ad-warn" style="margin-bottom:12px;">Часть данных не загрузилась — список может быть неполным.</div>' : '')
             + `<div class="ad-cards">${cards.join('')}</div>`
             + (tariff ? `<div class="ad-kv"><span>Тариф</span><b>${esc(tariff)}</b></div>` : '')
+            + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
             + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`;
         // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
         this._cabEstimates = ests;
@@ -15068,12 +15115,21 @@ const app = {
         const hit = hay => { const h = norm(hay); return tokens.every(t => h.indexOf(t) >= 0); };
         const items = [];
         const nav = document.getElementById('profile_nav');
-        this.CABINET_MENU.filter(it => it.kind !== 'logout' && it.kind !== 'search').forEach(it => {
-            // Скрытые пункты (монтажники, подписка, админка) в поиск не попадают
+        this.CABINET_MENU.forEach(it => {
+            // Скрытые пункты (монтажники, админка) в поиск не попадают
             const btn = nav && nav.querySelector(`.lk-nav-item[data-tab="${it.id}"], .lk-nav-item[data-rail="${it.id}"]`);
             if (btn && btn.style.display === 'none') return;
-            if (tokens.length && !hit(it.nav + ' ' + it.title)) return;
-            items.push({ kind: 'section', title: it.nav, sub: it.title, act: () => (it.kind === 'tab' ? this.setProfileTab(it.id) : this.railGo(it.id)) });
+            const subs = it.kind === 'tab' ? this.cabinetVisibleSubtabs(it.id) : [];
+            if (subs.length > 1) {
+                // Разделы внутри пункта ищем по названию раздела; подпись — в каком пункте он лежит
+                subs.forEach(sb => {
+                    if (tokens.length && !hit(sb.label + ' ' + it.nav + ' ' + it.title)) return;
+                    items.push({ kind: 'section', title: sb.label, sub: it.nav, act: () => this.setProfileTab(sb.id) });
+                });
+            } else {
+                if (tokens.length && !hit(it.nav + ' ' + it.title)) return;
+                items.push({ kind: 'section', title: it.nav, sub: it.title, act: () => (it.kind === 'tab' ? this.setProfileTab(it.id) : this.railGo(it.id)) });
+            }
         });
         if (tokens.length) {
             (this._cabEstimates || []).filter(e => hit([e.project_name, e.calc_id].join(' '))).slice(0, 8).forEach(e =>
@@ -16073,17 +16129,12 @@ const app = {
         // «Прайс» — свои расценки на монтаж. Продавцу про монтаж не показываем
         // ничего (по решению владельца 10.09.2026): ни пункт в колонке кабинета,
         // ни его двойник в меню разделов. С 15.09.2026 решает столбец «Монтаж» таблицы «Тарифы».
+        // С 03.10.2026 «Прайс монтажа» и «Документы» (договор подряда, акты — тоже про монтаж,
+        // решение 26.09.2026) — вкладки внутри пунктов «Прайс и оборудование» и «Объекты»:
+        // прячет их cabinetVisibleSubtabs по тому же признаку canUseWorks, сами пункты остаются.
         const sellerNoWorks = !this.canUseWorks();
-        const navWorkPrices = document.querySelector('#profile_nav .lk-nav-item[data-tab="workprices"]');
-        const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
-        if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
-        if (railWorkPrices) railWorkPrices.style.display = sellerNoWorks ? 'none' : '';
-        // «Документы» — договор подряда, акты, гарантия на монтаж. Без монтажа они
-        // ни к чему (решение владельца 26.09.2026): прячем по тому же признаку.
-        const navOrders = document.querySelector('#profile_nav .lk-nav-item[data-tab="orders"]');
-        const railOrders = rail.querySelector('.lk-rail-item[data-rail="orders"]');
-        if (navOrders) navOrders.style.display = sellerNoWorks ? 'none' : '';
-        if (railOrders) railOrders.style.display = sellerNoWorks ? 'none' : '';
+        const lkBar = document.getElementById('lk_subtabs');
+        if (lkBar && this._activeProfileTab && this.isOverlayOpen('profile_modal_overlay')) this.renderCabinetSubtabs(this._activeProfileTab);
 
         // Число непрочитанных берём готовым из бейджа конверта в шапке: считает его
         // loadNotifications, второй раз считать незачем

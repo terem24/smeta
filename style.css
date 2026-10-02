@@ -18309,3 +18309,8 @@ body.theme-yandex #profile_modal_overlay {
 }
 
 #lk_search_btn { right: 56px; top: 12px; }
+
+/* Вкладки внутри пункта меню кабинета */
+.lk-subtabs { margin: 0 0 14px; flex: 0 0 auto; }
+.lk-subtabs:empty { display: none; }
+.lk-layout.lk-forced .lk-subtabs { display: none; }
