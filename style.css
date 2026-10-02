@@ -17348,6 +17348,19 @@ body.theme-yandex #admin_modal_overlay {
     #ad_peek { width: 100%; border-radius: 0; }
 }
 
+/* «Тарифы»: изменённая относительно исходного ячейка помечена точкой в углу */
+#admin_tariffs_box td.tf-c { position: relative; }
+#admin_tariffs_box td.tf-c::after {
+    content: "";
+    position: absolute;
+    top: 7px;
+    right: 8px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
 /* Кнопки-слова в строках «Напоминаний» («Карточка», «Вернуть»): общий стиль .admin-action-btn
    рассчитан на квадрат-иконку 28 px, и подпись вылезала за него и налезала на соседнюю */
 #admin_inactive_root .admin-action-btn {

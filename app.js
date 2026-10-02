@@ -22760,6 +22760,7 @@ const app = {
 
         const myAcc = this.tariffAccount(), myPlan = this.tariffPlan();
         let body = '';
+        let matrixChanged = 0;
         this.TARIFF_ACCOUNTS.forEach(a => {
             body += `<tr><td colspan="${feats.length + 1}" style="padding:10px 12px 6px; text-align:left; border-bottom:1px solid var(--border); background:var(--surface-light);">
                     <b style="font-size:13px; color:var(--text-main);">${esc(a.label)}</b>
@@ -22774,7 +22775,10 @@ const app = {
                         const ctl = f.locked
                             ? `<span title="${esc(f.hint)}" style="display:inline-block; padding:2px 9px; border-radius:999px; font-size:11px; font-weight:600; background:rgba(16,185,129,.14); color:#0F8A5F;">всегда</span>`
                             : (f.list ? segment(a.id, p.id, f.id, v) : toggle(a.id, p.id, f.id, v));
-                        return `<td style="${td} ${firstOfGroup.has(f.id) ? sep : ''}">${ctl}${changed ? '<div title="Отличается от исходного значения" style="font-size:9.5px; color:var(--primary); margin-top:2px;">изменено</div>' : ''}</td>`;
+                        if (changed) matrixChanged++;
+                        // Изменённая ячейка помечена точкой в углу: подпись «изменено» под каждым
+                        // переключателем была шумом и растягивала строки
+                        return `<td class="${changed ? 'tf-c' : ''}"${changed ? ' title="Отличается от исходного значения"' : ''} style="${td} ${firstOfGroup.has(f.id) ? sep : ''}">${ctl}</td>`;
                     }).join('')}
                 </tr>`;
             });
@@ -22783,31 +22787,49 @@ const app = {
         const t = this.appSettings && this.appSettings.tariffs;
         const hasSaved = !!(t && t.cells && Object.keys(t.cells).length);
 
-        box.innerHTML = `
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
-                <h3 style="margin:0; color:var(--text-main);">🎚 Тарифы</h3>
-                <span id="admin_tariffs_status" style="font-size:12px;"></span>
-                <button class="admin-btn" style="margin-left:auto;" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetTariffs()">Вернуть исходные</button>
-            </div>
-            <p style="margin:0 0 12px; font-size:12.5px; line-height:1.5; color:var(--text-sec); max-width:900px;">
+        // Три части вкладки — тарифы, оформление, разделы панели — показываются по одной:
+        // вместе они давали страницу в три экрана с прокруткой вслепую
+        const sec = this._tariffSection || 'matrix';
+        let tabsChanged = 0;
+        this.orderedAdminTabDefs().forEach(tt => this.ADMIN_TAB_ROLES.forEach(r => {
+            if ((this.adminTabCell(r.id, tt.id) === 'on') !== this.adminTabDefault(tt.id, r.id, false)) tabsChanged++;
+        }));
+        const secChip = (id, label, n) => `<button class="ad-chip${sec === id ? ' active' : ''}" onclick="app.setTariffSection('${id}')">${label}${n ? ` <span class="ad-chip-n" title="Изменено относительно исходных значений">${n}</span>` : ''}</button>`;
+        const secChips = `<div class="ad-chips">${secChip('matrix', 'Тарифы и функции', matrixChanged)}${secChip('appearance', 'Оформление', 0)}${secChip('sections', 'Разделы панели по ролям', tabsChanged)}</div>`;
+
+        const matrixHtml = `
+            <div class="ad-sub" style="margin:0 0 12px; max-width:900px; line-height:1.5;">
                 Что открыто каждой учётной записи на её тарифе. Изменения сохраняются сразу и доходят до людей при следующем
-                открытии сайта или возвращении на вкладку. ${canEdit ? '' : '<b style="color:#D97706;">Менять таблицу может только администратор.</b>'}
-            </p>
-            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
-                <table style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
+                открытии сайта или возвращении на вкладку. Точка в углу ячейки — значение отличается от исходного.
+                ${canEdit ? '' : '<b style="color:#D97706;">Менять таблицу может только администратор.</b>'}
             </div>
-            <div style="margin-top:14px; padding:12px 14px; background:var(--surface-light); border-left:3px solid var(--primary); border-radius:8px; font-size:12px; line-height:1.6; color:var(--text-sec); max-width:900px;">
-                <b style="color:var(--text-main);">Как читать таблицу</b><br>
+            <div style="overflow-x:auto; border:1px solid var(--border); border-radius:10px; background:var(--bg);">
+                <table class="tf-table" style="width:100%; min-width:760px; border-collapse:collapse;"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>
+            </div>
+            <details class="ad-collapse" style="margin-top:14px; max-width:900px;"><summary>Как читать таблицу</summary>
+            <div style="padding:0; font-size:12px; line-height:1.6; color:var(--text-sec);">
                 <b>Всем</b> — открыто всем в строке. <b>Нет</b> — закрыто всем в строке.
                 <b>По доступу</b> — решают переключатели доступа, как раньше: компании в «Дистрибьюторах», региону в «Пользователях»; администратору открыто по должности.<br>
                 <b>Личная отметка</b> распознавания или проекта в карточке человека сильнее таблицы: включена — откроется, даже если в строке «Нет»; снята — закроется, даже если «Всем».<br>
                 <b>Монтаж</b> можно открыть поштучно: личной отметкой в столбце «Монтаж» раздела «Пользователи» или всей компании переключателем 🛠 в «Дистрибьюторах». Обе сильнее таблицы.<br>
                 <b>Администратор и владелец</b> своей строки не имеют: они попадают в строку продавца или монтажника по своей анкете. Строка, под которую сейчас попадаете вы, отмечена «● вы».<br>
                 <b>Кто на каком тарифе:</b> Профи — оплаченный тариф или действующий пробный период; у менеджера и наблюдателя — пробный период в карточке.
+            </div></details>`;
+
+        box.innerHTML = `
+            <div class="ad-page-h">
+                <div><h3>Тарифы и доступ</h3>
+                    <div class="ad-sub">Что открыто каждой учётной записи, оформление сайта и разделы панели для ролей <span id="admin_tariffs_status" style="margin-left:6px;"></span></div></div>
+                ${sec === 'matrix' ? `<button class="admin-btn" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetTariffs()">Вернуть исходные</button>` : ''}
             </div>
-            ${this.adminAppearanceBlockHtml()}
-            ${this.adminTabsTableHtml(esc, th, td, sep)}`;
+            ${secChips}
+            ${sec === 'matrix' ? matrixHtml : (sec === 'appearance' ? this.adminAppearanceBlockHtml() : this.adminTabsTableHtml(esc, th, td, sep))}`;
         this.renderAdminTariffsStatus();
+    },
+
+    setTariffSection: function (id) {
+        this._tariffSection = id;
+        this.renderAdminTariffs();
     },
 
     // Вторая таблица вкладки «Тарифы»: какие разделы панели видит каждая роль
@@ -22828,13 +22850,13 @@ const app = {
                 ${roles.map(r => {
                     const v = this.adminTabCell(r.id, t.id);
                     const changed = (v === 'on') !== this.adminTabDefault(t.id, r.id, false);
-                    return `<td style="${td}">${toggle(r.id, t.id, v === 'on')}${changed ? '<div title="Отличается от исходного значения" style="font-size:9.5px; color:var(--primary); margin-top:2px;">изменено</div>' : ''}</td>`;
+                    return `<td class="${changed ? 'tf-c' : ''}"${changed ? ' title="Отличается от исходного значения"' : ''} style="${td}">${toggle(r.id, t.id, v === 'on')}</td>`;
                 }).join('')}
             </tr>`).join('');
         const t = this.appSettings && this.appSettings.tariffs;
         const hasSaved = !!(t && t.tabs && Object.keys(t.tabs).some(k => Object.keys(t.tabs[k] || {}).length));
         return `
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:28px 0 12px;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 12px;">
                 <h3 style="margin:0; color:var(--text-main);">🗂 Разделы панели управления</h3>
                 <button class="admin-btn" style="margin-left:auto;" ${canEdit && hasSaved ? '' : 'disabled'} onclick="app.resetAdminTabs()">Вернуть исходные</button>
             </div>
