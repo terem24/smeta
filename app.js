@@ -35909,8 +35909,11 @@ const app = {
             const data = await r.json();
             // defaultPro и tariffs — с 25.09.2026 (лимит по тарифу); старый
             // сервер их не шлёт, тогда один общий лимит, как раньше.
+            // defaultAdmin обязателен: без него recognitionDefaultLimit не узнаёт
+            // администратора и показывает ему лимит «Базовый» (5), хотя сервер
+            // считает его безлимитным.
             if (data.ok) this._adminRecognitionLimits = { default: data.default, defaultPro: data.defaultPro,
-                limits: data.limits || {}, tariffs: data.tariffs || {} };
+                defaultAdmin: data.defaultAdmin, limits: data.limits || {}, tariffs: data.tariffs || {} };
         } catch (e) {
             console.warn('[архив] лимиты не получены:', e.message);
         }
