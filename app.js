@@ -41153,6 +41153,7 @@ const app = {
                 const items = [];
                 if (L.Q_roof > 0) items.push({ type: 'Кровля', count: 1, area: parseFloat(r.area) || 0, Tv: L.Tv, Tn: L.Tn, R: L.R_roof, n: L.n_roof, Q: L.Q_roof });
                 if (L.Q_wall > 0) items.push({ type: 'Наружная стена', count: 1, area: L.wallArea, Tv: L.Tv, Tn: L.Tn, R: L.R_wall, n: L.n_wall, Q: L.Q_wall });
+                if (L.Q_door > 0) items.push({ type: 'Наружная дверь', count: L.doors, area: L.doorArea, Tv: L.Tv, Tn: L.Tn, R: L.R_door, n: L.n_wall, Q: L.Q_door });
                 if (L.Q_glz > 0) items.push({ type: 'Окно', count: 1, area: L.totalWinArea, Tv: L.Tv, Tn: L.Tn, R: L.R_glz, n: L.n_glz, Q: L.Q_glz });
                 if (L.Q_floor > 0) items.push({
                     type: L.floorZones ? 'Пол по грунту' : 'Пол', count: 1,
@@ -53860,6 +53861,31 @@ const app = {
     // tvOver — необязательная подмена расчётной температуры помещения для
     // расчёта режимов (getHouseHeatLossModes): { shift: -4 } — «Эконом»,
     // { abs: 5 } — «Дежурное отопление». Обычные вызовы аргумент не передают.
+    /**
+     * Наружная дверь: типовое полотно 1,0 × 2,1 м и R = 0,7 м²·K/Вт — медиана 231
+     * строк «Дверь» из расчётов теплопотерь 102 проектов корпуса Galf (стальная
+     * утеплённая дверь; у проектировщиков 0,65–0,70). Это практика проектирования,
+     * а не норма: ссылку на пункт СП 50.13330 к цифре не ставим.
+     */
+    DOOR_AREA: 2.1,
+    DOOR_R: 0.7,
+
+    /**
+     * Сколько наружных дверей у помещения. Задано в карточке («Наружных дверей») —
+     * берём как есть, включая «нет». Не задано: в прихожей, тамбуре, вестибюле,
+     * на веранде и крыльце — одна входная, в остальных комнатах — ни одной.
+     * Квартира без явного указания дверей на улицу не имеет: её входная дверь
+     * ведёт на лестницу, а не наружу.
+     */
+    roomExtDoors: function (r) {
+        const v = parseInt(r && r.extDoors, 10);
+        if (!isNaN(v)) return Math.min(3, Math.max(0, v));
+        if (this.isFlat()) return 0;
+        const kind = (r && r.roomKind) || this.detectRoomKind(r && r.name);
+        const name = String((r && r.name) || '').toLowerCase();
+        return (kind === 'entry' || /прихож|входн/.test(name)) ? 1 : 0;
+    },
+
     getRoomHeatLoss: function (r, tvOver) {
         const s = this.state;
         // Без города — ступень по региону. Ступени согласованы с обратной
@@ -53958,7 +53984,12 @@ const app = {
             totalWinArea += parseFloat(w.width || 1) * self.roomWinHeight(r, w);
         });
 
-        var wallArea = Math.max(0, outerPerim * rHeight - totalWinArea);
+        // Наружные двери — отдельная конструкция со своим R. Раньше дверь шла стеной,
+        // и её потери занижались втрое. Площадь двери вычитается из стены, чтобы
+        // не считать один и тот же квадрат дважды.
+        var doorsN = this.roomExtDoors(r);
+        var doorArea = Math.min(doorsN * this.DOOR_AREA, Math.max(0, outerPerim * rHeight - totalWinArea));
+        var wallArea = Math.max(0, outerPerim * rHeight - totalWinArea - doorArea);
 
         // Надбавка на ориентацию по сторонам света (СНиП 41-01-2003, прил.):
         // на север, северо-восток, восток и северо-запад +10 %, на юго-восток и
@@ -53975,6 +54006,7 @@ const app = {
 
         var Q_wall = R_wall > 0 ? wallArea * dT / R_wall * n_wall * kOrient : 0;
         var Q_glz = R_glz > 0 ? totalWinArea * dT / R_glz * n_glz * kOrient : 0;
+        var Q_door = this.DOOR_R > 0 ? doorArea * dT / this.DOOR_R * n_wall * kOrient : 0;
 
         var totalFloors = parseInt(s.floors || 1);
         var isTopFloor = (rFloorNum === totalFloors) || (isDoubleHeight && rFloorNum === 1);
@@ -54072,10 +54104,11 @@ const app = {
         }
         var Q_vent = dT > 0 ? vol * n_eff * 0.34 * dT : 0;
 
-        var Q_env = Q_wall + Q_glz + Q_roof + Q_floor;
+        var Q_env = Q_wall + Q_door + Q_glz + Q_roof + Q_floor;
 
         return {
-            Q_wall: Q_wall, Q_glz: Q_glz, Q_roof: Q_roof, Q_floor: Q_floor,
+            Q_wall: Q_wall, Q_door: Q_door, Q_glz: Q_glz, Q_roof: Q_roof, Q_floor: Q_floor,
+            doors: doorsN, doorArea: doorArea, R_door: this.DOOR_R,
             Q_vent: Q_vent,
             // Q_total — только ограждения: по нему построены лист теплопотерь и
             // проверки, где вентиляция стоит отдельной строкой. Полная нагрузка
@@ -55552,6 +55585,7 @@ const app = {
 
                 var items = [];
                 if (L.Q_wall > 0) items.push({ name: 'Стена', area: L.wallArea, R: L.R_wall, n: L.n_wall, Q: L.Q_wall });
+                if (L.Q_door > 0) items.push({ name: 'Дверь', area: L.doorArea, R: L.R_door, n: L.n_wall, Q: L.Q_door });
                 if (L.Q_glz > 0) items.push({ name: 'Остекление', area: L.totalWinArea, R: L.R_glz, n: L.n_glz, Q: L.Q_glz });
                 if (L.Q_roof > 0) items.push({ name: 'Кровля/чердак', area: r.area, R: L.R_roof, n: L.n_roof, Q: L.Q_roof });
                 if (L.Q_floor > 0) items.push({ name: 'Пол', area: r.area, R: L.R_floor, n: L.n_floor, Q: L.Q_floor });
@@ -55860,7 +55894,7 @@ const app = {
             return;
         }
         if (val === '' || val === null || val === undefined) delete r[field];
-        else if (field === 'outerWalls') r[field] = parseInt(val, 10);
+        else if (field === 'outerWalls' || field === 'extDoors') r[field] = parseInt(val, 10);
         else if (field === 'roomKind') {
             // Выбрали тип — значит хотят его норматив. Ручную температуру от
             // прежнего типа снимаем, иначе она молча перебивала бы выбор.
@@ -59181,6 +59215,7 @@ const app = {
             const envSet = [];
             if (r.roomKind || r.tempC) envSet.push('режим');
             if (r.outerWalls) envSet.push('стены');
+            if (r.extDoors !== undefined && r.extDoors !== null && !isNaN(parseInt(r.extDoors, 10))) envSet.push('двери');
             if (r.orient) envSet.push('сторона');
             if (r.warmBelow || r.warmAbove) envSet.push('соседи');
             const envOpen = !!(this._roomDetails && this._roomDetails[r.id]);
@@ -59188,6 +59223,12 @@ const app = {
 
             let envWallsSel = `<select style="${selCss}" title="Сколько стен помещения выходит на улицу. Влияет на площадь наружных стен в расчёте теплопотерь." onchange="app.updRoomEnv(${r.id}, 'outerWalls', this.value)">
                             ${outerOpt('', 'Авто (0,6 периметра)')}${outerOpt('1', '1 наружу')}${outerOpt('2', '2 наружу (угловая)')}${outerOpt('3', '3 наружу')}
+                        </select>`;
+            // «Авто» подписываем по факту: что подставит расчёт, если ничего не выбирать.
+            const doorOpt = (v, t) => `<option value="${v}" ${(r.extDoors === undefined || r.extDoors === null ? '' : String(r.extDoors)) === v ? 'selected' : ''}>${t}</option>`;
+            const doorAuto = this.roomExtDoors(Object.assign({}, r, { extDoors: undefined }));
+            let envDoorsSel = `<select style="${selCss}" title="Двери из помещения на улицу. Считаются отдельно от стены: полотно ${String(this.DOOR_AREA).replace('.', ',')} м², R = ${String(this.DOOR_R).replace('.', ',')} м²·K/Вт. Авто — одна входная в прихожей, тамбуре, на веранде, в остальных комнатах нет." onchange="app.updRoomEnv(${r.id}, 'extDoors', this.value)">
+                            ${doorOpt('', 'Авто — ' + (doorAuto ? doorAuto + ' (входная)' : 'нет'))}${doorOpt('0', 'Нет')}${doorOpt('1', '1')}${doorOpt('2', '2')}${doorOpt('3', '3')}
                         </select>`;
             let envOrientSel = `<select style="${selCss}" title="Куда выходят окна и наружные стены. На север и восток по СНиП 41-01-2003 добавляется 10 %, на юго-восток и запад — 5 %." onchange="app.updRoomEnv(${r.id}, 'orient', this.value)">
                             ${orientOpt('', autoOrient)}${orientOpt('N', 'Север +10 %')}${orientOpt('NE', 'Северо-восток +10 %')}${orientOpt('E', 'Восток +10 %')}${orientOpt('SE', 'Юго-восток +5 %')}${orientOpt('S', 'Юг')}${orientOpt('SW', 'Юго-запад')}${orientOpt('W', 'Запад +5 %')}${orientOpt('NW', 'Северо-запад +10 %')}
@@ -59235,6 +59276,7 @@ const app = {
                 + (roomLossCard.tManual ? ' (задано вручную)' : (roomLossCard.tKind ? ` (${roomLossCard.tKind.norm})` : ''))
                 + `. Теплопотери: ограждения ${Math.round(roomLossCard.Q_total)} Вт + нагрев приточного воздуха ${Math.round(roomLossCard.Q_vent)} Вт.`
                 + ` Наружные стены — ${roomLossCard.outerPerim.toFixed(1)} м из ${roomLossCard.perim.toFixed(1)} м периметра (${roomLossCard.geoSrc}).`
+                + (roomLossCard.doors > 0 ? ` Наружных дверей ${roomLossCard.doors} (${Math.round(roomLossCard.Q_door)} Вт).` : '')
                 + (roomLossCard.kOrient > 1 ? ` Надбавка на ориентацию +${Math.round((roomLossCard.kOrient - 1) * 100)} %.` : '')
                 + (roomLossCard.warmBelow ? ' Пол по грунту не считается: под помещением тёплое.' : '')
                 + (roomLossCard.warmAbove ? ' Кровля не считается: над помещением тёплое.' : '');
@@ -59373,6 +59415,9 @@ const app = {
                                 </label>
                                 <label style="${fLbl}">Сторона света
                                     ${envOrientSel}
+                                </label>
+                                <label style="${fLbl}">Наружных дверей
+                                    ${envDoorsSel}
                                 </label>
                             </div>
                             ${envNeighbors.length ? `<div style="display:flex; flex-direction:column; gap:5px;">${envNeighbors.join('')}</div>` : ''}
