@@ -401,6 +401,10 @@
     return rects;
   }
 
+  // Участок делится полосами вдоль длинной стороны. Сетку почти квадратных
+  // плиток (как в больших залах у проектировщиков) пробовали 03.10.2026 на
+  // корпусе Galf: к плиткам в середине пучок подводок пробирается только
+  // поверх соседних петель — наложений стало в 2–4 раза больше. Вернули полосы.
   function splitRect(r, k) {
     var horiz = (r.x1 - r.x0) >= (r.y1 - r.y0);
     var L = horiz ? r.x1 - r.x0 + 1 : r.y1 - r.y0 + 1;
@@ -546,12 +550,16 @@
     var c = Math.floor(Hr / s + 1e-6), use = c - (c % 2);
     var core5 = use % 4 === 0, k = core5 ? (use - 4) / 4 : (use - 2) / 4;
     if (k < 1) return null;
-    var Wc = Wr + s, Hc = (4 * k + (core5 ? 5 : 3)) * s;   // рамка построения
+    // Рамка построения шире участка на полшага со стороны ввода: концы труб
+    // встают ровно на край участка, а не в зазор к соседней петле (на корпусе
+    // Galf ввод, выступавший на полшага, касался трубы соседа — 03.10.2026).
+    // Крайняя труба с этой стороны — в шаге от края, с остальных — в полшага.
+    var Wc = Wr + s / 2, Hc = (4 * k + (core5 ? 5 : 3)) * s;
     var v0 = (Hr - (use - 1) * s) / 2;                       // остаток — поровну к краям
     var fx = entry ? Math.abs(entry[0] - R[2]) < Math.abs(entry[0] - R[0]) : false;
     var fy = entry ? Math.abs(entry[1] - R[3]) < Math.abs(entry[1] - R[1]) : false;
     var map = function (q) {
-      var u = q[0] - s, v = v0 + (q[1] - s / 2);
+      var u = q[0] - s / 2, v = v0 + (q[1] - s / 2);
       var dx = tr ? v : u, dy = tr ? u : v;
       return [fx ? R[2] - dx : R[0] + dx, fy ? R[3] - dy : R[1] + dy];
     };
@@ -683,10 +691,17 @@
     var res = null;
     for (var round = 0; round < 4 && g; round++) {
       res = layRound(f, g, own, zs, info, s, lim);
+      // Петля длиннее предела — у её участка больше петель: сразу во столько
+      // раз, во сколько перебор (огромный зал за один проход, а не по одной).
       var grow = false;
       zs.forEach(function (Z) {
-        (res.byZone[Z.i] || []).forEach(function (lp) {
-          if (lp.lenM > lim && info[Z.i].k[lp.ri] < 12) { info[Z.i].k[lp.ri]++; grow = true; }
+        var worst = {};
+        (res.byZone[Z.i] || []).forEach(function (lp) { worst[lp.ri] = Math.max(worst[lp.ri] || 0, lp.lenM); });
+        Object.keys(worst).forEach(function (ri) {
+          if (worst[ri] <= lim) return;
+          var k0 = info[Z.i].k[ri];
+          info[Z.i].k[ri] = Math.max(k0 + 1, Math.ceil(k0 * worst[ri] / lim));
+          grow = true;
         });
       });
       if (!grow) break;
