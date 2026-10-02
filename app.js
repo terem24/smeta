@@ -23645,7 +23645,7 @@ const app = {
             // Доступ приостановлен за долгое отсутствие. Отдельно от блокировки:
             // тут никто ничего не нарушал, и снимается это другой кнопкой.
             if (u.frozen_at) {
-                const delOn = new Date(new Date(u.frozen_at).getTime() + 10 * 864e5);
+                const delOn = new Date(new Date(u.frozen_at).getTime() + app.inactivityDays().delete * 864e5);
                 badge += `<br><span title="Приостановлен ${new Date(u.frozen_at).toLocaleDateString('ru-RU')} за долгое отсутствие. Удаление ${delOn.toLocaleDateString('ru-RU')}, если не вернуть доступ." style="color:#fff; background:#0EA5E9; font-size:9px; font-weight:800; padding:1px 6px; border-radius:6px; cursor:help;">🧊 ЗАМОРОЖЕН</span>`;
             }
             let name = this.getAdminUserDisplayName(u);
@@ -34060,8 +34060,8 @@ const app = {
                         <div style="padding-top:20px; border-top:1px dashed var(--border); margin-bottom:20px;">
                             <h4 style="margin:0 0 12px 0; font-size:14px; color:var(--text-main);">👤 Личные данные</h4>
                             ${user.frozen_at ? `<div style="background:rgba(14,165,233,0.12); border:1px solid #0EA5E9; color:#0EA5E9; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px; line-height:1.45;">
-                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше 25 дней.
-                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + 10 * 864e5).toLocaleDateString('ru-RU')}.
+                                <b>🧊 Доступ приостановлен ${new Date(user.frozen_at).toLocaleDateString('ru-RU')}</b> — человек не заходил больше ${app.inactivityDays().freeze} дней.
+                                Расчёты сохранены. Если он не вернётся, учётка будет удалена ${new Date(new Date(user.frozen_at).getTime() + app.inactivityDays().delete * 864e5).toLocaleDateString('ru-RU')}.
                                 <button class="auth-btn-base" style="margin:8px 0 0; width:auto; height:30px; padding:0 14px; font-size:12px; background:#0EA5E9; color:#fff; border:none; ${isViewer ? 'opacity:0.5; cursor:not-allowed;' : ''}" ${isViewer ? 'disabled' : ''} onclick="app.unfreezeUser('${user.id}')">Вернуть доступ</button>
                             </div>` : ''}
                             ${(() => {
@@ -34820,11 +34820,57 @@ const app = {
     // кого в итоге удалили. Журнал лежит в закрытых таблицах, поэтому читаем не
     // напрямую, а функцией inactivity_report: она сама проверяет, что зовёт
     // администратор (см. миграцию 20260910_inactivity_report.sql).
+    // Сроки лежат в app_settings (inactivity_days) и читаются ночным проходом в базе
+    // (20261002_inactivity_days_setting.sql). Нет записи или миграция не выполнена —
+    // прежние 20 / 25 / 10. Значение кэшируется; первое обращение подтягивает свежее.
+    inactivityDays: function () {
+        const def = { warn: 20, freeze: 25, delete: 10 };
+        if (!this._inactCfg) {
+            this._inactCfg = def;
+            if (!this._inactCfgLoading) this.loadInactivityDays();
+        }
+        return this._inactCfg;
+    },
+
+    loadInactivityDays: async function () {
+        this._inactCfgLoading = true;
+        try {
+            const { data } = await supabaseClient.from('app_settings')
+                .select('value').eq('key', 'inactivity_days').maybeSingle();
+            const v = (data && data.value) || {};
+            const n = (x, d) => { x = parseInt(x, 10); return x >= 1 && x <= 365 ? x : d; };
+            const warn = n(v.warn, 20);
+            this._inactCfg = { warn, freeze: Math.max(n(v.freeze, 25), warn), delete: n(v.delete, 10) };
+        } catch (e) { /* остаются значения по умолчанию */ }
+    },
+
+    saveInactivityDays: async function () {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять сроки запрещено.'); return; }
+        const get = id => parseInt((document.getElementById(id) || {}).value, 10);
+        const warn = get('inact_warn'), freeze = get('inact_freeze'), del = get('inact_delete');
+        const ok = x => x >= 1 && x <= 365;
+        if (!ok(warn) || !ok(freeze) || !ok(del)) { app.alert('Сроки — целые числа от 1 до 365 дней.'); return; }
+        if (freeze < warn) { app.alert('Заморозка не может быть раньше письма: поставьте её на тот же день или позже.'); return; }
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const value = { warn, freeze, delete: del };
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'inactivity_days', value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this._inactCfg = value;
+            this.renderAdminInactiveBody();
+            app.alert('Сроки сохранены. Ночная проверка будет работать по новым числам. Если письма и заморозки в базе не меняются — выполните миграцию 20261002_inactivity_days_setting.sql.');
+        } catch (e) {
+            app.alert('Не удалось сохранить сроки: ' + (e.message || e));
+        }
+    },
+
     renderAdminInactive: async function () {
         const content = document.getElementById('admin_content');
         if (!content) return;
         content.innerHTML += `<div id="admin_inactive_root" style="padding:30px 0; text-align:center; color:var(--text-sec);">Загрузка напоминаний…</div>`;
         const root = () => document.getElementById('admin_inactive_root');
+        await this.loadInactivityDays();
         try {
             const { data, error } = await supabaseClient.rpc('inactivity_report');
             if (error) throw error;
@@ -34857,6 +34903,7 @@ const app = {
             c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const dt = s => s ? new Date(s).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) : '—';
         const days = s => s ? Math.floor((Date.now() - new Date(s).getTime()) / 864e5) : null;
+        const cfg = this.inactivityDays();
 
         const returned = rows.filter(r => r.returned_at).length;
         const frozen = rows.filter(r => r.stage === 'frozen').length;
@@ -34871,10 +34918,16 @@ const app = {
             <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px;">
                 <h3 style="margin:0; color:var(--text-main);">📨 Напоминания неактивным</h3>
             </div>
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:16px; line-height:1.5;">
-                Письмо уходит после 20 дней молчания, доступ приостанавливается на 25-й день,
-                учётка удаляется через 10 дней заморозки. Пока действует Профи, счётчик стоит
+            <div style="font-size:12px; color:var(--text-sec); margin-bottom:10px; line-height:1.5;">
+                Письмо уходит после ${cfg.warn} дней молчания, доступ приостанавливается на ${cfg.freeze}-й день,
+                учётка удаляется через ${cfg.delete} дней заморозки. Пока действует Профи, счётчик стоит
                 и считается заново от дня окончания тарифа. Проверка идёт каждую ночь.
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:16px; font-size:12px; color:var(--text-main);">
+                <label>Письмо, дней молчания <input type="number" id="inact_warn" min="1" max="365" value="${cfg.warn}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <label>Заморозка, на день <input type="number" id="inact_freeze" min="1" max="365" value="${cfg.freeze}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <label>Удаление, дней после заморозки <input type="number" id="inact_delete" min="1" max="365" value="${cfg.delete}" style="width:64px; margin-left:4px;" ${isViewer ? 'disabled' : ''}></label>
+                <button class="admin-action-btn btn-obj" ${isViewer ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} onclick="app.saveInactivityDays()">Сохранить сроки</button>
             </div>
             <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:12px; margin-bottom:20px;">
                 <div style="background:var(--bg); padding:14px; border-radius:12px; text-align:center; border:1px solid var(--border);">
@@ -34933,7 +34986,7 @@ const app = {
                 outcome = 'Вернулся ' + dt(r.returned_at);
                 color = '#10B981';
             } else if (r.stage === 'frozen') {
-                const delOn = new Date(new Date(r.frozen_at).getTime() + 10 * 864e5);
+                const delOn = new Date(new Date(r.frozen_at).getTime() + app.inactivityDays().delete * 864e5);
                 outcome = 'Заморожен ' + dt(r.frozen_at) + ' · удаление ' + delOn.toLocaleDateString('ru-RU');
                 color = '#0EA5E9';
             } else {
@@ -37867,7 +37920,7 @@ const app = {
                 this.saveState();
                 this.syncUI();
                 this.render();
-                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на dima24ba@gmail.com, и мы вернём доступ в тот же день.');
+                app.alert('Доступ к аккаунту приостановлен: вы давно не заходили. Все ваши расчёты сохранены — напишите на kovdor24@yandex.ru или в MAX: +7 982 610-95-48, и мы вернём доступ в тот же день.');
                 return;
             }
             if (uRow) {
