@@ -3595,6 +3595,23 @@ const RecognizeUI = {
         this.renderReview();
     },
 
+    /**
+     * Смета по спецификации рабочего проекта.
+     *
+     * Строки спецификации читает программа (RecognizeFiles.specRows), модель не
+     * нужна: артикул, производитель и количество — отдельными колонками. Дальше
+     * — обычный экран проверки сметы: позиция по коду, аналог только через
+     * защиты и всегда «проверьте», остальное — «нет полного соответствия
+     * проекту» с причиной. Возвращает false, если спецификации в проекте нет.
+     */
+    startSpecReview() {
+        const spec = (this._project && this._project.spec) || [];
+        if (!spec.length || typeof RecognizeMatch === 'undefined' || !RecognizeMatch.specItem) return false;
+        this._fileNote = '';
+        this.startReview({ items: spec.map(r => RecognizeMatch.specItem(r)) });
+        return true;
+    },
+
     startReview(res) {
         // Лист прочитан и оказался сметой — шапка мастера говорит об этом
         // прямо. До разбора она нейтральна: что именно принесли, там ещё
@@ -4232,6 +4249,9 @@ const RecognizeUI = {
         let added = 0;
         for (const r of this._rows) {
             if (r._m || r._locked) continue;
+            // Строку спецификации защита оставила без аналога намеренно (гайка
+            // насоса ≠ насос) — ослабленный подбор вернул бы ту же ошибку в обход.
+            if (r._spec) continue;
             // Ослабленные правила и работы — худшее сочетание: «Монтаж
             // котельной» находил «Монтажную гильзу» именно здесь.
             if (this.looksLikeWork(r)) continue;
@@ -4620,6 +4640,17 @@ const RecognizeUI = {
         // он уже сказал, чем эта строка является. Правила подбора о местных
         // сокращениях поставщика не знают и не узнают.
         if (this.memApply(row)) return;
+        // Строка спецификации рабочего проекта: сперва код из колонки артикула,
+        // потом аналог — только через защиты и всегда «проверьте» (matchSpec).
+        // Почему аналога нет, пишется в _specWhy и показывается под строкой.
+        if (row._spec && typeof RecognizeMatch !== 'undefined' && RecognizeMatch.matchSpec) {
+            const r = RecognizeMatch.matchSpec(row, this._sys);
+            row._m = r.m;
+            row._specWhy = r.why;
+            row._sysMiss = null;
+            this.priceGuard(row);
+            return;
+        }
         row._sysMiss = null;   // пометку «у нас такого нет» ставит сам подбор
         row._m = (typeof RecognizeMatch !== 'undefined' && typeof catalog !== 'undefined')
             ? RecognizeMatch.matchItem(row, this._sys) : null;
@@ -4977,6 +5008,14 @@ const RecognizeUI = {
                     : this.notOurRange(r)
                         ? `<span class="rec-art">не наш ассортимент (расходник монтажника) — уйдёт своей позицией ${
                             docP ? 'с ценой из документа' : 'с ценой 0'}</span>`
+                    // Строка спецификации: в проекте названо конкретное изделие,
+                    // а у нас его нет и честного аналога тоже — так и пишем, с
+                    // причиной (правило «нет полного соответствия проекту»).
+                    : r._spec
+                        ? `<span class="rec-nohave">нет полного соответствия проекту${
+                            r._spec.maker || (r._spec.codes && r._spec.codes[0])
+                                ? `: в проекте ${esc([r._spec.maker, r._spec.codes && r._spec.codes[0]].filter(Boolean).join(' '))}` : ''}</span>
+                           <span class="rec-art">${r._specWhy ? esc(r._specWhy) + ' — ' : ''}уйдёт своей позицией с ценой 0, подберите через 🔍 или уберите строку</span>`
                     : r._sysMiss
                         ? `<span class="rec-nohave">${esc(this.sysMissText(r._sysMiss))}</span>
                            <span class="rec-art">уйдёт своей позицией ${

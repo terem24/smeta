@@ -782,6 +782,87 @@ const RecognizeFiles = {
         return gost ? head() : '';
     },
 
+    // ------------------------------------------------------------------
+    // Спецификация рабочего проекта
+    //
+    // В рабочем проекте спецификация — таблица «№ Наименование Артикул
+    // Производитель Ед.изм. Кол-во Примечание», и pdf.js отдаёт её строку
+    // целиком: «3 Кран шаровой … DN25 R854X025 Giacomini шт. 2». Разбор — тот,
+    // что проверен стендом bench/spec.js на 230 проектах (10 098 строк с
+    // артикулом), подбор — RecognizeMatch.matchSpec.
+    // ------------------------------------------------------------------
+
+    SPEC_HEAD_RE: /наименован/i,
+    SPEC_HEAD_ART_RE: /(артикул|код\b|код\s+(продукции|изделия)|обозначение)/i,
+    SPEC_UNIT_RE: /^(шт\.?|м\.?|п\.?\s?м\.?|пог\.?\s?м\.?|компл\.?|к-т|кг|л|м2|м²|упак\.?|бухта|рулон|пара|ед\.?)$/i,
+    SPEC_NUM_RE: /^\d+([.,]\d+)?$/,
+
+    /**
+     * Строка таблицы справа налево: … артикул производитель ед. кол-во [примечание].
+     * Производитель — 1–3 слова без цифр; артикул — слово с цифрами перед ним.
+     * Чисто цифровой артикул («1070529» Uponor) — от пяти цифр: размеры такими не
+     * бывают. Код через пробелы («SMB 6851 013402») даёт склейки-кандидаты.
+     */
+    specRow(line) {
+        const m = String(line || '').match(/^(\d{1,3})\s+(.+)$/);
+        if (!m) return null;
+        const t = m[2].split(/\s+/);
+        let u = -1;
+        for (let i = t.length - 2; i >= 1; i--) {
+            if (this.SPEC_UNIT_RE.test(t[i]) && this.SPEC_NUM_RE.test(t[i + 1])) { u = i; break; }
+        }
+        if (u < 2) return null;
+        const qty = parseFloat(t[u + 1].replace(',', '.'));
+        const unit = t[u].replace(/\.$/, '');
+        let j = u - 1;
+        const mf = [];
+        while (j >= 1 && mf.length < 3 && !/\d/.test(t[j]) && /^[A-ZА-ЯЁa-z]/.test(t[j]) && !/^[а-яё]/.test(t[j])) {
+            mf.unshift(t[j]);
+            j--;
+        }
+        const isArt = w => /\d/.test(w) && /^[A-Za-zА-Яа-я0-9][A-Za-zА-Яа-я0-9.\-\/]{3,}$/.test(w) &&
+            (!/^\d+([.,]\d+)?(мм|м)?$/.test(w) || /^\d{5,}$/.test(w));
+        const codes = [];
+        let art = null, take = 1;
+        if (j >= 1 && isArt(t[j])) {
+            art = t[j];
+            codes.push(art);
+            for (let w = 2; w <= 3 && j - w + 1 >= 1; w++) {
+                const seg = t.slice(j - w + 1, j + 1);
+                if (seg.every(x => /^[A-Za-z0-9.\-]+$/.test(x))) { codes.push(seg.join(' ')); take = w; }
+            }
+            j--;
+        }
+        const name = t.slice(0, j + 1).join(' ');
+        if (!/[а-яё]{3}/i.test(name)) return null;
+        return { pos: m[1], name, art, codes, maker: mf.join(' ') || null, unit, qty, _take: take };
+    },
+
+    /**
+     * Строки спецификаций комплекта. sheets — строки каждого листа, titles —
+     * названия листов: раздел строки — заголовок таблицы («Спецификация
+     * материалов и оборудования водоснабжения») или название листа.
+     */
+    specRows(sheets, titles) {
+        const out = [];
+        sheets.forEach((lines, k) => {
+            for (let h = 0; h < lines.length; h++) {
+                if (!this.SPEC_HEAD_RE.test(lines[h]) || !this.SPEC_HEAD_ART_RE.test(lines[h])) continue;
+                let section = null;
+                for (let b = h - 1; b >= 0 && b >= h - 4; b--) {
+                    if (/^спецификац/i.test(lines[b])) { section = lines[b]; break; }
+                }
+                section = section || (titles && titles[k]) || null;
+                for (let i = h + 1; i < lines.length; i++) {
+                    if (this.SPEC_HEAD_RE.test(lines[i]) && this.SPEC_HEAD_ART_RE.test(lines[i])) break;
+                    const r = this.specRow(lines[i]);
+                    if (r) out.push(Object.assign(r, { page: k + 1, section }));
+                }
+            }
+        });
+        return out;
+    },
+
     /** Основная надпись по ГОСТ 21.101 — признак рабочего проекта. */
     STAMP_GOST_RE: /(Кол\.?\s?уч|Изм\.|№\s?док|N\s?докум|Подп\.\s?и\s?дата|Инв\.\s?№\s?подл|Взам\.\s?инв)/i,
 
@@ -1163,8 +1244,11 @@ const RecognizeFiles = {
         rooms = rooms.slice(0, this.PDF_MAX_SCAN);
 
         const visual = pages.filter(p => /^визуализац/i.test(p.title)).length;
+        // Спецификация — только у рабочего проекта: у дизайн-проекта таблицы
+        // «Спецификация мебели» и розеток, артикулов инженерки в них нет.
+        const spec = gost ? this.specRows(sheets, pages.map(p => p.title)) : [];
         return { pages, rooms, found, visual, other: pdf.numPages - found.length - visual,
-            notes: this.collectNotes(pages), address, gost };
+            notes: this.collectNotes(pages), address, gost, spec };
     },
 
     /**
