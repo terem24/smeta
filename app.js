@@ -22760,7 +22760,12 @@ const app = {
         const th = 'padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); background:var(--surface-light); border-bottom:1px solid var(--border); white-space:nowrap;';
         const td = 'padding:8px 10px; border-bottom:1px solid var(--border); font-size:12px; vertical-align:top;';
 
-        const rows = shown.map(i => {
+        // 170+ строк разом — это экран в 36 000 px на телефоне: показываем порциями,
+        // при смене фильтра порция сбрасывается
+        const limKey = f.cluster + '|' + f.status + '|' + f.q;
+        if (this._articlesLimKey !== limKey) { this._articlesLimKey = limKey; this._articlesLimit = 40; }
+        const lim = this._articlesLimit || 40;
+        const rows = shown.slice(0, lim).map(i => {
             const st = this.articleStatusMeta[i.status] || this.articleStatusMeta.planned;
             const readUrl = i.status === 'published' ? '/' + i.slug + '/'
                 : (i.status === 'queued' ? '/queue/' + i.slug + '/' : '');
@@ -22825,7 +22830,8 @@ const app = {
                     ${rows || `<tr><td colspan="5"style="${td} text-align:center; color:var(--text-sec); padding:24px;">Ничего не нашлось</td></tr>`}
                 </table>
             </div>
-            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${shown.length} из ${items.length}.${this._articleLeadsFailed ? ' Заявки не загрузились — журнал виден только владельцам.' : ''}</div>
+            ${shown.length > lim ? `<button class="auth-btn-base" style="margin:12px 0 0; width:100%; height:36px; font-size:12px;" onclick="app._articlesLimit = ${lim + 40}; app.renderAdminArticles()">Показать ещё ${Math.min(40, shown.length - lim)}</button>` : ''}
+            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${Math.min(lim, shown.length)} из ${shown.length}${shown.length !== items.length ? ' (всего ' + items.length + ')' : ''}.${this._articleLeadsFailed ? ' Заявки не загрузились — журнал виден только владельцам.' : ''}</div>
         `;
 
         // Курсор в поле поиска слетает после перерисовки — возвращаем в конец строки

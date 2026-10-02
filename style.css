@@ -4020,6 +4020,19 @@ body.profile-incomplete-lock #page_scale_wrapper {
         min-width: 0 !important;
         box-sizing: border-box !important;
     }
+    /* Панели фильтров внутри «Фильтры»: поля без служебных классов тоже в свою колонку,
+       а отступы не складываются с шириной 100 % */
+    #admin_content details.ad-collapse > .admin-toolbar-row { margin-left: 12px !important; margin-right: 12px !important; width: calc(100% - 24px) !important; box-sizing: border-box !important; }
+    .admin-toolbar-row > input, .admin-toolbar-row > select {
+        width: 100% !important; max-width: none !important; min-width: 0 !important; box-sizing: border-box !important;
+    }
+    .admin-toolbar-row > span { grid-column: 1 / -1; }
+    /* Мелкие подписи не мельче 11 px; сегменты «Всем / По доступу / Нет» в «Тарифах» — под палец */
+    #admin_content small { font-size: 11px !important; }
+    /* Подсказки про клавиши на телефоне бессмысленны; кнопки панели просмотра — под палец */
+    .ad-search-foot { display: none; }
+    #ad_peek button { min-height: 36px; }
+    #admin_content button[onclick*="setTariffCell"]:not([role="switch"]) { min-height: 30px; padding-left: 9px !important; padding-right: 9px !important; }
 }
 
 /* Таблица пользователей в админке: колонкам заданы фиксированные ширины, и
@@ -17641,6 +17654,9 @@ body.theme-yandex .admin-search-btn { border-radius: 999px; }
     .admin-search-btn span, .admin-search-btn kbd { display: none; }
     .admin-search-btn { padding: 0 8px; right: 90px; }
     #ad_search { padding-top: 6vh; }
+    /* Заголовок не заходит под кнопки справа (поиск, тема, закрыть): значок роли переносится вниз */
+    #admin_modal_overlay .auth-modal-title { padding-right: 132px; font-size: 16px; line-height: 1.25; box-sizing: border-box; }
+    #admin_modal_overlay .auth-modal-title > span { margin-left: 0 !important; margin-top: 4px; display: inline-block; }
 }
 
 /* Сворачиваемый блок (форма «Добавить промокод»): строка-кнопка, внутри — карточка */
