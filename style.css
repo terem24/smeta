@@ -17058,6 +17058,21 @@ body.dark-mode .hc-export-doc::after {
         flex-wrap: wrap;
         justify-content: flex-end;
         row-gap: 6px;
+        margin-left: auto;
+    }
+
+    /* Когда пять переключателей рядом с названием не помещаются (узкое окно, режим
+       «Крупный текст»), на вторую строку уходил один последний — «Картинки». Теперь
+       строка переносится целиком: все переключатели встают вместе под названием.
+       Минимум поля названия снижен с 300 до 150 px, чтобы на широком экране они
+       по-прежнему умещались в одну строку с названием. */
+    .header-row {
+        flex-wrap: wrap;
+        row-gap: 6px;
+    }
+
+    .header-row .title-edit {
+        min-width: 150px;
     }
 }
 
@@ -17875,15 +17890,15 @@ body.dark-mode #admin_content .btn-icon {
 
 /* Меню «Размер интерфейса» у кнопки «Aa». Лежит в body вне zoom обёртки — обычные px. */
 .ui-scale-menu {
-    position: fixed; z-index: 100000; width: 280px; box-sizing: border-box;
+    position: fixed; z-index: 100000; width: 250px; box-sizing: border-box;
     padding: 14px; border-radius: 12px;
     background: var(--surface, #fff); color: var(--text-main, #111827);
     border: 1px solid var(--border, #e5e7eb);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
-    font: 14px/1.4 'Inter', sans-serif;
+    font: 13px/1.4 'Inter', sans-serif;
 }
-.ui-scale-title { font-weight: 700; font-size: 15px; margin-bottom: 10px; }
-.ui-scale-label { font-size: 13px; opacity: 0.7; margin-bottom: 6px; }
+.ui-scale-title { font-weight: 700; font-size: 14px; margin-bottom: 10px; }
+.ui-scale-label { font-size: 12px; opacity: 0.7; margin-bottom: 6px; }
 .ui-scale-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
 .ui-scale-step {
     padding: 8px 0; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 600;
@@ -17892,13 +17907,13 @@ body.dark-mode #admin_content .btn-icon {
 .ui-scale-step:hover:not(:disabled) { border-color: var(--primary, #2563EB); }
 .ui-scale-step.on { background: var(--primary, #2563EB); border-color: var(--primary, #2563EB); color: #fff; }
 .ui-scale-step:disabled { opacity: 0.35; cursor: not-allowed; }
-.ui-scale-note { font-size: 12.5px; opacity: 0.7; margin-top: 6px; }
+.ui-scale-note { font-size: 11.5px; opacity: 0.7; margin-top: 6px; }
 .ui-scale-row {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
     margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border, #e5e7eb); cursor: pointer;
 }
 .ui-scale-row b { display: block; }
-.ui-scale-row small { display: block; font-size: 12.5px; opacity: 0.7; margin-top: 2px; }
+.ui-scale-row small { display: block; font-size: 11.5px; opacity: 0.7; margin-top: 2px; }
 .ui-scale-row input { width: 20px; height: 20px; flex: none; cursor: pointer; accent-color: var(--primary, #2563EB); }
 .ui-scale-reset {
     margin-top: 12px; width: 100%; padding: 8px; border-radius: 8px; cursor: pointer; font: inherit;

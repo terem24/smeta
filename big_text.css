@@ -1231,16 +1231,6 @@
 
   html[data-big-text] #admin_content .admin-stat-grid .control-card > span:nth-child(2) { font-size: 22px; }
 
-  html[data-big-text] #btn_ui_scale .ui-scale-badge { font-size: 13px; }
-
-  html[data-big-text] .ui-scale-title { font-size: 17.5px; }
-
-  html[data-big-text] .ui-scale-label { font-size: 16.5px; }
-
-  html[data-big-text] .ui-scale-note { font-size: 16px; }
-
-  html[data-big-text] .ui-scale-row small { font-size: 16px; }
-
   html[data-big-text] .quick-start-cta { font-size: 17.5px; }
 
   html[data-big-text] .quick-start-cta .ui-emo { font-size: 19.5px; }
