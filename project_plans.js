@@ -464,14 +464,169 @@
     if (!P) return null;
     // подводка — начало той же направляющей; стык выпрямляем вместе со всем
     // маршрутом, чтобы на нём не возникло косого отрезка
-    if (lead && lead.length > 1) P = orthoPath(lead.concat(P));
+    if (lead && typeof lead !== 'function' && lead.length > 1) P = orthoPath(lead.concat(P));
     var h = stepPx / 2;
     var sup = offsetOrtho(P, h), ret = offsetOrtho(P, -h);
     if (!sup || !ret) return null;
     ret = ret.slice().reverse();
+    // Автоматическая подводка строится к началу уже готовой змейки и
+    // сдвигается отдельно: в общей направляющей её последний отрезок часто
+    // шёл навстречу первому ряду, и чистка колен съедала всю укладку.
+    var core = { sup: sup, ret: ret, p0: P[0], h: h };
+    var res = withLead(core, typeof lead === 'function' ? lead(P[0]) : null, ppm);
+    res.core = core;
+    return res;
+  }
+
+  /** Петля с подводкой route (от коллектора к началу змейки) поверх core */
+  function withLead(core, route, ppm) {
+    var sup = core.sup, ret = core.ret;
+    if (route && route.length > 1) {
+      var ls = offsetOrtho(route, core.h), lr = offsetOrtho(route, -core.h);
+      if (ls && lr) {
+        sup = orthoPath(ls.concat(sup));
+        ret = orthoPath(ret.concat(lr.slice().reverse()));
+      }
+    }
     var lenM = (lenPoly(sup) + lenPoly(ret) +
       Math.hypot(sup[sup.length - 1][0] - ret[0][0], sup[sup.length - 1][1] - ret[0][1])) / ppm;
     return { sup: sup, ret: ret, lenM: lenM, m: Math.round(lenM) };
+  }
+
+  /** Длина пути (px) по чужим зонам тёплого пола — транзит поверх их петель */
+  function transit(f, own, pts) {
+    var zs = (f.zones || []).filter(function (z, i) { return i !== own && z.type === 'tp' && z.pts && z.pts.length > 2; });
+    var stp = 0.2 * f.pxPerM, sum = 0, i, j;
+    for (i = 0; i + 1 < pts.length; i++) {
+      var a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      var n = Math.max(1, Math.round(L / stp));
+      for (j = 0; j < n; j++) {
+        var t = (j + 0.5) / n, p = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        if (zs.some(function (z) { return pip(p, z.pts); })) sum += L / n;
+      }
+    }
+    return sum;
+  }
+
+  /** Сколько раз орто-полилиния a пересекает уже проложенные (наложение
+   *  параллельных отрезков ближе полушага пучка — тоже пересечение) */
+  function crossings(a, routes, tol) {
+    var n = 0, i, j, r;
+    for (r = 0; r < routes.length; r++) {
+      var b = routes[r];
+      for (i = 0; i + 1 < a.length; i++) for (j = 0; j + 1 < b.length; j++) {
+        var p = a[i], q = a[i + 1], u = b[j], v = b[j + 1];
+        var ph = Math.abs(p[1] - q[1]) < 1e-6, uh = Math.abs(u[1] - v[1]) < 1e-6;
+        if (ph === uh) {
+          var k = ph ? 1 : 0, m = 1 - k;            // k — общая координата линии
+          if (Math.abs(p[k] - u[k]) < tol &&
+              Math.min(Math.max(p[m], q[m]), Math.max(u[m], v[m])) -
+              Math.max(Math.min(p[m], q[m]), Math.min(u[m], v[m])) > tol) n++;
+          continue;
+        }
+        var H = ph ? [p, q] : [u, v], V = ph ? [u, v] : [p, q];
+        var x = V[0][0], y = H[0][1];
+        if (x > Math.min(H[0][0], H[1][0]) + 1e-6 && x < Math.max(H[0][0], H[1][0]) - 1e-6 &&
+            y > Math.min(V[0][1], V[1][1]) + 1e-6 && y < Math.max(V[0][1], V[1][1]) - 1e-6) n++;
+      }
+    }
+    return n;
+  }
+
+  /**
+   * Пучок автоматических подводок этажа.
+   *
+   * Подводки выходят из коллектора рядом (выходы вдоль гребёнки через
+   * PAIR_GAP_M), уходят вверх или вниз — к той стороне, где их петля, — на
+   * свою дорожку и по ней вдоль оси до поворота к петле. Петля прямо над
+   * коллектором может идти к себе напрямую (дорожка на уровне её змейки).
+   *
+   * Дорожки прокладываются от ближней петли к дальней: каждая берёт ту, на
+   * которой целиком (стояк, дорожка, поворот) не пересекает уже проложенные,
+   * меньше идёт по чужим тёплым полам и ближе к уровню своей змейки. Выходы
+   * на гребёнке ставятся по глубине дорожек — мелкие со стороны поворота, — и
+   * раскладка повторяется с новыми выходами, пока пересечений меньше.
+   */
+  function bundleRoutes(f, items) {
+    var ppm = f.pxPerM, c = [f.coll.x, f.coll.y];
+    var gap = PAIR_GAP_M * ppm, first = 0.3 * ppm;
+    var clean = function (pts) {
+      return orthoPath(pts.filter(function (p, k, A) {
+        return !k || Math.hypot(p[0] - A[k - 1][0], p[1] - A[k - 1][1]) > 1e-6;
+      }));
+    };
+    items.forEach(function (it) {
+      it.side = it.to[1] < c[1] ? 'u' : 'd';
+      it.dir = it.to[0] <= c[0] ? 'l' : 'r';
+      it.far = Math.abs(it.to[0] - c[0]);
+      it.tgt = Math.abs(it.to[1] - c[1]);                   // глубина начала змейки
+      it.depth = it.tgt;                                    // для первых выходов
+    });
+    var order = items.slice().sort(function (a, b) { return a.far - b.far; });
+    // выходы: дорожка идёт над выходами со стороны поворота, и их стояки
+    // должны быть короче — там мельче дорожки
+    var rowsBy = function () {
+      return ['u', 'd'].map(function (s) {
+        var byDepth = function (a, b) { return a.depth - b.depth || b.far - a.far; };
+        var L = items.filter(function (it) { return it.side === s && it.dir === 'l'; }).sort(byDepth);
+        var R = items.filter(function (it) { return it.side === s && it.dir === 'r'; }).sort(byDepth).reverse();
+        return L.concat(R);
+      });
+    };
+    var place = function (rows) {
+      rows.forEach(function (row) {
+        row.forEach(function (it, k) { it.port = c[0] + (k - (row.length - 1) / 2) * gap; });
+      });
+    };
+    var layout = function (rows) {
+      place(rows);
+      var routed = [], lanes = [], turns = [], nx = 0, tr = 0;
+      order.forEach(function (it) {
+        var sgn = it.side === 'u' ? -1 : 1, out = it.dir === 'l' ? -1 : 1;
+        var x0 = out < 0 ? Math.min(it.to[0], it.port) : Math.max(it.to[0], it.port);
+        // вертикаль поворота не кладём на чужую — отодвигаем наружу
+        while (turns.some(function (t) { return Math.abs(t - x0) < gap * 0.99; })) x0 += out * gap;
+        var cand = [], r, bS = Infinity, bR = null, bD = first, bX = 0, bT = 0;
+        var maxD = Math.max(first + items.length * gap, it.tgt + 2 * gap);
+        for (r = 0; first + r * gap <= maxD; r++) cand.push(first + r * gap);
+        if (it.tgt > first / 2) cand.push(it.tgt);
+        cand.forEach(function (d) {
+          if (lanes.some(function (l) { return l.side === it.side && l.dir === it.dir && Math.abs(l.d - d) < gap * 0.99; })) return;
+          var y = c[1] + sgn * d;
+          var rt = clean([[it.port, c[1]], [it.port, y], [x0, y], [x0, it.to[1]], it.to]);
+          var x = crossings(rt, routed, gap / 2);
+          if (x * 1e6 > bS) return;
+          var t = transit(f, it.zi, rt);
+          var s = x * 1e6 + t + 0.5 * Math.abs(d - it.tgt) + 0.1 * d;
+          if (s < bS) { bS = s; bR = rt; bD = d; bX = x; bT = t; }
+        });
+        if (!bR) bR = clean([[it.port, c[1]], it.to]);
+        routed.push(bR);
+        lanes.push({ side: it.side, dir: it.dir, d: bD });
+        if (Math.abs(bD - it.tgt) > 1e-6) turns.push(x0);
+        it.depth = bD; it.route = bR; nx += bX; tr += bT;
+      });
+      return { nx: nx, tr: tr, rows: rows, routes: items.map(function (it) { return it.route; }) };
+    };
+    var better = function (a, b) { return !b || a.nx < b.nx || (a.nx === b.nx && a.tr < b.tr - 1e-6); };
+    // начальный порядок выходов — по глубине прошлой раскладки (дважды:
+    // первая раскладка уточняет глубины), затем перестановки соседних выходов
+    var best = layout(rowsBy()), cur = layout(rowsBy());
+    if (better(cur, best)) best = cur;
+    for (var pass = 0; pass < 3 && best.nx; pass++) {
+      var moved = false;
+      best.rows.forEach(function (row, ri) {
+        for (var k = 0; k + 1 < row.length && best.nx; k++) {
+          var rows = best.rows.map(function (r) { return r.slice(); });
+          var t = rows[ri][k]; rows[ri][k] = rows[ri][k + 1]; rows[ri][k + 1] = t;
+          var res = layout(rows);
+          if (better(res, best)) { best = res; moved = true; }
+        }
+      });
+      if (!moved) break;
+    }
+    place(best.rows);
+    items.forEach(function (it, k) { it.route = best.routes[k]; });
   }
 
   /** Ряды на k примерно равных по длине трубы полос: длинную комнату кладут
@@ -524,7 +679,12 @@
     var vertical = score(B, true) < score(A, false);
     var R = vertical ? B : A;
     if (!R) return null;
-    var one = buildLoop(R.rows, m, vertical, anchor, lead, stepPx, ppm);
+    // lead бывает функцией: у автоматических подводок каждая петля зоны
+    // получает свою пару труб в пучке, а не ложится поверх соседней.
+    var leadOf = function (i) {
+      return typeof lead === 'function' ? function (to) { return lead(i, to); } : lead;
+    };
+    var one = buildLoop(R.rows, m, vertical, anchor, leadOf(0), stepPx, ppm);
     if (!one) return null;
     var lim = maxLenM || MAX_LOOP_M;
     var k = Math.min(R.rows.length, Math.ceil(one.lenM / lim));
@@ -536,7 +696,7 @@
     for (tries = 0; tries < 4 && k <= R.rows.length; tries++, k++) {
       var parts = splitRows(R.rows, k), out = [], i, lp, worst = 0;
       for (i = 0; i < parts.length; i++) {
-        lp = buildLoop(parts[i], m, vertical, anchor, lead, stepPx, ppm);
+        lp = buildLoop(parts[i], m, vertical, anchor, leadOf(i), stepPx, ppm);
         if (!lp) { out = null; break; }
         worst = Math.max(worst, lp.lenM);
         out.push(lp);
@@ -546,6 +706,51 @@
       if (!best) best = out;
     }
     return best || [one];
+  }
+
+  /**
+   * Автоматическая подводка от коллектора к зоне, когда монтажник не нарисовал
+   * свою (редактор планов, f.leads). Без неё концы петель обрывались в комнате,
+   * а длина петли была меньше настоящей на подводку туда и обратно: на этаже
+   * проекта 2024-544R — 484 м против 552 м у проектировщика, который в «L=»
+   * всегда считает петлю вместе с подводкой.
+   *
+   * Без to — Г-образный путь к ближайшей точке стены зоны, чуть внутрь: его
+   * конец задаёт, откуда начинать змейку. С to — путь к началу змейки; им
+   * меряется длина при делении на петли, а на лист идёт пучок bundleRoutes
+   * той же длины с точностью до дорожек. Через чужие помещения подводка
+   * проходит транзитом — так её и кладут, в теплоизоляции.
+   */
+  var PAIR_GAP_M = 0.2;
+  function autoLead(z, f, to) {
+    if (!f.coll || !f.pxPerM || pip([f.coll.x, f.coll.y], z.pts)) return null;
+    var ppm = f.pxPerM, c = [f.coll.x, f.coll.y];
+    var best = null, bd = Infinity, vertEdge = false, i;
+    for (i = 0; i < z.pts.length; i++) {
+      var a = z.pts[i], b = z.pts[(i + 1) % z.pts.length];
+      var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+      var t = Math.max(0, Math.min(1, ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / L2));
+      var p = [a[0] + t * dx, a[1] + t * dy], d = Math.hypot(p[0] - c[0], p[1] - c[1]);
+      if (d < bd) { bd = d; best = p; vertEdge = Math.abs(dx) < Math.abs(dy); }
+    }
+    if (!best) return null;
+    var inset = 0.15 * ppm, cen = centroid(z.pts);
+    // ось маршрута: к вертикальной стене подходим горизонталью, к горизонтальной —
+    // вертикалью; точка входа — чуть внутри зоны
+    var e = vertEdge ? [best[0] + (cen[0] > best[0] ? inset : -inset), best[1]]
+                     : [best[0], best[1] + (cen[1] > best[1] ? inset : -inset)];
+    var corner = vertEdge ? [c[0], e[1]] : [e[0], c[1]];
+    if (to) {
+      // к началу змейки: из двух Г-образных путей — тот, чей поворот вне
+      // зоны, чтобы по уже уложенному полю труба шла как можно меньше
+      e = to;
+      var c1 = [to[0], c[1]], c2 = [c[0], to[1]];
+      corner = (pip(c1, z.pts) && !pip(c2, z.pts)) ? c2 : c1;
+    }
+    var base = [c, corner, e].filter(function (p, k, A) {
+      return !k || Math.hypot(p[0] - A[k - 1][0], p[1] - A[k - 1][1]) > 1e-6;
+    });
+    return base.length < 2 ? null : base;
   }
 
   /** Совместимость: одна петля зоны (стенд укладки) */
@@ -564,14 +769,23 @@
     var out = [];
     if (!f || !f.pxPerM) return out;
     var lim = maxLenM || loopLimit(stepMm), leads = f.leads || [];
+    var drawnOf = function (i) {
+      for (var li = 0; li < leads.length; li++)
+        if (leads[li].i === i && leads[li].pts && leads[li].pts.length > 1) return leads[li].pts;
+      return null;
+    };
+    var bundle = [];
     (f.zones || []).forEach(function (z, i) {
       if (z.type !== 'tp' || !z.pts || z.pts.length < 3) return;
-      var lead = null;
-      for (var li = 0; li < leads.length; li++) if (leads[li].i === i) { lead = leads[li]; break; }
-      var leadPts = (lead && lead.pts && lead.pts.length > 1) ? lead.pts : null;
-      var entry = leadPts ? leadPts[leadPts.length - 1] : (f.coll ? [f.coll.x, f.coll.y] : null);
+      var leadPts = drawnOf(i), lead = leadPts;
+      var first = leadPts || (f.coll ? autoLead(z, f, null) : null);
+      if (!leadPts && first) lead = function (part, to) { return autoLead(z, f, to); };
+      var entry = first ? first[first.length - 1] : (f.coll ? [f.coll.x, f.coll.y] : null);
       var S = areaM2(z, f), lp = null;
-      try { lp = layZoneLoops(z, f, stepMm, entry, leadPts, lim); } catch (e) { lp = null; }
+      try { lp = layZoneLoops(z, f, stepMm, entry, lead, lim); } catch (e) { lp = null; }
+      if (lp && typeof lead === 'function') lp.forEach(function (x) {
+        if (x.core) bundle.push({ lp: x, to: x.core.p0, zi: i });
+      });
       if (!lp) {
         // Оценка по площади: та же формула, что в смете без планов.
         var est = S / (stepMm / 1000) * 1.05;
@@ -581,6 +795,16 @@
       }
       out.push({ i: i, name: z.name || '', area: S, perim: perimM(z, f), est: !lp[0].sup, loops: lp });
     });
+    // Подводки всего этажа разом: петли делились по длине с простым путём,
+    // а на лист и в длину идёт пучок без пересечений.
+    if (bundle.length) {
+      bundleRoutes(f, bundle);
+      bundle.forEach(function (it) {
+        var r = withLead(it.lp.core, it.route, f.pxPerM);
+        it.lp.sup = r.sup; it.lp.ret = r.ret; it.lp.lenM = r.lenM; it.lp.m = r.m;
+        it.lp.autoLead = it.route;
+      });
+    }
     return out;
   }
 
@@ -1253,6 +1477,7 @@
     var t = fit(f), o = [];
     o.push(imageTag(f, t, 0.32));
     var anyLead = (f.leads || []).some(function (L) { return L.pts && L.pts.length > 1; });
+    var anyAuto = false;
     var rows = [], flowSum = 0, byLoss = false;
     rooms = (rooms || []).filter(function (r) { return (r.floor || 1) === num; });
     // Петли считает общий расчёт: ровно те же числа уходят в смету и в
@@ -1260,6 +1485,7 @@
     loopRows(f, stepMm, rooms).forEach(function (R) {
       var z = (f.zones || [])[R.zi], lp = R.loop;
       if (R.byLoss) byLoss = true;
+      if (lp.autoLead) anyAuto = true;
       if (R.li === 0) {
         o.push('<polygon points="' + polyPts(z.pts, t.X, t.Y) + '" style="fill:none;stroke:' +
           COLT.tp + ';stroke-width:0.45;stroke-dasharray:1.6,1.2"/>');
@@ -1308,7 +1534,7 @@
     });
     var ny = Ty + all.length * rh + 5;
     o.push(txt(Lx, ny, 'Длины петель — по нарисованной укладке (подача и обратка' +
-      (anyLead ? ', подводки' : '') + ');', { size: 3.0 }));
+      (anyLead || anyAuto ? ', подводки от коллектора' : '') + ');', { size: 3.0 }));
     o.push(txt(Lx, ny + 4, 'петля длиннее ' + loopLimit(stepMm) +
       ' м разделена; эти же длины и число петель — в смете.', { size: 3.0 }));
     // Расход: по нему выставляют расходомеры на подающей гребёнке, поэтому
@@ -1329,6 +1555,7 @@
       o.push(txt(Lx + 11.5, yy + 1.1, r[0], { size: 3.0 }));
     });
     o.push(txt(228, 273.8, 'Укладка построена автоматически: трассировку уточнить при монтаже.', { size: 3.0 }));
+    if (anyAuto) o.push(txt(228, 269.6, 'Подводки от коллектора проложены автоматически, пучком, — трассу по коридорам уточнить.', { size: 3.0 }));
     return o.join('');
   }
 
