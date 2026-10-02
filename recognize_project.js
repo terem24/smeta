@@ -104,16 +104,24 @@ const RecognizeProject = {
                 : '';
             // Точное положение марок и подписей зон — из PDF, а не с картинки.
             const labels = (sh.labels || []);
-            const zoneSum = labels.filter(l => !l.mark)
+            const zoneSum = labels.filter(l => !l.mark && !l.loop)
                 .reduce((a, l) => a + (this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, '')) || 0), 0);
             const zonesHint = zoneSum > 0
                 ? `Подписи зон тёплого пола «S=…» на листе дают в сумме ${this.fmt(zoneSum)} м². Если в спецификации тёплого пола ` +
                   'больше — на листе есть заштрихованные зоны без подписи: найди их (часто это гардеробные, кладовые, ниши) ' +
                   'и отнеси к помещениям с ufh=true, ufhArea=null и ufhApprox — своей оценкой площади по размерам на чертеже.\n\n'
                 : '';
-            const labelsHint = labels.length
+            const loopLabels = labels.filter(l => l.loop);
+            const loopsHint = loopLabels.length
+                ? `Петли тёплого пола на листе — ${loopLabels.length} (длина и шаг взяты из PDF, их считать не нужно): ` +
+                  loopLabels.map(l => `Контур ${l.loop} — подпись в (${l.x}%, ${l.y}%)`).join('; ') +
+                  '. Подписи стоят за планом; иди по выноске от подписи к петле и укажи у помещения ufhLoops — номера его петель. ' +
+                  'Каждую петлю — ровно одному помещению.\n\n'
+                : '';
+            const pointLabels = labels.filter(l => !l.loop);
+            const labelsHint = pointLabels.length
                 ? 'Положение надписей на листе (x — % ширины слева, y — % высоты сверху; взято из PDF точно): ' +
-                  labels.map(l => `${l.s} (${l.x}%, ${l.y}%)`).join('; ') +
+                  pointLabels.map(l => `${l.s} (${l.x}%, ${l.y}%)`).join('; ') +
                   '. Марка прибора стоит у окна своего помещения — обычно ближе всего к подписи площади зоны тёплого пола ' +
                   'этого же помещения; помещение каждой марки определяй по этим координатам, а не по картинке.\n\n'
                 : '';
@@ -130,7 +138,7 @@ const RecognizeProject = {
                     const data = await ui.askModel([
                         { text: `Лист ${sh.num} «${sh.title}» — ${this.SHEET_TOPIC[sh.kind] || ''}. ` +
                             `Задача: ${sh.kind}.\n\nПомещения, уже прочитанные с плана:\n${list}\n\n` +
-                            (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint + zonesHint +
+                            (sh.kind !== 'vent' && pos.some(Boolean) ? posHint : '') + marksHint + labelsHint + loopsHint + zonesHint +
                             (sh.text ? `Текст листа (набран в PDF, ему можно верить больше, чем картинке):\n${sh.text}\n\n` : '') +
                             'Верни только JSON.' },
                         { inline_data: { mime_type: 'image/jpeg', data: sh.img } },
@@ -436,6 +444,9 @@ const RecognizeProject = {
         const zones = new Map(), marks = new Map(), pts = new Map();
         const lostZ = [], lostM = [];
         for (const l of sh.labels) {
+            // Подпись петли стоит на выноске за планом — её место о помещении
+            // не говорит; петли к помещениям относит модель (takeHeat, ufhLoops).
+            if (l.loop) continue;
             const r = this.rowAt(map, l.cx !== undefined ? l.cx : l.x, l.cy !== undefined ? l.cy : l.y, 600);
             if (!r || !scope.includes(r)) { (l.mark ? lostM : lostZ).push(l.s); continue; }
             if (l.mark) {
@@ -505,8 +516,7 @@ const RecognizeProject = {
             out.push(`приборы ${n} — по маркам и стенам листа`);
         }
         const warnings = [];
-        if (lostZ.length) warnings.push(`лист ${sh.num}: подписи зон ${lostZ.join(', ')} не попали ни в одно помещение — зоны разложены по картинке, проверьте`);
-        if (lostM.length) warnings.push(`лист ${sh.num}: марки ${lostM.join(', ')} не попали ни в одно помещение — приборы разложены по картинке, проверьте`);
+        if (lostZ.length) warnings.push(`лист ${sh.num}: подписи зон ${lostZ.join(', ')} не попали ни в одно помещение — зоны разложены по картинке, проверьте`);        if (lostM.length) warnings.push(`лист ${sh.num}: марки ${lostM.join(', ')} не попали ни в одно помещение — приборы разложены по картинке, проверьте`);
         return { summary: out, warnings };
     },
 
@@ -594,6 +604,16 @@ const RecognizeProject = {
         const total = est.min + billMin;
         return { total, parse: est.min, billMin, bill: n, guessed, lines,
             totalLine: `разбор ${RecognizeUI.handTime(est.min)} + смета ${RecognizeUI.handTime(billMin)} = <b>≈${this.roughTime(total)} руками</b>` };
+    },
+
+    /**
+     * Площадь зоны по петле: длина × шаг. В длину петли входит и подводка
+     * от коллектора (туда и обратно), поэтому takeHeat ограничивает сумму
+     * петель площадью помещения. Подписей S= рядом с петлями в корпусе нет
+     * ни у одного из 152 проектов — сверить поправку на подводку не с чем.
+     */
+    loopArea(len, step) {
+        return len > 0 && step > 0 ? len * step / 1000 : 0;
     },
 
     /** Итог спецификации тёплого пола из текста листа: «Водяной тёплый пол … 121,95». */
@@ -705,14 +725,34 @@ const RecognizeProject = {
         const ui = RecognizeUI;
         if (onStatus) onStatus('Читаю примечания проекта…');
         const body = notes.map(n => `### Лист ${n.sheets.join(', ')} «${n.title}»\n${n.text}`).join('\n\n');
+        const sheetsAll = new Set(notes.flatMap(n => n.sheets));
+        // Ответ не в том виде бывает разовым — второй запрос обычно проходит.
+        let parsed = null, lastErr = null;
+        for (let attempt = 0; attempt < 2 && !parsed; attempt++) {
+            try {
+                const data = await ui.askModel([{ text: `Примечания и пометки со всех листов проекта:\n\n${body}\n\nВерни только JSON.` }],
+                    PROJECT_NOTES_PROMPT);
+                const cand = data?.candidates?.[0];
+                const text = cand?.content?.parts?.[0]?.text;
+                if (!text) throw new Error('пустой ответ');
+                const p = ui.parseModelJson(text, cand.finishReason);
+                // Починка ответа по позициям ищет «items», а не «reqs»: такой ответ —
+                // тоже неудача, иначе список требований молча оказывался пустым.
+                if (!p || !Array.isArray(p.reqs)) throw new Error('в ответе нет списка требований');
+                parsed = p;
+            } catch (e) {
+                if (e.quota) return { warnings: [e.message] };
+                lastErr = e;
+            }
+        }
+        if (!parsed) {
+            // Примечания не теряем: пункты как есть, раздел — по словам.
+            // Причина — в лог, монтажнику она ничего не даёт.
+            console.warn('Примечания проекта: разбор не удался, показаны пункты как есть —', lastErr && lastErr.message);
+            this.reqs = this.rawReqs(notes);
+            return { warnings: [] };
+        }
         try {
-            const data = await ui.askModel([{ text: `Примечания и пометки со всех листов проекта:\n\n${body}\n\nВерни только JSON.` }],
-                PROJECT_NOTES_PROMPT);
-            const cand = data?.candidates?.[0];
-            const text = cand?.content?.parts?.[0]?.text;
-            if (!text) throw new Error('пустой ответ');
-            const parsed = ui.parseModelJson(text, cand.finishReason);
-            const sheetsAll = new Set(notes.flatMap(n => n.sheets));
             this.reqs = (Array.isArray(parsed.reqs) ? parsed.reqs : []).map(r => {
                 r = r || {};
                 const sheet = Math.round(this.num(r.sheet));
@@ -729,9 +769,38 @@ const RecognizeProject = {
             }).filter(Boolean).slice(0, 30);
             return { warnings: [] };
         } catch (e) {
-            if (e.quota) return { warnings: [e.message] };
-            return { warnings: [`примечания проекта не разобраны: ${ui.cleanError(e.message).split('\n')[0]}`] };
+            console.warn('Примечания проекта: ответ не разобран, показаны пункты как есть —', e.message);
+            this.reqs = this.rawReqs(notes);
+            return { warnings: [] };
         }
+    },
+
+    /**
+     * Примечания без модели: каждый нумерованный пункт — требование «учесть
+     * при монтаже», раздел — по словам пункта, иначе по названию листа.
+     */
+    rawReqs(notes) {
+        const topicOf = s => /т[её]пл\S*\s+пол|напольн\S*\s+отоплен|контур\S*\s+т/i.test(s) ? 'ufh'
+            : /канализ|трап|выпуск/i.test(s) ? 'sewer'
+            : /котел|котёл|котельн|дымоход/i.test(s) ? 'boiler'
+            : /вентиляц|воздуховод|рекуператор/i.test(s) ? 'vent'
+            : /водоснаб|водораз|гвс|хвс|смесител/i.test(s) ? 'water'
+            : /отоплен|радиатор|конвектор/i.test(s) ? 'heat' : null;
+        const out = [];
+        for (const n of notes) {
+            const items = String(n.text || '').split(/\n(?=\d{1,2}\.\s)/).map(s => s.replace(/\s+/g, ' ').trim()).filter(s => s.length >= 15);
+            for (const t of items) {
+                out.push({
+                    sheet: n.sheets[0] || null,
+                    topic: topicOf(t) || topicOf(n.title || '') || 'general',
+                    action: 'mount',
+                    text: t.replace(/^\d{1,2}\.\s*/, '').slice(0, 220),
+                    quote: '',
+                    _sel: true,
+                });
+            }
+        }
+        return out.slice(0, 30);
     },
 
     setReq(i, v) { if (this.reqs && this.reqs[i]) this.reqs[i]._sel = !!v; },
@@ -1241,21 +1310,39 @@ const RecognizeProject = {
             r.eng.heatSheets = [sh.num];
             r.eng.heatSheet = sh.num;       // лист прочитан: молчание о комнате — тоже ответ
             r.eng.ufh = false; r.eng.ufhArea = null; r.eng.ufhAreaSrc = null; r.eng.heaters = 0; r.eng.heaterType = null;
-            r.eng.heaterMarks = [];
+            r.eng.heaterMarks = []; r.eng.ufhLoops = null;
         });
         let ufhSum = 0, ufhRooms = 0, heaters = 0;
         // Подписи зон «S=…м2» из PDF: площадь, которой среди них нет (ни
         // одной подписи, ни суммы двух — у комнаты бывает две зоны), модель
         // не прочитала, а оценила — такую считаем зоной без подписи.
-        const labelVals = (sh.labels || []).filter(l => !l.mark)
+        const labelVals = (sh.labels || []).filter(l => !l.mark && !l.loop)
             .map(l => this.num(String(l.s).replace(/^S=/i, '').replace(/м.*$/i, ''))).filter(v => v > 0);
-        const isLabel = a => !labelVals.length || labelVals.some((v, i) =>
+        // Петли рабочего проекта («Контур 3 / Шаг 150 мм / L= 74.6 м»): длина и
+        // шаг — из PDF, модель только говорит, какая петля в каком помещении.
+        const loopById = new Map((sh.labels || []).filter(l => l.loop).map(l => [String(l.loop), l]));
+        const loopUsed = new Map();
+        // На листе с петлями площадь от модели — её оценка, а не подпись.
+        const isLabel = a => (!labelVals.length && !loopById.size) || labelVals.some((v, i) =>
             Math.abs(v - a) < 0.02 || labelVals.some((u, j) => j > i && Math.abs(v + u - a) < 0.02));
         const unlabeled = [];
         (Array.isArray(parsed.rooms) ? parsed.rooms : []).forEach(x => {
             const r = this.rowOf(rows, x && x.n, scope);
             if (!r) { if (x && x.name) warnings.push(`лист ${sh.num}: «${x.name}» не найдено среди помещений`); return; }
-            if (x.ufh) {
+            const lp = [...new Set((Array.isArray(x.ufhLoops) ? x.ufhLoops : [])
+                .map(s => String(s).replace(/^\s*(контур|петля)\s*(№\s*)?/i, '').replace(/[•·]/g, '.').replace(/\s+/g, '')))]
+                .filter(id => loopById.has(id) && !loopUsed.has(id));
+            if (x.ufh && lp.length) {
+                lp.forEach(id => loopUsed.set(id, r));
+                let a = lp.reduce((s, id) => s + this.loopArea(loopById.get(id).len, loopById.get(id).step), 0);
+                if (r.area > 0) a = Math.min(a, r.area);
+                r.eng.ufh = true;
+                r.eng.ufhArea = Math.round(a * 100) / 100;
+                r.eng.ufhAreaSrc = 'loop';
+                r.eng.ufhLoops = [...new Set([...(r.eng.ufhLoops || []), ...lp])];
+                ufhRooms++;
+                ufhSum += a;
+            } else if (x.ufh) {
                 r.eng.ufh = true;
                 const a = this.num(x.ufhArea);
                 ufhRooms++;
@@ -1289,6 +1376,10 @@ const RecognizeProject = {
             }
         });
 
+        if (loopById.size && loopUsed.size) {
+            const lost = [...loopById.keys()].filter(id => !loopUsed.has(id));
+            if (lost.length) warnings.push(`лист ${sh.num}: ${lost.length > 1 ? 'петли' : 'петля'} тёплого пола ${lost.join(', ')} не отнесен${lost.length > 1 ? 'ы' : 'а'} ни к одному помещению — проверьте тёплый пол`);
+        }
         const tr = parsed.towelRails || {};
         const trCount = this.cnt(tr.count);
         // Полотенцесушители с листов разных этажей складываются.
@@ -1394,6 +1485,7 @@ const RecognizeProject = {
         }
         if (!e.ufh && !e.heaters) out.push(`${(e.heatSheets || []).length > 1 ? 'на листах' : 'на листе'} ${e.heatSheet} отопления нет — в расчёте без отопления`);
         if (e.ufh && e.ufhAreaSrc === 'spec') out.push(`зона тёплого пола без подписи площади — ${this.fmt(e.ufhArea)} м² по остатку спецификации листа`);
+        if (e.ufh && e.ufhAreaSrc === 'loop' && e.ufhLoops) out.push(`тёплый пол по петлям проекта: ${e.ufhLoops.length > 1 ? 'контуры' : 'контур'} ${e.ufhLoops.join(', ')} (длина × шаг)`);
         if (e.ufh && e.ufhAreaSrc === 'approx') out.push(`зона тёплого пола без подписи площади — ${e.ufhArea ? this.fmt(e.ufhArea) + ' м² оценено по чертежу, проверьте' : 'площадь не определена, впишите'}`);
         if (e.heaters && e.heaterMarks && e.heaterMarks.length) out.push(`приборы на листе: ${e.heaterMarks.join(', ')}`);
         return out;
@@ -1447,7 +1539,7 @@ const RecognizeProject = {
         const parts = [];
         if (read.heat) {
             parts.push(e.ufh
-                ? `<span style="${pill}${e.ufhAreaSrc === 'label' ? pdf('ufh') : ''}">♨️ тёплый пол ${num('ufhArea', e.ufhArea, 50, 0.01)} м²${x('ufh', 'false')}</span>`
+                ? `<span style="${pill}${(e.ufhAreaSrc === 'label' || e.ufhAreaSrc === 'loop') ? pdf('ufh') : ''}">♨️ тёплый пол ${num('ufhArea', e.ufhArea, 50, 0.01)} м²${x('ufh', 'false')}</span>`
                 : `<button type="button" style="${ghost}" onclick="${on},'ufh',true)">+ тёплый пол</button>`);
             const typeOpt = (v) => `<option value="${v}" ${(e.heaterType || 'radiator') === v ? 'selected' : ''}>${this.HEATER_NAMES[v]}</option>`;
             parts.push(e.heaters
@@ -1678,6 +1770,7 @@ const PROJECT_ENG_PROMPT = `Ты разбираешь лист инженерн�
 === heat — отопление и тёплые полы ===
 Тёплый пол на плане — заштрихованная зона (часто красной или косой штриховкой) с подписью площади «S=10,63м2». Для каждого помещения, где есть такая зона, укажи ufh=true и ufhArea — сумму подписанных площадей зон в этом помещении. Площадь бери из подписи на листе, не вычисляй.
 Зона бывает и без подписи площади (гардеробная, кладовая, ниша — штриховка есть, «S=» нет; рядом часто стоит терморегулятор). Это тоже тёплый пол: ufh=true, ufhArea=null, ufhApprox — оценка площади зоны по размерам на чертеже. Не пропускай такие зоны.
+В рабочем проекте тёплый пол нарисован петлями трубы от коллектора, а площади не подписаны: у каждой петли выноска с подписью «Контур N / Шаг 150 мм / L= 74.6 м». Подписи стоят за пределами плана, от подписи к петле идёт линия-выноска. Если в запросе дан список петель — для каждого помещения, где уложена петля, укажи ufh=true и ufhLoops — номера петель («Контур 3» → "3", «Контур 1.2» → "1.2"), ufhArea в этом случае не нужна: её посчитают по длине и шагу. Иди от подписи по выноске к петле; петля — тому помещению, где лежит её змеевик (подводка от коллектора через коридор не в счёт). Каждую петлю — ровно одному помещению; в одном помещении петель бывает несколько.
 Приборы отопления — радиаторы, конвекторы — обозначены марками (РД-1, Р-2, К-1, КВ-1…) и прямоугольниками у окон. heaters — сколько приборов в помещении. heaterType:
 - "floor_convector" — прибор утоплен в пол вдоль остекления (узкий прямоугольник у окна в пол, решётка в полу), или в спецификации написано «внутрипольный»;
 - "wall_convector" — настенный конвектор;
@@ -1722,6 +1815,8 @@ heat:
 {"rooms":[{"n":1,"name":"Кухня-гостиная","ufh":true,"ufhArea":57.54,"heaters":3,"heaterMarks":["Р-1","Р-2","Р-3"],"heaterType":"floor_convector"},
           {"n":4,"name":"Кладовая","ufh":true,"ufhArea":null,"ufhApprox":2.5,"heaters":0}],
  "towelRails":{"count":1,"type":"electric"},"ufhTotal":121.95,"unclear":[]}
+heat, рабочий проект с петлями:
+{"rooms":[{"n":2,"name":"Гостиная","ufh":true,"ufhLoops":["4","5","6"],"heaters":0},{"n":5,"name":"Холл","ufh":true,"ufhLoops":["2"],"heaters":1,"heaterMarks":[],"heaterType":"radiator"}],"unclear":[]}
 water:
 {"rooms":[{"n":5,"name":"Мастер-санузел","toilet":1,"toiletHot":0,"bidet":0,"basin":1,"kitchenSink":0,"bath":1,"shower":1,"drain":0,"wash":0,"dish":0,"robot":0}],
  "unclear":[]}

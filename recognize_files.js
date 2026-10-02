@@ -983,7 +983,76 @@ const RecognizeFiles = {
         }
         const marks = out.filter(l => l.mark);
         const column = l => marks.filter(m => Math.abs(m.x - l.x) < 1).length >= 3;
-        return out.filter(l => !l.mark || !column(l));
+        return out.filter(l => !l.mark || !column(l)).concat(this.loopLabels(c.items, vp));
+    },
+
+    /**
+     * Подписи петель тёплого пола рабочего проекта — столбиком на выноске:
+     * «Контур 3» / «Шаг 150 мм» / «L= 74.6 м» / «1.3 л/мин». Площади зоны
+     * («S=») на таких листах нет (в корпусе из 152 проектов с петлями — ни
+     * у одного), а из длины петли и шага её можно посчитать
+     * (RecognizeProject.loopArea). Шага у петли нет — берём из примечаний
+     * листа («Шаг укладки теплого пола 150 мм, кроме случаев…»).
+     * pdf.js бывает режет строку на куски («Контур» + «1», «L= 50.0» + «м») —
+     * сначала склеиваем куски одной строки.
+     * Подпись стоит за планом, к петле идёт выноска: место подписи о
+     * помещении не говорит, петли к помещениям относит модель (ufhLoops).
+     * Возвращает [{ s, loop, len, step, x, y, cx, cy }] — место подписи «Контур N».
+     */
+    LOOP_NAME_RE: /^(?:Контур|Петля)\s*(?:№\s*)?(\d{1,2}(?:\.\d{1,2})?)(?:\s?([А-ЯЁA-Zа-яё]{1,2}))?$/i,
+    LOOP_LEN_RE: /^L\s*=\s*(\d{1,3}(?:[.,]\d{1,2})?)(?![\d.,])\s*(?:м|\[м\])?\.?$/,
+    LOOP_STEP_RE: /^[Шш]аг\s*(?:укладки\s*)?[=:-]?\s*(\d{2,3})\s*(?:мм)?\.?$/,
+    loopLabels(items, vp) {
+        const its = [];
+        for (const t of items) {
+            const s = String(t.str || '').replace(/\s+/g, ' ').trim();
+            if (!s) continue;
+            const [x, y] = vp.convertToViewportPoint(t.transform[4], t.transform[5]);
+            const px = x / vp.width * 100;
+            its.push({ t, s, x: Math.round(px * 10) / 10, y: Math.round(y / vp.height * 1000) / 10,
+                end: px + (t.width || 0) / vp.width * 100 });
+        }
+        // Строка от этого куска вправо: следующий кусок той же линии, если зазор
+        // до него меньше 1 % листа. Окно по ширине склеивало соседнюю колонку
+        // («Контур 4 Контур 1Р» на 2020-105).
+        const line = o => {
+            const row = its.filter(q => Math.abs(q.y - o.y) < 0.5 && q.x >= o.x - 0.05).sort((a, b) => a.x - b.x);
+            const out = [];
+            let end = null;
+            for (const q of row) {
+                if (end !== null && q.x - end > 1) break;
+                out.push(q.s);
+                end = Math.max(end === null ? q.end : end, q.end);
+            }
+            // «Контур 1•1» — у части шрифтов точка в номере набрана кружком.
+            return out.join(' ').replace(/\s+/g, ' ').replace(/(\d)\s*[•·]\s*(\d)/g, '$1.$2');
+        };
+        const names = [], lens = [], steps = [];
+        let defStep = null;
+        for (const o of its) {
+            let m;
+            if (/^(Контур|Петля)/i.test(o.s) && (m = line(o).match(this.LOOP_NAME_RE))) names.push({ t: o.t, n: m[1] + (m[2] || ''), x: o.x, y: o.y });
+            else if (/^L\s*=/.test(o.s) && (m = line(o).match(this.LOOP_LEN_RE))) lens.push({ v: parseFloat(m[1].replace(',', '.')), x: o.x, y: o.y });
+            else if (/^[Шш]аг/.test(o.s) && (m = line(o).match(this.LOOP_STEP_RE))) steps.push({ v: +m[1], x: o.x, y: o.y });
+            else if (!defStep && (m = o.s.match(/шаг\s+укладки[^.;]{0,40}?(\d{2,3})\s*мм/i))) defStep = +m[1];
+        }
+        if (!names.length || !lens.length) return [];
+        // Ближайшая строка того же столбика ниже подписи «Контур N».
+        const near = (arr, l) => arr.filter(o => Math.abs(o.x - l.x) < 1.5 && o.y > l.y && o.y - l.y < 6)
+            .sort((a, b) => (a.y - l.y) - (b.y - l.y))[0];
+        const out = [], seen = new Set();
+        for (const l of names) {
+            const len = near(lens, l);
+            if (!len || seen.has(l.n)) continue;
+            const st = near(steps, l);
+            const step = st ? st.v : defStep;
+            // Петля длиннее 150 м в частном доме не бывает — это не длина петли.
+            if (!step || len.v > 150) continue;
+            seen.add(l.n);
+            out.push({ s: `Контур ${l.n}: L=${len.v} м, шаг ${step} мм`, loop: l.n, len: len.v, step, mark: false,
+                x: l.x, y: l.y, ...this.itemCenter(vp, l.t) });
+        }
+        return out;
     },
 
     /**
@@ -1458,6 +1527,15 @@ const RecognizeFiles = {
             const t = this.noteText(buf);
             if (t) out.push(t.slice(0, this.NOTE_BLOCK_MAX));
         }
+        // Рабочий проект (ГОСТ 21.101): примечания — нумерованный список под
+        // планом без заголовка «Примечания» («1. Трубопроводы напольного
+        // отопления… 3. Шаг укладки 150 мм… 6. Отступ контуров от стен 100 мм»).
+        // На 544R из-за этого не нашлось ни одного настоящего примечания, а
+        // модель получила обрывок «3D виде.» и ответила не в том виде.
+        if (!out.length) {
+            const nb = this.numberedNotes(own);
+            if (nb) out.push(nb.slice(0, this.NOTE_BLOCK_MAX));
+        }
         if (isSystem) {
             for (let i = 0; i < own.length; i++) {
                 if (!this.NOTE_ASK_RE.test(own[i])) continue;
@@ -1469,6 +1547,39 @@ const RecognizeFiles = {
             }
         }
         return out;
+    },
+
+    /**
+     * Нумерованный список без заголовка: «1. Х…», «2. Y…» подряд. Берём от
+     * «1.» и пока номера идут по порядку (продолжения строк — между ними).
+     * Строки экспликации («1. Холл 12,30 м²») — не примечания: у них в конце
+     * площадь или число.
+     */
+    NOTE_NUM_RE: /^(\d{1,2})\.\s*[А-ЯЁ]/,
+    numberedNotes(lines) {
+        for (let i = 0; i < lines.length; i++) {
+            const m = lines[i].match(this.NOTE_NUM_RE);
+            if (!m || m[1] !== '1') continue;
+            const buf = [lines[i]];
+            let next = 2, items = [lines[i]];
+            for (let j = i + 1; j < lines.length && j < i + 60; j++) {
+                const s = lines[j];
+                if (this.NOTE_END_RE.test(s) || this.NOTE_HEAD_RE.test(s)) break;
+                const k = s.match(this.NOTE_NUM_RE);
+                if (k) {
+                    if (+k[1] !== next) break;
+                    next++;
+                    items.push(s);
+                } else if (!/^[а-яёa-z(«"\d-]/.test(s) || buf.length - items.length > 6) break;
+                buf.push(s);
+            }
+            if (items.length < 2) continue;
+            const tabular = items.filter(s => /\d+[.,]\d+\s*(м²|м2)?\s*$/i.test(s)).length;
+            if (tabular * 2 >= items.length) continue;
+            const t = this.noteText(buf);
+            if (t) return t;
+        }
+        return '';
     },
 
     /**
@@ -1503,9 +1614,15 @@ const RecognizeFiles = {
             for (const t of (p.notes || [])) {
                 const key = t.toLowerCase().replace(/[^а-яёa-z\d]/g, '');
                 if (!key) continue;
-                const cur = byText.get(key);
-                if (cur) { if (!cur.sheets.includes(p.num)) cur.sheets.push(p.num); }
-                else byText.set(key, { sheets: [p.num], title: p.title, text: t });
+                // Тот же список на плане и на 3D-виде бывает обрезан по-разному:
+                // один текст внутри другого — одно примечание, оставляем длинное.
+                let curKey = byText.has(key) ? key : null;
+                if (!curKey) for (const k of byText.keys()) if (k.includes(key) || key.includes(k)) { curKey = k; break; }
+                const cur = curKey && byText.get(curKey);
+                if (cur) {
+                    if (!cur.sheets.includes(p.num)) cur.sheets.push(p.num);
+                    if (key.length > curKey.length) { byText.delete(curKey); cur.text = t; byText.set(key, cur); }
+                } else byText.set(key, { sheets: [p.num], title: p.title, text: t });
             }
         }
         const out = [];
