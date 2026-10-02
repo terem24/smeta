@@ -12934,7 +12934,7 @@ const app = {
         // Сменить пароль можно при любом способе входа: у аккаунта через Яндекс ID
         // это добавляет вход по e-mail. Без адреса (старый Telegram) пароль не к чему.
         const pwdBtn = email
-            ? `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:var(--bg-sec, #f1f5f9); color:var(--text-main); border:1px solid var(--border); border-radius:8px;" onclick="app.showSetPasswordModal('change')">Сменить пароль</button>`
+            ? `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:var(--surface-light, #f1f5f9); color:var(--text-main); border:1px solid var(--border); border-radius:8px;" onclick="app.showSetPasswordModal('change')">Сменить пароль</button>`
             : '';
         const linkBtn = this.isYandexLinked()
             ? ''
