@@ -17333,6 +17333,9 @@ body.theme-yandex #admin_content .admin-btn.danger:not([style*="background"]):ho
     font-weight: 600;
     color: var(--text-sec) !important;
 }
+#admin_content .admin-stat-grid .control-card > span:nth-child(n+3) {
+    text-align: left;
+}
 #admin_content .admin-stat-grid .control-card > span:nth-child(2) {
     font-size: 22px !important;
     font-weight: 700 !important;
