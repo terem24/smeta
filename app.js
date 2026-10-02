@@ -40289,6 +40289,7 @@ const app = {
         document.body.classList.toggle('dark-mode', dark && !this.isShopTheme());
         this.updateThemeButton(mode);
         this.applyUiScale();
+        if (!this._bigTextApplied) { this._bigTextApplied = true; this.applyBigText(); }
         // Тема «Яндекс» живёт поверх: ей нужно знать, ночь сейчас или день (цвет строки состояния)
         if (this.syncYandexTheme) this.syncYandexTheme();
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
@@ -40348,24 +40349,111 @@ const app = {
     updateUiScaleButton: function (z) {
         const btn = document.getElementById('btn_ui_scale');
         if (!btn) return;
-        // Окно узкое, и больше стандартного ничего не помещается — кнопка была бы пустой
-        btn.style.display = this.uiZoomSteps().length < 2 ? 'none' : '';
         const pct = Math.round(z / this.UI_ZOOM_STEPS[0] * 100);
-        const steps = this.uiZoomSteps();
-        const next = steps[(steps.indexOf(z) + 1) % steps.length];
-        btn.title = `Размер текста и элементов: ${pct}%. Нажмите, чтобы сделать ${Math.round(next / this.UI_ZOOM_STEPS[0] * 100)}%`;
+        const big = this.bigText();
+        btn.title = 'Размер текста и элементов' + (pct !== 100 ? ' · масштаб ' + pct + '%' : '') + (big ? ' · крупный текст' : '');
         let badge = btn.querySelector('.ui-scale-badge');
-        if (pct === 100) { if (badge) badge.remove(); return; }
+        const label = pct !== 100 ? pct + '%' : (big ? '+' : '');
+        if (!label) { if (badge) badge.remove(); return; }
         if (!badge) { badge = document.createElement('span'); badge.className = 'ui-scale-badge'; btn.appendChild(badge); }
-        badge.textContent = pct + '%';
+        badge.textContent = label;
     },
 
-    cycleUiScale: function () {
-        const steps = this.uiZoomSteps();
-        const cur = this.uiZoom();
-        const next = steps[(steps.indexOf(cur) + 1) % steps.length];
-        try { localStorage.setItem(this.UI_ZOOM_KEY, String(next)); } catch (e) { }
+    // Режим «Крупный текст»: поднимает только мелкие шрифты (11–12 px при zoom 0.8 дают
+    // на экране 9–10 px), раскладку не трогает — поэтому работает на любом окне, где
+    // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
+    // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
+    BIG_TEXT_KEY: 'hc_big_text',
+    BIG_TEXT_CSS_V: '3',
+
+    bigText: function () {
+        try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
+    },
+
+    applyBigText: function () {
+        const on = this.bigText();
+        const root = document.documentElement;
+        if (on) {
+            root.setAttribute('data-big-text', '');
+            if (!document.getElementById('big_text_css')) {
+                const l = document.createElement('link');
+                l.id = 'big_text_css'; l.rel = 'stylesheet'; l.href = 'big_text.css?v=' + this.BIG_TEXT_CSS_V;
+                document.head.appendChild(l);
+            }
+        } else {
+            root.removeAttribute('data-big-text');
+        }
+        this.updateUiScaleButton(this.uiZoom());
+        // Шрифты поменялись — колонки и липкие панели пересчитывают высоты
+        try { window.dispatchEvent(new Event('resize')); } catch (e) { }
+    },
+
+    setBigText: function (on) {
+        try { localStorage.setItem(this.BIG_TEXT_KEY, on ? '1' : '0'); } catch (e) { }
+        this.applyBigText();
+        this.renderUiScaleMenu();
+    },
+
+    setUiZoom: function (z) {
+        try { localStorage.setItem(this.UI_ZOOM_KEY, String(z)); } catch (e) { }
         this.applyUiScale();
+        this.renderUiScaleMenu();
+    },
+
+    resetUiScale: function () {
+        try { localStorage.removeItem(this.UI_ZOOM_KEY); localStorage.setItem(this.BIG_TEXT_KEY, '0'); } catch (e) { }
+        this.applyBigText();
+        this.applyUiScale();
+        this.renderUiScaleMenu();
+    },
+
+    // Меню у кнопки «Aa». Лежит в body, а не в обёртке страницы: обёртка в zoom, и
+    // меню от неё получило бы чужой размер текста — а оно как раз для тех, кому мелко.
+    toggleUiScaleMenu: function (ev) {
+        if (ev) ev.stopPropagation();
+        const open = document.getElementById('ui_scale_menu');
+        if (open) { open.remove(); return; }
+        const menu = document.createElement('div');
+        menu.id = 'ui_scale_menu';
+        menu.className = 'ui-scale-menu no-print';
+        menu.addEventListener('click', e => e.stopPropagation());
+        document.body.appendChild(menu);
+        this.renderUiScaleMenu();
+        const close = (e) => {
+            if (e && e.type === 'keydown' && e.key !== 'Escape') return;
+            const m = document.getElementById('ui_scale_menu');
+            if (m) m.remove();
+            document.removeEventListener('click', close);
+            document.removeEventListener('keydown', close);
+        };
+        setTimeout(() => { document.addEventListener('click', close); document.addEventListener('keydown', close); }, 0);
+    },
+
+    renderUiScaleMenu: function () {
+        const menu = document.getElementById('ui_scale_menu');
+        const btn = document.getElementById('btn_ui_scale');
+        if (!menu || !btn) return;
+        const r = btn.getBoundingClientRect();
+        menu.style.top = Math.round(r.bottom + 8) + 'px';
+        menu.style.left = Math.max(8, Math.min(Math.round(r.left - 40), window.innerWidth - 300)) + 'px';
+        const cur = this.uiZoom(), chosen = this.uiZoomChosen(), allowed = this.uiZoomSteps();
+        const steps = this.UI_ZOOM_STEPS.map(z => {
+            const pct = Math.round(z / this.UI_ZOOM_STEPS[0] * 100);
+            const ok = allowed.includes(z);
+            const on = z === cur;
+            return `<button type="button" class="ui-scale-step${on ? ' on' : ''}" ${ok ? '' : 'disabled'} onclick="app.setUiZoom(${z})" title="${ok ? '' : 'Не помещается в это окно'}">${pct}%</button>`;
+        }).join('');
+        const hint = chosen > cur ? '<div class="ui-scale-note">Выбранный размер не помещается в окно — показан наибольший из возможных.</div>' : '';
+        const big = this.bigText();
+        menu.innerHTML = `
+            <div class="ui-scale-title">Размер интерфейса</div>
+            <div class="ui-scale-label">Масштаб страницы</div>
+            <div class="ui-scale-steps">${steps}</div>${hint}
+            <label class="ui-scale-row">
+                <span><b>Крупный текст</b><small>Увеличивает мелкие подписи, расположение не меняется</small></span>
+                <input type="checkbox" ${big ? 'checked' : ''} onchange="app.setBigText(this.checked)">
+            </label>
+            <button type="button" class="ui-scale-reset" onclick="app.resetUiScale()">Сбросить</button>`;
     },
 
     themeModeInfo: function (mode) {
