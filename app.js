@@ -33285,7 +33285,12 @@ const app = {
      */
     projectNodeSheetUrls: function () {
         const spec = this.currentSpec || [];
-        const inRads = i => /^\s*3[.\s]/.test(i.group || '');
+        // Раздел — в group у позиций расчёта, а у добавленных руками и
+        // распознанных group пустой и раздел лежит в sectionTitle.
+        const inRads = i => /^\s*3[.\s]/.test(i.group || i.sectionTitle || '');
+        // Добавленные руками и распознанные позиции в currentSpec лежат без
+        // раздела — он есть только в currentEquipmentList; приборы ищем в обоих.
+        const devs = spec.concat(this.currentEquipmentList || []);
         const nameOf = i => String(i.name || '');
         const panels = spec.filter(i => inRads(i) && /панельн/i.test(nameOf(i)));
         const isVentil = i => /ventil|вентил/i.test(nameOf(i));
@@ -33301,6 +33306,22 @@ const app = {
                 panels.some(isVentil) ? { kind: 'bottom', url: this.RAD_PANEL_SHEETS.bottom } : null,
                 panels.some(i => !isVentil(i)) ? { kind: 'side', url: this.RAD_PANEL_SHEETS.side } : null
             ].filter(Boolean),
+            // Трубчатых радиаторов в каталоге нет — лист встаёт, когда такой прибор
+            // пришёл распознаванием, спецификацией проекта или добавлен руками.
+            radTubular: devs.some(i => inRads(i) && /трубчат|arbonia|гармони|charleston|tubus/i.test(nameOf(i)))
+                ? this.RAD_TUBULAR_SHEET : null,
+            // Внутрипольный конвектор — только при прямом подключении: у всех 20
+            // образцов корпуса клапан прямой, а угловой на листе разошёлся бы со
+            // сметой. Редакция — по фитингу: аксиальный переходник (так ставит
+            // наша смета) или пресс-фитинг (металлопластик из чужих смет).
+            convFloor: (() => {
+                const conv = devs.filter(i => inRads(i) && /конвектор/i.test(nameOf(i)) && !/настенн/i.test(nameOf(i)));
+                if (!conv.length || this.state.convConnectionType === 'angled') return null;
+                const rads = devs.filter(inRads);
+                const press = rads.some(i => /пресс/i.test(nameOf(i))) &&
+                    !rads.some(i => /гильз|аксиал/i.test(nameOf(i)) || /^[SR]FA-/i.test(String(i.id || '')));
+                return this.CONV_FLOOR_SHEETS[press ? 'press' : 'axial'];
+            })(),
             water: this.state.water
                 ? this.WATER_SHEETS[this.state.recirc ? 'rec' : 'norec'][tap ? 'tap' : 'no']
                 : null
@@ -33511,9 +33532,24 @@ const app = {
         bottom: 'img/nodes/rad_panel_sheet.jpg',
         side: 'img/nodes/rad_panel_side_sheet.jpg'
     },
+    /**
+     * Узлы обвязки трубчатого радиатора и внутрипольного конвектора — листы
+     * рабочих проектов корпуса Galf того же шаблона, что Boiler Club (вынуты
+     * scratch/extract_heater_sheets.py: рамка, штамп и сноска сняты, сноска своя):
+     *   трубчатый радиатор — О-08 проекта 2026-438, угловой узел нижнего
+     *     подключения с евроконусом, как в нашей смете;
+     *   конвектор, аксиальная труба — О-10 проекта 2026-099; пресс — О-15 2025-978R.
+     * Встают под заголовком «3. Приборы отопления» рядом с листом панельного.
+     */
+    RAD_TUBULAR_SHEET: 'img/nodes/rad_tubular_sheet.jpg',
+    CONV_FLOOR_SHEETS: {
+        axial: 'img/nodes/conv_floor_sheet.jpg',
+        press: 'img/nodes/conv_floor_press_sheet.jpg'
+    },
     renderRadPanelScheme: function () {
-        return this.projectNodeSheetUrls().radPanels
-            .map(p => this._renderSheetImage(p.url)).join('');
+        const u = this.projectNodeSheetUrls();
+        return u.radPanels.map(p => p.url).concat([u.radTubular, u.convFloor])
+            .filter(Boolean).map(url => this._renderSheetImage(url)).join('');
     },
     /**
      * Узел обвязки коллектора радиаторного отопления — над подразделом
