@@ -22361,6 +22361,34 @@ const app = {
             }
         }
 
+        // Заявки по статьям: слаг статьи записан в заявке как источник (?src=). Журнал
+        // грузим отдельно и без ожидания — расписание не должно ждать его. Журнал отдаёт
+        // только владельцам; остальным колонка покажет «н/д».
+        if (!this._leadsData && !this._articleLeadsTried) {
+            this._articleLeadsTried = true;
+            (async () => {
+                try {
+                    const token = await this.recognitionToken();
+                    const res = await fetch(this.LEADS_URL, {
+                        headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+                        cache: 'no-store'
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const j = JSON.parse((await res.text()).replace(/^﻿/, ''));
+                    this._leadsData = j.items || [];
+                } catch (e) {
+                    console.warn('[статьи] журнал заявок не прочитан:', e);
+                    this._articleLeadsFailed = true;
+                }
+                this.renderAdminArticles();
+            })();
+        }
+        const leadsBySlug = {};
+        (this._leadsData || []).forEach(r => {
+            if (r.src && !this.isTestLead(r)) leadsBySlug[r.src] = (leadsBySlug[r.src] || 0) + 1;
+        });
+        const leadsReady = !!this._leadsData;
+
         const data = this._articlesData;
         const items = (data.items || []).slice();
         const f = this._articlesFilter || (this._articlesFilter = { cluster: '', status: '', q: '' });
@@ -22397,6 +22425,10 @@ const app = {
             const editUrl = 'https://github.com/terem24/smeta/edit/main/content/articles/' + i.slug + '.json';
             const d = i.date ? i.date.split('-').reverse().join('.') : '—';
             const overdue = i.status !== 'published' && (i.date || '') < today;
+            const leadN = leadsBySlug[i.slug] || 0;
+            const leadCell = `<td style="${td} white-space:nowrap; text-align:right;">${i.status !== 'published' ? '<span style="color:var(--text-sec);">—</span>'
+                : (leadsReady ? (leadN ? '<b style="color:#10B981;">' + leadN + '</b>' : '<span style="color:var(--text-sec);">0</span>')
+                    : '<span style="color:var(--text-sec);">' + (this._articleLeadsFailed ? 'н/д' : '…') + '</span>')}</td>`;
             return `<tr>
                 <td style="${td} white-space:nowrap; ${overdue ? 'color:#D97706; font-weight:700;' : ''}">${d}${overdue ? ' ⏳' : ''}</td>
                 <td style="${td}">
@@ -22404,6 +22436,7 @@ const app = {
                     <div style="color:var(--text-sec); margin-top:2px;">${esc(i.cluster)} · запрос «${esc(i.query)}» · ${i.freq} в месяц${i.words ? ' · ' + i.words + ' слов' : ''}</div>
                 </td>
                 <td style="${td} white-space:nowrap;"><span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:#fff; background:${st.color};">${st.label}</span></td>
+                ${leadCell}
                 <td style="${td} white-space:nowrap;">
                     ${readUrl ? `<a href="${readUrl}" target="_blank" rel="noopener" style="color:var(--primary); text-decoration:none; font-weight:600;">Читать</a>` : '<span style="color:var(--text-sec);">—</span>'}
                     ${i.status !== 'planned' ? ` · <a href="${editUrl}" target="_blank" rel="noopener" style="color:var(--text-sec); text-decoration:none;">Править</a>` : ''}
@@ -22441,16 +22474,16 @@ const app = {
                     ${Object.keys(this.articleStatusMeta).map(k => `<option value="${k}"${f.status === k ? ' selected' : ''}>${this.articleStatusMeta[k].label}</option>`).join('')}
                 </select>
                 <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;"
-                    onclick="app._articlesData=null; app.renderAdminArticles()">Обновить</button>
+                    onclick="app._articlesData=null; app._leadsData=null; app._articleLeadsTried=false; app._articleLeadsFailed=false; app.renderAdminArticles()">Обновить</button>
             </div>
 
             <div style="overflow-x:auto;">
                 <table style="width:100%; border-collapse:collapse;">
-                    <tr><th style="${th}">Дата</th><th style="${th}">Статья</th><th style="${th}">Состояние</th><th style="${th}"></th></tr>
-                    ${rows || `<tr><td colspan="4" style="${td} text-align:center; color:var(--text-sec); padding:24px;">Ничего не нашлось</td></tr>`}
+                    <tr><th style="${th}">Дата</th><th style="${th}">Статья</th><th style="${th}">Состояние</th><th style="${th} text-align:right;" title="Заявки на монтаж, пришедшие с этой статьи (без тестовых)">Заявки</th><th style="${th}"></th></tr>
+                    ${rows || `<tr><td colspan="5"style="${td} text-align:center; color:var(--text-sec); padding:24px;">Ничего не нашлось</td></tr>`}
                 </table>
             </div>
-            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${shown.length} из ${items.length}.</div>
+            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${shown.length} из ${items.length}.${this._articleLeadsFailed ? ' Заявки не загрузились — журнал виден только владельцам.' : ''}</div>
         `;
 
         // Курсор в поле поиска слетает после перерисовки — возвращаем в конец строки
