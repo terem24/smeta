@@ -12598,6 +12598,63 @@ body.dark-mode .rec-nohave { color: #FBBF24; }
 .rec-tcheck.bad { border-color: rgba(239, 68, 68, .4); background: rgba(239, 68, 68, .07); }
 .rec-tcheck.bad .rec-tcheck-ico { background: #ef4444; }
 
+/* Разбор комплекта листов проекта (RecognizeUI.projectCardHtml): карточка в
+   цвете темы, а не зелёная плашка «сходится» — это не итог проверки, а то,
+   что ИИ взял из проекта в работу. Все цвета — переменные темы: блок сам
+   подстраивается под ночную, «Профи» и тему бренда. */
+.rec-proj {
+    margin-bottom: 12px; padding: 12px 14px; border-radius: 14px;
+    border: 1px solid var(--border, #e5e7eb);
+    background: var(--surface, #fff);
+    background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 7%, var(--surface)) 0%, var(--surface) 60%);
+    border-color: color-mix(in srgb, var(--primary) 22%, var(--border));
+}
+.rec-proj-head { display: flex; gap: 10px; align-items: center; }
+.rec-proj-ico {
+    flex: 0 0 32px; width: 32px; height: 32px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb);
+}
+.rec-proj-title { font-size: 15px; font-weight: 700; line-height: 1.25; color: var(--text-main, #111827); }
+.rec-proj-sub { font-size: 12.5px; line-height: 1.3; color: var(--text-sec, #6b7280); }
+/* Листы проекта — плашками в строку: перенос только между плашками. */
+.rec-proj-sheets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.rec-proj-row {
+    display: inline-flex; gap: 6px; align-items: baseline; white-space: nowrap;
+    padding: 3px 10px; border-radius: 999px; font-size: 12px;
+    border: 1px solid var(--border, #e5e7eb); background: var(--surface-light, #f9fafb);
+}
+.rec-proj-row span { color: var(--text-sec, #6b7280); }
+.rec-proj-row b { color: var(--text-main, #111827); font-weight: 600; font-variant-numeric: tabular-nums; }
+.rec-proj-choice {
+    display: flex; flex-direction: column; gap: 8px;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border, #e5e7eb);
+}
+.rec-proj-ask { font-size: 12.5px; font-weight: 600; color: var(--text-sec, #6b7280); }
+/* Вариант — строка: слева что и когда, справа кнопка одной ширины у обоих. */
+.rec-proj-opt {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 16px;
+    padding: 9px 12px; border-radius: 11px;
+    border: 1px solid var(--border, #e5e7eb); background: var(--surface-light, #f9fafb);
+    transition: border-color .15s;
+}
+.rec-proj-opt:hover { border-color: var(--primary, #2563eb); }
+.rec-proj-opt-head { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-main, #111827); }
+.rec-proj-opt-ico { display: flex; color: var(--primary, #2563eb); }
+.rec-proj-time {
+    padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap;
+    background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb);
+}
+.rec-proj-opt-text { margin-top: 2px; font-size: 12.5px; line-height: 1.4; color: var(--text-sec, #6b7280); }
+.rec-proj-opt .calc-dialog-btn { min-width: 230px; white-space: nowrap; }
+/* Телефон и узкая колонка: кнопка под текстом на всю ширину. */
+@media (max-width: 760px) {
+    .rec-proj { padding: 10px 11px; }
+    .rec-proj-opt { grid-template-columns: 1fr; padding: 9px 10px; }
+    .rec-proj-opt .calc-dialog-btn { min-width: 0; width: 100%; }
+    .rec-proj-row { font-size: 11.5px; padding: 2px 8px; }
+}
+
 /* Эскиз котельной: слева снимок с рамками приборов, справа их карточки.
    Зелёная рамка — прочитано уверенно, янтарная — проверить. */
 .rs-wrap { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 14px; margin-top: 10px; align-items: start; }

@@ -5742,7 +5742,533 @@ const RecognizeMatch = (function () {
     return 'ppr';
   }
 
+  // =====================================================================
+  // Спецификация рабочего проекта
+  //
+  // Строка спецификации — это не рукописная смета: в ней есть артикул и
+  // производитель отдельными колонками («3 Кран шаровой … DN25 R854X025
+  // Giacomini шт. 2»). На 230 проектах из чата проектировщиков (bench/spec.js):
+  // артикул нашёлся в прайсе ТЕРЕМ у 36 % строк, у STOUT — у 98 %; Valtec,
+  // Giacomini, Flamco, Uponor, ZOTA в прайсе нет вовсе. Их закрывает только
+  // аналог, и ручная проверка показала, что балл подбора аналогу не верит:
+  // из 41 строки верных 20, НЕВЕРНЫХ 16 — часто с баллом 0,9–1,0 (гайка
+  // насоса → насос, газовый котёл → электрический, кран ВР-НР → ВР/ВР,
+  // металлопластик → полипропилен). Отсюда два правила: код — первым, а
+  // аналог — только через защиты и всегда «проверьте», никогда не зелёный.
+  // =====================================================================
+
+  /** \b в JS вокруг кириллицы не работает — границу слова задаём явно. */
+  const cyrWord = (x) => new RegExp('(^|[^а-яё])' + x + '([^а-яё]|$)', 'i');
+
+  /** Тип резьбы по тексту: 'ВН' (ВР-НР), 'ВВ', 'ВР', 'НР' или null. */
+  function threadKind(s) {
+    s = String(s || '');
+    if (/вр\s*[-–\/×x]?\s*нр|нр\s*[-–\/×x]?\s*вр/i.test(s) || cyrWord('вн').test(s) ||
+        /внутренн[а-я]*\s*[\/-]\s*наружн|наружн[а-я]*\s*[\/-]\s*внутренн/i.test(s)) return 'ВН';
+    if (/вр\s*[-–\/×x]?\s*вр/i.test(s) || cyrWord('вв').test(s)) return 'ВВ';
+    if (/нр\s*[-–\/×x]?\s*нр/i.test(s) || cyrWord('нн').test(s)) return 'НН';
+    // «Муфта переходная ВР 1" × НР 3/4"»: концы названы порознь, между ними размер.
+    if (cyrWord('вр').test(s) && cyrWord('нр').test(s)) return 'ВН';
+    if (cyrWord('вр').test(s) || /внутренн[а-я]* резьб/i.test(s)) return 'ВР';
+    if (cyrWord('нр').test(s) || /наружн[а-я]* резьб/i.test(s)) return 'НР';
+    return null;
+  }
+
+  /** Поля строки — так, как их отдала бы модель (схема FILE_PROMPT в recognize.js). */
+  function specFields(raw) {
+    const s = String(raw || '').replace(/[’‘´]/g, "'");
+    const T = [
+      // «Пресс-фитинг из нержавеющей стали с внутренней резьбой 22х3/4"» — переходник
+      // пресс × резьба; без этого 149 строк корпуса оставались без аналога.
+      [/пресс-?\s?фитинг.*(внутренн|наружн)[а-я]*\s+резьб/i, () => 'переход'],
+      [/кран[а-я]*\s+шаров|шаров[а-я]*\s+кран/i, (x) => /американк/i.test(x) ? 'кран_американка' : 'кран_шаровой'],
+      [/американк|разъ[её]мн[а-я]* соединени/i, () => 'американка'],
+      [/ниппел/i, () => 'ниппель'], [/футорк/i, () => 'футорка'],
+      [/тройник/i, (x) => /пресс/i.test(x) ? 'тройник_пресс' : 'тройник'],
+      [/угол|угольник|отвод/i, (x) => /пресс/i.test(x) ? 'угол_пресс' : 'прочее'],
+      [/муфт/i, (x) => /пресс/i.test(x) ? 'пресс_муфта' : 'прочее'],
+      [/переход|переходник/i, () => 'переход'], [/фильтр/i, () => 'фильтр'], [/хомут/i, () => 'хомут'],
+      [/насос/i, () => 'насос'], [/радиатор/i, () => 'радиатор'], [/теплоизол|изоляц/i, () => 'изоляция'],
+      [/труба/i, (x) => /металлопласт|металлополим|pe-?x|сшит/i.test(x) ? 'труба_pex' : /полипроп|ppr/i.test(x) ? 'труба_ppr' : 'прочее'],
+    ];
+    const hit = T.find(([rx]) => rx.test(s));
+    const type = hit ? hit[1](s) : 'прочее';
+    let d = null, dims = null, thread = null, angle = null;
+    const dn = s.match(/\bDN\s?(\d{2,3})\b/i) || s.match(/[ØД]\s?=?\s?(\d{2,3})\b/);
+    if (dn) d = +dn[1];
+    const tri = s.match(/\b(\d{2,3})\s*[хx×]\s*(\d{2,3})\s*[хx×]\s*(\d{2,3})\b/);
+    if (tri) dims = [+tri[1], +tri[2], +tri[3]];
+    const pipe = s.match(/\b(\d{2})\s*[хx×]\s*\d[.,]\d\b/);
+    if (!d && pipe) d = +pipe[1];
+    // (?![а-яё]) вместо \b: в JS граница слова кириллицу не видит, «25 мм» в конце строки терялось.
+    if (!d) { const mm = s.match(/\b(\d{2})\s*мм(?![а-яё])/); if (mm) d = +mm[1]; }
+    // «22х3/4"» у переходника: первое число — диаметр трубы, второе — резьба.
+    if (!d) { const pt = s.match(/\b(\d{2})\s*[хx×]\s*(\d\/\d|[12])\s*(?:"|'')/); if (pt) d = +pt[1]; }
+    // «пресс-угольник 22x22», «муфта переходная 32 х 25 мм»: диаметр — первое число.
+    if (!d) { const two = s.match(/\b(\d{2})\s*[хx×]\s*(\d{2})\b/); if (two) d = +two[1]; }
+    const th = s.match(/(\d\s\d\/\d|\d\/\d|\b[12]\b)\s*(?:"|''|дюйм)/);
+    if (th) thread = th[1].replace(/\s+/g, ' ');
+    if (/\b90\s*°|90\s*град/i.test(s)) angle = 90; else if (/\b45\s*°|45\s*град/i.test(s)) angle = 45;
+    const tk = threadKind(s);
+    return { type, d, dims, thread, threadType: tk === 'НН' ? 'НР' : tk, angle };
+  }
+
+  /**
+   * Система трубопровода по строке спецификации: по словам, по артикулу и по
+   * марке. VTi у Valtec — нержавейка, VTm — металлопластик; Uponor, KAN-therm,
+   * TECE — металлопластик под пресс. Без подсказки пресс-тройник Uponor 25
+   * уезжал в полипропилен.
+   */
+  function specSystem(raw, art, maker) {
+    const a = String(art || ''), m = String(maker || '').toLowerCase(), s = String(raw || '');
+    if (/^VTi/i.test(a)) return 'ss';
+    if (/^VTm/i.test(a)) return 'mp';
+    if (/uponor|kan-?therm|tece/.test(m) && /пресс|труб|фитинг|тройник|угол|муфт/i.test(s)) return 'mp';
+    if (/нерж/i.test(s)) return 'ss';
+    if (/металлопласт|металлополим/i.test(s)) return 'mp';
+    if (/полипроп|\bppr\b|pp-r/i.test(s)) return 'ppr';
+    if (/pe-?x|сшит/i.test(s)) return 'pex';
+    // Пресс без нержавейки — фитинг под металлопластик («Переход-пресс 26х3/4" Sanha»);
+    // без этой подсказки он уезжал в аксиальный переходник STOUT.
+    if (/пресс/i.test(s)) return 'mp';
+    return null;
+  }
+
+  /** Система позиции каталога/прайса — по префиксу артикула и словам названия. */
+  function itemSystem(it) {
+    const a = String((it && (it.article || it.id)) || '').toUpperCase(), n = String((it && it.name) || '');
+    if (/^SFA-/.test(a) || /аксиал/i.test(n)) return 'axial';
+    if (/^(RSS|SSS)-/.test(a) || /нерж|aisi|впр/i.test(n)) return 'ss';
+    if (/^PA\d/.test(a) || /pp-?r|\bppr\b|полипроп|\bpn\s?(10|16|20|25)\b/i.test(n)) return 'ppr';
+    if (/^(SPM|SFP|SFC)-/.test(a) || /металлопласт|pe-?xb\/al|pe-?x\/al|pe-?rt\/al/i.test(n)) return 'mp';
+    if (/^SFT-/.test(a)) return 'thread';
+    return null;
+  }
+
+  /** Строка — латунный резьбовой фитинг (без пресса и без трубы в обозначении). */
+  function isThreadedBrass(s) {
+    return /латун|никел/i.test(s) && !/пресс|ppr|полипроп|нерж/i.test(s);
+  }
+
+  /** Предмет строки — ПЕРВОЕ по месту слово-предмет: «Гайка насоса с краном» — гайка, а не насос. */
+  const KINDS = [
+    // Гайки насоса — одно изделие под тремя именами: «Гайка насоса 1х1 1/2», «Разъемное
+    // соединение ВР/ВР для насосов», «Присоединительный комплект для насосов G 1 1/2 x Rp 1».
+    ['гайка_насоса', /^\s*(гайк[а-я]*\s+(для\s+)?насос|разъ[её]мн[а-я]*\s+соединени[а-я]*.*для\s+насос|присоединительн[а-я]*\s+комплект[а-я]*\s+для\s+насос)/i],
+    // Гайка — только когда она сама предмет («Гайка насоса 1"»), а не деталь
+    // («Соединение с накидной гайкой» — это американка).
+    ['гайка', /^\s*гайк/i],
+    ['инструмент', /тиски|инструмент|пресс-клещ|клещи|ключ\s+(трубн|газов|разводн)|труборез|ножниц|калибратор|фаскосним|пресс\s+(электрическ|ручн|гидравлическ|аккумулятор)|эко-?пресс|(^|[^a-z])rems([^a-z]|$)|для\s+зажимов|ручн[а-я]*\s+[а-я-]*пресс/i],
+    // «Пресс соединение НР 25х1"» у Uponor — переходник пресс × резьба.
+    ['переход', /^\s*пресс[\s-]*соединени|^\s*соединител/i],
+    // Корпус «Колба BIG BLUE» в прайсе — без слова «фильтр».
+    ['фильтр', /колб[аы]\s+big|big\s*blue/i],
+    ['насос', /насос/i], ['котёл', /кот[её]л/i], ['бойлер', /бойлер|водонагрев/i],
+    ['бак', /(^|[^а-яё])бак/i], ['фильтр', /фильтр/i], ['счётчик', /сч[её]тчик|водосч/i],
+    ['термоголовка', /термоголов|головк[а-я]* термостат/i], ['клапан', /клапан/i], ['кран', /кран/i],
+    ['коллектор', /коллектор/i], ['евроконус', /евроконус/i], ['удлинитель', /удлинител/i],
+    ['компрессионный', /компрессион/i], ['сгон', /сгон/i],
+    ['американка', /американк|разъ[её]мн|соединени[ея]\s+с\s+накидн/i],
+    ['ниппель', /ниппел/i], ['футорка', /футорк/i], ['заглушка', /заглушк|пробк/i], ['крестовина', /крестовин/i],
+    ['тройник', /тройник/i], ['угольник', /угол|угольник|отвод/i], ['муфта', /муфт/i], ['переход', /переход/i],
+    // «Труб» — с начала слова: в «однораструбный пресс-угольник» оно тоже есть.
+    ['труба', /(^|[^а-яё])труб/i], ['хомут', /хомут/i], ['радиатор', /радиатор/i], ['изоляция', /изоляц|теплоизол/i],
+    ['группа', /групп/i], ['конвектор', /конвектор/i], ['полотенцесушитель', /полотенцесуш/i],
+  ];
+  function kindOfName(s) {
+    s = String(s || '');
+    let best = null, at = Infinity;
+    for (const [k, rx] of KINDS) {
+      const m = s.match(rx);
+      if (m && m.index < at) { at = m.index; best = k; }
+    }
+    // «Сгон НР-ВР 1" американка» — это американка, а не прямой сгон с контргайкой.
+    if (best === 'сгон' && /американк/i.test(s)) best = 'американка';
+    return best;
+  }
+
+  /** Объём бака/бойлера, л: «80 л», «Airfix R 25», «Flexcon R18» (у Flamco число после R — литры). */
+  function litres(s) {
+    s = String(s || '');
+    const m = s.match(/(\d{2,4})\s*л(?![а-яё])/i) || s.match(/(?:airfix|flexcon)\s*r?\s*(\d{2,3})(?!\d)/i);
+    return m ? +m[1] : null;
+  }
+
+  /**
+   * Резьбы строки в дюймах — набор: «Футорка 1/4"-1/2"» → {1/4, 1/2}, «DN25» → {1}.
+   * Футорка 1/4–1/2 и футорка 1/2–1 1/4 — разные изделия, а слова у них одни.
+   */
+  const DN_INCH = { 15: '1/2', 20: '3/4', 25: '1', 32: '1 1/4', 40: '1 1/2', 50: '2' };
+  function inchSet(s) {
+    s = String(s || '').replace(/[’‘´]/g, "'").replace(/''/g, '"').replace(/[″“”]/g, '"');
+    const out = new Set();
+    const rx = /(\d\s\d\/\d|\d\/\d|\b[1-4]\b)\s*(?=")/g;
+    let m;
+    while ((m = rx.exec(s))) out.add(m[1].replace(/\s+/g, ' '));
+    // «1/4"-1/2"», «3/4х1/2»: дробь без кавычек тоже резьба, если стоит в паре с другой.
+    // Кавычка бывает только у первого размера: «3/4" x 1/2».
+    const pair = /(\d\/\d)\s*"?\s*[хx×-]\s*(\d\/\d)/g;
+    while ((m = pair.exec(s))) { out.add(m[1]); out.add(m[2]); }
+    // «DN25» и «Ду25» (в JS \b кириллицу не видит — граница через отрицание букв).
+    const dn = s.match(/(?<![a-zа-яё])(?:DN|Ду)\s?(\d{2})(?!\d)/i);
+    if (dn && DN_INCH[+dn[1]]) out.add(DN_INCH[+dn[1]]);
+    // Обозначение по ГОСТ 6357 без кавычек: «G 1 1/2 x Rp 1».
+    const g = /\b(?:G|Rp|R)\s?(\d\s\d\/\d|\d\/\d|[1-4])(?![\d\/.,])/g;
+    while ((m = g.exec(s))) out.add(m[1].replace(/\s+/g, ' '));
+    // Дробь без кавычек сама по себе: «Кран с электроприводом Neptun 220В 3/4».
+    // Соседние цифры и косые отсекают «25/60», «16/250», «60/100».
+    const bare = /(?<![\d\/.,])((?:[1-4]\s)?\d\/\d)(?![\d\/.,])/g;
+    while ((m = bare.exec(s))) out.add(m[1].replace(/\s+/g, ' '));
+    return out;
+  }
+
+  /**
+   * Размер трубы с учётом рядов: металлопластик 25 мм (Uponor, KAN) и 26 мм (STOUT,
+   * Valtec) — один типоразмер; без этого пресс-тройник Uponor 25 оставался пустым.
+   */
+  function sizeAlias(n, sys) {
+    n = +n;
+    if ((sys === 'mp' || sys === 'pex') && (n === 25 || n === 26)) return [25, 26];
+    return [n];
+  }
+  const hasSize = (s, n, sys) => sizeAlias(n, sys).some((x) => new RegExp('(^|[^\\d])' + x + '([^\\d]|$)').test(s));
+
+  /** Напор насоса, м: «25/60» → 6, «15-1,5» → 1,5, «25/1-6» → 6. */
+  function pumpHead(s) {
+    s = String(s || '');
+    // Star-Z NOVA — насос ГВС на 1 м, цифр в названии у него нет.
+    if (/star-?z\s*nova/i.test(s)) return 1;
+    let m = s.match(/\b\d{2}\/\d-(\d{1,2})\b/);
+    if (m) return +m[1];
+    m = s.match(/\b\d{2}\s*[-\/]\s*(\d{1,3}(?:[.,]\d)?)/);
+    if (!m) return null;
+    const v = parseFloat(m[1].replace(',', '.'));
+    return v > 12 ? v / 10 : v;
+  }
+
+  /**
+   * Защита аналога. Возвращает null, если аналог годится, или причину — строку
+   * для монтажника. Каждое правило — класс ошибки, пойманный на корпусе.
+   */
+  function analogGuard(rec, it, sys) {
+    const a = String(rec.raw || ''), b = String((it && it.name) || '');
+    const ka = kindOfName(a), kb = kindOfName(b);
+    // Одно изделие под разными именами: «пресс-муфта ВР 22х3/4» = «переходник ВПр-ВР 22х3/4».
+    const SAME = [['муфта', 'переход']];
+    const same = SAME.some((g) => g.includes(ka) && g.includes(kb));
+    if (ka && kb && ka !== kb && !same) return `в проекте ${ka}, подобран ${kb}`;
+    // Инструмент вместо изделия: «пресс-соединение Uponor» → «пресс-тиски PEXcase».
+    if (kb === 'инструмент' && ka !== kb) return 'подобран инструмент, а не изделие';
+    // Особое исполнение должно быть с обеих сторон: обычный тройник — не «тройник
+    // косой для гильзы под датчик», ручной кран — не кран с электроприводом.
+    const QUAL = [
+      ['косой', /кос(ой|ого)\b|косой/i], ['для гильзы/датчика', /гильз|под\s+(погружной\s+)?датчик/i],
+      ['с электроприводом', /электропривод|сервопривод|с\s+приводом/i], ['термостатический', /термостатическ/i],
+      // «Запорно-регулирующий клапан» радиатора и «запорно-балансировочный» — одно и то же.
+      ['балансировочный', /балансир|регулирующ/i], ['редукционный', /редукц|редуктор/i],
+      ['незамерзающий', /незамерзающ|поливочн/i],
+      ['гофрированный', /гофр/i], ['электромагнитный', /электромагнит|соленоид/i],
+      ['обратный', /обратн/i], ['отсечной', /отсечн/i],
+      ['шламоотделитель', /шламоотдел|магнитн[а-я]*\s+фильтр|фильтр[а-я-]*\s+магнитн/i],
+      ['ограничитель', /ограничител/i], ['с трубкой', /с\s+трубк|трубкой/i],
+      // «Однораструбный» угольник (ВПр-НПр) — не то же, что пресс × пресс.
+      // Valtec пишет его словами: «пресс-угольник внутренний/наружный» — но не путать
+      // с «внутренней/наружной резьбой» у кранов.
+      // (?![а-я]) — слово целиком: иначе «наружна|я резьба» откатывалось и правило
+      // срабатывало на «удлинитель внутренняя/наружная резьба».
+      ['однораструбный', /однораструб|нпр|внутренн[а-я]*\s*\/\s*наружн[а-я]*(?![а-я])(?!\s*резьб)/i],
+      ['смесительный', /смесит|тр[её]х\s*-?\s*ходов/i], ['с краном', /с\s+кран/i],
+      ['без насоса', /без\s+насос/i],
+    ];
+    // Herz CALIS-TS-E-3-D — радиаторный клапан «в 3D-исполнении», а «трехходовой» в
+    // спецификациях — описка: со смесительным клапаном его путать нельзя.
+    const qa = /calis/i.test(a) ? a.replace(/тр[её]х\s*-?\s*ходов[а-я]*/gi, '') : a;
+    for (const [label, rx] of QUAL) {
+      if (rx.test(qa) !== rx.test(b)) return `исполнение «${label}» есть только ${rx.test(qa) ? 'в проекте' : 'у подобранного'}`;
+    }
+    if (ka === 'котёл' || kb === 'котёл') {
+      // Конденсационный котёл — всегда газовый, даже если слово «газ» в строке не написано.
+      const fuel = (s) => /газ|конденсац/i.test(s) ? 'газ' : /электр/i.test(s) ? 'электр' : /твердотоп|пеллет|дров/i.test(s) ? 'твёрдое' : null;
+      const fa = fuel(a), fb = fuel(b);
+      if (fa && fb && fa !== fb) return 'другой вид топлива котла';
+    }
+    if (ka === 'бак') {
+      const water = (s) => /водоснаб|гвс|airfix|питьев|для воды/i.test(s) ? 'вода' : /отоплен|flexcon/i.test(s) ? 'отопление' : null;
+      const wa = water(a), wb = water(b);
+      if (wa && wb && wa !== wb) return 'бак другого назначения (отопление / водоснабжение)';
+    }
+    if (ka === 'фильтр' && /колб|big\s*blue|картридж|магистральн/i.test(a) !== /колб|big\s*blue|картридж|магистральн/i.test(b)) {
+      return 'другой тип фильтра (колба / сетчатый)';
+    }
+    if (ka === 'сгон' || ka === 'кран') {
+      const form = (s) => /углов/i.test(s) ? 'угловой' : /прям/i.test(s) ? 'прямой' : null;
+      const fa = form(a), fb = form(b);
+      if (fa && fb && fa !== fb) return `в проекте ${fa}, подобран ${fb}`;
+    }
+    // Накидная гайка (американка) — другое изделие у любого предмета: кран, полусгон,
+    // переходник. У самой американки и евроконуса она есть по определению.
+    if (ka !== 'американка' && ka !== 'евроконус' &&
+        /накидн|американк/i.test(a) !== /накидн|американк/i.test(b)) {
+      return 'с накидной гайкой и без — разные изделия';
+    }
+    // Длина удлинителя: 15 мм — не 20 мм («…3/4" 30 мм», «1"X30»).
+    if (ka === 'удлинитель') {
+      const len = (s) => { const m = s.match(/(\d{2,3})\s*мм/i) || s.match(/["'][хxX×]\s*(\d{2,3})\b/); return m ? +m[1] : null; };
+      const la = len(a), lb = len(b);
+      if (la && lb && la !== lb) return `длина ${la} мм против ${lb} мм`;
+    }
+    // Угол: угольник 45° — не угольник 90°.
+    const angOf = (s) => { const m = s.match(/\b(45|90)\s*(°|"|град)/i); return m ? +m[1] : null; };
+    if (angOf(a) && angOf(b) && angOf(a) !== angOf(b)) return `угол ${angOf(a)}° против ${angOf(b)}°`;
+    // Объём бака и бойлера: 160 л — не 80 л.
+    if (ka === 'бак' || ka === 'бойлер') {
+      const la = litres(a), lb = litres(b);
+      if (la && lb && Math.abs(la - lb) / Math.max(la, lb) > 0.15) return `объём ${la} л против ${lb} л`;
+    }
+    // Два размера через «х» («вставка переходная 42х22»): оба обязаны найтись у позиции.
+    const two = a.match(/\b(\d{2})\s*[хx×]\s*(\d{2})\b(?!\s*[хx×])/);
+    if (two) {
+      if (!hasSize(b, two[1], sys) || !hasSize(b, two[2], sys)) return `размер ${two[1]}×${two[2]} не совпал`;
+    }
+    // Три размера тройника — по порядку: 25х25х25 — не переходной 26х16х20.
+    // Равнопроходный с одним числом («Тройник равнопроходный 26») годится к 25х25х25.
+    const tri = (s) => { const m = s.match(/\b(\d{2})\s*[хx×]\s*(\d{2})\s*[хx×]\s*(\d{2})\b/); return m ? [m[1], m[2], m[3]] : null; };
+    const ta3 = tri(a);
+    if (ta3) {
+      const tb3 = tri(b);
+      const eqA = ta3[0] === ta3[1] && ta3[1] === ta3[2];
+      const same = (x, y) => sizeAlias(x, sys).includes(+y);
+      if (tb3 ? ta3.some((x, i) => !same(x, tb3[i])) : !eqA) return `размер ${ta3.join('×')} не совпал`;
+    }
+    // Автоматический выключатель: номинал C10 — не C16.
+    const amp = (s) => { const m = /автомат|выключател|дифавтомат/i.test(s) && s.match(/(^|[^a-z])[BCD]\s?(\d{1,3})(?!\d)/); return m ? m[2] : null; };
+    if (amp(a) && amp(b) && amp(a) !== amp(b)) return `номинал ${amp(a)} А против ${amp(b)} А`;
+    // Газовый фильтр, кран — не водяной (у котла «газовый» — вид топлива, он ниже).
+    if (ka !== 'котёл' && /газов/i.test(a) !== /газов/i.test(b)) return 'газовое исполнение только с одной стороны';
+    // Резьбы в дюймах: набор размеров обязан совпасть. У гайки насоса в проекте часто
+    // пишут одну резьбу («Гайка насоса 1"») — она обязана быть среди резьб комплекта.
+    const ia = inchSet(a), ib = inchSet(b);
+    const inchBad = ka === 'гайка_насоса' ? [...ia].some((x) => !ib.has(x))
+      : (ia.size !== ib.size || [...ia].some((x) => !ib.has(x)));
+    if (ia.size && ib.size && inchBad) {
+      return `размер резьбы ${[...ia].join(' × ')} против ${[...ib].join(' × ')}`;
+    }
+    if (ka === 'насос') {
+      // Скважинный насос — не циркуляционный: Star-Z уезжал в «Насос TF3, каб. 20м».
+      const well = (s) => /скважин|погружн|колодез|дренаж|фекальн|\b3?TF\d?\b|каб(ел|\.)/i.test(s);
+      if (well(a) !== well(b)) return 'другой тип насоса (скважинный / циркуляционный)';
+      const ha = pumpHead(a), hb = pumpHead(b);
+      // Напор вдвое — уже другой насос (Star-Z 20/4-3 на 3 м — не 25/60 на 6 м).
+      if (ha && hb && Math.max(ha, hb) / Math.min(ha, hb) >= 1.6) return `напор насоса ${ha} м против ${hb} м`;
+    }
+    const bar = (s) => { const m = s.match(/(\d+(?:[.,]\d)?)\s*бар/i); return m ? parseFloat(m[1].replace(',', '.')) : null; };
+    if (ka === 'клапан' && bar(a) && bar(b) && bar(a) !== bar(b)) return `клапан на ${bar(a)} бар, подобран на ${bar(b)}`;
+    // Резьба: ВР-НР — ровно ВР-НР; внутренняя против наружной — разные концы.
+    // Удлинитель без пометки — ВН: так его делают все, НН — особое исполнение.
+    const ta = threadKind(a) || (ka === 'удлинитель' ? 'ВН' : null), tb = threadKind(b);
+    if (ta && tb) {
+      const side = (t) => (t === 'ВР' || t === 'ВВ') ? 'в' : (t === 'НР' || t === 'НН') ? 'н' : t;
+      if ((ta === 'ВН') !== (tb === 'ВН') || (ta !== 'ВН' && side(ta) !== side(tb))) return `резьба ${ta} против ${tb}`;
+    }
+    // Система трубопровода.
+    const sa = sys || (isThreadedBrass(a) && (ta || /["']|дюйм|dn\s?\d/i.test(a)) ? 'thread' : null);
+    const sb = itemSystem(it);
+    if (sa && sb && sa !== sb && !(sa === 'pex' && sb === 'mp')) return `другая система (${sa} → ${sb})`;
+    // Латунный резьбовой фитинг — не фитинг под трубу «25 х 1"» и не «Заглушка 25»
+    // (у резьбового размер в дюймах, у фитинга под трубу — диаметр в мм).
+    // «Угольник-переходник 3/4"х20» — тоже под трубу 20 мм, только записан наоборот.
+    if (sa === 'thread' && ((/\b\d{2}\s*[хx×]\s*(\d\/\d|[12])\s*("|'')?/.test(b) && !/\b\d\/\d\s*[хx×]/.test(b)) ||
+        /(\d\/\d|\b[12])\s*("|'')?\s*[хx×]\s*[ØøД]?\s*\d{2}(?![\d.,\/])/.test(b) ||
+        (!inchSet(b).size && /(^|[^\d\/])\d{2}([^\d\/]|$)/.test(b)))) {
+      return 'подобран фитинг под трубу, а в проекте резьбовой';
+    }
+    return null;
+  }
+
+  /** Система строки спецификации для защиты: своя или «латунная резьба». */
+  function recSystem(rec, sys) {
+    const a = String(rec.raw || '');
+    return sys || (isThreadedBrass(a) && (threadKind(a) || /["']|дюйм|dn\s?\d/i.test(a)) ? 'thread' : null);
+  }
+
+  /**
+   * Позиция по коду из колонки артикула. В отличие от matchByArticle, которое
+   * ищет код внутри текста строки и потому строго к его виду, здесь колонка уже
+   * сказала, что это артикул: короткий «R17X033» и цифровой «2142414001» тоже.
+   * codes — кандидаты по порядку: склейки «SMB 6851 013402» идут первыми.
+   */
+  function matchByCode(codes, raw) {
+    const idx = buildArticleIndex();
+    for (const code of codes || []) {
+      const key = normArticle(code);
+      if (key.length < 5) continue;
+      let hit = idx.get(key), how = 'точно';
+      if (!hit && key.length >= 6) {
+        const cands = [];
+        for (const [k, it] of idx) if (k.length > key.length && k.startsWith(key)) cands.push(it);
+        if (cands.length) {
+          // Energoflex: хвост кода — цвет (…SUPRS синий, …SUPRK красный); цвет — по слову строки.
+          const red = /красн/i.test(raw), blue = /син/i.test(raw);
+          let pool = cands;
+          if (red || blue) {
+            const want = red ? 'K' : 'S';
+            const byColor = cands.filter((it) => normArticle(it.article || it.id).charAt(key.length) === want);
+            if (byColor.length) pool = byColor;
+          }
+          hit = pool.reduce((b, it) => (!b || (Number(it.price) || Infinity) < (Number(b.price) || Infinity)) ? it : b, null);
+          how = 'префикс';
+        }
+      }
+      if (!hit) continue;
+      if (!/[А-Яа-я]{3}/.test(String(hit.name || '')) && String(raw || '').length > 5) {
+        hit = Object.assign({}, hit, { name: String(raw).trim() });
+      }
+      return {
+        item: hit, score: how === 'точно' ? 1 : 0.8, byArticle: true, alternatives: [],
+        substituted: how === 'точно' ? null : 'подобрано по артикулу спецификации — проверьте фасовку и цвет',
+        brandRank: brandRank(hit),
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Второй поиск — по признакам, а не по словам.
+   *
+   * Подбор по словам даёт трёх кандидатов; если все трое не того предмета,
+   * системы или размера, строка оставалась пустой, хотя верная позиция в прайсе
+   * была (так было с 15 % строк корпуса). Здесь берутся все позиции того же
+   * предмета, и из них — прошедшие те же защиты, с тем же диаметром и резьбой.
+   * Лучшая — по совпадению слов, затем STOUT → ROMMER → остальные, затем дешевле.
+   */
+  let kindIdx = null, kindIdxOf = null;
+  function rowsOfKind(kind) {
+    const ni = buildNameIndex();
+    if (kindIdxOf !== ni) {
+      kindIdx = new Map();
+      for (const row of ni.rows) {
+        const k = kindOfName(row.it.name);
+        if (!k) continue;
+        if (!kindIdx.has(k)) kindIdx.set(k, []);
+        kindIdx.get(k).push(row);
+      }
+      kindIdxOf = ni;
+    }
+    return kindIdx.get(kind) || [];
+  }
+
+  function constrainedPick(rec, sys) {
+    const a = String(rec.raw || '');
+    const ka = kindOfName(a);
+    if (!ka || ka === 'гайка' || ka === 'инструмент') return null;
+    const ia = inchSet(a);
+    const sa = recSystem(rec, sys);
+    // У резьбового фитинга размер — в дюймах: «Уголок … DN 20» ищется как 3/4", а не
+    // по числу 20 в названии (у латунных фитингов прайса его нет).
+    const d = (sa === 'thread' && ia.size) ? null : (Number(rec.d) || null);
+    const sized = !!(d || ia.size || ((ka === 'бак' || ka === 'бойлер') && litres(a)));
+    const wa = new Set(nameParts(a));
+    const pool = ka === 'муфта' || ka === 'переход' ? rowsOfKind('муфта').concat(rowsOfKind('переход')) : rowsOfKind(ka);
+    let best = null, bestKey = null;
+    for (const row of pool) {
+      const it = row.it, b = String(it.name || '');
+      if (!(Number(it.price) > 0)) continue;
+      // Во втором поиске система позиции обязана быть известна и совпасть: чужие
+      // позиции прайса без признаков системы («Муфтра с наружной резьбой 25 х 1"»)
+      // проходили защиту только потому, что про них ничего не было известно.
+      const ib = inchSet(b);
+      if (sa) {
+        const sb = itemSystem(it);
+        // Латунный фильтр, кран без префикса STOUT — тоже резьба, если в названии дюймы
+        // (а фитинг под трубу отсечёт защита).
+        const asThread = sa === 'thread' && !sb && ib.size;
+        if (sb !== sa && !asThread && !(sa === 'pex' && sb === 'mp')) continue;
+      }
+      if (d && !hasSize(b, d, sa)) continue;
+      // Евроконус — всегда 3/4": в названиях прайса («Евроконус 16x2.2») резьбу не пишут.
+      if (ia.size && !ib.size && !(ka === 'евроконус' && [...ia].every((x) => x === '3/4'))) continue;
+      // Резьбы в проекте нет — угольник-переходник на резьбу не подставлять.
+      if (d && !ia.size && ib.size && !threadKind(a)) continue;
+      if (analogGuard(rec, it, sys)) continue;
+      let ov = 0;
+      for (const w of new Set(row.w)) if (wa.has(w)) ov++;
+      // Без размера в строке подобрать «по признакам» можно только при заметном
+      // совпадении слов — иначе это угадывание.
+      // Гайки насоса — предмет узкий, тут хватает самого предмета.
+      if (!sized && ov < 3 && ka !== 'гайка_насоса') continue;
+      if ((ka === 'бак' || ka === 'бойлер') && litres(a) && !litres(b)) continue;
+      // Угол не назван — угольник обычный, 90°: 45° — особый случай, его пишут явно.
+      const angPen = (ka === 'угольник' && !/\b(45|90)\s*(°|"|град)/i.test(a) && /\b45\s*(°|"|град)/i.test(b)) ? 1 : 0;
+      const key = [ov - angPen, -brandRank(it), -(Number(it.price) || 0)];
+      if (!bestKey || key[0] > bestKey[0] || (key[0] === bestKey[0] && (key[1] > bestKey[1] ||
+          (key[1] === bestKey[1] && key[2] > bestKey[2])))) { best = it; bestKey = key; }
+    }
+    return best;
+  }
+
+  /**
+   * Подбор строки спецификации: код → аналог с защитами → ничего.
+   * rec — строка из specItem (поле _spec: { codes, maker }).
+   * Возвращает { m, why }: m — подбор или null, why — почему аналога нет.
+   */
+  function matchSpec(rec, sysHint) {
+    const sp = rec._spec || {};
+    const byCode = matchByCode(sp.codes, rec.raw);
+    if (byCode) return { m: byCode, why: null };
+    // codes[0] — код, как он стоит в колонке; склейки «SMB 6851 013402» идут следом.
+    const sys = specSystem(rec.raw, sp.codes && sp.codes[0], sp.maker);
+    let m = null;
+    try { m = matchItem(rec, sys || sysHint); } catch (e) { m = null; }
+    // Поиск по признакам — когда подбор по словам ничего не дал или все его
+    // кандидаты отклонены защитой.
+    const byFeatures = () => {
+      const it = constrainedPick(rec, sys);
+      return it ? { item: it, score: 0.75, alternatives: [], byFeatures: true } : null;
+    };
+    if (!m || !m.item) {
+      m = byFeatures();
+      if (!m) return { m: null, why: 'аналога в ассортименте не нашлось' };
+    }
+    let why = analogGuard(rec, m.item, sys);
+    if (why) {
+      // Первый кандидат не прошёл — пробуем запасных: к крану ВР-НР подбор сперва
+      // предлагает кран ВР/ВР, а верный кран ВР/НР стоит у него вторым.
+      const alt = (m.alternatives || []).find((it) => it && !analogGuard(rec, it, sys));
+      if (alt) {
+        m = Object.assign({}, m, { item: alt, score: Math.min(Number(m.score) || 0, 0.8),
+          alternatives: (m.alternatives || []).filter((it) => it !== alt) });
+      } else {
+        const f = byFeatures();
+        if (!f) return { m: null, why: 'аналог отклонён: ' + why };
+        m = f;
+      }
+      why = null;
+    }
+    // Аналог — всегда «проверьте»: ни один не бывает зелёным.
+    const tag = [sp.maker, sp.codes && sp.codes[0]].filter(Boolean).join(' ');
+    return {
+      m: Object.assign({}, m, {
+        score: Math.min(Number(m.score) || 0, 0.85), analog: true,
+        substituted: 'аналог позиции проекта' + (tag ? ` (${tag})` : '') + ' — проверьте',
+      }),
+      why: null,
+    };
+  }
+
+  /** Строка спецификации → запись для экрана проверки сметы. */
+  function specItem(row) {
+    const f = specFields(row.name);
+    const unit = /^(м|п\.?\s?м|пог\.?\s?м)$/i.test(row.unit || '') ? 'м' : /компл|к-т/i.test(row.unit || '') ? 'компл' : 'шт';
+    return Object.assign({
+      raw: row.name, docNo: row.pos || null, docSection: row.section || null, kind: 'equipment',
+      qty: row.qty, unit,
+      _spec: { codes: row.codes || (row.art ? [row.art] : []), maker: row.maker || null, page: row.page || null },
+    }, f);
+  }
+
   return {
+    // Спецификация рабочего проекта: строка → запись, подбор по коду и аналог с защитами.
+    specItem, matchSpec, matchByCode, analogGuard, specFields, threadKind, kindOfName,
     SYSTEMS, SECTIONS, detectSystem, systemProfile, guessSection, profileOf, suggest, matchItem, matchCatalog,
     isRadiator, matchRadiator, isPump, matchPump,
     // Тип, выведенный из текста строки: нужен интерфейсу проверки, чтобы
