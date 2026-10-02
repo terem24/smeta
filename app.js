@@ -21371,7 +21371,9 @@ const app = {
                     const evSel = 'calc_id, user_id, user_email';
                     const emails = Object.keys(byEmail);
                     const queries = [supabaseClient.from('invoice_events').select(evSel).in('user_id', userIds.map(String))];
-                    if (emails.length) queries.push(supabaseClient.from('invoice_events').select(evSel).in('user_email', emails));
+                    // По почте — только события без user_id (старые): у остальных есть и то и другое,
+                    // и без этого условия каждая такая строка приходила дважды (125 КБ вместо ~60).
+                    if (emails.length) queries.push(supabaseClient.from('invoice_events').select(evSel).in('user_email', emails).is('user_id', null));
                     let evRows = [];
                     (await Promise.all(queries)).forEach(r => { if (r && r.data) evRows = evRows.concat(r.data); });
 
@@ -34398,11 +34400,17 @@ const app = {
         if (this._adminInstallerExtras && !force) return this._adminInstallerExtras;
         // Свои расценки и своё оборудование — это две вкладки над одной выборкой,
         // поэтому урезаем её здесь, в одном месте на обе.
+        //
+        // Читаем четыре нужных поля настроек, а не весь installer_settings: в нём лежит
+        // ещё блок `company` (логотип и реквизиты компании, data:-строки) — на 02.10.2026
+        // 266 КБ из 362 КБ всех настроек, и обе вкладки их не показывают. 446 → ~100 КБ.
         const { data, error } = await this.scopeAdminQuery(supabaseClient.from('users')
-            .select('id, username, first_name, last_name, middle_name, email, region, account_type, installer_settings'), 'id');
+            .select('id, username, first_name, last_name, middle_name, email, region, account_type, ' +
+                'wp:installer_settings->workPrices, eqlib:installer_settings->equipmentLibrary, ' +
+                'swlog:installer_settings->swapLog, dllog:installer_settings->deletionLog'), 'id');
         if (error) throw error;
         const rows = (data || []).map(u => {
-            const s = u.installer_settings || {};
+            const s = { workPrices: u.wp, equipmentLibrary: u.eqlib, swapLog: u.swlog, deletionLog: u.dllog };
             return {
                 id: u.id,
                 name: this.getAdminUserDisplayName(u),
