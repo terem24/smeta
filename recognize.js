@@ -1278,14 +1278,13 @@ const RecognizeUI = {
         const eng = p.eng || [];
         // «л. 24, 26» — номера листов; нет листов этого раздела — строки нет.
         const sheets = arr => arr.length ? 'л. ' + [...new Set(arr)].sort((a, b) => a - b).join(', ') : '';
-        const specPages = (p.spec || []).map(r => r.page).filter(Boolean);
+        // Короткие подписи — плашки встают в одну-две строки, а не столбиками.
         const rows = [
-            ['Помещения и площади', sheets((p.rooms || []).map(x => x.num))],
-            ['Отопление и тёплые полы', sheets(eng.filter(e => e.kind === 'heat').map(e => e.num))],
-            ['Водоснабжение и канализация', sheets(eng.filter(e => e.kind === 'water').map(e => e.num))],
+            ['Помещения', sheets((p.rooms || []).map(x => x.num))],
+            ['Отопление и ТП', sheets(eng.filter(e => e.kind === 'heat').map(e => e.num))],
+            ['Вода и канализация', sheets(eng.filter(e => e.kind === 'water').map(e => e.num))],
             ['Вентиляция', sheets(eng.filter(e => e.kind === 'vent').map(e => e.num))],
-            ['Спецификация', (p.spec || []).length ? `${p.spec.length} ${this.plural(p.spec.length, 'позиция', 'позиции', 'позиций')}` +
-                (specPages.length ? ` · ${sheets(specPages)}` : '') : ''],
+            ['Спецификация', (p.spec || []).length ? `${p.spec.length} ${this.plural(p.spec.length, 'позиция', 'позиции', 'позиций')}` : ''],
             ['Примечания', (p.notes || []).length ? `${p.notes.length} ${this.plural(p.notes.length, 'блок', 'блока', 'блоков')}` : ''],
         ].filter(r => r[1]);
         const used = new Set([...(p.rooms || []).map(x => x.num), ...eng.map(e => e.num)]).size;
@@ -1302,25 +1301,26 @@ const RecognizeUI = {
 
     specChoiceHtml() {
         if (!this.hasSpecChoice()) return '';
-        const opt = (icon, title, text, when, time, btn, tip, onclick) => `
+        // Строка на вариант: слева что и когда, справа кнопка. Две карточки
+        // рядом с кнопкой внизу занимали пол-экрана по вертикали.
+        const opt = (icon, title, text, time, btn, tip, onclick) => `
               <div class="rec-proj-opt">
-                <div class="rec-proj-opt-head"><span class="rec-proj-opt-ico">${this.projIcon(icon)}</span><b>${title}</b><span class="rec-proj-time">${time}</span></div>
-                <div class="rec-proj-opt-text">${text}</div>
-                <div class="rec-proj-opt-when"><span>Когда</span>${when}</div>
+                <div class="rec-proj-opt-main">
+                  <div class="rec-proj-opt-head"><span class="rec-proj-opt-ico">${this.projIcon(icon)}</span><b>${title}</b><span class="rec-proj-time">${time}</span></div>
+                  <div class="rec-proj-opt-text">${text}</div>
+                </div>
                 <button class="calc-dialog-btn calc-dialog-btn-confirm" title="${tip}" onclick="${onclick}">${btn}</button>
               </div>`;
         return `<div class="rec-proj-choice">
-            <div class="rec-proj-ask">Как собрать смету? Выберите одно — иначе оборудование задвоится.</div>
-            <div class="rec-proj-opts">
-              ${opt('list', 'Смета по проекту',
-                  'Оборудование из спецификации проектировщика: по артикулу — точно, остальное — аналоги с пометкой «проверьте».',
-                  'заказчик хочет ровно по проекту', '≈10 с', 'Смета по проекту',
-                  'Смета из таблицы спецификации проектировщика — без расчёта теплопотерь', 'RecognizeUI.startSpecReview()')}
-              ${opt('house', 'Свой расчёт по помещениям',
-                  'ИИ читает с листов помещения, тёплый пол и приборы, считает теплопотери и подбирает наше оборудование: котёл, радиаторы, тёплый пол.',
-                  'проверить проект или поставить своё оборудование', '≈1–2 мин', 'Посчитать по помещениям',
-                  'Распознать листы проекта и посчитать по теплопотерям помещений', 'RecognizeUI.run()')}
-            </div>
+            <div class="rec-proj-ask">Как собрать смету — выберите одно, иначе оборудование задвоится</div>
+            ${opt('list', 'Смета по проекту',
+                'Оборудование из спецификации проектировщика, аналоги — с пометкой «проверьте». Когда заказчик хочет ровно по проекту.',
+                '≈10 с', 'Смета по проекту',
+                'Смета из таблицы спецификации проектировщика — без расчёта теплопотерь', 'RecognizeUI.startSpecReview()')}
+            ${opt('house', 'Свой расчёт по помещениям',
+                'ИИ читает помещения с листов, считает теплопотери и подбирает наше оборудование. Когда нужно проверить проект или поставить своё.',
+                '≈1–2 мин', 'Посчитать по помещениям',
+                'Распознать листы проекта и посчитать по теплопотерям помещений', 'RecognizeUI.run()')}
         </div>`;
     },
 
