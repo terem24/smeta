@@ -17354,6 +17354,17 @@ body.theme-yandex #admin_modal_overlay {
     #ad_peek { width: 100%; border-radius: 0; }
 }
 
+/* Полоса разделов дашборда: прилипает к верху прокручиваемой панели */
+.ad-sticky-nav {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    margin: 0 0 14px;
+    padding: 8px 0;
+    background: var(--surface);
+    border-bottom: 1px solid var(--ad-line);
+}
+
 /* Статус-таблетки: цвет текста и мягкая заливка того же цвета — одинаково в обеих темах */
 .ad-pill {
     display: inline-block;
