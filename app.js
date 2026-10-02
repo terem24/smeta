@@ -9047,6 +9047,17 @@ const app = {
         return { rows: out, capped: true };
     },
 
+    // Поиск по планировщику: перерисовка карточек без повторного чтения базы (skipFetch)
+    setKanbanQuery: function (q) {
+        this._kanbanQ = q;
+        clearTimeout(this._kanbanQT);
+        this._kanbanQT = setTimeout(async () => {
+            await this.renderAdminKanban(true);
+            const el = document.getElementById('kanban_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 250);
+    },
+
     /**
      * Дочитка планировщика: только то, что появилось после прошлой загрузки.
      *
@@ -9384,13 +9395,37 @@ const app = {
         const abandonedCount = filtered.filter(p => p.abandoned).length;
         if (!this._kanbanShowAbandoned) filtered = filtered.filter(p => !p.abandoned);
 
+        // Поиск по названию, монтажнику и номеру КП — в пределах уже выбранных фильтров
+        const kq = String(this._kanbanQ || '').trim().toLowerCase();
+        if (kq) filtered = filtered.filter(p => [p.project_name, p.user_name, p.calc_id].join(' ').toLowerCase().indexOf(kq) >= 0);
+
         const STAGES = this.ADMIN_KANBAN_STAGES;
         const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
         const stageOf = (event) => STAGES.find(s => s.events.includes(event));
 
-        const filterHtml = `
+        // Сводка над колонками: сколько проектов и денег в работе. «В работе» — всё, что дошло
+        // до согласования или оплаты (две последние колонки); «Расчёты» и «Распознано» — ещё
+        // не сделка. Считается по уже отфильтрованным карточкам.
+        const stageStat = (st) => {
+            const list = st ? filtered.filter(p => stageOf(p.current) === st) : [];
+            return { n: list.length, sum: list.reduce((a, c) => a + (c.totalSum || 0), 0) };
+        };
+        const stApproval = stageStat(STAGES[STAGES.length - 2]), stPay = stageStat(STAGES[STAGES.length - 1]);
+        const rub = (v) => Math.round(v).toLocaleString('ru-RU') + ' ₽';
+        const kTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const kanbanStats = `
+            <div class="ad-page-h"><div><h3>Планировщик</h3><div class="ad-sub">Сметы по этапам сделки: от разбора документа до запроса счёта</div></div></div>
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${kTile('Проектов', filtered.length, 'с учётом фильтров')}
+                ${kTile('В работе', rub(stApproval.sum + stPay.sum), `${stApproval.n + stPay.n} проектов: согласование и оплата`)}
+                ${kTile('Запрошен счёт', rub(stPay.sum), `${stPay.n} проектов в оплату`)}
+                ${kTile('Брошенные расчёты', abandonedCount, this._kanbanShowAbandoned ? 'показаны в колонке «Расчёты»' : 'скрыты, включаются галочкой')}
+            </div>`;
+
+        const filterHtml = kanbanStats + `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
-                <div style="font-size:13px; color:var(--text-sec);">Проекты: <b style="color:var(--text-main);">${filtered.length}</b></div>
+                <input type="text" id="kanban_search" value="${String(this._kanbanQ || '').replace(/"/g, '&quot;')}" placeholder="Поиск по проекту, монтажнику, № КП"
+                       style="flex:1 1 220px; max-width:340px;" oninput="app.setKanbanQuery(this.value)">
                 <div class="admin-filter-row" style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                     <select id="kanban_installer_filter" onchange="app.renderAdminKanban(true)" style="background: var(--surface); color: var(--text-main); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; outline: none; cursor: pointer;">
                         <!-- В скобках — сколько людей в списке, а не сколько у них
@@ -9416,7 +9451,7 @@ const app = {
                                onchange="app.toggleKanbanAbandoned(this.checked)" style="cursor:pointer;">
                         Брошенные расчёты (${abandonedCount})
                     </label>
-                    <button class="btn-header-blue" onclick="app.renderAdminKanban(false, true)" title="Перечитать всю историю заново" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
+                    <button class="admin-btn" onclick="app.renderAdminKanban(false, true)" title="Перечитать всю историю заново">Обновить</button>
                 </div>
             </div>
         `;
@@ -9467,14 +9502,14 @@ const app = {
                 // Номер КП с версией. Если текущий статус (одобрено, запрошен счёт)
                 // относится к более ранней версии — подпись, по какой именно.
                 const curV = c.currentMeta && Number(c.currentMeta.kp_version);
-                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${c.copiedFrom ? ` <span style="color:#7C3AED; font-family:inherit;" title="Копия чужой сметы, а не новый заказ">· 📎 копия ${c.copiedFrom}</span>` : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
+                const kpLine = `<div style="font-size:10.5px; font-weight:600; color:var(--text-sec); font-family:monospace; margin:-3px 0 6px;">КП № ${c.calc_id}${c.kpVersion ? '-' + c.kpVersion : ''}${c.copiedFrom ? ` <span style="color:#7C3AED; font-family:inherit;" title="Копия чужой сметы, а не новый заказ">· копия ${c.copiedFrom}</span>` : ''}${curV && c.kpVersion && curV < c.kpVersion ? ` <span style="color:#D97706; font-family:inherit;" title="Текущий статус поставлен по более ранней версии КП">· статус по -${curV}</span>` : ''}</div>`;
                 return `
                                     <div onclick="app.renderKanbanCardDetail('${c.calc_id}')" ${canDrag(c) ? `draggable="true" ondragstart="app.kanbanDragStart(event, '${c.calc_id}')" ondragend="app._kanbanDragId = null" title="Перетащите в другую колонку, чтобы сменить этап"` : ''} style="cursor:pointer; background:var(--surface); border-radius:8px; padding:10px 12px; font-size:12px; box-shadow:0 1px 3px rgba(0,0,0,0.15); transition:0.15s;" onmouseover="this.style.boxShadow='0 3px 8px rgba(0,0,0,0.2)'" onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.15)'">
                                         <div style="font-weight:700; color:var(--text-main); margin-bottom:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.project_name || 'Без названия'}</div>
                                         ${kpLine}
-                                        ${c.fromRecognition ? `<div style="display:inline-block; background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; margin-bottom:6px; letter-spacing:0.02em;">🔍 РАСПОЗНАВАНИЕ</div>` : ''}
+                                        ${c.fromRecognition ? `<div style="display:inline-block; background:rgba(139, 92, 246, 0.12); color:#7C3AED; font-size:9.5px; font-weight:800; border-radius:10px; padding:2px 7px; margin-bottom:6px; letter-spacing:0.02em;">РАСПОЗНАВАНИЕ</div>` : ''}
                                         <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
-                                            <div style="width:20px; height:20px; border-radius:50%; background:${this.avatarColorFor(c.user_name || '?')}; color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
+                                            <div style="width:20px; height:20px; border-radius:50%; background:var(--primary-light); color:var(--primary); font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
                                             <div style="color:var(--text-sec); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${c.user_name || '— (клиент)'}</div>
                                         </div>
                                         <div style="font-weight:700; color:var(--primary); margin-bottom:8px; font-size:13px;">${(c.totalSum || 0).toLocaleString('ru-RU')} ₽</div>
@@ -24499,8 +24534,8 @@ const app = {
         // ── Фильтр по региону ───────────────────────────────────────────────
         if (regionList.length) {
             h += `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px;">
-                <button class="admin-btn" style="${!region ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
-                ${regionList.map(r => `<button class="admin-btn" style="${region === r ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('${esc(r).replace(/'/g, "\\'")}')">${esc(r)}</button>`).join('')}
+                <button class="ad-chip${!region ? ' active' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
+                ${regionList.map(r => `<button class="ad-chip${region === r ? ' active' : ''}" onclick="app.setAnalyticsRegion('${esc(r).replace(/'/g, "\\'")}')">${esc(r)}</button>`).join('')}
             </div>`;
         }
 
@@ -24643,7 +24678,7 @@ const app = {
                         title="${title}" onclick="app.cycleAnalyticsOwnFilter('${brand}')">${label}${mark}</th>`;
         };
 
-        const cmpBtn = (m, label) => `<button class="admin-btn" style="${backMonths === m ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
+        const cmpBtn = (m, label) => `<button class="ad-chip${backMonths === m ? ' active' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
         h += `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 8px;">
                 <h4 style="margin:0; color:var(--text-main);">Наши места по категориям${region ? ` — ${esc(region)}` : ''}</h4>
                 ${hasHistory
@@ -25921,7 +25956,23 @@ const app = {
         // предпросмотры выключенных блоков — иначе выбирать пришлось бы
         // вслепую, по одному названию.
         const B = this.dashBuildBlocks();
-        wrap.innerHTML = this.dashHeaderHtml() + this.dashLayoutHtml(B) + this.dashGalleryHtml(B);
+        wrap.innerHTML = this.dashHeaderHtml() + this.dashNavHtml(B) + this.dashLayoutHtml(B) + this.dashGalleryHtml(B);
+    },
+
+    // Дашборд — это 8 000 px блоков, и листать их вслепую неудобно. Полоса разделов прилипает
+    // к верху и ведёт к нужному месту; показывается только в обычном режиме (в режиме правки
+    // у разделов свои заголовки с кнопками) и только для разделов, где есть что показать.
+    dashNavHtml: function (B) {
+        if (this._dashEdit) return '';
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const secs = this.dashLayout().sections.filter(s => s.title && s.items.some(w => B[w.id]));
+        if (secs.length < 2) return '';
+        return `<div class="ad-chips ad-sticky-nav">${secs.map(s => `<button class="ad-chip" onclick="app.dashScrollTo('${s.id}')">${esc(s.title)}</button>`).join('')}</div>`;
+    },
+
+    dashScrollTo: function (sid) {
+        const el = document.getElementById('dash_sec_' + sid);
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     },
 
     // ══ Раскладка дашборда ════════════════════════════════════════════════════
@@ -26523,11 +26574,11 @@ const app = {
 
         if (regionList.length) {
             h += `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:8px;">
-                <button class="admin-btn" style="${!region ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
-                ${regionList.map(r => `<button class="admin-btn" style="${region === r ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsRegion('${q(r)}')">${esc(r)}</button>`).join('')}
+                <button class="ad-chip${!region ? ' active' : ''}" onclick="app.setAnalyticsRegion('')">Вся Россия</button>
+                ${regionList.map(r => `<button class="ad-chip${region === r ? ' active' : ''}" onclick="app.setAnalyticsRegion('${q(r)}')">${esc(r)}</button>`).join('')}
             </div>`;
         }
-        const cmpBtn = (m, label) => `<button class="admin-btn" style="${back === m ? 'background:var(--primary); color:#fff; border-color:var(--primary);' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
+        const cmpBtn = (m, label) => `<button class="ad-chip${back === m ? ' active' : ''}" onclick="app.setAnalyticsCompare(${m})">${label}</button>`;
         h += `<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-bottom:${edit ? 10 : 16}px;">
                 <span style="font-size:12px; color:var(--text-sec);">сравнивать:</span>
                 ${cmpBtn(1, 'с прошлым месяцем')}${cmpBtn(3, 'с кварталом')}${cmpBtn(12, 'с годом назад')}
@@ -26641,7 +26692,7 @@ const app = {
 
             if (!edit && !cells.replace(/\s/g, '')) return '';
 
-            return `<div style="margin-bottom:${edit ? 22 : 18}px;">
+            return `<div id="dash_sec_${s.id}" style="margin-bottom:${edit ? 22 : 18}px; scroll-margin-top:64px;">
                     ${head}
                     <div ${edit ? `data-dash-grid data-dash-sec="${s.id}"` : ''}
                          style="display:grid; grid-template-columns:repeat(${cols}, minmax(0,1fr)); gap:${gap}px;
