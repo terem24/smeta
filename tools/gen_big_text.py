@@ -134,6 +134,8 @@ def main():
         f = float(m.group(1))
         if f <= 0 or f > MAX_SMALL:
             continue
+        if 'ui-scale' in sel:
+            continue   # меню «Aa» лежит вне zoom-обёртки и уже в обычных px — не раздуваем
         sels = [prefix_selector(x) for x in split_top(sel) if x.strip()]
         if not sels:
             continue

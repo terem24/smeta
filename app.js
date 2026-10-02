@@ -10224,12 +10224,13 @@ const app = {
                 @media (max-width:560px) { .brx-frow { grid-template-columns:120px 1fr 36px; } }
                 @media (prefers-reduced-motion: reduce) { .brx-bar i, .brx-fbar i, .brx-node { transition:none; } }
             </style>
+            <div class="ad-page-h">
+                <div><h3>Филиалы</h3><div class="ad-sub">Структура компаний: филиалы, менеджеры, ссылки, воронка от ссылки до оплаты</div></div>
+                <button class="admin-btn" onclick="app.renderAdminBranches()">Обновить</button>
+            </div>
             <div class="brx-top">
                 <div class="brx-pills">${this.BRANCH_PERIODS.map(p => `<button type="button" class="brx-pill${p.key === period.key ? ' on' : ''}" onclick="app.setBranchPeriod('${p.key}')">${p.label}</button>`).join('')}</div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <span class="brx-muted">Нажмите на компанию, филиал или менеджера</span>
-                    <button class="btn-header-blue" onclick="app.renderAdminBranches()" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
-                </div>
+                <span class="brx-muted">Нажмите на компанию, филиал или менеджера</span>
             </div>
             <div class="brx-layout">
                 <div>${treeHtml}</div>
@@ -20568,6 +20569,9 @@ const app = {
         document.body.classList.add('admin-modal-open');
         this.startAdminMobileLabels();
         this.watchAdminViewport();
+        // Наблюдатель за оформлением включаем сразу, а не при первой отрисовке раздела:
+        // иначе самая первая заглушка «Загрузка…» осталась бы простым текстом
+        this.watchAdminStyle();
         // Кнопка общего поиска рядом с переключателем темы; тот же поиск открывает Ctrl+K
         const searchHost = document.querySelector('#admin_modal_overlay .auth-modal-content');
         if (searchHost && !document.getElementById('admin_search_btn')) {
@@ -21910,7 +21914,33 @@ const app = {
         });
     },
 
+    // Заглушка «Загрузка…» всей вкладки получает тот же значок, что крутится при загрузке самого
+    // калькулятора (логотип-огонёк со свечением, см. #stout_preloader в index.html). Заглушек
+    // два десятка и все пишутся строкой прямо в разделах, поэтому переделывать каждую
+    // не нужно: любая такая строка оформляется здесь.
+    //
+    // Только заглушки уровня вкладки — прямые дети панели или их обёртки. Мелкие «Загружаем…»
+    // внутри карточек (в «Центре внимания» их четыре сразу) остаются текстом: четыре
+    // вертящихся логотипа на одном экране — шум, нужен один, по центру вкладки. И не больше
+    // одного на экране: следующая заглушка ждёт, пока предыдущая исчезнет.
+    decorateAdminLoaders: function (root) {
+        if (root.querySelector('.ad-loader')) return;
+        const cands = root.querySelectorAll(':scope > div, :scope > div > div');
+        for (const el of cands) {
+            if (el.dataset.ldr || el.children.length || el.closest('.admin-chat-wrap')) continue;
+            const t = (el.textContent || '').trim();
+            if (t.length > 70 || !/^(Загрузка|Загружаем)[^<]*(…|\.\.\.)$/.test(t)) continue;
+            el.dataset.ldr = '1';
+            el.classList.add('ad-loader');
+            el.removeAttribute('style');
+            el.innerHTML = '<div class="ad-loader-logo"><img src="img/logo_hc_flame.png" alt="" draggable="false"></div><div class="ad-loader-t"></div>';
+            el.lastChild.textContent = t;
+            break;
+        }
+    },
+
     softenAdminChips: function (root) {
+        this.decorateAdminLoaders(root);
         this.cleanAdminEmoji(root);
         // Кнопки с цветом, заданным числом (зелёный «Excel», оранжевый и т. п.): красные —
         // остаются красными, все прочие становятся цветом темы. Кнопки на var(--primary)
@@ -21956,6 +21986,8 @@ const app = {
             clearTimeout(timer);
             timer = setTimeout(() => { try { this.softenAdminChips(root); } catch (e) { } }, 30);
         }).observe(root, { childList: true, subtree: true });
+        // Заглушка, уже стоящая в панели к моменту запуска наблюдателя
+        try { this.decorateAdminLoaders(root); } catch (e) { }
     },
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
@@ -30394,21 +30426,30 @@ const app = {
         const lbl = (t) => `<span style="font-size:10.5px; color:var(--text-sec); white-space:nowrap;">${t}</span>`;
         const tabBtn = (mode, text) => `<button class="auth-btn-base" style="margin:0; width:auto; height:34px; font-size:11px; white-space:nowrap; padding:0 12px; background:${group === mode ? 'var(--primary)' : 'var(--surface-light)'}; color:${group === mode ? 'white' : 'var(--text-sec)'}; border:1px solid ${group === mode ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminAiFillGroup('${mode}')">${text}</button>`;
 
+        // Число включённых фильтров — на кнопке-заголовке свёрнутой панели
+        const aifActive = [dateFrom, dateTo, account !== 'all' ? account : '', runsMin || '', runsMax || '', durMin || '', durMax || '', outcome !== 'all' ? outcome : ''].filter(Boolean).length;
+        const aTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const chip = (mode, text) => `<button class="ad-chip${group === mode ? ' active' : ''}" onclick="app.switchAdminAiFillGroup('${mode}')">${text}</button>`;
+
         let h = `
-            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-                <h3 style="margin:0; color:var(--text-main);">✨ Умное заполнение</h3>
-                <span style="font-size:12.5px; color:var(--text-sec);">
-                    запусков: <b style="color:var(--text-main);">${rows.length}</b> ·
-                    людей: <b style="color:var(--text-main);">${accounts.size}</b> ·
-                    общее время: <b style="color:var(--text-main);">${this._fmtAiFillDur(totalSec)}</b> ·
-                    среднее: <b style="color:var(--text-main);">${this._fmtAiFillDur(rows.length ? totalSec / rows.length : 0)}</b> ·
-                    применили: <b style="color:#10B981;">${applied}</b> (${pct(applied, rows.length)}) ·
-                    реплик: <b style="color:var(--text-main);">${msgs}</b>, голосом ${pct(voice, msgs)} ·
-                    не распознано: <b style="color:${unrec ? '#EF4444' : 'var(--text-main)'};">${unrec}</b>
-                </span>
-                <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.aiFill = null; app.renderAdminMain()">↻ Обновить</button>
+            <div class="ad-page-h">
+                <div><h3>Умное заполнение</h3><div class="ad-sub">Что монтажники говорили и писали в окно помощника: итоги, время, нераспознанное</div></div>
+                <button class="admin-btn" onclick="app.adminData.aiFill = null; app.renderAdminMain()">Обновить</button>
             </div>
-            <div class="admin-toolbar-row" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${aTile('Запусков', rows.length, `людей: ${accounts.size}`)}
+                ${aTile('Применили', applied, `${pct(applied, rows.length)} запусков`)}
+                ${aTile('Среднее время', this._fmtAiFillDur(rows.length ? totalSec / rows.length : 0), `всего: ${this._fmtAiFillDur(totalSec)}`)}
+                ${aTile('Реплик', msgs, `голосом ${pct(voice, msgs)}`)}
+                ${aTile('Не распознано', `<span style="${unrec ? 'color:#EF4444;' : ''}">${unrec}</span>`, 'фраз, которых система не поняла')}
+            </div>
+            <div class="ad-chips">${chip('sessions', 'Сеансы')}${chip('accounts', 'По аккаунтам')}${chip('unrecognized', 'Нераспознанное')}</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                <input type="text" id="admin_aif_search" placeholder="Фраза в диалоге…" value="${esc(g('admin_aif_search')?.value || '')}" style="${inputStyle} flex:1 1 240px; max-width:420px;" oninput="app.renderAdminAiFillBody()">
+            </div>
+            <details class="ad-collapse"${this._aifOpen || aifActive ? ' open' : ''} ontoggle="app._aifOpen = this.open">
+              <summary>Фильтры${aifActive ? ` <span class="ad-count ad-count-on">${aifActive}</span>` : ''}</summary>
+            <div class="admin-toolbar-row" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 16px 16px;">
                 ${lbl('Дата')}
                 <input type="date" id="admin_aif_from" value="${dateFrom}" style="${inputStyle}" onchange="app.renderAdminAiFillBody()">
                 <input type="date" id="admin_aif_to" value="${dateTo}" style="${inputStyle}" onchange="app.renderAdminAiFillBody()">
@@ -30427,12 +30468,8 @@ const app = {
                     <option value="applied" ${outcome === 'applied' ? 'selected' : ''}>Применил</option>
                     <option value="closed" ${outcome === 'closed' ? 'selected' : ''}>Закрыл без применения</option>
                 </select>
-                <input type="text" id="admin_aif_search" placeholder="🔍 Фраза в диалоге…" value="${esc(g('admin_aif_search')?.value || '')}" style="${inputStyle} width:180px;" oninput="app.renderAdminAiFillBody()">
-                <span style="flex:1;"></span>
-                ${tabBtn('sessions', 'Сеансы')}
-                ${tabBtn('accounts', 'По аккаунтам')}
-                ${tabBtn('unrecognized', 'Нераспознанное')}
-            </div>`;
+            </div>
+            </details>`;
 
         if (!all.length) {
             h += `<div style="text-align:center; color:var(--text-sec); padding:40px 0;">${this._aiFillError
@@ -30660,14 +30697,30 @@ const app = {
             'В': 'Водоснабжение и канализация'
         };
 
+        // Поиск по объекту, адресу и автору; плитки считаются по всем загруженным комплектам
+        const pq = String(this._projQ || '').trim().toLowerCase();
+        const shown = pq ? projects.filter(p => [p.project_name, p.address, p.user_name, p.user_email, p.sections].join(' ').toLowerCase().indexOf(pq) >= 0) : projects;
+        const eqTotal = projects.reduce((a, p) => a + (Number(p.eq_sum) || 0), 0);
+        const wkTotal = projects.reduce((a, p) => a + (Number(p.works_sum) || 0), 0);
+        const tile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+
         let h = `
             <div style="margin-bottom:20px;">
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:15px;">
-                    <h3 style="margin:0; color:var(--text-main);">📁 Проекты</h3>
-                    <span style="font-size:12.5px; color:var(--text-sec);">выпущено комплектов: <b>${projects.length}</b></span>
-                    <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.projects = null; app.renderAdminMain()">Обновить</button>
+                <div class="ad-page-h">
+                    <div><h3>Проекты</h3><div class="ad-sub">Комплекты листов, выпущенные монтажниками по кнопке «Проект»</div></div>
+                    <button class="admin-btn" onclick="app.adminData.projects = null; app.renderAdminMain()">Обновить</button>
                 </div>
-                <table class="inv-table">
+                <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                    ${tile('Выпущено комплектов', projects.length, projects.length >= 200 ? 'показаны последние 200' : 'всего в базе')}
+                    ${tile('Оборудование', fmt(eqTotal) + ' ₽', 'по всем комплектам')}
+                    ${tile('Монтаж', fmt(wkTotal) + ' ₽', 'по всем комплектам')}
+                    ${tile('Итого', fmt(eqTotal + wkTotal) + ' ₽', projects.length ? 'средний комплект: ' + fmt((eqTotal + wkTotal) / projects.length) + ' ₽' : '&nbsp;')}
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <input type="text" id="admin_proj_search" value="${esc(this._projQ || '')}" placeholder="Поиск по объекту, адресу, автору"
+                           style="flex:1 1 260px; max-width:420px;" oninput="app.setProjectsQuery(this.value)">
+                </div>
+                <table class="inv-table ad-sticky">
                     <thead>
                         <tr>
                             <th style="width:30px;">#</th>
@@ -30682,13 +30735,13 @@ const app = {
                     </thead>
                     <tbody>`;
 
-        if (!projects.length) {
+        if (!shown.length) {
             h += `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-sec);">${this._projectsError
                 ? 'Список проектов недоступен. Похоже, миграция supabase/migrations/20260801_add_projects.sql ещё не выполнена.'
-                : 'Проектов пока нет. Объект попадает сюда, когда монтажник нажимает «Проект» и листы сформированы.'
+                : (projects.length ? 'Ничего не найдено.' : 'Проектов пока нет. Объект попадает сюда, когда монтажник нажимает «Проект» и листы сформированы.')
                 }</td></tr>`;
         } else {
-            projects.forEach((p, i) => {
+            shown.forEach((p, i) => {
                 const dt = new Date(p.issued_at);
                 const when = dt.toLocaleDateString('ru-RU') + ' ' +
                     dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -30711,6 +30764,16 @@ const app = {
 
         h += `</tbody></table></div>`;
         wrap.innerHTML = h;
+    },
+
+    setProjectsQuery: function (q) {
+        this._projQ = q;
+        clearTimeout(this._projQT);
+        this._projQT = setTimeout(() => {
+            this.renderAdminMain();
+            const el = document.getElementById('admin_proj_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 250);
     },
 
     /**
@@ -30791,21 +30854,20 @@ const app = {
 
         const chip = (id, label) => {
             const on = filter === id;
-            return `<button class="admin-btn" style="background:${on ? 'var(--primary)' : 'var(--surface-light)'}; color:${on ? 'white' : 'var(--text-sec)'}; border:1px solid ${on ? 'var(--primary)' : 'var(--border)'};" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} · ${count(id)}</button>`;
+            return `<button class="ad-chip${on ? ' active' : ''}" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} <span class="ad-chip-n">${count(id)}</span></button>`;
         };
 
         let h = `
             <div style="margin-bottom:20px;">
-                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                    <h3 style="margin:0; color:var(--text-main);">🔁 Замены позиций</h3>
-                    <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
+                <div class="ad-page-h">
+                    <div><h3>Замены позиций</h3>
+                        <div class="ad-sub" style="max-width:900px; line-height:1.55;">
+                            Парсер цен находит позиции каталога, которые на сайте ТЕРЕМ стали «Под заказ», и товар, который сайт предлагает вместо них.
+                            Подтверждённая замена попадает в калькулятор в течение суток: у позиции меняются артикул, название, цена и наличие.
+                            Старые сметы и ссылки клиентам продолжают работать.</div></div>
+                    <button class="admin-btn" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
                 </div>
-                <p style="margin:0 0 14px; font-size:12.5px; color:var(--text-sec); line-height:1.55; max-width:900px;">
-                    Парсер цен находит позиции каталога, которые на сайте ТЕРЕМ стали «Под заказ», и товар, который сайт предлагает вместо них.
-                    Подтверждённая замена попадает в калькулятор в течение суток: у позиции меняются артикул, название, цена и наличие.
-                    Старые сметы и ссылки клиентам продолжают работать.
-                </p>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+                <div class="ad-chips">
                     ${chip('new', 'Новые')}${chip('approved', 'Подтверждённые')}${chip('rejected', 'Отклонённые')}
                 </div>`;
 
@@ -30828,7 +30890,7 @@ const app = {
                 let actions;
                 if (r.status === 'new') {
                     actions = `
-                        <button class="admin-btn" style="background:#10B981; color:white; border-color:#10B981;" onclick="app.adminSuccessorDecide(${id}, 'approved')">Подтвердить</button>
+                        <button class="admin-btn ad-primary" onclick="app.adminSuccessorDecide(${id}, 'approved')">Подтвердить</button>
                         <button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'rejected')">Отклонить</button>`;
                 } else if (r.status === 'approved' && catalogArticle(r) === r.new_article) {
                     actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге</span>`;
@@ -35546,6 +35608,9 @@ const app = {
     renderAdminPlansBody: function () {
         const root = document.getElementById('admin_plans_root');
         if (!root) return;
+        // Контейнер сначала служит заглушкой «Загрузка…» по центру — для содержимого сбрасываем
+        root.style.textAlign = 'left';
+        root.style.padding = '0';
         const data = this._adminPlansData || { projects: [], totalBytes: 0, retentionDays: 90 };
         const projects = data.projects || [];
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
@@ -35559,24 +35624,34 @@ const app = {
         // удаления подложку уже не вернуть, план придётся рисовать заново.
         const doomed = projects.filter(p => p.ageDays >= keep - 14).length;
 
+        // Срез «скоро под удаление» — объекты у порога срока хранения
+        const plansOnlyOld = !!this._plansOld;
+        const shownProjects = plansOnlyOld ? projects.filter(p => p.ageDays >= keep - 14) : projects;
+        const pTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+
         let h = `
-            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px;">
-                <h3 style="margin:0; color:var(--text-main);">📐 Планы этажей</h3>
-                <span style="font-size:12px; color:var(--text-sec);">
-                    Объектов: <b>${projects.length}</b> &nbsp;|&nbsp; занято: <b>${mb(data.totalBytes || 0)}</b>
-                    &nbsp;|&nbsp; срок хранения: <b>${keep} дн.</b>
-                </span>
-                <span style="flex:1"></span>
-                <button class="admin-btn" onclick="app.renderAdminPlans()">Обновить</button>
-                <button class="admin-btn" ${isViewer ? 'disabled' : ''}
-                        onclick="app.purgeAdminPlans(${keep})">Очистить старше ${keep} дней</button>
-                <button class="admin-btn danger" ${isViewer ? 'disabled' : ''}
-                        onclick="app.purgeAdminPlans(0)">Очистить всё</button>
+            <div class="ad-page-h">
+                <div><h3>Планы этажей</h3>
+                    <div class="ad-sub">Подложки лежат на Beget, мимо Supabase — его трафик узкое место. Заброшенные объекты удаляются сами: раз в сутки, при очередной загрузке плана.</div></div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="admin-btn" onclick="app.renderAdminPlans()">Обновить</button>
+                    <button class="admin-btn" ${isViewer ? 'disabled' : ''}
+                            onclick="app.purgeAdminPlans(${keep})">Очистить старше ${keep} дней</button>
+                    <details class="ad-danger-zone"><summary>Опасные действия</summary>
+                        <button class="admin-btn danger" ${isViewer ? 'disabled' : ''}
+                                onclick="app.purgeAdminPlans(0)">Очистить всё</button>
+                    </details>
+                </div>
             </div>
-            <div style="font-size:11.5px; color:var(--text-sec); margin-bottom:12px;">
-                Подложки лежат на Beget, мимо Supabase — его трафик узкое место.
-                Заброшенные объекты удаляются сами: раз в сутки, при очередной загрузке плана.
-                ${doomed ? `<b style="color:#D97706;">Скоро под удаление: ${doomed}.</b>` : ''}
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${pTile('Объектов с планами', projects.length, 'у монтажников')}
+                ${pTile('Занято на диске', mb(data.totalBytes || 0), 'подложки этажей')}
+                ${pTile('Срок хранения', keep + ' дн.', 'с последней правки')}
+                ${pTile('Скоро под удаление', doomed, doomed ? 'в ближайшие 14 дней' : 'ничего не истекает')}
+            </div>
+            <div class="ad-chips">
+                <button class="ad-chip${plansOnlyOld ? '' : ' active'}" onclick="app.setPlansOld(false)">Все <span class="ad-chip-n">${projects.length}</span></button>
+                <button class="ad-chip${plansOnlyOld ? ' active' : ''}" onclick="app.setPlansOld(true)">Скоро под удаление <span class="ad-chip-n">${doomed}</span></button>
             </div>`;
 
         if (!projects.length) {
@@ -35585,7 +35660,7 @@ const app = {
             return;
         }
 
-        h += `<table class="inv-table" style="margin-bottom:30px; table-layout:fixed; width:100%;">
+        h += `<table class="inv-table ad-sticky" style="margin-bottom:30px; table-layout:fixed; width:100%;">
                 <thead><tr>
                     <th style="width:30px;">#</th>
                     <th style="width:210px;">Монтажник</th>
@@ -35595,7 +35670,7 @@ const app = {
                     <th style="width:70px; text-align:center;">Действия</th>
                 </tr></thead><tbody>`;
 
-        projects.forEach((p, i) => {
+        shownProjects.forEach((p, i) => {
             const old = p.ageDays >= keep - 14;
             const thumbs = (p.files || []).map(f => `
                 <a href="${this.PLANS_ENDPOINT}?k=${p.key}&n=${encodeURIComponent(f.name)}" target="_blank"
@@ -35628,6 +35703,11 @@ const app = {
 
         h += `</tbody></table>`;
         root.innerHTML = h;
+    },
+
+    setPlansOld: function (on) {
+        this._plansOld = !!on;
+        this.renderAdminPlansBody();
     },
 
     /**
@@ -35829,8 +35909,11 @@ const app = {
             const data = await r.json();
             // defaultPro и tariffs — с 25.09.2026 (лимит по тарифу); старый
             // сервер их не шлёт, тогда один общий лимит, как раньше.
+            // defaultAdmin обязателен: без него recognitionDefaultLimit не узнаёт
+            // администратора и показывает ему лимит «Базовый» (5), хотя сервер
+            // считает его безлимитным.
             if (data.ok) this._adminRecognitionLimits = { default: data.default, defaultPro: data.defaultPro,
-                limits: data.limits || {}, tariffs: data.tariffs || {} };
+                defaultAdmin: data.defaultAdmin, limits: data.limits || {}, tariffs: data.tariffs || {} };
         } catch (e) {
             console.warn('[архив] лимиты не получены:', e.message);
         }
@@ -40315,7 +40398,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '3',
+    BIG_TEXT_CSS_V: '6',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -77526,12 +77609,8 @@ const app = {
             // остаются значок и заголовок.
             const _onboardOk = this.onboardingAllowed();
             const qsBtn = (_onboardOk && this.isCalcEmpty()) ? `
-                    <button type="button" id="quick_start_row" class="no-print" onclick="app.showQuickStart()"
-                        style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-                               margin-top: 12px; font: inherit; font-size: 13px; font-weight: 600;
-                               padding: 10px 18px; border-radius: 10px; border: 1px dashed var(--primary);
-                               background: transparent; color: var(--primary); cursor: pointer;">
-                        <span class="ui-emo" style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
+                    <button type="button" id="quick_start_row" class="no-print quick-start-cta" onclick="app.showQuickStart()">
+                        <span class="ui-emo">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">
