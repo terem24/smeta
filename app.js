@@ -31520,9 +31520,14 @@ const app = {
         // саму строку вкладок — после второй перерисовки из админки было не выйти.
         // На телефоне вместо ряда вкладок стоит строка возврата в меню разделов —
         // сохранять надо её, иначе из мессенджера некуда выйти.
-        const nav = document.getElementById('admin_nav_tabs') || content.querySelector('.admin-mob-bar');
+        // Навигация двухуровневая (см. ADMIN_GROUPS): ряд групп и ряд вкладок группы. У раздела
+        // «Сообщения» вкладка одна, второго ряда нет, и сохранять надо именно ряд групп —
+        // раньше уцелевал только #admin_nav_tabs, и из мессенджера было не выйти.
+        const navEls = ['admin_nav_groups', 'admin_nav_tabs'].map(id => document.getElementById(id)).filter(Boolean);
+        const mobBar = content.querySelector('.admin-mob-bar');
+        if (mobBar) navEls.push(mobBar);
         content.innerHTML = '';
-        if (nav) content.appendChild(nav);
+        navEls.forEach(n => content.appendChild(n));
 
         // Мессенджер тянется на всю оставшуюся высоту: делаем вкладку колонкой,
         // прокрутка остаётся внутри самого чата, а не у всей вкладки.
