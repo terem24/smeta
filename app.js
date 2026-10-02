@@ -40162,7 +40162,7 @@ const app = {
         this.updateUiScaleButton(z);
         // Шапка, колонки и липкие панели считают размеры от zoom — пересчитать после смены.
         // Только при реальной смене: событие resize слушаем сами, иначе зациклимся.
-        if (changed) window.dispatchEvent(new Event('resize'));
+        if (changed) { try { window.dispatchEvent(new Event('resize')); } catch (e) { } }
     },
 
     updateUiScaleButton: function (z) {
