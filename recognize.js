@@ -2634,10 +2634,11 @@ const RecognizeUI = {
 
         for (let mi = 0; mi < MODELS.length; mi++) {
             for (let attempt = 0; ; attempt++) {
-                // Считаем ЗАПРОСЫ, а не запуски: по ним живёт лимит у Google и
-                // по ним же считается расход монтажника. Неудачная попытка тоже
-                // тратит квоту, поэтому увеличиваем счётчик до ответа.
-                this._apiCalls = (this._apiCalls || 0) + 1;
+                // С монтажника списываем только УДАЧНЫЕ запросы: ответ получен.
+                // Повторы при перегрузке (до трёх ожиданий на каждой из трёх
+                // моделей) и отказы он не получает, а считались они раньше —
+                // один лист из двух съедал 13 запросов при лимите 5. Нагрузку
+                // на сам сервис честно считает прокси (суточный счётчик).
                 const resp = await this.fetchRetry({
                     mode: 'recognize',
                     model: MODELS[mi],
@@ -2645,7 +2646,10 @@ const RecognizeUI = {
                     messages: [{ role: 'user', parts }],
                 });
                 const parsed = JSON.parse(resp);
-                if (!parsed.error) return parsed;
+                if (!parsed.error) {
+                    this._apiCalls = (this._apiCalls || 0) + 1;
+                    return parsed;
+                }
 
                 const msg = typeof parsed.error === 'string'
                     ? parsed.error : parsed.error.message || '';
