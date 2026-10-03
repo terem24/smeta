@@ -298,6 +298,22 @@
   var SLAB_GAP = 1;
   var MAX_LOOP_M = 100;       // предел длины одной петли 16×2,0 мм — запасное значение
   // цена прохода пучка по клетке: свободный проход, край петли, середина петли
+  /**
+   * Подсказки трассы, сохранённые редактором в разметке (f.leads). Редактор строил их по карте стен, а если
+   * картинки этажа в сессии не было — прямой линией «коллектор → вход в комнату» (две точки, часто по диагонали
+   * сквозь стены). Такая линия делала клетки вдоль себя дешёвыми, и трасса шла за ней ступеньками, а петли
+   * раскладывались иначе (проверено на реальной разметке КП 393974). Берём только ломаные из трёх и более точек,
+   * все звенья которых идут вдоль осей: это настоящий маршрут по стенам и дверям.
+   */
+  function usableLeads(f) {
+    return (f.leads || []).filter(function (L) {
+      var P = L && L.pts;
+      if (!P || P.length < 3) return false;
+      for (var j = 1; j < P.length; j++)
+        if (Math.abs(P[j][0] - P[j - 1][0]) > 2 && Math.abs(P[j][1] - P[j - 1][1]) > 2) return false;
+      return true;
+    });
+  }
   var COST_FREE = 1, COST_OUT = 2, COST_EDGE = 8, COST_IN = 60, COST_TURN = 3, COST_DRAWN = 0.3;
   // Подводки — вдоль стен: клетка зоны дальше LEAD_WALL_CELLS от стены дороже
   // на COST_MID (проектировщики Galf ведут пучок у стен и по коридорам).
@@ -1077,7 +1093,7 @@
     var zs = (f.zones || []).map(function (z, i) { return { z: z, i: i }; })
       .filter(function (Z) { return Z.z.type === 'tp' && Z.z.pts && Z.z.pts.length >= 3; });
     if (!zs.length) return out;
-    var key = JSON.stringify([f.pxPerM, f.coll || null, f.leads || null, stepMm, lim,
+    var key = JSON.stringify([f.pxPerM, f.coll || null, usableLeads(f), stepMm, lim,
       zs.map(function (Z) { return [Z.i, Z.z.pts, Z.z.lay || '', Z.z.name || '']; }),
       (f.zones || []).filter(function (z) { return z.type === 'cold'; }).map(function (z) { return z.pts; })]);
     for (var ci = 0; ci < loopsCache.length; ci++) if (loopsCache[ci].key === key) return loopsCache[ci].val;
@@ -1739,7 +1755,7 @@
       if (own[k] && g.wallD && g.wallD[k] > LEAD_WALL_CELLS) cost[k] += COST_MID;
     }
     // нарисованные монтажником подводки — желательная трасса
-    (f.leads || []).forEach(function (L) {
+    usableLeads(f).forEach(function (L) {
       var P = L.pts || [];
       for (var j = 1; j < P.length; j++) {
         var a = P[j - 1], b = P[j], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / (g.c / 2)));
@@ -4808,6 +4824,23 @@
   var V_RSUP = '#a61b1b', V_RRET = '#26359f';
   /** Ломаная со скруглёнными углами: дуга радиусом r (число или функция (a, b, c) → радиус;
    *  не больше половины соседних звеньев) */
+  /**
+   * Возвраты назад по той же линии: подводка проскочила точку входа в петлю и вернулась (A→B→C на одной
+   * прямой, C с той же стороны от B, что и A). Остаётся двойной хвостик в несколько пикселей, на плане он
+   * читается как огрызок трубы. Точку B убираем — A→C идёт напрямую.
+   */
+  function despur(P) {
+    var out = P.slice(), i = 1;
+    while (i < out.length - 1) {
+      var a = out[i - 1], b = out[i], c = out[i + 1];
+      var d1x = b[0] - a[0], d1y = b[1] - a[1], d2x = c[0] - b[0], d2y = c[1] - b[1];
+      var cr = d1x * d2y - d1y * d2x, dot = d1x * d2x + d1y * d2y;
+      if (Math.abs(cr) < 1e-6 * (Math.hypot(d1x, d1y) * Math.hypot(d2x, d2y) + 1e-9) * 1e3 && dot < 0) {
+        out.splice(i, 1); i = Math.max(1, i - 1);
+      } else i++;
+    }
+    return out;
+  }
   function roundedD(pts, r) {
     var mm = function (v) { return Math.round(v * 10) / 10; };
     if (!pts || pts.length < 2) return '';
@@ -4899,7 +4932,8 @@
           return L.concat([horizLast ? [T[0], e[1]] : [e[0], T[1]], [T[0], T[1]]]);
         };
         var lastH = Math.abs(supL[supL.length - 1][1] - supL[supL.length - 2][1]) < 0.5;
-        supL = tie(supL, sup0, lastH); retL = tie(retL, ret1, lastH);
+        supL = despur(tie(supL, sup0, lastH)); retL = despur(tie(retL, ret1, lastH));
+        if (opts.dbg) (opts.dbg.tp = opts.dbg.tp || []).push({ no: R.no, lines: [supL, retL] });
         o.push('<g data-pl="L' + R.no + '">');
         [[supL, V_SUP], [retL, V_RET]].forEach(function (pr) {
           o.push('<path d="' + roundedD(pr[0], leadGap * 0.9) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw * 0.5) +
@@ -4958,6 +4992,7 @@
         var rl = laneLines(RR.items.map(function (it) { return { pts: collectorFan(it.full, RR.C, RR.C.ang || 0, 0.28 * ppm) }; }), rg);
         radBodyW = Math.max(0.6 * ppm, RR.items.length * LANE_PITCH * rg + 0.16 * ppm);
         RR.items.forEach(function (it, ii) {
+          if (opts.dbg) (opts.dbg.rad = opts.dbg.rad || []).push({ no: it.i + 1, lines: [rl[ii][0], rl[ii][1]] });
           o.push('<g data-pl="R' + (it.i + 1) + '">');
           [[rl[ii][0], V_RSUP], [rl[ii][1], V_RRET]].forEach(function (pr) {
             o.push('<path d="' + roundedD(pr[0], rg * 0.9) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw * 0.5) +
