@@ -14848,13 +14848,13 @@ const app = {
         { id: 'calc', kind: 'act', group: 'calc', nav: 'Расчёт', short: 'Расчёт', rail: 'Расчёт', title: 'Вернуться к расчёту сметы', icon: '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="11" x2="8.01" y2="11"></line><line x1="12" y1="11" x2="12.01" y2="11"></line><line x1="16" y1="11" x2="16.01" y2="11"></line><line x1="8" y1="15" x2="8.01" y2="15"></line><line x1="12" y1="15" x2="12.01" y2="15"></line><line x1="16" y1="15" x2="16.01" y2="15"></line><line x1="8" y1="19" x2="12" y2="19"></line>' },
         { id: 'home', kind: 'tab', group: 'calc', nav: 'Главная', short: 'Главная', rail: 'Главная', title: 'Что требует внимания и мои показатели', icon: '<path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-5h4v5"></path>' },
         { id: 'messages', kind: 'act', group: 'calc', nav: 'Сообщения', short: 'Сообщения', rail: 'Сообщения', title: 'Сообщения и уведомления', icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>', badge: true },
-        { id: 'objects', kind: 'tab', group: 'objects', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
-        { id: 'requisites', kind: 'tab', group: 'account', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
-        { id: 'workprices', kind: 'tab', group: 'account', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
+        { id: 'objects', kind: 'tab', group: 'calc', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
+        { id: 'requisites', kind: 'tab', group: 'calc', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
+        { id: 'workprices', kind: 'tab', group: 'calc', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
         // Только менеджерам дистрибьюторов: показ включают refreshManagerTabVisibility и syncRailUI
-        { id: 'installers', kind: 'tab', group: 'account', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
+        { id: 'installers', kind: 'tab', group: 'calc', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
         // Владельцу и админам — показ включает syncRailUI по hasAdminAccess()
-        { id: 'admin', kind: 'act', group: 'service', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' }
+        { id: 'admin', kind: 'act', group: 'calc', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' }
     ],
 
     // Внутри пункта меню — вкладки-чипы над содержимым: пунктов в меню семь, а разделов
@@ -15296,7 +15296,7 @@ const app = {
     saveRailLayout: function (patch) {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const now = this.railLayout();
-        this.installerSettings[this.railLayoutSlot()] = Object.assign({ dock: 'left', groups: null, params: 'left', collapsed: true }, now, patch || {});
+        this.installerSettings[this.railLayoutSlot()] = Object.assign({ dock: 'left', groups: null, params: 'left', collapsed: false }, now, patch || {});
         // Пишет и в localStorage, и (для вошедших) в облако
         this.pushInstallerSettingsToCloud();
     },
@@ -15307,13 +15307,13 @@ const app = {
     // поверх), на планшете наведения нет — там разворачивают той же кнопкой.
     // Состояние лежит в общей раскладке меню, поэтому у мыши и у сенсора оно своё.
     //
-    // Свёрнуто по умолчанию: развёрнутая колонка отъедала ширину у сметы, а
-    // подписи нужны редко — разделы узнаются по значкам, и подпись всё равно
-    // выезжает под мышью. Сравнение именно с false, а не с true: у тех, кто уже
-    // разворачивал панель, в настройках лежит collapsed: false, и их выбор должен
-    // пережить смену умолчания. Пустое поле (никогда не трогали) — свёрнуто.
+    // Развёрнуто по умолчанию (решение 03.10.2026): новый пользователь должен сразу
+    // видеть подписи разделов, а не гадать по значкам. Свернул сам — это запоминается
+    // (collapsed: true лежит в раскладке, у мыши и сенсора порознь, и уезжает в облако
+    // вместе с остальными настройками меню). Раньше умолчание было обратным; у тех, кто
+    // ни разу не трогал панель, поля нет, и она теперь откроется развёрнутой.
     railCollapsed: function () {
-        return this.railLayout().collapsed !== false;
+        return this.railLayout().collapsed === true;
     },
 
     toggleRailCollapsed: function () {
@@ -55726,6 +55726,23 @@ const app = {
         const t = parseFloat(r && r.tpArea);
         return t > 0 ? Math.min(t, a) : a;
     },
+    /**
+     * Площадь под трубой петель комнаты по раскладке плана, м²: длина петель
+     * без подводок × шаг. Пол греет там, где лежит труба, а раскладка оставляет
+     * 100 мм у стен и обходит пучок подводок — у проектировщиков Galf так
+     * покрыто 74–77 % комнаты. null — плана с этой комнатой нет (зона называется
+     * так же, как комната) или зона считана оценкой.
+     */
+    ufhLaidArea: function (r, stepMm) {
+        const geo = this.ufhGeom();
+        const fl = geo && geo.floors[(r && r.floor === 2) ? 1 : 0];
+        if (!fl || !fl.rows) return null;
+        const key = String((r && r.name) || '').trim().toLowerCase();
+        if (!key) return null;
+        const rows = fl.rows.filter(x => String(x.zone || '').trim().toLowerCase() === key);
+        if (!rows.length || rows.some(x => !(x.laidM > 0))) return null;
+        return rows.reduce((a, x) => a + x.laidM, 0) * stepMm / 1000;
+    },
     updRoomTpArea: function (roomId, val) {
         const r = this.state.rooms.find(x => x.id === roomId);
         if (!r) return;
@@ -60032,8 +60049,10 @@ const app = {
                 const zName = z.name || 'зона ' + (++zno);
                 z.loops.forEach((l, li) => {
                     meters += l.m;
+                    // laidM — труба самой петли без подводок (по ней — площадь под трубой);
+                    // у зоны-оценки (est) раскладки нет, считать нечего
                     rows.push({ name: zName + (k > 1 ? ' ' + (li + 1) + '/' + k : ''),
-                        zone: z.name || '', area: z.area / k, m: l.m });
+                        zone: z.name || '', area: z.area / k, m: l.m, laidM: z.est ? null : (l.loopM || null) });
                 });
                 loops += k;
                 area += z.area;
@@ -73283,6 +73302,40 @@ const app = {
 
 
         currentSectionTitle = "3. Приборы отопления";
+        // Хватит ли тёплого пола комнате без радиаторов. Раньше это проверялось
+        // только внутри расчёта радиаторов ниже, и в доме без них (или когда пол
+        // по укрупнённой оценке закрывал всё) комнату не проверял никто. Две ступени:
+        // пол со всей площади (её проверяет и блок радиаторов — там не дублируем)
+        // и пол под трубой по раскладке плана — 100 мм у стен, подводки и места
+        // «без обогрева» остаются без трубы, у проектировщиков Galf так 74–77 %
+        // комнаты. Отдача с м² — по температуре поверхности, СП 60.13330.2020, п. 6.4.8.
+        if (hasTp && this.state.detailedRooms && Array.isArray(this.state.rooms)) {
+            const _radBlock = hasRad && radSecs > 0;
+            this.state.rooms.forEach(r => {
+                if (!(r.sys && r.sys.includes('tp')) || r.sys.includes('rad')) return;
+                const loss = this.getRoomHeatLoss(r);
+                const Q = loss.Q_sum || 0;
+                if (!(Q > 0)) return;
+                const step = (r.floor === 2) ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
+                const qUd = this.ufhQudForRoom(step, loss.Tv, loss.tKind);
+                const qFull = this.roomTpArea(r) * qUd;
+                const fmt = v => v.toFixed(1).replace('.', ',');
+                const label = app._warnRoomLabel(r.id, r.name + ' (Только ТП):');
+                app.tempWarns = app.tempWarns || [];
+                if (Q > qFull) {
+                    if (!_radBlock) app.tempWarns.push(`• ${label} тёплого пола недостаточно для компенсации теплопотерь! Пол отдаст не больше ${Math.round(qFull)} Вт (${Math.round(qUd)} Вт/м² по температуре поверхности, СП 60.13330.2020, п. 6.4.8) при теплопотерях ${Math.round(Q)} Вт. Нехватка мощности: <b>${Math.round(Q - qFull)} Вт</b>. Рекомендуется добавить радиатор или улучшить утепление стен.`);
+                    return;
+                }
+                const laidA = this.ufhLaidArea(r, step);
+                if (!(laidA > 0)) return;
+                const qLaid = laidA * qUd;
+                // площадь под трубой — по раскладке с сеткой 10 см; разницу меньше
+                // 5 % она не различает, тревогу из-за неё не поднимаем
+                if (Q - qLaid < Math.max(10, Q * 0.05)) return;
+                const fix = step > 100 ? 'уменьшите шаг укладки или добавьте радиатор' : 'добавьте радиатор';
+                app.tempWarns.push(`• ${label} по раскладке плана петли лежат на ${fmt(laidA)} м² из ${fmt(this.roomTpArea(r))} м² (у стен 100 мм без трубы, подводки) — пол отдаст около ${Math.round(qLaid)} Вт при теплопотерях ${Math.round(Q)} Вт. Нехватка: <b>${Math.round(Q - qLaid)} Вт</b> — ${fix}. Отдача ${Math.round(qUd)} Вт/м² под трубой — по температуре поверхности (СП 60.13330.2020, п. 6.4.8).`);
+            });
+        }
         if (hasRad && radSecs > 0) {
             let totalRadCount = 0;
             // Обвязка считается отдельно по факту подключения КАЖДОГО поставленного радиатора
@@ -73321,6 +73374,11 @@ const app = {
                     let qUdeUfh = this.ufhQudForRoom(ufhStepVal, roomLoss.Tv, roomLoss.tKind);
 
                     let qUfhMax = this.roomTpArea(r) * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
+                    // Пол греет там, где лежит труба. Есть раскладка плана — отдача с площади
+                    // под трубой (100 мм у стен, подводки, места «без обогрева» — без неё),
+                    // иначе радиатор рядом с полом недобирал бы эту разницу.
+                    const _laidA = roomHasTp ? this.ufhLaidArea(r, ufhStepVal) : null;
+                    const qUfhGive = _laidA > 0 ? Math.min(qUfhMax, _laidA * qUdeUfh) : qUfhMax;
 
                     // Паспортная мощность прибора дана при ΔT = 50 K: средняя температура воды
                     // 70 °C (80/60 и 75/65) при воздухе +20 °C. Ниже вода (70/55, 55/45) или теплее
@@ -73384,7 +73442,7 @@ const app = {
 
                         if (roomHasTp && roomHasRad) {
                             // Совместный режим: радиатор покрывает только дефицит мощности пола
-                            let portionUfh = qUfhMax / spots.length; // доля мощности пола на это место
+                            let portionUfh = qUfhGive / spots.length; // доля мощности пола на это место
                             let deficit = totalWindowLoss - portionUfh;
                             let minSanitary = (r.area * 30) / spots.length; // минимум 30 Вт/м² на окно для отсечки сквозняков по СНиП
                             wLoad = Math.max(deficit, minSanitary);
@@ -73863,8 +73921,8 @@ const app = {
                     app._roomBalance[r.id] = {
                         q: Math.round(roomLoss.Q_sum),
                         fact: Math.round(roomFactPowerSum),
-                        ufh: roomHasTp ? Math.round(Math.min(qUfhMax, roomLoss.Q_sum)) : 0,
-                        ufhMax: roomHasTp ? Math.round(qUfhMax) : 0,
+                        ufh: roomHasTp ? Math.round(Math.min(qUfhGive, roomLoss.Q_sum)) : 0,
+                        ufhMax: roomHasTp ? Math.round(qUfhGive) : 0,
                         hasTp: roomHasTp, hasRad: roomHasRad
                     };
                     if ((roomHasRad) && roomFactPowerSum > 0 && Math.round(roomDemandSum) > roomFactPowerSum) {
