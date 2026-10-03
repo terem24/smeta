@@ -83020,7 +83020,7 @@ function prepareForPrint() {
         // живой блок пуст. В окне «Объект и заказчик» об этом сказано.
         const wpLive = document.getElementById('warranty_print');
         let wNode = null;
-        if (window.KpShare && wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
+        if (window.KpShare && app.kpWarrantyOn !== false && wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
             try {
                 const tg = app.state.tgUser || {};
                 const mgr = { name: app.formatShortName(tg) || '', phone: tg.phone || '', customCompany: app.state.customCompany || null };
@@ -83032,7 +83032,7 @@ function prepareForPrint() {
             wpPage.className = 'print-page-break';
             wpPage.appendChild(wNode);
             printBin.appendChild(wpPage);
-        } else if (wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
+        } else if (app.kpWarrantyOn !== false && wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
             const wpPage = document.createElement('div');
             wpPage.className = 'warranty-print';
             wpPage.innerHTML = wpLive.innerHTML;
