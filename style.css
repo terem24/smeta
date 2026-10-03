@@ -18718,6 +18718,7 @@ body.theme-yandex #profile_modal_overlay {
 #profile_modal_overlay .lk-pane .btn-get-invoice {
     height: 28px;
     padding: 0 12px;
+    white-space: nowrap;
     border-radius: var(--ad-radius, 8px);
     background: #10B981;
     box-shadow: none;
