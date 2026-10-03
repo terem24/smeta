@@ -1840,7 +1840,8 @@
                 align-self: auto !important;
             }
 
-            #works_container {
+            #works_container,
+            .kp-sheet {
                 page-break-before: always !important;
                 break-before: page !important;
             }
@@ -2176,7 +2177,8 @@
             align-self: auto !important;
         }
 
-        body.html2pdf-printing #works_container {
+        body.html2pdf-printing #works_container,
+        body.html2pdf-printing .kp-sheet {
             page-break-before: always !important;
             break-before: page !important;
         }
@@ -2469,6 +2471,396 @@
         body.html2pdf-printing .tooltip-content {
             display: none !important;
         }
+
+        /* ===== Лист «Ваш дом» (renderKpHouse, renderUfhPlan) ===================
+           Один лист вместо стопки таблиц: плитки с цифрами, одна главная таблица
+           комнат с полосками теплопотерь, планировка по этажам (вкладки), а петли,
+           приборы и нормативная сноска свёрнуты. Цвета — только из переменных темы:
+           ночью лист тёмный, на печати переменные сбрасываются в светлые.
+           В печати и PDF разворачивается всё: вкладки и свёрнутое там не работают. */
+        .kp-sheet {
+            margin: 36px 0 8px;
+            padding: 26px 28px 22px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: var(--surface);
+        }
+
+        .kp-sheet * {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .kp-sheet .sec-header-row { margin-top: 0; }
+
+        .kp-intro {
+            margin: 0 0 14px;
+            color: var(--text-sec);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .kp-kpis {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+            gap: 12px;
+        }
+
+        .kp-kpi {
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--soft);
+        }
+
+        .kp-kpi-l {
+            color: var(--text-sec);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+        }
+
+        .kp-kpi-v {
+            margin: 4px 0 2px;
+            color: var(--text-main);
+            font-size: 26px;
+            font-weight: 800;
+            line-height: 1.15;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kp-kpi-s { color: var(--text-sec); font-size: 12px; }
+
+        .kp-kpi-acc { border-color: transparent; background: var(--primary-light); }
+        .kp-kpi-acc .kp-kpi-v { color: var(--primary); }
+
+        .kp-h {
+            margin: 24px 0 10px;
+            color: var(--text-main);
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .kp-ask { display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .kp-ask-chip {
+            padding: 5px 12px;
+            border: 1px solid rgba(245, 158, 11, .55);
+            border-radius: 999px;
+            background: rgba(245, 158, 11, .14);
+            color: var(--text-main);
+            font-size: 12.5px;
+        }
+
+        .kp-ask-chip.ok { border-color: rgba(34, 197, 94, .5); background: rgba(34, 197, 94, .14); }
+        .kp-ask-chip b { color: #d97706; }
+        .kp-ask-chip.ok b { color: #16a34a; }
+
+        /* Таблицы: общая рамка со скруглением; широкая таблица листается внутри неё,
+           а не тянет за собой всю страницу */
+        .kp-rooms-wrap {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow-x: auto;
+            background: var(--surface);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .kp-rooms {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kp-main { min-width: 560px; }
+
+        .kp-rooms th {
+            padding: 10px 16px;
+            background: var(--soft);
+            border-bottom: 1px solid var(--border);
+            color: var(--text-sec);
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .kp-rooms td {
+            padding: 11px 16px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+
+        .kp-rooms .n { text-align: right; white-space: nowrap; width: 1%; }
+        .kp-rooms td.n { font-weight: 600; }
+
+        .kp-rooms .u {
+            color: var(--text-sec);
+            font-size: 11.5px;
+            font-weight: 400;
+        }
+
+        /* Между числами и колонкой «Отопление» нужен воздух: иначе «880 Вт» слипается с текстом */
+        .kp-main .ht { padding-left: 32px; }
+
+        .kp-rooms td.nm { font-weight: 600; }
+
+        .kp-main tbody tr:not(.kp-fl):not(.kp-tot):hover td { background: var(--soft); }
+
+        .kp-rooms tr.kp-fl td {
+            padding: 8px 16px;
+            background: var(--soft);
+            color: var(--primary);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .6px;
+            text-transform: uppercase;
+        }
+
+        .kp-rooms tr.kp-fl td.n { font-weight: 700; }
+
+        .kp-rooms tr.kp-tot td {
+            padding: 13px 16px;
+            background: var(--soft);
+            border-top: 2px solid var(--border);
+            border-bottom: 0;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        /* Полоска теплопотерь комнаты относительно самой «горячей» комнаты дома */
+        .kp-q { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+
+        .kp-bar {
+            display: block;
+            flex: none;
+            width: 72px;
+            height: 6px;
+            border-radius: 3px;
+            background: var(--border);
+            overflow: hidden;
+        }
+
+        .kp-bar b { display: block; height: 100%; border-radius: 3px; background: var(--primary); }
+
+        .kp-chip {
+            display: inline-block;
+            margin: 2px 6px 2px 0;
+            padding: 3px 11px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--soft);
+            font-size: 12.5px;
+            white-space: nowrap;
+        }
+
+        .kp-chip-fl {
+            border-color: transparent;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        /* Малые таблицы внутри свёрнутых блоков */
+        .kp-sm th, .kp-sm td { padding: 8px 14px; }
+        .kp-sm .c { text-align: center; width: 1%; white-space: nowrap; }
+        .kp-sm td.c { color: var(--primary); font-weight: 700; }
+        .kp-sm tr.kp-tot td { padding: 10px 14px; font-size: 13px; }
+
+        /* Свёрнутый блок: заголовок-кнопка, справа — краткая цифра и стрелка */
+        .kp-acc {
+            margin-top: 10px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--surface);
+            overflow: hidden;
+        }
+
+        .kp-acc-h {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 12px 16px;
+            border: 0;
+            background: var(--soft);
+            color: var(--text-main);
+            font: inherit;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .kp-acc-h:hover { background: var(--primary-light); }
+        .kp-acc-t { flex: none; }
+        .kp-acc-m { flex: 1; min-width: 0; color: var(--text-sec); font-size: 12.5px; font-weight: 500; }
+
+        .kp-acc-c {
+            flex: none;
+            width: 8px;
+            height: 8px;
+            margin: 0 4px 3px auto;
+            border-right: 2px solid var(--text-sec);
+            border-bottom: 2px solid var(--text-sec);
+            transform: rotate(45deg);
+            transition: transform .2s ease;
+        }
+
+        .kp-acc.open .kp-acc-c { margin-bottom: -3px; transform: rotate(-135deg); }
+        .kp-acc-b { display: none; border-top: 1px solid var(--border); }
+        .kp-acc.open .kp-acc-b { display: block; }
+        .kp-acc-b .kp-rooms-wrap { border: 0; border-radius: 0; }
+        .kp-text { padding: 12px 16px; color: var(--text-sec); font-size: 12.5px; line-height: 1.55; }
+
+        /* Планировка: вкладки по этажам, один этаж на экране */
+        .kp-tabs {
+            display: flex;
+            gap: 4px;
+            width: max-content;
+            max-width: 100%;
+            margin: 0 0 12px;
+            padding: 4px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            background: var(--soft);
+            overflow-x: auto;
+        }
+
+        .kp-tab {
+            padding: 7px 18px;
+            border: 0;
+            border-radius: 999px;
+            background: transparent;
+            color: var(--text-sec);
+            font: inherit;
+            font-size: 13.5px;
+            font-weight: 600;
+            white-space: nowrap;
+            cursor: pointer;
+        }
+
+        .kp-tab.on { background: var(--primary); color: var(--surface); }
+
+        .kp-fpanel { display: none; }
+        .kp-fpanel.on { display: block; }
+        .kp-fl-title { display: none; margin: 0 0 6px; font-weight: 700; }
+
+        .kp-plan {
+            position: relative;
+            max-width: 900px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            cursor: zoom-in;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        .kp-plan-hint {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: rgba(17, 24, 39, .72);
+            color: #fff;
+            font-size: 11.5px;
+            pointer-events: none;
+        }
+
+        .kp-note { margin-top: 14px; color: var(--text-sec); font-size: 12.5px; line-height: 1.5; }
+
+        /* Крупный просмотр плана: окно листается, закрывается нажатием или Esc */
+        .kp-zoom {
+            position: fixed;
+            top: 0; right: 0; bottom: 0; left: 0;
+            z-index: 3000;
+            overflow: auto;
+            background: rgba(0, 0, 0, .88);
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .kp-zoom-in { width: 1200px; margin: 0 auto; padding: 64px 16px 24px; box-sizing: content-box; }
+
+        .kp-zoom-x {
+            position: fixed;
+            top: 14px;
+            right: 14px;
+            width: 44px;
+            height: 44px;
+            border: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .18);
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        @media screen and (max-width: 600px) {
+            .kp-sheet { padding: 18px 14px 14px; border-radius: 12px; }
+            .kp-kpi-v { font-size: 22px; }
+            .kp-sm th, .kp-sm td { padding: 8px 8px; }
+            .kp-acc-h { padding: 12px; }
+            .kp-zoom-in { padding-left: 8px; padding-right: 8px; }
+
+            /* Главная таблица на телефоне — карточки комнат: имя и площадь, полоска, приборы */
+            .kp-main { min-width: 0; }
+            .kp-main, .kp-main tbody { display: block; }
+            .kp-main thead { display: none; }
+
+            .kp-main tbody tr {
+                display: grid;
+                grid-template-columns: 1fr auto;
+                column-gap: 12px;
+                padding: 11px 14px;
+                border-bottom: 1px solid var(--border);
+            }
+
+            .kp-main tbody tr td,
+            .kp-main tbody tr td.ht { padding: 2px 0; border: 0; background: none; }
+
+            .kp-main td.nm { grid-column: 1; grid-row: 1; }
+            .kp-main td.ar { grid-column: 2; grid-row: 1; width: auto; }
+            .kp-main td.q { grid-column: 1 / -1; grid-row: 2; width: auto; }
+            .kp-main td.q .kp-bar { flex: 1; width: auto; }
+            .kp-main td.ht { grid-column: 1 / -1; grid-row: 3; }
+
+            .kp-main tbody tr.kp-fl,
+            .kp-main tbody tr.kp-tot { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+            .kp-main tbody tr.kp-fl td:first-child,
+            .kp-main tbody tr.kp-tot td:first-child { flex: 1; }
+            .kp-main tbody tr.kp-tot td:empty { display: none; }
+            .kp-main tbody tr:last-child { border-bottom: 0; }
+        }
+
+        @media print {
+            .kp-sheet { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+            .kp-rooms-wrap { overflow: visible; }
+            .kp-main { min-width: 0; }
+            .kp-tabs, .kp-plan-hint, .kp-acc-c { display: none !important; }
+            .kp-fpanel { display: block !important; margin-bottom: 18px; }
+            .kp-multi .kp-fl-title { display: block; }
+            .kp-acc-b { display: block !important; }
+            .kp-acc-h { background: none; cursor: default; }
+            .kp-plan { cursor: auto; }
+        }
+
+        body.html2pdf-printing .kp-sheet { margin: 0; padding: 0; border: 0; border-radius: 0; background: none; }
+        body.html2pdf-printing .kp-rooms-wrap { overflow: visible; }
+        body.html2pdf-printing .kp-main { min-width: 0; }
+        body.html2pdf-printing .kp-tabs,
+        body.html2pdf-printing .kp-plan-hint,
+        body.html2pdf-printing .kp-acc-c { display: none !important; }
+        body.html2pdf-printing .kp-fpanel { display: block !important; margin-bottom: 18px; }
+        body.html2pdf-printing .kp-multi .kp-fl-title { display: block; }
+        body.html2pdf-printing .kp-acc-b { display: block !important; }
+        body.html2pdf-printing .kp-acc-h { background: none; cursor: default; }
+        body.html2pdf-printing .kp-plan { cursor: auto; }
 
         /* ===== Тема: день / ночь =============================================
            Класс dark-mode стоит и на <html> (его ставит инлайн-скрипт в <head>,
@@ -2845,20 +3237,6 @@
             </div>
         </section>
 
-        <!-- «Ваш дом»: город и теплопотери, что учтено из анкеты, комнаты, стоимость
-             отопления. Заполняет renderKpHouse(object_info.kp). -->
-        <section id="kp_house_section" style="display: none; margin: 0 0 28px;">
-            <div class="sec-header-row"><h2 class="sec-title">Ваш дом</h2></div>
-            <div id="kp_house_body"></div>
-        </section>
-
-        <!-- Раскладка тёплого пола по плану дома: заказчик видит свою планировку,
-             а не шаблон. Заполняет renderUfhPlan(object_info.ufhPlan). -->
-        <section id="ufh_plan_section" style="display: none; margin: 0 0 28px;">
-            <div class="sec-header-row"><h2 class="sec-title">Тёплый пол в вашем доме</h2></div>
-            <div id="ufh_plan_body"></div>
-        </section>
-
         <!-- Equipment Section -->
         <div id="equipment_container" style="display: none;">
             <div class="sec-header-row">
@@ -2940,6 +3318,26 @@
                 <span class="sum-val" id="grand_total">0 ₽</span>
             </div>
         </section>
+
+        <!-- Отдельный лист «про этот дом» — после оборудования, монтажа и итогов, чтобы
+             смета читалась сама по себе, а расчёт и планировка шли приложением к ней.
+             В печати и PDF начинается с новой страницы (как раздел работ). Показывает его
+             syncKpSheet(): без данных дома лист не нужен вовсе. -->
+        <div id="kp_sheet" class="kp-sheet" style="display: none;">
+            <!-- «Ваш дом»: город и теплопотери, что учтено из анкеты, комнаты, стоимость
+                 отопления. Заполняет renderKpHouse(object_info.kp). -->
+            <section id="kp_house_section" style="display: none; margin: 0 0 28px;">
+                <div class="sec-header-row"><h2 class="sec-title">Ваш дом</h2></div>
+                <div id="kp_house_body"></div>
+            </section>
+
+            <!-- Раскладка тёплого пола по плану дома: заказчик видит свою планировку,
+                 а не шаблон. Заполняет renderUfhPlan(object_info.ufhPlan). -->
+            <section id="ufh_plan_section" style="display: none; margin: 0;">
+                <div class="sec-header-row"><h2 class="sec-title">Тёплый пол в вашем доме</h2></div>
+                <div id="ufh_plan_body"></div>
+            </section>
+        </div>
 
         <!-- Скидки от прайса ТЕРЕМ по строкам. Виден сотруднику по столбцу «Скидки КП»
              таблицы «Тарифы», в печать не идёт. Стоит после итогов КП отдельной
@@ -3788,11 +4186,95 @@
         }
 
         /**
+         * Кирпичики листа «Ваш дом» (стили — блок .kp-* в начале страницы).
+         * Данные из базы вставляем только через textContent.
+         */
+        function kpEl(tag, cls, txt) {
+            const e = document.createElement(tag);
+            if (cls) e.className = cls;
+            if (txt != null) e.textContent = txt;
+            return e;
+        }
+
+        // Число с единицей: единица мельче и серее, между ними неразрывный пробел
+        function kpUnit(cell, v, unit) {
+            cell.appendChild(document.createTextNode(v));
+            cell.appendChild(kpEl('span', 'u', ' ' + unit));
+            return cell;
+        }
+
+        // Свёрнутый блок: заголовок-кнопка, краткая цифра справа, содержимое по нажатию.
+        // В печати и PDF разворачивается целиком (правила .kp-acc-b в стилях).
+        function kpAcc(title, meta, content, open) {
+            const acc = kpEl('div', 'kp-acc' + (open ? ' open' : ''));
+            const h = kpEl('button', 'kp-acc-h');
+            h.type = 'button';
+            h.setAttribute('aria-expanded', open ? 'true' : 'false');
+            h.appendChild(kpEl('span', 'kp-acc-t', title));
+            if (meta) h.appendChild(kpEl('span', 'kp-acc-m', meta));
+            h.appendChild(kpEl('span', 'kp-acc-c'));
+            h.addEventListener('click', () => {
+                h.setAttribute('aria-expanded', acc.classList.toggle('open') ? 'true' : 'false');
+            });
+            const b = kpEl('div', 'kp-acc-b');
+            b.appendChild(content);
+            acc.appendChild(h);
+            acc.appendChild(b);
+            return acc;
+        }
+
+        // Малая таблица для свёрнутых блоков: heads — [[заголовок, класс]], rows — массивы строк, tot — итоговая строка
+        function kpTable(heads, rows, tot) {
+            const wrap = kpEl('div', 'kp-rooms-wrap'), t = kpEl('table', 'kp-rooms kp-sm');
+            const hr = kpEl('tr');
+            heads.forEach(h => hr.appendChild(kpEl('th', h[1], h[0])));
+            t.appendChild(kpEl('thead')).appendChild(hr);
+            const tb = kpEl('tbody');
+            const addRow = (cells, cls) => {
+                const tr = kpEl('tr', cls);
+                cells.forEach((c, i) => {
+                    // В числовых колонках единица мельче и серее, как в главной таблице
+                    const u = /\bn\b/.test(heads[i][1]) ? /^(.+?)\s+(м²|м)$/.exec(c) : null;
+                    tr.appendChild(u ? kpUnit(kpEl('td', heads[i][1]), u[1], u[2]) : kpEl('td', heads[i][1], c));
+                });
+                tb.appendChild(tr);
+            };
+            rows.forEach(r => addRow(r));
+            if (tot) addRow(tot, 'kp-tot');
+            t.appendChild(tb);
+            wrap.appendChild(t);
+            return wrap;
+        }
+
+        // План крупно: окно во весь экран, листается, закрывается нажатием или Esc.
+        // Картинку берём уже очищенную (sanitizePlanSvg), здесь только копия.
+        function kpZoomPlan(svg) {
+            const ov = kpEl('div', 'kp-zoom');
+            const inner = kpEl('div', 'kp-zoom-in');
+            inner.appendChild(svg.cloneNode(true));
+            ov.appendChild(inner);
+            const x = kpEl('button', 'kp-zoom-x', '✕');
+            x.type = 'button';
+            x.setAttribute('aria-label', 'Закрыть');
+            ov.appendChild(x);
+            const prev = document.body.style.overflow;
+            const onKey = e => { if (e.key === 'Escape') close(); };
+            const close = () => {
+                ov.remove();
+                document.removeEventListener('keydown', onKey);
+                document.body.style.overflow = prev;
+            };
+            ov.addEventListener('click', close);
+            document.addEventListener('keydown', onKey);
+            document.body.style.overflow = 'hidden';
+            document.body.appendChild(ov);
+        }
+
+        /**
          * Раздел «Ваш дом» (object_info.kp, собирает app.kpPersonalData): город и
          * теплопотери, «вы просили — мы учли», комнаты, стоимость отопления.
          * Данные из базы — всё через textContent, числа через Number.
          */
-
         function renderKpHouse(kp) {
             const sec = document.getElementById('kp_house_section'), body = document.getElementById('kp_house_body');
             if (!sec || !body) return;
@@ -3801,39 +4283,35 @@
             const num = v => { const n = Number(v); return isFinite(n) ? n : 0; };
             const n1 = v => String(Math.round(num(v) * 10) / 10).replace('.', ',');
             const money = v => Math.round(num(v)).toLocaleString('ru-RU');
-            const el = (tag, txt, css) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (css) e.style.cssText = css; return e; };
-            const H = t => el('div', t, 'font-weight:700;font-size:13px;margin:14px 0 6px;color:#111;');
-            const td = 'padding:5px 6px;border-bottom:1px solid #EEF0F3;';
-            const box = el('div', null, 'max-width:820px;font-size:13px;line-height:1.5;color:#222;');
+            const box = kpEl('div', 'kp-house');
             const hs = kp.house || {}, c = (kp.cost && typeof kp.cost === 'object' && num(kp.cost.season) > 0) ? kp.cost : null;
-            // Та же раскладка, что в печати (app.kpPersonalHtml): плитки, бейджи, комнаты, строка норм
-            box.appendChild(el('div', 'Посчитано для вашего дома, а не по шаблону: теплопотери, котёл и приборы — под ' +
-                (num(hs.area) ? n1(hs.area) + ' м²' : 'ваш дом') + (hs.city ? ' в г. ' + String(hs.city) : '') + '.', 'color:#374151;margin:0 0 10px;'));
-            const tiles = el('div', null, 'display:flex;gap:10px;flex-wrap:wrap;');
-            const tileCss = 'flex:1 1 150px;min-width:140px;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;';
-            const tile = (lbl, val, sub) => {
-                const d = el('div', null, tileCss);
-                d.appendChild(el('div', lbl, 'font-size:9.5px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.5px;'));
-                d.appendChild(el('div', val, 'font-size:21px;font-weight:800;color:#111;line-height:1.15;margin:2px 0;'));
-                if (sub) d.appendChild(el('div', sub, 'font-size:11px;color:#6B7280;'));
-                tiles.appendChild(d);
+            // Та же раскладка, что в печати (app.kpPersonalHtml): плитки, «вы просили», комнаты, строка норм
+            box.appendChild(kpEl('p', 'kp-intro', 'Посчитано для вашего дома, а не по шаблону: теплопотери, котёл и приборы — под ' +
+                (num(hs.area) ? n1(hs.area) + ' м²' : 'ваш дом') + (hs.city ? ' в г. ' + String(hs.city) : '') + '.'));
+            const kpis = kpEl('div', 'kp-kpis');
+            const kpi = (lbl, val, sub, acc) => {
+                const d = kpEl('div', 'kp-kpi' + (acc ? ' kp-kpi-acc' : ''));
+                d.appendChild(kpEl('div', 'kp-kpi-l', lbl));
+                d.appendChild(kpEl('div', 'kp-kpi-v', val));
+                if (sub) d.appendChild(kpEl('div', 'kp-kpi-s', sub));
+                kpis.appendChild(d);
             };
-            if (num(hs.kw)) tile('Теплопотери дома', n1(hs.kw) + ' кВт',
+            if (num(hs.kw)) kpi('Теплопотери дома', n1(hs.kw) + ' кВт',
                 [hs.t != null && isFinite(Number(hs.t)) ? 'при ' + num(hs.t) + ' °C' : '', hs.city ? String(hs.city) : ''].filter(Boolean).join(', '));
             if (c) {
-                tile('Отопление в месяц', '≈ ' + money(c.month) + ' ₽', 'в среднем за отопительный сезон');
-                tile('За сезон', money(c.season) + ' ₽', (num(c.zOt) ? num(c.zOt) + ' дн.' : num(c.months) + ' мес.') + ' · ' +
+                kpi('Отопление в месяц', '≈ ' + money(c.month) + ' ₽', 'в среднем за отопительный сезон', true);
+                kpi('За сезон', money(c.season) + ' ₽', (num(c.zOt) ? num(c.zOt) + ' дн.' : num(c.months) + ' мес.') + ' · ' +
                     (c.fuel === 'gas' ? (c.lpg ? 'сжиженный газ' : 'газ') : 'электроэнергия') + ' ' + money(c.units) + ' ' + String(c.uName || ''));
             }
-            if (tiles.childNodes.length) box.appendChild(tiles);
+            if (kpis.childNodes.length) box.appendChild(kpis);
             const asked = Array.isArray(kp.asked) ? kp.asked : [];
             if (asked.length) {
-                box.appendChild(H('Вы просили — мы учли'));
-                const row = el('div', null, 'display:flex;flex-wrap:wrap;gap:6px;');
+                box.appendChild(kpEl('div', 'kp-h', 'Вы просили — мы учли'));
+                const row = kpEl('div', 'kp-ask');
                 asked.forEach(x => {
                     const ok = !!x.ok;
-                    const chip = el('span', null, 'display:inline-block;border:1px solid ' + (ok ? '#BBF7D0' : '#FDE68A') + ';background:' + (ok ? '#F0FDF4' : '#FFFBEB') + ';border-radius:999px;padding:4px 10px;font-size:12px;');
-                    chip.appendChild(el('b', ok ? '✓' : '—', 'color:' + (ok ? '#15803d' : '#b45309') + ';'));
+                    const chip = kpEl('span', 'kp-ask-chip' + (ok ? ' ok' : ''));
+                    chip.appendChild(kpEl('b', null, ok ? '✓' : '—'));
                     chip.appendChild(document.createTextNode(' ' + String(x.q || '') + (ok ? ': ' + String(x.a || '') : ' — обсудим')));
                     row.appendChild(chip);
                 });
@@ -3841,30 +4319,66 @@
             }
             const rooms = Array.isArray(kp.rooms) ? kp.rooms : [];
             if (rooms.length) {
-                const two = rooms.some(r => num(r.floor) === 2);
-                box.appendChild(H('Ваш дом по комнатам'));
-                const t = el('table', null, 'width:100%;border-collapse:collapse;');
-                const hd = el('tr', null, 'color:#6B7280;font-size:11px;');
-                [['Помещение', 'left'], ['Площадь', 'right'], ['Теплопотери', 'right'], ['Отопление', 'left']].forEach(h => hd.appendChild(el('th', h[0], td + 'font-weight:600;text-align:' + h[1] + ';')));
-                t.appendChild(hd);
-                let sa = 0, sq = 0;
+                box.appendChild(kpEl('div', 'kp-h', 'Ваш дом по комнатам'));
+                // По этажам: заголовок этажа с его суммой, внутри — комнаты. Один этаж — без заголовка.
+                const groups = [];
                 rooms.forEach(r => {
-                    sa += num(r.area); sq += num(r.q);
-                    const tr = el('tr');
-                    tr.appendChild(el('td', String(r.name || '') + (two ? ' (' + num(r.floor) + ' эт.)' : ''), td));
-                    tr.appendChild(el('td', n1(r.area) + ' м²', td + 'text-align:right;'));
-                    tr.appendChild(el('td', money(r.q) + ' Вт', td + 'text-align:right;'));
-                    tr.appendChild(el('td', String(r.heat || '—'), td));
-                    t.appendChild(tr);
+                    const fl = num(r.floor);
+                    let g = groups.find(x => x.fl === fl);
+                    if (!g) { g = { fl, list: [], area: 0, q: 0 }; groups.push(g); }
+                    g.list.push(r); g.area += num(r.area); g.q += num(r.q);
                 });
-                const tot = el('tr', null, 'font-weight:700;');
-                ['Итого', n1(sa) + ' м²', money(sq) + ' Вт', ''].forEach((cell, i) => tot.appendChild(el('td', cell, td + (i === 1 || i === 2 ? 'text-align:right;' : ''))));
-                t.appendChild(tot);
-                box.appendChild(t);
+                const maxQ = Math.max(1, ...rooms.map(r => num(r.q)));
+                const wrap = kpEl('div', 'kp-rooms-wrap'), t = kpEl('table', 'kp-rooms kp-main');
+                const hr = kpEl('tr');
+                [['Помещение', ''], ['Площадь', 'n'], ['Теплопотери', 'n'], ['Отопление', 'ht']].forEach(h => hr.appendChild(kpEl('th', h[1], h[0])));
+                t.appendChild(kpEl('thead')).appendChild(hr);
+                const tb = kpEl('tbody');
+                let sa = 0, sq = 0;
+                groups.forEach(g => {
+                    if (groups.length > 1) {
+                        const fr = kpEl('tr', 'kp-fl');
+                        fr.appendChild(kpEl('td', null, g.fl + '-й этаж'));
+                        fr.appendChild(kpUnit(kpEl('td', 'n'), n1(g.area), 'м²'));
+                        fr.appendChild(kpUnit(kpEl('td', 'n'), money(g.q), 'Вт'));
+                        fr.appendChild(kpEl('td'));
+                        tb.appendChild(fr);
+                    }
+                    g.list.forEach(r => {
+                        sa += num(r.area); sq += num(r.q);
+                        const tr = kpEl('tr');
+                        tr.appendChild(kpEl('td', 'nm', String(r.name || '')));
+                        tr.appendChild(kpUnit(kpEl('td', 'n ar'), n1(r.area), 'м²'));
+                        const tq = kpEl('td', 'n q'), qc = kpEl('div', 'kp-q'), bar = kpEl('span', 'kp-bar'), fill = kpEl('b');
+                        fill.style.width = Math.max(4, Math.round(num(r.q) / maxQ * 100)) + '%';
+                        bar.appendChild(fill);
+                        qc.appendChild(bar);
+                        qc.appendChild(kpUnit(kpEl('span'), money(r.q), 'Вт'));
+                        tq.appendChild(qc);
+                        tr.appendChild(tq);
+                        // «радиаторы 2 шт., 2 662 Вт + тёплый пол» — каждый вид отопления своей плашкой
+                        const th = kpEl('td', 'ht'), heat = String(r.heat || '').trim();
+                        if (!heat || heat === '—') th.textContent = '—';
+                        else heat.split(/\s\+\s/).forEach(p => th.appendChild(kpEl('span', 'kp-chip' + (/пол/i.test(p) ? ' kp-chip-fl' : ''), p)));
+                        tr.appendChild(th);
+                        tb.appendChild(tr);
+                    });
+                });
+                const tot = kpEl('tr', 'kp-tot');
+                tot.appendChild(kpEl('td', null, 'Итого'));
+                tot.appendChild(kpUnit(kpEl('td', 'n'), n1(sa), 'м²'));
+                tot.appendChild(kpUnit(kpEl('td', 'n'), money(sq), 'Вт'));
+                tot.appendChild(kpEl('td'));
+                tb.appendChild(tot);
+                t.appendChild(tb);
+                wrap.appendChild(t);
+                box.appendChild(wrap);
             }
-            box.appendChild(el('div', 'Расчёт: теплопотери — СП 50.13330.2024' + (rooms.length ? ' по каждой комнате' : '') + ', климат — СП 131.13330.2020, табл. 3.1' +
+            // Нормы и допущения — свёрнуты: заказчику нужны цифры, эксперту — ссылки
+            box.appendChild(kpAcc('Как это посчитано', 'нормы и допущения', kpEl('div', 'kp-text',
+                'Теплопотери — СП 50.13330.2024' + (rooms.length ? ' по каждой комнате' : '') + ', климат — СП 131.13330.2020, табл. 3.1' +
                 (c ? '; тариф ' + (num(c.tariff) ? n1(c.tariff) + ' ' + String(c.unit || '') : 'по региону') + (c.fuel === 'gas' ? ', КПД котла 92 %' : '') +
-                    ', в доме +20 °C. Реальный счёт зависит от того, как вы живёте в доме' : '') + '.', 'font-size:10.5px;color:#9CA3AF;margin-top:8px;'));
+                    ', в доме +20 °C. Реальный счёт зависит от того, как вы живёте в доме' : '') + '.'), false));
             body.appendChild(box);
             sec.style.display = (asked.length || rooms.length || c || num(hs.kw)) ? '' : 'none';
         }
@@ -3873,69 +4387,97 @@
             const sec = document.getElementById('ufh_plan_section'), body = document.getElementById('ufh_plan_body');
             if (!sec || !body) return;
             body.innerHTML = '';
+            body.classList.remove('kp-multi');
             const floors = Array.isArray(list) ? list.filter(v => v && v.svg) : [];
             const n1 = v => (Math.round((+v || 0) * 10) / 10).toFixed(1).replace('.', ',');
             const word = n => { const a = n % 10, b = n % 100; return (a === 1 && b !== 11) ? 'петля' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'петли' : 'петель'; };
-            const el = (tag, txt, css) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (css) e.style.cssText = css; return e; };
-            let shown = 0, anyTp = false, anyRad = false, anyTee = false;
+            const panels = [];
+            let anyTp = false, anyRad = false, anyTee = false;
             floors.forEach(v => {
                 const svg = sanitizePlanSvg(v.svg);
                 if (!svg) return;
-                const wrap = el('div', null, 'margin:0 0 18px;page-break-inside:avoid;break-inside:avoid;');
-                if (floors.length > 1) wrap.appendChild(el('div', (parseInt(v.fl, 10) || 1) + '-й этаж', 'font-weight:700;margin:0 0 6px;'));
-                const box = el('div', null, 'border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;max-width:820px;');
-                box.appendChild(svg);
-                wrap.appendChild(box);
+                const fl = parseInt(v.fl, 10) || 1;
+                const panel = kpEl('div', 'kp-fpanel');
+                panel.appendChild(kpEl('div', 'kp-fl-title', fl + '-й этаж'));
+                // План — главное на листе: по нажатию открывается крупно
+                const frame = kpEl('div', 'kp-plan');
+                frame.tabIndex = 0;
+                frame.setAttribute('role', 'button');
+                frame.setAttribute('aria-label', 'Открыть план ' + fl + '-го этажа крупно');
+                frame.appendChild(svg);
+                frame.appendChild(kpEl('span', 'kp-plan-hint', 'Нажмите, чтобы увеличить'));
+                frame.addEventListener('click', () => kpZoomPlan(svg));
+                frame.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); kpZoomPlan(svg); } });
+                panel.appendChild(frame);
                 const rows = Array.isArray(v.rows) ? v.rows : [];
                 if (rows.length) {
-                    const t = el('table', null, 'width:100%;max-width:820px;border-collapse:collapse;font-size:12.5px;margin-top:8px;');
-                    const head = el('tr', null, 'color:#6B7280;');
-                    ['Контур', 'Помещение', 'Площадь', 'Длина петли', 'Шаг, мм'].forEach((h, i) => head.appendChild(el('th', h, 'padding:4px 6px;font-weight:600;text-align:' + (i === 1 ? 'left' : i ? 'right' : 'center') + ';border-bottom:1px solid #E5E7EB;')));
-                    t.appendChild(head);
+                    anyTp = true;
                     let sumM = 0;
-                    rows.forEach(r => {
-                        sumM += +r.m || 0;
-                        const tr = el('tr');
-                        [[String(r.no || ''), 'center'], [String(r.name || ''), 'left'], [n1(r.area) + ' м²', 'right'],
-                         [n1(r.m) + ' м', 'right'], [String(r.step || ''), 'right']].forEach(c => tr.appendChild(el('td', c[0], 'padding:3px 6px;text-align:' + c[1] + ';border-bottom:1px solid #F3F4F6;')));
-                        t.appendChild(tr);
-                    });
-                    const tot = el('tr', null, 'font-weight:700;');
-                    ['', 'Итого: ' + rows.length + ' ' + word(rows.length), '', n1(sumM) + ' м', ''].forEach((c, i) => tot.appendChild(el('td', c, 'padding:4px 6px;text-align:' + (i === 1 ? 'left' : 'right') + ';')));
-                    t.appendChild(tot);
-                    wrap.appendChild(t);
+                    rows.forEach(r => { sumM += +r.m || 0; });
+                    panel.appendChild(kpAcc('Петли тёплого пола', rows.length + ' ' + word(rows.length) + ' · ' + n1(sumM) + ' м',
+                        kpTable([['Контур', 'c'], ['Помещение', ''], ['Площадь', 'n'], ['Длина петли', 'n'], ['Шаг, мм', 'n']],
+                            rows.map(r => [String(r.no || ''), String(r.name || ''), n1(r.area) + ' м²', n1(r.m) + ' м', String(r.step || '')]),
+                            ['', 'Итого: ' + rows.length + ' ' + word(rows.length), '', n1(sumM) + ' м', '']), false));
                 }
                 const rr = Array.isArray(v.radRows) ? v.radRows : [];
                 if (rr.length) {
                     anyRad = true; anyTee = anyTee || !!v.radTee;
-                    const t = el('table', null, 'width:100%;max-width:820px;border-collapse:collapse;font-size:12.5px;margin-top:10px;');
-                    const head = el('tr', null, 'color:#6B7280;');
-                    ['Прибор', 'Помещение', 'Длина прибора', v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'].forEach((h, i) => head.appendChild(el('th', h, 'padding:4px 6px;font-weight:600;text-align:' + (i === 1 ? 'left' : i ? 'right' : 'center') + ';border-bottom:1px solid #E5E7EB;')));
-                    t.appendChild(head);
-                    rr.forEach(r => {
-                        const tr = el('tr');
-                        [[(r.kind === 'conv' ? 'К' : 'Р') + (r.no || ''), 'center'], [String(r.name || ''), 'left'], [n1(r.w) + ' м', 'right'],
-                         [r.L == null ? '—' : n1(r.L) + ' м', 'right']].forEach(c => tr.appendChild(el('td', c[0], 'padding:3px 6px;text-align:' + c[1] + ';border-bottom:1px solid #F3F4F6;')));
-                        t.appendChild(tr);
-                    });
-                    const tot = el('tr', null, 'font-weight:700;');
-                    ['', 'Итого: ' + rr.length + ' шт.', '', n1(v.radM) + ' м'].forEach((c, i) => tot.appendChild(el('td', c, 'padding:4px 6px;text-align:' + (i === 1 ? 'left' : 'right') + ';')));
-                    t.appendChild(tot);
-                    wrap.appendChild(t);
+                    panel.appendChild(kpAcc('Приборы отопления', rr.length + ' шт. · трубы ' + n1(v.radM) + ' м',
+                        kpTable([['Прибор', 'c'], ['Помещение', ''], ['Длина прибора', 'n'], [v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору', 'n']],
+                            rr.map(r => [(r.kind === 'conv' ? 'К' : 'Р') + (r.no || ''), String(r.name || ''), n1(r.w) + ' м', r.L == null ? '—' : n1(r.L) + ' м']),
+                            ['', 'Итого: ' + rr.length + ' шт.', '', n1(v.radM) + ' м']), false));
                 }
-                if (rows.length) anyTp = true;
-                body.appendChild(wrap);
-                shown++;
+                panels.push({ fl, el: panel });
+                body.appendChild(panel);
             });
+            // Этажей несколько — вкладки (в печати и PDF показываются все подряд)
+            if (panels.length > 1) {
+                body.classList.add('kp-multi');
+                const tabs = kpEl('div', 'kp-tabs');
+                tabs.setAttribute('role', 'tablist');
+                panels.forEach((p, i) => {
+                    const b = kpEl('button', 'kp-tab' + (i ? '' : ' on'), p.fl + '-й этаж');
+                    b.type = 'button';
+                    b.setAttribute('role', 'tab');
+                    b.addEventListener('click', () => {
+                        panels.forEach((q, j) => q.el.classList.toggle('on', j === i));
+                        Array.from(tabs.children).forEach((x, j) => x.classList.toggle('on', j === i));
+                    });
+                    tabs.appendChild(b);
+                });
+                body.insertBefore(tabs, body.firstChild);
+            }
+            if (panels.length) panels[0].el.classList.add('on');
             const notes = [];
             if (anyTp) notes.push('Петли тёплого пола разложены по плану вашего дома: подача и обратка, подводки к коллектору, номера контуров.');
             if (anyRad) notes.push(anyTee ? 'Радиаторы подключены по тройниковой схеме: одна магистраль проходит через приборы.'
                 : 'К каждому радиатору идёт своя пара труб от коллектора — по полу, вдоль стен.');
             notes.push('Точная укладка уточняется при монтаже.');
-            if (shown) body.appendChild(el('div', notes.join(' '), 'font-size:12px;color:#6B7280;max-width:820px;'));
+            if (panels.length) body.appendChild(kpEl('div', 'kp-note', notes.join(' ')));
             const ttl = sec.querySelector('.sec-title');
             if (ttl) ttl.textContent = anyRad ? 'Отопление вашего дома' : 'Тёплый пол в вашем доме';
-            sec.style.display = shown ? '' : 'none';
+            sec.style.display = panels.length ? '' : 'none';
+        }
+
+        // Лист «про этот дом» показываем, только если в нём есть хоть один раздел; для печати
+        // и PDF он начинается с новой страницы, поэтому, как раздел работ, получает копию фирменной шапки.
+        function syncKpSheet() {
+            const sheet = document.getElementById('kp_sheet');
+            if (!sheet) return;
+            const any = ['kp_house_section', 'ufh_plan_section'].some(id => {
+                const s = document.getElementById(id);
+                return s && s.style.display !== 'none';
+            });
+            sheet.style.display = any ? '' : 'none';
+            if (any && !sheet.querySelector('.doc-header-repeat')) {
+                const docHeader = document.querySelector('header.doc-header');
+                if (docHeader) {
+                    const headerClone = docHeader.cloneNode(true);
+                    headerClone.classList.add('doc-header-repeat');
+                    headerClone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                    sheet.insertBefore(headerClone, sheet.firstChild);
+                }
+            }
         }
 
         function toggleEquipmentImages(show) {
@@ -4857,6 +5399,9 @@
             const areaVal = obj.area || 0;
             const safeName = (obj.projectName || "Новый объект").replace(/[\\\/:\*\?"<>\|]/g, "");
             document.title = `КП ${safeName} - ${areaVal} м2${sectionsText}`;
+
+            // 4в. Лист «Ваш дом»: показываем после того, как шапка заполнена (копия шапки для печати)
+            syncKpSheet();
 
             // 5. Render Status Badge
             renderStatusBadge(obj);
