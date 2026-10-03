@@ -24,9 +24,29 @@
   body { margin: 0; background: #6b6b6b; font: 14px/1.4 system-ui, sans-serif; color: #fff; }
   /* Шапка липкая: в комплекте десятки листов А3, и добраться до разделов,
      пролистав их до конца, было нельзя. */
+  .topwrap { position: sticky; top: 0; z-index: 5; }
   .bar { padding: 10px 16px; background: #2b2b2b; display: flex; gap: 14px; align-items: center;
-         flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+         flex-wrap: wrap; }
   .bar b { font-weight: 600; }
+  /* Путь выпуска — как в редакторе плана: Расчёт → Разметка плана → Листы проекта (мы здесь) */
+  .pj-head { padding: 8px 16px; background: #3a3a3a; border-bottom: 1px solid #1c1c1c; display: flex; gap: 12px;
+             align-items: center; flex-wrap: wrap; }
+  .pj-head button { font: inherit; font-size: 12.5px; padding: 5px 12px; border-radius: 8px; cursor: pointer;
+                    border: 1px solid #666; background: #4a4a4a; color: #eee; }
+  .pj-head button:hover { background: #5a5a5a; }
+  .pj-head .t { font-size: 15px; font-weight: 700; }
+  .pj-head .sub { color: #b8b8b8; flex: 1 1 220px; font-size: 12.5px; }
+  .pj-path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pj-path .p { padding: 4px 12px; border-radius: 15px; border: 1px solid #666; color: #b8b8b8; white-space: nowrap; }
+  .pj-path .p.done { color: #7ec95a; cursor: pointer; }
+  .pj-path .p.done:hover { background: #4a4a4a; }
+  .pj-path .p.cur { background: #ff6b35; border-color: #ff6b35; color: #fff; font-weight: 600; }
+  .pj-path .ar { color: #888; }
+  .pj-stale { padding: 9px 16px; background: #5a3b00; color: #ffe2a8; border-bottom: 1px solid #1c1c1c; font-size: 13px; }
+  .pj-stale button { font: inherit; font-size: 12.5px; margin-left: 8px; padding: 4px 12px; border-radius: 8px;
+                     border: 1px solid #c99a3d; background: transparent; color: #ffe2a8; cursor: pointer; }
+  /* переходы по разделам не должны прятать верх листа под двухрядной шапкой */
+  [id] { scroll-margin-top: 110px; }
   .secs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .secs .sec { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px;
                border: 1px solid #555; border-radius: 8px; font-size: 13px; }
@@ -43,7 +63,7 @@
   @media print {
     @page { size: A3 landscape; margin: 0; }
     body { background: #fff; }
-    .bar { display: none; }
+    .bar, .pj-head, .pj-stale { display: none !important; }
     /* Печать одного раздела: остальные листы на время печати скрыты —
        заказчику обычно нужен раздел целиком, а не весь комплект. */
     body.print-one .paper { display: none; }
@@ -57,6 +77,18 @@
 </head>
 <body>
 
+<div class="topwrap">
+<div class="pj-head">
+  <button type="button" onclick="pjBack()" title="Вернуться в калькулятор">← В калькулятор</button>
+  <button type="button" onclick="pjMarkup()" title="Вернуться к разметке плана: поправить комнаты, котельную, коллекторы">← К разметке плана</button>
+  <span class="t">Выпуск проекта</span>
+  <span class="sub">Комплект собран по смете и разметке плана. Проверьте листы; чего-то не хватает — вернитесь к разметке и выпустите заново.</span>
+  <span class="pj-path">
+    <span class="p done" onclick="pjBack()" title="Смета и комнаты — в калькуляторе">✓ 1. Расчёт</span><span class="ar">→</span>
+    <span class="p done" onclick="pjMarkup()" title="Разметка плана этажей">✓ 2. Разметка плана</span><span class="ar">→</span>
+    <span class="p cur">3. Листы проекта</span>
+  </span>
+</div>
 <div class="bar">
   <b id="bar_title">Листы проекта</b>
   <span id="bar_note"></span>
@@ -69,18 +101,31 @@
   </label>
   <button onclick="window.print()">Печать / PDF — весь комплект</button>
 </div>
+<div id="pj_stale" class="pj-stale" style="display:none"></div>
+</div>
 
 <div class="wrap" id="out"></div>
+
+<script>
+// Возврат по маршруту выпуска. Листы открывает калькулятор (window.open), поэтому opener — он.
+function pjBack() {
+  var op = null;
+  try { if (window.opener && !window.opener.closed && window.opener.app) op = window.opener; } catch (e) {}
+  if (op) { try { op.focus(); } catch (e) {} window.close(); }
+  else location.href = 'index.html';
+}
+function pjMarkup() {
+  // та же именованная вкладка, что открывает калькулятор: вернёт в уже открытую разметку
+  window.open('plan_editor.html', 'hc_plan_editor');
+}
+</script>
 
 <script src="project_sheets.js?v=4.25"></script>
 <script src="project_scheme.js?v=4.51"></script>
 <script src="boiler_wall.js?v=1.0"></script>
 <script src="project_layout.js?v=4.17"></script>
-<script src="project_plans.js?v=4.44"></script>
+<script src="project_plans.js?v=4.46"></script>
 <script src="project_nodes.js?v=4.15"></script>
-<!-- Узел коллектора ТП: рисуется вектором и берёт петли из project_plans.js,
-     поэтому подключается после него. -->
-<script src="project_ufh_manifold.js?v=4.15"></script>
 <!-- Листы узлов по 3D-рендеру: коллектор водоснабжения и панельный радиатор. -->
 <script src="project_node_sheets.js?v=4.15"></script>
 <script>
@@ -431,20 +476,10 @@ if (payload && payload.items && payload.items.length) {
       return { title: d.title, svg: projectSheets.imageSheet({ url: d.url,
         code: MARK.o.code, sheet: numOf('o')(oManStart + i) }) };
     });
-  } else {
-    // Сметы, отправленные на листы раньше, готовых узлов не передают — им
-    // остаётся прежнее: вектор узла коллектора ТП и радиатор по 3D-рендеру.
-    if (plans && window.projectUfhManifold) {
-      oNodes = projectUfhManifold.sheets(plans, { code: MARK.o.code, sheetStart: oManStart,
-        stepMm: tpStep, steps: tpSteps, rooms: expRooms, items: payload.items,
-        photo: (payload.node3d || {}).ufh || null, num: numOf('o') });
-    }
-    if (window.projectNodeSheets && (payload.node3d || {}).radiator) {
-      oNodes = oNodes.concat([projectNodeSheets.radiator({ code: MARK.o.code,
-        sheet: numOf('o')(oManStart + oNodes.length),
-        photo: payload.node3d.radiator, items: itemsBy.o })].filter(Boolean));
-    }
   }
+  // Комплект, собранный до появления готовых узлов (в данных нет nodeSheets),
+  // узлы не получает: рисовать их кодом «похоже» нельзя — лист проекта
+  // должен совпадать с образцом. Страница об этом предупреждает (pj_stale).
   // Схемы автоматики напольного отопления и узла снеготаяния — за узлами
   var oArtNo = oManStart + oNodes.length;
   var oArt = artOf('o', oArtNo);
@@ -519,9 +554,6 @@ if (payload && payload.items && payload.items.length) {
     vNodes = [{ title: 'Узел обвязки коллекторов водоснабжения',
       svg: projectSheets.imageSheet({ url: NS.water, code: MARK.v.code,
         sheet: numOf('v')(vNodeStart) }) }];
-  } else if (!NS && window.projectNodeSheets && itemsBy.v.length && (payload.node3d || {}).water) {
-    vNodes = [projectNodeSheets.water({ code: MARK.v.code, sheet: numOf('v')(vNodeStart),
-      photo: payload.node3d.water, items: itemsBy.v })].filter(Boolean);
   }
   var vPipeNo = vNodeStart + vNodes.length;
   // Обвязка узла ввода ХВС: вид собран 3D-рендером, потому что на листах
@@ -855,7 +887,18 @@ if (payload && payload.items && payload.items.length) {
     (payload.object || payload.title) + (payload.city ? ' · ' + payload.city : '');
   document.getElementById('bar_note').textContent =
     (payload.codeBase ? payload.codeBase + ' · ' : '') +
-    'листов: ' + svgs.length + ' · позиций: ' + payload.items.length;
+    'листов: ' + svgs.length + ' · позиций: ' + payload.items.length +
+    (payload.builtAt ? ' · собран ' + new Date(payload.builtAt).toLocaleString('ru-RU',
+      { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
+  // Комплект из прежней версии калькулятора: без готовых узлов. Не показываем
+  // «похожие» рисунки вместо них, а говорим прямо и ведём на пересборку.
+  if (!payload.nodeSheets) {
+    var st = document.getElementById('pj_stale');
+    st.style.display = 'block';
+    st.innerHTML = '<b>Комплект собран прежней версией калькулятора</b> — листов узлов обвязки в нём нет. ' +
+      'Вернитесь в калькулятор и нажмите «Выпустить проект» ещё раз: комплект соберётся заново, ' +
+      'с готовыми узлами из проектов-образцов. <button type="button" onclick="pjBack()">В калькулятор</button>';
+  }
 
   // Марка каждого листа — по границам разделов: они идут подряд, поэтому
   // достаточно помнить, где кончился предыдущий.

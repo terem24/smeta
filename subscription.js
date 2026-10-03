@@ -207,6 +207,69 @@ const Subscription = {
         };
     },
 
+    // ═══ Пробный Профи: предложение после сохранения сметы ═══════════════
+    // Настройки лежат там же, в app_settings.subscription.trial. Пока их нет,
+    // предложение включено, сотрудникам ТЕРЕМ не показывается.
+    TRIAL_DEFAULTS: { enabled: true, from: '', to: '', days: 14, excludeTerem: true },
+
+    trialSettings: function () {
+        const t = Object.assign({}, this.TRIAL_DEFAULTS, this.raw().trial || {});
+        t.days = Math.min(60, Math.max(1, Math.round(this.num(t.days)) || 14));
+        return t;
+    },
+
+    // Местный день в виде ГГГГ-ММ-ДД, как у акций (today() считает по UTC)
+    localDay: function () {
+        const d = new Date();
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    },
+
+    trialStatus: function () {
+        const t = this.trialSettings(), d = this.localDay();
+        if (!t.enabled) return { on: false, label: 'выключено', color: '#64748B' };
+        if (t.from && d < t.from) return { on: false, label: 'начнётся ' + this.fmtDate(t.from), color: '#2563EB' };
+        if (t.to && d > t.to) return { on: false, label: 'закончилось ' + this.fmtDate(t.to), color: '#64748B' };
+        return { on: true, label: t.to ? 'идёт до ' + this.fmtDate(t.to) : 'идёт без срока окончания', color: '#10B981' };
+    },
+
+    // Показывать ли предложение этому человеку: переключатель и даты, затем сотрудники ТЕРЕМ
+    trialOfferAllowed: function () {
+        if (!this.trialStatus().on) return false;
+        if (this.trialSettings().excludeTerem && typeof app !== 'undefined' && app.isTeremStaff()) return false;
+        return true;
+    },
+
+    setTrialField: function (field, value) {
+        if (['enabled', 'from', 'to', 'days', 'excludeTerem'].indexOf(field) < 0) return;
+        if (field === 'enabled' || field === 'excludeTerem') value = !!value;
+        else if (field === 'days') value = Math.min(60, Math.max(1, Math.round(this.num(value)) || 14));
+        else value = /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
+        this.apply(v => { v.trial = Object.assign({}, v.trial || {}, { [field]: value }); return v; });
+        this.render();
+    },
+
+    viewTrial: function (canEdit) {
+        const t = this.trialSettings(), st = this.trialStatus(), dis = !canEdit;
+        const u = this.ui;
+        const row = (title, hint, control) => `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; font-weight:600; color:var(--text-main);">${title}</div><div style="font-size:12px; color:var(--text-sec); margin-top:2px; line-height:1.45;">${hint}</div></div>
+                <div style="flex:0 0 auto;">${control}</div></div>`;
+        return `<p style="${u.hint}">После того как человек сохранил смету и закрыл окно «Смета сохранена», ему один раз предлагается попробовать Профи бесплатно. Включается только по его нажатию; карта не нужна, по окончании доступ возвращается к базовому. Предложение видят только пользователи без Профи, у которых пробного периода ещё не было, не чаще раза в 3 дня и не больше двух раз.</p>
+            <div style="${u.card} max-width:760px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><b style="font-size:14px; color:var(--text-main);">Сейчас:</b> ${this.chip(st.label, st.color)}</div>
+                ${row('Предлагать пробный Профи', 'Общий выключатель. Выключено — предложение не показывается никому, уже включённые пробные периоды не прерываются.',
+                    this.toggleHtml(!!t.enabled, `Subscription.setTrialField('enabled', ${!t.enabled})`, dis))}
+                ${row('Начало показа', 'С этого дня (включительно). Пусто — с любого дня.',
+                    `<input type="date" value="${this.esc(t.from)}" ${dis ? 'disabled' : ''} onchange="Subscription.setTrialField('from', this.value)" style="${u.input} width:150px;">`)}
+                ${row('Конец показа', 'По этот день (включительно). Пусто — без даты окончания.',
+                    `<input type="date" value="${this.esc(t.to)}" ${dis ? 'disabled' : ''} onchange="Subscription.setTrialField('to', this.value)" style="${u.input} width:150px;">`)}
+                ${row('Длительность пробного периода', 'В днях, от 1 до 60. Действует для тех, кто включит его после изменения.',
+                    `<input type="number" min="1" max="60" value="${t.days}" ${dis ? 'disabled' : ''} onchange="Subscription.setTrialField('days', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Не показывать сотрудникам ТЕРЕМ', 'Почта на @teremopt.ru (основная или рабочая) либо привязка к компании «ТЕРЕМ» или её обособленному подразделению.',
+                    this.toggleHtml(!!t.excludeTerem, `Subscription.setTrialField('excludeTerem', ${!t.excludeTerem})`, dis))}
+            </div>`;
+    },
+
     // ═══ Окно тарифа: карточки и текст преимуществ ═══════════════════════
 
     // Функции, которые Профи добавляет этой учётке сверх Базового — по таблице «Тарифы»
@@ -656,7 +719,8 @@ const Subscription = {
         { id: 'regions', icon: '🌍', label: 'Регионы' },
         { id: 'payments', icon: '📒', label: 'Заявки и оплаты' },
         { id: 'preview', icon: '👁', label: 'Как выглядит' },
-        { id: 'benefits', icon: '⭐', label: 'Преимущества Профи' }
+        { id: 'benefits', icon: '⭐', label: 'Преимущества Профи' },
+        { id: 'trial', icon: '🎁', label: 'Пробный период' }
     ],
 
     setView: function (v) {
@@ -711,6 +775,7 @@ const Subscription = {
         else if (this._view === 'payments') body = this.viewPayments(canEdit);
         else if (this._view === 'preview') body = this.viewPreview();
         else if (this._view === 'benefits') body = this.viewBenefits(canEdit);
+        else if (this._view === 'trial') body = this.viewTrial(canEdit);
         box.innerHTML = `
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
                 <h3 style="margin:0; color:var(--text-main);">💳 Оплата подписки</h3>

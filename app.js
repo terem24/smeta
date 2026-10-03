@@ -8257,6 +8257,24 @@ const app = {
     },
 
     TRIAL_DAYS: 14,
+    // Длительность из настроек («Оплата подписки» → «Пробный период»); 14 — по умолчанию
+    trialDays: function () {
+        try { if (typeof Subscription !== 'undefined') return Subscription.trialSettings().days; } catch (e) { }
+        return this.TRIAL_DAYS;
+    },
+    // Сотрудник ТЕРЕМ: почта на teremopt.ru (основная или рабочая) либо привязка к
+    // компании «ТЕРЕМ» (в названии подразделений — «ООО ТЕРЕМ ОП …»). Им пробный Профи
+    // не предлагаем: у них своя выдача тарифов.
+    isTeremStaff: function () {
+        try {
+            const row = this._currentUserRow || {}, tg = this.state.tgUser || {};
+            const mails = [row.email, row.work_email, tg.email, this._myWorkEmail]
+                .filter(Boolean).map(x => String(x).trim().toLowerCase());
+            if (mails.some(m => /@([a-z0-9-]+\.)*teremopt\.ru$/.test(m))) return true;
+            const dn = (this.state.distributorInfo && this.state.distributorInfo.company_name) || '';
+            return /терем/i.test(dn);
+        } catch (e) { return false; }
+    },
     // Предложение пробного Профи после сохранения сметы: человек уже увидел цену
     // своего объекта, и показать ему, что умеет платный тариф, имеет смысл именно
     // сейчас. Не навязываем: не чаще раза в 3 дня и не больше двух раз за всё
@@ -8266,6 +8284,8 @@ const app = {
     maybeOfferTrial: async function () {
         try {
             if (this._trialOfferBusy) return;
+            await this.loadAppSettings();
+            if (typeof Subscription !== 'undefined' && !Subscription.trialOfferAllowed()) return;
             const tg = this.state.tgUser || {};
             if (!tg.authUserId && !tg.email && !tg.id) return;
             if (this.isPro() || this.state.demoUsed || tg.demo_ends_at) return;
@@ -8279,8 +8299,8 @@ const app = {
             let benefits = '';
             try { if (typeof Subscription !== 'undefined') benefits = Subscription.benefitsText(Subscription.userAccount()); } catch (e) { }
             const yes = await this.confirmChoice(
-                (benefits ? benefits + '\n\n' : '') + 'Карта не нужна. Через ' + this.TRIAL_DAYS + ' дней доступ вернётся к базовому — ничего не спишется.',
-                'Попробуйте Профи ' + this.TRIAL_DAYS + ' дней бесплатно',
+                (benefits ? benefits + '\n\n' : '') + 'Карта не нужна. Через ' + this.trialDays() + ' дней доступ вернётся к базовому — ничего не спишется.',
+                'Попробуйте Профи ' + this.trialDays() + ' дней бесплатно',
                 'Включить', 'Не сейчас');
             this._trialOfferBusy = false;
             if (yes) this.activateTrial14();
@@ -8309,7 +8329,7 @@ const app = {
         try {
             // Длительность пробного периода — TRIAL_DAYS суток (было 2: за двое суток
             // монтажник не успевал довести до клиента ни одну смету)
-            let trialDurationMs = this.TRIAL_DAYS * 24 * 60 * 60 * 1000;
+            let trialDurationMs = this.trialDays() * 24 * 60 * 60 * 1000;
             let endDate = new Date(Date.now() + trialDurationMs).toISOString();
 
             // Сначала найдем пользователя в БД по любому доступному признаку
@@ -8329,7 +8349,7 @@ const app = {
 
             if (!uRow) {
                 app.alert("Профиль пользователя не найден в базе данных. Пожалуйста, попробуйте перезайти в аккаунт.");
-                if (btn) btn.innerText = "Попробовать бесплатно " + this.TRIAL_DAYS + " дней";
+                if (btn) btn.innerText = "Попробовать бесплатно " + this.trialDays() + " дней";
                 return;
             }
 
@@ -8362,12 +8382,12 @@ const app = {
             this.syncUI();
             this.closeModal();
 
-            app.alert("✅ Профи включён на " + this.TRIAL_DAYS + " дней — до " + new Date(Date.now() + trialDurationMs).toLocaleDateString('ru-RU') + ". Вам открыты функции Профи; через " + this.TRIAL_DAYS + " дней доступ вернётся к базовому, ничего не спишется." + (window.__HC_NATIVE__ ? "" : " Страница будет перезагружена через 6 секунд."));
+            app.alert("✅ Профи включён на " + this.trialDays() + " дней — до " + new Date(Date.now() + trialDurationMs).toLocaleDateString('ru-RU') + ". Вам открыты функции Профи; через " + this.trialDays() + " дней доступ вернётся к базовому, ничего не спишется." + (window.__HC_NATIVE__ ? "" : " Страница будет перезагружена через 6 секунд."));
             this.softReload(6000);
         } catch (e) {
             console.error("Ошибка активации:", e);
             app.alert("Ошибка активации. Попробуйте позже.");
-            if (btn) btn.innerText = "Попробовать бесплатно " + this.TRIAL_DAYS + " дней";
+            if (btn) btn.innerText = "Попробовать бесплатно " + this.trialDays() + " дней";
         }
     },
 
@@ -15777,7 +15797,7 @@ const app = {
     // Прайс монтажа / Своё оборудование. Содержимое всех разделов, кроме реквизитов,
     // строится лениво при первом открытии раздела.
     setProfileTab: function (tab) {
-        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'settings', 'theme', 'kp', 'notify', 'login'];
+        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'leads', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'settings', 'theme', 'kp', 'notify', 'login'];
         if (!tabs.includes(tab)) tab = 'requisites';
         tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
@@ -15837,6 +15857,8 @@ const app = {
             this.loadFromCloudList();
         } else if (tab === 'summary') {
             this.renderInstallerSummaryTab();
+        } else if (tab === 'leads') {
+            this.renderLeadBoard();
         } else if (tab === 'orders') {
             this.renderOrdersTab();
         } else if (tab === 'oprosniki') {
@@ -15927,7 +15949,7 @@ const app = {
     // за ними одиннадцать. Ключи разделов (profile_tab_<id>, data-tab, push open:"orders")
     // не менялись — меняется только то, как они сгруппированы на экране.
     CABINET_SUBTABS: {
-        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }],
+        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
         workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
@@ -15948,7 +15970,8 @@ const app = {
     cabinetVisibleSubtabs: function (parent) {
         const subs = this.CABINET_SUBTABS[parent] || [];
         const noWorks = !this.canUseWorks();
-        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')));
+        const noLeads = !this.leadBoardVisible();
+        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')) && !(noLeads && s.id === 'leads'));
     },
 
     // Раздел, скрытый от этого человека, заменяем первым доступным в том же пункте
@@ -21785,6 +21808,7 @@ const app = {
         // нет: оставляем им отметку о доступе, чтобы прямая ссылка не открывала
         // инструмент тому, кому его не включали.
         try { localStorage.setItem('heatcalc_design_access', on ? '1' : '0'); } catch (e) { }
+        try { this.renderProjectBanner(); } catch (e) { /* полоса — удобство, не повод ронять интерфейс */ }
         ['btn_sheets_trigger', 'btn_plan_areas'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = on ? '' : 'none';
@@ -24065,6 +24089,15 @@ const app = {
                 .select('lead_id, installer_id, installer_name, status, updated_at');
             (data || []).forEach(a => { this._leadAssign[a.lead_id] = a; });
         } catch (e) { console.warn('[заявки] отметки не прочитаны:', e); }
+        // Что из заявок уже предложено Профи-мастерам (lead_board). Нет таблицы —
+        // миграция не выполнена: кнопки публикации тогда покажут подсказку.
+        this._leadBoard = {};
+        this._leadBoardMissing = false;
+        try {
+            const { data, error } = await supabaseClient.from('lead_board').select('lead_id, status, taken_by, taken_at');
+            if (error) throw error;
+            (data || []).forEach(b => { this._leadBoard[b.lead_id] = b; });
+        } catch (e) { this._leadBoardMissing = true; console.warn('[заявки] лента не прочитана:', e); }
         // Кому передавать: зарегистрированные в Петербурге и области. Пилот идёт
         // только там, остальные регионы пока без мастеров.
         try {
@@ -24107,6 +24140,230 @@ const app = {
         } catch (e) {
             console.warn('[заявки] отметка не сохранилась:', e);
             if (el) { el.style.borderColor = '#DC2626'; el.title = 'Не сохранилось — попробуйте ещё раз'; }
+        }
+    },
+
+    // ═══ Заявки на монтаж для мастеров на Профи ════════════════════════════
+    // Витрина свободных заявок (lead_board) и «мои заявки» (lead_mine). Контакты
+    // заказчика открывает только функция базы lead_take, и только тому, кто успел
+    // взять: по согласию заказчика данные получает ОДИН мастер. Пилот — Санкт-
+    // Петербург и область. Схема и правила доступа — supabase/migrations/
+    // 20261003_lead_board.sql; пока миграция не выполнена, раздел скрыт.
+    LEAD_BOARD_REGIONS: ['Санкт-Петербург', 'Ленинградская область'],
+
+    leadBoardVisible: function () {
+        try {
+            if (this._leadBoardBroken) return false;
+            const tg = this.state.tgUser;
+            if (!tg || !(tg.id || tg.authUserId)) return false;
+            if (this.hasAdminAccess()) return true;
+            return (tg.activityTypes || []).includes('Монтажник') && this.LEAD_BOARD_REGIONS.includes(tg.region || '');
+        } catch (e) { return false; }
+    },
+
+    leadAgo: function (iso) {
+        const t = new Date(iso).getTime();
+        if (!t) return '';
+        const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+        if (m < 60) return m < 2 ? 'только что' : m + ' мин назад';
+        const h = Math.round(m / 60);
+        if (h < 24) return h + ' ч назад';
+        return Math.round(h / 24) + ' дн. назад';
+    },
+
+    LEAD_MARKS: [['sent', 'Взята'], ['contacted', 'Связался с заказчиком'], ['contract', 'Заключили договор'], ['done', 'Смонтировано'], ['rejected', 'Отказ']],
+
+    renderLeadBoard: async function () {
+        const box = document.getElementById('profile_tab_leads');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        box.innerHTML = '<div class="lk-sub" style="padding:24px 0;">Загружаем заявки…</div>';
+        let acc, open, mine;
+        try {
+            const [a, b, m] = await Promise.all([
+                supabaseClient.rpc('lead_access'),
+                supabaseClient.from('lead_board').select('lead_id, published_at, place, area, works').eq('status', 'open')
+                    .order('published_at', { ascending: false }).limit(50),
+                supabaseClient.rpc('lead_mine')
+            ]);
+            if (a.error) throw a.error;
+            if (b.error) throw b.error;
+            if (m.error) throw m.error;
+            acc = a.data || {}; open = b.data || []; mine = m.data || [];
+        } catch (e) {
+            console.warn('[заявки мастера] не загрузились:', e);
+            // Нет таблиц или функций (миграция не выполнена): раздел прячем, чтобы не пугать ошибкой
+            if (e && /does not exist|Could not find|schema cache|PGRST20|42P01|42883/i.test(String(e.message || e.code || ''))) this._leadBoardBroken = true;
+            box.innerHTML = `<div class="lk-sub" style="padding:24px 0;">Заявки сейчас недоступны. Попробуйте открыть раздел позже.${this.hasAdminAccess() ? '<br><span style="font-size:11px;">Админу: выполните supabase/migrations/20261003_lead_board.sql в SQL Editor. ' + esc(String((e && e.message) || e)).slice(0, 160) + '</span>' : ''}</div>`;
+            this.renderCabinetSubtabs('leads');
+            return;
+        }
+        this._leadAcc = acc;
+        const can = !!acc.can;
+        const why = {
+            trial: 'В пробном периоде заявки недоступны: они открываются на оплаченном тарифе Профи.',
+            not_pro: 'Заявки берут мастера на тарифе Профи. Оформите подписку — и кнопка «Взять заявку» заработает.',
+            not_installer: 'Заявки предназначены для монтажников: в анкете указана другая сфера деятельности.',
+            region: 'Сейчас заявки раздаются мастерам в Санкт-Петербурге и Ленинградской области.',
+            blocked: 'Доступ к заявкам закрыт для этого аккаунта.',
+            no_user: 'Не удалось определить ваш профиль — выйдите и зайдите заново.'
+        }[acc.reason] || '';
+        const works = w => (w || []).map(x => this.LEAD_WORK_LABELS[x] || x).join(', ');
+        const needPro = !can && (acc.reason === 'trial' || acc.reason === 'not_pro');
+        const openHtml = open.length ? open.map(r => `
+            <div style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
+                <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline;">
+                    <b style="color:var(--text-main);">${esc(r.place)}${r.area ? ', ' + esc(r.area) + ' м²' : ''}</b>
+                    <span style="font-size:11px; color:var(--text-sec);">${esc(this.leadAgo(r.published_at))}</span>
+                </div>
+                <div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">${esc(works(r.works))}</div>
+                <div style="margin-top:10px;">${can
+                    ? `<button type="button" class="lk-btn" onclick="app.takeLead('${esc(r.lead_id)}', this)">Взять заявку</button>`
+                    : (needPro ? `<button type="button" class="lk-btn" onclick="app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
+            </div>`).join('') : '<div class="lk-sub" style="padding:8px 0 16px;">Свободных заявок сейчас нет. Новые появляются по мере поступления — загляните позже.</div>';
+        const markOpts = cur => this.LEAD_MARKS.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}${v === 'sent' ? ' disabled' : ''}>${l}</option>`).join('');
+        const mineHtml = mine.length ? mine.map(r => `
+            <div style="border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
+                <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline;">
+                    <b style="color:var(--text-main);">${esc(r.name)} · <a href="tel:${esc(String(r.phone || '').replace(/[^+\d]/g, ''))}" style="color:var(--primary); text-decoration:none;">${esc(r.phone)}</a></b>
+                    <span style="font-size:11px; color:var(--text-sec);">взята ${esc(this.leadAgo(r.taken_at))}</span>
+                </div>
+                <div style="font-size:12.5px; color:var(--text-sec); margin-top:6px; line-height:1.6;">
+                    ${esc(r.place)}${r.area ? ', ' + esc(r.area) + ' м²' : ''} · ${esc(works(r.works))}
+                    ${r.when_call ? '<br>Когда звонить: ' + esc(r.when_call) : ''}
+                    ${r.comment ? '<br>Комментарий: <span style="white-space:pre-line;">' + esc(r.comment) + '</span>' : ''}
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+                    ${/^[A-Za-z0-9_-]{8,2000}$/.test(r.calc || '') ? `<a class="lk-btn-sm" href="/?opros=${esc(r.calc)}" target="_blank" rel="noopener" style="text-decoration:none;">Открыть в расчёте</a>` : ''}
+                    <select title="Что с заявкой" onchange="app.markLead('${esc(r.lead_id)}', this.value, this)" style="height:30px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main); font-size:12px; padding:0 8px;">${markOpts(r.mark)}</select>
+                </div>
+            </div>`).join('') : '<div class="lk-sub" style="padding:8px 0;">Вы пока не брали заявок.</div>';
+
+        box.innerHTML = `
+            <div class="lk-section-head"><div><h4>Заявки на монтаж</h4>
+                <div class="lk-sub">Заказчики оставляют заявки на сайте. Заявка уходит одному мастеру — тому, кто взял её первым. Имя и телефон открываются в момент, когда вы её берёте. Пока доступно в Санкт-Петербурге и области.</div></div>
+                <button type="button" class="lk-btn-sm" onclick="app.renderLeadBoard()">Обновить</button></div>
+            ${why ? `<div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light); font-size:13px; color:var(--text-main); line-height:1.5;">${esc(why)}</div>` : ''}
+            <h5 style="margin:16px 0 10px; font-size:14px; color:var(--text-main);">Свободные заявки${open.length ? ' · ' + open.length : ''}</h5>
+            ${openHtml}
+            <h5 style="margin:22px 0 10px; font-size:14px; color:var(--text-main);">Мои заявки${mine.length ? ' · ' + mine.length : ''}</h5>
+            ${mineHtml}
+            <div class="lk-sub" style="margin-top:14px;">Данные заказчика даны только для связи по его заявке. Передавать их третьим лицам и использовать для других целей нельзя — заказчик согласился на звонок одного мастера. За сутки можно взять не больше трёх заявок.</div>`;
+        this.renderCabinetSubtabs('leads');
+    },
+
+    takeLead: async function (leadId, btn) {
+        const ok = await this.confirmChoice(
+            'Заявка уходит одному мастеру — вам. Имя и телефон заказчика откроются сразу. Позвоните в ближайшее рабочее время. Данные — только для связи по этой заявке, третьим лицам не передавать. За сутки можно взять не больше трёх заявок.',
+            'Взять заявку?', 'Взять', 'Отмена');
+        if (!ok) return;
+        if (btn) { btn.disabled = true; btn.innerText = 'Берём…'; }
+        try {
+            const { data, error } = await supabaseClient.rpc('lead_take', { p_lead: leadId });
+            if (error) throw error;
+            if (data && data.ok) {
+                await app.alert('Заявка ваша. ' + (data.name || '') + ', ' + (data.phone || '') + '. Она в списке «Мои заявки».', 'Заявка взята');
+            } else {
+                const r = data && data.reason;
+                const msg = r === 'gone' ? 'Эту заявку только что взял другой мастер.'
+                    : r === 'limit' ? 'За сутки можно взять не больше трёх заявок. Попробуйте завтра.'
+                        : 'Брать заявки можно на оплаченном тарифе Профи.';
+                await app.alert(msg);
+            }
+        } catch (e) {
+            console.warn('[заявки] не взялась:', e);
+            app.alert('Не удалось взять заявку — проверьте связь и попробуйте ещё раз.');
+        }
+        this.renderLeadBoard();
+    },
+
+    markLead: async function (leadId, status, el) {
+        try {
+            const { data, error } = await supabaseClient.rpc('lead_mark', { p_lead: leadId, p_status: status });
+            if (error || data !== true) throw error || new Error('отказ');
+            if (el) { el.style.borderColor = '#10B981'; setTimeout(() => { el.style.borderColor = ''; }, 1200); }
+        } catch (e) {
+            console.warn('[заявки] отметка не сохранилась:', e);
+            if (el) { el.style.borderColor = '#DC2626'; el.title = 'Не сохранилось — попробуйте ещё раз'; }
+        }
+    },
+
+    // ── Автоматическая публикация заявок в ленту ────────────────────────
+    // Новые заявки уходят в ленту сами: lead.php на Beget вызывает функцию базы
+    // lead_ingest (тестовые и из других регионов отсекает он же). Выключатель живёт
+    // в app_settings, ключ lead_board: auto=false — функция ничего не публикует,
+    // заявки приходят только владельцу, как раньше. Нет записи — включено.
+    leadAutoOn: function () {
+        return ((this.appSettings && this.appSettings.lead_board) || {}).auto !== false;
+    },
+
+    setLeadAuto: async function (on) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки запрещено.'); return; }
+        const value = { auto: !!on };
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'lead_board', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { lead_board: value });
+        } catch (e) {
+            console.warn('[заявки] выключатель не сохранился:', e);
+            window.alert('Не удалось сохранить: ' + String((e && e.message) || e).slice(0, 140));
+        }
+        this.renderAdminLeads();
+    },
+
+    // ── Предложить заявку Профи-мастерам ────────────────────────────────
+    // Владелец сам решает, какая заявка уходит в ленту: тестовые и мусорные
+    // отсекаются здесь, а не у платящих мастеров. Место показываем без улицы
+    // и дома — по умолчанию берём текст до первой запятой, владелец может поправить.
+    publishLead: async function (idx, btn) {
+        const r = (this._leadsData || [])[idx];
+        if (!r || !r.id) return;
+        if (this._leadBoardMissing) { window.alert('Таблицы ленты ещё нет. Выполните supabase/migrations/20261003_lead_board.sql в SQL Editor и обновите вкладку.'); return; }
+        if (this.isTestLead(r) && !window.confirm('Это тестовая заявка. Всё равно предложить мастерам?')) return;
+        const def = String(r.place || '').split(',')[0].trim();
+        const place = window.prompt('Как показать место мастерам? Без улицы и дома — только населённый пункт или район.', def);
+        if (place === null) return;
+        const placeClean = place.trim().slice(0, 80);
+        if (!placeClean) return;
+        const area = parseInt(r.area, 10);
+        if (btn) btn.disabled = true;
+        try {
+            let { error } = await supabaseClient.from('lead_board').upsert({
+                lead_id: r.id, place: placeClean, area: isFinite(area) ? area : null,
+                works: (r.works || []).map(String), status: 'open'
+            }, { onConflict: 'lead_id', ignoreDuplicates: true });
+            if (error) throw error;
+            ({ error } = await supabaseClient.from('lead_contacts').upsert({
+                lead_id: r.id, name: r.name || 'без имени', phone: r.phone || '',
+                when_call: r.when || null, comment: r.comment || null, calc: r.calc || null
+            }, { onConflict: 'lead_id' }));
+            if (error) throw error;
+            this._leadBoard = this._leadBoard || {};
+            this._leadBoard[r.id] = Object.assign({ lead_id: r.id, status: 'open' }, this._leadBoard[r.id] || {});
+            this.renderAdminLeads();
+        } catch (e) {
+            console.warn('[заявки] в ленту не ушла:', e);
+            if (btn) btn.disabled = false;
+            window.alert('Не удалось предложить заявку: ' + String((e && e.message) || e).slice(0, 140));
+        }
+    },
+
+    unpublishLead: async function (idx, btn) {
+        const r = (this._leadsData || [])[idx];
+        const b = r && (this._leadBoard || {})[r.id];
+        if (!b || b.status !== 'open') return;
+        if (!window.confirm('Снять заявку с ленты? Её перестанут видеть мастера.')) return;
+        if (btn) btn.disabled = true;
+        try {
+            const { error } = await supabaseClient.from('lead_board').delete().eq('lead_id', r.id).eq('status', 'open');
+            if (error) throw error;
+            delete this._leadBoard[r.id];
+            this.renderAdminLeads();
+        } catch (e) {
+            if (btn) btn.disabled = false;
+            window.alert('Не удалось снять с ленты: ' + String((e && e.message) || e).slice(0, 140));
         }
     },
 
@@ -24360,6 +24617,12 @@ const app = {
             const stOpts = this.LEAD_STATUSES.map(([v, l]) => `<option value="${v}"${v === st ? ' selected' : ''}>${l}</option>`).join('');
             const stColor = { new: '#F59E0B', sent: 'var(--primary)', contacted: 'var(--primary)', contract: '#10B981', done: '#10B981', rejected: 'var(--text-sec)', archive: 'var(--text-sec)' }[st];
             const calcUrl = this.leadCalcUrl(r);
+            const bd = (this._leadBoard || {})[r.id];
+            const boardBtn = !r.id ? '' : (!bd
+                ? `<button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;" title="Показать заявку мастерам на Профи: первый, кто возьмёт, получит телефон" onclick="app.publishLead(${i}, this)">Предложить Профи-мастерам</button>`
+                : (bd.status === 'open'
+                    ? `<span style="font-size:12px; color:#10B981; font-weight:600; align-self:center;">В ленте, свободна</span><button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;" onclick="app.unpublishLead(${i}, this)">Снять с ленты</button>`
+                    : `<span style="font-size:12px; color:var(--primary); font-weight:600; align-self:center;">Взята мастером${a.installer_name ? ': ' + esc(a.installer_name) : ''}</span>`));
             return `<div style="border:1px solid var(--border); border-left:3px solid ${stColor}; border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                     <div style="font-size:13px; color:var(--text-main);">
@@ -24383,6 +24646,7 @@ const app = {
                     ${calcUrl ? `<a class="auth-btn-base" href="${esc(calcUrl)}" target="_blank" rel="noopener" style="width:auto; padding:0 14px; height:30px; font-size:12px; display:inline-flex; align-items:center; text-decoration:none;" title="Полная смета по ответам заказчика — в новой вкладке">Открыть в расчёте</a>` : ''}
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"
                         onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+                    ${boardBtn}
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"${r.id ? '' : ' disabled'}
                         onclick="app.saveLeadAssignment(${i}, 'status', '${st === 'archive' ? 'new' : 'archive'}', this)">${st === 'archive' ? 'Вернуть из архива' : 'В архив'}</button>
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px; color:#DC2626;"${r.id ? '' : ' disabled'}
@@ -24396,7 +24660,13 @@ const app = {
         const stAll = [['active', 'Активные'], ['all', 'Все, с архивом']].concat(this.LEAD_STATUSES);
         const btnS = 'width:auto; padding:0 14px; height:32px; font-size:12px;';
 
+        const autoOn = this.leadAutoOn();
         box.innerHTML = `
+            <label style="display:flex; align-items:flex-start; gap:10px; border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light); cursor:pointer;">
+                <input type="checkbox" style="margin-top:3px;"${autoOn ? ' checked' : ''} onchange="app.setLeadAuto(this.checked)">
+                <span style="font-size:13px; color:var(--text-main); line-height:1.5;"><b>Автоматически предлагать новые заявки Профи-мастерам</b><br>
+                <span style="font-size:12px; color:var(--text-sec);">${autoOn ? 'Включено: каждая новая заявка сразу попадает в ленту (кроме тестовых и из других регионов). Ненужную можно снять с ленты кнопкой на карточке.' : 'Выключено: в ленту попадает только то, что вы предложили сами кнопкой на карточке.'} Работает после установки файла на Beget.</span></span>
+            </label>
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
                 ${card('всего заявок', pool.length)}
                 ${card('не переданы мастеру', pool.filter(({ r }) => (asg(r.id).status || 'new') === 'new').length)}
@@ -26086,7 +26356,7 @@ const app = {
         const ok = t => `<div class="ad-card-note ad-ok">✓ ${t}</div>`;
 
         // Заявки: ждут мастера, и сколько ждут
-        let leadsN = null, leadsBody = '';
+        let leadsN = null, leadsLate = 0, leadsBody = '';
         if (st.leads && st.leads.ok) {
             const asg = id => (this._leadAssign || {})[id] || {};
             const list = (this._leadsData || []).filter(r => !this.isTestLead(r))
@@ -26098,7 +26368,11 @@ const app = {
                     return { r, s, age, late: (s === 'new' && age >= 1) || (s === 'sent' && age >= 2) };
                 })
                 .sort((x, y) => (y.late - x.late) || (y.age - x.age));
-            leadsN = list.filter(x => x.late).length;
+            // Число в углу карточки — все заявки в работе (новые и у мастера); красным оно
+            // становится, только если есть просроченные. Раньше считались одни просроченные,
+            // и свежая заявка лежала в списке при счётчике 0.
+            leadsN = list.length;
+            leadsLate = list.filter(x => x.late).length;
             leadsBody = list.length
                 ? list.slice(0, 5).map(x => row(x.r.name || 'без имени', (x.r.place || '') + (x.r.src && x.r.src !== 'dom' ? ' · ' + x.r.src : ''),
                     (x.s === 'sent' ? 'у мастера ' : 'ждёт ') + (x.age < 1 ? 'меньше суток' : x.age + ' дн.'), x.late ? 'ad-bad' : '')).join('')
@@ -26118,7 +26392,7 @@ const app = {
         const unread = (this._notifications || []).filter(x => !x.isRead).length;
 
         const cards = [
-            card({ title: 'Заявки на монтаж', n: leadsN, urgent: true, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
+            card({ title: 'Заявки на монтаж', n: leadsN, urgent: leadsLate > 0, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
             card({ title: 'Профи заканчивается', n: proRows.length, urgent: true, state: st.pro, body: proBody, tab: 'stats', action: 'Открыть пользователей' }),
             card({ title: 'Замены позиций', n: succN == null ? null : succN, urgent: false, state: st.succ,
                 body: succN ? `<div class="ad-card-note">Новых замен снятых позиций, которые ждут решения: <b>${succN}</b>.</div>` : ok('Новых замен нет'), tab: 'successors', action: 'Открыть замены' }),
@@ -37103,7 +37377,64 @@ const app = {
         // а без номера его нельзя ни сохранить в облако, ни отличить от других.
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         this.pushPlansToEditor();
-        window.open('plan_editor.html', '_blank');
+        // Выпуск проекта начат: калькулятор показывает полосу «Разметка плана → Листы проекта»,
+        // пока проект не выпущен или полосу не закрыли. Окно именованное — повторное нажатие
+        // возвращает в уже открытую вкладку разметки, а не плодит новые.
+        try { localStorage.setItem('hc_project_flow', String(Date.now())); } catch (e) { }
+        window.open('plan_editor.html', 'hc_plan_editor');
+        this.renderProjectBanner();
+    },
+
+    /** Идёт ли выпуск проекта (редактор планов открывали для проекта и проект ещё не выпущен) */
+    projectFlowOn: function () {
+        try {
+            const t = +localStorage.getItem('hc_project_flow');
+            return t > 0 && Date.now() - t < 12 * 3600 * 1000 && this.canUseDesign();
+        } catch (e) { return false; }
+    },
+
+    /** Полоса под шапкой: на каком этапе выпуск, сколько условий закрыто, куда нажать дальше */
+    renderProjectBanner: function () {
+        let el = document.getElementById('project_banner');
+        if (!this.projectFlowOn()) { if (el) el.remove(); return; }
+        const hdr = document.querySelector('.site-header');
+        if (!hdr) return;
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'project_banner';
+            el.className = 'no-print';
+            hdr.insertAdjacentElement('afterend', el);
+        }
+        let checks = [];
+        try { checks = this.projectChecks(); } catch (e) { checks = []; }
+        const done = checks.filter(c => c.ok).length, all = checks.length;
+        const ready = all > 0 && done === all;
+        const btn = 'font:inherit;font-size:12.5px;padding:5px 12px;border-radius:8px;cursor:pointer;border:1px solid var(--border);' +
+            'background:transparent;color:var(--text-main);';
+        el.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 16px;font-size:13px;' +
+            'background:var(--surface);border-bottom:1px solid var(--border);color:var(--text-main);';
+        el.innerHTML =
+            '<b style="font-size:14px">Выпуск проекта</b>' +
+            '<span style="color:var(--text-sec)"><span style="color:#16a34a">✓ Расчёт</span> › <b style="color:var(--primary)">Разметка плана</b> › ' +
+            (ready ? '<b style="color:#16a34a">Листы проекта</b>' : 'Листы проекта') + '</span>' +
+            '<span style="flex:1 1 120px;color:' + (ready ? '#16a34a' : 'var(--text-sec)') + '">Условий выполнено: ' + done + ' из ' + all +
+            (ready ? ' — можно выпускать' : '') + '</span>' +
+            '<button type="button" style="' + btn + '" onclick="app.openProjectMarkup()">Открыть разметку</button>' +
+            '<button type="button" style="' + btn + '" onclick="app.showProjectReadiness()">Что осталось</button>' +
+            '<button type="button" style="' + btn + 'background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600" ' +
+            'onclick="app.openProjectSheets()">Выпустить проект →</button>' +
+            '<button type="button" style="' + btn + 'padding:5px 9px" title="Скрыть полосу" onclick="app.closeProjectFlow()">✕</button>';
+    },
+
+    openProjectMarkup: function () {
+        if (!this.canUseDesign()) return;
+        this.pushPlansToEditor();
+        window.open('plan_editor.html', 'hc_plan_editor');
+    },
+
+    closeProjectFlow: function () {
+        try { localStorage.removeItem('hc_project_flow'); } catch (e) { }
+        this.renderProjectBanner();
     },
 
     // ═══ Модуль «Раскладка тёплого пола» ═════════════════════════════════
@@ -37385,7 +37716,7 @@ const app = {
                 // Окна — по радиаторам на плане (радиатор ставится под окном на
                 // 75 % его ширины); радиаторов нет — одно окно у жилой комнаты
                 const windows = rs.length
-                    ? rs.map((rd, j) => ({ id: id + 1 + j, width: Math.max(0.6, Math.min(3, Math.round((rd.w || 0) / f.pxPerM / 0.75 * 10) / 10)), isPan: false }))
+                    ? rs.map((rd, j) => ({ id: id + 1 + j, width: Math.max(0.6, Math.min(3, Math.round((rd.w || 0) / f.pxPerM / 0.75 * 10) / 10)), isPan: false, radId: rd.rid }))
                     : (living ? [{ id: id + 1, width: this.getDefaultWindowWidth(area), isPan: false }] : []);
                 const sys = [];
                 if (rs.length || !e.tp) sys.push('rad');
@@ -37396,6 +37727,7 @@ const app = {
             if (fl === 2 && this.state.floors !== 2) this.state.floors = 2;
         });
         if (plansChanged) { this.saveState(); this.pushPlansToEditor(); }
+        try { this.linkWindowsToRads(); } catch (e) { console.warn('[план] привязка окон к радиаторам:', e.message); }
         return changed;
     },
 
@@ -37451,6 +37783,7 @@ const app = {
         // что выбрана в смете (тройниковая или лучевая от коллектора)
         const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee', connMap: this.radConnMap(),
             kinds: this.radKindsByRoom() };
+        Object.assign(radOpts, this.radKindLinks());          // kindById, linkedRids — тип по номеру радиатора
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -37503,11 +37836,70 @@ const app = {
     radKindsByRoom: function () {
         const map = {};
         (this.radDevices || []).forEach(d => {
-            if (!d || (d.kind !== 'rad' && d.kind !== 'conv')) return;
+            if (!d || (d.kind !== 'rad' && d.kind !== 'conv') || d.radId) return;     // привязанные идут по номеру радиатора
             const k = String(d.room || '').trim().toLowerCase();
             if (k) (map[k] = map[k] || []).push(d.kind);
         });
         return map;
+    },
+
+    /**
+     * Тип прибора по номеру радиатора на плане: { kindById: { rid: 'conv' | 'rad' }, linkedRids: { rid: 1 } }.
+     * Связь окна расчёта с радиатором — window.radId (linkWindowsToRads). У окна в пол
+     * подобран конвектор — значок конвектора рисуется на ЕГО радиаторе, а не на первом в комнате.
+     */
+    radKindLinks: function () {
+        const kindById = {}, linkedRids = {};
+        (this.state.rooms || []).forEach(r => (r.windows || []).forEach(w => { if (w && w.radId) linkedRids[w.radId] = 1; }));
+        (this.radDevices || []).forEach(d => {
+            if (!d || (d.kind !== 'rad' && d.kind !== 'conv') || !d.radId) return;
+            if (kindById[d.radId] !== 'conv') kindById[d.radId] = d.kind;
+        });
+        return { kindById, linkedRids };
+    },
+
+    /**
+     * Окна расчёта ↔ радиаторы плана. Окна, созданные по плану, уже помнят свой радиатор;
+     * остальные (комнату завели раньше или окно добавили руками) привязываются по порядку
+     * к радиаторам комнаты, которым окна ещё не нашлось. Радиатор убрали с плана — связь
+     * окна снимается. Номера радиаторам выдаёт редактор; у старых планов их нет — ставим тут.
+     */
+    linkWindowsToRads: function () {
+        const plans = this.state.plans;
+        if (!plans || !Array.isArray(plans.floors) || !this.state.detailedRooms) return;
+        const norm = s => String(s || '').trim().toLowerCase();
+        const pip = (p, P) => {
+            let c = false;
+            for (let a = 0, b = P.length - 1; a < P.length; b = a++)
+                if ((P[a][1] > p[1]) !== (P[b][1] > p[1]) && p[0] < (P[b][0] - P[a][0]) * (p[1] - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c;
+            return c;
+        };
+        let touched = false, plansTouched = false, seq = 0;
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || fi > 1) return;
+            const zones = (f.zones || []).filter(z => z && z.pts && z.pts.length > 2 && z.type !== 'cold' && norm(z.name));
+            (f.rads || []).forEach(rd => { if (!rd.rid) { rd.rid = 'r' + Date.now().toString(36) + (++seq).toString(36); plansTouched = true; } });
+            const radsOf = {};
+            (f.rads || []).forEach(rd => {
+                const a = (rd.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.3 * f.pxPerM;
+                const z = [[rd.x + nx * d, rd.y + ny * d], [rd.x - nx * d, rd.y - ny * d]]
+                    .map(p => zones.find(q => pip(p, q.pts))).find(Boolean);
+                if (z) (radsOf[norm(z.name)] = radsOf[norm(z.name)] || []).push(rd);
+            });
+            const alive = new Set((f.rads || []).map(rd => rd.rid));
+            (this.state.rooms || []).filter(r => (parseInt(r.floor, 10) || 1) === fi + 1).forEach(r => {
+                const ws = r.windows || [];
+                ws.forEach(w => { if (w.radId && !alive.has(w.radId)) { delete w.radId; touched = true; } });
+                const taken = new Set(ws.filter(w => w.radId).map(w => w.radId));
+                const free = (radsOf[norm(r.name)] || []).filter(rd => !taken.has(rd.rid));
+                ws.filter(w => !w.radId).forEach(w => {
+                    const rd = free.shift();
+                    if (rd) { w.radId = rd.rid; touched = true; }
+                });
+            });
+        });
+        if (plansTouched) { this._ufhGeomCache = null; this.pushPlansToEditor(); }
+        if (touched || plansTouched) this.saveState();
     },
 
     radPlanRuns: function () {
@@ -46257,7 +46649,8 @@ const app = {
         const zn = f => (f && f.zones) || [];
         const rooms = this.state.rooms || [];
         const wantTp = (this.state.tp1 || 0) + (this.state.tp2 || 0) > 0;
-        const withImg = floors.filter(f => f && f.img);
+        // В смету подложка попадает только именем файла на сервере (imgFile), самой картинки (img) там нет
+        const withImg = floors.filter(f => f && (f.img || f.imgFile));
         const withScale = withImg.filter(f => f.pxPerM);
         const marked = withScale.filter(f => zn(f).length || (f.rads || []).length ||
             (f.fixtures || []).length);
@@ -46290,8 +46683,12 @@ const app = {
         out.push({
             ok: floors.some(f => zn(f).some(z => z.type === 'boiler')),
             t: 'Котельная отмечена на плане',
-            no: 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
-                'компоновка котельной, туда же встаёт коллектор тёплого пола.',
+            no: floors.some(f => zn(f).some(z => z.type !== 'boiler' && /котельн/i.test(z.name || '')))
+                ? 'Зона «Котельная» на плане есть, но обведена как тёплый пол. В редакторе плана ' +
+                  'нажмите у неё «→ котельная» (шаг «Котельная»): по ней собирается ' +
+                  'компоновка котельной, туда же встаёт коллектор тёплого пола.'
+                : 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
+                  'компоновка котельной, туда же встаёт коллектор тёплого пола.',
             act: 'plan', btn: 'Открыть план этажей'
         });
         if (wantTp) out.push({
@@ -46505,6 +46902,7 @@ const app = {
             // в комплекте заново незачем — оформление у листа проекта задано
             // жёстко, и снимок отвечает ему точнее любой перерисовки.
             nodeSheets: this.projectNodeSheetUrls(),
+            builtAt: Date.now(),
             // Схемы автоматики и снеготаяния — те же чертежи, что в смете
             artSheets: this.projectArtSheets(),
             // Данные для листа «Общие данные»: показатели по этажам и
@@ -46606,6 +47004,7 @@ const app = {
         // и открытием стоит окно адреса — а браузеры считают всплывающим окном
         // всё, что открылось не «сразу по клику», и молча блокируют. Ловим это:
         // если окно не открылось, показываем ссылку, по которой достаточно щёлкнуть.
+        this.closeProjectFlow();                       // проект выпущен — полоса «Выпуск проекта» больше не нужна
         const win = window.open('project.html', '_blank');
         if (!win || win.closed) {
             this.alert(
@@ -51234,6 +51633,7 @@ const app = {
                 this.pullPlansFromEditor();
                 this.loadPlanCheckData();
                 this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
+                this.renderProjectBanner();
             }
         });
         // На случай, если событие storage не дошло (в части браузеров его не
@@ -51243,6 +51643,7 @@ const app = {
                 this.loadPlanCheckData();
                 this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
             }
+            this.renderProjectBanner();
         });
         // Первый запуск после переноса: планы ещё лежат старым общим ключом, а
         // в смете их нет. Сначала забираем их в текущий объект — иначе запись
@@ -71058,6 +71459,8 @@ const app = {
         // Подобранные приборы отопления с их фактической мощностью — из них
         // гидравлика берёт расходы (см. radHydraulics).
         app.radDevices = [];
+        // окна расчёта запоминают радиатор плана, под которым они стоят — по нему рисуется тип прибора
+        try { this.linkWindowsToRads(); } catch (e) { /* без привязки тип идёт по порядку в комнате */ }
         // Петли тёплого пола — по ним считаются сервоприводы зональной автоматики
         // (getZoneAutoKit), пока их не задали руками. Заполняется в разделе 4.
         this._ufhLoops = 0;
@@ -75995,7 +76398,7 @@ const app = {
                             // Гидравлика считает по нагрузке: приборы округляются вверх
                             // до типоразмера, но термоголовка держит комнату по
                             // теплопотерям, и лишние ватты в расход не идут.
-                            app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv' });
+                            app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv', win: w.id, radId: w.radId });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + 1; }
                         } else if (roomHasRad) {
                             let isRommer = (this.state.brandMode === 'rommer');
@@ -76406,7 +76809,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name, win: w.id, radId: w.radId });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + _radQty; }
                         }
                     });
