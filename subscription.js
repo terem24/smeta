@@ -272,6 +272,15 @@ const Subscription = {
     _cal: null,
     dayStr: function (y, m, d) { return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'); },
 
+    // Тот же календарь для одной даты — «Лимит КП → Действует с даты». Нативное поле
+    // даты здесь не годится: change срабатывает на «0002», перерисовка стирает ввод.
+    openLimitFrom: function () {
+        const t = this.limitSettings();
+        const base = t.from || this.localDay();
+        this._cal = { mode: 'limit', from: t.from || '', to: '', y: +base.slice(0, 4), m: +base.slice(5, 7) - 1 };
+        this.renderCal();
+    },
+
     openTrialRange: function () {
         const t = this.trialSettings();
         const base = t.from || this.localDay();
@@ -295,6 +304,7 @@ const Subscription = {
     // Первый щелчок — начало, второй — конец (раньше начала — меняем местами); третий начинает заново
     calPick: function (day) {
         const c = this._cal; if (!c) return;
+        if (c.mode === 'limit') { this.setLimitField('from', day); this.closeCal(); return; }
         if (!c.from || (c.from && c.to)) { c.from = day; c.to = ''; this.renderCal(); return; }
         c.to = day;
         if (c.to < c.from) { const x = c.from; c.from = c.to; c.to = x; }
@@ -302,7 +312,11 @@ const Subscription = {
         this.closeCal();
     },
     calApplyOpenEnd: function () { const c = this._cal; if (!c || !c.from) return; this.setTrialRange(c.from, ''); this.closeCal(); },
-    calClear: function () { this.setTrialRange('', ''); this.closeCal(); },
+    calClear: function () {
+        const lim = this._cal && this._cal.mode === 'limit';
+        if (lim) this.setLimitField('from', ''); else this.setTrialRange('', '');
+        this.closeCal();
+    },
 
     renderCal: function () {
         const c = this._cal; if (!c) return;
@@ -333,7 +347,7 @@ const Subscription = {
             else if (s === today) st += 'box-shadow:inset 0 0 0 1px #2563EB;';
             grid += `<button type="button" style="${st}" onclick="Subscription.calPick('${s}')">${d}</button>`;
         }
-        const hint = !c.from ? 'Выберите первый день' : (!c.to ? 'Теперь выберите последний день' : 'Период выбран');
+        const hint = c.mode === 'limit' ? 'Выберите день начала действия лимита' : (!c.from ? 'Выберите первый день' : (!c.to ? 'Теперь выберите последний день' : 'Период выбран'));
         const btn = 'height:32px; padding:0 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font-size:12.5px; cursor:pointer;';
         el.innerHTML = `<div style="background:var(--bg); color:var(--text-main); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 20px 50px rgba(0,0,0,.4); max-width:100%;">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
@@ -344,8 +358,8 @@ const Subscription = {
             <div style="font-size:12px; color:var(--text-sec); text-align:center; margin-bottom:10px;">${hint}${c.from ? ': ' + this.fmtDate(c.from) + (c.to ? ' — ' + this.fmtDate(c.to) : '') : ''}</div>
             <div style="display:flex; flex-wrap:wrap; width:${38 * 7}px; margin:0 auto 12px;">${grid}</div>
             <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center;">
-                ${c.from && !c.to ? `<button type="button" style="${btn}" onclick="Subscription.calApplyOpenEnd()">Без даты окончания</button>` : ''}
-                <button type="button" style="${btn}" onclick="Subscription.calClear()">Без дат</button>
+                ${c.mode !== 'limit' && c.from && !c.to ? `<button type="button" style="${btn}" onclick="Subscription.calApplyOpenEnd()">Без даты окончания</button>` : ''}
+                <button type="button" style="${btn}" onclick="Subscription.calClear()">${c.mode === 'limit' ? 'Сразу, без даты' : 'Без дат'}</button>
                 <button type="button" style="${btn}" onclick="Subscription.closeCal()">Закрыть</button>
             </div></div>`;
     },
@@ -481,7 +495,7 @@ const Subscription = {
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><b style="font-size:14px; color:var(--text-main);">Сейчас:</b> ${this.chip(st.label, st.color)}</div>
                 ${row('Включить лимит', 'Выключено — отправлять КП можно без ограничений, как и раньше.', this.toggleHtml(!!t.enabled, `Subscription.setLimitField('enabled', ${!t.enabled})`, dis))}
                 ${row('Бесплатных КП в месяц', 'Календарный месяц, считаются разные КП. От 1 до 100.', `<input type="number" min="1" max="100" value="${t.perMonth}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonth', this.value)" style="${u.input} width:80px;">`)}
-                ${row('Действует с даты', 'С этого дня (включительно). Пусто — сразу, как только включён.', `<input type="date" value="${this.esc(t.from)}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('from', this.value)" style="${u.input} width:150px;">`)}
+                ${row('Действует с даты', 'Нажмите и выберите день в календаре (включительно). Без даты — сразу, как только лимит включён.', `<button type="button" ${dis ? 'disabled' : ''} onclick="Subscription.openLimitFrom()" style="${u.input} min-width:230px; text-align:left; cursor:${dis ? 'default' : 'pointer'};">${t.from ? 'с ' + this.fmtDate(t.from) : 'Сразу, как только включён'}</button>`)}
                 ${row('Не применять к сотрудникам ТЕРЕМ', 'Почта @teremopt.ru или привязка к компании «ТЕРЕМ».', this.toggleHtml(!!t.excludeTerem, `Subscription.setLimitField('excludeTerem', ${!t.excludeTerem})`, dis))}
             </div>
             <div style="${u.card} max-width:760px; margin-top:14px;">
