@@ -11232,7 +11232,7 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
     table-layout: auto;
     /* Уже этой ширины начало бы резать содержимое — отдаём в горизонтальную
        прокрутку контейнера (#profile_cloud_list_content), а не в наложение */
-    min-width: 860px;
+    min-width: 720px;
 }
 
 #profile_cloud_list_content .inv-table th {
@@ -15136,14 +15136,12 @@ body.dark-mode #hyd_card .hyd-card__p {
        Как боковой каталог магазина: белая колонка, тонкие разделители, при
        наведении голубой текст, активный раздел — синий блок с белым значком. */
     body.theme-shop .lk-rail {
-        border-radius: var(--radius);
         border-color: var(--border);
         box-shadow: none;
         background: #fff;
     }
 
     body.theme-shop .lk-rail-item {
-        border-radius: 8px;
         color: var(--text-main);
     }
 
@@ -15210,9 +15208,7 @@ body.dark-mode #hyd_card .hyd-card__p {
     }
 
     body.theme-shop .lk-nav-item {
-        border-radius: 8px;
         color: var(--text-main);
-        font-weight: 500;
     }
 
     body.theme-shop .lk-nav-item:hover {
@@ -15224,8 +15220,6 @@ body.dark-mode #hyd_card .hyd-card__p {
         background: var(--surface-light);
         border-color: transparent;
         color: var(--primary);
-        box-shadow: inset 3px 0 0 var(--primary);
-        font-weight: 600;
     }
 
     body.theme-shop .lk-nav-avatar {
@@ -18275,73 +18269,6 @@ body.theme-yandex #profile_modal_overlay {
     .lk-layout.lk-forced .lk-mob-bar { display: none; }
 }
 
-/* ---------- Профиль на широком экране: без вертикальной прокрутки ----------
-   Одна колонка полей с аватаркой отдельной строкой и двумя карточками внизу не
-   помещалась в окно (617 px при видимых 548 на 1280×720). Здесь поля идут сеткой
-   из 12 колонок: аватар + ФИО; телефон, почта, дата рождения, промокод; город,
-   регион, сфера. Обёртки старых сеток (.profile-3col-grid / .profile-2col-grid)
-   становятся display: contents — их ячейки ложатся прямо в сетку карточки.
-   «Вход в аккаунт» и «Оформление» встают рядом. Ниже 1000 px — прежняя вёрстка. */
-@media screen and (min-width: 1000px) {
-    #profile_tab_requisites .profile-main-card {
-        display: grid !important;
-        grid-template-columns: repeat(12, minmax(0, 1fr));
-        column-gap: 10px;
-        row-gap: 0;
-        align-items: start;
-    }
-
-    #profile_tab_requisites .profile-main-card > .lk-card-label {
-        grid-column: 1 / -1;
-    }
-
-    #profile_tab_requisites .profile-main-card .profile-3col-grid,
-    #profile_tab_requisites .profile-main-card .profile-2col-grid {
-        display: contents !important;
-    }
-
-    #profile_tab_requisites .profile-main-card .profile-photo-row {
-        grid-column: span 3;
-        margin-bottom: 6px !important;
-        align-self: center;
-    }
-
-    #profile_tab_requisites .profile-main-card .profile-3col-grid > div,
-    #profile_tab_requisites .profile-main-card .profile-2col-grid > div {
-        grid-column: span 3;
-        min-width: 0;
-    }
-
-    #profile_tab_requisites .profile-main-card .profile-geo-grid > div,
-    #profile_tab_requisites .profile-main-card .profile-activity {
-        grid-column: span 4;
-        min-width: 0;
-    }
-
-    /* Нижний ряд: способ входа слева, оформление справа */
-    #profile_tab_requisites {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        column-gap: 15px;
-        align-items: start;
-    }
-
-    #profile_tab_requisites > * {
-        grid-column: 1 / -1;
-    }
-
-    #profile_tab_requisites > #profile_login_method,
-    #profile_tab_requisites > #profile_theme_choice {
-        grid-column: span 1;
-    }
-
-    /* Оформление скрыто (тариф без выбора) — вход в аккаунт занимает всю ширину */
-    #profile_tab_requisites > #profile_login_method:has(~ #profile_theme_choice[style*="display: none"]),
-    #profile_tab_requisites > #profile_login_method:has(~ #profile_theme_choice[style*="display:none"]) {
-        grid-column: 1 / -1;
-    }
-}
-
 #lk_search_btn { right: 56px; top: 12px; }
 
 /* Вкладки внутри пункта меню кабинета */
@@ -18548,23 +18475,6 @@ body.theme-yandex #profile_modal_overlay {
 #profile_modal_overlay .lk-pane .lk-home-facts { gap: 0; padding-top: 4px; padding-bottom: 4px; }
 #profile_modal_overlay .lk-pane .lk-home-facts .ad-kv:last-child { border-bottom: 0; }
 
-/* «Мои данные»: способ входа и оформление — две карточки в ряд, «Выйти» — обычная кнопка под ними,
-   а не красная полоса на всю ширину */
-#profile_modal_overlay #profile_tab_requisites > #profile_login_method { order: 1; }
-#profile_modal_overlay #profile_tab_requisites > #profile_theme_choice { order: 2; }
-#profile_modal_overlay #profile_tab_requisites > .lk-profile-logout {
-    order: 3;
-    grid-column: 1 / span 1;
-    justify-self: start;
-    width: auto;
-    height: 36px;
-    padding: 0 18px;
-    margin: 0 0 14px;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: var(--ad-radius);
-}
-
 /* «Объекты»: таблица лежит в такой же карточке, как остальные блоки */
 #profile_modal_overlay #profile_cloud_list_content {
     background: var(--surface-light);
@@ -18586,9 +18496,281 @@ body.theme-yandex #profile_modal_overlay {
 #profile_modal_overlay .lk-pane details.lk-group > .lk-group-body { padding: 8px 14px 10px; }
 #profile_modal_overlay .lk-pane details.lk-group > .lk-group-body > .lk-hint { margin-top: 0; }
 
-#profile_modal_overlay .lk-layout:not(.lk-forced) #profile_tab_requisites > .lk-section-head { display: none; }
 #profile_modal_overlay .lk-pane .lk-section-head > button:last-child, #profile_modal_overlay .lk-pane .lk-section-head > .summary-period { margin-left: auto; }
 
-#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child > h4 { display: none; }
 
 #profile_modal_overlay #profile_tab_manager > :first-child { margin-top: 0 !important; }
+
+/* ═══════ КАБИНЕТ: ЕДИНЫЙ ЯЗЫК РАЗДЕЛОВ (03.10.2026) ═══════
+   Один заголовок, одна форма, одни кнопки — у монтажника и продавца одинаково.
+   Темы меняют цвета через переменные; геометрию (радиусы, отступы, кегли) — нет.
+   Разметка разделов — index.html (#profile_modal_overlay), пункты меню — app.CABINET_MENU. */
+
+/* Заголовок раздела: имя 17px, под ним пояснение, справа действия. Эмодзи в старых
+   заголовках (renderOrdersTab, renderSubscriptionTab и др.) не показываем. */
+#profile_modal_overlay .lk-section-head {
+    align-items: flex-start;
+    margin: 0 0 16px;
+    padding: 0;
+    border-bottom: 0;
+}
+#profile_modal_overlay .lk-section-head h4 {
+    font-size: 17px !important;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 !important;
+}
+#profile_modal_overlay .lk-section-head .ui-emo { display: none; }
+#profile_modal_overlay .lk-section-head > div:first-child { min-width: 0; }
+.lk-sub {
+    color: var(--text-sec);
+    font-size: 12px;
+    line-height: 1.45;
+    margin-top: 3px;
+}
+
+/* Форма: сетка из 12 колонок, поле = подпись + ввод. На планшете треть ряда становится
+   половиной, на телефоне всё в один столбец. */
+.lk-form {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 12px;
+}
+.lk-field {
+    grid-column: span 12;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.lk-span-4 { grid-column: span 4; }
+.lk-span-6 { grid-column: span 6; }
+.lk-span-12 { grid-column: span 12; }
+.lk-field > label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--text-sec);
+}
+#profile_modal_overlay .lk-field > .auth-input {
+    width: 100%;
+    max-width: none;
+    margin: 0 !important;
+    height: 36px !important;
+    font-size: 13px;
+    padding: 0 12px;
+    box-sizing: border-box;
+}
+#profile_modal_overlay .lk-field > textarea.auth-input {
+    height: 76px !important;
+    padding: 8px 12px;
+    resize: vertical;
+    font-family: inherit;
+    line-height: 1.4;
+}
+.lk-field-note { min-height: 14px; font-size: 11px; color: var(--text-sec); }
+.lk-field-photo {
+    flex-direction: row;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 2px;
+}
+.lk-photo {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 56px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 800;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid var(--ad-line, var(--border));
+}
+.lk-photo img { width: 100%; height: 100%; object-fit: cover; }
+.lk-logo-box {
+    width: 96px;
+    height: 56px;
+    flex: 0 0 96px;
+    background: #fff;
+    border: 1px solid var(--ad-line, var(--border));
+    border-radius: var(--ad-radius, 8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 4px;
+    box-sizing: border-box;
+}
+.lk-logo-box img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.lk-photo-actions, .lk-inline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.lk-choice {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    max-width: 420px;
+}
+/* Промокод: поле и кнопка, которые рисует renderProfilePromoField, — в одну строку с полями */
+#profile_promo_box .auth-input { margin: 0 !important; height: 36px !important; flex: 1 1 auto; min-width: 0; }
+
+/* Строка настройки: подпись и пояснение слева, управление справа. Внутри карточки
+   строки разделены тонкой линией, одиночная строка — сама карточка. */
+.lk-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--ad-line, var(--border));
+}
+.lk-card > .lk-setting:first-child { padding-top: 2px; }
+.lk-card > .lk-setting:last-child { border-bottom: 0; padding-bottom: 2px; }
+.lk-card.lk-setting { border-bottom: 1px solid var(--ad-line, var(--border)); padding: 12px 14px; }
+.lk-setting-text { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.lk-setting-text b { font-size: 13px; font-weight: 600; color: var(--text-main); }
+.lk-setting-text span { font-size: 12px; color: var(--text-sec); line-height: 1.45; }
+#profile_modal_overlay .lk-num {
+    width: 88px !important;
+    max-width: 88px;
+    margin: 0 !important;
+    height: 36px !important;
+    text-align: center;
+    flex: 0 0 auto;
+}
+.lk-chips-inline { margin: 0; flex: 0 0 auto; justify-content: flex-end; }
+.lk-setting .switch { flex: 0 0 auto; }
+
+.lk-banner {
+    padding: 10px 12px;
+    border-radius: var(--ad-radius, 8px);
+    font-size: 12.5px;
+    line-height: 1.45;
+    margin-bottom: 12px;
+}
+.lk-banner-danger {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: #EF4444;
+    font-weight: 600;
+}
+
+/* Кнопки: .lk-btn-sm (30px, второстепенные) уже есть; .lk-btn — основные 36px в футере формы */
+.lk-btn {
+    height: 36px;
+    padding: 0 18px;
+    border-radius: var(--ad-radius, 8px);
+    border: 1px solid var(--ad-line, var(--border));
+    background: var(--surface);
+    color: var(--text-main);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.lk-btn:hover { background: var(--primary-light); border-color: transparent; color: var(--primary); }
+.lk-btn-primary, .lk-btn-primary:hover { background: var(--primary); border-color: var(--primary); color: #fff; }
+.lk-btn-primary:hover { filter: brightness(0.94); }
+#profile_modal_overlay .lk-pane .lk-btn-yandex,
+#profile_modal_overlay .lk-pane .lk-btn-yandex:hover { background: #FC3F1D; border-color: #FC3F1D; color: #fff; }
+.lk-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--primary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.lk-link:hover { text-decoration: underline; }
+.lk-footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--ad-line, var(--border));
+    padding-top: 12px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+}
+
+/* Таблица смет: ряд из трёх кнопок и «⋯», редкие действия — в меню .lk-pop */
+.lk-row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    align-items: center;
+}
+#profile_modal_overlay .lk-pane .lk-btn-more {
+    width: 32px;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1;
+}
+#profile_modal_overlay .lk-pane .btn-get-invoice {
+    height: 28px;
+    padding: 0 12px;
+    border-radius: var(--ad-radius, 8px);
+    background: #10B981;
+    box-shadow: none;
+    font-size: 12px;
+    font-weight: 600;
+    transform: none;
+}
+.lk-pop {
+    position: fixed;
+    z-index: 10050;
+    min-width: 230px;
+    padding: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.14);
+    display: flex;
+    flex-direction: column;
+}
+.lk-pop-item {
+    text-align: left;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    padding: 9px 12px;
+    font: inherit;
+    font-size: 13px;
+    color: var(--text-main);
+    cursor: pointer;
+}
+.lk-pop-item:hover { background: var(--primary-light); color: var(--primary); }
+.lk-pop-item.danger { color: #EF4444; }
+.lk-pop-item.danger:hover { background: rgba(239, 68, 68, 0.08); color: #EF4444; }
+
+@media screen and (min-width: 600px) and (max-width: 1024px) {
+    .lk-span-4 { grid-column: span 6; }
+}
+@media screen and (max-width: 599px) {
+    .lk-span-4, .lk-span-6 { grid-column: span 12; }
+    .lk-setting { flex-direction: column; align-items: flex-start; gap: 8px; }
+    .lk-chips-inline { justify-content: flex-start; }
+    .lk-footer .lk-btn { flex: 1; }
+}
+/* Телефон: футер формы прилипает к низу, как и прежний (правило по div[style*="border-top"]
+   его больше не ловит — у футера нет инлайн-стиля) */
+@media screen and (max-width: 768px) {
+    #profile_modal_overlay .lk-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 3;
+        background: var(--surface);
+        margin-top: auto;
+        padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+    body.dark-mode #profile_modal_overlay .lk-footer { background: #1E1E1E; }
+}
+
