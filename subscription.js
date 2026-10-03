@@ -215,6 +215,9 @@ const Subscription = {
     trialSettings: function () {
         const t = Object.assign({}, this.TRIAL_DEFAULTS, this.raw().trial || {});
         t.days = Math.min(60, Math.max(1, Math.round(this.num(t.days)) || 14));
+        // Дата с годом до 2000 — след старого поля, где ввод года застревал на «0020»; такой даты не бывает
+        if (String(t.from || '') < '2000') t.from = '';
+        if (String(t.to || '') < '2000') t.to = '';
         return t;
     },
 
@@ -307,7 +310,8 @@ const Subscription = {
         if (!el) {
             el = document.createElement('div');
             el.id = 'sub_cal_overlay';
-            el.style.cssText = 'position:fixed; inset:0; z-index:100000; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px;';
+            // Выше окон-оверлеев админки (у них 9999999+): со 100000 календарь открывался под панелью
+            el.style.cssText = 'position:fixed; inset:0; z-index:2147483000; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px;';
             el.addEventListener('mousedown', e => { if (e.target === el) this.closeCal(); });
             document.body.appendChild(el);
         }
