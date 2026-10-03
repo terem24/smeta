@@ -4979,6 +4979,34 @@ function ufhAutoColl(f) {
 }
 
 /**
+ * Котельную отметили (зона «Котельная» или комната с таким названием) — оба коллектора,
+ * тёплого пола и радиаторов, переезжают к её стене, даже если их переставляли руками: отметка
+ * котельной — прямое указание, где им стоять. Срабатывает на появление или смену контура
+ * котельной (f.boilerKey), а не на каждую перерисовку, поэтому потом коллекторы можно
+ * переставить; у проектов, где котельная уже стояла до этой функции, ничего не двигаем.
+ */
+function ufhBoilerSync(f) {
+  if (!window.projectPlans || !projectPlans.boilerZone) return false;
+  var bz = projectPlans.boilerZone(f), key = bz ? JSON.stringify(bz.pts) : '';
+  var first = f.boilerKey === undefined;                      // этаж впервые попал сюда: котельной ещё не было ('') или проект старый
+  if (key === (f.boilerKey || '') && !first) return false;
+  if (first && !bz) { f.boilerKey = ''; return false; }       // запомнили: котельной нет — её появление будет переходом
+  f.boilerKey = key;
+  if (!bz) return false;
+  if (first && f.coll && !f.collAuto) return false;        // старый проект: котельная уже стояла, коллектор поставлен рукой — не трогаем
+  var tz = (f.zones || []).filter(function (z) { return z.type === 'tp'; });
+  var sx = 0, sy = 0, sa = 0;
+  tz.forEach(function (z) { var a = Math.abs(area(z.pts)) || 1, c = centroid(z.pts); sx += c[0] * a; sy += c[1] * a; sa += a; });
+  var C = sa ? [sx / sa, sy / sa] : centroid(bz.pts);
+  var bp = projectPlans.wallSpot(f, bz, C, 0.16).p;
+  if (tz.length) { f.coll = { x: Math.round(bp[0]), y: Math.round(bp[1]) }; delete f.collAng; f.collAuto = true; }
+  delete f.radColl; delete f.radCollAng;                     // коллектор радиаторов сам встанет у стены котельной
+  if (!first) hint('<span class=ok>Котельная отмечена — коллекторы перенесены к её стене.</span> Переставить можно мышью.');
+  setTimeout(function () { renderZones(); draw(); }, 0);
+  return true;
+}
+
+/**
  * Коллектор тёплого пола, поставленный самим мастером (collAuto), следит за
  * разметкой: назвали комнату «Котельная» позже первого клика по тёплому
  * полу — коллектор переезжает к её стене. Поставленный рукой не трогаем.
@@ -4987,6 +5015,7 @@ function ufhAutoColl(f) {
  */
 function ufhFollowColl() {
   var f = F();
+  if (f && f.pxPerM && !dragC) ufhBoilerSync(f);
   if (!f || !f.pxPerM || (f.coll && !f.collAuto) || dragC) return;
   var was = f.coll ? f.coll.x + ',' + f.coll.y : '';
   if (!f.zones.some(function (z) { return z.type === 'tp'; })) {
