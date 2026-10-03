@@ -47720,7 +47720,7 @@ const app = {
         };
         // Бланк гарантии STOUT печатается последним листом: сроки и полисы лежат в
         // docs.js, грузим его заранее — печатная копия собирается синхронно
-        if (this.warrantyFormEligible()) {
+        if (this.warrantyFormEligible() || this.warrantyLinkEligible(showEq)) {
             try { await this.lazy('docs'); } catch (e) { console.warn('[executeDownload] docs.js не загрузился, бланк гарантии пропущен', e); }
         }
         // Разделы «Ваш дом» и «Гарантия» рисуются тем же кодом, что и страница клиента
@@ -82910,7 +82910,7 @@ function prepareForPrint() {
             try {
                 const kpData = app.kpPersonalData();
                 if (kpData && window.KpShare) {
-                    const wr = app.warrantyFormEligible() ? app.warrantyLinkData() : null;
+                    const wr = app.warrantyLinkEligible(showEq) ? app.warrantyLinkData() : null;
                     kpNode = window.KpShare.house(kpData, wr);
                 } else if (kpData) {
                     const kpHtml = app.kpPersonalHtml(kpData, app._kpQr);
@@ -82980,24 +82980,26 @@ function prepareForPrint() {
         // render(); пустой (долю STOUT не набрали) в печать не идёт. ---
         // Оформление — как лист «Гарантия» на странице клиента (kp_share.js); нет модуля или
         // данных — прежний бланк.
+        // Условие то же, что у листа в ссылке (warrantyLinkEligible): адрес и заказчик листу не нужны,
+        // поэтому «Без адреса» гарантию не отключает.
         const wpLive = document.getElementById('warranty_print');
-        if (wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
-            let wNode = null;
+        let wNode = null;
+        if (window.KpShare && printBin.children.length > 0 && app.warrantyLinkEligible(showEq)) {
             try {
-                if (window.KpShare) {
-                    const tg = app.state.tgUser || {};
-                    const mgr = { name: app.formatShortName(tg) || '', phone: tg.phone || '', customCompany: app.state.customCompany || null };
-                    wNode = window.KpShare.warranty(app.warrantyLinkData(), mgr);
-                }
+                const tg = app.state.tgUser || {};
+                const mgr = { name: app.formatShortName(tg) || '', phone: tg.phone || '', customCompany: app.state.customCompany || null };
+                wNode = window.KpShare.warranty(app.warrantyLinkData(), mgr);
             } catch (e) { wNode = null; }
+        }
+        if (wNode) {
             const wpPage = document.createElement('div');
-            if (wNode) {
-                wpPage.className = 'print-page-break';
-                wpPage.appendChild(wNode);
-            } else {
-                wpPage.className = 'warranty-print';
-                wpPage.innerHTML = wpLive.innerHTML;
-            }
+            wpPage.className = 'print-page-break';
+            wpPage.appendChild(wNode);
+            printBin.appendChild(wpPage);
+        } else if (wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
+            const wpPage = document.createElement('div');
+            wpPage.className = 'warranty-print';
+            wpPage.innerHTML = wpLive.innerHTML;
             printBin.appendChild(wpPage);
         }
 
