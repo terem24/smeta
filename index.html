@@ -173,7 +173,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.61">
+    <link rel="stylesheet" href="style.css?v=4.62">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.28" defer></script>
@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=10.68" defer></script>
+    <script src="app.js?v=10.74" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -220,7 +220,7 @@
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
-    <script src="project_plans.js?v=1.23" defer></script>
+    <script src="project_plans.js?v=1.26" defer></script>
     <!-- Подписка Профи: цены и ссылки на оплату, акции, региональные цены,
          учёт заявок и оплат, вкладка «Оплата подписки» в панели. Нужен и вне
          панели: окно тарифа и окно оплаты берут цены отсюда. -->
@@ -243,6 +243,7 @@
             recognize: ['recognize_match.js?v=7.6', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.8',
                 'recognize.js?v=9.20', 'recognize_plan.js?v=2.6', 'recognize_project.js?v=2.6', 'recognize_sketch.js?v=1.4'],
             docs: ['warranty.js?v=1.0', 'docs.js?v=3.5'],
+            warranty_admin: ['warranty_admin.js?v=1.0'],
             excel: ['excel_export.js?v=1.4'],
             reprice: ['reprice.js?v=1.4'],
             qrcode: ['qrcode.min.js'],
@@ -769,8 +770,16 @@
                 <div class="label-row" id="blk_plan_editor_row"
                     style="margin: 18px 0 0; padding: 12px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); display: none;">
                     <span class="lbl">План помещений</span>
-                    <button type="button" onclick="app.openPlanEditor()"
-                        style="font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: inherit; cursor: pointer;">Загрузить</button>
+                    <!-- Раскладка тёплого пола по плану (app.openUfhPlan, тариф «Профи»)
+                         и полный редактор проектирования — видимость в app.syncDesignUI -->
+                    <span style="display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
+                        <button type="button" id="btn_ufhplan" onclick="app.openUfhPlan()"
+                            title="Загрузите план дома: отметьте кликом комнаты с тёплым полом, радиаторы встанут под окнами — раскладка петель и трассы радиаторов появятся в смете и в КП"
+                            style="font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--primary); background: transparent; color: var(--primary); cursor: pointer; display: none;">Загрузить план</button>
+                        <button type="button" id="btn_plan_full" onclick="app.openPlanEditor()"
+                            title="Полный редактор планов для листов проекта: радиаторы, сантехника, котельная"
+                            style="font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: inherit; cursor: pointer;">Проектирование ↗</button>
+                    </span>
                 </div>
             </div>
 
@@ -2340,6 +2349,9 @@
             <!-- Обоснование варианта «Подешевле» на печати и в PDF: на экране скрыто,
                  печатается последней страницей КП (app.renderCheaperPrint) -->
             <div id="cheaper_print" class="cheaper-print"></div>
+            <!-- Бланк «Гарантия на систему STOUT»: на экране скрыт, печатается последним
+                 листом КП при доле STOUT не ниже порога (app.renderWarrantyPrint) -->
+            <div id="warranty_print" class="warranty-print"></div>
             <div id="contest_widget" class="no-print"></div>
             <div class="doc-footer" style="display: flex; flex-direction: column; align-items: stretch;">
                 <div class="discount-container no-print" id="discount_block" style="display: none; width: 100%; flex-direction: column; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;">
@@ -2949,6 +2961,17 @@
                     <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
                         <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Схема</span>
                         <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">гидравлическая</span>
+                    </div>
+                </div>
+
+                <!-- Раздел «Ваш дом» в начале КП: город и теплопотери, «Вы просили —
+                     мы учли», комнаты, стоимость отопления, QR на онлайн-КП
+                     (app.kpPersonalData). Виден, когда есть что показать. -->
+                <div class="share-option-card" id="card_opt_house" style="display: none;" onclick="app.toggleShareOption('house')" title="Раздел о доме заказчика в начале КП: комнаты, стоимость отопления, что учтено из анкеты">
+                    <input type="checkbox" id="share_opt_house" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Ваш дом</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">комнаты, стоимость отопления</span>
                     </div>
                 </div>
             </div>

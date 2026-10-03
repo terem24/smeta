@@ -24,8 +24,10 @@
   'use strict';
 
   var AVAIL = { x0: 100, y0: 24, x1: 405, y1: 266 };  // поле под подложку, мм листа
-  var COLT = { tp: '#ff8000', rad: '#d22222', boiler: '#5577aa', wc: '#0b7285', cold: '#7a7a7a' };
-  var NAMES = { tp: 'Тёплый пол', rad: 'Радиаторы', boiler: 'Котельная', wc: 'Санузел', cold: 'Без обогрева' };
+  // room — контур помещения без тёплого пола (модуль раскладки ТП): на листах
+  // это просто подписанная комната
+  var COLT = { tp: '#ff8000', rad: '#d22222', boiler: '#5577aa', wc: '#0b7285', cold: '#7a7a7a', room: '#8a94a6' };
+  var NAMES = { tp: 'Тёплый пол', rad: 'Радиаторы', boiler: 'Котельная', wc: 'Санузел', cold: 'Без обогрева', room: 'Помещение' };
 
   function n(v) { return Math.round(v * 100) / 100; }
   function esc(s) {
@@ -1562,6 +1564,173 @@
     var sx = 0, sy = 0, rs = f.rads || [];
     rs.forEach(function (r) { sx += r.x; sy += r.y; });
     return { x: sx / (rs.length || 1), y: sy / (rs.length || 1), src: 'rads' };
+  }
+
+  /**
+   * Трассы радиаторов этажа по плану — для плана дома в смете и КП.
+   * Лучевая (tee=false): от коллектора радиаторов к каждому прибору своя пара
+   * труб; общие участки складываются в пучок. Тройниковая: одна магистраль
+   * обходит приборы по очереди (ближайший следующий). Трасса — по сетке этажа
+   * тем же поиском, что подводки тёплого пола: вдоль стен, середину комнаты и
+   * петли тёплого пола обходит, стену переходит, только если так заметно
+   * короче (дверей план не знает). Подключение — у конца прибора, ближнего к
+   * коллектору, в 12 см от стены.
+   * Возвращает { C, tee, items: [{ i, p, pts, L }], segs: [{ a, b, n }], totalM }
+   * или null. L — метров трубы к прибору (подача + обратка, с подъёмами).
+   */
+  var RAD_IN_M = 0.12;
+  // Цена клетки для трассы радиаторов: стена дорогая — переходить её трасса
+  // будет там, где комнаты смыкаются (в проёме), а не где придётся.
+  var RCOST_WALL = 20, RCOST_MID = 2, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
+  function radRoutes(f, stepMm, tee) {
+    var rads = (f.rads || []).filter(function (r) { return r && isFinite(r.x) && isFinite(r.y); });
+    if (!rads.length || !f.pxPerM) return null;
+    var rooms = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
+    if (!rooms.length) return null;
+    var ppm = f.pxPerM, C = radCollector(f);
+    var g = floorGrid({ pxPerM: ppm, coll: { x: C.x, y: C.y } },
+      rooms.concat([{ pts: rads.map(function (r) { return [r.x, r.y]; }) }]));
+    if (!g) return null;
+    var N = g.W * g.H, own = new Int32Array(N), k;
+    rooms.forEach(function (z, i) { polyCells(g, z.pts, function (q) { own[q] = i + 1; }); });
+    var cold = new Uint8Array(N), tpM = new Uint8Array(N);
+    (f.zones || []).forEach(function (z) {
+      if (z && z.type === 'cold' && z.pts && z.pts.length > 2) polyCells(g, z.pts, function (q) { cold[q] = 1; });
+    });
+    // участки петель тёплого пола — трасса радиаторов их обходит
+    try {
+      floorLoops(f, stepMm || 150, loopLimit(stepMm || 150)).forEach(function (Z) {
+        (Z.loops || []).forEach(function (l) {
+          if (!l.rect) return;
+          var a = cellAt(g, [l.rect[0], l.rect[1]]), b = cellAt(g, [l.rect[2], l.rect[3]]);
+          for (var y = Math.floor(a / g.W); y <= Math.floor(b / g.W); y++)
+            for (var x = a % g.W; x <= b % g.W; x++) tpM[y * g.W + x] = 1;
+        });
+      });
+    } catch (e) { /* без тёплого пола — и обходить нечего */ }
+    // Улица: клетка вне комнат дальше 0,4 м от ближайшей комнаты (дальше любой
+    // стены). Трасса снаружи дома недопустима — первая версия обходила по полю
+    // за стеной гостиную с тёплым полом.
+    var near = new Uint8Array(N).fill(255), qq = new Int32Array(N), qh = 0, qt = 0;
+    for (k = 0; k < N; k++) if (own[k]) { near[k] = 0; qq[qt++] = k; }
+    while (qh < qt) {
+      var c0 = qq[qh++], cx0 = c0 % g.W;
+      if (near[c0] >= 4) continue;
+      [cx0 > 0 ? c0 - 1 : -1, cx0 < g.W - 1 ? c0 + 1 : -1, c0 - g.W, c0 + g.W].forEach(function (m2) {
+        if (m2 < 0 || m2 >= N || near[m2] !== 255) return;
+        near[m2] = near[c0] + 1; qq[qt++] = m2;
+      });
+    }
+    var wd = wallDist(g, own), cost = new Float32Array(N);
+    for (k = 0; k < N; k++) {
+      cost[k] = cold[k] ? RCOST_COLD : own[k]
+        ? 1 + (wd[k] > 2 ? RCOST_MID : 0) + (tpM[k] ? RCOST_TP : 0)
+        : (near[k] > 3 ? RCOST_OUT : RCOST_WALL);
+    }
+    // точка подключения прибора
+    var conn = rads.map(function (r) {
+      var a = (r.ang || 0) * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a);
+      var hw = (r.w || 0.8 * ppm) / 2 - 0.08 * ppm;
+      var e1 = [r.x + ux * hw, r.y + uy * hw], e2 = [r.x - ux * hw, r.y - uy * hw];
+      var e = (Math.abs(e1[0] - C.x) + Math.abs(e1[1] - C.y) <= Math.abs(e2[0] - C.x) + Math.abs(e2[1] - C.y)) ? e1 : e2;
+      // внутрь комнаты — та сторона прибора, где на 0,3 м лежит клетка комнаты
+      var nx = -uy, ny = ux, s = 1, t1 = cellAt(g, [r.x + nx * 0.3 * ppm, r.y + ny * 0.3 * ppm]);
+      if (!own[t1]) s = -1;
+      return [e[0] + nx * s * RAD_IN_M * ppm, e[1] + ny * s * RAD_IN_M * ppm];
+    });
+    var src = cellAt(g, [C.x, C.y]);
+    var trace = function (from, goalCell) {
+      var goal = new Int32Array(N).fill(-1);
+      goal[goalCell] = 0;
+      var R = routeAll(g, cost, from, goal, 1), best = -1, bd = Infinity;
+      for (var d = 0; d < 4; d++) if (R.dist[goalCell * 4 + d] < bd) { bd = R.dist[goalCell * 4 + d]; best = goalCell * 4 + d; }
+      if (best < 0) return null;
+      var cells = [];
+      for (var q = best; q >= 0; q = R.prev[q]) cells.push(q >> 2);
+      return cells.reverse();
+    };
+    var cnt = {}, items = [];
+    var addCells = function (cells, w) {
+      for (var j = 1; j < cells.length; j++) {
+        var a = cells[j - 1], b = cells[j];
+        if (a === b) continue;
+        var key = Math.min(a, b) + ':' + Math.max(a, b);
+        cnt[key] = (cnt[key] || 0) + w;
+      }
+    };
+    var clean = function (P) {
+      var out = [];
+      P.forEach(function (p) {
+        var L = out.length;
+        if (L && Math.abs(out[L - 1][0] - p[0]) < 1e-6 && Math.abs(out[L - 1][1] - p[1]) < 1e-6) return;
+        if (L >= 2) {
+          var a = out[L - 2], b = out[L - 1];
+          if ((Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(b[0] - p[0]) < 1e-6) ||
+              (Math.abs(a[1] - b[1]) < 1e-6 && Math.abs(b[1] - p[1]) < 1e-6)) { out[L - 1] = p; return; }
+        }
+        out.push(p);
+      });
+      return out;
+    };
+    var rise = (RAD_COLL_MM[0] + RAD_CONN_MM) / 1000;
+    // комната прибора — та, где точка подключения (она с комнатной стороны)
+    var roomOfConn = function (p) {
+      for (var j = rooms.length - 1; j >= 0; j--) if (pip(p, rooms[j].pts)) return rooms[j].name || '';
+      var z = zoneOfPoint(f, p);
+      return z ? z.name || '' : '';
+    };
+    if (!tee) {
+      rads.forEach(function (r, i) {
+        var cells = trace(src, cellAt(g, conn[i]));
+        if (!cells) return;
+        addCells(cells, 1);
+        var pts = clean(orthoPath([[C.x, C.y]].concat(cells.map(function (q) { return cellXY(g, q); }), [conn[i]])));
+        items.push({ i: i, p: conn[i], pts: pts, L: 2 * (lenPoly(pts) / ppm + rise), room: roomOfConn(conn[i]) });
+      });
+    } else {
+      var left = rads.map(function (r, i) { return i; }), at = src, prevP = [C.x, C.y], trunk = [[C.x, C.y]];
+      while (left.length) {
+        var bi = 0, bd = Infinity, ac = cellXY(g, at);
+        left.forEach(function (i, j) {
+          var d = Math.abs(conn[i][0] - ac[0]) + Math.abs(conn[i][1] - ac[1]);
+          if (d < bd) { bd = d; bi = j; }
+        });
+        var i = left.splice(bi, 1)[0], gc = cellAt(g, conn[i]);
+        var cells = trace(at, gc);
+        if (cells) {
+          addCells(cells, 2);
+          var leg = clean(orthoPath([prevP].concat(cells.map(function (q) { return cellXY(g, q); }), [conn[i]])));
+          trunk = trunk.concat(leg.slice(1));
+          items.push({ i: i, p: conn[i], pts: leg, L: 2 * (lenPoly(leg) / ppm) + 2 * RAD_CONN_MM / 1000, room: roomOfConn(conn[i]) });
+          at = gc; prevP = conn[i];
+        }
+      }
+      if (items.length) items[0].L += 2 * RAD_COLL_MM[0] / 1000;
+    }
+    // отрезки для рисования: подряд идущие клетки одной линии с одним числом труб
+    var segs = [], runs = {};
+    Object.keys(cnt).forEach(function (key) {
+      var ab = key.split(':'), a = +ab[0], b = +ab[1], hz = b - a === 1;
+      var line = hz ? Math.floor(a / g.W) : a % g.W, pos = hz ? a % g.W : Math.floor(a / g.W);
+      var rk = (hz ? 'h' : 'v') + line + ':' + cnt[key];
+      (runs[rk] = runs[rk] || []).push(pos);
+    });
+    Object.keys(runs).forEach(function (rk) {
+      var hz = rk[0] === 'h', parts = rk.slice(1).split(':'), line = +parts[0], n = +parts[1];
+      var ps = runs[rk].sort(function (x, y) { return x - y; }), i0, j0;
+      for (i0 = 0; i0 < ps.length; i0 = j0) {
+        for (j0 = i0 + 1; j0 < ps.length && ps[j0] === ps[j0 - 1] + 1; j0++) { /* сплошной участок */ }
+        var a0 = hz ? line * g.W + ps[i0] : ps[i0] * g.W + line;
+        var a1 = hz ? line * g.W + ps[j0 - 1] + 1 : (ps[j0 - 1] + 1) * g.W + line;
+        segs.push({ a: cellXY(g, a0), b: cellXY(g, a1), n: n });
+      }
+    });
+    items.forEach(function (it) {                  // хвост от клетки к самой точке подключения
+      var P = it.pts, q = P[P.length - 1], pr = P[P.length - 2];
+      if (pr) segs.push({ a: pr, b: q, n: tee ? 2 : 1 });
+    });
+    var total = items.reduce(function (s, it) { return s + it.L; }, 0);
+    return { C: C, tee: !!tee, items: items, segs: segs, totalM: total };
   }
 
   /** Зона, к которой относится прибор: та, внутри которой он стоит, иначе ближайшая */
@@ -3368,13 +3537,144 @@
     return out;
   }
 
+  /**
+   * Раскладка тёплого пола этажа для сметы и КП — без рамки листа: план
+   * (подложка бледно), комнаты, петли, пучок подводок, коллектор и номера
+   * контуров. Числа — те же loopRows, что на листе и в смете.
+   * Возвращает { svg, rows } или null, если петель на этаже нет.
+   * Рисуется в пикселях подложки (viewBox по комнатам с полем), поэтому
+   * толщины — в метрах через pxPerM.
+   */
+  // Радиаторы на плане дома: прибор, трассы и пучок — свои цвета, чтобы не
+  // путаться с петлями тёплого пола (те — светлые красный и синий).
+  var COL_RAD = '#c62828', COL_RAD_BUNDLE = '#9b2c2c';
+  function ufhView(f, stepMm, rooms, opts) {
+    opts = opts || {};
+    if (!f || !f.pxPerM) return null;
+    var hasTp = (f.zones || []).some(function (z) { return z.type === 'tp'; });
+    var rows = hasTp ? loopRows(f, stepMm, rooms || []) : [];
+    var RR = null;
+    if (opts.rads && (f.rads || []).length) {
+      try { RR = radRoutes(f, stepMm, !!opts.tee); } catch (e) { RR = null; }
+    }
+    if (!rows.length && !RR) return null;
+    var ppm = f.pxPerM, bundle = hasTp ? (floorLoops(f, stepMm, loopLimit(stepMm)).bundle || []) : [];
+    var all = [];
+    (f.zones || []).forEach(function (z) { (z.pts || []).forEach(function (p) { all.push(p); }); });
+    if (f.coll) all.push([f.coll.x, f.coll.y]);
+    if (RR) (f.rads || []).forEach(function (r) { all.push([r.x, r.y]); });
+    var b = bbox(all), pad = 0.6 * ppm;
+    var X0 = b[0] - pad, Y0 = b[1] - pad, W = b[2] - b[0] + 2 * pad, H = b[3] - b[1] + 2 * pad;
+    var m = function (v) { return Math.round(v * 10) / 10; };
+    var P = function (pts) { return pts.map(function (p) { return m(p[0]) + ',' + m(p[1]); }).join(' '); };
+    var lw = 0.035 * ppm, o = [];
+    o.push('<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + m(X0) + ' ' + m(Y0) + ' ' + m(W) + ' ' + m(H) +
+      '" style="display:block;background:#fff" font-family="system-ui,sans-serif">');
+    if (f.img) o.push('<image x="0" y="0" width="' + f.w + '" height="' + f.h + '" preserveAspectRatio="none" opacity="' +
+      (opts.imgOpacity != null ? opts.imgOpacity : 0.3) + '" href="' + String(f.img).replace(/&/g, '&amp;') + '"/>');
+    // комнаты: тёплый пол — тёплой заливкой, прочие — контуром
+    (f.zones || []).forEach(function (z) {
+      if (!z.pts || z.pts.length < 3) return;
+      var st = z.type === 'tp' ? 'fill:#fff3e6;fill-opacity:0.75;stroke:#ff8000;stroke-width:' + m(lw * 0.8)
+        : z.type === 'cold' ? 'fill:#e9e9e9;stroke:#9a9a9a;stroke-width:' + m(lw * 0.6)
+          : 'fill:none;stroke:#8a94a6;stroke-width:' + m(lw * 0.6) + ';stroke-dasharray:' + m(lw * 3) + ',' + m(lw * 2);
+      o.push('<polygon points="' + P(z.pts) + '" style="' + st + '"/>');
+    });
+    bundle.forEach(function (sg) {
+      o.push('<line x1="' + m(sg.a[0]) + '" y1="' + m(sg.a[1]) + '" x2="' + m(sg.b[0]) + '" y2="' + m(sg.b[1]) +
+        '" style="stroke:' + COL_BUNDLE + ';stroke-opacity:0.85;stroke-linecap:square;stroke-width:' +
+        m(Math.max(lw * 1.2, sg.n * 2 * BUNDLE_DRAW_M * ppm)) + '"/>');
+    });
+    var badges = [];
+    rows.forEach(function (R) {
+      var lp = R.loop;
+      if (!lp || !lp.sup) return;
+      [[lp.sup, COL_SUP], [lp.ret, COL_RET]].forEach(function (pr) {
+        o.push('<polyline points="' + P(pr[0]) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw) +
+          ';stroke-linejoin:round;stroke-linecap:round"/>');
+      });
+      badges.push([pointAt(lp.sup, 0.72), R.no]);
+    });
+    // Радиаторы: трассы полосой (ширина — по числу труб), сами приборы
+    // прямоугольником вдоль стены, номер «Р1…» с комнатной стороны
+    var radRows = [], radBadges = [];
+    if (RR) {
+      RR.segs.forEach(function (sg) {
+        o.push('<line x1="' + m(sg.a[0]) + '" y1="' + m(sg.a[1]) + '" x2="' + m(sg.b[0]) + '" y2="' + m(sg.b[1]) +
+          '" style="stroke:' + COL_RAD_BUNDLE + ';stroke-opacity:0.8;stroke-linecap:square;stroke-width:' +
+          m(Math.max(lw * 1.1, sg.n * 2 * BUNDLE_DRAW_M * ppm)) + '"/>');
+      });
+      var byI = {};
+      RR.items.forEach(function (it) { byI[it.i] = it; });
+      (f.rads || []).forEach(function (rd, i) {
+        var a = (rd.ang || 0) * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a);
+        var hw = (rd.w || 0.8 * ppm) / 2, hd = 0.05 * ppm, nx = -uy, ny = ux;
+        var q = [[rd.x - ux * hw - nx * hd, rd.y - uy * hw - ny * hd], [rd.x + ux * hw - nx * hd, rd.y + uy * hw - ny * hd],
+          [rd.x + ux * hw + nx * hd, rd.y + uy * hw + ny * hd], [rd.x - ux * hw + nx * hd, rd.y - uy * hw + ny * hd]];
+        o.push('<polygon points="' + P(q) + '" style="fill:' + COL_RAD + ';fill-opacity:0.35;stroke:' + COL_RAD +
+          ';stroke-width:' + m(lw * 0.9) + '"/>');
+        var it = byI[i], z = zoneOfPoint(f, [rd.x, rd.y]);
+        // номер — с той стороны прибора, где точка подключения (комната)
+        var side = it ? Math.sign((it.p[0] - rd.x) * nx + (it.p[1] - rd.y) * ny) || 1 : 1;
+        radBadges.push([[rd.x + nx * side * 0.42 * ppm, rd.y + ny * side * 0.42 * ppm], 'Р' + (i + 1)]);
+        var rm = z ? roomOf(z.name, rooms || []) : null;
+        radRows.push({ no: i + 1, name: rm ? rm.name : (z && z.name) || '', w: Math.round((rd.w || 0) / ppm * 10) / 10,
+          L: it ? Math.round(it.L * 10) / 10 : null });
+      });
+    }
+    // подписи комнат — у верхнего края контура, чтобы не спорить с номерами петель
+    var fs = 0.24 * ppm;
+    (f.zones || []).forEach(function (z) {
+      if (z.type === 'cold' || !z.name || !z.pts) return;
+      var bb = bbox(z.pts);
+      if (bb[2] - bb[0] < 1.2 * ppm) return;
+      o.push('<text x="' + m((bb[0] + bb[2]) / 2) + '" y="' + m(bb[1] + fs * 1.25) + '" font-size="' + m(fs) +
+        '" text-anchor="middle" style="fill:#333;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.25) + '">' +
+        esc(z.name) + '</text>');
+    });
+    var r = 0.24 * ppm;
+    badges.forEach(function (bd) {
+      o.push('<circle cx="' + m(bd[0][0]) + '" cy="' + m(bd[0][1]) + '" r="' + m(r) + '" style="fill:#fff;stroke:#333;stroke-width:' + m(lw * 0.6) + '"/>');
+      o.push('<text x="' + m(bd[0][0]) + '" y="' + m(bd[0][1] + r * 0.42) + '" font-size="' + m(r * 1.15) +
+        '" text-anchor="middle" style="fill:#111;font-weight:700">' + bd[1] + '</text>');
+    });
+    radBadges.forEach(function (bd) {
+      var w2 = r * 1.6, h2 = r * 1.3;
+      o.push('<rect x="' + m(bd[0][0] - w2 / 2) + '" y="' + m(bd[0][1] - h2 / 2) + '" width="' + m(w2) + '" height="' + m(h2) +
+        '" style="fill:#fff;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.6) + '"/>');
+      o.push('<text x="' + m(bd[0][0]) + '" y="' + m(bd[0][1] + r * 0.38) + '" font-size="' + m(r * 1.0) +
+        '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700">' + bd[1] + '</text>');
+    });
+    // Коллектор радиаторов — когда он не там же, где коллектор тёплого пола
+    if (RR && !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm)) {
+      var cw2 = 0.6 * ppm, ch2 = 0.22 * ppm;
+      o.push('<rect x="' + m(RR.C.x - cw2 / 2) + '" y="' + m(RR.C.y - ch2 / 2) + '" width="' + m(cw2) + '" height="' + m(ch2) +
+        '" style="fill:#f8d0d0;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.7) + '"/>');
+      o.push('<text x="' + m(RR.C.x) + '" y="' + m(RR.C.y + ch2 / 2 + fs * 0.95) + '" font-size="' + m(fs * 0.85) +
+        '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
+        (RR.tee ? 'Магистраль радиаторов' : 'Коллектор радиаторов') + '</text>');
+    }
+    if (f.coll) {
+      var cw = 0.6 * ppm, ch = 0.22 * ppm;
+      o.push('<rect x="' + m(f.coll.x - cw / 2) + '" y="' + m(f.coll.y - ch / 2) + '" width="' + m(cw) + '" height="' + m(ch) +
+        '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"/>');
+      o.push('<text x="' + m(f.coll.x) + '" y="' + m(f.coll.y - ch / 2 - fs * 0.35) + '" font-size="' + m(fs * 0.85) +
+        '" text-anchor="middle" style="fill:#c25e00;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
+        (RR && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm ? 'Коллекторы' : 'Коллектор') + '</text>');
+    }
+    o.push('</svg>');
+    return { svg: o.join(''), rows: rows.map(function (R) {
+      return { no: R.no, name: R.name, area: R.area, m: (R.loop && R.loop.lenM) || R.m, step: R.step, flow: R.flow, est: R.est };
+    }), radRows: radRows, radTee: RR ? RR.tee : null, radM: RR ? Math.round(RR.totalM * 10) / 10 : 0 };
+  }
+
   // floorLoops — для сметы и редактора: длина трубы и число выходов коллектора
   // берутся из той же укладки, что нарисована на листе (стенд — bench/ufh_sheet.js).
   // loopRows — для листа узла коллектора (project_ufh_manifold.js): номера,
   // длины и расходы петель там должны совпадать с листом укладки.
   window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom,
-    floorLoops: floorLoops, loopRows: loopRows, num1: num1,
+    floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, radRoutes: radRoutes,
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
     MAX_LOOP_M: MAX_LOOP_M, loopLimit: loopLimit, setLoopLimits: setLoopLimits };
 })();

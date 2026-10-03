@@ -1412,7 +1412,8 @@ const app = {
     // входа — режим регистрации нужен форме ещё до появления сессии. Ошибка
     // чтения (нет связи, таблица ещё не создана) означает «как было»: открытая
     // регистрация, а не запертая дверь для всех.
-    appSettings: { registration: { mode: 'open' } },
+    // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -1587,6 +1588,15 @@ const app = {
     applyOprosData: function (d) {
         const s = this.state;
         try {
+            // Что заказчик просил — для раздела КП «Вы просили — мы учли»
+            // (kpPersonalData). Без имени, телефона и адреса: в КП и в ссылку
+            // клиенту они не нужны.
+            const pick = {};
+            ['tp', 'rad', 'fuel', 'hw', 'people', 'auto', 'vent', 'watersource', 'live'].forEach(k => {
+                if (d[k] !== undefined && d[k] !== null && d[k] !== '') pick[k] = d[k];
+            });
+            if (d.tpRooms) pick.tpRooms = String(d.tpRooms).slice(0, 200);
+            if (Object.keys(pick).length) s.oprosAnswers = pick;
             s.objectType = 'house';
             const _a = parseFloat(d.area);
             if (_a > 0) s.area = Math.min(this.MAX_AREA || 2000, Math.round(_a));
@@ -4696,6 +4706,468 @@ const app = {
                 new ResizeObserver(() => { const w = out.offsetWidth; if (w !== lastW) { lastW = w; again(); } }).observe(out);
             }
         }
+    },
+
+    // ===================== Доля STOUT в смете =====================
+    //
+    // Для монтажника, не для клиента: по ней решается, подходит ли объект под
+    // бланк гарантии STOUT (порог — в настройках, по умолчанию 90 %).
+    //
+    // Делитель — не вся смета, а только то, где STOUT мог стоять: позиции, у чьей
+    // группы каталога есть хоть одна позиция STOUT. Газовый котёл, инсталляция,
+    // защита от протечек, теплоноситель, электрический тёплый пол в делитель не
+    // входят: STOUT их не делает, и штрафовать монтажника за них не за что.
+    // Канализационная труба REHAU входит — у STOUT бесшумная канализация есть.
+    // По отправленным КП (100 шт., 03.10.2026) так честнее: медиана доли по всей
+    // смете 84 %, а там, где STOUT мог стоять, — 91 %.
+    //
+    // Группы одного ROMMER, у которых STOUT-двойник лежит отдельным массивом:
+    // без этого списка ROMMER-дымоход считался бы «местом, где STOUT нет».
+    STOUT_TWIN_GROUPS: ['chimney_trad_60100', 'chimney_cond_60100', 'chimney_cond_80125', 'chimney_split_d80',
+        'water_manifolds_rommer', 'manifolds_shutoff_auto', 'rommer_pumps', 'outdoor_faucets', 'actuators_rommer'],
+
+    isStoutItem: function (it) {
+        if (!it) return false;
+        const art = String(it.id || it.displaySku || '');
+        if (/^S[A-Z]{2}-\d{4}-/.test(art)) return true;
+        if (/^R[A-Z]{2}-\d{4}-/.test(art)) return false;
+        // В список оборудования бренд попадает с умолчанием 'STOUT' (см. сборку
+        // currentEquipmentList), поэтому у своего и распознанного оборудования
+        // полю не верим — только названию.
+        if (it.recognized || /^(custom|rec_|user_)/i.test(art) || /^custom/.test(String(it.originalId || ''))) {
+            return /stout/i.test(String(it.name || ''));
+        }
+        return String(it.brand || '').trim().toUpperCase() === 'STOUT';
+    },
+
+    _stoutCoverage: null,
+    stoutCoverageIndex: function () {
+        if (this._stoutCoverage) return this._stoutCoverage;
+        const idx = new Map();   // артикул → true, если в его группе есть STOUT
+        const mark = (arr, has) => {
+            arr.forEach(x => {
+                if (!x || !x.id) return;
+                const cur = idx.get(x.id);
+                if (cur === undefined || has) idx.set(x.id, has);   // «есть STOUT» главнее
+            });
+        };
+        for (const key in catalog) {
+            const arr = catalog[key];
+            if (!Array.isArray(arr) || !arr.length) continue;
+            const has = arr.some(x => this.isStoutItem(x)) || this.STOUT_TWIN_GROUPS.includes(key);
+            mark(arr, has);
+            // Вложенные замены позиции STOUT (.rommer, .alts) — место, где по
+            // умолчанию стоял STOUT
+            arr.forEach(x => {
+                if (!x || !this.isStoutItem(x)) return;
+                [].concat(x.rommer || [], x.alts || []).forEach(n => { if (n && n.id) idx.set(n.id, true); });
+            });
+        }
+        // Радиаторы любой серии: категория у STOUT есть целиком
+        try { this._getSecRadSeries().forEach(s => { if (s.arr) mark(s.arr, true); }); } catch (e) { }
+        this._stoutCoverage = idx;
+        return idx;
+    },
+
+    // Бренды, чьи изделия лежат в смешанных группах рядом со STOUT, но аналога
+    // у STOUT не имеют (греющий кабель водопровода в узле ввода). Группа «с STOUT»
+    // записала бы их в чужой бренд на месте STOUT — а ставить там нечего.
+    STOUT_NEVER_BRANDS: ['SELFTEC DW'],
+
+    // Мог ли здесь стоять STOUT: своя группа каталога содержит STOUT
+    stoutCouldBeHere: function (it) {
+        if (this.isStoutItem(it)) return true;
+        if (this.STOUT_NEVER_BRANDS.includes(String(it.brand || '').trim().toUpperCase())) return false;
+        // Позиция пришла заменой позиции STOUT (режим ROMMER, ручная замена):
+        // originalId — артикул STOUT, значит STOUT здесь и стоял
+        if (/^S[A-Z]{2}-\d{4}-/.test(String(it.originalId || ''))) return true;
+        const idx = this.stoutCoverageIndex();
+        const keys = [it.originalId, it.id, it.displaySku].filter(Boolean);
+        for (const k of keys) { if (idx.has(k)) return !!idx.get(k); }
+        return false;   // своё/распознанное чужого бренда — вне каталога, не судим
+    },
+
+    stoutShare: function () {
+        const list = this.currentEquipmentList || [];
+        let total = 0, base = 0, stout = 0;
+        const missing = [];
+        list.forEach(it => {
+            if (!it || it.isOpt) return;
+            const s = Number(it.sum) || 0;
+            if (s <= 0) return;
+            total += s;
+            if (!this.stoutCouldBeHere(it)) return;
+            base += s;
+            if (this.isStoutItem(it)) stout += s;
+            else missing.push(it);
+        });
+        missing.sort((a, b) => (b.sum || 0) - (a.sum || 0));
+        return {
+            total, base, stout, missing,
+            pct: base > 0 ? Math.round(100 * stout / base) : null,
+            pctAll: total > 0 ? Math.round(100 * stout / total) : null
+        };
+    },
+
+    // Порог доли STOUT для бланка гарантии: app_settings, ключ warranty
+    // ({ threshold: 90, overrides: { '<calc_id>': 80 } }); меняется в панели
+    // управления (warranty_admin.js). Порог по объекту сильнее общего.
+    warrantyThreshold: function () {
+        const w = (this.appSettings && this.appSettings.warranty) || {};
+        const own = parseFloat(((w.overrides && typeof w.overrides === 'object') ? w.overrides : {})[String(this.state.calc_id || '')]);
+        if (own > 0 && own <= 100) return own;
+        const t = parseFloat(w.threshold);
+        return (t > 0 && t <= 100) ? t : 90;
+    },
+
+    // Снимок доли для реестра в панели управления: уезжает в calc_data.warranty при
+    // сохранении сметы в облако (stateForCloud). Панель смету не пересчитывает —
+    // ей хватает этих чисел, адреса и заказчика.
+    warrantySnapshot: function () {
+        if (!(this.currentEquipmentList || []).length) return null;
+        const sh = this.stoutShare();
+        if (sh.pct === null) return null;
+        const od = this.objectDetails();
+        return {
+            pct: sh.pct, pctAll: sh.pctAll,
+            stout: Math.round(sh.stout), base: Math.round(sh.base), total: Math.round(sh.total),
+            threshold: this.warrantyThreshold(),
+            address: od.address, client: od.client,
+            at: new Date().toISOString().slice(0, 10)
+        };
+    },
+
+    // Чип «STOUT: 84 %» в строке параметров сметы. Только при входе (клиент
+    // открывает КП по ссылке без входа) и с классом no-print — в печать и PDF
+    // не попадает. Зовётся из render() после сборки списка оборудования:
+    // сама строка параметров рисуется раньше, когда долю ещё не посчитать.
+    renderStoutShareChip: function () {
+        const ds = document.getElementById('doc_summary');
+        if (!ds) return;
+        const old = ds.querySelector('.ds-stout');
+        if (old) old.remove();
+        if (!this.state.tgUser) return;
+        const sh = this.stoutShare();
+        if (sh.pct === null) return;
+        const ok = sh.pct >= this.warrantyThreshold();
+        const el = document.createElement('span');
+        el.className = 'param-item no-print ds-stout ' + (ok ? 'ok' : 'low');
+        el.setAttribute('role', 'button');
+        el.tabIndex = 0;
+        el.innerHTML = `<span class="ui-emo">${ok ? '🛡️' : '🔸'} </span>STOUT: <b>${sh.pct} %</b>`;
+        el.onclick = () => this.showStoutShareInfo();
+        const date = ds.querySelector('.param-date');
+        if (date) ds.insertBefore(el, date); else ds.appendChild(el);
+        this.fitDocSummary();
+    },
+
+    showStoutShareInfo: function () {
+        const sh = this.stoutShare();
+        const thr = this.warrantyThreshold();
+        const rub = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const lines = [];
+        lines.push(`Оборудование STOUT: ${rub(sh.stout)} из ${rub(sh.base)} там, где STOUT мог стоять — ${sh.pct} %.`);
+        if (sh.pctAll !== null && sh.pctAll !== sh.pct) {
+            lines.push(`По всей смете (${rub(sh.total)}) — ${sh.pctAll} %: газовый котёл, инсталляции, защита от протечек и прочее, чего STOUT не делает, в расчёт доли не входят.`);
+        }
+        lines.push('');
+        if (sh.pct >= thr) {
+            lines.push(`Порог ${thr} % пройден — объект подходит под бланк гарантии STOUT.`);
+        } else {
+            const need = Math.ceil(thr / 100 * sh.base - sh.stout);
+            lines.push(`До порога ${thr} % не хватает ${rub(need)}. Чужой бренд там, где есть STOUT:`);
+            sh.missing.slice(0, 8).forEach(it => lines.push(`• ${it.name} — ${it.brand || '—'}, ${rub(it.sum)}`));
+            if (sh.missing.length > 8) lines.push(`… и ещё ${sh.missing.length - 8}`);
+            lines.push('');
+            lines.push('Заменить на STOUT: кнопка «Аналог» у раздела или таблица замены по клику на фото позиции.');
+        }
+        this.alert(lines.join('\n'), 'Доля STOUT в смете');
+    },
+
+    // ===================== Адрес объекта и заказчик перед печатью =====================
+    //
+    // Бланк гарантии STOUT выдаётся на конкретный объект, поэтому у КП должны быть
+    // точный адрес и заказчик. Хранятся там же, где их читают договор, акты и
+    // гарантийный талон (state.contract, поля из Docs.DEFAULTS): введённое один
+    // раз больше не спрашиваем, а docs.js подхватит без правок. Кнопка «Без адреса»
+    // печатает КП как раньше — только бланка гарантии к нему не будет.
+    objectDetails: function () {
+        const c = this.state.contract || {};
+        return {
+            address: String(c.objectAddress || '').trim(),
+            client: String(c.clientName || '').trim(),
+            phone: String(c.clientPhone || '').trim()
+        };
+    },
+
+    objectDetailsComplete: function () {
+        const d = this.objectDetails();
+        return !!(d.address && d.client);
+    },
+
+    ensureObjectDetails: function () {
+        if (this.objectDetailsComplete()) return Promise.resolve(true);
+        // Один раз отказался — по этому расчёту в этой сессии больше не спрашиваем
+        if (this._objDetailsSkipped && this._objDetailsSkipped === (this.state.calc_id || 'new')) return Promise.resolve(true);
+        return this.askObjectDetails();
+    },
+
+    askObjectDetails: function () {
+        if (document.body.classList.contains('menu-open')) {
+            try { this.toggleMenu(); } catch (e) { }
+        }
+        const cur = this.objectDetails();
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'calc-dialog-overlay';
+            const card = document.createElement('div');
+            card.className = 'calc-dialog-card';
+            card.innerHTML = `
+                <h3 class="calc-dialog-title">Объект и заказчик</h3>
+                <p class="calc-dialog-message">Нужны для бланка гарантии STOUT на объект. Те же данные пойдут в договор, акты и гарантийный талон — вводятся один раз.</p>
+                <div class="calc-dialog-input-wrapper">
+                    <input type="text" class="calc-dialog-input" id="objd_address" placeholder="Адрес объекта: город, улица, дом" autocomplete="street-address">
+                    <input type="text" class="calc-dialog-input" id="objd_client" placeholder="Заказчик: фамилия, имя, отчество" autocomplete="name">
+                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика (необязательно)" autocomplete="tel">
+                    <div class="calc-dialog-error" id="objd_err" style="display:none;"></div>
+                </div>
+                <div class="calc-dialog-buttons">
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" id="objd_skip">Без адреса</button>
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="objd_ok">Продолжить</button>
+                </div>`;
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+            const $ = id => card.querySelector('#' + id);
+            // Адрес по умолчанию — название объекта, если оно похоже на адрес (есть номер дома)
+            $('objd_address').value = cur.address || (/\d/.test(this.state.projectName || '') ? this.state.projectName : '');
+            $('objd_client').value = cur.client;
+            $('objd_phone').value = cur.phone;
+            const close = (val) => {
+                overlay.classList.remove('active');
+                setTimeout(() => { overlay.remove(); resolve(val); }, 200);
+            };
+            $('objd_skip').onclick = () => {
+                this._objDetailsSkipped = this.state.calc_id || 'new';
+                close(true);
+            };
+            $('objd_ok').onclick = () => {
+                const address = $('objd_address').value.trim();
+                const client = $('objd_client').value.trim();
+                const phone = $('objd_phone').value.trim();
+                if (!address || !client) {
+                    const err = $('objd_err');
+                    err.innerText = !address ? 'Укажите адрес объекта' : 'Укажите заказчика';
+                    err.style.display = 'block';
+                    $(!address ? 'objd_address' : 'objd_client').focus();
+                    return;
+                }
+                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: client });
+                if (phone) contract.clientPhone = phone;
+                this.state.contract = contract;
+                this.saveState();
+                close(true);
+            };
+            card.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') $('objd_ok').click(); });
+            setTimeout(() => {
+                overlay.classList.add('active');
+                $(cur.address ? 'objd_client' : 'objd_address').focus();
+            }, 10);
+        });
+    },
+
+    // ===================== Бланк «Гарантия на систему STOUT» =====================
+    //
+    // Последний лист КП. Печатается, когда доля STOUT не ниже порога, у расчёта
+    // есть адрес и заказчик, печатают оборудование и монтажник вошёл. Три слоя,
+    // у каждого свой подписант (решение владельца 03.10.2026):
+    //   1) гарантия изготовителя STOUT по разделам сметы — цитируем stout.ru/guarantee
+    //      и паспорта (Docs.warrantyMonthsFor: BRAND_WARRANTY + warranty.js);
+    //   2) ответственность изготовителя застрахована (Docs.INSURANCE);
+    //   3) исполнитель даёт срок на работы сверх закона — его собственное
+    //      дополнительное обязательство (п. 7 ст. 5 ЗоЗПП). Только срок, без сервиса.
+    // Слов «расширенная гарантия STOUT» от имени завода нет: такой программы у
+    // STOUT не существует, а бланк подписывает монтажник. На стадии КП — отметка
+    // «предварительно»: обязательство вступает после акта. Шапка — монтажника,
+    // STOUT только в заголовке: чужой логотип в шапке читался бы как бумага от завода.
+    WARRANTY_EXT_WORKS_MONTHS: 36,
+
+    // Группы артикулов STOUT словами — для таблицы сроков (ключ — начало артикула).
+    // Только то, что сверено по каталогу; неизвестный префикс берёт слова из названия.
+    WARRANTY_KINDS: {
+        SRB: 'радиаторы биметаллические', SRA: 'радиаторы алюминиевые', SCN: 'конвекторы', SCQ: 'конвекторы',
+        SVT: 'термостатические клапаны', SVL: 'клапаны радиаторные', SVR: 'клапаны радиаторные', SVH: 'узлы нижнего подключения',
+        SPX: 'трубы', SPM: 'трубы', SPS: 'трубы', SPI: 'трубы',
+        SFA: 'фитинги', SFP: 'фитинги', SFC: 'фитинги', SFH: 'фитинги', SFS: 'фитинги', SFB: 'фитинги', SFT: 'резьбовые фитинги',
+        SVB: 'шаровые краны', SVS: 'предохранительная и воздухоотводная арматура', SEB: 'котлы электрические', SST: 'стабилизаторы и дымоходы',
+        SMB: 'коллекторы', SMS: 'коллекторные блоки', SMF: 'маты тёплого пола', SSV: 'принадлежности тёплого пола', SDG: 'насосные группы и узлы подмеса',
+        SPC: 'циркуляционные насосы', STH: 'расширительные баки', STW: 'расширительные баки', SWH: 'водонагреватели', SCC: 'коллекторные шкафы',
+        STE: 'автоматика', SMH: 'автоматика', SKB: 'канализация бесшумная', SAC: 'крепёж', SHQ: 'полотенцесушители', SFW: 'фильтры'
+    },
+
+    warrantyFormEligible: function () {
+        if (!this.state.tgUser) return false;
+        if (this.printOptions && this.printOptions.eq === false) return false;
+        if (!this.objectDetailsComplete()) return false;
+        const sh = this.stoutShare();
+        return sh.pct !== null && sh.pct >= this.warrantyThreshold();
+    },
+
+    renderWarrantyPrint: function () {
+        const el = document.getElementById('warranty_print');
+        if (!el) return;
+        // Сроки и полисы — в docs.js: грузится лениво перед печатью (executeDownload).
+        // Пока его нет, блок пуст и на печати скрыт (:empty).
+        el.innerHTML = (typeof Docs !== 'undefined' && this.warrantyFormEligible()) ? this.warrantyFormHtml() : '';
+    },
+
+    // Вид оборудования словами: по префиксу артикула, иначе первые слова
+    // названия без размеров, дюймов и резьбы
+    warrantyKindOf: function (it) {
+        const art = String(it.displaySku || it.id || '');
+        return this.WARRANTY_KINDS[art.split('-')[0]]
+            || String(it.name || '').toLowerCase().split(/[,(]/)[0].trim().split(/\s+/)
+                .filter(wd => !/[\d"”″’']/.test(wd) && !/^(вр|нр|бар|мм|dn|х|x|-)$/.test(wd)).slice(0, 3).join(' ');
+    },
+
+    // Позиции STOUT сметы со сроком и видом; без необязательных и без срока в паспорте
+    warrantyItems: function () {
+        const out = [];
+        (this.currentEquipmentList || []).forEach(it => {
+            if (!it || it.isOpt || !this.isStoutItem(it)) return;
+            const kind = this.warrantyKindOf(it);
+            const w = Docs.warrantyMonthsFor(it);
+            if (!kind || !w || !w.months) return;
+            out.push({ it: it, kind: kind, months: w.months, sum: Number(it.sum) || 0 });
+        });
+        return out;
+    },
+
+    // Сроки по группам: «10 лет — радиаторы; 5 лет — трубы, фитинги, краны; …».
+    // Клиенту нужен один взгляд, а не таблица на двенадцать строк: виды сворачиваем
+    // по сроку, у вида с разными сроками в разных позициях остаётся меньший.
+    warrantyTermGroups: function () {
+        const byKind = new Map();
+        this.warrantyItems().forEach(x => {
+            const k = byKind.get(x.kind);
+            if (!k || x.months < k.months) byKind.set(x.kind, { months: x.months, sum: (k ? k.sum : 0) + x.sum });
+            else k.sum += x.sum;
+        });
+        const byMonths = new Map();
+        byKind.forEach((v, kind) => {
+            if (!byMonths.has(v.months)) byMonths.set(v.months, []);
+            byMonths.get(v.months).push({ kind: kind, sum: v.sum });
+        });
+        return [...byMonths.entries()]
+            .sort((a, b) => b[0] - a[0])
+            .map(([months, kinds]) => ({
+                months: months,
+                kinds: kinds.sort((a, b) => b.sum - a.sum).map(k => k.kind)
+            }));
+    },
+
+    // Плитки с фото: самые весомые позиции STOUT разных видов. Расходники со
+    // сроком меньше двух лет (маты, шкафы, баки) в витрину не берём — они не то,
+    // ради чего клиент выбирает систему, а «1 год» рядом с «10 лет» сбивает.
+    warrantyPhotoTiles: function (max) {
+        const seen = new Set();
+        return this.warrantyItems()
+            .filter(x => x.months >= 24)
+            .sort((a, b) => b.sum - a.sum)
+            .filter(x => { if (seen.has(x.kind)) return false; seen.add(x.kind); return true; })
+            .slice(0, max || 5);
+    },
+
+    // Система объекта одной строкой: котёл, бойлер, приборы, тёплый пол, вода
+    systemSummary: function () {
+        const st = this.state;
+        const list = (this.currentEquipmentList || []).filter(it => it && !it.isOpt);
+        const inSec = (re) => list.filter(it => re.test(String(it.sectionTitle || '')));
+        const parts = [];
+        const boiler = inSec(/^1\./).find(it => /кот[её]л/i.test(it.name || ''));
+        if (boiler) parts.push(String(boiler.name));
+        const tank = inSec(/^1\./).find(it => /бойлер|водонагреват/i.test(it.name || ''));
+        if (tank) parts.push(String(tank.name));
+        const rads = inSec(/^3\./).filter(it => /радиатор|конвектор/i.test(it.name || '')).reduce((a, it) => a + (Number(it.q) || 0), 0);
+        if (rads) parts.push(`приборы отопления — ${rads} шт.`);
+        const tp = (parseFloat(st.tp1) || 0) + (parseFloat(st.tp2) || 0);
+        if ((st.systems || []).includes('tp') && tp > 0) parts.push(`водяной тёплый пол ${Math.round(tp)} м²`);
+        if (st.water) parts.push('водоснабжение' + (st.hotWater ? ' и ГВС' : ''));
+        if (inSec(/^8\./).length) parts.push('канализация');
+        if (st.well) parts.push('скважина');
+        const head = (parseFloat(st.area) > 0) ? `дом ${st.area} м², ${st.floors === 2 ? 2 : 1} эт.: ` : '';
+        return head + (parts.length ? parts.join('; ') : 'инженерные системы по смете');
+    },
+
+    // Контурные иконки в манере stout.ru (тёмно-синий контур, голубой акцент)
+    WARRANTY_ICONS: {
+        shield: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 4l17 6v14c0 10-7.5 17.5-17 20C14.5 41.5 7 34 7 24V10z"/><rect x="16" y="20" width="16" height="12" fill="#3F9DE1" stroke="none"/><path d="M16 20h16M19 17v3M29 17v3" stroke="#203F6F"/></svg>',
+        wrench: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M30 6a9 9 0 0 0-8.6 11.7L7 32a3.5 3.5 0 0 0 5 5l14.3-14.4A9 9 0 0 0 38 14l-5.5 5.5-4-4L34 10a9 9 0 0 0-4-4z"/><circle cx="10" cy="38" r="1.6" fill="#3F9DE1" stroke="none"/><path d="M28 30l10 10" /><path d="M31 27l10 10" stroke="#3F9DE1"/></svg>',
+        umbrella: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 6v3M5 25a19 19 0 0 1 38 0z"/><path d="M5 25a19 19 0 0 1 19-19v19z" fill="#3F9DE1" stroke="none" opacity=".9"/><path d="M5 25a19 19 0 0 1 38 0z"/><path d="M24 25v13a4 4 0 0 1-8 0"/></svg>',
+        phone: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14 6h7l3 8-4 3a22 22 0 0 0 11 11l3-4 8 3v7a4 4 0 0 1-4 4C21 38 10 27 10 10a4 4 0 0 1 4-4z"/><path d="M29 9a10 10 0 0 1 10 10M29 15a4 4 0 0 1 4 4" stroke="#3F9DE1"/></svg>'
+    },
+
+    // Листовка на одну страницу в оформлении stout.ru: шапка с логотипом, синий
+    // баннер с одной мыслью и большим фото, четыре иконки-цифры, карточки того, что
+    // стоит в доме, тёмный подвал с телефоном исполнителя. Клиенту не нужно
+    // разбираться, на какую из гарантий смотреть: одна цифра в баннере, один телефон.
+    warrantyFormHtml: function () {
+        const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const od = this.objectDetails();
+        const tg = this.state.tgUser || {};
+        const cc = this.effectiveCompanyDetails() || {};
+        const execName = (Docs.contractor && Docs.contractor().fio) || this.formatShortName(tg) || '';
+        const phone = tg.phone || '';
+        const groups = this.warrantyTermGroups();
+        const maxM = groups.length ? groups[0].months : 0;
+        const today = new Date();
+        const dateRu = today.toLocaleDateString('ru-RU');
+        const kp = this.kpNumber() || '';
+        const ins = (Docs.activeInsurance(today.toISOString().slice(0, 10)) || []).find(p => p.brand === 'STOUT');
+        const years = m => Docs.monthsWords(m);
+        const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
+        const mln = n => Math.round(n / 1e6) + ' млн ₽';
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+        const I = this.WARRANTY_ICONS;
+        const tiles = this.warrantyPhotoTiles(5);
+        const hero = tiles[0];
+        const img = id => `<img src="img/${e(id)}.jpg" alt="" onerror="this.onerror=null;this.style.visibility='hidden';">`;
+        const prods = tiles.map(t => `<div class="wp-prod">${img(t.it.id)}<div class="wp-pn">${e(cap(t.kind))}</div><div class="wp-pt">${e(years(t.months))} <small>гарантии</small></div></div>`).join('');
+        const grp = groups.map(g => `<span><b>${e(years(g.months))}</b> — ${e(g.kinds.slice(0, 3).join(', '))}${g.kinds.length > 3 ? ' и др.' : ''}</span>`).join('');
+        const feat = (icon, num, txt) => `<div class="wp-feat">${icon}<div class="wp-fn wp-cond">${num}</div><div class="wp-ft">${txt}</div></div>`;
+        return `
+        <div class="wp-top">
+            <img src="img/stout_logo.png" alt="STOUT">
+            <div class="wp-nav">Гарантийные обязательства&nbsp;&nbsp;·&nbsp;&nbsp;Объект: <b>${e(od.address)}</b></div>
+        </div>
+        <div class="wp-hero">
+            <div class="wp-hero-txt">
+                <div class="wp-kicker">Оборудование STOUT в вашем доме</div>
+                <h2>Гарантия <b>до ${e(years(maxM))}</b><br>на системы вашего дома</h2>
+                <p class="wp-lead">Одна система, один бренд, один телефон. За ваш дом отвечают вместе завод STOUT, исполнитель и страховая компания.</p>
+                <span class="wp-btn">Любой вопрос — ${e(phone)}</span>
+            </div>
+            <div class="wp-hero-img">${hero ? img(hero.it.id) : ''}${hero ? `<div class="wp-badge"><b>${e(years(hero.months))}</b>${e(hero.kind)}</div>` : ''}</div>
+        </div>
+        <div class="wp-feats">
+            ${feat(I.shield, 'до ' + e(years(maxM)), 'гарантия завода STOUT на оборудование')}
+            ${feat(I.wrench, e(years(extM)), 'гарантия исполнителя на монтаж — вместо обычного года')}
+            ${ins ? feat(I.umbrella, e(mln(ins.sum)), 'ответственность завода за ущерб застрахована в ' + e(ins.insurer.replace(/^СПАО\s+/, ''))) : ''}
+            ${feat(I.phone, '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом')}
+        </div>
+        <h3>Что стоит в вашем доме<small>сроки гарантии завода по группам</small></h3>
+        <div class="wp-prods">${prods}</div>
+        <div class="wp-groups">${grp}</div>
+        <div class="wp-sys">В расчёте: ${e(this.systemSummary())}</div>
+        <div class="wp-foot">
+            <div class="wp-fl"><b>Заказчик:</b> ${e(od.client)}${od.phone ? ', ' + e(od.phone) : ''}<br>
+                <b>Расчёт</b> № ${e(kp)} от ${e(dateRu)}<br>
+                Чтобы гарантия действовала: храните паспорта и акт опрессовки, осмотр системы раз в год, изменения — через исполнителя.</div>
+            <div class="wp-fr"><div class="wp-phone wp-cond">${e(phone)}</div><div class="wp-fname">${e(execName)}${cc.name ? ' · ' + e(cc.name) : ''}</div></div>
+        </div>
+        <div class="wp-sign"><div>Исполнитель ______________</div><div>Заказчик ______________</div><div><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
+        <div class="wp-src">Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
+        ${ins ? `Полис ${e(ins.insurer)} № ${e(ins.policy)}, лимит на случай ${e(mln(ins.perCase))}, действует по ${e(Docs.dateRu(ins.to))}` : ''}
+        Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
@@ -16693,7 +17165,8 @@ const app = {
     // Реквизиты — итоговые: у человека дистрибьютора без своих данных клиент увидит
     // шапку дистрибьютора.
     stateForCloud: function (base) {
-        return Object.assign({}, base || this.state, { customCompany: this.effectiveCompanyDetails() });
+        // warranty — снимок доли STOUT для реестра «Гарантия STOUT» в панели (warrantySnapshot)
+        return Object.assign({}, base || this.state, { customCompany: this.effectiveCompanyDetails(), warranty: this.warrantySnapshot() });
     },
     // Заполняет поля раздела «Реквизиты компании». Вызывается при открытии кабинета и
     // ещё раз, когда настройки доехали из облака (вход с нового устройства).
@@ -20792,7 +21265,17 @@ const app = {
         // вместе с ним — теперь условие приходится ставить руками, иначе она
         // всплывёт и в быстром расчёте, где планов нет.
         const planRow = document.getElementById('blk_plan_editor_row');
-        if (planRow) planRow.style.display = (on && this.state.detailedRooms) ? '' : 'none';
+        // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
+        const ufh = this.canUseUfhPlan();
+        try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
+        if (planRow) planRow.style.display = ((on || ufh) && this.state.detailedRooms) ? '' : 'none';
+        const bU = document.getElementById('btn_ufhplan'), bF = document.getElementById('btn_plan_full');
+        if (bU) {
+            bU.style.display = ufh ? '' : 'none';
+            const hasPlan = !!(this.state.plans && (this.state.plans.floors || []).some(f => f && (f.img || f.imgFile)));
+            bU.textContent = hasPlan ? 'План отопления' : 'Загрузить план';
+        }
+        if (bF) bF.style.display = on ? '' : 'none';
     },
 
     // ═══ Тарифы: что открыто учётной записи на её тарифе ═════════════════
@@ -20834,6 +21317,7 @@ const app = {
         { id: 'analog', group: 'Функции', label: 'Подешевле', hint: 'Вторая смета подешевле: переключатель «Подешевле» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
+        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в подробном режиме: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
         { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' },
         // Читает не калькулятор, а invoice.html (блок «Счёт для 1С» в просмотре КП
@@ -20856,6 +21340,8 @@ const app = {
         if (feature === 'analog') return pro ? 'on' : 'off';
         if (feature === 'recognize') return pro ? 'list' : 'off';
         if (feature === 'design') return 'list';
+        // Раскладка тёплого пола по плану — функция «Профи» (03.10.2026)
+        if (feature === 'ufhplan') return pro ? 'on' : 'off';
         if (feature === 'money') return (pro && (account === 'installer')) ? 'on' : 'off';
         // Договор подряда и акты — про монтаж: исходно только монтажнику, на
         // любом тарифе. Продавцу, менеджеру и наблюдателю закрыто (15.09.2026).
@@ -22439,7 +22925,8 @@ const app = {
         { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
-        { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' }
+        { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
+        { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' }
     ],
 
     // Значки разделов — одноцветные линейные, берут цвет текста (currentColor).
@@ -22466,7 +22953,8 @@ const app = {
         analytics: '<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
-        leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'
+        leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+        warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>'
     },
 
     // Разделы панели в группах. Двадцать вкладок в два ряда без порядка — это «конструктор»,
@@ -22477,7 +22965,7 @@ const app = {
     ADMIN_GROUPS: [
         { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
-        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects'] },
+        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription'] },
@@ -24139,6 +24627,19 @@ const app = {
             content.innerHTML = navHtml + '<div id="admin_subscription_box"></div>';
             if (typeof Subscription !== 'undefined') Subscription.render();
             else content.insertAdjacentHTML('beforeend', '<div style="color:#EF4444; font-size:13px;">Модуль подписки (subscription.js) не загрузился — обновите страницу.</div>');
+            return;
+        }
+
+        if (this._adminTab === 'warranty') {
+            // Модуль вкладки грузится лениво: нужен только здесь (warranty_admin.js)
+            content.innerHTML = navHtml + '<div id="admin_warranty_box"><div style="color:var(--text-sec); font-size:13px;">Загружаю…</div></div>';
+            this.lazy('warranty_admin').then(() => {
+                if (typeof WarrantyAdmin !== 'undefined') WarrantyAdmin.render();
+            }).catch(e => {
+                console.error('[панель] warranty_admin.js не загрузился:', e);
+                const box = document.getElementById('admin_warranty_box');
+                if (box) box.innerHTML = '<div style="color:#EF4444; font-size:13px;">Модуль гарантии не загрузился — обновите страницу.</div>';
+            });
             return;
         }
 
@@ -35995,6 +36496,9 @@ const app = {
      */
     adoptPlans: function (loadedState) {
         this.state.plans = (loadedState && loadedState.plans) ? loadedState.plans : null;
+        // Ответы анкеты заказчика — той же болезнью: без явного присваивания
+        // «Вы просили — мы учли» одного дома приехало бы в КП другого
+        this.state.oprosAnswers = (loadedState && loadedState.oprosAnswers) ? loadedState.oprosAnswers : null;
         this.pushPlansToEditor();
         this.renderPlanChecks(); this.renderPlanAreaNote();
     },
@@ -36011,6 +36515,535 @@ const app = {
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         this.pushPlansToEditor();
         window.open('plan_editor.html', '_blank');
+    },
+
+    // ═══ Модуль «Раскладка тёплого пола» ═════════════════════════════════
+    // Монтажник загружает план, система находит стены и комнаты, клик по
+    // комнате — «здесь тёплый пол», и под сметой появляется раскладка петель
+    // этого дома. Зачем: заказчик видит в КП свою планировку, а не шаблон.
+    // Только подробный режим; доступ — столбец «Раскладка ТП» таблицы
+    // «Тарифы» (исходно у «Профи»). Без плана смета считает как раньше.
+    // Редактор тот же, что у проектирования (plan_editor.html), в режиме ?m=ufh,
+    // окном поверх калькулятора; данные — те же state.plans.
+
+    canUseUfhPlan: function () {
+        if (!this.state.tgUser) return false;
+        return this.tariffAccess('ufhplan') === 'on' || this.canUseDesign();
+    },
+
+    openUfhPlan: function () {
+        if (window.SessionTrack) SessionTrack.screen('ufhplan');
+        if (!this.canUseUfhPlan()) { app.alert('Раскладка тёплого пола входит в тариф «Профи».'); return; }
+        if (!this.state.detailedRooms) { app.alert('Раскладка тёплого пола работает в подробном режиме расчёта — включите его и добавьте план.'); return; }
+        if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
+        try { localStorage.setItem('heatcalc_ufhplan_access', '1'); } catch (e) { }
+        this.pushPlansToEditor();
+        let ov = document.getElementById('ufhplan_overlay');
+        if (ov) ov.remove();
+        ov = document.createElement('div');
+        ov.id = 'ufhplan_overlay';
+        ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#1e1e1e;display:flex;flex-direction:column;';
+        ov.innerHTML =
+            '<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:#141414;color:#ddd;font:13px/1.3 system-ui,sans-serif;">' +
+            '<span style="flex:1">План дома — тёплый пол и радиаторы</span>' +
+            '<button type="button" onclick="app.closeUfhPlan(true)" style="font:inherit;padding:4px 12px;border-radius:7px;border:1px solid #555;background:transparent;color:#ddd;cursor:pointer;">✕ Сохранить и закрыть</button></div>' +
+            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:#1e1e1e;"></iframe>';
+        document.body.appendChild(ov);
+        this._ufhOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+        if (!this._ufhMsgBound) {
+            this._ufhMsgBound = true;
+            window.addEventListener('message', (e) => {
+                if (e.origin !== location.origin || !e.data || e.data.type !== 'hc-ufhplan') return;
+                if (e.data.done) this.closeUfhPlan(false);
+            });
+        }
+    },
+
+    /**
+     * Закрыть окно раскладки. viaButton — крестик в шапке окна: сначала даём
+     * редактору сохраниться (его «Готово» дождётся, пока план уедет на сервер,
+     * и само пришлёт «закрыть»).
+     */
+    closeUfhPlan: function (viaButton) {
+        const ov = document.getElementById('ufhplan_overlay');
+        if (viaButton && ov) {
+            const fr = document.getElementById('ufhplan_frame');
+            try {
+                if (fr && fr.contentWindow && typeof fr.contentWindow.ufhDone === 'function') {
+                    fr.contentWindow.ufhDone();
+                    return;
+                }
+            } catch (e) { }
+        }
+        if (ov) ov.remove();
+        document.body.style.overflow = this._ufhOverflow || '';
+        this.applyPlansFromEditor();
+    },
+
+    /** Забрать разметку из редактора и разнести её по смете. */
+    applyPlansFromEditor: function () {
+        this.pullPlansFromEditor();
+        const changed = this.syncRoomsFromPlan();
+        this.loadPlanCheckData();            // и номер ревизии планов: петли пересчитаются
+        this._ufhGeomCache = null;
+        if (changed) { this.syncRoomsToState(); this.renderRoomsUI(); this.syncUI(); }
+        this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
+        this.render();
+    },
+
+    /**
+     * План → комнаты расчёта. Связь — по имени зоны и этажу.
+     *  · у комнаты расчёта, которая есть на плане, галочка тёплого пола
+     *    ставится и снимается по плану (зона «Тёплый пол» есть или нет);
+     *  · на этаже расчёта комнат ещё нет — они создаются по плану: имя (без
+     *    имени — «Помещение N»), площадь с плана, тёплый пол по разметке.
+     * Комнаты, которых на плане нет, не трогаются. Возвращает true, если
+     * комнаты расчёта изменились.
+     */
+    syncRoomsFromPlan: function () {
+        const plans = this.state.plans;
+        if (!this.state.detailedRooms || !plans || !Array.isArray(plans.floors)) return false;
+        if (!this.state.rooms) this.state.rooms = [];
+        const norm = s => String(s || '').trim().toLowerCase();
+        const polyM2 = (pts, ppm) => {
+            let s = 0;
+            for (let i = 0; i < pts.length; i++) { const a = pts[i], b = pts[(i + 1) % pts.length]; s += a[0] * b[1] - b[0] * a[1]; }
+            return Math.abs(s / 2) / (ppm * ppm);
+        };
+        let changed = false, plansChanged = false;
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || fi > 1) return;               // калькулятор знает два этажа
+            const fl = fi + 1;
+            const zones = (f.zones || []).filter(z => z && z.pts && z.pts.length > 2 &&
+                ['tp', 'room', 'wc', 'boiler'].includes(z.type));
+            if (!zones.length) return;
+            const here = this.state.rooms.filter(r => (parseInt(r.floor, 10) || 1) === fl);
+            here.forEach(r => {
+                const zs = zones.filter(z => norm(z.name) && norm(z.name) === norm(r.name));
+                if (!zs.length) return;
+                const hasTp = zs.some(z => z.type === 'tp');
+                if (!r.sys) r.sys = ['rad'];
+                if (hasTp && !r.sys.includes('tp')) { r.sys.push('tp'); changed = true; }
+                else if (!hasTp && r.sys.includes('tp')) { r.sys = r.sys.filter(s => s !== 'tp'); changed = true; }
+            });
+            // Комнат на этаже нет — заводим все с плана. Есть — заводим только
+            // комнаты с тёплым полом, которых в расчёте нет: иначе метры трубы
+            // считались бы по плану, а площадь тёплого пола — без этой комнаты.
+            // Санузел или котельная с тёплым полом — две зоны одного контура:
+            // площадь берётся одна.
+            const known = {};
+            here.forEach(r => { known[norm(r.name)] = 1; });
+            const fresh = here.length
+                ? zones.filter(z => z.type === 'tp' && !known[norm(z.name)])
+                : zones;
+            if (!fresh.length) return;
+            const used = {};
+            zones.forEach(z => { if (norm(z.name)) used[norm(z.name)] = 1; });
+            here.forEach(r => { used[norm(r.name)] = 1; });
+            let n = 0;
+            fresh.forEach(z => {
+                if (norm(z.name)) return;
+                do { n++; } while (used[norm('Помещение ' + n)]);
+                z.name = 'Помещение ' + n; used[norm(z.name)] = 1; plansChanged = true;
+            });
+            const byName = new Map();
+            zones.filter(z => fresh.some(q => norm(q.name) === norm(z.name))).forEach(z => {
+                const k = norm(z.name);
+                const e = byName.get(k) || { name: z.name.trim(), shapes: {}, area: 0, tp: false };
+                const sig = JSON.stringify(z.pts);
+                if (!e.shapes[sig]) { e.shapes[sig] = 1; e.area += polyM2(z.pts, f.pxPerM); }
+                if (z.type === 'tp') e.tp = true;
+                byName.set(k, e);
+            });
+            const total = this.state.rooms.reduce((s, r) => s + (parseFloat(r.area) || 0), 0) +
+                Array.from(byName.values()).reduce((s, e) => s + e.area, 0);
+            if (total > this.MAX_AREA) {
+                app.alert('Комнаты с плана ' + fl + '-го этажа в расчёт не добавлены: вместе они больше ' + this.MAX_AREA +
+                    ' м². Проверьте масштаб плана.');
+                return;
+            }
+            // Радиаторы на плане — по комнатам: прибор стоит у стены, комнату
+            // ищем в 0,3 м от него по обе стороны
+            const pip = (p, P) => {
+                let c = false;
+                for (let a = 0, b = P.length - 1; a < P.length; b = a++)
+                    if ((P[a][1] > p[1]) !== (P[b][1] > p[1]) && p[0] < (P[b][0] - P[a][0]) * (p[1] - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c;
+                return c;
+            };
+            const radsOf = {};
+            (f.rads || []).forEach(rd => {
+                const a = (rd.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.3 * f.pxPerM;
+                const z = [[rd.x + nx * d, rd.y + ny * d], [rd.x - nx * d, rd.y - ny * d]]
+                    .map(p => zones.find(q => pip(p, q.pts))).find(Boolean);
+                if (z && norm(z.name)) (radsOf[norm(z.name)] = radsOf[norm(z.name)] || []).push(rd);
+            });
+            let id = Date.now();
+            byName.forEach((e, key) => {
+                const living = /гостин|кухн|спальн|детск|кабинет|помещение|комнат/i.test(e.name);
+                const area = Math.max(1, Math.round(e.area * 10) / 10);
+                const rs = radsOf[key] || [];
+                id += 100;
+                // Окна — по радиаторам на плане (радиатор ставится под окном на
+                // 75 % его ширины); радиаторов нет — одно окно у жилой комнаты
+                const windows = rs.length
+                    ? rs.map((rd, j) => ({ id: id + 1 + j, width: Math.max(0.6, Math.min(3, Math.round((rd.w || 0) / f.pxPerM / 0.75 * 10) / 10)), isPan: false }))
+                    : (living ? [{ id: id + 1, width: this.getDefaultWindowWidth(area), isPan: false }] : []);
+                const sys = [];
+                if (rs.length || !e.tp) sys.push('rad');
+                if (e.tp) sys.push('tp');
+                this.state.rooms.push({ id: id, name: e.name, area: area, floor: fl, sys: sys, windows: windows });
+                changed = true;
+            });
+            if (fl === 2 && this.state.floors !== 2) this.state.floors = 2;
+        });
+        if (plansChanged) { this.saveState(); this.pushPlansToEditor(); }
+        return changed;
+    },
+
+    /**
+     * Обратный ход: галочку тёплого пола поменяли в карточке комнаты — тип её
+     * зоны на плане меняется так же («Помещение» ↔ «Тёплый пол»), контур
+     * остаётся. Комнаты на плане нет — молчим.
+     */
+    syncPlanFromRoom: function (r) {
+        const plans = this.state.plans;
+        if (!r || !plans || !Array.isArray(plans.floors)) return;
+        const f = plans.floors[(parseInt(r.floor, 10) || 1) - 1];
+        const norm = s => String(s || '').trim().toLowerCase();
+        const key = norm(r.name);
+        if (!f || !Array.isArray(f.zones) || !key) return;
+        const zs = f.zones.filter(z => z && z.type !== 'cold' && norm(z.name) === key);
+        if (!zs.length) return;
+        const on = (r.sys || []).includes('tp');
+        const tp = zs.filter(z => z.type === 'tp'), base = zs.filter(z => z.type !== 'tp');
+        if (on && !tp.length) {
+            const b = base.find(z => z.type === 'room');
+            if (b) b.type = 'tp';
+            else f.zones.push({ type: 'tp', name: base[0].name, roomId: r.id, pts: JSON.parse(JSON.stringify(base[0].pts)) });
+        } else if (!on && tp.length) {
+            tp.forEach(z => {
+                if (base.length) f.zones.splice(f.zones.indexOf(z), 1);
+                else z.type = 'room';
+            });
+        } else return;
+        this._ufhGeomCache = null;
+        this.saveState();
+        this.pushPlansToEditor();            // и ревизия планов: петли пересчитаются
+    },
+
+    /**
+     * Раскладка тёплого пола под заголовком раздела «4. Водяной тёплый пол» —
+     * по переключателю «Схема», как схемы котельной. По этажам: план с петлями
+     * и таблица контуров. Нет доступа, плана или зон тёплого пола — пусто.
+     */
+    /**
+     * Раскладка по этажам: [{ fl, svg, rows }] — общая для сметы и ссылки
+     * клиенту. Пусто — нет доступа, подробного режима, плана или зон ТП.
+     */
+    ufhPlanViews: function () {
+        if (!this.state.detailedRooms || !this.canUseUfhPlan()) return [];
+        const PP = window.projectPlans;
+        if (!PP || !PP.ufhView) return [];
+        const plans = this.currentPlans();
+        if (!plans || !Array.isArray(plans.floors)) return [];
+        let heat = [];
+        try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
+        // Радиаторы с трассами — когда они есть в смете; схема разводки — та же,
+        // что выбрана в смете (тройниковая или лучевая от коллектора)
+        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee' };
+        const out = [];
+        plans.floors.forEach((f0, fi) => {
+            if (!f0 || !f0.pxPerM || fi > 1) return;
+            const f = Object.assign({}, f0);
+            if (!f.img && f.imgFile && plans.key)
+                f.img = this.PLANS_ENDPOINT + '?k=' + plans.key + '&n=' + encodeURIComponent(f.imgFile);
+            const step = fi === 1 ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
+            const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
+            let v = null;
+            try { v = PP.ufhView(f, step, rooms, radOpts); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
+            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0 });
+        });
+        return out;
+    },
+
+    /**
+     * Трассы радиаторов по плану дома — для метража трубы и гидравлики.
+     * Длины в одну сторону, м, вместе с подъёмами к прибору и к коллектору:
+     *   avgRun — средний луч, maxRun / maxRoom — самый длинный, trunkOneWay —
+     *   магистраль тройниковой схемы, byRoom — лучи по комнатам (порядок
+     *   приборов на плане), count — сколько приборов на плане.
+     * null — плана с радиаторами нет: смета считает по-старому, формулой.
+     * Схема (лучевая/тройниковая) — та же, что в смете.
+     */
+    radPlanRuns: function () {
+        const PP = window.projectPlans, plans = this.currentPlans();
+        if (!PP || !PP.radRoutes || !plans || !Array.isArray(plans.floors)) return null;
+        const s = this.state, tee = s.radConnectionScheme === 'tee';
+        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1);
+        if (this._radPlanCache && this._radPlanCache.key === key) return this._radPlanCache.val;
+        const runs = [], byRoom = {};
+        let trunk = 0, floorsWith = 0, maxRun = 0, maxRoom = '';
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || !(f.rads || []).length || fi > 1 || (fi === 1 && s.floors !== 2)) return;
+            let R = null;
+            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee); } catch (e) { R = null; }
+            if (!R || !R.items.length) return;
+            floorsWith++;
+            trunk += R.totalM / 2;
+            R.items.forEach(it => {
+                const one = it.L / 2;
+                runs.push(one);
+                const k = String(it.room || '').trim().toLowerCase();
+                (byRoom[k] = byRoom[k] || []).push(one);
+                if (one > maxRun) { maxRun = one; maxRoom = it.room || ''; }
+            });
+        });
+        // Два этажа с радиаторами — между ними стояк, на плане его нет: те же 3 м,
+        // что и в формуле сметы
+        const val = runs.length ? {
+            avgRun: runs.reduce((a, v) => a + v, 0) / runs.length, maxRun, maxRoom, count: runs.length,
+            trunkOneWay: trunk + (floorsWith > 1 ? 3 : 0), byRoom
+        } : null;
+        this._radPlanCache = { key, val };
+        return val;
+    },
+
+    /**
+     * Луч каждого прибора сметы, м в одну сторону: с плана — по комнате прибора
+     * (несколько приборов в комнате — по очереди), нет такой комнаты на плане —
+     * средний луч плана; плана нет — fallback (формула сметы).
+     */
+    radDeviceRuns: function (devices, fallback) {
+        const P = this.radPlanRuns();
+        if (!P) return (devices || []).map(() => fallback);
+        const used = {};
+        return (devices || []).map(d => {
+            const k = String((d && d.room) || '').trim().toLowerCase();
+            const list = P.byRoom[k];
+            if (!list || !list.length) return P.avgRun;
+            const i = used[k] || 0; used[k] = i + 1;
+            return list[Math.min(i, list.length - 1)];
+        });
+    },
+
+    // ═══ КП «про этот дом», а не шаблон ══════════════════════════════════
+    // Раздел «Ваш дом» в начале КП (печать и ссылка клиенту): город и расчётная
+    // температура, что заказчик просил в анкете и чем это закрыто, комнаты с
+    // теплопотерями и приборами, сколько будет стоить отопление. Только то, что
+    // уже посчитано, — ничего не выдумываем; блока нет — нет и данных.
+
+    /**
+     * Данные раздела. Названия оборудования — без моделей (как в КП с короткими
+     * названиями): мощность, объём, тип — да, артикул и серия — нет.
+     */
+    kpPersonalData: function () {
+        const s = this.state, out = {};
+        const r1 = v => Math.round((v || 0) * 10) / 10;
+        const eq = (this.currentEquipmentList || []).filter(i => !i.isOpt);
+        const find = re => eq.find(i => re.test(String(i.name || '')));
+        let kw = 0;
+        try { kw = r1(this.getHouseHeatLoss()); } catch (e) { kw = 0; }
+        let tD = null;
+        try { tD = this.getDesignTemp(); } catch (e) { tD = null; }
+        out.house = {
+            city: (s.selectedCity && s.selectedCity.name) || '', t: tD, area: r1(s.area), floors: s.floors || 1, kw: kw,
+            people: parseInt(s.res, 10) || 0
+        };
+        const sys = s.systems || [];
+        const gasKw = parseFloat(this._gasBoilerKw) || 0, elKw = parseFloat(this._elBoilerKw) || 0;
+        // сам бойлер, а не «Кран шаровой … (Змеевик бойлера)»
+        const tank = find(/^\s*(бойлер|водонагреват)/i);
+        // «150 л» — \b после кириллицы не работает, поэтому граница словом «не буква»
+        const tankL = tank ? (String(tank.name).match(/(\d{2,4})\s*(?:л|литр)(?![а-яё])/i) || [])[1] : null;
+        const c1 = v => String(r1(v)).replace('.', ',');
+
+        // «Вы просили — мы учли»: ответы анкеты, сохранённые при её применении
+        const a = s.oprosAnswers;
+        if (a && typeof a === 'object') {
+            const asked = [];
+            const tpRooms = (s.rooms || []).filter(r => (r.sys || []).includes('tp')).map(r => r.name);
+            if (a.tp) asked.push({ q: 'Тёплый пол' + (a.tpRooms ? ' (' + String(a.tpRooms).slice(0, 120) + ')' : ''),
+                a: sys.includes('tp') ? 'тёплый пол ' + c1((s.tp1 || 0) + (s.floors === 2 ? (s.tp2 || 0) : 0)) + ' м²' +
+                    (s.detailedRooms && tpRooms.length ? ': ' + tpRooms.join(', ') : '') : '', ok: sys.includes('tp') });
+            if (a.rad) asked.push({ q: 'Радиаторы', a: sys.includes('rad') ? 'радиаторы — ' + ((this.totalDevicesCount || 0) || 'по окнам') + ' шт.' : '', ok: sys.includes('rad') });
+            if (a.fuel === 'gas' || a.fuel === 'el') {
+                const ok = a.fuel === 'gas' ? gasKw > 0 : elKw > 0;
+                asked.push({ q: a.fuel === 'gas' ? 'Газовый котёл' : 'Электрокотёл',
+                    a: ok ? (a.fuel === 'gas' ? 'газовый котёл ' + c1(gasKw) : 'электрокотёл ' + c1(elKw)) + ' кВт' +
+                        (s.hotWater ? ', с запасом на горячую воду' : '') : '', ok });
+            }
+            if (a.hw === true) asked.push({ q: 'Горячая вода' + (a.people ? ' на ' + a.people + ' чел.' : ''),
+                a: s.hotWater ? (tank ? 'бойлер' + (tankL ? ' ' + tankL + ' л' : '') : 'горячее водоснабжение от котла') : '', ok: !!s.hotWater });
+            if (a.auto === true) asked.push({ q: 'Автоматика отопления', a: s.boilerAuto ? 'контроллер котельной: погодозависимое управление и расписание' : '', ok: !!s.boilerAuto });
+            if (a.vent === true) asked.push({ q: 'Приточная вентиляция с подогревом', a: s.ventilationEnabled ? 'учтена в теплопотерях дома' : '', ok: !!s.ventilationEnabled });
+            if (a.watersource === 'well') asked.push({ q: 'Вода из скважины', a: s.well ? 'скважинный насос и узел ввода' : '', ok: !!s.well });
+            if (asked.length) out.asked = asked;
+        }
+
+        // «Ваш дом по комнатам» — подробный режим
+        if (s.detailedRooms && Array.isArray(s.rooms) && s.rooms.length) {
+            const bal = app._roomBalance || {}, devs = app.radDevices || [];
+            out.rooms = s.rooms.map(r => {
+                let q = 0;
+                try { q = this.getRoomHeatLoss(r).Q_sum || 0; } catch (e) { q = 0; }
+                const b = bal[r.id] || {};
+                const my = devs.filter(d => d.room === r.name);
+                const parts = [];
+                if (my.length) {
+                    const w = my.reduce((s2, d) => s2 + (d.watt || 0), 0);
+                    const conv = my.some(d => d.kind === 'conv');
+                    parts.push((conv ? 'приборы' : 'радиаторы') + ' ' + my.length + ' шт., ' + Math.round(w).toLocaleString('ru-RU') + ' Вт');
+                }
+                if ((r.sys || []).includes('tp')) parts.push('тёплый пол' + (b.ufh ? ' ' + Math.round(b.ufh).toLocaleString('ru-RU') + ' Вт' : ''));
+                return { name: r.name, floor: r.floor || 1, area: r1(r.area), q: Math.round(q), heat: parts.join(' + ') };
+            });
+        }
+
+        // «Сколько будет стоить отопление» — основной котёл дома
+        try {
+            const fuel = gasKw > 0 ? 'gas' : (elKw > 0 ? 'el' : null);
+            const c = fuel === 'gas' ? this.calcGasHeatingCost() : fuel === 'el' ? this.calcElHeatingCost() : null;
+            if (c && c.seasonCost > 0) {
+                out.cost = {
+                    fuel: fuel, month: Math.round(c.avgMonthCost / 10) * 10, season: Math.round(c.seasonCost / 100) * 100,
+                    months: c.activeMonths || 7, zOt: c.zOt, tOt: c.tOt,
+                    tariff: fuel === 'gas' ? (c.tariff && c.tariff.rub) : (c.tariffDay || null),
+                    unit: fuel === 'gas' ? (c.lpg ? '₽/л' : '₽/м³') : '₽/кВт·ч', lpg: !!c.lpg,
+                    units: fuel === 'gas' ? Math.round(c.seasonUnits) : Math.round(c.seasonKwh), uName: fuel === 'gas' ? (c.lpg ? 'л' : 'м³') : 'кВт·ч'
+                };
+            }
+        } catch (e) { /* прогноза нет — блока тоже */ }
+        return (out.asked || out.rooms || out.cost) ? out : null;
+    },
+
+    /**
+     * Разметка раздела. Стили встроенные: одна и та же уходит в печать (там
+     * таблица стилей страницы урезана) и на страницу клиента.
+     * qr — { src, url } для печати: картинка QR на онлайн-КП.
+     */
+    kpPersonalHtml: function (d, qr) {
+        if (!d) return '';
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const n1 = v => String(Math.round((v || 0) * 10) / 10).replace('.', ',');
+        const money = v => Math.round(v || 0).toLocaleString('ru-RU');
+        const H = (t) => `<div style="font-weight:700;font-size:14px;margin:14px 0 6px;color:#111">${t}</div>`;
+        const td = 'padding:4px 6px;border-bottom:1px solid #eee;';
+        let h = `<div class="kp-personal" style="font-family:inherit;color:#222;font-size:12.5px;line-height:1.45;margin:6px 0 16px;page-break-inside:auto">`;
+        const hs = d.house || {};
+        h += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">` +
+            `<div style="flex:1;min-width:260px"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Расчёт выполнен для вашего дома</div>` +
+            `<div>${[hs.city ? esc(hs.city) : '', hs.area ? n1(hs.area) + ' м²' : '', hs.floors ? hs.floors + ' ' + (hs.floors === 1 ? 'этаж' : 'этажа') : '']
+                .filter(Boolean).join(' · ')}</div>` +
+            (hs.kw ? `<div>Теплопотери дома: <b>${n1(hs.kw)} кВт</b>${hs.t != null ? ` при наружной температуре ${hs.t} °C` : ''}` +
+                `${hs.city ? ` (расчётная зимняя для г. ${esc(hs.city)}, СП 131.13330.2020, табл. 3.1)` : ''}</div>` : '') +
+            `</div>` +
+            (qr && qr.src ? `<div style="text-align:center;width:150px"><img src="${qr.src}" alt="QR" style="width:120px;height:120px;display:block;margin:0 auto 4px">` +
+                `<div style="font-size:10.5px;color:#555">Этот КП онлайн: план дома, смета, согласование — наведите камеру телефона</div></div>` : '') +
+            `</div>`;
+        if (d.asked && d.asked.length) {
+            h += H('Вы просили — мы учли');
+            h += `<table style="width:100%;border-collapse:collapse">` + d.asked.map(x =>
+                `<tr><td style="${td}width:40%">${esc(x.q)}</td><td style="${td}">${x.ok
+                    ? `<span style="color:#15803d;font-weight:700">✓</span> ${esc(x.a)}`
+                    : `<span style="color:#b45309;font-weight:700">—</span> в смету не вошло, обсудим`}</td></tr>`).join('') + `</table>`;
+        }
+        if (d.rooms && d.rooms.length) {
+            const two = d.rooms.some(r => r.floor === 2);
+            h += H('Ваш дом по комнатам');
+            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666">` +
+                `<th style="${td}text-align:left">Помещение</th><th style="${td}text-align:right">Площадь</th>` +
+                `<th style="${td}text-align:right">Теплопотери</th><th style="${td}text-align:left">Чем греется</th></tr>` +
+                d.rooms.map(r => `<tr><td style="${td}">${esc(r.name)}${two ? ` <span style="color:#888">(${r.floor} эт.)</span>` : ''}</td>` +
+                    `<td style="${td}text-align:right">${n1(r.area)} м²</td><td style="${td}text-align:right">${money(r.q)} Вт</td>` +
+                    `<td style="${td}">${esc(r.heat || '—')}</td></tr>`).join('') +
+                `<tr style="font-weight:700"><td style="${td}">Итого</td><td style="${td}text-align:right">${n1(d.rooms.reduce((s, r) => s + (r.area || 0), 0))} м²</td>` +
+                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>` +
+                `<div style="font-size:11px;color:#666;margin-top:4px">Теплопотери посчитаны по каждой комнате: стены, окна, пол, кровля и вентиляция (СП 50.13330.2024).</div>`;
+        }
+        if (d.cost) {
+            const c = d.cost;
+            h += H('Сколько будет стоить отопление');
+            h += `<div style="display:flex;gap:24px;flex-wrap:wrap">` +
+                `<div><div style="color:#666">В среднем в месяц отопительного сезона</div><div style="font-size:18px;font-weight:800">${money(c.month)} ₽</div></div>` +
+                `<div><div style="color:#666">За сезон (${c.zOt ? c.zOt + ' сут.' : c.months + ' мес.'})</div><div style="font-size:18px;font-weight:800">${money(c.season)} ₽</div></div>` +
+                `<div><div style="color:#666">${c.fuel === 'gas' ? (c.lpg ? 'Сжиженный газ' : 'Газ') : 'Электроэнергия'} за сезон</div>` +
+                `<div style="font-size:18px;font-weight:800">${money(c.units)} ${esc(c.uName)}</div></div></div>` +
+                `<div style="font-size:11px;color:#666;margin-top:4px">Оценка: тепло за отопительный период по СП 131.13330.2020, табл. 3.1` +
+                `${c.tOt != null ? ` (средняя температура периода ${n1(c.tOt)} °C)` : ''}, ` +
+                `тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, ` +
+                `в доме +20 °C. Счёт зависит от того, как вы живёте в доме.</div>`;
+        }
+        return h + `</div>`;
+    },
+
+    /** Для ссылки клиенту: те же этажи, числа округлены — страница их не пересчитывает. */
+    ufhPlanForShare: function () {
+        const r1 = v => Math.round((v || 0) * 10) / 10;
+        const views = this.ufhPlanViews();
+        if (!views.length) return null;
+        return views.map(v => ({ fl: v.fl, svg: v.svg,
+            rows: v.rows.map(r => ({ no: r.no, name: r.name, area: r1(r.area), m: r1(r.m), step: r.step, flow: r1(r.flow) })),
+            radRows: (v.radRows || []).map(r => ({ no: r.no, name: r.name, w: r1(r.w), L: r.L == null ? null : r1(r.L) })),
+            radTee: v.radTee, radM: r1(v.radM) }));
+    },
+
+    // «петля / петли / петель»
+    loopsWord: function (n) {
+        const a = n % 10, b = n % 100;
+        return (a === 1 && b !== 11) ? 'петля' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'петли' : 'петель';
+    },
+
+    renderUfhPlanScheme: function () {
+        const views = this.ufhPlanViews();
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        const parts = [];
+        let anyTp = false, anyRad = false, tee = false;
+        views.forEach(V => {
+            const fi = V.fl - 1, v = V;
+            let tables = '';
+            if (v.rows.length) {
+                anyTp = true;
+                const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
+                const tr = v.rows.map(r => `<tr><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
+                    `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
+                    `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
+                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
+                    `<thead><tr style="color:var(--text-sec)"><th>Контур ТП</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
+                    `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
+                    `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}</td><td></td>` +
+                    `<td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
+            }
+            if ((v.radRows || []).length) {
+                anyRad = true; tee = tee || !!v.radTee;
+                const tr = v.radRows.map(r => `<tr><td style="text-align:center">Р${r.no}</td><td>${esc(r.name)}</td>` +
+                    `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`).join('');
+                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
+                    `<thead><tr style="color:var(--text-sec)"><th>Радиатор</th><th style="text-align:left">Помещение</th><th style="text-align:right">Длина прибора</th>` +
+                    `<th style="text-align:right">${v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'}</th></tr></thead>` +
+                    `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.radRows.length} шт.</td><td></td>` +
+                    `<td style="text-align:right">${n1(v.radM || 0)} м</td></tr></tfoot></table>`;
+            }
+            parts.push(
+                `<div style="margin:6px 0 14px">` +
+                (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
+                `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
+                `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>` +
+                tables + `</div>`);
+        });
+        if (!parts.length) return '';
+        const notes = [];
+        if (anyTp) notes.push('Петли тёплого пола разложены автоматически по плану помещений: улиткой, в узких местах змейкой, ' +
+            'отступ от стен 100 мм, подводки к коллектору — в теплоизоляции. Длины петель — с подводками.');
+        if (anyRad) notes.push((tee ? 'Радиаторы — тройниковая схема: подача и обратка одной магистралью через приборы. '
+            : 'Радиаторы — лучевая схема: к каждому прибору своя пара труб от коллектора радиаторов. ') +
+            'Трассы проложены по плану вдоль стен, в обход тёплого пола; длины — подача и обратка вместе, с подъёмами к прибору и коллектору.');
+        notes.push('Уточняется при монтаже.');
+        return `<div style="padding:8px 2px 2px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">` +
+            (anyRad && anyTp ? 'План отопления дома: тёплый пол и радиаторы' : anyRad ? 'Радиаторы на плане дома' : 'Раскладка тёплого пола по плану дома') +
+            `</div>` + parts.join('') +
+            `<div style="font-size:11px;color:var(--text-sec)">${notes.join(' ')}</div></div>`;
     },
 
     // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
@@ -43159,6 +44192,15 @@ const app = {
         if (chkWorks) chkWorks.checked = true;
         if (chkHeatLoss) chkHeatLoss.checked = true;
         if (chkScheme) chkScheme.checked = true;
+        // «Ваш дом» — в печать и в ссылку клиенту, если есть что показать
+        const chkHouse = document.getElementById('share_opt_house');
+        if (chkHouse) chkHouse.checked = true;
+        const cardHouse = document.getElementById('card_opt_house');
+        if (cardHouse) {
+            let has = false;
+            try { has = (actionType === 'print' || actionType === 'share') && !!this.kpPersonalData(); } catch (e) { has = false; }
+            cardHouse.style.display = has ? 'flex' : 'none';
+        }
         // Сокращённые названия — как задано в «Настройки → КП и счета» (по умолчанию включено)
         const chkNames = document.getElementById('share_opt_names');
         if (chkNames) chkNames.checked = this.shortNamesDefault();
@@ -43392,6 +44434,9 @@ const app = {
         // По умолчанию названия сокращены; полные уходят только при снятой галочке
         const chkNamesOpt = document.getElementById('share_opt_names');
         const shortNames = chkNamesOpt ? chkNamesOpt.checked : true;
+        // Раздел «Ваш дом»: читают prepareForPrint и executeShareInvoice
+        const cardHouseOpt = document.getElementById('card_opt_house'), chkHouseOpt = document.getElementById('share_opt_house');
+        this.kpHouseOn = !!(cardHouseOpt && cardHouseOpt.style.display !== 'none' && chkHouseOpt && chkHouseOpt.checked);
 
         this.closeShareOptionsModal();
 
@@ -44983,6 +46028,22 @@ const app = {
         };
         // Монтажник снял галочку «Без моделей и артикулов»: клиент увидит полные названия
         if (fullNames) object_info.fullNames = true;
+        // Раскладка тёплого пола по плану дома — заказчик видит свою планировку,
+        // а не шаблон. Готовой картинкой: страница клиента ничего не пересчитывает
+        // и показывает ровно то, что у монтажника. В длинную офлайн-ссылку
+        // (compactPayload) не идёт — только в короткую из базы.
+        try {
+            const up = this.ufhPlanForShare();
+            if (up) object_info.ufhPlan = up;
+        } catch (e) { console.warn('[ссылка] раскладка ТП не добавлена:', e.message); }
+        // Раздел «Ваш дом»: город, теплопотери, учтённое из анкеты, комнаты,
+        // стоимость отопления — данными, страница клиента рисует их сама
+        if (this.kpHouseOn !== false) {
+            try {
+                const kp = this.kpPersonalData();
+                if (kp) object_info.kp = kp;
+            } catch (e) { console.warn('[ссылка] раздел «Ваш дом» не добавлен:', e.message); }
+        }
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
@@ -45346,6 +46407,8 @@ const app = {
     },
     executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
+        // Адрес объекта и заказчик — для бланка гарантии STOUT (см. askObjectDetails)
+        if (!(await this.ensureObjectDetails())) return;
         this.printOptions = {
             eq: showEq,
             works: showWorks,
@@ -45353,6 +46416,11 @@ const app = {
             scheme: !!showScheme,
             shortNames: shortNames !== false
         };
+        // Бланк гарантии STOUT печатается последним листом: сроки и полисы лежат в
+        // docs.js, грузим его заранее — печатная копия собирается синхронно
+        if (this.warrantyFormEligible()) {
+            try { await this.lazy('docs'); } catch (e) { console.warn('[executeDownload] docs.js не загрузился, бланк гарантии пропущен', e); }
+        }
 
         // Гарантируем, что смета попадёт в базу (и станет доступна через "Загрузить код"),
         // даже если сейчас нет связи с Supabase — задача уйдёт в фоновую очередь с повторами.
@@ -45363,6 +46431,15 @@ const app = {
         // заголовка страницы: он же имя файла, «КП №452712-3 …»
         this.stampKpVersion('pdf');
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
+
+        // QR на онлайн-КП для раздела «Ваш дом» — если ссылка клиенту уже
+        // создавалась (номер ссылки есть в расчёте). Картинка рисуется
+        // асинхронно, поэтому до сборки печатной копии.
+        this._kpQr = null;
+        if (this.kpHouseOn !== false && this.isValidUUID && this.isValidUUID(this.state.shared_invoice_id)) {
+            const url = 'https://heatcalc.ru/invoice.html?id=' + this.state.shared_invoice_id;
+            try { const src = await this.qrDataUrl(url, 220); if (src) this._kpQr = { src, url }; } catch (e) { this._kpQr = null; }
+        }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         const isLocal = (HC_LOCAL_DEV);
@@ -58108,6 +59185,8 @@ const app = {
             if (!r.sys) r.sys = ['rad'];
             if (r.sys.includes(sysType)) r.sys = r.sys.filter(s => s !== sysType);
             else r.sys.push(sysType);
+            // тёплый пол на плане дома — следом за галочкой
+            if (sysType === 'tp') this.syncPlanFromRoom(r);
             this.syncRoomsToState(); this.renderRoomsUI(); this.syncUI(); this.render();
         }
     },
@@ -59380,7 +60459,9 @@ const app = {
         if (!(kw > 0)) return 1;
         const s = this.state;
         const area = parseFloat(s.area) || 100;
-        const avgRun = Math.sqrt(area / (s.floors === 2 ? 2 : 1)) + 3;
+        // средний луч — с плана дома, если трассы радиаторов на нём есть
+        const _rp = this.radPlanRuns();
+        const avgRun = _rp ? _rp.avgRun : Math.sqrt(area / (s.floors === 2 ? 2 : 1)) + 3;
         const n = Math.max(1, parseInt(devicesCount, 10) || Math.ceil(area / 18));
         const flowAll = this.radFlowOf(kw * 1000);
         // Кольцо считается по самому мощному прибору, а не по среднему: именно он
@@ -59484,13 +60565,15 @@ const app = {
                 .reduce((a, p) => a + (p.dp || 0), 0) : 0;
         }
         const nDev = devices.length;
+        // Луч каждого прибора: с плана дома — свой, без плана — один на всех
+        const runs = this.radDeviceRuns(devices, avgRun);
         const rows = devices.map((d, i) => {
             const flow = this.radFlowOf(wOf(d));
             // Кольцо прибора: луч в обе стороны (или отвод и часть магистрали у
             // тройниковой) и его клапан на расчётной настройке.
             const pipeDp = tee
                 ? teeTrunkDp * (i + 1) / nDev + this.radPipeDrop(flow, 16, 0.9).dp
-                : this.radPipeDrop(flow, 16, len).dp;
+                : this.radPipeDrop(flow, 16, 2 * runs[i] * 1.1).dp;
             const dp = pipeDp + Math.pow(flow / kvValve, 2) * 100;
             return { room: d.room, watt: Math.round(wOf(d)), flow: flow, dp: dp };
         });
@@ -59572,8 +60655,21 @@ const app = {
 
         // Самый мощный прибор задаёт худший луч: у него наибольший расход, а
         // длина луча одна на всех — реальной трассировки у нас нет.
-        const worst = devices.reduce((a, d) => (wOf(d) > wOf(a) ? d : a), devices[0]);
-        const flowWorst = this.radFlowOf(wOf(worst));
+        let worst = devices.reduce((a, d) => (wOf(d) > wOf(a) ? d : a), devices[0]);
+        let flowWorst = this.radFlowOf(wOf(worst));
+        // Есть план дома — у каждого прибора своя длина луча, и худшее кольцо
+        // ищем честно: по потерям в луче и клапане с его расходом и его длиной
+        // (дальний слабый прибор бывает тяжелее ближнего мощного).
+        let worstRun = avgRun;
+        if (!tee && this.radPlanRuns()) {
+            const runs = this.radDeviceRuns(devices, avgRun), kv0 = this.radValveKv().kv;
+            let best = -1;
+            devices.forEach((d, i) => {
+                const fl = this.radFlowOf(wOf(d));
+                const v = this.radPipeDrop(fl, 16, 2 * runs[i] * 1.1).dp + Math.pow(fl / kv0, 2) * 100;
+                if (v > best) { best = v; worst = d; flowWorst = fl; worstRun = runs[i]; }
+            });
+        }
 
         const parts = [];
         let dp = 0;
@@ -59634,9 +60730,10 @@ const app = {
             const man = this.radManifoldDp(flowWorst);
             add('Коллектор ' + man.passport.label, man.dp,
                 { tag: 'manifold', flow: flowWorst, manifold: man });
-            const loop = this.radPipeDrop(flowWorst, 16, 2 * avgRun * 1.1);
-            add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * avgRun * 1.1).toFixed(0) + ' м', loop.dp,
-                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1,
+            const loop = this.radPipeDrop(flowWorst, 16, 2 * worstRun * 1.1);
+            add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * worstRun * 1.1).toFixed(0) + ' м' +
+                (this.radPlanRuns() ? ' (по плану дома)' : ''), loop.dp,
+                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * worstRun * 1.1,
                     tag: 'loop', d: 16, flow: flowWorst });
         }
 
@@ -68100,7 +69197,9 @@ const app = {
                 return `<span style="${styles}"><span style="${head}">Труба 16x2.2 в теплоизоляции (${isRed ? 'красная' : 'синяя'})</span>` +
                     `<b>Зачем:</b> ${why}<br><br>` +
                     `<b>Формула подбора:</b><br>` +
-                    `• Средняя длина трассы: L_ср = √(Площадь / Этажность) + 3 м.<br>` +
+                    (this._radPlanUsed
+                        ? `• Средняя длина трассы L_ср — по плану дома: трассы от коллектора радиаторов к каждому прибору вдоль стен, с подъёмами к прибору и коллектору (раздел «План отопления дома»).<br>`
+                        : `• Средняя длина трассы: L_ср = √(Площадь / Этажность) + 3 м (оценка; с планом дома считается по трассам).<br>`) +
                     `• Общая длина труб: L_общ = Приборы × L_ср × 2 × 1.1 (где 2 — подача + обратка, 1.1 — запас 10%).<br>` +
                     `• Количество бухт (по 100 м): N_бухт = ⌈L_общ / 100⌉. Делится поровну между красной и синей.<br><br>` +
                     `<b>Подставленные значения:</b><br>` +
@@ -71878,6 +72977,7 @@ const app = {
         // считала бы кольцо по стояку из прошлого расчёта.
         this._radTrunk = null;
         this._radTee = null;
+        this._radPlanUsed = false;   // метраж труб радиаторов по плану дома (ставят ветки раздела 3)
         // Исходные данные греющего контура бойлера запишет раздел его обвязки
         // ниже. Без сброса гидравлика загрузки при выключении ГВС считала бы
         // змеевик из прошлого расчёта.
@@ -74675,10 +75775,15 @@ const app = {
                 // === Тройниковая (шлейфовая) схема: без коллектора — труба идёт магистралью
                 // вдоль трассы, каждый радиатор врезан тройником. Диаметр магистрали ступенчато
                 // сужается по остаточной мощности «после точки врезки»: у котла/стояка несёт всю
-                // мощность дома, на дальнем участке — примерно половину. Метраж — грубая оценка
-                // без реальной трассировки (нет плана дома с координатами комнат).
+                // мощность дома, на дальнем участке — примерно половину. Метраж — по трассе
+                // на плане дома, а без плана — грубая оценка по площади.
                 let firstRiser = 3;
-                let trunkOneWay = 0.75 * Math.sqrt(totalDevicesCount * floorArea) + firstRiser;
+                // Есть план дома с радиаторами — магистраль берём по трассе на плане
+                // (projectPlans.radRoutes), без него — прежняя оценка по площади.
+                const _radPlan = this.radPlanRuns();
+                this._radPlanUsed = !!_radPlan;
+                let trunkOneWay = _radPlan ? _radPlan.trunkOneWay
+                    : 0.75 * Math.sqrt(totalDevicesCount * floorArea) + firstRiser;
                 let trunkMeters = Math.ceil(trunkOneWay * 2 * 1.1); // подача + обратка, +10% запас
                 let branchMeters = Math.ceil(totalDevicesCount * 0.9); // короткие отводы от магистрали к каждому прибору
                 this.avgRun = trunkOneWay; this.neededPipe = trunkMeters + branchMeters;
@@ -74772,7 +75877,10 @@ const app = {
                     boughtItem.noCheapenAlts = true;
                     let desc = `<span style="font-size:11px;line-height:1.5;">` +
                         `<b>Зачем:</b> ${label} В тройниковой схеме труба идёт единой магистралью мимо всех радиаторов (а не отдельным лучом на каждый прибор, как в коллекторной) — у котла/стояка несёт расход сразу всех приборов, к концу трассы — расход одного-двух последних.<br>` +
-                        `<b>Формула метража:</b> Длина трассы в одну сторону = 0,75·√(Приборов × Площадь этажа) + 3м (запас на подключение к стояку) — оценка длины обхода N точек по площади без плана дома. ×2 — подача и обратка, +10% запас на подрезку и обходы. Короткие отводы от магистрали до каждого радиатора — 0,9 м/прибор (обе трубы, с запасом).<br>` +
+                        `<b>Формула метража:</b> ` + (this._radPlanUsed
+                            ? `Длина трассы в одну сторону — по плану дома: магистраль от котельной обходит радиаторы по очереди вдоль стен (раздел «План отопления дома»), с подъёмами к приборам.`
+                            : `Длина трассы в одну сторону = 0,75·√(Приборов × Площадь этажа) + 3м (запас на подключение к стояку) — оценка длины обхода N точек по площади без плана дома; с планом считается по трассе.`) +
+                        ` ×2 — подача и обратка, +10% запас на подрезку и обходы. Короткие отводы от магистрали до каждого радиатора — 0,9 м/прибор (обе трубы, с запасом).<br>` +
                         `<b>Формула диаметра:</b> Труба у котла/стояка сайзится на всю мощность дома, дальний участок — на её половину (часть расхода «разбирается» врезками по пути). Пороги: до 4 кВт → 16мм, до 8 кВт → 20мм, до 16 кВт → 25(26 у металлопластика)мм, свыше — 32мм.<br>` +
                         `<b>Подставленные значения:</b><br>` +
                         `• Приборов: ${totalDevicesCount} шт., площадь этажа: ${floorArea.toFixed(0)} м².<br>` +
@@ -74866,7 +75974,13 @@ const app = {
                 // × 2 — подача и обратка: к каждому прибору от коллектора идут две трубы.
                 // Так же считают подсказка трубы, гидравлика луча (radHydraulics) и объём
                 // теплоносителя для бака; без множителя смета клала трубы вдвое меньше.
-                let avgRun = Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
+                // Средний луч: по трассам плана дома (projectPlans.radRoutes), если план
+                // с радиаторами есть, иначе прежняя оценка √(площадь этажа) + 3 м.
+                // Приборов в смете может быть не столько, сколько на плане, — поэтому
+                // средний луч с плана, а число лучей — сметы.
+                const _radPlan = this.radPlanRuns();
+                this._radPlanUsed = !!_radPlan;
+                let avgRun = _radPlan ? _radPlan.avgRun : Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
                 this.avgRun = avgRun;
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
@@ -78447,6 +79561,8 @@ const app = {
         const _estBefore = this._estimateBefore();
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
+        // Доля STOUT в строке параметров — считается по готовому списку оборудования
+        this.renderStoutShareChip();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
         this.renderContestWidget();
@@ -78706,10 +79822,17 @@ const app = {
          ['rad_panel_scheme_row', '3. Приборы отопления', () => this.renderRadPanelScheme(), true],
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
          ['ufh_node_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhNodeScheme(), true],
+         // раскладка по плану дома — вставляется следом и встаёт выше узла
+         // План отопления дома — под первым из разделов «3. Приборы отопления» /
+         // «4. Водяной тёплый пол», что есть в смете (на нём и радиаторы, и петли)
+         ['ufh_plan_scheme_row', ['3. Приборы отопления', '4. Водяной тёплый пол'], () => this.renderUfhPlanScheme(), true],
          ['water_scheme_row', ['5.1.', '5. Внутреннее водоснабжение'], () => this.renderWaterScheme(), true],
          ['hvs_node_scheme_row', '6. Узел ввода ХВС', () => this.renderHvsNodeScheme(), true]]
         .forEach(([rowId, marker, build, atSec]) => {
-            const old = document.getElementById(rowId);
+            // Только строку на экране: у печатной копии (#print_bin) те же id, а живую
+            // строку перерисовка таблицы уже стёрла — getElementById находил копию,
+            // и схемы разделов пропадали из печати и PDF.
+            const old = document.querySelector('#print-area #' + rowId);
             if (old) old.remove();
             if (this.state.viewMode !== 'equipment' || !this.schemeOn()) return;
             const html = build();
@@ -78802,6 +79925,7 @@ const app = {
         this.syncCheaperTab();
         if (this.state.viewMode === 'cheaper') this.renderCheaperPanel();
         this.renderCheaperPrint();
+        this.renderWarrantyPrint();
 
         // Ограничение мощности и прогноз стоимости электроотопления считаются от
         // теплопотерь, поэтому обновляем их на каждую отрисовку сметы, а не только
@@ -80053,6 +81177,20 @@ function prepareForPrint() {
             let eqTabs = eqClone.querySelector('.main-view-tabs');
             if (eqTabs) eqTabs.style.display = 'none';
             printBin.appendChild(eqClone);
+        }
+
+        // --- ШАГ 1а: РАЗДЕЛ «ВАШ ДОМ» — перед таблицей оборудования (или в начале,
+        // если оборудование не печатают): город, теплопотери, «вы просили — мы
+        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
+        if (app.kpHouseOn !== false) {
+            let kpHtml = '';
+            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
+            if (kpHtml) {
+                const eqC = document.getElementById('print_eq_clone');
+                const tbl = eqC && eqC.querySelector('.table-responsive');
+                if (tbl) tbl.insertAdjacentHTML('beforebegin', kpHtml);
+                else printBin.insertAdjacentHTML('afterbegin', kpHtml);
+            }
         }
 
         // --- ШАГ 2: ЛИСТ МОНТАЖНЫХ РАБОТ (Доступно авторизованным пользователям на любом
