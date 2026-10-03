@@ -87,6 +87,22 @@ const segHitsBox = (s, bx) => {
     // ввод петли в саму себя — не наложение, так её и подключают
     lines.forEach((L, li) => { if (sg.own !== loopsAll[li]) L.forEach(s => { if (segHitsBox(s, bx)) bandX++; }); });
 });
+// Пучок в середине комнаты: метры оси пучка дальше MID_M от стен своей зоны.
+// Проектировщики ведут подводки вдоль стен и по коридорам — середина комнаты
+// остаётся петлям.
+const MID_M = 0.4;
+const pip = (x, y, P) => { let c = false; for (let a = 0, b = P.length - 1; a < P.length; b = a++) if ((P[a][1] > y) !== (P[b][1] > y) && x < (P[b][0] - P[a][0]) * (y - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c; return c; };
+const segD = (x, y, a, b) => { const dx = b[0] - a[0], dy = b[1] - a[1], L = dx * dx + dy * dy; const t = L ? Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / L)) : 0; return Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy); };
+const wallDist = (x, y) => { for (const z of floor.zones) if (pip(x, y, z.pts)) { let d = Infinity; for (let a = 0, b = z.pts.length - 1; a < z.pts.length; b = a++) d = Math.min(d, segD(x, y, z.pts[b], z.pts[a])); return d / PPM; } return 0; };
+let bundleM = 0, midM = 0;
+(FL.bundle || []).forEach(sg => {
+    const L = Math.hypot(sg.b[0] - sg.a[0], sg.b[1] - sg.a[1]) / PPM, n = Math.max(1, Math.ceil(L / 0.02));
+    for (let i = 0; i < n; i++) {
+        const t = (i + 0.5) / n, d = wallDist(sg.a[0] + (sg.b[0] - sg.a[0]) * t, sg.a[1] + (sg.b[1] - sg.a[1]) * t);
+        bundleM += L / n; if (d > MID_M) midM += L / n;
+    }
+});
+console.log(`Пучок: ${bundleM.toFixed(1)} м по оси, из них в середине комнат (дальше ${MID_M} м от стен) ${midM.toFixed(1)} м`);
 const kinds = loopsAll.reduce((a, l) => (a[l.kind] = (a[l.kind] || 0) + 1, a), {});
 console.log(`Пересечений петель между собой: ${loopX}; пучок на петлях: ${bandX}; укладка: ` +
     Object.keys(kinds).map(k => (k === 'spiral' ? 'улитка ' : 'змейка ') + kinds[k]).join(', '));

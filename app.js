@@ -11102,6 +11102,8 @@ const app = {
     renderCloudList: function (data, sharedStatuses = {}, eventStatuses = {}) {
         const content = document.getElementById(this._cloudListHostId || 'cloud_list_content');
         if (!content) return;
+        // Пункты меню «⋯» по строкам — заполняются ниже, читает cabinetRowMenu
+        this._rowMenus = {};
         if (!data || data.length === 0) {
             content.innerHTML = '<div style="text-align: center; color: var(--text-sec); padding: 50px;">У вас пока нет сохраненных смет.</div>';
             return;
@@ -11176,6 +11178,14 @@ const app = {
             const shareBtn = `<button class="lk-btn-sm" onclick="event.stopPropagation(); app.openSharedLink('${item.id}', '${sharedInvoiceId || ''}', '${item.calc_id || ''}')" title="${sharedInvoiceId
                 ? 'Показать ссылку, которую уже отправляли клиенту' : 'Короткая ссылка на смету для клиента'}">Ссылка клиенту</button>`;
 
+            // Редкие действия — в меню «⋯» (cabinetRowMenu): шесть кнопок в ряду переносились
+            // на две строки, и список смет читался как таблица внутри таблицы
+            this._rowMenus[item.id] = [
+                { label: 'Сравнить цены с сегодняшними', js: `app.lazy('reprice').then(() => Reprice.open('${item.id}'))` },
+                item.calc_id ? { label: 'История статусов', js: `app.toggleObjectHistory('${item.calc_id}', '${item.id}')` } : null,
+                canDelete ? { label: 'Удалить смету', js: `app.deleteEstimate('${item.id}', event)`, danger: true } : null
+            ].filter(Boolean);
+
             h += `
                 <tr class="active-row" style="cursor: pointer;" onclick="app.loadSingleEstimate('${item.id}')">
                     <td style="font-weight:600;">${item.project_name}${item.calc_id ? `<div style="font-size:11px; font-weight:600; color:var(--text-sec); font-family:monospace; margin-top:2px;" title="Номер КП. Цифра после дефиса — версия: растёт, когда смету с правками снова отправляют клиенту">КП № ${item.calc_id}${Number(item.kp_ver) ? '-' + Number(item.kp_ver) : ''}${item.cf_calc ? ` <span style="color:#7C3AED;" title="Копия чужой сметы — оригинал КП № ${item.cf_calc}">· 📎 копия ${item.cf_calc}</span>` : ''}</div>` : ''}</td>
@@ -11183,18 +11193,12 @@ const app = {
                     <td>${statusBadge}</td>
                     <td style="color:var(--text-sec); font-size:12px;">${date}</td>
                     <td style="text-align:right; white-space: nowrap;">
-                        <div style="display:flex; justify-content:flex-end; gap:8px; align-items: center;">
+                        <div class="lk-row-actions">
                             ${getInvoiceBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'open')" title="Открыть расчёт в калькуляторе">Открыть</button>
-                            <button class="lk-btn-sm" onclick="event.stopPropagation(); app.lazy('reprice').then(() => Reprice.open('${item.id}'))" title="Сравнить цены сметы с сегодняшними">Цены</button>
                             ${shareBtn}
                             <button class="lk-btn-sm" onclick="event.stopPropagation(); app.cloudRowAction('${item.id}', 'download')" title="Скачать смету: PDF или Excel">Скачать</button>
-                            ${item.calc_id ? `<button class="lk-btn-sm" onclick="event.stopPropagation(); app.toggleObjectHistory('${item.calc_id}', '${item.id}')" title="История статусов: когда отправлено, открыто, согласовано">🕘 История</button>` : ''}
-                            ${canDelete ? `
-                                <button class="delete-icon-btn" onclick="event.stopPropagation(); app.deleteEstimate('${item.id}', event)" title="Удалить смету">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                                </button>
-                            ` : ''}
+                            <button class="lk-btn-sm lk-btn-more" onclick="event.stopPropagation(); app.cabinetRowMenu(this, '${item.id}')" title="Ещё: цены, история, удаление" aria-label="Ещё действия">⋯</button>
                         </div>
                     </td>
                 </tr>
@@ -11209,6 +11213,47 @@ const app = {
 
         h += `</tbody></table>`;
         content.innerHTML = h;
+    },
+
+    // Меню «⋯» у строки сметы: редкие действия (цены, история, удаление). Пункты лежат
+    // в this._rowMenus[id] (заполняет renderCloudList). Меню живёт в body, а не в окне
+    // кабинета: окно в zoom-обёртке и с прокруткой, а меню должно стоять ровно у кнопки.
+    cabinetRowMenu: function (btn, id) {
+        const items = (this._rowMenus || {})[id] || [];
+        this.closeCabinetRowMenu();
+        if (!items.length || !btn) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const pop = document.createElement('div');
+        pop.id = 'lk_row_menu';
+        pop.className = 'lk-pop no-print';
+        pop.setAttribute('role', 'menu');
+        pop.innerHTML = items.map(it => `<button type="button" role="menuitem" class="lk-pop-item${it.danger ? ' danger' : ''}" onclick="event.stopPropagation(); app.closeCabinetRowMenu(); ${it.js}">${esc(it.label)}</button>`).join('');
+        document.body.appendChild(pop);
+        const r = btn.getBoundingClientRect();
+        const w = pop.offsetWidth, hgt = pop.offsetHeight;
+        const top = (r.bottom + 4 + hgt > window.innerHeight) ? Math.max(8, r.top - 4 - hgt) : r.bottom + 4;
+        pop.style.top = Math.round(top) + 'px';
+        pop.style.left = Math.round(Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))) + 'px';
+        const close = e => {
+            if (e && e.type === 'keydown' && e.key !== 'Escape') return;
+            this.closeCabinetRowMenu();
+        };
+        this._rowMenuClose = close;
+        setTimeout(() => {
+            document.addEventListener('click', close);
+            document.addEventListener('keydown', close);
+            window.addEventListener('scroll', close, true);
+        }, 0);
+    },
+    closeCabinetRowMenu: function () {
+        const el = document.getElementById('lk_row_menu');
+        if (el) el.remove();
+        if (this._rowMenuClose) {
+            document.removeEventListener('click', this._rowMenuClose);
+            document.removeEventListener('keydown', this._rowMenuClose);
+            window.removeEventListener('scroll', this._rowMenuClose, true);
+            this._rowMenuClose = null;
+        }
     },
 
     // Действия над сохранённой сметой прямо из списка «Мои объекты». И ссылка
@@ -12945,22 +12990,21 @@ const app = {
         // Сменить пароль можно при любом способе входа: у аккаунта через Яндекс ID
         // это добавляет вход по e-mail. Без адреса (старый Telegram) пароль не к чему.
         const pwdBtn = email
-            ? `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:var(--surface-light, #f1f5f9); color:var(--text-main); border:1px solid var(--border); border-radius:8px;" onclick="app.showSetPasswordModal('change')">Сменить пароль</button>`
+            ? `<button type="button" class="lk-btn-sm" onclick="app.showSetPasswordModal('change')">Сменить пароль</button>`
             : '';
         const linkBtn = this.isYandexLinked()
             ? ''
-            : `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:#FC3F1D; color:#fff; border:none; border-radius:8px;" onclick="app.loginYandex(true)">Подключить Яндекс ID</button>`;
+            : `<button type="button" class="lk-btn-sm lk-btn-yandex" onclick="app.loginYandex(true)">Подключить Яндекс ID</button>`;
 
+        // Строка настройки — та же .lk-setting, что у остальных разделов «Настроек»
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         box.innerHTML = `
-            <div class="lk-card" style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:10px 14px;">
-                <div style="font-size:13px; color:var(--text-main); min-width:0;">
-                    <span class="lk-card-label">Вход в аккаунт</span>
-                    <span style="margin-left:8px;"><b>${current}</b>${email ? ` · ${email}` : ''}</span>
+            <div class="lk-card lk-setting">
+                <div class="lk-setting-text">
+                    <b>Вход в аккаунт</b>
+                    <span>${esc(current)}${email ? ` · ${esc(email)}` : ''}</span>
                 </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    ${pwdBtn}
-                    ${linkBtn}
-                </div>
+                <div class="lk-inline">${pwdBtn}${linkBtn}</div>
             </div>
         `;
     },
@@ -13248,7 +13292,7 @@ const app = {
         ];
 
         container.innerHTML = `
-            <div class="lk-section-head"><h4><span class="ui-emo">⭐ </span>Подписка</h4></div>
+            <div class="lk-section-head"><div><h4>Тариф</h4><div class="lk-sub">Что доступно сейчас и что даёт Профи</div></div></div>
             ${statusCard}
             <div class="lk-card-label" style="margin:16px 0 8px;">Что даёт тариф Профи</div>
             <div class="lk-list">
@@ -14727,7 +14771,7 @@ const app = {
     // Прайс монтажа / Своё оборудование. Содержимое всех разделов, кроме реквизитов,
     // строится лениво при первом открытии раздела.
     setProfileTab: function (tab) {
-        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment'];
+        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'settings', 'theme', 'kp', 'notify', 'login'];
         if (!tabs.includes(tab)) tab = 'requisites';
         tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
@@ -14799,6 +14843,15 @@ const app = {
             this.renderWorkPricesTab();
         } else if (tab === 'equipment') {
             this.renderEquipmentLibraryTab();
+        } else if (tab === 'theme') {
+            this.renderThemeChoiceCard();
+            this.renderAppearanceTab();
+        } else if (tab === 'kp') {
+            this.fillKpSettingsForm();
+        } else if (tab === 'notify') {
+            this.refreshTelegramConnectUI();
+        } else if (tab === 'login') {
+            this.renderProfileLoginMethod();
         }
 
         // Тот же раздел подсвечиваем в левой панели на экране
@@ -14810,10 +14863,9 @@ const app = {
     // шапке, и монтажники его не находили. Панель ничего не считает и не хранит: это
     // просто вынесенные на экран кнопки к уже существующим разделам.
     //
-    // У «Подписки» своего пункта в панели нет (раздел скрыт до конца обкатки тарифа),
-    // но подсветить логично соседний — иначе панель выглядит так, будто кабинет закрыт.
+    // Раздел, которого нет в CABINET_SUBTABS, подсвечивает пункт из этой таблицы. Сейчас все
+    // разделы разложены по пунктам (и «Подписка» — в «Настройках»), таблица — страховка.
     RAIL_TAB_ALIAS: {
-        subscription: 'requisites',
         // Разделы внутри пунктов меню (см. CABINET_SUBTABS): подсвечиваем пункт-родитель
         summary: 'home',
         oprosniki: 'objects',
@@ -14856,6 +14908,9 @@ const app = {
         { id: 'objects', kind: 'tab', group: 'calc', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
         { id: 'requisites', kind: 'tab', group: 'calc', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
         { id: 'workprices', kind: 'tab', group: 'calc', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
+        // Настройки собраны в один пункт (03.10.2026): до этого сроки счёта и Telegram лежали
+        // над таблицей смет, оформление и вход — внутри анкеты, а «Подписка» не была видна нигде
+        { id: 'settings', kind: 'tab', group: 'calc', nav: 'Настройки', short: 'Настройки', rail: 'Настройки', title: 'Оформление, КП и счета, уведомления, тариф, вход', icon: '<circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>' },
         // Только менеджерам дистрибьюторов: показ включают refreshManagerTabVisibility и syncRailUI
         { id: 'installers', kind: 'tab', group: 'calc', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
         // Владельцу и админам — показ включает syncRailUI по hasAdminAccess()
@@ -14869,7 +14924,10 @@ const app = {
         home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
-        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }]
+        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
+        // Разметка разделов — index.html (profile_tab_theme / _kp / _notify / _login),
+        // «Тариф» — прежний profile_tab_subscription (renderSubscriptionTab)
+        settings: [{ id: 'theme', label: 'Оформление' }, { id: 'kp', label: 'КП и счета' }, { id: 'notify', label: 'Уведомления' }, { id: 'subscription', label: 'Тариф' }, { id: 'login', label: 'Вход и безопасность' }]
     },
 
     // Пункт меню, под которым живёт раздел (подсветка в меню и на панели)
@@ -14992,8 +15050,9 @@ const app = {
         const box = document.getElementById('profile_tab_home');
         if (!box) return;
         const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-        const head = '<div class="ad-page-h"><div><h3>Главная</h3><div class="ad-sub">Что требует вашего внимания сегодня</div></div>'
-            + '<button type="button" class="lk-btn-sm" onclick="app.renderCabinetHome()" title="Обновить">↻</button></div>';
+        // Заголовок — тот же .lk-section-head, что у остальных разделов кабинета
+        const head = '<div class="lk-section-head"><div><h4>Дела</h4><div class="lk-sub">Что требует вашего внимания сегодня</div></div>'
+            + '<button type="button" class="lk-btn-sm" onclick="app.renderCabinetHome()" title="Обновить">↻ Обновить</button></div>';
         box.innerHTML = head + '<div class="lk-empty">Собираем дела…</div>';
         const tok = this._cabHomeTok = (this._cabHomeTok || 0) + 1;
 
@@ -15054,9 +15113,11 @@ const app = {
         box.innerHTML = head
             + (failed ? '<div class="ad-card-note ad-warn" style="margin-bottom:12px;">Часть данных не загрузилась — список может быть неполным.</div>' : '')
             + `<div class="ad-cards">${cards.join('')}</div>`
-            + (tariff ? `<div class="ad-kv"><span>Тариф</span><b>${esc(tariff)}</b></div>` : '')
+            + `<div class="ad-card lk-home-facts">`
+            + (tariff ? `<div class="ad-kv"><span>Тариф</span><button type="button" class="lk-link" onclick="app.setProfileTab('subscription')" title="Что даёт тариф и срок действия">${esc(tariff)} ›</button></div>` : '')
             + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
-            + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`;
+            + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`
+            + `</div>`;
         // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
         this._cabEstimates = ests;
     },
@@ -15134,8 +15195,11 @@ const app = {
                     items.push({ kind: 'section', title: sb.label, sub: it.nav, act: () => this.setProfileTab(sb.id) });
                 });
             } else {
-                if (tokens.length && !hit(it.nav + ' ' + it.title)) return;
-                items.push({ kind: 'section', title: it.nav, sub: it.title, act: () => (it.kind === 'tab' ? this.setProfileTab(it.id) : this.railGo(it.id)) });
+                // Один видимый раздел внутри пункта — зовём его именем раздела (продавцу
+                // «Прайс и оборудование» показывает только «Своё оборудование»)
+                const title = subs.length === 1 ? subs[0].label : it.nav;
+                if (tokens.length && !hit(title + ' ' + it.nav + ' ' + it.title)) return;
+                items.push({ kind: 'section', title: title, sub: it.title, act: () => (it.kind === 'tab' ? this.setProfileTab(it.id) : this.railGo(it.id)) });
             }
         });
         if (tokens.length) {
@@ -16140,6 +16204,25 @@ const app = {
         // решение 26.09.2026) — вкладки внутри пунктов «Прайс и оборудование» и «Объекты»:
         // прячет их cabinetVisibleSubtabs по тому же признаку canUseWorks, сами пункты остаются.
         const sellerNoWorks = !this.canUseWorks();
+        // Продавцу пункт «Прайс и оборудование» без прайса — это «Своё оборудование»:
+        // подпись меняем вместе с составом, иначе пункт обещает то, чего внутри нет
+        const wpItem = this.CABINET_MENU.find(x => x.id === 'workprices');
+        if (wpItem) {
+            const L = sellerNoWorks
+                ? { nav: 'Своё оборудование', short: 'Оборудование', rail: 'Оборудование', title: 'Свои позиции, которых нет в каталоге, и история замен' }
+                : wpItem;
+            document.querySelectorAll('.lk-rail-item[data-rail="workprices"]').forEach(el => {
+                const lab = el.querySelector('.lk-rail-label');
+                if (lab) lab.textContent = L.rail;
+                el.title = L.title;
+            });
+            document.querySelectorAll('#profile_nav .lk-nav-item[data-tab="workprices"]').forEach(el => {
+                const a = el.querySelector('.lk-nav-label'), b = el.querySelector('.lk-nav-short');
+                if (a) a.textContent = L.nav;
+                if (b) b.textContent = L.short;
+                el.title = L.title;
+            });
+        }
         const lkBar = document.getElementById('lk_subtabs');
         if (lkBar && this._activeProfileTab && this.isOverlayOpen('profile_modal_overlay')) this.renderCabinetSubtabs(this._activeProfileTab);
 
@@ -16225,6 +16308,29 @@ const app = {
     // 0 — таймер выключен осознанно (в кабинете стёрли цифру или поставили ноль).
     INVOICE_VALID_DAYS_DEFAULT: 2,
     INVOICE_VALID_DAYS_MAX: 90,
+    // ── Названия без моделей и артикулов по умолчанию ────────────────────────
+    // Галочка «Без моделей, размеров и артикулов» в окне отправки при открытии стоит
+    // так, как задано в «Настройки → КП и счета» (installerSettings.shortNamesDefault).
+    // Ключа нет — включено: так было и до настройки.
+    shortNamesDefault: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        return this.installerSettings.shortNamesDefault !== false;
+    },
+    setShortNamesDefault: function (on) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.shortNamesDefault = !!on;
+        this.pushInstallerSettingsToCloud();
+    },
+    // Поля раздела «КП и счета»: сроки и сокращение названий. Зовётся при открытии раздела
+    // и после прихода настроек из облака (через fillCompanyDetailsForm)
+    fillKpSettingsForm: function () {
+        const daysEl = document.getElementById('profile_invoice_valid_days');
+        if (daysEl) daysEl.value = String(this.invoiceValidDaysDefault());
+        const kpDaysEl = document.getElementById('profile_kp_reminder_days');
+        if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
+        const shortEl = document.getElementById('profile_short_names');
+        if (shortEl) shortEl.checked = this.shortNamesDefault();
+    },
     invoiceValidDaysDefault: function () {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const v = this.installerSettings.invoiceValidDays;
@@ -16606,10 +16712,8 @@ const app = {
         document.getElementById('profile_company_address').value = cc.address ? cc.address : defAddr;
         document.getElementById('profile_company_bank').value = cc.bank ? cc.bank : defBank;
         document.getElementById('profile_logo_preview').src = cc.logo || 'img/logo.jpg';
-        const daysEl = document.getElementById('profile_invoice_valid_days');
-        if (daysEl) daysEl.value = String(this.invoiceValidDaysDefault());
-        const kpDaysEl = document.getElementById('profile_kp_reminder_days');
-        if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
+        // Разделы «КП и счета» и «Уведомления» читают те же installerSettings
+        this.fillKpSettingsForm();
         this.refreshTelegramConnectUI();
     },
     _resolveInstallerCloudUserId: async function () {
@@ -16682,7 +16786,12 @@ const app = {
                         : ((this.installerSettings && this.installerSettings.margin) || null),
                     // Какие виды личных Telegram-уведомлений включены (см. connectTelegram,
                     // setTgNotify). Ключа нет — считаем включённым, отключают явно.
-                    tgNotify: (cloud.tgNotify && typeof cloud.tgNotify === 'object') ? cloud.tgNotify : {}
+                    tgNotify: (cloud.tgNotify && typeof cloud.tgNotify === 'object') ? cloud.tgNotify : {},
+                    // Сокращённые названия по умолчанию («Настройки → КП и счета»): облако
+                    // главнее, но отсутствие ключа в облаке не стирает местный выбор
+                    shortNamesDefault: (cloud.shortNamesDefault !== undefined)
+                        ? cloud.shortNamesDefault
+                        : (this.installerSettings ? this.installerSettings.shortNamesDefault : undefined)
                 };
                 this.saveInstallerSettingsLocal();
                 if (!cloudCompany && localCompany) this.pushInstallerSettingsToCloud();
@@ -17437,27 +17546,86 @@ const app = {
     renderThemeChoiceCard: function () {
         const box = document.getElementById('profile_theme_choice');
         if (!box) return;
-        if (!this.canChooseProfiTheme()) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        // Выбора нет — говорим, какая тема и почему, а не прячем строку: раздел
+        // «Оформление» с пустым местом читался бы как сломанный
+        if (!this.canChooseProfiTheme()) {
+            const names = { profi: 'Профи', shop: 'Магазин', brand: 'Бренд', standard: 'Стандарт' };
+            const why = this.isPro()
+                ? 'Выбор оформления сейчас отключён администратором.'
+                : 'Выбор тем, включая «Профи», открывается на тарифе Профи.';
+            box.innerHTML = `
+                <div class="lk-card lk-setting">
+                    <div class="lk-setting-text">
+                        <b>Тема</b>
+                        <span>${names[this.uiThemeEffective()] || 'Стандарт'} — задана по вашей сфере деятельности. ${why}</span>
+                    </div>
+                    ${this.isPro() ? '' : `<button type="button" class="lk-btn-sm" onclick="app.setProfileTab('subscription')">О тарифе</button>`}
+                </div>`;
+            box.style.display = '';
+            return;
+        }
         const cur = this.uiThemeEffective();
         const opts = this.uiThemeOptions();
-        const btns = opts.map(o => {
-            const active = o.v === cur;
-            // Выбранную кнопку отмечаем галочкой и жирным, а не только цветом:
-            // темы («Профи», бренд, магазин) перекрашивают .btn-subscribe своими
-            // правилами, и заливка через var(--primary) под ними не отличима
-            const style = active
-                ? 'font-weight: 700; background: var(--primary); color: #fff; border-color: var(--primary);'
-                : 'font-weight: 500; background: var(--surface-light); color: var(--text-sec); border-color: var(--border);';
-            return `<button type="button" class="btn-subscribe" aria-pressed="${active}" onclick="app.setUiTheme('${o.v}')" title="${o.sub}" style="padding: 5px 12px; font-size: 11px; margin: 0; width: auto; height: auto; border: 1px solid; ${style}">${active ? '✓ ' : ''}${o.label}</button>`;
-        }).join('');
+        // Чипы те же, что у вкладок разделов (.ad-chip): выбранный — заливкой и цветом бренда,
+        // темы его не перекрашивают (в отличие от .btn-subscribe, с которым так и было)
+        const btns = opts.map(o => `<button type="button" class="ad-chip${o.v === cur ? ' active' : ''}" aria-pressed="${o.v === cur}" onclick="app.setUiTheme('${o.v}')" title="${esc(o.sub)}">${esc(o.label)}</button>`).join('');
         const curOpt = opts.find(o => o.v === cur);
         box.innerHTML = `
-            <div class="lk-card" style="margin-top: 12px; text-align: left;">
-                <div class="lk-card-label" style="margin-bottom: 8px;"><span class="ui-emo">🎨 </span>Оформление</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">${btns}</div>
-                <div style="font-size: 11px; color: var(--text-sec); margin-top: 8px;">${curOpt ? curOpt.sub : ''} · настройка этого устройства</div>
+            <div class="lk-card lk-setting">
+                <div class="lk-setting-text">
+                    <b>Тема</b>
+                    <span>${curOpt ? esc(curOpt.sub) : ''}</span>
+                </div>
+                <div class="ad-chips lk-chips-inline">${btns}</div>
             </div>`;
         box.style.display = '';
+    },
+
+    // «Настройки → Оформление»: ночной режим и размер текста. Те же функции, что у кнопок
+    // шапки (cycleThemeMode и меню «Aa»), просто собраны в одном месте кабинета.
+    renderAppearanceTab: function () {
+        const box = document.getElementById('profile_appearance');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const rows = [];
+        // Под магазинной темой ночного режима нет (dark-mode снимается, см. syncShopTheme)
+        if (!this.isShopTheme()) {
+            const mode = this.themeMode();
+            const info = this.themeModeInfo(mode);
+            const modeBtns = [['light', 'Светлая'], ['auto', 'Авто'], ['dark', 'Тёмная']]
+                .map(([v, l]) => `<button type="button" class="ad-chip${v === mode ? ' active' : ''}" aria-pressed="${v === mode}" onclick="app.setThemeModeFromCabinet('${v}')">${l}</button>`).join('');
+            rows.push(`<div class="lk-setting">
+                    <div class="lk-setting-text"><b>Ночной режим</b><span>${esc(info.sub)}</span></div>
+                    <div class="ad-chips lk-chips-inline">${modeBtns}</div>
+                </div>`);
+        }
+        const cur = this.uiZoom(), chosen = this.uiZoomChosen(), allowed = this.uiZoomSteps();
+        const steps = this.UI_ZOOM_STEPS.map(z => {
+            const pct = Math.round(z / this.UI_ZOOM_STEPS[0] * 100);
+            const ok = allowed.includes(z);
+            return `<button type="button" class="ad-chip${z === cur ? ' active' : ''}" ${ok ? '' : 'disabled'} aria-pressed="${z === cur}" onclick="app.setUiZoom(${z}); app.renderAppearanceTab()" title="${ok ? '' : 'Не помещается в это окно'}">${pct}%</button>`;
+        }).join('');
+        rows.push(`<div class="lk-setting">
+                <div class="lk-setting-text"><b>Масштаб страницы</b><span>${chosen > cur ? 'Выбранный размер не помещается в окно — показан наибольший из возможных' : 'Размер всех элементов калькулятора на этом устройстве'}</span></div>
+                <div class="ad-chips lk-chips-inline">${steps}</div>
+            </div>`);
+        rows.push(`<div class="lk-setting">
+                <div class="lk-setting-text"><b>Крупный текст</b><span>Увеличивает мелкие подписи, расположение не меняется</span></div>
+                <label class="switch"><input type="checkbox" ${this.bigText() ? 'checked' : ''} onchange="app.setBigText(this.checked)"><span class="slider"></span></label>
+            </div>`);
+        box.innerHTML = `<div class="lk-card">${rows.join('')}</div>`;
+    },
+
+    // Режим темы по кнопке в кабинете — то же, что cycleThemeMode по кнопке шапки,
+    // только выбор прямой, а не по кругу, и без всплывающей подсказки
+    setThemeModeFromCabinet: function (mode) {
+        if (!this.THEME_ORDER.includes(mode)) return;
+        this.state.themeMode = mode;
+        if (mode === 'auto' && !this.themeGeo()) this.fetchThemeGeo();
+        this.applyTheme();
+        this.saveState();
+        this.renderAppearanceTab();
     },
 
     // Переключатель группы в блоке «Оформление» вкладки «Тарифы». Пишем полную
@@ -18162,19 +18330,28 @@ const app = {
         const swaps = this.installerSettings.swapLog;
         const deletions = this.installerSettings.deletionLog || [];
 
+        // Три блока — свои позиции и две истории — сворачиваются, как группы прайса монтажа:
+        // истории растут без предела и раньше заталкивали нужное далеко вниз.
+        // Открыто по умолчанию только первое; что человек открыл сам, помним (this._wpOpen).
+        const wpOpen = this._wpOpen || (this._wpOpen = {});
+        const grp = (name, n, inner, defOpen) => {
+            const isOpen = wpOpen[name] === undefined ? defOpen : wpOpen[name];
+            return `<details class="lk-group"${isOpen ? ' open' : ''} data-g="${name}" ontoggle="app._wpOpen[this.dataset.g] = this.open"><summary class="lk-subhead">${name} <span class="lk-group-n">${n}</span></summary><div class="lk-group-body">${inner}</div></details>`;
+        };
+
         let html = `
             <div class="lk-section-head">
-                <h4><span class="ui-emo">📦 </span>Своё оборудование</h4>
+                <h4>Своё оборудование</h4>
                 <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.addCustomEqPrompt();">+ Добавить позицию</button>
-            </div>
-            <p class="lk-hint">Позиции, которых нет в каталоге. Клик по строке добавит её в открытую смету.</p>`;
+            </div>`;
 
+        let libHtml = `<p class="lk-hint">Позиции, которых нет в каталоге. Клик по строке добавит её в открытую смету.</p>`;
         if (!lib.length) {
-            html += `<div class="lk-empty">Список пуст. Нажмите «+ Добавить позицию» — она попадёт в смету и останется здесь для следующих смет.</div>`;
+            libHtml += `<div class="lk-empty">Список пуст. Нажмите «+ Добавить позицию» — она попадёт в смету и останется здесь для следующих смет.</div>`;
         } else {
-            html += `<div class="lk-list" style="margin-bottom:18px;">`;
+            libHtml += `<div class="lk-list">`;
             lib.forEach(e => {
-                html += `
+                libHtml += `
                     <div class="lk-row" style="cursor:pointer;" onclick="app.addFromEquipmentLibrary('${e.id}')">
                         <span style="flex:1; min-width:0;">${e.name}</span>
                         <span style="font-weight:700; white-space:nowrap;">${Math.round(e.price).toLocaleString('ru-RU')} ₽</span>
@@ -18182,48 +18359,49 @@ const app = {
                     </div>
                 `;
             });
-            html += `</div>`;
+            libHtml += `</div>`;
         }
+        html += grp('Позиции вне каталога', lib.length, libHtml, true);
 
-        html += `<div class="lk-subhead">История замен</div>`;
-        html += `<p class="lk-hint">Чем вы заменяли позиции в таблице замены — просто история.</p>`;
+        let swHtml = `<p class="lk-hint">Чем вы заменяли позиции в таблице замены — просто история.</p>`;
         if (!swaps.length) {
-            html += `<div class="lk-empty">Пока нет замен оборудования через таблицу замены.</div>`;
+            swHtml += `<div class="lk-empty">Пока нет замен оборудования через таблицу замены.</div>`;
         } else {
-            html += `<div class="lk-list" style="margin-bottom:18px;">`;
+            swHtml += `<div class="lk-list">`;
             swaps.slice(0, 50).forEach(s => {
                 const dateStr = new Date(s.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 // Объект и раздел пишутся с 07.08.2026 — у старых записей их нет
                 const meta = [dateStr, s.projectName, s.section].filter(Boolean)
                     .map(v => String(v).replace(/</g, '&lt;')).join(' · ');
-                html += `
+                swHtml += `
                     <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:10.5px; margin-bottom:2px;">${meta}</div>
+                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${meta}</div>
                         <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${s.fromName}</s> → <b>${s.toName}</b></div>
                     </div>
                 `;
             });
-            html += `</div>`;
+            swHtml += `</div>`;
         }
+        html += grp('История замен', swaps.length, swHtml, false);
 
-        html += `<div class="lk-subhead">История удалений</div>`;
-        html += `<p class="lk-hint">Что вы удаляли из смет — на случай, если нужно вспомнить название.</p>`;
+        let delHtml = `<p class="lk-hint">Что вы удаляли из смет — на случай, если нужно вспомнить название.</p>`;
         if (!deletions.length) {
-            html += `<div class="lk-empty">Пока нет удалённых из сметы позиций.</div>`;
+            delHtml += `<div class="lk-empty">Пока нет удалённых из сметы позиций.</div>`;
         } else {
-            html += `<div class="lk-list">`;
+            delHtml += `<div class="lk-list">`;
             deletions.slice(0, 50).forEach(d => {
                 const dateStr = new Date(d.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const kindLabel = d.kind === 'work' ? 'Работа' : 'Оборудование';
-                html += `
+                delHtml += `
                     <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:10.5px; margin-bottom:2px;">${dateStr} · ${kindLabel}</div>
+                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${dateStr} · ${kindLabel}</div>
                         <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${d.name}</s>${d.price ? ` <span style="color:var(--text-sec);">(${Math.round(d.price).toLocaleString('ru-RU')} ₽${d.qty > 1 ? ` × ${d.qty}` : ''})</span>` : ''}</div>
                     </div>
                 `;
             });
-            html += `</div>`;
+            delHtml += `</div>`;
         }
+        html += grp('История удалений', deletions.length, delHtml, false);
 
         container.innerHTML = html;
     },
@@ -22459,9 +22637,35 @@ const app = {
         let timer = 0;
         new MutationObserver(() => {
             clearTimeout(timer);
-            timer = setTimeout(() => { try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { } }, 30);
+            timer = setTimeout(() => { try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); this.mergeCabinetHeadHints(root); } catch (e) { } }, 30);
         }).observe(root, { childList: true, subtree: true });
-        try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { }
+        try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); this.mergeCabinetHeadHints(root); } catch (e) { }
+    },
+
+    // Единая шапка каждого раздела: слева пояснение, справа кнопки. Разделы рисуют пояснение
+    // отдельным абзацем под заголовком (или под строкой кнопок) — здесь оно переносится в
+    // саму шапку, и все разделы открываются одинаково: одна строка «что это — действия».
+    mergeCabinetHeadHints: function (root) {
+        root.querySelectorAll(':scope > div[id^="profile_tab_"]').forEach(tab => {
+            const head = tab.querySelector(':scope > .lk-section-head:first-child');
+            if (!head || head.querySelector('.lk-head-hint')) return;
+            const hint = head.nextElementSibling;
+            if (!hint || !hint.classList.contains('lk-hint')) return;
+            hint.classList.add('lk-head-hint');
+            // Заголовок и пояснение — одним блоком слева, как у разделов со статичной шапкой
+            // (<div><h4>…</h4><div class="lk-sub">…</div></div>); кнопки остаются справа
+            const h4 = head.querySelector(':scope > h4');
+            let box = h4 ? null : head.querySelector(':scope > div:first-child');
+            if (h4) {
+                box = document.createElement('div');
+                head.insertBefore(box, h4);
+                box.appendChild(h4);
+            }
+            if (!box) { head.insertBefore(hint, head.firstChild); return; }
+            hint.classList.add('lk-sub');
+            hint.style.margin = '';
+            box.appendChild(hint);
+        });
     },
 
     // Ведущие эмодзи в плашках и подсказках («📋 Нет данных от заказчика», «💡 Счёт на оборудование…»):
@@ -42955,8 +43159,9 @@ const app = {
         if (chkWorks) chkWorks.checked = true;
         if (chkHeatLoss) chkHeatLoss.checked = true;
         if (chkScheme) chkScheme.checked = true;
+        // Сокращённые названия — как задано в «Настройки → КП и счета» (по умолчанию включено)
         const chkNames = document.getElementById('share_opt_names');
-        if (chkNames) chkNames.checked = true;
+        if (chkNames) chkNames.checked = this.shortNamesDefault();
 
         // Продавец монтаж не делает: раздела «Монтажные работы» у него нет на
         // экране, и наружу — в печать, Excel и ссылку клиенту — он тоже не

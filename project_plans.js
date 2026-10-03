@@ -284,6 +284,9 @@
   var MAX_LOOP_M = 100;       // предел длины одной петли 16×2,0 мм — запасное значение
   // цена прохода пучка по клетке: свободный проход, край петли, середина петли
   var COST_FREE = 1, COST_OUT = 2, COST_EDGE = 8, COST_IN = 60, COST_TURN = 3, COST_DRAWN = 0.3;
+  // Подводки — вдоль стен: клетка зоны дальше LEAD_WALL_CELLS от стены дороже
+  // на COST_MID (проектировщики Galf ведут пучок у стен и по коридорам).
+  var LEAD_WALL_CELLS = 3, COST_MID = 2;
 
   /**
    * Предел длины петли, м. Считает его смета (app.ufhLoopMax) — там известны и
@@ -772,6 +775,7 @@
       });
       info[Z.i] = { bb: B, cells: n, all: all };
     });
+    if (g) g.wallD = wallDist(g, own);
     // прямоугольники зон и сколько петель на каждый
     var decompose = function (mask) {
       zs.forEach(function (Z) {
@@ -962,6 +966,33 @@
     return out;
   }
 
+  /**
+   * Расстояние клетки зоны до её стены, клеток (0 — клетка у самой стены): волна
+   * от клеток, у которых сосед — чужая зона, место без обогрева или улица.
+   * Нужно трассе: проектировщики ведут подводки вдоль стен и по коридорам, а
+   * середину комнаты оставляют петлям.
+   */
+  function wallDist(g, own) {
+    var N = g.W * g.H, D = new Uint8Array(N).fill(255), q = new Int32Array(N), h = 0, t = 0, k;
+    for (k = 0; k < N; k++) {
+      if (!own[k]) continue;
+      var x = k % g.W, y = (k - x) / g.W, o = own[k];
+      if (x === 0 || y === 0 || x === g.W - 1 || y === g.H - 1 ||
+        own[k - 1] !== o || own[k + 1] !== o || own[k - g.W] !== o || own[k + g.W] !== o) { D[k] = 0; q[t++] = k; }
+    }
+    while (h < t) {
+      k = q[h++];
+      var nb = [k - 1, k + 1, k - g.W, k + g.W];
+      for (var i = 0; i < 4; i++) {
+        var m = nb[i];
+        if (m < 0 || m >= N || own[m] !== own[k] || D[m] !== 255 || D[k] >= 254) continue;
+        if ((i < 2) && Math.floor(m / g.W) !== Math.floor(k / g.W)) continue;   // перенос строки
+        D[m] = D[k] + 1; q[t++] = m;
+      }
+    }
+    return D;
+  }
+
   /** Один проход раскладки при заданном числе петель на участок */
   function layRound(f, g, own, zs, info, s, lim) {
     var N = g.W * g.H, ppm = g.ppm, slabs = [];
@@ -993,6 +1024,8 @@
       var outside = kx < zb[0] || ky < zb[1] || kx > zb[2] || ky > zb[3];
       cost[k] = slabOf[k] >= 0 ? (edge[k] ? COST_EDGE : COST_IN) :
         (g.cold[k] || outside ? COST_IN : (own[k] ? COST_FREE : COST_OUT));
+      // середина комнаты дороже: подводки идут вдоль стен, как в проектах
+      if (own[k] && g.wallD && g.wallD[k] > LEAD_WALL_CELLS) cost[k] += COST_MID;
     }
     // нарисованные монтажником подводки — желательная трасса
     (f.leads || []).forEach(function (L) {

@@ -173,7 +173,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.57">
+    <link rel="stylesheet" href="style.css?v=4.59">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.28" defer></script>
@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=10.66" defer></script>
+    <script src="app.js?v=10.68" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -220,7 +220,7 @@
     <!-- Укладка тёплого пола по планам этажей. В калькуляторе нужна не ради
          листов, а ради сметы: длину трубы и число выходов коллектора берём
          из нарисованных петель (projectPlans.floorLoops). -->
-    <script src="project_plans.js?v=1.22" defer></script>
+    <script src="project_plans.js?v=1.23" defer></script>
     <!-- Подписка Профи: цены и ссылки на оплату, акции, региональные цены,
          учёт заявок и оплат, вкладка «Оплата подписки» в панели. Нужен и вне
          панели: окно тарифа и окно оплаты берут цены отсюда. -->
@@ -2995,8 +2995,8 @@
                 </div>
             </div>
 
-            <!-- Названия без моделей и без артикулов: PDF, Excel и ссылка клиенту. Включено
-                 всегда при открытии окна; снятая галочка действует на одну отправку. -->
+            <!-- Названия без моделей и без артикулов: PDF, Excel и ссылка клиенту. При открытии
+                 окна галочка стоит как в «Настройках → КП и счета» (app.shortNamesDefault); переключение действует на одну отправку. -->
             <div class="share-option-card" id="card_opt_names" onclick="app.toggleShareOption('names')">
                 <input type="checkbox" id="share_opt_names" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
                 <div style="display: flex; flex-direction: column; text-align: left; gap: 2px; flex: 1; min-width: 0;">
@@ -3051,120 +3051,94 @@
             <div id="profile_tab_requisites">
             <!-- Баннер принудительного дозаполнения обязательных полей (Google/Telegram-вход
                  или старый аккаунт без анкеты) — до сохранения окно нельзя закрыть -->
-            <div id="profile_incomplete_banner" style="display: none; background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; padding: 8px 12px; margin-bottom: 12px; font-size: 12px; color: #EF4444; font-weight: 600; text-align: left; line-height: 1.4;">
+            <div id="profile_incomplete_banner" class="lk-banner lk-banner-danger" style="display: none;">
                 Заполните профиль до конца — эти данные подставляются в сметы и коммерческие предложения. Пока форма не сохранена, окно не закрывается.
             </div>
 
-            <!-- Тариф и его срок переехали в отдельный раздел «Подписка»
-                 (app.renderSubscriptionTab) — здесь баннер дублировал ту же строку -->
-
-            <div class="lk-section-head"><h4><span class="ui-emo">👤 </span>Профиль</h4></div>
-
-            <div style="box-sizing: border-box; width: 100%;">
-                <div class="profile-grid" style="display: flex; gap: 15px; flex-wrap: wrap; text-align: left;">
-
-                    <!-- Left Column (General info) -->
-                    <div class="lk-card profile-main-card" style="flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; justify-content: flex-start;">
-                        <div class="lk-card-label" style="margin-bottom: 10px;">Основные данные</div>
-
-                        <!-- Фото профиля. Видно в шапке сайта, в переписке с менеджером, в рейтинге
-                             и в админке — везде читается users.avatar_url. Своё фото уменьшается до
-                             160 px и хранится в том же поле data:-строкой (app.setProfilePhoto):
-                             отдельного файлового хранилища у проекта нет. -->
-                        <div class="profile-photo-row" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                            <div id="profile_photo_box" onclick="document.getElementById('profile_photo_file').click()" title="Нажмите, чтобы выбрать фото" style="width: 56px; height: 56px; flex: 0 0 56px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; overflow: hidden; cursor: pointer; border: 1px solid var(--border);">
-                                <span id="profile_photo_initial">·</span>
-                                <img id="profile_photo_img" alt="" style="display: none; width: 100%; height: 100%; object-fit: cover;">
-                            </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <button type="button" class="btn-subscribe" onclick="document.getElementById('profile_photo_file').click()" style="padding: 4px 8px; font-size: 10px; margin: 0; width: fit-content; height: auto;">Загрузить фото</button>
-                                <input type="file" id="profile_photo_file" accept="image/*" style="display: none;" onchange="app.handleProfilePhotoUpload(event)">
-                                <button type="button" id="profile_photo_remove_btn" class="btn-subscribe" onclick="app.removeProfilePhoto()" style="padding: 4px 8px; font-size: 10px; margin: 0; width: fit-content; height: auto; background: var(--surface-light); color: var(--text-sec); border-color: var(--border);">Удалить фото</button>
-                            </div>
-                        </div>
-
-                        <div class="profile-3col-grid" style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 8px;">
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Фамилия</label>
-                                <input type="text" id="profile_last_name_input" class="auth-input" placeholder="Иванов" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
-                            </div>
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Имя</label>
-                                <input type="text" id="profile_first_name_input" class="auth-input" placeholder="Иван" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
-                            </div>
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Отчество</label>
-                                <input type="text" id="profile_middle_name_input" class="auth-input" placeholder="Иванович" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
-                            </div>
-                        </div>
-
-                        <div class="profile-2col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Телефон для смет</label>
-                                <input type="tel" id="profile_phone_input" class="auth-input" placeholder="+7 (___) ___-__-__" oninput="app.maskPhone(this); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 2px; height: 32px; font-size: 13px; padding: 6px 10px;">
-                                <!-- Регион, где выдан номер (справочник phone_regions.js). Подсказка,
-                                     а не проверка: номер переносят и с ним переезжают. -->
-                                <div id="profile_phone_region" style="font-size: 10.5px; color: var(--text-sec); min-height: 13px; margin-bottom: 4px;"></div>
-                            </div>
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Email для уведомлений</label>
-                                <input type="email" id="profile_email_input" class="auth-input" placeholder="example@mail.ru" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
-                            </div>
-                        </div>
-
-                        <div class="profile-2col-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Дата рождения</label>
-                                <input type="date" id="profile_birth_date_input" class="auth-input" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px; color-scheme: light dark;">
-                            </div>
-                            <div>
-                                <!-- Промокод дистрибьютора: привязывает монтажника к поставщику и,
-                                     если у промокода задано pro_months, выдаёт тариф. Состояние
-                                     блока (поле/кнопка либо название компании) — renderProfilePromoField -->
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Промокод</label>
-                                <div id="profile_promo_box" style="display: flex; gap: 6px; align-items: center; margin-bottom: 6px;"></div>
-                            </div>
-                        </div>
-
-                        <div class="profile-2col-grid profile-geo-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap: 0 8px;">
-                            <div>
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Ваш город (для смет)</label>
-                                <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="profile_city_list" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
-                            </div>
-                            <div>
-                                <!-- Регион подставляется по городу (app.autofillRegionByCity); как только
-                                     пользователь правит его сам, автоподстановка для него отключается -->
-                                <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Регион</label>
-                                <input type="text" id="profile_region_input" class="auth-input" placeholder="Подставится по городу" oninput="app.markRegionEdited(this); app.showPhoneRegionHint()" style="max-width: 100%; margin-bottom: 6px; height: 32px; font-size: 13px; padding: 6px 10px;">
-                            </div>
-                        </div>
-
-                        <div class="profile-activity">
-                            <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 2px; display: block;">Сфера деятельности</label>
-                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:center;">
-                                <!-- Одно из двух, а не галочки: сфера решает, какие вкладки
-                                     кабинета человек видит (см. paidTabsAccess), и «монтажник и
-                                     продавец сразу» открывало обе картины мира одновременно. -->
-                                <label class="reg-activity-chip"><input type="radio" name="profile_activity" id="profile_act_installer" value="Монтажник"><span>Монтажник</span></label>
-                                <label class="reg-activity-chip"><input type="radio" name="profile_activity" id="profile_act_seller" value="Продавец"><span>Продавец</span></label>
-                            </div>
-                        </div>
-
-                    </div>
-
-                </div>
+            <div class="lk-section-head">
+                <div><h4>Мои данные</h4><div class="lk-sub">Подставляются в сметы, КП и переписку с менеджером</div></div>
             </div>
 
-            <!-- Способ входа в аккаунт и привязка Яндекс ID — заполняет app.renderProfileLoginMethod -->
-            <div id="profile_login_method"></div>
+            <!-- Форма на классах .lk-form / .lk-field (стили — блок «Кабинет: единый язык разделов»
+                 в конце style.css). Идентификаторы полей прежние: по ним читает и пишет
+                 showProfileModal / saveProfile. -->
+            <div class="lk-card">
+                <div class="lk-form">
+                    <!-- Фото профиля. Видно в шапке сайта, в переписке с менеджером, в рейтинге
+                         и в админке — везде читается users.avatar_url. Своё фото уменьшается до
+                         160 px и хранится в том же поле data:-строкой (app.setProfilePhoto):
+                         отдельного файлового хранилища у проекта нет. -->
+                    <div class="lk-field lk-field-photo">
+                        <div id="profile_photo_box" class="lk-photo" onclick="document.getElementById('profile_photo_file').click()" title="Нажмите, чтобы выбрать фото">
+                            <span id="profile_photo_initial">·</span>
+                            <img id="profile_photo_img" alt="" style="display: none;">
+                        </div>
+                        <div class="lk-photo-actions">
+                            <button type="button" class="lk-btn-sm" onclick="document.getElementById('profile_photo_file').click()">Загрузить фото</button>
+                            <input type="file" id="profile_photo_file" accept="image/*" style="display: none;" onchange="app.handleProfilePhotoUpload(event)">
+                            <button type="button" id="profile_photo_remove_btn" class="lk-btn-sm" onclick="app.removeProfilePhoto()">Удалить фото</button>
+                        </div>
+                    </div>
 
-            <!-- «Выйти» на телефоне убрана из меню разделов (там её легко задеть) и
-                 живёт здесь; с 03.10.2026 пункта «Выйти» нет ни в панели, ни в меню — только здесь -->
-            <button type="button" class="lk-profile-logout" onclick="app.logout()">Выйти из аккаунта</button>
+                    <div class="lk-field lk-span-4">
+                        <label for="profile_last_name_input">Фамилия</label>
+                        <input type="text" id="profile_last_name_input" class="auth-input" placeholder="Иванов">
+                    </div>
+                    <div class="lk-field lk-span-4">
+                        <label for="profile_first_name_input">Имя</label>
+                        <input type="text" id="profile_first_name_input" class="auth-input" placeholder="Иван">
+                    </div>
+                    <div class="lk-field lk-span-4">
+                        <label for="profile_middle_name_input">Отчество</label>
+                        <input type="text" id="profile_middle_name_input" class="auth-input" placeholder="Иванович">
+                    </div>
 
-            <!-- Выбор оформления — перк тарифа «Профи», остальным темы решает аудитория.
-                 Заполняет app.renderThemeChoiceCard, без тарифа блок скрыт. -->
-            <div id="profile_theme_choice" style="display:none;"></div>
+                    <div class="lk-field lk-span-4">
+                        <label for="profile_phone_input">Телефон для смет</label>
+                        <input type="tel" id="profile_phone_input" class="auth-input" placeholder="+7 (___) ___-__-__" oninput="app.maskPhone(this); app.showPhoneRegionHint()">
+                        <!-- Регион, где выдан номер (справочник phone_regions.js). Подсказка,
+                             а не проверка: номер переносят и с ним переезжают. -->
+                        <div id="profile_phone_region" class="lk-field-note"></div>
+                    </div>
+                    <div class="lk-field lk-span-4">
+                        <label for="profile_email_input">Email для уведомлений</label>
+                        <input type="email" id="profile_email_input" class="auth-input" placeholder="example@mail.ru">
+                    </div>
+                    <div class="lk-field lk-span-4">
+                        <label for="profile_birth_date_input">Дата рождения</label>
+                        <input type="date" id="profile_birth_date_input" class="auth-input" style="color-scheme: light dark;">
+                    </div>
+
+                    <div class="lk-field lk-span-4">
+                        <label for="profile_city_input">Ваш город (для смет)</label>
+                        <input type="text" id="profile_city_input" class="auth-input" placeholder="Например: Москва" list="profile_city_list" oninput="app.autofillRegionByCity('profile_city_input', 'profile_region_input'); app.showPhoneRegionHint()">
+                    </div>
+                    <div class="lk-field lk-span-4">
+                        <!-- Регион подставляется по городу (app.autofillRegionByCity); как только
+                             пользователь правит его сам, автоподстановка для него отключается -->
+                        <label for="profile_region_input">Регион</label>
+                        <input type="text" id="profile_region_input" class="auth-input" placeholder="Подставится по городу" oninput="app.markRegionEdited(this); app.showPhoneRegionHint()">
+                    </div>
+                    <div class="lk-field lk-span-4">
+                        <!-- Промокод дистрибьютора: привязывает монтажника к поставщику и,
+                             если у промокода задано pro_months, выдаёт тариф. Состояние
+                             блока (поле/кнопка либо название компании) — renderProfilePromoField -->
+                        <label>Промокод</label>
+                        <div id="profile_promo_box" class="lk-inline"></div>
+                    </div>
+
+                    <div class="lk-field lk-span-12 profile-activity">
+                        <label>Сфера деятельности</label>
+                        <!-- Одно из двух, а не галочки: сфера решает, какие вкладки
+                             кабинета человек видит (см. paidTabsAccess), и «монтажник и
+                             продавец сразу» открывало обе картины мира одновременно. -->
+                        <div class="lk-choice">
+                            <label class="reg-activity-chip"><input type="radio" name="profile_activity" id="profile_act_installer" value="Монтажник"><span>Монтажник</span></label>
+                            <label class="reg-activity-chip"><input type="radio" name="profile_activity" id="profile_act_seller" value="Продавец"><span>Продавец</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <!-- Подсказки городов для поля «Ваш город»: заполняет app.fillCitySuggestions из CITIES_DB.
                  Имя своё, не city_suggestions: так уже зовётся выпадающий список города объекта
@@ -3175,94 +3149,147 @@
             <!-- Реквизиты компании — отдельный раздел меню (раньше открывались кнопкой-
                  раскрывашкой внутри профиля). Поля сохраняются той же app.saveProfile. -->
             <div id="profile_tab_company" style="display:none; text-align:left;">
-                <div class="lk-section-head"><h4><span class="ui-emo">🏢 </span>Реквизиты компании</h4></div>
-                <p class="lk-hint">Логотип и реквизиты попадают в шапку коммерческого предложения и в счёт.</p>
-
-                    <div class="lk-card">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">Логотип компании</label>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap;">
-                            <div id="profile_logo_preview_container" style="width: 60px; height: 38px; background: #fff; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 2px; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                                <img id="profile_logo_preview" src="img/logo.jpg" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                <div class="lk-section-head">
+                    <div><h4>Реквизиты компании</h4><div class="lk-sub">Логотип и реквизиты попадают в шапку коммерческого предложения и в счёт</div></div>
+                    <button type="button" class="lk-btn-sm" onclick="app.resetCompanyDetails()">Сбросить по умолчанию</button>
+                </div>
+                <div class="lk-card">
+                    <div class="lk-form">
+                        <div class="lk-field lk-field-photo">
+                            <div id="profile_logo_preview_container" class="lk-logo-box">
+                                <img id="profile_logo_preview" src="img/logo.jpg" alt="">
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <button type="button" class="btn-subscribe" onclick="document.getElementById('profile_logo_file').click()" style="padding: 4px 8px; font-size: 10px; margin: 0; width: fit-content; height: auto;">Загрузить логотип</button>
+                            <div class="lk-photo-actions">
+                                <button type="button" class="lk-btn-sm" onclick="document.getElementById('profile_logo_file').click()">Загрузить логотип</button>
                                 <input type="file" id="profile_logo_file" accept="image/*" style="display: none;" onchange="app.handleProfileLogoUpload(event)">
-                                <button type="button" class="btn-subscribe" onclick="app.resetProfileLogo()" style="padding: 4px 8px; font-size: 10px; margin: 0; width: fit-content; height: auto; background: var(--surface-light); color: var(--text-sec); border-color: var(--border);">Сбросить логотип</button>
+                                <button type="button" class="lk-btn-sm" onclick="app.resetProfileLogo()">Сбросить логотип</button>
                             </div>
                         </div>
-
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">Название компании</label>
-                        <input type="text" id="profile_company_name" class="auth-input" placeholder="ООО «ТЕРЕМ»" style="max-width: 100%; margin-bottom: 8px; height: 32px; font-size: 12px; padding: 4px 8px;">
-
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">Сайт компании</label>
-                        <input type="text" id="profile_company_website" class="auth-input" placeholder="www.teremopt.ru" style="max-width: 100%; margin-bottom: 8px; height: 32px; font-size: 12px; padding: 4px 8px;">
-
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">Адрес компании</label>
-                        <textarea id="profile_company_address" class="auth-input" style="height: 44px; resize: none; font-size: 11px; padding: 6px; font-family: inherit; max-width: 100%; margin-bottom: 8px;" placeholder="Россия, 123100, г. Москва..."></textarea>
-
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;">Банковские реквизиты</label>
-                        <textarea id="profile_company_bank" class="auth-input" style="height: 44px; resize: none; font-size: 11px; padding: 6px; font-family: inherit; max-width: 100%; margin-bottom: 8px;" placeholder="ИНН 7729646148..."></textarea>
-
-                        <button type="button" class="lk-btn-sm" style="margin-top: 4px;" onclick="app.resetCompanyDetails()">Сбросить реквизиты по умолчанию</button>
+                        <div class="lk-field lk-span-6">
+                            <label for="profile_company_name">Название компании</label>
+                            <input type="text" id="profile_company_name" class="auth-input" placeholder="ООО «ТЕРЕМ»">
+                        </div>
+                        <div class="lk-field lk-span-6">
+                            <label for="profile_company_website">Сайт компании</label>
+                            <input type="text" id="profile_company_website" class="auth-input" placeholder="www.teremopt.ru">
+                        </div>
+                        <div class="lk-field lk-span-6">
+                            <label for="profile_company_address">Адрес компании</label>
+                            <textarea id="profile_company_address" class="auth-input" placeholder="Россия, 123100, г. Москва..."></textarea>
+                        </div>
+                        <div class="lk-field lk-span-6">
+                            <label for="profile_company_bank">Банковские реквизиты</label>
+                            <textarea id="profile_company_bank" class="auth-input" placeholder="ИНН 7729646148..."></textarea>
+                        </div>
                     </div>
+                </div>
             </div>
 
             <div id="profile_tab_subscription" style="display:none; text-align:left;"></div>
 
             <!-- Список сохранённых смет: тот же рендер, что и в отдельной модалке
-                 «Сохранённые сметы» (app.renderCloudList пишет в активный контейнер) -->
+                 «Сохранённые сметы» (app.renderCloudList пишет в активный контейнер).
+                 Карточки сроков и Telegram, стоявшие над таблицей, с 03.10.2026 живут в
+                 «Настройках» (разделы «КП и счета» и «Уведомления») — здесь только сметы. -->
             <div id="profile_tab_objects" style="display:none; text-align:left;">
                 <div class="lk-section-head">
-                    <h4><span class="ui-emo">📁 </span>Мои объекты</h4>
+                    <div><h4>Сметы</h4><div class="lk-sub">Сохранённые сметы по объектам: статус у клиента, ссылка, файлы и история</div></div>
                     <button type="button" class="lk-btn-sm" onclick="app.setProfileTab('objects')">↻ Обновить</button>
                 </div>
+                <div id="profile_cloud_list_content"></div>
+            </div>
 
-                <!-- Сроки по отправленным сметам. Кнопки «Сохранить» у этого раздела нет,
-                     поэтому поле пишет настройку сразу при изменении (setInvoiceValidDays и
-                     setKpReminderDays сами кладут её в localStorage и в облако), а затем
-                     показывает приведённое число. Заполняет поля app.fillCompanyDetailsForm. -->
-                <div class="lk-objects-settings" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 10px; margin-bottom: 10px;">
+            <!-- «Настройки» (app.CABINET_SUBTABS.settings): оформление, КП и счета, уведомления,
+                 тариф (profile_tab_subscription выше), вход. Поля сохраняются сразу при изменении
+                 (setInvoiceValidDays, setTgNotify и др. пишут в installerSettings и в облако),
+                 поэтому кнопки «Сохранить» у этих разделов нет. -->
+            <div id="profile_tab_theme" style="display:none; text-align:left;">
+                <div class="lk-section-head">
+                    <div><h4>Оформление</h4><div class="lk-sub">Тема, ночной режим и размер текста. Это настройки устройства, а не аккаунта</div></div>
+                </div>
+                <!-- Выбор темы — перк тарифа «Профи», остальным тему решает аудитория.
+                     Заполняет app.renderThemeChoiceCard; ночной режим и масштаб — app.renderAppearanceTab -->
+                <div id="profile_theme_choice"></div>
+                <div id="profile_appearance"></div>
+            </div>
+
+            <div id="profile_tab_kp" style="display:none; text-align:left;">
+                <div class="lk-section-head">
+                    <div><h4>КП и счета</h4><div class="lk-sub">Значения по умолчанию для отправки смет клиенту. Перед каждой отправкой их можно поменять прямо в окне ссылки</div></div>
+                </div>
+                <div class="lk-card">
                     <!-- Срок действия счёта по ссылке клиенту. Значение по умолчанию для окна
-                         «Создание ссылки для клиента»; 0 или пусто — таймер выключен. -->
-                    <div class="lk-card" style="margin: 0;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;"><span class="ui-emo">⏳ </span>Счёт по ссылке действителен, дней</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="number" id="profile_invoice_valid_days" class="auth-input" min="0" max="90" step="1" placeholder="2" onchange="app.setInvoiceValidDays(this.value.trim()); this.value = String(app.invoiceValidDaysDefault())" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center; flex-shrink: 0;">
-                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">По умолчанию 2 дня. Поставьте 0 или очистите поле — таймера не будет. Перед каждой отправкой срок можно поменять прямо в окне ссылки.</span>
+                         «Создание ссылки для клиента»; 0 или пусто — таймер выключен. Поле пишет
+                         настройку сразу при изменении и показывает приведённое число. -->
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Счёт по ссылке действителен, дней</b>
+                            <span>По умолчанию 2 дня. Поставьте 0 или очистите поле — таймера не будет, клиент увидит цены без ограничения срока.</span>
                         </div>
+                        <input type="number" id="profile_invoice_valid_days" class="auth-input lk-num" min="0" max="90" step="1" placeholder="2" onchange="app.setInvoiceValidDays(this.value.trim()); this.value = String(app.invoiceValidDaysDefault())">
                     </div>
-
                     <!-- Напоминание «КП ушло клиенту, счёт не выставлен». Отправляет база раз в сутки
                          (supabase/migrations/20260914_kp_invoice_reminders.sql); 0 или пусто — выключено. -->
-                    <div class="lk-card" style="margin: 0;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;"><span class="ui-emo">🔔 </span>Напомнить выставить счёт через, дней</label>
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="number" id="profile_kp_reminder_days" class="auth-input" min="0" max="90" step="1" placeholder="10" onchange="app.setKpReminderDays(this.value.trim()); this.value = String(app.kpReminderDaysDefault())" style="max-width: 90px; margin: 0; height: 32px; font-size: 12px; padding: 4px 8px; text-align: center; flex-shrink: 0;">
-                            <span style="font-size: 11px; color: var(--text-sec); line-height: 1.35;">Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней. Поставьте 0 или очистите поле — напоминаний не будет.</span>
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Напомнить выставить счёт через, дней</b>
+                            <span>Считается от отправки КП клиенту — ссылкой или файлом. Если счёт за это время не запрошен, напоминание придёт вам и вашему менеджеру. По умолчанию 10 дней, 0 — без напоминаний.</span>
                         </div>
+                        <input type="number" id="profile_kp_reminder_days" class="auth-input lk-num" min="0" max="90" step="1" placeholder="10" onchange="app.setKpReminderDays(this.value.trim()); this.value = String(app.kpReminderDaysDefault())">
                     </div>
-
-                    <!-- Личные уведомления в Telegram: подключение через бота (tg-webhook) и три
-                         переключателя категорий (installer_settings.tgNotify, см. app.setTgNotify) -->
-                    <div class="lk-card" style="margin: 0;">
-                        <label style="font-size: 11px; color: var(--text-sec); font-weight: 600; margin-bottom: 3px; display: block;"><span class="ui-emo">📨 </span>Уведомления в Telegram</label>
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                            <span id="profile_tg_status" style="font-size: 12px;">Не подключено</span>
-                            <button type="button" id="profile_tg_connect_btn" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить</button>
+                    <!-- Названия без моделей и артикулов по умолчанию: с этим положением открывается
+                         галочка в окне отправки (share_opt_names). installerSettings.shortNamesDefault -->
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Названия без моделей и артикулов</b>
+                            <span>В PDF, Excel и ссылке клиенту названия идут без модели, размеров и артикула — смету сложнее повторить у других. Галочка в окне отправки будет стоять так, как здесь; для одной отправки её можно переключить.</span>
                         </div>
-                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; cursor: pointer;">
-                            <input type="checkbox" id="profile_tg_notify_kp" onchange="app.setTgNotify('kp', this.checked)"> Одобрение/отклонение КП
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; margin-bottom: 4px; cursor: pointer;">
-                            <input type="checkbox" id="profile_tg_notify_oprosnik" onchange="app.setTgNotify('oprosnik', this.checked)"> Заполненный опросник
-                        </label>
-                        <label style="display: flex; align-items: center; gap: 6px; font-size: 11px; cursor: pointer;">
-                            <input type="checkbox" id="profile_tg_notify_chat" onchange="app.setTgNotify('chat', this.checked)"> Сообщения из калькулятора
-                        </label>
+                        <label class="switch"><input type="checkbox" id="profile_short_names" onchange="app.setShortNamesDefault(this.checked)"><span class="slider"></span></label>
                     </div>
                 </div>
+            </div>
 
-                <div id="profile_cloud_list_content"></div>
+            <div id="profile_tab_notify" style="display:none; text-align:left;">
+                <div class="lk-section-head">
+                    <div><h4>Уведомления</h4><div class="lk-sub">Куда и о чём сообщать, когда с вашей сметой что-то происходит</div></div>
+                </div>
+                <!-- Личные уведомления в Telegram: подключение через бота (tg-webhook) и три
+                     переключателя категорий (installer_settings.tgNotify, см. app.setTgNotify).
+                     Состояние заполняет app.refreshTelegramConnectUI. -->
+                <div class="lk-card">
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Telegram</b>
+                            <span id="profile_tg_status">Не подключено</span>
+                        </div>
+                        <button type="button" id="profile_tg_connect_btn" class="lk-btn-sm" onclick="app.connectTelegram()">Подключить</button>
+                    </div>
+                    <div class="lk-setting">
+                        <div class="lk-setting-text"><b>Одобрение или отклонение КП</b><span>Клиент ответил по ссылке на смету</span></div>
+                        <label class="switch"><input type="checkbox" id="profile_tg_notify_kp" onchange="app.setTgNotify('kp', this.checked)"><span class="slider"></span></label>
+                    </div>
+                    <div class="lk-setting">
+                        <div class="lk-setting-text"><b>Заполненный опросник</b><span>Заказчик прислал анкету о доме</span></div>
+                        <label class="switch"><input type="checkbox" id="profile_tg_notify_oprosnik" onchange="app.setTgNotify('oprosnik', this.checked)"><span class="slider"></span></label>
+                    </div>
+                    <div class="lk-setting">
+                        <div class="lk-setting-text"><b>Сообщения из калькулятора</b><span>Ответы менеджера и сообщения сервиса</span></div>
+                        <label class="switch"><input type="checkbox" id="profile_tg_notify_chat" onchange="app.setTgNotify('chat', this.checked)"><span class="slider"></span></label>
+                    </div>
+                </div>
+            </div>
+
+            <div id="profile_tab_login" style="display:none; text-align:left;">
+                <div class="lk-section-head">
+                    <div><h4>Вход и безопасность</h4><div class="lk-sub">Способ входа, пароль и выход из аккаунта</div></div>
+                </div>
+                <!-- Способ входа в аккаунт и привязка Яндекс ID — заполняет app.renderProfileLoginMethod -->
+                <div id="profile_login_method"></div>
+                <!-- «Выйти» с 03.10.2026 — только здесь: ни в панели, ни в меню разделов, ни в форме анкеты -->
+                <div class="lk-card lk-setting">
+                    <div class="lk-setting-text"><b>Выйти из аккаунта</b><span>Сметы на этом устройстве останутся, облачные — под вашим аккаунтом</span></div>
+                    <button type="button" class="lk-btn-sm lk-btn-danger" onclick="app.logout()">Выйти</button>
+                </div>
             </div>
 
             <div id="profile_tab_home" style="display:none; text-align:left;"></div>
@@ -3278,10 +3305,13 @@
 
             <div id="profile_tab_equipment" style="display:none; text-align:left;"></div>
 
-            <div id="profile_modal_footer_requisites" style="flex-shrink: 0; border-top: 1px solid var(--border); padding-top: 10px; display: flex; justify-content: center; gap: 10px; width: 100%;">
-                <button class="auth-btn-base btn-email-submit" style="margin: 0; max-width: 150px; height: 32px; font-size: 12.5px;" onclick="app.saveProfile()">Сохранить</button>
-                <button id="profile_cancel_btn" class="auth-btn-base" style="margin: 0; max-width: 110px; height: 32px; font-size: 12.5px; background: var(--surface-light); color: var(--text-sec); border: 1px solid var(--border);" onclick="app.closeProfileModal()">Отмена</button>
+            <!-- «Сохранить / Отмена» — только у разделов-форм (Мои данные, Реквизиты компании):
+                 показ переключает app.setProfileTab. Остальные разделы сохраняются сами. -->
+            <div id="profile_modal_footer_requisites" class="lk-footer">
+                <button type="button" class="lk-btn lk-btn-primary" onclick="app.saveProfile()">Сохранить</button>
+                <button type="button" id="profile_cancel_btn" class="lk-btn" onclick="app.closeProfileModal()">Отмена</button>
             </div>
+
             <div id="profile_modal_footer_other" style="display:none; flex-shrink: 0; border-top: 1px solid var(--border); padding-top: 10px; justify-content: center; gap: 10px; width: 100%;">
                 <button class="auth-btn-base" style="margin: 0; max-width: 140px; height: 32px; font-size: 12.5px; background: var(--surface-light); color: var(--text-sec); border: 1px solid var(--border);" onclick="app.closeProfileModal()">Закрыть</button>
             </div>
