@@ -844,10 +844,24 @@ body.dark-mode .doc-summary .ds-stout.low { background: rgba(245, 158, 11, .14);
 .sg-card .sg-more { padding: 7px 14px; font-size: 12px; color: var(--text-sec); border-top: 1px solid var(--border); background: var(--surface-light); }
 .sg-card .sg-foot { margin-top: 14px; font-size: 11.5px; color: var(--text-sec); line-height: 1.45; }
 .sg-card .calc-dialog-buttons { margin-top: 14px; }
+.sg-card .sg-row-n, .sg-card .sg-lead { font-weight: 400; }
+.sg-card .sg-lead b { font-weight: 700; }
+/* Тёмная тема: --border слишком близок к фону карточки, шкала и рамки списка пропадали */
+body.dark-mode .sg-card .sg-track { background: rgba(255, 255, 255, .16); }
+body.dark-mode .sg-card .sg-rows, body.dark-mode .sg-card .sg-row, body.dark-mode .sg-card .sg-more, body.dark-mode .sg-card .sg-perks > div { border-color: rgba(255, 255, 255, .14); }
+body.dark-mode .sg-card .sg-more, body.dark-mode .sg-card .sg-perks > div { background: rgba(255, 255, 255, .05); }
+body.dark-mode .sg-card .sg-row-b { background: rgba(255, 255, 255, .09); }
+body.dark-mode .sg-card .sg-perks b { color: #7CC4F2; }
+body.dark-mode .sg-card .sg-pill.ok { background: rgba(34, 197, 94, .2); color: #4ADE80; }
+body.dark-mode .sg-card .sg-pill.low { background: rgba(245, 158, 11, .2); color: #FBBF24; }
 @media (max-width: 520px) {
     .sg-card .sg-meter { flex-direction: column; align-items: stretch; gap: 8px; }
     .sg-card .sg-perks { flex-direction: column; }
     .sg-card .sg-head, .sg-card .sg-body { padding-left: 18px; padding-right: 18px; }
+    .sg-card .sg-head { gap: 10px; padding-top: 14px; padding-bottom: 14px; }
+    .sg-card .sg-title { font-size: 16px; }
+    .sg-card .sg-sub { display: none; }
+    .sg-card .sg-big b { font-size: 40px; }
 }
 
 /* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
