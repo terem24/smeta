@@ -4203,6 +4203,8 @@
         var rr2 = stepMm / 1000 * (f.pxPerM || 100) * t.s * 0.5;
         o.push('<path d="' + pathR(lp.sup, t, rr2) + '" style="fill:none;stroke:' + COL_SUP +
           ';stroke-width:0.28;stroke-linejoin:round;stroke-linecap:round"/>');
+        o.push('<path d="' + pathD([lp.sup[lp.sup.length - 1], lp.ret[0]], t) + '" style="fill:none;stroke:' + COL_RET +
+          ';stroke-width:0.28;stroke-linecap:round"/>');
         o.push('<path d="' + pathR(lp.ret, t, rr2) + '" style="fill:none;stroke:' + COL_RET +
           ';stroke-width:0.28;stroke-linejoin:round;stroke-linecap:round"/>');
       });
@@ -4688,6 +4690,12 @@
         o.push('<path d="' + roundedD(pr[0], pairR(pr[2] || [])) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw * 0.5) +
           ';stroke-linejoin:round;stroke-linecap:round"/>');
       });
+      // Перемычка подача → обратка на дальнем конце петли. У спирали концы совпадают, у змейки между ними
+      // шаг укладки — без неё две трубы обрываются посреди комнаты (как на листе проекта, где она есть)
+      var sEnd = lp.sup[lp.sup.length - 1], rBeg = (lp.ret || [])[0];
+      if (rBeg && Math.hypot(sEnd[0] - rBeg[0], sEnd[1] - rBeg[1]) > 0.5)
+        o.push('<path d="M' + m(sEnd[0]) + ' ' + m(sEnd[1]) + 'L' + m(rBeg[0]) + ' ' + m(rBeg[1]) + '" style="fill:none;stroke:' + V_RET +
+          ';stroke-width:' + m(lw * 0.5) + ';stroke-linecap:round"/>');
       o.push('</g>');
       badges.push([pointAt(lp.sup, 0.72), R.no]);
     });
