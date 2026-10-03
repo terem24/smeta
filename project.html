@@ -42,6 +42,9 @@
   .pj-path .p.done:hover { background: #4a4a4a; }
   .pj-path .p.cur { background: #ff6b35; border-color: #ff6b35; color: #fff; font-weight: 600; }
   .pj-path .ar { color: #888; }
+  .pj-stale { padding: 9px 16px; background: #5a3b00; color: #ffe2a8; border-bottom: 1px solid #1c1c1c; font-size: 13px; }
+  .pj-stale button { font: inherit; font-size: 12.5px; margin-left: 8px; padding: 4px 12px; border-radius: 8px;
+                     border: 1px solid #c99a3d; background: transparent; color: #ffe2a8; cursor: pointer; }
   /* переходы по разделам не должны прятать верх листа под двухрядной шапкой */
   [id] { scroll-margin-top: 110px; }
   .secs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
@@ -60,7 +63,7 @@
   @media print {
     @page { size: A3 landscape; margin: 0; }
     body { background: #fff; }
-    .bar, .pj-head { display: none; }
+    .bar, .pj-head, .pj-stale { display: none !important; }
     /* Печать одного раздела: остальные листы на время печати скрыты —
        заказчику обычно нужен раздел целиком, а не весь комплект. */
     body.print-one .paper { display: none; }
@@ -98,6 +101,7 @@
   </label>
   <button onclick="window.print()">Печать / PDF — весь комплект</button>
 </div>
+<div id="pj_stale" class="pj-stale" style="display:none"></div>
 </div>
 
 <div class="wrap" id="out"></div>
@@ -122,9 +126,6 @@ function pjMarkup() {
 <script src="project_layout.js?v=4.17"></script>
 <script src="project_plans.js?v=4.46"></script>
 <script src="project_nodes.js?v=4.15"></script>
-<!-- Узел коллектора ТП: рисуется вектором и берёт петли из project_plans.js,
-     поэтому подключается после него. -->
-<script src="project_ufh_manifold.js?v=4.15"></script>
 <!-- Листы узлов по 3D-рендеру: коллектор водоснабжения и панельный радиатор. -->
 <script src="project_node_sheets.js?v=4.15"></script>
 <script>
@@ -475,20 +476,10 @@ if (payload && payload.items && payload.items.length) {
       return { title: d.title, svg: projectSheets.imageSheet({ url: d.url,
         code: MARK.o.code, sheet: numOf('o')(oManStart + i) }) };
     });
-  } else {
-    // Сметы, отправленные на листы раньше, готовых узлов не передают — им
-    // остаётся прежнее: вектор узла коллектора ТП и радиатор по 3D-рендеру.
-    if (plans && window.projectUfhManifold) {
-      oNodes = projectUfhManifold.sheets(plans, { code: MARK.o.code, sheetStart: oManStart,
-        stepMm: tpStep, steps: tpSteps, rooms: expRooms, items: payload.items,
-        photo: (payload.node3d || {}).ufh || null, num: numOf('o') });
-    }
-    if (window.projectNodeSheets && (payload.node3d || {}).radiator) {
-      oNodes = oNodes.concat([projectNodeSheets.radiator({ code: MARK.o.code,
-        sheet: numOf('o')(oManStart + oNodes.length),
-        photo: payload.node3d.radiator, items: itemsBy.o })].filter(Boolean));
-    }
   }
+  // Комплект, собранный до появления готовых узлов (в данных нет nodeSheets),
+  // узлы не получает: рисовать их кодом «похоже» нельзя — лист проекта
+  // должен совпадать с образцом. Страница об этом предупреждает (pj_stale).
   // Схемы автоматики напольного отопления и узла снеготаяния — за узлами
   var oArtNo = oManStart + oNodes.length;
   var oArt = artOf('o', oArtNo);
@@ -563,9 +554,6 @@ if (payload && payload.items && payload.items.length) {
     vNodes = [{ title: 'Узел обвязки коллекторов водоснабжения',
       svg: projectSheets.imageSheet({ url: NS.water, code: MARK.v.code,
         sheet: numOf('v')(vNodeStart) }) }];
-  } else if (!NS && window.projectNodeSheets && itemsBy.v.length && (payload.node3d || {}).water) {
-    vNodes = [projectNodeSheets.water({ code: MARK.v.code, sheet: numOf('v')(vNodeStart),
-      photo: payload.node3d.water, items: itemsBy.v })].filter(Boolean);
   }
   var vPipeNo = vNodeStart + vNodes.length;
   // Обвязка узла ввода ХВС: вид собран 3D-рендером, потому что на листах
@@ -899,7 +887,18 @@ if (payload && payload.items && payload.items.length) {
     (payload.object || payload.title) + (payload.city ? ' · ' + payload.city : '');
   document.getElementById('bar_note').textContent =
     (payload.codeBase ? payload.codeBase + ' · ' : '') +
-    'листов: ' + svgs.length + ' · позиций: ' + payload.items.length;
+    'листов: ' + svgs.length + ' · позиций: ' + payload.items.length +
+    (payload.builtAt ? ' · собран ' + new Date(payload.builtAt).toLocaleString('ru-RU',
+      { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
+  // Комплект из прежней версии калькулятора: без готовых узлов. Не показываем
+  // «похожие» рисунки вместо них, а говорим прямо и ведём на пересборку.
+  if (!payload.nodeSheets) {
+    var st = document.getElementById('pj_stale');
+    st.style.display = 'block';
+    st.innerHTML = '<b>Комплект собран прежней версией калькулятора</b> — листов узлов обвязки в нём нет. ' +
+      'Вернитесь в калькулятор и нажмите «Выпустить проект» ещё раз: комплект соберётся заново, ' +
+      'с готовыми узлами из проектов-образцов. <button type="button" onclick="pjBack()">В калькулятор</button>';
+  }
 
   // Марка каждого листа — по границам разделов: они идут подряд, поэтому
   // достаточно помнить, где кончился предыдущий.
