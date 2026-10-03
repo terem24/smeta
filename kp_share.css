@@ -603,9 +603,12 @@
             .kpw-hero-t { padding: 18px 24px; }
             .kpw-hero-i { min-height: 130px; }
             .kpw-hero-i img { max-height: 130px; }
-            .kpw-pils { margin-top: 10px; }
-            .kpw-pil { padding: 10px 12px; }
-            .kpw-pil svg { width: 32px; height: 32px; }
+            .kpw-pils { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: 10px; margin-top: 12px; }
+            .kpw-pil { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 12px 10px; }
+            .kpw-pil svg { width: 30px; height: 30px; }
+            .kpw-pn { font-size: 18px; }
+            .kpw-pt { font-size: 11px; line-height: 1.35; }
+            .kp-sheet.kpw { break-inside: avoid; page-break-inside: avoid; }
             .kpw-row { grid-template-columns: 38px minmax(120px, 1.4fr) 2fr auto; padding: 4px 0; }
             .kpw-row-i { width: 38px; height: 38px; }
             .kpw-cta { margin-top: 10px; flex-wrap: nowrap; padding: 12px 18px; }
@@ -638,9 +641,12 @@
         body.html2pdf-printing .kpw-hero-t { padding: 18px 24px; }
         body.html2pdf-printing .kpw-hero-i { min-height: 130px; }
         body.html2pdf-printing .kpw-hero-i img { max-height: 130px; }
-        body.html2pdf-printing .kpw-pils { margin-top: 10px; }
-        body.html2pdf-printing .kpw-pil { padding: 10px 12px; }
-        body.html2pdf-printing .kpw-pil svg { width: 32px; height: 32px; }
+        body.html2pdf-printing .kpw-pils { grid-auto-flow: column; grid-auto-columns: 1fr; grid-template-columns: none; gap: 10px; margin-top: 12px; }
+        body.html2pdf-printing .kpw-pil { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px 12px 10px; }
+        body.html2pdf-printing .kpw-pil svg { width: 30px; height: 30px; }
+        body.html2pdf-printing .kpw-pn { font-size: 18px; }
+        body.html2pdf-printing .kpw-pt { font-size: 11px; line-height: 1.35; }
+        body.html2pdf-printing .kp-sheet.kpw { break-inside: avoid; page-break-inside: avoid; }
         body.html2pdf-printing .kpw-row { grid-template-columns: 38px minmax(120px, 1.4fr) 2fr auto; padding: 4px 0; }
         body.html2pdf-printing .kpw-row-i { width: 38px; height: 38px; }
         body.html2pdf-printing .kpw-cta { margin-top: 10px; flex-wrap: nowrap; padding: 12px 18px; }
