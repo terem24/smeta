@@ -53,9 +53,9 @@
    "freq": 251231,
    "audience": "owner",
    "data_block": "стоимость сезона по тарифам",
-   "status": "queued",
+   "status": "published",
    "date": "2026-10-03",
-   "published_at": null,
+   "published_at": "2026-10-03",
    "words": 703
   },
   {
