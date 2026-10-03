@@ -5643,7 +5643,7 @@ function pjRelease() {
     try { op.focus(); } catch (e) {}
     try { op.app.openProjectSheets(); return; } catch (e) { console.warn('[plan_editor] выпуск:', e && e.message); }
   }
-  openSheets();
+  openSheets(true);
 }
 
 function pjBody(id) {
@@ -5907,11 +5907,19 @@ function guideStep() {
 }
 
 /** Открыть комплект листов: смета уже лежит в localStorage после калькулятора */
-function openSheets() {
-  var has = false;
-  try { has = !!localStorage.getItem('project_sheets_payload'); } catch (e) {}
-  if (has) window.open('project.html', '_blank');
-  else alert('Сначала откройте калькулятор и нажмите «Проект» — комплект соберётся по смете вместе с планами этажей.');
+function openSheets(noRebuild) {
+  // Комплект всегда пересобирает калькулятор: в браузере лежит последний собранный, и он может быть
+  // от другого объекта или от прошлой версии (на листах тогда плашка «собран прежней версией»)
+  var op = noRebuild ? null : pjOpener();
+  if (op) {
+    try { op.focus(); } catch (e) {}
+    try { op.app.openProjectSheets(); return; } catch (e) { console.warn('[plan_editor] листы:', e && e.message); }
+  }
+  var st = null;
+  try { st = JSON.parse(localStorage.getItem('project_sheets_payload')); } catch (e) {}
+  if (!st) alert('Сначала откройте калькулятор и нажмите «Проект» — комплект соберётся по смете вместе с планами этажей.');
+  else if (!st.nodeSheets || !st.builtAt) alert('Комплект в браузере собран прежней версией калькулятора. Вернитесь во вкладку калькулятора и нажмите «Выпустить проект» — он соберётся заново. Из этой вкладки калькулятор не найден.');
+  else window.open('project.html', '_blank');
 }
 
 var guidePos = null;     // позиция после ручного перетаскивания (пока страница открыта)
