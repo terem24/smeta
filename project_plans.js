@@ -1565,14 +1565,64 @@
   var RAD_OUTLET_MM = 50;      // шаг выходов коллектора
   var RAD_PAIR_MM = 25;        // полразноса подачи и обратки одного луча
 
-  /** Где стоит коллектор радиаторов этажа: котельная → коллектор ТП → центр приборов */
-  function radCollector(f) {
-    var bz = (f.zones || []).filter(function (z) { return z.type === 'boiler'; })[0];
-    if (bz) { var c = centroid(bz.pts); return { x: c[0], y: c[1], src: 'boiler' }; }
-    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp' };
+  /**
+   * Котельная этажа: зона типа «Котельная» или любая комната с таким
+   * названием. В мастере раскладки котельная — обычная комната с именем
+   * «Котельная», и коллекторы её не видели: встали в гостиную (03.10.2026).
+   */
+  var BOILER_NAME = /котельн|топочн|бойлерн/i;
+  function boilerZone(f) {
+    var zs = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
+    return zs.filter(function (z) { return z.type === 'boiler'; })[0] ||
+      zs.filter(function (z) { return BOILER_NAME.test(z.name || ''); })[0] || null;
+  }
+
+  /**
+   * Место у стены комнаты z, ближайшей к точке to (обычно — к тому, что
+   * коллектор питает), на 0,3 м внутрь: коллектор висит на стене, а не
+   * стоит посреди комнаты. Возвращает [x, y] и направление стены [ux, uy].
+   */
+  function wallSpot(f, z, to) {
+    var P = z.pts, zc = centroid(P), best = null, bd = Infinity, ppm = f.pxPerM || 100;
+    for (var i = 0; i < P.length; i++) {
+      var a = P[i], b = P[(i + 1) % P.length];
+      var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+      if (L2 < (0.5 * ppm) * (0.5 * ppm)) continue;             // огрызок контура — не стена
+      var t = Math.max(0.15, Math.min(0.85, ((to[0] - a[0]) * dx + (to[1] - a[1]) * dy) / L2));
+      var q = [a[0] + dx * t, a[1] + dy * t], d = Math.hypot(to[0] - q[0], to[1] - q[1]);
+      if (d < bd) { bd = d; best = { q: q, u: [dx / Math.sqrt(L2), dy / Math.sqrt(L2)] }; }
+    }
+    if (!best) return { p: zc, u: [1, 0] };
+    var vx = zc[0] - best.q[0], vy = zc[1] - best.q[1], vl = Math.hypot(vx, vy) || 1, in3 = Math.min(0.3 * ppm, vl / 2);
+    return { p: [best.q[0] + vx / vl * in3, best.q[1] + vy / vl * in3], u: best.u };
+  }
+
+  /** Средняя точка радиаторов этажа (или центр комнат, если их нет). */
+  function radsCenter(f) {
     var sx = 0, sy = 0, rs = f.rads || [];
     rs.forEach(function (r) { sx += r.x; sy += r.y; });
-    return { x: sx / (rs.length || 1), y: sy / (rs.length || 1), src: 'rads' };
+    return rs.length ? [sx / rs.length, sy / rs.length] : null;
+  }
+
+  /**
+   * Где стоит коллектор радиаторов этажа: поставлен вручную (f.radColl) →
+   * у стены котельной, ближней к радиаторам → у коллектора ТП → центр
+   * приборов. В котельной рядом с коллектором ТП — со сдвигом вдоль стены,
+   * чтобы значки не легли друг на друга.
+   */
+  function radCollector(f) {
+    if (f.radColl && isFinite(f.radColl.x)) return { x: f.radColl.x, y: f.radColl.y, src: 'manual' };
+    var rc = radsCenter(f), bz = boilerZone(f);
+    if (bz) {
+      var s = wallSpot(f, bz, rc || centroid(bz.pts)), p = s.p, ppm = f.pxPerM || 100;
+      if (f.coll && Math.hypot(p[0] - f.coll.x, p[1] - f.coll.y) < 0.6 * ppm) {
+        var tries = [[p[0] + s.u[0] * 0.7 * ppm, p[1] + s.u[1] * 0.7 * ppm], [p[0] - s.u[0] * 0.7 * ppm, p[1] - s.u[1] * 0.7 * ppm]];
+        p = tries.filter(function (q) { return pip(q, bz.pts); })[0] || tries[0];
+      }
+      return { x: p[0], y: p[1], src: 'boiler' };
+    }
+    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp' };
+    return rc ? { x: rc[0], y: rc[1], src: 'rads' } : { x: 0, y: 0, src: 'rads' };
   }
 
   /**
@@ -3684,6 +3734,7 @@
   window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom,
     floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, radRoutes: radRoutes,
+    radCollector: radCollector, boilerZone: boilerZone, wallSpot: wallSpot,
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
     MAX_LOOP_M: MAX_LOOP_M, loopLimit: loopLimit, setLoopLimits: setLoopLimits };
 })();
