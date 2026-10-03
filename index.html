@@ -201,6 +201,8 @@
          «Компоновка котельной» — общий файл, чтобы чертёж и расчёт не
          разошлись. Идёт до app.js: им пользуется render(). -->
     <script src="boiler_wall.js?v=1.0" defer></script>
+    <!-- Названия без модели для PDF, Excel и страницы клиента. -->
+    <script src="short_names.js?v=1.0" defer></script>
     <script src="app.js?v=10.56" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
@@ -3069,6 +3071,16 @@
                         <span class="share-timer-hint-long">Клиент видит обратный отсчёт. Когда срок выйдет, цены скроются и останется одна кнопка — «Обновить счёт»: вы получите уведомление и отправите счёт заново по той же ссылке.</span>
                         <span class="share-timer-hint-short">Клиент видит отсчёт. Когда срок выйдет, цены скроются, и он сможет только попросить обновить счёт.</span>
                     </span>
+                </div>
+            </div>
+
+            <!-- Названия без моделей и без артикулов: PDF, Excel и ссылка клиенту. Включено
+                 всегда при открытии окна; снятая галочка действует на одну отправку. -->
+            <div class="share-option-card" id="card_opt_names" onclick="app.toggleShareOption('names')">
+                <input type="checkbox" id="share_opt_names" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                <div style="display: flex; flex-direction: column; text-align: left; gap: 2px; flex: 1; min-width: 0;">
+                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">🔒 Без моделей и артикулов</span>
+                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">Названия без модели («Радиатор 7 секций»), артикулов нет. Так смету сложнее повторить у других. Снимите галочку, чтобы отправить полные названия.</span>
                 </div>
             </div>
 
