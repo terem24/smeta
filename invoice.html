@@ -6722,6 +6722,68 @@
             }
         })();
     </script>
+
+    <!-- Быстрое меню разделов КП: слева при прокрутке, кнопки «вверх/вниз» — к соседнему разделу.
+         Пункты показываются только для разделов, которые есть на странице. -->
+    <style>
+        .sec-nav { position: fixed; left: 8px; top: 50%; transform: translateY(-50%); z-index: 900; display: none; flex-direction: column; align-items: center; gap: 4px; }
+        .sec-nav.on { display: flex; }
+        .sec-nav button { font: inherit; cursor: pointer; border: 0; background: none; padding: 0; position: relative; }
+        .sec-nav .sn-item { width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+        .sec-nav .sn-item::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--track-hover); transition: width .2s, height .2s, background .2s; }
+        .sec-nav .sn-item:hover::before { background: var(--primary); }
+        .sec-nav .sn-item.act::before { width: 14px; height: 14px; background: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+        .sec-nav .sn-item::after { content: attr(data-name); position: absolute; left: 26px; top: 50%; transform: translateY(-50%); white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--text-main); background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 4px 9px; box-shadow: 0 2px 8px rgba(0,0,0,.15); opacity: 0; pointer-events: none; transition: opacity .15s; }
+        .sec-nav .sn-item:hover::after { opacity: 1; }
+        .sec-nav .sn-step { width: 22px; height: 22px; font-size: 10px; color: var(--text-sec); }
+        .sec-nav .sn-step:hover { color: var(--primary); }
+        @media print { .sec-nav { display: none !important; } }
+    </style>
+    <div id="sec_nav" class="sec-nav no-print" aria-label="Разделы КП"></div>
+    <script>
+    (function () {
+        var SECS = [['equipment_container', 'Оборудование'], ['works_container', 'Монтажные работы'], ['kp_house_section', 'Мой дом'], ['ufh_plan_section', 'Схемы'], ['kp_warranty_sheet', 'Гарантия']];
+        var nav = document.getElementById('sec_nav'), built = '', raf = 0;
+        function vis() {
+            var out = [];
+            SECS.forEach(function (x) { var el = document.getElementById(x[0]); if (el && el.offsetParent !== null && el.offsetHeight > 0) out.push({ el: el, name: x[1] }); });
+            return out;
+        }
+        function top(el) { return el.getBoundingClientRect().top + window.pageYOffset; }
+        function cur(list) {
+            var y = window.pageYOffset + window.innerHeight * 0.35, c = -1;
+            list.forEach(function (s, i) { if (top(s.el) <= y) c = i; });
+            return c;
+        }
+        function go(el) { window.scrollTo({ top: Math.max(0, top(el) - 16), behavior: 'smooth' }); }
+        function step(d) {
+            var list = vis(), i = cur(list), t = i + d;
+            if (t < 0) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+            if (t >= list.length) { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' }); return; }
+            go(list[t].el);
+        }
+        function update() {
+            raf = 0;
+            var list = vis(), key = list.map(function (s) { return s.name; }).join('|');
+            if (key !== built) {
+                built = key;
+                nav.innerHTML = '';
+                var mk = function (cls, txt, fn, title) { var b = document.createElement('button'); b.type = 'button'; b.className = cls; if (cls === 'sn-item') { b.setAttribute('data-name', txt); b.setAttribute('aria-label', txt); } else b.textContent = txt; if (title) b.title = title; b.onclick = fn; nav.appendChild(b); return b; };
+                mk('sn-step', '▲', function () { step(-1); }, 'К предыдущему разделу');
+                list.forEach(function (s) { mk('sn-item', s.name, function () { go(s.el); }); });
+                mk('sn-step', '▼', function () { step(1); }, 'К следующему разделу');
+            }
+            var i = cur(list), items = nav.querySelectorAll('.sn-item');
+            items.forEach(function (b, k) { b.classList.toggle('act', k === i); });
+            nav.classList.toggle('on', list.length > 1 && window.pageYOffset > 200);
+        }
+        function sched() { if (!raf) raf = setTimeout(update, 60); }
+        window.addEventListener('scroll', sched, { passive: true });
+        window.addEventListener('resize', sched);
+        setInterval(sched, 1500);
+        sched();
+    })();
+    </script>
 </body>
 
 </html>
