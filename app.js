@@ -82780,7 +82780,7 @@ function prepareForPrint() {
     if (printArea) {
         // Раскладка по плану дома: данные те же, что уходят в ссылку клиенту
         let planViews = null;
-        if (window.KpShare && app.schemeOn()) { try { planViews = app.ufhPlanForShare(); } catch (e) { planViews = null; } }
+        if (window.KpShare && showSchemeOpt && app.schemeOn()) { try { planViews = app.ufhPlanForShare(); } catch (e) { planViews = null; } }
 
         // --- ШАГ 1: ЛИСТ ОБОРУДОВАНИЯ ---
         if (showEq) {
@@ -82793,9 +82793,12 @@ function prepareForPrint() {
             const eqWp = eqClone.querySelector('#warranty_print'); if (eqWp) eqWp.remove();
             let eqScheme = eqClone.querySelector('#dynamic_scheme');
             if (eqScheme) eqScheme.remove();
-            // План отопления дома выносим из таблицы отдельным разделом (как в ссылке, шаг 2а)
+            // В КП из всех схем идут только схема котельной (отдельным листом, шаг 3) и
+            // раскладка радиаторов и тёплого пола по плану (отдельным разделом, шаг 2б, как
+            // в ссылке). Остальные схемы-строки таблицы — автоматика, узлы, вода — не печатаем.
             const eqPlanRow = eqClone.querySelector('#ufh_plan_scheme_row');
-            if (planViews && eqPlanRow) eqPlanRow.remove(); else if (!eqPlanRow) planViews = null;
+            if (!eqPlanRow || !showSchemeOpt) planViews = null;
+            eqClone.querySelectorAll('tr.scheme-row').forEach(tr => tr.remove());
             let eqTabs = eqClone.querySelector('.main-view-tabs');
             if (eqTabs) eqTabs.style.display = 'none';
             printBin.appendChild(eqClone);
