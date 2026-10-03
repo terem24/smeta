@@ -2577,6 +2577,7 @@ const app = {
             if (chk) chk.checked = (this.state.brandMode === 'rommer');
             return;
         }
+        const _pre = this.cheapForkPre(val === 'rommer');
         this.state.brandMode = val;
         this.state.sectionAnalog = {}; // Сбрасываем точечные переопределения
         // Материал обвязки котельной тоже возвращаем к автовыбору по бренду: он и есть
@@ -2587,6 +2588,7 @@ const app = {
         }
         this.saveState();
         this.render();
+        this.cheapForkPost(_pre);
     },
 
     toggleWaterInput: function (val) {
@@ -4952,19 +4954,134 @@ const app = {
     // detachLoadedEstimate + ensureCalcId, связь с оригиналом — state.copiedFrom).
     // Метка state.stoutCopy помнит номер копии: пока он тот же, следующие замены
     // идут в ту же копию, а не плодят новые. Найти и загрузить копию можно по номеру.
-    isStoutCopy: function () {
-        const c = this.state.stoutCopy;
-        return !!(c && c.calc && String(c.calc) === String(this.state.calc_id));
+    _kpDay: {},
+
+    // Календарный день по местному времени, ГГГГ-ММ-ДД
+    ymdLocal: function (d) {
+        d = d ? new Date(d) : new Date();
+        return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
     },
-    ensureStoutCopy: async function () {
-        if (this.isStoutCopy()) return false;
-        try { this.ensureCalcId(true); await this.saveToCloud(true); } catch (e) { console.warn('[ensureStoutCopy] оригинал не сохранён', e); }
-        const origNo = this.state.calc_id || '';
-        this.detachLoadedEstimate(this.state, { estId: null });
-        this.ensureCalcId(true);
-        this.state.stoutCopy = { calc: String(this.state.calc_id), from: origNo };
-        this.saveState();
-        return true;
+
+    // Подпись состава КП для решения «это уже другая смета?»: артикулы и количества
+    // без цен. Цены плывут сами (обновление прайса), и по ним копии заводить нельзя.
+    kpCompSig: function () {
+        const parts = [];
+        (this.currentEquipmentList || []).forEach(it => { if (it && !it.isOpt) parts.push('e:' + (it.id || it.name) + 'x' + (Number(it.q) || 1)); });
+        if (this.canUseWorks()) (this.currentWorksList || []).forEach(w => { if (w && w.name) parts.push('w:' + w.name + 'x' + (Number(w.q) || 1)); });
+        return parts.sort().join('|');
+    },
+
+    // Текущий КП уже копия, заведённая сегодня? Тогда правки идут в неё, новая не нужна.
+    isKpForkToday: function () {
+        const f = this.state.kpFork;
+        return !!(f && f.calc && String(f.calc) === String(this.state.calc_id) && f.day === this.ymdLocal());
+    },
+
+    // Копия КП под новым 6-значным номером; оригинал остаётся как был. Причины:
+    //   'stout'   — замена оборудования на STOUT ради гарантии на объект;
+    //   'cheaper' — включён режим «Подешевле», и состав сметы реально изменился;
+    //   'nextday' — КП, уже уходивший клиенту, открыт в другой день и изменён.
+    // Правила против захламления (согласовано с владельцем 03.10.2026): копия заводится
+    // только когда состав изменился (kpCompSig), в тот же день правки идут в ту же копию,
+    // автосохранение копий не заводит, откат к прежнему составу копии не требует.
+    // Механика — как у чужой сметы по «Загрузить код»: detachLoadedEstimate + ensureCalcId,
+    // связь с оригиналом в state.copiedFrom, метка state.kpFork помнит причину и день.
+    // opts.snapshot — JSON состояния до правки: именно он сохраняется как оригинал.
+    forkKp: async function (reason, opts) {
+        if (this._forking) return false;
+        this._forking = true;
+        try {
+            const cur = this.state;
+            let origNo = '';
+            if (opts && opts.snapshot) {
+                const snap = JSON.parse(opts.snapshot);
+                origNo = String(snap.calc_id || '');
+                if (snap.calc_id) {
+                    this.state = snap;
+                    try { await this.saveToCloud(true); } catch (e) { console.warn('[forkKp] оригинал не сохранён', e); }
+                    finally { this.state = cur; }
+                }
+            } else if (reason === 'nextday') {
+                origNo = String(cur.calc_id || '');   // ушёл клиенту — уже в облаке
+            } else {
+                try { this.ensureCalcId(true); await this.saveToCloud(true); } catch (e) { console.warn('[forkKp] оригинал не сохранён', e); }
+                origNo = String(this.state.calc_id || '');
+            }
+            this.detachLoadedEstimate(this.state, { estId: null });
+            this.ensureCalcId(true);
+            const day = this.ymdLocal();
+            this.state.kpFork = { calc: String(this.state.calc_id), from: origNo, reason: reason, at: new Date().toISOString(), day: day };
+            this.state.kpDay = day;
+            this._kpDay = { calc: String(this.state.calc_id), since: Date.now(), sig: this.kpCompSig() };
+            this.saveState();
+            this.render();
+            try { await this.saveToCloud(true); } catch (e) { console.warn('[forkKp] копия не сохранена', e); }
+            const txt = {
+                stout: 'Замена на STOUT идёт в копии КП',
+                cheaper: 'Вариант «Подешевле» сохранён отдельным КП',
+                nextday: 'КП изменён после отправки в другой день — это новая копия'
+            }[reason] || 'Создана копия КП';
+            this.kpForkToast(txt + ' № ' + this.state.calc_id + '. Оригинал № ' + origNo + ' не изменён.');
+            return true;
+        } finally {
+            this._forking = false;
+        }
+    },
+
+    kpForkToast: function (text) {
+        const old = document.getElementById('kp_fork_toast');
+        if (old) old.remove();
+        const el = document.createElement('div');
+        el.id = 'kp_fork_toast';
+        el.className = 'no-print';
+        el.textContent = text;
+        el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:100000;max-width:min(560px,calc(100vw - 32px));background:#203F6F;color:#fff;font-size:13px;line-height:1.4;padding:12px 18px;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.28)';
+        document.body.appendChild(el);
+        setTimeout(() => { el.style.transition = 'opacity .4s'; el.style.opacity = '0'; setTimeout(() => el.remove(), 450); }, 7000);
+    },
+
+    // Подготовка к включению «Подешевле»: снимок состояния и состава до правки.
+    // null — копия не нужна (режим уже был, копия уже заведена сегодня, нет номера).
+    cheapForkPre: function (turningOn) {
+        if (!turningOn || this.cheapModeOn() || !this.state.tgUser || !this.state.calc_id || this.isKpForkToday()) return null;
+        return { json: JSON.stringify(this.state), sig: this.kpCompSig() };
+    },
+    // После включения: копия только если состав сметы действительно отличается
+    cheapForkPost: function (pre) {
+        if (!pre || !this.cheapModeOn()) return;
+        if (this.kpCompSig() === pre.sig) return;
+        this.forkKp('cheaper', { snapshot: pre.json });
+    },
+
+    // Правка КП, уходившего клиенту, в другой день: новая копия. Зовётся после
+    // каждой отрисовки с задержкой; первые секунды после загрузки сметы только
+    // запоминают состав (догрузка цен и планов), а смену состава ловят дальше.
+    _queueKpDayCheck: function () {
+        clearTimeout(this._kpDayT);
+        this._kpDayT = setTimeout(() => this.kpDayCheck(), 700);
+    },
+    kpDayCheck: async function () {
+        const st = this.state;
+        if (!st || !st.tgUser || !st.calc_id || this._forking || this._suppressSaveState) return;
+        const calc = String(st.calc_id);
+        const sig = this.kpCompSig();
+        if (this._kpDay.calc !== calc || Date.now() - this._kpDay.since < 5000) {
+            if (this._kpDay.calc !== calc) this._kpDay = { calc: calc, since: Date.now(), sig: sig };
+            else this._kpDay.sig = sig;
+            return;
+        }
+        if (sig === this._kpDay.sig) return;
+        this._kpDay.sig = sig;
+        const today = this.ymdLocal();
+        const vers = this.kpVersionsOf(st);
+        const last = vers[vers.length - 1];
+        const day = st.kpDay || (last ? this.ymdLocal(last.last_at || last.at) : '');
+        if (last && day && day !== today && !this.isKpForkToday()) {
+            await this.forkKp('nextday');
+        } else {
+            st.kpDay = today;
+            this.saveState();
+        }
     },
 
     // Заменить на STOUT одну позицию (индекс в списке missing) или все, где есть аналог
@@ -5041,7 +5158,7 @@ const app = {
         const html = `
             <div class="sg-head">
                 <div class="sg-shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg></div>
-                <div class="sg-ht"><div class="sg-title">Гарантия STOUT на объект</div><div class="sg-sub">${this.isStoutCopy() ? `Копия КП № ${e(this.state.calc_id)}, оригинал № ${e(this.state.stoutCopy.from)} не изменён` : 'Бланк последним листом КП'}</div></div>
+                <div class="sg-ht"><div class="sg-title">Гарантия STOUT на объект</div><div class="sg-sub">${this.isKpForkToday() ? `Копия КП № ${e(this.state.calc_id)}, оригинал № ${e(this.state.kpFork.from)} не изменён` : 'Бланк последним листом КП'}</div></div>
                 <span class="sg-pill ${ok ? 'ok' : 'low'}">${ok ? 'Доступна' : 'Пока нет'}</span>
             </div>
             <div class="sg-body">
@@ -5082,7 +5199,7 @@ const app = {
         const redo = async (index) => {
             document.removeEventListener('keydown', onKey);
             overlay.remove();
-            await this.ensureStoutCopy();
+            if (!this.isKpForkToday()) await this.forkKp('stout');
             const n = this.replaceWithStout(index);
             try { await this.saveToCloud(true); } catch (e) { console.warn('[redo] копия не сохранена', e); }
             this.showStoutShareInfo();
@@ -44161,6 +44278,7 @@ const app = {
             return;
         }
         if (!this.state.sectionAnalog) this.state.sectionAnalog = {};
+        const _pre = this.cheapForkPre(!!val);
         this.state.sectionAnalog[title] = !!val;
         // Тумблер раздела старше точечного выбора материала обвязки: иначе галка
         // «Аналог» на котельной молча ничего не делала бы с трубой, если монтажник
@@ -44168,6 +44286,7 @@ const app = {
         if (title === "2. Обвязка котельной") this.state.boilerPipeSystem = null;
         this.saveState();
         this.render();
+        this.cheapForkPost(_pre);
     },
     // Схема конкретного раздела: гасится независимо от общего переключателя «Схема»
     toggleSectionScheme: function (title, val) {
@@ -80241,6 +80360,7 @@ const app = {
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
         // Доля STOUT в строке параметров — считается по готовому списку оборудования
         this.renderStoutShareChip();
+        this._queueKpDayCheck();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
         this.renderContestWidget();
