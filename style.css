@@ -18240,6 +18240,7 @@ body.theme-yandex #profile_modal_overlay {
     .lk-layout:not(.lk-menu-open) .lk-nav { display: none; }
     .lk-layout.lk-menu-open .lk-pane { display: none; }
     .lk-layout.lk-forced .lk-mob-bar { display: none; }
+}
 
 /* ---------- Профиль на широком экране: без вертикальной прокрутки ----------
    Одна колонка полей с аватаркой отдельной строкой и двумя карточками внизу не
@@ -18314,3 +18315,6 @@ body.theme-yandex #profile_modal_overlay {
 .lk-subtabs { margin: 0 0 14px; flex: 0 0 auto; }
 .lk-subtabs:empty { display: none; }
 .lk-layout.lk-forced .lk-subtabs { display: none; }
+
+/* Панель разделов: семь пунктов одним блоком и одинаковые промежутки (без разделителей между блоками) */
+#lk_rail .lk-rail-group { gap: 4px; }

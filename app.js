@@ -14846,13 +14846,13 @@ const app = {
         { id: 'calc', kind: 'act', group: 'calc', nav: 'Расчёт', short: 'Расчёт', rail: 'Расчёт', title: 'Вернуться к расчёту сметы', icon: '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="11" x2="8.01" y2="11"></line><line x1="12" y1="11" x2="12.01" y2="11"></line><line x1="16" y1="11" x2="16.01" y2="11"></line><line x1="8" y1="15" x2="8.01" y2="15"></line><line x1="12" y1="15" x2="12.01" y2="15"></line><line x1="16" y1="15" x2="16.01" y2="15"></line><line x1="8" y1="19" x2="12" y2="19"></line>' },
         { id: 'home', kind: 'tab', group: 'calc', nav: 'Главная', short: 'Главная', rail: 'Главная', title: 'Что требует внимания и мои показатели', icon: '<path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-5h4v5"></path>' },
         { id: 'messages', kind: 'act', group: 'calc', nav: 'Сообщения', short: 'Сообщения', rail: 'Сообщения', title: 'Сообщения и уведомления', icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>', badge: true },
-        { id: 'objects', kind: 'tab', group: 'objects', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
-        { id: 'requisites', kind: 'tab', group: 'account', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
-        { id: 'workprices', kind: 'tab', group: 'account', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
+        { id: 'objects', kind: 'tab', group: 'calc', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
+        { id: 'requisites', kind: 'tab', group: 'calc', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
+        { id: 'workprices', kind: 'tab', group: 'calc', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
         // Только менеджерам дистрибьюторов: показ включают refreshManagerTabVisibility и syncRailUI
-        { id: 'installers', kind: 'tab', group: 'account', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
+        { id: 'installers', kind: 'tab', group: 'calc', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
         // Владельцу и админам — показ включает syncRailUI по hasAdminAccess()
-        { id: 'admin', kind: 'act', group: 'service', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' }
+        { id: 'admin', kind: 'act', group: 'calc', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' }
     ],
 
     // Внутри пункта меню — вкладки-чипы над содержимым: пунктов в меню семь, а разделов
@@ -15294,7 +15294,7 @@ const app = {
     saveRailLayout: function (patch) {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const now = this.railLayout();
-        this.installerSettings[this.railLayoutSlot()] = Object.assign({ dock: 'left', groups: null, params: 'left', collapsed: true }, now, patch || {});
+        this.installerSettings[this.railLayoutSlot()] = Object.assign({ dock: 'left', groups: null, params: 'left', collapsed: false }, now, patch || {});
         // Пишет и в localStorage, и (для вошедших) в облако
         this.pushInstallerSettingsToCloud();
     },
@@ -15305,13 +15305,13 @@ const app = {
     // поверх), на планшете наведения нет — там разворачивают той же кнопкой.
     // Состояние лежит в общей раскладке меню, поэтому у мыши и у сенсора оно своё.
     //
-    // Свёрнуто по умолчанию: развёрнутая колонка отъедала ширину у сметы, а
-    // подписи нужны редко — разделы узнаются по значкам, и подпись всё равно
-    // выезжает под мышью. Сравнение именно с false, а не с true: у тех, кто уже
-    // разворачивал панель, в настройках лежит collapsed: false, и их выбор должен
-    // пережить смену умолчания. Пустое поле (никогда не трогали) — свёрнуто.
+    // Развёрнуто по умолчанию (решение 03.10.2026): новый пользователь должен сразу
+    // видеть подписи разделов, а не гадать по значкам. Свернул сам — это запоминается
+    // (collapsed: true лежит в раскладке, у мыши и сенсора порознь, и уезжает в облако
+    // вместе с остальными настройками меню). Раньше умолчание было обратным; у тех, кто
+    // ни разу не трогал панель, поля нет, и она теперь откроется развёрнутой.
     railCollapsed: function () {
-        return this.railLayout().collapsed !== false;
+        return this.railLayout().collapsed === true;
     },
 
     toggleRailCollapsed: function () {
