@@ -1673,13 +1673,19 @@
       return out;
     };
     var rise = (RAD_COLL_MM[0] + RAD_CONN_MM) / 1000;
+    // комната прибора — та, где точка подключения (она с комнатной стороны)
+    var roomOfConn = function (p) {
+      for (var j = rooms.length - 1; j >= 0; j--) if (pip(p, rooms[j].pts)) return rooms[j].name || '';
+      var z = zoneOfPoint(f, p);
+      return z ? z.name || '' : '';
+    };
     if (!tee) {
       rads.forEach(function (r, i) {
         var cells = trace(src, cellAt(g, conn[i]));
         if (!cells) return;
         addCells(cells, 1);
         var pts = clean(orthoPath([[C.x, C.y]].concat(cells.map(function (q) { return cellXY(g, q); }), [conn[i]])));
-        items.push({ i: i, p: conn[i], pts: pts, L: 2 * (lenPoly(pts) / ppm + rise) });
+        items.push({ i: i, p: conn[i], pts: pts, L: 2 * (lenPoly(pts) / ppm + rise), room: roomOfConn(conn[i]) });
       });
     } else {
       var left = rads.map(function (r, i) { return i; }), at = src, prevP = [C.x, C.y], trunk = [[C.x, C.y]];
@@ -1695,7 +1701,7 @@
           addCells(cells, 2);
           var leg = clean(orthoPath([prevP].concat(cells.map(function (q) { return cellXY(g, q); }), [conn[i]])));
           trunk = trunk.concat(leg.slice(1));
-          items.push({ i: i, p: conn[i], pts: leg, L: 2 * (lenPoly(leg) / ppm) + 2 * RAD_CONN_MM / 1000 });
+          items.push({ i: i, p: conn[i], pts: leg, L: 2 * (lenPoly(leg) / ppm) + 2 * RAD_CONN_MM / 1000, room: roomOfConn(conn[i]) });
           at = gc; prevP = conn[i];
         }
       }

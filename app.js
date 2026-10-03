@@ -36218,6 +36218,66 @@ const app = {
         return out;
     },
 
+    /**
+     * Трассы радиаторов по плану дома — для метража трубы и гидравлики.
+     * Длины в одну сторону, м, вместе с подъёмами к прибору и к коллектору:
+     *   avgRun — средний луч, maxRun / maxRoom — самый длинный, trunkOneWay —
+     *   магистраль тройниковой схемы, byRoom — лучи по комнатам (порядок
+     *   приборов на плане), count — сколько приборов на плане.
+     * null — плана с радиаторами нет: смета считает по-старому, формулой.
+     * Схема (лучевая/тройниковая) — та же, что в смете.
+     */
+    radPlanRuns: function () {
+        const PP = window.projectPlans, plans = this.currentPlans();
+        if (!PP || !PP.radRoutes || !plans || !Array.isArray(plans.floors)) return null;
+        const s = this.state, tee = s.radConnectionScheme === 'tee';
+        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1);
+        if (this._radPlanCache && this._radPlanCache.key === key) return this._radPlanCache.val;
+        const runs = [], byRoom = {};
+        let trunk = 0, floorsWith = 0, maxRun = 0, maxRoom = '';
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || !(f.rads || []).length || fi > 1 || (fi === 1 && s.floors !== 2)) return;
+            let R = null;
+            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee); } catch (e) { R = null; }
+            if (!R || !R.items.length) return;
+            floorsWith++;
+            trunk += R.totalM / 2;
+            R.items.forEach(it => {
+                const one = it.L / 2;
+                runs.push(one);
+                const k = String(it.room || '').trim().toLowerCase();
+                (byRoom[k] = byRoom[k] || []).push(one);
+                if (one > maxRun) { maxRun = one; maxRoom = it.room || ''; }
+            });
+        });
+        // Два этажа с радиаторами — между ними стояк, на плане его нет: те же 3 м,
+        // что и в формуле сметы
+        const val = runs.length ? {
+            avgRun: runs.reduce((a, v) => a + v, 0) / runs.length, maxRun, maxRoom, count: runs.length,
+            trunkOneWay: trunk + (floorsWith > 1 ? 3 : 0), byRoom
+        } : null;
+        this._radPlanCache = { key, val };
+        return val;
+    },
+
+    /**
+     * Луч каждого прибора сметы, м в одну сторону: с плана — по комнате прибора
+     * (несколько приборов в комнате — по очереди), нет такой комнаты на плане —
+     * средний луч плана; плана нет — fallback (формула сметы).
+     */
+    radDeviceRuns: function (devices, fallback) {
+        const P = this.radPlanRuns();
+        if (!P) return (devices || []).map(() => fallback);
+        const used = {};
+        return (devices || []).map(d => {
+            const k = String((d && d.room) || '').trim().toLowerCase();
+            const list = P.byRoom[k];
+            if (!list || !list.length) return P.avgRun;
+            const i = used[k] || 0; used[k] = i + 1;
+            return list[Math.min(i, list.length - 1)];
+        });
+    },
+
     /** Для ссылки клиенту: те же этажи, числа округлены — страница их не пересчитывает. */
     ufhPlanForShare: function () {
         const r1 = v => Math.round((v || 0) * 10) / 10;
@@ -59664,7 +59724,9 @@ const app = {
         if (!(kw > 0)) return 1;
         const s = this.state;
         const area = parseFloat(s.area) || 100;
-        const avgRun = Math.sqrt(area / (s.floors === 2 ? 2 : 1)) + 3;
+        // средний луч — с плана дома, если трассы радиаторов на нём есть
+        const _rp = this.radPlanRuns();
+        const avgRun = _rp ? _rp.avgRun : Math.sqrt(area / (s.floors === 2 ? 2 : 1)) + 3;
         const n = Math.max(1, parseInt(devicesCount, 10) || Math.ceil(area / 18));
         const flowAll = this.radFlowOf(kw * 1000);
         // Кольцо считается по самому мощному прибору, а не по среднему: именно он
@@ -59768,13 +59830,15 @@ const app = {
                 .reduce((a, p) => a + (p.dp || 0), 0) : 0;
         }
         const nDev = devices.length;
+        // Луч каждого прибора: с плана дома — свой, без плана — один на всех
+        const runs = this.radDeviceRuns(devices, avgRun);
         const rows = devices.map((d, i) => {
             const flow = this.radFlowOf(wOf(d));
             // Кольцо прибора: луч в обе стороны (или отвод и часть магистрали у
             // тройниковой) и его клапан на расчётной настройке.
             const pipeDp = tee
                 ? teeTrunkDp * (i + 1) / nDev + this.radPipeDrop(flow, 16, 0.9).dp
-                : this.radPipeDrop(flow, 16, len).dp;
+                : this.radPipeDrop(flow, 16, 2 * runs[i] * 1.1).dp;
             const dp = pipeDp + Math.pow(flow / kvValve, 2) * 100;
             return { room: d.room, watt: Math.round(wOf(d)), flow: flow, dp: dp };
         });
@@ -59856,8 +59920,21 @@ const app = {
 
         // Самый мощный прибор задаёт худший луч: у него наибольший расход, а
         // длина луча одна на всех — реальной трассировки у нас нет.
-        const worst = devices.reduce((a, d) => (wOf(d) > wOf(a) ? d : a), devices[0]);
-        const flowWorst = this.radFlowOf(wOf(worst));
+        let worst = devices.reduce((a, d) => (wOf(d) > wOf(a) ? d : a), devices[0]);
+        let flowWorst = this.radFlowOf(wOf(worst));
+        // Есть план дома — у каждого прибора своя длина луча, и худшее кольцо
+        // ищем честно: по потерям в луче и клапане с его расходом и его длиной
+        // (дальний слабый прибор бывает тяжелее ближнего мощного).
+        let worstRun = avgRun;
+        if (!tee && this.radPlanRuns()) {
+            const runs = this.radDeviceRuns(devices, avgRun), kv0 = this.radValveKv().kv;
+            let best = -1;
+            devices.forEach((d, i) => {
+                const fl = this.radFlowOf(wOf(d));
+                const v = this.radPipeDrop(fl, 16, 2 * runs[i] * 1.1).dp + Math.pow(fl / kv0, 2) * 100;
+                if (v > best) { best = v; worst = d; flowWorst = fl; worstRun = runs[i]; }
+            });
+        }
 
         const parts = [];
         let dp = 0;
@@ -59918,9 +59995,10 @@ const app = {
             const man = this.radManifoldDp(flowWorst);
             add('Коллектор ' + man.passport.label, man.dp,
                 { tag: 'manifold', flow: flowWorst, manifold: man });
-            const loop = this.radPipeDrop(flowWorst, 16, 2 * avgRun * 1.1);
-            add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * avgRun * 1.1).toFixed(0) + ' м', loop.dp,
-                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1,
+            const loop = this.radPipeDrop(flowWorst, 16, 2 * worstRun * 1.1);
+            add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * worstRun * 1.1).toFixed(0) + ' м' +
+                (this.radPlanRuns() ? ' (по плану дома)' : ''), loop.dp,
+                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * worstRun * 1.1,
                     tag: 'loop', d: 16, flow: flowWorst });
         }
 
@@ -68384,7 +68462,9 @@ const app = {
                 return `<span style="${styles}"><span style="${head}">Труба 16x2.2 в теплоизоляции (${isRed ? 'красная' : 'синяя'})</span>` +
                     `<b>Зачем:</b> ${why}<br><br>` +
                     `<b>Формула подбора:</b><br>` +
-                    `• Средняя длина трассы: L_ср = √(Площадь / Этажность) + 3 м.<br>` +
+                    (this._radPlanUsed
+                        ? `• Средняя длина трассы L_ср — по плану дома: трассы от коллектора радиаторов к каждому прибору вдоль стен, с подъёмами к прибору и коллектору (раздел «План отопления дома»).<br>`
+                        : `• Средняя длина трассы: L_ср = √(Площадь / Этажность) + 3 м (оценка; с планом дома считается по трассам).<br>`) +
                     `• Общая длина труб: L_общ = Приборы × L_ср × 2 × 1.1 (где 2 — подача + обратка, 1.1 — запас 10%).<br>` +
                     `• Количество бухт (по 100 м): N_бухт = ⌈L_общ / 100⌉. Делится поровну между красной и синей.<br><br>` +
                     `<b>Подставленные значения:</b><br>` +
@@ -72162,6 +72242,7 @@ const app = {
         // считала бы кольцо по стояку из прошлого расчёта.
         this._radTrunk = null;
         this._radTee = null;
+        this._radPlanUsed = false;   // метраж труб радиаторов по плану дома (ставят ветки раздела 3)
         // Исходные данные греющего контура бойлера запишет раздел его обвязки
         // ниже. Без сброса гидравлика загрузки при выключении ГВС считала бы
         // змеевик из прошлого расчёта.
@@ -74959,10 +75040,15 @@ const app = {
                 // === Тройниковая (шлейфовая) схема: без коллектора — труба идёт магистралью
                 // вдоль трассы, каждый радиатор врезан тройником. Диаметр магистрали ступенчато
                 // сужается по остаточной мощности «после точки врезки»: у котла/стояка несёт всю
-                // мощность дома, на дальнем участке — примерно половину. Метраж — грубая оценка
-                // без реальной трассировки (нет плана дома с координатами комнат).
+                // мощность дома, на дальнем участке — примерно половину. Метраж — по трассе
+                // на плане дома, а без плана — грубая оценка по площади.
                 let firstRiser = 3;
-                let trunkOneWay = 0.75 * Math.sqrt(totalDevicesCount * floorArea) + firstRiser;
+                // Есть план дома с радиаторами — магистраль берём по трассе на плане
+                // (projectPlans.radRoutes), без него — прежняя оценка по площади.
+                const _radPlan = this.radPlanRuns();
+                this._radPlanUsed = !!_radPlan;
+                let trunkOneWay = _radPlan ? _radPlan.trunkOneWay
+                    : 0.75 * Math.sqrt(totalDevicesCount * floorArea) + firstRiser;
                 let trunkMeters = Math.ceil(trunkOneWay * 2 * 1.1); // подача + обратка, +10% запас
                 let branchMeters = Math.ceil(totalDevicesCount * 0.9); // короткие отводы от магистрали к каждому прибору
                 this.avgRun = trunkOneWay; this.neededPipe = trunkMeters + branchMeters;
@@ -75056,7 +75142,10 @@ const app = {
                     boughtItem.noCheapenAlts = true;
                     let desc = `<span style="font-size:11px;line-height:1.5;">` +
                         `<b>Зачем:</b> ${label} В тройниковой схеме труба идёт единой магистралью мимо всех радиаторов (а не отдельным лучом на каждый прибор, как в коллекторной) — у котла/стояка несёт расход сразу всех приборов, к концу трассы — расход одного-двух последних.<br>` +
-                        `<b>Формула метража:</b> Длина трассы в одну сторону = 0,75·√(Приборов × Площадь этажа) + 3м (запас на подключение к стояку) — оценка длины обхода N точек по площади без плана дома. ×2 — подача и обратка, +10% запас на подрезку и обходы. Короткие отводы от магистрали до каждого радиатора — 0,9 м/прибор (обе трубы, с запасом).<br>` +
+                        `<b>Формула метража:</b> ` + (this._radPlanUsed
+                            ? `Длина трассы в одну сторону — по плану дома: магистраль от котельной обходит радиаторы по очереди вдоль стен (раздел «План отопления дома»), с подъёмами к приборам.`
+                            : `Длина трассы в одну сторону = 0,75·√(Приборов × Площадь этажа) + 3м (запас на подключение к стояку) — оценка длины обхода N точек по площади без плана дома; с планом считается по трассе.`) +
+                        ` ×2 — подача и обратка, +10% запас на подрезку и обходы. Короткие отводы от магистрали до каждого радиатора — 0,9 м/прибор (обе трубы, с запасом).<br>` +
                         `<b>Формула диаметра:</b> Труба у котла/стояка сайзится на всю мощность дома, дальний участок — на её половину (часть расхода «разбирается» врезками по пути). Пороги: до 4 кВт → 16мм, до 8 кВт → 20мм, до 16 кВт → 25(26 у металлопластика)мм, свыше — 32мм.<br>` +
                         `<b>Подставленные значения:</b><br>` +
                         `• Приборов: ${totalDevicesCount} шт., площадь этажа: ${floorArea.toFixed(0)} м².<br>` +
@@ -75150,7 +75239,13 @@ const app = {
                 // × 2 — подача и обратка: к каждому прибору от коллектора идут две трубы.
                 // Так же считают подсказка трубы, гидравлика луча (radHydraulics) и объём
                 // теплоносителя для бака; без множителя смета клала трубы вдвое меньше.
-                let avgRun = Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
+                // Средний луч: по трассам плана дома (projectPlans.radRoutes), если план
+                // с радиаторами есть, иначе прежняя оценка √(площадь этажа) + 3 м.
+                // Приборов в смете может быть не столько, сколько на плане, — поэтому
+                // средний луч с плана, а число лучей — сметы.
+                const _radPlan = this.radPlanRuns();
+                this._radPlanUsed = !!_radPlan;
+                let avgRun = _radPlan ? _radPlan.avgRun : Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
                 this.avgRun = avgRun;
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
