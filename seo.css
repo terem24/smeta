@@ -551,6 +551,8 @@ html.dark-mode .lead-form .lf-chip span { border-color: #3A3A3A; }
 .lead-form button[type="submit"]:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
 
 .lead-form .lf-status { margin: 0; font-size: 14px; line-height: 1.5; }
+/* Пустое сообщение не занимает место (в сетке формы между строками зазор 18 px) */
+.lead-form .lf-status:empty { display: none; }
 .lead-form .lf-status.is-error { color: #DC2626; }
 html.dark-mode .lead-form .lf-status.is-error { color: #F87171; }
 .lead-done {

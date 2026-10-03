@@ -22466,13 +22466,54 @@ const app = {
     sortAdminColumn: function (key) {
         const sel = document.getElementById('sort-installers');
         const current = sel ? sel.value : 'default';
-        const defaultDir = { name: 'asc', ltv: 'desc', tariff: 'asc', login: 'desc' };
+        const defaultDir = { name: 'asc', ltv: 'desc', tariff: 'asc', login: 'desc', dist: 'asc', recog: 'desc', design: 'desc', works: 'desc' };
         let next;
         if (current === key + '_asc') next = key + '_desc';
         else if (current === key + '_desc') next = key + '_asc';
         else next = key + '_' + defaultDir[key];
-        if (sel) sel.value = next;
+        if (sel) {
+            // Столбцы без пункта в выпадающем списке (дистрибьютор, доступы) добавляем на лету
+            if (!Array.from(sel.options).some(o => o.value === next)) sel.add(new Option(next, next));
+            sel.value = next;
+        }
         this.loadAdminData(0);
+    },
+
+    // Сортировка по столбцам, которых нет в базе: дистрибьютор и три переключателя доступа.
+    // Значение считается тем же кодом, каким рисуется ячейка, поэтому порядок совпадает с тем,
+    // что видно на экране. Доступ к распознаванию и проектированию лежит на сервере
+    // распознавания — его надо загрузить до сортировки (см. loadRecognitionAccess).
+    ADMIN_COL_SORT_KEYS: ['dist', 'recog', 'design', 'works'],
+    adminColSortValue: function (u, key) {
+        if (key === 'dist') {
+            const d = (this.adminData.distributors || []).find(x => x.id === u.distributor_id);
+            return d ? String(d.company_name || '').toLowerCase() : '';
+        }
+        if (key === 'recog') return this.recognitionStateFor(u).on ? 1 : 0;
+        if (key === 'works') return this.worksDecisionFor(u, this.tariffAccountOfUser(u), this.tariffPlanOfUser(u)).on ? 1 : 0;
+        if (key === 'design') {
+            const acc = this._recognitionAccess;
+            const d = acc && acc.design;
+            if (!d) return 0;
+            const own = this.accessFlagFor(d.users, this.recognitionUserKey(u));
+            if (own !== undefined) return own ? 1 : 0;
+            const on = this.featureDefaultFor(u) || !!(u.distributor_id && (d.dists || {})[u.distributor_id]) ||
+                this.regionFlagFor(d.regions, u.region || '');
+            return on ? 1 : 0;
+        }
+        return 0;
+    },
+    adminColSortCompare: function (a, b, sortType) {
+        const m = /^(dist|recog|design|works)_(asc|desc)$/.exec(sortType);
+        if (!m) return 0;
+        const va = this.adminColSortValue(a, m[1]), vb = this.adminColSortValue(b, m[1]);
+        let r;
+        if (typeof va === 'string') {
+            // Без дистрибьютора — всегда в конце, в какую сторону ни сортируй
+            if (!va !== !vb) return va ? -1 : 1;
+            r = va.localeCompare(vb, 'ru');
+        } else r = va - vb;
+        return m[2] === 'desc' ? -r : r;
     },
 
     buildAdminUserFilter: function (query) {
@@ -22909,7 +22950,8 @@ const app = {
             // (base/pro/admin/viewer), а нужен порядок «Профи → Базовый». Поэтому тянем весь
             // список и сортируем на клиенте (см. adminTariffRank), а страницу нарезаем сами.
             const isTariffSort = sortType.startsWith('tariff_');
-            const isClientSort = isLtvSort || isTariffSort;
+            const isColSort = /^(dist|recog|design|works)_/.test(sortType);
+            const isClientSort = isLtvSort || isTariffSort || isColSort;
             // Доступ к распознаванию базе неизвестен — он лежит в списках на сервере
             // распознавания. Поэтому фильтр по нему, как сортировка по тарифу, требует
             // всего списка целиком: страницу нарезаем сами уже после отбора.
@@ -22952,8 +22994,8 @@ const app = {
                 query = query.order('demo_ends_at', { ascending: true, nullsFirst: false });
             } else if (sortType === 'expiry_desc') {
                 query = query.order('demo_ends_at', { ascending: false, nullsFirst: false });
-            } else if (isTariffSort) {
-                // Внутри одного тарифа — сначала те, кто заходил недавно
+            } else if (isTariffSort || isColSort) {
+                // Внутри одного значения — сначала те, кто заходил недавно
                 query = query.order('last_visited', { ascending: false, nullsFirst: false });
             } else if (!isLtvSort) {
                 query = query.order('created_at', { ascending: false });
@@ -23025,6 +23067,13 @@ const app = {
             if (isTariffSort) {
                 const rank = (u) => this.adminTariffRank(u);
                 users.sort((a, b) => sortType === 'tariff_desc' ? rank(b) - rank(a) : rank(a) - rank(b));
+                users = users.slice(offset, offset + this._adminPageSize);
+            }
+
+            // Сортировка по дистрибьютору и переключателям доступа — на клиенте, по всему списку
+            if (isColSort) {
+                if (!this._recognitionAccess) await this.loadRecognitionAccess();
+                users.sort((a, b) => this.adminColSortCompare(a, b, sortType));
                 users = users.slice(offset, offset + this._adminPageSize);
             }
 
@@ -25149,6 +25198,7 @@ const app = {
                 // сначала все Профи (включая админов и наблюдателей с Профи), потом Базовый
                 if (sortType === 'tariff_asc') return this.adminTariffRank(a) - this.adminTariffRank(b);
                 if (sortType === 'tariff_desc') return this.adminTariffRank(b) - this.adminTariffRank(a);
+                if (/^(dist|recog|design|works)_/.test(sortType)) return this.adminColSortCompare(a, b, sortType);
                 return 0;
             });
         }
@@ -25300,6 +25350,14 @@ const app = {
                                 <option value="name_desc" ${sortType === 'name_desc' ? 'selected' : ''}>Имя: Я-А</option>
                                 <option value="tariff_asc" ${sortType === 'tariff_asc' ? 'selected' : ''}>Тариф: Базовый→Профи</option>
                                 <option value="tariff_desc" ${sortType === 'tariff_desc' ? 'selected' : ''}>Тариф: Профи→Базовый</option>
+                                <option value="dist_asc" ${sortType === 'dist_asc' ? 'selected' : ''}>Дистрибьютор: А-Я</option>
+                                <option value="dist_desc" ${sortType === 'dist_desc' ? 'selected' : ''}>Дистрибьютор: Я-А</option>
+                                <option value="recog_desc" ${sortType === 'recog_desc' ? 'selected' : ''}>Распознавание: сначала включено</option>
+                                <option value="recog_asc" ${sortType === 'recog_asc' ? 'selected' : ''}>Распознавание: сначала выключено</option>
+                                <option value="design_desc" ${sortType === 'design_desc' ? 'selected' : ''}>Проектирование: сначала включено</option>
+                                <option value="design_asc" ${sortType === 'design_asc' ? 'selected' : ''}>Проектирование: сначала выключено</option>
+                                <option value="works_desc" ${sortType === 'works_desc' ? 'selected' : ''}>Монтаж: сначала включено</option>
+                                <option value="works_asc" ${sortType === 'works_asc' ? 'selected' : ''}>Монтаж: сначала выключено</option>
                             </select>
                             <button class="admin-btn" onclick="app.toggleUsersDense(this)" title="Плотность строк таблицы">${dense ? 'Обычная плотность' : 'Компактно'}</button>
                             <button class="admin-btn" onclick="app.exportAdminToExcel()" title="Выгрузить список в Excel">Excel</button>
@@ -25404,10 +25462,10 @@ const app = {
                             <th style="width:280px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('name')" title="Сортировать по имени">Имя / Контакты${sortArrow('name')}</th>
                             <th style="width:165px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('ltv')" title="Сортировать по сумме">Статистика (LTV)${sortArrow('ltv')}</th>
                             <th style="width:135px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('tariff')" title="Сортировать по тарифу">Тариф / Устройство${sortArrow('tariff')}</th>
-                            <th style="width:205px;">Дистрибьютор</th>
-                            <th style="width:100px; text-align:center;" title="Доступ монтажника к распознаванию смет">Распознавание</th>
-                            <th style="width:100px; text-align:center;" title="Доступ к листам проекта и редактору планов">Проектирование</th>
-                            <th style="width:100px; text-align:center;" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы»">Монтаж</th>
+                            <th style="width:205px; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('dist')" title="Сортировать по дистрибьютору">Дистрибьютор${sortArrow('dist')}</th>
+                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('recog')" title="Доступ монтажника к распознаванию смет. Клик — сортировать">Распознавание${sortArrow('recog')}</th>
+                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('design')" title="Доступ к листам проекта и редактору планов. Клик — сортировать">Проектирование${sortArrow('design')}</th>
+                            <th style="width:100px; text-align:center; cursor:pointer; user-select:none;" onclick="app.sortAdminColumn('works')" title="Монтажные работы: личная отметка сильнее компании и таблицы «Тарифы». Клик — сортировать">Монтаж${sortArrow('works')}</th>
                             <th style="text-align:right; cursor:pointer; user-select:none; width: 90px;" onclick="app.sortAdminColumn('login')" title="Сортировать по дате последнего входа">Вход${sortArrow('login')}</th>
                             <th style="text-align:center; width: 145px;">Действия</th>
                         </tr></thead>
