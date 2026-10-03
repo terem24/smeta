@@ -4946,6 +4946,182 @@ const app = {
         });
     },
 
+    // ===================== Бланк «Гарантия на систему STOUT» =====================
+    //
+    // Последний лист КП. Печатается, когда доля STOUT не ниже порога, у расчёта
+    // есть адрес и заказчик, печатают оборудование и монтажник вошёл. Три слоя,
+    // у каждого свой подписант (решение владельца 03.10.2026):
+    //   1) гарантия изготовителя STOUT по разделам сметы — цитируем stout.ru/guarantee
+    //      и паспорта (Docs.warrantyMonthsFor: BRAND_WARRANTY + warranty.js);
+    //   2) ответственность изготовителя застрахована (Docs.INSURANCE);
+    //   3) исполнитель даёт срок на работы сверх закона — его собственное
+    //      дополнительное обязательство (п. 7 ст. 5 ЗоЗПП). Только срок, без сервиса.
+    // Слов «расширенная гарантия STOUT» от имени завода нет: такой программы у
+    // STOUT не существует, а бланк подписывает монтажник. На стадии КП — отметка
+    // «предварительно»: обязательство вступает после акта. Шапка — монтажника,
+    // STOUT только в заголовке: чужой логотип в шапке читался бы как бумага от завода.
+    WARRANTY_EXT_WORKS_MONTHS: 36,
+
+    // Группы артикулов STOUT словами — для таблицы сроков (ключ — начало артикула).
+    // Только то, что сверено по каталогу; неизвестный префикс берёт слова из названия.
+    WARRANTY_KINDS: {
+        SRB: 'радиаторы биметаллические', SRA: 'радиаторы алюминиевые', SCN: 'конвекторы', SCQ: 'конвекторы',
+        SVT: 'термостатические клапаны', SVL: 'клапаны радиаторные', SVR: 'клапаны радиаторные', SVH: 'узлы нижнего подключения',
+        SPX: 'трубы', SPM: 'трубы', SPS: 'трубы', SPI: 'трубы',
+        SFA: 'фитинги', SFP: 'фитинги', SFC: 'фитинги', SFH: 'фитинги', SFS: 'фитинги', SFB: 'фитинги', SFT: 'резьбовые фитинги',
+        SVB: 'шаровые краны', SVS: 'предохранительная и воздухоотводная арматура', SEB: 'котлы электрические', SST: 'стабилизаторы и дымоходы',
+        SMB: 'коллекторы', SMS: 'коллекторные блоки', SMF: 'маты тёплого пола', SSV: 'принадлежности тёплого пола', SDG: 'насосные группы и узлы подмеса',
+        SPC: 'циркуляционные насосы', STH: 'расширительные баки', STW: 'расширительные баки', SWH: 'водонагреватели', SCC: 'коллекторные шкафы',
+        STE: 'автоматика', SMH: 'автоматика', SKB: 'канализация бесшумная', SAC: 'крепёж', SHQ: 'полотенцесушители', SFW: 'фильтры'
+    },
+
+    warrantyFormEligible: function () {
+        if (!this.state.tgUser) return false;
+        if (this.printOptions && this.printOptions.eq === false) return false;
+        if (!this.objectDetailsComplete()) return false;
+        const sh = this.stoutShare();
+        return sh.pct !== null && sh.pct >= this.warrantyThreshold();
+    },
+
+    renderWarrantyPrint: function () {
+        const el = document.getElementById('warranty_print');
+        if (!el) return;
+        // Сроки и полисы — в docs.js: грузится лениво перед печатью (executeDownload).
+        // Пока его нет, блок пуст и на печати скрыт (:empty).
+        el.innerHTML = (typeof Docs !== 'undefined' && this.warrantyFormEligible()) ? this.warrantyFormHtml() : '';
+    },
+
+    // Сроки гарантии STOUT по разделам сметы: внутри раздела — виды оборудования
+    // со своим сроком, от большего к меньшему. Строка на муфту здесь не нужна —
+    // виды и сроки клиенту понятнее, а артикулы он найдёт в смете.
+    warrantyTermRows: function () {
+        const bySec = new Map();
+        (this.currentEquipmentList || []).forEach(it => {
+            if (!it || it.isOpt || !this.isStoutItem(it)) return;
+            const sec = String(it.sectionTitle || '').replace(/^\d+(\.\d+)*\.?\s*/, '') || 'Прочее';
+            const art = String(it.displaySku || it.id || '');
+            // Неизвестный префикс — первые слова названия без размеров, дюймов и резьбы
+            const kind = this.WARRANTY_KINDS[art.split('-')[0]]
+                || String(it.name || '').toLowerCase().split(/[,(]/)[0].trim().split(/\s+/)
+                    .filter(wd => !/[\d"”″’']/.test(wd) && !/^(вр|нр|бар|мм|dn|х|x|-)$/.test(wd)).slice(0, 3).join(' ');
+            if (!kind) return;
+            const w = Docs.warrantyMonthsFor(it);
+            const months = w ? w.months : 0;
+            if (!bySec.has(sec)) bySec.set(sec, new Map());
+            const kinds = bySec.get(sec);
+            // Один вид — одна запись: у фитингов одного раздела сроки бывают разные
+            // (5 лет аксиальные, 1 год по паспорту у редкого) — показываем «1–5 лет».
+            // «По паспорту» рядом с известным сроком того же вида не пишем.
+            let k = kinds.get(kind);
+            if (!k) { k = { kind: kind, min: 0, max: 0, note: '' }; kinds.set(kind, k); }
+            if (months > 0) {
+                k.min = k.min ? Math.min(k.min, months) : months;
+                k.max = Math.max(k.max, months);
+                if (w && w.note && !k.note) k.note = w.note;
+            }
+        });
+        const rows = [];
+        bySec.forEach((kinds, sec) => {
+            const list = [...kinds.values()].sort((a, b) => b.max - a.max);
+            rows.push({ sec: sec, kinds: list, max: Math.max(0, ...list.map(k => k.max)) });
+        });
+        return rows;
+    },
+
+    // «5 лет», «1–5 лет», «12–60 мес.»
+    warrantyTermWords: function (min, max) {
+        if (!max) return 'по паспорту';
+        if (!min || min === max) return Docs.monthsWords(max);
+        if (min % 12 === 0 && max % 12 === 0) return (min / 12) + '–' + Docs.monthsWords(max);
+        return min + '–' + max + ' мес.';
+    },
+
+    // Система объекта одной строкой: котёл, бойлер, приборы, тёплый пол, вода
+    systemSummary: function () {
+        const st = this.state;
+        const list = (this.currentEquipmentList || []).filter(it => it && !it.isOpt);
+        const inSec = (re) => list.filter(it => re.test(String(it.sectionTitle || '')));
+        const parts = [];
+        const boiler = inSec(/^1\./).find(it => /кот[её]л/i.test(it.name || ''));
+        if (boiler) parts.push(String(boiler.name));
+        const tank = inSec(/^1\./).find(it => /бойлер|водонагреват/i.test(it.name || ''));
+        if (tank) parts.push(String(tank.name));
+        const rads = inSec(/^3\./).filter(it => /радиатор|конвектор/i.test(it.name || '')).reduce((a, it) => a + (Number(it.q) || 0), 0);
+        if (rads) parts.push(`приборы отопления — ${rads} шт.`);
+        const tp = (parseFloat(st.tp1) || 0) + (parseFloat(st.tp2) || 0);
+        if ((st.systems || []).includes('tp') && tp > 0) parts.push(`водяной тёплый пол ${Math.round(tp)} м²`);
+        if (st.water) parts.push('водоснабжение' + (st.hotWater ? ' и ГВС' : ''));
+        if (inSec(/^8\./).length) parts.push('канализация');
+        if (st.well) parts.push('скважина');
+        const head = (parseFloat(st.area) > 0) ? `дом ${st.area} м², ${st.floors === 2 ? 2 : 1} эт.: ` : '';
+        return head + (parts.length ? parts.join('; ') : 'инженерные системы по смете');
+    },
+
+    warrantyFormHtml: function () {
+        const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const od = this.objectDetails();
+        const tg = this.state.tgUser || {};
+        const cc = this.effectiveCompanyDetails() || {};
+        // В документе — полное ФИО из анкеты (как в договоре), короткое имя — запасное
+        const execName = (Docs.contractor && Docs.contractor().fio) || this.formatShortName(tg) || '';
+        const rows = this.warrantyTermRows();
+        const maxM = Math.max(0, ...rows.map(r => r.max));
+        const today = new Date();
+        const dateRu = today.toLocaleDateString('ru-RU');
+        const kp = this.kpNumber() || '';
+        const ins = (Docs.activeInsurance(today.toISOString().slice(0, 10)) || []).find(p => p.brand === 'STOUT');
+        const rub = n => Math.round(n).toLocaleString('ru-RU');
+        const words = m => Docs.monthsWords(m);
+        const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
+        const termRows = rows.map(r => `<tr><td class="wp-sec">${e(r.sec)}</td><td>${r.kinds.map(k =>
+            `${e(k.kind)} — <b>${e(this.warrantyTermWords(k.min, k.max))}</b>${k.note ? ' <span class="wp-small">(' + e(k.note) + ')</span>' : ''}`
+        ).join('; ')}</td></tr>`).join('');
+        return `
+        <div class="wp-head">
+            <div class="wp-exec">
+                ${cc.name ? `<div class="wp-exec-co">${e(cc.name)}</div>` : ''}
+                <div>Исполнитель: <b>${e(execName)}</b>${tg.phone ? ', тел. ' + e(tg.phone) : ''}</div>
+            </div>
+            <div class="wp-brand"><span class="wp-brand-logo">STOUT</span><span class="wp-prelim">предварительно</span></div>
+        </div>
+        <h2 class="wp-title">Гарантия на систему STOUT${maxM ? ' — до ' + e(words(maxM)) : ''}</h2>
+        <p class="wp-lead">Инженерные системы объекта рассчитаны на оборудовании STOUT. Заказчик получает гарантию
+        изготовителя по каждой группе оборудования, страховую защиту изготовителя и увеличенный срок гарантии
+        исполнителя на монтаж.</p>
+        <table class="wp-meta">
+            <tr><td>Объект</td><td><b>${e(od.address)}</b></td><td>Расчёт</td><td><b>№ ${e(kp)}</b> от ${e(dateRu)}</td></tr>
+            <tr><td>Заказчик</td><td><b>${e(od.client)}</b>${od.phone ? ', ' + e(od.phone) : ''}</td><td>Система</td><td>${e(this.systemSummary())}</td></tr>
+        </table>
+        <h3>1. Гарантия изготовителя STOUT</h3>
+        <table class="wp-terms"><tr><th>Раздел сметы</th><th>Оборудование STOUT и срок гарантии</th></tr>${termRows}</table>
+        <p class="wp-small">Сроки — по паспортам изделий и официальной странице гарантии изготовителя
+        (${e(Docs.BRAND_WARRANTY.source)}); где источники расходятся, указан меньший. Срок исчисляется с даты
+        продажи оборудования. «По паспорту» — срок указан в паспорте изделия, который передаётся заказчику.</p>
+        <h3>2. Ответственность изготовителя застрахована</h3>
+        ${ins ? `<p>Ответственность изготовителя за вред, причинённый жизни, здоровью и имуществу вследствие
+        недостатков продукции STOUT, застрахована в ${e(ins.insurer)}: полис № ${e(ins.policy)}, страховая сумма
+        ${rub(ins.sum)} ₽, лимит по одному случаю ${rub(ins.perCase)} ₽, действует по ${e(Docs.dateRu(ins.to))}.
+        Застрахованные лица — изготовитель, его дилеры и монтажные организации; территория — Российская Федерация.
+        Страхование не заменяет гарантию и не ограничивает её.</p>`
+            : '<p>Сведения о действующем полисе страхования ответственности изготовителя — на странице гарантии stout.ru.</p>'}
+        <h3>3. Исполнитель дополнительно гарантирует</h3>
+        <p>Гарантийный срок на монтажные работы по этому объекту — <b>${e(words(extM))}</b> с даты подписания акта
+        сдачи-приёмки (ст. 722 ГК РФ; дополнительное обязательство исполнителя — п. 7 ст. 5 Закона РФ «О защите прав
+        потребителей»). В этот срок исполнитель безвозмездно устраняет негерметичность выполненных им соединений,
+        ошибки монтажа и настройки.</p>
+        <h3>4. Условия сохранения гарантии</h3>
+        <p>Эксплуатация по паспортам изготовителя; паспорта изделий и акт гидравлического испытания хранятся у
+        заказчика; техническое обслуживание не реже раза в год перед отопительным сезоном; без вмешательства в
+        систему посторонних лиц.</p>
+        <h3>5. Куда обращаться</h3>
+        <p>По любым вопросам — к исполнителю: <b>${e(execName)}</b>${tg.phone ? ', тел. ' + e(tg.phone) : ''}.
+        Исполнитель сам ведёт вопрос с поставщиком и изготовителем.</p>
+        <p class="wp-prelim-note">Предварительный документ к коммерческому предложению: выдаётся после подписания
+        акта сдачи-приёмки, тогда же проставляются подписи.</p>
+        <div class="wp-sign"><div>Исполнитель ____________________</div><div>Заказчик ____________________</div><div>Дата «____» __________ 20___ г.</div></div>
+        <div class="wp-foot">Сформировано в HeatCalc.ru · ${e(dateRu)}</div>`;
+    },
+
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
     syncEmptyFitPanelScale: function (recalc) { this.fitParamsPanel(recalc); },
     // Отложенный пересчёт: за одну отрисовку панель трогают десятки раз, а ответ
@@ -45837,6 +46013,11 @@ const app = {
             scheme: !!showScheme,
             shortNames: shortNames !== false
         };
+        // Бланк гарантии STOUT печатается последним листом: сроки и полисы лежат в
+        // docs.js, грузим его заранее — печатная копия собирается синхронно
+        if (this.warrantyFormEligible()) {
+            try { await this.lazy('docs'); } catch (e) { console.warn('[executeDownload] docs.js не загрузился, бланк гарантии пропущен', e); }
+        }
 
         // Гарантируем, что смета попадёт в базу (и станет доступна через "Загрузить код"),
         // даже если сейчас нет связи с Supabase — задача уйдёт в фоновую очередь с повторами.
@@ -79292,6 +79473,7 @@ const app = {
         this.syncCheaperTab();
         if (this.state.viewMode === 'cheaper') this.renderCheaperPanel();
         this.renderCheaperPrint();
+        this.renderWarrantyPrint();
 
         // Ограничение мощности и прогноз стоимости электроотопления считаются от
         // теплопотерь, поэтому обновляем их на каждую отрисовку сметы, а не только

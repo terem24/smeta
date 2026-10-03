@@ -16063,6 +16063,33 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     .cheaper-print .cr-note { color: #333; }
 }
 
+/* ================== БЛАНК «ГАРАНТИЯ НА СИСТЕМУ STOUT» (app.renderWarrantyPrint) ==================
+   Последний лист КП; на экране скрыт, как .cheaper-print. Пустой блок не печатается. */
+.warranty-print { display: none; }
+@media print {
+    .warranty-print { display: block; page-break-before: always; break-before: page; padding-top: 10px; font-size: 11px; line-height: 1.45; color: #000; }
+    .warranty-print:empty { display: none !important; break-before: auto !important; page-break-before: auto !important; }
+    .warranty-print .wp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
+    .warranty-print .wp-exec-co { font-weight: 700; font-size: 12px; }
+    .warranty-print .wp-brand { text-align: right; white-space: nowrap; }
+    .warranty-print .wp-brand-logo { display: block; font-weight: 900; font-size: 22px; letter-spacing: .12em; }
+    .warranty-print .wp-prelim { display: inline-block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; border: 1px solid #000; padding: 1px 6px; border-radius: 3px; margin-top: 3px; }
+    .warranty-print .wp-title { font-size: 17px; margin: 6px 0 4px; }
+    .warranty-print .wp-lead { margin: 0 0 8px; }
+    .warranty-print h3 { font-size: 12px; margin: 10px 0 4px; }
+    .warranty-print p { margin: 0 0 5px; }
+    .warranty-print table { width: 100%; border-collapse: collapse; }
+    .warranty-print .wp-meta td { padding: 3px 6px; border: 1px solid #bbb; vertical-align: top; }
+    .warranty-print .wp-meta td:nth-child(odd) { color: #444; width: 11%; white-space: nowrap; }
+    .warranty-print .wp-terms th { text-align: left; font-size: 10px; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid #000; }
+    .warranty-print .wp-terms td { padding: 4px 6px; border-bottom: 1px solid #ccc; vertical-align: top; }
+    .warranty-print .wp-terms .wp-sec { font-weight: 700; width: 24%; }
+    .warranty-print .wp-small { font-size: 9px; color: #444; }
+    .warranty-print .wp-prelim-note { font-style: italic; color: #333; margin-top: 8px; }
+    .warranty-print .wp-sign { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 10.5px; }
+    .warranty-print .wp-foot { margin-top: 10px; font-size: 9px; color: #666; text-align: right; }
+}
+
 /* ================== ТЕМА «ПРОФИ» (оформление по образцу ya.ru; в коде — theme-yandex) ==================
    Включается классом body.theme-yandex из app.js (syncYandexTheme): всем на
    тарифе «Профи» (любая роль, по умолчанию включено) и группам, которые
