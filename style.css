@@ -15742,6 +15742,8 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-stout.dark-mode .btn-ctrl.is-on,
     body.brand-stout.dark-mode .btn-ctrl.is-on:hover,
     body.brand-stout.dark-mode .custom-modal-btn,
+    body.brand-stout.dark-mode .lk-btn-primary,
+    body.brand-stout.dark-mode .lk-btn-primary:hover,
     body.brand-stout.dark-mode .calc-dialog-btn-confirm,
     body.brand-stout.dark-mode .btn-tg,
     body.brand-stout.dark-mode .btn-share {
@@ -15831,6 +15833,8 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-rommer.dark-mode .btn-ctrl.is-on,
     body.brand-rommer.dark-mode .btn-ctrl.is-on:hover,
     body.brand-rommer.dark-mode .custom-modal-btn,
+    body.brand-rommer.dark-mode .lk-btn-primary,
+    body.brand-rommer.dark-mode .lk-btn-primary:hover,
     body.brand-rommer.dark-mode .calc-dialog-btn-confirm,
     body.brand-rommer.dark-mode .btn-tg,
     body.brand-rommer.dark-mode .btn-share {
@@ -18929,4 +18933,145 @@ body.theme-yandex #profile_modal_overlay {
     }
     body.dark-mode #profile_modal_overlay .lk-footer { background: #1E1E1E; }
 }
+
+/* ═══════ ТЕЛЕФОН И ПЛАНШЕТ СТОЯ: правки по снимкам владельца (03.10.2026) ═══════ */
+
+/* Меню «⋯» у строки сметы: окно кабинета на телефоне лежит выше (z-index 2 000 000), и меню
+   открывалось, но под ним — нажатие «ничего не делало». */
+.lk-pop { z-index: 2147482000; }
+
+/* Бренд в названии варианта замены: на десктопе есть колонка «Бренд» */
+.alt-brand-mob { display: none; }
+
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    /* Колонку «Бренд» на телефоне скрывает общее правило таблиц сметы, а STOUT и ROMMER одной
+       позиции называются одинаково — бренд выводим плашкой перед названием */
+    .alt-brand-mob {
+        display: inline-block;
+        margin: 0 6px 2px 0;
+        padding: 1px 7px;
+        border-radius: 6px;
+        background: var(--primary-light);
+        color: var(--primary);
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        vertical-align: 1px;
+    }
+
+    /* Пустая вторая плашка цены (строки «заменить только эту позицию») — серой полосой не рисуем */
+    .inv-table.swap-two td.col-two:empty { display: none !important; }
+
+    /* Подзаголовок «Заменить только эту позицию…» — одна ячейка на всю ширину,
+       а не в первой колонке сетки (читалась столбиком по слову) */
+    #swap_modal_overlay .inv-table tr.swap-sub-head {
+        display: block !important;
+        grid-template-columns: none !important;
+        grid-template-areas: none !important;
+        padding: 0 !important;
+    }
+    #swap_modal_overlay .inv-table tr.swap-sub-head > td {
+        display: block !important;
+        width: 100% !important;
+        grid-area: auto !important;
+    }
+
+    /* «Сметы» кабинета: общие правила карточек таблицы сметы (сумма поверх названия, статус
+       в 1 px, дата и кнопки обрезаны, пустые строки истории) — заменяем своей раскладкой:
+       название и сумма, статус и дата, под ними ряд кнопок */
+    #profile_modal_overlay #profile_cloud_list_content { overflow-x: visible; padding: 4px 14px 8px; }
+    #profile_cloud_list_content .inv-table,
+    #profile_cloud_list_content .inv-table tbody {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    #profile_cloud_list_content .inv-table thead { display: none !important; }
+    #profile_cloud_list_content .inv-table tr.active-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        grid-template-areas: "name sum" "status date" "act act" !important;
+        gap: 8px 12px !important;
+        align-items: center !important;
+        padding: 14px 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--ad-line) !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    #profile_cloud_list_content .inv-table tr.active-row > td {
+        display: block !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-align: left !important;
+        grid-area: auto !important;
+    }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(1) { grid-area: name !important; font-size: 14px; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(2) { grid-area: sum !important; text-align: right !important; font-size: 14px; white-space: nowrap !important; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(3) { grid-area: status !important; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(4) { grid-area: date !important; text-align: right !important; font-size: 12px; white-space: nowrap !important; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(5) { grid-area: act !important; }
+    #profile_cloud_list_content .lk-row-actions { flex-wrap: wrap !important; justify-content: flex-start; gap: 6px; }
+    #profile_cloud_list_content .lk-row-actions > button:not(.lk-btn-more) { flex: 1 1 auto; }
+    #profile_cloud_list_content .lk-row-actions > .lk-btn-more { flex: 0 0 36px; width: 36px; padding: 0; }
+    #profile_cloud_list_content .lk-row-actions .lk-btn-sm,
+    #profile_cloud_list_content .lk-row-actions .btn-get-invoice { height: 36px; padding: 0 8px; font-size: 12px; }
+    /* История статусов: скрыта, пока не открыта (инлайн display:none общее правило перебивало) */
+    #profile_cloud_list_content .inv-table tr[id^="obj_history_"][style*="none"] { display: none !important; }
+    #profile_cloud_list_content .inv-table tr[id^="obj_history_"]:not([style*="none"]) { display: block !important; }
+    #profile_cloud_list_content .inv-table tr[id^="obj_history_"] > td { display: block !important; width: auto !important; padding: 0 !important; }
+}
+
+/* ═══════ «МОЙ МЕНЕДЖЕР»: тот же язык, что у остальных разделов (03.10.2026) ═══════ */
+/* Подзаголовок с кнопкой справа («История общения» + «Очистить историю») */
+.lk-subhead-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 20px 0 8px;
+}
+.lk-subhead-row .lk-subhead { margin: 0; padding-bottom: 0; border-bottom: 0; }
+/* Контакты: строки «подпись — значение» внутри карточки, без линии после последней */
+.lk-card > .ad-kv:first-child { padding-top: 0; }
+.lk-card > .ad-kv:last-child { border-bottom: 0; padding-bottom: 0; }
+.lk-card .ad-kv b a { font-weight: 600; }
+/* Строки истории — .lk-row с несколькими строками внутри */
+.lk-row.lk-row-block { display: block; }
+.lk-list.lk-scroll { max-height: 260px; overflow-y: auto; }
+/* Чат: рамка вокруг ленты и поля ввода. Лента на --bg, как раньше: пузыри сообщений
+   (общие для менеджера, монтажника и админа) рассчитаны на этот фон */
+.lk-chat {
+    border: 1px solid var(--ad-line, var(--border));
+    border-radius: var(--ad-card-radius, 12px);
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+.lk-chat-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--bg);
+}
+.lk-chat-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--ad-line, var(--border));
+    background: var(--surface-light);
+}
+.lk-chat-bar input { flex: 1; min-width: 0; }
+#profile_tab_manager .lk-btn { white-space: nowrap; }
 

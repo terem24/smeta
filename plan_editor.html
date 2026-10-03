@@ -196,6 +196,28 @@
   .wz-up { margin-top: 6px; font-size: 12px; color: #d8b26a; }
   .wz-up.bad { color: var(--warn-text); }
   .wz-up b { cursor: pointer; text-decoration: underline; }
+  /* Светлое окно мастера (калькулятор в светлой теме): графитовые цвета САПР,
+     заданные числами, заменяем цветами калькулятора */
+  html.ufh.light .bar, html.ufh.light .steps { background: var(--surface); border-bottom-color: var(--border); }
+  html.ufh.light input[type=text], html.ufh.light .namepick input { background: var(--surface); border-color: var(--border); }
+  html.ufh.light .cvbox { background: var(--bg); border-color: var(--border); }
+  html.ufh.light canvas { background: #fff; }
+  html.ufh.light .side { border-color: var(--border); }
+  html.ufh.light .pgroup { border-top-color: var(--border); }
+  html.ufh.light .phead { background: var(--bg); border-bottom-color: var(--border); color: var(--text-sec); }
+  html.ufh.light .zone, html.ufh.light .croom { border-bottom-color: var(--border); }
+  html.ufh.light .zone:nth-child(even), html.ufh.light .croom:nth-child(even) { background: rgba(0,0,0,.025); }
+  html.ufh.light .hint { background: var(--bg); }
+  html.ufh.light .zoombox .val { background: var(--surface); border-color: var(--border); }
+  html.ufh.light button.ghost { color: var(--text-main); }
+  html.ufh.light .wz-st .n { background: #c9ced6; }
+  html.ufh.light .wz-st.done { color: #15803d; }
+  html.ufh.light .wz-st.done .n { background: #16a34a; }
+  html.ufh.light .wz-do .tx b { color: var(--text-main); }
+  html.ufh.light .wz-ar { color: var(--text-sec); }
+  html.ufh.light .wz-up { color: #b45309; }
+  html.ufh.light .ok { color: #15803d; }
+  html.ufh.light .namepick .box { box-shadow: 0 10px 30px rgba(0,0,0,.18); }
   /* список комнат мастера: галочка «тёплый пол» прямо в строке */
   .zone .tpchk { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-sec);
                  cursor: pointer; white-space: nowrap; }
@@ -242,6 +264,7 @@
   <button id="b_rad" onclick="setMode('rad')">Радиаторы</button>
   <button id="b_autorad" onclick="autoRads()" title="Найти окна и поставить радиаторы под ними">Под окна</button>
   <button id="b_coll" onclick="setMode('coll')" title="Точка коллектора ТП — от неё на листах рисуются подводки петель">Коллектор</button>
+  <button id="b_radcoll" onclick="setMode('radcoll')" title="Коллектор радиаторов: по умолчанию у стены котельной; клик — сюда, клик по значку — обратно в котельную">Коллектор радиаторов</button>
   <button id="b_cold" class="ufh-only" onclick="ufhCold()" title="Обвести рамкой место без обогрева внутри комнаты: лестницу, ванну, кухонный остров, шкаф. Петли и подводки его обходят">Без обогрева</button>
   <button id="b_fixauto" onclick="toggleFixAuto()" title="Откуда берутся сантехприборы: из карточек санузлов расчёта или расставляются вручную">Приборы: из расчёта</button>
   <button id="b_wc" onclick="setMode('wc')" title="Расставить сантехприборы вручную (в режиме «из расчёта» они появляются сами)">Сантехника</button>
@@ -305,7 +328,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.25"></script>
+<script src="project_plans.js?v=1.27"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -317,6 +340,22 @@
 // отметкой: модуль раскладки включают тарифом, а не проектированием.
 var UFH = /[?&]m=ufh(&|$)/.test(location.search);
 if (UFH) document.documentElement.classList.add('ufh');
+// Мастер раскладки открывается внутри калькулятора и оформляется его цветами
+// (app.openUfhPlan кладёт их в heatcalc_ufh_theme): светлый калькулятор —
+// светлое окно. Полный редактор проектирования остаётся тёмным, как САПР.
+var UFH_THEME = null;
+if (UFH) try { UFH_THEME = JSON.parse(localStorage.getItem('heatcalc_ufh_theme') || 'null'); } catch (e) {}
+if (UFH_THEME) (function () {
+  var R = document.documentElement, st = R.style, T = UFH_THEME;
+  if (T.primary) { st.setProperty('--primary', T.primary); st.setProperty('--primary-dim', T.primary); }
+  if (T.dark) return;
+  R.classList.add('light');
+  var set = function (k, v) { if (v) st.setProperty('--' + k, v); };
+  set('bg', T.bg); set('surface', T.surface); set('text-main', T['text-main']); set('text-sec', T['text-sec']);
+  set('border', T.border); set('border-soft', T.border);
+  set('surface-light', T.bg); set('surface-hi', T.bg);
+  st.setProperty('--rad', '8px');
+})();
 (function () {
   var ok = false;
   try {
@@ -583,14 +622,15 @@ var MODE_BAR = {
   poly: 'Кликайте углы контура по порядку; двойной клик — замкнуть',
   rad: 'Кликайте под окнами; клик по значку — убрать',
   coll: 'Кликните точку, где стоит коллектор тёплого пола',
+  radcoll: 'Кликните точку, где стоит коллектор радиаторов; клик по значку — обратно в котельную',
   wc: 'Выберите прибор в списке и кликните, где он стоит'
 };
 
 function setMode(m) {
   if (m === 'scale' && !F().img) { alert('Сначала загрузите план.'); return; }
-  if ((m === 'rect' || m === 'poly' || m === 'room' || m === 'rad' || m === 'coll' || m === 'wc') && !F().pxPerM) { alert('Сначала задайте масштаб.'); return; }
+  if ((m === 'rect' || m === 'poly' || m === 'room' || m === 'rad' || m === 'coll' || m === 'radcoll' || m === 'wc') && !F().pxPerM) { alert('Сначала задайте масштаб.'); return; }
   mode = mode === m ? 'select' : m; tmp = []; scalePts = [];
-  ['scale', 'room', 'rect', 'poly', 'rad', 'coll', 'wc'].forEach(function (k) {
+  ['scale', 'room', 'rect', 'poly', 'rad', 'coll', 'radcoll', 'wc'].forEach(function (k) {
     document.getElementById('b_' + k).className = (mode === k) ? 'on' : '';
   });
   // в мастере раскладки «что делать» говорит строка шага, а справа остаётся
@@ -2622,6 +2662,7 @@ function drawGrid() {
  */
 var darkPlan = true;
 try { darkPlan = localStorage.getItem('plan_editor_darkplan') !== '0'; } catch (e) {}
+if (UFH_THEME && !UFH_THEME.dark) darkPlan = false;   // светлое окно мастера — чертёж как есть, на белом
 function toggleDarkPlan() {
   darkPlan = !darkPlan;
   _gridPat = null;   // сетка своя у каждой темы — образец пересоберётся
@@ -2905,6 +2946,15 @@ function draw() {
     }
     cx.restore();
   });
+  // Точка подключения на самом приборе — поверх значка: видно, с какой
+  // стороны подходят трубы (правое нижнее, левое, центр, боковое) — по
+  // модели из сметы или как развернул монтажник (правый клик)
+  if (UFH && (f.rads || []).length) (radCache.items || []).forEach(function (it) {
+    if (!it.end) return;
+    cx.beginPath(); cx.arc(it.end[0] * k, it.end[1] * k, Math.max(3, 0.06 * (f.pxPerM || 100) * k), 0, 6.2832);
+    cx.fillStyle = '#7a1414'; cx.fill();
+    cx.lineWidth = 1.5; cx.strokeStyle = '#fff'; cx.stroke();
+  });
   // коллектор ТП — гребёнка с отводами
   if (f.coll) {
     var ccx = f.coll.x * k, ccy = f.coll.y * k;
@@ -2919,6 +2969,23 @@ function draw() {
     }
     cx.fillStyle = '#b35900'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
     cx.fillText('Коллектор ТП', ccx, ccy + ch / 2 + 13);
+  }
+  // Коллектор радиаторов — свой значок: его видно и можно перетащить, как
+  // коллектор ТП (раньше он стоял там же, где ТП, и не двигался)
+  var rcp = radCollPt(f);
+  if (rcp) {
+    var rx = rcp.x * k, ry = rcp.y * k;
+    var rw = Math.max(16, 0.55 * (f.pxPerM || 100) * k), rh = Math.max(6, rw * 0.36);
+    cx.fillStyle = '#fff'; cx.strokeStyle = '#d22222'; cx.lineWidth = 2;
+    cx.fillRect(rx - rw / 2, ry - rh / 2, rw, rh);
+    cx.strokeRect(rx - rw / 2, ry - rh / 2, rw, rh);
+    cx.lineWidth = 1.4;
+    for (var ro = -1; ro <= 1; ro++) {
+      var rsx = rx + ro * rw / 3.4;
+      cx.beginPath(); cx.moveTo(rsx, ry - rh / 2 - 5); cx.lineTo(rsx, ry - rh / 2); cx.stroke();
+    }
+    cx.fillStyle = '#d22222'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
+    cx.fillText('Коллектор радиаторов', rx, ry + rh / 2 + 13);
   }
   // сантехприборы: настоящий габарит и разворот вдоль стены
   (f.fixtures || []).forEach(function (q) {
@@ -3059,6 +3126,24 @@ function closePoly() {
  * тянется мышью, край тянется целиком; площадь пересчитывается на ходу.
  */
 var hoverZ = -1, hoverV = -1, hoverE = -1, dragZ = null, justDragged = 0;
+// Коллектор, который тянут мышью: 'tp' — тёплого пола, 'rad' — радиаторов.
+// Переносят его так же, как радиатор: захватить значок и отпустить на месте.
+var dragC = null;
+
+/** Где сейчас коллектор радиаторов этажа (тот же расчёт, что у сметы). */
+function radCollPt(f) {
+  if (!(f.rads || []).length || !window.projectPlans || !projectPlans.radCollector) return null;
+  try { var c = projectPlans.radCollector(f); return isFinite(c.x) ? c : null; } catch (e) { return null; }
+}
+
+/** Значок коллектора под курсором: 'tp', 'rad' или null. */
+function collAt(p) {
+  var f = F(), r = 0.45 * (f.pxPerM || 100);
+  if (f.coll && Math.hypot(p[0] - f.coll.x, p[1] - f.coll.y) < r) return 'tp';
+  var rc = radCollPt(f);
+  if (rc && Math.hypot(p[0] - rc.x, p[1] - rc.y) < r) return 'rad';
+  return null;
+}
 var selZ = -1;             // зона, выбранная щелчком: её удаляет Delete
 function zoneTol() { return 10 / cs(); }
 function segDist(p, a, b) {
@@ -3121,6 +3206,11 @@ function zoneDelPt(zi) {
 
 cv.addEventListener('mousedown', function (e) {
   if (mode === 'rect' && F().img) { dragA = evPt(e); tmp = [dragA]; return; }
+  // Значок коллектора тянется в любом режиме, кроме рисования
+  if (F().pxPerM && mode !== 'poly' && mode !== 'scale') {
+    var ck = collAt(evPt(e));
+    if (ck) { pushUndo('zones'); dragC = { kind: ck, moved: false }; e.preventDefault(); return; }
+  }
   // Править зону можно и в режиме «Зона: по клику»: разметил комнату — сразу
   // подправил контур, не переключая режим.
   if ((mode !== 'select' && mode !== 'room') || !F().zones.length) return;
@@ -3132,6 +3222,13 @@ cv.addEventListener('mousedown', function (e) {
   e.preventDefault();
 });
 cv.addEventListener('mousemove', function (e) {
+  if (dragC) {
+    var cq = evPt(e), fd = F();
+    if (dragC.kind === 'tp') { fd.coll = { x: Math.round(cq[0]), y: Math.round(cq[1]) }; fd.collAuto = false; }
+    else fd.radColl = { x: Math.round(cq[0]), y: Math.round(cq[1]) };
+    dragC.moved = true; cv.style.cursor = 'grabbing';
+    draw(); return;
+  }
   if (dragZ) {
     // Узел и сторона липнут к стенам и углам плана; Shift — тянуть свободно.
     var q = evPt(e), pts = F().zones[dragZ.zi].pts, free = e.shiftKey;
@@ -3171,6 +3268,12 @@ cv.addEventListener('mousemove', function (e) {
     }
     dragZ.last = q; draw(); return;
   }
+  // над значком коллектора — рука: его можно взять и перенести
+  var overC = (F().pxPerM && mode !== 'poly' && mode !== 'scale' && mode !== 'rect') ? collAt(evPt(e)) : null;
+  if (mode !== 'select' && mode !== 'room' && mode !== 'scale' && mode !== 'poly' && mode !== 'rect') {
+    cv.style.cursor = overC ? 'grab' : '';
+    if (overC) return;
+  }
   if (mode === 'scale') {
     if (!scalePts.length) { scaleCur = null; return; }
     var sp = snapWall(evPt(e));
@@ -3187,7 +3290,7 @@ cv.addEventListener('mousemove', function (e) {
     if (h2.zi !== hoverZ || h2.vi !== hoverV || h2.ei !== hoverE) {
       hoverZ = h2.zi; hoverV = h2.vi; hoverE = h2.ei; draw();
     }
-    cv.style.cursor = h2.vi >= 0 ? 'grab' : (h2.ei >= 0 ? 'move' : 'default');
+    cv.style.cursor = (overC || h2.vi >= 0) ? 'grab' : (h2.ei >= 0 ? 'move' : 'default');
   }
 });
 /**
@@ -3197,6 +3300,11 @@ cv.addEventListener('mousemove', function (e) {
  * или обход лестницы: щёлкнули по стороне, потянули новый узел куда надо.
  */
 cv.addEventListener('contextmenu', function (e) {
+  // правый клик по радиатору — развернуть подключение (в мастере, вне рисования контура)
+  if (UFH && mode !== 'poly' && F().pxPerM && (F().rads || []).length) {
+    var ri = radAt(evPt(e));
+    if (ri >= 0) { e.preventDefault(); radFlip(ri); return; }
+  }
   if ((mode !== 'select' && mode !== 'room') || !F().zones.length) return;
   var p = evPt(e), tol = zoneTol(), f = F();
   for (var i = f.zones.length - 1; i >= 0; i--) {
@@ -3233,6 +3341,15 @@ cv.addEventListener('mouseleave', function () {
   if (hoverZ >= 0 && !dragZ) { hoverZ = hoverV = hoverE = -1; draw(); }
 });
 cv.addEventListener('mouseup', function (e) {
+  if (dragC) {
+    var was = dragC; dragC = null; cv.style.cursor = '';
+    if (was.moved) {
+      justDragged = Date.now();
+      hint('<span class=ok>' + (was.kind === 'tp' ? 'Коллектор тёплого пола' : 'Коллектор радиаторов') +
+        ' перенесён.</span> Подводки и трассы пересчитаны.');
+    } else undoStack.pop();                 // просто щёлкнули по значку — отменять нечего
+    renderZones(); draw(); return;
+  }
   if (dragZ) {
     dragZ = null; justDragged = Date.now();
     renderZones(); draw(); return;
@@ -3248,6 +3365,19 @@ cv.addEventListener('mouseup', function (e) {
 });
 cv.addEventListener('click', function (e) {
   var p = evPt(e);
+  // хвост переноса коллектора, и щелчок по его значку — не радиатор и не комната
+  if (Date.now() - justDragged < 300 && mode !== 'select' && mode !== 'room') return;
+  if (mode !== 'coll' && mode !== 'radcoll' && F().pxPerM && collAt(p)) return;
+  if (mode === 'radcoll') {
+    // коллектор радиаторов: клик в стороне — сюда; по значку, поставленному
+    // рукой, — вернуть его на место по умолчанию (котельная)
+    pushUndo('zones');
+    var fr2 = F();
+    if (fr2.radColl && Math.hypot(p[0] - fr2.radColl.x, p[1] - fr2.radColl.y) < 0.45 * (fr2.pxPerM || 100)) fr2.radColl = null;
+    else fr2.radColl = { x: Math.round(p[0]), y: Math.round(p[1]) };
+    renderZones(); draw();
+    return;
+  }
   if (mode === 'select') {
     if (Date.now() - justDragged < 300) return;      // хвост перетаскивания
     if (hoverZ >= 0 && F().zones[hoverZ]) {
@@ -3320,8 +3450,9 @@ cv.addEventListener('click', function (e) {
     // один коллектор на этаж: клик по значку убирает, клик в стороне — переносит
     pushUndo('zones');
     var fc = F();
-    if (fc.coll && Math.hypot(p[0] - fc.coll.x, p[1] - fc.coll.y) < 0.45 * (fc.pxPerM || 100)) fc.coll = null;
-    else fc.coll = { x: p[0], y: p[1] };
+    // в мастере клик по значку возвращает коллектор на место по умолчанию (котельная)
+    if (fc.coll && Math.hypot(p[0] - fc.coll.x, p[1] - fc.coll.y) < 0.45 * (fc.pxPerM || 100)) { fc.coll = null; if (UFH) fc.collAuto = true; }
+    else { fc.coll = { x: p[0], y: p[1] }; fc.collAuto = false; }
     renderZones(); draw();
   } else if (mode === 'wc') {
     pushUndo('zones');
@@ -3347,6 +3478,8 @@ function pushUndo(t) {
     zones: JSON.parse(JSON.stringify(f.zones)),
     rads: JSON.parse(JSON.stringify(f.rads || [])),
     coll: f.coll ? { x: f.coll.x, y: f.coll.y } : null,
+    collAuto: !!f.collAuto,
+    radColl: f.radColl ? { x: f.radColl.x, y: f.radColl.y } : null,
     fixtures: JSON.parse(JSON.stringify(f.fixtures || []))
   } };
   if (t === 'plan') {
@@ -3380,6 +3513,8 @@ function doUndo() {
     f.zones = rec.prev.zones;
     f.rads = rec.prev.rads || [];
     f.coll = rec.prev.coll || null;
+    if (rec.prev.collAuto) f.collAuto = true; else delete f.collAuto;
+    if (rec.prev.radColl) f.radColl = rec.prev.radColl; else delete f.radColl;
     f.fixtures = rec.prev.fixtures || [];
   }
   renderTabs(); draw(); renderZones();
@@ -3764,7 +3899,7 @@ function renderZones() {
       if (r.win) mt.push(r.win + ' ок.');
       h += '<div class="croom" data-i="' + idx + '">' +
         '<span class="nm">' + r.name + '</span>' +
-        '<span class="mt">' + (r.area ? r.area + ' м² · ' : '') + mt.join(' · ') + '</span></div>';
+        '<span class="mt">' + (r.area ? (Math.round(r.area * 100) / 100) + ' м² · ' : '') + mt.join(' · ') + '</span></div>';
     });
     g.innerHTML = h;
     g.onclick = function (e) {
@@ -3893,18 +4028,52 @@ var UFH_NAMES = ['Гостиная', 'Кухня', 'Кухня-гостиная'
 
 // Трассы радиаторов для холста — тот же projectPlans.radRoutes, что у сметы.
 // Схема (лучевая или тройниковая) — из расчёта. Кэш по разметке этажа.
-var radCache = { key: null, val: [] };
+var radCache = { key: null, val: [], items: [] };
+// Стороны подключения по моделям сметы: { комната: 'R'|'L'|'C'|'S' } — кладёт
+// калькулятор при открытии окна (app.radConnMap)
+var RAD_CONN = {};
+try { RAD_CONN = JSON.parse(localStorage.getItem('heatcalc_rad_conn') || '{}') || {}; } catch (e) {}
 function ufhRadRoutes(f, stepMm) {
-  if (!window.projectPlans || !projectPlans.radRoutes || dragZ) return radCache.val;
+  if (!window.projectPlans || !projectPlans.radRoutes || dragZ || dragC) return radCache.val;
   var tee = false;
   try { tee = (JSON.parse(localStorage.getItem('stout_save')) || {}).radConnectionScheme === 'tee'; } catch (e) {}
-  var key = cur + '|' + stepMm + '|' + tee + '|' + JSON.stringify([f.zones, f.rads, f.coll]);
+  var key = cur + '|' + stepMm + '|' + tee + '|' + JSON.stringify([f.zones, f.rads, f.coll, f.radColl || null]);
   if (radCache.key === key) return radCache.val;
-  var segs = [];
-  try { var R = projectPlans.radRoutes(f, stepMm, tee); segs = R ? R.segs : []; }
+  var segs = [], items = [];
+  try { var R = projectPlans.radRoutes(f, stepMm, tee, RAD_CONN); segs = R ? R.segs : []; items = R ? R.items : []; }
   catch (e) { console.error('[plan_editor] трассы радиаторов:', e); }
-  radCache = { key: key, val: segs };
+  radCache = { key: key, val: segs, items: items };
   return segs;
+}
+
+/** Комната прибора — по ней берётся модель из сметы (как в radRoutes). */
+function radRoomName(r) {
+  var a = (r.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.3 * (F().pxPerM || 100);
+  var name = '';
+  [[r.x + nx * d, r.y + ny * d], [r.x - nx * d, r.y - ny * d]].some(function (p) {
+    for (var i = F().zones.length - 1; i >= 0; i--) {
+      var q = F().zones[i];
+      if (q.type !== 'cold' && pip(p, q.pts)) { name = q.name || ''; return true; }
+    }
+    return false;
+  });
+  return name;
+}
+
+/**
+ * Правый клик по радиатору — развернуть подключение (левое ↔ правое). Так
+ * бывает, когда прибор вешают иначе, чем подсказывает модель; выбор
+ * монтажника хранится у прибора (r.conn) и главнее модели.
+ */
+function radFlip(i) {
+  var r = F().rads[i];
+  if (!r) return;
+  var eff = projectPlans.radConnSide ? projectPlans.radConnSide(r, radRoomName(r), RAD_CONN) : (r.conn || 'R');
+  pushUndo('zones');
+  r.conn = eff === 'L' ? 'R' : 'L';
+  hint('<span class=ok>Подключение радиатора — ' + (r.conn === 'R' ? 'справа' : 'слева') + '.</span> ' +
+    'Правый клик по прибору ещё раз — развернуть обратно.');
+  renderZones(); draw();
 }
 
 function ufhSteps() {
@@ -4016,15 +4185,19 @@ function ufhCold() {
 function ufhAutoColl(f) {
   var tz = (f.zones || []).filter(function (z) { return z.type === 'tp'; });
   if (!tz.length || !f.pxPerM) return false;
-  var bz = (f.zones || []).filter(function (z) { return z.type === 'boiler'; })[0];
-  if (bz) {
-    var bc = centroid(bz.pts);
-    f.coll = { x: Math.round(bc[0]), y: Math.round(bc[1]) };
-    return true;
-  }
   var sx = 0, sy = 0, sa = 0;
   tz.forEach(function (z) { var a = Math.abs(area(z.pts)) || 1, c = centroid(z.pts); sx += c[0] * a; sy += c[1] * a; sa += a; });
   var C = [sx / sa, sy / sa], best = null, bd = Infinity;
+  // Котельная — зона этого типа или комната с таким названием; коллектор —
+  // у её стены, ближней к тёплому полу (не в середине комнаты)
+  var bz = window.projectPlans && projectPlans.boilerZone ? projectPlans.boilerZone(f)
+    : (f.zones || []).filter(function (z) { return z.type === 'boiler'; })[0];
+  if (bz) {
+    var bp = window.projectPlans && projectPlans.wallSpot ? projectPlans.wallSpot(f, bz, C).p : centroid(bz.pts);
+    f.coll = { x: Math.round(bp[0]), y: Math.round(bp[1]) };
+    f.collAuto = true;
+    return true;
+  }
   (f.zones || []).forEach(function (z) {
     if (z.type === 'cold' || bd === 0) return;
     if (pip(C, z.pts)) { best = C; bd = 0; return; }
@@ -4041,7 +4214,27 @@ function ufhAutoColl(f) {
   });
   if (!best) return false;
   f.coll = { x: Math.round(best[0]), y: Math.round(best[1]) };
+  f.collAuto = true;
   return true;
+}
+
+/**
+ * Коллектор тёплого пола, поставленный самим мастером (collAuto), следит за
+ * разметкой: назвали комнату «Котельная» позже первого клика по тёплому
+ * полу — коллектор переезжает к её стене. Поставленный рукой не трогаем.
+ * Зовётся из строки мастера на каждой перерисовке; место детерминированное,
+ * поэтому переставляется только при настоящей перемене.
+ */
+function ufhFollowColl() {
+  var f = F();
+  if (!f || !f.pxPerM || (f.coll && !f.collAuto) || dragC) return;
+  var was = f.coll ? f.coll.x + ',' + f.coll.y : '';
+  if (!f.zones.some(function (z) { return z.type === 'tp'; })) {
+    if (f.coll && f.collAuto) { f.coll = null; setTimeout(draw, 0); }   // тёплый пол сняли — и коллектор ни к чему
+    return;
+  }
+  ufhAutoColl(f);
+  if ((f.coll ? f.coll.x + ',' + f.coll.y : '') !== was) setTimeout(function () { renderZones(); draw(); }, 0);
 }
 
 /** Какая это комната: имя связывает зону с комнатой подробного расчёта. */
@@ -4068,7 +4261,7 @@ function ufhAskName(z) {
     h += '<div class="sub" style="margin-bottom:4px">Из расчёта:</div><div class="grid">';
     calc.forEach(function (r) {
       h += '<button class="calc" data-n="' + esc(r.name) + '">' + esc(r.name) +
-        (r.area ? ' · ' + String(r.area).replace('.', ',') + ' м²' : '') + '</button>';
+        (r.area ? ' · ' + String(Math.round(r.area * 100) / 100).replace('.', ',') + ' м²' : '') + '</button>';
     });
     h += '</div><div class="sub" style="margin-bottom:4px">Или новая:</div>';
   }
@@ -4118,11 +4311,16 @@ function ufhDone() {
       setTimeout(wait, 300);
       return;
     }
-    if (upState && upState.err) {
-      hint('<b>План не ушёл на сервер:</b> ' + upState.err + '. Разметка сохранена в браузере — проверьте ' +
-        'связь и нажмите «Готово» ещё раз.');
+    // Не ушло — из окна всё равно должен быть выход: второе нажатие
+    // возвращает к смете, разметка уже в браузере (картинку в смете
+    // увидят, когда план уйдёт на сервер со следующим сохранением).
+    if (upState && upState.err && !ufhDone.retried) {
+      ufhDone.retried = true;
+      hint('<b>План не ушёл на сервер:</b> ' + upState.err + '. Разметка сохранена в браузере. ' +
+        'Нажмите ещё раз — вернётесь к смете; картинка плана уйдёт на сервер, когда откроете план снова.');
       return;
     }
+    ufhDone.retried = false;
     ufhPost(true);
   })();
 }
@@ -4201,8 +4399,13 @@ function wzCur(L) {
 
 var WZ_MODE = { rooms: 'select', tp: 'room', rad: 'rad', done: 'select' };
 
-/** Перейти на шаг: включить его режим на плане. */
-function wzGo(id) {
+/**
+ * Перейти на шаг: включить его режим на плане. Переход рукой (кнопка
+ * «Дальше», клик по шагу) стирает пояснение справа — оно было про прошлый
+ * шаг; keepHint — переход сам после разметки, там справа её итог.
+ */
+function wzGo(id, keepHint) {
+  if (!keepHint && id !== 'plan') hint('');
   if (id === 'plan') {
     var inp = document.querySelector('#b_upload input');
     if (inp) inp.click();
@@ -4245,7 +4448,7 @@ function wzAfterLoad() {
   var all = DATA.floors.every(function (f, i) { return !f.img || fresh.indexOf(i) >= 0; });
   if (all) {
     var p = autoMarkAll();
-    if (p && p.then) p.then(function () { wzGo(F().pxPerM ? 'rooms' : 'scale'); });
+    if (p && p.then) p.then(function () { wzGo(F().pxPerM ? 'rooms' : 'scale', true); });
     return;
   }
   // новая подложка в доме, где другие этажи уже размечены, — только её этажи
@@ -4259,7 +4462,7 @@ function wzAfterLoad() {
   });
   cur = was;
   renderTabs(); renderZones();
-  wzGo(F().pxPerM ? 'rooms' : 'scale');
+  wzGo(F().pxPerM ? 'rooms' : 'scale', true);
   saveAll();
 }
 
@@ -4313,15 +4516,19 @@ function wzBody(id) {
       'Лишнюю уберите ✕. Комната не нашлась — обведите её рамкой.' };
   if (id === 'tp') return { acts: B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
     tx: 'Кликните по комнатам, где нужен тёплый пол, — на плане или галочкой в списке справа. Петли разложатся ' +
-      'сами. Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева».' };
-  if (id === 'rad') return { acts: B('autoRads()', 'Под окна'),
+      'сами. Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева». Коллектор встаёт у стены ' +
+      'котельной — его можно перетащить мышью.' };
+  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов'),
     tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте ' +
-      'кликом у окна. Трассы к ним построятся сами.' };
+      'кликом у окна. Точка на приборе — подключение по модели из сметы (обычно правое нижнее); ' +
+      'правый клик по прибору — развернуть. Трассы идут от коллектора радиаторов у стены котельной — ' +
+      'его можно перетащить мышью.' };
   return { next: 'Готово — в смету', tx: wzSummary().html };
 }
 
 function wzRender(box) {
   box.className = 'steps wz';
+  ufhFollowColl();
   var f = F(), L = wzSteps(), c = wzCur(L), ids = L.map(function (s) { return s.id; }), ci = ids.indexOf(c);
   // Масштаб задали вручную, а комнат ещё нет — ищем их сами, один раз на этаж
   if (c === 'rooms' && f.pxPerM && !wzAuto[cur] && !f.zones.some(function (z) { return z.type !== 'cold'; })) {
@@ -4333,7 +4540,7 @@ function wzRender(box) {
       var r = (F().rads || []).length;
       hint(n ? '<span class=ok>Найдено комнат: ' + n + (r ? ', радиаторов под окнами: ' + r : '') + '.</span>'
         : 'Комнаты по стенам не нашлись — обведите их рамкой.');
-      wzGo('rooms');
+      wzGo('rooms', true);
     }, 0);
   }
   var h = '<div class="wz-row">';
@@ -4861,9 +5068,10 @@ refreshAutoFixtures();   // приборы санузлов из расчёта 
 })();
 // Режим раскладки: свои подписи; «Сохранить» становится «Готово» и закрывает окно
 if (UFH) (function () {
+  // название «План дома» — в шапке окна калькулятора; здесь только этажи
   var t = document.querySelector('.bar b');
-  if (t) t.textContent = 'План отопления';
-  document.title = 'План отопления';
+  if (t) t.textContent = 'Этажи:';
+  document.title = 'План дома';
   var s = document.getElementById('b_save');
   if (s) { s.textContent = 'Готово'; s.onclick = ufhDone; s.title = 'Сохранить и вернуться в смету'; }
   var am = document.getElementById('b_automark');
@@ -4888,7 +5096,7 @@ if (UFH) (function () {
   hint('');
   // План уже размечен — сразу на нужный шаг, с его режимом на плане
   var f = F();
-  if (f && f.img && f.pxPerM) wzGo(wzCur(wzSteps()));
+  if (f && f.img && f.pxPerM) wzGo(wzCur(wzSteps()), true);
 })();
 renderTabs(); draw(); renderZones();
 </script>

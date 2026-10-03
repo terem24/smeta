@@ -8408,47 +8408,36 @@ const app = {
         const subview = document.getElementById(containerId);
         if (!subview) return;
 
+        // Заголовок у всех состояний раздела один: .lk-section-head, как у остальных разделов кабинета
+        const head = (sub, actions) => `<div class="lk-section-head"><div><h4>Мой менеджер</h4><div class="lk-sub">${sub}</div></div>${actions || ''}</div>`;
         if (this.state.distributorId && this.state.distributorInfo) {
             const d = this.state.distributorInfo;
+            const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const kv = (label, val) => `<div class="ad-kv"><span>${label}</span><b>${val}</b></div>`;
+            const phoneHref = String(d.manager_phone || '').replace(/[^+\d]/g, '');
             subview.innerHTML = `
-                <div class="lk-section-head"><h4><span class="ui-emo">🤝 </span>Мой менеджер</h4></div>
+                ${head('Контакты поставщика, чат и история по вашим сметам', '<div id="manager_chat_btn_slot"></div>')}
                 <div class="lk-card">
-                    <div class="lk-card-label" style="margin-bottom:10px;">Контакты</div>
-                    <div style="display: grid; gap: 8px; font-size: 13px;">
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Компания</span>
-                            <b style="color: var(--text-main);">${d.company_name || '—'}</b>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Менеджер</span>
-                            <b style="color: var(--text-main);">${d.manager_name || '—'}</b>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Email</span>
-                            <a href="mailto:${d.manager_email}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${d.manager_email || '—'}</a>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Телефон</span>
-                            <a href="tel:${(d.manager_phone || '').replace(/[^+\\d]/g, '')}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${d.manager_phone || '—'}</a>
-                        </div>
-                    </div>
-                    <div id="manager_chat_btn_slot"></div>
+                    ${kv('Компания', esc(d.company_name) || '—')}
+                    ${kv('Менеджер', esc(d.manager_name) || '—')}
+                    ${kv('Email', d.manager_email ? `<a href="mailto:${esc(d.manager_email)}">${esc(d.manager_email)}</a>` : '—')}
+                    ${kv('Телефон', d.manager_phone ? `<a href="tel:${esc(phoneHref)}">${esc(d.manager_phone)}</a>` : '—')}
                 </div>
-                <p class="lk-hint">💡 Счёт на оборудование выставляет компания <strong>${d.company_name}</strong>. При запросе счёта менеджер получит копию на email.</p>
-                <div id="manager_chat_wrapper" style="margin-top:20px;"></div>
-                <details style="margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;">
-                    <summary style="cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-main);">🚚 Условия доставки и оплаты</summary>
-                    <div style="margin-top: 10px;">${this.buildDeliveryPaymentHtml()}</div>
+                <p class="lk-hint">Счёт на оборудование выставляет компания <b>${esc(d.company_name)}</b>. При запросе счёта менеджер получит копию на email.</p>
+                <div id="manager_chat_wrapper"></div>
+                <details class="lk-group">
+                    <summary class="lk-subhead">Условия доставки и оплаты</summary>
+                    <div class="lk-group-body">${this.buildDeliveryPaymentHtml()}</div>
                 </details>
-                <div id="manager_comm_history_container" style="margin-top:20px;"></div>
+                <div id="manager_comm_history_container"></div>
             `;
             this.renderManagerCommHistory();
             this.initManagerChatIfAvailable(d.manager_email);
         } else if (this.state.distributorId && !this.state.distributorInfo) {
-            subview.innerHTML = `<div style="color: var(--text-sec); font-size: 13px;">Загрузка данных менеджера...</div>`;
+            subview.innerHTML = head('Загружаем данные менеджера') + `<div class="lk-empty">Загрузка…</div>`;
             this.loadDistributorInfo().then(() => this.showSupplierSection());
         } else {
-            subview.innerHTML = `<div style="color: var(--text-sec); font-size: 13px;">Загрузка списка менеджеров...</div>`;
+            subview.innerHTML = head('Загружаем список поставщиков') + `<div class="lk-empty">Загрузка…</div>`;
             this.renderDistributorPicker();
         }
 
@@ -8462,7 +8451,7 @@ const app = {
     renderManagerCommHistory: async function () {
         const container = document.getElementById('manager_comm_history_container');
         if (!container) return;
-        container.innerHTML = `<div style="color:var(--text-sec); font-size:12px; padding:6px 0;">⌛ Загрузка истории...</div>`;
+        container.innerHTML = `<div class="lk-subhead">История общения</div><div class="lk-empty">Загрузка истории…</div>`;
 
         const me = await this.resolveCurrentUserForChat();
         if (!me || !me.email) { container.innerHTML = ''; return; }
@@ -8478,7 +8467,7 @@ const app = {
 
             if (!events || !events.length) {
                 container.innerHTML = `
-                    <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">📋 </span>История общения</h4></div>
+                    <div class="lk-subhead">История общения</div>
                     <div class="lk-empty">Пока нет событий по вашим сметам.</div>
                 `;
                 return;
@@ -8486,17 +8475,17 @@ const app = {
 
             const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
             let h = `
-                <div class="lk-section-head" style="margin-top:4px;">
-                    <h4><span class="ui-emo">📋 </span>История общения</h4>
-                    <button type="button" class="lk-btn-sm lk-btn-danger" onclick="app.clearOwnInvoiceHistory()">🗑 Очистить историю</button>
+                <div class="lk-subhead-row">
+                    <div class="lk-subhead">История общения</div>
+                    <button type="button" class="lk-btn-sm lk-btn-danger" onclick="app.clearOwnInvoiceHistory()">Очистить историю</button>
                 </div>
-                <div class="lk-list" style="max-height:260px; overflow-y:auto;">`;
+                <div class="lk-list lk-scroll">`;
             events.forEach(e => {
                 const em = this.kanbanEventView(e.event, e.meta);
                 const dt = new Date(e.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const comment = e.meta && e.meta.comment ? e.meta.comment : '';
                 h += `
-                    <div style="padding:8px 10px; border-radius:8px; background:var(--surface-light); font-size:12px;">
+                    <div class="lk-row lk-row-block">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                             <span style="display:inline-block; background:${em.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px;">${em.label}</span>
                             <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${dt}</span>
@@ -8510,7 +8499,8 @@ const app = {
             h += `</div>`;
             container.innerHTML = h;
         } catch (e) {
-            container.innerHTML = `<div style="color:#EF4444; font-size:12px;">Ошибка загрузки истории: ${e.message}</div>`;
+            container.innerHTML = `<div class="lk-subhead">История общения</div><div class="lk-empty" style="color:#EF4444;">Не удалось загрузить историю.</div>`;
+            console.warn('[renderManagerCommHistory]', e);
         }
     },
     // Стирает собственную историю событий по сметам (invoice_events) — только свою, по email.
@@ -8553,16 +8543,18 @@ const app = {
         // монтажник видел только почту и телефон — уходил звонить мимо калькулятора
         const btnSlot = document.getElementById('manager_chat_btn_slot');
         if (btnSlot) {
-            btnSlot.innerHTML = `<button type="button" class="auth-btn-base btn-email-submit" style="margin:14px 0 0; width:auto; height:36px; padding:0 18px; font-size:13px;"
-                onclick="const i = document.getElementById('manager_chat_input'); if (i) { i.scrollIntoView({ behavior: 'smooth', block: 'center' }); i.focus({ preventScroll: true }); }">💬 Написать менеджеру</button>`;
+            btnSlot.innerHTML = `<button type="button" class="lk-btn lk-btn-primary"
+                onclick="const i = document.getElementById('manager_chat_input'); if (i) { i.scrollIntoView({ behavior: 'smooth', block: 'center' }); i.focus({ preventScroll: true }); }">Написать менеджеру</button>`;
         }
 
         wrapper.innerHTML = `
-            <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">💬 </span>Чат с менеджером</h4></div>
-            <div id="manager_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
-            <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать менеджеру..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+            <div class="lk-subhead">Чат с менеджером</div>
+            <div class="lk-chat">
+                <div id="manager_chat_list" class="lk-chat-list"></div>
+                <div class="lk-chat-bar">
+                    <input type="text" id="manager_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать менеджеру…" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                    <button type="button" id="manager_chat_send_btn" onpointerdown="event.preventDefault()" class="lk-btn lk-btn-primary" onclick="app.sendActiveChatMessage()">Отправить</button>
+                </div>
             </div>
         `;
 
@@ -8602,30 +8594,33 @@ const app = {
                 dists = allDists || [];
             }
 
+            const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const head = sub => `<div class="lk-section-head"><div><h4>Мой менеджер</h4><div class="lk-sub">${sub}</div></div></div>`;
+
             if (!dists || dists.length === 0) {
-                subview.innerHTML = `
-                    <h4 style="margin: 0 0 12px; font-size: 15px; color: var(--text-main);">🤝 Менеджер не назначен</h4>
-                `;
+                subview.innerHTML = head('Менеджер пока не назначен') +
+                    `<div class="lk-empty">Поставщиков в вашем регионе не нашлось. Если вы получили промокод поставщика, введите его в «Профиль → Мои данные».</div>`;
                 return;
             }
 
-            subview.innerHTML = `
-                <h4 style="margin: 0 0 6px; font-size: 15px; color: var(--text-main);">🤝 Выберите вашего менеджера</h4>
-                <p style="font-size: 12px; color: var(--text-sec); margin: 0 0 14px;">${userRegion ? `Поставщики, работающие в регионе «${userRegion}»` : 'Укажите регион в профиле, чтобы видеть только своих поставщиков'}</p>
-                <div style="display:flex; flex-direction:column; gap:8px;">
+            subview.innerHTML = head(userRegion
+                ? `Выберите поставщика, работающего в регионе «${esc(userRegion)}». Позже сменить его можно только через администратора`
+                : 'Укажите регион в «Профиль → Мои данные», чтобы видеть только своих поставщиков. Позже сменить поставщика можно только через администратора') + `
+                <div class="lk-card">
                     ${dists.map(d => `
-                        <div style="border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-                            <div>
-                                <b style="color:var(--text-main); font-size:13px;">${d.company_name}</b><br>
-                                <span style="font-size:11px; color:var(--text-sec);">${d.manager_name || '—'}${d.regions && d.regions.length ? ' · ' + d.regions.join(', ') : ''}</span>
+                        <div class="lk-setting">
+                            <div class="lk-setting-text">
+                                <b>${esc(d.company_name)}</b>
+                                <span>${esc(d.manager_name) || '—'}${d.regions && d.regions.length ? ' · ' + esc(d.regions.join(', ')) : ''}</span>
                             </div>
-                            <button class="auth-btn-base btn-email-submit" style="width:auto; height:32px; padding:0 16px; font-size:12px;" onclick="app.selfAssignDistributor('${d.id}')">Выбрать</button>
+                            <button type="button" class="lk-btn-sm" onclick="app.selfAssignDistributor('${esc(d.id)}')">Выбрать</button>
                         </div>
                     `).join('')}
                 </div>
             `;
         } catch (e) {
-            subview.innerHTML = `<div style="color:#EF4444; font-size:13px;">Ошибка загрузки списка: ${e.message}</div>`;
+            console.warn('[renderDistributorPicker]', e);
+            subview.innerHTML = `<div class="lk-section-head"><div><h4>Мой менеджер</h4></div></div><div class="lk-empty" style="color:#EF4444;">Не удалось загрузить список поставщиков.</div>`;
         }
     },
 
@@ -11827,6 +11822,48 @@ const app = {
         }
     },
 
+    // Площади и метры — не больше двух знаков после запятой. Сумма дробных площадей комнат
+    // даёт «хвост» вроде 58.599999999999994, а он попадал в ползунок тёплого пола, в подсказки
+    // «i» и в количество работ сметы. Округляем в источнике (r2) и при каждом пересчёте
+    // (normalizeAreaNumbers) — последнее чинит и старые сохранённые сметы.
+    r2: function (v) {
+        const n = Number(v);
+        return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+    },
+    normalizeAreaNumbers: function () {
+        const s = this.state;
+        if (!s) return;
+        const fix = (o, k) => {
+            const v = o[k];
+            if (typeof v !== 'number' || !isFinite(v)) return;
+            const r = Math.round(v * 100) / 100;
+            if (r !== v) o[k] = r;
+        };
+        ['tp1', 'tp2', 'area'].forEach(k => fix(s, k));
+        (s.rooms || []).forEach(r => { if (r) { fix(r, 'area'); fix(r, 'tpArea'); } });
+    },
+
+    // Крупная сумма в узком месте (карточки админки на телефоне): от миллиона — «107 млн ₽»,
+    // «18,4 млн ₽», по обычному округлению; рубль всегда на одной строке с числом (неразрывный
+    // пробел). Меньше миллиона и на широком экране — сумма целиком, как была.
+    moneyCompact: function (v) {
+        const n = Math.round(Number(v) || 0);
+        const full = n.toLocaleString('ru-RU') + '\u00A0₽';
+        const a = Math.abs(n);
+        if (a < 1e6 || !this.isMobileLayout()) return full;
+        const fmt = x => (Math.abs(x) >= 100 ? String(Math.round(x)) : String(Math.round(x * 10) / 10).replace('.', ','));
+        return (a >= 1e9 ? fmt(n / 1e9) + '\u00A0млрд' : fmt(n / 1e6) + '\u00A0млн') + '\u00A0₽';
+    },
+
+    // Бренд в названии варианта замены: колонка «Бренд» на телефоне скрыта общим правилом таблиц
+    // сметы, и два варианта одной позиции (ROMMER и STOUT) читались одинаково. Плашка видна
+    // только на телефоне и планшете стоймя (.alt-brand-mob в style.css), на десктопе есть колонка.
+    altBrandChip: function (brand) {
+        if (!brand) return '';
+        const esc = String(brand).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        return `<span class="alt-brand-mob">${esc}</span>`;
+    },
+
     // Действия над сохранённой сметой прямо из списка «Мои объекты». И ссылка
     // клиенту, и скачивание умеют работать только с открытым расчётом — иначе они
     // молча сделали бы своё дело над той сметой, что была открыта до этого.
@@ -12543,6 +12580,9 @@ const app = {
             // Цены каталога могли уехать с момента сохранения — расчёт уже пересобран
             // по сегодняшним, осталось сказать об этом вслух
             this.showRepriceNotice({ eqSum: data.eq_sum, at: data.created_at });
+            // Телефон: кабинет закрыт, а нижняя вкладка осталась «Профиль» — человек видел
+            // профиль и не понимал, загрузилась ли смета. Показываем саму смету.
+            if (this.isMobileLayout()) this.switchMobileTab('output');
             app.alert("✅ Смета успешно загружена!");
         } catch (error) { app.alert("Ошибка загрузки сметы: " + error.message); }
     },
@@ -21367,7 +21407,11 @@ const app = {
         // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
         const ufh = this.canUseUfhPlan();
         try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
-        if (planRow) planRow.style.display = ufh ? 'flex' : 'none';
+        // Строка — только в подробном режиме: в быстром она сдвигала все настройки
+        // вниз, а пользы там нет; в быстром вместо неё одна ссылка под площадью.
+        if (planRow) planRow.style.display = (ufh && this.state.detailedRooms) ? 'flex' : 'none';
+        const qLink = document.getElementById('plan_quick_link');
+        if (qLink) qLink.style.display = (ufh && !this.state.detailedRooms) ? 'block' : 'none';
         const bU = document.getElementById('btn_ufhplan');
         const sum = this.planRowSummary();
         if (bU) {
@@ -24444,8 +24488,8 @@ const app = {
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
                 <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${n(d.totalUsers)}</span></div>
                 <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${n(d.totalEstimates)}</span></div>
-                <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${n(d.totalEq)} ₽</span></div>
-                <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${n(d.totalWorks)} ₽</span></div>
+                <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${n(d.totalEq)} ₽">${this.moneyCompact(d.totalEq)}</span></div>
+                <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${n(d.totalWorks)} ₽">${this.moneyCompact(d.totalWorks)}</span></div>
             </div>`;
 
         // Разделы по группам — тем же порядком, что и на большом экране
@@ -24879,8 +24923,8 @@ const app = {
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
-                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${totalEq.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
-                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${totalEq.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalEq)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${totalWorks.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalWorks)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                     </div>
                     
                     <h3>Пользователи</h3>
@@ -36633,18 +36677,54 @@ const app = {
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         try { localStorage.setItem('heatcalc_ufhplan_access', '1'); } catch (e) { }
         this.pushPlansToEditor();
+        // Окно оформляется как калькулятор, а не как отдельная чертёжная
+        // программа: тёмное окно поверх светлой сметы выглядело непонятно
+        // откуда взявшимся (03.10.2026). Цвета берём у текущей темы — у
+        // калькулятора их несколько (обычная, тёмная, брендовые).
+        const cs = getComputedStyle(document.body);
+        const cv = k => (cs.getPropertyValue('--' + k) || '').trim();
+        const dark = document.body.classList.contains('dark-mode');
+        // стороны подключения радиаторов по моделям сметы — трассы окна плана
+        // подходят к приборам так же, как в смете и КП
+        try { localStorage.setItem('heatcalc_rad_conn', JSON.stringify(this.radConnMap())); } catch (e) { }
+        try {
+            localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
+                dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
+                'text-main': cv('text-main'), 'text-sec': cv('text-sec'), border: cv('border')
+            }));
+        } catch (e) { }
         let ov = document.getElementById('ufhplan_overlay');
         if (ov) ov.remove();
         ov = document.createElement('div');
         ov.id = 'ufhplan_overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#1e1e1e;display:flex;flex-direction:column;';
+        // Под шапкой калькулятора: она остаётся на месте, и видно, что это всё
+        // тот же расчёт, а не другая страница
+        ov.style.cssText = 'position:fixed;left:0;right:0;bottom:0;top:0;z-index:10050;background:var(--bg);' +
+            'display:flex;flex-direction:column;border-top:1px solid var(--border);';
         ov.innerHTML =
-            '<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:#141414;color:#ddd;font:13px/1.3 system-ui,sans-serif;">' +
-            '<span style="flex:1">План дома — комнаты, тёплый пол и радиаторы' +
-            (modeNote ? '<span style="color:#9ccbe8"> · ' + modeNote + '</span>' : '') + '</span>' +
-            '<button type="button" onclick="app.closeUfhPlan(true)" style="font:inherit;padding:4px 12px;border-radius:7px;border:1px solid #555;background:transparent;color:#ddd;cursor:pointer;">✕ Сохранить и закрыть</button></div>' +
-            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:#1e1e1e;"></iframe>';
+            '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 16px;background:var(--surface);' +
+            'border-bottom:1px solid var(--border);color:var(--text-main);font-size:13px;">' +
+            '<button type="button" onclick="app.closeUfhPlan(true)" title="Сохранить план и вернуться к смете" ' +
+            'style="font:inherit;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--primary);' +
+            'background:var(--primary);color:#fff;cursor:pointer;">← К смете</button>' +
+            '<b style="font-size:15px;">План дома</b>' +
+            '<span style="flex:1;min-width:0;color:var(--text-sec);">комнаты, тёплый пол и радиаторы' +
+            (modeNote ? ' · <span style="color:var(--primary)">' + modeNote + '</span>' : '') + '</span></div>' +
+            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:var(--bg);"></iframe>';
         document.body.appendChild(ov);
+        const hdr = document.querySelector('.site-header');
+        const place = () => {
+            const o = document.getElementById('ufhplan_overlay');
+            if (!o) return;
+            const b = hdr ? Math.max(0, Math.round(hdr.getBoundingClientRect().bottom)) : 0;
+            o.style.top = b + 'px';
+        };
+        place();
+        if (hdr && window.ResizeObserver) {
+            if (this._ufhHdrObs) this._ufhHdrObs.disconnect();
+            this._ufhHdrObs = new ResizeObserver(place);
+            this._ufhHdrObs.observe(hdr);
+        }
         this._ufhOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         // План из «Распознавания» — сразу в окно, как будто его выбрали там
@@ -36687,6 +36767,7 @@ const app = {
             } catch (e) { }
         }
         if (ov) ov.remove();
+        if (this._ufhHdrObs) { this._ufhHdrObs.disconnect(); this._ufhHdrObs = null; }
         document.body.style.overflow = this._ufhOverflow || '';
         this.applyPlansFromEditor();
     },
@@ -36864,7 +36945,7 @@ const app = {
         try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
         // Радиаторы с трассами — когда они есть в смете; схема разводки — та же,
         // что выбрана в смете (тройниковая или лучевая от коллектора)
-        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee' };
+        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee', connMap: this.radConnMap() };
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -36889,18 +36970,39 @@ const app = {
      * null — плана с радиаторами нет: смета считает по-старому, формулой.
      * Схема (лучевая/тройниковая) — та же, что в смете.
      */
+    /**
+     * Сторона подключения радиаторов по комнатам — для трасс на плане:
+     * { 'гостиная': 'R' | 'L' | 'C' | 'S' }. Берётся из приборов, подобранных
+     * сметой (radDevices): нижнее подключение — правое, если в названии модели
+     * не сказано «левостороннее» или «центральное»; боковое — 'S'. Замена
+     * прибора в смете меняет и сторону на плане. Комната с разными приборами —
+     * по первому.
+     */
+    radConnMap: function () {
+        const PP = window.projectPlans, map = {};
+        if (!PP || !PP.radSideOfModel) return map;
+        (this.radDevices || []).forEach(d => {
+            if (!d || d.kind !== 'rad') return;
+            const k = String(d.room || '').trim().toLowerCase();
+            if (k && !map[k]) map[k] = PP.radSideOfModel(d.name, d.bottom);
+        });
+        return map;
+    },
+
     radPlanRuns: function () {
         const PP = window.projectPlans, plans = this.currentPlans();
         if (!PP || !PP.radRoutes || !plans || !Array.isArray(plans.floors)) return null;
         const s = this.state, tee = s.radConnectionScheme === 'tee';
-        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1);
+        const connMap = this.radConnMap();
+        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1) +
+            '|' + JSON.stringify(connMap);
         if (this._radPlanCache && this._radPlanCache.key === key) return this._radPlanCache.val;
         const runs = [], byRoom = {};
         let trunk = 0, floorsWith = 0, maxRun = 0, maxRoom = '';
         plans.floors.forEach((f, fi) => {
             if (!f || !f.pxPerM || !(f.rads || []).length || fi > 1 || (fi === 1 && s.floors !== 2)) return;
             let R = null;
-            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee); } catch (e) { R = null; }
+            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee, connMap); } catch (e) { R = null; }
             if (!R || !R.items.length) return;
             floorsWith++;
             trunk += R.totalM / 2;
@@ -52871,7 +52973,7 @@ const app = {
             // предельной длине петли (ufhLoopMax) на каждом этаже.
             const _fc = (this._ufhFloorCalc || []).filter(f => f && f.m > 0);
             const _stp = [parseInt(this.state.ufhStep1, 10) || 150, parseInt(this.state.ufhStep2, 10) || 150];
-            const _tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            const _tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             const _curPipe = this.ufhPipe();
             const _prc = (it) => it ? ((isRommer && it.rommer) ? it.rommer.price : it.price) || 0 : 0;
             const _perLoop = (p) => 2 * _prc((catalog.parts || []).find(x => x.id === p.conn))
@@ -52956,7 +53058,7 @@ const app = {
             const _matArea = (_matR ? _matR.area : _matCat?.area) || 0.88;
             const _xk = catalog.xps_kit || [];
             const _xpsArea = this.ufhBaseXps()?.area || 0.6844;
-            const _tpA = (Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0);
+            const _tpA = this.r2((Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0));
             const _pipePerM2 = (_tpA > 0 && this.tpMeters > 0) ? this.tpMeters / _tpA : 6.7;
             const _sheetsM2 = 1.05 / _xpsArea;
             const _sub = catalog.ufh_mat && catalog.ufh_mat[0];
@@ -54676,7 +54778,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name two-name">${alt.name}${badgeHtml}${_sub}</td>
+                        <td class="col-name two-name">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${_sub}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         ${_cell('col-two-u', (_twoHead.unitHead || 'Мат / лист, за м²'), alt.unitM2, _baseUnit)}
                         ${_cell('col-two-s', (_twoHead.sysHead || 'Система, за м²'), alt.price, basePrice)}
@@ -54689,7 +54791,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}${badgeHtml}${alt.note || ''}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${alt.note || ''}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -54706,7 +54808,7 @@ const app = {
                 const _same = this.ssSameSizeAlts(item);
                 if (_same.length) {
                     html += `
-                        <tr style="border-top: 2px solid var(--border);">
+                        <tr class="swap-sub-head" style="border-top: 2px solid var(--border);">
                             <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
                                 Заменить только эту позицию — тот же материал и типоразмер
                             </td>
@@ -54724,7 +54826,7 @@ const app = {
                             <tr style="cursor: pointer;" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                                 <td class="col-idx"></td>
                                 <td class="col-img">${getImg(alt)}</td>
-                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}</td>
+                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand)}${alt.name}</td>
                                 <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand}</td>
                                 ${_priceCells}
                             </tr>`;
@@ -54967,7 +55069,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${_nameDisplay}${_rowCoilStr}${badgeHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -56831,8 +56933,8 @@ const app = {
             // даёт «хвост» вроде 198.00000000000003, который потом виден в подробном расчёте.
             this.state.area = tA > 0 ? Math.round(tA * 10) / 10 : 50;
             this.state.win = tW > 0 ? tW : 1;
-            this.state.tp1 = tTp1;
-            this.state.tp2 = tTp2;
+            this.state.tp1 = this.r2(tTp1);
+            this.state.tp2 = this.r2(tTp2);
             this.state.ufhZones = this.state.rooms.filter(r => r.sys && r.sys.includes('tp')).length;
 
             if ((tTp1 + tTp2) > 0 && !this.state.systems.includes('tp')) this.state.systems.push('tp');
@@ -59386,7 +59488,7 @@ const app = {
                     if (num < 1) num = 1;
                     alert("Максимальная площадь дома не может превышать " + this.MAX_AREA + " м².");
                 }
-                r.area = num;
+                r.area = this.r2(num);
             } else {
                 r[field] = val;
             }
@@ -62288,7 +62390,7 @@ const app = {
                 }
             }
 
-            r.area = num;
+            r.area = this.r2(num);
             if (r.windows) {
                 r.windows.forEach(w => {
                     if (!w.isManualWidth) {
@@ -62580,7 +62682,7 @@ const app = {
             }
         }
 
-        let tpArea = (parseFloat(this.state.tp1) || 0) + (parseFloat(this.state.tp2) || 0);
+        let tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (parseFloat(this.state.tp2) || 0));
         if (tpArea > 0) {
             let tpRoomsCount = 5;
             if (tpArea <= 80) tpRoomsCount = 5;
@@ -63491,7 +63593,7 @@ const app = {
         let n = this.state.ufhZones + d; if (n < 0) n = 0; if (n > 16) n = 16; this.state.ufhZones = n;
         this.state.zonesManual = true;
         this.state.zonesManualArea = this.state.area;
-        this.state.zonesManualTpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+        this.state.zonesManualTpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
         this.state.zonesManualFloors = this.state.floors;
         this.saveState();
         this.syncUI(); this.render();
@@ -63501,7 +63603,7 @@ const app = {
         if (!isAuto) {
             this.state.zonesManual = true;
             this.state.zonesManualArea = this.state.area;
-            this.state.zonesManualTpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            this.state.zonesManualTpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             this.state.zonesManualFloors = this.state.floors;
         }
         this.saveState();
@@ -63651,7 +63753,7 @@ const app = {
         // Ноль шкала не представляет (минимум 25), поэтому подставляем минимум
         // явно: без этого браузер оставлял прежнее значение.
         _areaInp.value = (parseFloat(this.state.area) || 0) > 0 ? this.state.area : _areaMin;
-        document.getElementById('val_area').innerText = this.state.area;
+        document.getElementById('val_area').innerText = this.r2(this.state.area);
         this.renderPlanAreaNote();
         if (document.getElementById('blk_h2_wrapper')) document.getElementById('blk_h2_wrapper').style.display = (this.state.floors === 2) ? 'flex' : 'none';
         if (document.getElementById('btn_add_floor')) document.getElementById('btn_add_floor').style.display = (this.state.floors === 2) ? 'none' : 'block';
@@ -64312,7 +64414,7 @@ const app = {
         }
 
         const cTabs = document.querySelectorAll('.cool-tab'); cTabs.forEach(t => { t.classList.remove('active'); if (t.dataset.type === this.state.coolant) t.classList.add('active'); });
-        document.getElementById('inp_tp1').max = this.state.area; document.getElementById('inp_tp2').max = this.state.area; document.getElementById('inp_tp1').value = this.state.tp1; document.getElementById('val_tp1').innerText = this.state.tp1; document.getElementById('inp_tp2').value = this.state.tp2; document.getElementById('val_tp2').innerText = this.state.tp2;
+        document.getElementById('inp_tp1').max = this.state.area; document.getElementById('inp_tp2').max = this.state.area; document.getElementById('inp_tp1').value = this.state.tp1; document.getElementById('val_tp1').innerText = this.r2(this.state.tp1); document.getElementById('inp_tp2').value = this.state.tp2; document.getElementById('val_tp2').innerText = this.r2(this.state.tp2);
         document.getElementById('chk_sku').checked = this.state.showSku;
         // Логика доступа для переключателя "СХЕМА" — доступен всем авторизованным пользователям
         let sw = document.getElementById('scheme_wrapper');
@@ -64841,7 +64943,7 @@ const app = {
         // Комнаты и окна идут за площадью, пока комнаты не задали руками
         this.syncFlatWindows();
         if (this.state.tp1 > v) this.state.tp1 = v;
-        if (this.state.tp1 + this.state.tp2 > v) this.state.tp2 = v - this.state.tp1;
+        if (this.state.tp1 + this.state.tp2 > v) this.state.tp2 = this.r2(v - this.state.tp1);
         this.state.waterZones.forEach(z => z.dist = this.state.area < 120 ? 6 : 10);
         if (this.state.detailedRooms) {
             this.generateRoomsForDetailedCalculation();
@@ -66475,7 +66577,7 @@ const app = {
                 this.state.ufhZones = 0;
             }
         } else {
-            let tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            let tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             if (this.state.zonesManual) {
                 let currentArea = this.state.area;
                 let currentFloors = this.state.floors;
@@ -66523,10 +66625,10 @@ const app = {
 
         if (f === 1) {
             this.state.tp1 = v;
-            if (this.state.tp1 + this.state.tp2 > max) this.state.tp2 = max - this.state.tp1;
+            if (this.state.tp1 + this.state.tp2 > max) this.state.tp2 = this.r2(max - this.state.tp1);
         } else {
             this.state.tp2 = v;
-            if (this.state.tp1 + this.state.tp2 > max) this.state.tp1 = max - this.state.tp2;
+            if (this.state.tp1 + this.state.tp2 > max) this.state.tp1 = this.r2(max - this.state.tp2);
         }
         if (this.state.detailedRooms) {
             this.applyTpAreaToRooms(1, this.state.tp1);
@@ -69498,7 +69600,7 @@ const app = {
             case 'ufh_pipe': {
                 let stepVal1 = this.state.ufhStep1 || 150;
                 let stepVal2 = this.state.ufhStep2 || 150;
-                let tpArea = this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0);
+                let tpArea = this.r2(this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0));
                 let stepStr = (this.state.floors === 2 && this.state.tp2 > 0) ? `1 этаж: ${stepVal1} мм, 2 этаж: ${stepVal2} мм` : `${stepVal1} мм`;
 
                 // Этаж, размеченный в редакторе планов, считается по нарисованной
@@ -70033,6 +70135,7 @@ const app = {
         try { return this._renderInner(false); } finally { this._inputAnchorAfter(_ia); }
     },
     _renderInner: function (computeOnly) {
+        this.normalizeAreaNumbers();
         if (!computeOnly) this.ensureCalcId();
         if (this.state.disabledSections) {
             const migrations = {
@@ -72700,7 +72803,7 @@ const app = {
         let hasRad = this.state.systems.includes('rad');
         let hasTp = this.state.systems.includes('tp');
         let radSecs = 0, radMeters = 0, tpMeters = 0;
-        let tpArea = this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0);
+        let tpArea = this.r2(this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0));
         if (hasRad) { let load = this.radLoadKw(pwr, hasTp ? tpArea : 0) * 1000; radSecs = Math.ceil(load / 117); if (radSecs > 0) { let pipe = Math.ceil(this.state.win * (Math.sqrt(this.state.area / (this.state.floors === 2 ? 2 : 1)) + 3) * 1.1); radMeters = pipe * 2; } }
 
         let stepVal1 = this.state.ufhStep1 || 150;
@@ -75440,7 +75543,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + _radQty; }
                         }
                     });

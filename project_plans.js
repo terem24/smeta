@@ -1565,14 +1565,64 @@
   var RAD_OUTLET_MM = 50;      // шаг выходов коллектора
   var RAD_PAIR_MM = 25;        // полразноса подачи и обратки одного луча
 
-  /** Где стоит коллектор радиаторов этажа: котельная → коллектор ТП → центр приборов */
-  function radCollector(f) {
-    var bz = (f.zones || []).filter(function (z) { return z.type === 'boiler'; })[0];
-    if (bz) { var c = centroid(bz.pts); return { x: c[0], y: c[1], src: 'boiler' }; }
-    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp' };
+  /**
+   * Котельная этажа: зона типа «Котельная» или любая комната с таким
+   * названием. В мастере раскладки котельная — обычная комната с именем
+   * «Котельная», и коллекторы её не видели: встали в гостиную (03.10.2026).
+   */
+  var BOILER_NAME = /котельн|топочн|бойлерн/i;
+  function boilerZone(f) {
+    var zs = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
+    return zs.filter(function (z) { return z.type === 'boiler'; })[0] ||
+      zs.filter(function (z) { return BOILER_NAME.test(z.name || ''); })[0] || null;
+  }
+
+  /**
+   * Место у стены комнаты z, ближайшей к точке to (обычно — к тому, что
+   * коллектор питает), на 0,3 м внутрь: коллектор висит на стене, а не
+   * стоит посреди комнаты. Возвращает [x, y] и направление стены [ux, uy].
+   */
+  function wallSpot(f, z, to) {
+    var P = z.pts, zc = centroid(P), best = null, bd = Infinity, ppm = f.pxPerM || 100;
+    for (var i = 0; i < P.length; i++) {
+      var a = P[i], b = P[(i + 1) % P.length];
+      var dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+      if (L2 < (0.5 * ppm) * (0.5 * ppm)) continue;             // огрызок контура — не стена
+      var t = Math.max(0.15, Math.min(0.85, ((to[0] - a[0]) * dx + (to[1] - a[1]) * dy) / L2));
+      var q = [a[0] + dx * t, a[1] + dy * t], d = Math.hypot(to[0] - q[0], to[1] - q[1]);
+      if (d < bd) { bd = d; best = { q: q, u: [dx / Math.sqrt(L2), dy / Math.sqrt(L2)] }; }
+    }
+    if (!best) return { p: zc, u: [1, 0] };
+    var vx = zc[0] - best.q[0], vy = zc[1] - best.q[1], vl = Math.hypot(vx, vy) || 1, in3 = Math.min(0.3 * ppm, vl / 2);
+    return { p: [best.q[0] + vx / vl * in3, best.q[1] + vy / vl * in3], u: best.u };
+  }
+
+  /** Средняя точка радиаторов этажа (или центр комнат, если их нет). */
+  function radsCenter(f) {
     var sx = 0, sy = 0, rs = f.rads || [];
     rs.forEach(function (r) { sx += r.x; sy += r.y; });
-    return { x: sx / (rs.length || 1), y: sy / (rs.length || 1), src: 'rads' };
+    return rs.length ? [sx / rs.length, sy / rs.length] : null;
+  }
+
+  /**
+   * Где стоит коллектор радиаторов этажа: поставлен вручную (f.radColl) →
+   * у стены котельной, ближней к радиаторам → у коллектора ТП → центр
+   * приборов. В котельной рядом с коллектором ТП — со сдвигом вдоль стены,
+   * чтобы значки не легли друг на друга.
+   */
+  function radCollector(f) {
+    if (f.radColl && isFinite(f.radColl.x)) return { x: f.radColl.x, y: f.radColl.y, src: 'manual' };
+    var rc = radsCenter(f), bz = boilerZone(f);
+    if (bz) {
+      var s = wallSpot(f, bz, rc || centroid(bz.pts)), p = s.p, ppm = f.pxPerM || 100;
+      if (f.coll && Math.hypot(p[0] - f.coll.x, p[1] - f.coll.y) < 0.6 * ppm) {
+        var tries = [[p[0] + s.u[0] * 0.7 * ppm, p[1] + s.u[1] * 0.7 * ppm], [p[0] - s.u[0] * 0.7 * ppm, p[1] - s.u[1] * 0.7 * ppm]];
+        p = tries.filter(function (q) { return pip(q, bz.pts); })[0] || tries[0];
+      }
+      return { x: p[0], y: p[1], src: 'boiler' };
+    }
+    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp' };
+    return rc ? { x: rc[0], y: rc[1], src: 'rads' } : { x: 0, y: 0, src: 'rads' };
   }
 
   /**
@@ -1591,7 +1641,7 @@
   // Цена клетки для трассы радиаторов: стена дорогая — переходить её трасса
   // будет там, где комнаты смыкаются (в проёме), а не где придётся.
   var RCOST_WALL = 20, RCOST_MID = 2, RCOST_TP = 25, RCOST_COLD = 40, RCOST_OUT = 400;
-  function radRoutes(f, stepMm, tee) {
+  function radRoutes(f, stepMm, tee, connMap) {
     var rads = (f.rads || []).filter(function (r) { return r && isFinite(r.x) && isFinite(r.y); });
     if (!rads.length || !f.pxPerM) return null;
     var rooms = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
@@ -1636,16 +1686,32 @@
         ? 1 + (wd[k] > 2 ? RCOST_MID : 0) + (tpM[k] ? RCOST_TP : 0)
         : (near[k] > 3 ? RCOST_OUT : RCOST_WALL);
     }
-    // точка подключения прибора
-    var conn = rads.map(function (r) {
+    // Точка подключения прибора — по его модели (radConnSide): по умолчанию
+    // правое нижнее, как у радиаторов сметы; «правое» — если стоять в комнате
+    // лицом к прибору. Раньше трасса шла к краю, ближнему к коллектору, и на
+    // плане половина приборов выходила подключённой слева (03.10.2026).
+    var sides = [];
+    var conn = rads.map(function (r, ri) {
       var a = (r.ang || 0) * Math.PI / 180, ux = Math.cos(a), uy = Math.sin(a);
       var hw = (r.w || 0.8 * ppm) / 2 - 0.08 * ppm;
-      var e1 = [r.x + ux * hw, r.y + uy * hw], e2 = [r.x - ux * hw, r.y - uy * hw];
-      var e = (Math.abs(e1[0] - C.x) + Math.abs(e1[1] - C.y) <= Math.abs(e2[0] - C.x) + Math.abs(e2[1] - C.y)) ? e1 : e2;
       // внутрь комнаты — та сторона прибора, где на 0,3 м лежит клетка комнаты
       var nx = -uy, ny = ux, s = 1, t1 = cellAt(g, [r.x + nx * 0.3 * ppm, r.y + ny * 0.3 * ppm]);
       if (!own[t1]) s = -1;
-      return [e[0] + nx * s * RAD_IN_M * ppm, e[1] + ny * s * RAD_IN_M * ppm];
+      var inx = nx * s, iny = ny * s;
+      var room = own[cellAt(g, [r.x + inx * 0.3 * ppm, r.y + iny * 0.3 * ppm])];
+      var side = radConnSide(r, room ? rooms[room - 1].name : '', connMap);
+      // лицом к прибору смотрят против нормали внутрь; правая рука — (iny, −inx)
+      var rx = iny, ry = -inx, e;
+      if (side === 'C') e = [r.x, r.y];
+      else if (side === 'R' || side === 'L') {
+        var k = side === 'R' ? 1 : -1;
+        e = [r.x + rx * hw * k, r.y + ry * hw * k];
+      } else {                                         // боковое — к краю, ближнему к коллектору
+        var e1 = [r.x + ux * hw, r.y + uy * hw], e2 = [r.x - ux * hw, r.y - uy * hw];
+        e = (Math.abs(e1[0] - C.x) + Math.abs(e1[1] - C.y) <= Math.abs(e2[0] - C.x) + Math.abs(e2[1] - C.y)) ? e1 : e2;
+      }
+      sides[ri] = { side: side, end: e };
+      return [e[0] + inx * RAD_IN_M * ppm, e[1] + iny * RAD_IN_M * ppm];
     });
     var src = cellAt(g, [C.x, C.y]);
     var trace = function (from, goalCell) {
@@ -1739,7 +1805,32 @@
       if (pr) segs.push({ a: pr, b: q, n: tee ? 2 : 1 });
     });
     var total = items.reduce(function (s, it) { return s + it.L; }, 0);
-    return { C: C, tee: !!tee, items: items, segs: segs, totalM: total };
+    items.forEach(function (it) { if (sides[it.i]) { it.side = sides[it.i].side; it.end = sides[it.i].end; } });
+    return { C: C, tee: !!tee, items: items, segs: segs, totalM: total, sides: sides };
+  }
+
+  /**
+   * Сторона подключения прибора на плане: 'R' — нижнее правое, 'L' — нижнее
+   * левое, 'C' — нижнее центральное, 'S' — боковое (к краю, ближнему к
+   * коллектору). Развернул монтажник на плане (r.conn) — его выбор; иначе — по
+   * модели прибора этой комнаты в смете (connMap: имя комнаты → сторона, его
+   * собирает калькулятор, app.radConnMap); иначе — правое нижнее, как у
+   * радиаторов по умолчанию.
+   */
+  function radConnSide(r, roomName, connMap) {
+    if (r && (r.conn === 'R' || r.conn === 'L')) return r.conn;
+    var key = String(roomName || '').trim().toLowerCase();
+    var s = connMap && key ? connMap[key] : null;
+    return (s === 'L' || s === 'C' || s === 'S') ? s : 'R';
+  }
+
+  /** Сторона подключения по названию и типу прибора сметы (bottom — нижнее). */
+  function radSideOfModel(name, bottom) {
+    if (!bottom) return 'S';
+    var n = String(name || '').toLowerCase();
+    if (/левосторон|нижн[а-я]*\s+лев|лев[а-я]*\s+нижн/.test(n)) return 'L';
+    if (/центральн/.test(n)) return 'C';
+    return 'R';
   }
 
   /** Зона, к которой относится прибор: та, внутри которой он стоит, иначе ближайшая */
@@ -3564,7 +3655,7 @@
     var rows = hasTp ? loopRows(f, stepMm, rooms || []) : [];
     var RR = null;
     if (opts.rads && (f.rads || []).length) {
-      try { RR = radRoutes(f, stepMm, !!opts.tee); } catch (e) { RR = null; }
+      try { RR = radRoutes(f, stepMm, !!opts.tee, opts.connMap || null); } catch (e) { RR = null; }
     }
     if (!rows.length && !RR) return null;
     var ppm = f.pxPerM, bundle = hasTp ? (floorLoops(f, stepMm, loopLimit(stepMm)).bundle || []) : [];
@@ -3684,6 +3775,8 @@
   window.projectPlans = { sheets: sheets, waterSheets: waterSheets, wetZoneSheets: wetZoneSheets, axonoSheets: axonoSheets, iso3dSheets: iso3dSheets,
     boilerRoom: boilerRoom,
     floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, radRoutes: radRoutes,
+    radCollector: radCollector, boilerZone: boilerZone, wallSpot: wallSpot,
+    radConnSide: radConnSide, radSideOfModel: radSideOfModel,
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
     MAX_LOOP_M: MAX_LOOP_M, loopLimit: loopLimit, setLoopLimits: setLoopLimits };
 })();
