@@ -1,0 +1,27 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Рисует страницу PDF так же, как редактор планов (renderPdfPage: масштаб 1600 / длинная сторона),
+     только страницей целиком, без полей — для снимка headless Chrome:
+       chrome --headless=new --screenshot=out.png --window-size=1600,1132 --virtual-time-budget=20000 \
+         "http://localhost:8080/.../bench/pdf_render.html?pdf=bench/windows_data/etazh1.pdf"
+     Встроенный браузер Claude не дорисовывает pdf.js (кадры не идут), а настоящий вид линий нужен:
+     pdf.js делает тонкие линии сплошными в 1 пиксель, PyMuPDF — бледными. -->
+<style>html,body{margin:0;background:#fff}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script src="windows_data/pdf.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'windows_data/pdf.worker.min.js';
+var q = new URLSearchParams(location.search);
+var root = location.pathname.replace(/\/bench\/pdf_render\.html$/, '/');
+pdfjsLib.getDocument(root + q.get('pdf')).promise.then(function (pdf) {
+  return pdf.getPage(+(q.get('page') || 1));
+}).then(function (page) {
+  var vp1 = page.getViewport({ scale: 1 }), k = Math.min(4, 1600 / Math.max(vp1.width, vp1.height));
+  var vp = page.getViewport({ scale: k }), c = document.getElementById('c');
+  c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+  return page.render({ canvasContext: g, viewport: vp }).promise.then(function () {
+    var pre = document.createElement('pre'); pre.id = 'out'; pre.textContent = c.toDataURL('image/png'); document.body.appendChild(pre);
+  });
+}).catch(function (e) { var pre = document.createElement('pre'); pre.id = 'err'; pre.textContent = String(e); document.body.appendChild(pre); });
+</script>

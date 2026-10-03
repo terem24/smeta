@@ -37030,6 +37030,25 @@ const app = {
         inp.click();
     },
 
+    /** Цвета текущей темы калькулятора — для окна «План дома» (их у калькулятора несколько) */
+    ufhThemeObj: function () {
+        const cs = getComputedStyle(document.body);
+        const cv = k => (cs.getPropertyValue('--' + k) || '').trim();
+        return {
+            dark: document.body.classList.contains('dark-mode'), primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
+            'text-main': cv('text-main'), 'text-sec': cv('text-sec'), border: cv('border')
+        };
+    },
+
+    /** Тему сменили, пока окно плана открыто, — окно перекрашивается тут же */
+    syncUfhTheme: function () {
+        const fr = document.getElementById('ufhplan_frame');
+        if (!fr) return;
+        const t = this.ufhThemeObj();
+        try { localStorage.setItem('heatcalc_ufh_theme', JSON.stringify(t)); } catch (e) { }
+        try { if (fr.contentWindow && typeof fr.contentWindow.applyUfhTheme === 'function') fr.contentWindow.applyUfhTheme(t); } catch (e) { }
+    },
+
     openUfhPlan: function (files) {
         if (window.SessionTrack) SessionTrack.screen('ufhplan');
         if (!this.canUseUfhPlan()) { app.alert('Раскладка тёплого пола входит в тариф «Профи».'); return; }
@@ -37047,9 +37066,7 @@ const app = {
         // программа: тёмное окно поверх светлой сметы выглядело непонятно
         // откуда взявшимся (03.10.2026). Цвета берём у текущей темы — у
         // калькулятора их несколько (обычная, тёмная, брендовые).
-        const cs = getComputedStyle(document.body);
-        const cv = k => (cs.getPropertyValue('--' + k) || '').trim();
-        const dark = document.body.classList.contains('dark-mode');
+        const themeObj = this.ufhThemeObj();
         // стороны подключения радиаторов по моделям сметы — трассы окна плана
         // подходят к приборам так же, как в смете и КП
         try { localStorage.setItem('heatcalc_rad_conn', JSON.stringify(this.radConnMap())); } catch (e) { }
@@ -37061,10 +37078,7 @@ const app = {
             localStorage.setItem('heatcalc_room_deficit', JSON.stringify(bal));
         } catch (e) { }
         try {
-            localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
-                dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
-                'text-main': cv('text-main'), 'text-sec': cv('text-sec'), border: cv('border')
-            }));
+            localStorage.setItem('heatcalc_ufh_theme', JSON.stringify(themeObj));
         } catch (e) { }
         let ov = document.getElementById('ufhplan_overlay');
         if (ov) ov.remove();
@@ -37219,7 +37233,7 @@ const app = {
                 const k = norm(z.name);
                 const e = byName.get(k) || { name: z.name.trim(), shapes: {}, area: 0, tp: false };
                 const sig = JSON.stringify(z.pts);
-                if (!e.shapes[sig]) { e.shapes[sig] = 1; e.area += polyM2(z.pts, f.pxPerM); }
+                if (!e.shapes[sig]) { e.shapes[sig] = 1; e.area += (z.printedM2 > 0 && z.printedSig === sig) ? z.printedM2 : polyM2(z.pts, f.pxPerM); }
                 if (z.type === 'tp') e.tp = true;
                 byName.set(k, e);
             });
@@ -42709,6 +42723,8 @@ const app = {
         if (!this._bigTextApplied) { this._bigTextApplied = true; this.applyBigText(); }
         // Тема «Яндекс» живёт поверх: ей нужно знать, ночь сейчас или день (цвет строки состояния)
         if (this.syncYandexTheme) this.syncYandexTheme();
+        // Окно «План дома» открыто — перекрасить и его (после того, как страница применила цвета)
+        if (document.getElementById('ufhplan_frame')) setTimeout(() => this.syncUfhTheme(), 60);
         // Сохраняем только когда тема реально сменилась: в авто-режиме проверка идёт
         // раз в минуту, и писать состояние каждый раз незачем.
         if (changed) this.saveState();
