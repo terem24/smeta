@@ -4964,7 +4964,7 @@ const app = {
         let acc = 0, n = 0;
         for (const it of sh.missing) { if (acc >= need) break; acc += Number(it.sum) || 0; n++; }
         const word = (k) => { const t = k % 10, h = k % 100; return k + ' ' + ((h >= 11 && h <= 14) ? 'позиций' : t === 1 ? 'позицию' : (t >= 2 && t <= 4) ? 'позиции' : 'позиций'); };
-        const rows = sh.missing.slice(0, 3).map((it, i) => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span></div>`).join('');
+        const rows = sh.missing.slice(0, 3).map((it, i) => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span>${this.stoutAnalogFor(it) ? `<button type="button" class="sg-rep" data-i="${i}">Заменить</button>` : '<span class="sg-noan">нет аналога</span>'}</div>`).join('');
         const canAll = ok ? 0 : sh.missing.filter(it => this.stoutAnalogFor(it)).length;
         const html = `
             <div class="sg-head">
@@ -4988,7 +4988,7 @@ const app = {
                     <div><b>страховка</b><span>ответственность завода</span></div>
                 </div>` : `
                 <div class="sg-lead"><b>Не хватает ${rub(need)}.</b>${n ? ` Заменить примерно ${word(n)} на STOUT, начиная с самых дорогих:` : ''}</div>
-                <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. Кнопка ниже сделает копию КП с новым номером, оригинал не изменится</div>` : ''}</div>`}
+                <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. «Заменить» меняет позицию в этом КП, кнопка ниже делает копию КП с заменой всего, оригинал не меняется</div>` : ''}</div>`}
                 <div class="calc-dialog-buttons">${canAll ? `<button type="button" class="calc-dialog-btn sg-all" id="sg_all">Сделать копию КП на STOUT (${canAll})</button>` : ''}<button type="button" class="calc-dialog-btn ${canAll ? 'calc-dialog-btn-cancel' : 'calc-dialog-btn-confirm'}" id="sg_ok">${canAll ? 'Закрыть' : 'Понятно'}</button></div>
             </div>`;
         const overlay = document.createElement('div');
@@ -5014,6 +5014,7 @@ const app = {
             this.showStoutShareInfo();
             if (!n) { const h = document.querySelector('.sg-card .sg-lead'); if (h) h.insertAdjacentHTML('beforeend', ' Аналога STOUT не нашлось.'); }
         };
+        card.querySelectorAll('.sg-rep').forEach(b => { b.onclick = () => redo(parseInt(b.dataset.i)); });
         const all = card.querySelector('#sg_all');
         if (all) all.onclick = async () => {
             all.disabled = true; all.textContent = 'Делаем копию…';
