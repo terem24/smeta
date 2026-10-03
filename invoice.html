@@ -2472,6 +2472,171 @@
             display: none !important;
         }
 
+        /* ===== Лист «Гарантия» (renderWarranty) ===============================
+           Фирменные цвета STOUT (синяя панель, голубой акцент) не зависят от темы:
+           это бренд завода, он должен выглядеть так же и днём, и ночью. Остальное —
+           из переменных темы. */
+        .kpw-hero {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            border-radius: 14px;
+            overflow: hidden;
+            background: #203F6F;
+            color: #fff;
+        }
+
+        .kpw-hero-t { padding: 26px 28px; }
+
+        .kpw-logo {
+            display: inline-block;
+            margin-bottom: 14px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: #fff;
+        }
+
+        .kpw-logo img { display: block; height: 22px; width: auto; }
+
+        .kpw-kick {
+            color: #9CC9F0;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .8px;
+            text-transform: uppercase;
+        }
+
+        .kpw-hero h2 { margin: 6px 0 10px; font-size: 28px; font-weight: 800; line-height: 1.15; color: #fff; }
+        .kpw-hero h2 b { color: #7FC0FF; }
+        .kpw-lead { margin: 0; color: #DCE8F5; font-size: 14px; line-height: 1.5; }
+
+        .kpw-hero-i {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 200px;
+            background: #F5F5F5;
+        }
+
+        .kpw-hero-i img { max-width: 80%; max-height: 220px; object-fit: contain; }
+
+        .kpw-badge {
+            position: absolute;
+            left: 14px;
+            bottom: 14px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: #3F9DE1;
+            color: #fff;
+            font-size: 12px;
+            line-height: 1.2;
+        }
+
+        .kpw-badge b { display: block; font-size: 20px; font-weight: 800; }
+
+        .kpw-pils {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+            gap: 12px;
+            margin-top: 14px;
+        }
+
+        .kpw-pil {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            background: var(--soft);
+        }
+
+        .kpw-pil svg { flex: none; width: 40px; height: 40px; color: var(--primary); }
+        .kpw-pn { color: var(--text-main); font-size: 20px; font-weight: 800; line-height: 1.15; }
+        .kpw-pt { margin-top: 2px; color: var(--text-sec); font-size: 12.5px; line-height: 1.4; }
+
+        .kpw-row {
+            display: grid;
+            grid-template-columns: 56px minmax(120px, 1.4fr) 2fr auto;
+            gap: 14px;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .kpw-row:last-of-type { border-bottom: 0; }
+
+        .kpw-row-i {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: #fff;
+            overflow: hidden;
+        }
+
+        .kpw-row-i img { max-width: 100%; max-height: 100%; object-fit: contain; }
+        .kpw-row-n { color: var(--text-main); font-weight: 600; }
+        .kpw-bar { height: 8px; border-radius: 4px; background: var(--border); overflow: hidden; }
+        .kpw-bar i { display: block; height: 100%; border-radius: 4px; background: #3F9DE1; }
+        .kpw-term { color: var(--text-main); font-weight: 800; white-space: nowrap; }
+        .kpw-more { margin-top: 10px; color: var(--text-sec); font-size: 13px; line-height: 1.6; }
+        .kpw-more b { color: var(--text-main); }
+
+        .kpw-cta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px 24px;
+            margin-top: 18px;
+            padding: 16px 20px;
+            border-radius: 14px;
+            background: #203F6F;
+            color: #fff;
+        }
+
+        .kpw-cta-h { font-size: 17px; font-weight: 800; }
+        .kpw-cta-t { margin-top: 3px; max-width: 520px; color: #DCE8F5; font-size: 12.5px; line-height: 1.5; }
+        .kpw-cta-r { text-align: right; }
+        .kpw-phone { color: #fff; font-size: 22px; font-weight: 800; text-decoration: none; white-space: nowrap; }
+        .kpw-fn { margin-top: 2px; color: #9CC9F0; font-size: 12px; }
+        .kpw-prelim { margin-top: 12px; color: var(--text-sec); font-size: 12.5px; }
+        .kpw-prelim b { color: var(--text-main); }
+        .kpw-src { margin-top: 8px; color: var(--text-sec); font-size: 11.5px; line-height: 1.55; }
+
+        /* Плитка в «Ваш дом»: фирменная синяя, ведёт к листу гарантии */
+        .kp-kpi-w {
+            display: block;
+            border-color: #203F6F;
+            background: #203F6F;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform .15s ease, box-shadow .15s ease;
+        }
+
+        .kp-kpi-w:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(32, 63, 111, .35); }
+        .kp-kpi-w .kp-kpi-l { color: #9CC9F0; }
+        .kp-kpi-w .kp-kpi-v { color: #fff; }
+        .kp-kpi-w .kp-kpi-s { color: #DCE8F5; }
+
+        @media screen and (max-width: 600px) {
+            .kpw-hero { grid-template-columns: 1fr; }
+            .kpw-hero-t { padding: 20px 18px; }
+            .kpw-hero h2 { font-size: 23px; }
+            .kpw-hero-i { min-height: 150px; }
+            .kpw-hero-i img { max-height: 150px; }
+            .kpw-row { grid-template-columns: 48px 1fr auto; gap: 8px 12px; }
+            .kpw-row-i { width: 48px; height: 48px; }
+            .kpw-bar { grid-column: 1 / -1; grid-row: 2; }
+            .kpw-cta-r { text-align: left; }
+        }
+
+        .kpw-hero-solo { grid-template-columns: 1fr; }
+
         /* ===== Лист «Ваш дом» (renderKpHouse, renderUfhPlan) ===================
            Один лист вместо стопки таблиц: плитки с цифрами, одна главная таблица
            комнат с полосками теплопотерь, планировка по этажам (вкладки), а петли,
@@ -3392,6 +3557,11 @@
                 <div id="ufh_plan_body"></div>
             </section>
         </div>
+
+        <!-- Гарантия STOUT: ещё один лист «приложением» к смете, после «Ваш дом» (как и в
+             печатной версии, где бланк идёт последним). Данные — object_info.warranty,
+             их кладёт калькулятор, когда доля STOUT выше порога. Рисует renderWarranty(). -->
+        <div id="kp_warranty_sheet" class="kp-sheet kpw" style="display: none;"></div>
 
         <!-- Скидки от прайса ТЕРЕМ по строкам. Виден сотруднику по столбцу «Скидки КП»
              таблицы «Тарифы», в печать не идёт. Стоит после итогов КП отдельной
@@ -4329,7 +4499,7 @@
          * теплопотери, «вы просили — мы учли», комнаты, стоимость отопления.
          * Данные из базы — всё через textContent, числа через Number.
          */
-        function renderKpHouse(kp) {
+        function renderKpHouse(kp, warranty) {
             const sec = document.getElementById('kp_house_section'), body = document.getElementById('kp_house_body');
             if (!sec || !body) return;
             body.innerHTML = '';
@@ -4356,6 +4526,19 @@
                 kpi('Отопление в месяц', '≈ ' + money(c.month) + ' ₽', 'в среднем за отопительный сезон', true);
                 kpi('За сезон', money(c.season) + ' ₽', (num(c.zOt) ? num(c.zOt) + ' дн.' : num(c.months) + ' мес.') + ' · ' +
                     (c.fuel === 'gas' ? (c.lpg ? 'сжиженный газ' : 'газ') : 'электроэнергия') + ' ' + money(c.units) + ' ' + String(c.uName || ''));
+            }
+            // Гарантия — преимущество, которое подсвечиваем плиткой; нажатие ведёт к листу гарантии
+            if (warranty && num(warranty.maxM) > 0) {
+                const a = kpEl('a', 'kp-kpi kp-kpi-w');
+                a.href = '#kp_warranty_sheet';
+                a.appendChild(kpEl('div', 'kp-kpi-l', 'Гарантия STOUT'));
+                a.appendChild(kpEl('div', 'kp-kpi-v', 'до ' + kpYears(warranty.maxM)));
+                a.appendChild(kpEl('div', 'kp-kpi-s', 'на оборудование · монтаж ' + kpYears(num(warranty.extM) || 36) + ' · подробнее ↓'));
+                a.addEventListener('click', e => {
+                    const t = document.getElementById('kp_warranty_sheet');
+                    if (t && t.style.display !== 'none') { e.preventDefault(); t.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+                });
+                kpis.appendChild(a);
             }
             if (kpis.childNodes.length) box.appendChild(kpis);
             const asked = Array.isArray(kp.asked) ? kp.asked : [];
@@ -4543,6 +4726,158 @@
             sec.style.display = panels.length ? '' : 'none';
         }
 
+        // Срок гарантии словами: 120 → «10 лет», 18 → «18 мес.» (так же, как Docs.monthsWords в калькуляторе)
+        function kpYears(m) {
+            m = Math.round(Number(m) || 0);
+            if (m > 0 && m % 12 === 0) {
+                const y = m / 12;
+                return y + ' ' + ((y % 10 === 1 && y % 100 !== 11) ? 'год' : (y % 10 >= 2 && y % 10 <= 4 && (y % 100 < 10 || y % 100 >= 20)) ? 'года' : 'лет');
+            }
+            return m + ' мес.';
+        }
+
+        // Контурные иконки (как в печатном бланке), цвет линий — от темы страницы
+        const KPW_ICONS = {
+            shield: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 4l17 6v14c0 10-7.5 17.5-17 20C14.5 41.5 7 34 7 24V10z"/><rect x="16" y="20" width="16" height="12" fill="#3F9DE1" stroke="none"/><path d="M16 20h16M19 17v3M29 17v3"/></svg>',
+            wrench: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M30 6a9 9 0 0 0-8.6 11.7L7 32a3.5 3.5 0 0 0 5 5l14.3-14.4A9 9 0 0 0 38 14l-5.5 5.5-4-4L34 10a9 9 0 0 0-4-4z"/><circle cx="10" cy="38" r="1.6" fill="#3F9DE1" stroke="none"/><path d="M28 30l10 10"/><path d="M31 27l10 10" stroke="#3F9DE1"/></svg>',
+            umbrella: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 6v3M5 25a19 19 0 0 1 38 0z"/><path d="M5 25a19 19 0 0 1 19-19v19z" fill="#3F9DE1" stroke="none" opacity=".9"/><path d="M5 25a19 19 0 0 1 38 0z"/><path d="M24 25v13a4 4 0 0 1-8 0"/></svg>',
+            phone: '<svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14 6h7l3 8-4 3a22 22 0 0 0 11 11l3-4 8 3v7a4 4 0 0 1-4 4C21 38 10 27 10 10a4 4 0 0 1 4-4z"/><path d="M29 9a10 10 0 0 1 10 10M29 15a4 4 0 0 1 4 4" stroke="#3F9DE1"/></svg>'
+        };
+
+        /**
+         * Лист «Гарантия STOUT» (object_info.warranty, собирает app.warrantyLinkData): срок
+         * гарантии завода, гарантия исполнителя на монтаж, страховка, что стоит в доме и
+         * сколько на него гарантии, телефон исполнителя. Адреса и ФИО заказчика здесь нет —
+         * в ссылку они не идут. Данные из базы — через textContent, картинки только по
+         * артикулу из безопасных символов.
+         */
+        function renderWarranty(w, mgr) {
+            const sheet = document.getElementById('kp_warranty_sheet');
+            if (!sheet) return;
+            sheet.innerHTML = '';
+            sheet.style.display = 'none';
+            if (!w || typeof w !== 'object') return;
+            const num = v => { const n = Number(v); return isFinite(n) ? n : 0; };
+            const maxM = num(w.maxM);
+            if (!(maxM > 0)) return;
+            const mln = n => Math.round(num(n) / 1e6) + ' млн ₽';
+            const cap = s => { s = String(s || ''); return s.charAt(0).toUpperCase() + s.slice(1); };
+            const dateRu = iso => /^\d{4}-\d{2}-\d{2}$/.test(String(iso || '')) ? String(iso).split('-').reverse().join('.') : '';
+            const img = id => {
+                const i = document.createElement('img');
+                i.src = 'img/' + id + '.jpg'; i.alt = ''; i.loading = 'lazy';
+                i.onerror = () => { i.style.visibility = 'hidden'; };
+                return i;
+            };
+            const tiles = (Array.isArray(w.tiles) ? w.tiles : []).filter(t => t && /^[\w.\-]{1,60}$/.test(String(t.id || '')) && num(t.m) > 0).slice(0, 5);
+            const ins = (w.ins && typeof w.ins === 'object' && num(w.ins.sum) > 0) ? w.ins : null;
+            const hero = tiles[0];
+
+            // Шапка: заголовок с главной цифрой и фото главной позиции
+            const head = kpEl('div', 'kpw-hero' + (hero ? '' : ' kpw-hero-solo'));
+            const ht = kpEl('div', 'kpw-hero-t');
+            const logo = kpEl('span', 'kpw-logo');
+            const lg = document.createElement('img');
+            lg.src = 'img/stout_logo.png'; lg.alt = 'STOUT';
+            logo.appendChild(lg);
+            ht.appendChild(logo);
+            ht.appendChild(kpEl('div', 'kpw-kick', 'Гарантийные обязательства'));
+            const h2 = kpEl('h2');
+            h2.appendChild(document.createTextNode('Гарантия '));
+            h2.appendChild(kpEl('b', null, 'до ' + kpYears(maxM)));
+            h2.appendChild(document.createTextNode(' на системы вашего дома'));
+            ht.appendChild(h2);
+            ht.appendChild(kpEl('p', 'kpw-lead', 'Одна система, один бренд, один телефон. За ваш дом отвечают вместе завод STOUT, исполнитель' + (ins ? ' и страховая компания.' : '.')));
+            head.appendChild(ht);
+            if (hero) {
+                const hi = kpEl('div', 'kpw-hero-i');
+                hi.appendChild(img(hero.id));
+                const badge = kpEl('div', 'kpw-badge');
+                badge.appendChild(kpEl('b', null, kpYears(hero.m)));
+                badge.appendChild(document.createTextNode(String(hero.kind || '')));
+                hi.appendChild(badge);
+                head.appendChild(hi);
+            }
+            sheet.appendChild(head);
+
+            // Четыре опоры: завод, исполнитель, страховка, один звонок
+            const pils = kpEl('div', 'kpw-pils');
+            const pil = (icon, n, t) => {
+                const d = kpEl('div', 'kpw-pil');
+                d.innerHTML = KPW_ICONS[icon];   // константа из этого файла, не данные из базы
+                const b = kpEl('div');
+                b.appendChild(kpEl('div', 'kpw-pn', n));
+                b.appendChild(kpEl('div', 'kpw-pt', t));
+                d.appendChild(b);
+                pils.appendChild(d);
+            };
+            pil('shield', 'до ' + kpYears(maxM), 'гарантия завода на оборудование');
+            pil('wrench', kpYears(num(w.extM) || 36), 'гарантия исполнителя на монтаж, вместо обычного года');
+            if (ins) pil('umbrella', mln(ins.sum), 'ответственность завода застрахована в ' + String(ins.insurer || 'страховой компании'));
+            pil('phone', '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом');
+            sheet.appendChild(pils);
+
+            // Что стоит в доме и сколько на это гарантии
+            if (tiles.length) {
+                sheet.appendChild(kpEl('div', 'kp-h', 'Что стоит в вашем доме'));
+                tiles.forEach(t => {
+                    const row = kpEl('div', 'kpw-row');
+                    const ic = kpEl('div', 'kpw-row-i');
+                    ic.appendChild(img(t.id));
+                    row.appendChild(ic);
+                    row.appendChild(kpEl('div', 'kpw-row-n', cap(t.kind)));
+                    const bar = kpEl('div', 'kpw-bar'), fill = kpEl('i');
+                    fill.style.width = Math.max(12, Math.min(100, Math.round(num(t.m) / maxM * 100))) + '%';
+                    bar.appendChild(fill);
+                    row.appendChild(bar);
+                    row.appendChild(kpEl('div', 'kpw-term', kpYears(t.m)));
+                    sheet.appendChild(row);
+                });
+            }
+            // Остальные виды оборудования строкой: «5 лет — трубы, фитинги · 2 года — насосы»
+            const shown = new Set(tiles.map(t => String(t.kind)));
+            const more = (Array.isArray(w.groups) ? w.groups : []).map(g => ({
+                m: num(g && g.m), k: (Array.isArray(g && g.k) ? g.k : []).map(String).filter(k => !shown.has(k))
+            })).filter(g => g.m > 0 && g.k.length);
+            if (more.length) {
+                const box = kpEl('div', 'kpw-more');
+                more.forEach((g, i) => {
+                    if (i) box.appendChild(document.createTextNode(' · '));
+                    box.appendChild(kpEl('b', null, kpYears(g.m)));
+                    box.appendChild(document.createTextNode(' — ' + g.k.slice(0, 4).join(', ') + (g.k.length > 4 ? ' и др.' : '')));
+                });
+                sheet.appendChild(box);
+            }
+
+            // Любой вопрос — одним звонком: телефон исполнителя из шапки КП
+            const phone = String((mgr && mgr.phone) || '').trim();
+            const cta = kpEl('div', 'kpw-cta');
+            const cl = kpEl('div');
+            cl.appendChild(kpEl('div', 'kpw-cta-h', 'Любой вопрос — одним звонком'));
+            cl.appendChild(kpEl('div', 'kpw-cta-t', 'Чтобы гарантия действовала: храните паспорта и акт опрессовки, раз в год показывайте систему специалисту, изменения вносите через исполнителя.'));
+            cta.appendChild(cl);
+            if (phone) {
+                const cr = kpEl('div', 'kpw-cta-r');
+                const a = kpEl('a', 'kpw-phone', phone);
+                a.href = 'tel:' + phone.replace(/[^\d+]/g, '');
+                cr.appendChild(a);
+                const who = [mgr && mgr.name, mgr && mgr.customCompany && mgr.customCompany.name].filter(Boolean).map(String).join(' · ');
+                if (who) cr.appendChild(kpEl('div', 'kpw-fn', who));
+                cta.appendChild(cr);
+            }
+            sheet.appendChild(cta);
+
+            const pre = kpEl('div', 'kpw-prelim');
+            pre.appendChild(kpEl('b', null, 'Предварительно: '));
+            pre.appendChild(document.createTextNode('гарантийный бланк выдаётся после подписания акта выполненных работ.'));
+            sheet.appendChild(pre);
+            sheet.appendChild(kpEl('div', 'kpw-src', 'В расчёте: ' + String(w.system || 'инженерные системы по смете') + '. Сроки — по паспортам изделий и stout.ru/guarantee, ' +
+                'при расхождении указан меньший, отсчёт с даты продажи. ' +
+                (ins ? 'Полис ' + String(ins.insurer || '') + ' № ' + String(ins.policy || '') + ', лимит на случай ' + mln(ins.perCase) + (dateRu(ins.to) ? ', действует по ' + dateRu(ins.to) : '') + '. ' : '') +
+                'Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта.'));
+            sheet.style.display = '';
+        }
+
         // Лист «про этот дом» показываем, только если в нём есть хоть один раздел; для печати
         // и PDF он начинается с новой страницы, поэтому, как раздел работ, получает копию фирменной шапки.
         function syncKpSheet() {
@@ -4553,15 +4888,15 @@
                 return s && s.style.display !== 'none';
             });
             sheet.style.display = any ? '' : 'none';
-            if (any && !sheet.querySelector('.doc-header-repeat')) {
+            [sheet, document.getElementById('kp_warranty_sheet')].forEach(sh => {
+                if (!sh || sh.style.display === 'none' || sh.querySelector('.doc-header-repeat')) return;
                 const docHeader = document.querySelector('header.doc-header');
-                if (docHeader) {
-                    const headerClone = docHeader.cloneNode(true);
-                    headerClone.classList.add('doc-header-repeat');
-                    headerClone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
-                    sheet.insertBefore(headerClone, sheet.firstChild);
-                }
-            }
+                if (!docHeader) return;
+                const headerClone = docHeader.cloneNode(true);
+                headerClone.classList.add('doc-header-repeat');
+                headerClone.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+                sh.insertBefore(headerClone, sh.firstChild);
+            });
         }
 
         function toggleEquipmentImages(show) {
@@ -5175,7 +5510,8 @@
             hideObjItem('obj_power', houseUnknown || !(parseFloat(obj.power) > 0));
 
             // 2а. «Ваш дом» и раскладка тёплого пола по плану этого дома
-            renderKpHouse(obj.kp);
+            renderWarranty(obj.warranty, mgr);
+            renderKpHouse(obj.kp, obj.warranty);
             renderUfhPlan(obj.ufhPlan);
 
             // 3. Totals

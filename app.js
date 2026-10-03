@@ -5613,6 +5613,35 @@ const app = {
         Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
+    // Гарантия STOUT в ссылке клиенту. Условие то же, что у бланка при печати (вошёл
+    // монтажник, оборудование в ссылке, доля STOUT не ниже порога), но без требования
+    // «адрес и заказчик заполнены»: в ссылку они всё равно не идут (как и в разделе
+    // «Ваш дом» — личных данных там нет), а клиенту нужно само обещание.
+    warrantyLinkEligible: function (showEq) {
+        if (!this.state.tgUser || showEq === false) return false;
+        const sh = this.stoutShare();
+        return sh.pct !== null && sh.pct >= this.warrantyThreshold();
+    },
+
+    // Данные листа «Гарантия» для страницы клиента (object_info.warranty): сроки по
+    // группам, витрина из позиций сметы, срок на монтаж, страховка. Рисует их invoice.html.
+    // Нужен Docs (сроки и полисы лежат в docs.js) — executeShareInvoice грузит его заранее.
+    warrantyLinkData: function () {
+        if (typeof Docs === 'undefined') return null;
+        const groups = this.warrantyTermGroups();
+        if (!groups.length) return null;
+        const ins = (Docs.activeInsurance(new Date().toISOString().slice(0, 10)) || []).find(p => p.brand === 'STOUT');
+        const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
+        return {
+            maxM: groups[0].months,
+            extM: extM,
+            groups: groups.map(g => ({ m: g.months, k: g.kinds.slice(0, 6) })),
+            tiles: this.warrantyPhotoTiles(5).map(t => ({ id: String(t.it.id), kind: t.kind, m: t.months })),
+            ins: ins ? { sum: ins.sum, perCase: ins.perCase, insurer: String(ins.insurer).replace(/^СПАО\s+/, ''), policy: ins.policy, to: ins.to } : null,
+            system: this.systemSummary()
+        };
+    },
+
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
     syncEmptyFitPanelScale: function (recalc) { this.fitParamsPanel(recalc); },
     // Отложенный пересчёт: за одну отрисовку панель трогают десятки раз, а ответ
@@ -47234,6 +47263,15 @@ const app = {
                 if (kp) object_info.kp = kp;
             } catch (e) { console.warn('[ссылка] раздел «Ваш дом» не добавлен:', e.message); }
         }
+        // Гарантия STOUT — отдельным листом и плиткой в «Ваш дом»: преимущество, которое
+        // клиент должен увидеть в ссылке, а не только в печатном бланке. Без адреса и ФИО.
+        try {
+            if (this.warrantyLinkEligible(showEq)) {
+                await this.lazy('docs');
+                const wr = this.warrantyLinkData();
+                if (wr) object_info.warranty = wr;
+            }
+        } catch (e) { console.warn('[ссылка] гарантия не добавлена:', e.message); }
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
