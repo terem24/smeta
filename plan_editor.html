@@ -170,7 +170,7 @@
      листы проекта — не его дело. !important — шаги ставят display в style. */
   .ufh-only { display: none; }
   html.ufh .ufh-only { display: inline-block; }
-  html.ufh #b_rad, html.ufh #b_autorad, html.ufh #b_fixauto, html.ufh #b_wc,
+  html.ufh #b_fixauto, html.ufh #b_wc,
   html.ufh #wctype, html.ufh #ztype, html.ufh #northsel, html.ufh #b_alltools,
   html.ufh #b_sheets { display: none !important; }
   /* выбор имени комнаты при отметке тёплого пола */
@@ -272,7 +272,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.22"></script>
+<script src="project_plans.js?v=1.24"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -2042,7 +2042,7 @@ function autoMarkAll() {
         if (!f.pxPerM) { bad.push(name + ' — не подобрался масштаб'); return; }
         var z0 = f.zones.length, r0 = (f.rads || []).length;
         autoRooms();
-        if (!UFH) autoRads();          // раскладке тёплого пола радиаторы не нужны
+        autoRads();          // в режиме раскладки — мимо комнат только с тёплым полом
         // Комнаты с типом в расчёте есть, а зон не появилось — по площадям
         // ничего не сошлось. Молча написать «Зон: 0» мало: монтажник должен
         // знать, что обводить руками и на каком этаже.
@@ -2270,6 +2270,7 @@ function autoRads() {
       return Math.hypot(r.x - w.x, r.y - w.y) < 0.7 * ppmI;
     });
     if (busy) return;
+    if (UFH && !ufhWantsRad(w)) return;          // комната только с тёплым полом
     F().rads.push({ x: Math.round(w.x), y: Math.round(w.y), w: Math.round(w.w), ang: w.ang });
     added++;
   });
@@ -2676,6 +2677,14 @@ function draw() {
   var k = cs();
   var stepMm = UFH_STEP[cur] || 150;
   var loops = tpLoops(f, stepMm);
+  // Режим раскладки: трассы радиаторов — тёмно-красной полосой, как в смете
+  if (UFH && (f.rads || []).length) ufhRadRoutes(f, stepMm).forEach(function (sg) {
+    cx.beginPath();
+    cx.moveTo(sg.a[0] * k, sg.a[1] * k); cx.lineTo(sg.b[0] * k, sg.b[1] * k);
+    cx.lineWidth = Math.max(1.5, sg.n * 2 * 0.02 * (f.pxPerM || 100) * k);
+    cx.strokeStyle = 'rgba(155,44,44,.8)'; cx.lineCap = 'square';
+    cx.stroke();
+  });
   // Пучок подводок — тёмная полоса, как на листе «Тёплый пол»
   (loops.bundle || []).forEach(function (sg) {
     cx.beginPath();
@@ -3713,6 +3722,22 @@ function uploadPending() {
 var UFH_NAMES = ['Гостиная', 'Кухня', 'Кухня-гостиная', 'Спальня', 'Детская', 'Кабинет',
   'Прихожая', 'Холл', 'Коридор', 'С/у', 'Ванная', 'Гардеробная', 'Кладовая', 'Котельная', 'Тамбур'];
 
+// Трассы радиаторов для холста — тот же projectPlans.radRoutes, что у сметы.
+// Схема (лучевая или тройниковая) — из расчёта. Кэш по разметке этажа.
+var radCache = { key: null, val: [] };
+function ufhRadRoutes(f, stepMm) {
+  if (!window.projectPlans || !projectPlans.radRoutes || dragZ) return radCache.val;
+  var tee = false;
+  try { tee = (JSON.parse(localStorage.getItem('stout_save')) || {}).radConnectionScheme === 'tee'; } catch (e) {}
+  var key = cur + '|' + stepMm + '|' + tee + '|' + JSON.stringify([f.zones, f.rads, f.coll]);
+  if (radCache.key === key) return radCache.val;
+  var segs = [];
+  try { var R = projectPlans.radRoutes(f, stepMm, tee); segs = R ? R.segs : []; }
+  catch (e) { console.error('[plan_editor] трассы радиаторов:', e); }
+  radCache = { key: key, val: segs };
+  return segs;
+}
+
 function ufhSteps() {
   var f = F();
   var anyRoom = f.zones.some(function (z) { return z.type !== 'cold'; });
@@ -3735,7 +3760,35 @@ function ufhSteps() {
   if (hasTp) L.push({ id: 'coll', t: 'Коллектор', ok: !!f.coll, mode: 'coll', btn: ['b_coll'], tipBtn: 'b_coll',
     tip: 'Коллектор ставится сам — в котельную, а без неё ближе к середине тёплого пола. Передвинуть: ' +
       '«Коллектор» и клик в нужном месте.' });
+  // Радиаторы — если в расчёте они есть хоть в одной комнате этажа (или комнат
+  // в расчёте нет вовсе: тогда решает монтажник)
+  var calcHere = calcRooms.filter(function (r) { return (+r.floor || 1) === cur + 1; });
+  var wantRad = !calcHere.length || calcHere.some(function (r) { return (r.sys || []).indexOf('rad') >= 0; });
+  if (wantRad) L.push({ id: 'rad', t: 'Радиаторы', ok: (f.rads || []).length > 0, mode: 'rad',
+    btn: ['b_autorad', 'b_rad'], tipBtn: 'b_autorad',
+    tip: 'Нажмите «Под окна» — радиаторы встанут под найденными окнами (кроме комнат, где в расчёте только ' +
+      'тёплый пол). Лишний уберите кликом по значку, недостающий добавьте кликом у окна или стены в режиме ' +
+      '«Радиаторы». Трассы к ним построятся сами — вдоль стен, от коллектора радиаторов.' });
   return L;
+}
+
+/** Нужен ли радиатор у окна: не нужен, если комната в расчёте только с тёплым полом. */
+function ufhWantsRad(w) {
+  var a = (w.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.5 * (F().pxPerM || 100);
+  var z = null;
+  [[w.x + nx * d, w.y + ny * d], [w.x - nx * d, w.y - ny * d]].some(function (p) {
+    for (var i = F().zones.length - 1; i >= 0; i--) {
+      var q = F().zones[i];
+      if (q.type !== 'cold' && pip(p, q.pts)) { z = q; return true; }
+    }
+    return false;
+  });
+  if (!z || !z.name) return true;
+  var key = z.name.trim().toLowerCase(), r = null;
+  calcRooms.forEach(function (c) { if (String(c.name).trim().toLowerCase() === key && (+c.floor || 1) === cur + 1) r = c; });
+  if (!r) return true;
+  var s = r.sys || [];
+  return !(s.indexOf('tp') >= 0 && s.indexOf('rad') < 0);
 }
 
 /** Клик по комнате: тёплый пол есть — убрать, нет — включить. */
@@ -4409,8 +4462,8 @@ refreshAutoFixtures();   // приборы санузлов из расчёта 
 // Режим раскладки: свои подписи; «Сохранить» становится «Готово» и закрывает окно
 if (UFH) (function () {
   var t = document.querySelector('.bar b');
-  if (t) t.textContent = 'Раскладка тёплого пола';
-  document.title = 'Раскладка тёплого пола';
+  if (t) t.textContent = 'План отопления';
+  document.title = 'План отопления';
   var s = document.getElementById('b_save');
   if (s) { s.textContent = 'Готово'; s.onclick = ufhDone; s.title = 'Сохранить и вернуться в смету'; }
   var am = document.getElementById('b_automark');

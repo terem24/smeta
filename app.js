@@ -1588,6 +1588,15 @@ const app = {
     applyOprosData: function (d) {
         const s = this.state;
         try {
+            // Что заказчик просил — для раздела КП «Вы просили — мы учли»
+            // (kpPersonalData). Без имени, телефона и адреса: в КП и в ссылку
+            // клиенту они не нужны.
+            const pick = {};
+            ['tp', 'rad', 'fuel', 'hw', 'people', 'auto', 'vent', 'watersource', 'live'].forEach(k => {
+                if (d[k] !== undefined && d[k] !== null && d[k] !== '') pick[k] = d[k];
+            });
+            if (d.tpRooms) pick.tpRooms = String(d.tpRooms).slice(0, 200);
+            if (Object.keys(pick).length) s.oprosAnswers = pick;
             s.objectType = 'house';
             const _a = parseFloat(d.area);
             if (_a > 0) s.area = Math.min(this.MAX_AREA || 2000, Math.round(_a));
@@ -21264,7 +21273,7 @@ const app = {
         if (bU) {
             bU.style.display = ufh ? '' : 'none';
             const hasPlan = !!(this.state.plans && (this.state.plans.floors || []).some(f => f && (f.img || f.imgFile)));
-            bU.textContent = hasPlan ? 'Раскладка тёплого пола' : 'Загрузить план';
+            bU.textContent = hasPlan ? 'План отопления' : 'Загрузить план';
         }
         if (bF) bF.style.display = on ? '' : 'none';
     },
@@ -21308,7 +21317,7 @@ const app = {
         { id: 'analog', group: 'Функции', label: 'Подешевле', hint: 'Вторая смета подешевле: переключатель «Подешевле» в параметрах и в заголовках разделов сметы, вкладка «Почему дешевле». Выключен — переключателя не видно' },
         { id: 'recognize', group: 'Функции', label: 'Распознавание', list: true, hint: 'Вкладка «Распознавание»' },
         { id: 'design', group: 'Функции', label: 'Проект', list: true, hint: 'Листы проекта и редактор планов этажей' },
-        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «Раскладка тёплого пола» в подробном режиме: загрузить план дома, отметить комнаты с тёплым полом кликом — раскладка петель под сметой и в КП. Кому открыт «Проект», раскладка доступна и так' },
+        { id: 'ufhplan', group: 'Функции', label: 'Раскладка ТП', hint: 'Модуль «План отопления» в подробном режиме: загрузить план дома, отметить комнаты с тёплым полом кликом, радиаторы под окнами — раскладка петель и трассы радиаторов под сметой и в КП. Кому открыт «Проект», он доступен и так' },
         { id: 'money', group: 'Функции', label: 'Деньги', hint: 'Вкладка «Деньги» (маржа по смете); гостю без входа не показывается никогда' },
         { id: 'docs', group: 'Функции', label: 'Документы', hint: 'Кнопка «Документы» в «Заказах и счетах»: договор подряда, акты, гарантийный талон' },
         // Читает не калькулятор, а invoice.html (блок «Счёт для 1С» в просмотре КП
@@ -36429,6 +36438,9 @@ const app = {
      */
     adoptPlans: function (loadedState) {
         this.state.plans = (loadedState && loadedState.plans) ? loadedState.plans : null;
+        // Ответы анкеты заказчика — той же болезнью: без явного присваивания
+        // «Вы просили — мы учли» одного дома приехало бы в КП другого
+        this.state.oprosAnswers = (loadedState && loadedState.oprosAnswers) ? loadedState.oprosAnswers : null;
         this.pushPlansToEditor();
         this.renderPlanChecks(); this.renderPlanAreaNote();
     },
@@ -36475,7 +36487,7 @@ const app = {
         ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#1e1e1e;display:flex;flex-direction:column;';
         ov.innerHTML =
             '<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:#141414;color:#ddd;font:13px/1.3 system-ui,sans-serif;">' +
-            '<span style="flex:1">План дома — отметьте комнаты с тёплым полом</span>' +
+            '<span style="flex:1">План дома — тёплый пол и радиаторы</span>' +
             '<button type="button" onclick="app.closeUfhPlan(true)" style="font:inherit;padding:4px 12px;border-radius:7px;border:1px solid #555;background:transparent;color:#ddd;cursor:pointer;">✕ Сохранить и закрыть</button></div>' +
             '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:#1e1e1e;"></iframe>';
         document.body.appendChild(ov);
@@ -36593,16 +36605,36 @@ const app = {
                     ' м². Проверьте масштаб плана.');
                 return;
             }
+            // Радиаторы на плане — по комнатам: прибор стоит у стены, комнату
+            // ищем в 0,3 м от него по обе стороны
+            const pip = (p, P) => {
+                let c = false;
+                for (let a = 0, b = P.length - 1; a < P.length; b = a++)
+                    if ((P[a][1] > p[1]) !== (P[b][1] > p[1]) && p[0] < (P[b][0] - P[a][0]) * (p[1] - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c;
+                return c;
+            };
+            const radsOf = {};
+            (f.rads || []).forEach(rd => {
+                const a = (rd.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.3 * f.pxPerM;
+                const z = [[rd.x + nx * d, rd.y + ny * d], [rd.x - nx * d, rd.y - ny * d]]
+                    .map(p => zones.find(q => pip(p, q.pts))).find(Boolean);
+                if (z && norm(z.name)) (radsOf[norm(z.name)] = radsOf[norm(z.name)] || []).push(rd);
+            });
             let id = Date.now();
-            byName.forEach(e => {
+            byName.forEach((e, key) => {
                 const living = /гостин|кухн|спальн|детск|кабинет|помещение|комнат/i.test(e.name);
                 const area = Math.max(1, Math.round(e.area * 10) / 10);
-                id += 10;
-                this.state.rooms.push({
-                    id: id, name: e.name, area: area, floor: fl,
-                    sys: e.tp ? ['tp'] : ['rad'],
-                    windows: living ? [{ id: id + 1, width: this.getDefaultWindowWidth(area), isPan: false }] : []
-                });
+                const rs = radsOf[key] || [];
+                id += 100;
+                // Окна — по радиаторам на плане (радиатор ставится под окном на
+                // 75 % его ширины); радиаторов нет — одно окно у жилой комнаты
+                const windows = rs.length
+                    ? rs.map((rd, j) => ({ id: id + 1 + j, width: Math.max(0.6, Math.min(3, Math.round((rd.w || 0) / f.pxPerM / 0.75 * 10) / 10)), isPan: false }))
+                    : (living ? [{ id: id + 1, width: this.getDefaultWindowWidth(area), isPan: false }] : []);
+                const sys = [];
+                if (rs.length || !e.tp) sys.push('rad');
+                if (e.tp) sys.push('tp');
+                this.state.rooms.push({ id: id, name: e.name, area: area, floor: fl, sys: sys, windows: windows });
                 changed = true;
             });
             if (fl === 2 && this.state.floors !== 2) this.state.floors = 2;
@@ -36659,6 +36691,9 @@ const app = {
         if (!plans || !Array.isArray(plans.floors)) return [];
         let heat = [];
         try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
+        // Радиаторы с трассами — когда они есть в смете; схема разводки — та же,
+        // что выбрана в смете (тройниковая или лучевая от коллектора)
+        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee' };
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -36668,10 +36703,220 @@ const app = {
             const step = fi === 1 ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
             const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
             let v = null;
-            try { v = PP.ufhView(f, step, rooms); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
-            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows });
+            try { v = PP.ufhView(f, step, rooms, radOpts); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
+            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows, radRows: v.radRows || [], radTee: v.radTee, radM: v.radM || 0 });
         });
         return out;
+    },
+
+    /**
+     * Трассы радиаторов по плану дома — для метража трубы и гидравлики.
+     * Длины в одну сторону, м, вместе с подъёмами к прибору и к коллектору:
+     *   avgRun — средний луч, maxRun / maxRoom — самый длинный, trunkOneWay —
+     *   магистраль тройниковой схемы, byRoom — лучи по комнатам (порядок
+     *   приборов на плане), count — сколько приборов на плане.
+     * null — плана с радиаторами нет: смета считает по-старому, формулой.
+     * Схема (лучевая/тройниковая) — та же, что в смете.
+     */
+    radPlanRuns: function () {
+        const PP = window.projectPlans, plans = this.currentPlans();
+        if (!PP || !PP.radRoutes || !plans || !Array.isArray(plans.floors)) return null;
+        const s = this.state, tee = s.radConnectionScheme === 'tee';
+        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1);
+        if (this._radPlanCache && this._radPlanCache.key === key) return this._radPlanCache.val;
+        const runs = [], byRoom = {};
+        let trunk = 0, floorsWith = 0, maxRun = 0, maxRoom = '';
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || !(f.rads || []).length || fi > 1 || (fi === 1 && s.floors !== 2)) return;
+            let R = null;
+            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee); } catch (e) { R = null; }
+            if (!R || !R.items.length) return;
+            floorsWith++;
+            trunk += R.totalM / 2;
+            R.items.forEach(it => {
+                const one = it.L / 2;
+                runs.push(one);
+                const k = String(it.room || '').trim().toLowerCase();
+                (byRoom[k] = byRoom[k] || []).push(one);
+                if (one > maxRun) { maxRun = one; maxRoom = it.room || ''; }
+            });
+        });
+        // Два этажа с радиаторами — между ними стояк, на плане его нет: те же 3 м,
+        // что и в формуле сметы
+        const val = runs.length ? {
+            avgRun: runs.reduce((a, v) => a + v, 0) / runs.length, maxRun, maxRoom, count: runs.length,
+            trunkOneWay: trunk + (floorsWith > 1 ? 3 : 0), byRoom
+        } : null;
+        this._radPlanCache = { key, val };
+        return val;
+    },
+
+    /**
+     * Луч каждого прибора сметы, м в одну сторону: с плана — по комнате прибора
+     * (несколько приборов в комнате — по очереди), нет такой комнаты на плане —
+     * средний луч плана; плана нет — fallback (формула сметы).
+     */
+    radDeviceRuns: function (devices, fallback) {
+        const P = this.radPlanRuns();
+        if (!P) return (devices || []).map(() => fallback);
+        const used = {};
+        return (devices || []).map(d => {
+            const k = String((d && d.room) || '').trim().toLowerCase();
+            const list = P.byRoom[k];
+            if (!list || !list.length) return P.avgRun;
+            const i = used[k] || 0; used[k] = i + 1;
+            return list[Math.min(i, list.length - 1)];
+        });
+    },
+
+    // ═══ КП «про этот дом», а не шаблон ══════════════════════════════════
+    // Раздел «Ваш дом» в начале КП (печать и ссылка клиенту): город и расчётная
+    // температура, что заказчик просил в анкете и чем это закрыто, комнаты с
+    // теплопотерями и приборами, сколько будет стоить отопление. Только то, что
+    // уже посчитано, — ничего не выдумываем; блока нет — нет и данных.
+
+    /**
+     * Данные раздела. Названия оборудования — без моделей (как в КП с короткими
+     * названиями): мощность, объём, тип — да, артикул и серия — нет.
+     */
+    kpPersonalData: function () {
+        const s = this.state, out = {};
+        const r1 = v => Math.round((v || 0) * 10) / 10;
+        const eq = (this.currentEquipmentList || []).filter(i => !i.isOpt);
+        const find = re => eq.find(i => re.test(String(i.name || '')));
+        let kw = 0;
+        try { kw = r1(this.getHouseHeatLoss()); } catch (e) { kw = 0; }
+        let tD = null;
+        try { tD = this.getDesignTemp(); } catch (e) { tD = null; }
+        out.house = {
+            city: (s.selectedCity && s.selectedCity.name) || '', t: tD, area: r1(s.area), floors: s.floors || 1, kw: kw,
+            people: parseInt(s.res, 10) || 0
+        };
+        const sys = s.systems || [];
+        const gasKw = parseFloat(this._gasBoilerKw) || 0, elKw = parseFloat(this._elBoilerKw) || 0;
+        // сам бойлер, а не «Кран шаровой … (Змеевик бойлера)»
+        const tank = find(/^\s*(бойлер|водонагреват)/i);
+        // «150 л» — \b после кириллицы не работает, поэтому граница словом «не буква»
+        const tankL = tank ? (String(tank.name).match(/(\d{2,4})\s*(?:л|литр)(?![а-яё])/i) || [])[1] : null;
+        const c1 = v => String(r1(v)).replace('.', ',');
+
+        // «Вы просили — мы учли»: ответы анкеты, сохранённые при её применении
+        const a = s.oprosAnswers;
+        if (a && typeof a === 'object') {
+            const asked = [];
+            const tpRooms = (s.rooms || []).filter(r => (r.sys || []).includes('tp')).map(r => r.name);
+            if (a.tp) asked.push({ q: 'Тёплый пол' + (a.tpRooms ? ' (' + String(a.tpRooms).slice(0, 120) + ')' : ''),
+                a: sys.includes('tp') ? 'тёплый пол ' + c1((s.tp1 || 0) + (s.floors === 2 ? (s.tp2 || 0) : 0)) + ' м²' +
+                    (s.detailedRooms && tpRooms.length ? ': ' + tpRooms.join(', ') : '') : '', ok: sys.includes('tp') });
+            if (a.rad) asked.push({ q: 'Радиаторы', a: sys.includes('rad') ? 'радиаторы — ' + ((this.totalDevicesCount || 0) || 'по окнам') + ' шт.' : '', ok: sys.includes('rad') });
+            if (a.fuel === 'gas' || a.fuel === 'el') {
+                const ok = a.fuel === 'gas' ? gasKw > 0 : elKw > 0;
+                asked.push({ q: a.fuel === 'gas' ? 'Газовый котёл' : 'Электрокотёл',
+                    a: ok ? (a.fuel === 'gas' ? 'газовый котёл ' + c1(gasKw) : 'электрокотёл ' + c1(elKw)) + ' кВт' +
+                        (s.hotWater ? ', с запасом на горячую воду' : '') : '', ok });
+            }
+            if (a.hw === true) asked.push({ q: 'Горячая вода' + (a.people ? ' на ' + a.people + ' чел.' : ''),
+                a: s.hotWater ? (tank ? 'бойлер' + (tankL ? ' ' + tankL + ' л' : '') : 'горячее водоснабжение от котла') : '', ok: !!s.hotWater });
+            if (a.auto === true) asked.push({ q: 'Автоматика отопления', a: s.boilerAuto ? 'контроллер котельной: погодозависимое управление и расписание' : '', ok: !!s.boilerAuto });
+            if (a.vent === true) asked.push({ q: 'Приточная вентиляция с подогревом', a: s.ventilationEnabled ? 'учтена в теплопотерях дома' : '', ok: !!s.ventilationEnabled });
+            if (a.watersource === 'well') asked.push({ q: 'Вода из скважины', a: s.well ? 'скважинный насос и узел ввода' : '', ok: !!s.well });
+            if (asked.length) out.asked = asked;
+        }
+
+        // «Ваш дом по комнатам» — подробный режим
+        if (s.detailedRooms && Array.isArray(s.rooms) && s.rooms.length) {
+            const bal = app._roomBalance || {}, devs = app.radDevices || [];
+            out.rooms = s.rooms.map(r => {
+                let q = 0;
+                try { q = this.getRoomHeatLoss(r).Q_sum || 0; } catch (e) { q = 0; }
+                const b = bal[r.id] || {};
+                const my = devs.filter(d => d.room === r.name);
+                const parts = [];
+                if (my.length) {
+                    const w = my.reduce((s2, d) => s2 + (d.watt || 0), 0);
+                    const conv = my.some(d => d.kind === 'conv');
+                    parts.push((conv ? 'приборы' : 'радиаторы') + ' ' + my.length + ' шт., ' + Math.round(w).toLocaleString('ru-RU') + ' Вт');
+                }
+                if ((r.sys || []).includes('tp')) parts.push('тёплый пол' + (b.ufh ? ' ' + Math.round(b.ufh).toLocaleString('ru-RU') + ' Вт' : ''));
+                return { name: r.name, floor: r.floor || 1, area: r1(r.area), q: Math.round(q), heat: parts.join(' + ') };
+            });
+        }
+
+        // «Сколько будет стоить отопление» — основной котёл дома
+        try {
+            const fuel = gasKw > 0 ? 'gas' : (elKw > 0 ? 'el' : null);
+            const c = fuel === 'gas' ? this.calcGasHeatingCost() : fuel === 'el' ? this.calcElHeatingCost() : null;
+            if (c && c.seasonCost > 0) {
+                out.cost = {
+                    fuel: fuel, month: Math.round(c.avgMonthCost / 10) * 10, season: Math.round(c.seasonCost / 100) * 100,
+                    months: c.activeMonths || 7, zOt: c.zOt, tOt: c.tOt,
+                    tariff: fuel === 'gas' ? (c.tariff && c.tariff.rub) : (c.tariffDay || null),
+                    unit: fuel === 'gas' ? (c.lpg ? '₽/л' : '₽/м³') : '₽/кВт·ч', lpg: !!c.lpg,
+                    units: fuel === 'gas' ? Math.round(c.seasonUnits) : Math.round(c.seasonKwh), uName: fuel === 'gas' ? (c.lpg ? 'л' : 'м³') : 'кВт·ч'
+                };
+            }
+        } catch (e) { /* прогноза нет — блока тоже */ }
+        return (out.asked || out.rooms || out.cost) ? out : null;
+    },
+
+    /**
+     * Разметка раздела. Стили встроенные: одна и та же уходит в печать (там
+     * таблица стилей страницы урезана) и на страницу клиента.
+     * qr — { src, url } для печати: картинка QR на онлайн-КП.
+     */
+    kpPersonalHtml: function (d, qr) {
+        if (!d) return '';
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const n1 = v => String(Math.round((v || 0) * 10) / 10).replace('.', ',');
+        const money = v => Math.round(v || 0).toLocaleString('ru-RU');
+        const H = (t) => `<div style="font-weight:700;font-size:14px;margin:14px 0 6px;color:#111">${t}</div>`;
+        const td = 'padding:4px 6px;border-bottom:1px solid #eee;';
+        let h = `<div class="kp-personal" style="font-family:inherit;color:#222;font-size:12.5px;line-height:1.45;margin:6px 0 16px;page-break-inside:auto">`;
+        const hs = d.house || {};
+        h += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">` +
+            `<div style="flex:1;min-width:260px"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Расчёт выполнен для вашего дома</div>` +
+            `<div>${[hs.city ? esc(hs.city) : '', hs.area ? n1(hs.area) + ' м²' : '', hs.floors ? hs.floors + ' ' + (hs.floors === 1 ? 'этаж' : 'этажа') : '']
+                .filter(Boolean).join(' · ')}</div>` +
+            (hs.kw ? `<div>Теплопотери дома: <b>${n1(hs.kw)} кВт</b>${hs.t != null ? ` при наружной температуре ${hs.t} °C` : ''}` +
+                `${hs.city ? ` (расчётная зимняя для г. ${esc(hs.city)}, СП 131.13330.2020, табл. 3.1)` : ''}</div>` : '') +
+            `</div>` +
+            (qr && qr.src ? `<div style="text-align:center;width:150px"><img src="${qr.src}" alt="QR" style="width:120px;height:120px;display:block;margin:0 auto 4px">` +
+                `<div style="font-size:10.5px;color:#555">Этот КП онлайн: план дома, смета, согласование — наведите камеру телефона</div></div>` : '') +
+            `</div>`;
+        if (d.asked && d.asked.length) {
+            h += H('Вы просили — мы учли');
+            h += `<table style="width:100%;border-collapse:collapse">` + d.asked.map(x =>
+                `<tr><td style="${td}width:40%">${esc(x.q)}</td><td style="${td}">${x.ok
+                    ? `<span style="color:#15803d;font-weight:700">✓</span> ${esc(x.a)}`
+                    : `<span style="color:#b45309;font-weight:700">—</span> в смету не вошло, обсудим`}</td></tr>`).join('') + `</table>`;
+        }
+        if (d.rooms && d.rooms.length) {
+            const two = d.rooms.some(r => r.floor === 2);
+            h += H('Ваш дом по комнатам');
+            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666">` +
+                `<th style="${td}text-align:left">Помещение</th><th style="${td}text-align:right">Площадь</th>` +
+                `<th style="${td}text-align:right">Теплопотери</th><th style="${td}text-align:left">Чем греется</th></tr>` +
+                d.rooms.map(r => `<tr><td style="${td}">${esc(r.name)}${two ? ` <span style="color:#888">(${r.floor} эт.)</span>` : ''}</td>` +
+                    `<td style="${td}text-align:right">${n1(r.area)} м²</td><td style="${td}text-align:right">${money(r.q)} Вт</td>` +
+                    `<td style="${td}">${esc(r.heat || '—')}</td></tr>`).join('') +
+                `<tr style="font-weight:700"><td style="${td}">Итого</td><td style="${td}text-align:right">${n1(d.rooms.reduce((s, r) => s + (r.area || 0), 0))} м²</td>` +
+                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>` +
+                `<div style="font-size:11px;color:#666;margin-top:4px">Теплопотери посчитаны по каждой комнате: стены, окна, пол, кровля и вентиляция (СП 50.13330.2024).</div>`;
+        }
+        if (d.cost) {
+            const c = d.cost;
+            h += H('Сколько будет стоить отопление');
+            h += `<div style="display:flex;gap:24px;flex-wrap:wrap">` +
+                `<div><div style="color:#666">В среднем в месяц отопительного сезона</div><div style="font-size:18px;font-weight:800">${money(c.month)} ₽</div></div>` +
+                `<div><div style="color:#666">За сезон (${c.zOt ? c.zOt + ' сут.' : c.months + ' мес.'})</div><div style="font-size:18px;font-weight:800">${money(c.season)} ₽</div></div>` +
+                `<div><div style="color:#666">${c.fuel === 'gas' ? (c.lpg ? 'Сжиженный газ' : 'Газ') : 'Электроэнергия'} за сезон</div>` +
+                `<div style="font-size:18px;font-weight:800">${money(c.units)} ${esc(c.uName)}</div></div></div>` +
+                `<div style="font-size:11px;color:#666;margin-top:4px">Оценка: тепло за отопительный период по СП 131.13330.2020, табл. 3.1` +
+                `${c.tOt != null ? ` (средняя температура периода ${n1(c.tOt)} °C)` : ''}, ` +
+                `тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, ` +
+                `в доме +20 °C. Счёт зависит от того, как вы живёте в доме.</div>`;
+        }
+        return h + `</div>`;
     },
 
     /** Для ссылки клиенту: те же этажи, числа округлены — страница их не пересчитывает. */
@@ -36680,7 +36925,9 @@ const app = {
         const views = this.ufhPlanViews();
         if (!views.length) return null;
         return views.map(v => ({ fl: v.fl, svg: v.svg,
-            rows: v.rows.map(r => ({ no: r.no, name: r.name, area: r1(r.area), m: r1(r.m), step: r.step, flow: r1(r.flow) })) }));
+            rows: v.rows.map(r => ({ no: r.no, name: r.name, area: r1(r.area), m: r1(r.m), step: r.step, flow: r1(r.flow) })),
+            radRows: (v.radRows || []).map(r => ({ no: r.no, name: r.name, w: r1(r.w), L: r.L == null ? null : r1(r.L) })),
+            radTee: v.radTee, radM: r1(v.radM) }));
     },
 
     // «петля / петли / петель»
@@ -36694,28 +36941,51 @@ const app = {
         const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
         const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
         const parts = [];
+        let anyTp = false, anyRad = false, tee = false;
         views.forEach(V => {
             const fi = V.fl - 1, v = V;
-            const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
-            const tr = v.rows.map(r => `<tr><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
-                `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
-                `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
+            let tables = '';
+            if (v.rows.length) {
+                anyTp = true;
+                const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
+                const tr = v.rows.map(r => `<tr><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
+                    `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
+                    `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
+                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
+                    `<thead><tr style="color:var(--text-sec)"><th>Контур ТП</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
+                    `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
+                    `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}</td><td></td>` +
+                    `<td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table>`;
+            }
+            if ((v.radRows || []).length) {
+                anyRad = true; tee = tee || !!v.radTee;
+                const tr = v.radRows.map(r => `<tr><td style="text-align:center">Р${r.no}</td><td>${esc(r.name)}</td>` +
+                    `<td style="text-align:right">${n1(r.w)} м</td><td style="text-align:right">${r.L == null ? '—' : n1(r.L) + ' м'}</td></tr>`).join('');
+                tables += `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:10px">` +
+                    `<thead><tr style="color:var(--text-sec)"><th>Радиатор</th><th style="text-align:left">Помещение</th><th style="text-align:right">Длина прибора</th>` +
+                    `<th style="text-align:right">${v.radTee ? 'Магистраль до прибора' : 'Трубы к прибору'}</th></tr></thead>` +
+                    `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.radRows.length} шт.</td><td></td>` +
+                    `<td style="text-align:right">${n1(v.radM || 0)} м</td></tr></tfoot></table>`;
+            }
             parts.push(
                 `<div style="margin:6px 0 14px">` +
                 (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
                 `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
                 `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>` +
-                `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
-                `<thead><tr style="color:var(--text-sec)"><th>Контур</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
-                `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
-                `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}</td><td></td>` +
-                `<td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table></div>`);
+                tables + `</div>`);
         });
         if (!parts.length) return '';
-        return `<div style="padding:8px 2px 2px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">Раскладка тёплого пола по плану дома</div>` +
-            parts.join('') +
-            `<div style="font-size:11px;color:var(--text-sec)">Петли разложены автоматически по плану помещений: улиткой, в узких местах змейкой, ` +
-            `отступ от стен 100 мм, подводки к коллектору — в теплоизоляции. Длины петель — с подводками. Уточняется при монтаже.</div></div>`;
+        const notes = [];
+        if (anyTp) notes.push('Петли тёплого пола разложены автоматически по плану помещений: улиткой, в узких местах змейкой, ' +
+            'отступ от стен 100 мм, подводки к коллектору — в теплоизоляции. Длины петель — с подводками.');
+        if (anyRad) notes.push((tee ? 'Радиаторы — тройниковая схема: подача и обратка одной магистралью через приборы. '
+            : 'Радиаторы — лучевая схема: к каждому прибору своя пара труб от коллектора радиаторов. ') +
+            'Трассы проложены по плану вдоль стен, в обход тёплого пола; длины — подача и обратка вместе, с подъёмами к прибору и коллектору.');
+        notes.push('Уточняется при монтаже.');
+        return `<div style="padding:8px 2px 2px"><div style="font-weight:700;font-size:14px;margin-bottom:6px">` +
+            (anyRad && anyTp ? 'План отопления дома: тёплый пол и радиаторы' : anyRad ? 'Радиаторы на плане дома' : 'Раскладка тёплого пола по плану дома') +
+            `</div>` + parts.join('') +
+            `<div style="font-size:11px;color:var(--text-sec)">${notes.join(' ')}</div></div>`;
     },
 
     // ═══ Напоминания тем, кто давно не заходил ═══════════════════════════
@@ -43864,6 +44134,15 @@ const app = {
         if (chkWorks) chkWorks.checked = true;
         if (chkHeatLoss) chkHeatLoss.checked = true;
         if (chkScheme) chkScheme.checked = true;
+        // «Ваш дом» — в печать и в ссылку клиенту, если есть что показать
+        const chkHouse = document.getElementById('share_opt_house');
+        if (chkHouse) chkHouse.checked = true;
+        const cardHouse = document.getElementById('card_opt_house');
+        if (cardHouse) {
+            let has = false;
+            try { has = (actionType === 'print' || actionType === 'share') && !!this.kpPersonalData(); } catch (e) { has = false; }
+            cardHouse.style.display = has ? 'flex' : 'none';
+        }
         // Сокращённые названия — как задано в «Настройки → КП и счета» (по умолчанию включено)
         const chkNames = document.getElementById('share_opt_names');
         if (chkNames) chkNames.checked = this.shortNamesDefault();
@@ -44097,6 +44376,9 @@ const app = {
         // По умолчанию названия сокращены; полные уходят только при снятой галочке
         const chkNamesOpt = document.getElementById('share_opt_names');
         const shortNames = chkNamesOpt ? chkNamesOpt.checked : true;
+        // Раздел «Ваш дом»: читают prepareForPrint и executeShareInvoice
+        const cardHouseOpt = document.getElementById('card_opt_house'), chkHouseOpt = document.getElementById('share_opt_house');
+        this.kpHouseOn = !!(cardHouseOpt && cardHouseOpt.style.display !== 'none' && chkHouseOpt && chkHouseOpt.checked);
 
         this.closeShareOptionsModal();
 
@@ -45696,6 +45978,14 @@ const app = {
             const up = this.ufhPlanForShare();
             if (up) object_info.ufhPlan = up;
         } catch (e) { console.warn('[ссылка] раскладка ТП не добавлена:', e.message); }
+        // Раздел «Ваш дом»: город, теплопотери, учтённое из анкеты, комнаты,
+        // стоимость отопления — данными, страница клиента рисует их сама
+        if (this.kpHouseOn !== false) {
+            try {
+                const kp = this.kpPersonalData();
+                if (kp) object_info.kp = kp;
+            } catch (e) { console.warn('[ссылка] раздел «Ваш дом» не добавлен:', e.message); }
+        }
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
@@ -46083,6 +46373,15 @@ const app = {
         // заголовка страницы: он же имя файла, «КП №452712-3 …»
         this.stampKpVersion('pdf');
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
+
+        // QR на онлайн-КП для раздела «Ваш дом» — если ссылка клиенту уже
+        // создавалась (номер ссылки есть в расчёте). Картинка рисуется
+        // асинхронно, поэтому до сборки печатной копии.
+        this._kpQr = null;
+        if (this.kpHouseOn !== false && this.isValidUUID && this.isValidUUID(this.state.shared_invoice_id)) {
+            const url = 'https://heatcalc.ru/invoice.html?id=' + this.state.shared_invoice_id;
+            try { const src = await this.qrDataUrl(url, 220); if (src) this._kpQr = { src, url }; } catch (e) { this._kpQr = null; }
+        }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         const isLocal = (HC_LOCAL_DEV);
@@ -60102,7 +60401,9 @@ const app = {
         if (!(kw > 0)) return 1;
         const s = this.state;
         const area = parseFloat(s.area) || 100;
-        const avgRun = Math.sqrt(area / (s.floors === 2 ? 2 : 1)) + 3;
+        // средний луч — с плана дома, если трассы радиаторов на нём есть
+        const _rp = this.radPlanRuns();
+        const avgRun = _rp ? _rp.avgRun : Math.sqrt(area / (s.floors === 2 ? 2 : 1)) + 3;
         const n = Math.max(1, parseInt(devicesCount, 10) || Math.ceil(area / 18));
         const flowAll = this.radFlowOf(kw * 1000);
         // Кольцо считается по самому мощному прибору, а не по среднему: именно он
@@ -60206,13 +60507,15 @@ const app = {
                 .reduce((a, p) => a + (p.dp || 0), 0) : 0;
         }
         const nDev = devices.length;
+        // Луч каждого прибора: с плана дома — свой, без плана — один на всех
+        const runs = this.radDeviceRuns(devices, avgRun);
         const rows = devices.map((d, i) => {
             const flow = this.radFlowOf(wOf(d));
             // Кольцо прибора: луч в обе стороны (или отвод и часть магистрали у
             // тройниковой) и его клапан на расчётной настройке.
             const pipeDp = tee
                 ? teeTrunkDp * (i + 1) / nDev + this.radPipeDrop(flow, 16, 0.9).dp
-                : this.radPipeDrop(flow, 16, len).dp;
+                : this.radPipeDrop(flow, 16, 2 * runs[i] * 1.1).dp;
             const dp = pipeDp + Math.pow(flow / kvValve, 2) * 100;
             return { room: d.room, watt: Math.round(wOf(d)), flow: flow, dp: dp };
         });
@@ -60294,8 +60597,21 @@ const app = {
 
         // Самый мощный прибор задаёт худший луч: у него наибольший расход, а
         // длина луча одна на всех — реальной трассировки у нас нет.
-        const worst = devices.reduce((a, d) => (wOf(d) > wOf(a) ? d : a), devices[0]);
-        const flowWorst = this.radFlowOf(wOf(worst));
+        let worst = devices.reduce((a, d) => (wOf(d) > wOf(a) ? d : a), devices[0]);
+        let flowWorst = this.radFlowOf(wOf(worst));
+        // Есть план дома — у каждого прибора своя длина луча, и худшее кольцо
+        // ищем честно: по потерям в луче и клапане с его расходом и его длиной
+        // (дальний слабый прибор бывает тяжелее ближнего мощного).
+        let worstRun = avgRun;
+        if (!tee && this.radPlanRuns()) {
+            const runs = this.radDeviceRuns(devices, avgRun), kv0 = this.radValveKv().kv;
+            let best = -1;
+            devices.forEach((d, i) => {
+                const fl = this.radFlowOf(wOf(d));
+                const v = this.radPipeDrop(fl, 16, 2 * runs[i] * 1.1).dp + Math.pow(fl / kv0, 2) * 100;
+                if (v > best) { best = v; worst = d; flowWorst = fl; worstRun = runs[i]; }
+            });
+        }
 
         const parts = [];
         let dp = 0;
@@ -60356,9 +60672,10 @@ const app = {
             const man = this.radManifoldDp(flowWorst);
             add('Коллектор ' + man.passport.label, man.dp,
                 { tag: 'manifold', flow: flowWorst, manifold: man });
-            const loop = this.radPipeDrop(flowWorst, 16, 2 * avgRun * 1.1);
-            add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * avgRun * 1.1).toFixed(0) + ' м', loop.dp,
-                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * avgRun * 1.1,
+            const loop = this.radPipeDrop(flowWorst, 16, 2 * worstRun * 1.1);
+            add('Луч Ø16 до прибора «' + (worst.room || 'самый дальний') + '», ' + (2 * worstRun * 1.1).toFixed(0) + ' м' +
+                (this.radPlanRuns() ? ' (по плану дома)' : ''), loop.dp,
+                { v: loop.v, vLim: this.RAD_V_MAX, len: 2 * worstRun * 1.1,
                     tag: 'loop', d: 16, flow: flowWorst });
         }
 
@@ -68822,7 +69139,9 @@ const app = {
                 return `<span style="${styles}"><span style="${head}">Труба 16x2.2 в теплоизоляции (${isRed ? 'красная' : 'синяя'})</span>` +
                     `<b>Зачем:</b> ${why}<br><br>` +
                     `<b>Формула подбора:</b><br>` +
-                    `• Средняя длина трассы: L_ср = √(Площадь / Этажность) + 3 м.<br>` +
+                    (this._radPlanUsed
+                        ? `• Средняя длина трассы L_ср — по плану дома: трассы от коллектора радиаторов к каждому прибору вдоль стен, с подъёмами к прибору и коллектору (раздел «План отопления дома»).<br>`
+                        : `• Средняя длина трассы: L_ср = √(Площадь / Этажность) + 3 м (оценка; с планом дома считается по трассам).<br>`) +
                     `• Общая длина труб: L_общ = Приборы × L_ср × 2 × 1.1 (где 2 — подача + обратка, 1.1 — запас 10%).<br>` +
                     `• Количество бухт (по 100 м): N_бухт = ⌈L_общ / 100⌉. Делится поровну между красной и синей.<br><br>` +
                     `<b>Подставленные значения:</b><br>` +
@@ -72600,6 +72919,7 @@ const app = {
         // считала бы кольцо по стояку из прошлого расчёта.
         this._radTrunk = null;
         this._radTee = null;
+        this._radPlanUsed = false;   // метраж труб радиаторов по плану дома (ставят ветки раздела 3)
         // Исходные данные греющего контура бойлера запишет раздел его обвязки
         // ниже. Без сброса гидравлика загрузки при выключении ГВС считала бы
         // змеевик из прошлого расчёта.
@@ -75397,10 +75717,15 @@ const app = {
                 // === Тройниковая (шлейфовая) схема: без коллектора — труба идёт магистралью
                 // вдоль трассы, каждый радиатор врезан тройником. Диаметр магистрали ступенчато
                 // сужается по остаточной мощности «после точки врезки»: у котла/стояка несёт всю
-                // мощность дома, на дальнем участке — примерно половину. Метраж — грубая оценка
-                // без реальной трассировки (нет плана дома с координатами комнат).
+                // мощность дома, на дальнем участке — примерно половину. Метраж — по трассе
+                // на плане дома, а без плана — грубая оценка по площади.
                 let firstRiser = 3;
-                let trunkOneWay = 0.75 * Math.sqrt(totalDevicesCount * floorArea) + firstRiser;
+                // Есть план дома с радиаторами — магистраль берём по трассе на плане
+                // (projectPlans.radRoutes), без него — прежняя оценка по площади.
+                const _radPlan = this.radPlanRuns();
+                this._radPlanUsed = !!_radPlan;
+                let trunkOneWay = _radPlan ? _radPlan.trunkOneWay
+                    : 0.75 * Math.sqrt(totalDevicesCount * floorArea) + firstRiser;
                 let trunkMeters = Math.ceil(trunkOneWay * 2 * 1.1); // подача + обратка, +10% запас
                 let branchMeters = Math.ceil(totalDevicesCount * 0.9); // короткие отводы от магистрали к каждому прибору
                 this.avgRun = trunkOneWay; this.neededPipe = trunkMeters + branchMeters;
@@ -75494,7 +75819,10 @@ const app = {
                     boughtItem.noCheapenAlts = true;
                     let desc = `<span style="font-size:11px;line-height:1.5;">` +
                         `<b>Зачем:</b> ${label} В тройниковой схеме труба идёт единой магистралью мимо всех радиаторов (а не отдельным лучом на каждый прибор, как в коллекторной) — у котла/стояка несёт расход сразу всех приборов, к концу трассы — расход одного-двух последних.<br>` +
-                        `<b>Формула метража:</b> Длина трассы в одну сторону = 0,75·√(Приборов × Площадь этажа) + 3м (запас на подключение к стояку) — оценка длины обхода N точек по площади без плана дома. ×2 — подача и обратка, +10% запас на подрезку и обходы. Короткие отводы от магистрали до каждого радиатора — 0,9 м/прибор (обе трубы, с запасом).<br>` +
+                        `<b>Формула метража:</b> ` + (this._radPlanUsed
+                            ? `Длина трассы в одну сторону — по плану дома: магистраль от котельной обходит радиаторы по очереди вдоль стен (раздел «План отопления дома»), с подъёмами к приборам.`
+                            : `Длина трассы в одну сторону = 0,75·√(Приборов × Площадь этажа) + 3м (запас на подключение к стояку) — оценка длины обхода N точек по площади без плана дома; с планом считается по трассе.`) +
+                        ` ×2 — подача и обратка, +10% запас на подрезку и обходы. Короткие отводы от магистрали до каждого радиатора — 0,9 м/прибор (обе трубы, с запасом).<br>` +
                         `<b>Формула диаметра:</b> Труба у котла/стояка сайзится на всю мощность дома, дальний участок — на её половину (часть расхода «разбирается» врезками по пути). Пороги: до 4 кВт → 16мм, до 8 кВт → 20мм, до 16 кВт → 25(26 у металлопластика)мм, свыше — 32мм.<br>` +
                         `<b>Подставленные значения:</b><br>` +
                         `• Приборов: ${totalDevicesCount} шт., площадь этажа: ${floorArea.toFixed(0)} м².<br>` +
@@ -75588,7 +75916,13 @@ const app = {
                 // × 2 — подача и обратка: к каждому прибору от коллектора идут две трубы.
                 // Так же считают подсказка трубы, гидравлика луча (radHydraulics) и объём
                 // теплоносителя для бака; без множителя смета клала трубы вдвое меньше.
-                let avgRun = Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
+                // Средний луч: по трассам плана дома (projectPlans.radRoutes), если план
+                // с радиаторами есть, иначе прежняя оценка √(площадь этажа) + 3 м.
+                // Приборов в смете может быть не столько, сколько на плане, — поэтому
+                // средний луч с плана, а число лучей — сметы.
+                const _radPlan = this.radPlanRuns();
+                this._radPlanUsed = !!_radPlan;
+                let avgRun = _radPlan ? _radPlan.avgRun : Math.sqrt(floorArea) + 3; let totalMeters = totalDevicesCount * avgRun * 2 * 1.1; let neededPipe = Math.ceil(totalMeters);
                 this.avgRun = avgRun;
                 this.neededPipe = neededPipe;
                 if (neededPipe > 0) {
@@ -79431,11 +79765,16 @@ const app = {
          ['rad_node_scheme_row', '3.3. Трубы отопления', () => this.renderRadNodeScheme()],
          ['ufh_node_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhNodeScheme(), true],
          // раскладка по плану дома — вставляется следом и встаёт выше узла
-         ['ufh_plan_scheme_row', '4. Водяной тёплый пол', () => this.renderUfhPlanScheme(), true],
+         // План отопления дома — под первым из разделов «3. Приборы отопления» /
+         // «4. Водяной тёплый пол», что есть в смете (на нём и радиаторы, и петли)
+         ['ufh_plan_scheme_row', ['3. Приборы отопления', '4. Водяной тёплый пол'], () => this.renderUfhPlanScheme(), true],
          ['water_scheme_row', ['5.1.', '5. Внутреннее водоснабжение'], () => this.renderWaterScheme(), true],
          ['hvs_node_scheme_row', '6. Узел ввода ХВС', () => this.renderHvsNodeScheme(), true]]
         .forEach(([rowId, marker, build, atSec]) => {
-            const old = document.getElementById(rowId);
+            // Только строку на экране: у печатной копии (#print_bin) те же id, а живую
+            // строку перерисовка таблицы уже стёрла — getElementById находил копию,
+            // и схемы разделов пропадали из печати и PDF.
+            const old = document.querySelector('#print-area #' + rowId);
             if (old) old.remove();
             if (this.state.viewMode !== 'equipment' || !this.schemeOn()) return;
             const html = build();
@@ -80780,6 +81119,20 @@ function prepareForPrint() {
             let eqTabs = eqClone.querySelector('.main-view-tabs');
             if (eqTabs) eqTabs.style.display = 'none';
             printBin.appendChild(eqClone);
+        }
+
+        // --- ШАГ 1а: РАЗДЕЛ «ВАШ ДОМ» — перед таблицей оборудования (или в начале,
+        // если оборудование не печатают): город, теплопотери, «вы просили — мы
+        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
+        if (app.kpHouseOn !== false) {
+            let kpHtml = '';
+            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
+            if (kpHtml) {
+                const eqC = document.getElementById('print_eq_clone');
+                const tbl = eqC && eqC.querySelector('.table-responsive');
+                if (tbl) tbl.insertAdjacentHTML('beforebegin', kpHtml);
+                else printBin.insertAdjacentHTML('afterbegin', kpHtml);
+            }
         }
 
         // --- ШАГ 2: ЛИСТ МОНТАЖНЫХ РАБОТ (Доступно авторизованным пользователям на любом
