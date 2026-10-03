@@ -4035,6 +4035,19 @@ body.profile-incomplete-lock #page_scale_wrapper {
         min-width: 0 !important;
         box-sizing: border-box !important;
     }
+    /* Панели фильтров внутри «Фильтры»: поля без служебных классов тоже в свою колонку,
+       а отступы не складываются с шириной 100 % */
+    #admin_content details.ad-collapse > .admin-toolbar-row { margin-left: 12px !important; margin-right: 12px !important; width: calc(100% - 24px) !important; box-sizing: border-box !important; }
+    .admin-toolbar-row > input, .admin-toolbar-row > select {
+        width: 100% !important; max-width: none !important; min-width: 0 !important; box-sizing: border-box !important;
+    }
+    .admin-toolbar-row > span { grid-column: 1 / -1; }
+    /* Мелкие подписи не мельче 11 px; сегменты «Всем / По доступу / Нет» в «Тарифах» — под палец */
+    #admin_content small { font-size: 11px !important; }
+    /* Подсказки про клавиши на телефоне бессмысленны; кнопки панели просмотра — под палец */
+    .ad-search-foot { display: none; }
+    #ad_peek button { min-height: 36px; }
+    #admin_content button[onclick*="setTariffCell"]:not([role="switch"]) { min-height: 30px; padding-left: 9px !important; padding-right: 9px !important; }
 }
 
 /* Таблица пользователей в админке: колонкам заданы фиксированные ширины, и
@@ -11518,7 +11531,7 @@ body.dark-mode #anim_works_sum, body.dark-mode .m-total-work span { color: #F59E
 }
 
 .lk-profile-logout {
-    display: none;
+    display: block;
     width: 100%;
     height: 44px;
     margin: 4px 0 14px;
@@ -17587,7 +17600,7 @@ details.ad-danger-zone > .admin-btn { position: absolute; right: 0; top: 40px; z
     margin-right: 3px;
 }
 body.theme-yandex .admin-search-btn { border-radius: 999px; }
-#ad_search {
+#ad_search, #lk_search {
     position: absolute;
     inset: 0;
     z-index: 40;
@@ -17609,7 +17622,7 @@ body.theme-yandex .admin-search-btn { border-radius: 999px; }
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
     overflow: hidden;
 }
-#ad_search_input {
+#ad_search_input, #lk_search_input {
     height: 48px;
     padding: 0 18px;
     border: 0 !important;
@@ -17656,6 +17669,9 @@ body.theme-yandex .admin-search-btn { border-radius: 999px; }
     .admin-search-btn span, .admin-search-btn kbd { display: none; }
     .admin-search-btn { padding: 0 8px; right: 90px; }
     #ad_search { padding-top: 6vh; }
+    /* Заголовок не заходит под кнопки справа (поиск, тема, закрыть): значок роли переносится вниз */
+    #admin_modal_overlay .auth-modal-title { padding-right: 132px; font-size: 16px; line-height: 1.25; box-sizing: border-box; }
+    #admin_modal_overlay .auth-modal-title > span { margin-left: 0 !important; margin-top: 4px; display: inline-block; }
 }
 
 /* Сворачиваемый блок (форма «Добавить промокод»): строка-кнопка, внутри — карточка */
@@ -18020,6 +18036,211 @@ body.brand-stout.dark-mode .quick-start-cta:hover,
 body.brand-rommer.dark-mode .quick-start-cta,
 body.brand-rommer.dark-mode .quick-start-cta:hover { box-shadow: none; }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Кабинет: тот же единый вид «CRM», что у панели управления (03.10.2026)
+
+   Кабинет и панель управления — части одной системы, поэтому цвета, скругления,
+   кегли, поля и кнопки здесь берутся из тех же переменных и правил. Разделы
+   по-прежнему рисуются инлайн-стилями (app.js), слой перекрывает только общее.
+   ═══════════════════════════════════════════════════════════════════════ */
+#profile_modal_overlay {
+    --ad-radius: 8px;
+    --ad-field-radius: 8px;
+    --ad-card-radius: 12px;
+    --ad-line: color-mix(in srgb, var(--text-main) 15%, transparent);
+}
+body.theme-yandex #profile_modal_overlay {
+    --ad-radius: 999px;
+    --ad-field-radius: 12px;
+    --ad-card-radius: 16px;
+}
+
+/* Меню кабинета: два блока с подписями — «Работа» и «Настройки», как на панели слева.
+   Состав и порядок — таблица app.CABINET_MENU (одна на панель и на это меню). */
+.lk-nav-cap {
+    margin: 12px 8px 4px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-sec);
+    text-align: left;
+}
+
+/* Пункты — как вкладки админки: активный окрашен цветом бренда, без рамки-плашки */
+.lk-nav-item { border-radius: var(--ad-radius, 8px); }
+.lk-nav-item:hover { background: var(--primary-light); color: var(--primary); }
+.lk-nav-item.active {
+    background: var(--primary-light);
+    border-color: transparent;
+    color: var(--primary);
+}
+.lk-nav { scrollbar-width: thin; }
+
+/* Содержимое разделов */
+#profile_modal_overlay .lk-pane {
+    scrollbar-width: thin;
+    scrollbar-color: var(--ad-line) transparent;
+}
+#profile_modal_overlay .lk-pane h3,
+#profile_modal_overlay .lk-pane h4 {
+    color: var(--text-main);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-transform: none !important;
+}
+#profile_modal_overlay .lk-pane h3 { font-size: 17px !important; margin: 0 0 14px !important; }
+#profile_modal_overlay .lk-pane h4 { font-size: 14px !important; margin: 0 0 10px !important; }
+
+/* Шкала кеглей 11 / 12 / 13 — как в админке */
+#profile_modal_overlay .lk-pane [style*="font-size:9.5px"], #profile_modal_overlay .lk-pane [style*="font-size: 9.5px"],
+#profile_modal_overlay .lk-pane [style*="font-size:10px"], #profile_modal_overlay .lk-pane [style*="font-size: 10px"],
+#profile_modal_overlay .lk-pane [style*="font-size:10.5px"], #profile_modal_overlay .lk-pane [style*="font-size: 10.5px"] { font-size: 11px !important; }
+#profile_modal_overlay .lk-pane [style*="font-size:11.5px"], #profile_modal_overlay .lk-pane [style*="font-size: 11.5px"] { font-size: 12px !important; }
+#profile_modal_overlay .lk-pane [style*="font-size:12.5px"], #profile_modal_overlay .lk-pane [style*="font-size: 12.5px"] { font-size: 13px !important; }
+#profile_modal_overlay .lk-pane small { font-size: 11px; }
+#profile_modal_overlay .lk-pane label { font-weight: 600; }
+
+/* Поля ввода — один вид с админкой */
+#profile_modal_overlay .lk-pane input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]),
+#profile_modal_overlay .lk-pane select,
+#profile_modal_overlay .lk-pane textarea {
+    background: var(--surface) !important;
+    color: var(--text-main);
+    border: 1px solid var(--ad-line) !important;
+    border-radius: var(--ad-field-radius) !important;
+    min-height: 36px;
+    font-size: 13px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+#profile_modal_overlay .lk-pane input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):focus,
+#profile_modal_overlay .lk-pane select:focus,
+#profile_modal_overlay .lk-pane textarea:focus {
+    outline: none;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* Карточки и блоки раздела: плоские, с тонкой линией */
+#profile_modal_overlay .lk-pane div[style*="solid var(--border)"] { border-color: var(--ad-line) !important; }
+#profile_modal_overlay .lk-pane div[style*="border-radius:10px"],
+#profile_modal_overlay .lk-pane div[style*="border-radius: 10px"] { border-radius: var(--ad-card-radius) !important; }
+#profile_modal_overlay .lk-pane div[style*="background:var(--bg)"],
+#profile_modal_overlay .lk-pane div[style*="background: var(--bg)"] { background: var(--surface-light) !important; }
+#profile_modal_overlay .lk-pane div[style*="box-shadow"] { box-shadow: none !important; }
+#profile_modal_overlay .lk-pane [style*="border-bottom:1px solid var(--border)"],
+#profile_modal_overlay .lk-pane [style*="border-bottom: 1px solid var(--border)"] { border-bottom-color: var(--ad-line) !important; }
+
+/* Таблицы */
+#profile_modal_overlay .lk-pane table th {
+    color: var(--text-sec);
+    border-bottom: 1px solid var(--ad-line);
+    letter-spacing: 0.04em;
+}
+#profile_modal_overlay .lk-pane table td { border-color: var(--ad-line); }
+#profile_modal_overlay .lk-pane .inv-table tbody tr:hover > td:not([style*="background"]) { background: var(--surface-light); }
+
+/* Кнопки без собственной заливки — нейтральные с тонкой рамкой; кнопки с заливкой
+   (главные и опасные) остаются как заданы */
+#profile_modal_overlay .lk-pane .auth-btn-base:not([style*="background"]):not(.btn-email-submit):not(.btn-primary-action),
+#profile_modal_overlay .lk-pane .lk-btn-sm {
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-radius);
+    font-size: 12px;
+    font-weight: 600;
+}
+#profile_modal_overlay .lk-pane .auth-btn-base:not([style*="background"]):not(.btn-email-submit):not(.btn-primary-action):hover:not(:disabled),
+#profile_modal_overlay .lk-pane .lk-btn-sm:hover:not(:disabled) {
+    background: var(--primary-light);
+    border-color: transparent;
+    color: var(--primary);
+}
+#profile_modal_overlay .lk-pane .lk-btn-sm.lk-btn-danger { color: #EF4444; }
+#profile_modal_overlay .lk-pane a:not([class]):not([style*="background"]) { color: var(--primary); text-decoration: none; }
+#profile_modal_overlay .lk-pane a:not([class]):not([style*="background"]):hover { text-decoration: underline; }
+
+/* Телефон и планшет стоймя: подписи блоков занимают всю строку сетки меню */
+@media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    .lk-nav-cap { grid-column: 1 / -1; margin: 8px 2px 0; }
+    .lk-nav-item { border-color: var(--ad-line, var(--border)); font-size: 11px; min-height: 52px; padding: 6px 2px; }
+    .lk-nav-item.active { border-color: var(--primary); }
+}
+/* Лёжа, в ряду иконок, подписи блоков не нужны */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+    .lk-nav-cap { display: none; }
+}
+
+/* Поиск по кабинету: кнопка над меню (в сетке телефона — на всю строку) */
+.lk-nav-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    height: 34px;
+    margin: 0 0 8px;
+    padding: 0 10px;
+    border: 1px solid var(--ad-line, var(--border));
+    border-radius: var(--ad-radius, 8px);
+    background: var(--surface);
+    color: var(--text-sec);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+.lk-nav-search:hover { color: var(--text-main); border-color: var(--text-sec); }
+.lk-nav-search .ad-ico { width: 15px; height: 15px; }
+.lk-nav-search span { flex: 1; }
+.lk-nav-search kbd {
+    font: inherit;
+    font-size: 11px;
+    padding: 1px 6px;
+    border-radius: 5px;
+    border: 1px solid var(--ad-line, var(--border));
+    color: var(--text-sec);
+}
+
+/* Телефон и планшет стоймя: меню и раздел по очереди, полоса «‹ Разделы» сверху раздела */
+.lk-mob-bar { display: none; }
+@media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    .lk-nav-search { grid-column: 1 / -1; margin: 0; }
+    #lk_search_btn { display: none; }
+    .lk-nav-search kbd { display: none; }
+    .lk-mob-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        margin: 0 0 10px;
+        padding: 0 40px 8px 0;
+        background: var(--surface);
+        border-bottom: 1px solid var(--ad-line, var(--border));
+    }
+    .lk-mob-back {
+        flex: 0 0 auto;
+        height: 36px;
+        padding: 0 14px;
+        border: 1px solid var(--ad-line, var(--border));
+        border-radius: var(--ad-radius, 8px);
+        background: var(--surface-light);
+        color: var(--text-main);
+        font: inherit;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .lk-mob-cur { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 700; color: var(--text-main); }
+    .lk-layout:not(.lk-menu-open) .lk-nav { display: none; }
+    .lk-layout.lk-menu-open .lk-pane { display: none; }
+    .lk-layout.lk-forced .lk-mob-bar { display: none; }
+
 /* ---------- Профиль на широком экране: без вертикальной прокрутки ----------
    Одна колонка полей с аватаркой отдельной строкой и двумя карточками внизу не
    помещалась в окно (617 px при видимых 548 на 1280×720). Здесь поля идут сеткой
@@ -18086,3 +18307,10 @@ body.brand-rommer.dark-mode .quick-start-cta:hover { box-shadow: none; }
         grid-column: 1 / -1;
     }
 }
+
+#lk_search_btn { right: 56px; top: 12px; }
+
+/* Вкладки внутри пункта меню кабинета */
+.lk-subtabs { margin: 0 0 14px; flex: 0 0 auto; }
+.lk-subtabs:empty { display: none; }
+.lk-layout.lk-forced .lk-subtabs { display: none; }

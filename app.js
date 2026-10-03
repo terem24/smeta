@@ -12813,6 +12813,13 @@ const app = {
         this.renderProfilePhotoField();
         this.renderThemeChoiceCard();
         this.setProfileTab(forced ? 'requisites' : (initialTab || 'requisites'));
+        // Телефон: без явного раздела (нижняя вкладка «Профиль») открываем меню разделов,
+        // с разделом (railGo, push, принудительная анкета) — сам раздел с полосой «‹ Разделы»
+        const lkLayout = profileNav && profileNav.parentElement;
+        if (lkLayout) {
+            lkLayout.classList.toggle('lk-forced', !!forced);
+            lkLayout.classList.toggle('lk-menu-open', !forced && !initialTab);
+        }
         this.refreshManagerTabVisibility(tgUser.email);
 
         // На мобильном модалка — bottom sheet почти во весь экран, а плавающая кнопка
@@ -12829,6 +12836,7 @@ const app = {
             return;
         }
         this._profileForceComplete = false;
+        this.closeCabinetSearch();
         document.getElementById('profile_modal_overlay').style.display = 'none';
         this.syncCabinetDock();
         document.body.style.overflow = '';
@@ -14716,8 +14724,9 @@ const app = {
     // Прайс монтажа / Своё оборудование. Содержимое всех разделов, кроме реквизитов,
     // строится лениво при первом открытии раздела.
     setProfileTab: function (tab) {
-        const tabs = ['requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment'];
+        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment'];
         if (!tabs.includes(tab)) tab = 'requisites';
+        tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
         // висящие подписки и не обновлять невидимую панель
         if (this._activeProfileTab !== tab && (this._activeProfileTab === 'manager' || this._activeProfileTab === 'installers')) {
@@ -14725,10 +14734,23 @@ const app = {
         }
         this._activeProfileTab = tab;
 
+        // Телефон: выбрали раздел — меню сворачивается, остаётся полоса «‹ Разделы» с названием
+        const lkLay = document.getElementById('profile_nav') && document.getElementById('profile_nav').parentElement;
+        if (lkLay) lkLay.classList.remove('lk-menu-open');
+        const mobCur = document.getElementById('lk_mob_cur');
+        if (mobCur) {
+            const parent = this.cabinetParentOf(tab);
+            const mi = this.CABINET_MENU.find(x => x.id === parent);
+            const sub = (this.CABINET_SUBTABS[parent] || []).find(x => x.id === tab);
+            mobCur.textContent = mi ? (mi.nav + (sub && this.cabinetVisibleSubtabs(parent).length > 1 ? ' · ' + sub.label : '')) : '';
+        }
+        this.renderCabinetSubtabs(tab);
+
         const navBar = document.getElementById('profile_nav');
         if (navBar) {
+            const navParent = this.cabinetParentOf(tab);
             navBar.querySelectorAll('.lk-nav-item').forEach(el => {
-                el.classList.toggle('active', el.dataset.tab === tab);
+                el.classList.toggle('active', el.dataset.tab === navParent);
             });
         }
         tabs.forEach(t => {
@@ -14749,7 +14771,9 @@ const app = {
         if (footerRequisites) footerRequisites.style.display = isFormTab ? 'flex' : 'none';
         if (footerOther) footerOther.style.display = isFormTab ? 'none' : 'flex';
 
-        if (tab === 'subscription') {
+        if (tab === 'home') {
+            this.renderCabinetHome();
+        } else if (tab === 'subscription') {
             this.renderSubscriptionTab();
         } else if (tab === 'objects') {
             // Тот же список, что и в отдельной модалке «Сохранённые сметы»: переключаем
@@ -14784,7 +14808,14 @@ const app = {
     // У «Подписки» своего пункта в панели нет (раздел скрыт до конца обкатки тарифа),
     // но подсветить логично соседний — иначе панель выглядит так, будто кабинет закрыт.
     RAIL_TAB_ALIAS: {
-        subscription: 'requisites'
+        subscription: 'requisites',
+        // Разделы внутри пунктов меню (см. CABINET_SUBTABS): подсвечиваем пункт-родитель
+        summary: 'home',
+        oprosniki: 'objects',
+        orders: 'objects',
+        company: 'requisites',
+        manager: 'requisites',
+        equipment: 'workprices'
     },
 
     // Все разделы занимают одно и то же место на экране, поэтому при переходе то,
@@ -14799,6 +14830,347 @@ const app = {
             else if (id === 'notifications_modal_overlay') this.closeNotificationsModal();
             else if (id === 'lk_rating_overlay') this.closeRatingPanel();
         });
+    },
+
+    // ── Меню кабинета: одна таблица на два места ─────────────────────────────
+    // Панель слева (.lk-rail) и колонка внутри окна кабинета (#profile_nav, на телефоне —
+    // сетка) показывают одни и те же пункты. Раньше это были две ручные копии разметки,
+    // и состав с порядком держались на комментарии «расходиться нельзя». Теперь обе
+    // строятся отсюда: меняется порядок или подпись — правится одна строка.
+    //   id     — ключ раздела (data-rail / data-tab, на него ссылаются push и обучение)
+    //   kind   — 'tab' раздел окна кабинета, 'act' отдельное окно или действие (railGo)
+    //   nav    — подпись в окне кабинета, short — короткая для сетки на телефоне,
+    //            rail — подпись на панели; title / navTitle — подсказки
+    //   group  — блок панели (data-group; имена сохраняются в раскладке пользователя)
+    //   hide   — пункт скрыт, пока код (syncRailUI и др.) его не покажет
+    //   only   — 'nav': пункта на панели нет
+    CABINET_MENU: [
+        { id: 'calc', kind: 'act', group: 'calc', nav: 'Расчёт', short: 'Расчёт', rail: 'Расчёт', title: 'Вернуться к расчёту сметы', icon: '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="11" x2="8.01" y2="11"></line><line x1="12" y1="11" x2="12.01" y2="11"></line><line x1="16" y1="11" x2="16.01" y2="11"></line><line x1="8" y1="15" x2="8.01" y2="15"></line><line x1="12" y1="15" x2="12.01" y2="15"></line><line x1="16" y1="15" x2="16.01" y2="15"></line><line x1="8" y1="19" x2="12" y2="19"></line>' },
+        { id: 'home', kind: 'tab', group: 'calc', nav: 'Главная', short: 'Главная', rail: 'Главная', title: 'Что требует внимания и мои показатели', icon: '<path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-5h4v5"></path>' },
+        { id: 'messages', kind: 'act', group: 'calc', nav: 'Сообщения', short: 'Сообщения', rail: 'Сообщения', title: 'Сообщения и уведомления', icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>', badge: true },
+        { id: 'objects', kind: 'tab', group: 'objects', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
+        { id: 'requisites', kind: 'tab', group: 'account', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
+        { id: 'workprices', kind: 'tab', group: 'account', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
+        // Только менеджерам дистрибьюторов: показ включают refreshManagerTabVisibility и syncRailUI
+        { id: 'installers', kind: 'tab', group: 'account', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
+        // Владельцу и админам — показ включает syncRailUI по hasAdminAccess()
+        { id: 'admin', kind: 'act', group: 'service', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' }
+    ],
+
+    // Внутри пункта меню — вкладки-чипы над содержимым: пунктов в меню семь, а разделов
+    // за ними одиннадцать. Ключи разделов (profile_tab_<id>, data-tab, push open:"orders")
+    // не менялись — меняется только то, как они сгруппированы на экране.
+    CABINET_SUBTABS: {
+        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }],
+        objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
+        requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
+        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }]
+    },
+
+    // Пункт меню, под которым живёт раздел (подсветка в меню и на панели)
+    cabinetParentOf: function (tab) {
+        const subs = this.CABINET_SUBTABS;
+        for (const k of Object.keys(subs)) { if (subs[k].some(s => s.id === tab)) return k; }
+        return (this.RAIL_TAB_ALIAS && this.RAIL_TAB_ALIAS[tab]) || tab;
+    },
+
+    // Вкладки пункта с учётом тарифа: продавцу без монтажа прайс и документы не показываем
+    // (решения владельца 10.09 и 26.09.2026 — тот же признак canUseWorks, что и раньше у пунктов меню)
+    cabinetVisibleSubtabs: function (parent) {
+        const subs = this.CABINET_SUBTABS[parent] || [];
+        const noWorks = !this.canUseWorks();
+        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')));
+    },
+
+    // Раздел, скрытый от этого человека, заменяем первым доступным в том же пункте
+    cabinetResolveTab: function (tab) {
+        const parent = this.cabinetParentOf(tab);
+        const subs = this.CABINET_SUBTABS[parent];
+        if (!subs) return tab;
+        const vis = this.cabinetVisibleSubtabs(parent);
+        if (vis.some(s => s.id === tab) || !vis.length) return tab;
+        return vis[0].id;
+    },
+
+    renderCabinetSubtabs: function (tab) {
+        const bar = document.getElementById('lk_subtabs');
+        if (!bar) return;
+        const parent = this.cabinetParentOf(tab);
+        const vis = this.cabinetVisibleSubtabs(parent);
+        bar.innerHTML = vis.length > 1
+            ? vis.map(s => `<button type="button" class="ad-chip${s.id === tab ? ' active' : ''}" onclick="app.setProfileTab('${s.id}')">${s.label}</button>`).join('')
+            : '';
+    },
+
+    buildCabinetMenus: function () {
+        const rail = document.getElementById('lk_rail');
+        const nav = document.getElementById('profile_nav');
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        const svg = (it, size) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="${size}" height="${size}">${it.icon}</svg>`;
+        const railGroupKey = { calc: 'calc', objects: 'objects', account: 'account', service: 'service' };
+
+        if (rail && !rail.querySelector('.lk-rail-group')) {
+            const groups = [];
+            this.CABINET_MENU.forEach(it => {
+                if (it.only === 'nav') return;
+                let g = groups.find(x => x.key === it.group);
+                if (!g) { g = { key: it.group, items: [] }; groups.push(g); }
+                g.items.push(it);
+            });
+            rail.insertAdjacentHTML('beforeend', groups.map(g => `<div class="lk-rail-group" data-group="${railGroupKey[g.key]}">${g.items.map(it => {
+                const cls = 'lk-rail-item' + (it.id === 'calc' ? ' active' : '') + (it.kind === 'logout' ? ' lk-rail-logout' : '') + (it.id === 'admin' ? ' lk-rail-admin' : '');
+                const attrs = ((it.kind === 'logout' || it.kind === 'search') ? '' : ` data-rail="${it.id}"`) + (it.id === 'admin' ? ' id="lk_rail_admin"' : '') + (it.hide ? ' style="display: none;"' : '');
+                const extra = it.badge ? '<span class="lk-rail-badge" id="lk_rail_msg_badge" style="display: none;">0</span><span class="lk-rail-dot" id="lk_rail_status_dot" title="Проверяем связь…"></span>' : '';
+                const go = it.kind === 'search' ? 'app.openCabinetSearch()' : `app.railGo('${it.id}')`;
+                return `<button type="button" class="${cls}"${attrs} onclick="${go}" title="${esc(it.title)}">${svg(it, 22)}<span class="lk-rail-label">${esc(it.rail)}</span>${extra}</button>`;
+            }).join('')}</div>`).join(''));
+        }
+
+        // Кнопка поиска в углу окна кабинета, рядом с крестиком (на телефоне — над меню разделов)
+        const lkHost = document.querySelector('#profile_modal_overlay .auth-modal-content');
+        if (lkHost && !document.getElementById('lk_search_btn')) {
+            const sb = document.createElement('button');
+            sb.id = 'lk_search_btn';
+            sb.type = 'button';
+            sb.className = 'admin-search-btn';
+            sb.title = 'Поиск по разделам кабинета и своим сметам (Ctrl+K)';
+            sb.innerHTML = '<svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Поиск</span><kbd>Ctrl K</kbd>';
+            sb.addEventListener('click', () => this.openCabinetSearch());
+            lkHost.appendChild(sb);
+        }
+        if (!this._lkSearchKeyBound) {
+            this._lkSearchKeyBound = true;
+            document.addEventListener('keydown', e => {
+                if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 'k'
+                    && this.isOverlayOpen('profile_modal_overlay') && !this.isOverlayOpen('admin_modal_overlay')) {
+                    e.preventDefault();
+                    this.openCabinetSearch();
+                }
+            });
+        }
+
+        if (nav && !nav.querySelector('.lk-nav-item')) {
+            let h = '<button type="button" class="lk-nav-search" onclick="app.openCabinetSearch()" title="Поиск по разделам и сметам (Ctrl+K)"><svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Поиск</span><kbd>Ctrl K</kbd></button>';
+            this.CABINET_MENU.forEach(it => {
+                if (it.only === 'rail') return;
+                if (it.cap) h += `<div class="lk-nav-cap">${esc(it.cap)}</div>`;
+                if (it.kind === 'logout') h += '<div class="lk-nav-spacer"></div>';
+                const label = `<span class="lk-nav-label">${esc(it.nav)}</span><span class="lk-nav-short">${esc(it.short)}</span>`;
+                const title = esc(it.navTitle || it.title);
+                const hide = it.hide ? ' style="display:none;"' : '';
+                if (it.link) {
+                    h += `<a class="lk-nav-item lk-nav-rating" href="${it.link}" target="_blank" rel="noopener" title="${title}">${svg(it, 18)}${label}</a>`;
+                } else if (it.kind === 'logout') {
+                    h += `<button type="button" class="lk-nav-item lk-nav-logout" title="${title}" onclick="app.logout()">${svg(it, 18)}${label}</button>`;
+                } else if (it.kind === 'tab') {
+                    h += `<button type="button" class="lk-nav-item${it.id === 'requisites' ? ' active' : ''}" data-tab="${it.id}"${hide} title="${title}" onclick="app.setProfileTab('${it.id}')">${svg(it, 18)}${label}</button>`;
+                } else {
+                    h += `<button type="button" class="lk-nav-item" data-rail="${it.id}"${it.id === 'admin' ? ' id="lk_nav_admin"' : ''}${hide} title="${title}" onclick="app.railGo('${it.id}')">${svg(it, 18)}${label}</button>`;
+                }
+            });
+            nav.insertAdjacentHTML('beforeend', h);
+        }
+    },
+
+    // Телефон: назад к меню разделов (полоса «‹ Разделы» над открытым разделом)
+    openCabinetMenu: function () {
+        const nav = document.getElementById('profile_nav');
+        if (nav && nav.parentElement) nav.parentElement.classList.add('lk-menu-open');
+        const pane = document.querySelector('#profile_modal_overlay .auth-modal-content');
+        if (pane) pane.scrollTop = 0;
+    },
+
+    // ── «Главная» кабинета: что требует внимания ─────────────────────────────
+    // Тот же приём, что у «Центра внимания» в панели управления: не отчёт, а список дел
+    // на сегодня. Данные — свои сметы и журнал заказов; ничего нового в базу не пишем.
+    renderCabinetHome: async function () {
+        const box = document.getElementById('profile_tab_home');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const head = '<div class="ad-page-h"><div><h3>Главная</h3><div class="ad-sub">Что требует вашего внимания сегодня</div></div>'
+            + '<button type="button" class="lk-btn-sm" onclick="app.renderCabinetHome()" title="Обновить">↻</button></div>';
+        box.innerHTML = head + '<div class="lk-empty">Собираем дела…</div>';
+        const tok = this._cabHomeTok = (this._cabHomeTok || 0) + 1;
+
+        let ests = [], evs = {}, failed = false;
+        try {
+            const me = await this.resolveCurrentUserForChat();
+            if (me && me.id) {
+                const { data, error } = await supabaseClient.from('estimates')
+                    .select('id, project_name, total_sum, created_at, calc_id:calc_data->>calc_id')
+                    .eq('user_id', me.id).order('created_at', { ascending: false }).limit(50);
+                if (error) throw error;
+                ests = data || [];
+                const ids = ests.map(e => e.calc_id).filter(Boolean).map(String);
+                if (ids.length) {
+                    const r = await supabaseClient.from('invoice_events').select('calc_id, event, meta, created_at')
+                        .in('calc_id', ids).in('event', this.ORDER_EVENT_KEYS)
+                        .order('created_at', { ascending: false }).limit(500);
+                    (r.data || []).forEach(ev => { const k = String(ev.calc_id || ''); if (k && !evs[k]) evs[k] = ev; });
+                }
+            }
+        } catch (e) {
+            console.warn('[кабинет] главная не собралась:', e);
+            failed = true;
+        }
+        if (tok !== this._cabHomeTok || !document.getElementById('profile_tab_home')) return;
+
+        const fmtDay = d => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+        const money = n => Number(n || 0).toLocaleString('ru-RU') + ' ₽';
+        const open = id => `app.loadSingleEstimate('${esc(id)}')`;
+        const ASK = ['invoice_requested', 'needs_revision', 'refresh_requested'];
+        const waiting = ests.filter(e => e.calc_id && evs[String(e.calc_id)] && ASK.indexOf(evs[String(e.calc_id)].event) >= 0);
+        const DAY = 86400000;
+        const idle = ests.filter(e => !(e.calc_id && evs[String(e.calc_id)]) && Date.now() - new Date(e.created_at).getTime() > 2 * DAY && Date.now() - new Date(e.created_at).getTime() < 30 * DAY);
+        const mainBadge = document.getElementById('notification_badge');
+        const unread = (mainBadge && mainBadge.style.display !== 'none') ? (parseInt(mainBadge.innerText, 10) || 0) : 0;
+        const co = document.getElementById('profile_company_name');
+        const noCompany = !!co && !co.value.trim();
+
+        const row = (e, right) => `<div class="ad-row ad-row-link" onclick="${open(e.id)}" title="Открыть смету"><div class="ad-row-main"><b>${esc(e.project_name || 'Без названия')}</b><span>${right}</span></div><div class="ad-row-r">${money(e.total_sum)}</div></div>`;
+        const card = (title, n, body, bad) => `<div class="ad-card"><div class="ad-card-h"><span class="ad-card-title">${title}</span><span class="ad-count${n ? (bad ? ' ad-count-bad' : ' ad-count-on') : ''}">${n}</span></div><div class="ad-card-b">${body}</div></div>`;
+        const act = (txt, js) => `<button type="button" class="lk-btn-sm ad-card-act" onclick="${js}">${txt}</button>`;
+
+        const cards = [];
+        cards.push(card('Ждут вашего ответа', waiting.length,
+            waiting.length ? waiting.slice(0, 5).map(e => { const ev = evs[String(e.calc_id)]; return row(e, esc(this.kanbanEventView(ev.event, ev.meta).label) + ' · ' + fmtDay(ev.created_at)); }).join('')
+                : '<div class="ad-card-note ad-ok">Клиенты ничего не ждут</div>', true));
+        cards.push(card('Не отправлены клиенту', idle.length,
+            idle.length ? idle.slice(0, 5).map(e => row(e, 'сохранена ' + fmtDay(e.created_at))).join('')
+                : '<div class="ad-card-note ad-ok">Все свежие сметы отправлены</div>'));
+        cards.push(card('Сообщения', unread,
+            unread ? `<div class="ad-card-note">Непрочитанных: ${unread}</div>` + act('Открыть', "app.railGo('messages')")
+                : '<div class="ad-card-note ad-ok">Новых сообщений нет</div>', true));
+        if (noCompany) {
+            cards.push(card('Реквизиты компании', 1, '<div class="ad-card-note ad-warn">Название компании не заполнено — оно попадает в шапку КП и счёта.</div>' + act('Заполнить', "app.setProfileTab('company')")));
+        }
+        const tariffEl = document.getElementById('profile_nav_tariff');
+        const tariff = tariffEl ? tariffEl.innerText : '';
+        box.innerHTML = head
+            + (failed ? '<div class="ad-card-note ad-warn" style="margin-bottom:12px;">Часть данных не загрузилась — список может быть неполным.</div>' : '')
+            + `<div class="ad-cards">${cards.join('')}</div>`
+            + (tariff ? `<div class="ad-kv"><span>Тариф</span><b>${esc(tariff)}</b></div>` : '')
+            + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
+            + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`;
+        // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
+        this._cabEstimates = ests;
+    },
+
+    // ── Поиск по кабинету (Ctrl+K): разделы и свои сметы ─────────────────────
+    openCabinetSearch: async function () {
+        // С панели слева кабинет может быть закрыт: поиск живёт внутри него, открываем «Главную»
+        if (!this.isOverlayOpen('profile_modal_overlay')) {
+            this.railGo('home');
+            await new Promise(r => setTimeout(r, 350));
+            if (!this.isOverlayOpen('profile_modal_overlay')) return;
+        }
+        const host = document.querySelector('#profile_modal_overlay .auth-modal-content');
+        if (!host) return;
+        if (document.getElementById('lk_search')) { const i = document.getElementById('lk_search_input'); if (i) i.focus(); return; }
+        const el = document.createElement('div');
+        el.id = 'lk_search';
+        el.innerHTML = `<div class="ad-search-box" role="dialog" aria-label="Поиск по кабинету">
+                <input id="lk_search_input" type="text" autocomplete="off" placeholder="Название раздела, сметы или номер КП…">
+                <div id="lk_search_res" class="ad-search-res"></div>
+                <div class="ad-search-foot"><span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span><span><kbd>Enter</kbd> открыть</span><span><kbd>Esc</kbd> закрыть</span></div>
+            </div>`;
+        el.addEventListener('mousedown', e => { if (e.target === el) this.closeCabinetSearch(); });
+        host.appendChild(el);
+        this._lkSearch = { items: [], sel: 0 };
+        const inp = document.getElementById('lk_search_input');
+        inp.addEventListener('input', () => this.cabinetSearchRun(inp.value));
+        inp.addEventListener('keydown', e => {
+            const s = this._lkSearch, n = s.items.length;
+            if (e.key === 'ArrowDown') { e.preventDefault(); s.sel = Math.min(n - 1, s.sel + 1); this.cabinetSearchRender(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); s.sel = Math.max(0, s.sel - 1); this.cabinetSearchRender(); }
+            else if (e.key === 'Enter') { e.preventDefault(); this.cabinetSearchOpen(s.sel); }
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.closeCabinetSearch(); }
+        });
+        inp.focus();
+        this.cabinetSearchRun('');
+        // Свои сметы — одним коротким запросом за открытие кабинета (если «Главная» их не принесла)
+        if (!this._cabEstimates && !this._cabEstTried) {
+            this._cabEstTried = true;
+            try {
+                const me = await this.resolveCurrentUserForChat();
+                if (me && me.id) {
+                    const { data } = await supabaseClient.from('estimates')
+                        .select('id, project_name, total_sum, created_at, calc_id:calc_data->>calc_id')
+                        .eq('user_id', me.id).order('created_at', { ascending: false }).limit(50);
+                    this._cabEstimates = data || [];
+                    if (document.getElementById('lk_search')) this.cabinetSearchRun(document.getElementById('lk_search_input').value);
+                }
+            } catch (e) { /* без смет поиск по разделам работает */ }
+        }
+    },
+
+    closeCabinetSearch: function () {
+        const el = document.getElementById('lk_search');
+        if (el) el.remove();
+    },
+
+    cabinetSearchRun: function (raw) {
+        const s = this._lkSearch;
+        if (!s) return;
+        const norm = x => String(x == null ? '' : x).toLowerCase().replace(/ё/g, 'е');
+        const tokens = norm(raw).trim().split(/\s+/).filter(Boolean);
+        const hit = hay => { const h = norm(hay); return tokens.every(t => h.indexOf(t) >= 0); };
+        const items = [];
+        const nav = document.getElementById('profile_nav');
+        this.CABINET_MENU.forEach(it => {
+            // Скрытые пункты (монтажники, админка) в поиск не попадают
+            const btn = nav && nav.querySelector(`.lk-nav-item[data-tab="${it.id}"], .lk-nav-item[data-rail="${it.id}"]`);
+            if (btn && btn.style.display === 'none') return;
+            const subs = it.kind === 'tab' ? this.cabinetVisibleSubtabs(it.id) : [];
+            if (subs.length > 1) {
+                // Разделы внутри пункта ищем по названию раздела; подпись — в каком пункте он лежит
+                subs.forEach(sb => {
+                    if (tokens.length && !hit(sb.label + ' ' + it.nav)) return;
+                    items.push({ kind: 'section', title: sb.label, sub: it.nav, act: () => this.setProfileTab(sb.id) });
+                });
+            } else {
+                if (tokens.length && !hit(it.nav + ' ' + it.title)) return;
+                items.push({ kind: 'section', title: it.nav, sub: it.title, act: () => (it.kind === 'tab' ? this.setProfileTab(it.id) : this.railGo(it.id)) });
+            }
+        });
+        if (tokens.length) {
+            (this._cabEstimates || []).filter(e => hit([e.project_name, e.calc_id].join(' '))).slice(0, 8).forEach(e =>
+                items.push({ kind: 'estimate', title: e.project_name || 'Без названия', sub: (e.calc_id ? 'КП № ' + e.calc_id + ' · ' : '') + Number(e.total_sum || 0).toLocaleString('ru-RU') + ' ₽', act: () => this.loadSingleEstimate(e.id) }));
+        }
+        s.items = items;
+        s.sel = Math.min(s.sel, Math.max(0, items.length - 1));
+        this.cabinetSearchRender();
+    },
+
+    cabinetSearchRender: function () {
+        const s = this._lkSearch, box = document.getElementById('lk_search_res');
+        if (!s || !box) return;
+        const esc = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        if (!s.items.length) { box.innerHTML = '<div class="ad-card-note" style="padding:14px 16px;">Ничего не найдено</div>'; return; }
+        const LABEL = { section: 'Разделы', estimate: 'Сметы' };
+        let last = '', h = '';
+        s.items.forEach((it, i) => {
+            if (it.kind !== last) { h += `<div class="ad-search-grp">${LABEL[it.kind]}</div>`; last = it.kind; }
+            h += `<div class="ad-search-it${i === s.sel ? ' sel' : ''}" onmousemove="app.cabinetSearchHover(${i})" onmousedown="event.preventDefault()" onclick="app.cabinetSearchOpen(${i})"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></div>`;
+        });
+        box.innerHTML = h;
+        const cur = box.querySelector('.ad-search-it.sel');
+        if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+    },
+
+    // Наведение мыши только подсвечивает строку: перерисовка списка под курсором съедала клик
+    cabinetSearchHover: function (i) {
+        const s = this._lkSearch, box = document.getElementById('lk_search_res');
+        if (!s || !box || s.sel === i) return;
+        s.sel = i;
+        box.querySelectorAll('.ad-search-it').forEach((el, k) => el.classList.toggle('sel', k === i));
+    },
+
+    cabinetSearchOpen: function (i) {
+        const it = this._lkSearch && this._lkSearch.items[i];
+        if (!it) return;
+        this.closeCabinetSearch();
+        it.act();
     },
 
     railGo: function (section) {
@@ -15419,7 +15791,8 @@ const app = {
         const keys = groups.map(g => g.dataset.group);
         // Порядок из разметки запоминаем при первом заходе: к нему надо вернуться,
         // когда своей раскладки нет (вышли из аккаунта, зашли под другим)
-        if (!this._railDefaultGroupOrder) this._railDefaultGroupOrder = keys.slice();
+        // Умолчание: «Расчёт и сообщения» → «Работа» (objects) → «Настройки» (account) → служебное
+        if (!this._railDefaultGroupOrder) this._railDefaultGroupOrder = ['calc', 'objects', 'account', 'service'].filter(k => keys.includes(k)).concat(keys.filter(k => !['calc', 'objects', 'account', 'service'].includes(k)));
 
         const layout = this.railLayout().groups;
         const saved = (Array.isArray(layout) && layout.length) ? layout : this._railDefaultGroupOrder;
@@ -15758,17 +16131,12 @@ const app = {
         // «Прайс» — свои расценки на монтаж. Продавцу про монтаж не показываем
         // ничего (по решению владельца 10.09.2026): ни пункт в колонке кабинета,
         // ни его двойник в меню разделов. С 15.09.2026 решает столбец «Монтаж» таблицы «Тарифы».
+        // С 03.10.2026 «Прайс монтажа» и «Документы» (договор подряда, акты — тоже про монтаж,
+        // решение 26.09.2026) — вкладки внутри пунктов «Прайс и оборудование» и «Объекты»:
+        // прячет их cabinetVisibleSubtabs по тому же признаку canUseWorks, сами пункты остаются.
         const sellerNoWorks = !this.canUseWorks();
-        const navWorkPrices = document.querySelector('#profile_nav .lk-nav-item[data-tab="workprices"]');
-        const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
-        if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
-        if (railWorkPrices) railWorkPrices.style.display = sellerNoWorks ? 'none' : '';
-        // «Документы» — договор подряда, акты, гарантия на монтаж. Без монтажа они
-        // ни к чему (решение владельца 26.09.2026): прячем по тому же признаку.
-        const navOrders = document.querySelector('#profile_nav .lk-nav-item[data-tab="orders"]');
-        const railOrders = rail.querySelector('.lk-rail-item[data-rail="orders"]');
-        if (navOrders) navOrders.style.display = sellerNoWorks ? 'none' : '';
-        if (railOrders) railOrders.style.display = sellerNoWorks ? 'none' : '';
+        const lkBar = document.getElementById('lk_subtabs');
+        if (lkBar && this._activeProfileTab && this.isOverlayOpen('profile_modal_overlay')) this.renderCabinetSubtabs(this._activeProfileTab);
 
         // Число непрочитанных берём готовым из бейджа конверта в шапке: считает его
         // loadNotifications, второй раз считать незачем
@@ -22794,7 +23162,12 @@ const app = {
         const th = 'padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); background:var(--surface-light); border-bottom:1px solid var(--border); white-space:nowrap;';
         const td = 'padding:8px 10px; border-bottom:1px solid var(--border); font-size:12px; vertical-align:top;';
 
-        const rows = shown.map(i => {
+        // 170+ строк разом — это экран в 36 000 px на телефоне: показываем порциями,
+        // при смене фильтра порция сбрасывается
+        const limKey = f.cluster + '|' + f.status + '|' + f.q;
+        if (this._articlesLimKey !== limKey) { this._articlesLimKey = limKey; this._articlesLimit = 40; }
+        const lim = this._articlesLimit || 40;
+        const rows = shown.slice(0, lim).map(i => {
             const st = this.articleStatusMeta[i.status] || this.articleStatusMeta.planned;
             const readUrl = i.status === 'published' ? '/' + i.slug + '/'
                 : (i.status === 'queued' ? '/queue/' + i.slug + '/' : '');
@@ -22859,7 +23232,8 @@ const app = {
                     ${rows || `<tr><td colspan="5"style="${td} text-align:center; color:var(--text-sec); padding:24px;">Ничего не нашлось</td></tr>`}
                 </table>
             </div>
-            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${shown.length} из ${items.length}.${this._articleLeadsFailed ? ' Заявки не загрузились — журнал виден только владельцам.' : ''}</div>
+            ${shown.length > lim ? `<button class="auth-btn-base" style="margin:12px 0 0; width:100%; height:36px; font-size:12px;" onclick="app._articlesLimit = ${lim + 40}; app.renderAdminArticles()">Показать ещё ${Math.min(40, shown.length - lim)}</button>` : ''}
+            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${Math.min(lim, shown.length)} из ${shown.length}${shown.length !== items.length ? ' (всего ' + items.length + ')' : ''}.${this._articleLeadsFailed ? ' Заявки не загрузились — журнал виден только владельцам.' : ''}</div>
         `;
 
         // Курсор в поле поиска слетает после перерисовки — возвращаем в конец строки
@@ -48350,6 +48724,8 @@ const app = {
         // localStorage и открытые сметы. По ним stateForLoadedEstimate собирает
         // состояние под каждую открываемую смету.
         if (!this._stateDefaults) this._stateDefaults = JSON.parse(JSON.stringify(this.state));
+        // Меню кабинета (панель слева и колонка в окне) строим до всего, что их читает
+        this.buildCabinetMenus();
         // Global premium modal overrides
         window.alert = (msg) => app.alert(msg);
         window.confirm = (msg) => app.confirm(msg);
