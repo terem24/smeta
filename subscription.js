@@ -270,6 +270,127 @@ const Subscription = {
             </div>`;
     },
 
+    // ═══ Лимит КП на бесплатном тарифе ═══════════════════════════════════
+    // Настройки — app_settings.subscription.limit. По умолчанию ВЫКЛЮЧЕН. Считается
+    // число разных КП (по номеру расчёта), которые мастер за календарный месяц отправил
+    // клиенту: PDF, Excel или ссылка (события printed и sent в invoice_events).
+    // Повторная отправка того же КП лимит не тратит. Блокирует только на тарифе без
+    // Профи (free и base); пробный и платный Профи, менеджеры, наблюдатели, админы
+    // и (по умолчанию) сотрудники ТЕРЕМ лимит не видят. Любой сбой при подсчёте —
+    // пропускаем: лимит не должен мешать работать.
+    LIMIT_DEFAULTS: { enabled: false, from: '', perMonth: 3, excludeTerem: true },
+
+    limitSettings: function () {
+        const t = Object.assign({}, this.LIMIT_DEFAULTS, this.raw().limit || {});
+        t.perMonth = Math.min(100, Math.max(1, Math.round(this.num(t.perMonth)) || 3));
+        return t;
+    },
+
+    limitStatus: function () {
+        const t = this.limitSettings(), d = this.localDay();
+        if (!t.enabled) return { on: false, label: 'выключен', color: '#64748B' };
+        if (t.from && d < t.from) return { on: false, label: 'начнётся ' + this.fmtDate(t.from), color: '#2563EB' };
+        return { on: true, label: t.from ? 'действует с ' + this.fmtDate(t.from) : 'действует', color: '#10B981' };
+    },
+
+    setLimitField: function (field, value) {
+        if (['enabled', 'from', 'perMonth', 'excludeTerem'].indexOf(field) < 0) return;
+        if (field === 'enabled' || field === 'excludeTerem') value = !!value;
+        else if (field === 'perMonth') value = Math.min(100, Math.max(1, Math.round(this.num(value)) || 3));
+        else value = /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) ? String(value) : '';
+        this.apply(v => { v.limit = Object.assign({}, v.limit || {}, { [field]: value }); return v; });
+        this.render();
+    },
+
+    // Касается ли лимит этого человека (без подсчёта отправленных КП)
+    limitApplies: function () {
+        if (!this.limitStatus().on) return false;
+        const tg = (app.state && app.state.tgUser) || {};
+        const acc = tg.account_type || app.state.accountType || 'base';
+        if (acc !== 'free' && acc !== 'base') return false;
+        if (app.isPro()) return false;
+        if (this.limitSettings().excludeTerem && app.isTeremStaff()) return false;
+        return true;
+    },
+
+    // Спрос по журналу событий: сколько бесплатных мастеров сколько КП отправили в
+    // прошлом и текущем месяце. Читает админ, invoice_events и users ему доступны.
+    loadLimitDemand: async function () {
+        this._demand = { loading: true };
+        this.render();
+        try {
+            const now = new Date();
+            const prevStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const { data: ev, error } = await supabaseClient.from('invoice_events')
+                .select('user_id, calc_id, created_at').in('event', ['printed', 'sent'])
+                .gte('created_at', prevStart.toISOString()).limit(5000);
+            if (error) throw error;
+            const { data: us, error: e2 } = await supabaseClient.from('users')
+                .select('id, account_type, email, work_email').in('account_type', ['free', 'base']).limit(2000);
+            if (e2) throw e2;
+            const excl = this.limitSettings().excludeTerem;
+            const isTerem = u => /@([a-z0-9-]+\.)*teremopt\.ru$/i.test(String(u.email || '')) || /@([a-z0-9-]+\.)*teremopt\.ru$/i.test(String(u.work_email || ''));
+            const pool = (us || []).filter(u => !(excl && isTerem(u)));
+            const ids = new Set(pool.map(u => String(u.id)));
+            const key = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+            const months = {};
+            [prevStart, now].forEach(d => { months[key(d)] = {}; });
+            (ev || []).forEach(r => {
+                if (!ids.has(String(r.user_id))) return;
+                const m = key(new Date(r.created_at));
+                if (!months[m]) return;
+                (months[m][r.user_id] = months[m][r.user_id] || new Set()).add(r.calc_id);
+            });
+            const out = {};
+            Object.keys(months).forEach(m => {
+                out[m] = Object.keys(months[m]).map(uid => months[m][uid].size);
+            });
+            this._demand = { total: pool.length, months: out };
+        } catch (e) {
+            console.warn('[лимит КП] спрос не посчитан:', e);
+            this._demand = { error: String((e && e.message) || e).slice(0, 160) };
+        }
+        this.render();
+    },
+
+    viewLimit: function (canEdit) {
+        const t = this.limitSettings(), st = this.limitStatus(), dis = !canEdit, u = this.ui;
+        if (!this._demand) this.loadLimitDemand();
+        const row = (title, hint, control) => `<div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--border);">
+                <div style="min-width:0;"><div style="font-size:13px; font-weight:600; color:var(--text-main);">${title}</div><div style="font-size:12px; color:var(--text-sec); margin-top:2px; line-height:1.45;">${hint}</div></div>
+                <div style="flex:0 0 auto;">${control}</div></div>`;
+        const D = this._demand || {};
+        let demand;
+        if (D.loading || !this._demand) demand = '<div style="font-size:12.5px; color:var(--text-sec);">Считаем по журналу событий…</div>';
+        else if (D.error) demand = `<div style="font-size:12.5px; color:#EF4444;">Не посчиталось: ${this.esc(D.error)}</div>`;
+        else {
+            const names = { '01': 'январь', '02': 'февраль', '03': 'март', '04': 'апрель', '05': 'май', '06': 'июнь', '07': 'июль', '08': 'август', '09': 'сентябрь', '10': 'октябрь', '11': 'ноябрь', '12': 'декабрь' };
+            const keys = Object.keys(D.months).sort();
+            demand = keys.map(k => {
+                const arr = D.months[k];
+                const bucket = (a, b) => arr.filter(n => n >= a && n <= b).length;
+                const hit = arr.filter(n => n > t.perMonth).length;
+                const cell = (l, n) => `<td style="${u.td} text-align:center;"><div style="font-size:11px; color:var(--text-sec);">${l}</div><b>${n}</b></td>`;
+                return `<div style="margin-bottom:12px;"><div style="font-size:13px; font-weight:600; color:var(--text-main); margin-bottom:6px;">${names[k.slice(5)]} ${k.slice(0, 4)}: отправили КП ${arr.length} из ${D.total} бесплатных мастеров</div>
+                    <table style="border-collapse:collapse;"><tr>${cell('1', bucket(1, 1))}${cell('2', bucket(2, 2))}${cell('3', bucket(3, 3))}${cell('4–5', bucket(4, 5))}${cell('6+', bucket(6, 999))}</tr></table>
+                    <div style="font-size:12px; color:var(--text-sec); margin-top:4px;">Лимит «${t.perMonth} в месяц» затронул бы: ${hit} ${hit === 1 ? 'человека' : 'человек'} (отправили больше ${t.perMonth}).</div></div>`;
+            }).join('');
+        }
+        return `<p style="${u.hint}">Бесплатный тариф: сколько разных КП в месяц мастер может отправить клиентам (PDF, Excel или ссылкой). Дальше предлагается Профи. Повторная отправка того же КП лимит не тратит. Пробный и платный Профи, менеджеры, наблюдатели и админы лимита не видят. Сбой подсчёта лимит не включает: человека пропускаем.</p>
+            <div style="${u.card} max-width:760px;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><b style="font-size:14px; color:var(--text-main);">Сейчас:</b> ${this.chip(st.label, st.color)}</div>
+                ${row('Включить лимит', 'Выключено — отправлять КП можно без ограничений, как и раньше.', this.toggleHtml(!!t.enabled, `Subscription.setLimitField('enabled', ${!t.enabled})`, dis))}
+                ${row('Бесплатных КП в месяц', 'Календарный месяц, считаются разные КП. От 1 до 100.', `<input type="number" min="1" max="100" value="${t.perMonth}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('perMonth', this.value)" style="${u.input} width:80px;">`)}
+                ${row('Действует с даты', 'С этого дня (включительно). Пусто — сразу, как только включён.', `<input type="date" value="${this.esc(t.from)}" ${dis ? 'disabled' : ''} onchange="Subscription.setLimitField('from', this.value)" style="${u.input} width:150px;">`)}
+                ${row('Не применять к сотрудникам ТЕРЕМ', 'Почта @teremopt.ru или привязка к компании «ТЕРЕМ».', this.toggleHtml(!!t.excludeTerem, `Subscription.setLimitField('excludeTerem', ${!t.excludeTerem})`, dis))}
+            </div>
+            <div style="${u.card} max-width:760px; margin-top:14px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;"><b style="font-size:14px; color:var(--text-main);">Сколько КП отправляют бесплатные мастера</b>
+                <button type="button" class="admin-btn" onclick="Subscription._demand=null; Subscription.render()">Пересчитать</button></div>
+                ${demand}
+            </div>`;
+    },
+
     // ═══ Окно тарифа: карточки и текст преимуществ ═══════════════════════
 
     // Функции, которые Профи добавляет этой учётке сверх Базового — по таблице «Тарифы»
@@ -720,7 +841,8 @@ const Subscription = {
         { id: 'payments', icon: '📒', label: 'Заявки и оплаты' },
         { id: 'preview', icon: '👁', label: 'Как выглядит' },
         { id: 'benefits', icon: '⭐', label: 'Преимущества Профи' },
-        { id: 'trial', icon: '🎁', label: 'Пробный период' }
+        { id: 'trial', icon: '🎁', label: 'Пробный период' },
+        { id: 'limit', icon: '🚦', label: 'Лимит КП' }
     ],
 
     setView: function (v) {
@@ -776,6 +898,7 @@ const Subscription = {
         else if (this._view === 'preview') body = this.viewPreview();
         else if (this._view === 'benefits') body = this.viewBenefits(canEdit);
         else if (this._view === 'trial') body = this.viewTrial(canEdit);
+        else if (this._view === 'limit') body = this.viewLimit(canEdit);
         box.innerHTML = `
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:12px;">
                 <h3 style="margin:0; color:var(--text-main);">💳 Оплата подписки</h3>
