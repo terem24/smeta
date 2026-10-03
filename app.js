@@ -12883,37 +12883,41 @@ const app = {
         return lines.join('\n');
     },
 
-    // Окно «сообщение для клиента»: текст целиком и отдельно голая ссылка
+    // Окно «сообщение для клиента»: текст целиком и отдельно голая ссылка.
+    // Оформление — как у окон «Печать сметы» и «Создание ссылки»: иконка и заголовок
+    // капсом, одна главная кнопка, две второстепенные под ней.
     showClientShareMessage: function (title, intro, msg, url) {
         this._shareMsg = { msg: msg, url: url };
         const esc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-
-        // На телефоне окно не помещалось на экран: два пояснения подряд, поле на пять строк
-        // и три кнопки разной ширины в одном ряду. Смысл окна — одно действие («скопировать
-        // сообщение»), остальное второстепенно: на мобильном убираем подписи, поле делаем
-        // ниже, а под главной кнопкой оставляем ровную пару второстепенных.
-        if (this.isMobileLayout()) {
-            this.showPlainModal(title, `
-            <textarea readonly rows="4" onclick="this.select()"
-                style="width:100%; box-sizing:border-box; font:inherit; font-size:12.5px; line-height:1.4; padding:10px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); resize:none;">${esc(msg)}</textarea>
-            <button type="button" class="custom-modal-btn" style="width:100%; height:46px; margin-top:12px;" onclick="app.copyShareMsg('msg')">📋 Скопировать сообщение</button>
-            <div style="display:flex; gap:8px; margin-top:8px;">
-                <button type="button" class="custom-modal-btn" style="flex:1; width:auto; height:42px; margin:0; background:transparent; color:var(--primary); border:1px solid var(--primary);" onclick="app.copyShareMsg('url')">🔗 Ссылка</button>
-                <button type="button" class="custom-modal-btn" style="flex:1; width:auto; height:42px; margin:0; background:transparent; color:var(--text-main); border:1px solid var(--border);" onclick="window.open(app._shareMsg.url, '_blank')">Открыть</button>
-            </div>`);
-            return;
-        }
-
-        this.showPlainModal(title, `
-            ${intro || ''}
-            <div style="font-size:12px; color:var(--text-sec); margin-bottom:6px;">Сообщение для клиента — вставьте в мессенджер или письмо:</div>
-            <textarea readonly rows="5" onclick="this.select()"
-                style="width:100%; box-sizing:border-box; font:inherit; font-size:13px; line-height:1.45; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--bg); color:var(--text-main); resize:vertical;">${esc(msg)}</textarea>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
-                <button type="button" class="custom-modal-btn" style="flex:1 1 180px; width:auto;" onclick="app.copyShareMsg('msg')">📋 Скопировать сообщение</button>
-                <button type="button" class="custom-modal-btn" style="flex:1 1 140px; width:auto; background:transparent; color:var(--primary); border:1px solid var(--primary);" onclick="app.copyShareMsg('url')">🔗 Только ссылку</button>
-                <button type="button" class="custom-modal-btn" style="flex:1 1 100px; width:auto; background:transparent; color:var(--text-main); border:1px solid var(--border);" onclick="window.open(app._shareMsg.url, '_blank')">Открыть</button>
-            </div>`);
+        const old = document.getElementById('plain_modal_overlay');
+        if (old) old.remove();
+        const mob = this.isMobileLayout();
+        const cleanTitle = String(title || '').replace(/^[^A-Za-zА-Яа-яЁё0-9]+/, '');
+        const wrap = document.createElement('div');
+        wrap.id = 'plain_modal_overlay';
+        wrap.className = 'auth-modal-overlay';
+        wrap.onclick = (e) => { if (e.target === wrap) app.closePlainModal(); };
+        wrap.innerHTML = `
+            <div class="auth-modal-content" style="max-width:420px; text-align:left; padding:18px 20px; position:relative;">
+                <span class="auth-modal-close" onclick="app.closePlainModal()" style="top:12px; right:16px;">&times;</span>
+                <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+                    <div style="color:var(--primary); display:flex; align-items:center;">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    </div>
+                    <h3 class="auth-modal-title" style="margin:0; text-align:left; font-size:18px; font-weight:800;">${esc(cleanTitle)}</h3>
+                </div>
+                <div style="font-size:12px; color:var(--text-sec); line-height:1.4; margin-bottom:12px;">${mob ? 'Сообщение с номером КП — отправьте его клиенту.' : (intro || '')}</div>
+                <textarea readonly rows="${mob ? 7 : 5}" onclick="this.select()"
+                    style="width:100%; box-sizing:border-box; font:inherit; font-size:${mob ? 12.5 : 13}px; line-height:1.45; padding:10px 12px; border-radius:10px; border:1.5px solid var(--border); background:var(--surface-light, var(--bg)); color:var(--text-main); resize:none;">${esc(msg)}</textarea>
+                <button type="button" class="auth-btn-base btn-email-submit" style="width:100%; height:42px; margin-top:12px; font-weight:700; font-size:14px;" onclick="app.copyShareMsg('msg')">Скопировать сообщение</button>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;">
+                    <button type="button" class="share-option-card" style="margin:0; justify-content:center; padding:9px 12px; font-weight:700; font-size:13px; color:var(--text-main);" onclick="app.copyShareMsg('url')">Только ссылку</button>
+                    <button type="button" class="share-option-card" style="margin:0; justify-content:center; padding:9px 12px; font-weight:700; font-size:13px; color:var(--text-main);" onclick="window.open(app._shareMsg.url, '_blank')">Открыть</button>
+                </div>
+            </div>`;
+        document.body.appendChild(wrap);
+        wrap.style.display = 'flex';
+        this.syncModalOverlayClass();
     },
 
     copyShareMsg: function (what) {
