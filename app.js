@@ -12917,6 +12917,9 @@ const app = {
             </div>`;
         document.body.appendChild(wrap);
         wrap.style.display = 'flex';
+        // Поле по высоте текста: сообщение видно целиком, прокрутки внутри нет
+        const ta = wrap.querySelector('textarea');
+        if (ta) ta.style.height = ta.scrollHeight + 4 + 'px';
         this.syncModalOverlayClass();
     },
 
