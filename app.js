@@ -15797,7 +15797,7 @@ const app = {
     // Прайс монтажа / Своё оборудование. Содержимое всех разделов, кроме реквизитов,
     // строится лениво при первом открытии раздела.
     setProfileTab: function (tab) {
-        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'settings', 'theme', 'kp', 'notify', 'login'];
+        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'leads', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment', 'settings', 'theme', 'kp', 'notify', 'login'];
         if (!tabs.includes(tab)) tab = 'requisites';
         tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
@@ -15857,6 +15857,8 @@ const app = {
             this.loadFromCloudList();
         } else if (tab === 'summary') {
             this.renderInstallerSummaryTab();
+        } else if (tab === 'leads') {
+            this.renderLeadBoard();
         } else if (tab === 'orders') {
             this.renderOrdersTab();
         } else if (tab === 'oprosniki') {
@@ -15947,7 +15949,7 @@ const app = {
     // за ними одиннадцать. Ключи разделов (profile_tab_<id>, data-tab, push open:"orders")
     // не менялись — меняется только то, как они сгруппированы на экране.
     CABINET_SUBTABS: {
-        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }],
+        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }, { id: 'leads', label: 'Заявки' }],
         objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
         requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
         workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }],
@@ -15968,7 +15970,8 @@ const app = {
     cabinetVisibleSubtabs: function (parent) {
         const subs = this.CABINET_SUBTABS[parent] || [];
         const noWorks = !this.canUseWorks();
-        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')));
+        const noLeads = !this.leadBoardVisible();
+        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')) && !(noLeads && s.id === 'leads'));
     },
 
     // Раздел, скрытый от этого человека, заменяем первым доступным в том же пункте
@@ -24084,6 +24087,15 @@ const app = {
                 .select('lead_id, installer_id, installer_name, status, updated_at');
             (data || []).forEach(a => { this._leadAssign[a.lead_id] = a; });
         } catch (e) { console.warn('[заявки] отметки не прочитаны:', e); }
+        // Что из заявок уже предложено Профи-мастерам (lead_board). Нет таблицы —
+        // миграция не выполнена: кнопки публикации тогда покажут подсказку.
+        this._leadBoard = {};
+        this._leadBoardMissing = false;
+        try {
+            const { data, error } = await supabaseClient.from('lead_board').select('lead_id, status, taken_by, taken_at');
+            if (error) throw error;
+            (data || []).forEach(b => { this._leadBoard[b.lead_id] = b; });
+        } catch (e) { this._leadBoardMissing = true; console.warn('[заявки] лента не прочитана:', e); }
         // Кому передавать: зарегистрированные в Петербурге и области. Пилот идёт
         // только там, остальные регионы пока без мастеров.
         try {
@@ -24126,6 +24138,205 @@ const app = {
         } catch (e) {
             console.warn('[заявки] отметка не сохранилась:', e);
             if (el) { el.style.borderColor = '#DC2626'; el.title = 'Не сохранилось — попробуйте ещё раз'; }
+        }
+    },
+
+    // ═══ Заявки на монтаж для мастеров на Профи ════════════════════════════
+    // Витрина свободных заявок (lead_board) и «мои заявки» (lead_mine). Контакты
+    // заказчика открывает только функция базы lead_take, и только тому, кто успел
+    // взять: по согласию заказчика данные получает ОДИН мастер. Пилот — Санкт-
+    // Петербург и область. Схема и правила доступа — supabase/migrations/
+    // 20261003_lead_board.sql; пока миграция не выполнена, раздел скрыт.
+    LEAD_BOARD_REGIONS: ['Санкт-Петербург', 'Ленинградская область'],
+
+    leadBoardVisible: function () {
+        try {
+            if (this._leadBoardBroken) return false;
+            const tg = this.state.tgUser;
+            if (!tg || !(tg.id || tg.authUserId)) return false;
+            if (this.hasAdminAccess()) return true;
+            return (tg.activityTypes || []).includes('Монтажник') && this.LEAD_BOARD_REGIONS.includes(tg.region || '');
+        } catch (e) { return false; }
+    },
+
+    leadAgo: function (iso) {
+        const t = new Date(iso).getTime();
+        if (!t) return '';
+        const m = Math.max(0, Math.round((Date.now() - t) / 60000));
+        if (m < 60) return m < 2 ? 'только что' : m + ' мин назад';
+        const h = Math.round(m / 60);
+        if (h < 24) return h + ' ч назад';
+        return Math.round(h / 24) + ' дн. назад';
+    },
+
+    LEAD_MARKS: [['sent', 'Взята'], ['contacted', 'Связался с заказчиком'], ['contract', 'Заключили договор'], ['done', 'Смонтировано'], ['rejected', 'Отказ']],
+
+    renderLeadBoard: async function () {
+        const box = document.getElementById('profile_tab_leads');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        box.innerHTML = '<div class="lk-sub" style="padding:24px 0;">Загружаем заявки…</div>';
+        let acc, open, mine;
+        try {
+            const [a, b, m] = await Promise.all([
+                supabaseClient.rpc('lead_access'),
+                supabaseClient.from('lead_board').select('lead_id, published_at, place, area, works').eq('status', 'open')
+                    .order('published_at', { ascending: false }).limit(50),
+                supabaseClient.rpc('lead_mine')
+            ]);
+            if (a.error) throw a.error;
+            if (b.error) throw b.error;
+            if (m.error) throw m.error;
+            acc = a.data || {}; open = b.data || []; mine = m.data || [];
+        } catch (e) {
+            console.warn('[заявки мастера] не загрузились:', e);
+            // Нет таблиц или функций (миграция не выполнена): раздел прячем, чтобы не пугать ошибкой
+            if (e && /does not exist|Could not find|schema cache|PGRST20|42P01|42883/i.test(String(e.message || e.code || ''))) this._leadBoardBroken = true;
+            box.innerHTML = `<div class="lk-sub" style="padding:24px 0;">Заявки сейчас недоступны. Попробуйте открыть раздел позже.${this.hasAdminAccess() ? '<br><span style="font-size:11px;">Админу: выполните supabase/migrations/20261003_lead_board.sql в SQL Editor. ' + esc(String((e && e.message) || e)).slice(0, 160) + '</span>' : ''}</div>`;
+            this.renderCabinetSubtabs('leads');
+            return;
+        }
+        this._leadAcc = acc;
+        const can = !!acc.can;
+        const why = {
+            trial: 'В пробном периоде заявки недоступны: они открываются на оплаченном тарифе Профи.',
+            not_pro: 'Заявки берут мастера на тарифе Профи. Оформите подписку — и кнопка «Взять заявку» заработает.',
+            not_installer: 'Заявки предназначены для монтажников: в анкете указана другая сфера деятельности.',
+            region: 'Сейчас заявки раздаются мастерам в Санкт-Петербурге и Ленинградской области.',
+            blocked: 'Доступ к заявкам закрыт для этого аккаунта.',
+            no_user: 'Не удалось определить ваш профиль — выйдите и зайдите заново.'
+        }[acc.reason] || '';
+        const works = w => (w || []).map(x => this.LEAD_WORK_LABELS[x] || x).join(', ');
+        const needPro = !can && (acc.reason === 'trial' || acc.reason === 'not_pro');
+        const openHtml = open.length ? open.map(r => `
+            <div style="border:1px solid var(--border); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
+                <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline;">
+                    <b style="color:var(--text-main);">${esc(r.place)}${r.area ? ', ' + esc(r.area) + ' м²' : ''}</b>
+                    <span style="font-size:11px; color:var(--text-sec);">${esc(this.leadAgo(r.published_at))}</span>
+                </div>
+                <div style="font-size:12.5px; color:var(--text-sec); margin-top:6px;">${esc(works(r.works))}</div>
+                <div style="margin-top:10px;">${can
+                    ? `<button type="button" class="lk-btn" onclick="app.takeLead('${esc(r.lead_id)}', this)">Взять заявку</button>`
+                    : (needPro ? `<button type="button" class="lk-btn" onclick="app.showModal('pro')">Оформить Профи, чтобы взять</button>` : '')}</div>
+            </div>`).join('') : '<div class="lk-sub" style="padding:8px 0 16px;">Свободных заявок сейчас нет. Новые появляются по мере поступления — загляните позже.</div>';
+        const markOpts = cur => this.LEAD_MARKS.map(([v, l]) => `<option value="${v}"${v === cur ? ' selected' : ''}${v === 'sent' ? ' disabled' : ''}>${l}</option>`).join('');
+        const mineHtml = mine.length ? mine.map(r => `
+            <div style="border:1px solid var(--border); border-left:3px solid var(--primary); border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
+                <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:baseline;">
+                    <b style="color:var(--text-main);">${esc(r.name)} · <a href="tel:${esc(String(r.phone || '').replace(/[^+\d]/g, ''))}" style="color:var(--primary); text-decoration:none;">${esc(r.phone)}</a></b>
+                    <span style="font-size:11px; color:var(--text-sec);">взята ${esc(this.leadAgo(r.taken_at))}</span>
+                </div>
+                <div style="font-size:12.5px; color:var(--text-sec); margin-top:6px; line-height:1.6;">
+                    ${esc(r.place)}${r.area ? ', ' + esc(r.area) + ' м²' : ''} · ${esc(works(r.works))}
+                    ${r.when_call ? '<br>Когда звонить: ' + esc(r.when_call) : ''}
+                    ${r.comment ? '<br>Комментарий: <span style="white-space:pre-line;">' + esc(r.comment) + '</span>' : ''}
+                </div>
+                <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px;">
+                    ${/^[A-Za-z0-9_-]{8,2000}$/.test(r.calc || '') ? `<a class="lk-btn-sm" href="/?opros=${esc(r.calc)}" target="_blank" rel="noopener" style="text-decoration:none;">Открыть в расчёте</a>` : ''}
+                    <select title="Что с заявкой" onchange="app.markLead('${esc(r.lead_id)}', this.value, this)" style="height:30px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main); font-size:12px; padding:0 8px;">${markOpts(r.mark)}</select>
+                </div>
+            </div>`).join('') : '<div class="lk-sub" style="padding:8px 0;">Вы пока не брали заявок.</div>';
+
+        box.innerHTML = `
+            <div class="lk-section-head"><div><h4>Заявки на монтаж</h4>
+                <div class="lk-sub">Заказчики оставляют заявки на сайте. Заявка уходит одному мастеру — тому, кто взял её первым. Имя и телефон открываются в момент, когда вы её берёте. Пока доступно в Санкт-Петербурге и области.</div></div>
+                <button type="button" class="lk-btn-sm" onclick="app.renderLeadBoard()">Обновить</button></div>
+            ${why ? `<div style="border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light); font-size:13px; color:var(--text-main); line-height:1.5;">${esc(why)}</div>` : ''}
+            <h5 style="margin:16px 0 10px; font-size:14px; color:var(--text-main);">Свободные заявки${open.length ? ' · ' + open.length : ''}</h5>
+            ${openHtml}
+            <h5 style="margin:22px 0 10px; font-size:14px; color:var(--text-main);">Мои заявки${mine.length ? ' · ' + mine.length : ''}</h5>
+            ${mineHtml}
+            <div class="lk-sub" style="margin-top:14px;">Данные заказчика даны только для связи по его заявке. Передавать их третьим лицам и использовать для других целей нельзя — заказчик согласился на звонок одного мастера. За сутки можно взять не больше трёх заявок.</div>`;
+        this.renderCabinetSubtabs('leads');
+    },
+
+    takeLead: async function (leadId, btn) {
+        const ok = await this.confirmChoice(
+            'Заявка уходит одному мастеру — вам. Имя и телефон заказчика откроются сразу. Позвоните в ближайшее рабочее время. Данные — только для связи по этой заявке, третьим лицам не передавать. За сутки можно взять не больше трёх заявок.',
+            'Взять заявку?', 'Взять', 'Отмена');
+        if (!ok) return;
+        if (btn) { btn.disabled = true; btn.innerText = 'Берём…'; }
+        try {
+            const { data, error } = await supabaseClient.rpc('lead_take', { p_lead: leadId });
+            if (error) throw error;
+            if (data && data.ok) {
+                await app.alert('Заявка ваша. ' + (data.name || '') + ', ' + (data.phone || '') + '. Она в списке «Мои заявки».', 'Заявка взята');
+            } else {
+                const r = data && data.reason;
+                const msg = r === 'gone' ? 'Эту заявку только что взял другой мастер.'
+                    : r === 'limit' ? 'За сутки можно взять не больше трёх заявок. Попробуйте завтра.'
+                        : 'Брать заявки можно на оплаченном тарифе Профи.';
+                await app.alert(msg);
+            }
+        } catch (e) {
+            console.warn('[заявки] не взялась:', e);
+            app.alert('Не удалось взять заявку — проверьте связь и попробуйте ещё раз.');
+        }
+        this.renderLeadBoard();
+    },
+
+    markLead: async function (leadId, status, el) {
+        try {
+            const { data, error } = await supabaseClient.rpc('lead_mark', { p_lead: leadId, p_status: status });
+            if (error || data !== true) throw error || new Error('отказ');
+            if (el) { el.style.borderColor = '#10B981'; setTimeout(() => { el.style.borderColor = ''; }, 1200); }
+        } catch (e) {
+            console.warn('[заявки] отметка не сохранилась:', e);
+            if (el) { el.style.borderColor = '#DC2626'; el.title = 'Не сохранилось — попробуйте ещё раз'; }
+        }
+    },
+
+    // ── Предложить заявку Профи-мастерам ────────────────────────────────
+    // Владелец сам решает, какая заявка уходит в ленту: тестовые и мусорные
+    // отсекаются здесь, а не у платящих мастеров. Место показываем без улицы
+    // и дома — по умолчанию берём текст до первой запятой, владелец может поправить.
+    publishLead: async function (idx, btn) {
+        const r = (this._leadsData || [])[idx];
+        if (!r || !r.id) return;
+        if (this._leadBoardMissing) { window.alert('Таблицы ленты ещё нет. Выполните supabase/migrations/20261003_lead_board.sql в SQL Editor и обновите вкладку.'); return; }
+        if (this.isTestLead(r) && !window.confirm('Это тестовая заявка. Всё равно предложить мастерам?')) return;
+        const def = String(r.place || '').split(',')[0].trim();
+        const place = window.prompt('Как показать место мастерам? Без улицы и дома — только населённый пункт или район.', def);
+        if (place === null) return;
+        const placeClean = place.trim().slice(0, 80);
+        if (!placeClean) return;
+        const area = parseInt(r.area, 10);
+        if (btn) btn.disabled = true;
+        try {
+            let { error } = await supabaseClient.from('lead_board').upsert({
+                lead_id: r.id, place: placeClean, area: isFinite(area) ? area : null,
+                works: (r.works || []).map(String), status: 'open'
+            }, { onConflict: 'lead_id', ignoreDuplicates: true });
+            if (error) throw error;
+            ({ error } = await supabaseClient.from('lead_contacts').upsert({
+                lead_id: r.id, name: r.name || 'без имени', phone: r.phone || '',
+                when_call: r.when || null, comment: r.comment || null, calc: r.calc || null
+            }, { onConflict: 'lead_id' }));
+            if (error) throw error;
+            this._leadBoard = this._leadBoard || {};
+            this._leadBoard[r.id] = Object.assign({ lead_id: r.id, status: 'open' }, this._leadBoard[r.id] || {});
+            this.renderAdminLeads();
+        } catch (e) {
+            console.warn('[заявки] в ленту не ушла:', e);
+            if (btn) btn.disabled = false;
+            window.alert('Не удалось предложить заявку: ' + String((e && e.message) || e).slice(0, 140));
+        }
+    },
+
+    unpublishLead: async function (idx, btn) {
+        const r = (this._leadsData || [])[idx];
+        const b = r && (this._leadBoard || {})[r.id];
+        if (!b || b.status !== 'open') return;
+        if (!window.confirm('Снять заявку с ленты? Её перестанут видеть мастера.')) return;
+        if (btn) btn.disabled = true;
+        try {
+            const { error } = await supabaseClient.from('lead_board').delete().eq('lead_id', r.id).eq('status', 'open');
+            if (error) throw error;
+            delete this._leadBoard[r.id];
+            this.renderAdminLeads();
+        } catch (e) {
+            if (btn) btn.disabled = false;
+            window.alert('Не удалось снять с ленты: ' + String((e && e.message) || e).slice(0, 140));
         }
     },
 
@@ -24379,6 +24590,12 @@ const app = {
             const stOpts = this.LEAD_STATUSES.map(([v, l]) => `<option value="${v}"${v === st ? ' selected' : ''}>${l}</option>`).join('');
             const stColor = { new: '#F59E0B', sent: 'var(--primary)', contacted: 'var(--primary)', contract: '#10B981', done: '#10B981', rejected: 'var(--text-sec)', archive: 'var(--text-sec)' }[st];
             const calcUrl = this.leadCalcUrl(r);
+            const bd = (this._leadBoard || {})[r.id];
+            const boardBtn = !r.id ? '' : (!bd
+                ? `<button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;" title="Показать заявку мастерам на Профи: первый, кто возьмёт, получит телефон" onclick="app.publishLead(${i}, this)">Предложить Профи-мастерам</button>`
+                : (bd.status === 'open'
+                    ? `<span style="font-size:12px; color:#10B981; font-weight:600; align-self:center;">В ленте, свободна</span><button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;" onclick="app.unpublishLead(${i}, this)">Снять с ленты</button>`
+                    : `<span style="font-size:12px; color:var(--primary); font-weight:600; align-self:center;">Взята мастером${a.installer_name ? ': ' + esc(a.installer_name) : ''}</span>`));
             return `<div style="border:1px solid var(--border); border-left:3px solid ${stColor}; border-radius:10px; padding:14px; margin-bottom:10px; background:var(--surface);">
                 <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
                     <div style="font-size:13px; color:var(--text-main);">
@@ -24402,6 +24619,7 @@ const app = {
                     ${calcUrl ? `<a class="auth-btn-base" href="${esc(calcUrl)}" target="_blank" rel="noopener" style="width:auto; padding:0 14px; height:30px; font-size:12px; display:inline-flex; align-items:center; text-decoration:none;" title="Полная смета по ответам заказчика — в новой вкладке">Открыть в расчёте</a>` : ''}
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"
                         onclick="app.copyLead(${i}, this)">Скопировать для монтажника</button>
+                    ${boardBtn}
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px;"${r.id ? '' : ' disabled'}
                         onclick="app.saveLeadAssignment(${i}, 'status', '${st === 'archive' ? 'new' : 'archive'}', this)">${st === 'archive' ? 'Вернуть из архива' : 'В архив'}</button>
                     <button class="auth-btn-base" style="width:auto; padding:0 14px; height:30px; font-size:12px; color:#DC2626;"${r.id ? '' : ' disabled'}
