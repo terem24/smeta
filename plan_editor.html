@@ -3887,6 +3887,19 @@ cv.addEventListener('click', function (e) {
     if (Date.now() - justDragged < 300) return;      // хвост правки контура
     var hitZ = zoneHit(p);
     if (hitZ.zi >= 0) {                              // клик по готовой зоне — выбрать её
+      // Выбран тип «Котельная» или «Санузел», а зона обведена как тёплый пол или помещение —
+      // клик меняет ей тип: котельная чаще всего уже обведена вместе с тёплым полом
+      var wantT = document.getElementById('ztype').value, hz = F().zones[hitZ.zi];
+      if ((wantT === 'boiler' || wantT === 'wc') && hz.type !== wantT && hz.type !== 'cold') {
+        if (wantT === 'boiler' && DATA.floors.some(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'boiler'; }); })) {
+          alert('Котельная уже отмечена. Чтобы выбрать другую зону, сначала удалите прежнюю ✕.'); return;
+        }
+        pushUndo('zones');
+        hz.type = wantT;
+        selZ = hitZ.zi; renderZones(); draw();
+        hint('<span class=ok>Зона «' + (hz.name || TYPES[wantT][0]) + '» теперь ' + (wantT === 'boiler' ? 'котельная' : 'санузел') + '.</span> Нажмите «Сохранить».');
+        return;
+      }
       selZ = hitZ.zi; draw();
       hint('Зона выбрана: тяните узлы и грани, правой кнопкой добавляется точка, Delete удаляет.');
       return;
