@@ -245,6 +245,8 @@ function compactPayload(data) {
             // клиент увидел бы цены Терема, а итог в шапке был бы посчитан по ценам
             // дистрибьютора, и строки со сметой не сошлись бы.
             k: data.object_info.priceListKey || '',
+            // Полные названия и артикулы (галочка «Без моделей и артикулов» снята)
+            fn: data.object_info.fullNames ? 1 : undefined,
             // Срок действия счёта. Без этих полей длинная офлайн-ссылка (её
             // получает монтажник, когда Supabase не ответил за отведённое время)
             // открывалась без отсчёта: страница читает срок из ссылки, а строка
@@ -4664,6 +4666,38 @@ const app = {
         if (panel.style.flex !== wantFlex) panel.style.flex = wantFlex;
         if (panel.style.maxHeight !== wantMaxH) panel.style.maxHeight = wantMaxH;
     },
+    // Строка «№ КП / Объект / Теплопотери / Регион / Дата» над сметой. Пункты в ней
+    // не переносятся внутри себя, поэтому, когда все не помещаются в линию, на вторую
+    // строку уезжала одна «Дата» (особенно с крупным текстом или при развёрнутой
+    // ленте слева). Сначала прячем значки-эмодзи (они съедают ~100 px) — и строка
+    // остаётся одной; перенос остаётся только на крайний случай, когда не хватает и так.
+    // Проверка по факту, а не по ширине окна: содержимое разное (регион, «Вариант:
+    // подешевле», квартира с этажом).
+    fitDocSummary: function () {
+        const ds = document.getElementById('doc_summary');
+        if (!ds) return;
+        const wraps = () => {
+            const items = [...ds.querySelectorAll('.param-item')].filter(e => e.offsetWidth > 0);
+            if (items.length < 2) return false;
+            const first = items[0].offsetTop;
+            return items.some(e => Math.abs(e.offsetTop - first) > 6);
+        };
+        ds.classList.remove('ds-compact');
+        if (wraps()) ds.classList.add('ds-compact');
+        // Размер колонки сметы меняется при ресайзе окна, раскрытии ленты, смене масштаба
+        if (!this._dsObserved) {
+            this._dsObserved = true;
+            // Таймером, а не requestAnimationFrame: в фоновой вкладке кадры не рисуются
+            let lastW = 0, tm = 0;
+            const again = () => { clearTimeout(tm); tm = setTimeout(() => this.fitDocSummary(), 30); };
+            window.addEventListener('resize', again);
+            const out = document.querySelector('.output-panel');
+            if (out && window.ResizeObserver) {
+                new ResizeObserver(() => { const w = out.offsetWidth; if (w !== lastW) { lastW = w; again(); } }).observe(out);
+            }
+        }
+    },
+
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
     syncEmptyFitPanelScale: function (recalc) { this.fitParamsPanel(recalc); },
     // Отложенный пересчёт: за одну отрисовку панель трогают десятки раз, а ответ
@@ -10224,12 +10258,13 @@ const app = {
                 @media (max-width:560px) { .brx-frow { grid-template-columns:120px 1fr 36px; } }
                 @media (prefers-reduced-motion: reduce) { .brx-bar i, .brx-fbar i, .brx-node { transition:none; } }
             </style>
+            <div class="ad-page-h">
+                <div><h3>Филиалы</h3><div class="ad-sub">Структура компаний: филиалы, менеджеры, ссылки, воронка от ссылки до оплаты</div></div>
+                <button class="admin-btn" onclick="app.renderAdminBranches()">Обновить</button>
+            </div>
             <div class="brx-top">
                 <div class="brx-pills">${this.BRANCH_PERIODS.map(p => `<button type="button" class="brx-pill${p.key === period.key ? ' on' : ''}" onclick="app.setBranchPeriod('${p.key}')">${p.label}</button>`).join('')}</div>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <span class="brx-muted">Нажмите на компанию, филиал или менеджера</span>
-                    <button class="btn-header-blue" onclick="app.renderAdminBranches()" style="height:32px; padding:0 14px; font-size:12px;">↻ Обновить</button>
-                </div>
+                <span class="brx-muted">Нажмите на компанию, филиал или менеджера</span>
             </div>
             <div class="brx-layout">
                 <div>${treeHtml}</div>
@@ -12778,6 +12813,14 @@ const app = {
         this.renderProfilePhotoField();
         this.renderThemeChoiceCard();
         this.setProfileTab(forced ? 'requisites' : (initialTab || 'requisites'));
+        this.watchCabinetStyle();
+        // Телефон: без явного раздела (нижняя вкладка «Профиль») открываем меню разделов,
+        // с разделом (railGo, push, принудительная анкета) — сам раздел с полосой «‹ Разделы»
+        const lkLayout = profileNav && profileNav.parentElement;
+        if (lkLayout) {
+            lkLayout.classList.toggle('lk-forced', !!forced);
+            lkLayout.classList.toggle('lk-menu-open', !forced && !initialTab);
+        }
         this.refreshManagerTabVisibility(tgUser.email);
 
         // На мобильном модалка — bottom sheet почти во весь экран, а плавающая кнопка
@@ -12794,6 +12837,7 @@ const app = {
             return;
         }
         this._profileForceComplete = false;
+        this.closeCabinetSearch();
         document.getElementById('profile_modal_overlay').style.display = 'none';
         this.syncCabinetDock();
         document.body.style.overflow = '';
@@ -12901,7 +12945,7 @@ const app = {
         // Сменить пароль можно при любом способе входа: у аккаунта через Яндекс ID
         // это добавляет вход по e-mail. Без адреса (старый Telegram) пароль не к чему.
         const pwdBtn = email
-            ? `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:var(--bg-sec, #f1f5f9); color:var(--text-main); border:1px solid var(--border); border-radius:8px;" onclick="app.showSetPasswordModal('change')">Сменить пароль</button>`
+            ? `<button type="button" class="auth-btn-base" style="margin:0; width:auto; max-width:none; height:32px; padding:0 14px; font-size:12.5px; background:var(--surface-light, #f1f5f9); color:var(--text-main); border:1px solid var(--border); border-radius:8px;" onclick="app.showSetPasswordModal('change')">Сменить пароль</button>`
             : '';
         const linkBtn = this.isYandexLinked()
             ? ''
@@ -13381,7 +13425,7 @@ const app = {
             return `<div class="lk-card" style="margin-bottom:8px; padding:10px 12px;">
                         <div style="font-size:12.5px; font-weight:600; color:var(--text-main); margin-bottom:2px;">${esc(o.project_name || 'Без названия')}</div>
                         <div style="font-size:10.5px; font-family:monospace; color:var(--text-sec); margin-bottom:8px;">КП № ${calcId}</div>
-                        <div id="doc_list_${calcId}" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+                        <div id="doc_list_${calcId}"></div>
                     </div>`;
         }).join('');
         objects.forEach(o => this.renderDocChecklist(o.calc_id));
@@ -13403,15 +13447,17 @@ const app = {
         const fmt = (iso) => iso ? new Date(iso).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
         // Каждый документ — кнопка, а не плашка-статус: по плашке «Можно сформировать»
         // пробовали нажимать, а она ничего не делала. Сформированные помечены галочкой.
-        holder.innerHTML = this.DOC_TYPES.map(t => {
-            const at = generated[t.key];
-            const style = at
-                ? 'background:#ECFDF5; border-color:#10B981; color:#047857;'
-                : '';
-            return `<button type="button" class="lk-btn-sm" style="font-size:11px; padding:4px 10px; ${style}"
-                        title="${at ? 'Уже формировали · ' + fmt(at) : 'Сформировать документ'}"
-                        onclick="app.lazy('docs').then(() => Docs.openForOrder('${calcId}'))">${at ? '✓ ' : ''}${t.label}</button>`;
-        }).join('');
+        // Раньше здесь было семь одинаковых кнопок, и каждая открывала одну и ту же форму
+        // Docs.openForOrder(calcId): тип документа выбирают уже в ней. Теперь одна кнопка и строка
+        // «что уже сформировано» — те же данные из localStorage, но без семи ложных вариантов.
+        const done = this.DOC_TYPES.filter(t => generated[t.key]);
+        const doneTitle = done.map(t => t.label + ' · ' + fmt(generated[t.key])).join('\n');
+        holder.innerHTML = `<div class="doc-line">
+                <span class="doc-prog"${doneTitle ? ` title="${doneTitle.replace(/"/g, '&quot;')}"` : ''}>${done.length
+                    ? 'Сформировано ' + done.length + ' из ' + this.DOC_TYPES.length + ': ' + done.map(t => t.label).join(', ')
+                    : 'Документы ещё не формировали'}</span>
+                <button type="button" class="lk-btn-sm" onclick="app.lazy('docs').then(() => Docs.openForOrder('${calcId}'))">Сформировать документы</button>
+            </div>`;
     },
 
     // skipHead — когда заголовок раздела уже нарисован снаружи (фоллбек в renderOrdersTab)
@@ -14681,8 +14727,9 @@ const app = {
     // Прайс монтажа / Своё оборудование. Содержимое всех разделов, кроме реквизитов,
     // строится лениво при первом открытии раздела.
     setProfileTab: function (tab) {
-        const tabs = ['requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment'];
+        const tabs = ['home', 'requisites', 'company', 'subscription', 'objects', 'summary', 'orders', 'oprosniki', 'manager', 'installers', 'workprices', 'equipment'];
         if (!tabs.includes(tab)) tab = 'requisites';
+        tab = this.cabinetResolveTab(tab);
         // Уходим со вкладки с открытым чатом — отписываемся от реалтайма, чтобы не копить
         // висящие подписки и не обновлять невидимую панель
         if (this._activeProfileTab !== tab && (this._activeProfileTab === 'manager' || this._activeProfileTab === 'installers')) {
@@ -14690,10 +14737,23 @@ const app = {
         }
         this._activeProfileTab = tab;
 
+        // Телефон: выбрали раздел — меню сворачивается, остаётся полоса «‹ Разделы» с названием
+        const lkLay = document.getElementById('profile_nav') && document.getElementById('profile_nav').parentElement;
+        if (lkLay) lkLay.classList.remove('lk-menu-open');
+        const mobCur = document.getElementById('lk_mob_cur');
+        if (mobCur) {
+            const parent = this.cabinetParentOf(tab);
+            const mi = this.CABINET_MENU.find(x => x.id === parent);
+            const sub = (this.CABINET_SUBTABS[parent] || []).find(x => x.id === tab);
+            mobCur.textContent = mi ? (mi.nav + (sub && this.cabinetVisibleSubtabs(parent).length > 1 ? ' · ' + sub.label : '')) : '';
+        }
+        this.renderCabinetSubtabs(tab);
+
         const navBar = document.getElementById('profile_nav');
         if (navBar) {
+            const navParent = this.cabinetParentOf(tab);
             navBar.querySelectorAll('.lk-nav-item').forEach(el => {
-                el.classList.toggle('active', el.dataset.tab === tab);
+                el.classList.toggle('active', el.dataset.tab === navParent);
             });
         }
         tabs.forEach(t => {
@@ -14712,9 +14772,13 @@ const app = {
         const footerRequisites = document.getElementById('profile_modal_footer_requisites');
         const footerOther = document.getElementById('profile_modal_footer_other');
         if (footerRequisites) footerRequisites.style.display = isFormTab ? 'flex' : 'none';
-        if (footerOther) footerOther.style.display = isFormTab ? 'none' : 'flex';
+        // Кнопка «Закрыть» по центру на разделах без формы убрана (03.10.2026): окно закрывает
+        // крестик в углу, и лишняя кнопка внизу только отличала эти разделы от остальных
+        if (footerOther) footerOther.style.display = 'none';
 
-        if (tab === 'subscription') {
+        if (tab === 'home') {
+            this.renderCabinetHome();
+        } else if (tab === 'subscription') {
             this.renderSubscriptionTab();
         } else if (tab === 'objects') {
             // Тот же список, что и в отдельной модалке «Сохранённые сметы»: переключаем
@@ -14749,7 +14813,14 @@ const app = {
     // У «Подписки» своего пункта в панели нет (раздел скрыт до конца обкатки тарифа),
     // но подсветить логично соседний — иначе панель выглядит так, будто кабинет закрыт.
     RAIL_TAB_ALIAS: {
-        subscription: 'requisites'
+        subscription: 'requisites',
+        // Разделы внутри пунктов меню (см. CABINET_SUBTABS): подсвечиваем пункт-родитель
+        summary: 'home',
+        oprosniki: 'objects',
+        orders: 'objects',
+        company: 'requisites',
+        manager: 'requisites',
+        equipment: 'workprices'
     },
 
     // Все разделы занимают одно и то же место на экране, поэтому при переходе то,
@@ -14764,6 +14835,347 @@ const app = {
             else if (id === 'notifications_modal_overlay') this.closeNotificationsModal();
             else if (id === 'lk_rating_overlay') this.closeRatingPanel();
         });
+    },
+
+    // ── Меню кабинета: одна таблица на два места ─────────────────────────────
+    // Панель слева (.lk-rail) и колонка внутри окна кабинета (#profile_nav, на телефоне —
+    // сетка) показывают одни и те же пункты. Раньше это были две ручные копии разметки,
+    // и состав с порядком держались на комментарии «расходиться нельзя». Теперь обе
+    // строятся отсюда: меняется порядок или подпись — правится одна строка.
+    //   id     — ключ раздела (data-rail / data-tab, на него ссылаются push и обучение)
+    //   kind   — 'tab' раздел окна кабинета, 'act' отдельное окно или действие (railGo)
+    //   nav    — подпись в окне кабинета, short — короткая для сетки на телефоне,
+    //            rail — подпись на панели; title / navTitle — подсказки
+    //   group  — блок панели (data-group; имена сохраняются в раскладке пользователя)
+    //   hide   — пункт скрыт, пока код (syncRailUI и др.) его не покажет
+    //   only   — 'nav': пункта на панели нет
+    CABINET_MENU: [
+        { id: 'calc', kind: 'act', group: 'calc', nav: 'Расчёт', short: 'Расчёт', rail: 'Расчёт', title: 'Вернуться к расчёту сметы', icon: '<rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="8" y1="11" x2="8.01" y2="11"></line><line x1="12" y1="11" x2="12.01" y2="11"></line><line x1="16" y1="11" x2="16.01" y2="11"></line><line x1="8" y1="15" x2="8.01" y2="15"></line><line x1="12" y1="15" x2="12.01" y2="15"></line><line x1="16" y1="15" x2="16.01" y2="15"></line><line x1="8" y1="19" x2="12" y2="19"></line>' },
+        { id: 'home', kind: 'tab', group: 'calc', nav: 'Главная', short: 'Главная', rail: 'Главная', title: 'Что требует внимания и мои показатели', icon: '<path d="M3 11l9-8 9 8"></path><path d="M5 10v10h14V10"></path><path d="M10 20v-5h4v5"></path>' },
+        { id: 'messages', kind: 'act', group: 'calc', nav: 'Сообщения', short: 'Сообщения', rail: 'Сообщения', title: 'Сообщения и уведомления', icon: '<path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline>', badge: true },
+        { id: 'objects', kind: 'tab', group: 'calc', nav: 'Объекты', short: 'Объекты', rail: 'Объекты', title: 'Сметы, опросные листы и документы по объектам', icon: '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>' },
+        { id: 'requisites', kind: 'tab', group: 'calc', nav: 'Профиль', short: 'Профиль', rail: 'Профиль', title: 'Мои данные, реквизиты компании, менеджер', icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>' },
+        { id: 'workprices', kind: 'tab', group: 'calc', nav: 'Прайс и оборудование', short: 'Прайс', rail: 'Прайс', title: 'Мои цены на монтаж, своё оборудование и замены', icon: '<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>' },
+        // Только менеджерам дистрибьюторов: показ включают refreshManagerTabVisibility и syncRailUI
+        { id: 'installers', kind: 'tab', group: 'calc', hide: true, nav: 'Мои монтажники', short: 'Монтажники', rail: 'Монтажники', title: 'Мои монтажники', icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>' },
+        // Владельцу и админам — показ включает syncRailUI по hasAdminAccess()
+        { id: 'admin', kind: 'act', group: 'calc', hide: true, nav: 'Панель управления', short: 'Админка', rail: 'Админка', title: 'Панель управления', icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="9" y1="9" x2="21" y2="9"></line><line x1="9" y1="15" x2="21" y2="15"></line>' }
+    ],
+
+    // Внутри пункта меню — вкладки-чипы над содержимым: пунктов в меню семь, а разделов
+    // за ними одиннадцать. Ключи разделов (profile_tab_<id>, data-tab, push open:"orders")
+    // не менялись — меняется только то, как они сгруппированы на экране.
+    CABINET_SUBTABS: {
+        home: [{ id: 'home', label: 'Дела' }, { id: 'summary', label: 'Показатели' }],
+        objects: [{ id: 'objects', label: 'Сметы' }, { id: 'oprosniki', label: 'Опросные листы' }, { id: 'orders', label: 'Документы' }],
+        requisites: [{ id: 'requisites', label: 'Мои данные' }, { id: 'company', label: 'Реквизиты компании' }, { id: 'manager', label: 'Мой менеджер' }],
+        workprices: [{ id: 'workprices', label: 'Прайс монтажа' }, { id: 'equipment', label: 'Своё оборудование' }]
+    },
+
+    // Пункт меню, под которым живёт раздел (подсветка в меню и на панели)
+    cabinetParentOf: function (tab) {
+        const subs = this.CABINET_SUBTABS;
+        for (const k of Object.keys(subs)) { if (subs[k].some(s => s.id === tab)) return k; }
+        return (this.RAIL_TAB_ALIAS && this.RAIL_TAB_ALIAS[tab]) || tab;
+    },
+
+    // Вкладки пункта с учётом тарифа: продавцу без монтажа прайс и документы не показываем
+    // (решения владельца 10.09 и 26.09.2026 — тот же признак canUseWorks, что и раньше у пунктов меню)
+    cabinetVisibleSubtabs: function (parent) {
+        const subs = this.CABINET_SUBTABS[parent] || [];
+        const noWorks = !this.canUseWorks();
+        return subs.filter(s => !(noWorks && (s.id === 'workprices' || s.id === 'orders')));
+    },
+
+    // Раздел, скрытый от этого человека, заменяем первым доступным в том же пункте
+    cabinetResolveTab: function (tab) {
+        const parent = this.cabinetParentOf(tab);
+        const subs = this.CABINET_SUBTABS[parent];
+        if (!subs) return tab;
+        const vis = this.cabinetVisibleSubtabs(parent);
+        if (vis.some(s => s.id === tab) || !vis.length) return tab;
+        return vis[0].id;
+    },
+
+    renderCabinetSubtabs: function (tab) {
+        const bar = document.getElementById('lk_subtabs');
+        if (!bar) return;
+        const parent = this.cabinetParentOf(tab);
+        const vis = this.cabinetVisibleSubtabs(parent);
+        bar.innerHTML = vis.length > 1
+            ? vis.map(s => `<button type="button" class="ad-chip${s.id === tab ? ' active' : ''}" onclick="app.setProfileTab('${s.id}')">${s.label}</button>`).join('')
+            : '';
+    },
+
+    buildCabinetMenus: function () {
+        const rail = document.getElementById('lk_rail');
+        const nav = document.getElementById('profile_nav');
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+        const svg = (it, size) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="${size}" height="${size}">${it.icon}</svg>`;
+        const railGroupKey = { calc: 'calc', objects: 'objects', account: 'account', service: 'service' };
+
+        if (rail && !rail.querySelector('.lk-rail-group')) {
+            const groups = [];
+            this.CABINET_MENU.forEach(it => {
+                if (it.only === 'nav') return;
+                let g = groups.find(x => x.key === it.group);
+                if (!g) { g = { key: it.group, items: [] }; groups.push(g); }
+                g.items.push(it);
+            });
+            rail.insertAdjacentHTML('beforeend', groups.map(g => `<div class="lk-rail-group" data-group="${railGroupKey[g.key]}">${g.items.map(it => {
+                const cls = 'lk-rail-item' + (it.id === 'calc' ? ' active' : '') + (it.kind === 'logout' ? ' lk-rail-logout' : '') + (it.id === 'admin' ? ' lk-rail-admin' : '');
+                const attrs = ((it.kind === 'logout' || it.kind === 'search') ? '' : ` data-rail="${it.id}"`) + (it.id === 'admin' ? ' id="lk_rail_admin"' : '') + (it.hide ? ' style="display: none;"' : '');
+                const extra = it.badge ? '<span class="lk-rail-badge" id="lk_rail_msg_badge" style="display: none;">0</span><span class="lk-rail-dot" id="lk_rail_status_dot" title="Проверяем связь…"></span>' : '';
+                const go = it.kind === 'search' ? 'app.openCabinetSearch()' : `app.railGo('${it.id}')`;
+                return `<button type="button" class="${cls}"${attrs} onclick="${go}" title="${esc(it.title)}">${svg(it, 22)}<span class="lk-rail-label">${esc(it.rail)}</span>${extra}</button>`;
+            }).join('')}</div>`).join(''));
+        }
+
+        // Кнопка поиска в углу окна кабинета, рядом с крестиком (на телефоне — над меню разделов)
+        const lkHost = document.querySelector('#profile_modal_overlay .auth-modal-content');
+        if (lkHost && !document.getElementById('lk_search_btn')) {
+            const sb = document.createElement('button');
+            sb.id = 'lk_search_btn';
+            sb.type = 'button';
+            sb.className = 'admin-search-btn';
+            sb.title = 'Поиск по разделам кабинета и своим сметам (Ctrl+K)';
+            sb.innerHTML = '<svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Поиск</span><kbd>Ctrl K</kbd>';
+            sb.addEventListener('click', () => this.openCabinetSearch());
+            lkHost.appendChild(sb);
+        }
+        if (!this._lkSearchKeyBound) {
+            this._lkSearchKeyBound = true;
+            document.addEventListener('keydown', e => {
+                if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && String(e.key).toLowerCase() === 'k'
+                    && this.isOverlayOpen('profile_modal_overlay') && !this.isOverlayOpen('admin_modal_overlay')) {
+                    e.preventDefault();
+                    this.openCabinetSearch();
+                }
+            });
+        }
+
+        if (nav && !nav.querySelector('.lk-nav-item')) {
+            let h = '<button type="button" class="lk-nav-search" onclick="app.openCabinetSearch()" title="Поиск по разделам и сметам (Ctrl+K)"><svg class="ad-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><span>Поиск</span><kbd>Ctrl K</kbd></button>';
+            this.CABINET_MENU.forEach(it => {
+                if (it.only === 'rail') return;
+                if (it.cap) h += `<div class="lk-nav-cap">${esc(it.cap)}</div>`;
+                if (it.kind === 'logout') h += '<div class="lk-nav-spacer"></div>';
+                const label = `<span class="lk-nav-label">${esc(it.nav)}</span><span class="lk-nav-short">${esc(it.short)}</span>`;
+                const title = esc(it.navTitle || it.title);
+                const hide = it.hide ? ' style="display:none;"' : '';
+                if (it.link) {
+                    h += `<a class="lk-nav-item lk-nav-rating" href="${it.link}" target="_blank" rel="noopener" title="${title}">${svg(it, 18)}${label}</a>`;
+                } else if (it.kind === 'logout') {
+                    h += `<button type="button" class="lk-nav-item lk-nav-logout" title="${title}" onclick="app.logout()">${svg(it, 18)}${label}</button>`;
+                } else if (it.kind === 'tab') {
+                    h += `<button type="button" class="lk-nav-item${it.id === 'requisites' ? ' active' : ''}" data-tab="${it.id}"${hide} title="${title}" onclick="app.setProfileTab('${it.id}')">${svg(it, 18)}${label}</button>`;
+                } else {
+                    h += `<button type="button" class="lk-nav-item" data-rail="${it.id}"${it.id === 'admin' ? ' id="lk_nav_admin"' : ''}${hide} title="${title}" onclick="app.railGo('${it.id}')">${svg(it, 18)}${label}</button>`;
+                }
+            });
+            nav.insertAdjacentHTML('beforeend', h);
+        }
+    },
+
+    // Телефон: назад к меню разделов (полоса «‹ Разделы» над открытым разделом)
+    openCabinetMenu: function () {
+        const nav = document.getElementById('profile_nav');
+        if (nav && nav.parentElement) nav.parentElement.classList.add('lk-menu-open');
+        const pane = document.querySelector('#profile_modal_overlay .auth-modal-content');
+        if (pane) pane.scrollTop = 0;
+    },
+
+    // ── «Главная» кабинета: что требует внимания ─────────────────────────────
+    // Тот же приём, что у «Центра внимания» в панели управления: не отчёт, а список дел
+    // на сегодня. Данные — свои сметы и журнал заказов; ничего нового в базу не пишем.
+    renderCabinetHome: async function () {
+        const box = document.getElementById('profile_tab_home');
+        if (!box) return;
+        const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const head = '<div class="ad-page-h"><div><h3>Главная</h3><div class="ad-sub">Что требует вашего внимания сегодня</div></div>'
+            + '<button type="button" class="lk-btn-sm" onclick="app.renderCabinetHome()" title="Обновить">↻</button></div>';
+        box.innerHTML = head + '<div class="lk-empty">Собираем дела…</div>';
+        const tok = this._cabHomeTok = (this._cabHomeTok || 0) + 1;
+
+        let ests = [], evs = {}, failed = false;
+        try {
+            const me = await this.resolveCurrentUserForChat();
+            if (me && me.id) {
+                const { data, error } = await supabaseClient.from('estimates')
+                    .select('id, project_name, total_sum, created_at, calc_id:calc_data->>calc_id')
+                    .eq('user_id', me.id).order('created_at', { ascending: false }).limit(50);
+                if (error) throw error;
+                ests = data || [];
+                const ids = ests.map(e => e.calc_id).filter(Boolean).map(String);
+                if (ids.length) {
+                    const r = await supabaseClient.from('invoice_events').select('calc_id, event, meta, created_at')
+                        .in('calc_id', ids).in('event', this.ORDER_EVENT_KEYS)
+                        .order('created_at', { ascending: false }).limit(500);
+                    (r.data || []).forEach(ev => { const k = String(ev.calc_id || ''); if (k && !evs[k]) evs[k] = ev; });
+                }
+            }
+        } catch (e) {
+            console.warn('[кабинет] главная не собралась:', e);
+            failed = true;
+        }
+        if (tok !== this._cabHomeTok || !document.getElementById('profile_tab_home')) return;
+
+        const fmtDay = d => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+        const money = n => Number(n || 0).toLocaleString('ru-RU') + ' ₽';
+        const open = id => `app.loadSingleEstimate('${esc(id)}')`;
+        const ASK = ['invoice_requested', 'needs_revision', 'refresh_requested'];
+        const waiting = ests.filter(e => e.calc_id && evs[String(e.calc_id)] && ASK.indexOf(evs[String(e.calc_id)].event) >= 0);
+        const DAY = 86400000;
+        const idle = ests.filter(e => !(e.calc_id && evs[String(e.calc_id)]) && Date.now() - new Date(e.created_at).getTime() > 2 * DAY && Date.now() - new Date(e.created_at).getTime() < 30 * DAY);
+        const mainBadge = document.getElementById('notification_badge');
+        const unread = (mainBadge && mainBadge.style.display !== 'none') ? (parseInt(mainBadge.innerText, 10) || 0) : 0;
+        const co = document.getElementById('profile_company_name');
+        const noCompany = !!co && !co.value.trim();
+
+        const row = (e, right) => `<div class="ad-row ad-row-link" onclick="${open(e.id)}" title="Открыть смету"><div class="ad-row-main"><b>${esc(e.project_name || 'Без названия')}</b><span>${right}</span></div><div class="ad-row-r">${money(e.total_sum)}</div></div>`;
+        const card = (title, n, body, bad) => `<div class="ad-card"><div class="ad-card-h"><span class="ad-card-title">${title}</span><span class="ad-count${n ? (bad ? ' ad-count-bad' : ' ad-count-on') : ''}">${n}</span></div><div class="ad-card-b">${body}</div></div>`;
+        const act = (txt, js) => `<button type="button" class="lk-btn-sm ad-card-act" onclick="${js}">${txt}</button>`;
+
+        const cards = [];
+        cards.push(card('Ждут вашего ответа', waiting.length,
+            waiting.length ? waiting.slice(0, 5).map(e => { const ev = evs[String(e.calc_id)]; return row(e, esc(this.kanbanEventView(ev.event, ev.meta).label) + ' · ' + fmtDay(ev.created_at)); }).join('')
+                : '<div class="ad-card-note ad-ok">Клиенты ничего не ждут</div>', true));
+        cards.push(card('Не отправлены клиенту', idle.length,
+            idle.length ? idle.slice(0, 5).map(e => row(e, 'сохранена ' + fmtDay(e.created_at))).join('')
+                : '<div class="ad-card-note ad-ok">Все свежие сметы отправлены</div>'));
+        cards.push(card('Сообщения', unread,
+            unread ? `<div class="ad-card-note">Непрочитанных: ${unread}</div>` + act('Открыть', "app.railGo('messages')")
+                : '<div class="ad-card-note ad-ok">Новых сообщений нет</div>', true));
+        if (noCompany) {
+            cards.push(card('Реквизиты компании', 1, '<div class="ad-card-note ad-warn">Название компании не заполнено — оно попадает в шапку КП и счёта.</div>' + act('Заполнить', "app.setProfileTab('company')")));
+        }
+        const tariffEl = document.getElementById('profile_nav_tariff');
+        const tariff = tariffEl ? tariffEl.innerText : '';
+        box.innerHTML = head
+            + (failed ? '<div class="ad-card-note ad-warn" style="margin-bottom:12px;">Часть данных не загрузилась — список может быть неполным.</div>' : '')
+            + `<div class="ad-cards">${cards.join('')}</div>`
+            + (tariff ? `<div class="ad-kv"><span>Тариф</span><b>${esc(tariff)}</b></div>` : '')
+            + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
+            + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`;
+        // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
+        this._cabEstimates = ests;
+    },
+
+    // ── Поиск по кабинету (Ctrl+K): разделы и свои сметы ─────────────────────
+    openCabinetSearch: async function () {
+        // С панели слева кабинет может быть закрыт: поиск живёт внутри него, открываем «Главную»
+        if (!this.isOverlayOpen('profile_modal_overlay')) {
+            this.railGo('home');
+            await new Promise(r => setTimeout(r, 350));
+            if (!this.isOverlayOpen('profile_modal_overlay')) return;
+        }
+        const host = document.querySelector('#profile_modal_overlay .auth-modal-content');
+        if (!host) return;
+        if (document.getElementById('lk_search')) { const i = document.getElementById('lk_search_input'); if (i) i.focus(); return; }
+        const el = document.createElement('div');
+        el.id = 'lk_search';
+        el.innerHTML = `<div class="ad-search-box" role="dialog" aria-label="Поиск по кабинету">
+                <input id="lk_search_input" type="text" autocomplete="off" placeholder="Название раздела, сметы или номер КП…">
+                <div id="lk_search_res" class="ad-search-res"></div>
+                <div class="ad-search-foot"><span><kbd>↑</kbd><kbd>↓</kbd> выбрать</span><span><kbd>Enter</kbd> открыть</span><span><kbd>Esc</kbd> закрыть</span></div>
+            </div>`;
+        el.addEventListener('mousedown', e => { if (e.target === el) this.closeCabinetSearch(); });
+        host.appendChild(el);
+        this._lkSearch = { items: [], sel: 0 };
+        const inp = document.getElementById('lk_search_input');
+        inp.addEventListener('input', () => this.cabinetSearchRun(inp.value));
+        inp.addEventListener('keydown', e => {
+            const s = this._lkSearch, n = s.items.length;
+            if (e.key === 'ArrowDown') { e.preventDefault(); s.sel = Math.min(n - 1, s.sel + 1); this.cabinetSearchRender(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); s.sel = Math.max(0, s.sel - 1); this.cabinetSearchRender(); }
+            else if (e.key === 'Enter') { e.preventDefault(); this.cabinetSearchOpen(s.sel); }
+            else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.closeCabinetSearch(); }
+        });
+        inp.focus();
+        this.cabinetSearchRun('');
+        // Свои сметы — одним коротким запросом за открытие кабинета (если «Главная» их не принесла)
+        if (!this._cabEstimates && !this._cabEstTried) {
+            this._cabEstTried = true;
+            try {
+                const me = await this.resolveCurrentUserForChat();
+                if (me && me.id) {
+                    const { data } = await supabaseClient.from('estimates')
+                        .select('id, project_name, total_sum, created_at, calc_id:calc_data->>calc_id')
+                        .eq('user_id', me.id).order('created_at', { ascending: false }).limit(50);
+                    this._cabEstimates = data || [];
+                    if (document.getElementById('lk_search')) this.cabinetSearchRun(document.getElementById('lk_search_input').value);
+                }
+            } catch (e) { /* без смет поиск по разделам работает */ }
+        }
+    },
+
+    closeCabinetSearch: function () {
+        const el = document.getElementById('lk_search');
+        if (el) el.remove();
+    },
+
+    cabinetSearchRun: function (raw) {
+        const s = this._lkSearch;
+        if (!s) return;
+        const norm = x => String(x == null ? '' : x).toLowerCase().replace(/ё/g, 'е');
+        const tokens = norm(raw).trim().split(/\s+/).filter(Boolean);
+        const hit = hay => { const h = norm(hay); return tokens.every(t => h.indexOf(t) >= 0); };
+        const items = [];
+        const nav = document.getElementById('profile_nav');
+        this.CABINET_MENU.forEach(it => {
+            // Скрытые пункты (монтажники, админка) в поиск не попадают
+            const btn = nav && nav.querySelector(`.lk-nav-item[data-tab="${it.id}"], .lk-nav-item[data-rail="${it.id}"]`);
+            if (btn && btn.style.display === 'none') return;
+            const subs = it.kind === 'tab' ? this.cabinetVisibleSubtabs(it.id) : [];
+            if (subs.length > 1) {
+                // Разделы внутри пункта ищем по названию раздела; подпись — в каком пункте он лежит
+                subs.forEach(sb => {
+                    if (tokens.length && !hit(sb.label + ' ' + it.nav)) return;
+                    items.push({ kind: 'section', title: sb.label, sub: it.nav, act: () => this.setProfileTab(sb.id) });
+                });
+            } else {
+                if (tokens.length && !hit(it.nav + ' ' + it.title)) return;
+                items.push({ kind: 'section', title: it.nav, sub: it.title, act: () => (it.kind === 'tab' ? this.setProfileTab(it.id) : this.railGo(it.id)) });
+            }
+        });
+        if (tokens.length) {
+            (this._cabEstimates || []).filter(e => hit([e.project_name, e.calc_id].join(' '))).slice(0, 8).forEach(e =>
+                items.push({ kind: 'estimate', title: e.project_name || 'Без названия', sub: (e.calc_id ? 'КП № ' + e.calc_id + ' · ' : '') + Number(e.total_sum || 0).toLocaleString('ru-RU') + ' ₽', act: () => this.loadSingleEstimate(e.id) }));
+        }
+        s.items = items;
+        s.sel = Math.min(s.sel, Math.max(0, items.length - 1));
+        this.cabinetSearchRender();
+    },
+
+    cabinetSearchRender: function () {
+        const s = this._lkSearch, box = document.getElementById('lk_search_res');
+        if (!s || !box) return;
+        const esc = x => String(x == null ? '' : x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        if (!s.items.length) { box.innerHTML = '<div class="ad-card-note" style="padding:14px 16px;">Ничего не найдено</div>'; return; }
+        const LABEL = { section: 'Разделы', estimate: 'Сметы' };
+        let last = '', h = '';
+        s.items.forEach((it, i) => {
+            if (it.kind !== last) { h += `<div class="ad-search-grp">${LABEL[it.kind]}</div>`; last = it.kind; }
+            h += `<div class="ad-search-it${i === s.sel ? ' sel' : ''}" onmousemove="app.cabinetSearchHover(${i})" onmousedown="event.preventDefault()" onclick="app.cabinetSearchOpen(${i})"><b>${esc(it.title)}</b><span>${esc(it.sub)}</span></div>`;
+        });
+        box.innerHTML = h;
+        const cur = box.querySelector('.ad-search-it.sel');
+        if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+    },
+
+    // Наведение мыши только подсвечивает строку: перерисовка списка под курсором съедала клик
+    cabinetSearchHover: function (i) {
+        const s = this._lkSearch, box = document.getElementById('lk_search_res');
+        if (!s || !box || s.sel === i) return;
+        s.sel = i;
+        box.querySelectorAll('.ad-search-it').forEach((el, k) => el.classList.toggle('sel', k === i));
+    },
+
+    cabinetSearchOpen: function (i) {
+        const it = this._lkSearch && this._lkSearch.items[i];
+        if (!it) return;
+        this.closeCabinetSearch();
+        it.act();
     },
 
     railGo: function (section) {
@@ -14889,7 +15301,7 @@ const app = {
     saveRailLayout: function (patch) {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
         const now = this.railLayout();
-        this.installerSettings[this.railLayoutSlot()] = Object.assign({ dock: 'left', groups: null, params: 'left', collapsed: true }, now, patch || {});
+        this.installerSettings[this.railLayoutSlot()] = Object.assign({ dock: 'left', groups: null, params: 'left', collapsed: false }, now, patch || {});
         // Пишет и в localStorage, и (для вошедших) в облако
         this.pushInstallerSettingsToCloud();
     },
@@ -14900,13 +15312,13 @@ const app = {
     // поверх), на планшете наведения нет — там разворачивают той же кнопкой.
     // Состояние лежит в общей раскладке меню, поэтому у мыши и у сенсора оно своё.
     //
-    // Свёрнуто по умолчанию: развёрнутая колонка отъедала ширину у сметы, а
-    // подписи нужны редко — разделы узнаются по значкам, и подпись всё равно
-    // выезжает под мышью. Сравнение именно с false, а не с true: у тех, кто уже
-    // разворачивал панель, в настройках лежит collapsed: false, и их выбор должен
-    // пережить смену умолчания. Пустое поле (никогда не трогали) — свёрнуто.
+    // Развёрнуто по умолчанию (решение 03.10.2026): новый пользователь должен сразу
+    // видеть подписи разделов, а не гадать по значкам. Свернул сам — это запоминается
+    // (collapsed: true лежит в раскладке, у мыши и сенсора порознь, и уезжает в облако
+    // вместе с остальными настройками меню). Раньше умолчание было обратным; у тех, кто
+    // ни разу не трогал панель, поля нет, и она теперь откроется развёрнутой.
     railCollapsed: function () {
-        return this.railLayout().collapsed !== false;
+        return this.railLayout().collapsed === true;
     },
 
     toggleRailCollapsed: function () {
@@ -15384,7 +15796,8 @@ const app = {
         const keys = groups.map(g => g.dataset.group);
         // Порядок из разметки запоминаем при первом заходе: к нему надо вернуться,
         // когда своей раскладки нет (вышли из аккаунта, зашли под другим)
-        if (!this._railDefaultGroupOrder) this._railDefaultGroupOrder = keys.slice();
+        // Умолчание: «Расчёт и сообщения» → «Работа» (objects) → «Настройки» (account) → служебное
+        if (!this._railDefaultGroupOrder) this._railDefaultGroupOrder = ['calc', 'objects', 'account', 'service'].filter(k => keys.includes(k)).concat(keys.filter(k => !['calc', 'objects', 'account', 'service'].includes(k)));
 
         const layout = this.railLayout().groups;
         const saved = (Array.isArray(layout) && layout.length) ? layout : this._railDefaultGroupOrder;
@@ -15723,17 +16136,12 @@ const app = {
         // «Прайс» — свои расценки на монтаж. Продавцу про монтаж не показываем
         // ничего (по решению владельца 10.09.2026): ни пункт в колонке кабинета,
         // ни его двойник в меню разделов. С 15.09.2026 решает столбец «Монтаж» таблицы «Тарифы».
+        // С 03.10.2026 «Прайс монтажа» и «Документы» (договор подряда, акты — тоже про монтаж,
+        // решение 26.09.2026) — вкладки внутри пунктов «Прайс и оборудование» и «Объекты»:
+        // прячет их cabinetVisibleSubtabs по тому же признаку canUseWorks, сами пункты остаются.
         const sellerNoWorks = !this.canUseWorks();
-        const navWorkPrices = document.querySelector('#profile_nav .lk-nav-item[data-tab="workprices"]');
-        const railWorkPrices = rail.querySelector('.lk-rail-item[data-rail="workprices"]');
-        if (navWorkPrices) navWorkPrices.style.display = sellerNoWorks ? 'none' : '';
-        if (railWorkPrices) railWorkPrices.style.display = sellerNoWorks ? 'none' : '';
-        // «Документы» — договор подряда, акты, гарантия на монтаж. Без монтажа они
-        // ни к чему (решение владельца 26.09.2026): прячем по тому же признаку.
-        const navOrders = document.querySelector('#profile_nav .lk-nav-item[data-tab="orders"]');
-        const railOrders = rail.querySelector('.lk-rail-item[data-rail="orders"]');
-        if (navOrders) navOrders.style.display = sellerNoWorks ? 'none' : '';
-        if (railOrders) railOrders.style.display = sellerNoWorks ? 'none' : '';
+        const lkBar = document.getElementById('lk_subtabs');
+        if (lkBar && this._activeProfileTab && this.isOverlayOpen('profile_modal_overlay')) this.renderCabinetSubtabs(this._activeProfileTab);
 
         // Число непрочитанных берём готовым из бейджа конверта в шапке: считает его
         // loadNotifications, второй раз считать незачем
@@ -17675,8 +18083,12 @@ const app = {
             </p>`;
         }
 
-        Object.keys(groups).forEach(groupName => {
-            html += `<div class="lk-subhead">${groupName}</div>`;
+        // Шестьдесят строк подряд — это экран в 9 000 px: группы сворачиваются, открыта первая
+        // (или те, что человек открывал сам — состояние помним, пока вкладка перерисовывается)
+        const wpOpen = this._wpOpen || (this._wpOpen = {});
+        Object.keys(groups).forEach((groupName, gi) => {
+            const isOpen = wpOpen[groupName] === undefined ? gi === 0 : wpOpen[groupName];
+            html += `<details class="lk-group"${isOpen ? ' open' : ''} data-g="${String(groupName).replace(/"/g, '&quot;')}" ontoggle="app._wpOpen[this.dataset.g] = this.open"><summary class="lk-subhead">${groupName} <span class="lk-group-n">${groups[groupName].length}</span></summary>`;
             if (showCosts) {
                 html += `<div style="display:flex; justify-content:flex-end; gap:6px; padding:0 4px 4px 0; font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:.4px;">
                     <span style="width:82px; text-align:right;">Клиенту</span>
@@ -17720,7 +18132,7 @@ const app = {
                     </div>
                 `;
             });
-            html += `</div>`;
+            html += `</div></details>`;
         });
 
         container.innerHTML = html;
@@ -20568,6 +20980,9 @@ const app = {
         document.body.classList.add('admin-modal-open');
         this.startAdminMobileLabels();
         this.watchAdminViewport();
+        // Наблюдатель за оформлением включаем сразу, а не при первой отрисовке раздела:
+        // иначе самая первая заглушка «Загрузка…» осталась бы простым текстом
+        this.watchAdminStyle();
         // Кнопка общего поиска рядом с переключателем темы; тот же поиск открывает Ctrl+K
         const searchHost = document.querySelector('#admin_modal_overlay .auth-modal-content');
         if (searchHost && !document.getElementById('admin_search_btn')) {
@@ -21959,7 +22374,33 @@ const app = {
         });
     },
 
-    softenAdminChips: function (root) {
+    // Заглушка «Загрузка…» всей вкладки получает тот же значок, что крутится при загрузке самого
+    // калькулятора (логотип-огонёк со свечением, см. #stout_preloader в index.html). Заглушек
+    // два десятка и все пишутся строкой прямо в разделах, поэтому переделывать каждую
+    // не нужно: любая такая строка оформляется здесь.
+    //
+    // Только заглушки уровня вкладки — прямые дети панели или их обёртки. Мелкие «Загружаем…»
+    // внутри карточек (в «Центре внимания» их четыре сразу) остаются текстом: четыре
+    // вертящихся логотипа на одном экране — шум, нужен один, по центру вкладки. И не больше
+    // одного на экране: следующая заглушка ждёт, пока предыдущая исчезнет.
+    decorateAdminLoaders: function (root) {
+        if (root.querySelector('.ad-loader')) return;
+        const cands = root.querySelectorAll(':scope > div, :scope > div > div');
+        for (const el of cands) {
+            if (el.dataset.ldr || el.children.length || el.closest('.admin-chat-wrap')) continue;
+            const t = (el.textContent || '').trim();
+            if (t.length > 70 || !/^(Загрузка|Загружаем)[^<]*(…|\.\.\.)$/.test(t)) continue;
+            el.dataset.ldr = '1';
+            el.classList.add('ad-loader');
+            el.removeAttribute('style');
+            el.innerHTML = '<div class="ad-loader-logo"><img src="img/logo_hc_flame.png" alt="" draggable="false"></div><div class="ad-loader-t"></div>';
+            el.lastChild.textContent = t;
+            break;
+        }
+    },
+
+    softenAdminChips: function (root, noLoaders) {
+        if (!noLoaders) this.decorateAdminLoaders(root);
         this.cleanAdminEmoji(root);
         // Кнопки с цветом, заданным числом (зелёный «Excel», оранжевый и т. п.): красные —
         // остаются красными, все прочие становятся цветом темы. Кнопки на var(--primary)
@@ -22005,6 +22446,36 @@ const app = {
             clearTimeout(timer);
             timer = setTimeout(() => { try { this.softenAdminChips(root); } catch (e) { } }, 30);
         }).observe(root, { childList: true, subtree: true });
+        // Заглушка, уже стоящая в панели к моменту запуска наблюдателя
+        try { this.decorateAdminLoaders(root); } catch (e) { }
+    },
+
+    // Те же правила для кабинета (03.10.2026): эмодзи в заголовках и кнопках убираются, сплошные
+    // цветные кнопки становятся мягкими. Заглушки загрузки кабинета не трогаем — у них свой вид.
+    watchCabinetStyle: function () {
+        const root = document.querySelector('#profile_modal_overlay .lk-pane');
+        if (!root || root._softWatch) return;
+        root._softWatch = true;
+        let timer = 0;
+        new MutationObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { } }, 30);
+        }).observe(root, { childList: true, subtree: true });
+        try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { }
+    },
+
+    // Ведущие эмодзи в плашках и подсказках («📋 Нет данных от заказчика», «💡 Счёт на оборудование…»):
+    // cleanAdminEmoji берёт заголовки и кнопки, а здесь это обычные блоки текста. Чат не трогаем.
+    stripCabinetEmoji: function (root) {
+        const re = /^[\s‍️]*(?:\p{Extended_Pictographic}[️‍]*)+\s*/u;
+        root.querySelectorAll('div, p, span, a, li').forEach(el => {
+            if (el.dataset.emo || el.closest('.emoji-picker, .emoji-set, [class*="chat"], button')) return;
+            const n = el.firstChild;
+            if (n && n.nodeType === 3 && re.test(n.nodeValue)) {
+                const rest = n.nodeValue.replace(re, '');
+                if (rest.trim().length > 1) { n.nodeValue = rest; el.dataset.emo = '1'; }
+            }
+        });
     },
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,
@@ -22777,7 +23248,12 @@ const app = {
         const th = 'padding:8px 10px; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--text-sec); background:var(--surface-light); border-bottom:1px solid var(--border); white-space:nowrap;';
         const td = 'padding:8px 10px; border-bottom:1px solid var(--border); font-size:12px; vertical-align:top;';
 
-        const rows = shown.map(i => {
+        // 170+ строк разом — это экран в 36 000 px на телефоне: показываем порциями,
+        // при смене фильтра порция сбрасывается
+        const limKey = f.cluster + '|' + f.status + '|' + f.q;
+        if (this._articlesLimKey !== limKey) { this._articlesLimKey = limKey; this._articlesLimit = 40; }
+        const lim = this._articlesLimit || 40;
+        const rows = shown.slice(0, lim).map(i => {
             const st = this.articleStatusMeta[i.status] || this.articleStatusMeta.planned;
             const readUrl = i.status === 'published' ? '/' + i.slug + '/'
                 : (i.status === 'queued' ? '/queue/' + i.slug + '/' : '');
@@ -22842,7 +23318,8 @@ const app = {
                     ${rows || `<tr><td colspan="5"style="${td} text-align:center; color:var(--text-sec); padding:24px;">Ничего не нашлось</td></tr>`}
                 </table>
             </div>
-            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${shown.length} из ${items.length}.${this._articleLeadsFailed ? ' Заявки не загрузились — журнал виден только владельцам.' : ''}</div>
+            ${shown.length > lim ? `<button class="auth-btn-base" style="margin:12px 0 0; width:100%; height:36px; font-size:12px;" onclick="app._articlesLimit = ${lim + 40}; app.renderAdminArticles()">Показать ещё ${Math.min(40, shown.length - lim)}</button>` : ''}
+            <div style="margin-top:10px; font-size:11px; color:var(--text-sec);">Показано ${Math.min(lim, shown.length)} из ${shown.length}${shown.length !== items.length ? ' (всего ' + items.length + ')' : ''}.${this._articleLeadsFailed ? ' Заявки не загрузились — журнал виден только владельцам.' : ''}</div>
         `;
 
         // Курсор в поле поиска слетает после перерисовки — возвращаем в конец строки
@@ -30452,21 +30929,30 @@ const app = {
         const lbl = (t) => `<span style="font-size:10.5px; color:var(--text-sec); white-space:nowrap;">${t}</span>`;
         const tabBtn = (mode, text) => `<button class="auth-btn-base" style="margin:0; width:auto; height:34px; font-size:11px; white-space:nowrap; padding:0 12px; background:${group === mode ? 'var(--primary)' : 'var(--surface-light)'}; color:${group === mode ? 'white' : 'var(--text-sec)'}; border:1px solid ${group === mode ? 'var(--primary)' : 'var(--border)'};" onclick="app.switchAdminAiFillGroup('${mode}')">${text}</button>`;
 
+        // Число включённых фильтров — на кнопке-заголовке свёрнутой панели
+        const aifActive = [dateFrom, dateTo, account !== 'all' ? account : '', runsMin || '', runsMax || '', durMin || '', durMax || '', outcome !== 'all' ? outcome : ''].filter(Boolean).length;
+        const aTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+        const chip = (mode, text) => `<button class="ad-chip${group === mode ? ' active' : ''}" onclick="app.switchAdminAiFillGroup('${mode}')">${text}</button>`;
+
         let h = `
-            <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-                <h3 style="margin:0; color:var(--text-main);">✨ Умное заполнение</h3>
-                <span style="font-size:12.5px; color:var(--text-sec);">
-                    запусков: <b style="color:var(--text-main);">${rows.length}</b> ·
-                    людей: <b style="color:var(--text-main);">${accounts.size}</b> ·
-                    общее время: <b style="color:var(--text-main);">${this._fmtAiFillDur(totalSec)}</b> ·
-                    среднее: <b style="color:var(--text-main);">${this._fmtAiFillDur(rows.length ? totalSec / rows.length : 0)}</b> ·
-                    применили: <b style="color:#10B981;">${applied}</b> (${pct(applied, rows.length)}) ·
-                    реплик: <b style="color:var(--text-main);">${msgs}</b>, голосом ${pct(voice, msgs)} ·
-                    не распознано: <b style="color:${unrec ? '#EF4444' : 'var(--text-main)'};">${unrec}</b>
-                </span>
-                <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.aiFill = null; app.renderAdminMain()">↻ Обновить</button>
+            <div class="ad-page-h">
+                <div><h3>Умное заполнение</h3><div class="ad-sub">Что монтажники говорили и писали в окно помощника: итоги, время, нераспознанное</div></div>
+                <button class="admin-btn" onclick="app.adminData.aiFill = null; app.renderAdminMain()">Обновить</button>
             </div>
-            <div class="admin-toolbar-row" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px;">
+            <div class="admin-stat-grid stat-5" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${aTile('Запусков', rows.length, `людей: ${accounts.size}`)}
+                ${aTile('Применили', applied, `${pct(applied, rows.length)} запусков`)}
+                ${aTile('Среднее время', this._fmtAiFillDur(rows.length ? totalSec / rows.length : 0), `всего: ${this._fmtAiFillDur(totalSec)}`)}
+                ${aTile('Реплик', msgs, `голосом ${pct(voice, msgs)}`)}
+                ${aTile('Не распознано', `<span style="${unrec ? 'color:#EF4444;' : ''}">${unrec}</span>`, 'фраз, которых система не поняла')}
+            </div>
+            <div class="ad-chips">${chip('sessions', 'Сеансы')}${chip('accounts', 'По аккаунтам')}${chip('unrecognized', 'Нераспознанное')}</div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                <input type="text" id="admin_aif_search" placeholder="Фраза в диалоге…" value="${esc(g('admin_aif_search')?.value || '')}" style="${inputStyle} flex:1 1 240px; max-width:420px;" oninput="app.renderAdminAiFillBody()">
+            </div>
+            <details class="ad-collapse"${this._aifOpen || aifActive ? ' open' : ''} ontoggle="app._aifOpen = this.open">
+              <summary>Фильтры${aifActive ? ` <span class="ad-count ad-count-on">${aifActive}</span>` : ''}</summary>
+            <div class="admin-toolbar-row" style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin:0 16px 16px;">
                 ${lbl('Дата')}
                 <input type="date" id="admin_aif_from" value="${dateFrom}" style="${inputStyle}" onchange="app.renderAdminAiFillBody()">
                 <input type="date" id="admin_aif_to" value="${dateTo}" style="${inputStyle}" onchange="app.renderAdminAiFillBody()">
@@ -30485,12 +30971,8 @@ const app = {
                     <option value="applied" ${outcome === 'applied' ? 'selected' : ''}>Применил</option>
                     <option value="closed" ${outcome === 'closed' ? 'selected' : ''}>Закрыл без применения</option>
                 </select>
-                <input type="text" id="admin_aif_search" placeholder="🔍 Фраза в диалоге…" value="${esc(g('admin_aif_search')?.value || '')}" style="${inputStyle} width:180px;" oninput="app.renderAdminAiFillBody()">
-                <span style="flex:1;"></span>
-                ${tabBtn('sessions', 'Сеансы')}
-                ${tabBtn('accounts', 'По аккаунтам')}
-                ${tabBtn('unrecognized', 'Нераспознанное')}
-            </div>`;
+            </div>
+            </details>`;
 
         if (!all.length) {
             h += `<div style="text-align:center; color:var(--text-sec); padding:40px 0;">${this._aiFillError
@@ -30718,14 +31200,30 @@ const app = {
             'В': 'Водоснабжение и канализация'
         };
 
+        // Поиск по объекту, адресу и автору; плитки считаются по всем загруженным комплектам
+        const pq = String(this._projQ || '').trim().toLowerCase();
+        const shown = pq ? projects.filter(p => [p.project_name, p.address, p.user_name, p.user_email, p.sections].join(' ').toLowerCase().indexOf(pq) >= 0) : projects;
+        const eqTotal = projects.reduce((a, p) => a + (Number(p.eq_sum) || 0), 0);
+        const wkTotal = projects.reduce((a, p) => a + (Number(p.works_sum) || 0), 0);
+        const tile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+
         let h = `
             <div style="margin-bottom:20px;">
-                <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:15px;">
-                    <h3 style="margin:0; color:var(--text-main);">📁 Проекты</h3>
-                    <span style="font-size:12.5px; color:var(--text-sec);">выпущено комплектов: <b>${projects.length}</b></span>
-                    <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.projects = null; app.renderAdminMain()">Обновить</button>
+                <div class="ad-page-h">
+                    <div><h3>Проекты</h3><div class="ad-sub">Комплекты листов, выпущенные монтажниками по кнопке «Проект»</div></div>
+                    <button class="admin-btn" onclick="app.adminData.projects = null; app.renderAdminMain()">Обновить</button>
                 </div>
-                <table class="inv-table">
+                <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                    ${tile('Выпущено комплектов', projects.length, projects.length >= 200 ? 'показаны последние 200' : 'всего в базе')}
+                    ${tile('Оборудование', fmt(eqTotal) + ' ₽', 'по всем комплектам')}
+                    ${tile('Монтаж', fmt(wkTotal) + ' ₽', 'по всем комплектам')}
+                    ${tile('Итого', fmt(eqTotal + wkTotal) + ' ₽', projects.length ? 'средний комплект: ' + fmt((eqTotal + wkTotal) / projects.length) + ' ₽' : '&nbsp;')}
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+                    <input type="text" id="admin_proj_search" value="${esc(this._projQ || '')}" placeholder="Поиск по объекту, адресу, автору"
+                           style="flex:1 1 260px; max-width:420px;" oninput="app.setProjectsQuery(this.value)">
+                </div>
+                <table class="inv-table ad-sticky">
                     <thead>
                         <tr>
                             <th style="width:30px;">#</th>
@@ -30740,13 +31238,13 @@ const app = {
                     </thead>
                     <tbody>`;
 
-        if (!projects.length) {
+        if (!shown.length) {
             h += `<tr><td colspan="8" style="text-align:center; padding:30px; color:var(--text-sec);">${this._projectsError
                 ? 'Список проектов недоступен. Похоже, миграция supabase/migrations/20260801_add_projects.sql ещё не выполнена.'
-                : 'Проектов пока нет. Объект попадает сюда, когда монтажник нажимает «Проект» и листы сформированы.'
+                : (projects.length ? 'Ничего не найдено.' : 'Проектов пока нет. Объект попадает сюда, когда монтажник нажимает «Проект» и листы сформированы.')
                 }</td></tr>`;
         } else {
-            projects.forEach((p, i) => {
+            shown.forEach((p, i) => {
                 const dt = new Date(p.issued_at);
                 const when = dt.toLocaleDateString('ru-RU') + ' ' +
                     dt.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -30769,6 +31267,16 @@ const app = {
 
         h += `</tbody></table></div>`;
         wrap.innerHTML = h;
+    },
+
+    setProjectsQuery: function (q) {
+        this._projQ = q;
+        clearTimeout(this._projQT);
+        this._projQT = setTimeout(() => {
+            this.renderAdminMain();
+            const el = document.getElementById('admin_proj_search');
+            if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch (e) { } }
+        }, 250);
     },
 
     /**
@@ -30849,21 +31357,20 @@ const app = {
 
         const chip = (id, label) => {
             const on = filter === id;
-            return `<button class="admin-btn" style="background:${on ? 'var(--primary)' : 'var(--surface-light)'}; color:${on ? 'white' : 'var(--text-sec)'}; border:1px solid ${on ? 'var(--primary)' : 'var(--border)'};" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} · ${count(id)}</button>`;
+            return `<button class="ad-chip${on ? ' active' : ''}" onclick="app._successorsFilter='${id}'; app.renderAdminMain()">${label} <span class="ad-chip-n">${count(id)}</span></button>`;
         };
 
         let h = `
             <div style="margin-bottom:20px;">
-                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
-                    <h3 style="margin:0; color:var(--text-main);">🔁 Замены позиций</h3>
-                    <button class="admin-btn" style="margin-left:auto;" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
+                <div class="ad-page-h">
+                    <div><h3>Замены позиций</h3>
+                        <div class="ad-sub" style="max-width:900px; line-height:1.55;">
+                            Парсер цен находит позиции каталога, которые на сайте ТЕРЕМ стали «Под заказ», и товар, который сайт предлагает вместо них.
+                            Подтверждённая замена попадает в калькулятор в течение суток: у позиции меняются артикул, название, цена и наличие.
+                            Старые сметы и ссылки клиентам продолжают работать.</div></div>
+                    <button class="admin-btn" onclick="app.adminData.successors = null; app.renderAdminMain()">Обновить</button>
                 </div>
-                <p style="margin:0 0 14px; font-size:12.5px; color:var(--text-sec); line-height:1.55; max-width:900px;">
-                    Парсер цен находит позиции каталога, которые на сайте ТЕРЕМ стали «Под заказ», и товар, который сайт предлагает вместо них.
-                    Подтверждённая замена попадает в калькулятор в течение суток: у позиции меняются артикул, название, цена и наличие.
-                    Старые сметы и ссылки клиентам продолжают работать.
-                </p>
-                <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+                <div class="ad-chips">
                     ${chip('new', 'Новые')}${chip('approved', 'Подтверждённые')}${chip('rejected', 'Отклонённые')}
                 </div>`;
 
@@ -30886,7 +31393,7 @@ const app = {
                 let actions;
                 if (r.status === 'new') {
                     actions = `
-                        <button class="admin-btn" style="background:#10B981; color:white; border-color:#10B981;" onclick="app.adminSuccessorDecide(${id}, 'approved')">Подтвердить</button>
+                        <button class="admin-btn ad-primary" onclick="app.adminSuccessorDecide(${id}, 'approved')">Подтвердить</button>
                         <button class="admin-btn" onclick="app.adminSuccessorDecide(${id}, 'rejected')">Отклонить</button>`;
                 } else if (r.status === 'approved' && catalogArticle(r) === r.new_article) {
                     actions = `<span style="color:#10B981; font-weight:700; font-size:12.5px;">✓ В каталоге</span>`;
@@ -35604,6 +36111,9 @@ const app = {
     renderAdminPlansBody: function () {
         const root = document.getElementById('admin_plans_root');
         if (!root) return;
+        // Контейнер сначала служит заглушкой «Загрузка…» по центру — для содержимого сбрасываем
+        root.style.textAlign = 'left';
+        root.style.padding = '0';
         const data = this._adminPlansData || { projects: [], totalBytes: 0, retentionDays: 90 };
         const projects = data.projects || [];
         const isViewer = this.isReadOnlyAdmin(); // наблюдатель или менеджер: панель только на просмотр
@@ -35617,24 +36127,34 @@ const app = {
         // удаления подложку уже не вернуть, план придётся рисовать заново.
         const doomed = projects.filter(p => p.ageDays >= keep - 14).length;
 
+        // Срез «скоро под удаление» — объекты у порога срока хранения
+        const plansOnlyOld = !!this._plansOld;
+        const shownProjects = plansOnlyOld ? projects.filter(p => p.ageDays >= keep - 14) : projects;
+        const pTile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
+
         let h = `
-            <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px;">
-                <h3 style="margin:0; color:var(--text-main);">📐 Планы этажей</h3>
-                <span style="font-size:12px; color:var(--text-sec);">
-                    Объектов: <b>${projects.length}</b> &nbsp;|&nbsp; занято: <b>${mb(data.totalBytes || 0)}</b>
-                    &nbsp;|&nbsp; срок хранения: <b>${keep} дн.</b>
-                </span>
-                <span style="flex:1"></span>
-                <button class="admin-btn" onclick="app.renderAdminPlans()">Обновить</button>
-                <button class="admin-btn" ${isViewer ? 'disabled' : ''}
-                        onclick="app.purgeAdminPlans(${keep})">Очистить старше ${keep} дней</button>
-                <button class="admin-btn danger" ${isViewer ? 'disabled' : ''}
-                        onclick="app.purgeAdminPlans(0)">Очистить всё</button>
+            <div class="ad-page-h">
+                <div><h3>Планы этажей</h3>
+                    <div class="ad-sub">Подложки лежат на Beget, мимо Supabase — его трафик узкое место. Заброшенные объекты удаляются сами: раз в сутки, при очередной загрузке плана.</div></div>
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                    <button class="admin-btn" onclick="app.renderAdminPlans()">Обновить</button>
+                    <button class="admin-btn" ${isViewer ? 'disabled' : ''}
+                            onclick="app.purgeAdminPlans(${keep})">Очистить старше ${keep} дней</button>
+                    <details class="ad-danger-zone"><summary>Опасные действия</summary>
+                        <button class="admin-btn danger" ${isViewer ? 'disabled' : ''}
+                                onclick="app.purgeAdminPlans(0)">Очистить всё</button>
+                    </details>
+                </div>
             </div>
-            <div style="font-size:11.5px; color:var(--text-sec); margin-bottom:12px;">
-                Подложки лежат на Beget, мимо Supabase — его трафик узкое место.
-                Заброшенные объекты удаляются сами: раз в сутки, при очередной загрузке плана.
-                ${doomed ? `<b style="color:#D97706;">Скоро под удаление: ${doomed}.</b>` : ''}
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${pTile('Объектов с планами', projects.length, 'у монтажников')}
+                ${pTile('Занято на диске', mb(data.totalBytes || 0), 'подложки этажей')}
+                ${pTile('Срок хранения', keep + ' дн.', 'с последней правки')}
+                ${pTile('Скоро под удаление', doomed, doomed ? 'в ближайшие 14 дней' : 'ничего не истекает')}
+            </div>
+            <div class="ad-chips">
+                <button class="ad-chip${plansOnlyOld ? '' : ' active'}" onclick="app.setPlansOld(false)">Все <span class="ad-chip-n">${projects.length}</span></button>
+                <button class="ad-chip${plansOnlyOld ? ' active' : ''}" onclick="app.setPlansOld(true)">Скоро под удаление <span class="ad-chip-n">${doomed}</span></button>
             </div>`;
 
         if (!projects.length) {
@@ -35643,7 +36163,7 @@ const app = {
             return;
         }
 
-        h += `<table class="inv-table" style="margin-bottom:30px; table-layout:fixed; width:100%;">
+        h += `<table class="inv-table ad-sticky" style="margin-bottom:30px; table-layout:fixed; width:100%;">
                 <thead><tr>
                     <th style="width:30px;">#</th>
                     <th style="width:210px;">Монтажник</th>
@@ -35653,7 +36173,7 @@ const app = {
                     <th style="width:70px; text-align:center;">Действия</th>
                 </tr></thead><tbody>`;
 
-        projects.forEach((p, i) => {
+        shownProjects.forEach((p, i) => {
             const old = p.ageDays >= keep - 14;
             const thumbs = (p.files || []).map(f => `
                 <a href="${this.PLANS_ENDPOINT}?k=${p.key}&n=${encodeURIComponent(f.name)}" target="_blank"
@@ -35686,6 +36206,11 @@ const app = {
 
         h += `</tbody></table>`;
         root.innerHTML = h;
+    },
+
+    setPlansOld: function (on) {
+        this._plansOld = !!on;
+        this.renderAdminPlansBody();
     },
 
     /**
@@ -35887,8 +36412,11 @@ const app = {
             const data = await r.json();
             // defaultPro и tariffs — с 25.09.2026 (лимит по тарифу); старый
             // сервер их не шлёт, тогда один общий лимит, как раньше.
+            // defaultAdmin обязателен: без него recognitionDefaultLimit не узнаёт
+            // администратора и показывает ему лимит «Базовый» (5), хотя сервер
+            // считает его безлимитным.
             if (data.ok) this._adminRecognitionLimits = { default: data.default, defaultPro: data.defaultPro,
-                limits: data.limits || {}, tariffs: data.tariffs || {} };
+                defaultAdmin: data.defaultAdmin, limits: data.limits || {}, tariffs: data.tariffs || {} };
         } catch (e) {
             console.warn('[архив] лимиты не получены:', e.message);
         }
@@ -40373,7 +40901,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '3',
+    BIG_TEXT_CSS_V: '7',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -40387,12 +40915,15 @@ const app = {
             if (!document.getElementById('big_text_css')) {
                 const l = document.createElement('link');
                 l.id = 'big_text_css'; l.rel = 'stylesheet'; l.href = 'big_text.css?v=' + this.BIG_TEXT_CSS_V;
+                // Шрифты меняются, когда файл догрузился, — строку над сметой мерим после этого
+                l.onload = () => this.fitDocSummary();
                 document.head.appendChild(l);
             }
         } else {
             root.removeAttribute('data-big-text');
         }
         this.updateUiScaleButton(this.uiZoom());
+        this.fitDocSummary();
         // Шрифты поменялись — колонки и липкие панели пересчитывают высоты
         try { window.dispatchEvent(new Event('resize')); } catch (e) { }
     },
@@ -42424,6 +42955,8 @@ const app = {
         if (chkWorks) chkWorks.checked = true;
         if (chkHeatLoss) chkHeatLoss.checked = true;
         if (chkScheme) chkScheme.checked = true;
+        const chkNames = document.getElementById('share_opt_names');
+        if (chkNames) chkNames.checked = true;
 
         // Продавец монтаж не делает: раздела «Монтажные работы» у него нет на
         // экране, и наружу — в печать, Excel и ссылку клиенту — он тоже не
@@ -42606,6 +43139,10 @@ const app = {
             else cardScheme.classList.remove('selected');
         }
 
+        const cardNames = document.getElementById('card_opt_names');
+        const chkNamesUi = document.getElementById('share_opt_names');
+        if (cardNames && chkNamesUi) cardNames.classList.toggle('selected', chkNamesUi.checked);
+
         // Таймер счёта: подсветка карточки и склонение «день/дня/дней» под число.
         // На кнопку не влияет — ссылка без таймера тоже ссылка.
         const cardTimer = document.getElementById('card_opt_timer');
@@ -42647,6 +43184,10 @@ const app = {
             return;
         }
 
+        // По умолчанию названия сокращены; полные уходят только при снятой галочке
+        const chkNamesOpt = document.getElementById('share_opt_names');
+        const shortNames = chkNamesOpt ? chkNamesOpt.checked : true;
+
         this.closeShareOptionsModal();
 
         if (this.shareActionType === 'share') {
@@ -42659,11 +43200,11 @@ const app = {
                 if (validDays < 0) validDays = 0;
                 if (validDays > this.INVOICE_VALID_DAYS_MAX) validDays = this.INVOICE_VALID_DAYS_MAX;
             }
-            this.executeShareInvoice(showEq, showWorks, validDays);
+            this.executeShareInvoice(showEq, showWorks, validDays, !shortNames);
         } else if (this.shareActionType === 'excel') {
-            this.executeExcelDownload(showEq, showWorks, showHeatLoss, this.excelLayout === 'flat');
+            this.executeExcelDownload(showEq, showWorks, showHeatLoss, this.excelLayout === 'flat', shortNames);
         } else {
-            this.executeDownload(showEq, showWorks, showHeatLoss, showScheme);
+            this.executeDownload(showEq, showWorks, showHeatLoss, showScheme, shortNames);
         }
     },
 
@@ -42714,6 +43255,14 @@ const app = {
                     // теплопотерь, но и сводному листу «Основные данные
                     // помещений» — берём ту же, по которой считались потери.
                     tv: L.Tv,
+                    // Отдача тёплого пола с м² при шаге этажа и температуре этой
+                    // комнаты (СП 60.13330.2020, п. 6.4.8) — по ней лист «План
+                    // напольного отопления» считает петли так же, как смета (ufhCalc).
+                    ufhQud: (() => {
+                        const ti = this.roomTempInfo(r);
+                        const st = f == 2 ? (parseInt(s.ufhStep2, 10) || 150) : (parseInt(s.ufhStep1, 10) || 150);
+                        return Math.round(this.ufhQudForRoom(st, ti.t, ti.kind) * 10) / 10;
+                    })(),
                     items: items, total: L.Q_sum
                 };
             });
@@ -44165,7 +44714,7 @@ const app = {
         this.openShareOptionsModal('share');
     },
 
-    executeShareInvoice: async function (showEq, showWorks, validDays) {
+    executeShareInvoice: async function (showEq, showWorks, validDays, fullNames) {
         // Продавцу работы в ссылку не идут ни при каком вызове (в том числе из
         // режима обучения, который зовёт эту функцию напрямую)
         if (!this.canUseWorks()) showWorks = false;
@@ -44227,6 +44776,8 @@ const app = {
             eqDiscount: this.state.eqDiscount || 0,
             priceListKey: this.activeDistPriceKey()
         };
+        // Монтажник снял галочку «Без моделей и артикулов»: клиент увидит полные названия
+        if (fullNames) object_info.fullNames = true;
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
@@ -44515,6 +45066,13 @@ const app = {
     downloadExcel: async function () {
         return this.requestExport('excel');
     },
+    // Название позиции в строке сметы. На экране — как есть; пока собирается печатная
+    // копия (PDF и Excel, флаг _exportShort ставит prepareForPrint) — без названия
+    // модели, см. short_names.js. Артикул в этом режиме скрыт в render().
+    exportName: function (item) {
+        if (!this._exportShort || !window.HcShortName) return item.name;
+        return window.HcShortName.of({ id: item.id, name: item.name });
+    },
     // Общая часть печати и выгрузки в Excel: проверить доступ, спросить название
     // объекта и контакты монтажника, затем открыть окно выбора разделов.
     requestExport: async function (actionType) {
@@ -44581,13 +45139,14 @@ const app = {
         }
         return cssText;
     },
-    executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme) {
+    executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
         this.printOptions = {
             eq: showEq,
             works: showWorks,
             heatLoss: !!showHeatLoss,
-            scheme: !!showScheme
+            scheme: !!showScheme,
+            shortNames: shortNames !== false
         };
 
         // Гарантируем, что смета попадёт в базу (и станет доступна через "Загрузить код"),
@@ -44780,7 +45339,7 @@ const app = {
     // он читает уже готовую печатную вёрстку. За счёт этого в файл попадает та же
     // смета, что и в PDF: те же разделы, строки, скидки и группировки, без второй
     // копии логики сметы. В Excel не переносятся только фотографии и схема.
-    executeExcelDownload: async function (showEq, showWorks, showHeatLoss, flat) {
+    executeExcelDownload: async function (showEq, showWorks, showHeatLoss, flat, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
         if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
         if (!window.ExcelExport) {
@@ -44792,7 +45351,8 @@ const app = {
             eq: showEq,
             works: showWorks,
             heatLoss: !!showHeatLoss,
-            scheme: false
+            scheme: false,
+            shortNames: shortNames !== false
         };
 
         // Как и при печати: смета должна попасть в базу, даже если сейчас нет связи,
@@ -48267,6 +48827,8 @@ const app = {
         // localStorage и открытые сметы. По ним stateForLoadedEstimate собирает
         // состояние под каждую открываемую смету.
         if (!this._stateDefaults) this._stateDefaults = JSON.parse(JSON.stringify(this.state));
+        // Меню кабинета (панель слева и колонка в окне) строим до всего, что их читает
+        this.buildCabinetMenus();
         // Global premium modal overrides
         window.alert = (msg) => app.alert(msg);
         window.confirm = (msg) => app.confirm(msg);
@@ -55267,6 +55829,23 @@ const app = {
         const t = parseFloat(r && r.tpArea);
         return t > 0 ? Math.min(t, a) : a;
     },
+    /**
+     * Площадь под трубой петель комнаты по раскладке плана, м²: длина петель
+     * без подводок × шаг. Пол греет там, где лежит труба, а раскладка оставляет
+     * 100 мм у стен и обходит пучок подводок — у проектировщиков Galf так
+     * покрыто 74–77 % комнаты. null — плана с этой комнатой нет (зона называется
+     * так же, как комната) или зона считана оценкой.
+     */
+    ufhLaidArea: function (r, stepMm) {
+        const geo = this.ufhGeom();
+        const fl = geo && geo.floors[(r && r.floor === 2) ? 1 : 0];
+        if (!fl || !fl.rows) return null;
+        const key = String((r && r.name) || '').trim().toLowerCase();
+        if (!key) return null;
+        const rows = fl.rows.filter(x => String(x.zone || '').trim().toLowerCase() === key);
+        if (!rows.length || rows.some(x => !(x.laidM > 0))) return null;
+        return rows.reduce((a, x) => a + x.laidM, 0) * stepMm / 1000;
+    },
     updRoomTpArea: function (roomId, val) {
         const r = this.state.rooms.find(x => x.id === roomId);
         if (!r) return;
@@ -59243,14 +59822,22 @@ const app = {
                 };
                 // Зона может быть поделена на несколько петель — мощность комнаты
                 // делим между ними поровну, как и её площадь.
-                const kOf = {};
-                g.rows.forEach(r => { kOf[r.zone] = (kOf[r.zone] || 0) + 1; });
+                const kOf = {}, laidOf = {};
+                g.rows.forEach(r => {
+                    kOf[r.zone] = (kOf[r.zone] || 0) + 1;
+                    if (r.laidM > 0) laidOf[r.zone] = (laidOf[r.zone] || 0) + r.laidM;
+                });
+                // Пол греет под трубой: у разложенной петли предел — с площади под её
+                // трубой (длина без подводок × шаг), нагрузка комнаты делится между
+                // петлями по этой площади (так же лист, projectPlans.loopRows).
                 // 1,05 — подрезка и подъём концов петель к гребёнке, как в смете
                 g.rows.forEach(r => {
-                    const cap = r.area * roomQud(r.zone);
+                    const qud = roomQud(r.zone), laid = r.laidM > 0 && laidOf[r.zone] > 0;
+                    const cap = laid ? r.laidM * step / 1000 * qud : r.area * qud;
+                    const share = laid ? r.laidM / laidOf[r.zone] : 1 / (kOf[r.zone] || 1);
                     const q = roomQ(r.zone);
                     rows.push({ name: r.name, area: r.area, m: r.m * 1.05,
-                        Q: q > 0 ? Math.min(q / (kOf[r.zone] || 1), cap) : cap });
+                        Q: q > 0 ? Math.min(q * share, cap) : cap });
                 });
             }
             if (!rows.length) {
@@ -59573,8 +60160,10 @@ const app = {
                 const zName = z.name || 'зона ' + (++zno);
                 z.loops.forEach((l, li) => {
                     meters += l.m;
+                    // laidM — труба самой петли без подводок (по ней — площадь под трубой);
+                    // у зоны-оценки (est) раскладки нет, считать нечего
                     rows.push({ name: zName + (k > 1 ? ' ' + (li + 1) + '/' + k : ''),
-                        zone: z.name || '', area: z.area / k, m: l.m });
+                        zone: z.name || '', area: z.area / k, m: l.m, laidM: z.est ? null : (l.loopM || null) });
                 });
                 loops += k;
                 area += z.area;
@@ -68189,6 +68778,7 @@ const app = {
             <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>
             <span class="param-item param-date calculation-date"><span class="ui-emo">📅 </span>Дата: <b>${new Date().toLocaleDateString('ru-RU')}</b></span>
         `;
+        this.fitDocSummary();
 
         let bill = [];
         let currentSectionTitle = '';
@@ -68724,7 +69314,8 @@ const app = {
         // проставляет syncUI, и когда настройку меняет код (в приложении
         // артикулы включаются сами после первого входа), отрисовка успевала
         // раньше — артикулов не было, пока человек не щёлкал переключателем.
-        let h = "", sum = 0, globalIdx = 1, showSku = !!app.state.showSku;
+        // В печать и Excel артикул не идёт никогда (см. exportName)
+        let h = "", sum = 0, globalIdx = 1, showSku = !!app.state.showSku && !app._exportShort;
 
         // Разделы, для которых flushBill уже вызывался. Нужно, чтобы после
         // основной отрисовки дофлашить разделы со своими/распознанными
@@ -69141,7 +69732,7 @@ const app = {
                     i.locs.forEach((locStr, locIdx) => {
                         let subNum = `${globalIdx}.${subIdx++}`;
                         let cleanLocStr = locStr.replace(/^•\s*/, '');
-                        let fullSubRowName = `${i.name} — ${cleanLocStr}`;
+                        let fullSubRowName = `${app.exportName(i)} — ${cleanLocStr}`;
                         const subKey = i.instanceKeys && i.instanceKeys[locIdx];
                         const subSwapBtn = subKey ? `<div onclick="event.stopPropagation();app.openSwapModal('${subKey}')" title="Заменить этот радиатор" style="cursor:pointer;color:var(--primary);display:inline-flex;align-items:center;justify-content:center;">${_swapSvg}</div>` : '';
 
@@ -69273,7 +69864,7 @@ const app = {
                 const portTagHtml = (i.portTag && this.schemeOn())
                     ? ` <span class="port-tag no-print">(${i.portTag})</span>`
                     : '';
-                rows += `<tr ${rowStyle}${rowClass} data-rk="${this._rowKey('e', title, lookupId)}" onclick="${rowClick}"><td class="col-idx">${recSelHtml}${globalIdx++}</td>${imgCellHtml}<td class="${nameClass}" ${nameClick}>${i.name}${portTagHtml}${nameBtnHtml}${eqBadgeHtml}${swapInlineHtml}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">${i.displaySku}</td><td class="col-brand">${i.brand || 'STOUT'}</td><td class="col-unit">${i.unit || 'шт'}</td><td class="col-qty">${qHtml}</td>${priceCell}${sumCell}</tr>` + locsRows;
+                rows += `<tr ${rowStyle}${rowClass} data-rk="${this._rowKey('e', title, lookupId)}" onclick="${rowClick}"><td class="col-idx">${recSelHtml}${globalIdx++}</td>${imgCellHtml}<td class="${nameClass}" ${nameClick}>${app.exportName(i)}${portTagHtml}${nameBtnHtml}${eqBadgeHtml}${swapInlineHtml}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">${i.displaySku}</td><td class="col-brand">${i.brand || 'STOUT'}</td><td class="col-unit">${i.unit || 'шт'}</td><td class="col-qty">${qHtml}</td>${priceCell}${sumCell}</tr>` + locsRows;
             });
             let addCustomRow = "";
             if (this.state.viewMode === 'equipment') {
@@ -72822,6 +73413,40 @@ const app = {
 
 
         currentSectionTitle = "3. Приборы отопления";
+        // Хватит ли тёплого пола комнате без радиаторов. Раньше это проверялось
+        // только внутри расчёта радиаторов ниже, и в доме без них (или когда пол
+        // по укрупнённой оценке закрывал всё) комнату не проверял никто. Две ступени:
+        // пол со всей площади (её проверяет и блок радиаторов — там не дублируем)
+        // и пол под трубой по раскладке плана — 100 мм у стен, подводки и места
+        // «без обогрева» остаются без трубы, у проектировщиков Galf так 74–77 %
+        // комнаты. Отдача с м² — по температуре поверхности, СП 60.13330.2020, п. 6.4.8.
+        if (hasTp && this.state.detailedRooms && Array.isArray(this.state.rooms)) {
+            const _radBlock = hasRad && radSecs > 0;
+            this.state.rooms.forEach(r => {
+                if (!(r.sys && r.sys.includes('tp')) || r.sys.includes('rad')) return;
+                const loss = this.getRoomHeatLoss(r);
+                const Q = loss.Q_sum || 0;
+                if (!(Q > 0)) return;
+                const step = (r.floor === 2) ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
+                const qUd = this.ufhQudForRoom(step, loss.Tv, loss.tKind);
+                const qFull = this.roomTpArea(r) * qUd;
+                const fmt = v => v.toFixed(1).replace('.', ',');
+                const label = app._warnRoomLabel(r.id, r.name + ' (Только ТП):');
+                app.tempWarns = app.tempWarns || [];
+                if (Q > qFull) {
+                    if (!_radBlock) app.tempWarns.push(`• ${label} тёплого пола недостаточно для компенсации теплопотерь! Пол отдаст не больше ${Math.round(qFull)} Вт (${Math.round(qUd)} Вт/м² по температуре поверхности, СП 60.13330.2020, п. 6.4.8) при теплопотерях ${Math.round(Q)} Вт. Нехватка мощности: <b>${Math.round(Q - qFull)} Вт</b>. Рекомендуется добавить радиатор или улучшить утепление стен.`);
+                    return;
+                }
+                const laidA = this.ufhLaidArea(r, step);
+                if (!(laidA > 0)) return;
+                const qLaid = laidA * qUd;
+                // площадь под трубой — по раскладке с сеткой 10 см; разницу меньше
+                // 5 % она не различает, тревогу из-за неё не поднимаем
+                if (Q - qLaid < Math.max(10, Q * 0.05)) return;
+                const fix = step > 100 ? 'уменьшите шаг укладки или добавьте радиатор' : 'добавьте радиатор';
+                app.tempWarns.push(`• ${label} по раскладке плана петли лежат на ${fmt(laidA)} м² из ${fmt(this.roomTpArea(r))} м² (у стен 100 мм без трубы, подводки) — пол отдаст около ${Math.round(qLaid)} Вт при теплопотерях ${Math.round(Q)} Вт. Нехватка: <b>${Math.round(Q - qLaid)} Вт</b> — ${fix}. Отдача ${Math.round(qUd)} Вт/м² под трубой — по температуре поверхности (СП 60.13330.2020, п. 6.4.8).`);
+            });
+        }
         if (hasRad && radSecs > 0) {
             let totalRadCount = 0;
             // Обвязка считается отдельно по факту подключения КАЖДОГО поставленного радиатора
@@ -72860,6 +73485,11 @@ const app = {
                     let qUdeUfh = this.ufhQudForRoom(ufhStepVal, roomLoss.Tv, roomLoss.tKind);
 
                     let qUfhMax = this.roomTpArea(r) * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
+                    // Пол греет там, где лежит труба. Есть раскладка плана — отдача с площади
+                    // под трубой (100 мм у стен, подводки, места «без обогрева» — без неё),
+                    // иначе радиатор рядом с полом недобирал бы эту разницу.
+                    const _laidA = roomHasTp ? this.ufhLaidArea(r, ufhStepVal) : null;
+                    const qUfhGive = _laidA > 0 ? Math.min(qUfhMax, _laidA * qUdeUfh) : qUfhMax;
 
                     // Паспортная мощность прибора дана при ΔT = 50 K: средняя температура воды
                     // 70 °C (80/60 и 75/65) при воздухе +20 °C. Ниже вода (70/55, 55/45) или теплее
@@ -72923,7 +73553,7 @@ const app = {
 
                         if (roomHasTp && roomHasRad) {
                             // Совместный режим: радиатор покрывает только дефицит мощности пола
-                            let portionUfh = qUfhMax / spots.length; // доля мощности пола на это место
+                            let portionUfh = qUfhGive / spots.length; // доля мощности пола на это место
                             let deficit = totalWindowLoss - portionUfh;
                             let minSanitary = (r.area * 30) / spots.length; // минимум 30 Вт/м² на окно для отсечки сквозняков по СНиП
                             wLoad = Math.max(deficit, minSanitary);
@@ -73402,8 +74032,8 @@ const app = {
                     app._roomBalance[r.id] = {
                         q: Math.round(roomLoss.Q_sum),
                         fact: Math.round(roomFactPowerSum),
-                        ufh: roomHasTp ? Math.round(Math.min(qUfhMax, roomLoss.Q_sum)) : 0,
-                        ufhMax: roomHasTp ? Math.round(qUfhMax) : 0,
+                        ufh: roomHasTp ? Math.round(Math.min(qUfhGive, roomLoss.Q_sum)) : 0,
+                        ufhMax: roomHasTp ? Math.round(qUfhGive) : 0,
                         hasTp: roomHasTp, hasRad: roomHasRad
                     };
                     if ((roomHasRad) && roomFactPowerSum > 0 && Math.round(roomDemandSum) > roomFactPowerSum) {
@@ -77584,12 +78214,8 @@ const app = {
             // остаются значок и заголовок.
             const _onboardOk = this.onboardingAllowed();
             const qsBtn = (_onboardOk && this.isCalcEmpty()) ? `
-                    <button type="button" id="quick_start_row" class="no-print" onclick="app.showQuickStart()"
-                        style="display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-                               margin-top: 12px; font: inherit; font-size: 13px; font-weight: 600;
-                               padding: 10px 18px; border-radius: 10px; border: 1px dashed var(--primary);
-                               background: transparent; color: var(--primary); cursor: pointer;">
-                        <span class="ui-emo" style="font-size: 15px;">${_emptyIcon}</span>Быстрый старт: типовой объект
+                    <button type="button" id="quick_start_row" class="no-print quick-start-cta" onclick="app.showQuickStart()">
+                        <span class="ui-emo">${_emptyIcon}</span>Быстрый старт: типовой объект
                     </button>` : '';
             h = `<tr class="empty-state-row"><td colspan="9">
                 <div class="empty-state-hint">
@@ -79193,6 +79819,10 @@ function prepareForPrint() {
     let originalMode = app.state.viewMode;
     let printArea = document.getElementById('print-area');
 
+    // Документ уходит наружу: названия без моделей, артикулов нет. Флаг читает
+    // render() на время сборки печатной копии; перед возвратом интерфейса он снимается.
+    app._exportShort = !app.printOptions || app.printOptions.shortNames !== false;
+
     // Сборка может прийти дважды подряд: executeDownload собирает копию заранее
     // (чтобы дождаться картинок), а потом window.print() поднимает 'beforeprint'
     // и собирает снова. Вторая сборка вредна дважды: клон наследовал метку
@@ -79321,9 +79951,11 @@ function prepareForPrint() {
         });
 
         // Возвращаем интерфейс в исходное состояние
+        app._exportShort = false;
         app.state.viewMode = originalMode;
         app.render();
     }
+    app._exportShort = false;
 }
 window.addEventListener('beforeprint', prepareForPrint);
 
@@ -79331,7 +79963,7 @@ window.addEventListener('beforeprint', prepareForPrint);
 // функцию — вызывается напрямую из executeDownload() после html2pdf() на мобильных/планшетах,
 // где событие 'afterprint' не наступает (не было настоящего window.print()).
 function cleanupAfterPrint() {
-    if (app) app._printBinReady = false;
+    if (app) { app._printBinReady = false; app._exportShort = false; }
     if (app && app.state && app.state.darkMode) {
         document.body.classList.add('dark-mode');
     }

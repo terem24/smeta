@@ -117,6 +117,24 @@ def prefix_selector(sel):
     return 'html[data-big-text] ' + sel
 
 
+# Ручные добавки к сгенерированному. Таблица сметы стоит на table-layout: fixed, и ширины
+# колонок заданы числами в style.css: шрифт в режиме растёт, а колонка нет — артикул
+# (моноширинный, до 15 знаков) налезал на бренд. Артикул берём мельче общей прибавки.
+EXTRA = '''  /* ручные добавки (tools/gen_big_text.py, EXTRA) */
+  html[data-big-text] .inv-table th.col-sku,
+  html[data-big-text] .inv-table td.col-sku,
+  html[data-big-text] .inv-table td.col-art {
+    width: 136px;
+    min-width: 136px;
+    font-size: 13.5px;
+  }
+  html[data-big-text] .inv-table th.col-brand,
+  html[data-big-text] .inv-table td.col-brand {
+    width: 86px;
+    min-width: 86px;
+  }'''
+
+
 def main():
     css = strip_comments(open('style.css', encoding='utf-8').read())
     blocks = parse_blocks(css)
@@ -134,6 +152,8 @@ def main():
         f = float(m.group(1))
         if f <= 0 or f > MAX_SMALL:
             continue
+        if 'ui-scale' in sel:
+            continue   # меню «Aa» лежит вне zoom-обёртки и уже в обычных px — не раздуваем
         sels = [prefix_selector(x) for x in split_top(sel) if x.strip()]
         if not sels:
             continue
@@ -168,6 +188,7 @@ def main():
         a = 'font-size:' + num(f) + 'px'
         b = 'font-size: ' + num(f) + 'px'
         out.append('  html[data-big-text] [style*="%s"], html[data-big-text] [style*="%s"] { font-size: %spx !important; }' % (a, b, num(bump(f))))
+    out.append(EXTRA)
     out.append('}')
     text = '\n'.join(out) + '\n'
     open('big_text.css', 'w', encoding='utf-8', newline='\n').write(text)

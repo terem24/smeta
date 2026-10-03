@@ -1173,6 +1173,8 @@
 
   html[data-big-text] .ad-kv { font-size: 16.5px; }
 
+  html[data-big-text] .ad-loader { font-size: 16.5px; }
+
   html[data-big-text] .ad-pill { font-size: 15px; }
 
   html[data-big-text] .ad-field { font-size: 15.5px; }
@@ -1231,15 +1233,9 @@
 
   html[data-big-text] #admin_content .admin-stat-grid .control-card > span:nth-child(2) { font-size: 22px; }
 
-  html[data-big-text] #btn_ui_scale .ui-scale-badge { font-size: 13px; }
+  html[data-big-text] .quick-start-cta { font-size: 17.5px; }
 
-  html[data-big-text] .ui-scale-title { font-size: 17.5px; }
-
-  html[data-big-text] .ui-scale-label { font-size: 16.5px; }
-
-  html[data-big-text] .ui-scale-note { font-size: 16px; }
-
-  html[data-big-text] .ui-scale-row small { font-size: 16px; }
+  html[data-big-text] .quick-start-cta .ui-emo { font-size: 19.5px; }
 
   /* инлайновые font-size */
   html[data-big-text] [style*="font-size:8.5px"], html[data-big-text] [style*="font-size: 8.5px"] { font-size: 12.5px !important; }
@@ -1262,4 +1258,17 @@
   html[data-big-text] [style*="font-size:20px"], html[data-big-text] [style*="font-size: 20px"] { font-size: 21px !important; }
   html[data-big-text] [style*="font-size:21px"], html[data-big-text] [style*="font-size: 21px"] { font-size: 21.5px !important; }
   html[data-big-text] [style*="font-size:22px"], html[data-big-text] [style*="font-size: 22px"] { font-size: 22px !important; }
+  /* ручные добавки (tools/gen_big_text.py, EXTRA) */
+  html[data-big-text] .inv-table th.col-sku,
+  html[data-big-text] .inv-table td.col-sku,
+  html[data-big-text] .inv-table td.col-art {
+    width: 136px;
+    min-width: 136px;
+    font-size: 13.5px;
+  }
+  html[data-big-text] .inv-table th.col-brand,
+  html[data-big-text] .inv-table td.col-brand {
+    width: 86px;
+    min-width: 86px;
+  }
 }

@@ -11,38 +11,50 @@ import fitz, io, os, re, sys, json
 
 ZOOM = 1.5          # 108 точек на дюйм: стена 200 мм при 1:100 ≈ 8 px
 
-def label_blocks(page):
-    """Подписи помещений на плане: строка «(1.1)» и следующие строки блока."""
+def all_lines(page):
     out = []
-    d = page.get_text('dict')
-    for b in d.get('blocks', []):
-        lines = []
+    for b in page.get_text('dict').get('blocks', []):
         for l in b.get('lines', []):
             t = ''.join(s['text'] for s in l.get('spans', [])).strip()
-            if t: lines.append((t, l['bbox']))
-        for k, (t, bb) in enumerate(lines):
-            m = re.match(r'^\((\d+(?:\.\d+)?)\)$', t)
-            if not m: continue
-            rest = [x[0] for x in lines[k + 1:k + 4]]
-            name = rest[0] if rest else ''
-            area = None
-            for r in rest:
-                ma = re.search(r'([\d]+(?:[.,]\d+)?)\s*м', r)
-                if ma and ('м2' in r.replace(' ', '') or 'м²' in r or r.strip().endswith('м')):
-                    area = float(ma.group(1).replace(',', '.'))
-            out.append({'no': m.group(1), 'name': name, 'area': area,
-                        'x': (bb[0] + bb[2]) / 2 * ZOOM, 'y': bb[3] * ZOOM})
+            if t: out.append((t, l['bbox']))
+    return out
+
+AREA_RE = re.compile(r'^(\d+(?:[.,]\d+)?)\s*м\s*[2²]?$')
+
+def label_blocks(page):
+    """Подписи помещений на плане: строка «(1.1)», под ней — имя, ватты, площадь.
+    В листах корпуса это отдельные блоки текста, поэтому строки подписи
+    собираются по положению: левый край тот же (±4 pt), ниже номера до 25 pt."""
+    lines = all_lines(page)
+    out = []
+    for t, bb in lines:
+        m = re.match(r'^\((\d+(?:\.\d+)?)\)$', t)
+        if not m: continue
+        below = [(t2, b2) for t2, b2 in lines
+                 if abs(b2[0] - bb[0]) < 4 and bb[3] - 1 < b2[1] < bb[3] + 25]
+        below.sort(key=lambda x: x[1][1])
+        name, area = '', None
+        for t2, _ in below[:4]:
+            ma = AREA_RE.match(t2.replace(' ', ''))
+            if ma: area = float(ma.group(1).replace(',', '.')); continue
+            if not name and not re.search(r'\d', t2): name = t2
+        out.append({'no': m.group(1), 'name': name, 'area': area,
+                    'x': (bb[0] + bb[2]) / 2 * ZOOM, 'y': bb[3] * ZOOM})
     return out
 
 def explication(page):
-    """Площади из таблицы экспликации: строка «1.1 | Гостиная | 17.55 м2 | …»."""
-    words = page.get_text('words')
-    rows = {}
+    """Площади из таблицы экспликации: строка «1.1 | Гостиная | 17.55 м2 | …».
+    Строки — слова с близким центром по высоте (допуск 2,5 pt)."""
+    words = sorted(page.get_text('words'), key=lambda w: (w[1] + w[3]) / 2)
+    rows, cur, cy = [], [], None
     for w in words:
-        key = round((w[1] + w[3]) / 2 / 2.5)
-        rows.setdefault(key, []).append(w)
+        c = (w[1] + w[3]) / 2
+        if cy is not None and abs(c - cy) > 2.5:
+            rows.append(cur); cur = []
+        cur.append(w); cy = c if not cur[:-1] else cy
+    if cur: rows.append(cur)
     res = {}
-    for ws in rows.values():
+    for ws in rows:
         ws.sort(key=lambda w: w[0])
         txt = ' '.join(w[4] for w in ws)
         m = re.match(r'^(\d+\.\d+)\s+(.+?)\s+(\d+(?:[.,]\d+)?)\s*м', txt)
@@ -80,6 +92,41 @@ def collector(page):
     if not best: return None
     return {'x': best[1].x * ZOOM, 'y': best[1].y * ZOOM}
 
+def dim_scale(page):
+    """Масштаб по размерным цепочкам осей: «2200 2000 2000 2200» в один ряд.
+    Центр подписи размера стоит посередине своего отрезка, поэтому положение
+    подписи линейно по середине отрезка в мм: x = a + b·mid. b — pt на мм натуры.
+    Берём ряды из 3+ чисел с малым разбросом подгонки; ответ — медиана по рядам."""
+    nums = []
+    for w in page.get_text('words'):
+        t = w[4]
+        if re.fullmatch(r'\d{3,5}', t) and 300 <= int(t) <= 30000 and (w[2] - w[0]) > (w[3] - w[1]):
+            nums.append(((w[0] + w[2]) / 2, (w[1] + w[3]) / 2, int(t)))
+    nums.sort(key=lambda n: n[1])
+    rows, cur = [], []
+    for n in nums:
+        if cur and abs(n[1] - cur[-1][1]) > 1.5:
+            rows.append(cur); cur = []
+        cur.append(n)
+    if cur: rows.append(cur)
+    bs = []
+    for r in rows:
+        r.sort(key=lambda n: n[0])
+        if len(r) < 3: continue
+        mids, acc = [], 0
+        for n in r: mids.append(acc + n[2] / 2); acc += n[2]
+        xs = [n[0] for n in r]
+        mm = sum(mids) / len(mids); mx = sum(xs) / len(xs)
+        sxx = sum((m - mm) ** 2 for m in mids)
+        if sxx <= 0: continue
+        b = sum((m - mm) * (x - mx) for m, x in zip(mids, xs)) / sxx
+        if b <= 0: continue
+        res = max(abs(mx + b * (m - mm) - x) for m, x in zip(mids, xs))
+        if res < 0.03 * (xs[-1] - xs[0]) + 1: bs.append(b)
+    if not bs: return None
+    bs.sort()
+    return bs[len(bs) // 2]
+
 def loops(page):
     t = page.get_text()
     L = [float(x.replace(',', '.')) for x in re.findall(r'L\s*=\s*(\d+(?:[.,]\d+)?)\s*м', t)]
@@ -100,15 +147,17 @@ def main():
             continue
         labs = label_blocks(page)
         exp = explication(page)
-        for lb in labs:
-            if lb['area'] is None and lb['no'] in exp: lb['area'] = exp[lb['no']]
+        for lb in labs:          # в экспликации площадь точная, в подписи на плане — округлённая
+            if lb['no'] in exp: lb['area'] = exp[lb['no']]
         L, steps = loops(page)
         coll = collector(page)
         pix = page.get_pixmap(matrix=fitz.Matrix(ZOOM, ZOOM), alpha=False)
         fid = 'p%03d' % len(meta)
         with open(os.path.join(out, fid + '.rgb'), 'wb') as fh: fh.write(pix.samples)
+        b = dim_scale(page)                      # pt листа на мм натуры
         meta.append({'id': fid, 'pdf': name, 'page': pno + 1, 'w': pix.width, 'h': pix.height,
-                     'labels': labs, 'coll': coll, 'L': L, 'steps': steps})
+                     'labels': labs, 'coll': coll, 'L': L, 'steps': steps,
+                     'pxPerM': b * 1000 * ZOOM if b else None})
         doc.close()
     io.open(os.path.join(out, 'meta.json'), 'w', encoding='utf-8').write(json.dumps(meta, ensure_ascii=False))
     ok = sum(1 for m in meta if m['labels'] and m['coll'] and m['L'])

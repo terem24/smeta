@@ -76,7 +76,7 @@
 <script src="project_scheme.js?v=4.51"></script>
 <script src="boiler_wall.js?v=1.0"></script>
 <script src="project_layout.js?v=4.17"></script>
-<script src="project_plans.js?v=4.30"></script>
+<script src="project_plans.js?v=4.34"></script>
 <script src="project_nodes.js?v=4.15"></script>
 <!-- Узел коллектора ТП: рисуется вектором и берёт петли из project_plans.js,
      поэтому подключается после него. -->
@@ -230,7 +230,8 @@ if (payload && payload.items && payload.items.length) {
   var expRooms = [];
   (payload.heatloss || []).forEach(function (fl, fi) {
     (fl.rooms || []).forEach(function (r) {
-      expRooms.push({ id: r.id, name: r.name, area: r.area, q: r.total, floor: fi + 1 });
+      // qud — отдача тёплого пола с м² при температуре этой комнаты, как в смете
+      expRooms.push({ id: r.id, name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 });
     });
   });
   // Труба тёплого пола — из сметы, для «Общих условий» на плане напольного
