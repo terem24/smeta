@@ -779,49 +779,50 @@ body.dark-mode .tab.tab-cheaper.active {
 
 /* Метка «Гарантия STOUT» в смете — для монтажника (app.renderStoutShareChip). В печать,
    PDF и ссылку клиенту не идёт: класс no-print, и строится она только при входе.
-   Щит, шкала хода к порогу и короткая подпись: «доступна» либо «ещё N ₽». */
+   Короткая таблетка: щит и два слова; состояние — цветом и значком. */
 .doc-summary .ds-stout {
     cursor: pointer;
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 3px 10px 3px 7px;
+    gap: 5px;
+    padding: 2px 9px 2px 6px;
     border-radius: 999px;
     border: 1px solid transparent;
     font-size: 12px;
+    font-weight: 600;
     line-height: 1.3;
     white-space: nowrap;
     transition: filter .15s;
 }
-.doc-summary .ds-stout:hover { filter: brightness(.97); }
-.doc-summary .ds-stout .ds-stout-ico { width: 15px; height: 15px; flex: 0 0 15px; }
-.doc-summary .ds-stout .ds-stout-t { font-weight: 600; }
-.doc-summary .ds-stout .ds-stout-bar { width: 34px; height: 5px; border-radius: 3px; background: rgba(0, 0, 0, .12); overflow: hidden; }
-.doc-summary .ds-stout .ds-stout-bar i { display: block; height: 100%; border-radius: 3px; background: currentColor; }
-.doc-summary .ds-stout b { font-weight: 700; color: inherit; }
+.doc-summary .ds-stout:hover { filter: brightness(.96); }
+.doc-summary .ds-stout .ds-stout-ico { width: 14px; height: 14px; flex: 0 0 14px; }
 .doc-summary .ds-stout.ok { background: #ECFDF3; border-color: #A7F3C0; color: #15803D; }
 .doc-summary .ds-stout.low { background: #FFF7E6; border-color: #FCD9A0; color: #B45309; }
 body.dark-mode .doc-summary .ds-stout.ok { background: rgba(34, 197, 94, .14); border-color: rgba(74, 222, 128, .35); color: #4ADE80; }
 body.dark-mode .doc-summary .ds-stout.low { background: rgba(245, 158, 11, .14); border-color: rgba(251, 191, 36, .35); color: #FBBF24; }
-body.dark-mode .doc-summary .ds-stout .ds-stout-bar { background: rgba(255, 255, 255, .18); }
 
-/* Окно метки «Гарантия STOUT» (app.showStoutShareInfo): шкала 0–100 % с чертой порога */
-.calc-dialog-card.sg-card { max-width: 460px; width: calc(100vw - 32px); text-align: left; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 20px 22px; }
-.sg-card .sg-head { display: flex; align-items: center; gap: 12px; }
-.sg-card .sg-shield { width: 44px; height: 44px; border-radius: 12px; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; flex: 0 0 44px; }
-.sg-card .sg-shield svg { width: 26px; height: 26px; }
-.sg-card .sg-title { font-size: 17px; font-weight: 800; color: var(--text-main); line-height: 1.2; }
-.sg-card .sg-sub { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
-.sg-card .sg-pill { margin-left: auto; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+/* Окно метки «Гарантия STOUT» (app.showStoutShareInfo): синяя шапка, шкала 0–100 % с чертой
+   порога, одна фраза и три плитки либо три позиции на замену. Широкое и низкое — без прокрутки.
+   Карточка диалога — flex-колонка: детям запрещено сжиматься, иначе при нехватке высоты
+   список позиций схлопывался в пустую линию. */
+.calc-dialog-card.sg-card { max-width: 660px; width: calc(100vw - 32px); padding: 0; text-align: left; overflow: hidden auto; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); }
+.sg-card > * { flex-shrink: 0; }
+.sg-card .sg-head { display: flex; align-items: center; gap: 14px; padding: 18px 26px; background: linear-gradient(135deg, #153C69, #203F6F 60%, #2A5A93); color: #fff; }
+.sg-card .sg-shield { width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 255, 255, .14); color: #fff; display: flex; align-items: center; justify-content: center; flex: 0 0 42px; }
+.sg-card .sg-shield svg { width: 24px; height: 24px; }
+.sg-card .sg-ht { flex: 1 1 auto; min-width: 0; }
+.sg-card .sg-title { font-size: 19px; font-weight: 800; line-height: 1.2; color: #fff; letter-spacing: .01em; }
+.sg-card .sg-sub { font-size: 12px; color: #9CC9F0; margin-top: 2px; }
+.sg-card .sg-pill { font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
 .sg-card .sg-pill.ok { background: #DCFCE7; color: #15803D; }
 .sg-card .sg-pill.low { background: #FEF3C7; color: #B45309; }
-body.dark-mode .sg-card .sg-pill.ok { background: rgba(34, 197, 94, .18); color: #4ADE80; }
-body.dark-mode .sg-card .sg-pill.low { background: rgba(245, 158, 11, .18); color: #FBBF24; }
-.sg-card .sg-meter { margin: 20px 0 6px; }
-.sg-card .sg-big { display: flex; align-items: baseline; gap: 2px; margin-bottom: 26px; flex-wrap: wrap; }
-.sg-card .sg-big b { font-size: 44px; line-height: 1; font-weight: 800; color: var(--text-main); letter-spacing: -1px; }
-.sg-card .sg-big span { font-size: 20px; font-weight: 700; color: var(--text-main); }
-.sg-card .sg-big em { font-style: normal; font-size: 12px; color: var(--text-sec); margin-left: 10px; flex: 1 1 140px; line-height: 1.3; }
+.sg-card .sg-body { padding: 20px 26px 22px; }
+.sg-card .sg-meter { display: flex; align-items: center; gap: 22px; }
+.sg-card .sg-big { flex: 0 0 auto; }
+.sg-card .sg-big b { display: block; font-size: 46px; line-height: 1; font-weight: 800; color: var(--text-main); letter-spacing: -1.5px; }
+.sg-card .sg-big b small { font-size: 22px; font-weight: 700; letter-spacing: 0; margin-left: 1px; }
+.sg-card .sg-big em { display: block; font-style: normal; font-size: 12px; color: var(--text-sec); margin-top: 4px; }
+.sg-card .sg-scale { flex: 1 1 auto; padding-top: 20px; }
 .sg-card .sg-track { position: relative; height: 12px; border-radius: 6px; background: var(--border); }
 .sg-card .sg-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; transition: width .5s ease; }
 .sg-card .sg-fill.ok { background: linear-gradient(90deg, #22C55E, #16A34A); }
@@ -829,21 +830,25 @@ body.dark-mode .sg-card .sg-pill.low { background: rgba(245, 158, 11, .18); colo
 .sg-card .sg-mark { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--text-main); text-decoration: none; border-radius: 1px; }
 .sg-card .sg-mark span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 3px; font-size: 11px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
 .sg-card .sg-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-sec); margin-top: 6px; }
-.sg-card .sg-lead { margin: 16px 0 12px; font-size: 14px; line-height: 1.45; color: var(--text-main); }
-.sg-card .sg-perks { display: flex; gap: 8px; }
-.sg-card .sg-perks > div { flex: 1 1 0; background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 10px 10px 9px; }
-.sg-card .sg-perks b { display: block; font-size: 15px; font-weight: 800; color: var(--primary); line-height: 1.15; }
-.sg-card .sg-perks span { display: block; font-size: 11px; color: var(--text-sec); margin-top: 4px; line-height: 1.3; }
-.sg-card .sg-rows-h { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-sec); margin-bottom: 4px; }
+.sg-card .sg-lead { margin: 18px 0 12px; font-size: 14px; line-height: 1.45; color: var(--text-main); }
+.sg-card .sg-perks { display: flex; gap: 10px; }
+.sg-card .sg-perks > div { flex: 1 1 0; background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.sg-card .sg-perks b { display: block; font-size: 16px; font-weight: 800; color: #203F6F; line-height: 1.15; }
+.sg-card .sg-perks span { display: block; font-size: 12px; color: var(--text-sec); margin-top: 3px; line-height: 1.3; }
 .sg-card .sg-rows { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-.sg-card .sg-row { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; border-top: 1px solid var(--border); }
+.sg-card .sg-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13px; border-top: 1px solid var(--border); }
 .sg-card .sg-row:first-child { border-top: 0; }
 .sg-card .sg-row-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main); }
-.sg-card .sg-row-b { flex: 0 0 auto; font-size: 11px; color: var(--text-sec); background: var(--surface-light); border-radius: 6px; padding: 1px 6px; }
+.sg-card .sg-row-b { flex: 0 0 auto; font-size: 11px; color: var(--text-sec); background: var(--surface-light); border-radius: 6px; padding: 1px 7px; }
 .sg-card .sg-row-s { flex: 0 0 auto; font-weight: 700; color: var(--text-main); }
-.sg-card .sg-more { padding: 7px 12px; font-size: 12px; color: var(--text-sec); border-top: 1px solid var(--border); background: var(--surface-light); }
-.sg-card .sg-hint { margin-top: 10px; font-size: 12px; color: var(--text-sec); line-height: 1.4; }
-.sg-card .sg-foot { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--text-sec); line-height: 1.45; }
+.sg-card .sg-more { padding: 7px 14px; font-size: 12px; color: var(--text-sec); border-top: 1px solid var(--border); background: var(--surface-light); }
+.sg-card .sg-foot { margin-top: 14px; font-size: 11.5px; color: var(--text-sec); line-height: 1.45; }
+.sg-card .calc-dialog-buttons { margin-top: 14px; }
+@media (max-width: 520px) {
+    .sg-card .sg-meter { flex-direction: column; align-items: stretch; gap: 8px; }
+    .sg-card .sg-perks { flex-direction: column; }
+    .sg-card .sg-head, .sg-card .sg-body { padding-left: 18px; padding-right: 18px; }
+}
 
 /* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
    (и прячет значки, где они есть), чтобы «Дата» не уезжала одна на вторую строку.
