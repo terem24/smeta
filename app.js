@@ -4900,6 +4900,42 @@ const app = {
         };
     },
 
+    // Проверка ФИО заказчика в окне «Объект и заказчик»: те же правила, что у анкеты
+    // монтажника (русские буквы, без цифр, не набор клавиатурных рядов), плюс минимум
+    // два слова — фамилия и имя. Возвращает { error, value }: value — с исправленным регистром.
+    checkObjectClient: function (raw) {
+        const v = String(raw || '').trim().replace(/\s+/g, ' ');
+        if (!v) return { error: 'Укажите заказчика: фамилия и имя.' };
+        const words = v.split(' ');
+        if (words.length < 2) return { error: 'Впишите фамилию и имя заказчика, отчество — по желанию. Например: Иванов Пётр Сергеевич.' };
+        if (words.length > 4) return { error: 'Слишком много слов. Впишите только фамилию, имя и отчество.' };
+        for (const w of words) {
+            const err = this.checkNamePart(w, 'Заказчик');
+            if (err) return { error: err };
+        }
+        return { error: '', value: words.map(w => this.tidyNamePart(w)).join(' ') };
+    },
+
+    // Телефон заказчика (необязателен, но если вписан — настоящий). Правила анкеты
+    // (checkPhoneValue: 11 цифр, мобильный 9xx/7xx, не из одной цифры, не по порядку)
+    // плюс «красивые» выдуманные: абонентская часть из одной цифры или почти из одной,
+    // три нуля подряд в конце и лесенка в конце.
+    checkObjectPhone: function (raw) {
+        const v = String(raw || '').trim();
+        if (!v) return '';
+        const err = this.checkPhoneValue(v);
+        if (err) return err;
+        const sub = v.replace(/\D/g, '').slice(-7);
+        const fake = 'Такого номера не существует. Впишите настоящий телефон заказчика.';
+        if (/^(\d)\1+$/.test(sub)) return fake;
+        const counts = {};
+        sub.split('').forEach(c => { counts[c] = (counts[c] || 0) + 1; });
+        if (Math.max.apply(null, Object.values(counts)) >= 6) return fake;
+        if (/(\d)\1{4,}$/.test(sub)) return fake;
+        if (/(01234|12345|23456|34567|45678|56789|98765|87654|76543|65432|54321|43210)$/.test(sub)) return fake;
+        return '';
+    },
+
     objectDetailsComplete: function () {
         const d = this.objectDetails();
         return !!(d.address && d.client);
@@ -4928,7 +4964,7 @@ const app = {
                 <div class="calc-dialog-input-wrapper">
                     <input type="text" class="calc-dialog-input" id="objd_address" placeholder="Адрес объекта: город, улица, дом" autocomplete="street-address">
                     <input type="text" class="calc-dialog-input" id="objd_client" placeholder="Заказчик: фамилия, имя, отчество" autocomplete="name">
-                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика (необязательно)" autocomplete="tel">
+                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика: +7 (9__) ___-__-__, по желанию" autocomplete="tel">
                     <div class="calc-dialog-error" id="objd_err" style="display:none;"></div>
                 </div>
                 <div class="calc-dialog-buttons">
@@ -4946,6 +4982,9 @@ const app = {
                 overlay.classList.remove('active');
                 setTimeout(() => { overlay.remove(); resolve(val); }, 200);
             };
+            $('objd_phone').addEventListener('input', () => { this.maskPhone($('objd_phone')); $('objd_err').style.display = 'none'; });
+            $('objd_client').addEventListener('input', () => { $('objd_err').style.display = 'none'; });
+            if (/^[78]\d{10}$/.test(cur.phone.replace(/\D/g, ''))) this.maskPhone($('objd_phone'));
             $('objd_skip').onclick = () => {
                 this._objDetailsSkipped = this.state.calc_id || 'new';
                 close(true);
@@ -4954,14 +4993,19 @@ const app = {
                 const address = $('objd_address').value.trim();
                 const client = $('objd_client').value.trim();
                 const phone = $('objd_phone').value.trim();
-                if (!address || !client) {
+                const fail = (id, text) => {
                     const err = $('objd_err');
-                    err.innerText = !address ? 'Укажите адрес объекта' : 'Укажите заказчика';
+                    err.innerText = text;
                     err.style.display = 'block';
-                    $(!address ? 'objd_address' : 'objd_client').focus();
-                    return;
-                }
-                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: client });
+                    $(id).focus();
+                };
+                if (!address) return fail('objd_address', 'Укажите адрес объекта');
+                if (address.length < 6 || !/[А-Яа-яЁё]/.test(address)) return fail('objd_address', 'Впишите адрес объекта: город, улица, дом.');
+                const cl = this.checkObjectClient(client);
+                if (cl.error) return fail('objd_client', cl.error);
+                const phErr = this.checkObjectPhone(phone);
+                if (phErr) return fail('objd_phone', phErr);
+                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: cl.value });
                 if (phone) contract.clientPhone = phone;
                 this.state.contract = contract;
                 this.saveState();
@@ -21292,22 +21336,64 @@ const app = {
             const el = document.getElementById(id);
             if (el) el.style.display = on ? '' : 'none';
         });
-        // «План помещений» стоит под основной площадью, а этот блок виден всегда.
-        // Раньше строка лежала внутри заголовка подробного режима и пряталась
-        // вместе с ним — теперь условие приходится ставить руками, иначе она
-        // всплывёт и в быстром расчёте, где планов нет.
+        // «План дома» — одно место загрузки плана, под «Режимом расчёта», в обоих
+        // режимах: в быстром кнопка сама включает подробный (openUfhPlan).
+        // Полный редактор проектирования открывается из окна плана («Листы
+        // проекта»), отдельной кнопки в панели у него больше нет.
         const planRow = document.getElementById('blk_plan_editor_row');
         // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
         const ufh = this.canUseUfhPlan();
         try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
-        if (planRow) planRow.style.display = ((on || ufh) && this.state.detailedRooms) ? '' : 'none';
-        const bU = document.getElementById('btn_ufhplan'), bF = document.getElementById('btn_plan_full');
+        if (planRow) planRow.style.display = ufh ? 'flex' : 'none';
+        const bU = document.getElementById('btn_ufhplan');
+        const sum = this.planRowSummary();
         if (bU) {
             bU.style.display = ufh ? '' : 'none';
-            const hasPlan = !!(this.state.plans && (this.state.plans.floors || []).some(f => f && (f.img || f.imgFile)));
-            bU.textContent = hasPlan ? 'План отопления' : 'Загрузить план';
+            bU.textContent = sum ? 'Открыть' : 'Загрузить план';
         }
-        if (bF) bF.style.display = on ? '' : 'none';
+        const sumEl = document.getElementById('plan_row_sum');
+        if (sumEl) {
+            // Только что нажали «Готово» в окне плана — показываем его итог
+            // (с петлями и метрами), пока окно не откроют снова
+            const done = sum && this._planDoneMsg;
+            sumEl.textContent = done ? 'Готово: ' + this._planDoneMsg : (sum || 'комнаты, тёплый пол и радиаторы — с плана');
+            sumEl.style.color = done ? 'var(--success, #16a34a)' : '';
+        }
+        // Комнат нет — пустой переключатель «Расчёт по комнатам» прячется (см. syncUI),
+        // ручной ввод — ссылкой здесь же
+        const man = document.getElementById('plan_row_manual');
+        const nRooms = (this.state.detailedRooms && this.state.rooms) ? this.state.rooms.length : 0;
+        if (man) man.style.display = (ufh && !nRooms && !(this.state.detailedRooms && this.state.showDetailedRoomsPanel)) ? '' : 'none';
+    },
+
+    /**
+     * Итог плана дома для строки в панели: «5 комнат · 101,6 м² · тёплый пол в 4».
+     * Плана нет — пустая строка. Комнаты — зоны плана с именем (у санузла и
+     * котельной с тёплым полом две зоны одного контура — считаются одной).
+     */
+    planRowSummary: function () {
+        const fl = (this.state.plans && this.state.plans.floors) || [];
+        // масштаб — тоже признак плана: разметка есть, даже если картинка ещё не доехала до сервера
+        if (!fl.some(f => f && (f.img || f.imgFile || f.pxPerM))) return '';
+        const norm = s => String(s || '').trim().toLowerCase();
+        let n = 0, tp = 0, area = 0;
+        fl.forEach(f => {
+            if (!f || !f.pxPerM) return;
+            const seen = {}, tpSeen = {};
+            (f.zones || []).forEach(z => {
+                if (!z || !z.pts || z.pts.length < 3 || !['tp', 'room', 'wc', 'boiler'].includes(z.type)) return;
+                const k = norm(z.name) || JSON.stringify(z.pts);
+                if (z.type === 'tp' && !tpSeen[k]) { tpSeen[k] = 1; tp++; }
+                if (seen[k]) return;
+                seen[k] = 1; n++;
+                let s = 0;
+                for (let i = 0; i < z.pts.length; i++) { const a = z.pts[i], b = z.pts[(i + 1) % z.pts.length]; s += a[0] * b[1] - b[0] * a[1]; }
+                area += Math.abs(s / 2) / (f.pxPerM * f.pxPerM);
+            });
+        });
+        if (!n) return 'план загружен, комнаты не отмечены';
+        return n + ' ' + this.plural(n, 'комната', 'комнаты', 'комнат') + ' · ' +
+            (Math.round(area * 10) / 10).toLocaleString('ru-RU') + ' м²' + (tp ? ' · тёплый пол в ' + tp : '');
     },
 
     // ═══ Тарифы: что открыто учётной записи на её тарифе ═════════════════
@@ -36505,10 +36591,22 @@ const app = {
         return this.tariffAccess('ufhplan') === 'on' || this.canUseDesign();
     },
 
-    openUfhPlan: function () {
+    /**
+     * Окно «План дома». files — план, который уже положили в «Распознавание»:
+     * окно откроется с ним, грузить второй раз не нужно. В быстром режиме
+     * сначала включаем подробный — план работает в нём — и говорим об этом
+     * одной строкой в шапке окна.
+     */
+    openUfhPlan: function (files) {
         if (window.SessionTrack) SessionTrack.screen('ufhplan');
         if (!this.canUseUfhPlan()) { app.alert('Раскладка тёплого пола входит в тариф «Профи».'); return; }
-        if (!this.state.detailedRooms) { app.alert('Раскладка тёплого пола работает в подробном режиме расчёта — включите его и добавьте план.'); return; }
+        let modeNote = '';
+        if (!this.state.detailedRooms) {
+            this.toggleDetailedRooms(true);
+            if (!this.state.detailedRooms) return;
+            modeNote = 'включён подробный режим расчёта — план работает в нём';
+        }
+        this._planDoneMsg = '';
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         try { localStorage.setItem('heatcalc_ufhplan_access', '1'); } catch (e) { }
         this.pushPlansToEditor();
@@ -36519,17 +36617,32 @@ const app = {
         ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#1e1e1e;display:flex;flex-direction:column;';
         ov.innerHTML =
             '<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:#141414;color:#ddd;font:13px/1.3 system-ui,sans-serif;">' +
-            '<span style="flex:1">План дома — тёплый пол и радиаторы</span>' +
+            '<span style="flex:1">План дома — комнаты, тёплый пол и радиаторы' +
+            (modeNote ? '<span style="color:#9ccbe8"> · ' + modeNote + '</span>' : '') + '</span>' +
             '<button type="button" onclick="app.closeUfhPlan(true)" style="font:inherit;padding:4px 12px;border-radius:7px;border:1px solid #555;background:transparent;color:#ddd;cursor:pointer;">✕ Сохранить и закрыть</button></div>' +
             '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:#1e1e1e;"></iframe>';
         document.body.appendChild(ov);
         this._ufhOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
+        // План из «Распознавания» — сразу в окно, как будто его выбрали там
+        const list = files ? Array.from(files).filter(Boolean) : [];
+        if (list.length) {
+            const fr = document.getElementById('ufhplan_frame');
+            fr.addEventListener('load', () => {
+                try {
+                    const cw = fr.contentWindow;
+                    if (cw && typeof cw.loadImage === 'function') cw.loadImage({ files: list, value: '' });
+                } catch (e) { console.warn('[ufhplan] передать файл в окно плана:', e); }
+            }, { once: true });
+        }
         if (!this._ufhMsgBound) {
             this._ufhMsgBound = true;
             window.addEventListener('message', (e) => {
                 if (e.origin !== location.origin || !e.data || e.data.type !== 'hc-ufhplan') return;
-                if (e.data.done) this.closeUfhPlan(false);
+                if (!e.data.done) return;
+                // итог мастера — зелёной строкой в «Плане дома»: видно, что изменилось
+                this._planDoneMsg = typeof e.data.sum === 'string' ? e.data.sum.slice(0, 200) : '';
+                this.closeUfhPlan(false);
             });
         }
     },
@@ -36561,7 +36674,10 @@ const app = {
         const changed = this.syncRoomsFromPlan();
         this.loadPlanCheckData();            // и номер ревизии планов: петли пересчитаются
         this._ufhGeomCache = null;
+        // комнаты пришли с плана — список комнат раскрываем, чтобы их было видно
+        if (changed && this.state.detailedRooms && (this.state.rooms || []).length) this.state.showDetailedRoomsPanel = true;
         if (changed) { this.syncRoomsToState(); this.renderRoomsUI(); this.syncUI(); }
+        this.syncDesignUI();
         this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
         this.render();
     },
@@ -64276,10 +64392,13 @@ const app = {
         // Sync Room-by-room calculation switch header and checkbox
         const roomsHeader = document.getElementById('blk_detailed_rooms_header');
         if (roomsHeader) {
-            roomsHeader.style.display = this.state.detailedRooms ? 'block' : 'none';
+            const count = this.state.rooms ? this.state.rooms.length : 0;
+            // Комнат нет, а строка «План дома» видна — пустой переключатель не
+            // показываем: там же ссылка «или ввести комнаты вручную»
+            const viaPlan = !count && !this.state.showDetailedRoomsPanel && this.canUseUfhPlan();
+            roomsHeader.style.display = this.state.detailedRooms && !viaPlan ? 'block' : 'none';
             const lbl = roomsHeader.querySelector('.lbl');
             if (lbl) {
-                const count = this.state.rooms ? this.state.rooms.length : 0;
                 lbl.innerText = count ? `Расчёт по комнатам (${count} ${this.plural(count, 'комната', 'комнаты', 'комнат')})` : 'Расчёт по комнатам: не заданы';
             }
         }

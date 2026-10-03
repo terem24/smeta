@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=10.75" defer></script>
+    <script src="app.js?v=10.77" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -240,8 +240,8 @@
          RecognizeMatch, docs.js — к WARRANTY_DB. -->
     <script>
         window.HC_LAZY = {
-            recognize: ['recognize_match.js?v=7.6', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.8',
-                'recognize.js?v=9.20', 'recognize_plan.js?v=2.6', 'recognize_project.js?v=2.6', 'recognize_sketch.js?v=1.4'],
+            recognize: ['recognize_match.js?v=7.6', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.9',
+                'recognize.js?v=9.21', 'recognize_plan.js?v=2.6', 'recognize_project.js?v=2.6', 'recognize_sketch.js?v=1.4'],
             docs: ['warranty.js?v=1.0', 'docs.js?v=3.5'],
             warranty_admin: ['warranty_admin.js?v=1.0'],
             excel: ['excel_export.js?v=1.4'],
@@ -753,6 +753,24 @@
                 </div>
             </div>
 
+            <!-- План дома — одно место загрузки плана: из него комнаты уходят в расчёт
+                 по комнатам, а сам план — в раскладку тёплого пола, трассы радиаторов,
+                 КП и листы проекта. Виден в обоих режимах; в быстром кнопка сама
+                 включает подробный (app.openUfhPlan). Итог и видимость —
+                 app.syncDesignUI. -->
+            <div class="label-row" id="blk_plan_editor_row"
+                style="margin: 0 0 15px; padding: 10px 0; gap: 10px; align-items: center; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); display: none;">
+                <span style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                    <span class="lbl">План дома</span>
+                    <span id="plan_row_sum" style="font-size: 11px; line-height: 1.35; color: var(--text-sec);"></span>
+                    <a id="plan_row_manual" href="#" onclick="app.goProjectStep('rooms'); return false;"
+                        style="font-size: 11px; line-height: 1.35; color: var(--text-sec); display: none;">или ввести комнаты вручную</a>
+                </span>
+                <button type="button" id="btn_ufhplan" onclick="app.openUfhPlan()"
+                    title="Загрузите план дома: комнаты перейдут в расчёт, тёплый пол отмечается кликом, радиаторы встают под окнами — раскладка и трассы появятся в смете и в КП"
+                    style="font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--primary); background: transparent; color: var(--primary); cursor: pointer; flex-shrink: 0; display: none;">Загрузить план</button>
+            </div>
+
             <div class="control-item" id="blk_main_area" style="margin-bottom: 15px;">
                 <div class="label-row"><span class="lbl">Основная площадь</span><span class="val"><span
                             id="val_area" class="editable-val" contenteditable="true"
@@ -762,25 +780,6 @@
                     oninput="app.setArea(this.value)">
                 <!-- Площадь по зонам планов этажей: заполняет app.renderPlanAreaNote(), без зон скрыта -->
                 <div id="plan_area_note" style="display:none; margin-top: 4px; font-size: 11px; line-height: 1.4; color: var(--text-sec);"></div>
-
-                <!-- План помещений: подложка и зоны для листов проекта (редактор —
-                     отдельная страница). Стоит сразу под площадью: зоны плана эту
-                     площадь и уточняют. Виден только тем, кому открыто
-                     проектирование (app.syncDesignUI). -->
-                <div class="label-row" id="blk_plan_editor_row"
-                    style="margin: 18px 0 0; padding: 12px 0; border-top: 1px dashed var(--border); border-bottom: 1px dashed var(--border); display: none;">
-                    <span class="lbl">План помещений</span>
-                    <!-- Раскладка тёплого пола по плану (app.openUfhPlan, тариф «Профи»)
-                         и полный редактор проектирования — видимость в app.syncDesignUI -->
-                    <span style="display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end;">
-                        <button type="button" id="btn_ufhplan" onclick="app.openUfhPlan()"
-                            title="Загрузите план дома: отметьте кликом комнаты с тёплым полом, радиаторы встанут под окнами — раскладка петель и трассы радиаторов появятся в смете и в КП"
-                            style="font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--primary); background: transparent; color: var(--primary); cursor: pointer; display: none;">Загрузить план</button>
-                        <button type="button" id="btn_plan_full" onclick="app.openPlanEditor()"
-                            title="Полный редактор планов для листов проекта: радиаторы, сантехника, котельная"
-                            style="font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; color: inherit; cursor: pointer;">Проектирование ↗</button>
-                    </span>
-                </div>
             </div>
 
             <div id="blk_fast_calc">
