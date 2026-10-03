@@ -12813,6 +12813,7 @@ const app = {
         this.renderProfilePhotoField();
         this.renderThemeChoiceCard();
         this.setProfileTab(forced ? 'requisites' : (initialTab || 'requisites'));
+        this.watchCabinetStyle();
         // Телефон: без явного раздела (нижняя вкладка «Профиль») открываем меню разделов,
         // с разделом (railGo, push, принудительная анкета) — сам раздел с полосой «‹ Разделы»
         const lkLayout = profileNav && profileNav.parentElement;
@@ -14769,7 +14770,9 @@ const app = {
         const footerRequisites = document.getElementById('profile_modal_footer_requisites');
         const footerOther = document.getElementById('profile_modal_footer_other');
         if (footerRequisites) footerRequisites.style.display = isFormTab ? 'flex' : 'none';
-        if (footerOther) footerOther.style.display = isFormTab ? 'none' : 'flex';
+        // Кнопка «Закрыть» по центру на разделах без формы убрана (03.10.2026): окно закрывает
+        // крестик в углу, и лишняя кнопка внизу только отличала эти разделы от остальных
+        if (footerOther) footerOther.style.display = 'none';
 
         if (tab === 'home') {
             this.renderCabinetHome();
@@ -22341,8 +22344,8 @@ const app = {
         }
     },
 
-    softenAdminChips: function (root) {
-        this.decorateAdminLoaders(root);
+    softenAdminChips: function (root, noLoaders) {
+        if (!noLoaders) this.decorateAdminLoaders(root);
         this.cleanAdminEmoji(root);
         // Кнопки с цветом, заданным числом (зелёный «Excel», оранжевый и т. п.): красные —
         // остаются красными, все прочие становятся цветом темы. Кнопки на var(--primary)
@@ -22390,6 +22393,34 @@ const app = {
         }).observe(root, { childList: true, subtree: true });
         // Заглушка, уже стоящая в панели к моменту запуска наблюдателя
         try { this.decorateAdminLoaders(root); } catch (e) { }
+    },
+
+    // Те же правила для кабинета (03.10.2026): эмодзи в заголовках и кнопках убираются, сплошные
+    // цветные кнопки становятся мягкими. Заглушки загрузки кабинета не трогаем — у них свой вид.
+    watchCabinetStyle: function () {
+        const root = document.querySelector('#profile_modal_overlay .lk-pane');
+        if (!root || root._softWatch) return;
+        root._softWatch = true;
+        let timer = 0;
+        new MutationObserver(() => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { } }, 30);
+        }).observe(root, { childList: true, subtree: true });
+        try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { }
+    },
+
+    // Ведущие эмодзи в плашках и подсказках («📋 Нет данных от заказчика», «💡 Счёт на оборудование…»):
+    // cleanAdminEmoji берёт заголовки и кнопки, а здесь это обычные блоки текста. Чат не трогаем.
+    stripCabinetEmoji: function (root) {
+        const re = /^[\s‍️]*(?:\p{Extended_Pictographic}[️‍]*)+\s*/u;
+        root.querySelectorAll('div, p, span, a, li').forEach(el => {
+            if (el.dataset.emo || el.closest('.emoji-picker, .emoji-set, [class*="chat"], button')) return;
+            const n = el.firstChild;
+            if (n && n.nodeType === 3 && re.test(n.nodeValue)) {
+                const rest = n.nodeValue.replace(re, '');
+                if (rest.trim().length > 1) { n.nodeValue = rest; el.dataset.emo = '1'; }
+            }
+        });
     },
 
     // Разделы владельца: «Дашборд» — сводка тех же данных, что и «Аналитика»,

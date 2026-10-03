@@ -18318,3 +18318,77 @@ body.theme-yandex #profile_modal_overlay {
 
 /* Панель разделов: семь пунктов одним блоком и одинаковые промежутки (без разделителей между блоками) */
 #lk_rail .lk-rail-group { gap: 4px; }
+
+/* ── Кабинет, вторая очередь: один вид у всех разделов (03.10.2026) ─────────────
+   Разделы кабинета писались в разное время: у каждого свой заголовок, своя кнопка
+   «Обновить», свои цвета подзаголовков. Здесь сведено к правилам админки. */
+
+/* Название раздела уже стоит в активной вкладке-чипе над содержимым, повторять его
+   заголовком не нужно: остаётся строка с кнопками справа (она пропадает, если кнопок нет) */
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .lk-section-head > h4:first-child,
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h h3 { display: none; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .lk-section-head { justify-content: flex-end; margin-bottom: 12px; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .lk-section-head:not(:has(button)) { display: none; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h { justify-content: flex-end; margin-bottom: 12px; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h > div:first-child:not(:has(.ad-sub)) { display: none; }
+
+/* Раздел без вкладок (монтажники менеджера): заголовок раздела — как в админке */
+#profile_modal_overlay .lk-pane .lk-section-head > h4:first-child { font-size: 17px !important; color: var(--text-main) !important; }
+
+/* Подзаголовки внутри раздела — один вид: мелкий серый капс, как «Контакты» в карточке.
+   Раньше часть была синей (цвет бренда), часть крупной и чёрной */
+#profile_modal_overlay .lk-pane h4:not(.lk-section-head > h4),
+#profile_modal_overlay .lk-pane h5 {
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.06em !important;
+    text-transform: uppercase !important;
+    color: var(--text-sec) !important;
+    margin: 18px 0 8px !important;
+}
+
+/* Карточки блоков — одна поверхность, одна рамка, одно скругление */
+#profile_modal_overlay .lk-pane .lk-card,
+#profile_modal_overlay .lk-pane .profile-main-card {
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    box-shadow: none;
+}
+
+/* Кнопки действий — одной высоты и одного вида. «Обновить», «Сбросить», «Открыть», «Скачать»
+   и подобные раньше были 21, 27, 28, 30 и 32 px */
+#profile_modal_overlay .lk-pane .lk-btn-sm,
+#profile_modal_overlay .lk-pane .btn-subscribe {
+    min-height: 30px;
+    height: auto;
+    padding: 4px 12px;
+    border-radius: var(--ad-radius);
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface);
+    color: var(--text-main);
+    border: 1px solid var(--ad-line);
+}
+#profile_modal_overlay .lk-pane .lk-btn-sm:hover:not(:disabled),
+#profile_modal_overlay .lk-pane .btn-subscribe:hover:not(:disabled) {
+    background: var(--primary-light);
+    border-color: transparent;
+    color: var(--primary);
+}
+/* Выбранный период («90 дн.») */
+#profile_modal_overlay .lk-pane .lk-btn-sm.is-active { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
+
+/* Кнопки внизу формы (Сохранить / Отмена) — тот же радиус, что у остальных */
+#profile_modal_footer_requisites button { border-radius: var(--ad-radius); }
+
+/* Подзаголовки .lk-subhead и подписи карточек — тот же серый капс, что и остальные */
+#profile_modal_overlay .lk-pane .lk-subhead,
+#profile_modal_overlay .lk-pane .lk-card-label {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-sec);
+}
+#profile_modal_overlay .lk-pane .lk-subhead { border-bottom: 1px solid var(--ad-line); }
