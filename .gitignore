@@ -48,3 +48,5 @@ leads_log.php
 bench/projects/
 bench/node_modules/
 bench/package*.json
+# Планы для стенда окон и дверей (bench/windows.html) — чужие планы, в репозиторий не идут.
+bench/windows_data/

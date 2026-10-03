@@ -2293,7 +2293,17 @@ const app = {
 
     // Кнопки раздачи ссылки — одним набором для карточки менеджера, строки
     // наблюдателя и таблицы дистрибьюторов
-    inviteButtonsHtml: function (d, compact) {
+    inviteButtonsHtml: function (d, compact, cabinet) {
+        if (cabinet) {
+            // Раздел «Мои монтажники» кабинета: те же кнопки, что везде в кабинете
+            const cid = String(d.id);
+            const ccode = String(d.promo_code || '').toUpperCase().replace(/'/g, '');
+            return `
+            <button type="button" class="lk-btn lk-btn-primary" onclick="app.shareInvite('${cid}')" title="Открыть меню «поделиться» или скопировать готовый текст">Поделиться</button>
+            <button type="button" class="lk-btn" onclick="app.copyInviteLink('${ccode}')" title="Скопировать ссылку-приглашение">Ссылка</button>
+            <button type="button" class="lk-btn" onclick="app.showInviteQr('${cid}')" title="QR-код на экран">QR-код</button>
+            <button type="button" class="lk-btn" onclick="app.printInviteSheet('${cid}')" title="Лист А5 на кассу">Печать</button>`;
+        }
         const base = 'font:inherit; font-weight:700; border-radius:8px; cursor:pointer; white-space:nowrap;';
         const st = compact
             ? base + ' font-size:11px; padding:4px 8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);'
@@ -2311,8 +2321,30 @@ const app = {
     // Карточка «Пригласить монтажника» по каждой компании: промокод, ссылка,
     // кнопки раздачи и счётчик. Одна и та же у менеджера в панели управления и
     // в разделе кабинета «Мои монтажники».
-    inviteCardsHtml: function (dists) {
+    inviteCardsHtml: function (dists, cabinet) {
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        if (cabinet) {
+            return (dists || []).map(d => {
+                const code = String(d.promo_code || '').toUpperCase();
+                const months = Number(d.pro_months) || 0;
+                return `<div class="lk-card lk-invite">
+                    <div class="lk-invite-top">
+                        <div class="lk-card-label">Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
+                        <div class="lk-invite-count">Приглашено: <span data-invite-used="${d.id}">…</span></div>
+                    </div>
+                    <div class="lk-invite-code">
+                        <span class="lk-invite-lbl">Промокод</span>
+                        <b>${esc(code)}</b>
+                        <span class="lk-invite-link">${esc(this.inviteLinkFor(code))}</span>
+                    </div>
+                    <div class="lk-invite-actions">${this.inviteButtonsHtml(d, false, true)}</div>
+                    <div class="lk-sub">
+                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
+                        Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
+                    </div>
+                </div>`;
+            }).join('');
+        }
         const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
         return (dists || []).map(d => {
             const code = String(d.promo_code || '').toUpperCase();
@@ -4683,7 +4715,43 @@ const app = {
     // остаётся одной; перенос остаётся только на крайний случай, когда не хватает и так.
     // Проверка по факту, а не по ширине окна: содержимое разное (регион, «Вариант:
     // подешевле», квартира с этажом).
+    // Вкладки над сметой: если полное название не помещается в плашку (крупный текст,
+    // узкое окно), берём короткое («Монтаж» вместо «Монтажные работы») — вместо двух
+    // строк в плашке. Проверка по факту, как и у строки параметров.
+    fitMainTabs: function () {
+        const bar = document.querySelector('.main-view-tabs');
+        if (!bar) return;
+        const wraps = () => [...bar.querySelectorAll('.tab')].some(t => {
+            if (!t.offsetWidth) return false;
+            const rg = document.createRange();
+            rg.selectNodeContents(t);
+            // Вкладка — flex: «2.» и подпись лежат отдельными блоками, и верх у них может
+            // расходиться на 1–3 px. Перенос — это разброс верхов больше 8 px (строка ≥ 17 px).
+            const tops = [...rg.getClientRects()].filter(r => r.width > 1).map(r => r.top);
+            return tops.length > 1 && (Math.max(...tops) - Math.min(...tops)) > 8;
+        });
+        bar.classList.remove('tabs-short');
+        if (wraps()) bar.classList.add('tabs-short');
+        // Ширина плашек меняется не только с окном: при раннем рендере раскладка ещё не
+        // устоялась, а пятая вкладка («Почему дешевле») появляется позже и сужает остальные.
+        // Следим за самими плашками и пересчитываем, когда их ширины изменились.
+        if (!this._tabsObserved && window.ResizeObserver) {
+            this._tabsObserved = true;
+            let lastKey = '', tm = 0;
+            const tabs = [...bar.querySelectorAll('.tab')];
+            const ro = new ResizeObserver(() => {
+                const key = tabs.map(t => t.offsetWidth).join(',');
+                if (key === lastKey) return;
+                lastKey = key;
+                clearTimeout(tm);
+                tm = setTimeout(() => this.fitMainTabs(), 30);
+            });
+            tabs.forEach(t => ro.observe(t));
+        }
+    },
+
     fitDocSummary: function () {
+        this.fitMainTabs();
         const ds = document.getElementById('doc_summary');
         if (!ds) return;
         const wraps = () => {
@@ -4692,8 +4760,12 @@ const app = {
             const first = items[0].offsetTop;
             return items.some(e => Math.abs(e.offsetTop - first) > 6);
         };
-        ds.classList.remove('ds-compact');
-        if (wraps()) ds.classList.add('ds-compact');
+        ds.classList.remove('ds-compact', 'ds-tight');
+        if (wraps()) {
+            ds.classList.add('ds-compact');
+            // Всё ещё не помещается — у метки «Гарантия STOUT» остаётся щит (слова в подсказке)
+            if (wraps()) ds.classList.add('ds-tight');
+        }
         // Размер колонки сметы меняется при ресайзе окна, раскрытии ленты, смене масштаба
         if (!this._dsObserved) {
             this._dsObserved = true;
@@ -4940,7 +5012,7 @@ const app = {
         el.tabIndex = 0;
         el.title = ok ? 'Гарантия STOUT на объект доступна: к КП добавится бланк. Нажмите, чтобы узнать подробнее.'
             : 'Чтобы к КП добавился бланк гарантии STOUT, нужно ещё около ' + short(need) + ' оборудования STOUT. Нажмите, чтобы увидеть, что заменить.';
-        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg>${ok ? 'Гарантия STOUT' : 'Нет гарантии на объект'}`;
+        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg><span class="ds-stout-txt">${ok ? 'Гарантия STOUT' : 'Нет гарантии на объект'}</span>`;
         el.onclick = () => this.showStoutShareInfo();
         el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.showStoutShareInfo(); } };
         const date = ds.querySelector('.param-date');
@@ -8248,6 +8320,11 @@ const app = {
             this.lastSavedStateString = this.getStateSignature();
             this.markAsSaved();
             this.logInvoiceEvent('saved');
+            // Точка отсчёта для напоминания «сохранить расчёт» — теперь это сохранённая сумма
+            this._remindBase = total;
+            this._remindDismissSum = null;
+            this.saveReminderDisarm();
+            this.saveReminderClearPending();
             console.log("[saveToCloud] Сохранение успешно завершено.");
             if (!silent) app.alert("✅ Смета успешно сохранена!");
             return true;
@@ -8998,10 +9075,12 @@ const app = {
     renderManagerInstallersTab: async function () {
         const container = document.getElementById('profile_tab_installers');
         if (!container) return;
-        container.innerHTML = `<div class="lk-empty">⌛ Загрузка списка монтажников...</div>`;
+        // Заголовок раздела — как у остальных разделов кабинета
+        const head = `<div class="lk-section-head"><div><h4>Мои монтажники</h4><div class="lk-sub">Приглашения, сводка и переписка с монтажниками вашей компании</div></div></div>`;
+        container.innerHTML = head + `<div class="lk-empty">Загрузка списка монтажников…</div>`;
 
         const me = await this.resolveCurrentUserForChat();
-        if (!me) { container.innerHTML = `<div class="lk-empty">Авторизуйтесь, чтобы увидеть список монтажников.</div>`; return; }
+        if (!me) { container.innerHTML = head + `<div class="lk-empty">Войдите в аккаунт, чтобы увидеть список монтажников.</div>`; return; }
 
         const myMails = await this.myEmails(me.email);
         const [installers, inviteDists] = await Promise.all([
@@ -9010,11 +9089,11 @@ const app = {
         ]);
         // Ссылка-приглашение сверху: без неё новому менеджеру некого было бы и
         // увидеть в этом списке
-        const inviteHtml = this.inviteCardsHtml(inviteDists);
+        const inviteHtml = this.inviteCardsHtml(inviteDists, true);
         // Счётчик «Приглашено» дописывается в уже вставленную разметку
         const fillInvites = () => { if (inviteDists.length) this.fillInviteStats(inviteDists.map(d => d.id)); };
         if (!installers.length) {
-            container.innerHTML = inviteHtml + `<div class="lk-empty">У вас пока нет привязанных монтажников.${inviteDists.length ? ' Отправьте им ссылку-приглашение.' : ''}</div>`;
+            container.innerHTML = head + inviteHtml + `<div class="lk-empty">У вас пока нет привязанных монтажников.${inviteDists.length ? ' Отправьте им ссылку-приглашение.' : ''}</div>`;
             fillInvites();
             return;
         }
@@ -9034,7 +9113,7 @@ const app = {
             if (m.sender_user_id !== me.id && !m.is_read) byInstaller[m.installer_user_id].unread++;
         });
 
-        let h = `<div class="lk-section-head"><h4><span class="ui-emo">👥 </span>Мои монтажники</h4></div><div class="lk-list">`;
+        let h = `<div class="lk-subhead">Монтажники</div><div class="lk-list">`;
         installers
             .slice()
             .sort((a, b) => {
@@ -9045,22 +9124,23 @@ const app = {
             .forEach(inst => {
                 const name = this.getAdminUserDisplayName(inst);
                 const thread = byInstaller[inst.id];
-                const preview = thread && thread.last ? (thread.last.text || (thread.last.attachments && thread.last.attachments.length ? '📎 Вложение' : '')) : 'Переписки пока нет';
-                const unreadBadge = thread && thread.unread > 0 ? `<span style="background:#EF4444; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 7px; margin-left:6px;">${thread.unread}</span>` : '';
+                const preview = thread && thread.last ? (thread.last.text || (thread.last.attachments && thread.last.attachments.length ? 'Вложение' : '')) : 'Переписки пока нет';
+                const unreadBadge = thread && thread.unread > 0 ? `<span class="ad-count ad-count-bad">${thread.unread}</span>` : '';
                 h += `
-                    <div class="lk-row" onclick="app.openManagerChatWithInstaller('${inst.id}', '${inst.auth_user_id}')" style="cursor:pointer; justify-content:space-between;">
-                        <div style="min-width:0;">
-                            <div style="font-weight:700; color:var(--text-main); font-size:13px;">${name}${unreadBadge}</div>
-                            <div style="color:var(--text-sec); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:260px;">${(preview || '').replace(/</g, '&lt;')}</div>
+                    <div class="lk-row lk-row-link" onclick="app.openManagerChatWithInstaller('${inst.id}', '${inst.auth_user_id}')">
+                        <div class="lk-row-main">
+                            <b>${String(name).replace(/</g, '&lt;')}</b>
+                            <small>${(preview || '').replace(/</g, '&lt;')}</small>
                         </div>
-                        <span style="color:var(--text-sec);">›</span>
+                        ${unreadBadge}
+                        <span class="lk-row-chev">›</span>
                     </div>
                 `;
             });
-        h += `</div><div id="manager_installer_chat_detail" style="margin-top:16px;"></div>`;
+        h += `</div><div id="manager_installer_chat_detail"></div>`;
         // Сводка считается своим запросом и приезжает позже списка: список с
         // перепиской нужен сразу, а числа могут и подождать секунду.
-        container.innerHTML = inviteHtml + `<div id="manager_summary_host"></div>` + h;
+        container.innerHTML = head + inviteHtml + `<div id="manager_summary_host"></div>` + h;
         fillInvites();
         this.renderManagerSummary(installers);
     },
@@ -9085,7 +9165,7 @@ const app = {
         if (!host || !installers || !installers.length) return;
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const num = n => Number(n || 0).toLocaleString('ru-RU');
-        host.innerHTML = `<div class="lk-empty">⌛ Считаем сметы ваших монтажников…</div>`;
+        host.innerHTML = `<div class="lk-subhead">Сводка по монтажникам</div><div class="lk-empty">Считаем сметы ваших монтажников…</div>`;
 
         const emails = installers.map(i => (i.email || '').toLowerCase()).filter(Boolean);
         if (!emails.length) { host.innerHTML = ''; return; }
@@ -9099,7 +9179,8 @@ const app = {
             failed = (e && e.message) || String(e);
         }
         if (!rows) {
-            host.innerHTML = `<p class="lk-hint">Сводка сейчас недоступна${failed ? ' (' + esc(failed) + ')' : ''}.</p>`;
+            console.warn('[сводка менеджера]', failed);
+            host.innerHTML = `<div class="lk-subhead">Сводка по монтажникам</div><p class="lk-hint">Сводка сейчас недоступна. Попробуйте обновить позже.</p>`;
             return;
         }
 
@@ -9132,32 +9213,32 @@ const app = {
         quiet.sort((a, b) => quietRank(b) - quietRank(a));
 
         const tile = (label, value, sub, accent) => `
-            <div style="flex:1 1 140px; min-width:0; background:var(--surface-light); border:1px solid var(--border);
-                        border-radius:12px; padding:12px 14px;">
-                <div style="font-size:11.5px; color:var(--text-sec); font-weight:700;">${label}</div>
-                <div style="font-size:24px; font-weight:800; line-height:1.1; margin-top:4px; color:${accent || 'var(--text-main)'};">${value}</div>
-                <div style="font-size:11px; color:var(--text-sec); margin-top:3px;">${sub}</div>
+            <div class="sm-tile">
+                <div class="sm-tile-label">${label}</div>
+                <div class="sm-tile-val"${accent ? ` style="color:${accent};"` : ''}>${value}</div>
+                <div class="sm-tile-sub">${sub}</div>
             </div>`;
 
         // Счета, которые ждут ИМЕННО ЕГО: запрос есть, выставления нет.
         const waitHtml = inv.waiting.length
-            ? inv.waiting.slice(0, 6).map(x => `
-                <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
-                    <div style="min-width:0; flex:1;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${esc(x.name)}</b>
-                        <br><small style="color:var(--text-sec);">${esc(x.project || 'без названия')}</small>
+            ? `<div class="lk-list">` + inv.waiting.slice(0, 6).map(x => `
+                <div class="lk-row">
+                    <div class="lk-row-main">
+                        <b>${esc(x.name)}</b>
+                        <small>${esc(x.project || 'без названия')}</small>
                     </div>
-                    <b style="flex:0 0 auto; font-size:12.5px; color:${x.days >= 7 ? '#EF4444' : '#F97316'};">${x.days} дн.</b>
-                </div>`).join('')
+                    <b class="lk-row-r" style="color:${x.days >= 7 ? '#EF4444' : '#F97316'};">${x.days} дн.</b>
+                </div>`).join('') + `</div>`
                 + (inv.waiting.length > 6 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(inv.waiting.length - 6)}</p>` : '')
             : `<p class="lk-hint">Непоставленных счетов нет — всё, что запрашивали, выставлено.</p>`;
 
         const quietHtml = quiet.length
-            ? quiet.slice(0, 6).map(x => `
-                <div class="lk-row" onclick="app.openManagerChatWithInstaller('${x.id}', '${x.authId}')" style="cursor:pointer; justify-content:space-between;">
-                    <div style="font-size:12.5px; color:var(--text-main);">${esc(x.name)}</div>
-                    <small style="color:var(--text-sec);">${x.days === null ? 'ни одной сметы' : 'молчит ' + x.days + ' дн.'}</small>
-                </div>`).join('')
+            ? `<div class="lk-list">` + quiet.slice(0, 6).map(x => `
+                <div class="lk-row lk-row-link" onclick="app.openManagerChatWithInstaller('${x.id}', '${x.authId}')">
+                    <div class="lk-row-main"><b>${esc(x.name)}</b></div>
+                    <span class="lk-row-r lk-row-quiet">${x.days === null ? 'ни одной сметы' : 'молчит ' + x.days + ' дн.'}</span>
+                    <span class="lk-row-chev">›</span>
+                </div>`).join('') + `</div>`
                 + (quiet.length > 6 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(quiet.length - 6)}</p>` : '')
             : `<p class="lk-hint">Все ваши монтажники считали сметы за последние ${this.MANAGER_QUIET_DAYS} дней.</p>`;
 
@@ -9165,23 +9246,22 @@ const app = {
         const fAuto = inv.funnel[inv.autoLast || 0];
 
         host.innerHTML = `
-            <div class="lk-section-head"><h4><span class="ui-emo">📊 </span>Сводка по вашим монтажникам</h4></div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+            <div class="lk-subhead">Сводка по монтажникам</div>
+            <div class="sm-tiles">
                 ${tile('Монтажников', num(installers.length), num(active) + ' считали за 30 дней')}
                 ${tile('Ждут счёта', num(inv.waiting.length), 'запросили и ждут вас',
                     inv.waiting.length ? '#F97316' : null)}
                 ${tile('Смет за ' + this.MANAGER_SUMMARY_DAYS + ' дней', num(inv.cohortN),
                     'до запроса счёта дошло ' + (f0 ? Math.round((fAuto ? fAuto.n : 0) / f0 * 100) : 0) + '%')}
             </div>
-            <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">🔔 </span>Ждут от вас счёта</h4></div>
+            <div class="lk-subhead">Ждут от вас счёта</div>
             ${waitHtml}
-            <div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📞 </span>Кто затих</h4></div>
+            <div class="lk-subhead">Кто затих</div>
             ${quietHtml}
             <div id="manager_price_gaps"></div>
             <p class="lk-hint" style="margin-top:10px;">
                 Считается по сметам ваших монтажников за ${this.MANAGER_SUMMARY_DAYS} дней. Отметку «счёт выставлен» ставите вы сами в админке — пока её нет, смета так и висит в ожидании.
-            </p>
-            <hr style="border:none; border-top:1px solid var(--border); margin:18px 0 4px;">`;
+            </p>`;
 
         // Ассортимент считаем отдельно и после: это ещё два запроса, а числа
         // выше должны появиться сразу.
@@ -9220,7 +9300,7 @@ const app = {
 
         const withPrice = dists.find(d => d.price_list_key && typeof DIST_PRICES !== 'undefined' && DIST_PRICES[d.price_list_key]);
         if (!withPrice) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
+            host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>
                 <p class="lk-hint">Ваш прайс-лист в системе не загружен, сравнить не с чем. Пришлите выгрузку — и здесь появится список позиций, которые ваши монтажники ставят в счета, а вы их не возите.</p>`;
             return;
         }
@@ -9244,8 +9324,9 @@ const app = {
                 rows.push(...(data || []));
             }
         } catch (e) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
-                <p class="lk-hint">Состав счетов не прочитался (${esc((e && e.message) || e)}).</p>`;
+            host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>
+                <p class="lk-hint">Состав счетов не прочитался. Попробуйте обновить позже.</p>`;
+            console.warn('[чего нет в прайсе]', e);
             return;
         }
         if (!rows.length) return;
@@ -9271,23 +9352,23 @@ const app = {
 
         const list = Object.values(gaps).sort((a, b) => (b.invoices - a.invoices) || (b.qty - a.qty));
         if (!list.length) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
+            host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>
                 <p class="lk-hint">Всё, что монтажники ставят в счета, у вас есть — по ${num(seenInvoices)} ${this.plural(seenInvoices, 'счёту', 'счетам', 'счетам')} расхождений не нашлось.</p>`;
             return;
         }
         const top = list.slice(0, this.MANAGER_GAPS_LIMIT);
-        host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>`
-            + top.map(g => `
-                <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
-                    <div style="min-width:0; flex:1;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${esc(g.name)}</b>
-                        <br><small style="color:var(--text-sec);">${esc(g.art)}</small>
+        host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>`
+            + `<div class="lk-list">` + top.map(g => `
+                <div class="lk-row">
+                    <div class="lk-row-main">
+                        <b>${esc(g.name)}</b>
+                        <small>${esc(g.art)}</small>
                     </div>
-                    <div style="flex:0 0 auto; text-align:right;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${num(g.invoices)} ${this.plural(g.invoices, 'счёт', 'счёта', 'счетов')}</b>
-                        ${g.qty ? `<br><small style="color:var(--text-sec);">${num(Math.round(g.qty))} шт.</small>` : ''}
+                    <div class="lk-row-r">
+                        ${num(g.invoices)} ${this.plural(g.invoices, 'счёт', 'счёта', 'счетов')}
+                        ${g.qty ? `<br><small>${num(Math.round(g.qty))} шт.</small>` : ''}
                     </div>
-                </div>`).join('')
+                </div>`).join('') + `</div>`
             + (list.length > top.length ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(list.length - top.length)} позиций</p>` : '')
             + `<p class="lk-hint" style="margin-top:8px;">
                 Это не поисковый спрос, а выписанное клиентам: позиции стоят в счетах ваших монтажников, а в вашем прайсе (${esc(withPrice.company_name || 'ваша компания')}) их нет.
@@ -9307,11 +9388,13 @@ const app = {
         const instName = inst ? this.getAdminUserDisplayName(inst) : 'Монтажник';
 
         detail.innerHTML = `
-            <h4 style="margin:0 0 10px; font-size:14px; color:var(--text-main);">💬 ${instName}</h4>
-            <div id="manager_installer_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
-            <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_installer_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать монтажнику..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_installer_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+            <div class="lk-subhead">Чат: ${String(instName).replace(/</g, '&lt;')}</div>
+            <div class="lk-chat">
+                <div id="manager_installer_chat_list" class="lk-chat-list"></div>
+                <div class="lk-chat-bar">
+                    <input type="text" id="manager_installer_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать монтажнику…" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                    <button type="button" id="manager_installer_chat_send_btn" onpointerdown="event.preventDefault()" class="lk-btn lk-btn-primary" onclick="app.sendActiveChatMessage()">Отправить</button>
+                </div>
             </div>
         `;
         detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -12672,6 +12755,7 @@ const app = {
             this.hasUnsavedChanges = false;
             this.updateSaveBtnUI();
             this.resetAutosaveBaseline();
+            this._remindBase = this.saveReminderSum(); this._remindDismissSum = null; this.saveReminderClearPending();
             // Цены каталога могли уехать с момента сохранения — расчёт уже пересобран
             // по сегодняшним, осталось сказать об этом вслух
             this.showRepriceNotice({ eqSum: data.eq_sum, at: data.created_at });
@@ -17036,6 +17120,7 @@ const app = {
         if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
         const shortEl = document.getElementById('profile_short_names');
         if (shortEl) shortEl.checked = this.shortNamesDefault();
+        this.fillSaveReminderForm();
     },
     invoiceValidDaysDefault: function () {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
@@ -18931,7 +19016,7 @@ const app = {
 
         const updatedAt = this.installerSettings.workPricesUpdatedAt;
         const updatedAtHtml = updatedAt
-            ? `<span style="font-size:10.5px; color:var(--text-sec);">Обновлено: ${new Date(updatedAt).toLocaleDateString('ru-RU')}</span>`
+            ? ` Обновлено: ${new Date(updatedAt).toLocaleDateString('ru-RU')}.`
             : '';
 
         // Вторая колонка — сколько из расценки уходит бригаде. Показываем только
@@ -18944,13 +19029,12 @@ const app = {
 
         let html = `
             <div class="lk-section-head">
-                <h4><span class="ui-emo">🔧 </span>Прайс монтажа</h4>
+                <div><h4>Прайс монтажа</h4><div class="lk-sub">Цены по умолчанию для новых смет; в самой смете цену можно поменять.${updatedAtHtml}</div></div>
                 <button type="button" class="lk-btn-sm" onclick="app.resetAllInstallerWorkPrices()">Сбросить всё</button>
             </div>
-            <p class="lk-hint" style="margin-bottom:8px;">Цены по умолчанию для новых смет; в самой смете цену можно поменять. ${updatedAtHtml}</p>
         `;
         if (showCosts) {
-            html += `<p class="lk-hint" style="margin-bottom:8px;">
+            html += `<p class="lk-hint">
                 Вторая колонка — <b>сколько из этой цены уходит бригаде</b>. Заполнять не обязательно:
                 ${mgSet
                     ? `у незаполненных берётся общая доля ${crewShare} % из вкладки «Деньги»${costsFilled ? `. Своя оплата задана у ${costsFilled} ${this.plural(costsFilled, 'работы', 'работ', 'работ')}` : ''}.`
@@ -18965,13 +19049,7 @@ const app = {
             const isOpen = wpOpen[groupName] === undefined ? gi === 0 : wpOpen[groupName];
             html += `<details class="lk-group"${isOpen ? ' open' : ''} data-g="${String(groupName).replace(/"/g, '&quot;')}" ontoggle="app._wpOpen[this.dataset.g] = this.open"><summary class="lk-subhead">${groupName} <span class="lk-group-n">${groups[groupName].length}</span></summary>`;
             if (showCosts) {
-                html += `<div style="display:flex; justify-content:flex-end; gap:6px; padding:0 4px 4px 0; font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:.4px;">
-                    <span style="width:82px; text-align:right;">Клиенту</span>
-                    <span style="width:14px;"></span>
-                    <span style="width:82px; text-align:right;">Бригаде</span>
-                    <span style="width:14px;"></span>
-                    <span style="width:22px;"></span>
-                </div>`;
+                html += `<div class="lk-price-cols"><span>Клиенту</span><span>Бригаде</span></div>`;
             }
             html += `<div class="lk-list">`;
             groups[groupName].forEach(w => {
@@ -18985,25 +19063,26 @@ const app = {
                 // видно, от чего человек отталкивается, когда ставит свою цифру.
                 const costPlaceholder = Math.round((val || 0) * crewShare / 100);
                 const costCell = showCosts ? `
+                        <label class="lk-money"><span class="lk-price-cap">Бригаде</span>
                         <input type="text" inputmode="numeric" value="${hasOwnCost ? Math.round(ownCost) : ''}"
                             placeholder="${costPlaceholder}"
+                            class="${hasOwnCost ? 'is-own' : ''}"
                             title="${hasOwnCost ? 'Своя оплата бригаде' : 'Пусто — считается общей долей ' + crewShare + ' %'}"
-                            style="width:82px; text-align:right; height:24px; font-size:12px; padding:2px 8px; border-radius:6px; border:1px solid ${hasOwnCost ? 'var(--primary)' : 'var(--border)'}; background:var(--bg); color:var(--text-main);"
                             onblur="app.setInstallerWorkCost('${nameArg}', this.value)"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
-                        <span style="font-size:11px; color:var(--text-sec); width:14px;">₽</span>` : '';
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"><em>₽</em></label>` : '';
                 html += `
-                    <div class="lk-row">
-                        <span style="flex:1; min-width:0;">${w.name} <span style="color:var(--text-sec);">(${w.unit})</span></span>
-                        ${isCustom ? `<span title="Своя цена" style="font-size:10px; color:var(--primary); font-weight:700;">СВОЯ</span>` : ''}
-                        <input type="text" inputmode="numeric" value="${Math.round(val)}" style="width:82px; text-align:right; height:24px; font-size:12px; padding:2px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text-main);"
-                            onblur="app.setInstallerWorkPrice('${nameArg}', this.value)"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
-                        <span style="font-size:11px; color:var(--text-sec); width:14px;">₽</span>
-                        ${costCell}
-                        ${isCustom || hasOwnCost
-                            ? `<span title="Сбросить к значениям по умолчанию (цена ${w.price} ₽${hasOwnCost ? ', оплата бригады — по общей доле' : ''})" style="cursor:pointer; color:var(--text-sec); font-size:14px; padding:0 4px;" onclick="app.resetWorkPriceRow('${nameArg}')">↺</span>`
-                            : `<span style="width:22px;"></span>`}
+                    <div class="lk-row lk-price-row">
+                        <span class="lk-price-name">${w.name} <span class="lk-price-unit">(${w.unit})</span>${isCustom ? ' <span class="lk-badge-own" title="Своя цена">своя</span>' : ''}</span>
+                        <div class="lk-price-ctl">
+                            <label class="lk-money"><span class="lk-price-cap">Клиенту</span>
+                            <input type="text" inputmode="numeric" value="${Math.round(val)}"
+                                onblur="app.setInstallerWorkPrice('${nameArg}', this.value)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"><em>₽</em></label>
+                            ${costCell}
+                            ${isCustom || hasOwnCost
+                                ? `<button type="button" class="lk-icon-btn" title="Сбросить к значениям по умолчанию (цена ${w.price} ₽${hasOwnCost ? ', оплата бригады — по общей доле' : ''})" aria-label="Сбросить" onclick="app.resetWorkPriceRow('${nameArg}')">↺</button>`
+                                : `<span class="lk-icon-btn lk-icon-gap"></span>`}
+                        </div>
                     </div>
                 `;
             });
@@ -19048,7 +19127,7 @@ const app = {
 
         let html = `
             <div class="lk-section-head">
-                <h4>Своё оборудование</h4>
+                <div><h4>Своё оборудование</h4><div class="lk-sub">Позиции, которых нет в каталоге, и история ваших замен и удалений</div></div>
                 <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.addCustomEqPrompt();">+ Добавить позицию</button>
             </div>`;
 
@@ -19059,10 +19138,10 @@ const app = {
             libHtml += `<div class="lk-list">`;
             lib.forEach(e => {
                 libHtml += `
-                    <div class="lk-row" style="cursor:pointer;" onclick="app.addFromEquipmentLibrary('${e.id}')">
-                        <span style="flex:1; min-width:0;">${e.name}</span>
-                        <span style="font-weight:700; white-space:nowrap;">${Math.round(e.price).toLocaleString('ru-RU')} ₽</span>
-                        <span title="Удалить" style="cursor:pointer; color:var(--text-sec); font-size:14px; padding:0 4px;" onclick="event.stopPropagation(); app.removeFromEquipmentLibrary('${e.id}')">✕</span>
+                    <div class="lk-row lk-row-link" onclick="app.addFromEquipmentLibrary('${e.id}')">
+                        <div class="lk-row-main"><b>${String(e.name).replace(/</g, '&lt;')}</b></div>
+                        <b class="lk-row-r">${Math.round(e.price).toLocaleString('ru-RU')} ₽</b>
+                        <button type="button" class="lk-icon-btn" title="Удалить из списка" aria-label="Удалить" onclick="event.stopPropagation(); app.removeFromEquipmentLibrary('${e.id}')">✕</button>
                     </div>
                 `;
             });
@@ -19081,9 +19160,9 @@ const app = {
                 const meta = [dateStr, s.projectName, s.section].filter(Boolean)
                     .map(v => String(v).replace(/</g, '&lt;')).join(' · ');
                 swHtml += `
-                    <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${meta}</div>
-                        <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${s.fromName}</s> → <b>${s.toName}</b></div>
+                    <div class="lk-row lk-row-block">
+                        <div class="lk-meta">${meta}</div>
+                        <div><s class="lk-was">${s.fromName}</s> → <b>${s.toName}</b></div>
                     </div>
                 `;
             });
@@ -19100,9 +19179,9 @@ const app = {
                 const dateStr = new Date(d.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const kindLabel = d.kind === 'work' ? 'Работа' : 'Оборудование';
                 delHtml += `
-                    <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${dateStr} · ${kindLabel}</div>
-                        <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${d.name}</s>${d.price ? ` <span style="color:var(--text-sec);">(${Math.round(d.price).toLocaleString('ru-RU')} ₽${d.qty > 1 ? ` × ${d.qty}` : ''})</span>` : ''}</div>
+                    <div class="lk-row lk-row-block">
+                        <div class="lk-meta">${dateStr} · ${kindLabel}</div>
+                        <div><s class="lk-was">${d.name}</s>${d.price ? ` <span class="lk-meta">(${Math.round(d.price).toLocaleString('ru-RU')} ₽${d.qty > 1 ? ` × ${d.qty}` : ''})</span>` : ''}</div>
                     </div>
                 `;
             });
@@ -21502,11 +21581,9 @@ const app = {
         // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
         const ufh = this.canUseUfhPlan();
         try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
-        // Строка — только в подробном режиме: в быстром она сдвигала все настройки
-        // вниз, а пользы там нет; в быстром вместо неё одна ссылка под площадью.
+        // Строка — только в подробном режиме: в быстром плана нет вовсе (владелец
+        // 03.10.2026 убрал и строку, и ссылку под площадью — быстрый режим без него).
         if (planRow) planRow.style.display = (ufh && this.state.detailedRooms) ? 'flex' : 'none';
-        const qLink = document.getElementById('plan_quick_link');
-        if (qLink) qLink.style.display = (ufh && !this.state.detailedRooms) ? 'block' : 'none';
         const bU = document.getElementById('btn_ufhplan');
         const sum = this.planRowSummary();
         if (bU) {
@@ -36782,6 +36859,13 @@ const app = {
         // стороны подключения радиаторов по моделям сметы — трассы окна плана
         // подходят к приборам так же, как в смете и КП
         try { localStorage.setItem('heatcalc_rad_conn', JSON.stringify(this.radConnMap())); } catch (e) { }
+        // нехватка тепла по комнатам из последнего расчёта — шаг «Готово» покажет её,
+        // пока план не тронут (после правок плана цифры устарели)
+        try {
+            const bal = {};
+            this.radDeficits().forEach(x => { bal[String(x.name).trim()] = x.diff; });
+            localStorage.setItem('heatcalc_room_deficit', JSON.stringify(bal));
+        } catch (e) { }
         try {
             localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
                 dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
@@ -42446,7 +42530,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '7',
+    BIG_TEXT_CSS_V: '9',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -48127,6 +48211,7 @@ const app = {
         // прежним файлом. Без вопроса — он уже подтверждён строкой выше.
         if (typeof RecognizeUI !== 'undefined' && RecognizeUI.resetAll) RecognizeUI.resetAll(true);
         this.resetAutosaveBaseline();
+        this._remindBase = 0; this._remindDismissSum = null; this.saveReminderDisarm(); this.saveReminderClearPending();
     },
 
     /**
@@ -48224,9 +48309,249 @@ const app = {
         if (this._autoSaveTimeout) {
             clearTimeout(this._autoSaveTimeout);
         }
+        // Тихое автосохранение копий в облако заменено напоминанием с вопросом
+        // «сохранить расчёт?» (saveReminderEval): копии под именем «(автосохранение)»
+        // никто не искал, а сервер они грузили. runAutoSave оставлен, но не вызывается.
         this._autoSaveTimeout = setTimeout(() => {
-            this.runAutoSave();
+            this.saveReminderEval();
         }, 3000);
+    },
+
+    // ── Напоминание сохранить расчёт ─────────────────────────────────────────
+    // Включено у всех вошедших в аккаунт. Таймер заводится, когда расчёт изменён и
+    // сумма ушла от последней сохранённой (или от нуля) на 10 % и больше; через N минут
+    // (по умолчанию 15) появляется окно с названием объекта. Сохранили или отказались —
+    // таймер заново не идёт, пока расчёт снова не изменится на 10 %.
+    // Закрытие вкладки: браузер не даёт нарисовать своё окно, поэтому на десктопе
+    // срабатывает его штатный вопрос, а везде (в том числе на телефоне) расчёт
+    // помечается в localStorage, и при следующем открытии окно появляется само.
+    SAVE_REMIND_MIN_DEFAULT: 15,
+    SAVE_REMIND_MIN_MAX: 240,
+    SAVE_REMIND_PENDING_KEY: 'hc_save_reminder_pending',
+    _remindBase: 0,
+    _remindTimer: null,
+    _remindDismissSum: null,
+    _remindOpen: false,
+
+    saveReminderEnabled: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        return this.installerSettings.saveReminder !== false;
+    },
+    setSaveReminderEnabled: function (on) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.saveReminder = !!on;
+        if (!on) { this.saveReminderDisarm(); this.saveReminderClearPending(); }
+        this.pushInstallerSettingsToCloud();
+        this.fillSaveReminderForm();
+    },
+    saveReminderMinutes: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const n = Math.round(Number(this.installerSettings.saveReminderMin));
+        if (!isFinite(n) || n < 1) return this.SAVE_REMIND_MIN_DEFAULT;
+        return Math.min(n, this.SAVE_REMIND_MIN_MAX);
+    },
+    setSaveReminderMinutes: function (v) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        let n = Math.round(Number(v));
+        if (!isFinite(n) || n < 1) n = this.SAVE_REMIND_MIN_DEFAULT;
+        n = Math.min(n, this.SAVE_REMIND_MIN_MAX);
+        if (this.installerSettings.saveReminderMin !== n) {
+            this.installerSettings.saveReminderMin = n;
+            this.pushInstallerSettingsToCloud();
+        }
+        this.saveReminderDisarm();
+        this.fillSaveReminderForm();
+    },
+    fillSaveReminderForm: function () {
+        const on = this.saveReminderEnabled();
+        const sw = document.getElementById('profile_save_reminder');
+        if (sw) sw.checked = on;
+        const mEl = document.getElementById('profile_save_reminder_min');
+        if (mEl) { mEl.value = String(this.saveReminderMinutes()); mEl.disabled = !on; }
+        const row = document.getElementById('profile_save_reminder_min_row');
+        if (row) row.style.opacity = on ? '' : '0.5';
+    },
+
+    // Сумма сметы, как её видит человек: оборудование + монтаж (если он ему доступен)
+    saveReminderSum: function () {
+        return (app.lastEqSum || 0) + (!this.canUseWorks() ? 0 : (app.lastWorksSum || 0));
+    },
+    // Есть ли что предлагать сохранить: расчёт изменён и ушёл от сохранённого на 10 %+
+    saveReminderNeeded: function () {
+        const sum = this.saveReminderSum();
+        if (!(sum > 0) || !this.hasUnsavedChanges) return false;
+        if (this._remindDismissSum !== null && this._remindDismissSum > 0 &&
+            Math.abs(sum - this._remindDismissSum) / this._remindDismissSum < 0.10) return false;
+        const base = this._remindBase || 0;
+        return base <= 0 || Math.abs(sum - base) / base >= 0.10;
+    },
+    saveReminderDisarm: function () {
+        if (this._remindTimer) { clearTimeout(this._remindTimer); this._remindTimer = null; }
+    },
+    saveReminderEval: function () {
+        if (this._suppressSaveState || !this.isAppReady) return;
+        if (!this.saveReminderEnabled()) { this.saveReminderDisarm(); return; }
+        // Чистое состояние (загружено или только что сохранено) — запоминаем его сумму
+        // как точку отсчёта и снимаем отказ
+        if (!this.hasUnsavedChanges) {
+            this._remindBase = this.saveReminderSum();
+            this._remindDismissSum = null;
+            this.saveReminderDisarm();
+            this.saveReminderClearPending();
+            return;
+        }
+        if (!this.saveReminderNeeded()) { this.saveReminderDisarm(); return; }
+        if (this._remindTimer || this._remindOpen) return;
+        this._remindTimer = setTimeout(() => {
+            this._remindTimer = null;
+            this.saveReminderFire();
+        }, this.saveReminderMinutes() * 60 * 1000);
+    },
+    saveReminderFire: async function () {
+        if (!this.saveReminderEnabled() || !this.saveReminderNeeded() || this._remindOpen) return;
+        // Вкладка в фоне — спросим, когда человек вернётся
+        if (document.hidden) {
+            const onShow = () => {
+                if (document.hidden) return;
+                document.removeEventListener('visibilitychange', onShow);
+                this.saveReminderFire();
+            };
+            document.addEventListener('visibilitychange', onShow);
+            return;
+        }
+        if (!(await this.saveReminderHasSession())) return;
+        this.saveReminderShow('timer');
+    },
+    saveReminderHasSession: async function () {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            return !!session;
+        } catch (e) { return false; }
+    },
+    saveReminderClearPending: function () {
+        try { localStorage.removeItem(this.SAVE_REMIND_PENDING_KEY); } catch (e) { }
+    },
+    // Ставим отметку при уходе со страницы, если расчёт не сохранён
+    saveReminderMarkPending: function () {
+        try {
+            if (this.saveReminderEnabled() && this.saveReminderNeeded()) {
+                localStorage.setItem(this.SAVE_REMIND_PENDING_KEY, JSON.stringify({ t: Date.now(), sum: this.saveReminderSum() }));
+            }
+        } catch (e) { }
+    },
+    // Старт приложения: если в прошлый раз расчёт закрыли несохранённым — спросить
+    saveReminderCheckPending: async function () {
+        let p = null;
+        try { p = JSON.parse(localStorage.getItem(this.SAVE_REMIND_PENDING_KEY) || 'null'); } catch (e) { }
+        if (!p) return;
+        if (!this.saveReminderEnabled() || Date.now() - (p.t || 0) > 7 * 24 * 3600 * 1000 || !(this.saveReminderSum() > 0)) {
+            this.saveReminderClearPending();
+            return;
+        }
+        if (!(await this.saveReminderHasSession())) return;
+        this.saveReminderShow('reopen');
+    },
+    saveReminderBindEvents: function () {
+        window.addEventListener('beforeunload', (e) => {
+            // Настольный браузер: штатный вопрос «Покинуть сайт?». На телефонах он не
+            // показывается — там работает отметка и окно при следующем открытии.
+            this.saveReminderMarkPending();
+            if (this.saveReminderEnabled() && this.saveReminderNeeded() && !this.isMobileLayout()) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+        window.addEventListener('pagehide', () => this.saveReminderMarkPending());
+        document.addEventListener('visibilitychange', () => { if (document.hidden) this.saveReminderMarkPending(); });
+    },
+    saveReminderSnooze: function () {
+        this._remindDismissSum = this.saveReminderSum();
+        this.saveReminderDisarm();
+        this.saveReminderClearPending();
+    },
+    saveReminderShow: function (reason) {
+        if (this._remindOpen) return;
+        this._remindOpen = true;
+        const sum = this.saveReminderSum();
+        const fmt = (n) => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        let name = (this.state.projectName || document.getElementById('project_name_input')?.value?.trim() || this.projectObjectTitle('') || '').replace(/\s*\(автосохранение.*?\)/gi, '').trim();
+        if (name === 'Мой проект') name = '';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card save-remind-card" role="dialog" aria-modal="true" aria-labelledby="save_remind_title">
+                <div class="save-remind-top">
+                    <div class="save-remind-ico">💾</div>
+                    <h3 id="save_remind_title">Сохранить расчёт?</h3>
+                    <div class="save-remind-sum">${fmt(sum)}</div>
+                    ${reason === 'reopen' ? '<div class="save-remind-lead">Прошлый расчёт остался несохранённым</div>' : ''}
+                </div>
+                <label class="save-remind-field">
+                    <span>Название объекта</span>
+                    <input type="text" id="save_remind_name" maxlength="120" placeholder="Например: Дом Ивановых" value="${esc(name)}" autocomplete="off">
+                </label>
+                <div class="calc-dialog-error" id="save_remind_err" style="display:none"></div>
+                <button type="button" class="save-remind-ok" id="save_remind_ok">Сохранить</button>
+                <div class="save-remind-links">
+                    <button type="button" id="save_remind_later">Не сейчас</button>
+                    <i></i>
+                    <button type="button" id="save_remind_off">Больше не напоминать</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+
+        const input = overlay.querySelector('#save_remind_name');
+        const okBtn = overlay.querySelector('#save_remind_ok');
+        const errEl = overlay.querySelector('#save_remind_err');
+        const close = () => {
+            this._remindOpen = false;
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+            document.removeEventListener('keydown', onKey);
+        };
+        const later = () => { this.saveReminderSnooze(); close(); };
+        const save = async () => {
+            const v = input.value.trim();
+            if (!v) {
+                errEl.textContent = 'Введите название объекта';
+                errEl.style.display = '';
+                input.focus();
+                return;
+            }
+            okBtn.disabled = true;
+            okBtn.textContent = 'Сохраняю…';
+            this.state.projectName = v;
+            const pn = document.getElementById('project_name_input');
+            if (pn) pn.value = v;
+            this.saveState();
+            const ok = await this.saveToCloud(true);
+            if (ok) {
+                close();
+                this.showInAppNotification('Расчёт сохранён', `«${esc(v)}» — в «Моих объектах»`, '✅');
+            } else {
+                okBtn.disabled = false;
+                okBtn.textContent = 'Сохранить';
+                errEl.textContent = 'Не удалось сохранить. Проверьте связь и нажмите ещё раз.';
+                errEl.style.display = '';
+            }
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') later();
+            else if (e.key === 'Enter' && document.activeElement === input) save();
+        };
+        document.addEventListener('keydown', onKey);
+        okBtn.onclick = save;
+        overlay.querySelector('#save_remind_later').onclick = later;
+        overlay.querySelector('#save_remind_off').onclick = () => {
+            this.setSaveReminderEnabled(false);
+            close();
+            this.showInAppNotification('Напоминание выключено', 'Включить снова: Личный кабинет → Настройки → КП и счета', 'ℹ️');
+        };
+        // На телефоне фокус открыл бы клавиатуру поверх окна — ставим его только на десктопе
+        if (!this.isMobileLayout()) setTimeout(() => { input.focus(); input.select(); }, 60);
     },
 
     runAutoSave: async function () {
@@ -50982,6 +51307,10 @@ const app = {
         this.lastSavedStateString = this.getStateSignature();
         this.updateSaveBtnUI();
         this.resetAutosaveBaseline();
+        // Напоминание «сохранить расчёт»: точка отсчёта — то, что загрузилось
+        this._remindBase = this.saveReminderSum();
+        this.saveReminderBindEvents();
+        setTimeout(() => this.saveReminderCheckPending(), 3500);
 
         // Фоновый запуск очереди отправки писем
         if (this.queue && typeof this.queue.start === 'function') {
@@ -62902,6 +63231,43 @@ const app = {
             (diff < 0 ? 'Тепла не хватает: добавьте прибор или утеплите помещение.' : 'Баланс в плюсе — в самые морозы комната не остынет.');
         return `<span style="font-size:10px; font-weight:800; color:${col}; white-space:nowrap;" title="${tip}">${diff >= 0 ? '+' : '−'}${Math.abs(diff)}</span>`;
     },
+    /**
+     * Комнаты, где тепла не хватает: приборы + тёплый пол меньше теплопотерь
+     * больше чем на 50 Вт (те же цифры, что плашки «−515» в списке комнат).
+     * Меньший недобор — округление подбора, говорить о нём незачем.
+     */
+    radDeficits: function () {
+        const out = [];
+        if (!this.state.detailedRooms) return out;
+        (this.state.rooms || []).forEach(r => {
+            const b = (this._roomBalance || {})[r.id];
+            if (!b || !(b.q > 0)) return;
+            const diff = Math.round((b.fact || 0) + (b.ufh || 0) - b.q);
+            if (diff < -50) out.push({ id: r.id, name: r.name, diff, q: b.q });
+        });
+        return out;
+    },
+
+    /**
+     * Строка под «Планом дома»: «Не хватает тепла: Кухня −515 Вт, Кабинет −388 Вт».
+     * Монтажник видел это только по плашке в смете и красным числам в списке
+     * комнат — а нужно сразу после «Готово» в окне плана, пока план перед
+     * глазами и радиатор можно добавить (03.10.2026). Клик по названию —
+     * к карточке комнаты.
+     */
+    updatePlanRowWarn: function () {
+        const el = document.getElementById('plan_row_warn');
+        if (!el) return;
+        const d = this.radDeficits();
+        if (!d.length || !this.planRowSummary()) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        el.innerHTML = 'Не хватает тепла: ' + d.slice(0, 4).map(x =>
+            `<a href="#" style="color:inherit;text-decoration:underline;" onclick="app.jumpToRoom(${Number(x.id) || 0}); return false;">${esc(x.name)}</a> −${Math.abs(x.diff)} Вт`
+        ).join(', ') + (d.length > 4 ? ' и ещё ' + (d.length - 4) : '') +
+            '. Добавьте радиатор или тёплый пол в этих комнатах.';
+        el.style.display = 'block';
+    },
+
     // render() пересчитывает баланс после пересборки сметы — обновляем плашки
     // в уже отрисованном списке, не трогая сам список (ввод и фокус целы).
     updateRoomBalanceChips: function () {
@@ -70381,14 +70747,17 @@ const app = {
             <span class="param-item"><span class="ui-emo">🚪 </span>Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
             : (parseFloat(this.state.area) > 0
                 ? `<span class="param-item"><span class="ui-emo">🏠 </span>Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
-            <span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>`
+            ${(this.state.hotWater || this.state.water) ? `<span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>` : ''}`
                 // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
                 // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
                 : `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`);
+        // «Проживающих» нужны расчёту горячей воды и водоснабжения — без них число лишнее.
+        // «Вариант: подешевле» тем, у кого есть тумблер «Подешевле», на экране дублирует его
+        // (скрыт стилем .ds-variant-dup), но в печати и PDF остаётся: клиент тумблера не видит.
         const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
             <span class="param-item"><span class="ui-emo">🔖 </span>№ КП: <b>${this.kpNumber() || '—'}</b></span>
-            ${this.cheapModeOn() ? '<span class="param-item"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>' : ''}
+            ${this.cheapModeOn() ? `<span class="param-item ds-variant${this.canUseAnalog() ? ' ds-variant-dup' : ''}"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>` : ''}
             ${_objChip}
             ${_hasArea ? `<span class="param-item"><span class="ui-emo">🔥 </span>Теплопотери: ${heatLossHtml}</span>` : ''}
             <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>
@@ -80254,6 +80623,7 @@ const app = {
         // Плашки баланса в списке помещений: подбор приборов только что положил
         // свежие цифры в _roomBalance — обновляем плашки, не пересобирая список.
         if (this.state.detailedRooms) this.updateRoomBalanceChips();
+        this.updatePlanRowWarn();
     },
 
     // ─── Подсказка «из чего складывается экономия» ──────────────────────────

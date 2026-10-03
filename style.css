@@ -19102,3 +19102,271 @@ body.theme-yandex #profile_modal_overlay {
 .lk-chat-bar input { flex: 1; min-width: 0; }
 #profile_tab_manager .lk-btn { white-space: nowrap; }
 
+/* ═══════ «МОИ МОНТАЖНИКИ»: тот же язык, что у остальных разделов (03.10.2026) ═══════ */
+/* Карточка «Пригласить монтажника» */
+.lk-invite { padding: 14px 16px; }
+.lk-invite-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.lk-invite-count { font-size: 13px; color: var(--text-main); }
+.lk-invite-code {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+}
+.lk-invite-lbl { font-size: 12px; color: var(--text-sec); }
+.lk-invite-code b { font-size: 18px; letter-spacing: 0.08em; color: var(--primary); }
+.lk-invite-link { font-size: 12px; color: var(--text-sec); word-break: break-all; min-width: 0; }
+.lk-invite-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.lk-invite .lk-sub { margin-top: 0; }
+/* Строки списков: название и подпись в две строки, справа значение или стрелка */
+.lk-row-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.lk-row-main b { font-size: 13px; font-weight: 600; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; }
+.lk-row-main small { font-size: 12px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-row-r { flex: 0 0 auto; text-align: right; font-size: 13px; font-weight: 700; color: var(--text-main); }
+.lk-row-r small { font-size: 12px; font-weight: 500; color: var(--text-sec); }
+.lk-row-quiet { font-weight: 500; color: var(--text-sec); }
+.lk-row-chev { flex: 0 0 auto; color: var(--text-sec); font-size: 16px; line-height: 1; }
+.lk-row-link { cursor: pointer; }
+.lk-row-link:hover .lk-row-chev { color: var(--primary); }
+/* Плитки сводки: раскладка (цвета и отступы — общие для кабинета, см. «Показатели») */
+#profile_modal_overlay .lk-pane #profile_tab_installers .sm-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 4px;
+}
+#profile_tab_installers .sm-tile { min-width: 0; }
+#profile_tab_installers .sm-tile-val { white-space: nowrap; }
+
+/* Телефон: плитки сводки по две в ряд, а не по одной на экран */
+@media screen and (max-width: 599px) {
+    #profile_modal_overlay .lk-pane #profile_tab_installers .sm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    #profile_modal_overlay .lk-pane #profile_tab_installers .sm-tile { padding: 10px 12px; }
+}
+
+/* ═══════ «ПРАЙС И ОБОРУДОВАНИЕ»: тот же язык, что у остальных разделов (03.10.2026) ═══════ */
+/* Строка прайса: название слева, цены справа; на телефоне цены уходят под название */
+.lk-price-row { gap: 8px 12px; flex-wrap: wrap; }
+.lk-price-name { flex: 1 1 220px; min-width: 0; font-size: 13px; color: var(--text-main); }
+.lk-price-unit { color: var(--text-sec); }
+.lk-price-ctl { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.lk-money { position: relative; display: inline-flex; align-items: center; gap: 4px; margin: 0; }
+.lk-money em { font-style: normal; font-size: 12px; color: var(--text-sec); width: 12px; }
+#profile_modal_overlay .lk-pane .lk-money input {
+    width: 92px;
+    min-height: 32px;
+    height: 32px;
+    padding: 0 10px;
+    text-align: right;
+    font-size: 13px;
+}
+#profile_modal_overlay .lk-pane .lk-money input.is-own { border-color: var(--primary) !important; }
+.lk-price-cap { display: none; font-size: 11px; color: var(--text-sec); }
+.lk-price-cols {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 6px 66px 4px 0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-sec);
+}
+.lk-price-cols span { width: 104px; text-align: right; }
+.lk-badge-own {
+    display: inline-block;
+    padding: 0 7px;
+    border-radius: 999px;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 17px;
+}
+.lk-icon-btn {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--ad-radius, 8px);
+    background: transparent;
+    color: var(--text-sec);
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+}
+button.lk-icon-btn:hover { background: var(--primary-light); color: var(--primary); }
+.lk-icon-gap { display: inline-block; cursor: default; }
+/* История: дата и подпись мелко, прежнее название зачёркнуто */
+.lk-meta { font-size: 12px; color: var(--text-sec); }
+.lk-row-block .lk-meta { margin-bottom: 2px; }
+.lk-was { color: var(--text-sec); }
+@media screen and (max-width: 599px) {
+    .lk-price-cols { display: none; }
+    .lk-price-ctl { width: 100%; margin-left: 0; flex-wrap: wrap; }
+    .lk-money { flex-direction: column; align-items: flex-start; gap: 2px; position: relative; }
+    .lk-money em { position: absolute; right: 8px; bottom: 7px; }
+    .lk-price-cap { display: block; }
+    #profile_modal_overlay .lk-pane .lk-money input { width: 120px; padding-right: 24px; }
+    .lk-price-ctl .lk-icon-btn { margin-left: auto; align-self: flex-end; }
+}
+
+
+
+/* ---------- Шаг A (03.10.2026): переносы при крупном тексте ---------- */
+/* Короткая подпись вкладки — только когда полная не помещается (app.fitMainTabs) */
+.main-view-tabs .tab-short { display: none; }
+.main-view-tabs.tabs-short .tab .tab-long { display: none !important; }
+.main-view-tabs.tabs-short .tab .tab-short { display: inline !important; }
+
+/* «Вариант: подешевле» у тех, у кого есть тумблер «Подешевле», на экране его дублирует.
+   В печати и PDF (он рендерится на экране под html2pdf-printing) пункт остаётся:
+   клиент тумблера не видит. */
+@media screen {
+    .doc-summary .ds-variant-dup { display: none; }
+    body.html2pdf-printing .doc-summary .ds-variant-dup { display: flex !important; }
+}
+
+
+/* ========================================================================
+   Шаг B (03.10.2026): спокойная палитра стандартного оформления
+   ------------------------------------------------------------------------
+   Раньше на экране одновременно жили шесть цветов: красный, синий, оранжевый,
+   бирюзовый, зелёный и голубой — и каждый «что-то значил». Теперь один акцент —
+   цвет бренда (STOUT — тёмно-синий, ROMMER — красный), остальное нейтральное;
+   цветом остаются только статусы. Ничего не завязано на новое имя: подменяется
+   токен --primary и несколько точечных правил для мест с зашитыми цветами
+   (итоги в шапке, плашка «Дешевле на N %», вкладка «Почему дешевле», метка
+   «Гарантия STOUT», плашка «ПРОФИ», шкала заполнения, кнопка «Сохранить»).
+   Темы «Яндекс», «бренд» и «магазин» оформлены отдельно и не затрагиваются.
+   У ROMMER акцент нейтральный графитовый, не красный (владелец 03.10.2026:
+   «слишком красный»; тот же #3E3D40, что у темы бренда ROMMER). Красный остался
+   только у логотипа и у статусов (точка «не сохранено»).
+   ======================================================================== */
+@media screen {
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) { --primary: #203F6F; --primary-light: #EEF3F9; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).dark-mode { --primary: #4A7CC2; --primary-light: #16233A; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer { --primary: #3E3D40; --primary-light: #F1F1F2; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer.dark-mode { --primary: #75757F; --primary-light: #232326; }
+
+    /* Итоги в шапке: цифры одного нейтрального цвета, выделено только «Мне» */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #anim_eq_sum,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #anim_works_sum,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .m-total-eq span,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .m-total-work span { color: var(--text-main); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #hdr_margin_sum { color: var(--primary) !important; }
+
+    /* «Подешевле»: плашка и вкладка одного цвета (связка «плашка ↔ вкладка» осталась),
+       но не зелёные, а в акценте бренда */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #discount_badge {
+        background: var(--primary-light) !important;
+        color: var(--primary) !important;
+        box-shadow: none !important;
+        border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper {
+        color: var(--primary);
+        background: var(--primary-light);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper:hover { color: var(--primary); filter: brightness(0.97); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper.active { background: var(--primary); color: #fff; box-shadow: none; }
+
+    /* Строка параметров: значения тёмные, а не синие (синее читалось как ссылки) */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary b { color: var(--text-main); }
+
+    /* «Гарантия STOUT»: серая метка, статус говорит только значок */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.ok,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.low {
+        background: var(--surface-light);
+        border-color: var(--border);
+        color: var(--text-sec);
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.ok .ds-stout-ico { color: #16A34A; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.low .ds-stout-ico { color: #D97706; }
+
+    /* «ПРОФИ»: контур акцента вместо оранжевой плашки */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) [style*="linear-gradient(135deg, #F59E0B, #D97706)"] {
+        background: transparent !important;
+        color: var(--primary) !important;
+        border: 1px solid var(--primary);
+        box-shadow: none !important;
+    }
+
+    /* Шкала заполнения: один цвет, отметка без акцента */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .header-fill-bar-fill { background: var(--primary); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .header-fill-bar-marker { color: var(--text-sec); }
+
+    /* «Не сохранено»: красная точка на значке вместо красной рамки со свечением */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .btn-ctrl.btn-unsaved {
+        border-color: var(--border) !important;
+        color: var(--text-sec) !important;
+        box-shadow: none !important;
+        animation: none;
+        position: relative;
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .btn-ctrl.btn-unsaved:hover { background: var(--surface-light) !important; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .btn-ctrl.btn-unsaved::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #EF4444;
+    }
+
+    /* Круглая кнопка «Умное заполнение» и пункт «Админка» — в акценте, без фиолетового и зелёного */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .ai-parse-fab { background: var(--primary); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .ai-parse-fab { box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--primary) 40%, transparent); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .ai-parse-fab-glow { background: var(--primary); opacity: 0.35; }
+    /* Заголовки разделов сметы у ROMMER — нейтральным текстом (красный только в заливках) */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer .row-sec td { color: var(--text-main); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .lk-rail-admin,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .lk-rail-admin:hover { color: var(--primary); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .lk-rail-admin:hover { background: var(--primary-light); }
+}
+
+/* Второй шаг сжатия строки параметров (app.fitDocSummary): метка «Гарантия STOUT» — только щит */
+@media screen {
+    .doc-summary.ds-tight .ds-stout-txt { display: none; }
+}
+@media screen {
+    /* Самый тесный режим: чуть мельче и плотнее, чтобы строка гарантированно держалась в линию */
+    .doc-summary.ds-tight { gap: 6px; zoom: 0.94; }
+}
+
+/* === Напоминание «сохранить расчёт» (app.saveReminderShow) === */
+.save-remind-card { max-width: 380px; padding: 28px 26px 18px; gap: 14px; border-radius: 22px; box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.35); }
+.save-remind-top { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.save-remind-ico { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--primary-light), rgba(99, 102, 241, 0.18)); box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15); }
+.save-remind-top h3 { text-transform: none; margin: 0; font-size: 20px; font-weight: 800; color: var(--text-main); letter-spacing: -0.01em; }
+.save-remind-sum { font-size: 26px; font-weight: 800; color: var(--primary); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.save-remind-lead { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
+.save-remind-field { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.save-remind-field span { font-size: 12px; font-weight: 600; color: var(--text-sec); }
+.save-remind-field input { width: 100%; box-sizing: border-box; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-light); color: var(--text-main); font-size: 16px; outline: none; transition: border-color .15s, box-shadow .15s; }
+.save-remind-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18); }
+body.dark-mode .save-remind-field input { background: #121212; border-color: #4B5563; }
+.save-remind-ok { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s; }
+.save-remind-ok:hover { background: #2563EB; }
+.save-remind-ok:active { transform: scale(0.98); }
+.save-remind-ok:disabled { opacity: .7; cursor: default; }
+.save-remind-links { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.save-remind-links i { width: 3px; height: 3px; border-radius: 50%; background: var(--text-sec); opacity: .5; }
+.save-remind-links button { background: none; border: 0; padding: 8px 4px; font-size: 13px; color: var(--text-sec); cursor: pointer; }
+.save-remind-links button:hover { color: var(--primary); }
+#save_remind_later { font-weight: 600; }
+

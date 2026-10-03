@@ -435,7 +435,96 @@
    * между участками — клетка зазора, по ней и пойдёт пучок к дальним петлям.
    * Каждый прямоугольник делится вдоль длинной стороны на k петель.
    */
+  /**
+   * Комната буквой Г режется на прямоугольники двумя способами: жадно — сперва
+   * самый большой, — или поперёк, по краю выступа. Жадный в комнате с узким
+   * выступом брал всю основную часть, а выступ оставался узкой полосой без
+   * своей петли и без трубы («до стен не доходит», 03.10.2026). Поэтому: если
+   * после жадного остался кусок без петли, пробуем первым взять полосу во всю
+   * ширину комнаты по рядам (или столбцам) этого куска — и берём разрез, при
+   * котором петли лягут на большую площадь.
+   */
+  var BAND_GAIN_M2 = 0.4;
   function zoneRects(g, own, zi, bb, cellsTotal, stepM) {
+    var A = zoneRectsGreedy(g, own, zi, bb, cellsTotal, stepM, null);
+    var kept = function (R) { return R.reduce(function (s, r) { return s + r.area; }, 0); };
+    var left = leftoverBox(g, own, zi, bb, A);
+    if (!left) return A;
+    var best = A, bk = kept(A), bs = Infinity, tol = 0.3 / (CELL_M * CELL_M);
+    // Полосу можно взять шире выступа — вглубь комнаты: тогда площадь между
+    // двумя участками делится так, чтобы на петлю приходилось поровну (у
+    // кухни-гостиной иначе выходили петли 46 и 75 м). Из вариантов с той же
+    // покрытой площадью — самый ровный.
+    var lim = stepM ? (loopLimit(stepM * 1000) || 100) : 100;
+    var spread = function (R) {
+      var per = R.map(function (r) {
+        var len = r.area * CELL_M * CELL_M / (stepM || 0.15) * 1.05;
+        return len / Math.max(1, Math.ceil(len / lim));
+      });
+      return per.length > 1 ? Math.max.apply(null, per) / Math.min.apply(null, per) : 1;
+    };
+    [['rows', left.y0, left.y1, bb[1], bb[3]], ['cols', left.x0, left.x1, bb[0], bb[2]]].forEach(function (b) {
+      var atLo = b[1] <= b[3] + SLAB_GAP + 1, atHi = b[2] >= b[4] - SLAB_GAP - 1;
+      if (!atLo && !atHi) return;                     // выступ не у края комнаты — полосой его не взять
+      var room = b[4] - b[3] + 1;
+      for (var e = 0; e <= room; e += 2) {
+        var lo = atLo ? b[1] : Math.max(b[3], b[1] - e), hi = atLo ? Math.min(b[4], b[2] + e) : b[2];
+        if (hi - lo + 1 > room * 0.75) break;           // полоса — не больше трёх четвертей комнаты
+        var R = zoneRectsGreedy(g, own, zi, bb, cellsTotal, stepM, [b[0], lo, hi]);
+        // полоса — такой же участок, как остальные: короткой петли в узком
+        // кусочке не даём и здесь (иначе выступ шёл отдельной петлёй на метр)
+        if (R.length > 1 && R.some(function (r) { return sideRectTooSmall(r, cellsTotal, stepM); })) continue;
+        var k = kept(R), s = spread(R);
+        // против жадного — только с заметным выигрышем площади; между
+        // полосами — ровнее, если площадь не меньше лучшей больше чем на 0,3 м²
+        if (best === A ? k < bk + BAND_GAIN_M2 / (CELL_M * CELL_M) : k < bk - tol) continue;
+        if (best === A || k > bk + tol || s < bs) { best = R; bk = Math.max(bk, k); bs = s; }
+      }
+    });
+    return best;
+  }
+
+  /**
+   * Самый большой кусок зоны, не попавший ни в один участок (и не зазор между
+   * ними), — его габарит в клетках; null, если такого куска нет или он меньше
+   * MIN_RECT_M2 (обрезки у колонн и стен, их не греем и так).
+   */
+  function leftoverBox(g, own, zi, bb, rects) {
+    var W = g.W, mark = new Uint8Array(W * g.H), x, y, k;
+    for (y = bb[1]; y <= bb[3]; y++) for (x = bb[0]; x <= bb[2]; x++)
+      if (own[y * W + x] === zi + 1) mark[y * W + x] = 1;
+    rects.forEach(function (r) {
+      for (y = r.y0 - SLAB_GAP; y <= r.y1 + SLAB_GAP; y++) for (x = r.x0 - SLAB_GAP; x <= r.x1 + SLAB_GAP; x++)
+        if (x >= 0 && y >= 0 && x < W && y < g.H) mark[y * W + x] = 0;
+    });
+    var best = null, q = new Int32Array(W * g.H);
+    for (y = bb[1]; y <= bb[3]; y++) for (x = bb[0]; x <= bb[2]; x++) {
+      k = y * W + x;
+      if (mark[k] !== 1) continue;
+      var h = 0, t = 0, n = 0, B = { x0: x, x1: x, y0: y, y1: y };
+      mark[k] = 2; q[t++] = k;
+      while (h < t) {
+        var c = q[h++], cx = c % W, cy = (c - cx) / W;
+        n++;
+        if (cx < B.x0) B.x0 = cx; if (cx > B.x1) B.x1 = cx; if (cy < B.y0) B.y0 = cy; if (cy > B.y1) B.y1 = cy;
+        [cx > 0 ? c - 1 : -1, cx < W - 1 ? c + 1 : -1, c - W, c + W].forEach(function (m) {
+          if (m >= 0 && m < mark.length && mark[m] === 1) { mark[m] = 2; q[t++] = m; }
+        });
+      }
+      if (!best || n > best.n) { B.n = n; best = B; }
+    }
+    return best && best.n * CELL_M * CELL_M >= MIN_RECT_M2 ? best : null;
+  }
+
+  /** Участок слишком мал для своей петли (те же пороги, что у жадного разреза). */
+  function sideRectTooSmall(r, cellsTotal, stepM) {
+    var sideCells = Math.max(SIDE_RECT_M2, stepM ? SIDE_LOOP_MIN_M * stepM / 1.05 : 0) / (CELL_M * CELL_M);
+    return r.area < cellsTotal * 0.04 || r.area < sideCells ||
+      Math.min(r.x1 - r.x0, r.y1 - r.y0) + 1 < SIDE_RECT_MIN_W / CELL_M;
+  }
+
+  /** Жадный разрез; band — первым взять самый большой прямоугольник в этой полосе рядов/столбцов. */
+  function zoneRectsGreedy(g, own, zi, bb, cellsTotal, stepM, band) {
     var ok = new Uint8Array(g.W * g.H), x, y, rects = [];
     for (y = bb[1]; y <= bb[3]; y++) for (x = bb[0]; x <= bb[2]; x++)
       if (own[y * g.W + x] === zi + 1) ok[y * g.W + x] = 1;
@@ -443,7 +532,8 @@
     // боковой участок, в который ляжет петля короче SIDE_LOOP_MIN_M, — без своей петли
     var sideCells = Math.max(SIDE_RECT_M2, stepM ? SIDE_LOOP_MIN_M * stepM / 1.05 : 0) / (CELL_M * CELL_M);
     for (var it = 0; it < 8; it++) {
-      var r = maxRect(g, ok, bb);
+      var r = (it === 0 && band) ? maxRect(g, ok, band[0] === 'rows'
+        ? [bb[0], band[1], bb[2], band[2]] : [band[1], bb[1], band[2], bb[3]]) : maxRect(g, ok, bb);
       if (!r || r.area < minCells) break;
       // Второй и дальше участок — своя петля со своей парой подводок через
       // полдома. Обрезку неправильного контура (выступ, ниша) её не даём:
@@ -471,7 +561,11 @@
    * корпус Galf с сеткой — 0 наложений на 74 этажах (bench/ufh_corpus.js).
    */
   var TILE_ROWS = 99;           // рядов плиток поперёк короткой стороны
-  function splitRect(r, k) {
+  // w — доли полос (сумма 1), когда участок делится полосами: ближняя к
+  // коллектору петля берёт больше площади, дальняя меньше — так петли выходят
+  // одной длины вместе с подводками (layFloor, проход выравнивания). Сетке
+  // плиток доли не задаются. У результата .grid — делилось ли сеткой.
+  function splitRect(r, k, w) {
     var W = r.x1 - r.x0 + 1, H = r.y1 - r.y0 + 1, MIN = 4;   // плитка не меньше 0,4 м
     var wide = W >= H, Lg = wide ? W : H, Sh = wide ? H : W;
     var capS = Math.min(TILE_ROWS, Math.floor((Sh + 1) / (MIN + 1)) || 1);
@@ -493,17 +587,29 @@
       };
       var xs = cut(r.x0, W, best.nx), ys = cut(r.y0, H, best.ny), res = [];
       ys.forEach(function (yy) { xs.forEach(function (xx) { res.push({ x0: xx[0], x1: xx[1], y0: yy[0], y1: yy[1] }); }); });
+      res.grid = true;
       return res;
     }
-    return splitStrips(r, k);
+    return splitStrips(r, k, w);
   }
-  function splitStrips(r, k) {
+  function splitStrips(r, k, w) {
     var horiz = (r.x1 - r.x0) >= (r.y1 - r.y0);
     var L = horiz ? r.x1 - r.x0 + 1 : r.y1 - r.y0 + 1;
     k = Math.max(1, Math.min(k, Math.floor((L + 1) / 4)));      // петля не уже 0,3 м
     var use = L - (k - 1) * SLAB_GAP, out = [], pos = horiz ? r.x0 : r.y0;
+    // длины полос по долям; каждая не уже 4 клеток, остаток — последней
+    var lens = null;
+    if (w && w.length === k) {
+      lens = [];
+      var left = use;
+      for (var j = 0; j < k; j++) {
+        var lj = j === k - 1 ? left : Math.max(4, Math.min(left - 4 * (k - 1 - j), Math.round(use * w[j])));
+        lens.push(lj); left -= lj;
+      }
+      if (lens.some(function (v) { return v < 4; })) lens = null;
+    }
     for (var i = 0; i < k; i++) {
-      var len = Math.floor(use / k) + (i < use % k ? 1 : 0);
+      var len = lens ? lens[i] : Math.floor(use / k) + (i < use % k ? 1 : 0);
       out.push(horiz ? { x0: pos, x1: pos + len - 1, y0: r.y0, y1: r.y1 }
                      : { x0: r.x0, x1: r.x1, y0: pos, y1: pos + len - 1 });
       pos += len + SLAB_GAP;
@@ -823,6 +929,7 @@
       });
       if (!grow) break;
     }
+    if (res) res = balanceLoops(f, g, own, zs, info, s, lim, res);
     zs.forEach(function (Z) {
       // площадь обогрева — без мест «без обогрева» внутри зоны
       var I = info[Z.i], S = areaM2(Z.z, f) * (I && I.all ? I.cells / I.all : 1);
@@ -1004,15 +1111,126 @@
     return D;
   }
 
+  /**
+   * Петли одного участка — одной длины. Участок режется на полосы поровну по
+   * площади, а подводки у полос разной длины: дальняя петля выходила длиннее
+   * ближней (кабинет — 73 и 81 м), а если пучок резал полосу — и вдвое короче
+   * («Гостиная 1/2» 21,8 м против 56,3 м, 03.10.2026). Проектировщики делают
+   * петли комнаты равными — так их проще уравновесить на коллекторе.
+   *
+   * Доли полос меняем так, чтобы длина «петля + две подводки» сравнялась, и
+   * раскладываем заново. Новый вариант берём, только если разброс по
+   * участкам уменьшился и ни одна петля не стала длиннее предела.
+   */
+  var BALANCE_FROM = 1.08;       // разброс длин в участке, с которого ровняем
+
+  /**
+   * Сколько раз пучок подводок ложится на чужие петли — та же проверка, что
+   * у стендов (bench/ufh_sheet.js): полоса вокруг оси шириной по числу труб
+   * против отрезков петель. Свой ввод петли — не наложение.
+   */
+  function bundleOnLoops(R, ppm) {
+    var loops = [];
+    Object.keys(R.byZone || {}).forEach(function (zi) {
+      (R.byZone[zi] || []).forEach(function (l) {
+        if (!l.sup) return;
+        var xs = [], ys = [];
+        l.sup.concat(l.ret).forEach(function (p) { xs.push(p[0]); ys.push(p[1]); });
+        loops.push({ l: l, bb: [Math.min.apply(null, xs), Math.min.apply(null, ys), Math.max.apply(null, xs), Math.max.apply(null, ys)] });
+      });
+    });
+    var hits = 0;
+    (R.bundle || []).forEach(function (sg) {
+      var hw = (sg.n || 1) * 0.02 * ppm;
+      var bx = [Math.min(sg.a[0], sg.b[0]) - hw, Math.min(sg.a[1], sg.b[1]) - hw, Math.max(sg.a[0], sg.b[0]) + hw, Math.max(sg.a[1], sg.b[1]) + hw];
+      loops.forEach(function (L) {
+        if (sg.own === L.l || L.bb[0] > bx[2] || L.bb[2] < bx[0] || L.bb[1] > bx[3] || L.bb[3] < bx[1]) return;
+        [L.l.sup, L.l.ret].forEach(function (P) {
+          for (var i = 1; i < P.length; i++) {
+            var a = P[i - 1], b = P[i];
+            if (Math.max(a[0], b[0]) > bx[0] && Math.min(a[0], b[0]) < bx[2] && Math.max(a[1], b[1]) > bx[1] && Math.min(a[1], b[1]) < bx[3]) hits++;
+          }
+        });
+      });
+    });
+    return hits;
+  }
+  function balanceLoops(f, g, own, zs, info, s, lim, res) {
+    var worstSpread = function (R) {
+      var w = 1, over = false;
+      zs.forEach(function (Z) {
+        var byR = {};
+        (R.byZone[Z.i] || []).forEach(function (lp) {
+          (byR[lp.ri] = byR[lp.ri] || []).push(lp.lenM);
+          if (lp.lenM > lim + 0.5) over = true;
+        });
+        Object.keys(byR).forEach(function (ri) {
+          var L = byR[ri];
+          if (L.length > 1) w = Math.max(w, Math.max.apply(null, L) / Math.min.apply(null, L));
+        });
+      });
+      return over ? Infinity : w;
+    };
+    var sumSpread = function (R) {
+      var t = 0;
+      zs.forEach(function (Z) {
+        var byR = {};
+        (R.byZone[Z.i] || []).forEach(function (lp) { (byR[lp.ri] = byR[lp.ri] || []).push(lp.lenM); });
+        Object.keys(byR).forEach(function (ri) {
+          var L = byR[ri];
+          if (L.length > 1) t += Math.max.apply(null, L) / Math.min.apply(null, L) - 1;
+        });
+      });
+      return t;
+    };
+    for (var pass = 0; pass < 3; pass++) {
+      var saved = [], changed = false;
+      zs.forEach(function (Z) {
+        var I = info[Z.i];
+        saved.push(I.w ? I.w.slice() : null);
+        var byR = {};
+        (res.byZone[Z.i] || []).forEach(function (lp) { (byR[lp.ri] = byR[lp.ri] || []).push(lp); });
+        Object.keys(byR).forEach(function (ri) {
+          var L = byR[ri], k = I.k[ri];
+          if (L.length < 2 || L.length !== k) return;
+          if (splitRect(I.rects[ri], k).grid) return;       // сетку плиток не ровняем
+          var lens = L.map(function (l) { return l.lenM; });
+          if (Math.max.apply(null, lens) / Math.min.apply(null, lens) < BALANCE_FROM) return;
+          L.sort(function (a, b) { return a.ti - b.ti; });
+          if (L.some(function (l, j) { return l.ti !== j; })) return;
+          var T = lens.reduce(function (a, v) { return a + v; }, 0) / k;
+          var cur = (I.w && I.w[ri]) || L.map(function () { return 1 / k; });
+          var nw = L.map(function (l, j) {
+            var lead = (l.lenM - l.loopM) / 2, want = Math.max(0.3 * l.loopM, T - 2 * lead);
+            return cur[j] * want / Math.max(1e-6, l.loopM);
+          });
+          var sum = nw.reduce(function (a, v) { return a + v; }, 0);
+          nw = nw.map(function (v) { return Math.max(0.5 / k, Math.min(1.6 / k, v / sum)); });
+          sum = nw.reduce(function (a, v) { return a + v; }, 0);
+          I.w = I.w || [];
+          I.w[ri] = nw.map(function (v) { return v / sum; });
+          changed = true;
+        });
+      });
+      if (!changed) break;
+      var res2 = layRound(f, g, own, zs, info, s, lim);
+      if (worstSpread(res2) <= worstSpread(res) && sumSpread(res2) < sumSpread(res) - 0.02 &&
+          bundleOnLoops(res2, g.ppm) <= bundleOnLoops(res, g.ppm)) { res = res2; continue; }
+      zs.forEach(function (Z, j) { info[Z.i].w = saved[j]; });   // не стало ровнее — как было
+      break;
+    }
+    return res;
+  }
+
   /** Один проход раскладки при заданном числе петель на участок */
   function layRound(f, g, own, zs, info, s, lim) {
     var N = g.W * g.H, ppm = g.ppm, slabs = [];
     var slabOf = new Int32Array(N).fill(-1), edge = new Uint8Array(N);
     zs.forEach(function (Z) {
       info[Z.i].rects.forEach(function (r, ri) {
-        splitRect(r, info[Z.i].k[ri]).forEach(function (b) {
+        splitRect(r, info[Z.i].k[ri], info[Z.i].w && info[Z.i].w[ri]).forEach(function (b, ti) {
           var id = slabs.length, x, y;
-          slabs.push({ zi: Z.i, ri: ri, z: Z.z, r: b });
+          slabs.push({ zi: Z.i, ri: ri, ti: ti, z: Z.z, r: b });
           for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) {
             slabOf[y * g.W + x] = id;
             if (x === b.x0 || x === b.x1 || y === b.y0 || y === b.y1) edge[y * g.W + x] = 1;
@@ -1128,7 +1346,7 @@
       var leadM = lead.length ? lenPoly(lead) / ppm : 0;
       var lenM = loopM + 2 * leadM;
       var loop = { sup: L.sup, ret: L.ret, kind: L.kind, lead: lead,
-        lenM: lenM, m: Math.round(lenM), loopM: loopM, ri: sl.ri, rect: Rp };
+        lenM: lenM, m: Math.round(lenM), loopM: loopM, ri: sl.ri, ti: sl.ti, rect: Rp };
       (byZone[sl.zi] = byZone[sl.zi] || []).push(loop);
       if (P) { P.loop = loop; used.push(P); }
     });

@@ -328,7 +328,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.27"></script>
+<script src="project_plans.js?v=1.28"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -1593,6 +1593,21 @@ function detectWindows() {
     for (y = H - 1; y > 0; y--) { i = y * W + x; if (B[i] && B[i - W]) vr[i - W] = vr[i]; }
   }
 
+  // Толщина стены вдоль серии — медиана по нескольким точкам, а не одна точка
+  // посередине: в середине длинной серии часто стоит поперечная капитальная
+  // стена, и «толщина» там выходила 319 вместо 22 — окно рядом с ней
+  // (верхние окна дома владельца) отбрасывалось (03.10.2026).
+  var med9 = function (a) { a.sort(function (p, q) { return p - q; }); return a[a.length >> 1]; };
+  var thickH = function (yy, xs, len) {
+    var n = Math.min(9, len), a = [];
+    for (var j = 0; j < n; j++) a.push(vr[yy * W + xs + Math.floor((j + 0.5) * len / n)]);
+    return med9(a);
+  };
+  var thickV = function (xx, ys, len) {
+    var n = Math.min(9, len), a = [];
+    for (var j = 0; j < n; j++) a.push(hr[(ys + Math.floor((j + 0.5) * len / n)) * W + xx]);
+    return med9(a);
+  };
   var cand = [];
   // горизонтальные стены: разрыв между двумя толстыми сериями; тонкие серии
   // внутри проёма (остекление, торцевые чёрточки) не считаются концом разрыва
@@ -1602,14 +1617,14 @@ function detectWindows() {
       i = y * W + x;
       if (!B[i]) { x++; continue; }
       var L = hr[i], e1 = x + L - 1;
-      var t1 = vr[y * W + x + (L >> 1)];
+      var t1 = thickH(y, x, L);
       if (L >= sideMin && t1 >= Tmin && t1 <= Tmax * 1.5 && e1 + 1 < W) {
         var x2 = e1 + 1, fx = -1, t2 = 0;
         while (x2 < W && x2 - e1 - 1 <= gapMax) {
           var i2 = y * W + x2;
           if (!B[i2]) { x2++; continue; }
           var L2 = hr[i2];
-          t2 = vr[y * W + x2 + (L2 >> 1)];
+          t2 = thickH(y, x2, L2);
           if (L2 >= sideMin && t2 >= Tmin && t2 <= Tmax * 1.5) { fx = x2; break; }
           x2 += L2;                              // шум проёма — пропустить
         }
@@ -1629,14 +1644,14 @@ function detectWindows() {
       i = y * W + x;
       if (!B[i]) { y++; continue; }
       var Lv = vr[i], e1v = y + Lv - 1;
-      var t1v = hr[(y + (Lv >> 1)) * W + x];
+      var t1v = thickV(x, y, Lv);
       if (Lv >= sideMin && t1v >= Tmin && t1v <= Tmax * 1.5 && e1v + 1 < H) {
         var y2 = e1v + 1, fy = -1, t2v = 0;
         while (y2 < H && y2 - e1v - 1 <= gapMax) {
           var i3 = y2 * W + x;
           if (!B[i3]) { y2++; continue; }
           var L2v = vr[i3];
-          t2v = hr[(y2 + (L2v >> 1)) * W + x];
+          t2v = thickV(x, y2, L2v);
           if (L2v >= sideMin && t2v >= Tmin && t2v <= Tmax * 1.5) { fy = y2; break; }
           y2 += L2v;
         }
@@ -1698,6 +1713,24 @@ function detectWindows() {
     var med = vals[vals.length >> 1], okN = 0;
     var lineTol = Math.max(2, t * 0.3);
     hits.forEach(function (q) { if (q !== null && Math.abs(q - med) <= lineTol) okN++; });
+    // Линии поперёк проёма: у окна их несколько (рама и остекление), у двери
+    // одна — продолжение края стены, которое чертёж ведёт и через дверной
+    // проём. Входная дверь и дверь на террасу принимались за окна, и под ними
+    // вставали радиаторы (03.10.2026). Считаем сплошные линии (≥ 85 % длины
+    // проёма) в полосе стены; соседние строки — одна линия.
+    var nLines = 0, lastLine = -9, hs = Math.round(t / 2) + 2;
+    for (ci = c0 - hs; ci <= c0 + hs; ci++) {
+      var cov = 0;
+      for (ai = a0; ai <= a1; ai++) {
+        px2 = v.a === 'h' ? ai : ci; py2 = v.a === 'h' ? ci : ai;
+        if (px2 >= 0 && py2 >= 0 && px2 < W && py2 < H && B[py2 * W + px2]) cov++;
+      }
+      if (tot && cov / tot >= 0.85) { if (ci - lastLine > 1) nLines++; lastLine = ci; }
+    }
+    // Одной линии мало: дверь на улицу у владельца нарисована одной линией и
+    // внутри стены, и на её краю (проверено стендом bench/windows.html —
+    // «внутреннюю» одиночную линию пробовали считать остеклением, дверь вернулась в окна).
+    if (nLines < 2) okN = 0;                         // одна линия — не окно
     // Проём без сплошного заполнения — это дверь: полотно и дуга дают
     // рваное покрытие. Такие проёмы собираем отдельно, со стороной навески
     // и стороной открывания, чтобы нарисовать дугу на листе.
@@ -4357,6 +4390,13 @@ function ufhSheets() {
 // «Дальше →». Масштаб — шагом, только если не подобрался сам. Остальные
 // инструменты — под «Ещё ▾».
 
+/** Отпечаток разметки: комнаты (тип и имя) и число радиаторов по этажам. */
+function wzSig() {
+  return JSON.stringify(DATA.floors.map(function (f) {
+    return [(f.zones || []).map(function (z) { return z.type + ':' + (z.name || ''); }).join('|'), (f.rads || []).length];
+  }));
+}
+var WZ_SIG0 = '';     // отпечаток при открытии окна — ставится в конце загрузки
 var wzStep = null;    // шаг, на который перешли кнопкой «Дальше» или кликом
 var wzAuto = {};      // этажи, где комнаты уже искали сами (второй раз не ищем)
 
@@ -4497,10 +4537,23 @@ function wzSummary() {
     (loops ? ', ' + loops + ' ' + pl(loops, 'петля', 'петли', 'петель') + ', ' + Math.round(m) + ' м' : '') : 'без тёплого пола');
   if (rads) parts.push('радиаторов: ' + rads);
   var plain = parts.join(' · ');
+  // Нехватка тепла по последнему расчёту — только пока план не менялся с
+  // открытия окна: после правок цифры устарели, там честнее промолчать (свежие
+  // калькулятор покажет в строке «План дома» сразу после «Готово»)
+  var lack = '';
+  if (wzSig() === WZ_SIG0) {
+    var def = {};
+    try { def = JSON.parse(localStorage.getItem('heatcalc_room_deficit') || '{}') || {}; } catch (e) {}
+    var names = Object.keys(def);
+    if (names.length) lack = '<br><span style="color:#d97706">Не хватает тепла по текущей смете: ' +
+      names.slice(0, 4).map(function (k) { return k.replace(/</g, '&lt;') + ' −' + Math.abs(def[k]) + ' Вт'; }).join(', ') +
+      (names.length > 4 ? ' и ещё ' + (names.length - 4) : '') +
+      '. Добавьте радиатор на шаге «Радиаторы» или тёплый пол.</span>';
+  }
   return { plain: plain, floors: floors, over: over,
     html: '<b>Всё готово:</b> ' + plain + (floors > 1 ? ' (этажей: ' + floors + ')' : '') + '. ' +
       (over ? 'Калькулятор считает два этажа — третий и выше в смету не попадут. ' : '') +
-      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' };
+      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' + lack };
 }
 
 /** Что сказать и какие кнопки показать на шаге. */
@@ -5094,6 +5147,7 @@ if (UFH) (function () {
   var bs = document.getElementById('b_sheets_ufh');
   if (bs) bs.style.display = design ? 'inline-block' : 'none';
   hint('');
+  WZ_SIG0 = wzSig();
   // План уже размечен — сразу на нужный шаг, с его режимом на плане
   var f = F();
   if (f && f.img && f.pxPerM) wzGo(wzCur(wzSteps()), true);
