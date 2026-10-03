@@ -359,7 +359,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.32"></script>
+<script src="project_plans.js?v=1.33"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -3233,7 +3233,8 @@ function draw() {
       var rr = stepMm / 1000 * (f.pxPerM || 100) * k * 0.5;
       lp.forEach(function (L) {
         if (!L.sup || !L.ret) return;
-        [[L.sup, '#ff8080'], [L.ret, '#8080ff']].forEach(function (pair) {
+        // перемычка подача → обратка (у змейки между концами шаг укладки): без неё трубы обрываются
+        [[L.sup, '#ff8080'], [L.ret, '#8080ff'], [[L.sup[L.sup.length - 1], L.ret[0]], '#8080ff']].forEach(function (pair) {
           var P = pair[0];
           cx.beginPath();
           cx.moveTo(P[0][0] * k, P[0][1] * k);
