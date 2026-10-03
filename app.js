@@ -2293,7 +2293,17 @@ const app = {
 
     // Кнопки раздачи ссылки — одним набором для карточки менеджера, строки
     // наблюдателя и таблицы дистрибьюторов
-    inviteButtonsHtml: function (d, compact) {
+    inviteButtonsHtml: function (d, compact, cabinet) {
+        if (cabinet) {
+            // Раздел «Мои монтажники» кабинета: те же кнопки, что везде в кабинете
+            const cid = String(d.id);
+            const ccode = String(d.promo_code || '').toUpperCase().replace(/'/g, '');
+            return `
+            <button type="button" class="lk-btn lk-btn-primary" onclick="app.shareInvite('${cid}')" title="Открыть меню «поделиться» или скопировать готовый текст">Поделиться</button>
+            <button type="button" class="lk-btn" onclick="app.copyInviteLink('${ccode}')" title="Скопировать ссылку-приглашение">Ссылка</button>
+            <button type="button" class="lk-btn" onclick="app.showInviteQr('${cid}')" title="QR-код на экран">QR-код</button>
+            <button type="button" class="lk-btn" onclick="app.printInviteSheet('${cid}')" title="Лист А5 на кассу">Печать</button>`;
+        }
         const base = 'font:inherit; font-weight:700; border-radius:8px; cursor:pointer; white-space:nowrap;';
         const st = compact
             ? base + ' font-size:11px; padding:4px 8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main);'
@@ -2311,8 +2321,30 @@ const app = {
     // Карточка «Пригласить монтажника» по каждой компании: промокод, ссылка,
     // кнопки раздачи и счётчик. Одна и та же у менеджера в панели управления и
     // в разделе кабинета «Мои монтажники».
-    inviteCardsHtml: function (dists) {
+    inviteCardsHtml: function (dists, cabinet) {
         const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        if (cabinet) {
+            return (dists || []).map(d => {
+                const code = String(d.promo_code || '').toUpperCase();
+                const months = Number(d.pro_months) || 0;
+                return `<div class="lk-card lk-invite">
+                    <div class="lk-invite-top">
+                        <div class="lk-card-label">Пригласить монтажника${dists.length > 1 ? ' — ' + esc(d.company_name) : ''}</div>
+                        <div class="lk-invite-count">Приглашено: <span data-invite-used="${d.id}">…</span></div>
+                    </div>
+                    <div class="lk-invite-code">
+                        <span class="lk-invite-lbl">Промокод</span>
+                        <b>${esc(code)}</b>
+                        <span class="lk-invite-link">${esc(this.inviteLinkFor(code))}</span>
+                    </div>
+                    <div class="lk-invite-actions">${this.inviteButtonsHtml(d, false, true)}</div>
+                    <div class="lk-sub">
+                        Монтажник, открывший ссылку или введший промокод при регистрации, сразу закрепляется за вами${months > 0 ? ` и получает Профи на ${months} мес` : ''}.
+                        Работает и для тех, кто уже зарегистрирован: достаточно войти по ссылке. Места закончились — напишите администратору, лимит увеличат.
+                    </div>
+                </div>`;
+            }).join('');
+        }
         const box = 'background:var(--surface-light); border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:16px;';
         return (dists || []).map(d => {
             const code = String(d.promo_code || '').toUpperCase();
@@ -8903,10 +8935,12 @@ const app = {
     renderManagerInstallersTab: async function () {
         const container = document.getElementById('profile_tab_installers');
         if (!container) return;
-        container.innerHTML = `<div class="lk-empty">⌛ Загрузка списка монтажников...</div>`;
+        // Заголовок раздела — как у остальных разделов кабинета
+        const head = `<div class="lk-section-head"><div><h4>Мои монтажники</h4><div class="lk-sub">Приглашения, сводка и переписка с монтажниками вашей компании</div></div></div>`;
+        container.innerHTML = head + `<div class="lk-empty">Загрузка списка монтажников…</div>`;
 
         const me = await this.resolveCurrentUserForChat();
-        if (!me) { container.innerHTML = `<div class="lk-empty">Авторизуйтесь, чтобы увидеть список монтажников.</div>`; return; }
+        if (!me) { container.innerHTML = head + `<div class="lk-empty">Войдите в аккаунт, чтобы увидеть список монтажников.</div>`; return; }
 
         const myMails = await this.myEmails(me.email);
         const [installers, inviteDists] = await Promise.all([
@@ -8915,11 +8949,11 @@ const app = {
         ]);
         // Ссылка-приглашение сверху: без неё новому менеджеру некого было бы и
         // увидеть в этом списке
-        const inviteHtml = this.inviteCardsHtml(inviteDists);
+        const inviteHtml = this.inviteCardsHtml(inviteDists, true);
         // Счётчик «Приглашено» дописывается в уже вставленную разметку
         const fillInvites = () => { if (inviteDists.length) this.fillInviteStats(inviteDists.map(d => d.id)); };
         if (!installers.length) {
-            container.innerHTML = inviteHtml + `<div class="lk-empty">У вас пока нет привязанных монтажников.${inviteDists.length ? ' Отправьте им ссылку-приглашение.' : ''}</div>`;
+            container.innerHTML = head + inviteHtml + `<div class="lk-empty">У вас пока нет привязанных монтажников.${inviteDists.length ? ' Отправьте им ссылку-приглашение.' : ''}</div>`;
             fillInvites();
             return;
         }
@@ -8939,7 +8973,7 @@ const app = {
             if (m.sender_user_id !== me.id && !m.is_read) byInstaller[m.installer_user_id].unread++;
         });
 
-        let h = `<div class="lk-section-head"><h4><span class="ui-emo">👥 </span>Мои монтажники</h4></div><div class="lk-list">`;
+        let h = `<div class="lk-subhead">Монтажники</div><div class="lk-list">`;
         installers
             .slice()
             .sort((a, b) => {
@@ -8950,22 +8984,23 @@ const app = {
             .forEach(inst => {
                 const name = this.getAdminUserDisplayName(inst);
                 const thread = byInstaller[inst.id];
-                const preview = thread && thread.last ? (thread.last.text || (thread.last.attachments && thread.last.attachments.length ? '📎 Вложение' : '')) : 'Переписки пока нет';
-                const unreadBadge = thread && thread.unread > 0 ? `<span style="background:#EF4444; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:1px 7px; margin-left:6px;">${thread.unread}</span>` : '';
+                const preview = thread && thread.last ? (thread.last.text || (thread.last.attachments && thread.last.attachments.length ? 'Вложение' : '')) : 'Переписки пока нет';
+                const unreadBadge = thread && thread.unread > 0 ? `<span class="ad-count ad-count-bad">${thread.unread}</span>` : '';
                 h += `
-                    <div class="lk-row" onclick="app.openManagerChatWithInstaller('${inst.id}', '${inst.auth_user_id}')" style="cursor:pointer; justify-content:space-between;">
-                        <div style="min-width:0;">
-                            <div style="font-weight:700; color:var(--text-main); font-size:13px;">${name}${unreadBadge}</div>
-                            <div style="color:var(--text-sec); font-size:11.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:260px;">${(preview || '').replace(/</g, '&lt;')}</div>
+                    <div class="lk-row lk-row-link" onclick="app.openManagerChatWithInstaller('${inst.id}', '${inst.auth_user_id}')">
+                        <div class="lk-row-main">
+                            <b>${String(name).replace(/</g, '&lt;')}</b>
+                            <small>${(preview || '').replace(/</g, '&lt;')}</small>
                         </div>
-                        <span style="color:var(--text-sec);">›</span>
+                        ${unreadBadge}
+                        <span class="lk-row-chev">›</span>
                     </div>
                 `;
             });
-        h += `</div><div id="manager_installer_chat_detail" style="margin-top:16px;"></div>`;
+        h += `</div><div id="manager_installer_chat_detail"></div>`;
         // Сводка считается своим запросом и приезжает позже списка: список с
         // перепиской нужен сразу, а числа могут и подождать секунду.
-        container.innerHTML = inviteHtml + `<div id="manager_summary_host"></div>` + h;
+        container.innerHTML = head + inviteHtml + `<div id="manager_summary_host"></div>` + h;
         fillInvites();
         this.renderManagerSummary(installers);
     },
@@ -8990,7 +9025,7 @@ const app = {
         if (!host || !installers || !installers.length) return;
         const esc = (s) => String(s == null ? '' : s).replace(/</g, '&lt;');
         const num = n => Number(n || 0).toLocaleString('ru-RU');
-        host.innerHTML = `<div class="lk-empty">⌛ Считаем сметы ваших монтажников…</div>`;
+        host.innerHTML = `<div class="lk-subhead">Сводка по монтажникам</div><div class="lk-empty">Считаем сметы ваших монтажников…</div>`;
 
         const emails = installers.map(i => (i.email || '').toLowerCase()).filter(Boolean);
         if (!emails.length) { host.innerHTML = ''; return; }
@@ -9004,7 +9039,8 @@ const app = {
             failed = (e && e.message) || String(e);
         }
         if (!rows) {
-            host.innerHTML = `<p class="lk-hint">Сводка сейчас недоступна${failed ? ' (' + esc(failed) + ')' : ''}.</p>`;
+            console.warn('[сводка менеджера]', failed);
+            host.innerHTML = `<div class="lk-subhead">Сводка по монтажникам</div><p class="lk-hint">Сводка сейчас недоступна. Попробуйте обновить позже.</p>`;
             return;
         }
 
@@ -9037,32 +9073,32 @@ const app = {
         quiet.sort((a, b) => quietRank(b) - quietRank(a));
 
         const tile = (label, value, sub, accent) => `
-            <div style="flex:1 1 140px; min-width:0; background:var(--surface-light); border:1px solid var(--border);
-                        border-radius:12px; padding:12px 14px;">
-                <div style="font-size:11.5px; color:var(--text-sec); font-weight:700;">${label}</div>
-                <div style="font-size:24px; font-weight:800; line-height:1.1; margin-top:4px; color:${accent || 'var(--text-main)'};">${value}</div>
-                <div style="font-size:11px; color:var(--text-sec); margin-top:3px;">${sub}</div>
+            <div class="sm-tile">
+                <div class="sm-tile-label">${label}</div>
+                <div class="sm-tile-val"${accent ? ` style="color:${accent};"` : ''}>${value}</div>
+                <div class="sm-tile-sub">${sub}</div>
             </div>`;
 
         // Счета, которые ждут ИМЕННО ЕГО: запрос есть, выставления нет.
         const waitHtml = inv.waiting.length
-            ? inv.waiting.slice(0, 6).map(x => `
-                <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
-                    <div style="min-width:0; flex:1;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${esc(x.name)}</b>
-                        <br><small style="color:var(--text-sec);">${esc(x.project || 'без названия')}</small>
+            ? `<div class="lk-list">` + inv.waiting.slice(0, 6).map(x => `
+                <div class="lk-row">
+                    <div class="lk-row-main">
+                        <b>${esc(x.name)}</b>
+                        <small>${esc(x.project || 'без названия')}</small>
                     </div>
-                    <b style="flex:0 0 auto; font-size:12.5px; color:${x.days >= 7 ? '#EF4444' : '#F97316'};">${x.days} дн.</b>
-                </div>`).join('')
+                    <b class="lk-row-r" style="color:${x.days >= 7 ? '#EF4444' : '#F97316'};">${x.days} дн.</b>
+                </div>`).join('') + `</div>`
                 + (inv.waiting.length > 6 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(inv.waiting.length - 6)}</p>` : '')
             : `<p class="lk-hint">Непоставленных счетов нет — всё, что запрашивали, выставлено.</p>`;
 
         const quietHtml = quiet.length
-            ? quiet.slice(0, 6).map(x => `
-                <div class="lk-row" onclick="app.openManagerChatWithInstaller('${x.id}', '${x.authId}')" style="cursor:pointer; justify-content:space-between;">
-                    <div style="font-size:12.5px; color:var(--text-main);">${esc(x.name)}</div>
-                    <small style="color:var(--text-sec);">${x.days === null ? 'ни одной сметы' : 'молчит ' + x.days + ' дн.'}</small>
-                </div>`).join('')
+            ? `<div class="lk-list">` + quiet.slice(0, 6).map(x => `
+                <div class="lk-row lk-row-link" onclick="app.openManagerChatWithInstaller('${x.id}', '${x.authId}')">
+                    <div class="lk-row-main"><b>${esc(x.name)}</b></div>
+                    <span class="lk-row-r lk-row-quiet">${x.days === null ? 'ни одной сметы' : 'молчит ' + x.days + ' дн.'}</span>
+                    <span class="lk-row-chev">›</span>
+                </div>`).join('') + `</div>`
                 + (quiet.length > 6 ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(quiet.length - 6)}</p>` : '')
             : `<p class="lk-hint">Все ваши монтажники считали сметы за последние ${this.MANAGER_QUIET_DAYS} дней.</p>`;
 
@@ -9070,23 +9106,22 @@ const app = {
         const fAuto = inv.funnel[inv.autoLast || 0];
 
         host.innerHTML = `
-            <div class="lk-section-head"><h4><span class="ui-emo">📊 </span>Сводка по вашим монтажникам</h4></div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+            <div class="lk-subhead">Сводка по монтажникам</div>
+            <div class="sm-tiles">
                 ${tile('Монтажников', num(installers.length), num(active) + ' считали за 30 дней')}
                 ${tile('Ждут счёта', num(inv.waiting.length), 'запросили и ждут вас',
                     inv.waiting.length ? '#F97316' : null)}
                 ${tile('Смет за ' + this.MANAGER_SUMMARY_DAYS + ' дней', num(inv.cohortN),
                     'до запроса счёта дошло ' + (f0 ? Math.round((fAuto ? fAuto.n : 0) / f0 * 100) : 0) + '%')}
             </div>
-            <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">🔔 </span>Ждут от вас счёта</h4></div>
+            <div class="lk-subhead">Ждут от вас счёта</div>
             ${waitHtml}
-            <div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📞 </span>Кто затих</h4></div>
+            <div class="lk-subhead">Кто затих</div>
             ${quietHtml}
             <div id="manager_price_gaps"></div>
             <p class="lk-hint" style="margin-top:10px;">
                 Считается по сметам ваших монтажников за ${this.MANAGER_SUMMARY_DAYS} дней. Отметку «счёт выставлен» ставите вы сами в админке — пока её нет, смета так и висит в ожидании.
-            </p>
-            <hr style="border:none; border-top:1px solid var(--border); margin:18px 0 4px;">`;
+            </p>`;
 
         // Ассортимент считаем отдельно и после: это ещё два запроса, а числа
         // выше должны появиться сразу.
@@ -9125,7 +9160,7 @@ const app = {
 
         const withPrice = dists.find(d => d.price_list_key && typeof DIST_PRICES !== 'undefined' && DIST_PRICES[d.price_list_key]);
         if (!withPrice) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
+            host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>
                 <p class="lk-hint">Ваш прайс-лист в системе не загружен, сравнить не с чем. Пришлите выгрузку — и здесь появится список позиций, которые ваши монтажники ставят в счета, а вы их не возите.</p>`;
             return;
         }
@@ -9149,8 +9184,9 @@ const app = {
                 rows.push(...(data || []));
             }
         } catch (e) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
-                <p class="lk-hint">Состав счетов не прочитался (${esc((e && e.message) || e)}).</p>`;
+            host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>
+                <p class="lk-hint">Состав счетов не прочитался. Попробуйте обновить позже.</p>`;
+            console.warn('[чего нет в прайсе]', e);
             return;
         }
         if (!rows.length) return;
@@ -9176,23 +9212,23 @@ const app = {
 
         const list = Object.values(gaps).sort((a, b) => (b.invoices - a.invoices) || (b.qty - a.qty));
         if (!list.length) {
-            host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>
+            host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>
                 <p class="lk-hint">Всё, что монтажники ставят в счета, у вас есть — по ${num(seenInvoices)} ${this.plural(seenInvoices, 'счёту', 'счетам', 'счетам')} расхождений не нашлось.</p>`;
             return;
         }
         const top = list.slice(0, this.MANAGER_GAPS_LIMIT);
-        host.innerHTML = `<div class="lk-section-head" style="margin-top:18px;"><h4><span class="ui-emo">📦 </span>Чего нет в вашем прайсе</h4></div>`
-            + top.map(g => `
-                <div style="display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border);">
-                    <div style="min-width:0; flex:1;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${esc(g.name)}</b>
-                        <br><small style="color:var(--text-sec);">${esc(g.art)}</small>
+        host.innerHTML = `<div class="lk-subhead">Чего нет в вашем прайсе</div>`
+            + `<div class="lk-list">` + top.map(g => `
+                <div class="lk-row">
+                    <div class="lk-row-main">
+                        <b>${esc(g.name)}</b>
+                        <small>${esc(g.art)}</small>
                     </div>
-                    <div style="flex:0 0 auto; text-align:right;">
-                        <b style="font-size:12.5px; color:var(--text-main);">${num(g.invoices)} ${this.plural(g.invoices, 'счёт', 'счёта', 'счетов')}</b>
-                        ${g.qty ? `<br><small style="color:var(--text-sec);">${num(Math.round(g.qty))} шт.</small>` : ''}
+                    <div class="lk-row-r">
+                        ${num(g.invoices)} ${this.plural(g.invoices, 'счёт', 'счёта', 'счетов')}
+                        ${g.qty ? `<br><small>${num(Math.round(g.qty))} шт.</small>` : ''}
                     </div>
-                </div>`).join('')
+                </div>`).join('') + `</div>`
             + (list.length > top.length ? `<p class="lk-hint" style="margin-top:6px;">и ещё ${num(list.length - top.length)} позиций</p>` : '')
             + `<p class="lk-hint" style="margin-top:8px;">
                 Это не поисковый спрос, а выписанное клиентам: позиции стоят в счетах ваших монтажников, а в вашем прайсе (${esc(withPrice.company_name || 'ваша компания')}) их нет.
@@ -9212,11 +9248,13 @@ const app = {
         const instName = inst ? this.getAdminUserDisplayName(inst) : 'Монтажник';
 
         detail.innerHTML = `
-            <h4 style="margin:0 0 10px; font-size:14px; color:var(--text-main);">💬 ${instName}</h4>
-            <div id="manager_installer_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
-            <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_installer_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать монтажнику..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_installer_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+            <div class="lk-subhead">Чат: ${String(instName).replace(/</g, '&lt;')}</div>
+            <div class="lk-chat">
+                <div id="manager_installer_chat_list" class="lk-chat-list"></div>
+                <div class="lk-chat-bar">
+                    <input type="text" id="manager_installer_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать монтажнику…" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                    <button type="button" id="manager_installer_chat_send_btn" onpointerdown="event.preventDefault()" class="lk-btn lk-btn-primary" onclick="app.sendActiveChatMessage()">Отправить</button>
+                </div>
             </div>
         `;
         detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
