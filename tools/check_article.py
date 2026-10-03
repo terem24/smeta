@@ -97,6 +97,18 @@ def check(slug, published=False):
     # Блок прямого ответа. Не повод не публиковать статью — но без него её
     # не процитирует ИИ-ответ, а цитата в ИИ-ответе сейчас стоит дороже места
     # в обычной выдаче. Поэтому — заметка в вывод, а не отказ.
+    # Призыв в мастер /dom/ с меткой статьи: без метки заявка не привяжется к
+    # статье. У статей про воду и канализацию его быть не должно (не по теме).
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    from build_article import wants_dom_cta
+    meta = next((i for i in json.load(io.open(os.path.join(ROOT, 'content', 'schedule.json'),
+                                              encoding='utf-8'))['items'] if i['slug'] == slug), {})
+    has_dom = ('href="/dom/?src=%s"' % slug) in h
+    if wants_dom_cta(slug, meta) and not has_dom:
+        bad.append('нет призыва на /dom/ с меткой ?src=%s' % slug)
+    if not wants_dom_cta(slug, meta) and has_dom:
+        bad.append('призыв на /dom/ в статье не по теме')
+
     ans = re.search(r'<div class="short-answer">(.*?)</div>', h, re.S)
     note = ''
     if not ans:

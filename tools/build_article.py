@@ -248,6 +248,37 @@ def related_links(meta, schedule, art, publish=False):
     return ' · '.join(parts)
 
 
+# Мастер /dom/ считает отопление: для статей про воду и канализацию он не по теме,
+# призыв туда только сбил бы читателя. Метка ?src= несёт слаг статьи — по ней
+# заявка в журнале привязывается к статье (та же, что у формы монтажа).
+DOM_PAGE = '/dom/'
+NO_DOM_CLUSTERS = {'water', 'sewer'}
+NO_DOM_SLUGS = {'truba-pnd-vvod-vody', 'truby-dlya-vodosnabzheniya', 'zapusk-vodosnabzheniya-posle-zimy'}
+
+
+def wants_dom_cta(slug, meta):
+    return meta.get('cluster_key') not in NO_DOM_CLUSTERS and slug not in NO_DOM_SLUGS
+
+
+def dom_cta_block(slug, meta):
+    if not wants_dom_cta(slug, meta):
+        return ''
+    return '''
+        <div class="callout dom-cta">
+            <p>
+                <strong>Сколько это будет стоить в вашем доме?</strong> Семь вопросов, две минуты,
+                без регистрации: получите цену отопления вилкой — оборудование и монтаж отдельно,
+                в трёх комплектациях.
+            </p>
+        </div>
+
+        <a class="cta" href="%s?src=%s">
+            Узнать цену для своего дома
+            <small>Отопление под ключ, результат сразу на экране</small>
+        </a>
+''' % (DOM_PAGE, slug)
+
+
 def build(slug, publish=False):
     art = load('content/articles/%s.json' % slug)
     schedule = load('content/schedule.json')
@@ -327,6 +358,7 @@ def build(slug, publish=False):
         toc=toc,
         lead=art['lead'],
         body=body,
+        dom_cta=dom_cta_block(slug, meta),
         faq=render_faq(art['faq']),
         related=related_links(meta, schedule, art, publish),
         # Метка источника: по ней видно, какая статья привела заявку. Без неё
@@ -445,7 +477,7 @@ TEMPLATE = '''<!DOCTYPE html>
 {toc}
 
 {body}
-
+{dom_cta}
         <a class="cta" href="/">
             {cta_calc}
             <small>{cta_calc_note}</small>
