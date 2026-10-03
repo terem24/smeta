@@ -4870,11 +4870,12 @@ const app = {
     },
 
     // Метка «Гарантия STOUT» в строке параметров сметы. Только при входе (клиент
-    // открывает КП по ссылке без входа) и с классом no-print — в печать и PDF
-    // не попадает. Не голая цифра, а понятный ярлык: щит, шкала хода к порогу и
-    // слово «доступна» либо «ещё N ₽ до гарантии». Зовётся из render() после
-    // сборки списка оборудования: строка параметров рисуется раньше, когда долю
-    // ещё не посчитать.
+    // открывает КП по ссылке без входа), класс no-print — в печать и PDF не идёт.
+    // Короткая, чтобы не раздвигать строку: щит и два слова. Состояние говорит
+    // цвет и значок (галочка — гарантия доступна, восклицательный знак — не хватает
+    // оборудования STOUT), подробности — в подсказке и в окне по клику. Зовётся из
+    // render() после сборки списка оборудования: строка параметров рисуется раньше,
+    // когда долю ещё не посчитать.
     renderStoutShareChip: function () {
         const ds = document.getElementById('doc_summary');
         if (!ds) return;
@@ -4887,17 +4888,13 @@ const app = {
         const ok = sh.pct >= thr;
         const need = Math.max(0, Math.ceil(thr / 100 * sh.base - sh.stout));
         const short = n => n >= 1000 ? Math.ceil(n / 1000).toLocaleString('ru-RU') + ' тыс. ₽' : n.toLocaleString('ru-RU') + ' ₽';
-        const fill = Math.max(4, Math.min(100, Math.round(sh.pct / thr * 100)));
         const el = document.createElement('span');
         el.className = 'param-item no-print ds-stout ' + (ok ? 'ok' : 'low');
         el.setAttribute('role', 'button');
         el.tabIndex = 0;
-        el.title = ok ? 'Объект подходит под бланк «Гарантия STOUT на объект». Нажмите, чтобы узнать подробнее.'
-            : 'Чтобы к КП добавился бланк гарантии STOUT, нужно больше оборудования STOUT. Нажмите, чтобы увидеть, что заменить.';
-        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg>`
-            + `<span class="ds-stout-t">Гарантия STOUT</span>`
-            + `<span class="ds-stout-bar"><i style="width:${fill}%"></i></span>`
-            + `<b>${ok ? 'доступна' : 'ещё ' + short(need)}</b>`;
+        el.title = ok ? 'Гарантия STOUT на объект доступна: к КП добавится бланк. Нажмите, чтобы узнать подробнее.'
+            : 'Чтобы к КП добавился бланк гарантии STOUT, нужно ещё около ' + short(need) + ' оборудования STOUT. Нажмите, чтобы увидеть, что заменить.';
+        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg>Гарантия STOUT`;
         el.onclick = () => this.showStoutShareInfo();
         el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.showStoutShareInfo(); } };
         const date = ds.querySelector('.param-date');
@@ -4905,8 +4902,9 @@ const app = {
         this.fitDocSummary();
     },
 
-    // Окно метки: шкала от 0 до 100 % с чертой порога, что получает клиент и,
-    // если порога нет, — что заменить, чтобы его набрать.
+    // Окно метки: синяя шапка, шкала от 0 до 100 % с чертой порога, одна фраза
+    // и либо три преимущества, либо три позиции, которые стоит заменить. Широкое и
+    // низкое, чтобы не прокручивать.
     showStoutShareInfo: function () {
         const sh = this.stoutShare();
         const thr = this.warrantyThreshold();
@@ -4920,35 +4918,37 @@ const app = {
         let acc = 0, n = 0;
         for (const it of sh.missing) { if (acc >= need) break; acc += Number(it.sum) || 0; n++; }
         const word = (k) => { const t = k % 10, h = k % 100; return k + ' ' + ((h >= 11 && h <= 14) ? 'позиций' : t === 1 ? 'позицию' : (t >= 2 && t <= 4) ? 'позиции' : 'позиций'); };
-        const rows = sh.missing.slice(0, 4).map(it => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span></div>`).join('');
+        const rows = sh.missing.slice(0, 3).map(it => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span></div>`).join('');
         const html = `
             <div class="sg-head">
                 <div class="sg-shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg></div>
-                <div><div class="sg-title">Гарантия STOUT на объект</div><div class="sg-sub">Бланк последним листом КП</div></div>
+                <div class="sg-ht"><div class="sg-title">Гарантия STOUT на объект</div><div class="sg-sub">Бланк последним листом КП</div></div>
                 <span class="sg-pill ${ok ? 'ok' : 'low'}">${ok ? 'Доступна' : 'Пока нет'}</span>
             </div>
-            <div class="sg-meter">
-                <div class="sg-big"><b>${sh.pct}</b><span>%</span><em>оборудования STOUT там, где он может стоять</em></div>
-                <div class="sg-track"><i class="sg-fill ${ok ? 'ok' : 'low'}" style="width:${Math.min(100, sh.pct)}%"></i><u class="sg-mark" style="left:${thr}%"><span>нужно ${thr}%</span></u></div>
-                <div class="sg-ticks"><span>0</span><span>50</span><span>100 %</span></div>
-            </div>
-            ${ok ? `
-            <div class="sg-lead">Объект проходит. К КП добавится бланк для клиента, а перед печатью мы спросим адрес и заказчика.</div>
-            <div class="sg-perks">
-                <div><b>до 10 лет</b><span>гарантия завода на оборудование</span></div>
-                <div><b>${yrs(extM)}</b><span>ваша гарантия на монтаж</span></div>
-                <div><b>страховка</b><span>ответственность завода застрахована</span></div>
-            </div>` : `
-            <div class="sg-lead"><b>Не хватает ${rub(need)}.</b> ${n ? `Достаточно заменить ${word(n)} на STOUT, и бланк появится в КП.` : ''}</div>
-            <div class="sg-rows-h">Что заменить, начиная с самого дорогого</div>
-            <div class="sg-rows">${rows}${sh.missing.length > 4 ? `<div class="sg-more">и ещё ${sh.missing.length - 4}</div>` : ''}</div>
-            <div class="sg-hint">Замена в один клик: кнопка «Аналог» у раздела или таблица замены по клику на фото позиции.</div>`}
-            <div class="sg-foot">Клиент видит бланк, но не видит эту шкалу и проценты.${sh.pctAll !== null && sh.pctAll !== sh.pct ? ` По всей смете (${rub(sh.total)}) доля ${sh.pctAll} %: газовый котёл, инсталляции и защита от протечек не в счёт, STOUT их не делает.` : ''}</div>`;
+            <div class="sg-body">
+                <div class="sg-meter">
+                    <div class="sg-big"><b>${sh.pct}<small>%</small></b><em>доля STOUT</em></div>
+                    <div class="sg-scale">
+                        <div class="sg-track"><i class="sg-fill ${ok ? 'ok' : 'low'}" style="width:${Math.min(100, sh.pct)}%"></i><u class="sg-mark" style="left:${thr}%"><span>нужно ${thr}%</span></u></div>
+                        <div class="sg-ticks"><span>0</span><span>50</span><span>100%</span></div>
+                    </div>
+                </div>
+                ${ok ? `
+                <div class="sg-lead">Объект проходит. Бланк добавится к КП, а адрес и заказчика мы спросим перед печатью.</div>
+                <div class="sg-perks">
+                    <div><b>до 10 лет</b><span>гарантия завода</span></div>
+                    <div><b>${yrs(extM)}</b><span>ваш срок на монтаж</span></div>
+                    <div><b>страховка</b><span>ответственность завода</span></div>
+                </div>` : `
+                <div class="sg-lead"><b>Не хватает ${rub(need)}.</b>${n ? ` Заменить примерно ${word(n)} на STOUT, начиная с самых дорогих:` : ''}</div>
+                <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. Заменить можно кнопкой «Аналог» у раздела</div>` : ''}</div>`}
+                <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="sg_ok">Понятно</button></div>
+            </div>`;
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
         const card = document.createElement('div');
         card.className = 'calc-dialog-card sg-card';
-        card.innerHTML = html + '<div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="sg_ok">Понятно</button></div>';
+        card.innerHTML = html;
         overlay.appendChild(card);
         document.body.appendChild(overlay);
         const close = () => {
