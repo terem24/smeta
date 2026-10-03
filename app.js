@@ -23510,6 +23510,7 @@ const app = {
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
         { id: 'subscription', icon: '💳', label: 'Оплата подписки', hint: 'Цены и ссылки на оплату, QR, акции, регионы, кто запрашивал и кто оплатил' },
+        { id: 'payready', icon: '🎯', label: 'Готовность платить', hint: 'Воронка до оплаты, горячие клиенты, выручка при ваших ценах' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'branches', icon: '🏬', label: 'Филиалы', hint: 'Схема компании: ссылки, монтажники, работа менеджеров' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', sub: 'Цены работ', hint: 'Свои расценки монтажников' },
@@ -23538,6 +23539,7 @@ const app = {
         distributors: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
         tariffs: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
         subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+        payready: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
         kanban: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/>',
         branches: '<rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/>',
         pricelist: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
@@ -23565,7 +23567,7 @@ const app = {
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'equipment', 'successors'] },
-        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription'] },
+        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
         { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
     ],
@@ -23775,7 +23777,7 @@ const app = {
     // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
     // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
     // клиентская здесь только чтобы не показывать пустую вкладку.
-    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription'],
+    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription', 'payready'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -25473,6 +25475,19 @@ const app = {
             return;
         }
 
+        if (this._adminTab === 'payready') {
+            // Отчёт только читает базу; модуль грузится лениво (pay_readiness.js)
+            content.innerHTML = navHtml + '<div id="admin_payready_box"><div style="color:var(--text-sec); font-size:13px;">Загружаю…</div></div>';
+            this.lazy('pay_readiness').then(() => {
+                if (typeof PayReadiness !== 'undefined') PayReadiness.render();
+            }).catch(e => {
+                console.error('[панель] pay_readiness.js не загрузился:', e);
+                const box = document.getElementById('admin_payready_box');
+                if (box) box.innerHTML = '<div style="color:#EF4444; font-size:13px;">Модуль отчёта не загрузился — обновите страницу.</div>';
+            });
+            return;
+        }
+
         if (this._adminTab === 'warranty') {
             // Модуль вкладки грузится лениво: нужен только здесь (warranty_admin.js)
             content.innerHTML = navHtml + '<div id="admin_warranty_box"><div style="color:var(--text-sec); font-size:13px;">Загружаю…</div></div>';
@@ -26341,7 +26356,7 @@ const app = {
         const ok = t => `<div class="ad-card-note ad-ok">✓ ${t}</div>`;
 
         // Заявки: ждут мастера, и сколько ждут
-        let leadsN = null, leadsBody = '';
+        let leadsN = null, leadsLate = 0, leadsBody = '';
         if (st.leads && st.leads.ok) {
             const asg = id => (this._leadAssign || {})[id] || {};
             const list = (this._leadsData || []).filter(r => !this.isTestLead(r))
@@ -26353,7 +26368,11 @@ const app = {
                     return { r, s, age, late: (s === 'new' && age >= 1) || (s === 'sent' && age >= 2) };
                 })
                 .sort((x, y) => (y.late - x.late) || (y.age - x.age));
-            leadsN = list.filter(x => x.late).length;
+            // Число в углу карточки — все заявки в работе (новые и у мастера); красным оно
+            // становится, только если есть просроченные. Раньше считались одни просроченные,
+            // и свежая заявка лежала в списке при счётчике 0.
+            leadsN = list.length;
+            leadsLate = list.filter(x => x.late).length;
             leadsBody = list.length
                 ? list.slice(0, 5).map(x => row(x.r.name || 'без имени', (x.r.place || '') + (x.r.src && x.r.src !== 'dom' ? ' · ' + x.r.src : ''),
                     (x.s === 'sent' ? 'у мастера ' : 'ждёт ') + (x.age < 1 ? 'меньше суток' : x.age + ' дн.'), x.late ? 'ad-bad' : '')).join('')
@@ -26373,7 +26392,7 @@ const app = {
         const unread = (this._notifications || []).filter(x => !x.isRead).length;
 
         const cards = [
-            card({ title: 'Заявки на монтаж', n: leadsN, urgent: true, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
+            card({ title: 'Заявки на монтаж', n: leadsN, urgent: leadsLate > 0, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
             card({ title: 'Профи заканчивается', n: proRows.length, urgent: true, state: st.pro, body: proBody, tab: 'stats', action: 'Открыть пользователей' }),
             card({ title: 'Замены позиций', n: succN == null ? null : succN, urgent: false, state: st.succ,
                 body: succN ? `<div class="ad-card-note">Новых замен снятых позиций, которые ждут решения: <b>${succN}</b>.</div>` : ok('Новых замен нет'), tab: 'successors', action: 'Открыть замены' }),
@@ -46630,7 +46649,8 @@ const app = {
         const zn = f => (f && f.zones) || [];
         const rooms = this.state.rooms || [];
         const wantTp = (this.state.tp1 || 0) + (this.state.tp2 || 0) > 0;
-        const withImg = floors.filter(f => f && f.img);
+        // В смету подложка попадает только именем файла на сервере (imgFile), самой картинки (img) там нет
+        const withImg = floors.filter(f => f && (f.img || f.imgFile));
         const withScale = withImg.filter(f => f.pxPerM);
         const marked = withScale.filter(f => zn(f).length || (f.rads || []).length ||
             (f.fixtures || []).length);
@@ -46663,8 +46683,12 @@ const app = {
         out.push({
             ok: floors.some(f => zn(f).some(z => z.type === 'boiler')),
             t: 'Котельная отмечена на плане',
-            no: 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
-                'компоновка котельной, туда же встаёт коллектор тёплого пола.',
+            no: floors.some(f => zn(f).some(z => z.type !== 'boiler' && /котельн/i.test(z.name || '')))
+                ? 'Зона «Котельная» на плане есть, но обведена как тёплый пол. В редакторе плана ' +
+                  'нажмите у неё «→ котельная» (шаг «Котельная»): по ней собирается ' +
+                  'компоновка котельной, туда же встаёт коллектор тёплого пола.'
+                : 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
+                  'компоновка котельной, туда же встаёт коллектор тёплого пола.',
             act: 'plan', btn: 'Открыть план этажей'
         });
         if (wantTp) out.push({
