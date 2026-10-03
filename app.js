@@ -11736,6 +11736,27 @@ const app = {
         }
     },
 
+    // Крупная сумма в узком месте (карточки админки на телефоне): от миллиона — «107 млн ₽»,
+    // «18,4 млн ₽», по обычному округлению; рубль всегда на одной строке с числом (неразрывный
+    // пробел). Меньше миллиона и на широком экране — сумма целиком, как была.
+    moneyCompact: function (v) {
+        const n = Math.round(Number(v) || 0);
+        const full = n.toLocaleString('ru-RU') + '\u00A0₽';
+        const a = Math.abs(n);
+        if (a < 1e6 || !this.isMobileLayout()) return full;
+        const fmt = x => (Math.abs(x) >= 100 ? String(Math.round(x)) : String(Math.round(x * 10) / 10).replace('.', ','));
+        return (a >= 1e9 ? fmt(n / 1e9) + '\u00A0млрд' : fmt(n / 1e6) + '\u00A0млн') + '\u00A0₽';
+    },
+
+    // Бренд в названии варианта замены: колонка «Бренд» на телефоне скрыта общим правилом таблиц
+    // сметы, и два варианта одной позиции (ROMMER и STOUT) читались одинаково. Плашка видна
+    // только на телефоне и планшете стоймя (.alt-brand-mob в style.css), на десктопе есть колонка.
+    altBrandChip: function (brand) {
+        if (!brand) return '';
+        const esc = String(brand).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        return `<span class="alt-brand-mob">${esc}</span>`;
+    },
+
     // Действия над сохранённой сметой прямо из списка «Мои объекты». И ссылка
     // клиенту, и скачивание умеют работать только с открытым расчётом — иначе они
     // молча сделали бы своё дело над той сметой, что была открыта до этого.
@@ -12452,6 +12473,9 @@ const app = {
             // Цены каталога могли уехать с момента сохранения — расчёт уже пересобран
             // по сегодняшним, осталось сказать об этом вслух
             this.showRepriceNotice({ eqSum: data.eq_sum, at: data.created_at });
+            // Телефон: кабинет закрыт, а нижняя вкладка осталась «Профиль» — человек видел
+            // профиль и не понимал, загрузилась ли смета. Показываем саму смету.
+            if (this.isMobileLayout()) this.switchMobileTab('output');
             app.alert("✅ Смета успешно загружена!");
         } catch (error) { app.alert("Ошибка загрузки сметы: " + error.message); }
     },
@@ -24311,8 +24335,8 @@ const app = {
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
                 <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${n(d.totalUsers)}</span></div>
                 <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${n(d.totalEstimates)}</span></div>
-                <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${n(d.totalEq)} ₽</span></div>
-                <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${n(d.totalWorks)} ₽</span></div>
+                <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${n(d.totalEq)} ₽">${this.moneyCompact(d.totalEq)}</span></div>
+                <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${n(d.totalWorks)} ₽">${this.moneyCompact(d.totalWorks)}</span></div>
             </div>`;
 
         // Разделы по группам — тем же порядком, что и на большом экране
@@ -24746,8 +24770,8 @@ const app = {
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
-                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${totalEq.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
-                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${totalEq.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalEq)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${totalWorks.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalWorks)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                     </div>
                     
                     <h3>Пользователи</h3>
@@ -54513,7 +54537,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name two-name">${alt.name}${badgeHtml}${_sub}</td>
+                        <td class="col-name two-name">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${_sub}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         ${_cell('col-two-u', (_twoHead.unitHead || 'Мат / лист, за м²'), alt.unitM2, _baseUnit)}
                         ${_cell('col-two-s', (_twoHead.sysHead || 'Система, за м²'), alt.price, basePrice)}
@@ -54526,7 +54550,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}${badgeHtml}${alt.note || ''}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${alt.note || ''}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -54543,7 +54567,7 @@ const app = {
                 const _same = this.ssSameSizeAlts(item);
                 if (_same.length) {
                     html += `
-                        <tr style="border-top: 2px solid var(--border);">
+                        <tr class="swap-sub-head" style="border-top: 2px solid var(--border);">
                             <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
                                 Заменить только эту позицию — тот же материал и типоразмер
                             </td>
@@ -54561,7 +54585,7 @@ const app = {
                             <tr style="cursor: pointer;" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                                 <td class="col-idx"></td>
                                 <td class="col-img">${getImg(alt)}</td>
-                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}</td>
+                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand)}${alt.name}</td>
                                 <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand}</td>
                                 ${_priceCells}
                             </tr>`;
@@ -54804,7 +54828,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${_nameDisplay}${_rowCoilStr}${badgeHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
