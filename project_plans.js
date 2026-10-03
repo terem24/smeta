@@ -1961,7 +1961,10 @@
   /** Значок коллектора ТП: короткая гребёнка с отводами */
   function collectorMark(c, t, f, o, noLabel) {
     var w = Math.max(3.5, 0.55 * (f.pxPerM || 100) * t.s), h = w * 0.36;
-    var X = t.X(c.x), Y = t.Y(c.y);
+    var X = t.X(c.x), Y = t.Y(c.y), ang = f.coll === c ? (f.collAng || 0) : 0;
+    // монтажник мог развернуть коллектор на 90° (стена распознана неверно) —
+    // значок поворачивается целиком, отводы идут в ту же сторону
+    o.push('<g' + (ang ? ' transform="rotate(' + ang + ' ' + n(X) + ' ' + n(Y) + ')"' : '') + '>');
     o.push('<rect x="' + n(X - w / 2) + '" y="' + n(Y - h / 2) + '" width="' + n(w) + '" height="' + n(h) +
       '" rx="0.5" style="fill:#ffffff;stroke:#b35900;stroke-width:0.5"/>');
     for (var s2 = -1; s2 <= 1; s2++) {
@@ -1969,8 +1972,9 @@
       o.push('<line x1="' + n(xs) + '" y1="' + n(Y - h / 2 - 1.1) + '" x2="' + n(xs) + '" y2="' + n(Y - h / 2) +
         '" style="stroke:#b35900;stroke-width:0.45"/>');
     }
+    o.push('</g>');
     // подпись могут поставить снаружи, в обход других подписей (сводный план)
-    if (!noLabel) o.push(txt(X, Y + h / 2 + 3.1, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
+    if (!noLabel) o.push(txt(X, Y + (ang ? w : h) / 2 + 3.1, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
   }
 
   // Цвета петель — замер по эталону (растр листа «Сводный план сетей»):
@@ -2329,7 +2333,8 @@
    * чтобы значки не легли друг на друга.
    */
   function radCollector(f) {
-    if (f.radColl && isFinite(f.radColl.x)) return { x: f.radColl.x, y: f.radColl.y, src: 'manual' };
+    var rAng = f.radCollAng || 0;
+    if (f.radColl && isFinite(f.radColl.x)) return { x: f.radColl.x, y: f.radColl.y, src: 'manual', ang: rAng };
     var rc = radsCenter(f), bz = boilerZone(f);
     if (bz) {
       var s = wallSpot(f, bz, rc || centroid(bz.pts)), p = s.p, ppm = f.pxPerM || 100;
@@ -2337,10 +2342,10 @@
         var tries = [[p[0] + s.u[0] * 0.7 * ppm, p[1] + s.u[1] * 0.7 * ppm], [p[0] - s.u[0] * 0.7 * ppm, p[1] - s.u[1] * 0.7 * ppm]];
         p = tries.filter(function (q) { return pip(q, bz.pts); })[0] || tries[0];
       }
-      return { x: p[0], y: p[1], src: 'boiler' };
+      return { x: p[0], y: p[1], src: 'boiler', ang: rAng };
     }
-    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp' };
-    return rc ? { x: rc[0], y: rc[1], src: 'rads' } : { x: 0, y: 0, src: 'rads' };
+    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp', ang: rAng };
+    return rc ? { x: rc[0], y: rc[1], src: 'rads', ang: rAng } : { x: 0, y: 0, src: 'rads', ang: rAng };
   }
 
   /**
@@ -4173,7 +4178,8 @@
     var cw = 0, cX = 0, cY = 0;
     if (f.coll) {
       cw = Math.max(3.5, 0.55 * ppmS); cX = t.X(f.coll.x); cY = t.Y(f.coll.y);
-      lp.add([cX - cw / 2, cY - cw * 0.18 - 1.2, cX + cw / 2, cY + cw * 0.18]);
+      if (f.collAng) lp.add([cX - cw * 0.18 - 1.2, cY - cw / 2, cX + cw * 0.18 + 1.2, cY + cw / 2]);
+      else lp.add([cX - cw / 2, cY - cw * 0.18 - 1.2, cX + cw / 2, cY + cw * 0.18]);
     }
     (f.fixtures || []).forEach(function (q) { lp.add(fixtureBox(q, t, ppmS, 2)); });
     // точка листа → точка подложки (обратное к t.X / t.Y)
@@ -4216,8 +4222,10 @@
     });
     if (f.coll) {
       var cLab = 'Коллектор ТП', cLw = textW(cLab, 2.8), ch = cw * 0.36;
-      var cb = lp.place([[0, ch / 2 + 3.1], [0, -ch / 2 - 2.6], [cw / 2 + 1.5 + cLw / 2, 1], [-cw / 2 - 1.5 - cLw / 2, 1],
-        [0, ch / 2 + 6.6], [0, -ch / 2 - 6]].map(function (d) {
+      // повёрнутый на 90° значок: высота и ширина меняются местами
+      var eh = f.collAng ? cw : ch, ew = f.collAng ? ch : cw;
+      var cb = lp.place([[0, eh / 2 + 3.1], [0, -eh / 2 - 2.6], [ew / 2 + 1.5 + cLw / 2, 1], [-ew / 2 - 1.5 - cLw / 2, 1],
+        [0, eh / 2 + 6.6], [0, -eh / 2 - 6]].map(function (d) {
         var bx = [cX + d[0] - cLw / 2, cY + d[1] - 2.4, cX + d[0] + cLw / 2, cY + d[1] + 0.4]; bx.p = [cX + d[0], cY + d[1]];
         return bx;
       }));
@@ -4465,18 +4473,20 @@
     });
     // Коллектор радиаторов — когда он не там же, где коллектор тёплого пола
     if (RR && !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm)) {
-      var cw2 = 0.6 * ppm, ch2 = 0.22 * ppm;
+      var cw2 = 0.6 * ppm, ch2 = 0.22 * ppm, ra = RR.C.ang ? 90 : 0;
       o.push('<rect x="' + m(RR.C.x - cw2 / 2) + '" y="' + m(RR.C.y - ch2 / 2) + '" width="' + m(cw2) + '" height="' + m(ch2) +
-        '" style="fill:#f8d0d0;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.7) + '"/>');
-      o.push('<text x="' + m(RR.C.x) + '" y="' + m(RR.C.y + ch2 / 2 + fs * 0.95) + '" font-size="' + m(fs * 0.85) +
+        '" style="fill:#f8d0d0;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.7) + '"' +
+        (ra ? ' transform="rotate(90 ' + m(RR.C.x) + ' ' + m(RR.C.y) + ')"' : '') + '/>');
+      o.push('<text x="' + m(RR.C.x) + '" y="' + m(RR.C.y + (ra ? cw2 : ch2) / 2 + fs * 0.95) + '" font-size="' + m(fs * 0.85) +
         '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
         (RR.tee ? 'Магистраль радиаторов' : 'Коллектор радиаторов') + '</text>');
     }
     if (f.coll) {
-      var cw = 0.6 * ppm, ch = 0.22 * ppm;
+      var cw = 0.6 * ppm, ch = 0.22 * ppm, ca = f.collAng ? 90 : 0;
       o.push('<rect x="' + m(f.coll.x - cw / 2) + '" y="' + m(f.coll.y - ch / 2) + '" width="' + m(cw) + '" height="' + m(ch) +
-        '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"/>');
-      o.push('<text x="' + m(f.coll.x) + '" y="' + m(f.coll.y - ch / 2 - fs * 0.35) + '" font-size="' + m(fs * 0.85) +
+        '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"' +
+        (ca ? ' transform="rotate(90 ' + m(f.coll.x) + ' ' + m(f.coll.y) + ')"' : '') + '/>');
+      o.push('<text x="' + m(f.coll.x) + '" y="' + m(f.coll.y - (ca ? cw : ch) / 2 - fs * 0.35) + '" font-size="' + m(fs * 0.85) +
         '" text-anchor="middle" style="fill:#c25e00;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
         (RR && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm ? 'Коллекторы' : 'Коллектор') + '</text>');
     }

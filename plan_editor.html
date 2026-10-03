@@ -3125,16 +3125,18 @@ function draw() {
   if (f.coll) {
     var ccx = f.coll.x * k, ccy = f.coll.y * k;
     var cw = Math.max(16, 0.55 * (f.pxPerM || 100) * k), ch = Math.max(6, cw * 0.36);
+    cx.save(); cx.translate(ccx, ccy); cx.rotate((f.collAng || 0) * Math.PI / 180);
     cx.fillStyle = '#fff'; cx.strokeStyle = '#b35900'; cx.lineWidth = 2;
-    cx.fillRect(ccx - cw / 2, ccy - ch / 2, cw, ch);
-    cx.strokeRect(ccx - cw / 2, ccy - ch / 2, cw, ch);
+    cx.fillRect(-cw / 2, -ch / 2, cw, ch);
+    cx.strokeRect(-cw / 2, -ch / 2, cw, ch);
     cx.lineWidth = 1.4;
     for (var so = -1; so <= 1; so++) {
-      var sx2 = ccx + so * cw / 3.4;
-      cx.beginPath(); cx.moveTo(sx2, ccy - ch / 2 - 5); cx.lineTo(sx2, ccy - ch / 2); cx.stroke();
+      var sx2 = so * cw / 3.4;
+      cx.beginPath(); cx.moveTo(sx2, -ch / 2 - 5); cx.lineTo(sx2, -ch / 2); cx.stroke();
     }
+    cx.restore();
     cx.fillStyle = '#b35900'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
-    cx.fillText('Коллектор ТП', ccx, ccy + ch / 2 + 13);
+    cx.fillText('Коллектор ТП', ccx, ccy + (f.collAng ? cw : ch) / 2 + 13);
   }
   // Коллектор радиаторов — свой значок: его видно и можно перетащить, как
   // коллектор ТП (раньше он стоял там же, где ТП, и не двигался)
@@ -3142,16 +3144,18 @@ function draw() {
   if (rcp) {
     var rx = rcp.x * k, ry = rcp.y * k;
     var rw = Math.max(16, 0.55 * (f.pxPerM || 100) * k), rh = Math.max(6, rw * 0.36);
+    cx.save(); cx.translate(rx, ry); cx.rotate((f.radCollAng || 0) * Math.PI / 180);
     cx.fillStyle = '#fff'; cx.strokeStyle = '#d22222'; cx.lineWidth = 2;
-    cx.fillRect(rx - rw / 2, ry - rh / 2, rw, rh);
-    cx.strokeRect(rx - rw / 2, ry - rh / 2, rw, rh);
+    cx.fillRect(-rw / 2, -rh / 2, rw, rh);
+    cx.strokeRect(-rw / 2, -rh / 2, rw, rh);
     cx.lineWidth = 1.4;
     for (var ro = -1; ro <= 1; ro++) {
-      var rsx = rx + ro * rw / 3.4;
-      cx.beginPath(); cx.moveTo(rsx, ry - rh / 2 - 5); cx.lineTo(rsx, ry - rh / 2); cx.stroke();
+      var rsx = ro * rw / 3.4;
+      cx.beginPath(); cx.moveTo(rsx, -rh / 2 - 5); cx.lineTo(rsx, -rh / 2); cx.stroke();
     }
+    cx.restore();
     cx.fillStyle = '#d22222'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
-    cx.fillText('Коллектор радиаторов', rx, ry + rh / 2 + 13);
+    cx.fillText('Коллектор радиаторов', rx, ry + (f.radCollAng ? rw : rh) / 2 + 13);
   }
   // сантехприборы: настоящий габарит и разворот вдоль стены
   (f.fixtures || []).forEach(function (q) {
@@ -3466,10 +3470,16 @@ cv.addEventListener('mousemove', function (e) {
  * или обход лестницы: щёлкнули по стороне, потянули новый узел куда надо.
  */
 cv.addEventListener('contextmenu', function (e) {
-  // правый клик по радиатору — развернуть подключение (в мастере, вне рисования контура)
+  // правый клик по коллектору — повернуть на 90° (стена распознана неверно)
+  if (UFH && mode !== 'poly' && F().pxPerM) {
+    var ckind = collAt(evPt(e));
+    if (ckind) { e.preventDefault(); collRotate(ckind); return; }
+  }
+  // правый клик по радиатору — развернуть подключение (в мастере, вне рисования контура);
+  // Shift + правый клик — повернуть сам прибор на 90°
   if (UFH && mode !== 'poly' && F().pxPerM && (F().rads || []).length) {
     var ri = radAt(evPt(e));
-    if (ri >= 0) { e.preventDefault(); radFlip(ri); return; }
+    if (ri >= 0) { e.preventDefault(); if (e.shiftKey) radRotate(ri); else radFlip(ri); return; }
   }
   if ((mode !== 'select' && mode !== 'room') || !F().zones.length) return;
   var p = evPt(e), tol = zoneTol(), f = F();
@@ -3646,6 +3656,7 @@ function pushUndo(t) {
     coll: f.coll ? { x: f.coll.x, y: f.coll.y } : null,
     collAuto: !!f.collAuto,
     radColl: f.radColl ? { x: f.radColl.x, y: f.radColl.y } : null,
+    collAng: f.collAng || 0, radCollAng: f.radCollAng || 0,
     fixtures: JSON.parse(JSON.stringify(f.fixtures || []))
   } };
   if (t === 'plan') {
@@ -3681,6 +3692,8 @@ function doUndo() {
     f.coll = rec.prev.coll || null;
     if (rec.prev.collAuto) f.collAuto = true; else delete f.collAuto;
     if (rec.prev.radColl) f.radColl = rec.prev.radColl; else delete f.radColl;
+    if (rec.prev.collAng) f.collAng = rec.prev.collAng; else delete f.collAng;
+    if (rec.prev.radCollAng) f.radCollAng = rec.prev.radCollAng; else delete f.radCollAng;
     f.fixtures = rec.prev.fixtures || [];
   }
   renderTabs(); draw(); renderZones();
@@ -3693,6 +3706,9 @@ document.addEventListener('keydown', function (e) {
     e.preventDefault(); doUndo(); return;
   }
   if (e.key === 'Enter' && mode === 'poly' && tmp.length >= 3) { closePoly(); return; }
+  if ((e.code === 'KeyR' || /^[rк]$/i.test(String(e.key))) && !e.ctrlKey && !e.metaKey && !e.altKey && mode !== 'poly') {
+    if (rotateUnderCursor()) { e.preventDefault(); return; }
+  }
   // Delete — убрать зону, на которую наведён курсор: то же, что крестик,
   // только с клавиатуры. В поле ввода имени клавиша работает как обычно.
   if ((e.key === 'Delete' || e.key === 'Del') && selZ >= 0 && !dragZ) {
@@ -4370,6 +4386,68 @@ function radRoomName(r) {
 }
 
 /**
+ * Повернуть коллектор на 90° вокруг своей оси. Положение определяет не стена
+ * (она могла распознаться неверно), а монтажник: правый клик по значку или
+ * клавиша R, пока курсор над ним. Значок на листах поворачивается так же.
+ */
+function collRotate(kind) {
+  var f = F();
+  pushUndo('zones');
+  if (kind === 'tp') { f.collAng = f.collAng ? 0 : 90; }
+  else { f.radCollAng = f.radCollAng ? 0 : 90; }
+  var a = kind === 'tp' ? f.collAng : f.radCollAng;
+  hint('<span class=ok>Коллектор ' + (kind === 'tp' ? 'тёплого пола' : 'радиаторов') + ' — ' +
+    (a ? 'вертикально' : 'горизонтально') + '.</span> Правый клик по нему (или R над ним) — повернуть ещё раз.');
+  renderZones(); draw();
+}
+
+/**
+ * Повернуть радиатор на 90° (R над ним или Shift + правый клик). После поворота
+ * прибор прижимается к ближайшей стене, параллельной ему в новом положении, в
+ * пределах 0,5 м, — как при переносе, но без перетаскивания.
+ */
+function radRotate(i) {
+  var f = F(), r = f.rads[i];
+  if (!r) return;
+  pushUndo('zones');
+  var ppm = f.pxPerM || 100;
+  r.ang = (((r.ang || 0) % 180) === 90) ? 0 : 90;
+  var m = getMask();
+  if (m) {
+    // стены, параллельные прибору: для горизонтального — сверху и снизу, для вертикального — слева и справа
+    var dirs = r.ang === 90 ? [[1, 0], [-1, 0]] : [[0, 1], [0, -1]];
+    var R = Math.round(0.5 * ppm * m.k), sx = Math.round(r.x * m.k), sy = Math.round(r.y * m.k), best = null;
+    dirs.forEach(function (dv) {
+      for (var d = 1; d <= R; d++) {
+        var x = sx + dv[0] * d, y = sy + dv[1] * d;
+        if (x < 0 || y < 0 || x >= m.w || y >= m.h) break;
+        if (m.bar[y * m.w + x]) { if (!best || d < best.d) best = { d: d, dv: dv }; break; }
+      }
+    });
+    if (best) {
+      var off = best.d / m.k - 0.07 * ppm - 2;
+      if (off > 0) { r.x = Math.round(r.x + best.dv[0] * off); r.y = Math.round(r.y + best.dv[1] * off); }
+    }
+  }
+  hint('<span class=ok>Радиатор повёрнут — ' + (r.ang === 90 ? 'вертикально' : 'горизонтально') + '.</span> ' +
+    'R над прибором или Shift + правый клик — повернуть ещё раз.');
+  renderZones(); draw();
+}
+
+/** R (и русская К) над коллектором или радиатором — повернуть его */
+var lastPt = null;
+cv.addEventListener('mousemove', function (e) { lastPt = evPt(e); });
+cv.addEventListener('mouseleave', function () { lastPt = null; });
+function rotateUnderCursor() {
+  if (!UFH || !lastPt || !F().pxPerM) return false;
+  var ck = collAt(lastPt);
+  if (ck) { collRotate(ck); return true; }
+  var ri = radAt(lastPt);
+  if (ri >= 0) { radRotate(ri); return true; }
+  return false;
+}
+
+/**
  * Правый клик по радиатору — развернуть подключение (левое ↔ правое). Так
  * бывает, когда прибор вешают иначе, чем подсказывает модель; выбор
  * монтажника хранится у прибора (r.conn) и главнее модели.
@@ -4846,12 +4924,13 @@ function wzBody(id) {
   if (id === 'tp') return { acts: B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
     tx: 'Кликните по комнатам, где нужен тёплый пол, — на плане или галочкой в списке справа. Петли разложатся ' +
       'сами. Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева». Коллектор встаёт у стены ' +
-      'котельной — его можно перетащить мышью.' };
+      'котельной — его можно перетащить мышью, а правый клик по нему (или R над ним) поворачивает на 90°.' };
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов'),
     tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте ' +
       'кликом у окна. Точка на приборе — подключение по модели из сметы (обычно правое нижнее); ' +
-      'правый клик по прибору — развернуть. Трассы идут от коллектора радиаторов у стены котельной — ' +
-      'его можно перетащить мышью.' };
+      'правый клик по прибору — развернуть. Прибор и коллектор можно повернуть на 90°: клавиша R, пока ' +
+      'курсор над ним (у коллектора — ещё и правый клик). Трассы идут от коллектора радиаторов у стены ' +
+      'котельной — его можно перетащить мышью.' };
   return { next: 'Готово — в смету', tx: wzSummary().html };
 }
 
