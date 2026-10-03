@@ -2085,9 +2085,13 @@ function autoMarkAll() {
     var done = zones + rads + colls;
     if (bad.length) heroOff = true;   // что-то осталось руками — открываем шапку
     if (UFH) {
-      hint('<span class=ok>Комнат найдено: ' + zones + '.</span> ' +
-        (bad.length ? '<b>Осталось руками:</b> ' + bad.join('; ') + '. ' : '') +
-        'Кликните по комнатам, где нужен тёплый пол, — и «Готово».');
+      hint(!F().pxPerM
+        ? '<b>Масштаб не подобрался сам</b> — на плане нет размеров, а комнат в расчёте мало для подбора. ' +
+          'Нажмите «Масштаб», кликните две точки на плане (например, концы стены или края дверного проёма) ' +
+          'и впишите длину между ними в метрах. Потом — «Распознать комнаты».'
+        : '<span class=ok>Комнат найдено: ' + zones + '.</span> ' +
+          (bad.length ? '<b>Осталось руками:</b> ' + bad.join('; ') + '. ' : '') +
+          'Кликните по комнатам, где нужен тёплый пол, — и «Готово».');
       return;
     }
     hint((done
@@ -2116,7 +2120,9 @@ function autoMarkAll() {
 function zoneKindsOfRoom(r) {
   var out = [], nm = (r && r.name) || '';
   if (/котельн|топочн|бойлерн/i.test(nm)) out.push('boiler');
-  else if (wcCardOf(nm)) out.push('wc');
+  // раскладке тёплого пола санузлы с приборами не нужны: в расчёте карточка
+  // водоснабжения бывает и у кухни — она стала бы «Санузлом» с унитазом
+  else if (!UFH && wcCardOf(nm)) out.push('wc');
   if (((r && r.sys) || []).indexOf('tp') >= 0) out.push('tp');
   return out;
 }
@@ -2232,6 +2238,7 @@ function autoRooms() {
   var parts = ['tp', 'boiler', 'wc', 'room'].filter(function (k) { return cnt[k]; })
     .map(function (k) { return NAMES[k] + ' ' + cnt[k]; });
   if (UFH) {
+    if (!F().coll) ufhAutoColl(F());   // тёплый пол из расчёта — коллектор сразу
     renderZones(); if (mode !== 'room') setMode('room'); else draw();
     hint('<span class=ok>Найдено комнат: ' + rooms.length + '.</span> ' +
       (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '. ' : '') +
@@ -3546,7 +3553,7 @@ function renderZones() {
     return g;
   };
 
-  var fl = [
+  var fl = UFH ? [['Тёплый пол', tpN ? tpN + ' комн. · ' + tpS.toFixed(1) + ' м²' : '—']] : [
     ['Тёплый пол', tpN ? tpN + ' зон · ' + tpS.toFixed(1) + ' м²' : '—'],
     ['Радиаторы', rc ? rc + ' шт.' : '—'],
     ['Котельная', hasB ? 'отмечена' : 'не отмечена', hasB ? 'good' : 'warn']
@@ -3557,7 +3564,7 @@ function renderZones() {
   // санузлы и приборы: видно, что уйдёт на листы водоснабжения и канализации
   var fxs = F().fixtures || [];
   var wcz = F().zones.filter(function (z) { return z.type === 'wc'; });
-  if (wcz.length || fxs.length || calcWc.length) {
+  if (!UFH && (wcz.length || fxs.length || calcWc.length)) {
     var noName = wcz.filter(function (z) { return !wcCardOf(z.name); }).length;
     var risers = fxs.filter(function (q) { return q.t === 'riser'; }).length;
     fl.push(['Санузлы', wcz.length ? wcz.length + ' зон' : '—']);
@@ -4033,7 +4040,7 @@ function guideStep() {
       'padding:5px 12px;border-radius:8px;border:1px solid var(--primary);background:var(--primary);' +
       'color:#fff;cursor:pointer">Перейти</button>';
   } else if (!act) {
-    nx = '<br><br><b>Все шаги пройдены</b> — жмите зелёную «Сохранить».';
+    nx = '<br><br><b>Все шаги пройдены</b> — жмите зелёную «' + (UFH ? 'Готово' : 'Сохранить') + '».';
   }
 
   var zn = f.zones.length ? '<br><b>Зон на этаже: ' + f.zones.length + '.</b>' : '';

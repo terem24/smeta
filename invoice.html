@@ -2845,6 +2845,13 @@
             </div>
         </section>
 
+        <!-- Раскладка тёплого пола по плану дома: заказчик видит свою планировку,
+             а не шаблон. Заполняет renderUfhPlan(object_info.ufhPlan). -->
+        <section id="ufh_plan_section" style="display: none; margin: 0 0 28px;">
+            <div class="sec-header-row"><h2 class="sec-title">Тёплый пол в вашем доме</h2></div>
+            <div id="ufh_plan_body"></div>
+        </section>
+
         <!-- Equipment Section -->
         <div id="equipment_container" style="display: none;">
             <div class="sec-header-row">
@@ -3735,6 +3742,88 @@
             return actualAvail;
         }
 
+        /**
+         * Раскладка тёплого пола по плану дома (калькулятор кладёт её в
+         * object_info.ufhPlan готовой картинкой: [{ fl, svg, rows }]).
+         *
+         * Картинка пришла из базы, поэтому в страницу её вставляем не как есть, а
+         * через фильтр: только элементы чертежа (линии, контуры, подписи) и их
+         * геометрия, подложка — только с сервера планов. Ни скриптов, ни
+         * обработчиков, ни чужих ссылок в страницу заказчика не попадёт.
+         */
+        function sanitizePlanSvg(src) {
+            const TAGS = { svg: 1, image: 1, polygon: 1, polyline: 1, line: 1, circle: 1, rect: 1, text: 1 };
+            const ATTRS = { viewBox: 1, x: 1, y: 1, width: 1, height: 1, points: 1, x1: 1, y1: 1, x2: 1, y2: 1,
+                cx: 1, cy: 1, r: 1, style: 1, opacity: 1, preserveAspectRatio: 1, 'font-size': 1, 'font-family': 1,
+                'text-anchor': 1 };
+            let doc;
+            try { doc = new DOMParser().parseFromString(String(src || ''), 'image/svg+xml'); } catch (e) { return null; }
+            const root = doc && doc.documentElement;
+            if (!root || root.nodeName !== 'svg' || doc.getElementsByTagName('parsererror').length) return null;
+            const clean = (el) => {
+                Array.from(el.children).forEach(ch => {
+                    if (!TAGS[ch.nodeName]) { ch.remove(); return; }
+                    clean(ch);
+                });
+                Array.from(el.attributes).forEach(a => {
+                    const n = a.name;
+                    if (n === 'href' && el.nodeName === 'image') {
+                        if (!/^https:\/\/proxy\.heatcalc\.ru\/plans\.php\?k=[a-f0-9]{32}&n=[\w.%-]+$/.test(a.value)) el.removeAttribute(n);
+                        return;
+                    }
+                    if (!ATTRS[n] || (n === 'style' && /url\s*\(|expression|javascript/i.test(a.value))) el.removeAttribute(n);
+                });
+            };
+            clean(root);
+            root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            root.setAttribute('style', 'display:block;width:100%;height:auto;background:#fff');
+            return document.importNode(root, true);
+        }
+
+        function renderUfhPlan(list) {
+            const sec = document.getElementById('ufh_plan_section'), body = document.getElementById('ufh_plan_body');
+            if (!sec || !body) return;
+            body.innerHTML = '';
+            const floors = Array.isArray(list) ? list.filter(v => v && v.svg) : [];
+            const n1 = v => (Math.round((+v || 0) * 10) / 10).toFixed(1).replace('.', ',');
+            const word = n => { const a = n % 10, b = n % 100; return (a === 1 && b !== 11) ? 'петля' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'петли' : 'петель'; };
+            const el = (tag, txt, css) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (css) e.style.cssText = css; return e; };
+            let shown = 0;
+            floors.forEach(v => {
+                const svg = sanitizePlanSvg(v.svg);
+                if (!svg) return;
+                const wrap = el('div', null, 'margin:0 0 18px;page-break-inside:avoid;break-inside:avoid;');
+                if (floors.length > 1) wrap.appendChild(el('div', (parseInt(v.fl, 10) || 1) + '-й этаж', 'font-weight:700;margin:0 0 6px;'));
+                const box = el('div', null, 'border:1px solid #E5E7EB;border-radius:8px;overflow:hidden;max-width:820px;');
+                box.appendChild(svg);
+                wrap.appendChild(box);
+                const rows = Array.isArray(v.rows) ? v.rows : [];
+                if (rows.length) {
+                    const t = el('table', null, 'width:100%;max-width:820px;border-collapse:collapse;font-size:12.5px;margin-top:8px;');
+                    const head = el('tr', null, 'color:#6B7280;');
+                    ['Контур', 'Помещение', 'Площадь', 'Длина петли', 'Шаг, мм'].forEach((h, i) => head.appendChild(el('th', h, 'padding:4px 6px;font-weight:600;text-align:' + (i === 1 ? 'left' : i ? 'right' : 'center') + ';border-bottom:1px solid #E5E7EB;')));
+                    t.appendChild(head);
+                    let sumM = 0;
+                    rows.forEach(r => {
+                        sumM += +r.m || 0;
+                        const tr = el('tr');
+                        [[String(r.no || ''), 'center'], [String(r.name || ''), 'left'], [n1(r.area) + ' м²', 'right'],
+                         [n1(r.m) + ' м', 'right'], [String(r.step || ''), 'right']].forEach(c => tr.appendChild(el('td', c[0], 'padding:3px 6px;text-align:' + c[1] + ';border-bottom:1px solid #F3F4F6;')));
+                        t.appendChild(tr);
+                    });
+                    const tot = el('tr', null, 'font-weight:700;');
+                    ['', 'Итого: ' + rows.length + ' ' + word(rows.length), '', n1(sumM) + ' м', ''].forEach((c, i) => tot.appendChild(el('td', c, 'padding:4px 6px;text-align:' + (i === 1 ? 'left' : 'right') + ';')));
+                    t.appendChild(tot);
+                    wrap.appendChild(t);
+                }
+                body.appendChild(wrap);
+                shown++;
+            });
+            if (shown) body.appendChild(el('div', 'Петли тёплого пола разложены по плану вашего дома: подача и обратка, подводки к коллектору, ' +
+                'номера контуров. Точная укладка уточняется при монтаже.', 'font-size:12px;color:#6B7280;max-width:820px;'));
+            sec.style.display = shown ? '' : 'none';
+        }
+
         function toggleEquipmentImages(show) {
             if (show) {
                 document.body.classList.remove('hide-images');
@@ -4344,6 +4433,9 @@
             };
             ['obj_area', 'obj_floors', 'obj_mat', 'obj_region'].forEach(id => hideObjItem(id, houseUnknown));
             hideObjItem('obj_power', houseUnknown || !(parseFloat(obj.power) > 0));
+
+            // 2а. Раскладка тёплого пола по плану этого дома (object_info.ufhPlan)
+            renderUfhPlan(obj.ufhPlan);
 
             // 3. Totals
             const totals = data.totals || {};

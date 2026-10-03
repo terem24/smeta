@@ -35892,29 +35892,36 @@ const app = {
                 ['tp', 'room', 'wc', 'boiler'].includes(z.type));
             if (!zones.length) return;
             const here = this.state.rooms.filter(r => (parseInt(r.floor, 10) || 1) === fl);
-            if (here.length) {
-                here.forEach(r => {
-                    const zs = zones.filter(z => norm(z.name) && norm(z.name) === norm(r.name));
-                    if (!zs.length) return;
-                    const hasTp = zs.some(z => z.type === 'tp');
-                    if (!r.sys) r.sys = ['rad'];
-                    if (hasTp && !r.sys.includes('tp')) { r.sys.push('tp'); changed = true; }
-                    else if (!hasTp && r.sys.includes('tp')) { r.sys = r.sys.filter(s => s !== 'tp'); changed = true; }
-                });
-                return;
-            }
-            // Комнат на этаже нет — заводим по плану. Санузел или котельная с
-            // тёплым полом лежат двумя зонами одного контура: площадь — одна.
+            here.forEach(r => {
+                const zs = zones.filter(z => norm(z.name) && norm(z.name) === norm(r.name));
+                if (!zs.length) return;
+                const hasTp = zs.some(z => z.type === 'tp');
+                if (!r.sys) r.sys = ['rad'];
+                if (hasTp && !r.sys.includes('tp')) { r.sys.push('tp'); changed = true; }
+                else if (!hasTp && r.sys.includes('tp')) { r.sys = r.sys.filter(s => s !== 'tp'); changed = true; }
+            });
+            // Комнат на этаже нет — заводим все с плана. Есть — заводим только
+            // комнаты с тёплым полом, которых в расчёте нет: иначе метры трубы
+            // считались бы по плану, а площадь тёплого пола — без этой комнаты.
+            // Санузел или котельная с тёплым полом — две зоны одного контура:
+            // площадь берётся одна.
+            const known = {};
+            here.forEach(r => { known[norm(r.name)] = 1; });
+            const fresh = here.length
+                ? zones.filter(z => z.type === 'tp' && !known[norm(z.name)])
+                : zones;
+            if (!fresh.length) return;
             const used = {};
             zones.forEach(z => { if (norm(z.name)) used[norm(z.name)] = 1; });
+            here.forEach(r => { used[norm(r.name)] = 1; });
             let n = 0;
-            zones.forEach(z => {
+            fresh.forEach(z => {
                 if (norm(z.name)) return;
                 do { n++; } while (used[norm('Помещение ' + n)]);
                 z.name = 'Помещение ' + n; used[norm(z.name)] = 1; plansChanged = true;
             });
             const byName = new Map();
-            zones.forEach(z => {
+            zones.filter(z => fresh.some(q => norm(q.name) === norm(z.name))).forEach(z => {
                 const k = norm(z.name);
                 const e = byName.get(k) || { name: z.name.trim(), shapes: {}, area: 0, tp: false };
                 const sig = JSON.stringify(z.pts);
@@ -35983,17 +35990,19 @@ const app = {
      * по переключателю «Схема», как схемы котельной. По этажам: план с петлями
      * и таблица контуров. Нет доступа, плана или зон тёплого пола — пусто.
      */
-    renderUfhPlanScheme: function () {
-        if (!this.state.detailedRooms || !this.canUseUfhPlan()) return '';
+    /**
+     * Раскладка по этажам: [{ fl, svg, rows }] — общая для сметы и ссылки
+     * клиенту. Пусто — нет доступа, подробного режима, плана или зон ТП.
+     */
+    ufhPlanViews: function () {
+        if (!this.state.detailedRooms || !this.canUseUfhPlan()) return [];
         const PP = window.projectPlans;
-        if (!PP || !PP.ufhView) return '';
+        if (!PP || !PP.ufhView) return [];
         const plans = this.currentPlans();
-        if (!plans || !Array.isArray(plans.floors)) return '';
+        if (!plans || !Array.isArray(plans.floors)) return [];
         let heat = [];
         try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
-        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
-        const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
-        const parts = [];
+        const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
             const f = Object.assign({}, f0);
@@ -36003,20 +36012,46 @@ const app = {
             const rooms = ((heat[fi] && heat[fi].rooms) || []).map(r => ({ name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 }));
             let v = null;
             try { v = PP.ufhView(f, step, rooms); } catch (e) { console.warn('[раскладка ТП] этаж ' + (fi + 1) + ':', e.message); }
-            if (!v) return;
+            if (v) out.push({ fl: fi + 1, svg: v.svg, rows: v.rows });
+        });
+        return out;
+    },
+
+    /** Для ссылки клиенту: те же этажи, числа округлены — страница их не пересчитывает. */
+    ufhPlanForShare: function () {
+        const r1 = v => Math.round((v || 0) * 10) / 10;
+        const views = this.ufhPlanViews();
+        if (!views.length) return null;
+        return views.map(v => ({ fl: v.fl, svg: v.svg,
+            rows: v.rows.map(r => ({ no: r.no, name: r.name, area: r1(r.area), m: r1(r.m), step: r.step, flow: r1(r.flow) })) }));
+    },
+
+    // «петля / петли / петель»
+    loopsWord: function (n) {
+        const a = n % 10, b = n % 100;
+        return (a === 1 && b !== 11) ? 'петля' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'петли' : 'петель';
+    },
+
+    renderUfhPlanScheme: function () {
+        const views = this.ufhPlanViews();
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+        const n1 = v => (Math.round(v * 10) / 10).toFixed(1).replace('.', ',');
+        const parts = [];
+        views.forEach(V => {
+            const fi = V.fl - 1, v = V;
             const sumM = v.rows.reduce((s, r) => s + (r.m || 0), 0), sumF = v.rows.reduce((s, r) => s + (r.flow || 0), 0);
             const tr = v.rows.map(r => `<tr><td style="text-align:center">${r.no}</td><td>${esc(r.name)}</td>` +
                 `<td style="text-align:right">${n1(r.area)} м²</td><td style="text-align:right">${n1(r.m)} м</td>` +
                 `<td style="text-align:right">${r.step}</td><td style="text-align:right">${n1(r.flow)}</td></tr>`).join('');
             parts.push(
                 `<div style="margin:6px 0 14px">` +
-                (plans.floors.filter(x => x && x.pxPerM).length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
+                (views.length > 1 ? `<div style="font-weight:700;margin:0 0 6px">${fi + 1}-й этаж</div>` : '') +
                 `<div class="automation-scheme" onclick="app.openSchemeFullscreen(this.querySelector('svg'))" title="Открыть на весь экран">${v.svg}` +
                 `<button type="button" class="scheme-zoom-btn" aria-label="На весь экран">⛶ На весь экран</button></div>` +
                 `<table class="ufh-plan-table" style="width:100%;border-collapse:collapse;font-size:12px;margin-top:6px">` +
                 `<thead><tr style="color:var(--text-sec)"><th>Контур</th><th style="text-align:left">Помещение</th><th style="text-align:right">Площадь</th>` +
                 `<th style="text-align:right">Длина петли</th><th style="text-align:right">Шаг, мм</th><th style="text-align:right">Расход, л/мин</th></tr></thead>` +
-                `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} петель</td><td></td>` +
+                `<tbody>${tr}</tbody><tfoot><tr style="font-weight:700"><td></td><td>Итого: ${v.rows.length} ${this.loopsWord(v.rows.length)}</td><td></td>` +
                 `<td style="text-align:right">${n1(sumM)} м</td><td></td><td style="text-align:right">${n1(sumF)}</td></tr></tfoot></table></div>`);
         });
         if (!parts.length) return '';
@@ -44995,6 +45030,14 @@ const app = {
         };
         // Монтажник снял галочку «Без моделей и артикулов»: клиент увидит полные названия
         if (fullNames) object_info.fullNames = true;
+        // Раскладка тёплого пола по плану дома — заказчик видит свою планировку,
+        // а не шаблон. Готовой картинкой: страница клиента ничего не пересчитывает
+        // и показывает ровно то, что у монтажника. В длинную офлайн-ссылку
+        // (compactPayload) не идёт — только в короткую из базы.
+        try {
+            const up = this.ufhPlanForShare();
+            if (up) object_info.ufhPlan = up;
+        } catch (e) { console.warn('[ссылка] раскладка ТП не добавлена:', e.message); }
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
