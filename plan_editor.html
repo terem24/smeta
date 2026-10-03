@@ -213,6 +213,10 @@
   .wz-do .tx { flex: 1 1 360px; color: var(--text-main); font-size: 13.5px; line-height: 1.45; }
   .wz-do .tx b { color: #fff; }
   .wz-do button.go { font-size: 13.5px; padding: 6px 16px; }
+  .wz-todo { margin-top: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; background: rgba(59,130,246,.16); border: 1px solid #3b82f6; }
+  .wz-todo .tx { flex: 1 1 320px; font-size: 14px; color: var(--text-main); }
+  .wz-todo .tx b { color: #fff; }
+  .wz-todo button { font-size: 14px; padding: 7px 18px; }
   .wz-up { margin-top: 6px; font-size: 12px; color: #d8b26a; }
   .wz-up.bad { color: var(--warn-text); }
   .wz-up b { cursor: pointer; text-decoration: underline; }
@@ -5440,6 +5444,44 @@ function pjSteps() {
   return L;
 }
 
+/**
+ * Что делать проекту дальше — одно действие на весь проект, а не на открытый этаж.
+ * Шаги в полоске считаются по этажу, и на пустом втором этаже они начинались с
+ * «Шаг 1: загрузите план», хотя главное оставалось на первом. Эта строка всегда
+ * называет следующее действие и переводит на нужный этаж сама.
+ */
+function pjTodo() {
+  var fl = DATA.floors, hasImg = function (f) { return !!(f.img || f.imgFile); };
+  var withImg = [], sc = [], marked = [];
+  fl.forEach(function (f, i) {
+    if (!hasImg(f)) return;
+    withImg.push(i);
+    if (f.pxPerM) { sc.push(i); if ((f.zones || []).length || (f.rads || []).length) marked.push(i); }
+  });
+  if (!withImg.length) return { fi: 0, step: 'plan', text: 'Загрузите план этажа — фото, скан или PDF', btn: 'Загрузить план' };
+  if (!sc.length) return { fi: withImg[0], step: 'scale', text: 'Задайте масштаб плана', btn: 'Задать масштаб' };
+  if (!marked.length) return { fi: sc[0], step: 'rooms', text: 'Найдите комнаты на плане', btn: 'Найти комнаты' };
+  var fi = marked[0];
+  for (var k = 0; k < marked.length; k++) {
+    var q = fl[marked[k]];
+    if ((q.zones || []).some(function (z) { return z.type === 'tp'; }) && !q.coll)
+      return { fi: marked[k], step: 'coll', text: 'Поставьте коллектор тёплого пола', btn: 'Поставить коллектор' };
+  }
+  var hasBoiler = fl.some(function (q) { return (q.zones || []).some(function (z) { return z.type === 'boiler'; }); });
+  if (!hasBoiler) return { fi: fi, step: 'boiler', text: 'Отметьте котельную на плане — без неё проект не выпускается', btn: 'Отметить котельную' };
+  var checks = pjChecks(), miss = checks ? checks.filter(function (c) { return !c.ok; }) : [];
+  if (miss.length) return { fi: -1, back: true, text: 'В калькуляторе не закрыто: ' + miss.map(function (c) { return c.t; }).join('; '), btn: 'В калькулятор' };
+  return { fi: fi, release: true, text: 'Разметка закончена — можно выпускать проект', btn: 'Выпустить проект →' };
+}
+
+function pjDoTodo() {
+  var t = pjTodo();
+  if (t.back) { pjBack(); return; }
+  if (t.fi !== cur) { cur = t.fi; renderTabs(); draw(); renderZones(); syncNorth(); }
+  if (t.release) { pjRelease(); return; }
+  pjGo(t.step);
+}
+
 function pjCur(L) {
   var ids = L.map(function (s) { return s.id; });
   if (!F().img) return 'plan';
@@ -5501,7 +5543,9 @@ function pjBody(id) {
   var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
   var f = F();
   if (id === 'plan') return { noNext: true, acts: B("pjGo('plan')", 'Загрузить план', 'go'),
-    tx: 'Загрузите план этажа — фото, скан или PDF. Масштаб и комнаты система найдёт сама.' };
+    tx: (pjTodo().fi !== cur && DATA.floors.length > 1
+      ? 'Этот этаж пока пуст. Если отопления на нём нет — ничего делать не нужно, для выпуска достаточно одного размеченного этажа. Иначе загрузите его план. '
+      : 'Загрузите план этажа — фото, скан или PDF. ') + 'Масштаб и комнаты система найдёт сама.' };
   if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("setMode('scale')", 'Задать вручную'),
     tx: '<b>Масштаб не подобрался сам.</b> Нажмите «Задать вручную», кликните две точки известного отрезка ' +
       '(например, края дверного проёма, обычно 0,9 м) и впишите длину в метрах.' };
@@ -5551,6 +5595,12 @@ function pjRender(box) {
       '<span class="n">' + (s.ok && s.id !== c ? '✓' : (i + 1)) + '</span>' + s.t + '</span>';
   });
   h += '</div>';
+  var td = pjTodo();
+  if (td.fi !== cur || (td.step && td.step !== c) || td.back) {
+    h += '<div class="wz-todo"><span class="tx">' +
+      (td.fi >= 0 && td.fi !== cur ? '<b>Дальше, на ' + (td.fi + 1) + ' этаже:</b> ' : '<b>Дальше:</b> ') + td.text + '</span>' +
+      '<button class="go" onclick="pjDoTodo()">' + td.btn + '</button></div>';
+  }
   var b = pjBody(c);
   h += '<div class="wz-do"><span class="tx"><b>Шаг ' + (ci + 1) + ' из ' + L.length + '.</b> ' + b.tx + '</span>' +
     (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="pjNext()">' + (b.next || 'Дальше →') + '</button>') + '</div>';
