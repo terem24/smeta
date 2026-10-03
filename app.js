@@ -21365,11 +21365,9 @@ const app = {
         // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
         const ufh = this.canUseUfhPlan();
         try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
-        // Строка — только в подробном режиме: в быстром она сдвигала все настройки
-        // вниз, а пользы там нет; в быстром вместо неё одна ссылка под площадью.
+        // Строка — только в подробном режиме: в быстром плана нет вовсе (владелец
+        // 03.10.2026 убрал и строку, и ссылку под площадью — быстрый режим без него).
         if (planRow) planRow.style.display = (ufh && this.state.detailedRooms) ? 'flex' : 'none';
-        const qLink = document.getElementById('plan_quick_link');
-        if (qLink) qLink.style.display = (ufh && !this.state.detailedRooms) ? 'block' : 'none';
         const bU = document.getElementById('btn_ufhplan');
         const sum = this.planRowSummary();
         if (bU) {
