@@ -4586,7 +4586,7 @@ function renderZones() {
   var fl = UFH ? [['Тёплый пол', tpN ? tpN + ' комн. · ' + tpS.toFixed(1) + ' м²' : '—']] : [
     ['Тёплый пол', tpN ? tpN + ' зон · ' + tpS.toFixed(1) + ' м²' : '—'],
     ['Радиаторы', rc ? rc + ' шт.' : '—'],
-    ['Котельная', hasB ? 'отмечена' : 'не отмечена', hasB ? 'good' : 'warn']
+    ['Котельная', hasB ? (F().zones.some(function (z) { return z.type === 'boiler'; }) ? 'отмечена' : 'отмечена на ' + (DATA.floors.findIndex(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'boiler'; }); }) + 1) + ' этаже') : 'не отмечена', hasB ? 'good' : 'warn']
   ];
   if (tpN) fl.push(['Коллектор ТП', F().coll ? 'отмечен' : 'не отмечен',
     F().coll ? 'good' : 'warn']);
