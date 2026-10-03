@@ -328,7 +328,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.26"></script>
+<script src="project_plans.js?v=1.27"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -2946,6 +2946,15 @@ function draw() {
     }
     cx.restore();
   });
+  // Точка подключения на самом приборе — поверх значка: видно, с какой
+  // стороны подходят трубы (правое нижнее, левое, центр, боковое) — по
+  // модели из сметы или как развернул монтажник (правый клик)
+  if (UFH && (f.rads || []).length) (radCache.items || []).forEach(function (it) {
+    if (!it.end) return;
+    cx.beginPath(); cx.arc(it.end[0] * k, it.end[1] * k, Math.max(3, 0.06 * (f.pxPerM || 100) * k), 0, 6.2832);
+    cx.fillStyle = '#7a1414'; cx.fill();
+    cx.lineWidth = 1.5; cx.strokeStyle = '#fff'; cx.stroke();
+  });
   // коллектор ТП — гребёнка с отводами
   if (f.coll) {
     var ccx = f.coll.x * k, ccy = f.coll.y * k;
@@ -3291,6 +3300,11 @@ cv.addEventListener('mousemove', function (e) {
  * или обход лестницы: щёлкнули по стороне, потянули новый узел куда надо.
  */
 cv.addEventListener('contextmenu', function (e) {
+  // правый клик по радиатору — развернуть подключение (в мастере, вне рисования контура)
+  if (UFH && mode !== 'poly' && F().pxPerM && (F().rads || []).length) {
+    var ri = radAt(evPt(e));
+    if (ri >= 0) { e.preventDefault(); radFlip(ri); return; }
+  }
   if ((mode !== 'select' && mode !== 'room') || !F().zones.length) return;
   var p = evPt(e), tol = zoneTol(), f = F();
   for (var i = f.zones.length - 1; i >= 0; i--) {
@@ -4014,18 +4028,52 @@ var UFH_NAMES = ['Гостиная', 'Кухня', 'Кухня-гостиная'
 
 // Трассы радиаторов для холста — тот же projectPlans.radRoutes, что у сметы.
 // Схема (лучевая или тройниковая) — из расчёта. Кэш по разметке этажа.
-var radCache = { key: null, val: [] };
+var radCache = { key: null, val: [], items: [] };
+// Стороны подключения по моделям сметы: { комната: 'R'|'L'|'C'|'S' } — кладёт
+// калькулятор при открытии окна (app.radConnMap)
+var RAD_CONN = {};
+try { RAD_CONN = JSON.parse(localStorage.getItem('heatcalc_rad_conn') || '{}') || {}; } catch (e) {}
 function ufhRadRoutes(f, stepMm) {
-  if (!window.projectPlans || !projectPlans.radRoutes || dragZ) return radCache.val;
+  if (!window.projectPlans || !projectPlans.radRoutes || dragZ || dragC) return radCache.val;
   var tee = false;
   try { tee = (JSON.parse(localStorage.getItem('stout_save')) || {}).radConnectionScheme === 'tee'; } catch (e) {}
-  var key = cur + '|' + stepMm + '|' + tee + '|' + JSON.stringify([f.zones, f.rads, f.coll]);
+  var key = cur + '|' + stepMm + '|' + tee + '|' + JSON.stringify([f.zones, f.rads, f.coll, f.radColl || null]);
   if (radCache.key === key) return radCache.val;
-  var segs = [];
-  try { var R = projectPlans.radRoutes(f, stepMm, tee); segs = R ? R.segs : []; }
+  var segs = [], items = [];
+  try { var R = projectPlans.radRoutes(f, stepMm, tee, RAD_CONN); segs = R ? R.segs : []; items = R ? R.items : []; }
   catch (e) { console.error('[plan_editor] трассы радиаторов:', e); }
-  radCache = { key: key, val: segs };
+  radCache = { key: key, val: segs, items: items };
   return segs;
+}
+
+/** Комната прибора — по ней берётся модель из сметы (как в radRoutes). */
+function radRoomName(r) {
+  var a = (r.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.3 * (F().pxPerM || 100);
+  var name = '';
+  [[r.x + nx * d, r.y + ny * d], [r.x - nx * d, r.y - ny * d]].some(function (p) {
+    for (var i = F().zones.length - 1; i >= 0; i--) {
+      var q = F().zones[i];
+      if (q.type !== 'cold' && pip(p, q.pts)) { name = q.name || ''; return true; }
+    }
+    return false;
+  });
+  return name;
+}
+
+/**
+ * Правый клик по радиатору — развернуть подключение (левое ↔ правое). Так
+ * бывает, когда прибор вешают иначе, чем подсказывает модель; выбор
+ * монтажника хранится у прибора (r.conn) и главнее модели.
+ */
+function radFlip(i) {
+  var r = F().rads[i];
+  if (!r) return;
+  var eff = projectPlans.radConnSide ? projectPlans.radConnSide(r, radRoomName(r), RAD_CONN) : (r.conn || 'R');
+  pushUndo('zones');
+  r.conn = eff === 'L' ? 'R' : 'L';
+  hint('<span class=ok>Подключение радиатора — ' + (r.conn === 'R' ? 'справа' : 'слева') + '.</span> ' +
+    'Правый клик по прибору ещё раз — развернуть обратно.');
+  renderZones(); draw();
 }
 
 function ufhSteps() {
@@ -4472,7 +4520,8 @@ function wzBody(id) {
       'котельной — его можно перетащить мышью.' };
   if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('radcoll')", 'Переставить коллектор радиаторов'),
     tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте ' +
-      'кликом у окна. Трассы построятся сами от коллектора радиаторов — он у стены котельной; ' +
+      'кликом у окна. Точка на приборе — подключение по модели из сметы (обычно правое нижнее); ' +
+      'правый клик по прибору — развернуть. Трассы идут от коллектора радиаторов у стены котельной — ' +
       'его можно перетащить мышью.' };
   return { next: 'Готово — в смету', tx: wzSummary().html };
 }

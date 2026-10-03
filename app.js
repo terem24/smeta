@@ -36637,6 +36637,9 @@ const app = {
         const cs = getComputedStyle(document.body);
         const cv = k => (cs.getPropertyValue('--' + k) || '').trim();
         const dark = document.body.classList.contains('dark-mode');
+        // стороны подключения радиаторов по моделям сметы — трассы окна плана
+        // подходят к приборам так же, как в смете и КП
+        try { localStorage.setItem('heatcalc_rad_conn', JSON.stringify(this.radConnMap())); } catch (e) { }
         try {
             localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
                 dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
@@ -36895,7 +36898,7 @@ const app = {
         try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
         // Радиаторы с трассами — когда они есть в смете; схема разводки — та же,
         // что выбрана в смете (тройниковая или лучевая от коллектора)
-        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee' };
+        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee', connMap: this.radConnMap() };
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -36920,18 +36923,39 @@ const app = {
      * null — плана с радиаторами нет: смета считает по-старому, формулой.
      * Схема (лучевая/тройниковая) — та же, что в смете.
      */
+    /**
+     * Сторона подключения радиаторов по комнатам — для трасс на плане:
+     * { 'гостиная': 'R' | 'L' | 'C' | 'S' }. Берётся из приборов, подобранных
+     * сметой (radDevices): нижнее подключение — правое, если в названии модели
+     * не сказано «левостороннее» или «центральное»; боковое — 'S'. Замена
+     * прибора в смете меняет и сторону на плане. Комната с разными приборами —
+     * по первому.
+     */
+    radConnMap: function () {
+        const PP = window.projectPlans, map = {};
+        if (!PP || !PP.radSideOfModel) return map;
+        (this.radDevices || []).forEach(d => {
+            if (!d || d.kind !== 'rad') return;
+            const k = String(d.room || '').trim().toLowerCase();
+            if (k && !map[k]) map[k] = PP.radSideOfModel(d.name, d.bottom);
+        });
+        return map;
+    },
+
     radPlanRuns: function () {
         const PP = window.projectPlans, plans = this.currentPlans();
         if (!PP || !PP.radRoutes || !plans || !Array.isArray(plans.floors)) return null;
         const s = this.state, tee = s.radConnectionScheme === 'tee';
-        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1);
+        const connMap = this.radConnMap();
+        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1) +
+            '|' + JSON.stringify(connMap);
         if (this._radPlanCache && this._radPlanCache.key === key) return this._radPlanCache.val;
         const runs = [], byRoom = {};
         let trunk = 0, floorsWith = 0, maxRun = 0, maxRoom = '';
         plans.floors.forEach((f, fi) => {
             if (!f || !f.pxPerM || !(f.rads || []).length || fi > 1 || (fi === 1 && s.floors !== 2)) return;
             let R = null;
-            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee); } catch (e) { R = null; }
+            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee, connMap); } catch (e) { R = null; }
             if (!R || !R.items.length) return;
             floorsWith++;
             trunk += R.totalM / 2;
@@ -75472,7 +75496,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + _radQty; }
                         }
                     });
