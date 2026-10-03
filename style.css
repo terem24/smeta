@@ -9879,6 +9879,43 @@ body.dark-mode .sec-analog-badge.active .sec-analog-label {
     border-radius: 10px;
 }
 
+/* Галочки окна выбора разделов выглядят как переключатели из настроек («Автосохранение»):
+   название слева, тумблер справа. Сам input остаётся чекбоксом — на него завязан JS. */
+#share_options_modal_overlay .share-option-card input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    order: 2;
+    margin: 0 0 0 auto !important;
+    width: 34px !important;
+    height: 20px !important;
+    border-radius: 20px;
+    background: #D1D5DB;
+    position: relative;
+    flex-shrink: 0;
+    transition: background .25s;
+}
+#share_options_modal_overlay .share-option-card input[type="checkbox"]::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+    transition: transform .25s;
+}
+#share_options_modal_overlay .share-option-card input[type="checkbox"]:checked {
+    background: var(--primary);
+}
+#share_options_modal_overlay .share-option-card input[type="checkbox"]:checked::before {
+    transform: translateX(14px);
+}
+body.dark-mode #share_options_modal_overlay .share-option-card input[type="checkbox"]:not(:checked) {
+    background: rgba(255, 255, 255, 0.18);
+}
+
 .share-opt-pair {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

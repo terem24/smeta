@@ -4618,7 +4618,7 @@
                 groups.forEach((g, gi) => {
                     const floorRows = [];
                     let fr = null, hint = null;
-                    // Этажей несколько: строка этажа с итогом — кнопка. Первый этаж открыт, остальные свёрнуты.
+                    // Этажей несколько: строка этажа с итогом — кнопка. Все этажи свёрнуты по умолчанию.
                     const setOpen = open => {
                         fr.classList.toggle('open', open);
                         fr.setAttribute('aria-expanded', open ? 'true' : 'false');
@@ -4663,7 +4663,7 @@
                         tr.appendChild(th);
                         tb.appendChild(tr);
                     });
-                    if (fr) setOpen(gi === 0);
+                    if (fr) setOpen(false);
                 });
                 const tot = kpEl('tr', 'kp-tot');
                 tot.appendChild(kpEl('td', null, 'Итого'));

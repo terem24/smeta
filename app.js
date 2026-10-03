@@ -45613,6 +45613,9 @@ const app = {
             else cardScheme.classList.remove('selected');
         }
 
+        const cardHouseUi = document.getElementById('card_opt_house'), chkHouseUi = document.getElementById('share_opt_house');
+        if (cardHouseUi && chkHouseUi) cardHouseUi.classList.toggle('selected', chkHouseUi.checked);
+
         const cardNames = document.getElementById('card_opt_names');
         const chkNamesUi = document.getElementById('share_opt_names');
         if (cardNames && chkNamesUi) cardNames.classList.toggle('selected', chkNamesUi.checked);
@@ -82766,20 +82769,6 @@ function prepareForPrint() {
             printBin.appendChild(eqClone);
         }
 
-        // --- ШАГ 1а: РАЗДЕЛ «ВАШ ДОМ» — перед таблицей оборудования (или в начале,
-        // если оборудование не печатают): город, теплопотери, «вы просили — мы
-        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
-        if (app.kpHouseOn !== false) {
-            let kpHtml = '';
-            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
-            if (kpHtml) {
-                const eqC = document.getElementById('print_eq_clone');
-                const tbl = eqC && eqC.querySelector('.table-responsive');
-                if (tbl) tbl.insertAdjacentHTML('beforebegin', kpHtml);
-                else printBin.insertAdjacentHTML('afterbegin', kpHtml);
-            }
-        }
-
         // --- ШАГ 2: ЛИСТ МОНТАЖНЫХ РАБОТ (Доступно авторизованным пользователям на любом
         // тарифе — Базовый и Профи, только гость не имеет доступа к разделу работ) ---
         let isGuest = !app.state.tgUser;
@@ -82856,6 +82845,21 @@ function prepareForPrint() {
                     hlContainer.classList.add('print-page-break');
                 }
                 printBin.appendChild(hlContainer);
+            }
+        }
+
+        // --- ШАГ 5а: РАЗДЕЛ «ВАШ ДОМ» — отдельным листом после оборудования, работ,
+        // схем и планов, перед гарантией: город, теплопотери, «вы просили — мы
+        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
+        if (app.kpHouseOn !== false) {
+            let kpHtml = '';
+            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
+            if (kpHtml) {
+                const kpPage = document.createElement('div');
+                kpPage.id = 'kp_personal_page';
+                if (printBin.children.length > 0) kpPage.classList.add('print-page-break');
+                kpPage.innerHTML = kpHtml;
+                printBin.appendChild(kpPage);
             }
         }
 
