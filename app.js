@@ -4837,6 +4837,63 @@ const app = {
         };
     },
 
+    // Ближайший аналог STOUT для позиции сметы (id или null). Сначала двойник: позиция
+    // STOUT, у которой эта позиция записана как .rommer, либо артикул STOUT, стоявший
+    // здесь по умолчанию (originalId). Иначе — позиция STOUT из той же группы каталога
+    // с ближайшей ценой.
+    stoutAnalogFor: function (it) {
+        if (!it) return null;
+        const orig = String(it.originalId || '');
+        const kind1 = t => String(t || '').toLowerCase().replace(/[^а-яa-z ]/g, '').trim().split(/\s+/)[0];
+        if (/^S[A-Z]{2}-\d{4}-/.test(orig)) {
+            // Исходный артикул STOUT годится, только если это тот же вид изделия:
+            // у утеплителя originalId бывает артикулом трубы, на которую он надет
+            let found = null;
+            for (const key in catalog) { const arr = catalog[key]; if (Array.isArray(arr)) { found = arr.find(x => x && x.id === orig); if (found) break; } }
+            if (found && kind1(found.name) === kind1(it.name)) return orig;
+        }
+        const ids = [it.id, it.originalId, it.displaySku].filter(Boolean);
+        const price = Number(it.price) || ((Number(it.sum) || 0) / (Number(it.q) || 1));
+        let best = null, bd = Infinity, twin = null;
+        const scan = (arr) => {
+            if (!Array.isArray(arr)) return;
+            const here = arr.some(x => x && (ids.includes(x.id) || (x.rommer && ids.includes(x.rommer.id))));
+            if (!here) return;
+            arr.forEach(x => {
+                if (!x || !this.isStoutItem(x)) return;
+                if (x.rommer && ids.includes(x.rommer.id)) twin = x.id;
+                // Без двойника берём только того же вида (первое слово названия): утеплитель трубой не заменить
+                const w1 = t => String(t || '').toLowerCase().replace(/[^а-яa-z ]/g, '').trim().split(/\s+/)[0];
+                if (!(x.rommer && ids.includes(x.rommer.id)) && w1(x.name) !== w1(it.name)) return;
+                const d = Math.abs((Number(x.price) || 0) - price);
+                if (d < bd) { bd = d; best = x.id; }
+            });
+        };
+        for (const key in catalog) scan(catalog[key]);
+        try { this._getSecRadSeries().forEach(sr => scan(sr.arr)); } catch (e) { }
+        return twin || best;
+    },
+
+    // Заменить на STOUT одну позицию (индекс в списке missing) или все, где есть аналог
+    // (index === null). Ручная замена кладётся в state.swaps — тот же механизм, что у
+    // кнопки «Аналог» и таблицы замены. Возвращает число замен.
+    replaceWithStout: function (index) {
+        const miss = this.stoutShare().missing;
+        const list = index === null ? miss : [miss[index]];
+        if (!this.state.swaps) this.state.swaps = {};
+        let n = 0;
+        list.forEach(it => {
+            const cand = this.stoutAnalogFor(it);
+            if (!cand) return;
+            const keys = (it.instanceKeys && it.instanceKeys.length) ? it.instanceKeys : [it.originalId || it.id];
+            keys.forEach(k => { this.state.swaps[k] = cand; });
+            try { this.logEquipmentSwap(it.originalId || it.id, cand); } catch (e) { }
+            n++;
+        });
+        if (n) { this.render(); this.saveState(); }
+        return n;
+    },
+
     // Метка «Гарантия STOUT» в строке параметров сметы. Только при входе (клиент
     // открывает КП по ссылке без входа), класс no-print — в печать и PDF не идёт.
     // Короткая, чтобы не раздвигать строку: щит и два слова. Состояние говорит
@@ -4862,7 +4919,7 @@ const app = {
         el.tabIndex = 0;
         el.title = ok ? 'Гарантия STOUT на объект доступна: к КП добавится бланк. Нажмите, чтобы узнать подробнее.'
             : 'Чтобы к КП добавился бланк гарантии STOUT, нужно ещё около ' + short(need) + ' оборудования STOUT. Нажмите, чтобы увидеть, что заменить.';
-        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg>Гарантия STOUT`;
+        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg>${ok ? 'Гарантия STOUT' : 'Нет гарантии на объект'}`;
         el.onclick = () => this.showStoutShareInfo();
         el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.showStoutShareInfo(); } };
         const date = ds.querySelector('.param-date');
@@ -4886,7 +4943,8 @@ const app = {
         let acc = 0, n = 0;
         for (const it of sh.missing) { if (acc >= need) break; acc += Number(it.sum) || 0; n++; }
         const word = (k) => { const t = k % 10, h = k % 100; return k + ' ' + ((h >= 11 && h <= 14) ? 'позиций' : t === 1 ? 'позицию' : (t >= 2 && t <= 4) ? 'позиции' : 'позиций'); };
-        const rows = sh.missing.slice(0, 3).map(it => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span></div>`).join('');
+        const rows = sh.missing.slice(0, 3).map((it, i) => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span>${this.stoutAnalogFor(it) ? `<button type="button" class="sg-rep" data-i="${i}">Заменить</button>` : '<span class="sg-noan">нет аналога</span>'}</div>`).join('');
+        const canAll = ok ? 0 : sh.missing.filter(it => this.stoutAnalogFor(it)).length;
         const html = `
             <div class="sg-head">
                 <div class="sg-shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg></div>
@@ -4910,7 +4968,7 @@ const app = {
                 </div>` : `
                 <div class="sg-lead"><b>Не хватает ${rub(need)}.</b>${n ? ` Заменить примерно ${word(n)} на STOUT, начиная с самых дорогих:` : ''}</div>
                 <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. Заменить можно кнопкой «Аналог» у раздела</div>` : ''}</div>`}
-                <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="sg_ok">Понятно</button></div>
+                <div class="calc-dialog-buttons">${canAll ? `<button type="button" class="calc-dialog-btn sg-all" id="sg_all">Заменить все на STOUT (${canAll})</button>` : ''}<button type="button" class="calc-dialog-btn ${canAll ? 'calc-dialog-btn-cancel' : 'calc-dialog-btn-confirm'}" id="sg_ok">${canAll ? 'Закрыть' : 'Понятно'}</button></div>
             </div>`;
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
@@ -4927,6 +4985,16 @@ const app = {
         const onKey = (ev) => { if (ev.key === 'Escape') close(); };
         document.addEventListener('keydown', onKey);
         card.querySelector('#sg_ok').onclick = close;
+        // Замена: окно закрываем сразу и открываем заново — шкала покажет новую долю
+        const redo = (index) => {
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+            const n = this.replaceWithStout(index);
+            this.showStoutShareInfo();
+            if (!n) { const h = document.querySelector('.sg-card .sg-lead'); if (h) h.insertAdjacentHTML('beforeend', ' Аналога STOUT не нашлось.'); }
+        };
+        card.querySelectorAll('.sg-rep').forEach(b => { b.onclick = () => redo(parseInt(b.dataset.i)); });
+        const all = card.querySelector('#sg_all'); if (all) all.onclick = () => redo(null);
         overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
         setTimeout(() => overlay.classList.add('active'), 10);
     },
