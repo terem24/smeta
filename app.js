@@ -46634,7 +46634,8 @@ const app = {
         const zn = f => (f && f.zones) || [];
         const rooms = this.state.rooms || [];
         const wantTp = (this.state.tp1 || 0) + (this.state.tp2 || 0) > 0;
-        const withImg = floors.filter(f => f && f.img);
+        // В смету подложка попадает только именем файла на сервере (imgFile), самой картинки (img) там нет
+        const withImg = floors.filter(f => f && (f.img || f.imgFile));
         const withScale = withImg.filter(f => f.pxPerM);
         const marked = withScale.filter(f => zn(f).length || (f.rads || []).length ||
             (f.fixtures || []).length);
@@ -46667,8 +46668,12 @@ const app = {
         out.push({
             ok: floors.some(f => zn(f).some(z => z.type === 'boiler')),
             t: 'Котельная отмечена на плане',
-            no: 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
-                'компоновка котельной, туда же встаёт коллектор тёплого пола.',
+            no: floors.some(f => zn(f).some(z => z.type !== 'boiler' && /котельн/i.test(z.name || '')))
+                ? 'Зона «Котельная» на плане есть, но обведена как тёплый пол. В редакторе плана ' +
+                  'нажмите у неё «→ котельная» (шаг «Котельная»): по ней собирается ' +
+                  'компоновка котельной, туда же встаёт коллектор тёплого пола.'
+                : 'Обведите помещение котельной (тип зоны «Котельная»): по нему собирается ' +
+                  'компоновка котельной, туда же встаёт коллектор тёплого пола.',
             act: 'plan', btn: 'Открыть план этажей'
         });
         if (wantTp) out.push({
@@ -46882,6 +46887,7 @@ const app = {
             // в комплекте заново незачем — оформление у листа проекта задано
             // жёстко, и снимок отвечает ему точнее любой перерисовки.
             nodeSheets: this.projectNodeSheetUrls(),
+            builtAt: Date.now(),
             // Схемы автоматики и снеготаяния — те же чертежи, что в смете
             artSheets: this.projectArtSheets(),
             // Данные для листа «Общие данные»: показатели по этажам и
