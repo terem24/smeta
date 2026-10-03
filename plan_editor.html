@@ -1990,9 +1990,13 @@ function matchScore(ok, found, nTargets) {
  *  подбирается масштаб. Вынесено из guessScale: отказ обязан называть
  *  причину, а она как раз в том, сколько таких комнат нашлось. */
 function scaleTargets() {
-  return calcRooms.filter(function (r) {
+  var t = calcRooms.filter(function (r) {
     return (+r.floor || 1) === cur + 1 && r.area > 0;
   }).map(function (r) { return r.area; });
+  if (t.length >= 2) return t;
+  // комнат в расчёте нет — площади, напечатанные на самом плане (PDF или прочитанные со скана)
+  var pr = (PDF_AREAS[cur] || []).map(function (l) { return l.m2; });
+  return pr.length >= 2 ? pr : t;
 }
 
 /** Масштаб по площадям комнат расчёта: сколько пикселей плана в метре.
@@ -2443,7 +2447,8 @@ function autoRooms() {
     var inside = labs.filter(function (l) { return pip([l.x, l.y], z.pts); });
     if (inside.length !== 1) return;
     var A = area(z.pts);
-    if (Math.abs(A - inside[0].m2) / inside[0].m2 <= 0.15) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
+    // цифры, прочитанные со снимка, доверия меньше: на размытом фото 8,56 читалось как 8,18
+    if (Math.abs(A - inside[0].m2) / inside[0].m2 <= (inside[0].scan ? 0.08 : 0.15)) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
   });
   lastRoomsNote = printedNote(labs) + scaleNote;
   var NAMES = { tp: 'тёплый пол', boiler: 'котельная', wc: 'санузлы', room: 'прочие помещения' };
@@ -2529,6 +2534,75 @@ function textItemsPx(tc, vp) {
  * Возвращает [{ m2, x, y }] — центр подписи в пикселях подложки.
  */
 var PDF_AREAS = {};
+
+/**
+ * Подписи площадей на СКАНЕ или ФОТО плана (текстового слоя нет): картинку читает
+ * тот же сервис распознавания, что во вкладке «Распознавание». Результат — тот же
+ * [{ m2, x, y }] в пикселях подложки, что дают areaLabelsFrom для PDF, и дальше всё
+ * работает одинаково: масштаб по площадям, выбор контура, площадь в расчёт.
+ * Не ответил за 50 с или ошибся — молча [], план грузится как раньше.
+ */
+var AREA_READ_URL = 'https://proxy.heatcalc.ru/gemini_proxy.php';
+var AREA_READ_PROMPT = 'Ты читаешь чертёж этажа частного дома. Найди на плане подписи площадей помещений: ' +
+  'число с запятой или точкой и единицей м² (м2, кв.м), например «19,16 м²», стоящее внутри контура комнаты. ' +
+  'Не бери размеры в миллиметрах, отметки высот, номера помещений, периметры, общую площадь этажа и числа из ' +
+  'таблиц-экспликаций вне плана. Для каждой подписи верни число (точка вместо запятой) и рамку текста ' +
+  'box_2d = [ymin, xmin, ymax, xmax] в координатах 0–1000 от размеров изображения. ' +
+  'Ответ — только JSON: {"labels":[{"m2":19.16,"box_2d":[210,300,225,350]}]}. Подписей нет — {"labels":[]}.';
+function parseAreaReply(resp, W, H) {
+  var txt = '';
+  try { txt = resp.candidates[0].content.parts[0].text; } catch (e) { return []; }
+  var data = null;
+  try { data = JSON.parse(String(txt).trim().replace(/^```json\s*/i, '').replace(/```$/, '')); } catch (e) { return []; }
+  var list = (data && data.labels) || (Array.isArray(data) ? data : []);
+  var out = [];
+  list.forEach(function (it) {
+    var a = parseFloat(String(it && (it.m2 != null ? it.m2 : it.area)).replace(',', '.'));
+    var b = it && it.box_2d;
+    if (!(a >= 1.5 && a <= 300) || !Array.isArray(b) || b.length < 4) return;
+    var x = (b[1] + b[3]) / 2 / 1000 * W, y = (b[0] + b[2]) / 2 / 1000 * H;
+    if (!isFinite(x) || !isFinite(y)) return;
+    // одна подпись, прочитанная дважды
+    if (out.some(function (q) { return Math.abs(q.m2 - a) < 0.005 && Math.hypot(q.x - x, q.y - y) < 40; })) return;
+    out.push({ m2: a, x: x, y: y, scan: true });      // scan — цифры читала модель, а не текстовый слой: могут быть неточны
+  });
+  return out;
+}
+function readAreaLabelsFromCanvas(c) {
+  return new Promise(function (resolve) {
+    var finished = false;
+    var finish = function (v) { if (!finished) { finished = true; clearTimeout(tm); resolve(v || []); } };
+    var tm = setTimeout(function () { console.warn('[plan_editor] подписи площадей: не дождались ответа'); finish([]); }, 50000);
+    try {
+      hint('Читаю подписи площадей на плане… (до минуты)');
+      var k = Math.min(1, 1600 / Math.max(c.width, c.height));
+      var t = document.createElement('canvas');
+      t.width = Math.round(c.width * k); t.height = Math.round(c.height * k);
+      var g = t.getContext('2d');
+      g.fillStyle = '#fff'; g.fillRect(0, 0, t.width, t.height); g.drawImage(c, 0, 0, t.width, t.height);
+      var b64 = t.toDataURL('image/jpeg', 0.85).split(',')[1];
+      var models = ['gemini-3.5-flash', 'gemini-flash-latest'], mi = 0;
+      var tryNext = function () {
+        fetch(AREA_READ_URL, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            mode: 'recognize', model: models[mi], systemInstruction: AREA_READ_PROMPT,
+            messages: [{ role: 'user', parts: [{ inline_data: { mime_type: 'image/jpeg', data: b64 } },
+              { text: 'Найди подписи площадей помещений на этом плане.' }] }]
+          })
+        }).then(function (r) { return r.json(); }).then(function (resp) {
+          if (resp && resp.error && ++mi < models.length) { tryNext(); return; }
+          finish(resp && !resp.error ? parseAreaReply(resp, c.width, c.height) : []);
+        })['catch'](function (e) {
+          console.warn('[plan_editor] подписи площадей:', e && e.message);
+          if (++mi < models.length) tryNext(); else finish([]);
+        });
+      };
+      tryNext();
+    } catch (e) { console.warn('[plan_editor] подписи площадей:', e && e.message); finish([]); }
+  });
+}
+
 function areaLabelsFrom(items) {
   var out = [], UNIT = /^(?:м\s*[²2]|м\.?\s*кв|кв\.?\s*м)/i;
   // Показатель степени в PDF обычно отдельный кусок «2» чуть выше строки:
@@ -2720,6 +2794,11 @@ function renderPdfPage(page) {
   }, function () { PDF_DIMS[fi] = null; PDF_AREAS[fi] = []; }).then(function () {
     return page.render({ canvasContext: g, viewport: vp }).promise;
   }).then(function () {
+    // Страница-скан (текста почти нет) и подписей площадей не нашли — читаем картинку
+    if (!(PDF_AREAS[fi] && PDF_AREAS[fi].length) && (!PDF_DIMS[fi] || PDF_DIMS[fi].length < 8)) {
+      return readAreaLabelsFromCanvas(c).then(function (labs) { PDF_AREAS[fi] = labs; });
+    }
+  }).then(function () {
     applyPlanCanvas(c);
   });
 }
@@ -2739,8 +2818,15 @@ function loadOne(file) {
         var c = document.createElement('canvas');
         c.width = Math.round(im.width * k); c.height = Math.round(im.height * k);
         c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
-        applyPlanCanvas(c);
-        done();
+        // Подписи площадей на картинке читаем до масштаба: по ним он и подбирается
+        var fi0 = cur;
+        readAreaLabelsFromCanvas(c).then(function (labs) {
+          PDF_AREAS[fi0] = labs;
+          PDF_DIMS[fi0] = null;
+          applyPlanCanvas(c);
+          if (labs.length) hint('<span class=ok>На плане прочитано подписей площадей: ' + labs.length + '.</span> ' + (F().pxPerM ? '' : 'Дальше — масштаб.'));
+          done();
+        });
       };
       im.onerror = function () {
         alert('Не удалось прочитать файл «' + file.name + '».');
@@ -4052,8 +4138,10 @@ function printedNote(labs) {
     else bad.push(ba.toFixed(1).replace('.', ',') + ' вместо ' + String(l.m2).replace('.', ','));
   });
   if (!n) return '';
-  return ' Контуры комнат — по стенам плана; площади сверены с подписями: сошлось ' + ok + ' из ' + n +
-    (bad.length ? ' (контур расходится: ' + bad.join('; ') + ' м²)' : '') + '. В расчёт идут напечатанные площади.';
+  var scan = labs.some(function (l) { return l.scan; });
+  return ' Контуры комнат — по стенам плана; площади сверены с подписями' + (scan ? ' (прочитаны со снимка — сверьте цифры с планом)' : '') +
+    ': сошлось ' + ok + ' из ' + n +
+    (bad.length ? ' (контур расходится: ' + bad.join('; ') + ' м²)' : '') + '. В расчёт идут площади с плана.';
 }
 
 /**
