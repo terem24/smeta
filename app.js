@@ -55292,6 +55292,23 @@ const app = {
         const t = parseFloat(r && r.tpArea);
         return t > 0 ? Math.min(t, a) : a;
     },
+    /**
+     * Площадь под трубой петель комнаты по раскладке плана, м²: длина петель
+     * без подводок × шаг. Пол греет там, где лежит труба, а раскладка оставляет
+     * 100 мм у стен и обходит пучок подводок — у проектировщиков Galf так
+     * покрыто 74–77 % комнаты. null — плана с этой комнатой нет (зона называется
+     * так же, как комната) или зона считана оценкой.
+     */
+    ufhLaidArea: function (r, stepMm) {
+        const geo = this.ufhGeom();
+        const fl = geo && geo.floors[(r && r.floor === 2) ? 1 : 0];
+        if (!fl || !fl.rows) return null;
+        const key = String((r && r.name) || '').trim().toLowerCase();
+        if (!key) return null;
+        const rows = fl.rows.filter(x => String(x.zone || '').trim().toLowerCase() === key);
+        if (!rows.length || rows.some(x => !(x.laidM > 0))) return null;
+        return rows.reduce((a, x) => a + x.laidM, 0) * stepMm / 1000;
+    },
     updRoomTpArea: function (roomId, val) {
         const r = this.state.rooms.find(x => x.id === roomId);
         if (!r) return;
@@ -59598,8 +59615,10 @@ const app = {
                 const zName = z.name || 'зона ' + (++zno);
                 z.loops.forEach((l, li) => {
                     meters += l.m;
+                    // laidM — труба самой петли без подводок (по ней — площадь под трубой);
+                    // у зоны-оценки (est) раскладки нет, считать нечего
                     rows.push({ name: zName + (k > 1 ? ' ' + (li + 1) + '/' + k : ''),
-                        zone: z.name || '', area: z.area / k, m: l.m });
+                        zone: z.name || '', area: z.area / k, m: l.m, laidM: z.est ? null : (l.loopM || null) });
                 });
                 loops += k;
                 area += z.area;
@@ -72847,6 +72866,40 @@ const app = {
 
 
         currentSectionTitle = "3. Приборы отопления";
+        // Хватит ли тёплого пола комнате без радиаторов. Раньше это проверялось
+        // только внутри расчёта радиаторов ниже, и в доме без них (или когда пол
+        // по укрупнённой оценке закрывал всё) комнату не проверял никто. Две ступени:
+        // пол со всей площади (её проверяет и блок радиаторов — там не дублируем)
+        // и пол под трубой по раскладке плана — 100 мм у стен, подводки и места
+        // «без обогрева» остаются без трубы, у проектировщиков Galf так 74–77 %
+        // комнаты. Отдача с м² — по температуре поверхности, СП 60.13330.2020, п. 6.4.8.
+        if (hasTp && this.state.detailedRooms && Array.isArray(this.state.rooms)) {
+            const _radBlock = hasRad && radSecs > 0;
+            this.state.rooms.forEach(r => {
+                if (!(r.sys && r.sys.includes('tp')) || r.sys.includes('rad')) return;
+                const loss = this.getRoomHeatLoss(r);
+                const Q = loss.Q_sum || 0;
+                if (!(Q > 0)) return;
+                const step = (r.floor === 2) ? (this.state.ufhStep2 || 150) : (this.state.ufhStep1 || 150);
+                const qUd = this.ufhQudForRoom(step, loss.Tv, loss.tKind);
+                const qFull = this.roomTpArea(r) * qUd;
+                const fmt = v => v.toFixed(1).replace('.', ',');
+                const label = app._warnRoomLabel(r.id, r.name + ' (Только ТП):');
+                app.tempWarns = app.tempWarns || [];
+                if (Q > qFull) {
+                    if (!_radBlock) app.tempWarns.push(`• ${label} тёплого пола недостаточно для компенсации теплопотерь! Пол отдаст не больше ${Math.round(qFull)} Вт (${Math.round(qUd)} Вт/м² по температуре поверхности, СП 60.13330.2020, п. 6.4.8) при теплопотерях ${Math.round(Q)} Вт. Нехватка мощности: <b>${Math.round(Q - qFull)} Вт</b>. Рекомендуется добавить радиатор или улучшить утепление стен.`);
+                    return;
+                }
+                const laidA = this.ufhLaidArea(r, step);
+                if (!(laidA > 0)) return;
+                const qLaid = laidA * qUd;
+                // площадь под трубой — по раскладке с сеткой 10 см; разницу меньше
+                // 5 % она не различает, тревогу из-за неё не поднимаем
+                if (Q - qLaid < Math.max(10, Q * 0.05)) return;
+                const fix = step > 100 ? 'уменьшите шаг укладки или добавьте радиатор' : 'добавьте радиатор';
+                app.tempWarns.push(`• ${label} по раскладке плана петли лежат на ${fmt(laidA)} м² из ${fmt(this.roomTpArea(r))} м² (у стен 100 мм без трубы, подводки) — пол отдаст около ${Math.round(qLaid)} Вт при теплопотерях ${Math.round(Q)} Вт. Нехватка: <b>${Math.round(Q - qLaid)} Вт</b> — ${fix}. Отдача ${Math.round(qUd)} Вт/м² под трубой — по температуре поверхности (СП 60.13330.2020, п. 6.4.8).`);
+            });
+        }
         if (hasRad && radSecs > 0) {
             let totalRadCount = 0;
             // Обвязка считается отдельно по факту подключения КАЖДОГО поставленного радиатора
