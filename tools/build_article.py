@@ -260,6 +260,49 @@ def wants_dom_cta(slug, meta):
     return meta.get('cluster_key') not in NO_DOM_CLUSTERS and slug not in NO_DOM_SLUGS
 
 
+def for_installers(meta):
+    """Статья адресована подрядчику (audience pro, в том числе кластер biz)."""
+    return meta.get('audience') == 'pro' or meta.get('cluster_key') == 'biz'
+
+
+def lead_block(slug, meta):
+    """Призыв в конце статьи.
+
+    Хозяину дома — форма заявки на монтаж. Подрядчику эта форма не нужна и вредна:
+    он её не заполнит, а заполнит — получится заявка от мастера в ленту мастеров.
+    Ему — калькулятор, регистрация в нём и есть цель статьи. Метка utm_* уходит
+    в источник регистрации (app.captureUTM): видно, какая статья привела мастера.
+    """
+    if for_installers(meta):
+        return '''        <div class="callout">
+            <p>
+                <strong>Считайте объекты в калькуляторе.</strong> Смета по актуальным ценам,
+                коммерческое предложение клиенту ссылкой или в PDF, договор подряда и акты —
+                из одной сметы. Регистрация бесплатная, занимает минуту.
+            </p>
+        </div>
+
+        <a class="cta" href="/?utm_source=article&amp;utm_medium=seo&amp;utm_campaign=%s">
+            Попробовать калькулятор бесплатно
+            <small>Смета, КП и документы для монтажника</small>
+        </a>
+''' % slug
+    return '''        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="%s?src=%s#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+''' % (LEAD_PAGE, slug)
+
+
 def dom_cta_block(slug, meta):
     if not wants_dom_cta(slug, meta):
         return ''
@@ -359,6 +402,7 @@ def build(slug, publish=False):
         lead=art['lead'],
         body=body,
         dom_cta=dom_cta_block(slug, meta),
+        lead_block=lead_block(slug, meta),
         faq=render_faq(art['faq']),
         related=related_links(meta, schedule, art, publish),
         # Метка источника: по ней видно, какая статья привела заявку. Без неё
@@ -487,20 +531,7 @@ TEMPLATE = '''<!DOCTYPE html>
 
 {faq}
 
-        <div class="callout">
-            <p>
-                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
-                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
-                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
-                из калькулятора можно приложить — тогда разговор будет короче.
-            </p>
-        </div>
-
-        <a class="cta" href="{lead_page}#zayavka">
-            Заказать монтаж в СПб и области
-            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
-        </a>
-
+{lead_block}
         <div class="author">
             <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
                  alt="Дмитрий Ибатуллин, автор HeatCalc.ru">

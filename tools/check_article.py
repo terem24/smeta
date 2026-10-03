@@ -103,6 +103,12 @@ def check(slug, published=False):
     from build_article import wants_dom_cta
     meta = next((i for i in json.load(io.open(os.path.join(ROOT, 'content', 'schedule.json'),
                                               encoding='utf-8'))['items'] if i['slug'] == slug), {})
+    from build_article import for_installers
+    inst = for_installers(meta)
+    if inst and ('utm_campaign=%s' % slug) not in h:
+        bad.append('в статье для монтажника нет призыва в калькулятор')
+    if inst and '#zayavka' in h:
+        bad.append('в статье для монтажника форма заявки заказчика')
     has_dom = ('href="/dom/?src=%s"' % slug) in h
     if wants_dom_cta(slug, meta) and not has_dom:
         bad.append('нет призыва на /dom/ с меткой ?src=%s' % slug)
