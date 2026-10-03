@@ -19241,14 +19241,15 @@ button.lk-icon-btn:hover { background: var(--primary-light); color: var(--primar
    (итоги в шапке, плашка «Дешевле на N %», вкладка «Почему дешевле», метка
    «Гарантия STOUT», плашка «ПРОФИ», шкала заполнения, кнопка «Сохранить»).
    Темы «Яндекс», «бренд» и «магазин» оформлены отдельно и не затрагиваются.
-   Красный у ROMMER — для заливок и ключевых акцентов; в тексте заголовков он
-   остаётся нейтральным (владелец 24.09.2026: «красного слишком много»).
+   У ROMMER акцент нейтральный графитовый, не красный (владелец 03.10.2026:
+   «слишком красный»; тот же #3E3D40, что у темы бренда ROMMER). Красный остался
+   только у логотипа и у статусов (точка «не сохранено»).
    ======================================================================== */
 @media screen {
     body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) { --primary: #203F6F; --primary-light: #EEF3F9; }
     body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).dark-mode { --primary: #4A7CC2; --primary-light: #16233A; }
-    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer { --primary: #AF1F17; --primary-light: #F5F1F0; }
-    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer.dark-mode { --primary: #D14343; --primary-light: #262020; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer { --primary: #3E3D40; --primary-light: #F1F1F2; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer.dark-mode { --primary: #75757F; --primary-light: #232326; }
 
     /* Итоги в шапке: цифры одного нейтрального цвета, выделено только «Мне» */
     body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #anim_eq_sum,
