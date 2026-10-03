@@ -73,6 +73,20 @@
    "words": 847
   },
   {
+   "slug": "dogovor-podryada-zashchita-montazhnika",
+   "title": "Договор подряда на монтаж: что вписать, чтобы защитить себя",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "договор подряда на монтаж отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "шаблон договора из сметы",
+   "status": "queued",
+   "date": "2026-10-07",
+   "published_at": null,
+   "words": 705
+  },
+  {
    "slug": "polipropilen-dlya-otopleniya",
    "title": "Полипропилен для отопления: плюсы и границы",
    "cluster": "Трубы и разводка",
@@ -85,6 +99,20 @@
    "date": "2026-10-08",
    "published_at": null,
    "words": 746
+  },
+  {
+   "slug": "akt-skrytyh-rabot-otopleniya",
+   "title": "Акт скрытых работ на отопление и тёплый пол: как составить",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "акт скрытых работ отопление",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "акты из сметы",
+   "status": "queued",
+   "date": "2026-10-09",
+   "published_at": null,
+   "words": 546
   },
   {
    "slug": "shema-otopleniya-chastnogo-doma",
@@ -101,6 +129,20 @@
    "words": 698
   },
   {
+   "slug": "kp-na-montazh-otopleniya",
+   "title": "Коммерческое предложение на монтаж отопления: из чего собрать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "коммерческое предложение на монтаж отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "КП ссылкой и версии",
+   "status": "queued",
+   "date": "2026-10-12",
+   "published_at": null,
+   "words": 511
+  },
+  {
    "slug": "vodosnabzhenie-chastnogo-doma",
    "title": "Водоснабжение частного дома: с чего начать",
    "cluster": "Водоснабжение и скважина",
@@ -113,6 +155,20 @@
    "date": "2026-10-13",
    "published_at": null,
    "words": 676
+  },
+  {
+   "slug": "nacenka-montazhnika",
+   "title": "Наценка монтажника: сколько закладывать на оборудование и работы",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "наценка на оборудование монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "вкладка «Деньги»",
+   "status": "queued",
+   "date": "2026-10-14",
+   "published_at": null,
+   "words": 553
   },
   {
    "slug": "boyler-kosvennogo-nagreva",
@@ -129,6 +185,20 @@
    "words": 707
   },
   {
+   "slug": "avans-i-oplata-po-etapam",
+   "title": "Аванс и оплата по этапам: как не работать в долг",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "аванс по договору подряда монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "этапы оплаты из сметы",
+   "status": "queued",
+   "date": "2026-10-16",
+   "published_at": null,
+   "words": 510
+  },
+  {
    "slug": "podbor-tsirkulyatsionnogo-nasosa",
    "title": "Подбор циркуляционного насоса: напор и расход",
    "cluster": "Насосы и гидравлика",
@@ -141,6 +211,20 @@
    "date": "2026-10-17",
    "published_at": null,
    "words": 661
+  },
+  {
+   "slug": "dopolnitelnye-raboty-po-hodu-montazha",
+   "title": "Дополнительные работы по ходу монтажа: как оформить и получить деньги",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "дополнительные работы договор подряда",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "порядок допсоглашения",
+   "status": "queued",
+   "date": "2026-10-19",
+   "published_at": null,
+   "words": 537
   },
   {
    "slug": "datchiki-protechki",
@@ -157,6 +241,20 @@
    "words": 647
   },
   {
+   "slug": "zakazchik-ne-podpisyvaet-akt",
+   "title": "Заказчик не подписывает акт: что делать подрядчику",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "заказчик не подписывает акт выполненных работ",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "акт сдачи-приёмки из сметы",
+   "status": "queued",
+   "date": "2026-10-21",
+   "published_at": null,
+   "words": 529
+  },
+  {
    "slug": "teplovoy-nasos-dlya-doma",
    "title": "Тепловой насос: работает ли в наши морозы",
    "cluster": "Без газа: электричество и тепловые насосы",
@@ -169,6 +267,20 @@
    "date": "2026-10-22",
    "published_at": null,
    "words": 699
+  },
+  {
+   "slug": "samozanyatyy-ili-ip-montazhnik",
+   "title": "Самозанятый или ИП: как монтажнику продавать оборудование и работы",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "самозанятый монтажник оборудование",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "раздельные позиции оборудования и работ",
+   "status": "queued",
+   "date": "2026-10-23",
+   "published_at": null,
+   "words": 520
   },
   {
    "slug": "septik-ili-vygrebnaya-yama",
@@ -197,6 +309,20 @@
    "date": "2026-10-27",
    "published_at": null,
    "words": 578
+  },
+  {
+   "slug": "pervyy-zvonok-i-vyezd-na-zamer",
+   "title": "Первый звонок и выезд на замер: что спросить у заказчика",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "выезд на замер отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "список вопросов заказчику",
+   "status": "queued",
+   "date": "2026-10-28",
+   "published_at": null,
+   "words": 696
   },
   {
    "slug": "vodosnabzhenie-doma-lenoblast",
@@ -255,6 +381,20 @@
    "words": 762
   },
   {
+   "slug": "zamer-dlya-rascheta-chto-snyat",
+   "title": "Замер дома для расчёта: что снять и сфотографировать, чтобы не ездить дважды",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "замер дома для расчёта отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "исходные данные калькулятора",
+   "status": "queued",
+   "date": "2026-11-04",
+   "published_at": null,
+   "words": 557
+  },
+  {
    "slug": "zamena-radiatorov-v-dome",
    "title": "Замена радиаторов: что считать заранее",
    "cluster": "Радиаторы и приборы",
@@ -295,6 +435,20 @@
    "date": "2026-11-10",
    "published_at": null,
    "words": 593
+  },
+  {
+   "slug": "kak-otvechat-na-dorogo",
+   "title": "Дорого: как отвечать на возражение по цене",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "как отвечать клиенту дорого монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "разбор состава цены",
+   "status": "queued",
+   "date": "2026-11-11",
+   "published_at": null,
+   "words": 580
   },
   {
    "slug": "nasosnaya-stantsiya",
@@ -339,6 +493,20 @@
    "words": 582
   },
   {
+   "slug": "smeta-konkurenta-kak-sravnit",
+   "title": "Заказчик принёс смету конкурента: как сравнить и что ответить",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "сравнить сметы на отопление",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "таблица сравнения смет",
+   "status": "queued",
+   "date": "2026-11-18",
+   "published_at": null,
+   "words": 551
+  },
+  {
    "slug": "komnatnyy-termostat",
    "title": "Комнатный термостат: проводной или беспроводной",
    "cluster": "Автоматика и умный дом",
@@ -379,6 +547,20 @@
    "date": "2026-11-24",
    "published_at": null,
    "words": 518
+  },
+  {
+   "slug": "sebestoimost-chasa-brigady",
+   "title": "Себестоимость рабочего дня бригады: как посчитать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "себестоимость работ монтажника",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "накладные из вкладки «Деньги»",
+   "status": "queued",
+   "date": "2026-11-25",
+   "published_at": null,
+   "words": 538
   },
   {
    "slug": "stoimost-ekspluatatsii",
@@ -423,6 +605,20 @@
    "words": 622
   },
   {
+   "slug": "zimnyaya-zagruzka-brigady",
+   "title": "Зимняя загрузка бригады: чем занять декабрь–февраль",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "сезонность монтажа отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "календарь сезона",
+   "status": "queued",
+   "date": "2026-12-02",
+   "published_at": null,
+   "words": 575
+  },
+  {
    "slug": "gazovyy-kotel-dlya-doma",
    "title": "Газовый котёл: настенный или напольный",
    "cluster": "Котёл и котельная",
@@ -465,6 +661,20 @@
    "words": 492
   },
   {
+   "slug": "krasnye-flagi-zakazchika",
+   "title": "Когда отказаться от объекта: красные флаги заказчика",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "сложные заказчики монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "чек-лист перед договором",
+   "status": "queued",
+   "date": "2026-12-09",
+   "published_at": null,
+   "words": 630
+  },
+  {
    "slug": "odnotrubnaya-leningradka",
    "title": "Однотрубная система «ленинградка»: где ещё жива",
    "cluster": "Схемы отопления",
@@ -505,6 +715,20 @@
    "date": "2026-12-15",
    "published_at": null,
    "words": 492
+  },
+  {
+   "slug": "itogi-goda-montazhnika",
+   "title": "Итоги года монтажника: что посчитать до 31 декабря",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "итоги года бизнес монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "показатели из кабинета",
+   "status": "queued",
+   "date": "2026-12-16",
+   "published_at": null,
+   "words": 696
   },
   {
    "slug": "obratnyy-klapan-v-otoplenii",
@@ -563,6 +787,20 @@
    "words": 585
   },
   {
+   "slug": "nalogovye-rezhimy-montazhnika",
+   "title": "Налоговые режимы монтажника: из чего выбирать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "налоги монтажника ип",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "сравнение режимов",
+   "status": "queued",
+   "date": "2026-12-23",
+   "published_at": null,
+   "words": 554
+  },
+  {
    "slug": "kanalizatsiya-v-chastnom-dome",
    "title": "Канализация в частном доме: схема и уклоны",
    "cluster": "Канализация и вентиляция",
@@ -619,6 +857,20 @@
    "words": 684
   },
   {
+   "slug": "pasport-sistemy-otopleniya-zakazchiku",
+   "title": "Паспорт системы отопления: что передать заказчику при сдаче",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "паспорт системы отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "состав комплекта документов",
+   "status": "queued",
+   "date": "2026-12-30",
+   "published_at": null,
+   "words": 483
+  },
+  {
    "slug": "montazh-teplogo-pola-svoimi-rukami",
    "title": "Монтаж тёплого пола: порядок работ и ошибки",
    "cluster": "Тёплый пол",
@@ -659,6 +911,20 @@
    "date": "2027-01-05",
    "published_at": null,
    "words": 653
+  },
+  {
+   "slug": "instruktsiya-po-ekspluatatsii",
+   "title": "Инструкция по эксплуатации для заказчика: что в неё писать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "инструкция по эксплуатации отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "памятка заказчику",
+   "status": "queued",
+   "date": "2027-01-06",
+   "published_at": null,
+   "words": 535
   },
   {
    "slug": "kakie-truby-dlya-otopleniya",
@@ -717,6 +983,20 @@
    "words": 574
   },
   {
+   "slug": "garantiynyy-talon-montazhnika",
+   "title": "Гарантийный талон монтажника: содержание и порядок выдачи",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "гарантийный талон на монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "бланк гарантии",
+   "status": "queued",
+   "date": "2027-01-13",
+   "published_at": null,
+   "words": 499
+  },
+  {
    "slug": "retsirkulyatsiya-gvs",
    "title": "Рециркуляция ГВС: зачем и сколько стоит",
    "cluster": "ГВС и бойлеры",
@@ -757,6 +1037,20 @@
    "date": "2027-01-19",
    "published_at": null,
    "words": 650
+  },
+  {
+   "slug": "akt-promyvki-i-teplovogo-ispytaniya",
+   "title": "Акты промывки и теплового испытания: когда и как",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "акт промывки системы отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "акты из сметы",
+   "status": "queued",
+   "date": "2027-01-20",
+   "published_at": null,
+   "words": 572
   },
   {
    "slug": "elektroostoplenie-stoimost",
@@ -801,6 +1095,20 @@
    "words": 631
   },
   {
+   "slug": "ispolnitelnaya-skhema-sistemy",
+   "title": "Исполнительная схема: как нарисовать и зачем хранить",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "исполнительная схема отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "схема из калькулятора",
+   "status": "queued",
+   "date": "2027-01-27",
+   "published_at": null,
+   "words": 551
+  },
+  {
    "slug": "inzhenerka-dlya-stroiteley-spb",
    "title": "Инженерка для строителей в СПб: подряд и сроки",
    "cluster": "Санкт-Петербург и область",
@@ -841,6 +1149,20 @@
    "date": "2027-02-02",
    "published_at": null,
    "words": 547
+  },
+  {
+   "slug": "pretenziya-zakazchika-poryadok",
+   "title": "Претензия заказчика: порядок действий подрядчика",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "претензия по монтажу отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "порядок ответа",
+   "status": "queued",
+   "date": "2027-02-03",
+   "published_at": null,
+   "words": 698
   },
   {
    "slug": "polotentsesushitel-v-dome",
@@ -885,6 +1207,20 @@
    "words": 592
   },
   {
+   "slug": "protechka-kto-vinovat",
+   "title": "Протечка после монтажа: как установить, кто виноват",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "протечка после монтажа отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "признаки по месту течи",
+   "status": "queued",
+   "date": "2027-02-10",
+   "published_at": null,
+   "words": 575
+  },
+  {
    "slug": "filtry-dlya-vody-v-dome",
    "title": "Фильтры для воды: какие ставить на вводе",
    "cluster": "Водоснабжение и скважина",
@@ -925,6 +1261,20 @@
    "date": "2027-02-16",
    "published_at": null,
    "words": 599
+  },
+  {
+   "slug": "zamerzshaya-sistema-ekspluatatsiya-ili-brak",
+   "title": "Разморозка системы зимой: эксплуатация или брак",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "разморозка системы отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "причины разморозки",
+   "status": "queued",
+   "date": "2027-02-17",
+   "published_at": null,
+   "words": 574
   },
   {
    "slug": "gsm-modul-dlya-kotla",
@@ -969,6 +1319,20 @@
    "words": 757
   },
   {
+   "slug": "garantiynyy-vyezd-poryadok",
+   "title": "Гарантийный выезд: как организовать и не терять деньги",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "гарантийный ремонт отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "порядок и учёт выездов",
+   "status": "queued",
+   "date": "2027-02-24",
+   "published_at": null,
+   "words": 602
+  },
+  {
    "slug": "smeta-na-otoplenie-obrazets",
    "title": "Смета на отопление: образец и разделы",
    "cluster": "Деньги: сметы, цены, приёмка",
@@ -1009,6 +1373,20 @@
    "date": "2027-03-02",
    "published_at": null,
    "words": 536
+  },
+  {
+   "slug": "ekspertiza-v-spore-o-kachestve",
+   "title": "Экспертиза в споре о качестве монтажа",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "экспертиза качества монтажа отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "как проходит экспертиза",
+   "status": "queued",
+   "date": "2027-03-03",
+   "published_at": null,
+   "words": 568
   },
   {
    "slug": "dymohod-koaksialnyy-ili-razdelnyy",
@@ -1053,6 +1431,20 @@
    "words": 826
   },
   {
+   "slug": "debitorka-zakazchik-ne-platit",
+   "title": "Заказчик не платит: претензия и проценты по ст. 395 ГК",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "заказчик не платит за монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "расчёт процентов",
+   "status": "queued",
+   "date": "2027-03-10",
+   "published_at": null,
+   "words": 583
+  },
+  {
    "slug": "shema-s-gidrostrelkoy",
    "title": "Схема с гидрострелкой и коллектором",
    "cluster": "Схемы отопления",
@@ -1093,6 +1485,20 @@
    "date": "2027-03-16",
    "published_at": null,
    "words": 1180
+  },
+  {
+   "slug": "dosudebnaya-pretenziya-i-sud",
+   "title": "Иск к заказчику: что подготовить",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "иск к заказчику подряд",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "пакет документов",
+   "status": "queued",
+   "date": "2027-03-17",
+   "published_at": null,
+   "words": 618
   },
   {
    "slug": "shum-v-sisteme-otopleniya",
@@ -1137,6 +1543,20 @@
    "words": 973
   },
   {
+   "slug": "skidka-za-nedostatki-trebovanie",
+   "title": "Заказчик требует скидку за недостатки: как отвечать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "заказчик требует снижения цены подряд",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "варианты ответа",
+   "status": "queued",
+   "date": "2027-03-24",
+   "published_at": null,
+   "words": 837
+  },
+  {
    "slug": "rekuperator-dlya-doma",
    "title": "Рекуператор: сколько экономит на отоплении",
    "cluster": "Канализация и вентиляция",
@@ -1177,6 +1597,20 @@
    "date": "2027-03-30",
    "published_at": null,
    "words": 626
+  },
+  {
+   "slug": "otkaz-ot-dogovora-po-vine-zakazchika",
+   "title": "Расторжение договора по вине заказчика: как оформить",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "расторжение договора подряда",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "порядок расторжения",
+   "status": "queued",
+   "date": "2027-03-31",
+   "published_at": null,
+   "words": 801
   },
   {
    "slug": "teplyy-pol-pod-laminat",
@@ -1235,6 +1669,20 @@
    "words": 635
   },
   {
+   "slug": "vesennyaya-zagruzka-i-zapis",
+   "title": "Весенний сезон: как принимать заказы без срывов",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "запись на монтаж отопления весной",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "планирование загрузки",
+   "status": "queued",
+   "date": "2027-04-07",
+   "published_at": null,
+   "words": 853
+  },
+  {
    "slug": "diametr-trub-otopleniya",
    "title": "Диаметр труб отопления: как посчитать",
    "cluster": "Трубы и разводка",
@@ -1277,6 +1725,20 @@
    "words": 906
   },
   {
+   "slug": "grafik-obekta-i-logistika",
+   "title": "График объекта и логистика материалов",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "график монтажа отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "этапы и закупки",
+   "status": "queued",
+   "date": "2027-04-14",
+   "published_at": null,
+   "words": 793
+  },
+  {
    "slug": "obvyazka-boylera",
    "title": "Обвязка бойлера: что входит",
    "cluster": "ГВС и бойлеры",
@@ -1317,6 +1779,20 @@
    "date": "2027-04-20",
    "published_at": null,
    "words": 893
+  },
+  {
+   "slug": "sklad-oborudovaniya-na-obekte",
+   "title": "Хранение оборудования на объекте до монтажа",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "хранение оборудования на стройке",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "правила хранения",
+   "status": "queued",
+   "date": "2027-04-21",
+   "published_at": null,
+   "words": 793
   },
   {
    "slug": "infrakrasnye-obogrevateli",
@@ -1375,6 +1851,20 @@
    "words": 917
   },
   {
+   "slug": "kontrol-kachestva-chek-list-brigadira",
+   "title": "Чек-лист бригадира: контроль качества по этапам",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "контроль качества монтажа отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "чек-лист этапов",
+   "status": "queued",
+   "date": "2027-04-28",
+   "published_at": null,
+   "words": 821
+  },
+  {
    "slug": "kotelnaya-pod-klyuch-spb",
    "title": "Котельная под ключ в СПб и области",
    "cluster": "Санкт-Петербург и область",
@@ -1415,6 +1905,20 @@
    "date": "2027-05-04",
    "published_at": null,
    "words": 600
+  },
+  {
+   "slug": "fotootchet-po-obektu",
+   "title": "Фотоотчёт по объекту: что снимать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "фотофиксация монтажа",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "список кадров",
+   "status": "queued",
+   "date": "2027-05-05",
+   "published_at": null,
+   "words": 724
   },
   {
    "slug": "termogolovka-na-radiator",
@@ -1459,6 +1963,20 @@
    "words": 983
   },
   {
+   "slug": "instrument-brigady-chto-nuzhno",
+   "title": "Инструмент и оснастка бригады: что окупается",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "инструмент для монтажа отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "набор по видам работ",
+   "status": "queued",
+   "date": "2027-05-12",
+   "published_at": null,
+   "words": 642
+  },
+  {
    "slug": "skvazhina-ili-kolodets",
    "title": "Скважина или колодец: что выбрать",
    "cluster": "Водоснабжение и скважина",
@@ -1499,6 +2017,20 @@
    "date": "2027-05-18",
    "published_at": null,
    "words": 928
+  },
+  {
+   "slug": "poisk-i-obuchenie-pomoshchnika",
+   "title": "Помощник монтажника: где искать и как обучать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "как найти помощника монтажника",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "план обучения",
+   "status": "queued",
+   "date": "2027-05-19",
+   "published_at": null,
+   "words": 614
   },
   {
    "slug": "opentherm-ili-rele",
@@ -1543,6 +2075,20 @@
    "words": 837
   },
   {
+   "slug": "oplata-brigady-i-motivatsiya",
+   "title": "Оплата бригады: сдельная, почасовая, процент",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "оплата труда монтажников",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "вкладка «Деньги»",
+   "status": "queued",
+   "date": "2027-05-26",
+   "published_at": null,
+   "words": 591
+  },
+  {
    "slug": "kak-prinimat-rabotu",
    "title": "Как принимать работу: чек-лист и акты",
    "cluster": "Деньги: сметы, цены, приёмка",
@@ -1585,6 +2131,20 @@
    "words": 611
   },
   {
+   "slug": "dogovor-s-brigadoy-gph",
+   "title": "Договор с бригадой: ГПХ, подряд, что вписать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "договор с бригадой монтажников",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "пункты договора",
+   "status": "queued",
+   "date": "2027-06-02",
+   "published_at": null,
+   "words": 738
+  },
+  {
    "slug": "temperaturnyy-grafik-80-60",
    "title": "Температурный график 80/60 и 55/45",
    "cluster": "Радиаторы и приборы",
@@ -1625,6 +2185,20 @@
    "date": "2027-06-08",
    "published_at": null,
    "words": 747
+  },
+  {
+   "slug": "ohrana-truda-na-obekte",
+   "title": "Охрана труда на объекте частного дома",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "охрана труда монтажник",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "инструктаж и СИЗ",
+   "status": "queued",
+   "date": "2027-06-09",
+   "published_at": null,
+   "words": 641
   },
   {
    "slug": "reduktor-davleniya-vody",
@@ -1683,6 +2257,20 @@
    "words": 933
   },
   {
+   "slug": "strahovanie-otvetstvennosti-montazhnika",
+   "title": "Страхование ответственности: нужно ли монтажнику",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "страхование ответственности подрядчика",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "что покрывает полис",
+   "status": "queued",
+   "date": "2027-06-16",
+   "published_at": null,
+   "words": 646
+  },
+  {
    "slug": "pogodozavisimaya-avtomatika",
    "title": "Погодозависимая автоматика: сколько экономит",
    "cluster": "Автоматика и умный дом",
@@ -1723,6 +2311,20 @@
    "date": "2027-06-22",
    "published_at": null,
    "words": 938
+  },
+  {
+   "slug": "otzyvy-i-reputatsiya-montazhnika",
+   "title": "Отзывы заказчиков: как собирать и отвечать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "отзывы о монтажнике",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "шаблоны ответов",
+   "status": "queued",
+   "date": "2027-06-23",
+   "published_at": null,
+   "words": 671
   },
   {
    "slug": "oshibki-pri-zakaze-inzhenerki",
@@ -1767,6 +2369,20 @@
    "words": 633
   },
   {
+   "slug": "avito-i-yandeks-uslugi-dlya-montazhnika",
+   "title": "Авито и Яндекс Услуги: как получать заказы",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "заказы на монтаж отопления авито",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "карточка услуги",
+   "status": "queued",
+   "date": "2027-06-30",
+   "published_at": null,
+   "words": 688
+  },
+  {
    "slug": "radiatornyy-kollektor",
    "title": "Радиаторный коллектор: лучевая разводка",
    "cluster": "Радиаторы и приборы",
@@ -1807,6 +2423,20 @@
    "date": "2027-07-06",
    "published_at": null,
    "words": 1016
+  },
+  {
+   "slug": "karta-v-yandeks-kartah-montazhnik",
+   "title": "Карточка организации в Яндексе: что заполнить",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "яндекс карты монтаж отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "чек-лист карточки",
+   "status": "queued",
+   "date": "2027-07-07",
+   "published_at": null,
+   "words": 542
   },
   {
    "slug": "letniy-vodoprovod",
@@ -1851,6 +2481,20 @@
    "words": 784
   },
   {
+   "slug": "rabota-s-dizaynerami-i-prorabami",
+   "title": "Работа с дизайнерами и прорабами: партнёрская схема",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "партнёрство с дизайнерами монтаж",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "условия партнёрства",
+   "status": "queued",
+   "date": "2027-07-14",
+   "published_at": null,
+   "words": 661
+  },
+  {
    "slug": "snegotayanie-i-obogrev",
    "title": "Снеготаяние дорожек и обогрев кровли",
    "cluster": "Автоматика и умный дом",
@@ -1893,6 +2537,20 @@
    "words": 855
   },
   {
+   "slug": "subpodryad-u-zastroyshchika",
+   "title": "Субподряд у застройщика: условия и риски",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "субподряд отопление застройщик",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "пункты договора субподряда",
+   "status": "queued",
+   "date": "2027-07-21",
+   "published_at": null,
+   "words": 631
+  },
+  {
    "slug": "kak-proverit-smetu-podryadchika",
    "title": "Как проверить смету подрядчика",
    "cluster": "Деньги: сметы, цены, приёмка",
@@ -1931,6 +2589,20 @@
    "data_block": "что стоит в нашей смете",
    "status": "queued",
    "date": "2027-07-27",
+   "published_at": null,
+   "words": 667
+  },
+  {
+   "slug": "skidki-postavshchika-i-usloviya-zakupki",
+   "title": "Условия закупки: скидки, отсрочка, возвраты",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "условия поставщика оборудования отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "скидки по брендам",
+   "status": "queued",
+   "date": "2027-07-28",
    "published_at": null,
    "words": 667
   },
@@ -1977,6 +2649,20 @@
    "words": 1180
   },
   {
+   "slug": "rassrochka-dlya-zakazchika",
+   "title": "Рассрочка для заказчика: варианты и риски",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "рассрочка на монтаж отопления",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "схемы оплаты",
+   "status": "queued",
+   "date": "2027-08-04",
+   "published_at": null,
+   "words": 583
+  },
+  {
    "slug": "razvodka-vody-po-domu",
    "title": "Разводка воды по дому: коллекторная и тройниковая",
    "cluster": "Водоснабжение и скважина",
@@ -2017,6 +2703,20 @@
    "date": "2027-08-10",
    "published_at": null,
    "words": 792
+  },
+  {
+   "slug": "uchet-obektov-i-denezhnyy-potok",
+   "title": "Учёт объектов: как видеть деньги по каждому",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "учёт объектов монтажника",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "таблица по объектам",
+   "status": "queued",
+   "date": "2027-08-11",
+   "published_at": null,
+   "words": 552
   },
   {
    "slug": "vodyanoy-ili-elektricheskiy-teplyy-pol",
@@ -2061,6 +2761,20 @@
    "words": 550
   },
   {
+   "slug": "rezerv-na-garantiyu",
+   "title": "Резерв на гарантию: сколько откладывать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "гарантийный резерв подрядчик",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "расчёт по истории выездов",
+   "status": "queued",
+   "date": "2027-08-18",
+   "published_at": null,
+   "words": 696
+  },
+  {
    "slug": "skorost-vody-v-trubah",
    "title": "Скорость воды в трубах: норма и шум",
    "cluster": "Трубы и разводка",
@@ -2103,6 +2817,20 @@
    "words": 877
   },
   {
+   "slug": "podgotovka-k-sezonu-dlya-montazhnika",
+   "title": "Подготовка к осеннему сезону: договоры, склад, бригада",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "подготовка к сезону монтажника",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "план подготовки",
+   "status": "queued",
+   "date": "2027-08-25",
+   "published_at": null,
+   "words": 606
+  },
+  {
    "slug": "elektrika-kotelnoy",
    "title": "Электрика котельной: щит и заземление",
    "cluster": "Автоматика и умный дом",
@@ -2141,6 +2869,20 @@
    "data_block": "сроки и толщина",
    "status": "queued",
    "date": "2027-08-31",
+   "published_at": null,
+   "words": 631
+  },
+  {
+   "slug": "servisnyy-dogovor-i-povtornye-klienty",
+   "title": "Сервисный договор: как получать повторные заказы",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "сервисное обслуживание котла договор",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "состав обслуживания",
+   "status": "queued",
+   "date": "2027-09-01",
    "published_at": null,
    "words": 631
   },
@@ -2187,6 +2929,20 @@
    "words": 959
   },
   {
+   "slug": "peregovory-i-pismennaya-forma",
+   "title": "Переписка как доказательство: что фиксировать",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "переписка в мессенджере как доказательство",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "что сохранять",
+   "status": "queued",
+   "date": "2027-09-08",
+   "published_at": null,
+   "words": 560
+  },
+  {
    "slug": "kollektor-vodosnabzheniya",
    "title": "Коллектор водоснабжения: зачем он нужен",
    "cluster": "Водоснабжение и скважина",
@@ -2227,6 +2983,20 @@
    "date": "2027-09-14",
    "published_at": null,
    "words": 650
+  },
+  {
+   "slug": "tehzadanie-i-spetsifikatsiya-oborudovaniya",
+   "title": "Техзадание и спецификация: что согласовывать до закупки",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "спецификация оборудования для заказчика",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "спецификация из сметы",
+   "status": "queued",
+   "date": "2027-09-15",
+   "published_at": null,
+   "words": 518
   },
   {
    "slug": "konvektory-ili-radiatory",
@@ -2271,6 +3041,20 @@
    "words": 965
   },
   {
+   "slug": "soglasie-na-obrabotku-dannyh-zakazchika",
+   "title": "Персональные данные заказчика: что можно хранить и как",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "персональные данные клиентов подрядчик",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "согласие на обработку",
+   "status": "queued",
+   "date": "2027-09-22",
+   "published_at": null,
+   "words": 609
+  },
+  {
    "slug": "teplyy-pol-v-vannoy",
    "title": "Тёплый пол в ванной: нужен ли и какой",
    "cluster": "Тёплый пол",
@@ -2311,6 +3095,20 @@
    "date": "2027-09-28",
    "published_at": null,
    "words": 638
+  },
+  {
+   "slug": "tseny-za-tochku-ili-za-metr",
+   "title": "Цена за точку или за метр: как считать работы",
+   "cluster": "Бизнес монтажника",
+   "cluster_key": "biz",
+   "query": "расценки на монтаж за точку за метр",
+   "freq": 0,
+   "audience": "pro",
+   "data_block": "способы расчёта работ",
+   "status": "queued",
+   "date": "2027-09-29",
+   "published_at": null,
+   "words": 646
   },
   {
    "slug": "teplootdacha-teplogo-pola",

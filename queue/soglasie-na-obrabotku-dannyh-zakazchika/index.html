@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Персональные данные заказчика: согласие и хранение | HeatCalc.ru</title>
+    <meta name="description" content="Монтажник собирает ФИО, телефоны, адреса и фото домов. Какие данные заказчика нужны для работы, когда нужно согласие по ФЗ-152 и как не хранить лишнего.">
+    <link rel="canonical" href="https://heatcalc.ru/soglasie-na-obrabotku-dannyh-zakazchika/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/soglasie-na-obrabotku-dannyh-zakazchika/">
+    <meta property="og:title" content="Персональные данные заказчика у монтажника">
+    <meta property="og:description" content="Что можно собирать и хранить, когда нужно согласие и как защитить данные заказчика.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/soglasie-na-obrabotku-dannyh-zakazchika/#webpage",
+      "url": "https://heatcalc.ru/soglasie-na-obrabotku-dannyh-zakazchika/",
+      "name": "Персональные данные заказчика: что можно хранить и как",
+      "description": "Монтажник собирает ФИО, телефоны, адреса и фото домов. Какие данные заказчика нужны для работы, когда нужно согласие по ФЗ-152 и как не хранить лишнего.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "персональные данные клиентов подрядчик"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Персональные данные заказчика: что можно хранить и как",
+          "item": "https://heatcalc.ru/soglasie-na-obrabotku-dannyh-zakazchika/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Должен ли самозанятый или ИП соблюдать закон о персональных данных?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, закон относится к любому, кто собирает и использует данные физлиц, независимо от формы деятельности. Масштаб обязанностей зависит от ситуации, поэтому конкретный перечень уточните у юриста."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли фотографировать дом заказчика?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Для документирования работ и скрытых работ — да, это часть договора. Для портфолио и рекламы лучше получить согласие и по возможности не показывать узнаваемые детали: адрес, номер дома, лица."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли хранить паспорт заказчика?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Обычно нет. Для договора бытового подряда хватает ФИО, адреса и контактов. Если паспортные данные нужны, получите их с понятной целью и храните отдельно и защищённо."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что будет, если данные утекут?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Ответственность зависит от обстоятельств и определяется законом, поэтому точные последствия объяснит юрист. Практически: меньше данных — меньше риск. Не храните лишнего и не пересылайте данные без необходимости."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/soglasie-na-obrabotku-dannyh-zakazchika/#article",
+      "headline": "Персональные данные заказчика: что можно хранить и как",
+      "description": "Монтажник собирает ФИО, телефоны, адреса и фото домов. Какие данные заказчика нужны для работы, когда нужно согласие по ФЗ-152 и как не хранить лишнего.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/soglasie-na-obrabotku-dannyh-zakazchika/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-09-22",
+      "dateModified": "2027-09-22",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 609,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Персональные данные заказчика: что можно хранить и как</nav>
+
+        <h1>Персональные данные заказчика: что можно хранить и как</h1>
+
+        <p class="art-meta"><time datetime="2027-09-22">22 сентября 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Нужно ли монтажнику согласие заказчика на обработку персональных данных?</p>
+            <p>Если вы собираете и храните данные физлица (ФИО, телефон, адрес, фото), вы обрабатываете персональные данные, и действует ФЗ-152. Для исполнения договора с самим заказчиком согласие в ряде случаев не требуется, но для всего, что выходит за рамки договора, — рассылок, хранения после окончания работ, передачи третьим лицам — оно нужно. Точный перечень обязанностей уточните у юриста; практическое правило: собирайте минимум, храните безопасно, не передавайте без необходимости.</p>
+        </div>
+
+        <p class="lead">Телефон, адрес, фотографии дома, паспортные данные для договора, переписка в мессенджере — у монтажника за год копятся данные десятков людей. Вроде бы это просто записная книжка, но с точки зрения закона вы оператор персональных данных, и у этого статуса есть обязанности.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#chto-takoe-personalnye-dannye-i-pri-chem-tut-montazhnik">Что такое персональные данные и при чём тут монтажник</a></li>
+            <li><a href="#kakie-dannye-vam-deystvitelno-nuzhny">Какие данные вам действительно нужны</a></li>
+            <li><a href="#kogda-nuzhno-soglasie">Когда нужно согласие</a></li>
+            <li><a href="#kak-hranit-i-zaschischat-dannye">Как хранить и защищать данные</a></li>
+            <li><a href="#chto-delat-esli-zakazchik-prosit-udalit-dannye">Что делать, если заказчик просит удалить данные</a></li>
+            <li><a href="#gde-kalkulyator-pomogaet">Где калькулятор помогает</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="chto-takoe-personalnye-dannye-i-pri-chem-tut-montazhnik">Что такое персональные данные и при чём тут монтажник</h2>
+
+        <p>Персональные данные — это любая информация, которая относится к определённому человеку и позволяет его определить. ФИО, телефон, адрес объекта, фотографии, на которых виден дом и владелец, — всё это попадает под ФЗ-152 «О персональных данных». Тот, кто собирает, записывает, хранит и использует такие данные, называется оператором, и им может быть индивидуальный предприниматель.</p>
+
+        <p>Для небольшого подрядчика закон не означает горы бумаг, но требует порядка: понимать, какие данные вы собираете, зачем, где они лежат и кто к ним имеет доступ.</p>
+
+        <h2 id="kakie-dannye-vam-deystvitelno-nuzhny">Какие данные вам действительно нужны</h2>
+
+        <p>Главный принцип — собирать только то, без чего нельзя выполнить работу. Лишние данные — это лишняя ответственность без пользы.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Данные</th><th>Нужны ли</th><th>Для чего</th></tr>
+                <tr><td>ФИО, телефон</td><td>Да</td><td>Связь, договор, акты</td></tr>
+                <tr><td>Адрес объекта</td><td>Да</td><td>Договор, выезд, акты, гарантия</td></tr>
+                <tr><td>Адрес почты</td><td>По желанию</td><td>Отправка документов</td></tr>
+                <tr><td>Паспортные данные</td><td>Не всегда</td><td>Только если этого требует договор или организация, принимающая документы; уточните у юриста</td></tr>
+                <tr><td>Фото дома, котельной, труб</td><td>Да</td><td>Подтверждение состояния и скрытых работ</td></tr>
+                <tr><td>Фото людей, документов на дом</td><td>Нет</td><td>Не нужны для работы</td></tr>
+                <tr><td>Данные банковских карт</td><td>Нет</td><td>Платёж проводится через банк, карту у себя не храните</td></tr>
+            </table>
+        </div>
+        <p class="note">Если вы сомневаетесь, нужны ли вам данные, задайте вопрос: что я буду с ними делать? Нет ответа — не собирайте.</p>
+
+        <h2 id="kogda-nuzhno-soglasie">Когда нужно согласие</h2>
+
+        <p>Закон допускает обработку данных без отдельного согласия, когда она нужна для исполнения договора, стороной которого является человек. Это значит, что для составления договора и актов с самим заказчиком согласие обычно не требуется. Но практика осторожнее: многие подрядчики включают в договор пункт о согласии на обработку данных, потому что он снимает вопросы.</p>
+
+        <p>Согласие нужно или желательно, когда вы:</p>
+
+        <ul>
+            <li>храните данные после завершения работ и гарантийного срока без договорной необходимости;</li>
+            <li>используете контакты для рассылок, напоминаний о сервисе, предложений;</li>
+            <li>публикуете фото объекта с узнаваемым домом или хозяином в портфолио;</li>
+            <li>передаёте данные третьим лицам, например субподрядчикам, поставщикам или службам доставки, дальше необходимого для работы;</li>
+            <li>собираете данные через формы на сайте или анкеты.</li>
+        </ul>
+
+        <p>Согласие должно быть конкретным: кто собирает, какие данные, для чего, как долго и как его отозвать. Формулировки и порядок оформления согласуйте с юристом, а не копируйте из случайного шаблона. Куда вставить такой пункт, показано в статье про <a href="/dogovor-podryada-zashchita-montazhnika/">договор подряда</a>.</p>
+
+        <div class="callout">
+            <p><strong>Собирайте минимум, храните безопасно, не раздавайте лишнего.</strong> Эти три правила закрывают большую часть рисков, а остальное — вопросы оформления, которые решаются с юристом.</p>
+        </div>
+
+        <h2 id="kak-hranit-i-zaschischat-dannye">Как хранить и защищать данные</h2>
+
+        <ul>
+            <li><strong>Закройте доступ.</strong> Пароль или биометрия на телефоне и компьютере; общий доступ к папкам только для тех, кому он нужен.</li>
+            <li><strong>Не рассылайте данные по чатам.</strong> Копия договора с паспортными данными в групповом чате бригады — это передача данных без нужды.</li>
+            <li><strong>Разделяйте.</strong> Бригаде нужны адрес и телефон на время работ, а не паспорт и реквизиты договора.</li>
+            <li><strong>Определите срок.</strong> Данные завершённых объектов храните столько, сколько нужно для гарантии и споров, а потом удаляйте. Срок согласуйте с юристом и бухгалтером.</li>
+            <li><strong>Делайте копии.</strong> Резервная копия документов должна быть защищена так же, как оригинал.</li>
+            <li><strong>Ведите список.</strong> Где что лежит: телефон, облако, папка, бумажный архив. Если заказчик попросит удалить данные, вы должны знать, откуда.</li>
+        </ul>
+
+        <h2 id="chto-delat-esli-zakazchik-prosit-udalit-dannye">Что делать, если заказчик просит удалить данные</h2>
+
+        <p>Человек вправе отозвать согласие и потребовать прекратить обработку его данных. Но вам по-прежнему нужны документы, подтверждающие выполненную работу и гарантию, поэтому часть данных вы вправе хранить, пока это нужно по договору или закону. Какие именно и как долго, определите заранее вместе с юристом. Ответьте заказчику письменно и в разумный срок: молчание в такой ситуации создаёт больше проблем, чем сам запрос.</p>
+
+        <h2 id="gde-kalkulyator-pomogaet">Где калькулятор помогает</h2>
+
+        <p>КП в калькуляторе уходит заказчику ссылкой, а не файлом, поэтому по чатам не гуляют копии сметы с его данными. В тарифе «Профи» договор и акты собираются кнопкой «Документы» из сметы: данные заказчика вносятся один раз и подставляются в документы, а не набираются заново в каждом файле. Ссылка и документы не заменяют согласия на обработку — его формулировку вы добавляете в договор сами, после проверки у юриста.</p>
+
+        <a class="cta" href="/">
+            Сделать КП ссылкой клиенту
+            <small>Предложение ссылкой, без файлов с данными в переписке</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Должен ли самозанятый или ИП соблюдать закон о персональных данных?</span></summary>
+            <div class="answer">
+                <p>Да, закон относится к любому, кто собирает и использует данные физлиц, независимо от формы деятельности. Масштаб обязанностей зависит от ситуации, поэтому конкретный перечень уточните у юриста.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли фотографировать дом заказчика?</span></summary>
+            <div class="answer">
+                <p>Для документирования работ и скрытых работ — да, это часть договора. Для портфолио и рекламы лучше получить согласие и по возможности не показывать узнаваемые детали: адрес, номер дома, лица.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужно ли хранить паспорт заказчика?</span></summary>
+            <div class="answer">
+                <p>Обычно нет. Для договора бытового подряда хватает ФИО, адреса и контактов. Если паспортные данные нужны, получите их с понятной целью и храните отдельно и защищённо.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что будет, если данные утекут?</span></summary>
+            <div class="answer">
+                <p>Ответственность зависит от обстоятельств и определяется законом, поэтому точные последствия объяснит юрист. Практически: меньше данных — меньше риск. Не храните лишнего и не пересылайте данные без необходимости.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=soglasie-na-obrabotku-dannyh-zakazchika#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/dogovor-podryada-zashchita-montazhnika/">договор подряда на монтаж: что вписать, чтобы защитить себя</a> · <a href="/peregovory-i-pismennaya-forma/">переписка как доказательство: что фиксировать</a> · <a href="/tehzadanie-i-spetsifikatsiya-oborudovaniya/">техзадание и спецификация: что согласовывать до закупки</a> · <a href="/servisnyy-dogovor-i-povtornye-klienty/">сервисный договор: как получать повторные заказы</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=soglasie-na-obrabotku-dannyh-zakazchika">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

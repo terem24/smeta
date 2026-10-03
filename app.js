@@ -24734,6 +24734,14 @@ const app = {
         planned: { label: 'Не написана', color: '#9CA3AF' }
     },
 
+    // Для кого статья: поле audience расписания (owner — хозяин дома, pro — монтажник,
+    // builder — строитель/подрядчик)
+    articleAudienceMeta: {
+        owner: { label: 'Заказчику', color: '#0E7490' },
+        pro: { label: 'Монтажникам', color: '#C2410C' },
+        builder: { label: 'Строителям', color: '#6D28D9' }
+    },
+
     renderAdminArticles: async function () {
         const box = document.getElementById('admin_articles_box');
         if (!box) return;
@@ -24787,7 +24795,7 @@ const app = {
 
         const data = this._articlesData;
         const items = (data.items || []).slice();
-        const f = this._articlesFilter || (this._articlesFilter = { cluster: '', status: '', q: '' });
+        const f = this._articlesFilter || (this._articlesFilter = { cluster: '', status: '', audience: '', q: '' });
 
         const today = new Date().toISOString().slice(0, 10);
         const counts = { published: 0, queued: 0, planned: 0 };
@@ -24803,6 +24811,7 @@ const app = {
         const shown = items.filter(i =>
             (!f.cluster || i.cluster === f.cluster) &&
             (!f.status || i.status === f.status) &&
+            (!f.audience || i.audience === f.audience) &&
             (!f.q || (i.title + ' ' + i.query).toLowerCase().includes(f.q.toLowerCase())));
 
         const card = (n, label, color) => `
@@ -24816,7 +24825,7 @@ const app = {
 
         // 170+ строк разом — это экран в 36 000 px на телефоне: показываем порциями,
         // при смене фильтра порция сбрасывается
-        const limKey = f.cluster + '|' + f.status + '|' + f.q;
+        const limKey = f.cluster + '|' + f.status + '|' + (f.audience || '') + '|' + f.q;
         if (this._articlesLimKey !== limKey) { this._articlesLimKey = limKey; this._articlesLimit = 40; }
         const lim = this._articlesLimit || 40;
         const rows = shown.slice(0, lim).map(i => {
@@ -24833,7 +24842,7 @@ const app = {
             return `<tr>
                 <td style="${td} white-space:nowrap; ${overdue ? 'color:#D97706; font-weight:700;' : ''}">${d}${overdue ? ' ⏳' : ''}</td>
                 <td style="${td}">
-                    <div style="font-weight:600; color:var(--text-main);">${esc(i.title)}</div>
+                    <div style="font-weight:600; color:var(--text-main);">${(() => { const am = this.articleAudienceMeta[i.audience]; return am ? `<span style="display:inline-block; margin-right:6px; padding:1px 7px; border-radius:6px; font-size:10px; font-weight:700; letter-spacing:.02em; vertical-align:1px; color:${am.color}; border:1px solid ${am.color};">${am.label}</span>` : ''; })()}${esc(i.title)}</div>
                     <div style="color:var(--text-sec); margin-top:2px;">${esc(i.cluster)} · запрос «${esc(i.query)}» · ${i.freq} в месяц${i.words ? ' · ' + i.words + ' слов' : ''}</div>
                 </td>
                 <td style="${td} white-space:nowrap;"><span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; color:#fff; background:${st.color};">${st.label}</span></td>
@@ -24873,6 +24882,11 @@ const app = {
                     onchange="app._articlesFilter.status = this.value; app.renderAdminArticles()">
                     <option value="">Любое состояние</option>
                     ${Object.keys(this.articleStatusMeta).map(k => `<option value="${k}"${f.status === k ? ' selected' : ''}>${this.articleStatusMeta[k].label}</option>`).join('')}
+                </select>
+                <select style="padding:7px 10px; font-size:12px; border:1px solid var(--border); border-radius:8px; background:var(--surface); color:var(--text-main);"
+                    onchange="app._articlesFilter.audience = this.value; app.renderAdminArticles()">
+                    <option value="">Для кого: все</option>
+                    ${Object.keys(this.articleAudienceMeta).map(k => `<option value="${k}"${f.audience === k ? ' selected' : ''}>${this.articleAudienceMeta[k].label}</option>`).join('')}
                 </select>
                 <button class="auth-btn-base" style="margin:0; width:auto; padding:0 12px; height:32px; font-size:12px;"
                     onclick="app._articlesData=null; app._leadsData=null; app._articleLeadsTried=false; app._articleLeadsFailed=false; app.renderAdminArticles()">Обновить</button>
@@ -38064,7 +38078,8 @@ const app = {
             if (c && c.seasonCost > 0) {
                 out.cost = {
                     fuel: fuel, month: Math.round(c.avgMonthCost / 10) * 10, season: Math.round(c.seasonCost / 100) * 100,
-                    months: c.activeMonths || 7, zOt: c.zOt, tOt: c.tOt,
+                    // Сутки целым числом: для региона без города период усредняется («206,33… дн.»)
+                    months: c.activeMonths || 7, zOt: c.zOt ? Math.round(c.zOt) : c.zOt, tOt: c.tOt,
                     tariff: fuel === 'gas' ? (c.tariff && c.tariff.rub) : (c.tariffDay || null),
                     unit: fuel === 'gas' ? (c.lpg ? '₽/л' : '₽/м³') : '₽/кВт·ч', lpg: !!c.lpg,
                     units: fuel === 'gas' ? Math.round(c.seasonUnits) : Math.round(c.seasonKwh), uName: fuel === 'gas' ? (c.lpg ? 'л' : 'м³') : 'кВт·ч'
@@ -45598,6 +45613,9 @@ const app = {
             else cardScheme.classList.remove('selected');
         }
 
+        const cardHouseUi = document.getElementById('card_opt_house'), chkHouseUi = document.getElementById('share_opt_house');
+        if (cardHouseUi && chkHouseUi) cardHouseUi.classList.toggle('selected', chkHouseUi.checked);
+
         const cardNames = document.getElementById('card_opt_names');
         const chkNamesUi = document.getElementById('share_opt_names');
         if (cardNames && chkNamesUi) cardNames.classList.toggle('selected', chkNamesUi.checked);
@@ -46873,6 +46891,20 @@ const app = {
         // коллектора (О), планы водоснабжения и канализации (В, К). Чего-то
         // нет — показываем панель готовности целиком, а не первый отказ.
         if (!this.projectReady()) { this.showProjectReadiness(); return; }
+        // Водоснабжение в расчёте есть, а санузлов на плане нет: листов В и К
+        // не будет. Предупреждаем до выпуска, а не после — отказывать не нужно,
+        // у кого-то воды в проекте и правда нет.
+        {
+            const wantWater = (this.state.waterZones || []).some(z => z &&
+                Object.keys(z.fixtures || {}).some(k => (+z.fixtures[k] || 0) > 0));
+            const planFl = ((this.currentPlans() || {}).floors || []).filter(fl => fl && (fl.zones || []).length);
+            if (wantWater && planFl.length && !planFl.some(fl => fl.zones.some(z => z.type === 'wc'))) {
+                const goOn = await this.confirm('В расчёте есть водоснабжение, а на плане не отмечены санузлы. ' +
+                    'Без них в комплекте не будет планов и 3D-видов водоснабжения и канализации (разделы В и К).\n\n' +
+                    'Выпустить без них? «Нет» — вернуться к плану и отметить санузлы.', 'Санузлы на плане');
+                if (!goOn) { this.openPlanEditor(); return; }
+            }
+        }
         // Название не спрашиваем: калькулятор считает жилые дома, а площадь берётся
         // из расчёта (см. projectObjectTitle). Спрашиваем только адрес — он идёт на
         // титульный лист и даёт точку на карте проектов в админке.
@@ -82737,20 +82769,6 @@ function prepareForPrint() {
             printBin.appendChild(eqClone);
         }
 
-        // --- ШАГ 1а: РАЗДЕЛ «ВАШ ДОМ» — перед таблицей оборудования (или в начале,
-        // если оборудование не печатают): город, теплопотери, «вы просили — мы
-        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
-        if (app.kpHouseOn !== false) {
-            let kpHtml = '';
-            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
-            if (kpHtml) {
-                const eqC = document.getElementById('print_eq_clone');
-                const tbl = eqC && eqC.querySelector('.table-responsive');
-                if (tbl) tbl.insertAdjacentHTML('beforebegin', kpHtml);
-                else printBin.insertAdjacentHTML('afterbegin', kpHtml);
-            }
-        }
-
         // --- ШАГ 2: ЛИСТ МОНТАЖНЫХ РАБОТ (Доступно авторизованным пользователям на любом
         // тарифе — Базовый и Профи, только гость не имеет доступа к разделу работ) ---
         let isGuest = !app.state.tgUser;
@@ -82827,6 +82845,21 @@ function prepareForPrint() {
                     hlContainer.classList.add('print-page-break');
                 }
                 printBin.appendChild(hlContainer);
+            }
+        }
+
+        // --- ШАГ 5а: РАЗДЕЛ «ВАШ ДОМ» — отдельным листом после оборудования, работ,
+        // схем и планов, перед гарантией: город, теплопотери, «вы просили — мы
+        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
+        if (app.kpHouseOn !== false) {
+            let kpHtml = '';
+            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
+            if (kpHtml) {
+                const kpPage = document.createElement('div');
+                kpPage.id = 'kp_personal_page';
+                if (printBin.children.length > 0) kpPage.classList.add('print-page-break');
+                kpPage.innerHTML = kpHtml;
+                printBin.appendChild(kpPage);
             }
         }
 

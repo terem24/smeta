@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Итоги года монтажника: что посчитать до 31 декабря | HeatCalc.ru</title>
+    <meta name="description" content="Что собрать и посчитать в конце года: прибыль по объектам, долги заказчиков, гарантийные выезды, нарастающий доход для налогового режима и план на сезон. Разбор на условном примере.">
+    <link rel="canonical" href="https://heatcalc.ru/itogi-goda-montazhnika/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/itogi-goda-montazhnika/">
+    <meta property="og:title" content="Итоги года монтажника: что посчитать">
+    <meta property="og:description" content="Один объект из четырёх может съесть прибыль всего года. Как найти его до 31 декабря.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/itogi-goda-montazhnika/#webpage",
+      "url": "https://heatcalc.ru/itogi-goda-montazhnika/",
+      "name": "Итоги года монтажника: что посчитать до 31 декабря",
+      "description": "Что собрать и посчитать в конце года: прибыль по объектам, долги заказчиков, гарантийные выезды, нарастающий доход для налогового режима и план на сезон. Разбор на условном примере.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "итоги года бизнес монтаж"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Итоги года монтажника: что посчитать до 31 декабря",
+          "item": "https://heatcalc.ru/itogi-goda-montazhnika/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как посчитать прибыль по объекту?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Из выручки вычтите закупку оборудования и материалов, оплату бригады и накладные, которые можно отнести на объект: доставку, выезды, налог. Остаток разделите на выручку — получится доля. Сравнивайте эту долю между объектами, а не только суммы."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Когда лучше подводить итоги года?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "В последних числах декабря, пока свежи цифры и документы, но до закрытия налогового периода. В январе можно уточнить данные, однако решения по налогам и закупкам лучше принимать до конца года."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли считать итоги, если я самозанятый?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Да, хотя бы нарастающий доход: у режима есть годовой лимит 2,4 млн ₽, а при его превышении право на режим теряется. Остальные вопросы, например учёт оборудования, обсудите с бухгалтером."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что делать с убыточным объектом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Разобрать причину: цена, дополнительные работы без согласования, переделки, затянувшийся акт. Затем изменить условия для похожих заказов, например этапную оплату и письменное согласование допработ."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/itogi-goda-montazhnika/#article",
+      "headline": "Итоги года монтажника: что посчитать до 31 декабря",
+      "description": "Что собрать и посчитать в конце года: прибыль по объектам, долги заказчиков, гарантийные выезды, нарастающий доход для налогового режима и план на сезон. Разбор на условном примере.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/itogi-goda-montazhnika/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-16",
+      "dateModified": "2026-12-16",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 696,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Итоги года монтажника: что посчитать до 31 декабря</nav>
+
+        <h1>Итоги года монтажника: что посчитать до 31 декабря</h1>
+
+        <p class="art-meta"><time datetime="2026-12-16">16 декабря 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Что монтажнику посчитать по итогам года?</p>
+            <p>Пять вещей: остаток по каждому объекту (выручка минус закупка, бригада и накладные), долги заказчиков, затраты на гарантийные выезды, нарастающий доход с точки зрения налогового режима и загрузку по месяцам. Эти цифры показывают, какие объекты приносят деньги, какие нет, и сколько работы брать на следующий сезон.</p>
+        </div>
+
+        <p class="lead">Конец декабря: бригада разъехалась, телефон молчит, и самое время понять, заработали вы за год или просто были заняты. Ощущение «работы было много» с деньгами связано слабо: один-два убыточных объекта легко съедают прибыль от трёх хороших. Разберём, что собрать и посчитать, пока год не закрылся.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#nachnite-s-obektov-a-ne-s-obschey-summy">Начните с объектов, а не с общей суммы</a></li>
+            <li><a href="#primer-chetyre-obekta-odin-ubytochnyy">Пример: четыре объекта, один убыточный</a></li>
+            <li><a href="#chto-esche-proverit-do-31-dekabrya">Что ещё проверить до 31 декабря</a></li>
+            <li><a href="#nalogovaya-storona">Налоговая сторона</a></li>
+            <li><a href="#plan-na-sleduyuschiy-god">План на следующий год</a></li>
+            <li><a href="#gde-schitat-ostatok">Где считать остаток</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="nachnite-s-obektov-a-ne-s-obschey-summy">Начните с объектов, а не с общей суммы</h2>
+
+        <p>Общая выручка за год — самая бесполезная цифра: она не говорит, откуда пришли деньги и куда ушли. Полезная единица учёта — объект. По каждому нужны четыре числа: сколько заплатил заказчик, сколько ушло на закупку оборудования и материалов, сколько вы заплатили бригаде и сколько накладных (доставка, выезды, связь, налог) можно честно отнести на этот объект. Разница и есть то, что вы заработали.</p>
+
+        <p>Если в течение года считали по смете, большая часть цифр уже лежит в расчётах: достаточно сверить плановый остаток с фактическим. Принцип тот же, что в статье про <a href="/nacenka-montazhnika/">наценку монтажника</a>: доля считается от цены продажи, а не от закупки.</p>
+
+        <h2 id="primer-chetyre-obekta-odin-ubytochnyy">Пример: четыре объекта, один убыточный</h2>
+
+        <p>Цифры условные, но картина типичная. Четыре объекта за осень, все суммы в рублях.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Объект</th><th>Выручка</th><th>Закупка</th><th>Бригада</th><th>Накладные</th><th>Остаётся</th><th>Доля</th></tr>
+                <tr><td>A: котельная и радиаторы</td><td class="num">420 000</td><td class="num">250 000</td><td class="num">70 000</td><td class="num">25 000</td><td class="num">75 000</td><td class="num">17,9 %</td></tr>
+                <tr><td>B: тёплый пол</td><td class="num">310 000</td><td class="num">180 000</td><td class="num">60 000</td><td class="num">20 000</td><td class="num">50 000</td><td class="num">16,1 %</td></tr>
+                <tr><td>C: отопление и вода</td><td class="num">650 000</td><td class="num">400 000</td><td class="num">90 000</td><td class="num">40 000</td><td class="num">120 000</td><td class="num">18,5 %</td></tr>
+                <tr><td>D: котельная с переделками</td><td class="num">180 000</td><td class="num">110 000</td><td class="num">30 000</td><td class="num">38 000</td><td class="num">2 000</td><td class="num">1,1 %</td></tr>
+                <tr><td>Итого</td><td class="num">1 560 000</td><td class="num">940 000</td><td class="num">250 000</td><td class="num">123 000</td><td class="num">247 000</td><td class="num">15,8 %</td></tr>
+            </table>
+        </div>
+        <p class="note">Объект D принёс около 11,5 % выручки, а прибыли дал меньше одного процента от общей. Накладные на нём выросли из-за выездов на переделки и споров по акту.</p>
+
+        <p>Три объекта работают как задумано, четвёртый «съел» время и деньги. Без разбивки по объектам вы увидели бы только общие 15,8 % и решили, что всё в порядке. С разбивкой видно: проблема не в ценах вообще, а в конкретном заказчике или условиях. Вывод для следующего года — не поднимать цены для всех, а поменять условия для таких объектов: порядок оплаты по <a href="/avans-i-oplata-po-etapam/">этапам</a>, письменное согласование <a href="/dopolnitelnye-raboty-po-hodu-montazha/">дополнительных работ</a>.</p>
+
+        <h2 id="chto-esche-proverit-do-31-dekabrya">Что ещё проверить до 31 декабря</h2>
+
+        <ol>
+            <li><strong>Долги заказчиков.</strong> Составьте список: кто, сколько, за что, на каком основании должен. Для каждой строки нужен документ: договор, акт, переписка. Долг без документа взыскать трудно, и лучше понять это сейчас, а не в марте.</li>
+            <li><strong>Подписанные акты.</strong> Объект, по которому работа сдана, но акт не подписан, висит в воздухе: непонятна дата приёмки, от неё считается гарантия. Как с этим работать — в статье про <a href="/zakazchik-ne-podpisyvaet-akt/">неподписанный акт</a>.</li>
+            <li><strong>Гарантийные обращения.</strong> Сколько выездов было, по каким причинам, сколько часов они заняли. Если одна и та же ошибка повторяется на разных объектах, это повод поменять способ монтажа, а не просто ездить.</li>
+            <li><strong>Закупка и остатки.</strong> Что лежит на складе или в машине без объекта. Нераспределённое оборудование — замороженные деньги, и его стоимость стоит сверить со сметами.</li>
+            <li><strong>Загрузка по месяцам.</strong> В какие месяцы бригада простаивала, а в какие не успевала. Это основа для планирования сезона и для разговора о <a href="/zimnyaya-zagruzka-brigady/">зимней загрузке</a>.</li>
+        </ol>
+
+        <div class="callout">
+            <p><strong>Прибыль считают по объекту, а не по году.</strong> Общая цифра скрывает убыточные объекты и неправильные условия. Один объект с долей остатка около одного процента при трёх нормальных — повод пересмотреть условия работы с этим типом заказчиков, а не цены в целом.</p>
+        </div>
+
+        <h2 id="nalogovaya-storona">Налоговая сторона</h2>
+
+        <p>К концу года стоит знать свой нарастающий доход. Если вы самозанятый, у налога на профессиональный доход есть годовой лимит — 2,4 млн ₽, и превысить его, не заметив, легко, когда несколько крупных объектов закрываются в ноябре и декабре. Для самозанятого действует и запрет на перепродажу товаров: оборудование, купленное и перепроданное заказчику, не должно проходить как услуга. Что считать доходом на вашем режиме и как правильно отделить оборудование, уточните у бухгалтера, пока год не закончился. О выборе между режимами — в статье <a href="/samozanyatyy-ili-ip-montazhnik/">«Самозанятый или ИП»</a>.</p>
+
+        <p>По другим режимам (упрощённая система, общая) ставки, пороги и порядок отчётности меняются, поэтому цифры здесь не приводим: смотрите актуальные на сайте ФНС или спрашивайте бухгалтера. Практический минимум — до 31 декабря собрать доходы и расходы в одну таблицу, чтобы в январе не восстанавливать их по памяти.</p>
+
+        <h2 id="plan-na-sleduyuschiy-god">План на следующий год</h2>
+
+        <p>Из итогов должны появиться три решения: какие виды работ вы продолжаете брать (где остаток выше), какие условия прописываете жёстче (где были споры и переделки) и сколько объектов в месяц тянет бригада. Запишите их на странице, а не держите в голове: через полгода именно эта запись объяснит, почему вы отказались от заказа.</p>
+
+        <h2 id="gde-schitat-ostatok">Где считать остаток</h2>
+
+        <p>В тарифе «Профи» на вкладке «Деньги» по смете видно, сколько уходит клиенту, сколько вам и сколько остаётся после закупки, оплаты бригады и накладных. Если считать остаток при составлении предложения, к итогам года у вас будет плановая цифра, с которой можно сравнить факт. Вкладка предназначена для вас, клиент её не видит.</p>
+
+        <a class="cta" href="/">
+            Посмотреть остаток по смете
+            <small>Вкладка «Деньги»: закупка, бригада, накладные, что остаётся</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как посчитать прибыль по объекту?</span></summary>
+            <div class="answer">
+                <p>Из выручки вычтите закупку оборудования и материалов, оплату бригады и накладные, которые можно отнести на объект: доставку, выезды, налог. Остаток разделите на выручку — получится доля. Сравнивайте эту долю между объектами, а не только суммы.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Когда лучше подводить итоги года?</span></summary>
+            <div class="answer">
+                <p>В последних числах декабря, пока свежи цифры и документы, но до закрытия налогового периода. В январе можно уточнить данные, однако решения по налогам и закупкам лучше принимать до конца года.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужно ли считать итоги, если я самозанятый?</span></summary>
+            <div class="answer">
+                <p>Да, хотя бы нарастающий доход: у режима есть годовой лимит 2,4 млн ₽, а при его превышении право на режим теряется. Остальные вопросы, например учёт оборудования, обсудите с бухгалтером.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что делать с убыточным объектом?</span></summary>
+            <div class="answer">
+                <p>Разобрать причину: цена, дополнительные работы без согласования, переделки, затянувшийся акт. Затем изменить условия для похожих заказов, например этапную оплату и письменное согласование допработ.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=itogi-goda-montazhnika#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/nacenka-montazhnika/">наценка монтажника: сколько закладывать на оборудование и работы</a> · <a href="/sebestoimost-chasa-brigady/">себестоимость рабочего дня бригады: как посчитать</a> · <a href="/krasnye-flagi-zakazchika/">когда отказаться от объекта: красные флаги заказчика</a> · <a href="/zimnyaya-zagruzka-brigady/">зимняя загрузка бригады: чем занять декабрь–февраль</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=itogi-goda-montazhnika">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

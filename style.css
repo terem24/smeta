@@ -9879,6 +9879,43 @@ body.dark-mode .sec-analog-badge.active .sec-analog-label {
     border-radius: 10px;
 }
 
+/* Галочки окна выбора разделов выглядят как переключатели из настроек («Автосохранение»):
+   название слева, тумблер справа. Сам input остаётся чекбоксом — на него завязан JS. */
+#share_options_modal_overlay .share-option-card input[type="checkbox"] {
+    -webkit-appearance: none;
+    appearance: none;
+    order: 2;
+    margin: 0 0 0 auto !important;
+    width: 34px !important;
+    height: 20px !important;
+    border-radius: 20px;
+    background: #D1D5DB;
+    position: relative;
+    flex-shrink: 0;
+    transition: background .25s;
+}
+#share_options_modal_overlay .share-option-card input[type="checkbox"]::before {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .25);
+    transition: transform .25s;
+}
+#share_options_modal_overlay .share-option-card input[type="checkbox"]:checked {
+    background: var(--primary);
+}
+#share_options_modal_overlay .share-option-card input[type="checkbox"]:checked::before {
+    transform: translateX(14px);
+}
+body.dark-mode #share_options_modal_overlay .share-option-card input[type="checkbox"]:not(:checked) {
+    background: rgba(255, 255, 255, 0.18);
+}
+
 .share-opt-pair {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -16169,11 +16206,13 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     .warranty-print img { display: block; }
 
     /* Шапка: синяя половина с текстом, белая с фото */
-    .warranty-print .wp-head { display: flex; height: 236px; background: #203F6F; }
+    /* min-height, а не height: заголовок «до 10 лет» занимает три строки, и при фиксированной
+       высоте абзац под ним уходил под ленту «Объект/Заказчик/Расчёт» */
+    .warranty-print .wp-head { display: flex; min-height: 236px; background: #203F6F; }
     .warranty-print .wp-head-txt { flex: 0 0 57%; color: #fff; padding: 24px 28px 22px; display: flex; flex-direction: column; justify-content: center; }
-    .warranty-print .wp-logo { height: 34px; width: auto; align-self: flex-start; filter: brightness(0) invert(1); margin-bottom: 20px; }
+    .warranty-print .wp-logo { height: 34px; width: auto; align-self: flex-start; filter: brightness(0) invert(1); margin-bottom: 14px; }
     .warranty-print .wp-kicker { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: #7CC4F2; margin-bottom: 10px; }
-    .warranty-print .wp-head-txt h2 { font-size: 34px; line-height: 1.06; margin: 0 0 12px; color: #fff; }
+    .warranty-print .wp-head-txt h2 { font-size: 28px; line-height: 1.08; margin: 0 0 12px; color: #fff; }
     .warranty-print .wp-head-txt h2 b { color: #7CC4F2; }
     .warranty-print .wp-lead { font-size: 12px; line-height: 1.5; margin: 0; opacity: .94; max-width: 92%; }
     .warranty-print .wp-head-img { flex: 1 1 0; background: #F5F5F5; display: flex; align-items: center; justify-content: center; position: relative; border-left: 4px solid #3F9DE1; }

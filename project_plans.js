@@ -2241,56 +2241,89 @@
    * прозрачная коробка.
    */
   function isoWallsGeom(f, t, o, hMm) {
-    var g = f.geom, ppm = f.pxPerM || 100, T = 0.5 * ppm, AL = 0.15 * ppm;
-    var hz = t.mm(hMm || 2700), low = t.mm(250);
-    var mnX = 1e9, mnY = 1e9;
-    g.walls.forEach(function (ring) {
-      ring.forEach(function (p) { mnX = Math.min(mnX, p[0]); mnY = Math.min(mnY, p[1]); });
-    });
-    var far = [], near = [], innerVX = null, innerHY = null;
+    var g = f.geom, ppm = f.pxPerM || 100;
+    var hz = t.mm(hMm || 2700), low = t.mm(200);
+    var P2 = function (p, z) { var q = t.P(p[0], p[1], z); return n(q[0]) + ',' + n(q[1]); };
+    // 1) низкий срез всех стен плана: боковые грани от дальних к ближним, затем верх
+    var edges = [];
     g.walls.forEach(function (ring) {
       for (var i = 0; i < ring.length; i++) {
         var a = ring[i], b = ring[(i + 1) % ring.length];
-        if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1) continue;
-        var vx = Math.abs(a[0] - b[0]) < AL && Math.max(a[0], b[0]) <= mnX + T;
-        var hy = Math.abs(a[1] - b[1]) < AL && Math.max(a[1], b[1]) <= mnY + T;
-        if (vx) innerVX = innerVX == null ? a[0] : Math.max(innerVX, a[0]);
-        if (hy) innerHY = innerHY == null ? a[1] : Math.max(innerHY, a[1]);
-        (vx || hy ? far : near).push({ a: a, b: b, vx: vx });
+        if (Math.hypot(b[0] - a[0], b[1] - a[1]) >= 1) edges.push({ a: a, b: b });
       }
     });
-    var P2 = function (p, z) { var q = t.P(p[0], p[1], z); return n(q[0]) + ',' + n(q[1]); };
-    var face = function (e, h, style) {
-      return '<polygon points="' + [P2(e.a, 0), P2(e.b, 0), P2(e.b, h), P2(e.a, h)].join(' ') +
-        '" style="' + style + '"/>';
-    };
     var dep = function (e) { return e.a[0] + e.a[1] + e.b[0] + e.b[1]; };
-    // низкий срез остальных стен: боковые грани от дальних к ближним, затем верх
-    near.sort(function (p, q) { return dep(p) - dep(q); }).forEach(function (e) {
-      o.push(face(e, low, 'fill:#a9b2bf;stroke:#7d8795;stroke-width:0.12'));
+    edges.sort(function (p, q) { return dep(p) - dep(q); }).forEach(function (e) {
+      o.push('<polygon points="' + [P2(e.a, 0), P2(e.b, 0), P2(e.b, low), P2(e.a, low)].join(' ') +
+        '" style="fill:#a9b2bf;stroke:#7d8795;stroke-width:0.12"/>');
     });
     g.walls.forEach(function (ring) {      // отдельным контуром, как на плане: наложение стен не даёт «дыр»
       o.push('<path d="' + isoPath(ring, t, low) + 'Z" style="fill:#8b98ab;stroke:#5b6675;stroke-width:0.12"/>');
     });
-    // дальние стены во всю высоту: внутренняя грань светлее наружной
-    far.sort(function (p, q) { return dep(p) - dep(q); }).forEach(function (e) {
-      var pos = e.vx ? e.a[0] : e.a[1], inner = e.vx ? innerVX : innerHY;
-      o.push(face(e, hz, 'fill:' + (inner != null && pos >= inner - AL ? '#eceff3' : '#d3d8de') +
-        ';stroke:#8a9099;stroke-width:0.2'));
+
+    // 2) наружные стены, обращённые к зрителю спиной, — во всю высоту. Берём не
+    // рамку дома, а контуры помещений: край помещения, за которым снаружи нет
+    // другого помещения и чья наружная сторона смотрит от зрителя (на запад или
+    // север), — это задняя стена. Так работают и Г-образные дома.
+    var rooms = (f.zones || []).filter(function (z) { return z.pts && z.pts.length >= 3 && z.type !== 'cold'; });
+    if (!rooms.length) return;
+    var inAny = function (p) { return rooms.some(function (z) { return pip(p, z.pts); }); };
+    var runs = [], seen = {}, STEP = 0.4 * ppm, K = Math.SQRT1_2;
+    rooms.forEach(function (z) {
+      for (var i = 0; i < z.pts.length; i++) {
+        var a = z.pts[i], b = z.pts[(i + 1) % z.pts.length];
+        var dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+        if (L < 0.3 * ppm) continue;
+        var nx = -dy / L, ny = dx / L;
+        // наружу — туда, где нет самой комнаты
+        var mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+        if (pip([mid[0] + nx * 0.12 * ppm, mid[1] + ny * 0.12 * ppm], z.pts)) { nx = -nx; ny = -ny; }
+        if ((nx + ny) * K > -0.3) continue;             // стена смотрит на зрителя — её не рисуем
+        var cells = Math.max(1, Math.round(L / STEP)), run = null;
+        for (var c = 0; c < cells; c++) {
+          var t0 = c / cells, t1 = (c + 1) / cells, tm = (t0 + t1) / 2;
+          var sm = [a[0] + dx * tm, a[1] + dy * tm];
+          var ext = !inAny([sm[0] + nx * 0.4 * ppm, sm[1] + ny * 0.4 * ppm]);
+          if (ext) {
+            var p0 = [a[0] + dx * t0, a[1] + dy * t0], p1 = [a[0] + dx * t1, a[1] + dy * t1];
+            if (run) run.b = p1; else { run = { a: p0, b: p1, nx: nx, ny: ny }; runs.push(run); }
+          } else run = null;
+        }
+      }
     });
-    // окна дальних стен: стекло с переплётом на внутренней грани
-    var sill = t.mm(900), head = t.mm(2100);
-    (g.wins || []).forEach(function (w) {
-      var vert = Math.abs((w.ang || 0) % 180) > 45, half = (w.w || 0) / 2, A, B;
-      if (vert && innerVX != null && w.x <= mnX + T) { A = [innerVX, w.y - half]; B = [innerVX, w.y + half]; }
-      else if (!vert && innerHY != null && w.y <= mnY + T) { A = [w.x - half, innerHY]; B = [w.x + half, innerHY]; }
-      else return;
-      var q = [P2(A, sill), P2(B, sill), P2(B, head), P2(A, head)];
-      var M1 = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
-      o.push('<polygon points="' + q.join(' ') + '" style="fill:#cfe4f5;stroke:#5b6675;stroke-width:0.25"/>');
-      o.push('<line x1="' + P2(M1, sill).split(',')[0] + '" y1="' + P2(M1, sill).split(',')[1] + '" x2="' +
-        P2(M1, head).split(',')[0] + '" y2="' + P2(M1, head).split(',')[1] +
-        '" style="stroke:#5b6675;stroke-width:0.2"/>');
+    // дубли (зона тёплого пола и радиаторов по одному контуру) не рисуем дважды
+    runs = runs.filter(function (r) {
+      var k = [r.a[0], r.a[1], r.b[0], r.b[1]].map(function (v) { return Math.round(v / 3); }).join(',');
+      if (seen[k]) return false;
+      seen[k] = 1; return true;
+    });
+    runs.sort(function (p, q) { return dep(p) - dep(q); });
+    var Tk = 0.22 * ppm, sill = t.mm(900), head = t.mm(2100), usedWin = {};
+    runs.forEach(function (r) {
+      var tone = Math.abs(r.nx) > Math.abs(r.ny) ? '#e4e8ed' : '#f1f3f6';     // запад темнее севера
+      o.push('<polygon points="' + [P2(r.a, 0), P2(r.b, 0), P2(r.b, hz), P2(r.a, hz)].join(' ') +
+        '" style="fill:' + tone + ';stroke:#8a9099;stroke-width:0.2"/>');
+      var ao = [r.a[0] + r.nx * Tk, r.a[1] + r.ny * Tk], bo = [r.b[0] + r.nx * Tk, r.b[1] + r.ny * Tk];
+      o.push('<polygon points="' + [P2(r.a, hz), P2(r.b, hz), P2(bo, hz), P2(ao, hz)].join(' ') +
+        '" style="fill:#c9ced6;stroke:#8a9099;stroke-width:0.2"/>');
+      // окна, лежащие на этой стене
+      var ux = r.b[0] - r.a[0], uy = r.b[1] - r.a[1], RL = Math.hypot(ux, uy) || 1;
+      ux /= RL; uy /= RL;
+      (g.wins || []).forEach(function (w, wi) {
+        if (usedWin[wi]) return;
+        var vx = w.x - r.a[0], vy = w.y - r.a[1];
+        var along = vx * ux + vy * uy, across = -vx * uy + vy * ux;
+        if (along < -0.2 * ppm || along > RL + 0.2 * ppm || Math.abs(across) > 0.6 * ppm) return;
+        usedWin[wi] = 1;
+        var half = (w.w || 0.9 * ppm) / 2, s0 = Math.max(0, along - half), s1 = Math.min(RL, along + half);
+        var A = [r.a[0] + ux * s0, r.a[1] + uy * s0], B = [r.a[0] + ux * s1, r.a[1] + uy * s1];
+        var M = [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2];
+        o.push('<polygon points="' + [P2(A, sill), P2(B, sill), P2(B, head), P2(A, head)].join(' ') +
+          '" style="fill:#cfe4f5;stroke:#5b6675;stroke-width:0.25"/>');
+        var m1 = t.P(M[0], M[1], sill), m2 = t.P(M[0], M[1], head);
+        o.push('<line x1="' + n(m1[0]) + '" y1="' + n(m1[1]) + '" x2="' + n(m2[0]) + '" y2="' + n(m2[1]) +
+          '" style="stroke:#5b6675;stroke-width:0.2"/>');
+      });
     });
   }
 

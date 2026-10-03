@@ -130,11 +130,11 @@ function pjMarkup() {
 }
 </script>
 
-<script src="project_sheets.js?v=4.26"></script>
+<script src="project_sheets.js?v=4.28"></script>
 <script src="project_scheme.js?v=4.51"></script>
 <script src="boiler_wall.js?v=1.0"></script>
 <script src="project_layout.js?v=4.18"></script>
-<script src="project_plans.js?v=4.55"></script>
+<script src="project_plans.js?v=4.56"></script>
 <script src="project_nodes.js?v=4.15"></script>
 <!-- Листы узлов по 3D-рендеру: коллектор водоснабжения и панельный радиатор. -->
 <script src="project_node_sheets.js?v=4.15"></script>
@@ -316,6 +316,7 @@ if (payload && payload.items && payload.items.length) {
   var stampDate = String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getFullYear()).slice(2);
   // Подписи: «Заказчик» пустой (подписывает клиент), ГИП и «Разработал» —
   // из личного кабинета; место под живую подпись остаётся между ними.
+  if (window.projectSheets && projectSheets.setOrgLogo) projectSheets.setOrgLogo(payload.logo);
   var ppl = payload.people || {};
   var sigs = [{ label: 'Заказчик', name: ppl.zakaz || '' },
               { label: 'ГИП', name: ppl.gip || '' },
@@ -693,11 +694,12 @@ if (payload && payload.items && payload.items.length) {
       }[mk] || null,
       // Сноска к схеме, типовая оговорка и подпись ГИП — как в оригинале
       footer: {
-        note: [
+        // сноска ссылается на «Схему 1» — она есть только на листах общих данных В и О
+        note: (mk === 'v' || mk === 'o') ? [
           '*На Схеме 1 приведена принципиальная модель расположения трубопроводов в составе перекрытия 1',
           'этажа. Толщина слоев, как и состав перекрытия может меняться в зависимости от требований',
           'архитектурного проекта.'
-        ],
+        ] : [],
         legalLines: [
           'Технические решения, принятые в рабочих чертежах, соответствуют требованиям экологических, санитарно-гигиенических,',
           'противопожарных и других действующих норм и правил, обеспечивающих безопасную для жизни и здоровья людей эксплуатацию',

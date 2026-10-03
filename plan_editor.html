@@ -359,7 +359,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.41"></script>
+<script src="project_plans.js?v=1.42"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -658,7 +658,25 @@ function wcCardOf(name) {
   if (!k) return null;
   for (var i = 0; i < calcWc.length; i++)
     if (String(calcWc[i].name).trim().toLowerCase() === k) return calcWc[i];
-  return null;
+  return wcFuzzyCard(k);
+}
+
+// Помещение называется «С/у», «Ванная», «Душевая», а карточка водоснабжения в
+// расчёте — «Санузел 1»: имена не совпали, и санузел на плане оставался без
+// приборов, а в комплекте не было листов В и К. Такие комнаты берут по порядку
+// карточки, чьё имя не совпадает ни с одной комнатой расчёта.
+var WC_NAME_RE = /с\/у|с\.\s?у|санузел|санузл|ванн|туалет|душев|уборн|гигиен/i;
+var wcFuzzy = {}, wcFuzzyN = 0, wcSpare = null;
+function wcFuzzyCard(k) {
+  if (!WC_NAME_RE.test(k) || !calcWc.length) return null;
+  if (!wcSpare) {
+    var roomKeys = {};
+    calcRooms.forEach(function (r) { roomKeys[String(r.name || '').trim().toLowerCase()] = 1; });
+    wcSpare = calcWc.filter(function (c) { return !roomKeys[String(c.name).trim().toLowerCase()]; });
+  }
+  if (!wcSpare.length) return null;
+  if (!(k in wcFuzzy)) { wcFuzzy[k] = wcSpare[Math.min(wcFuzzyN, wcSpare.length - 1)]; wcFuzzyN++; }
+  return wcFuzzy[k];
 }
 
 var cv = document.getElementById('cv'), cx = cv.getContext('2d');
