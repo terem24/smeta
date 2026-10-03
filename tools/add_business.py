@@ -18,6 +18,7 @@
 import io
 import json
 import os
+import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SCHEDULE = os.path.join(ROOT, 'content', 'schedule.json')
@@ -55,7 +56,9 @@ def main():
     data = json.load(io.open(SCHEDULE, encoding='utf-8'))
     have = set(i['slug'] for i in data['items'])
     added = 0
-    for date, slug, title, query, block in ITEMS:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import biz_weekly
+    for date, slug, title, query, block in ITEMS + biz_weekly.items():
         if slug in have:
             continue
         data['items'].append({

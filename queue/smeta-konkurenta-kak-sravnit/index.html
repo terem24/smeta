@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Смета конкурента на отопление: как сравнить и что ответить | HeatCalc.ru</title>
+    <meta name="description" content="Как построчно сравнить свою смету со сметой конкурента: оборудование, материалы, объёмы, работы, гарантия. Таблица сравнения, признаки неполной сметы и спокойный ответ заказчику.">
+    <link rel="canonical" href="https://heatcalc.ru/smeta-konkurenta-kak-sravnit/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/smeta-konkurenta-kak-sravnit/">
+    <meta property="og:title" content="Смета конкурента: как сравнить и что ответить">
+    <meta property="og:description" content="Разница в итоговой цифре почти всегда объясняется составом. Как найти, где именно.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/smeta-konkurenta-kak-sravnit/#webpage",
+      "url": "https://heatcalc.ru/smeta-konkurenta-kak-sravnit/",
+      "name": "Заказчик принёс смету конкурента: как сравнить и что ответить",
+      "description": "Как построчно сравнить свою смету со сметой конкурента: оборудование, материалы, объёмы, работы, гарантия. Таблица сравнения, признаки неполной сметы и спокойный ответ заказчику.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "сравнить сметы на отопление"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Заказчик принёс смету конкурента: как сравнить и что ответить",
+          "item": "https://heatcalc.ru/smeta-konkurenta-kak-sravnit/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как сравнить две сметы на отопление?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Сведите их в таблицу по одинаковым разделам: оборудование, трубы и фитинги, арматура, монтаж, пусконаладка, гарантия. Затем сопоставьте бренды, объёмы и перечень работ. Разница обычно находится в составе."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что ответить, если у конкурента дешевле?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Покажите расхождения в составе без критики конкурента и предложите вариант с тем же составом, если он нужен заказчику. Не снижайте цену ниже своей себестоимости."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как понять, что смета неполная?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Работы одной суммой без перечня, нет арматуры и автоматики, оборудование названо «аналогичным» без модели, нет пусконаладки и актов, не указан срок действия цен."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли просить смету конкурента?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Просить показать её у заказчика можно, но он не обязан. Если не показывает, ориентируйтесь только на то, что он сам рассказывает, и не строите доводы на догадках."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/smeta-konkurenta-kak-sravnit/#article",
+      "headline": "Заказчик принёс смету конкурента: как сравнить и что ответить",
+      "description": "Как построчно сравнить свою смету со сметой конкурента: оборудование, материалы, объёмы, работы, гарантия. Таблица сравнения, признаки неполной сметы и спокойный ответ заказчику.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/smeta-konkurenta-kak-sravnit/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-11-18",
+      "dateModified": "2026-11-18",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 551,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Заказчик принёс смету конкурента: как сравнить и что ответить</nav>
+
+        <h1>Заказчик принёс смету конкурента: как сравнить и что ответить</h1>
+
+        <p class="art-meta"><time datetime="2026-11-18">18 ноября 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Как сравнить свою смету со сметой конкурента и что ответить заказчику?</p>
+            <p>Попросите показать смету целиком и сведите обе в одну таблицу по разделам: оборудование, материалы, монтаж, пусконаладка, гарантия. Сопоставьте бренд и модель, объёмы труб и фитингов, перечень работ. Обычно разница находится в составе: нет автоматики, дешевле оборудование, нет части работ или материалов. Ответ строится на цифрах таблицы, а не на критике конкурента.</p>
+        </div>
+
+        <p class="lead">Заказчик достаёт телефон: «Мне вот так посчитали, на триста тысяч дешевле». Спорить об итоге бесполезно: вы сравниваете два документа, которые составлены по-разному, а иногда описывают даже разные дома. Нужно разложить обе сметы на одинаковые части и найти, где расходятся деньги.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#snachala-spokoystvie-i-prosba-pokazat">Сначала спокойствие и просьба показать</a></li>
+            <li><a href="#chto-sravnivat">Что сравнивать</a></li>
+            <li><a href="#priznaki-nepolnoy-smety">Признаки неполной сметы</a></li>
+            <li><a href="#kak-otvetit-zakazchiku">Как ответить заказчику</a></li>
+            <li><a href="#kogda-konkurent-deystvitelno-deshevle">Когда конкурент действительно дешевле</a></li>
+            <li><a href="#chem-podgotovitsya-zaranee">Чем подготовиться заранее</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="snachala-spokoystvie-i-prosba-pokazat">Сначала спокойствие и просьба показать</h2>
+
+        <p>Первая реакция на чужую смету — защита или нападение. Обе мешают. Вместо этого скажите: «Хорошо, давайте посмотрим вместе, мне важно понять, чем отличаются предложения». Попросите полную смету, а не итоговую строку. Если заказчик не готов показать документ, значит, он использует цифру как рычаг, и разговор переходит в плоскость торга, о которой мы писали в статье <a href="/kak-otvechat-na-dorogo/">про возражение «дорого»</a>.</p>
+
+        <p>Если смета у вас на руках, сопоставьте её с вашей предварительным разбором, не меняя ничего в вашем предложении. Цель — найти, из чего складывается разница, а не доказать, что вы правы.</p>
+
+        <h2 id="chto-sravnivat">Что сравнивать</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Раздел</th><th>Что проверить</th><th>Типичная причина расхождения</th></tr>
+                <tr><td>Оборудование</td><td>Бренд, серия, мощность, комплектация</td><td>Другая серия или бренд, без автоматики</td></tr>
+                <tr><td>Трубы и фитинги</td><td>Тип, диаметр, метраж</td><td>Меньший метраж или другой материал</td></tr>
+                <tr><td>Арматура и автоматика</td><td>Краны, группы безопасности, регуляторы</td><td>Часть позиций не включена</td></tr>
+                <tr><td>Монтаж</td><td>Перечень работ, точки, метры</td><td>Нет разводки, штробления или крепежа</td></tr>
+                <tr><td>Пусконаладка</td><td>Опрессовка, промывка, настройка, акты</td><td>Работы «по факту» или без актов</td></tr>
+                <tr><td>Гарантия и документы</td><td>Срок, условия, договор</td><td>Устная гарантия, нет договора</td></tr>
+            </table>
+        </div>
+        <p class="note">Заполните таблицу для обеих смет в двух столбцах: так расхождения видны сразу, а не угадываются по итогу.</p>
+
+        <h2 id="priznaki-nepolnoy-smety">Признаки неполной сметы</h2>
+
+        <ul>
+            <li><strong>Нет перечня материалов.</strong> Строка «монтаж под ключ» без списка трубы, фитингов и арматуры. Недостающее потом возникает в виде дополнительных работ — о том, как с этим жить, написано в статье про <a href="/dopolnitelnye-raboty-po-hodu-montazha/">допработы по ходу монтажа</a>.</li>
+            <li><strong>Нет позиций, которые нужны по схеме.</strong> Группа безопасности, расширительный бак, фильтр, балансировка, запорная арматура.</li>
+            <li><strong>Работы указаны одной суммой.</strong> Невозможно понять, что в неё входит, и чем отличается от вашей.</li>
+            <li><strong>Нет пусконаладки и актов.</strong> Опрессовка и промывка делаются, но без документов их результат нечем подтвердить.</li>
+            <li><strong>Оборудование «аналогичное».</strong> Без указания бренда и модели вы сравниваете с неизвестным.</li>
+            <li><strong>Цена действует «сегодня».</strong> Срок действия цен не указан или очень короткий.</li>
+        </ul>
+
+        <div class="callout">
+            <p><strong>Сравнивайте не цену, а состав за цену.</strong> Дешёвая смета не обязательно обман, а дорогая — не обязательно честная. Но если в двух документах разный набор позиций, итоговые цифры сравнивать нельзя: сначала приведите их к одному составу.</p>
+        </div>
+
+        <h2 id="kak-otvetit-zakazchiku">Как ответить заказчику</h2>
+
+        <p>Не критикуйте конкурента. Назовите расхождения в нейтральном тоне и предложите заказчику решить самому: «В их смете нет автоматики и пусконаладки, в нашей они есть. Если вам не нужна автоматика, мы можем убрать её и пересчитать». Так вы сохраняете позицию эксперта и даёте человеку выбор.</p>
+
+        <ol>
+            <li>Покажите таблицу сравнения, в которой цифры заказчика и ваши стоят рядом.</li>
+            <li>Назовите расхождения по пунктам, без оценок.</li>
+            <li>Предложите вариант вашей сметы с тем же составом, что у конкурента, если заказчик хочет именно его.</li>
+            <li>Объясните, что в вашей смете остаётся за пределами их состава и во что это обходится по времени и деньгам, если потребуется позже.</li>
+            <li>Предложите заказчику самому спросить у конкурента, входят ли отсутствующие позиции, и на каких условиях.</li>
+        </ol>
+
+        <h2 id="kogda-konkurent-deystvitelno-deshevle">Когда конкурент действительно дешевле</h2>
+
+        <p>Бывает, что составы совпадают, а цена ниже. Причины разные: другая закупка, меньшие накладные, работа без договора и налогов, ставка бригады. Это не повод снижать цену ниже вашей себестоимости. Лучше показать, что стоит за вашей ценой — договор, акты, гарантия, понятная смета, — и что получает заказчик за разницу. Если ваш вариант не нужен именно из-за цены, это нормальный исход: объект, на котором вы не зарабатываете, обходится дороже пустого графика.</p>
+
+        <h2 id="chem-podgotovitsya-zaranee">Чем подготовиться заранее</h2>
+
+        <p>Самое надёжное — отдавать смету, которую можно сравнить: с разделами, брендами, объёмами и условиями. В калькуляторе HeatCalc.ru смета делится на разделы, а КП уходит клиенту ссылкой с номером и сроком действия цен, поэтому заказчику есть что положить рядом с чужим документом. Оформление описано в статье про <a href="/kp-na-montazh-otopleniya/">коммерческое предложение на монтаж</a>.</p>
+
+        <a class="cta" href="/">
+            Сверить смету по разделам
+            <small>Оборудование, материалы и работы — раздельно</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как сравнить две сметы на отопление?</span></summary>
+            <div class="answer">
+                <p>Сведите их в таблицу по одинаковым разделам: оборудование, трубы и фитинги, арматура, монтаж, пусконаладка, гарантия. Затем сопоставьте бренды, объёмы и перечень работ. Разница обычно находится в составе.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что ответить, если у конкурента дешевле?</span></summary>
+            <div class="answer">
+                <p>Покажите расхождения в составе без критики конкурента и предложите вариант с тем же составом, если он нужен заказчику. Не снижайте цену ниже своей себестоимости.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как понять, что смета неполная?</span></summary>
+            <div class="answer">
+                <p>Работы одной суммой без перечня, нет арматуры и автоматики, оборудование названо «аналогичным» без модели, нет пусконаладки и актов, не указан срок действия цен.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли просить смету конкурента?</span></summary>
+            <div class="answer">
+                <p>Просить показать её у заказчика можно, но он не обязан. Если не показывает, ориентируйтесь только на то, что он сам рассказывает, и не строите доводы на догадках.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=smeta-konkurenta-kak-sravnit#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/kak-otvechat-na-dorogo/">дорого: как отвечать на возражение по цене</a> · <a href="/kp-na-montazh-otopleniya/">коммерческое предложение на монтаж отопления: из чего собрать</a> · <a href="/zamer-dlya-rascheta-chto-snyat/">замер дома для расчёта: что снять и сфотографировать, чтобы не ездить дважды</a> · <a href="/pervyy-zvonok-i-vyezd-na-zamer/">первый звонок и выезд на замер: что спросить у заказчика</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=smeta-konkurenta-kak-sravnit">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

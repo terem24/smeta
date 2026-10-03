@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Себестоимость рабочего дня бригады монтажников: расчёт | HeatCalc.ru</title>
+    <meta name="description" content="Как посчитать, во что обходится бригаде один рабочий день: оплата людей, накладные на день, гарантийный резерв, простои. Пример расчёта и как из себестоимости вывести цену работ.">
+    <link rel="canonical" href="https://heatcalc.ru/sebestoimost-chasa-brigady/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/sebestoimost-chasa-brigady/">
+    <meta property="og:title" content="Себестоимость рабочего дня бригады: как посчитать">
+    <meta property="og:description" content="Оплата людей — только часть себестоимости. Считаем накладные, простои и резерв на примере.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/sebestoimost-chasa-brigady/#webpage",
+      "url": "https://heatcalc.ru/sebestoimost-chasa-brigady/",
+      "name": "Себестоимость рабочего дня бригады: как посчитать",
+      "description": "Как посчитать, во что обходится бригаде один рабочий день: оплата людей, накладные на день, гарантийный резерв, простои. Пример расчёта и как из себестоимости вывести цену работ.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "себестоимость работ монтажника"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Себестоимость рабочего дня бригады: как посчитать",
+          "item": "https://heatcalc.ru/sebestoimost-chasa-brigady/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Как рассчитать себестоимость рабочего дня бригады?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Сложите оплату работников за день, накладные за месяц, поделённые на число дней на объектах, и гарантийный резерв. Итог — себестоимость дня."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Почему нельзя делить накладные на все рабочие дни месяца?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Часть рабочих дней уходит на замеры, закупки, ожидание и переезды. Накладные приходятся на дни, когда бригада на объекте и приносит выручку, поэтому делить нужно на них."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какую маржу закладывать?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Универсальной цифры нет. Маржа должна покрывать развитие бизнеса, гарантийные обязательства и ваш доход. Её определяют по вашим целям и расходам, а не по чужой цифре."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как учесть налоги в себестоимости?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Включайте их как процент от выручки или фиксированную статью. Для НПД ставки известны — 4 % с физлиц и 6 % с юрлиц и ИП, для других режимов смотрите актуальные условия на сайте ФНС или спросите бухгалтера."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/sebestoimost-chasa-brigady/#article",
+      "headline": "Себестоимость рабочего дня бригады: как посчитать",
+      "description": "Как посчитать, во что обходится бригаде один рабочий день: оплата людей, накладные на день, гарантийный резерв, простои. Пример расчёта и как из себестоимости вывести цену работ.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/sebestoimost-chasa-brigady/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-11-25",
+      "dateModified": "2026-11-25",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 538,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Себестоимость рабочего дня бригады: как посчитать</nav>
+
+        <h1>Себестоимость рабочего дня бригады: как посчитать</h1>
+
+        <p class="art-meta"><time datetime="2026-11-25">25 ноября 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Как посчитать себестоимость рабочего дня бригады?</p>
+            <p>Сложите оплату всех работников за день, накладные расходы за месяц, поделённые на число рабочих дней на объектах (а не календарных), и гарантийный резерв. Получится себестоимость дня. Чтобы получить цену, добавьте нужную маржу: цена = себестоимость ÷ (1 − маржа). Простои и дни без объекта нужно переносить на рабочие дни, иначе накладные окажутся занижены.</p>
+        </div>
+
+        <p class="lead">«Мы платим ребятам по четыре тысячи, значит, день стоит двенадцать» — типичный расчёт бригадира. Он ошибается в меньшую сторону: в день входит не только зарплата, но и дорога, инструмент, простои между объектами и выезды по гарантии. Пока их не посчитать, вы можете работать в минус при полном графике.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#iz-chego-skladyvaetsya-den">Из чего складывается день</a></li>
+            <li><a href="#rabochie-dni-ne-kalendarnye">Рабочие дни — не календарные</a></li>
+            <li><a href="#primer-rascheta">Пример расчёта</a></li>
+            <li><a href="#kak-ispolzovat-cifru">Как использовать цифру</a></li>
+            <li><a href="#chto-mozhet-iskazit-raschet">Что может исказить расчёт</a></li>
+            <li><a href="#gde-eto-schitat">Где это считать</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="iz-chego-skladyvaetsya-den">Из чего складывается день</h2>
+
+        <p>Себестоимость рабочего дня — это все деньги, которые вы тратите на то, чтобы бригада один день работала на объекте. Сюда входит оплата людей и всё, что нужно для работы, но не привязано к конкретной смете.</p>
+
+        <ul>
+            <li><strong>Оплата работников.</strong> Ставка за день или выработка на человека, помноженные на число людей.</li>
+            <li><strong>Постоянные накладные.</strong> Транспорт и топливо, аренда склада или гаража, амортизация инструмента, связь, программы, спецодежда, страховка.</li>
+            <li><strong>Расходники.</strong> Диски, сверла, герметики, пена, лента, не включаемые в смету отдельной строкой.</li>
+            <li><strong>Простои.</strong> Дни без объекта: ожидание материалов, погода, ожидание заказчика, переезд между объектами.</li>
+            <li><strong>Налоги и взносы.</strong> По вашему режиму: ставки и пороги меняются, смотрите на сайте ФНС или у бухгалтера.</li>
+            <li><strong>Гарантийный резерв.</strong> Часть выручки на выезды по недостаткам.</li>
+        </ul>
+
+        <h2 id="rabochie-dni-ne-kalendarnye">Рабочие дни — не календарные</h2>
+
+        <p>Самая частая ошибка — делить месячные накладные на двадцать два рабочих дня календаря. Но из этих дней часть уходит на замеры, закупки, переезды, ожидание заказчика и погоду. Дни, когда бригада реально работает на объекте и приносит выручку, — другое число. На него и нужно делить: иначе накладные недосчитаны, а вы платите их из прибыли.</p>
+
+        <h2 id="primer-rascheta">Пример расчёта</h2>
+
+        <p>Цифры условные, но логика та же, что у любой бригады. Три человека, ставка 4 000 ₽ в день каждому. Накладные за месяц: топливо и транспорт — 35 000 ₽, склад и инструмент — 20 000 ₽, расходники — 10 000 ₽, связь и программы — 5 000 ₽. Итого 70 000 ₽. Из 22 рабочих дней на объектах бригада бывает 18.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Статья</th><th>Расчёт</th><th>На день, ₽</th></tr>
+                <tr><td>Оплата бригады</td><td>3 человека × 4 000 ₽</td><td class="num">12 000</td></tr>
+                <tr><td>Накладные за месяц</td><td>70 000 ₽ ÷ 18 дней</td><td class="num">3 889</td></tr>
+                <tr><td>Гарантийный резерв (условно)</td><td>закладывается отдельно</td><td class="num">1 000</td></tr>
+                <tr><td>Себестоимость дня</td><td>12 000 + 3 889 + 1 000</td><td class="num">16 889</td></tr>
+            </table>
+        </div>
+        <p class="note">Если разделить накладные на 22 дня, получится 3 182 ₽ в день: разница почти в 700 ₽ ежедневно — это и есть недосчитанные простои.</p>
+
+        <div class="formula">
+            <p>Цена дня = Себестоимость ÷ (1 − маржа)</p>
+            <p>При марже 20 %: 16 889 ÷ 0,8 ≈ 21 111 ₽</p>
+        </div>
+
+        <div class="callout">
+            <p><strong>Ниже себестоимости дня работать нельзя, даже если график полон.</strong> Каждый такой день увеличивает убыток, и заполненный календарь это скрывает. Знать эту цифру нужно до того, как согласитесь на скидку.</p>
+        </div>
+
+        <h2 id="kak-ispolzovat-cifru">Как использовать цифру</h2>
+
+        <ol>
+            <li>Оцените по смете, сколько дней бригада проведёт на объекте. Умножьте на себестоимость дня — это нижняя граница цены работ.</li>
+            <li>Добавьте нужную маржу — получится цена, ниже которой работать невыгодно.</li>
+            <li>Сравните с тем, что вы заложили в смету. Если ниже, цена не покрывает даже расходов.</li>
+            <li>Проверяйте цифру раз в квартал: цены на топливо и ставки бригады меняются.</li>
+            <li>При скидке считайте остаток по объекту целиком, как разобрано в статье про <a href="/nacenka-montazhnika/">наценку монтажника</a>.</li>
+        </ol>
+
+        <h2 id="chto-mozhet-iskazit-raschet">Что может исказить расчёт</h2>
+
+        <p>Если оплата идёт сдельно, считайте не по дням, а по выработке: сколько точек или метров вы платите бригаде и сколько на них уходит дней. Если часть работы делаете сами, закладывайте в себестоимость и свою оплату, иначе она «растворится» в прибыли, и вы не поймёте, зарабатывает ли бизнес без вас. Если вы самозанятый или ИП, налоговые условия влияют на итог — о выборе режима написано в статье <a href="/samozanyatyy-ili-ip-montazhnik/">самозанятый или ИП</a>.</p>
+
+        <h2 id="gde-eto-schitat">Где это считать</h2>
+
+        <p>В тарифе «Профи» на вкладке «Деньги» калькулятора HeatCalc.ru задаются доля бригады или своя оплата по видам работ, накладные фиксом и процентом, скидка поставщика по брендам. Таблица показывает, что уходит клиенту, что вам и сколько остаётся. Вкладка видна только вам, клиент её не видит.</p>
+
+        <a class="cta" href="/">
+            Задать накладные и оплату бригады
+            <small>Вкладка «Деньги»: оплата бригады, накладные, остаток</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как рассчитать себестоимость рабочего дня бригады?</span></summary>
+            <div class="answer">
+                <p>Сложите оплату работников за день, накладные за месяц, поделённые на число дней на объектах, и гарантийный резерв. Итог — себестоимость дня.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Почему нельзя делить накладные на все рабочие дни месяца?</span></summary>
+            <div class="answer">
+                <p>Часть рабочих дней уходит на замеры, закупки, ожидание и переезды. Накладные приходятся на дни, когда бригада на объекте и приносит выручку, поэтому делить нужно на них.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какую маржу закладывать?</span></summary>
+            <div class="answer">
+                <p>Универсальной цифры нет. Маржа должна покрывать развитие бизнеса, гарантийные обязательства и ваш доход. Её определяют по вашим целям и расходам, а не по чужой цифре.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как учесть налоги в себестоимости?</span></summary>
+            <div class="answer">
+                <p>Включайте их как процент от выручки или фиксированную статью. Для НПД ставки известны — 4 % с физлиц и 6 % с юрлиц и ИП, для других режимов смотрите актуальные условия на сайте ФНС или спросите бухгалтера.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=sebestoimost-chasa-brigady#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/nacenka-montazhnika/">наценка монтажника: сколько закладывать на оборудование и работы</a> · <a href="/samozanyatyy-ili-ip-montazhnik/">самозанятый или ип: как монтажнику продавать оборудование и работы</a> · <a href="/smeta-konkurenta-kak-sravnit/">заказчик принёс смету конкурента: как сравнить и что ответить</a> · <a href="/kak-otvechat-na-dorogo/">дорого: как отвечать на возражение по цене</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=sebestoimost-chasa-brigady">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

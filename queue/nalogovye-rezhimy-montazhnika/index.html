@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Налоговые режимы монтажника: из чего выбирать | HeatCalc.ru</title>
+    <meta name="description" content="Самозанятость, ИП на упрощённой системе, общий режим: чем отличаются для монтажника, кто кому платит и какие вопросы задать бухгалтеру до выбора. Цифры только по самозанятым.">
+    <link rel="canonical" href="https://heatcalc.ru/nalogovye-rezhimy-montazhnika/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/nalogovye-rezhimy-montazhnika/">
+    <meta property="og:title" content="Налоги монтажника: из чего выбирать">
+    <meta property="og:description" content="Режим выбирают по тому, кто ваши заказчики и как вы покупаете оборудование.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/nalogovye-rezhimy-montazhnika/#webpage",
+      "url": "https://heatcalc.ru/nalogovye-rezhimy-montazhnika/",
+      "name": "Налоговые режимы монтажника: из чего выбирать",
+      "description": "Самозанятость, ИП на упрощённой системе, общий режим: чем отличаются для монтажника, кто кому платит и какие вопросы задать бухгалтеру до выбора. Цифры только по самозанятым.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "налоги монтажника ип"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Налоговые режимы монтажника: из чего выбирать",
+          "item": "https://heatcalc.ru/nalogovye-rezhimy-montazhnika/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Может ли самозанятый монтажник продавать заказчику оборудование?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет: перепродажа товаров для самозанятых запрещена. Оборудование можно оформить так, чтобы заказчик покупал его сам или по счёту поставщика, а вы выставляли только работы. Схему согласуйте с бухгалтером."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Какой налог платит самозанятый монтажник?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "4 % с доходов от физических лиц и 6 % с доходов от юридических лиц и ИП. Годовой лимит дохода составляет 2,4 млн ₽."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что делать, если лимит самозанятого близок?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Заранее посчитать нарастающий доход и обсудить с бухгалтером переход на ИП. Переход в последний момент оставляет мало времени на выбор системы и подготовку документов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужен ли ИП, чтобы работать с организациями?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Не всегда: самозанятые могут работать с организациями по ставке 6 %. Но организации часто предпочитают ИП, и это стоит выяснить у конкретного заказчика."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/nalogovye-rezhimy-montazhnika/#article",
+      "headline": "Налоговые режимы монтажника: из чего выбирать",
+      "description": "Самозанятость, ИП на упрощённой системе, общий режим: чем отличаются для монтажника, кто кому платит и какие вопросы задать бухгалтеру до выбора. Цифры только по самозанятым.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/nalogovye-rezhimy-montazhnika/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-12-23",
+      "dateModified": "2026-12-23",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 554,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Налоговые режимы монтажника: из чего выбирать</nav>
+
+        <h1>Налоговые режимы монтажника: из чего выбирать</h1>
+
+        <p class="art-meta"><time datetime="2026-12-23">23 декабря 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Какой налоговый режим выбрать монтажнику?</p>
+            <p>Зависит от трёх вещей: кто ваши заказчики (частные лица или организации), покупаете ли вы оборудование для объекта и перепродаёте ли его, и каким будет годовой доход. Самозанятость проще и подходит для услуг, но у неё есть лимит дохода и запрет перепродажи товаров. Если нужна торговля оборудованием, понадобится ИП, а режим подберите вместе с бухгалтером.</p>
+        </div>
+
+        <p class="lead">Начинаете брать объекты сами и сразу упираетесь в вопрос: как оформляться, чтобы заказчик подписал договор, а налоги не съели прибыль. Универсального ответа нет, но есть три вопроса, которые отсекают лишнее: кто платит, как вы работаете с оборудованием и сколько собираетесь зарабатывать.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#tri-voprosa-pered-vyborom">Три вопроса перед выбором</a></li>
+            <li><a href="#chto-izvestno-tochno-pro-samozanyatost">Что известно точно про самозанятость</a></li>
+            <li><a href="#chto-delat-s-oborudovaniem">Что делать с оборудованием</a></li>
+            <li><a href="#kak-nalog-popadaet-v-cenu">Как налог попадает в цену</a></li>
+            <li><a href="#voprosy-buhgalteru">Вопросы бухгалтеру</a></li>
+            <li><a href="#gde-schitat-vliyanie-naloga">Где считать влияние налога</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="tri-voprosa-pered-vyborom">Три вопроса перед выбором</h2>
+
+        <ol>
+            <li><strong>Кто заказчик.</strong> Частный дом — это в основном физические лица. Им важны цена и договор, а не вычеты по НДС. Если вы работаете с организациями или другими подрядчиками, вопросы к режиму другие: им могут быть важны закрывающие документы и форма расчётов.</li>
+            <li><strong>Как вы работаете с оборудованием.</strong> Если оборудование на объект закупаете вы и выставляете заказчику, это торговля товарами. Для самозанятых перепродажа товаров запрещена. Если заказчик покупает сам, а вы только монтируете, вопрос снимается.</li>
+            <li><strong>Сколько вы планируете зарабатывать.</strong> У самозанятых есть потолок годового дохода, у других режимов свои условия, и они меняются.</li>
+        </ol>
+
+        <h2 id="chto-izvestno-tochno-pro-samozanyatost">Что известно точно про самозанятость</h2>
+
+        <p>Налог на профессиональный доход установлен законом о самозанятых (ФЗ-422). Ставка 4 % с доходов от физических лиц и 6 % с доходов от юридических лиц и ИП. Годовой лимит дохода — 2,4 млн ₽. Перепродавать товары нельзя: доходом самозанятого признаётся оплата услуг и собственной продукции, но не торговля. Чек о каждом поступлении формируется в приложении. Подробнее — в статье <a href="/samozanyatyy-ili-ip-montazhnik/">«Самозанятый или ИП»</a>.</p>
+
+        <p>Условный пример. За год вы выполнили работы для частных лиц на 1 500 000 ₽ и для организаций на 500 000 ₽. Налог: 1 500 000 × 4 % = 60 000 ₽ и 500 000 × 6 % = 30 000 ₽, всего 90 000 ₽. Доход 2 000 000 ₽, до лимита остаётся 400 000 ₽: два крупных объекта в конце года, и лимит пройден.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Условие</th><th>Самозанятый</th><th>ИП</th></tr>
+                <tr><td>Ставка</td><td>4 % с физлиц, 6 % с юрлиц и ИП</td><td>Зависит от выбранной системы, актуальные ставки — на сайте ФНС</td></tr>
+                <tr><td>Лимит дохода</td><td>2,4 млн ₽ в год</td><td>Определяется выбранной системой</td></tr>
+                <tr><td>Перепродажа оборудования</td><td>Нельзя</td><td>Допустима, учитывается по правилам системы</td></tr>
+                <tr><td>Отчётность</td><td>Чек в приложении</td><td>Определяется системой, нужен бухгалтер или сервис</td></tr>
+                <tr><td>Работа с организациями</td><td>Возможна по ставке 6 %</td><td>Возможна, организации часто предпочитают ИП</td></tr>
+            </table>
+        </div>
+        <p class="note">Для ИП ставки и пороги не приводим: они меняются. Берите их с сайта ФНС или у бухгалтера на дату, когда принимаете решение.</p>
+
+        <h2 id="chto-delat-s-oborudovaniem">Что делать с оборудованием</h2>
+
+        <p>Это главный практический вопрос монтажника. Схема, при которой вы покупаете оборудование и продаёте заказчику по смете, на самозанятости не работает: это перепродажа. Есть два пути. Первый: заказчик покупает оборудование сам или по счёту поставщика, а вы выставляете только работы. Второй: оформиться как ИП и работать с оборудованием в рамках его режима. Какая схема законна и безопасна в вашем случае, решает бухгалтер, а не статья.</p>
+
+        <div class="callout">
+            <p><strong>Режим выбирают под способ работы, а не под ставку.</strong> Самая низкая ставка бесполезна, если ваша схема с оборудованием на этом режиме недопустима. Сначала решите, продаёте вы оборудование или только работы, и уже потом сравнивайте налоги.</p>
+        </div>
+
+        <h2 id="kak-nalog-popadaet-v-cenu">Как налог попадает в цену</h2>
+
+        <p>Налог — часть накладных. Процентный налог пропорционален выручке: уступка клиенту уменьшает его вместе с ценой, но остаток всё равно падает, как разобрано в статье про <a href="/nacenka-montazhnika/">наценку</a>. Заложите ставку налога в расчёт заранее, иначе при согласовании цены окажется, что вы продали работу ниже собственной себестоимости.</p>
+
+        <h2 id="voprosy-buhgalteru">Вопросы бухгалтеру</h2>
+
+        <ul>
+            <li>Подходит ли мне самозанятость, если часть оборудования я закупаю сам?</li>
+            <li>Что считать доходом, если заказчик оплатил и работы, и оборудование одной суммой?</li>
+            <li>Как оформить сотрудников бригады, если они работают со мной постоянно?</li>
+            <li>Какой режим выгоден, если часть заказчиков — организации?</li>
+            <li>Когда и как перейти с самозанятости на ИП, если лимит близок?</li>
+        </ul>
+
+        <h2 id="gde-schitat-vliyanie-naloga">Где считать влияние налога</h2>
+
+        <p>В тарифе «Профи» на вкладке «Деньги» накладные задаются фиксом и процентом, и процент удобно использовать под налог. Вы вводите долю один раз, а таблица показывает, сколько остаётся после налога, закупки и оплаты бригады. Это инструмент для оценки, а не бухгалтерский учёт.</p>
+
+        <a class="cta" href="/">
+            Посчитать остаток по смете
+            <small>Вкладка «Деньги»: накладные и процент налога в расчёте</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Может ли самозанятый монтажник продавать заказчику оборудование?</span></summary>
+            <div class="answer">
+                <p>Нет: перепродажа товаров для самозанятых запрещена. Оборудование можно оформить так, чтобы заказчик покупал его сам или по счёту поставщика, а вы выставляли только работы. Схему согласуйте с бухгалтером.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какой налог платит самозанятый монтажник?</span></summary>
+            <div class="answer">
+                <p>4 % с доходов от физических лиц и 6 % с доходов от юридических лиц и ИП. Годовой лимит дохода составляет 2,4 млн ₽.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что делать, если лимит самозанятого близок?</span></summary>
+            <div class="answer">
+                <p>Заранее посчитать нарастающий доход и обсудить с бухгалтером переход на ИП. Переход в последний момент оставляет мало времени на выбор системы и подготовку документов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужен ли ИП, чтобы работать с организациями?</span></summary>
+            <div class="answer">
+                <p>Не всегда: самозанятые могут работать с организациями по ставке 6 %. Но организации часто предпочитают ИП, и это стоит выяснить у конкретного заказчика.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=nalogovye-rezhimy-montazhnika#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/samozanyatyy-ili-ip-montazhnik/">самозанятый или ип: как монтажнику продавать оборудование и работы</a> · <a href="/nacenka-montazhnika/">наценка монтажника: сколько закладывать на оборудование и работы</a> · <a href="/itogi-goda-montazhnika/">итоги года монтажника: что посчитать до 31 декабря</a> · <a href="/krasnye-flagi-zakazchika/">когда отказаться от объекта: красные флаги заказчика</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=nalogovye-rezhimy-montazhnika">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
