@@ -402,11 +402,12 @@
   function imageSheet(opts) {
     opts = opts || {};
     if (!opts.url) return '';
-    var boxH = STAMP.t - FR.t, boxW = FR.r - FR.l;
+    // отступ от рамки 1,5 мм: у снимка светлый фон, и вплотную он перекрывал верхнюю линию рамки
+    var IN = 1.5, boxH = STAMP.t - FR.t - 2 * IN, boxW = FR.r - FR.l - 2 * IN;
     var h = boxH, w = h * (opts.ratio || 1.3773);
     if (w > boxW) { w = boxW; h = w / (opts.ratio || 1.3773); }
-    var body = '<image href="' + esc(opts.url) + '" x="' + n(FR.l + (boxW - w) / 2) +
-      '" y="' + n(FR.t + (boxH - h) / 2) + '" width="' + n(w) + '" height="' + n(h) +
+    var body = '<image href="' + esc(opts.url) + '" x="' + n(FR.l + IN + (boxW - w) / 2) +
+      '" y="' + n(FR.t + IN + (boxH - h) / 2) + '" width="' + n(w) + '" height="' + n(h) +
       '" preserveAspectRatio="xMidYMid meet"/>';
     return sheet({ code: opts.code, sheet: opts.sheet, body: body });
   }
@@ -425,18 +426,28 @@
     if (!a || !a.svg) return '';
     var top = BODY_TOP + 2;
     var boxW = FR.r - FR.l - 8, boxH = STAMP.t - top - 3;
-    // Крупнее натуральной величины не тянем: схемы нарисованы в миллиметрах
-    // листа, и при увеличении вместе с ними распухли бы шрифты и толщины линий.
-    var k = Math.min(boxW / (a.w || 1), boxH / (a.h || 1), 1);
+    // Схемы нарисованы в миллиметрах листа, шрифты на них 1,9–2,4 мм — мельче, чем в образцах (около 3 мм).
+    // Тянем до 1,35 от натуральной величины, если позволяет поле: линии при этом толще на треть, а
+    // подписи читаются; больше — уже распухают значки.
+    var k = Math.min(boxW / (a.w || 1), boxH / (a.h || 1), 1.35);
     if (!(k > 0)) return '';
     var x = FR.l + 4 + (boxW - a.w * k) / 2, y = top + (boxH - a.h * k) / 2;
+    // заголовок схемы внутри чертежа повторял заголовок листа — оставляем один
+    var artSvg = String(a.svg);
+    if (opts.title) {
+      var tail = '>' + opts.title + '</text>', ti = artSvg.indexOf(tail);
+      if (ti > 0) {
+        var ts = artSvg.lastIndexOf('<text', ti);
+        if (ts >= 0) artSvg = artSvg.slice(0, ts) + artSvg.slice(ti + tail.length);
+      }
+    }
     var head = opts.title
       ? text((FR.l + FR.r) / 2, 12.3, opts.title, { size: 5.47, anchor: 'middle', weight: 'bold' })
       : '';
     return sheet({
       code: opts.code, sheet: opts.sheet,
       body: head + '<g transform="translate(' + n(x) + ' ' + n(y) + ') scale(' + n(k) +
-        ')">' + a.svg + '</g>'
+        ')">' + artSvg + '</g>'
     });
   }
 
