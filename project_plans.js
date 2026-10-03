@@ -4746,6 +4746,23 @@
   var V_RSUP = '#a61b1b', V_RRET = '#26359f';
   /** Ломаная со скруглёнными углами: дуга радиусом r (число или функция (a, b, c) → радиус;
    *  не больше половины соседних звеньев) */
+  /**
+   * Возвраты назад по той же линии: подводка проскочила точку входа в петлю и вернулась (A→B→C на одной
+   * прямой, C с той же стороны от B, что и A). Остаётся двойной хвостик в несколько пикселей, на плане он
+   * читается как огрызок трубы. Точку B убираем — A→C идёт напрямую.
+   */
+  function despur(P) {
+    var out = P.slice(), i = 1;
+    while (i < out.length - 1) {
+      var a = out[i - 1], b = out[i], c = out[i + 1];
+      var d1x = b[0] - a[0], d1y = b[1] - a[1], d2x = c[0] - b[0], d2y = c[1] - b[1];
+      var cr = d1x * d2y - d1y * d2x, dot = d1x * d2x + d1y * d2y;
+      if (Math.abs(cr) < 1e-6 * (Math.hypot(d1x, d1y) * Math.hypot(d2x, d2y) + 1e-9) * 1e3 && dot < 0) {
+        out.splice(i, 1); i = Math.max(1, i - 1);
+      } else i++;
+    }
+    return out;
+  }
   function roundedD(pts, r) {
     var mm = function (v) { return Math.round(v * 10) / 10; };
     if (!pts || pts.length < 2) return '';
@@ -4837,7 +4854,7 @@
           return L.concat([horizLast ? [T[0], e[1]] : [e[0], T[1]], [T[0], T[1]]]);
         };
         var lastH = Math.abs(supL[supL.length - 1][1] - supL[supL.length - 2][1]) < 0.5;
-        supL = tie(supL, sup0, lastH); retL = tie(retL, ret1, lastH);
+        supL = despur(tie(supL, sup0, lastH)); retL = despur(tie(retL, ret1, lastH));
         o.push('<g data-pl="L' + R.no + '">');
         [[supL, V_SUP], [retL, V_RET]].forEach(function (pr) {
           o.push('<path d="' + roundedD(pr[0], leadGap * 0.9) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw * 0.5) +
