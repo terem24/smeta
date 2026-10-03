@@ -5069,10 +5069,18 @@ const app = {
         return head + (parts.length ? parts.join('; ') : 'инженерные системы по смете');
     },
 
-    // Листовка на одну страницу. Одна мысль в заголовке, три цифры, у каждой свой
-    // ответчик (завод, исполнитель, страховая), фото того, что стоит в доме,
-    // сроки по группам, три шага «если что-то случилось». Клиенту не нужно
-    // разбираться, на какую из гарантий смотреть: порядок на листе — порядок действий.
+    // Контурные иконки в манере stout.ru (тёмно-синий контур, голубой акцент)
+    WARRANTY_ICONS: {
+        shield: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 4l17 6v14c0 10-7.5 17.5-17 20C14.5 41.5 7 34 7 24V10z"/><rect x="16" y="20" width="16" height="12" fill="#3F9DE1" stroke="none"/><path d="M16 20h16M19 17v3M29 17v3" stroke="#203F6F"/></svg>',
+        wrench: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M30 6a9 9 0 0 0-8.6 11.7L7 32a3.5 3.5 0 0 0 5 5l14.3-14.4A9 9 0 0 0 38 14l-5.5 5.5-4-4L34 10a9 9 0 0 0-4-4z"/><circle cx="10" cy="38" r="1.6" fill="#3F9DE1" stroke="none"/><path d="M28 30l10 10" /><path d="M31 27l10 10" stroke="#3F9DE1"/></svg>',
+        umbrella: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 6v3M5 25a19 19 0 0 1 38 0z"/><path d="M5 25a19 19 0 0 1 19-19v19z" fill="#3F9DE1" stroke="none" opacity=".9"/><path d="M5 25a19 19 0 0 1 38 0z"/><path d="M24 25v13a4 4 0 0 1-8 0"/></svg>',
+        phone: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14 6h7l3 8-4 3a22 22 0 0 0 11 11l3-4 8 3v7a4 4 0 0 1-4 4C21 38 10 27 10 10a4 4 0 0 1 4-4z"/><path d="M29 9a10 10 0 0 1 10 10M29 15a4 4 0 0 1 4 4" stroke="#3F9DE1"/></svg>'
+    },
+
+    // Листовка на одну страницу в оформлении stout.ru: шапка с логотипом, синий
+    // баннер с одной мыслью и большим фото, четыре иконки-цифры, карточки того, что
+    // стоит в доме, тёмный подвал с телефоном исполнителя. Клиенту не нужно
+    // разбираться, на какую из гарантий смотреть: одна цифра в баннере, один телефон.
     warrantyFormHtml: function () {
         const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const od = this.objectDetails();
@@ -5090,50 +5098,42 @@ const app = {
         const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
         const mln = n => Math.round(n / 1e6) + ' млн ₽';
         const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
-        const tiles = this.warrantyPhotoTiles(5).map(t =>
-            `<div class="wp-tile"><img src="img/${e(t.it.id)}.jpg" alt="" onerror="this.onerror=null;this.style.visibility='hidden';"><div class="wp-tk">${e(cap(t.kind))}</div><div class="wp-tt">${e(years(t.months))}</div></div>`
-        ).join('');
-        const terms = groups.map(g =>
-            `<tr><td>${e(years(g.months))}</td><td>${e(cap(g.kinds.slice(0, 4).join(', ')))}${g.kinds.length > 4 ? ' и др.' : ''}</td></tr>`
-        ).join('');
+        const I = this.WARRANTY_ICONS;
+        const tiles = this.warrantyPhotoTiles(5);
+        const hero = tiles[0];
+        const img = id => `<img src="img/${e(id)}.jpg" alt="" onerror="this.onerror=null;this.style.visibility='hidden';">`;
+        const prods = tiles.map(t => `<div class="wp-prod">${img(t.it.id)}<div class="wp-pn">${e(cap(t.kind))}</div><div class="wp-pt">${e(years(t.months))} <small>гарантии</small></div></div>`).join('');
+        const grp = groups.map(g => `<span><b>${e(years(g.months))}</b> — ${e(g.kinds.slice(0, 3).join(', '))}${g.kinds.length > 3 ? ' и др.' : ''}</span>`).join('');
+        const feat = (icon, num, txt) => `<div class="wp-feat">${icon}<div class="wp-fn wp-cond">${num}</div><div class="wp-ft">${txt}</div></div>`;
         return `
-        <div class="wp-band">
+        <div class="wp-top">
             <img src="img/stout_logo.png" alt="STOUT">
-            <div class="wp-band-t"><div class="wp-kicker">Гарантия на объект</div><div class="wp-addr">${e(od.address)}</div></div>
+            <div class="wp-nav">Гарантийные обязательства&nbsp;&nbsp;·&nbsp;&nbsp;Объект: <b>${e(od.address)}</b></div>
         </div>
         <div class="wp-hero">
-            <h2 class="wp-h1">Ваш дом на оборудовании STOUT.<br>Гарантия <b>до ${e(years(maxM))}</b> и один телефон на любой случай.</h2>
-            <p class="wp-sub">Система собрана на оборудовании одного бренда, поэтому за неё отвечают трое: завод, исполнитель и страховая компания.</p>
-        </div>
-        <div class="wp-cards">
-            <div class="wp-card"><div class="wp-num">${e(years(maxM))}</div><div class="wp-who">Завод STOUT</div><div class="wp-what">Гарантия изготовителя на оборудование. Сроки по группам — ниже.</div></div>
-            <div class="wp-card"><div class="wp-num">${e(years(extM))}</div><div class="wp-who">Исполнитель</div><div class="wp-what">Гарантия на монтаж вместо обычного года: течь, ошибка монтажа, настройка — бесплатно.</div></div>
-            ${ins ? `<div class="wp-card"><div class="wp-num">${e(mln(ins.sum))}</div><div class="wp-who">Страховая защита</div><div class="wp-what">Ответственность завода за ущерб от дефекта застрахована в ${e(ins.insurer.replace(/^СПАО\s+/, ''))}.</div></div>` : ''}
-        </div>
-        ${tiles ? `<div class="wp-tiles">${tiles}</div>` : ''}
-        <div class="wp-cols">
-            <div class="wp-col">
-                <h3>Сроки гарантии завода</h3>
-                <table class="wp-terms">${terms}</table>
+            <div class="wp-hero-txt">
+                <div class="wp-kicker">Оборудование STOUT в вашем доме</div>
+                <h2>Гарантия <b>до ${e(years(maxM))}</b><br>на системы вашего дома</h2>
+                <p class="wp-lead">Одна система, один бренд, один телефон. За ваш дом отвечают вместе завод STOUT, исполнитель и страховая компания.</p>
+                <span class="wp-btn">Любой вопрос — ${e(phone)}</span>
             </div>
-            <div class="wp-col">
-                <h3>Если что-то случилось</h3>
-                <ol class="wp-steps">
-                    <li>Позвоните исполнителю: <span class="wp-phone">${e(phone)}</span></li>
-                    <li>Исполнитель приезжает, устраняет и сам решает вопрос с поставщиком и заводом.</li>
-                    <li>Ущерб имуществу от дефекта оборудования покрывает страховка завода.</li>
-                </ol>
-                <h3>Чтобы гарантия действовала</h3>
-                <ul class="wp-checks">
-                    <li>Храните паспорта изделий и акт опрессовки.</li>
-                    <li>Раз в год, перед сезоном — осмотр системы.</li>
-                    <li>Не меняйте систему без исполнителя.</li>
-                </ul>
-            </div>
+            <div class="wp-hero-img">${hero ? img(hero.it.id) : ''}${hero ? `<div class="wp-badge"><b>${e(years(hero.months))}</b>${e(hero.kind)}</div>` : ''}</div>
         </div>
+        <div class="wp-feats">
+            ${feat(I.shield, 'до ' + e(years(maxM)), 'гарантия завода STOUT на оборудование')}
+            ${feat(I.wrench, e(years(extM)), 'гарантия исполнителя на монтаж — вместо обычного года')}
+            ${ins ? feat(I.umbrella, e(mln(ins.sum)), 'ответственность завода за ущерб застрахована в ' + e(ins.insurer.replace(/^СПАО\s+/, ''))) : ''}
+            ${feat(I.phone, '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом')}
+        </div>
+        <h3>Что стоит в вашем доме<small>сроки гарантии завода по группам</small></h3>
+        <div class="wp-prods">${prods}</div>
+        <div class="wp-groups">${grp}</div>
+        <div class="wp-sys">В расчёте: ${e(this.systemSummary())}</div>
         <div class="wp-foot">
-            <div><b>Заказчик:</b> ${e(od.client)}${od.phone ? ', ' + e(od.phone) : ''}<br><b>Расчёт:</b> № ${e(kp)} от ${e(dateRu)} · ${e(this.systemSummary())}</div>
-            <div style="text-align:right; white-space:nowrap;"><b>Исполнитель:</b> ${e(execName)}<br>${e(phone)}${cc.name ? '<br>' + e(cc.name) : ''}</div>
+            <div class="wp-fl"><b>Заказчик:</b> ${e(od.client)}${od.phone ? ', ' + e(od.phone) : ''}<br>
+                <b>Расчёт</b> № ${e(kp)} от ${e(dateRu)}<br>
+                Чтобы гарантия действовала: храните паспорта и акт опрессовки, осмотр системы раз в год, изменения — через исполнителя.</div>
+            <div class="wp-fr"><div class="wp-phone wp-cond">${e(phone)}</div><div class="wp-fname">${e(execName)}${cc.name ? ' · ' + e(cc.name) : ''}</div></div>
         </div>
         <div class="wp-sign"><div>Исполнитель ______________</div><div>Заказчик ______________</div><div><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
         <div class="wp-src">Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
