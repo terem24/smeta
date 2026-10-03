@@ -2404,8 +2404,9 @@
     var z = bz || (f.coll ? roomAround(f, [f.coll.x, f.coll.y]) : (rc ? roomAround(f, rc) : null));
     if (z) {
       var s = wallSpot(f, z, rc || centroid(z.pts), 0.16), p = s.p, ppm = ppm0;
-      if (f.coll && Math.hypot(p[0] - f.coll.x, p[1] - f.coll.y) < 0.6 * ppm) {
-        var tries = [[p[0] + s.u[0] * 0.7 * ppm, p[1] + s.u[1] * 0.7 * ppm], [p[0] - s.u[0] * 0.7 * ppm, p[1] - s.u[1] * 0.7 * ppm]];
+      if (f.coll && Math.hypot(p[0] - f.coll.x, p[1] - f.coll.y) < 1.1 * ppm) {
+        // корпуса длиннее при многих петлях/приборах: сдвиг с запасом, чтобы не лечь на коллектор пола
+        var tries = [[p[0] + s.u[0] * 1.3 * ppm, p[1] + s.u[1] * 1.3 * ppm], [p[0] - s.u[0] * 1.3 * ppm, p[1] - s.u[1] * 1.3 * ppm]];
         p = tries.filter(function (q) { return pip(q, z.pts); })[0] || tries[0];
       }
       return { x: p[0], y: p[1], src: bz ? 'boiler' : (f.coll ? 'tp' : 'rads'), ang: rAng != null ? rAng : angFromNormal(s.n) };
@@ -4455,8 +4456,9 @@
    * routes — [{ pts }] (ломаные из клеточных точек от общего начала). Возвращает для каждого
    * маршрута [левая, правая] ломаные по ходу от начала (левая — слева по ходу).
    */
+  var LANE_PITCH = 2.0;
   function laneLines(routes, gap) {
-    var pitch = 2.4 * gap;                                    // пара + зазор между парами
+    var pitch = LANE_PITCH * gap;                              // пара + зазор между парами
     var key = function (p) { return Math.round(p[0] * 2) / 2 + ',' + Math.round(p[1] * 2) / 2; };
     var R = routes.map(function (r) {
       var out = [];
@@ -4520,8 +4522,29 @@
         var o = (idx - (cnt - 1) / 2) * pitch;
         offL.push(o + gap / 2); offR.push(o - gap / 2);
       }
-      return [assemble(P, offL), assemble(P, offR)];
+      var pair = [assemble(P, offL), assemble(P, offR)];
+      pair.off0 = offL.length > 1 ? offL[1] - gap / 2 : 0;       // место пары вдоль корпуса коллектора
+      return pair;
     });
+  }
+
+  /**
+   * Выход труб из корпуса коллектора: все подводки сначала идут прямо от корпуса (по линии
+   * отводов, на stub), рядом, в порядке будущих веток, и только потом расходятся. Без этого
+   * все линии росли из одной точки в центре коллектора, а не из его гребёнки.
+   * pts — маршрут от центра коллектора; возвращает маршрут [центр, точка выхода, … прежний путь].
+   */
+  function collectorFan(pts, C, ang, stub) {
+    var a = ang * Math.PI / 180, d = [Math.sin(a), -Math.cos(a)];
+    var T = [C.x + d[0] * stub, C.y + d[1] * stub], j = -1, i;
+    for (i = 1; i < pts.length; i++) {
+      if ((pts[i][0] - C.x) * d[0] + (pts[i][1] - C.y) * d[1] >= stub - 0.01) { j = i; break; }
+    }
+    if (j < 0) return pts;                                    // маршрут уходит вбок — оставляем как есть
+    var out = [[C.x, C.y], T];
+    orthoPath([T, pts[j]]).slice(1).forEach(function (q) { out.push(q); });
+    for (i = j + 1; i < pts.length; i++) out.push(pts[i]);
+    return out;
   }
 
   // Оформление плана дома в смете и КП — как на листах проектировщиков (корпус
@@ -4602,9 +4625,14 @@
     // Подводки петель тёплого пола — каждая труба своей линией (дерево от коллектора), без
     // обрывов и ступенек между участками. Нет путей подводок (старые данные) — пучок отрезками.
     var leadRows = rows.filter(function (R) { return R.loop && R.loop.sup && R.loop.lead && R.loop.lead.length >= 2; });
-    var leadGap = Math.max(lw * 1.7, 0.034 * ppm);
+    var leadGap = Math.max(lw * 1.0, 0.028 * ppm);
+    var tpBodyW = 0.6 * ppm;
     if (leadRows.length) {
-      var ll = laneLines(leadRows.map(function (R) { return { pts: R.loop.lead }; }), leadGap);
+      var tpAng0 = f.coll ? collAngle(f, 'tp') : 0;
+      var ll = laneLines(leadRows.map(function (R) {
+        return { pts: f.coll ? collectorFan(R.loop.lead, f.coll, tpAng0, 0.28 * ppm) : R.loop.lead };
+      }), leadGap);
+      tpBodyW = Math.max(0.6 * ppm, leadRows.length * LANE_PITCH * leadGap + 0.16 * ppm);
       leadRows.forEach(function (R, i) {
         var pair = ll[i], lp0 = R.loop, sup0 = lp0.sup[0], ret1 = lp0.ret[lp0.ret.length - 1];
         // подача — линия, конец которой ближе к началу петли
@@ -4665,11 +4693,12 @@
     });
     // Радиаторы: трассы полосой (ширина — по числу труб), сами приборы
     // прямоугольником вдоль стены, номер «Р1…» с комнатной стороны
-    var radRows = [], radBadges = [];
+    var radRows = [], radBadges = [], radBodyW = 0.6 * ppm;
     if (RR) {
       if (!RR.tee && RR.items.length && RR.items.every(function (it) { return it.full; })) {
-        var rg = Math.max(lw * 1.7, 0.034 * ppm);
-        var rl = laneLines(RR.items.map(function (it) { return { pts: it.full }; }), rg);
+        var rg = Math.max(lw * 1.0, 0.028 * ppm);
+        var rl = laneLines(RR.items.map(function (it) { return { pts: collectorFan(it.full, RR.C, RR.C.ang || 0, 0.28 * ppm) }; }), rg);
+        radBodyW = Math.max(0.6 * ppm, RR.items.length * LANE_PITCH * rg + 0.16 * ppm);
         RR.items.forEach(function (it, ii) {
           o.push('<g data-pl="R' + (it.i + 1) + '">');
           [[rl[ii][0], V_RSUP], [rl[ii][1], V_RRET]].forEach(function (pr) {
@@ -4761,7 +4790,7 @@
     });
     // Коллектор радиаторов — когда он не там же, где коллектор тёплого пола
     if (RR && !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm)) {
-      var cw2 = 0.6 * ppm, ch2 = 0.22 * ppm, ra = RR.C.ang || 0, raV = ra % 180 === 90;
+      var cw2 = radBodyW, ch2 = 0.22 * ppm, ra = RR.C.ang || 0, raV = ra % 180 === 90;
       o.push('<rect x="' + m(RR.C.x - cw2 / 2) + '" y="' + m(RR.C.y - ch2 / 2) + '" width="' + m(cw2) + '" height="' + m(ch2) +
         '" style="fill:#f8d0d0;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.7) + '"' +
         (ra ? ' transform="rotate(' + ra + ' ' + m(RR.C.x) + ' ' + m(RR.C.y) + ')"' : '') + '/>');
@@ -4770,7 +4799,7 @@
         (RR.tee ? 'Магистраль радиаторов' : 'Коллектор радиаторов') + '</text>');
     }
     if (f.coll) {
-      var cw = 0.6 * ppm, ch = 0.22 * ppm, ca = collAngle(f, 'tp'), caV = ca % 180 === 90;
+      var cw = tpBodyW, ch = 0.22 * ppm, ca = collAngle(f, 'tp'), caV = ca % 180 === 90;
       o.push('<rect x="' + m(f.coll.x - cw / 2) + '" y="' + m(f.coll.y - ch / 2) + '" width="' + m(cw) + '" height="' + m(ch) +
         '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"' +
         (ca ? ' transform="rotate(' + ca + ' ' + m(f.coll.x) + ' ' + m(f.coll.y) + ')"' : '') + '/>');
