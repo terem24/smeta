@@ -79283,7 +79283,10 @@ const app = {
          ['water_scheme_row', ['5.1.', '5. Внутреннее водоснабжение'], () => this.renderWaterScheme(), true],
          ['hvs_node_scheme_row', '6. Узел ввода ХВС', () => this.renderHvsNodeScheme(), true]]
         .forEach(([rowId, marker, build, atSec]) => {
-            const old = document.getElementById(rowId);
+            // Только строку на экране: у печатной копии (#print_bin) те же id, а живую
+            // строку перерисовка таблицы уже стёрла — getElementById находил копию,
+            // и схемы разделов пропадали из печати и PDF.
+            const old = document.querySelector('#print-area #' + rowId);
             if (old) old.remove();
             if (this.state.viewMode !== 'equipment' || !this.schemeOn()) return;
             const html = build();
