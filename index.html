@@ -113,7 +113,7 @@
         // Ставим до отрисовки, чтобы страница не прыгала с 0.8 на выбранный.
         try { var _z = parseFloat(localStorage.getItem('hc_ui_zoom')), _m = innerWidth / 1450; if (_z >= 0.8 && _z <= 1.2) { while (_z > _m && _z > 0.8) _z = _z > 1 ? 1 : _z > 0.9 ? 0.9 : 0.8; document.documentElement.style.setProperty('--ui-zoom', _z); } } catch (e) {}
         // Крупный текст (big_text.css) — тоже до отрисовки
-        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=7'; document.head.appendChild(_l); } } catch (e) {}
+        try { if (localStorage.getItem('hc_big_text') === '1') { document.documentElement.setAttribute('data-big-text', ''); var _l = document.createElement('link'); _l.id = 'big_text_css'; _l.rel = 'stylesheet'; _l.href = 'big_text.css?v=9'; document.head.appendChild(_l); } } catch (e) {}
     </script>
     <script>
         if ('serviceWorker' in navigator) {
@@ -173,7 +173,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.69">
+    <link rel="stylesheet" href="style.css?v=4.74">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.28" defer></script>
@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=10.87" defer></script>
+    <script src="app.js?v=10.91" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2298,7 +2298,7 @@
                     <div id="tab_equipment" class="tab active" style="font-size: 14px; font-weight: 700;"
                         onclick="app.setViewMode('equipment')">1. Оборудование</div>
                     <div id="tab_works" class="tab" style="font-size: 14px; font-weight: 700;"
-                        onclick="app.setViewMode('works')">2. Монтажные работы</div>
+                        onclick="app.setViewMode('works')">2. <span class="tab-long">Монтажные работы</span><span class="tab-short">Монтаж</span></div>
                     <!-- Распознавание рукописных смет. Скрыта по умолчанию,
                          показывается только админам из RecognizeUI.syncButton(). -->
                     <div id="tab_recognize" class="tab" style="font-size: 14px; font-weight: 700; display: none;"
@@ -3242,6 +3242,22 @@
                     <div><h4>КП и счета</h4><div class="lk-sub">Значения по умолчанию для отправки смет клиенту. Перед каждой отправкой их можно поменять прямо в окне ссылки</div></div>
                 </div>
                 <div class="lk-card">
+                    <!-- Напоминание «сохранить расчёт»: окно с названием объекта, если расчёт изменён
+                         и не сохранялся N минут. installerSettings.saveReminder / saveReminderMin -->
+                    <div class="lk-setting">
+                        <div class="lk-setting-text">
+                            <b>Напоминать сохранить расчёт</b>
+                            <span>Если вы изменили расчёт и не сохранили его, калькулятор предложит дать объекту название и сохранить. Если ничего не менялось — не беспокоит.</span>
+                        </div>
+                        <label class="switch"><input type="checkbox" id="profile_save_reminder" onchange="app.setSaveReminderEnabled(this.checked)"><span class="slider"></span></label>
+                    </div>
+                    <div class="lk-setting" id="profile_save_reminder_min_row">
+                        <div class="lk-setting-text">
+                            <b>Напомнить через, минут</b>
+                            <span>По умолчанию 15 минут после последнего значимого изменения (больше 10 % по сумме).</span>
+                        </div>
+                        <input type="number" id="profile_save_reminder_min" class="auth-input lk-num" min="1" max="240" step="1" placeholder="15" onchange="app.setSaveReminderMinutes(this.value.trim())">
+                    </div>
                     <!-- Срок действия счёта по ссылке клиенту. Значение по умолчанию для окна
                          «Создание ссылки для клиента»; 0 или пусто — таймер выключен. Поле пишет
                          настройку сразу при изменении и показывает приведённое число. -->

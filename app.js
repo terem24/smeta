@@ -4715,7 +4715,43 @@ const app = {
     // остаётся одной; перенос остаётся только на крайний случай, когда не хватает и так.
     // Проверка по факту, а не по ширине окна: содержимое разное (регион, «Вариант:
     // подешевле», квартира с этажом).
+    // Вкладки над сметой: если полное название не помещается в плашку (крупный текст,
+    // узкое окно), берём короткое («Монтаж» вместо «Монтажные работы») — вместо двух
+    // строк в плашке. Проверка по факту, как и у строки параметров.
+    fitMainTabs: function () {
+        const bar = document.querySelector('.main-view-tabs');
+        if (!bar) return;
+        const wraps = () => [...bar.querySelectorAll('.tab')].some(t => {
+            if (!t.offsetWidth) return false;
+            const rg = document.createRange();
+            rg.selectNodeContents(t);
+            // Вкладка — flex: «2.» и подпись лежат отдельными блоками, и верх у них может
+            // расходиться на 1–3 px. Перенос — это разброс верхов больше 8 px (строка ≥ 17 px).
+            const tops = [...rg.getClientRects()].filter(r => r.width > 1).map(r => r.top);
+            return tops.length > 1 && (Math.max(...tops) - Math.min(...tops)) > 8;
+        });
+        bar.classList.remove('tabs-short');
+        if (wraps()) bar.classList.add('tabs-short');
+        // Ширина плашек меняется не только с окном: при раннем рендере раскладка ещё не
+        // устоялась, а пятая вкладка («Почему дешевле») появляется позже и сужает остальные.
+        // Следим за самими плашками и пересчитываем, когда их ширины изменились.
+        if (!this._tabsObserved && window.ResizeObserver) {
+            this._tabsObserved = true;
+            let lastKey = '', tm = 0;
+            const tabs = [...bar.querySelectorAll('.tab')];
+            const ro = new ResizeObserver(() => {
+                const key = tabs.map(t => t.offsetWidth).join(',');
+                if (key === lastKey) return;
+                lastKey = key;
+                clearTimeout(tm);
+                tm = setTimeout(() => this.fitMainTabs(), 30);
+            });
+            tabs.forEach(t => ro.observe(t));
+        }
+    },
+
     fitDocSummary: function () {
+        this.fitMainTabs();
         const ds = document.getElementById('doc_summary');
         if (!ds) return;
         const wraps = () => {
@@ -4724,8 +4760,12 @@ const app = {
             const first = items[0].offsetTop;
             return items.some(e => Math.abs(e.offsetTop - first) > 6);
         };
-        ds.classList.remove('ds-compact');
-        if (wraps()) ds.classList.add('ds-compact');
+        ds.classList.remove('ds-compact', 'ds-tight');
+        if (wraps()) {
+            ds.classList.add('ds-compact');
+            // Всё ещё не помещается — у метки «Гарантия STOUT» остаётся щит (слова в подсказке)
+            if (wraps()) ds.classList.add('ds-tight');
+        }
         // Размер колонки сметы меняется при ресайзе окна, раскрытии ленты, смене масштаба
         if (!this._dsObserved) {
             this._dsObserved = true;
@@ -4869,6 +4909,84 @@ const app = {
         };
     },
 
+    // Ближайший аналог STOUT для позиции сметы (id или null). Сначала двойник: позиция
+    // STOUT, у которой эта позиция записана как .rommer, либо артикул STOUT, стоявший
+    // здесь по умолчанию (originalId). Иначе — позиция STOUT из той же группы каталога
+    // с ближайшей ценой.
+    stoutAnalogFor: function (it) {
+        if (!it) return null;
+        const orig = String(it.originalId || '');
+        const kind1 = t => String(t || '').toLowerCase().replace(/[^а-яa-z ]/g, '').trim().split(/\s+/)[0];
+        if (/^S[A-Z]{2}-\d{4}-/.test(orig)) {
+            // Исходный артикул STOUT годится, только если это тот же вид изделия:
+            // у утеплителя originalId бывает артикулом трубы, на которую он надет
+            let found = null;
+            for (const key in catalog) { const arr = catalog[key]; if (Array.isArray(arr)) { found = arr.find(x => x && x.id === orig); if (found) break; } }
+            if (found && kind1(found.name) === kind1(it.name)) return orig;
+        }
+        const ids = [it.id, it.originalId, it.displaySku].filter(Boolean);
+        const price = Number(it.price) || ((Number(it.sum) || 0) / (Number(it.q) || 1));
+        let best = null, bd = Infinity, twin = null;
+        const scan = (arr) => {
+            if (!Array.isArray(arr)) return;
+            const here = arr.some(x => x && (ids.includes(x.id) || (x.rommer && ids.includes(x.rommer.id))));
+            if (!here) return;
+            arr.forEach(x => {
+                if (!x || !this.isStoutItem(x)) return;
+                if (x.rommer && ids.includes(x.rommer.id)) twin = x.id;
+                // Без двойника берём только того же вида (первое слово названия): утеплитель трубой не заменить
+                const w1 = t => String(t || '').toLowerCase().replace(/[^а-яa-z ]/g, '').trim().split(/\s+/)[0];
+                if (!(x.rommer && ids.includes(x.rommer.id)) && w1(x.name) !== w1(it.name)) return;
+                const d = Math.abs((Number(x.price) || 0) - price);
+                if (d < bd) { bd = d; best = x.id; }
+            });
+        };
+        for (const key in catalog) scan(catalog[key]);
+        try { this._getSecRadSeries().forEach(sr => scan(sr.arr)); } catch (e) { }
+        return twin || best;
+    },
+
+    // Копия КП с заменой на STOUT. Оригинал не трогаем: сначала сохраняем его в облако,
+    // затем текущий расчёт становится копией под новым 6-значным номером (та же
+    // механика, что у чужой сметы по «Загрузить код»: detachLoadedEstimate +
+    // ensureCalcId, связь с оригиналом — state.copiedFrom), и уже в ней идёт замена.
+    // Копию можно найти и загрузить по номеру через «Загрузить код».
+    makeStoutCopy: async function () {
+        try { this.ensureCalcId(true); await this.saveToCloud(true); } catch (e) { console.warn('[makeStoutCopy] оригинал не сохранён', e); }
+        const origNo = this.state.calc_id || '';
+        this.detachLoadedEstimate(this.state, { estId: null });
+        this.ensureCalcId(true);
+        const n = this.replaceWithStout(null);
+        let saved = false;
+        try { saved = await this.saveToCloud(true); } catch (e) { console.warn('[makeStoutCopy] копия не сохранена', e); }
+        this.saveState();
+        const sh = this.stoutShare();
+        this.alert('Создана копия КП № ' + this.state.calc_id + ' с заменой на STOUT: заменено ' + n + ' поз., доля STOUT ' + sh.pct + ' %'
+            + (sh.pct >= this.warrantyThreshold() ? ' — гарантия на объект доступна.' : '.')
+            + '\nОригинал № ' + origNo + ' не изменён.'
+            + (saved ? '' : '\nВ облако копия пока не сохранилась: нажмите «Сохранить».'), 'Копия КП');
+    },
+
+    // Заменить на STOUT одну позицию (индекс в списке missing) или все, где есть аналог
+    // (index === null). Ручная замена кладётся в state.swaps — тот же механизм, что у
+    // кнопки «Аналог» и таблицы замены. Возвращает число замен.
+    replaceWithStout: function (index) {
+        const miss = this.stoutShare().missing;
+        const list = index === null ? miss : [miss[index]];
+        if (!this.state.swaps) this.state.swaps = {};
+        let n = 0;
+        list.forEach(it => {
+            const cand = this.stoutAnalogFor(it);
+            if (!cand) return;
+            const keys = (it.instanceKeys && it.instanceKeys.length) ? it.instanceKeys : [it.originalId || it.id];
+            keys.forEach(k => { this.state.swaps[k] = cand; });
+            try { this.logEquipmentSwap(it.originalId || it.id, cand); } catch (e) { }
+            n++;
+        });
+        if (n) { this.render(); this.saveState(); }
+        return n;
+    },
+
     // Метка «Гарантия STOUT» в строке параметров сметы. Только при входе (клиент
     // открывает КП по ссылке без входа), класс no-print — в печать и PDF не идёт.
     // Короткая, чтобы не раздвигать строку: щит и два слова. Состояние говорит
@@ -4894,7 +5012,7 @@ const app = {
         el.tabIndex = 0;
         el.title = ok ? 'Гарантия STOUT на объект доступна: к КП добавится бланк. Нажмите, чтобы узнать подробнее.'
             : 'Чтобы к КП добавился бланк гарантии STOUT, нужно ещё около ' + short(need) + ' оборудования STOUT. Нажмите, чтобы увидеть, что заменить.';
-        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg>Гарантия STOUT`;
+        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg><span class="ds-stout-txt">${ok ? 'Гарантия STOUT' : 'Нет гарантии на объект'}</span>`;
         el.onclick = () => this.showStoutShareInfo();
         el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.showStoutShareInfo(); } };
         const date = ds.querySelector('.param-date');
@@ -4918,7 +5036,8 @@ const app = {
         let acc = 0, n = 0;
         for (const it of sh.missing) { if (acc >= need) break; acc += Number(it.sum) || 0; n++; }
         const word = (k) => { const t = k % 10, h = k % 100; return k + ' ' + ((h >= 11 && h <= 14) ? 'позиций' : t === 1 ? 'позицию' : (t >= 2 && t <= 4) ? 'позиции' : 'позиций'); };
-        const rows = sh.missing.slice(0, 3).map(it => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span></div>`).join('');
+        const rows = sh.missing.slice(0, 3).map((it, i) => `<div class="sg-row"><span class="sg-row-n">${e(it.name)}</span><span class="sg-row-b">${e(it.brand || '')}</span><span class="sg-row-s">${rub(it.sum)}</span>${this.stoutAnalogFor(it) ? `<button type="button" class="sg-rep" data-i="${i}">Заменить</button>` : '<span class="sg-noan">нет аналога</span>'}</div>`).join('');
+        const canAll = ok ? 0 : sh.missing.filter(it => this.stoutAnalogFor(it)).length;
         const html = `
             <div class="sg-head">
                 <div class="sg-shield"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/><path d="M8.6 12.1l2.4 2.4 4.4-4.6"/></svg></div>
@@ -4941,8 +5060,8 @@ const app = {
                     <div><b>страховка</b><span>ответственность завода</span></div>
                 </div>` : `
                 <div class="sg-lead"><b>Не хватает ${rub(need)}.</b>${n ? ` Заменить примерно ${word(n)} на STOUT, начиная с самых дорогих:` : ''}</div>
-                <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. Заменить можно кнопкой «Аналог» у раздела</div>` : ''}</div>`}
-                <div class="calc-dialog-buttons"><button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="sg_ok">Понятно</button></div>
+                <div class="sg-rows">${rows}${sh.missing.length > 3 ? `<div class="sg-more">и ещё ${sh.missing.length - 3}. «Заменить» меняет позицию в этом КП, кнопка ниже делает копию КП с заменой всего, оригинал не меняется</div>` : ''}</div>`}
+                <div class="calc-dialog-buttons">${canAll ? `<button type="button" class="calc-dialog-btn sg-all" id="sg_all">Сделать копию КП на STOUT (${canAll})</button>` : ''}<button type="button" class="calc-dialog-btn ${canAll ? 'calc-dialog-btn-cancel' : 'calc-dialog-btn-confirm'}" id="sg_ok">${canAll ? 'Закрыть' : 'Понятно'}</button></div>
             </div>`;
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
@@ -4959,6 +5078,22 @@ const app = {
         const onKey = (ev) => { if (ev.key === 'Escape') close(); };
         document.addEventListener('keydown', onKey);
         card.querySelector('#sg_ok').onclick = close;
+        // Замена: окно закрываем сразу и открываем заново — шкала покажет новую долю
+        const redo = (index) => {
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+            const n = this.replaceWithStout(index);
+            this.showStoutShareInfo();
+            if (!n) { const h = document.querySelector('.sg-card .sg-lead'); if (h) h.insertAdjacentHTML('beforeend', ' Аналога STOUT не нашлось.'); }
+        };
+        card.querySelectorAll('.sg-rep').forEach(b => { b.onclick = () => redo(parseInt(b.dataset.i)); });
+        const all = card.querySelector('#sg_all');
+        if (all) all.onclick = async () => {
+            all.disabled = true; all.textContent = 'Делаем копию…';
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+            await this.makeStoutCopy();
+        };
         overlay.addEventListener('click', (ev) => { if (ev.target === overlay) close(); });
         setTimeout(() => overlay.classList.add('active'), 10);
     },
@@ -8185,6 +8320,11 @@ const app = {
             this.lastSavedStateString = this.getStateSignature();
             this.markAsSaved();
             this.logInvoiceEvent('saved');
+            // Точка отсчёта для напоминания «сохранить расчёт» — теперь это сохранённая сумма
+            this._remindBase = total;
+            this._remindDismissSum = null;
+            this.saveReminderDisarm();
+            this.saveReminderClearPending();
             console.log("[saveToCloud] Сохранение успешно завершено.");
             if (!silent) app.alert("✅ Смета успешно сохранена!");
             return true;
@@ -12615,6 +12755,7 @@ const app = {
             this.hasUnsavedChanges = false;
             this.updateSaveBtnUI();
             this.resetAutosaveBaseline();
+            this._remindBase = this.saveReminderSum(); this._remindDismissSum = null; this.saveReminderClearPending();
             // Цены каталога могли уехать с момента сохранения — расчёт уже пересобран
             // по сегодняшним, осталось сказать об этом вслух
             this.showRepriceNotice({ eqSum: data.eq_sum, at: data.created_at });
@@ -16979,6 +17120,7 @@ const app = {
         if (kpDaysEl) kpDaysEl.value = String(this.kpReminderDaysDefault());
         const shortEl = document.getElementById('profile_short_names');
         if (shortEl) shortEl.checked = this.shortNamesDefault();
+        this.fillSaveReminderForm();
     },
     invoiceValidDaysDefault: function () {
         if (!this.installerSettings) this.loadInstallerSettingsLocal();
@@ -42446,7 +42588,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '7',
+    BIG_TEXT_CSS_V: '9',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -48127,6 +48269,7 @@ const app = {
         // прежним файлом. Без вопроса — он уже подтверждён строкой выше.
         if (typeof RecognizeUI !== 'undefined' && RecognizeUI.resetAll) RecognizeUI.resetAll(true);
         this.resetAutosaveBaseline();
+        this._remindBase = 0; this._remindDismissSum = null; this.saveReminderDisarm(); this.saveReminderClearPending();
     },
 
     /**
@@ -48224,9 +48367,249 @@ const app = {
         if (this._autoSaveTimeout) {
             clearTimeout(this._autoSaveTimeout);
         }
+        // Тихое автосохранение копий в облако заменено напоминанием с вопросом
+        // «сохранить расчёт?» (saveReminderEval): копии под именем «(автосохранение)»
+        // никто не искал, а сервер они грузили. runAutoSave оставлен, но не вызывается.
         this._autoSaveTimeout = setTimeout(() => {
-            this.runAutoSave();
+            this.saveReminderEval();
         }, 3000);
+    },
+
+    // ── Напоминание сохранить расчёт ─────────────────────────────────────────
+    // Включено у всех вошедших в аккаунт. Таймер заводится, когда расчёт изменён и
+    // сумма ушла от последней сохранённой (или от нуля) на 10 % и больше; через N минут
+    // (по умолчанию 15) появляется окно с названием объекта. Сохранили или отказались —
+    // таймер заново не идёт, пока расчёт снова не изменится на 10 %.
+    // Закрытие вкладки: браузер не даёт нарисовать своё окно, поэтому на десктопе
+    // срабатывает его штатный вопрос, а везде (в том числе на телефоне) расчёт
+    // помечается в localStorage, и при следующем открытии окно появляется само.
+    SAVE_REMIND_MIN_DEFAULT: 15,
+    SAVE_REMIND_MIN_MAX: 240,
+    SAVE_REMIND_PENDING_KEY: 'hc_save_reminder_pending',
+    _remindBase: 0,
+    _remindTimer: null,
+    _remindDismissSum: null,
+    _remindOpen: false,
+
+    saveReminderEnabled: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        return this.installerSettings.saveReminder !== false;
+    },
+    setSaveReminderEnabled: function (on) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        this.installerSettings.saveReminder = !!on;
+        if (!on) { this.saveReminderDisarm(); this.saveReminderClearPending(); }
+        this.pushInstallerSettingsToCloud();
+        this.fillSaveReminderForm();
+    },
+    saveReminderMinutes: function () {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        const n = Math.round(Number(this.installerSettings.saveReminderMin));
+        if (!isFinite(n) || n < 1) return this.SAVE_REMIND_MIN_DEFAULT;
+        return Math.min(n, this.SAVE_REMIND_MIN_MAX);
+    },
+    setSaveReminderMinutes: function (v) {
+        if (!this.installerSettings) this.loadInstallerSettingsLocal();
+        let n = Math.round(Number(v));
+        if (!isFinite(n) || n < 1) n = this.SAVE_REMIND_MIN_DEFAULT;
+        n = Math.min(n, this.SAVE_REMIND_MIN_MAX);
+        if (this.installerSettings.saveReminderMin !== n) {
+            this.installerSettings.saveReminderMin = n;
+            this.pushInstallerSettingsToCloud();
+        }
+        this.saveReminderDisarm();
+        this.fillSaveReminderForm();
+    },
+    fillSaveReminderForm: function () {
+        const on = this.saveReminderEnabled();
+        const sw = document.getElementById('profile_save_reminder');
+        if (sw) sw.checked = on;
+        const mEl = document.getElementById('profile_save_reminder_min');
+        if (mEl) { mEl.value = String(this.saveReminderMinutes()); mEl.disabled = !on; }
+        const row = document.getElementById('profile_save_reminder_min_row');
+        if (row) row.style.opacity = on ? '' : '0.5';
+    },
+
+    // Сумма сметы, как её видит человек: оборудование + монтаж (если он ему доступен)
+    saveReminderSum: function () {
+        return (app.lastEqSum || 0) + (!this.canUseWorks() ? 0 : (app.lastWorksSum || 0));
+    },
+    // Есть ли что предлагать сохранить: расчёт изменён и ушёл от сохранённого на 10 %+
+    saveReminderNeeded: function () {
+        const sum = this.saveReminderSum();
+        if (!(sum > 0) || !this.hasUnsavedChanges) return false;
+        if (this._remindDismissSum !== null && this._remindDismissSum > 0 &&
+            Math.abs(sum - this._remindDismissSum) / this._remindDismissSum < 0.10) return false;
+        const base = this._remindBase || 0;
+        return base <= 0 || Math.abs(sum - base) / base >= 0.10;
+    },
+    saveReminderDisarm: function () {
+        if (this._remindTimer) { clearTimeout(this._remindTimer); this._remindTimer = null; }
+    },
+    saveReminderEval: function () {
+        if (this._suppressSaveState || !this.isAppReady) return;
+        if (!this.saveReminderEnabled()) { this.saveReminderDisarm(); return; }
+        // Чистое состояние (загружено или только что сохранено) — запоминаем его сумму
+        // как точку отсчёта и снимаем отказ
+        if (!this.hasUnsavedChanges) {
+            this._remindBase = this.saveReminderSum();
+            this._remindDismissSum = null;
+            this.saveReminderDisarm();
+            this.saveReminderClearPending();
+            return;
+        }
+        if (!this.saveReminderNeeded()) { this.saveReminderDisarm(); return; }
+        if (this._remindTimer || this._remindOpen) return;
+        this._remindTimer = setTimeout(() => {
+            this._remindTimer = null;
+            this.saveReminderFire();
+        }, this.saveReminderMinutes() * 60 * 1000);
+    },
+    saveReminderFire: async function () {
+        if (!this.saveReminderEnabled() || !this.saveReminderNeeded() || this._remindOpen) return;
+        // Вкладка в фоне — спросим, когда человек вернётся
+        if (document.hidden) {
+            const onShow = () => {
+                if (document.hidden) return;
+                document.removeEventListener('visibilitychange', onShow);
+                this.saveReminderFire();
+            };
+            document.addEventListener('visibilitychange', onShow);
+            return;
+        }
+        if (!(await this.saveReminderHasSession())) return;
+        this.saveReminderShow('timer');
+    },
+    saveReminderHasSession: async function () {
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            return !!session;
+        } catch (e) { return false; }
+    },
+    saveReminderClearPending: function () {
+        try { localStorage.removeItem(this.SAVE_REMIND_PENDING_KEY); } catch (e) { }
+    },
+    // Ставим отметку при уходе со страницы, если расчёт не сохранён
+    saveReminderMarkPending: function () {
+        try {
+            if (this.saveReminderEnabled() && this.saveReminderNeeded()) {
+                localStorage.setItem(this.SAVE_REMIND_PENDING_KEY, JSON.stringify({ t: Date.now(), sum: this.saveReminderSum() }));
+            }
+        } catch (e) { }
+    },
+    // Старт приложения: если в прошлый раз расчёт закрыли несохранённым — спросить
+    saveReminderCheckPending: async function () {
+        let p = null;
+        try { p = JSON.parse(localStorage.getItem(this.SAVE_REMIND_PENDING_KEY) || 'null'); } catch (e) { }
+        if (!p) return;
+        if (!this.saveReminderEnabled() || Date.now() - (p.t || 0) > 7 * 24 * 3600 * 1000 || !(this.saveReminderSum() > 0)) {
+            this.saveReminderClearPending();
+            return;
+        }
+        if (!(await this.saveReminderHasSession())) return;
+        this.saveReminderShow('reopen');
+    },
+    saveReminderBindEvents: function () {
+        window.addEventListener('beforeunload', (e) => {
+            // Настольный браузер: штатный вопрос «Покинуть сайт?». На телефонах он не
+            // показывается — там работает отметка и окно при следующем открытии.
+            this.saveReminderMarkPending();
+            if (this.saveReminderEnabled() && this.saveReminderNeeded() && !this.isMobileLayout()) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+        window.addEventListener('pagehide', () => this.saveReminderMarkPending());
+        document.addEventListener('visibilitychange', () => { if (document.hidden) this.saveReminderMarkPending(); });
+    },
+    saveReminderSnooze: function () {
+        this._remindDismissSum = this.saveReminderSum();
+        this.saveReminderDisarm();
+        this.saveReminderClearPending();
+    },
+    saveReminderShow: function (reason) {
+        if (this._remindOpen) return;
+        this._remindOpen = true;
+        const sum = this.saveReminderSum();
+        const fmt = (n) => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        let name = (this.state.projectName || document.getElementById('project_name_input')?.value?.trim() || this.projectObjectTitle('') || '').replace(/\s*\(автосохранение.*?\)/gi, '').trim();
+        if (name === 'Мой проект') name = '';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'calc-dialog-overlay';
+        overlay.innerHTML = `
+            <div class="calc-dialog-card save-remind-card" role="dialog" aria-modal="true" aria-labelledby="save_remind_title">
+                <div class="save-remind-top">
+                    <div class="save-remind-ico">💾</div>
+                    <h3 id="save_remind_title">Сохранить расчёт?</h3>
+                    <div class="save-remind-sum">${fmt(sum)}</div>
+                    ${reason === 'reopen' ? '<div class="save-remind-lead">Прошлый расчёт остался несохранённым</div>' : ''}
+                </div>
+                <label class="save-remind-field">
+                    <span>Название объекта</span>
+                    <input type="text" id="save_remind_name" maxlength="120" placeholder="Например: Дом Ивановых" value="${esc(name)}" autocomplete="off">
+                </label>
+                <div class="calc-dialog-error" id="save_remind_err" style="display:none"></div>
+                <button type="button" class="save-remind-ok" id="save_remind_ok">Сохранить</button>
+                <div class="save-remind-links">
+                    <button type="button" id="save_remind_later">Не сейчас</button>
+                    <i></i>
+                    <button type="button" id="save_remind_off">Больше не напоминать</button>
+                </div>
+            </div>`;
+        document.body.appendChild(overlay);
+        setTimeout(() => overlay.classList.add('active'), 10);
+
+        const input = overlay.querySelector('#save_remind_name');
+        const okBtn = overlay.querySelector('#save_remind_ok');
+        const errEl = overlay.querySelector('#save_remind_err');
+        const close = () => {
+            this._remindOpen = false;
+            overlay.classList.remove('active');
+            setTimeout(() => overlay.remove(), 200);
+            document.removeEventListener('keydown', onKey);
+        };
+        const later = () => { this.saveReminderSnooze(); close(); };
+        const save = async () => {
+            const v = input.value.trim();
+            if (!v) {
+                errEl.textContent = 'Введите название объекта';
+                errEl.style.display = '';
+                input.focus();
+                return;
+            }
+            okBtn.disabled = true;
+            okBtn.textContent = 'Сохраняю…';
+            this.state.projectName = v;
+            const pn = document.getElementById('project_name_input');
+            if (pn) pn.value = v;
+            this.saveState();
+            const ok = await this.saveToCloud(true);
+            if (ok) {
+                close();
+                this.showInAppNotification('Расчёт сохранён', `«${esc(v)}» — в «Моих объектах»`, '✅');
+            } else {
+                okBtn.disabled = false;
+                okBtn.textContent = 'Сохранить';
+                errEl.textContent = 'Не удалось сохранить. Проверьте связь и нажмите ещё раз.';
+                errEl.style.display = '';
+            }
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') later();
+            else if (e.key === 'Enter' && document.activeElement === input) save();
+        };
+        document.addEventListener('keydown', onKey);
+        okBtn.onclick = save;
+        overlay.querySelector('#save_remind_later').onclick = later;
+        overlay.querySelector('#save_remind_off').onclick = () => {
+            this.setSaveReminderEnabled(false);
+            close();
+            this.showInAppNotification('Напоминание выключено', 'Включить снова: Личный кабинет → Настройки → КП и счета', 'ℹ️');
+        };
+        // На телефоне фокус открыл бы клавиатуру поверх окна — ставим его только на десктопе
+        if (!this.isMobileLayout()) setTimeout(() => { input.focus(); input.select(); }, 60);
     },
 
     runAutoSave: async function () {
@@ -50982,6 +51365,10 @@ const app = {
         this.lastSavedStateString = this.getStateSignature();
         this.updateSaveBtnUI();
         this.resetAutosaveBaseline();
+        // Напоминание «сохранить расчёт»: точка отсчёта — то, что загрузилось
+        this._remindBase = this.saveReminderSum();
+        this.saveReminderBindEvents();
+        setTimeout(() => this.saveReminderCheckPending(), 3500);
 
         // Фоновый запуск очереди отправки писем
         if (this.queue && typeof this.queue.start === 'function') {
@@ -70418,14 +70805,17 @@ const app = {
             <span class="param-item"><span class="ui-emo">🚪 </span>Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
             : (parseFloat(this.state.area) > 0
                 ? `<span class="param-item"><span class="ui-emo">🏠 </span>Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
-            <span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>`
+            ${(this.state.hotWater || this.state.water) ? `<span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>` : ''}`
                 // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
                 // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
                 : `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`);
+        // «Проживающих» нужны расчёту горячей воды и водоснабжения — без них число лишнее.
+        // «Вариант: подешевле» тем, у кого есть тумблер «Подешевле», на экране дублирует его
+        // (скрыт стилем .ds-variant-dup), но в печати и PDF остаётся: клиент тумблера не видит.
         const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
             <span class="param-item"><span class="ui-emo">🔖 </span>№ КП: <b>${this.kpNumber() || '—'}</b></span>
-            ${this.cheapModeOn() ? '<span class="param-item"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>' : ''}
+            ${this.cheapModeOn() ? `<span class="param-item ds-variant${this.canUseAnalog() ? ' ds-variant-dup' : ''}"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>` : ''}
             ${_objChip}
             ${_hasArea ? `<span class="param-item"><span class="ui-emo">🔥 </span>Теплопотери: ${heatLossHtml}</span>` : ''}
             <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>
