@@ -186,6 +186,8 @@
    * d: { code, object, section, sheetTitle, stage='Р', sheet, total,
    *      people: { razrab, zakaz, nkontr, utv }, date='ММ.ГГ', org }
    */
+  var ORG_LOGO = null;   // логотип проектной организации для ячейки штампа
+  function setOrgLogo(url) { ORG_LOGO = url || null; }
   function stampBig(d) {
     d = d || {};
     var o = [], F = { font: FONT_STAMP, size: SZ.stamp };
@@ -232,7 +234,10 @@
     o.push(cellText(380, 267, 15, 9.9, d.sheet || '', F));
     o.push(cellText(395, 267, 20, 9.9, d.total || '', F));
     o.push(cellText(295, 276.9, 70, 15, d.sheetTitle || '', F));
-    o.push(cellText(365, 276.9, 50, 15, d.org || '', F));
+    if (d.org) o.push(cellText(365, 276.9, 50, 15, d.org, F));
+    else if (ORG_LOGO)
+      o.push('<image x="368" y="278.4" width="44" height="12.2" preserveAspectRatio="xMidYMid meet" href="' +
+        String(ORG_LOGO).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"/>');
     return o.join('');
   }
 
@@ -296,6 +301,7 @@
     });
     cy += headH;
 
+    var zebraN = 0;
     rows.forEach(function (r) {
       if (r && r.section) {
         // строка-раздел: обычное начертание, слева — как в оригинале
@@ -317,6 +323,8 @@
         return;
       }
       var kx = x;
+      // Спецификации в образцах: чётные строки слегка серые — по длинной строке глаз не уходит в соседнюю
+      if (o.zebra && !r.nofill && (zebraN++ % 2 === 1)) out.push(fillRect(x, cy, total, rh, '#e4e4e4'));
       // Заливка колонок — как в оригинале: цветом помечены графы, которые
       // читают глазами (конструкция, количество, температуры, n, результат).
       // Строки итогов не заливаются.
@@ -437,7 +445,7 @@
   // артикул и производитель, по ним позицию заказывают без сверки с прайсом.
   var SPEC_COLS = [
     { w: 20, title: '№', align: 'center' },
-    { w: 168, title: 'Наименование', align: 'left' },
+    { w: 188, title: 'Наименование', align: 'left' },
     { w: 46, title: 'Артикул', align: 'center' },
     { w: 36, title: 'Производитель', align: 'center' },
     { w: 20, title: 'Ед. изм.', align: 'center' },
@@ -690,11 +698,15 @@
     var fz = 1;                                   // уменьшение шрифта, если не влезло и в две колонки
     // раскладка секций в строки: [x-сдвиг заголовка, текст, жирный?]
     var layout = function (cols) {
-      var rows = [], wide = Math.floor((cols === 1 ? 100 : 47) / fz);
+      // в строку колонки шириной 96 мм входит около 66 знаков чертёжного шрифта; брали 47 — текст
+      // занимал треть ширины листа и вытягивался в длинную полосу (в образцах строки длинные)
+      var rows = [], wide = Math.floor((cols === 1 ? 120 : 56) / fz), pid = 0;
       secs.forEach(function (sec) {
         rows.push({ t: sec.h, b: true });
         (sec.lines || []).forEach(function (ln) {
-          wrap(ln, wide).forEach(function (w) { rows.push({ t: w }); });
+          var ws = wrap(ln, wide);
+          pid++;
+          ws.forEach(function (w, wi) { rows.push({ t: w, p: pid, first: wi === 0, last: wi === ws.length - 1 }); });
         });
         rows.push({ t: '' });
       });
@@ -719,11 +731,27 @@
       rows = layout(2);
       perCol = Math.ceil(height(rows) / 2 / LH) * LH;
     }
+    // Где колонка рвётся: по накопленной высоте, но абзац не бросаем одной строкой — ни в конце первой
+    // колонки (первая строка абзаца), ни в начале второй (его последняя строка: «…1,5» / «бар.»)
+    var brk = -1;
+    if (two) {
+      var acc = 0, bi;
+      for (bi = 0; bi < rows.length; bi++) {
+        if (acc >= perCol - 1e-6) break;
+        acc += rows[bi].b ? LH * 2 : LH;
+      }
+      brk = bi;
+      while (brk > 1 && brk < rows.length) {
+        var pr = rows[brk - 1], nx = rows[brk];
+        var headAtEnd2 = pr.b;                                           // заголовок раздела — последней строкой
+        var orphanTop = nx.p && nx.last && pr.p === nx.p;               // в новую колонку уехала только последняя строка
+        var widowBottom = pr.p && pr.first && nx.p === pr.p;           // в старой осталась одна первая строка
+        if (headAtEnd2 || orphanTop || widowBottom) brk--; else break;
+      }
+    }
     var ny = NY0, cx = NX;
-    rows.forEach(function (r) {
-      // заголовок раздела не оставляем последней строкой колонки — без текста
-      var headAtEnd = r.b && ny - NY0 + LH * 3 > perCol;
-      if (two && cx === NX && (ny - NY0 >= perCol || headAtEnd)) { cx = NX + NW; ny = NY0; }
+    rows.forEach(function (r, ri) {
+      if (two && cx === NX && ri === brk) { cx = NX + NW; ny = NY0; }
       if (r.t) {
         var tx = cx + (r.b ? 2.7 : 0);
         var st = r.b ? { weight: 'bold' } : {};
@@ -923,6 +951,26 @@
   // тех же, по которым смета выбирает диаметры и насосную группу). Лист
   // раскладывает их по двум таблицам: участки расчётного кольца и
   // преднастройки клапанов приборов.
+
+  /**
+   * Примечания к расчётному листу: подчёркнутый заголовок, пункты по номерам с висячим отступом, поле от
+   * рамки. Раньше это был сплошной текст прямо от линии рамки — без заголовка и счёта, и ссылки в тексте
+   * («таблица 2») не находились. Возвращает [svg, y после блока].
+   */
+  function notesList(x, y, notes, LHn) {
+    var o = [], step = LHn || 4.75, ind = 5, maxC = Math.floor((FR.r - x - 2 - ind) / (SZ.body * 0.46));
+    o.push(text(x, y, 'Примечания:', { weight: 'bold' }));
+    o.push(line(x, y + 1, x + 22, y + 1, 0.2));
+    y += step * 1.4;
+    notes.forEach(function (ln, i) {
+      wrap(ln, maxC).forEach(function (w, j) {
+        o.push(text(x + (j ? ind : 0), y, j ? w : (i + 1) + '. ' + w));
+        y += step;
+      });
+    });
+    return [o.join(''), y];
+  }
+
   var HY_RING_COLS = [
     { w: 20, title: '№' },
     { w: 150, title: 'Участок расчетного кольца', align: 'left' },
@@ -932,7 +980,7 @@
     { w: 40, title: 'предел' },
     // Удельные потери на трение — второй критерий подбора диаметра.
     { w: 45, title: 'R, Па/м' },
-    { w: 50, title: 'Потери, кПа', fill: '#edffff' },
+    { w: 50, title: 'Потери, кПа', fill: '#80ffff' },
     { w: 40, title: 'Доля, %' }
   ];
   var HY_DEV_COLS = [
@@ -942,7 +990,7 @@
     { w: 50, title: 'G, м³/ч' },
     { w: 55, title: 'Потери кольца, кПа' },
     { w: 35, title: 'Kv, м³/ч' },
-    { w: 35, title: 'Настройка', fill: '#edffff' }
+    { w: 35, title: 'Настройка', fill: '#80ffff' }
   ];
 
   /**
@@ -1004,7 +1052,7 @@
 
     // ── таблица 1: участки расчётного кольца ────────────────────────────
     var ty = BODY_TOP + boxH + 8.5;
-    body.push(text(FR.l, ty - 2.4,
+    body.push(text(FR.l + 2.5, ty - 2.4,
       'Таблица 1. Потери давления по участкам расчетного (самого неблагоприятного) кольца',
       { weight: 'bold' }));
     var ringRows = (d.parts || []).map(function (p, i) {
@@ -1045,14 +1093,8 @@
         'необходимо увеличить диаметр разводки или число веток.');
     if (d.hasGroup === false) notes.push('Насосной группы радиаторного контура в комплекте нет: ' +
       'циркуляцию обеспечивает встроенный насос котла, и ее сопротивление в кольцо не входит.');
-    var ny = t1.bottom + 6.5;
-    // Переносим по словам на ширину рамки, как на листе тёплого пола: строка
-    // про предел скорости не влезала в лист и обрезалась за рамкой
-    notes.forEach(function (ln) {
-      wrap(ln, Math.floor((FR.r - FR.l) / (SZ.body * 0.46))).forEach(function (s) {
-        body.push(text(FR.l, ny, s)); ny += LH;
-      });
-    });
+    var nl1 = notesList(FR.l + 2.5, t1.bottom + 8, notes);
+    body.push(nl1[0]);
 
     sheets.push(sheet({
       title: 'Гидравлический расчет системы отопления',
@@ -1078,13 +1120,12 @@
         var t2 = table(FR.l, BODY_TOP, HY_DEV_COLS, pageRows, {});
         var tail = '';
         if (idx === pages.length - 1) {
-          var ly = t2.bottom + 6.5;
-          [
+          tail += notesList(FR.l + 2.5, t2.bottom + 8, [
             'Настройка — обороты маховичка клапана от закрытого положения; «открыт» — клапан самого ' +
               'тяжелого кольца, его не зажимают.',
             'Kv — требуемая пропускная способность клапана, м³/ч: Kv = G х (100 / dP)^0,5, где dP — ' +
               'разница потерь этого кольца с самым тяжелым, кПа.'
-          ].forEach(function (ln) { tail += text(FR.l, ly, ln); ly += LH; });
+          ])[0];
         }
         sheets.push(sheet({
           title: 'Настройка клапанов приборов отопления',
@@ -1111,7 +1152,7 @@
     { w: 40, title: 'Гребенка' },
     { w: 40, title: 'Клапан' },
     { w: 40, title: 'Транзит' },
-    { w: 38, title: 'Треб., м', fill: '#edffff' },
+    { w: 38, title: 'Треб., м', fill: '#80ffff' },
     { w: 35, title: 'Насос, м' }
   ];
   var UH_LOOP_COLS = [
@@ -1121,7 +1162,7 @@
     { w: 38, title: 'S, м²' },
     { w: 36, title: 'L, м' },
     { w: 38, title: 'Q, Вт' },
-    { w: 45, title: 'Расход, л/мин', fill: '#edffff' },
+    { w: 45, title: 'Расход, л/мин', fill: '#80ffff' },
     { w: 28, title: 'v, м/с' },
     { w: 33, title: 'Потери, кПа' }
   ];
@@ -1180,7 +1221,7 @@
 
     // ── таблица 1: коллекторы ───────────────────────────────────────────
     var ty = BODY_TOP + boxH + 8.5;
-    body.push(text(FR.l, ty - 2.4,
+    body.push(text(FR.l + 2.5, ty - 2.4,
       'Таблица 1. Требуемый напор по коллекторам напольного отопления', { weight: 'bold' }));
     var manRows = d.mans.map(function (m, i) {
       return [i + 1, m.label + (m.worst ? ' — расчетный' : ''), m.outlets, f2(m.flow),
@@ -1206,13 +1247,8 @@
       'разделите его на два или укоротите петли.');
     if (d.vMax > d.vLimit) notes.push('Внимание: скорость в петле ' + f2(d.vMax) +
       ' м/с выше предела ' + f1(d.vLimit) + ' м/с — петлю следует укоротить.');
-    var ny = t1.bottom + 6.5;
-    notes.forEach(function (ln) {
-      // Заметки расчёта бывают длинными — переносим по словам на ширину листа
-      wrap(ln, Math.floor((FR.r - FR.l) / (SZ.body * 0.46))).forEach(function (s) {
-        body.push(text(FR.l, ny, s)); ny += LH;
-      });
-    });
+    var nl2 = notesList(FR.l + 2.5, t1.bottom + 8, notes);
+    body.push(nl2[0]);
 
     sheets.push(sheet({
       title: 'Гидравлический расчет напольного отопления',
@@ -1237,12 +1273,11 @@
         var t2 = table(FR.l, BODY_TOP, UH_LOOP_COLS, pageRows, {});
         var tail = '';
         if (idx === pages.length - 1) {
-          var ly = t2.bottom + 6.5;
-          [
+          tail += notesList(FR.l + 2.5, t2.bottom + 8, [
             'Расход — уставка расходомера гребенки, л/мин. Длина петли дана с учетом подъема концов ' +
               'к коллектору.',
             'Петли одного помещения, разделенные на несколько контуров, обозначены дробью (1/2, 2/2).'
-          ].forEach(function (ln) { tail += text(FR.l, ly, ln); ly += LH; });
+          ])[0];
         }
         sheets.push(sheet({
           title: 'Настройка расходомеров напольного отопления',
@@ -1319,14 +1354,19 @@
     var rows = [], num = 0, lastSec = null, lastGroup = null;
     if (typeof opts.merge === 'function') items = mergeSpecItems(items, opts.merge);
     (items || []).forEach(function (i) {
+      // Номер раздела сметы («8.», «8.1.») и квадратные скобки шаблона в рабочей документации лишние:
+      // у марки К нет раздела 8, а «[Инсталляция]» читается как незаполненный шаблон
+      var cleanSec = function (v) {
+        return String(v || '').replace(/^\s*\d+(\.\d+)*\.?\s*/, '').replace(/^\[(.*)\]$/, '$1').trim();
+      };
       if (i.sectionTitle && i.sectionTitle !== lastSec) {
-        rows.push({ section: i.sectionTitle });
+        rows.push({ section: cleanSec(i.sectionTitle) || i.sectionTitle });
         lastSec = i.sectionTitle;
         lastGroup = null;
       }
       if (i.group && i.group !== lastGroup) {
         // в смете подраздел иногда совпадает с названием раздела — не дублируем
-        if (i.group !== lastSec) rows.push({ section: i.group });
+        if (i.group !== lastSec) rows.push({ section: cleanSec(i.group) || i.group });
         lastGroup = i.group;
       }
       num++;
@@ -1362,9 +1402,9 @@
     var start = opts.sheetStart || 1;
     var fmtNo = opts.num || function (v) { return String(v); };
     return pages.map(function (pageRows, idx) {
-      var t = table(FR.l, BODY_TOP, SPEC_COLS, pageRows, {});
+      var t = table(FR.l, BODY_TOP, SPEC_COLS, pageRows, { zebra: true });
       var body = t.svg;
-      if (idx === pages.length - 1) body += specNote(FR.l, t.bottom + 6);
+      if (idx === pages.length - 1) body += specNote(FR.l + 2.5, t.bottom + 6);
       return sheet({
         title: opts.title || 'Спецификация оборудования и материалов',
         code: opts.code, sheet: fmtNo(start + idx), body: body
@@ -1377,7 +1417,7 @@
     sheet: sheet, imageSheet: imageSheet, artSheet: artSheet,
     table: table, specification: specification,
     fromEquipment: fromEquipment,
-    titleSheet: titleSheet, generalData: generalData, stampBig: stampBig,
+    titleSheet: titleSheet, generalData: generalData, stampBig: stampBig, setOrgLogo: setOrgLogo,
     roomDataSheets: roomDataSheets,
     heatLossSheets: heatLossSheets,
     hydraulicsSheets: hydraulicsSheets,
