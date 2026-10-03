@@ -4991,49 +4991,61 @@ const app = {
         el.innerHTML = (typeof Docs !== 'undefined' && this.warrantyFormEligible()) ? this.warrantyFormHtml() : '';
     },
 
-    // Сроки гарантии STOUT по разделам сметы: внутри раздела — виды оборудования
-    // со своим сроком, от большего к меньшему. Строка на муфту здесь не нужна —
-    // виды и сроки клиенту понятнее, а артикулы он найдёт в смете.
-    warrantyTermRows: function () {
-        const bySec = new Map();
-        (this.currentEquipmentList || []).forEach(it => {
-            if (!it || it.isOpt || !this.isStoutItem(it)) return;
-            const sec = String(it.sectionTitle || '').replace(/^\d+(\.\d+)*\.?\s*/, '') || 'Прочее';
-            const art = String(it.displaySku || it.id || '');
-            // Неизвестный префикс — первые слова названия без размеров, дюймов и резьбы
-            const kind = this.WARRANTY_KINDS[art.split('-')[0]]
-                || String(it.name || '').toLowerCase().split(/[,(]/)[0].trim().split(/\s+/)
-                    .filter(wd => !/[\d"”″’']/.test(wd) && !/^(вр|нр|бар|мм|dn|х|x|-)$/.test(wd)).slice(0, 3).join(' ');
-            if (!kind) return;
-            const w = Docs.warrantyMonthsFor(it);
-            const months = w ? w.months : 0;
-            if (!bySec.has(sec)) bySec.set(sec, new Map());
-            const kinds = bySec.get(sec);
-            // Один вид — одна запись: у фитингов одного раздела сроки бывают разные
-            // (5 лет аксиальные, 1 год по паспорту у редкого) — показываем «1–5 лет».
-            // «По паспорту» рядом с известным сроком того же вида не пишем.
-            let k = kinds.get(kind);
-            if (!k) { k = { kind: kind, min: 0, max: 0, note: '' }; kinds.set(kind, k); }
-            if (months > 0) {
-                k.min = k.min ? Math.min(k.min, months) : months;
-                k.max = Math.max(k.max, months);
-                if (w && w.note && !k.note) k.note = w.note;
-            }
-        });
-        const rows = [];
-        bySec.forEach((kinds, sec) => {
-            const list = [...kinds.values()].sort((a, b) => b.max - a.max);
-            rows.push({ sec: sec, kinds: list, max: Math.max(0, ...list.map(k => k.max)) });
-        });
-        return rows;
+    // Вид оборудования словами: по префиксу артикула, иначе первые слова
+    // названия без размеров, дюймов и резьбы
+    warrantyKindOf: function (it) {
+        const art = String(it.displaySku || it.id || '');
+        return this.WARRANTY_KINDS[art.split('-')[0]]
+            || String(it.name || '').toLowerCase().split(/[,(]/)[0].trim().split(/\s+/)
+                .filter(wd => !/[\d"”″’']/.test(wd) && !/^(вр|нр|бар|мм|dn|х|x|-)$/.test(wd)).slice(0, 3).join(' ');
     },
 
-    // «5 лет», «1–5 лет», «12–60 мес.»
-    warrantyTermWords: function (min, max) {
-        if (!max) return 'по паспорту';
-        if (!min || min === max) return Docs.monthsWords(max);
-        if (min % 12 === 0 && max % 12 === 0) return (min / 12) + '–' + Docs.monthsWords(max);
-        return min + '–' + max + ' мес.';
+    // Позиции STOUT сметы со сроком и видом; без необязательных и без срока в паспорте
+    warrantyItems: function () {
+        const out = [];
+        (this.currentEquipmentList || []).forEach(it => {
+            if (!it || it.isOpt || !this.isStoutItem(it)) return;
+            const kind = this.warrantyKindOf(it);
+            const w = Docs.warrantyMonthsFor(it);
+            if (!kind || !w || !w.months) return;
+            out.push({ it: it, kind: kind, months: w.months, sum: Number(it.sum) || 0 });
+        });
+        return out;
+    },
+
+    // Сроки по группам: «10 лет — радиаторы; 5 лет — трубы, фитинги, краны; …».
+    // Клиенту нужен один взгляд, а не таблица на двенадцать строк: виды сворачиваем
+    // по сроку, у вида с разными сроками в разных позициях остаётся меньший.
+    warrantyTermGroups: function () {
+        const byKind = new Map();
+        this.warrantyItems().forEach(x => {
+            const k = byKind.get(x.kind);
+            if (!k || x.months < k.months) byKind.set(x.kind, { months: x.months, sum: (k ? k.sum : 0) + x.sum });
+            else k.sum += x.sum;
+        });
+        const byMonths = new Map();
+        byKind.forEach((v, kind) => {
+            if (!byMonths.has(v.months)) byMonths.set(v.months, []);
+            byMonths.get(v.months).push({ kind: kind, sum: v.sum });
+        });
+        return [...byMonths.entries()]
+            .sort((a, b) => b[0] - a[0])
+            .map(([months, kinds]) => ({
+                months: months,
+                kinds: kinds.sort((a, b) => b.sum - a.sum).map(k => k.kind)
+            }));
+    },
+
+    // Плитки с фото: самые весомые позиции STOUT разных видов. Расходники со
+    // сроком меньше двух лет (маты, шкафы, баки) в витрину не берём — они не то,
+    // ради чего клиент выбирает систему, а «1 год» рядом с «10 лет» сбивает.
+    warrantyPhotoTiles: function (max) {
+        const seen = new Set();
+        return this.warrantyItems()
+            .filter(x => x.months >= 24)
+            .sort((a, b) => b.sum - a.sum)
+            .filter(x => { if (seen.has(x.kind)) return false; seen.add(x.kind); return true; })
+            .slice(0, max || 5);
     },
 
     // Система объекта одной строкой: котёл, бойлер, приборы, тёплый пол, вода
@@ -5057,69 +5069,76 @@ const app = {
         return head + (parts.length ? parts.join('; ') : 'инженерные системы по смете');
     },
 
+    // Листовка на одну страницу. Одна мысль в заголовке, три цифры, у каждой свой
+    // ответчик (завод, исполнитель, страховая), фото того, что стоит в доме,
+    // сроки по группам, три шага «если что-то случилось». Клиенту не нужно
+    // разбираться, на какую из гарантий смотреть: порядок на листе — порядок действий.
     warrantyFormHtml: function () {
         const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const od = this.objectDetails();
         const tg = this.state.tgUser || {};
         const cc = this.effectiveCompanyDetails() || {};
-        // В документе — полное ФИО из анкеты (как в договоре), короткое имя — запасное
         const execName = (Docs.contractor && Docs.contractor().fio) || this.formatShortName(tg) || '';
-        const rows = this.warrantyTermRows();
-        const maxM = Math.max(0, ...rows.map(r => r.max));
+        const phone = tg.phone || '';
+        const groups = this.warrantyTermGroups();
+        const maxM = groups.length ? groups[0].months : 0;
         const today = new Date();
         const dateRu = today.toLocaleDateString('ru-RU');
         const kp = this.kpNumber() || '';
         const ins = (Docs.activeInsurance(today.toISOString().slice(0, 10)) || []).find(p => p.brand === 'STOUT');
-        const rub = n => Math.round(n).toLocaleString('ru-RU');
-        const words = m => Docs.monthsWords(m);
+        const years = m => Docs.monthsWords(m);
         const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
-        const termRows = rows.map(r => `<tr><td class="wp-sec">${e(r.sec)}</td><td>${r.kinds.map(k =>
-            `${e(k.kind)} — <b>${e(this.warrantyTermWords(k.min, k.max))}</b>${k.note ? ' <span class="wp-small">(' + e(k.note) + ')</span>' : ''}`
-        ).join('; ')}</td></tr>`).join('');
+        const mln = n => Math.round(n / 1e6) + ' млн ₽';
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+        const tiles = this.warrantyPhotoTiles(5).map(t =>
+            `<div class="wp-tile"><img src="img/${e(t.it.id)}.jpg" alt="" onerror="this.onerror=null;this.style.visibility='hidden';"><div class="wp-tk">${e(cap(t.kind))}</div><div class="wp-tt">${e(years(t.months))}</div></div>`
+        ).join('');
+        const terms = groups.map(g =>
+            `<tr><td>${e(years(g.months))}</td><td>${e(cap(g.kinds.slice(0, 4).join(', ')))}${g.kinds.length > 4 ? ' и др.' : ''}</td></tr>`
+        ).join('');
         return `
-        <div class="wp-head">
-            <div class="wp-exec">
-                ${cc.name ? `<div class="wp-exec-co">${e(cc.name)}</div>` : ''}
-                <div>Исполнитель: <b>${e(execName)}</b>${tg.phone ? ', тел. ' + e(tg.phone) : ''}</div>
-            </div>
-            <div class="wp-brand"><span class="wp-brand-logo">STOUT</span><span class="wp-prelim">предварительно</span></div>
+        <div class="wp-band">
+            <img src="img/stout_logo.png" alt="STOUT">
+            <div class="wp-band-t"><div class="wp-kicker">Гарантия на объект</div><div class="wp-addr">${e(od.address)}</div></div>
         </div>
-        <h2 class="wp-title">Гарантия на систему STOUT${maxM ? ' — до ' + e(words(maxM)) : ''}</h2>
-        <p class="wp-lead">Инженерные системы объекта рассчитаны на оборудовании STOUT. Заказчик получает гарантию
-        изготовителя по каждой группе оборудования, страховую защиту изготовителя и увеличенный срок гарантии
-        исполнителя на монтаж.</p>
-        <table class="wp-meta">
-            <tr><td>Объект</td><td><b>${e(od.address)}</b></td><td>Расчёт</td><td><b>№ ${e(kp)}</b> от ${e(dateRu)}</td></tr>
-            <tr><td>Заказчик</td><td><b>${e(od.client)}</b>${od.phone ? ', ' + e(od.phone) : ''}</td><td>Система</td><td>${e(this.systemSummary())}</td></tr>
-        </table>
-        <h3>1. Гарантия изготовителя STOUT</h3>
-        <table class="wp-terms"><tr><th>Раздел сметы</th><th>Оборудование STOUT и срок гарантии</th></tr>${termRows}</table>
-        <p class="wp-small">Сроки — по паспортам изделий и официальной странице гарантии изготовителя
-        (${e(Docs.BRAND_WARRANTY.source)}); где источники расходятся, указан меньший. Срок исчисляется с даты
-        продажи оборудования. «По паспорту» — срок указан в паспорте изделия, который передаётся заказчику.</p>
-        <h3>2. Ответственность изготовителя застрахована</h3>
-        ${ins ? `<p>Ответственность изготовителя за вред, причинённый жизни, здоровью и имуществу вследствие
-        недостатков продукции STOUT, застрахована в ${e(ins.insurer)}: полис № ${e(ins.policy)}, страховая сумма
-        ${rub(ins.sum)} ₽, лимит по одному случаю ${rub(ins.perCase)} ₽, действует по ${e(Docs.dateRu(ins.to))}.
-        Застрахованные лица — изготовитель, его дилеры и монтажные организации; территория — Российская Федерация.
-        Страхование не заменяет гарантию и не ограничивает её.</p>`
-            : '<p>Сведения о действующем полисе страхования ответственности изготовителя — на странице гарантии stout.ru.</p>'}
-        <h3>3. Исполнитель дополнительно гарантирует</h3>
-        <p>Гарантийный срок на монтажные работы по этому объекту — <b>${e(words(extM))}</b> с даты подписания акта
-        сдачи-приёмки (ст. 722 ГК РФ; дополнительное обязательство исполнителя — п. 7 ст. 5 Закона РФ «О защите прав
-        потребителей»). В этот срок исполнитель безвозмездно устраняет негерметичность выполненных им соединений,
-        ошибки монтажа и настройки.</p>
-        <h3>4. Условия сохранения гарантии</h3>
-        <p>Эксплуатация по паспортам изготовителя; паспорта изделий и акт гидравлического испытания хранятся у
-        заказчика; техническое обслуживание не реже раза в год перед отопительным сезоном; без вмешательства в
-        систему посторонних лиц.</p>
-        <h3>5. Куда обращаться</h3>
-        <p>По любым вопросам — к исполнителю: <b>${e(execName)}</b>${tg.phone ? ', тел. ' + e(tg.phone) : ''}.
-        Исполнитель сам ведёт вопрос с поставщиком и изготовителем.</p>
-        <p class="wp-prelim-note">Предварительный документ к коммерческому предложению: выдаётся после подписания
-        акта сдачи-приёмки, тогда же проставляются подписи.</p>
-        <div class="wp-sign"><div>Исполнитель ____________________</div><div>Заказчик ____________________</div><div>Дата «____» __________ 20___ г.</div></div>
-        <div class="wp-foot">Сформировано в HeatCalc.ru · ${e(dateRu)}</div>`;
+        <div class="wp-hero">
+            <h2 class="wp-h1">Ваш дом на оборудовании STOUT.<br>Гарантия <b>до ${e(years(maxM))}</b> и один телефон на любой случай.</h2>
+            <p class="wp-sub">Система собрана на оборудовании одного бренда, поэтому за неё отвечают трое: завод, исполнитель и страховая компания.</p>
+        </div>
+        <div class="wp-cards">
+            <div class="wp-card"><div class="wp-num">${e(years(maxM))}</div><div class="wp-who">Завод STOUT</div><div class="wp-what">Гарантия изготовителя на оборудование. Сроки по группам — ниже.</div></div>
+            <div class="wp-card"><div class="wp-num">${e(years(extM))}</div><div class="wp-who">Исполнитель</div><div class="wp-what">Гарантия на монтаж вместо обычного года: течь, ошибка монтажа, настройка — бесплатно.</div></div>
+            ${ins ? `<div class="wp-card"><div class="wp-num">${e(mln(ins.sum))}</div><div class="wp-who">Страховая защита</div><div class="wp-what">Ответственность завода за ущерб от дефекта застрахована в ${e(ins.insurer.replace(/^СПАО\s+/, ''))}.</div></div>` : ''}
+        </div>
+        ${tiles ? `<div class="wp-tiles">${tiles}</div>` : ''}
+        <div class="wp-cols">
+            <div class="wp-col">
+                <h3>Сроки гарантии завода</h3>
+                <table class="wp-terms">${terms}</table>
+            </div>
+            <div class="wp-col">
+                <h3>Если что-то случилось</h3>
+                <ol class="wp-steps">
+                    <li>Позвоните исполнителю: <span class="wp-phone">${e(phone)}</span></li>
+                    <li>Исполнитель приезжает, устраняет и сам решает вопрос с поставщиком и заводом.</li>
+                    <li>Ущерб имуществу от дефекта оборудования покрывает страховка завода.</li>
+                </ol>
+                <h3>Чтобы гарантия действовала</h3>
+                <ul class="wp-checks">
+                    <li>Храните паспорта изделий и акт опрессовки.</li>
+                    <li>Раз в год, перед сезоном — осмотр системы.</li>
+                    <li>Не меняйте систему без исполнителя.</li>
+                </ul>
+            </div>
+        </div>
+        <div class="wp-foot">
+            <div><b>Заказчик:</b> ${e(od.client)}${od.phone ? ', ' + e(od.phone) : ''}<br><b>Расчёт:</b> № ${e(kp)} от ${e(dateRu)} · ${e(this.systemSummary())}</div>
+            <div style="text-align:right; white-space:nowrap;"><b>Исполнитель:</b> ${e(execName)}<br>${e(phone)}${cc.name ? '<br>' + e(cc.name) : ''}</div>
+        </div>
+        <div class="wp-sign"><div>Исполнитель ______________</div><div>Заказчик ______________</div><div><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
+        <div class="wp-src">Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
+        ${ins ? `Полис ${e(ins.insurer)} № ${e(ins.policy)}, лимит на случай ${e(mln(ins.perCase))}, действует по ${e(Docs.dateRu(ins.to))}` : ''}
+        Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.

@@ -16063,31 +16063,54 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
     .cheaper-print .cr-note { color: #333; }
 }
 
-/* ================== БЛАНК «ГАРАНТИЯ НА СИСТЕМУ STOUT» (app.renderWarrantyPrint) ==================
-   Последний лист КП; на экране скрыт, как .cheaper-print. Пустой блок не печатается. */
+/* ================== БЛАНК «ГАРАНТИЯ НА ОБЪЕКТ STOUT» (app.renderWarrantyPrint) ==================
+   Последний лист КП, листовка на одну страницу: синяя лента с логотипом, три
+   цифры, фото оборудования, сроки по группам, что делать при проблеме. Цвета —
+   stout.ru (тёмно-синий #153C69 / #203F6F, голубой #4B9FDC, серый #F5F5F5).
+   На экране скрыт, как .cheaper-print; пустой блок не печатается. Заливки
+   обязаны печататься — print-color-adjust. */
 .warranty-print { display: none; }
 @media print {
-    .warranty-print { display: block; page-break-before: always; break-before: page; padding-top: 10px; font-size: 11px; line-height: 1.45; color: #000; }
+    .warranty-print { display: block; page-break-before: always; break-before: page; font-size: 10.5px; line-height: 1.4; color: #2C2E35; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .warranty-print:empty { display: none !important; break-before: auto !important; page-break-before: auto !important; }
-    .warranty-print .wp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 10px; }
-    .warranty-print .wp-exec-co { font-weight: 700; font-size: 12px; }
-    .warranty-print .wp-brand { text-align: right; white-space: nowrap; }
-    .warranty-print .wp-brand-logo { display: block; font-weight: 900; font-size: 22px; letter-spacing: .12em; }
-    .warranty-print .wp-prelim { display: inline-block; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; border: 1px solid #000; padding: 1px 6px; border-radius: 3px; margin-top: 3px; }
-    .warranty-print .wp-title { font-size: 17px; margin: 6px 0 4px; }
-    .warranty-print .wp-lead { margin: 0 0 8px; }
-    .warranty-print h3 { font-size: 12px; margin: 10px 0 4px; }
-    .warranty-print p { margin: 0 0 5px; }
-    .warranty-print table { width: 100%; border-collapse: collapse; }
-    .warranty-print .wp-meta td { padding: 3px 6px; border: 1px solid #bbb; vertical-align: top; }
-    .warranty-print .wp-meta td:nth-child(odd) { color: #444; width: 11%; white-space: nowrap; }
-    .warranty-print .wp-terms th { text-align: left; font-size: 10px; text-transform: uppercase; padding: 4px 6px; border-bottom: 1px solid #000; }
-    .warranty-print .wp-terms td { padding: 4px 6px; border-bottom: 1px solid #ccc; vertical-align: top; }
-    .warranty-print .wp-terms .wp-sec { font-weight: 700; width: 24%; }
-    .warranty-print .wp-small { font-size: 9px; color: #444; }
-    .warranty-print .wp-prelim-note { font-style: italic; color: #333; margin-top: 8px; }
-    .warranty-print .wp-sign { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 10.5px; }
-    .warranty-print .wp-foot { margin-top: 10px; font-size: 9px; color: #666; text-align: right; }
+    .warranty-print .wp-band { display: flex; justify-content: space-between; align-items: center; gap: 16px; background: #153C69; color: #fff; padding: 12px 18px; border-radius: 10px 10px 0 0; }
+    .warranty-print .wp-band img { height: 34px; width: auto; display: block; background: #fff; padding: 5px 9px; border-radius: 6px; }
+    .warranty-print .wp-band-t { text-align: right; }
+    .warranty-print .wp-band-t .wp-kicker { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+    .warranty-print .wp-band-t .wp-addr { font-size: 12px; font-weight: 700; margin-top: 2px; }
+    .warranty-print .wp-hero { padding: 14px 18px 6px; }
+    .warranty-print .wp-h1 { font-size: 21px; line-height: 1.15; font-weight: 800; color: #153C69; margin: 0 0 4px; }
+    .warranty-print .wp-h1 b { color: #4B9FDC; }
+    .warranty-print .wp-sub { font-size: 11px; color: #555; margin: 0; }
+    .warranty-print .wp-cards { display: flex; gap: 10px; padding: 8px 18px 4px; }
+    .warranty-print .wp-card { flex: 1 1 0; background: #F5F5F5; border-radius: 10px; padding: 10px 12px; border-top: 4px solid #203F6F; page-break-inside: avoid; }
+    .warranty-print .wp-card .wp-num { font-size: 24px; font-weight: 900; color: #153C69; line-height: 1; }
+    .warranty-print .wp-card .wp-num small { font-size: 12px; font-weight: 700; }
+    .warranty-print .wp-card .wp-who { font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: #203F6F; margin-top: 4px; font-weight: 700; }
+    .warranty-print .wp-card .wp-what { font-size: 10px; color: #444; margin-top: 2px; }
+    .warranty-print .wp-tiles { display: flex; gap: 8px; padding: 8px 18px 2px; }
+    .warranty-print .wp-tile { flex: 1 1 0; text-align: center; border: 1px solid #EDEDED; border-radius: 8px; padding: 6px 4px; page-break-inside: avoid; }
+    .warranty-print .wp-tile img { height: 46px; width: auto; max-width: 100%; object-fit: contain; display: block; margin: 0 auto 4px; }
+    .warranty-print .wp-tile .wp-tk { font-size: 9px; color: #555; line-height: 1.2; min-height: 22px; }
+    .warranty-print .wp-tile .wp-tt { font-size: 11px; font-weight: 800; color: #153C69; margin-top: 2px; }
+    .warranty-print .wp-cols { display: flex; gap: 16px; padding: 8px 18px 0; }
+    .warranty-print .wp-col { flex: 1 1 0; }
+    .warranty-print h3 { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: #203F6F; margin: 6px 0 5px; padding-bottom: 3px; border-bottom: 1px solid #EDEDED; }
+    .warranty-print .wp-terms { width: 100%; border-collapse: collapse; }
+    .warranty-print .wp-terms td { padding: 3px 4px; vertical-align: top; border-bottom: 1px solid #F0F0F0; }
+    .warranty-print .wp-terms td:first-child { white-space: nowrap; font-weight: 800; color: #153C69; width: 52px; }
+    .warranty-print .wp-steps { list-style: none; margin: 0; padding: 0; counter-reset: wp; }
+    .warranty-print .wp-steps li { position: relative; padding-left: 24px; margin-bottom: 5px; counter-increment: wp; }
+    .warranty-print .wp-steps li::before { content: counter(wp); position: absolute; left: 0; top: 0; width: 17px; height: 17px; border-radius: 50%; background: #203F6F; color: #fff; font-size: 10px; font-weight: 800; text-align: center; line-height: 17px; }
+    .warranty-print .wp-checks { list-style: none; margin: 0; padding: 0; }
+    .warranty-print .wp-checks li { padding-left: 16px; position: relative; margin-bottom: 3px; }
+    .warranty-print .wp-checks li::before { content: '✓'; position: absolute; left: 0; color: #4B9FDC; font-weight: 900; }
+    .warranty-print .wp-phone { font-size: 13px; font-weight: 800; color: #153C69; }
+    .warranty-print .wp-foot { margin: 10px 18px 0; border-top: 2px solid #153C69; padding-top: 7px; display: flex; justify-content: space-between; gap: 14px; font-size: 9.5px; }
+    .warranty-print .wp-foot b { color: #153C69; }
+    .warranty-print .wp-sign { display: flex; justify-content: space-between; gap: 12px; margin: 14px 18px 0; font-size: 9.5px; color: #555; }
+    .warranty-print .wp-prelim { display: inline-block; font-size: 8.5px; text-transform: uppercase; letter-spacing: .1em; border: 1px solid #4B9FDC; color: #203F6F; padding: 1px 6px; border-radius: 3px; }
+    .warranty-print .wp-src { margin: 6px 18px 0; font-size: 8px; color: #888; }
 }
 
 /* ================== ТЕМА «ПРОФИ» (оформление по образцу ya.ru; в коде — theme-yandex) ==================
