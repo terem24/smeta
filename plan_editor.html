@@ -336,6 +336,7 @@
   <button class="ghost" id="b_sheets" onclick="openSheets()" title="Комплект собирается по смете калькулятора вместе с планами">Проект →</button>
   <button class="ghost" id="b_alltools" onclick="toggleAllTools()" title="Показать все инструменты сразу, а не только нужные текущему шагу">Все инструменты</button>
   <button class="ghost" id="b_hints" onclick="toggleHints()">💡 Подсказки: вкл</button>
+  <button class="ghost" id="b_dump" onclick="dumpPlan()" title="Скопировать разметку (без картинок) в буфер — чтобы прислать на разбор, если трассы или раскладка выглядят неверно">📋 Копия разметки</button>
   <!-- мастер раскладки: остальные инструменты — под «Ещё», полный редактор — «Листы проекта» -->
   <button class="ghost ufh-only ufh-keep" id="b_sheets_ufh" onclick="ufhSheets()" style="display:none"
     title="Полный редактор проектирования: санузлы, котельная, север — и комплект листов проекта">Листы проекта ↗</button>
@@ -4417,6 +4418,14 @@ function markPrintedZone(z) {
   var A = area(z.pts);
   if (Math.abs(A - inside[0].m2) / inside[0].m2 <= (inside[0].scan ? 0.08 : 0.15)) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
   renderZones(); draw();
+}
+
+/** Разметка без картинок — в буфер обмена, для разбора присланных случаев. */
+function dumpPlan() {
+  var txt = JSON.stringify({ floors: DATA.floors.map(function (f) { var o = {}; for (var k in f) if (k !== 'img' && Object.prototype.hasOwnProperty.call(f, k)) o[k] = f[k]; return o; }) });
+  var done = function () { hint('<span class=ok>Разметка скопирована</span> (' + Math.round(txt.length / 1024) + ' КБ) — вставьте её в сообщение.'); };
+  var fallback = function () { window.prompt('Скопируйте разметку (Ctrl+C):', txt); };
+  try { navigator.clipboard.writeText(txt).then(done, fallback); } catch (e) { fallback(); }
 }
 
 function addZone(pts, fitted) {
