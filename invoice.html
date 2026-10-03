@@ -4558,7 +4558,7 @@
                 [hs.t != null && isFinite(Number(hs.t)) ? 'при ' + num(hs.t) + ' °C' : '', hs.city ? String(hs.city) : ''].filter(Boolean).join(', '));
             if (c) {
                 kpi('Отопление в месяц', '≈ ' + money(c.month) + ' ₽', 'в среднем за отопительный сезон', true);
-                kpi('За сезон', money(c.season) + ' ₽', (num(c.zOt) ? num(c.zOt) + ' дн.' : num(c.months) + ' мес.') + ' · ' +
+                kpi('За сезон', money(c.season) + ' ₽', (num(c.zOt) ? Math.round(num(c.zOt)) + ' дн.' : num(c.months) + ' мес.') + ' · ' +
                     (c.fuel === 'gas' ? (c.lpg ? 'сжиженный газ' : 'газ') : 'электроэнергия') + ' ' + money(c.units) + ' ' + String(c.uName || ''));
             }
             // Гарантия — преимущество, которое подсвечиваем плиткой; нажатие ведёт к листу гарантии

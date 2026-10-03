@@ -38064,7 +38064,8 @@ const app = {
             if (c && c.seasonCost > 0) {
                 out.cost = {
                     fuel: fuel, month: Math.round(c.avgMonthCost / 10) * 10, season: Math.round(c.seasonCost / 100) * 100,
-                    months: c.activeMonths || 7, zOt: c.zOt, tOt: c.tOt,
+                    // Сутки целым числом: для региона без города период усредняется («206,33… дн.»)
+                    months: c.activeMonths || 7, zOt: c.zOt ? Math.round(c.zOt) : c.zOt, tOt: c.tOt,
                     tariff: fuel === 'gas' ? (c.tariff && c.tariff.rub) : (c.tariffDay || null),
                     unit: fuel === 'gas' ? (c.lpg ? '₽/л' : '₽/м³') : '₽/кВт·ч', lpg: !!c.lpg,
                     units: fuel === 'gas' ? Math.round(c.seasonUnits) : Math.round(c.seasonKwh), uName: fuel === 'gas' ? (c.lpg ? 'л' : 'м³') : 'кВт·ч'
