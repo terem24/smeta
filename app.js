@@ -48342,31 +48342,28 @@ const app = {
         const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         let name = (this.state.projectName || document.getElementById('project_name_input')?.value?.trim() || this.projectObjectTitle('') || '').replace(/\s*\(автосохранение.*?\)/gi, '').trim();
         if (name === 'Мой проект') name = '';
-        const lead = reason === 'reopen'
-            ? 'В прошлый раз вы закрыли калькулятор, не сохранив расчёт.'
-            : 'Вы давно работаете над расчётом и не сохраняли его.';
 
         const overlay = document.createElement('div');
         overlay.className = 'calc-dialog-overlay';
         overlay.innerHTML = `
             <div class="calc-dialog-card save-remind-card" role="dialog" aria-modal="true" aria-labelledby="save_remind_title">
-                <div class="save-remind-head">
+                <div class="save-remind-top">
                     <div class="save-remind-ico">💾</div>
-                    <div>
-                        <h3 class="calc-dialog-title" id="save_remind_title">Сохранить расчёт?</h3>
-                        <div class="save-remind-sum">Сумма сметы: <b>${fmt(sum)}</b></div>
-                    </div>
+                    <h3 id="save_remind_title">Сохранить расчёт?</h3>
+                    <div class="save-remind-sum">${fmt(sum)}</div>
+                    ${reason === 'reopen' ? '<div class="save-remind-lead">Прошлый расчёт остался несохранённым</div>' : ''}
                 </div>
-                <p class="calc-dialog-message">${lead} Дайте объекту название — потом найдёте его в «Моих объектах» и продолжите с того же места.</p>
-                <div class="calc-dialog-input-wrapper">
-                    <input type="text" class="calc-dialog-input" id="save_remind_name" maxlength="120" placeholder="Например: Дом Ивановых, 180 м²" value="${esc(name)}" autocomplete="off">
-                    <div class="calc-dialog-error" id="save_remind_err" style="display:none"></div>
+                <label class="save-remind-field">
+                    <span>Название объекта</span>
+                    <input type="text" id="save_remind_name" maxlength="120" placeholder="Например: Дом Ивановых" value="${esc(name)}" autocomplete="off">
+                </label>
+                <div class="calc-dialog-error" id="save_remind_err" style="display:none"></div>
+                <button type="button" class="save-remind-ok" id="save_remind_ok">Сохранить</button>
+                <div class="save-remind-links">
+                    <button type="button" id="save_remind_later">Не сейчас</button>
+                    <i></i>
+                    <button type="button" id="save_remind_off">Больше не напоминать</button>
                 </div>
-                <div class="calc-dialog-buttons save-remind-buttons">
-                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" id="save_remind_later">Не сейчас</button>
-                    <button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="save_remind_ok">Сохранить</button>
-                </div>
-                <button type="button" class="save-remind-off" id="save_remind_off">Больше не напоминать</button>
             </div>`;
         document.body.appendChild(overlay);
         setTimeout(() => overlay.classList.add('active'), 10);

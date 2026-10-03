@@ -19214,15 +19214,25 @@ button.lk-icon-btn:hover { background: var(--primary-light); color: var(--primar
 }
 
 /* === Напоминание «сохранить расчёт» (app.saveReminderShow) === */
-.save-remind-card { max-width: 460px; }
-.save-remind-head { display: flex; align-items: center; gap: 14px; }
-.save-remind-ico { flex: none; width: 46px; height: 46px; border-radius: 12px; background: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 24px; }
-.save-remind-sum { font-size: 13px; color: var(--text-sec); margin-top: 2px; }
-.save-remind-sum b { color: var(--text-main); }
-.save-remind-off { align-self: center; background: none; border: 0; padding: 4px 8px; font-size: 12px; color: var(--text-sec); text-decoration: underline; cursor: pointer; }
-.save-remind-off:hover { color: var(--primary); }
-@media (max-width: 600px) {
-    .save-remind-buttons { flex-direction: column-reverse; gap: 8px; }
-    .save-remind-buttons .calc-dialog-btn { width: 100%; padding: 13px 20px; }
-}
+.save-remind-card { max-width: 380px; padding: 28px 26px 18px; gap: 14px; border-radius: 22px; box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.35); }
+.save-remind-top { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
+.save-remind-ico { width: 56px; height: 56px; border-radius: 18px; display: flex; align-items: center; justify-content: center; font-size: 28px; margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--primary-light), rgba(99, 102, 241, 0.18)); box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.15); }
+.save-remind-top h3 { text-transform: none; margin: 0; font-size: 20px; font-weight: 800; color: var(--text-main); letter-spacing: -0.01em; }
+.save-remind-sum { font-size: 26px; font-weight: 800; color: var(--primary); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.save-remind-lead { font-size: 12px; color: var(--text-sec); margin-top: 2px; }
+.save-remind-field { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.save-remind-field span { font-size: 12px; font-weight: 600; color: var(--text-sec); }
+.save-remind-field input { width: 100%; box-sizing: border-box; padding: 13px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-light); color: var(--text-main); font-size: 16px; outline: none; transition: border-color .15s, box-shadow .15s; }
+.save-remind-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18); }
+body.dark-mode .save-remind-field input { background: #121212; border-color: #4B5563; }
+.save-remind-ok { width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--primary); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; transition: background .15s, transform .1s; }
+.save-remind-ok:hover { background: #2563EB; }
+.save-remind-ok:active { transform: scale(0.98); }
+.save-remind-ok:disabled { opacity: .7; cursor: default; }
+.save-remind-links { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.save-remind-links i { width: 3px; height: 3px; border-radius: 50%; background: var(--text-sec); opacity: .5; }
+.save-remind-links button { background: none; border: 0; padding: 8px 4px; font-size: 13px; color: var(--text-sec); cursor: pointer; }
+.save-remind-links button:hover { color: var(--primary); }
+#save_remind_later { font-weight: 600; }
 
