@@ -3887,17 +3887,24 @@ cv.addEventListener('click', function (e) {
     if (Date.now() - justDragged < 300) return;      // хвост правки контура
     var hitZ = zoneHit(p);
     if (hitZ.zi >= 0) {                              // клик по готовой зоне — выбрать её
-      // Выбран тип «Котельная» или «Санузел», а зона обведена как тёплый пол или помещение —
-      // клик меняет ей тип: котельная чаще всего уже обведена вместе с тёплым полом
+      // Выбран тип «Котельная» или «Санузел», а клик попал в комнату с готовой разметкой
+      // (тёплый пол, радиаторы): сверху кладём зону этого типа с тем же контуром и именем.
+      // Разметка под ней остаётся — калькулятор считает такие две зоны одной комнатой.
       var wantT = document.getElementById('ztype').value, hz = F().zones[hitZ.zi];
       if ((wantT === 'boiler' || wantT === 'wc') && hz.type !== wantT && hz.type !== 'cold') {
+        var sig = JSON.stringify(hz.pts);
+        var have = -1;
+        F().zones.forEach(function (q, qi) { if (q.type === wantT && JSON.stringify(q.pts) === sig) have = qi; });
+        if (have >= 0) { selZ = have; draw(); return; }
         if (wantT === 'boiler' && DATA.floors.some(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'boiler'; }); })) {
           alert('Котельная уже отмечена. Чтобы выбрать другую зону, сначала удалите прежнюю ✕.'); return;
         }
         pushUndo('zones');
-        hz.type = wantT;
-        selZ = hitZ.zi; renderZones(); draw();
-        hint('<span class=ok>Зона «' + (hz.name || TYPES[wantT][0]) + '» теперь ' + (wantT === 'boiler' ? 'котельная' : 'санузел') + '.</span> Нажмите «Сохранить».');
+        var ov = { type: wantT, name: hz.name || '', pts: hz.pts.map(function (q) { return [q[0], q[1]]; }) };
+        if (hz.roomId != null) ov.roomId = hz.roomId;
+        F().zones.push(ov);
+        selZ = F().zones.length - 1; renderZones(); draw();
+        hint('<span class=ok>Отмечено: ' + (wantT === 'boiler' ? 'котельная' : 'санузел') + ' «' + (hz.name || '') + '».</span> Разметка комнаты осталась. Нажмите «Сохранить».');
         return;
       }
       selZ = hitZ.zi; draw();
@@ -3906,7 +3913,11 @@ cv.addEventListener('click', function (e) {
     }
     var poly = null;
     try { poly = roomAtPoint(p[0], p[1]); } catch (err) { console.error('[plan_editor] room:', err); }
-    if (poly) addZone(poly);
+    if (poly) {
+      var rf = refineClickPoly(poly, p);
+      addZone(rf.pts, rf.fitted);
+      markPrintedZone(F().zones[F().zones.length - 1]);
+    }
     else hint('Не удалось определить комнату по стенам (проём или пёстрая подложка). ' +
       'Обведите её «Зона: прямоугольник» или «Зона: контур».');
     draw();
@@ -4357,8 +4368,59 @@ function reconcileRooms(rooms, labs) {
   return out;
 }
 
-function addZone(pts) {
-  pts = simplifyZone(pts, F().pxPerM || 100);
+/**
+ * Контур комнаты, найденный кликом, — тем же путём, что у «Найти комнаты»:
+ * вариант с подписанной на плане площадью (другая маска, без разрастания), посадка сторон
+ * на стены и подгонка под напечатанное. Без этого контур по клику брался как есть и на плане,
+ * исчерченном трубами, получался с отступами от стен (4,4 м² вместо 6,15).
+ */
+function refineClickPoly(poly, p) {
+  var labs = PDF_AREAS[cur] || [], ppm = F().pxPerM || 100;
+  var inside = labs.filter(function (l) { return pip([l.x, l.y], poly); });
+  if (inside.length !== 1) {
+    try { return { pts: fitZonePts(poly, ppm, 0), fitted: true }; } catch (e) { return { pts: poly, fitted: false }; }
+  }
+  var target = inside[0].m2, fl = F(), best = poly, bestErr = Math.abs(area(poly) - target) / target;
+  try {
+    // тот же клик при другой маске: на исчерченном плане «чистая» находит комнату целиком
+    var mode0 = fl.roomMask;
+    if (mode0 === 'clean') delete fl.roomMask; else fl.roomMask = 'clean';
+    resetScaleCaches();
+    var alt = null;
+    try { alt = roomAtPoint(p[0], p[1]); } catch (e) { alt = null; }
+    if (mode0) fl.roomMask = mode0; else delete fl.roomMask;
+    resetScaleCaches();
+    if (alt) {
+      var e2 = Math.abs(area(alt) - target) / target;
+      if (e2 + 0.02 < bestErr) { best = alt; bestErr = e2; }
+    }
+    var rr = reconcileRooms([{ pts: best, m2: area(best) }], labs);
+    if (rr && rr[0]) {
+      var e3 = Math.abs(area(rr[0].pts) - target) / target;
+      if (e3 + 0.02 < bestErr) { best = rr[0].pts; bestErr = e3; }
+    }
+    return { pts: fitZonePts(best, ppm, target), fitted: true };
+  } catch (e) {
+    console.error('[plan_editor] refine:', e);
+    return { pts: poly, fitted: false };
+  }
+}
+
+/** Напечатанная на плане площадь у одной зоны — как это делает «Найти комнаты» для всех. */
+function markPrintedZone(z) {
+  if (!z || z.type === 'cold') return;
+  delete z.printedM2; delete z.printedSig; delete z.planM2;
+  var labs = PDF_AREAS[cur] || [];
+  var inside = labs.filter(function (l) { return pip([l.x, l.y], z.pts); });
+  if (inside.length !== 1) return;
+  z.planM2 = inside[0].m2;
+  var A = area(z.pts);
+  if (Math.abs(A - inside[0].m2) / inside[0].m2 <= (inside[0].scan ? 0.08 : 0.15)) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
+  renderZones(); draw();
+}
+
+function addZone(pts, fitted) {
+  if (!fitted) pts = simplifyZone(pts, F().pxPerM || 100);
   var type = document.getElementById('ztype').value;
   if (type === 'boiler' && F().zones.some(function (z) { return z.type === 'boiler'; })) {
     alert('Котельная на этаже уже отмечена.'); return;
@@ -4490,10 +4552,13 @@ function makeBoiler(z) {
   z = z || boilerLookalike();
   if (!z) return;
   pushUndo('zones');
-  z.type = 'boiler';
+  // Котельная — отдельная зона поверх комнаты: тёплый пол и радиаторы под ней остаются
+  var ov = { type: 'boiler', name: z.name || '', pts: z.pts.map(function (q) { return [q[0], q[1]]; }) };
+  if (z.roomId != null) ov.roomId = z.roomId;
+  F().zones.push(ov);
   renderZones(); draw();
   if (typeof updateGuide === 'function') updateGuide();
-  hint('<span class=ok>Зона «' + (z.name || 'Котельная') + '» теперь котельная.</span> Нажмите «Сохранить».');
+  hint('<span class=ok>Котельная отмечена: «' + (z.name || 'Котельная') + '».</span> Тёплый пол в ней остался. Нажмите «Сохранить».');
 }
 
 function renderZones() {
