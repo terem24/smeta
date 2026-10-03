@@ -71312,6 +71312,20 @@ const app = {
         };
         panel.addEventListener('click', note, true);
         panel.addEventListener('change', note, true);
+        // Ползунок и поле ввода шлют click/change только в самом конце, а render()
+        // идёт на каждый шаг. Без этого якорем на всё перетаскивание оставался
+        // прежний, давно нажатый элемент: колонку «удерживали» по нему, и сам
+        // ползунок уезжал из-под пальца при любом изменении высоты блоков выше.
+        // Поэтому якорь ставим в момент касания и на каждый шаг ввода — только для
+        // непрерывных элементов (по обычным кнопкам решает click).
+        const noteContinuous = (e) => {
+            const t = e.target;
+            if (!e.isTrusted || !t || !t.closest) return;
+            if (!t.closest('input[type="range"], input[type="number"], input[type="text"], input[type="search"], input[type="tel"], textarea')) return;
+            this._panelTouch = { at: Date.now(), el: t, discrete: false };
+        };
+        panel.addEventListener('pointerdown', noteContinuous, true);
+        panel.addEventListener('input', noteContinuous, true);
     },
     // Положение последнего нажатого элемента колонки до перестройки её содержимого.
     _inputAnchorBefore: function () {
@@ -71546,7 +71560,7 @@ const app = {
         let reduce = false;
         try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { }
         if (reduce) { window.scrollTo(0, y); return; }
-        const dur = Math.min(900, Math.max(420, 300 + Math.sqrt(Math.abs(dist)) * 14));
+        const dur = Math.min(1900, Math.max(800, 700 + Math.sqrt(Math.abs(dist)) * 26));
         const t0 = performance.now();
         let raf = 0, done = false;
         const evs = ['wheel', 'touchstart', 'keydown', 'mousedown'];
@@ -71557,7 +71571,9 @@ const app = {
             evs.forEach(n => window.removeEventListener(n, stop, true));
             if (this._glideStop === stop) this._glideStop = null;
         };
-        const ease = p => p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        // Как у барабана счётчика: живой старт и долгое мягкое торможение к концу
+        // (easeOutQuart).
+        const ease = p => 1 - Math.pow(1 - p, 4);
         const step = (now) => {
             if (done) return;
             const p = Math.min(1, (now - t0) / dur);
