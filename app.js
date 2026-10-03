@@ -5352,7 +5352,7 @@ const app = {
             card.className = 'calc-dialog-card';
             card.innerHTML = `
                 <h3 class="calc-dialog-title">Объект и заказчик</h3>
-                <p class="calc-dialog-message">Нужны для бланка гарантии STOUT на объект. Те же данные пойдут в договор, акты и гарантийный талон — вводятся один раз.</p>
+                <p class="calc-dialog-message"><b>Без адреса, ФИО и телефона заказчика бланк гарантии не печатается.</b> Нужны для бланка гарантии STOUT на объект. Те же данные пойдут в договор, акты и гарантийный талон — вводятся один раз.</p>
                 <div class="calc-dialog-input-wrapper">
                     <input type="text" class="calc-dialog-input" id="objd_address" placeholder="Адрес объекта: город, улица, дом" autocomplete="street-address">
                     <input type="text" class="calc-dialog-input" id="objd_client" placeholder="Заказчик: фамилия, имя, отчество" autocomplete="name">
@@ -47720,7 +47720,7 @@ const app = {
         };
         // Бланк гарантии STOUT печатается последним листом: сроки и полисы лежат в
         // docs.js, грузим его заранее — печатная копия собирается синхронно
-        if (this.warrantyFormEligible() || this.warrantyLinkEligible(showEq)) {
+        if (this.warrantyFormEligible()) {
             try { await this.lazy('docs'); } catch (e) { console.warn('[executeDownload] docs.js не загрузился, бланк гарантии пропущен', e); }
         }
         // Разделы «Ваш дом» и «Гарантия» рисуются тем же кодом, что и страница клиента
@@ -82926,7 +82926,7 @@ function prepareForPrint() {
             try {
                 const kpData = app.kpPersonalData();
                 if (kpData && window.KpShare) {
-                    const wr = app.warrantyLinkEligible(showEq) ? app.warrantyLinkData() : null;
+                    const wr = app.warrantyFormEligible() ? app.warrantyLinkData() : null;
                     kpNode = window.KpShare.house(kpData, wr);
                 } else if (kpData) {
                     const kpHtml = app.kpPersonalHtml(kpData, app._kpQr);
@@ -82996,11 +82996,11 @@ function prepareForPrint() {
         // render(); пустой (долю STOUT не набрали) в печать не идёт. ---
         // Оформление — как лист «Гарантия» на странице клиента (kp_share.js); нет модуля или
         // данных — прежний бланк.
-        // Условие то же, что у листа в ссылке (warrantyLinkEligible): адрес и заказчик листу не нужны,
-        // поэтому «Без адреса» гарантию не отключает.
+        // Бланк печатается, только когда указаны адрес и заказчик (warrantyFormEligible): иначе
+        // живой блок пуст. В окне «Объект и заказчик» об этом сказано.
         const wpLive = document.getElementById('warranty_print');
         let wNode = null;
-        if (window.KpShare && printBin.children.length > 0 && app.warrantyLinkEligible(showEq)) {
+        if (window.KpShare && wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
             try {
                 const tg = app.state.tgUser || {};
                 const mgr = { name: app.formatShortName(tg) || '', phone: tg.phone || '', customCompany: app.state.customCompany || null };
