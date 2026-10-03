@@ -19383,3 +19383,43 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
 .save-remind-links button:hover { color: var(--primary); }
 #save_remind_later { font-weight: 600; }
 
+
+/* Админка → «Готовность платить» (pay_readiness.js): воронка, таблицы, калькулятор выручки.
+   Карточки, плитки, чипы и кнопки — общие классы админки; здесь только то, чего в них нет. */
+.pr-funnel { display: flex; flex-direction: column; gap: 8px; }
+.pr-fun-row { display: grid; grid-template-columns: minmax(150px, 230px) 1fr 96px; align-items: center; gap: 12px; font-size: 13px; }
+.pr-fun-label { color: var(--text-main); }
+.pr-fun-track { height: 10px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+.pr-fun-bar { height: 100%; border-radius: 999px; background: var(--primary); }
+.pr-fun-n { text-align: right; white-space: nowrap; }
+.pr-fun-n b { font-weight: 700; color: var(--text-main); margin-right: 6px; }
+.pr-fun-n span { font-size: 12px; color: var(--text-sec); }
+
+.pr-wrap { overflow-x: auto; }
+.pr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pr-table th { text-align: left; padding: 8px 10px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-sec); border-bottom: 1px solid var(--ad-line); white-space: nowrap; }
+.pr-table td { padding: 9px 10px; border-bottom: 1px solid var(--ad-line); color: var(--text-main); vertical-align: middle; }
+.pr-table tbody tr:last-child td { border-bottom: 0; }
+.pr-table tbody tr:hover > td { background: var(--surface); }
+.pr-table .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pr-strong { font-weight: 700; }
+.pr-people { min-width: 820px; }
+.pr-who { max-width: 260px; }
+.pr-who b { display: block; font-weight: 600; }
+.pr-who span { display: block; font-size: 11px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr-score { display: inline-block; min-width: 26px; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; text-align: center; border: 1px solid var(--ad-line); color: var(--text-sec); }
+.pr-score.pr-hot { color: #EF4444; border-color: #EF4444; background: color-mix(in srgb, #EF4444 12%, transparent); }
+.pr-score.pr-warm { color: #D97706; border-color: #D97706; background: color-mix(in srgb, #D97706 12%, transparent); }
+
+.pr-fields { display: flex; flex-wrap: wrap; gap: 16px 24px; }
+.pr-field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-sec); }
+.pr-input { width: 110px; height: 32px; padding: 0 10px; border: 1px solid var(--ad-line); border-radius: 8px; background: var(--surface); color: var(--text-main); font-size: 14px; font-weight: 700; box-sizing: border-box; }
+.pr-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.pr-res { border: 1px solid var(--ad-line); border-radius: 10px; padding: 10px 14px; background: var(--surface); }
+.pr-res-l { font-size: 12px; color: var(--text-sec); }
+.pr-res-v { font-size: 18px; font-weight: 700; color: var(--text-main); margin-top: 2px; }
+
+@media screen and (max-width: 700px) {
+    .pr-fun-row { grid-template-columns: 1fr 84px; }
+    .pr-fun-track { grid-column: 1 / -1; order: 3; }
+}

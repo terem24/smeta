@@ -221,6 +221,10 @@ const PayReadiness = {
     },
 
     // ── отрисовка ─────────────────────────────────────────────────────
+    // Оформление — общее для админки: .ad-card, .admin-stat-grid, .ad-chip, .admin-btn;
+    // своё только для таблиц и воронки (.pr-* в style.css).
+    _groupBy: 'role',
+
     esc: function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); },
     rub: function (n) { return n == null ? '—' : Math.round(n).toLocaleString('ru-RU') + ' ₽'; },
     pct: function (a, b) { return b ? Math.round(a * 100 / b) + ' %' : '—'; },
@@ -240,20 +244,20 @@ const PayReadiness = {
     render: function () {
         const box = document.getElementById('admin_payready_box');
         if (!box) return;
-        box.innerHTML = '<div style="color:var(--text-sec); font-size:13px;">Считаю по базе…</div>';
+        box.innerHTML = '<div class="ad-card-note">Считаю по базе…</div>';
         this.load().then(() => this.renderAll());
     },
     reload: function () {
         this._data = null;
         const box = document.getElementById('admin_payready_box');
-        if (box) box.innerHTML = '<div style="color:var(--text-sec); font-size:13px;">Перечитываю базу…</div>';
+        if (box) box.innerHTML = '<div class="ad-card-note">Перечитываю базу…</div>';
         this.load(true).then(() => this.renderAll());
     },
 
-    card: function (title, body, note) {
-        return `<div style="border:1px solid var(--border); border-radius:12px; padding:14px 16px; margin-bottom:14px;">
-            <div style="font-size:14px; font-weight:700; margin-bottom:${note ? 4 : 10}px;">${title}</div>
-            ${note ? `<div style="font-size:12px; color:var(--text-sec); line-height:1.5; margin-bottom:10px;">${note}</div>` : ''}
+    card: function (title, note, body) {
+        return `<div class="ad-card" style="margin-bottom:14px;">
+            <div class="ad-card-h"><span class="ad-card-title">${title}</span></div>
+            ${note ? `<div class="ad-card-note" style="padding:0;">${note}</div>` : ''}
             ${body}</div>`;
     },
 
@@ -261,92 +265,87 @@ const PayReadiness = {
         const box = document.getElementById('admin_payready_box');
         if (!box) return;
         if (this._error || !this._data) {
-            box.innerHTML = `<div style="color:#EF4444; font-size:13px;">Отчёт не загрузился: ${this.esc(this._error || 'нет данных')}</div>
+            box.innerHTML = `<div class="ad-card-note ad-warn">Отчёт не загрузился: ${this.esc(this._error || 'нет данных')}</div>
                 <button type="button" class="admin-btn" style="margin-top:8px;" onclick="PayReadiness.reload()">Повторить</button>`;
             return;
         }
         const a = this._data;
-        const tile = (v, l) => `<div style="flex:1 1 130px; border:1px solid var(--border); border-radius:12px; padding:10px 12px;">
-            <div style="font-size:20px; font-weight:800; line-height:1.1;">${v}</div><div style="font-size:11px; color:var(--text-sec); margin-top:3px;">${l}</div></div>`;
+        const tile = (label, value, sub) => `<div class="control-card"><span class="lbl">${label}</span><span>${value}</span><span>${sub}</span></div>`;
         const hot = a.people.filter(p => p.level === 'hot').length, warm = a.people.filter(p => p.level === 'warm').length;
         const paid = a.funnel[a.funnel.length - 1].n;
-        const noPayTable = a.payments === null
-            ? '<div style="font-size:12px; color:#D97706; margin-bottom:10px;">Таблицы оплат (subscription_payments) в базе нет — шаги «Я оплатил» и «Оплатили» считать нечем.</div>' : '';
+        const noPay = a.payments === null
+            ? '<div class="ad-card-note ad-warn" style="margin-bottom:12px;">Таблицы оплат (subscription_payments) в базе нет — шаги «Я оплатил» и «Оплатили» считать нечем.</div>' : '';
 
         box.innerHTML = `
-            ${noPayTable}
-            <div style="display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
-                ${tile(a.people.length, 'человек в расчёте (без админов и наблюдателей)')}
-                ${tile(hot, 'горячих — готовы платить')}
-                ${tile(warm, 'тёплых — присматриваются')}
-                ${tile(this.rub(a.medianEst), 'медианная смета (' + a.estCount + ' шт.)')}
-                ${tile(this.rub(a.medianWorks), 'медиана работ в смете')}
-                ${tile(paid, 'оплатили')}
+            <div class="ad-page-h">
+                <div class="ad-sub" style="max-width:640px; line-height:1.5;">Кто уже делает то, за что платят: смету, КП, счёт. Помогает выбрать цены на подписку по фактам. Данные читаются из базы, ничего не меняется.</div>
+                <button type="button" class="admin-btn" onclick="PayReadiness.reload()" title="Перечитать базу">Обновить</button>
             </div>
-            <div style="margin-bottom:10px;"><button type="button" class="admin-btn" onclick="PayReadiness.reload()" title="Перечитать базу">Обновить</button></div>
-            ${this.card('Воронка', this.funnelHtml(a), 'Где люди отваливаются на пути к оплате. Процент — от тех, кто зарегистрировался.')}
-            ${this.card('Выручка при ваших ценах', '<div id="pr_forecast"></div>', 'Ориентир, а не прогноз: сколько вышло бы, если бы часть горячих и тёплых оплатила. Цены и процент хранятся только в этом браузере.')}
-            ${this.card('Кто готов платить', this.groupsHtml(a), 'Горячие — те, кто уже делает смету и отправляет КП. Строки отсортированы по числу горячих.')}
-            ${this.card('Люди', '<div id="pr_people"></div>', 'Балл: смета за 30 дней 2–3, отправленный КП/счёт 3, заходы в 3+ разных дня 2, визит за неделю 1, смета от 500 тыс. ₽ 1. Горячий — ' + this.HOT_FROM + '+, тёплый — ' + this.WARM_FROM + '–' + (this.HOT_FROM - 1) + '.')}`;
+            ${noPay}
+            <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+                ${tile('Человек в расчёте', a.people.length, 'без админов и наблюдателей')}
+                ${tile('Горячих', hot, 'тёплых: ' + warm)}
+                ${tile('Медианная смета', this.rub(a.medianEst), 'работ в ней: ' + this.rub(a.medianWorks) + ' · смет: ' + a.estCount)}
+                ${tile('Оплатили', paid, 'подписок оплачено')}
+            </div>
+            ${this.card('Воронка', 'Где люди отваливаются на пути к оплате. Процент — от зарегистрировавшихся.', this.funnelHtml(a))}
+            ${this.card('Выручка при ваших ценах', 'Ориентир, а не прогноз: сколько вышло бы, если бы часть горячих и тёплых оплатила. Цены и процент хранятся только в этом браузере.', '<div id="pr_forecast"></div>')}
+            ${this.card('Кто готов платить', 'Срезы по роли в анкете, региону и дистрибьютору. Строки отсортированы по числу горячих.', '<div id="pr_groups"></div>')}
+            ${this.card('Люди', 'Балл: смета за 30 дней 2–3, отправленный КП или счёт 3, заходы в 3+ разных дня 2, визит за неделю 1, смета от 500 тыс. ₽ 1. Горячий — ' + this.HOT_FROM + '+, тёплый — ' + this.WARM_FROM + '–' + (this.HOT_FROM - 1) + '.', '<div id="pr_people"></div>')}`;
         this.renderForecast();
+        this.renderGroups();
         this.renderPeople();
     },
 
     funnelHtml: function (a) {
         const top = a.funnel[0].n || 1;
-        return a.funnel.map(s => {
-            const w = Math.max(2, Math.round(s.n * 100 / top));
-            return `<div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; font-size:13px;">
-                <div style="flex:0 0 210px;">${this.esc(s.label)}</div>
-                <div style="flex:1 1 auto; background:var(--bg-sec, rgba(127,127,127,.12)); border-radius:6px; height:14px;"><div style="width:${w}%; height:100%; border-radius:6px; background:#3B82F6;"></div></div>
-                <div style="flex:0 0 90px; text-align:right; font-weight:700;">${s.n} <span style="font-weight:400; color:var(--text-sec);">${this.pct(s.n, top)}</span></div>
-            </div>`;
-        }).join('');
+        return '<div class="pr-funnel">' + a.funnel.map(s => {
+            const w = s.n ? Math.max(2, Math.round(s.n * 100 / top)) : 0;
+            return `<div class="pr-fun-row"><div class="pr-fun-label">${this.esc(s.label)}</div>
+                <div class="pr-fun-track"><div class="pr-fun-bar" style="width:${w}%;"></div></div>
+                <div class="pr-fun-n"><b>${s.n}</b><span>${this.pct(s.n, top)}</span></div></div>`;
+        }).join('') + '</div>';
     },
 
-    groupsHtml: function (a) {
-        const th = 'text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-sec); padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap;';
-        const td = 'padding:6px 8px; border-bottom:1px solid var(--border); font-size:13px;';
-        const table = (title, rows) => `<div style="font-size:12px; font-weight:700; margin:10px 0 4px;">${title}</div>
-            <div style="overflow-x:auto;"><table style="border-collapse:collapse; width:100%; min-width:420px;">
-            <tr><th style="${th}">Группа</th><th style="${th}">Людей</th><th style="${th}">Горячих</th><th style="${th}">Тёплых</th><th style="${th}">Смет</th><th style="${th}">КП и счетов</th></tr>
-            ${rows.map(g => `<tr><td style="${td}">${this.esc(g.label)}</td><td style="${td}">${g.n}</td><td style="${td} font-weight:700;">${g.hot}</td><td style="${td}">${g.warm}</td><td style="${td}">${g.est}</td><td style="${td}">${g.inv}</td></tr>`).join('')}
-            </table></div>`;
-        return table('По роли в анкете', a.byRole) + table('По региону', a.byRegion) + table('По дистрибьютору', a.byDist);
+    setGroupBy: function (g) { this._groupBy = g; this.renderGroups(); },
+
+    renderGroups: function () {
+        const el = document.getElementById('pr_groups');
+        if (!el || !this._data) return;
+        const a = this._data;
+        const SETS = [['role', 'По роли', a.byRole], ['region', 'По региону', a.byRegion], ['dist', 'По дистрибьютору', a.byDist]];
+        const cur = SETS.find(s => s[0] === this._groupBy) || SETS[0];
+        const chips = SETS.map(s => `<button type="button" class="ad-chip${s[0] === cur[0] ? ' active' : ''}" onclick="PayReadiness.setGroupBy('${s[0]}')">${s[1]}</button>`).join('');
+        const rows = cur[2].map(g => `<tr><td>${this.esc(g.label)}</td><td class="n">${g.n}</td><td class="n pr-strong">${g.hot}</td><td class="n">${g.warm}</td><td class="n">${g.est}</td><td class="n">${g.inv}</td></tr>`).join('');
+        el.innerHTML = `<div class="ad-chips" style="margin:0 0 4px;">${chips}</div>
+            <div class="pr-wrap"><table class="pr-table"><thead><tr><th>Группа</th><th class="n">Людей</th><th class="n">Горячих</th><th class="n">Тёплых</th><th class="n">Смет</th><th class="n">КП и счетов</th></tr></thead><tbody>${rows}</tbody></table></div>`;
     },
 
     renderForecast: function () {
         const el = document.getElementById('pr_forecast');
         if (!el || !this._data) return;
         const a = this._data, inp = this.inputs(), f = this.forecast(a, inp);
-        const field = (key, label, suffix) => `<label style="display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--text-sec);">${label}
-            <span><input type="number" min="0" step="${key === 'conv' ? 5 : 100}" value="${inp[key]}" onchange="PayReadiness.setInput('${key}', this.value)"
-            style="width:100px; padding:7px 9px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font-size:14px; font-weight:700;"> ${suffix}</span></label>`;
+        const field = (key, label, suffix) => `<label class="pr-field">${label}
+            <span><input type="number" min="0" step="${key === 'conv' ? 5 : 100}" value="${inp[key]}" onchange="PayReadiness.setInput('${key}', this.value)" class="pr-input"> ${suffix}</span></label>`;
         let cur = '';
         try {
             if (typeof Subscription !== 'undefined') {
                 const p = Subscription.settings().plans;
-                if (p.month && p.year) cur = `<div style="font-size:12px; color:var(--text-sec); margin-top:8px;">Сейчас в «Оплате подписки»: месяц ${this.rub(p.month.rub)}, год ${this.rub(p.year.rub)}.
-                    ${a.medianEst ? 'Год «Профи» — ' + (Math.round(p.year.rub * 1000 / a.medianEst) / 10) + ' % от медианной сметы.' : ''}</div>`;
+                if (p.month && p.year) cur = `<div class="ad-card-note" style="padding:0;">Сейчас в «Оплате подписки»: месяц ${this.rub(p.month.rub)}, год ${this.rub(p.year.rub)}.${a.medianEst ? ' Год «Профи» — ' + (Math.round(p.year.rub * 1000 / a.medianEst) / 10) + ' % от медианной сметы.' : ''}</div>`;
             }
         } catch (e) { }
-        el.innerHTML = `<div style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:12px;">
+        const res = (label, value) => `<div class="pr-res"><div class="pr-res-l">${label}</div><div class="pr-res-v">${value}</div></div>`;
+        el.innerHTML = `<div class="pr-fields">
                 ${field('proPrice', 'Профи (монтажник), в месяц', '₽')}
                 ${field('shopPrice', 'Магазин, за точку в месяц', '₽')}
                 ${field('conv', 'Сколько горячих и тёплых оплатят', '%')}
             </div>
-            <div style="display:flex; flex-wrap:wrap; gap:10px;">
-                <div style="flex:1 1 200px; border:1px solid var(--border); border-radius:10px; padding:10px 12px;">
-                    <div style="font-size:12px; color:var(--text-sec);">Профи: из ${f.proPool} человек оплатят ${f.proN}</div>
-                    <div style="font-size:18px; font-weight:800;">${this.rub(f.pro)}/мес</div></div>
-                <div style="flex:1 1 200px; border:1px solid var(--border); border-radius:10px; padding:10px 12px;">
-                    <div style="font-size:12px; color:var(--text-sec);">Магазин: из ${f.shopPool} точек оплатят ${f.shopN}</div>
-                    <div style="font-size:18px; font-weight:800;">${this.rub(f.shop)}/мес</div></div>
-                <div style="flex:1 1 200px; border:1px solid var(--border); border-radius:10px; padding:10px 12px;">
-                    <div style="font-size:12px; color:var(--text-sec);">Итого в месяц / в год</div>
-                    <div style="font-size:18px; font-weight:800;">${this.rub(f.total)} / ${this.rub(f.total * 12)}</div></div>
+            <div class="pr-results">
+                ${res('Профи: из ' + f.proPool + ' человек оплатят ' + f.proN, this.rub(f.pro) + '/мес')}
+                ${res('Магазин: из ' + f.shopPool + ' точек оплатят ' + f.shopN, this.rub(f.shop) + '/мес')}
+                ${res('Итого в месяц / в год', this.rub(f.total) + ' / ' + this.rub(f.total * 12))}
             </div>
-            <div style="font-size:11px; color:var(--text-sec); margin-top:8px; line-height:1.5;">Магазин считается по дистрибьюторам, у которых не меньше двух горячих или тёплых продавцов; Профи — по остальным горячим и тёплым.</div>
+            <div class="ad-card-note" style="padding:0;">Магазин считается по дистрибьюторам, у которых не меньше двух горячих или тёплых продавцов; Профи — по остальным горячим и тёплым.</div>
             ${cur}`;
     },
 
@@ -359,26 +358,22 @@ const PayReadiness = {
         const counts = { hot: 0, warm: 0, cold: 0 };
         a.people.forEach(p => counts[p.level]++);
         const chips = [['hot', 'Горячие'], ['warm', 'Тёплые'], ['cold', 'Холодные']].map(([id, label]) =>
-            `<button type="button" class="ad-chip${this._heatFilter === id ? ' active' : ''}" onclick="PayReadiness.setHeat('${id}')">${label} <span class="ad-chip-n">${counts[id]}</span></button>`).join(' ');
+            `<button type="button" class="ad-chip${this._heatFilter === id ? ' active' : ''}" onclick="PayReadiness.setHeat('${id}')">${label} <span class="ad-chip-n">${counts[id]}</span></button>`).join('');
         const list = a.people.filter(p => p.level === this._heatFilter).sort((x, y) => y.score - x.score || y.estSum - x.estSum).slice(0, 200);
-        const th = 'text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.03em; color:var(--text-sec); padding:6px 8px; border-bottom:1px solid var(--border); white-space:nowrap;';
-        const td = 'padding:6px 8px; border-bottom:1px solid var(--border); font-size:13px;';
         const dn = {}; a.byDist.forEach(g => { dn[g.key] = g.label; });
         const rows = list.map(p => `<tr>
-            <td style="${td}">${this.esc(p.name)}<div style="font-size:11px; color:var(--text-sec);">${this.esc(p.email)}</div></td>
-            <td style="${td}">${this.ROLE_LABEL[p.role]}</td>
-            <td style="${td}">${this.esc(p.city || '—')}</td>
-            <td style="${td}">${this.esc(p.dist ? (dn[p.dist] || '') : '—')}</td>
-            <td style="${td}">${p.est30}/${p.est}</td>
-            <td style="${td}">${p.invoices}</td>
-            <td style="${td}">${p.days}</td>
-            <td style="${td} font-weight:700;">${p.score}</td>
-            <td style="${td}">${p.offer === 'shop' ? 'Магазин' : 'Профи'}</td></tr>`).join('');
-        el.innerHTML = `<div style="margin-bottom:8px;">${chips}</div>` + (list.length
-            ? `<div style="overflow-x:auto;"><table style="border-collapse:collapse; width:100%; min-width:720px;">
-                <tr><th style="${th}">Кто</th><th style="${th}">Роль</th><th style="${th}">Город</th><th style="${th}">Дистрибьютор</th><th style="${th}">Смет 30д / всего</th><th style="${th}">КП, счетов</th><th style="${th}">Дней</th><th style="${th}">Балл</th><th style="${th}">Что предлагать</th></tr>
-                ${rows}</table></div>`
-            : '<div style="color:var(--text-sec); font-size:13px;">В этой группе никого нет.</div>');
+            <td class="pr-who"><b>${this.esc(p.name)}</b><span>${this.esc(p.email)}</span></td>
+            <td>${this.ROLE_LABEL[p.role]}</td>
+            <td>${this.esc(p.city || '—')}</td>
+            <td>${this.esc(p.dist ? (dn[p.dist] || '') : '—')}</td>
+            <td class="n">${p.est30} / ${p.est}</td>
+            <td class="n">${p.invoices}</td>
+            <td class="n">${p.days}</td>
+            <td class="n"><span class="pr-score pr-${p.level}">${p.score}</span></td>
+            <td>${p.offer === 'shop' ? 'Магазин' : 'Профи'}</td></tr>`).join('');
+        el.innerHTML = `<div class="ad-chips" style="margin:0 0 4px;">${chips}</div>` + (list.length
+            ? `<div class="pr-wrap"><table class="pr-table pr-people"><thead><tr><th>Кто</th><th>Роль</th><th>Город</th><th>Дистрибьютор</th><th class="n">Смет 30д / всего</th><th class="n">КП, счетов</th><th class="n">Дней</th><th class="n">Балл</th><th>Предложить</th></tr></thead><tbody>${rows}</tbody></table></div>`
+            : '<div class="ad-card-note">В этой группе никого нет.</div>');
     }
 };
 
