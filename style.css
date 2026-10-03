@@ -18705,10 +18705,12 @@ body.theme-yandex #profile_modal_overlay {
 /* Таблица смет: ряд из трёх кнопок и «⋯», редкие действия — в меню .lk-pop */
 .lk-row-actions {
     display: flex;
+    flex-wrap: nowrap !important;
     justify-content: flex-end;
     gap: 6px;
     align-items: center;
 }
+.lk-row-actions > button { white-space: nowrap; flex: 0 0 auto; }
 #profile_modal_overlay .lk-pane .lk-btn-more {
     width: 32px;
     padding: 0;
