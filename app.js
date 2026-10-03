@@ -82857,17 +82857,8 @@ function prepareForPrint() {
             try {
                 const kpData = app.kpPersonalData();
                 if (kpData && window.KpShare) {
-                    let qrTile = null;
-                    if (app._kpQr && app._kpQr.src) {
-                        qrTile = document.createElement('div');
-                        qrTile.className = 'kp-kpi';
-                        qrTile.style.textAlign = 'center';
-                        qrTile.innerHTML = '<img alt="QR" style="width:84px;height:84px;display:block;margin:0 auto 4px">' +
-                            '<div class="kp-kpi-s">Это КП онлайн</div>';
-                        qrTile.querySelector('img').src = app._kpQr.src;
-                    }
                     const wr = app.warrantyFormEligible() ? app.warrantyLinkData() : null;
-                    kpNode = window.KpShare.house(kpData, wr, qrTile);
+                    kpNode = window.KpShare.house(kpData, wr);
                 } else if (kpData) {
                     const kpHtml = app.kpPersonalHtml(kpData, app._kpQr);
                     if (kpHtml) { kpNode = document.createElement('div'); kpNode.innerHTML = kpHtml; }

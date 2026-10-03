@@ -596,7 +596,6 @@
             .kp-rooms-wrap { overflow: visible; }
             .kp-main { min-width: 0; }
             .kp-tabs, .kp-plan-hint, .kp-acc-c, .kp-fl-c, .kp-fl-hint { display: none !important; }
-            .kp-main tr.kp-hide { display: table-row !important; }
             .kp-rooms tr.kp-fl { cursor: default; break-after: avoid; page-break-after: avoid; }
             .kp-fl-title { break-after: avoid; page-break-after: avoid; }
             .kp-fpanel { display: block !important; margin-bottom: 18px; }
@@ -630,8 +629,7 @@
         body.html2pdf-printing .kp-acc-c,
         body.html2pdf-printing .kp-fl-c,
         body.html2pdf-printing .kp-fl-hint { display: none !important; }
-        body.html2pdf-printing .kp-main tr.kp-hide { display: table-row !important; }
-        body.html2pdf-printing .kp-rooms tr.kp-fl { cursor: default; break-after: avoid; page-break-after: avoid; }
+        body.html2pdf-printing        body.html2pdf-printing .kp-rooms tr.kp-fl { cursor: default; break-after: avoid; page-break-after: avoid; }
         body.html2pdf-printing .kp-fl-title { break-after: avoid; page-break-after: avoid; }
         body.html2pdf-printing .kp-fpanel { display: block !important; margin-bottom: 18px; }
         body.html2pdf-printing .kpw-hero-t { padding: 18px 24px; }
