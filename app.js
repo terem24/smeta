@@ -47721,6 +47721,11 @@ const app = {
         if (this.warrantyFormEligible()) {
             try { await this.lazy('docs'); } catch (e) { console.warn('[executeDownload] docs.js не загрузился, бланк гарантии пропущен', e); }
         }
+        // Разделы «Ваш дом» и «Гарантия» рисуются тем же кодом, что и страница клиента
+        try {
+            await this.lazy('kpshare');
+            if (window.KpShare) await window.KpShare.ready;
+        } catch (e) { console.warn('[executeDownload] kp_share.js не загрузился, прежнее оформление', e); }
 
         // Гарантируем, что смета попадёт в базу (и станет доступна через "Загрузить код"),
         // даже если сейчас нет связи с Supabase — задача уйдёт в фоновую очередь с повторами.
@@ -82771,6 +82776,10 @@ function prepareForPrint() {
     if (liveSchemeEarly) liveSchemeEarly.classList.remove('hide-original-for-print');
 
     if (printArea) {
+        // Раскладка по плану дома: данные те же, что уходят в ссылку клиенту
+        let planViews = null;
+        if (window.KpShare && app.schemeOn()) { try { planViews = app.ufhPlanForShare(); } catch (e) { planViews = null; } }
+
         // --- ШАГ 1: ЛИСТ ОБОРУДОВАНИЯ ---
         if (showEq) {
             app.state.viewMode = 'equipment';
@@ -82782,6 +82791,9 @@ function prepareForPrint() {
             const eqWp = eqClone.querySelector('#warranty_print'); if (eqWp) eqWp.remove();
             let eqScheme = eqClone.querySelector('#dynamic_scheme');
             if (eqScheme) eqScheme.remove();
+            // План отопления дома выносим из таблицы отдельным разделом (как в ссылке, шаг 2а)
+            const eqPlanRow = eqClone.querySelector('#ufh_plan_scheme_row');
+            if (planViews && eqPlanRow) eqPlanRow.remove(); else if (!eqPlanRow) planViews = null;
             let eqTabs = eqClone.querySelector('.main-view-tabs');
             if (eqTabs) eqTabs.style.display = 'none';
             printBin.appendChild(eqClone);
@@ -82831,6 +82843,54 @@ function prepareForPrint() {
             printBin.appendChild(worksClone);
         }
 
+        // --- ШАГ 2а: РАЗДЕЛ «ВАШ ДОМ» — сразу после оборудования и работ, как на странице
+        // клиента (invoice.html): город, теплопотери, «вы просили — мы учли», комнаты,
+        // стоимость отопления, QR на онлайн-КП. Оформление то же, что в ссылке (kp_share.js);
+        // нет модуля — прежняя разметка kpPersonalHtml ---
+        if (app.kpHouseOn !== false) {
+            let kpNode = null;
+            try {
+                const kpData = app.kpPersonalData();
+                if (kpData && window.KpShare) {
+                    let qrTile = null;
+                    if (app._kpQr && app._kpQr.src) {
+                        qrTile = document.createElement('div');
+                        qrTile.className = 'kp-kpi';
+                        qrTile.style.textAlign = 'center';
+                        qrTile.innerHTML = '<img alt="QR" style="width:84px;height:84px;display:block;margin:0 auto 4px">' +
+                            '<div class="kp-kpi-s">Это КП онлайн</div>';
+                        qrTile.querySelector('img').src = app._kpQr.src;
+                    }
+                    const wr = app.warrantyFormEligible() ? app.warrantyLinkData() : null;
+                    kpNode = window.KpShare.house(kpData, wr, qrTile);
+                } else if (kpData) {
+                    const kpHtml = app.kpPersonalHtml(kpData, app._kpQr);
+                    if (kpHtml) { kpNode = document.createElement('div'); kpNode.innerHTML = kpHtml; }
+                }
+            } catch (e) { kpNode = null; }
+            if (kpNode) {
+                const kpPage = document.createElement('div');
+                kpPage.id = 'kp_personal_page';
+                if (printBin.children.length > 0) kpPage.classList.add('print-page-break');
+                kpPage.appendChild(kpNode);
+                printBin.appendChild(kpPage);
+            }
+        }
+
+        // --- ШАГ 2б: ПЛАН ОТОПЛЕНИЯ ДОМА — следом за «Ваш дом», как в ссылке (раздел «Тёплый
+        // пол в вашем доме»): плана нет или оборудование не печатают — раздела нет ---
+        if (planViews && planViews.length) {
+            let planNode = null;
+            try { planNode = window.KpShare.plan(planViews); } catch (e) { planNode = null; }
+            if (planNode) {
+                const planPage = document.createElement('div');
+                planPage.id = 'kp_plan_page';
+                if (printBin.children.length > 0) planPage.classList.add('print-page-break');
+                planPage.appendChild(planNode);
+                printBin.appendChild(planPage);
+            }
+        }
+
         // --- ШАГ 3: СХЕМА (На отдельном листе, независимо от раздела ОБОРУДОВАНИЕ/РАБОТЫ —
         // управляется отдельным чекбоксом в окне печати) ---
         if (showSchemeOpt && app.schemeOn()) {
@@ -82866,29 +82926,29 @@ function prepareForPrint() {
             }
         }
 
-        // --- ШАГ 5а: РАЗДЕЛ «ВАШ ДОМ» — отдельным листом после оборудования, работ,
-        // схем и планов, перед гарантией: город, теплопотери, «вы просили — мы
-        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
-        if (app.kpHouseOn !== false) {
-            let kpHtml = '';
-            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
-            if (kpHtml) {
-                const kpPage = document.createElement('div');
-                kpPage.id = 'kp_personal_page';
-                if (printBin.children.length > 0) kpPage.classList.add('print-page-break');
-                kpPage.innerHTML = kpHtml;
-                printBin.appendChild(kpPage);
-            }
-        }
-
         // --- ШАГ 6: БЛАНК «ГАРАНТИЯ НА ОБЪЕКТ STOUT» — последним листом всего документа,
         // после схемы и таблицы теплопотерь. Живой блок (#warranty_print) собирает
         // render(); пустой (долю STOUT не набрали) в печать не идёт. ---
+        // Оформление — как лист «Гарантия» на странице клиента (kp_share.js); нет модуля или
+        // данных — прежний бланк.
         const wpLive = document.getElementById('warranty_print');
         if (wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
+            let wNode = null;
+            try {
+                if (window.KpShare) {
+                    const tg = app.state.tgUser || {};
+                    const mgr = { name: app.formatShortName(tg) || '', phone: tg.phone || '', customCompany: app.state.customCompany || null };
+                    wNode = window.KpShare.warranty(app.warrantyLinkData(), mgr);
+                }
+            } catch (e) { wNode = null; }
             const wpPage = document.createElement('div');
-            wpPage.className = 'warranty-print';
-            wpPage.innerHTML = wpLive.innerHTML;
+            if (wNode) {
+                wpPage.className = 'print-page-break';
+                wpPage.appendChild(wNode);
+            } else {
+                wpPage.className = 'warranty-print';
+                wpPage.innerHTML = wpLive.innerHTML;
+            }
             printBin.appendChild(wpPage);
         }
 
