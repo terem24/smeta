@@ -359,7 +359,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.35"></script>
+<script src="project_plans.js?v=1.36"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -1231,7 +1231,8 @@ function computeLeads() {
           pts[pts.length - 1] = E;
         }
       }
-      if (!pts) pts = [[f.coll.x, f.coll.y], E];
+      // Нет карты стен — прямую «коллектор → вход» не сохраняем: листы приняли бы её за желаемую трассу
+      if (!pts) return;
       f.leads.push({ i: zi, pts: pts });
     });
   });
