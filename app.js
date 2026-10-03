@@ -71513,7 +71513,54 @@ const app = {
         const pad = 14;
         if (r.top >= cover + pad && r.bottom + 100 <= window.innerHeight) return;
         const y = Math.max(0, window.scrollY + r.top - cover - pad);
-        try { window.scrollTo({ top: y, behavior: instant ? 'auto' : 'smooth' }); } catch (e) { window.scrollTo(0, y); }
+        if (instant) { window.scrollTo(0, y); return; }
+        // Лист не срывается с места в момент нажатия: сначала пауза, за которую
+        // глаз успевает отметить, что переключатель сработал, потом неторопливый
+        // проезд. К началу проезда строку ищем заново — смета могла перерисоваться.
+        const key = this._estRowKey(tr);
+        clearTimeout(this._estScrollTimer);
+        this._estScrollTimer = setTimeout(() => {
+            const row = this._estFindRow(document.getElementById('tbody'), key) || (tr.isConnected ? tr : null);
+            if (!row) return;
+            const c2 = this._estimateCoverPx();
+            const r2 = row.getBoundingClientRect();
+            if (r2.top >= c2 + pad && r2.bottom + 100 <= window.innerHeight) return;
+            this._glideWindowTo(Math.max(0, window.scrollY + r2.top - c2 - pad));
+        }, 260);
+    },
+    // Плавная прокрутка окна с мягким разгоном и торможением (easeInOutCubic).
+    // Длительность растёт с расстоянием, но в разумных пределах: близкая цель —
+    // короткий, дальняя — долгий проезд, а не одинаковый рывок. Любое действие
+    // человека (колесо, касание, клавиша, нажатие) сразу отменяет движение:
+    // страница не должна спорить с рукой.
+    _glideWindowTo: function (y) {
+        if (this._glideStop) this._glideStop();
+        const from = window.scrollY, dist = y - from;
+        if (Math.abs(dist) < 2) return;
+        let reduce = false;
+        try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { }
+        if (reduce) { window.scrollTo(0, y); return; }
+        const dur = Math.min(900, Math.max(420, 300 + Math.sqrt(Math.abs(dist)) * 14));
+        const t0 = performance.now();
+        let raf = 0, done = false;
+        const evs = ['wheel', 'touchstart', 'keydown', 'mousedown'];
+        const stop = () => {
+            if (done) return;
+            done = true;
+            cancelAnimationFrame(raf);
+            evs.forEach(n => window.removeEventListener(n, stop, true));
+            if (this._glideStop === stop) this._glideStop = null;
+        };
+        const ease = p => p < 0.5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+        const step = (now) => {
+            if (done) return;
+            const p = Math.min(1, (now - t0) / dur);
+            window.scrollTo(0, from + dist * ease(p));
+            if (p < 1) raf = requestAnimationFrame(step); else stop();
+        };
+        evs.forEach(n => window.addEventListener(n, stop, { capture: true, passive: true }));
+        this._glideStop = stop;
+        raf = requestAnimationFrame(step);
     },
 
     render: function (computeOnly) {
