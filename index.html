@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=10.96" defer></script>
+    <script src="app.js?v=10.97" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -2714,7 +2714,7 @@
                     <div id="promo_code_result" style="margin-top: 6px; font-size: 11px; display: none;"></div>
                 </div>
 
-                <button id="custom_modal_btn_trial" class="btn-trial-14" style="display:none;" onclick="app.activateTrial14()">Попробовать бесплатно 2 дня</button>
+                <button id="custom_modal_btn_trial" class="btn-trial-14" style="display:none;" onclick="app.activateTrial14()">Попробовать бесплатно 14 дней</button>
 
 
                 <button class="custom-modal-btn" id="custom_modal_btn_ok" style="display: none;" onclick="app.closeModal()">Понятно</button>
@@ -3149,6 +3149,23 @@
                              блока (поле/кнопка либо название компании) — renderProfilePromoField -->
                         <label>Промокод</label>
                         <div id="profile_promo_box" class="lk-inline"></div>
+                    </div>
+
+                    <div class="lk-field lk-span-4">
+                        <!-- Необязательный вопрос: ответ дописывается к источнику регистрации
+                             (users.utm_source, сегмент «ask:») — см. app.saveHeardFrom -->
+                        <label for="profile_heard_from">Откуда узнали о сервисе</label>
+                        <select id="profile_heard_from" class="auth-input">
+                            <option value="">Не выбрано</option>
+                            <option value="поиск">Поиск Яндекс или Google</option>
+                            <option value="ИИ-помощник">ИИ-помощник (Алиса, ChatGPT)</option>
+                            <option value="знакомый">Рекомендация знакомого</option>
+                            <option value="магазин">Магазин или поставщик</option>
+                            <option value="Telegram">Telegram</option>
+                            <option value="видео">Видео</option>
+                            <option value="реклама">Реклама</option>
+                            <option value="другое">Другое</option>
+                        </select>
                     </div>
 
                     <div class="lk-field lk-span-12 profile-activity">

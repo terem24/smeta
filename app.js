@@ -1385,8 +1385,71 @@ const app = {
                 let arr = [];
                 if (s) arr.push(`src: ${s}`); if (m) arr.push(`med: ${m}`); if (c) arr.push(`cmp: ${c}`);
                 localStorage.setItem('stout_utm', arr.join(' | '));
+            } else if (!localStorage.getItem('stout_utm')) {
+                // Меток нет — берём хотя бы откуда пришли. Первое касание: уже
+                // записанный источник не затираем, иначе «пришёл из статьи» стерлось
+                // бы следующим заходом напрямую.
+                const ref = this.referrerLabel();
+                if (ref) localStorage.setItem('stout_utm', ref);
             }
         } catch (e) { }
+    },
+    // Откуда человек попал в калькулятор, без адресов и параметров: только сайт
+    // (поиск, чат) или раздел нашего же сайта — статья, город, мастер /dom/.
+    // Внутренняя главная и пустой реферрер дают '' (прямой заход или мессенджер,
+    // который реферрер не передаёт — для них и спрашиваем в анкете «Откуда узнали»).
+    referrerLabel: function () {
+        try {
+            if (!document.referrer) return '';
+            const u = new URL(document.referrer);
+            const host = u.hostname.replace(/^www\./, '');
+            if (!host || /^(localhost|127\.|0\.0\.0\.0)/.test(host)) return '';
+            if (/(^|\.)heatcalc\.ru$/.test(host)) {
+                const seg = u.pathname.replace(/^\/+|\/+$/g, '').split('/')[0];
+                return /^[\w-]{2,60}$/.test(seg) ? `ref: heatcalc.ru/${seg}` : '';
+            }
+            return `ref: ${host.slice(0, 60)}`;
+        } catch (e) { return ''; }
+    },
+    // «Откуда узнали» из анкеты дописывается к источнику отдельным сегментом
+    // «ask: …» — отдельной колонки нет намеренно: новое поле в upsert, которого
+    // нет в базе, роняет регистрацию целиком.
+    HEARD_KEY: 'hc_heard',
+    sourceWithAsk: function (utm) {
+        let parts = String(utm || '').split(' | ').filter(x => x && !/^ask:/.test(x));
+        let heard = '';
+        try { heard = localStorage.getItem(this.HEARD_KEY) || ''; } catch (e) { }
+        if (heard) parts.push('ask: ' + heard);
+        return parts.join(' | ');
+    },
+    // Источник пишем один раз — в первую сессию новой строки (registered_at по
+    // умолчанию now()). Раньше он уходил в upsert при каждом входе, и любая
+    // свежая ссылка с меткой затирала настоящий источник регистрации.
+    stampFirstTouchSource: function (uRow, authUserId, utm) {
+        try {
+            if (!uRow || !utm || !uRow.registered_at) return;
+            if (Date.now() - new Date(uRow.registered_at).getTime() > 30 * 60 * 1000) return;
+            supabaseClient.from('users')
+                .update({ utm_source: this.sourceWithAsk(utm) })
+                .eq('auth_user_id', authUserId)
+                .then(r => { if (r && r.error) console.warn('[utm] не записан:', r.error.message); });
+        } catch (e) { console.warn('[utm]', e); }
+    },
+    // Ответ из анкеты: дописываем «ask: …» к тому, что уже в базе (источник мог
+    // быть записан в другом браузере). Любая ошибка — молча в консоль.
+    saveHeardFrom: async function (authUserId, email, value) {
+        try {
+            if (!value) return;
+            localStorage.setItem(this.HEARD_KEY, value);
+            let q = supabaseClient.from('users').select('id, utm_source');
+            q = authUserId ? q.eq('auth_user_id', authUserId) : q.eq('email', email);
+            const { data } = await q.limit(1);
+            const row = data && data[0];
+            if (!row) return;
+            const next = this.sourceWithAsk(row.utm_source || '');
+            if (next === (row.utm_source || '')) return;
+            await supabaseClient.from('users').update({ utm_source: next }).eq('id', row.id);
+        } catch (e) { console.warn('[heard_from]', e); }
     },
 
     // ═══ Приглашение от менеджера магазина ═══════════════════════════════
@@ -8193,6 +8256,40 @@ const app = {
         if (msg) msg.style.display = 'none';
     },
 
+    TRIAL_DAYS: 14,
+    // Предложение пробного Профи после сохранения сметы: человек уже увидел цену
+    // своего объекта, и показать ему, что умеет платный тариф, имеет смысл именно
+    // сейчас. Не навязываем: не чаще раза в 3 дня и не больше двух раз за всё
+    // время (на этом устройстве); тем, у кого пробный или платный Профи уже был
+    // (demo_ends_at), и служебным ролям не предлагаем. Включение — только по
+    // нажатию, автоматически тариф не меняется.
+    maybeOfferTrial: async function () {
+        try {
+            if (this._trialOfferBusy) return;
+            const tg = this.state.tgUser || {};
+            if (!tg.authUserId && !tg.email && !tg.id) return;
+            if (this.isPro() || this.state.demoUsed || tg.demo_ends_at) return;
+            const acc = tg.account_type || this.state.accountType || 'base';
+            if (acc !== 'free' && acc !== 'base') return;
+            let st = {};
+            try { st = JSON.parse(localStorage.getItem('hc_trial_offer') || '{}') || {}; } catch (e) { st = {}; }
+            if ((st.n || 0) >= 2 || (st.t && Date.now() - st.t < 3 * 24 * 60 * 60 * 1000)) return;
+            this._trialOfferBusy = true;
+            try { localStorage.setItem('hc_trial_offer', JSON.stringify({ n: (st.n || 0) + 1, t: Date.now() })); } catch (e) { }
+            let benefits = '';
+            try { if (typeof Subscription !== 'undefined') benefits = Subscription.benefitsText(Subscription.userAccount()); } catch (e) { }
+            const yes = await this.confirmChoice(
+                (benefits ? benefits + '\n\n' : '') + 'Карта не нужна. Через ' + this.TRIAL_DAYS + ' дней доступ вернётся к базовому — ничего не спишется.',
+                'Попробуйте Профи ' + this.TRIAL_DAYS + ' дней бесплатно',
+                'Включить', 'Не сейчас');
+            this._trialOfferBusy = false;
+            if (yes) this.activateTrial14();
+        } catch (e) {
+            this._trialOfferBusy = false;
+            console.warn('[пробный период] предложение не показано:', e);
+        }
+    },
+
     activateTrial14: async function () {
         const { data: { session } } = await supabaseClient.auth.getSession();
         const tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
@@ -8210,8 +8307,9 @@ const app = {
         if (btn) btn.innerText = "Активация...";
 
         try {
-            // Дата окончания = текущее время + 2 сутки
-            let trialDurationMs = 2 * 24 * 60 * 60 * 1000;
+            // Длительность пробного периода — TRIAL_DAYS суток (было 2: за двое суток
+            // монтажник не успевал довести до клиента ни одну смету)
+            let trialDurationMs = this.TRIAL_DAYS * 24 * 60 * 60 * 1000;
             let endDate = new Date(Date.now() + trialDurationMs).toISOString();
 
             // Сначала найдем пользователя в БД по любому доступному признаку
@@ -8231,7 +8329,7 @@ const app = {
 
             if (!uRow) {
                 app.alert("Профиль пользователя не найден в базе данных. Пожалуйста, попробуйте перезайти в аккаунт.");
-                if (btn) btn.innerText = "Попробовать бесплатно 2 дня";
+                if (btn) btn.innerText = "Попробовать бесплатно " + this.TRIAL_DAYS + " дней";
                 return;
             }
 
@@ -8264,12 +8362,12 @@ const app = {
             this.syncUI();
             this.closeModal();
 
-            app.alert("✅ Пробный период на 2 дня успешно активирован! Вам открыты все PRO функции." + (window.__HC_NATIVE__ ? "" : " Страница будет перезагружена через 6 секунд."));
+            app.alert("✅ Профи включён на " + this.TRIAL_DAYS + " дней — до " + new Date(Date.now() + trialDurationMs).toLocaleDateString('ru-RU') + ". Вам открыты функции Профи; через " + this.TRIAL_DAYS + " дней доступ вернётся к базовому, ничего не спишется." + (window.__HC_NATIVE__ ? "" : " Страница будет перезагружена через 6 секунд."));
             this.softReload(6000);
         } catch (e) {
             console.error("Ошибка активации:", e);
             app.alert("Ошибка активации. Попробуйте позже.");
-            if (btn) btn.innerText = "Попробовать бесплатно 2 дня";
+            if (btn) btn.innerText = "Попробовать бесплатно " + this.TRIAL_DAYS + " дней";
         }
     },
 
@@ -8440,7 +8538,9 @@ const app = {
             this.saveReminderDisarm();
             this.saveReminderClearPending();
             console.log("[saveToCloud] Сохранение успешно завершено.");
-            if (!silent) app.alert("✅ Смета успешно сохранена!");
+            // Предложение пробного Профи — только после того, как человек закрыл
+            // «Смета сохранена»: два окна друг на друге не показываем
+            if (!silent) app.alert("✅ Смета успешно сохранена!").then(() => this.maybeOfferTrial());
             return true;
         } catch (error) {
             console.error("[saveToCloud] Критическая ошибка в блоке catch:", error);
@@ -13719,6 +13819,8 @@ const app = {
         this.setBirthDateRange(document.getElementById('profile_birth_date_input'));
         document.getElementById('profile_region_input').value = tgUser.region || '';
         document.getElementById('profile_city_input').value = tgUser.city || '';
+        const heardEl = document.getElementById('profile_heard_from');
+        if (heardEl) { try { heardEl.value = localStorage.getItem(this.HEARD_KEY) || ''; } catch (e) { } }
         // Строго после региона: подсказке нужно с чем сравнивать номер
         this.showPhoneRegionHint();
         if (document.getElementById('profile_email_input')) {
@@ -40819,7 +40921,6 @@ const app = {
                 // строкой — после чего анкета считалась незаполненной и открывалась заново
                 phone: existingPhone || undefined,
                 city: existingCity || undefined,
-                utm_source: utm || undefined,
                 registration_ip: clientIp,
                 ...regFieldsObj,
                 ...updatePayload
@@ -40914,6 +41015,7 @@ const app = {
 
             let uRow = upsertResult ? upsertResult[0] : null;
             if (uRow && !HC_LOCAL_DEV) this.stampLoginGeo(authUserId);
+            if (uRow && utm) this.stampFirstTouchSource(uRow, authUserId, utm);
             if (uRow && uRow.is_blocked) {
                 // Заблокированный админом аккаунт: данные не трогаем, но не даём пользоваться
                 // калькулятором — выходим из сессии и возвращаем в неавторизованное состояние.
@@ -40953,10 +41055,21 @@ const app = {
                             .lt('demo_ends_at', new Date().toISOString());
                     } else if (accType === 'pro' && new Date(demoEnds) > new Date()) {
                         let msLeft = new Date(demoEnds).getTime() - Date.now();
-                        if (msLeft <= 24 * 60 * 60 * 1000 && !sessionStorage.getItem('trial_reminder_shown')) {
+                        // Предупреждаем за 3 дня, не чаще раза в сутки: за сутки до конца
+                        // человек уже не успевает ни попробовать то, что не пробовал, ни решить
+                        const dayKey = new Date().toISOString().slice(0, 10);
+                        let shownDay = '';
+                        try { shownDay = localStorage.getItem('trial_reminder_day') || ''; } catch (e) { }
+                        if (msLeft <= 3 * 24 * 60 * 60 * 1000 && shownDay !== dayKey && !sessionStorage.getItem('trial_reminder_shown')) {
                             sessionStorage.setItem('trial_reminder_shown', '1');
-                            setTimeout(() => {
-                                app.alert('⏰ Ваш пробный период заканчивается в течение 24 часов. Оформите подписку, чтобы не потерять доступ.');
+                            try { localStorage.setItem('trial_reminder_day', dayKey); } catch (e) { }
+                            const daysLeft = Math.max(1, Math.ceil(msLeft / (24 * 60 * 60 * 1000)));
+                            const endText = new Date(demoEnds).toLocaleDateString('ru-RU');
+                            setTimeout(async () => {
+                                const go = await app.confirmChoice(
+                                    'Доступ к функциям Профи заканчивается ' + endText + ' (осталось ' + daysLeft + ' дн.). Ваши сметы сохранятся, но функции Профи станут недоступны.',
+                                    'Профи скоро закончится', 'Оформить подписку', 'Позже');
+                                if (go) app.showModal('pro');
                             }, 1500);
                         }
                     }
@@ -41501,6 +41614,7 @@ const app = {
         let region = document.getElementById('profile_region_input').value.trim();
         let city = document.getElementById('profile_city_input').value.trim();
         let email = document.getElementById('profile_email_input') ? document.getElementById('profile_email_input').value.trim() : '';
+        const heardFrom = document.getElementById('profile_heard_from') ? document.getElementById('profile_heard_from').value : '';
 
         // Последняя попытка достать регион из справочника городов: если поле осталось
         // пустым, не заставляем заполнять руками то, что известно по городу
@@ -41646,6 +41760,7 @@ const app = {
                     return;
                 }
                 if (tgUser.email) await supabaseClient.auth.updateUser({ data: { full_name: name, phone: phone } });
+                this.saveHeardFrom(tgUser.authUserId, tgUser.email || email, heardFrom);
                 console.log("[saveProfile] Профиль успешно синхронизирован с облаком Supabase.");
             } catch (error) {
                 console.error('[saveProfile] Фоновая ошибка синхронизации профиля с Supabase:', error);
