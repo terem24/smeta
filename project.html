@@ -343,7 +343,13 @@ if (payload && payload.items && payload.items.length) {
       got.forEach(function (p) { mepPlans.push(p); mepSlots.push([pad2(base), p.title, '']); });
       if (!got.length) mepSlots.push([pad2(base),
         'Этаж ' + pad2(fl) + '. Сводный план сетей', 'лист не сформирован']);
-      mepSlots.push([pad2(base + 1), 'Сводная схема сетей ' + fl + ' этажа', 'лист не формируется']);
+      // 3D-схема сетей этажа: все системы на одном объёмном виде
+      var sch = projectPlans.iso3dSheets(plans, { kind: 'summary', code: MARK.mep.code,
+        sheetStart: base + 1, floor: fl, num: numMep, steps: payload.ufhSteps, stepMm: tpStep,
+        rooms: expRooms,
+        tee: !!(payload.hydro && /тройник/i.test(payload.hydro.scheme || '')) });
+      sch.forEach(function (p) { mepPlans.push(p); mepSlots.push([pad2(base + 1), p.title, '']); });
+      if (!sch.length) mepSlots.push([pad2(base + 1), 'Сводная схема сетей ' + fl + ' этажа', 'лист не формируется']);
     });
   }
   // Сводка по помещениям — перед подробным расчётом: сначала «какая нагрузка»,

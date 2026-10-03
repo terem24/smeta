@@ -2279,9 +2279,9 @@
   }
 
   /** Лист «Этаж N. 3D вид напольного отопления» */
-  function isoTpBody(f, num, stepMm, rooms) {
+  function isoTpBody(f, num, stepMm, rooms, bare) {
     var t = isoFit(f), o = [];
-    isoShell(f, t, o);
+    if (!bare) isoShell(f, t, o);
     rooms = (rooms || []).filter(function (r) { return (r.floor || 1) === num; });
 
     var cards = [];
@@ -2306,6 +2306,14 @@
         'Шаг ' + R.step + ' мм', 'L = ' + R.m + ' м', num1(R.flow) + ' л/мин'] });
     });
 
+    if (bare) {                       // сводная схема: трубы без табличек, коллектор значком
+      if (f.coll) {
+        var cb = t.P(f.coll.x, f.coll.y, 0);
+        o.push('<circle cx="' + n(cb[0]) + '" cy="' + n(cb[1]) +
+          '" r="2" style="fill:#fff;stroke:' + COLT.tp + ';stroke-width:0.5"/>');
+      }
+      return o.join('');
+    }
     // Таблички раскладываем по краям листа и тянем выноску к своей петле:
     // в середине вида им места нет, они закрыли бы укладку.
     var left = [], right = [];
@@ -2748,7 +2756,7 @@
   function isoRadBody(f, num, opts) {
     opts = opts || {};
     var t = isoFit(f), o = [];
-    isoShell(f, t, o);
+    if (!opts.bare) isoShell(f, t, o);
     var ppm = f.pxPerM || 100, px = function (mm) { return mm / 1000 * ppm; };
     var rooms = (opts.rooms || []).filter(function (r) { return (r.floor || 1) === num; });
     var hMm = opts.radH || 500;
@@ -2835,6 +2843,7 @@
       cards.push({ p: top, lines: lines, no: i + 1 });
     });
 
+    if (opts.bare) return o.join('');   // сводная схема: без табличек, легенды и примечаний
     // Таблички по краям листа, как на 3D виде тёплого пола. Не влезли по
     // высоте — остаётся номер у самого прибора: он совпадает с табличкой,
     // если её потом допишут руками.
@@ -2876,10 +2885,55 @@
     return o.join('');
   }
 
-  /** Лист «Этаж N. 3D вид водоснабжения» либо «…канализации» */
-  function isoPipeBody(f, num, kind) {
-    var t = isoFit(f), o = [];
+  /**
+   * Лист «Сводная схема сетей N этажа»: все системы этажа на одном объёмном
+   * виде — тёплый пол, радиаторы, водоснабжение, канализация. Каждая система
+   * рисуется теми же функциями, что и её отдельный 3D-вид, но без табличек.
+   */
+  function isoSumBody(f, num, opts, stepMm) {
+    var t = isoFit(f), o = [], legend = [];
     isoShell(f, t, o);
+    // подписи комнат на полу — чтобы ориентироваться в плане без подложки
+    var seen = {};
+    (f.zones || []).forEach(function (z) {
+      var k = String(z.name || '').trim().toLowerCase();
+      if (!k || seen[k] || !z.pts || z.pts.length < 3 || /^(котельная|тёплый пол|радиаторы)$/i.test(z.name)) return;
+      seen[k] = 1;
+      var c = centroid(z.pts), p = t.P(c[0], c[1], 0);
+      o.push(txt(p[0], p[1], z.name, { size: 2.4, anchor: 'middle', fill: '#8a9099' }));
+    });
+    if ((f.zones || []).some(function (z) { return (z.type || 'tp') === 'tp'; })) {
+      o.push(isoTpBody(f, num, stepMm, opts.rooms, true));
+      legend.push([COL_SUP, 'Т11 / Т21 — напольное отопление'], [COL_BUNDLE, 'Подводки в теплоизоляции']);
+    }
+    if ((f.rads || []).length) {
+      o.push(isoRadBody(f, num, { rooms: opts.rooms, tee: !!opts.tee, radH: opts.radH, bare: true }));
+      legend.push(['#d22222', 'Т1 / Т2 — радиаторное отопление']);
+    }
+    if ((f.wlines || []).length || (f.fixtures || []).length) {
+      o.push(isoPipeBody(f, num, 'water', true));
+      legend.push(['#0b8a8f', 'В1 / Т3 — водоснабжение']);
+    }
+    if ((f.slines || []).length) {
+      o.push(isoPipeBody(f, num, 'sewer', true));
+      legend.push(['#7a5c2e', 'К1 — канализация']);
+    }
+    o.push(txt(24, 250.6, 'Условные обозначения систем трубопроводов:', { size: 3.4 }));
+    legend.forEach(function (r, i) {
+      var cx = 24 + (i % 2) * 118, y = 254.8 + Math.floor(i / 2) * 4.2;
+      o.push('<line x1="' + cx + '" y1="' + n(y) + '" x2="' + (cx + 14) + '" y2="' + n(y) +
+        '" style="stroke:' + r[0] + ';stroke-width:0.9"/>');
+      o.push(txt(cx + 16, y + 1.1, r[1], { size: 3.0 }));
+    });
+    o.push(txt(24, 269.4, 'Сети нанесены автоматически по смете и разметке планов; трассы схематичны, прокладка — по месту.',
+      { size: 2.8 }));
+    return o.join('');
+  }
+
+  /** Лист «Этаж N. 3D вид водоснабжения» либо «…канализации» */
+  function isoPipeBody(f, num, kind, bare) {
+    var t = isoFit(f), o = [];
+    if (!bare) isoShell(f, t, o);
     var lines = kind === 'sewer' ? (f.slines || []) : (f.wlines || []);
     lines.forEach(function (L) {
       if (!L.pts || L.pts.length < 2) return;
@@ -2892,6 +2946,7 @@
       o.push('<circle cx="' + n(p[0]) + '" cy="' + n(p[1]) +
         '" r="1.6" style="fill:#fff;stroke:' + COLT.wc + ';stroke-width:0.4"/>');
     });
+    if (bare) return o.join('');
     o.push(txt(24, 258, 'Условные обозначения систем трубопроводов:', { size: 3.4 }));
     if (kind === 'sewer') {
       o.push('<line x1="24" y1="262" x2="44" y2="262" style="stroke:#7a5c2e;stroke-width:0.8"/>');
@@ -2917,7 +2972,14 @@
       if (!f.img || !f.pxPerM) return;
       if (opts.floor && opts.floor !== i + 1) return;
       var body, ttl;
-      if (kind === 'tp') {
+      if (kind === 'summary') {
+        var hasAny = (f.zones || []).some(function (z) { return (z.type || 'tp') === 'tp'; }) ||
+          (f.rads || []).length || (f.fixtures || []).length || (f.slines || []).length;
+        if (!hasAny) return;
+        ttl = 'Сводная схема сетей ' + (i + 1) + ' этажа';
+        body = isoSumBody(f, i + 1, { rooms: opts.rooms, tee: !!opts.tee, radH: opts.radH },
+          (opts.steps && opts.steps[i]) || opts.stepMm || 150);
+      } else if (kind === 'tp') {
         if (!(f.zones || []).some(function (z) { return (z.type || 'tp') === 'tp'; })) return;
         ttl = 'Этаж 0' + (i + 1) + '. 3D вид напольного отопления';
         body = isoTpBody(f, i + 1, opts.stepMm || 150, opts.rooms);
