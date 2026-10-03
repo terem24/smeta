@@ -616,7 +616,10 @@
             /* Заголовок раздела не остаётся один в конце страницы */
             .kp-sheet .sec-header-row, .kp-h { break-after: avoid; page-break-after: avoid; }
             .kp-multi .kp-fl-title { display: block; }
+            /* Таблицы петель и приборов в печати свёрнуты до строки-итога; «Как это посчитано» раскрыто */
             .kp-acc-b { display: block !important; }
+            .kp-fpanel .kp-acc-b, .kp-note { display: none !important; }
+            .kp-fpanel .kp-acc { margin-top: 8px; }
             .kp-acc-h { background: none; cursor: default; }
             .kp-plan { cursor: auto; }
         }
@@ -649,6 +652,8 @@
         body.html2pdf-printing .kp-h { break-after: avoid; page-break-after: avoid; }
         body.html2pdf-printing .kp-multi .kp-fl-title { display: block; }
         body.html2pdf-printing .kp-acc-b { display: block !important; }
+        body.html2pdf-printing .kp-fpanel .kp-acc-b,
+        body.html2pdf-printing .kp-note { display: none !important; }
         body.html2pdf-printing .kp-acc-h { background: none; cursor: default; }
         body.html2pdf-printing .kp-plan { cursor: auto; }
 

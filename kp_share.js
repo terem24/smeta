@@ -559,7 +559,7 @@ window.KpShare = { house: houseBlock, plan: planBlock, warranty: warrantyBlock, 
 window.KpShare.ready = new Promise(function (resolve) {
     var l = document.createElement('link');
     l.rel = 'stylesheet';
-    l.href = 'kp_share.css?v=1.1';
+    l.href = 'kp_share.css?v=1.2';
     l.onload = l.onerror = function () { resolve(); };
     document.head.appendChild(l);
 });
