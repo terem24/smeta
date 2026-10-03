@@ -4715,7 +4715,43 @@ const app = {
     // остаётся одной; перенос остаётся только на крайний случай, когда не хватает и так.
     // Проверка по факту, а не по ширине окна: содержимое разное (регион, «Вариант:
     // подешевле», квартира с этажом).
+    // Вкладки над сметой: если полное название не помещается в плашку (крупный текст,
+    // узкое окно), берём короткое («Монтаж» вместо «Монтажные работы») — вместо двух
+    // строк в плашке. Проверка по факту, как и у строки параметров.
+    fitMainTabs: function () {
+        const bar = document.querySelector('.main-view-tabs');
+        if (!bar) return;
+        const wraps = () => [...bar.querySelectorAll('.tab')].some(t => {
+            if (!t.offsetWidth) return false;
+            const rg = document.createRange();
+            rg.selectNodeContents(t);
+            // Вкладка — flex: «2.» и подпись лежат отдельными блоками, и верх у них может
+            // расходиться на 1–3 px. Перенос — это разброс верхов больше 8 px (строка ≥ 17 px).
+            const tops = [...rg.getClientRects()].filter(r => r.width > 1).map(r => r.top);
+            return tops.length > 1 && (Math.max(...tops) - Math.min(...tops)) > 8;
+        });
+        bar.classList.remove('tabs-short');
+        if (wraps()) bar.classList.add('tabs-short');
+        // Ширина плашек меняется не только с окном: при раннем рендере раскладка ещё не
+        // устоялась, а пятая вкладка («Почему дешевле») появляется позже и сужает остальные.
+        // Следим за самими плашками и пересчитываем, когда их ширины изменились.
+        if (!this._tabsObserved && window.ResizeObserver) {
+            this._tabsObserved = true;
+            let lastKey = '', tm = 0;
+            const tabs = [...bar.querySelectorAll('.tab')];
+            const ro = new ResizeObserver(() => {
+                const key = tabs.map(t => t.offsetWidth).join(',');
+                if (key === lastKey) return;
+                lastKey = key;
+                clearTimeout(tm);
+                tm = setTimeout(() => this.fitMainTabs(), 30);
+            });
+            tabs.forEach(t => ro.observe(t));
+        }
+    },
+
     fitDocSummary: function () {
+        this.fitMainTabs();
         const ds = document.getElementById('doc_summary');
         if (!ds) return;
         const wraps = () => {
@@ -4724,8 +4760,12 @@ const app = {
             const first = items[0].offsetTop;
             return items.some(e => Math.abs(e.offsetTop - first) > 6);
         };
-        ds.classList.remove('ds-compact');
-        if (wraps()) ds.classList.add('ds-compact');
+        ds.classList.remove('ds-compact', 'ds-tight');
+        if (wraps()) {
+            ds.classList.add('ds-compact');
+            // Всё ещё не помещается — у метки «Гарантия STOUT» остаётся щит (слова в подсказке)
+            if (wraps()) ds.classList.add('ds-tight');
+        }
         // Размер колонки сметы меняется при ресайзе окна, раскрытии ленты, смене масштаба
         if (!this._dsObserved) {
             this._dsObserved = true;
@@ -4894,7 +4934,7 @@ const app = {
         el.tabIndex = 0;
         el.title = ok ? 'Гарантия STOUT на объект доступна: к КП добавится бланк. Нажмите, чтобы узнать подробнее.'
             : 'Чтобы к КП добавился бланк гарантии STOUT, нужно ещё около ' + short(need) + ' оборудования STOUT. Нажмите, чтобы увидеть, что заменить.';
-        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg>Гарантия STOUT`;
+        el.innerHTML = `<svg class="ds-stout-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7.5 2.7v5.6c0 4.6-3.1 8.4-7.5 9.7-4.4-1.3-7.5-5.1-7.5-9.7V5.7z"/>${ok ? '<path d="M8.6 12.1l2.4 2.4 4.4-4.6"/>' : '<path d="M12 8.5v4.2M12 15.6v.2"/>'}</svg><span class="ds-stout-txt">Гарантия STOUT</span>`;
         el.onclick = () => this.showStoutShareInfo();
         el.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.showStoutShareInfo(); } };
         const date = ds.querySelector('.param-date');
@@ -42388,7 +42428,7 @@ const app = {
     // масштаб страницы уже не поместить. Правила лежат в big_text.css, его собирает
     // tools/gen_big_text.py из style.css; грузится лениво, только когда режим включён.
     BIG_TEXT_KEY: 'hc_big_text',
-    BIG_TEXT_CSS_V: '7',
+    BIG_TEXT_CSS_V: '8',
 
     bigText: function () {
         try { return localStorage.getItem(this.BIG_TEXT_KEY) === '1'; } catch (e) { return false; }
@@ -70360,14 +70400,17 @@ const app = {
             <span class="param-item"><span class="ui-emo">🚪 </span>Комнат: <b>${parseInt(this.state.flatRooms) || 0}</b></span>`
             : (parseFloat(this.state.area) > 0
                 ? `<span class="param-item"><span class="ui-emo">🏠 </span>Объект: <b>${this.state.area} м²</b> (${this.state.floors === 2 ? 2 : 1} эт)</span>
-            <span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>`
+            ${(this.state.hotWater || this.state.water) ? `<span class="param-item"><span class="ui-emo">👨‍👩‍👧 </span>Проживающих: <b>${this.state.res}</b></span>` : ''}`
                 // Смета без дома (заявка, вода по точкам): нули «0 м², 0 жильцов,
                 // 0 кВт» в шапке читаются как ошибка — вместо них одна честная метка.
                 : `<span class="param-item"><span class="ui-emo">📋 </span>Объект: <b>по заявке</b></span>`);
+        // «Проживающих» нужны расчёту горячей воды и водоснабжения — без них число лишнее.
+        // «Вариант: подешевле» тем, у кого есть тумблер «Подешевле», на экране дублирует его
+        // (скрыт стилем .ds-variant-dup), но в печати и PDF остаётся: клиент тумблера не видит.
         const _hasArea = _flatSum || parseFloat(this.state.area) > 0;
         document.getElementById('doc_summary').innerHTML = `
             <span class="param-item"><span class="ui-emo">🔖 </span>№ КП: <b>${this.kpNumber() || '—'}</b></span>
-            ${this.cheapModeOn() ? '<span class="param-item"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>' : ''}
+            ${this.cheapModeOn() ? `<span class="param-item ds-variant${this.canUseAnalog() ? ' ds-variant-dup' : ''}"><span class="ui-emo">💡 </span>Вариант: <b>подешевле</b></span>` : ''}
             ${_objChip}
             ${_hasArea ? `<span class="param-item"><span class="ui-emo">🔥 </span>Теплопотери: ${heatLossHtml}</span>` : ''}
             <span class="param-item"><span class="ui-emo">📍 </span>Регион: <b>${regionName}</b></span>

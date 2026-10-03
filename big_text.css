@@ -28,6 +28,39 @@
 
   html[data-big-text] .doc-summary { font-size: 15px; }
 
+  html[data-big-text] .doc-summary .ds-stout { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .sg-title { font-size: 20px; }
+
+  html[data-big-text] .sg-card .sg-sub { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .sg-pill { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .sg-big b small { font-size: 22px; }
+
+  html[data-big-text] .sg-card .sg-big em { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .sg-mark span { font-size: 15px; }
+
+  html[data-big-text] .sg-card .sg-ticks { font-size: 15px; }
+
+  html[data-big-text] .sg-card .sg-lead { font-size: 17px; }
+
+  html[data-big-text] .sg-card .sg-perks b { font-size: 18px; }
+
+  html[data-big-text] .sg-card .sg-perks span { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .sg-row { font-size: 16.5px; }
+
+  html[data-big-text] .sg-card .sg-row-b { font-size: 15px; }
+
+  html[data-big-text] .sg-card .sg-more { font-size: 15.5px; }
+
+  html[data-big-text] .sg-card .sg-foot { font-size: 15.5px; }
+
+  @media (max-width: 520px) {
+    html[data-big-text] .sg-card .sg-title { font-size: 18px; }
+  }
   html[data-big-text] .sku-label { font-size: 14px; }
 
   html[data-big-text] .inv-table { font-size: 15.5px; }
@@ -191,6 +224,9 @@
 
   html[data-big-text] .admin-action-btn { font-size: 15px; }
 
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #admin_content small { font-size: 15px; }
+  }
   html[data-big-text] .admin-mob-ico { font-size: 19.5px; }
 
   html[data-big-text] .admin-mob-body b { font-size: 17.5px; }
@@ -395,6 +431,8 @@
   html[data-big-text] .calc-dialog-message { font-size: 17px; }
 
   html[data-big-text] .calc-dialog-input { font-size: 18px; }
+
+  html[data-big-text] .calc-dialog-error { font-size: 16.5px; }
 
   html[data-big-text] .calc-dialog-btn { font-size: 17px; }
 
@@ -1188,7 +1226,8 @@
   html[data-big-text] .admin-search-btn kbd,
   html[data-big-text] .ad-search-foot kbd { font-size: 14.5px; }
 
-  html[data-big-text] #ad_search_input { font-size: 17.5px; }
+  html[data-big-text] #ad_search_input,
+  html[data-big-text] #lk_search_input { font-size: 17.5px; }
 
   html[data-big-text] .ad-search-grp { font-size: 15px; }
 
@@ -1198,6 +1237,9 @@
 
   html[data-big-text] .ad-search-foot { font-size: 15px; }
 
+  @media screen and (max-width: 768px) {
+    html[data-big-text] #admin_modal_overlay .auth-modal-title { font-size: 18px; }
+  }
   html[data-big-text] details.ad-collapse > summary { font-size: 16.5px; }
 
   html[data-big-text] details.ad-collapse > summary::before { font-size: 19.5px; }
@@ -1237,6 +1279,158 @@
 
   html[data-big-text] .quick-start-cta .ui-emo { font-size: 19.5px; }
 
+  html[data-big-text] .lk-nav-cap { font-size: 15px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane h3 { font-size: 19px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane h4 { font-size: 17px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size:9.5px"],
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size: 9.5px"],
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size:10px"],
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size: 10px"],
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size:10.5px"],
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size: 10.5px"] { font-size: 15px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size:11.5px"],
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size: 11.5px"] { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size:12.5px"],
+  html[data-big-text] #profile_modal_overlay .lk-pane [style*="font-size: 12.5px"] { font-size: 16.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane small { font-size: 15px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]),
+  html[data-big-text] #profile_modal_overlay .lk-pane select,
+  html[data-big-text] #profile_modal_overlay .lk-pane textarea { font-size: 16.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .auth-btn-base:not([style*="background"]):not(.btn-email-submit):not(.btn-primary-action),
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-btn-sm { font-size: 15.5px; }
+
+  @media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    html[data-big-text] .lk-nav-item { font-size: 15px; }
+  }
+  html[data-big-text] .lk-nav-search { font-size: 16.5px; }
+
+  html[data-big-text] .lk-nav-search kbd { font-size: 15px; }
+
+  @media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    html[data-big-text] .lk-mob-back { font-size: 16.5px; }
+  }
+  @media screen and (max-width: 768px) and (min-height: 501px),
+       screen and (max-width: 1024px) and (orientation: portrait) {
+    html[data-big-text] .lk-mob-cur { font-size: 17.5px; }
+  }
+  html[data-big-text] #profile_modal_overlay .lk-pane h4:not(.lk-section-head h4),
+  html[data-big-text] #profile_modal_overlay .lk-pane h5 { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-btn-sm,
+  html[data-big-text] #profile_modal_overlay .lk-pane .btn-subscribe { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-subhead,
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-card-label { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .sm-head > h4:first-child { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .sm-tile-label,
+  html[data-big-text] #profile_modal_overlay .lk-pane .sm-cell span { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .sm-tile-val,
+  html[data-big-text] #profile_modal_overlay .lk-pane .sm-cell b { font-size: 22px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .sm-tile-sub,
+  html[data-big-text] #profile_modal_overlay .lk-pane .sm-cell small { font-size: 15px; }
+
+  html[data-big-text] .doc-prog { font-size: 15.5px; }
+
+  html[data-big-text] .lk-group-n { font-size: 15px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-head-hint { font-size: 16.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-hint { font-size: 16.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-section-head h4 { font-size: 19px; }
+
+  html[data-big-text] .lk-sub { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-section-head .lk-head-hint { font-size: 15.5px; }
+
+  html[data-big-text] .lk-field > label { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-field > .auth-input { font-size: 16.5px; }
+
+  html[data-big-text] .lk-field-note { font-size: 15px; }
+
+  html[data-big-text] .lk-photo { font-size: 22px; }
+
+  html[data-big-text] .lk-setting-text b { font-size: 16.5px; }
+
+  html[data-big-text] .lk-setting-text span { font-size: 15.5px; }
+
+  html[data-big-text] .lk-banner { font-size: 16px; }
+
+  html[data-big-text] .lk-btn { font-size: 16.5px; }
+
+  html[data-big-text] .lk-link { font-size: 16.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-btn-more { font-size: 18px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .btn-get-invoice { font-size: 15.5px; }
+
+  html[data-big-text] .lk-pop-item { font-size: 16.5px; }
+
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] .alt-brand-mob { font-size: 14.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(1) { font-size: 17px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(2) { font-size: 17px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(4) { font-size: 15.5px; }
+  }
+  @media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    html[data-big-text] #profile_cloud_list_content .lk-row-actions .lk-btn-sm,
+    html[data-big-text] #profile_cloud_list_content .lk-row-actions .btn-get-invoice { font-size: 15.5px; }
+  }
+  html[data-big-text] .lk-invite-count { font-size: 16.5px; }
+
+  html[data-big-text] .lk-invite-lbl { font-size: 15.5px; }
+
+  html[data-big-text] .lk-invite-code b { font-size: 19.5px; }
+
+  html[data-big-text] .lk-invite-link { font-size: 15.5px; }
+
+  html[data-big-text] .lk-row-main b { font-size: 16.5px; }
+
+  html[data-big-text] .lk-row-main small { font-size: 15.5px; }
+
+  html[data-big-text] .lk-row-r { font-size: 16.5px; }
+
+  html[data-big-text] .lk-row-r small { font-size: 15.5px; }
+
+  html[data-big-text] .lk-row-chev { font-size: 18px; }
+
+  html[data-big-text] .lk-price-name { font-size: 16.5px; }
+
+  html[data-big-text] .lk-money em { font-size: 15.5px; }
+
+  html[data-big-text] #profile_modal_overlay .lk-pane .lk-money input { font-size: 16.5px; }
+
+  html[data-big-text] .lk-price-cap { font-size: 15px; }
+
+  html[data-big-text] .lk-price-cols { font-size: 15px; }
+
+  html[data-big-text] .lk-badge-own { font-size: 15px; }
+
+  html[data-big-text] .lk-icon-btn { font-size: 17.5px; }
+
+  html[data-big-text] .lk-meta { font-size: 15.5px; }
+
   /* инлайновые font-size */
   html[data-big-text] [style*="font-size:8.5px"], html[data-big-text] [style*="font-size: 8.5px"] { font-size: 12.5px !important; }
   html[data-big-text] [style*="font-size:9px"], html[data-big-text] [style*="font-size: 9px"] { font-size: 13px !important; }
@@ -1265,6 +1459,10 @@
     width: 136px;
     min-width: 136px;
     font-size: 13.5px;
+  }
+  /* вкладки над сметой: шрифт не больше 15 px (инлайн-прибавка давала 17, и плашка переносила название) */
+  html[data-big-text] .main-view-tabs .tab {
+    font-size: 15px !important;
   }
   html[data-big-text] .inv-table th.col-brand,
   html[data-big-text] .inv-table td.col-brand {

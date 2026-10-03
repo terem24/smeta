@@ -128,6 +128,10 @@ EXTRA = '''  /* ручные добавки (tools/gen_big_text.py, EXTRA) */
     min-width: 136px;
     font-size: 13.5px;
   }
+  /* вкладки над сметой: шрифт не больше 15 px (инлайн-прибавка давала 17, и плашка переносила название) */
+  html[data-big-text] .main-view-tabs .tab {
+    font-size: 15px !important;
+  }
   html[data-big-text] .inv-table th.col-brand,
   html[data-big-text] .inv-table td.col-brand {
     width: 86px;
