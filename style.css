@@ -16064,64 +16064,81 @@ a.cr-sku:hover { color: var(--primary); border-color: var(--primary); }
 }
 
 /* ================== БЛАНК «ГАРАНТИЯ НА ОБЪЕКТ STOUT» (app.renderWarrantyPrint) ==================
-   Последний лист КП, листовка на одну страницу: синяя лента с логотипом, три
-   цифры, фото оборудования, сроки по группам, что делать при проблеме. Цвета —
-   stout.ru (тёмно-синий #153C69 / #203F6F, голубой #4B9FDC, серый #F5F5F5).
+   Последний лист КП, листовка на одну страницу. Один документ: синяя шапка с
+   главной цифрой и фото, «паспорт» объекта, четыре опоры гарантии лентой, строки
+   оборудования с полосой срока, тот же синий подвал. Цвета — stout.ru: тёмно-синий
+   #203F6F, голубой #3F9DE1, серый #F5F5F5, линии #E3E6EA, текст #2C2E35.
    На экране скрыт, как .cheaper-print; пустой блок не печатается. Заливки
-   обязаны печататься — print-color-adjust. */
+   обязаны печататься — print-color-adjust. Блок кладёт в конец печатной копии
+   prepareForPrint, в клоны сметы и работ он не попадает. */
 .warranty-print { display: none; }
 @media print {
-    /* Сетка листа stout.ru: Roboto 16/14, заголовки Eurostile Cond Heavy (у нас
-       Roboto Condensed 900, см. @font-face темы бренда), текст #2C2E35, тёмно-синий
-       #203F6F, голубой #3F9DE1, серые плашки #F5F5F5, рамки #EDEDED, подвал #303030. */
     .warranty-print { display: block; page-break-before: always; break-before: page; font-family: 'Roboto', Arial, sans-serif; font-size: 10.5px; line-height: 1.4; color: #2C2E35; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .warranty-print:empty { display: none !important; break-before: auto !important; page-break-before: auto !important; }
-    .warranty-print .wp-cond, .warranty-print h2, .warranty-print h3 { font-family: 'Roboto Condensed', 'Arial Narrow', Arial, sans-serif; font-weight: 900; letter-spacing: .01em; }
-    /* Шапка как на сайте: логотип слева, справа строка навигации мелким */
-    .warranty-print .wp-top { display: flex; justify-content: space-between; align-items: center; padding: 0 0 8px; border-bottom: 1px solid #EDEDED; }
-    .warranty-print .wp-top img { height: 40px; width: auto; display: block; }
-    .warranty-print .wp-top .wp-nav { font-size: 9.5px; color: #2C2E35; }
-    .warranty-print .wp-top .wp-nav b { color: #203F6F; }
-    /* Баннер: синяя панель с заголовком + фото на сером, как слайдер stout.ru */
-    .warranty-print .wp-hero { display: flex; margin-top: 16px; height: 262px; }
-    .warranty-print .wp-hero-txt { flex: 0 0 56%; background: #203F6F; color: #fff; padding: 26px 28px; display: flex; flex-direction: column; justify-content: center; }
-    .warranty-print .wp-hero-txt .wp-kicker { font-size: 9.5px; letter-spacing: .14em; text-transform: uppercase; opacity: .8; margin-bottom: 8px; }
-    .warranty-print .wp-hero-txt h2 { font-size: 31px; line-height: 1.08; margin: 0 0 10px; color: #fff; }
-    .warranty-print .wp-hero-txt h2 b { color: #7CC4F2; }
-    .warranty-print .wp-hero-txt .wp-lead { font-size: 12px; line-height: 1.45; opacity: .95; margin: 0 0 12px; }
-    .warranty-print .wp-hero-txt .wp-btn { display: inline-block; align-self: flex-start; background: #fff; color: #203F6F; font-weight: 700; font-size: 12px; padding: 9px 18px; border-radius: 4px; }
-    .warranty-print .wp-hero-img { flex: 1 1 0; background: #F5F5F5; display: flex; align-items: center; justify-content: center; position: relative; }
-    .warranty-print .wp-hero-img img { max-height: 200px; max-width: 84%; margin-top: 26px; object-fit: contain; mix-blend-mode: multiply; }
-    .warranty-print .wp-hero-img .wp-badge { position: absolute; left: 14px; top: 14px; background: #203F6F; color: #fff; font-size: 11px; padding: 6px 12px; border-radius: 4px; }
-    .warranty-print .wp-hero-img .wp-badge b { font-size: 15px; display: block; line-height: 1; }
-    /* Строка преимуществ с контурными иконками, как внизу главной stout.ru */
-    .warranty-print .wp-feats { display: flex; gap: 12px; margin-top: 18px; }
-    .warranty-print .wp-feat { flex: 1 1 0; text-align: center; padding: 16px 10px 12px; border: 1px solid #EDEDED; }
-    .warranty-print .wp-feat svg { width: 58px; height: 58px; display: block; margin: 0 auto 10px; }
-    .warranty-print .wp-feat .wp-fn { font-size: 23px; line-height: 1; color: #203F6F; }
-    .warranty-print .wp-feat .wp-ft { font-size: 10.5px; color: #2C2E35; margin-top: 6px; line-height: 1.3; }
-    /* Карточки товаров, как в каталоге сайта */
-    .warranty-print h3 { font-size: 18px; margin: 22px 0 10px; color: #2C2E35; }
-    .warranty-print h3 small { font-family: 'Roboto', Arial, sans-serif; font-weight: 400; font-size: 9.5px; color: #999; margin-left: 8px; }
-    .warranty-print .wp-prods { display: flex; gap: 12px; }
-    .warranty-print .wp-prod { flex: 1 1 0; border: 1px solid #EDEDED; padding: 14px 10px 12px; text-align: center; page-break-inside: avoid; }
-    .warranty-print .wp-prod img { height: 86px; width: auto; max-width: 100%; object-fit: contain; display: block; margin: 0 auto 6px; }
-    .warranty-print .wp-prod .wp-pn { font-size: 10.5px; color: #2C2E35; line-height: 1.25; min-height: 27px; }
-    .warranty-print .wp-prod .wp-pt { font-size: 16px; font-weight: 700; color: #203F6F; margin-top: 4px; }
-    .warranty-print .wp-prod .wp-pt small { font-weight: 400; color: #999; font-size: 8.5px; }
-    .warranty-print .wp-groups { display: flex; flex-wrap: wrap; gap: 5px 16px; margin-top: 12px; font-size: 10.5px; color: #555; }
-    .warranty-print .wp-groups b { color: #203F6F; }
-    .warranty-print .wp-sys { margin-top: 8px; font-size: 9.5px; color: #999; }
-    /* Подвал — тёмный, как на сайте: заказчик и расчёт слева, телефон исполнителя крупно справа */
-    .warranty-print .wp-foot { margin-top: 22px; background: #303030; color: #fff; padding: 18px 22px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-    .warranty-print .wp-foot .wp-fl { font-size: 10.5px; line-height: 1.55; opacity: .92; }
-    .warranty-print .wp-foot .wp-fl b { color: #fff; }
-    .warranty-print .wp-foot .wp-fr { text-align: right; white-space: nowrap; }
-    .warranty-print .wp-foot .wp-fr .wp-phone { font-size: 24px; line-height: 1.05; color: #fff; }
-    .warranty-print .wp-foot .wp-fr .wp-fname { font-size: 10px; opacity: .85; margin-top: 3px; }
-    .warranty-print .wp-sign { display: flex; justify-content: space-between; gap: 12px; margin-top: 18px; font-size: 10.5px; color: #555; }
-    .warranty-print .wp-prelim { display: inline-block; font-size: 8.5px; text-transform: uppercase; letter-spacing: .1em; border: 1px solid #3F9DE1; color: #203F6F; padding: 1px 6px; border-radius: 3px; }
-    .warranty-print .wp-src { margin-top: 6px; font-size: 7.5px; line-height: 1.4; color: #999; }
+    .warranty-print .wp-cond, .warranty-print h2 { font-family: 'Roboto Condensed', 'Arial Narrow', Arial, sans-serif; font-weight: 900; letter-spacing: .01em; }
+    .warranty-print img { display: block; }
+
+    /* Шапка: синяя половина с текстом, белая с фото */
+    .warranty-print .wp-head { display: flex; height: 236px; background: #203F6F; }
+    .warranty-print .wp-head-txt { flex: 0 0 57%; color: #fff; padding: 24px 28px 22px; display: flex; flex-direction: column; justify-content: center; }
+    .warranty-print .wp-logo { height: 34px; width: auto; align-self: flex-start; filter: brightness(0) invert(1); margin-bottom: 20px; }
+    .warranty-print .wp-kicker { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: #7CC4F2; margin-bottom: 10px; }
+    .warranty-print .wp-head-txt h2 { font-size: 34px; line-height: 1.06; margin: 0 0 12px; color: #fff; }
+    .warranty-print .wp-head-txt h2 b { color: #7CC4F2; }
+    .warranty-print .wp-lead { font-size: 12px; line-height: 1.5; margin: 0; opacity: .94; max-width: 92%; }
+    .warranty-print .wp-head-img { flex: 1 1 0; background: #F5F5F5; display: flex; align-items: center; justify-content: center; position: relative; border-left: 4px solid #3F9DE1; }
+    .warranty-print .wp-head-img img { max-height: 176px; max-width: 82%; margin-top: 16px; object-fit: contain; mix-blend-mode: multiply; }
+    .warranty-print .wp-badge { position: absolute; left: 16px; top: 16px; background: #203F6F; color: #fff; font-size: 10.5px; padding: 7px 13px; }
+    .warranty-print .wp-badge b { font-size: 20px; display: block; line-height: 1.05; }
+
+    /* «Паспорт»: объект, заказчик, расчёт — три ячейки одной серой ленты */
+    .warranty-print .wp-id { display: flex; background: #F5F5F5; border-bottom: 1px solid #E3E6EA; }
+    .warranty-print .wp-id > div { flex: 1 1 0; padding: 11px 16px; font-size: 11px; font-weight: 500; color: #2C2E35; border-left: 1px solid #E3E6EA; }
+    .warranty-print .wp-id > div:first-child { border-left: 0; flex-basis: 40%; }
+    .warranty-print .wp-id span { display: block; font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: #8A93A0; font-weight: 400; margin-bottom: 2px; }
+
+    /* Четыре опоры гарантии: одна лента, разделители вместо рамок */
+    .warranty-print .wp-pils { display: flex; margin-top: 14px; }
+    .warranty-print .wp-pil { flex: 1 1 0; display: flex; align-items: center; gap: 10px; padding: 4px 12px; border-left: 1px solid #E3E6EA; }
+    .warranty-print .wp-pil:first-child { border-left: 0; padding-left: 0; }
+    .warranty-print .wp-pil:last-child { padding-right: 0; }
+    .warranty-print .wp-pil svg { width: 44px; height: 44px; flex: 0 0 44px; display: block; }
+    .warranty-print .wp-pn { font-size: 21px; line-height: 1; color: #203F6F; }
+    .warranty-print .wp-pt { font-size: 9.5px; line-height: 1.3; color: #5A6270; margin-top: 4px; }
+
+    /* Заголовок раздела: слово, линия, пояснение */
+    .warranty-print .wp-sec { display: flex; align-items: center; gap: 12px; margin: 16px 0 4px; }
+    .warranty-print .wp-sec span { font-size: 17px; color: #203F6F; text-transform: uppercase; letter-spacing: .03em; }
+    .warranty-print .wp-sec i { flex: 1 1 auto; height: 2px; background: #3F9DE1; opacity: .35; }
+    .warranty-print .wp-sec em { font-style: normal; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: #8A93A0; }
+
+    /* Строки оборудования: фото, вид, полоса срока, срок */
+    .warranty-print .wp-row { display: flex; align-items: center; gap: 14px; padding: 4px 0; border-bottom: 1px solid #E3E6EA; page-break-inside: avoid; }
+    .warranty-print .wp-row-img { flex: 0 0 54px; height: 40px; display: flex; align-items: center; justify-content: center; background: #fff; }
+    .warranty-print .wp-row-img img { max-height: 40px; max-width: 54px; object-fit: contain; mix-blend-mode: multiply; }
+    .warranty-print .wp-row-name { flex: 0 0 31%; font-size: 12px; font-weight: 500; color: #2C2E35; }
+    .warranty-print .wp-row-bar { flex: 1 1 auto; height: 8px; background: #EDF1F6; }
+    .warranty-print .wp-row-bar i { display: block; height: 8px; background: #3F9DE1; }
+    .warranty-print .wp-row-term { flex: 0 0 62px; text-align: right; font-size: 17px; color: #203F6F; }
+    .warranty-print .wp-more { margin-top: 9px; font-size: 10px; color: #5A6270; line-height: 1.5; }
+    .warranty-print .wp-more b { color: #203F6F; }
+    .warranty-print .wp-dot { margin: 0 8px; color: #3F9DE1; }
+
+    /* Подвал: тот же синий, что и шапка — лист закрыт с двух сторон одним цветом */
+    .warranty-print .wp-cta { display: flex; justify-content: space-between; align-items: center; gap: 22px; margin-top: 14px; background: #203F6F; color: #fff; padding: 14px 24px; border-bottom: 4px solid #3F9DE1; }
+    .warranty-print .wp-cta-h { font-size: 19px; line-height: 1.1; color: #fff; text-transform: uppercase; }
+    .warranty-print .wp-cta-t { font-size: 10px; line-height: 1.5; opacity: .88; margin-top: 6px; max-width: 330px; }
+    .warranty-print .wp-cta-r { text-align: right; white-space: nowrap; }
+    .warranty-print .wp-phone { font-size: 27px; line-height: 1.05; color: #fff; }
+    .warranty-print .wp-fname { font-size: 10px; color: #7CC4F2; margin-top: 4px; }
+
+    .warranty-print .wp-sign { display: flex; align-items: flex-end; justify-content: space-between; gap: 22px; margin-top: 14px; font-size: 9.5px; color: #5A6270; }
+    .warranty-print .wp-sign > div { flex: 0 0 26%; }
+    .warranty-print .wp-sign u { display: block; border-top: 1px solid #2C2E35; height: 0; margin-bottom: 4px; text-decoration: none; }
+    .warranty-print .wp-sign > div:first-child u, .warranty-print .wp-sign > div:nth-child(2) u { margin-top: 22px; }
+    .warranty-print .wp-sign .wp-sign-note { flex: 1 1 auto; text-align: right; }
+    .warranty-print .wp-prelim { display: inline-block; font-size: 8px; text-transform: uppercase; letter-spacing: .1em; border: 1px solid #3F9DE1; color: #203F6F; padding: 1px 6px; margin-right: 4px; }
+    .warranty-print .wp-src { margin-top: 10px; padding-top: 8px; border-top: 1px solid #E3E6EA; font-size: 7.5px; line-height: 1.45; color: #8A93A0; }
 }
 
 /* ================== ТЕМА «ПРОФИ» (оформление по образцу ya.ru; в коде — theme-yandex) ==================
@@ -18865,5 +18882,102 @@ body.theme-yandex #profile_modal_overlay {
         padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
     }
     body.dark-mode #profile_modal_overlay .lk-footer { background: #1E1E1E; }
+}
+
+/* ═══════ ТЕЛЕФОН И ПЛАНШЕТ СТОЯ: правки по снимкам владельца (03.10.2026) ═══════ */
+
+/* Меню «⋯» у строки сметы: окно кабинета на телефоне лежит выше (z-index 2 000 000), и меню
+   открывалось, но под ним — нажатие «ничего не делало». */
+.lk-pop { z-index: 2147482000; }
+
+/* Бренд в названии варианта замены: на десктопе есть колонка «Бренд» */
+.alt-brand-mob { display: none; }
+
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (orientation: portrait), screen and (orientation: landscape) and (max-height: 500px) {
+    /* Колонку «Бренд» на телефоне скрывает общее правило таблиц сметы, а STOUT и ROMMER одной
+       позиции называются одинаково — бренд выводим плашкой перед названием */
+    .alt-brand-mob {
+        display: inline-block;
+        margin: 0 6px 2px 0;
+        padding: 1px 7px;
+        border-radius: 6px;
+        background: var(--primary-light);
+        color: var(--primary);
+        font-size: 10.5px;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        vertical-align: 1px;
+    }
+
+    /* Пустая вторая плашка цены (строки «заменить только эту позицию») — серой полосой не рисуем */
+    .inv-table.swap-two td.col-two:empty { display: none !important; }
+
+    /* Подзаголовок «Заменить только эту позицию…» — одна ячейка на всю ширину,
+       а не в первой колонке сетки (читалась столбиком по слову) */
+    #swap_modal_overlay .inv-table tr.swap-sub-head {
+        display: block !important;
+        grid-template-columns: none !important;
+        grid-template-areas: none !important;
+        padding: 0 !important;
+    }
+    #swap_modal_overlay .inv-table tr.swap-sub-head > td {
+        display: block !important;
+        width: 100% !important;
+        grid-area: auto !important;
+    }
+
+    /* «Сметы» кабинета: общие правила карточек таблицы сметы (сумма поверх названия, статус
+       в 1 px, дата и кнопки обрезаны, пустые строки истории) — заменяем своей раскладкой:
+       название и сумма, статус и дата, под ними ряд кнопок */
+    #profile_modal_overlay #profile_cloud_list_content { overflow-x: visible; padding: 4px 14px 8px; }
+    #profile_cloud_list_content .inv-table,
+    #profile_cloud_list_content .inv-table tbody {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+    #profile_cloud_list_content .inv-table thead { display: none !important; }
+    #profile_cloud_list_content .inv-table tr.active-row {
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto !important;
+        grid-template-areas: "name sum" "status date" "act act" !important;
+        gap: 8px 12px !important;
+        align-items: center !important;
+        padding: 14px 0 !important;
+        margin: 0 !important;
+        border: 0 !important;
+        border-bottom: 1px solid var(--ad-line) !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    #profile_cloud_list_content .inv-table tr.active-row > td {
+        display: block !important;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding: 0 !important;
+        border: 0 !important;
+        background: transparent !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-align: left !important;
+        grid-area: auto !important;
+    }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(1) { grid-area: name !important; font-size: 14px; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(2) { grid-area: sum !important; text-align: right !important; font-size: 14px; white-space: nowrap !important; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(3) { grid-area: status !important; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(4) { grid-area: date !important; text-align: right !important; font-size: 12px; white-space: nowrap !important; }
+    #profile_cloud_list_content .inv-table tr.active-row > td:nth-child(5) { grid-area: act !important; }
+    #profile_cloud_list_content .lk-row-actions { flex-wrap: wrap !important; justify-content: flex-start; gap: 6px; }
+    #profile_cloud_list_content .lk-row-actions > button:not(.lk-btn-more) { flex: 1 1 auto; }
+    #profile_cloud_list_content .lk-row-actions > .lk-btn-more { flex: 0 0 36px; width: 36px; padding: 0; }
+    #profile_cloud_list_content .lk-row-actions .lk-btn-sm,
+    #profile_cloud_list_content .lk-row-actions .btn-get-invoice { height: 36px; padding: 0 8px; font-size: 12px; }
+    /* История статусов: скрыта, пока не открыта (инлайн display:none общее правило перебивало) */
+    #profile_cloud_list_content .inv-table tr[id^="obj_history_"][style*="none"] { display: none !important; }
+    #profile_cloud_list_content .inv-table tr[id^="obj_history_"]:not([style*="none"]) { display: block !important; }
+    #profile_cloud_list_content .inv-table tr[id^="obj_history_"] > td { display: block !important; width: auto !important; padding: 0 !important; }
 }
 

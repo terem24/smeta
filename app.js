@@ -4900,6 +4900,42 @@ const app = {
         };
     },
 
+    // Проверка ФИО заказчика в окне «Объект и заказчик»: те же правила, что у анкеты
+    // монтажника (русские буквы, без цифр, не набор клавиатурных рядов), плюс минимум
+    // два слова — фамилия и имя. Возвращает { error, value }: value — с исправленным регистром.
+    checkObjectClient: function (raw) {
+        const v = String(raw || '').trim().replace(/\s+/g, ' ');
+        if (!v) return { error: 'Укажите заказчика: фамилия и имя.' };
+        const words = v.split(' ');
+        if (words.length < 2) return { error: 'Впишите фамилию и имя заказчика, отчество — по желанию. Например: Иванов Пётр Сергеевич.' };
+        if (words.length > 4) return { error: 'Слишком много слов. Впишите только фамилию, имя и отчество.' };
+        for (const w of words) {
+            const err = this.checkNamePart(w, 'Заказчик');
+            if (err) return { error: err };
+        }
+        return { error: '', value: words.map(w => this.tidyNamePart(w)).join(' ') };
+    },
+
+    // Телефон заказчика (необязателен, но если вписан — настоящий). Правила анкеты
+    // (checkPhoneValue: 11 цифр, мобильный 9xx/7xx, не из одной цифры, не по порядку)
+    // плюс «красивые» выдуманные: абонентская часть из одной цифры или почти из одной,
+    // три нуля подряд в конце и лесенка в конце.
+    checkObjectPhone: function (raw) {
+        const v = String(raw || '').trim();
+        if (!v) return '';
+        const err = this.checkPhoneValue(v);
+        if (err) return err;
+        const sub = v.replace(/\D/g, '').slice(-7);
+        const fake = 'Такого номера не существует. Впишите настоящий телефон заказчика.';
+        if (/^(\d)\1+$/.test(sub)) return fake;
+        const counts = {};
+        sub.split('').forEach(c => { counts[c] = (counts[c] || 0) + 1; });
+        if (Math.max.apply(null, Object.values(counts)) >= 6) return fake;
+        if (/(\d)\1{4,}$/.test(sub)) return fake;
+        if (/(01234|12345|23456|34567|45678|56789|98765|87654|76543|65432|54321|43210)$/.test(sub)) return fake;
+        return '';
+    },
+
     objectDetailsComplete: function () {
         const d = this.objectDetails();
         return !!(d.address && d.client);
@@ -4928,7 +4964,7 @@ const app = {
                 <div class="calc-dialog-input-wrapper">
                     <input type="text" class="calc-dialog-input" id="objd_address" placeholder="Адрес объекта: город, улица, дом" autocomplete="street-address">
                     <input type="text" class="calc-dialog-input" id="objd_client" placeholder="Заказчик: фамилия, имя, отчество" autocomplete="name">
-                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика (необязательно)" autocomplete="tel">
+                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика: +7 (9__) ___-__-__, по желанию" autocomplete="tel">
                     <div class="calc-dialog-error" id="objd_err" style="display:none;"></div>
                 </div>
                 <div class="calc-dialog-buttons">
@@ -4946,6 +4982,9 @@ const app = {
                 overlay.classList.remove('active');
                 setTimeout(() => { overlay.remove(); resolve(val); }, 200);
             };
+            $('objd_phone').addEventListener('input', () => { this.maskPhone($('objd_phone')); $('objd_err').style.display = 'none'; });
+            $('objd_client').addEventListener('input', () => { $('objd_err').style.display = 'none'; });
+            if (/^[78]\d{10}$/.test(cur.phone.replace(/\D/g, ''))) this.maskPhone($('objd_phone'));
             $('objd_skip').onclick = () => {
                 this._objDetailsSkipped = this.state.calc_id || 'new';
                 close(true);
@@ -4954,14 +4993,19 @@ const app = {
                 const address = $('objd_address').value.trim();
                 const client = $('objd_client').value.trim();
                 const phone = $('objd_phone').value.trim();
-                if (!address || !client) {
+                const fail = (id, text) => {
                     const err = $('objd_err');
-                    err.innerText = !address ? 'Укажите адрес объекта' : 'Укажите заказчика';
+                    err.innerText = text;
                     err.style.display = 'block';
-                    $(!address ? 'objd_address' : 'objd_client').focus();
-                    return;
-                }
-                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: client });
+                    $(id).focus();
+                };
+                if (!address) return fail('objd_address', 'Укажите адрес объекта');
+                if (address.length < 6 || !/[А-Яа-яЁё]/.test(address)) return fail('objd_address', 'Впишите адрес объекта: город, улица, дом.');
+                const cl = this.checkObjectClient(client);
+                if (cl.error) return fail('objd_client', cl.error);
+                const phErr = this.checkObjectPhone(phone);
+                if (phErr) return fail('objd_phone', phErr);
+                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: cl.value });
                 if (phone) contract.clientPhone = phone;
                 this.state.contract = contract;
                 this.saveState();
@@ -5106,10 +5150,11 @@ const app = {
         phone: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14 6h7l3 8-4 3a22 22 0 0 0 11 11l3-4 8 3v7a4 4 0 0 1-4 4C21 38 10 27 10 10a4 4 0 0 1 4-4z"/><path d="M29 9a10 10 0 0 1 10 10M29 15a4 4 0 0 1 4 4" stroke="#3F9DE1"/></svg>'
     },
 
-    // Листовка на одну страницу в оформлении stout.ru: шапка с логотипом, синий
-    // баннер с одной мыслью и большим фото, четыре иконки-цифры, карточки того, что
-    // стоит в доме, тёмный подвал с телефоном исполнителя. Клиенту не нужно
-    // разбираться, на какую из гарантий смотреть: одна цифра в баннере, один телефон.
+    // Листовка на одну страницу — один документ, а не набор блоков: синяя шапка с
+    // главной цифрой и фото, под ней «паспорт» (объект, заказчик, расчёт), четыре
+    // опоры гарантии одной лентой, строки «что стоит в доме» с полосой срока и тот
+    // же синий подвал с телефоном. Один цвет, один шрифт для цифр, одна толщина линий.
+    // Клиенту не нужно разбираться, на какую из гарантий смотреть: одна цифра, один телефон.
     warrantyFormHtml: function () {
         const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const od = this.objectDetails();
@@ -5131,42 +5176,49 @@ const app = {
         const tiles = this.warrantyPhotoTiles(5);
         const hero = tiles[0];
         const img = id => `<img src="img/${e(id)}.jpg" alt="" onerror="this.onerror=null;this.style.visibility='hidden';">`;
-        const prods = tiles.map(t => `<div class="wp-prod">${img(t.it.id)}<div class="wp-pn">${e(cap(t.kind))}</div><div class="wp-pt">${e(years(t.months))} <small>гарантии</small></div></div>`).join('');
-        const grp = groups.map(g => `<span><b>${e(years(g.months))}</b> — ${e(g.kinds.slice(0, 3).join(', '))}${g.kinds.length > 3 ? ' и др.' : ''}</span>`).join('');
-        const feat = (icon, num, txt) => `<div class="wp-feat">${icon}<div class="wp-fn wp-cond">${num}</div><div class="wp-ft">${txt}</div></div>`;
+        const rows = tiles.map(t => `<div class="wp-row">
+            <div class="wp-row-img">${img(t.it.id)}</div>
+            <div class="wp-row-name">${e(cap(t.kind))}</div>
+            <div class="wp-row-bar"><i style="width:${Math.max(12, Math.round(t.months / (maxM || 1) * 100))}%"></i></div>
+            <div class="wp-row-term wp-cond">${e(years(t.months))}</div></div>`).join('');
+        const shown = new Set(tiles.map(t => t.kind));
+        const rest = groups.map(g => ({ months: g.months, kinds: g.kinds.filter(k => !shown.has(k)) })).filter(g => g.kinds.length);
+        const more = rest.map(g => `<b>${e(years(g.months))}</b> — ${e(g.kinds.slice(0, 4).join(', '))}${g.kinds.length > 4 ? ' и др.' : ''}`).join('<span class="wp-dot">·</span>');
+        const pillar = (icon, num, txt) => `<div class="wp-pil">${icon}<div><div class="wp-pn wp-cond">${num}</div><div class="wp-pt">${txt}</div></div></div>`;
         return `
-        <div class="wp-top">
-            <img src="img/stout_logo.png" alt="STOUT">
-            <div class="wp-nav">Гарантийные обязательства&nbsp;&nbsp;·&nbsp;&nbsp;Объект: <b>${e(od.address)}</b></div>
-        </div>
-        <div class="wp-hero">
-            <div class="wp-hero-txt">
-                <div class="wp-kicker">Оборудование STOUT в вашем доме</div>
+        <div class="wp-head">
+            <div class="wp-head-txt">
+                <img class="wp-logo" src="img/stout_logo.png" alt="STOUT">
+                <div class="wp-kicker">Гарантийное свидетельство на объект</div>
                 <h2>Гарантия <b>до ${e(years(maxM))}</b><br>на системы вашего дома</h2>
                 <p class="wp-lead">Одна система, один бренд, один телефон. За ваш дом отвечают вместе завод STOUT, исполнитель и страховая компания.</p>
-                <span class="wp-btn">Любой вопрос — ${e(phone)}</span>
             </div>
-            <div class="wp-hero-img">${hero ? img(hero.it.id) : ''}${hero ? `<div class="wp-badge"><b>${e(years(hero.months))}</b>${e(hero.kind)}</div>` : ''}</div>
+            <div class="wp-head-img">${hero ? img(hero.it.id) : ''}${hero ? `<div class="wp-badge"><b class="wp-cond">${e(years(hero.months))}</b>${e(hero.kind)}</div>` : ''}</div>
         </div>
-        <div class="wp-feats">
-            ${feat(I.shield, 'до ' + e(years(maxM)), 'гарантия завода STOUT на оборудование')}
-            ${feat(I.wrench, e(years(extM)), 'гарантия исполнителя на монтаж — вместо обычного года')}
-            ${ins ? feat(I.umbrella, e(mln(ins.sum)), 'ответственность завода за ущерб застрахована в ' + e(ins.insurer.replace(/^СПАО\s+/, ''))) : ''}
-            ${feat(I.phone, '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом')}
+        <div class="wp-id">
+            <div><span>Объект</span>${e(od.address)}</div>
+            <div><span>Заказчик</span>${e(od.client)}</div>
+            <div><span>Расчёт</span>№ ${e(kp)} от ${e(dateRu)}</div>
         </div>
-        <h3>Что стоит в вашем доме<small>сроки гарантии завода по группам</small></h3>
-        <div class="wp-prods">${prods}</div>
-        <div class="wp-groups">${grp}</div>
-        <div class="wp-sys">В расчёте: ${e(this.systemSummary())}</div>
-        <div class="wp-foot">
-            <div class="wp-fl"><b>Заказчик:</b> ${e(od.client)}${od.phone ? ', ' + e(od.phone) : ''}<br>
-                <b>Расчёт</b> № ${e(kp)} от ${e(dateRu)}<br>
-                Чтобы гарантия действовала: храните паспорта и акт опрессовки, осмотр системы раз в год, изменения — через исполнителя.</div>
-            <div class="wp-fr"><div class="wp-phone wp-cond">${e(phone)}</div><div class="wp-fname">${e(execName)}${cc.name ? ' · ' + e(cc.name) : ''}</div></div>
+        <div class="wp-pils">
+            ${pillar(I.shield, 'до ' + e(years(maxM)), 'гарантия завода на оборудование')}
+            ${pillar(I.wrench, e(years(extM)), 'гарантия исполнителя на монтаж, вместо обычного года')}
+            ${ins ? pillar(I.umbrella, e(mln(ins.sum)), 'ответственность завода застрахована в ' + e(ins.insurer.replace(/^СПАО\s+/, ''))) : ''}
+            ${pillar(I.phone, '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом')}
         </div>
-        <div class="wp-sign"><div>Исполнитель ______________</div><div>Заказчик ______________</div><div><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
-        <div class="wp-src">Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
-        ${ins ? `Полис ${e(ins.insurer)} № ${e(ins.policy)}, лимит на случай ${e(mln(ins.perCase))}, действует по ${e(Docs.dateRu(ins.to))}` : ''}
+        <div class="wp-sec"><span class="wp-cond">Что стоит в вашем доме</span><i></i><em>срок гарантии завода</em></div>
+        <div class="wp-rows">${rows}</div>
+        ${more ? `<div class="wp-more">${more}</div>` : ''}
+        <div class="wp-cta">
+            <div class="wp-cta-l">
+                <div class="wp-cta-h wp-cond">Любой вопрос — одним звонком</div>
+                <div class="wp-cta-t">Чтобы гарантия действовала: храните паспорта и акт опрессовки, раз в год показывайте систему специалисту, изменения вносите через исполнителя.</div>
+            </div>
+            <div class="wp-cta-r"><div class="wp-phone wp-cond">${e(phone)}</div><div class="wp-fname">${e(execName)}${cc.name ? ' · ' + e(cc.name) : ''}</div></div>
+        </div>
+        <div class="wp-sign"><div><u></u>Исполнитель</div><div><u></u>Заказчик</div><div class="wp-sign-note"><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
+        <div class="wp-src">В расчёте: ${e(this.systemSummary())}. Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
+        ${ins ? `Полис ${e(ins.insurer)} № ${e(ins.policy)}, лимит на случай ${e(mln(ins.perCase))}, действует по ${e(Docs.dateRu(ins.to))} ` : ''}
         Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
@@ -11728,6 +11780,48 @@ const app = {
         }
     },
 
+    // Площади и метры — не больше двух знаков после запятой. Сумма дробных площадей комнат
+    // даёт «хвост» вроде 58.599999999999994, а он попадал в ползунок тёплого пола, в подсказки
+    // «i» и в количество работ сметы. Округляем в источнике (r2) и при каждом пересчёте
+    // (normalizeAreaNumbers) — последнее чинит и старые сохранённые сметы.
+    r2: function (v) {
+        const n = Number(v);
+        return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+    },
+    normalizeAreaNumbers: function () {
+        const s = this.state;
+        if (!s) return;
+        const fix = (o, k) => {
+            const v = o[k];
+            if (typeof v !== 'number' || !isFinite(v)) return;
+            const r = Math.round(v * 100) / 100;
+            if (r !== v) o[k] = r;
+        };
+        ['tp1', 'tp2', 'area'].forEach(k => fix(s, k));
+        (s.rooms || []).forEach(r => { if (r) { fix(r, 'area'); fix(r, 'tpArea'); } });
+    },
+
+    // Крупная сумма в узком месте (карточки админки на телефоне): от миллиона — «107 млн ₽»,
+    // «18,4 млн ₽», по обычному округлению; рубль всегда на одной строке с числом (неразрывный
+    // пробел). Меньше миллиона и на широком экране — сумма целиком, как была.
+    moneyCompact: function (v) {
+        const n = Math.round(Number(v) || 0);
+        const full = n.toLocaleString('ru-RU') + '\u00A0₽';
+        const a = Math.abs(n);
+        if (a < 1e6 || !this.isMobileLayout()) return full;
+        const fmt = x => (Math.abs(x) >= 100 ? String(Math.round(x)) : String(Math.round(x * 10) / 10).replace('.', ','));
+        return (a >= 1e9 ? fmt(n / 1e9) + '\u00A0млрд' : fmt(n / 1e6) + '\u00A0млн') + '\u00A0₽';
+    },
+
+    // Бренд в названии варианта замены: колонка «Бренд» на телефоне скрыта общим правилом таблиц
+    // сметы, и два варианта одной позиции (ROMMER и STOUT) читались одинаково. Плашка видна
+    // только на телефоне и планшете стоймя (.alt-brand-mob в style.css), на десктопе есть колонка.
+    altBrandChip: function (brand) {
+        if (!brand) return '';
+        const esc = String(brand).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        return `<span class="alt-brand-mob">${esc}</span>`;
+    },
+
     // Действия над сохранённой сметой прямо из списка «Мои объекты». И ссылка
     // клиенту, и скачивание умеют работать только с открытым расчётом — иначе они
     // молча сделали бы своё дело над той сметой, что была открыта до этого.
@@ -12444,6 +12538,9 @@ const app = {
             // Цены каталога могли уехать с момента сохранения — расчёт уже пересобран
             // по сегодняшним, осталось сказать об этом вслух
             this.showRepriceNotice({ eqSum: data.eq_sum, at: data.created_at });
+            // Телефон: кабинет закрыт, а нижняя вкладка осталась «Профиль» — человек видел
+            // профиль и не понимал, загрузилась ли смета. Показываем саму смету.
+            if (this.isMobileLayout()) this.switchMobileTab('output');
             app.alert("✅ Смета успешно загружена!");
         } catch (error) { app.alert("Ошибка загрузки сметы: " + error.message); }
     },
@@ -21260,22 +21357,68 @@ const app = {
             const el = document.getElementById(id);
             if (el) el.style.display = on ? '' : 'none';
         });
-        // «План помещений» стоит под основной площадью, а этот блок виден всегда.
-        // Раньше строка лежала внутри заголовка подробного режима и пряталась
-        // вместе с ним — теперь условие приходится ставить руками, иначе она
-        // всплывёт и в быстром расчёте, где планов нет.
+        // «План дома» — одно место загрузки плана, под «Режимом расчёта», в обоих
+        // режимах: в быстром кнопка сама включает подробный (openUfhPlan).
+        // Полный редактор проектирования открывается из окна плана («Листы
+        // проекта»), отдельной кнопки в панели у него больше нет.
         const planRow = document.getElementById('blk_plan_editor_row');
         // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
         const ufh = this.canUseUfhPlan();
         try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
-        if (planRow) planRow.style.display = ((on || ufh) && this.state.detailedRooms) ? '' : 'none';
-        const bU = document.getElementById('btn_ufhplan'), bF = document.getElementById('btn_plan_full');
+        // Строка — только в подробном режиме: в быстром она сдвигала все настройки
+        // вниз, а пользы там нет; в быстром вместо неё одна ссылка под площадью.
+        if (planRow) planRow.style.display = (ufh && this.state.detailedRooms) ? 'flex' : 'none';
+        const qLink = document.getElementById('plan_quick_link');
+        if (qLink) qLink.style.display = (ufh && !this.state.detailedRooms) ? 'block' : 'none';
+        const bU = document.getElementById('btn_ufhplan');
+        const sum = this.planRowSummary();
         if (bU) {
             bU.style.display = ufh ? '' : 'none';
-            const hasPlan = !!(this.state.plans && (this.state.plans.floors || []).some(f => f && (f.img || f.imgFile)));
-            bU.textContent = hasPlan ? 'План отопления' : 'Загрузить план';
+            bU.textContent = sum ? 'Открыть' : 'Загрузить план';
         }
-        if (bF) bF.style.display = on ? '' : 'none';
+        const sumEl = document.getElementById('plan_row_sum');
+        if (sumEl) {
+            // Только что нажали «Готово» в окне плана — показываем его итог
+            // (с петлями и метрами), пока окно не откроют снова
+            const done = sum && this._planDoneMsg;
+            sumEl.textContent = done ? 'Готово: ' + this._planDoneMsg : (sum || 'комнаты, тёплый пол и радиаторы — с плана');
+            sumEl.style.color = done ? 'var(--success, #16a34a)' : '';
+        }
+        // Комнат нет — пустой переключатель «Расчёт по комнатам» прячется (см. syncUI),
+        // ручной ввод — ссылкой здесь же
+        const man = document.getElementById('plan_row_manual');
+        const nRooms = (this.state.detailedRooms && this.state.rooms) ? this.state.rooms.length : 0;
+        if (man) man.style.display = (ufh && !nRooms && !(this.state.detailedRooms && this.state.showDetailedRoomsPanel)) ? '' : 'none';
+    },
+
+    /**
+     * Итог плана дома для строки в панели: «5 комнат · 101,6 м² · тёплый пол в 4».
+     * Плана нет — пустая строка. Комнаты — зоны плана с именем (у санузла и
+     * котельной с тёплым полом две зоны одного контура — считаются одной).
+     */
+    planRowSummary: function () {
+        const fl = (this.state.plans && this.state.plans.floors) || [];
+        // масштаб — тоже признак плана: разметка есть, даже если картинка ещё не доехала до сервера
+        if (!fl.some(f => f && (f.img || f.imgFile || f.pxPerM))) return '';
+        const norm = s => String(s || '').trim().toLowerCase();
+        let n = 0, tp = 0, area = 0;
+        fl.forEach(f => {
+            if (!f || !f.pxPerM) return;
+            const seen = {}, tpSeen = {};
+            (f.zones || []).forEach(z => {
+                if (!z || !z.pts || z.pts.length < 3 || !['tp', 'room', 'wc', 'boiler'].includes(z.type)) return;
+                const k = norm(z.name) || JSON.stringify(z.pts);
+                if (z.type === 'tp' && !tpSeen[k]) { tpSeen[k] = 1; tp++; }
+                if (seen[k]) return;
+                seen[k] = 1; n++;
+                let s = 0;
+                for (let i = 0; i < z.pts.length; i++) { const a = z.pts[i], b = z.pts[(i + 1) % z.pts.length]; s += a[0] * b[1] - b[0] * a[1]; }
+                area += Math.abs(s / 2) / (f.pxPerM * f.pxPerM);
+            });
+        });
+        if (!n) return 'план загружен, комнаты не отмечены';
+        return n + ' ' + this.plural(n, 'комната', 'комнаты', 'комнат') + ' · ' +
+            (Math.round(area * 10) / 10).toLocaleString('ru-RU') + ' м²' + (tp ? ' · тёплый пол в ' + tp : '');
     },
 
     // ═══ Тарифы: что открыто учётной записи на её тарифе ═════════════════
@@ -24352,8 +24495,8 @@ const app = {
             <div class="admin-stat-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;">
                 <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${n(d.totalUsers)}</span></div>
                 <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${n(d.totalEstimates)}</span></div>
-                <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${n(d.totalEq)} ₽</span></div>
-                <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${n(d.totalWorks)} ₽</span></div>
+                <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${n(d.totalEq)} ₽">${this.moneyCompact(d.totalEq)}</span></div>
+                <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${n(d.totalWorks)} ₽">${this.moneyCompact(d.totalWorks)}</span></div>
             </div>`;
 
         // Разделы по группам — тем же порядком, что и на большом экране
@@ -24788,8 +24931,8 @@ const app = {
                     <div class="admin-stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
                         <div class="control-card" style="background: rgba(37, 99, 235, 0.1); border-color: var(--primary); padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Пользователей</span><span style="font-size: 24px; font-weight: 800; color: var(--primary);">${totalUsers}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажников: <b>${installersCount || 0}</b> · продавцов: <b>${sellersCount || 0}</b></span></div>
                         <div class="control-card" style="background: rgba(16, 185, 129, 0.1); border-color: #10B981; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Смет сохранено</span><span style="font-size: 24px; font-weight: 800; color: #10B981;">${totalEstimates}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">монтажниками: <b>${estInstallers || 0}</b> · продавцами: <b>${estSellers || 0}</b></span></div>
-                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1;">${totalEq.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
-                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316;">${totalWorks.toLocaleString()} ₽</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(99, 102, 241, 0.1); border-color: #6366F1; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Оборудование (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #6366F1; white-space: nowrap;" title="${totalEq.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalEq)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">средний чек: <b>${estWithEq ? Math.round(totalEq / estWithEq).toLocaleString('ru-RU') : 0} ₽</b></span></div>
+                        <div class="control-card" style="background: rgba(249, 115, 22, 0.1); border-color: #F97316; padding: 15px;"><span class="lbl" style="color: var(--text-sec);">Работы (Сумма)</span><span style="font-size: 20px; font-weight: 800; color: #F97316; white-space: nowrap;" title="${totalWorks.toLocaleString('ru-RU')} ₽">${this.moneyCompact(totalWorks)}</span><span style="font-size: 12px; color: var(--text-sec); margin-top: 4px;">смет с монтажом: <b>${estWithWorks || 0}</b> из ${totalEstimates} | средний чек: <b>${estWithWorks ? Math.round(totalWorks / estWithWorks).toLocaleString('ru-RU') : 0} ₽</b></span></div>
                     </div>
                     
                     <h3>Пользователи</h3>
@@ -36531,31 +36674,91 @@ const app = {
         return this.tariffAccess('ufhplan') === 'on' || this.canUseDesign();
     },
 
-    openUfhPlan: function () {
+    /**
+     * Окно «План дома». files — план, который уже положили в «Распознавание»:
+     * окно откроется с ним, грузить второй раз не нужно. В быстром режиме
+     * сначала включаем подробный — план работает в нём — и говорим об этом
+     * одной строкой в шапке окна.
+     */
+    openUfhPlan: function (files) {
         if (window.SessionTrack) SessionTrack.screen('ufhplan');
         if (!this.canUseUfhPlan()) { app.alert('Раскладка тёплого пола входит в тариф «Профи».'); return; }
-        if (!this.state.detailedRooms) { app.alert('Раскладка тёплого пола работает в подробном режиме расчёта — включите его и добавьте план.'); return; }
+        let modeNote = '';
+        if (!this.state.detailedRooms) {
+            this.toggleDetailedRooms(true);
+            if (!this.state.detailedRooms) return;
+            modeNote = 'включён подробный режим расчёта — план работает в нём';
+        }
+        this._planDoneMsg = '';
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         try { localStorage.setItem('heatcalc_ufhplan_access', '1'); } catch (e) { }
         this.pushPlansToEditor();
+        // Окно оформляется как калькулятор, а не как отдельная чертёжная
+        // программа: тёмное окно поверх светлой сметы выглядело непонятно
+        // откуда взявшимся (03.10.2026). Цвета берём у текущей темы — у
+        // калькулятора их несколько (обычная, тёмная, брендовые).
+        const cs = getComputedStyle(document.body);
+        const cv = k => (cs.getPropertyValue('--' + k) || '').trim();
+        const dark = document.body.classList.contains('dark-mode');
+        try {
+            localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
+                dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
+                'text-main': cv('text-main'), 'text-sec': cv('text-sec'), border: cv('border')
+            }));
+        } catch (e) { }
         let ov = document.getElementById('ufhplan_overlay');
         if (ov) ov.remove();
         ov = document.createElement('div');
         ov.id = 'ufhplan_overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#1e1e1e;display:flex;flex-direction:column;';
+        // Под шапкой калькулятора: она остаётся на месте, и видно, что это всё
+        // тот же расчёт, а не другая страница
+        ov.style.cssText = 'position:fixed;left:0;right:0;bottom:0;top:0;z-index:10050;background:var(--bg);' +
+            'display:flex;flex-direction:column;border-top:1px solid var(--border);';
         ov.innerHTML =
-            '<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:#141414;color:#ddd;font:13px/1.3 system-ui,sans-serif;">' +
-            '<span style="flex:1">План дома — тёплый пол и радиаторы</span>' +
-            '<button type="button" onclick="app.closeUfhPlan(true)" style="font:inherit;padding:4px 12px;border-radius:7px;border:1px solid #555;background:transparent;color:#ddd;cursor:pointer;">✕ Сохранить и закрыть</button></div>' +
-            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:#1e1e1e;"></iframe>';
+            '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 16px;background:var(--surface);' +
+            'border-bottom:1px solid var(--border);color:var(--text-main);font-size:13px;">' +
+            '<button type="button" onclick="app.closeUfhPlan(true)" title="Сохранить план и вернуться к смете" ' +
+            'style="font:inherit;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--primary);' +
+            'background:var(--primary);color:#fff;cursor:pointer;">← К смете</button>' +
+            '<b style="font-size:15px;">План дома</b>' +
+            '<span style="flex:1;min-width:0;color:var(--text-sec);">комнаты, тёплый пол и радиаторы' +
+            (modeNote ? ' · <span style="color:var(--primary)">' + modeNote + '</span>' : '') + '</span></div>' +
+            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:var(--bg);"></iframe>';
         document.body.appendChild(ov);
+        const hdr = document.querySelector('.site-header');
+        const place = () => {
+            const o = document.getElementById('ufhplan_overlay');
+            if (!o) return;
+            const b = hdr ? Math.max(0, Math.round(hdr.getBoundingClientRect().bottom)) : 0;
+            o.style.top = b + 'px';
+        };
+        place();
+        if (hdr && window.ResizeObserver) {
+            if (this._ufhHdrObs) this._ufhHdrObs.disconnect();
+            this._ufhHdrObs = new ResizeObserver(place);
+            this._ufhHdrObs.observe(hdr);
+        }
         this._ufhOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
+        // План из «Распознавания» — сразу в окно, как будто его выбрали там
+        const list = files ? Array.from(files).filter(Boolean) : [];
+        if (list.length) {
+            const fr = document.getElementById('ufhplan_frame');
+            fr.addEventListener('load', () => {
+                try {
+                    const cw = fr.contentWindow;
+                    if (cw && typeof cw.loadImage === 'function') cw.loadImage({ files: list, value: '' });
+                } catch (e) { console.warn('[ufhplan] передать файл в окно плана:', e); }
+            }, { once: true });
+        }
         if (!this._ufhMsgBound) {
             this._ufhMsgBound = true;
             window.addEventListener('message', (e) => {
                 if (e.origin !== location.origin || !e.data || e.data.type !== 'hc-ufhplan') return;
-                if (e.data.done) this.closeUfhPlan(false);
+                if (!e.data.done) return;
+                // итог мастера — зелёной строкой в «Плане дома»: видно, что изменилось
+                this._planDoneMsg = typeof e.data.sum === 'string' ? e.data.sum.slice(0, 200) : '';
+                this.closeUfhPlan(false);
             });
         }
     },
@@ -36577,6 +36780,7 @@ const app = {
             } catch (e) { }
         }
         if (ov) ov.remove();
+        if (this._ufhHdrObs) { this._ufhHdrObs.disconnect(); this._ufhHdrObs = null; }
         document.body.style.overflow = this._ufhOverflow || '';
         this.applyPlansFromEditor();
     },
@@ -36587,7 +36791,10 @@ const app = {
         const changed = this.syncRoomsFromPlan();
         this.loadPlanCheckData();            // и номер ревизии планов: петли пересчитаются
         this._ufhGeomCache = null;
+        // комнаты пришли с плана — список комнат раскрываем, чтобы их было видно
+        if (changed && this.state.detailedRooms && (this.state.rooms || []).length) this.state.showDetailedRoomsPanel = true;
         if (changed) { this.syncRoomsToState(); this.renderRoomsUI(); this.syncUI(); }
+        this.syncDesignUI();
         this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
         this.render();
     },
@@ -36922,58 +37129,56 @@ const app = {
      * таблица стилей страницы урезана) и на страницу клиента.
      * qr — { src, url } для печати: картинка QR на онлайн-КП.
      */
+
+    /**
+     * Разметка раздела. Стили встроенные: одна и та же уходит в печать (там
+     * таблица стилей страницы урезана) и на страницу клиента (invoice.html,
+     * renderKpHouse, — та же раскладка, но через textContent).
+     * Для заказчика, не для эксперта: три плитки с цифрами (теплопотери, в месяц,
+     * за сезон), «вы просили — мы учли» бейджами, комнаты таблицей, нормы и
+     * тариф — одной серой строкой внизу. qr — { src, url }: картинка QR на онлайн-КП.
+     */
     kpPersonalHtml: function (d, qr) {
         if (!d) return '';
         const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const n1 = v => String(Math.round((v || 0) * 10) / 10).replace('.', ',');
         const money = v => Math.round(v || 0).toLocaleString('ru-RU');
-        const H = (t) => `<div style="font-weight:700;font-size:14px;margin:14px 0 6px;color:#111">${t}</div>`;
+        const H = (t) => `<div style="font-weight:700;font-size:13px;margin:14px 0 6px;color:#111">${t}</div>`;
         const td = 'padding:4px 6px;border-bottom:1px solid #eee;';
+        const hs = d.house || {}, c = d.cost;
+        const tileCss = 'flex:1 1 150px;min-width:140px;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;page-break-inside:avoid;';
+        const tile = (lbl, val, sub) => `<div style="${tileCss}"><div style="font-size:9.5px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${lbl}</div>` +
+            `<div style="font-size:21px;font-weight:800;color:#111;line-height:1.15;margin:2px 0">${val}</div>${sub ? `<div style="font-size:11px;color:#6B7280">${sub}</div>` : ''}</div>`;
+        let tiles = '';
+        if (hs.kw) tiles += tile('Теплопотери дома', `${n1(hs.kw)} кВт`, [hs.t != null ? `при ${hs.t} °C` : '', hs.city ? esc(hs.city) : ''].filter(Boolean).join(', '));
+        if (c) {
+            tiles += tile('Отопление в месяц', `≈ ${money(c.month)} ₽`, 'в среднем за отопительный сезон');
+            tiles += tile('За сезон', `${money(c.season)} ₽`, `${c.zOt ? c.zOt + ' дн.' : c.months + ' мес.'} · ${c.fuel === 'gas' ? (c.lpg ? 'сжиженный газ' : 'газ') : 'электроэнергия'} ${money(c.units)} ${esc(c.uName)}`);
+        }
+        if (qr && qr.src) tiles += `<div style="${tileCss}flex:0 0 auto;text-align:center"><img src="${qr.src}" alt="QR" style="width:84px;height:84px;display:block;margin:0 auto 2px"><div style="font-size:10px;color:#6B7280">Это КП онлайн</div></div>`;
         let h = `<div class="kp-personal" style="font-family:inherit;color:#222;font-size:12.5px;line-height:1.45;margin:6px 0 16px;page-break-inside:auto">`;
-        const hs = d.house || {};
-        h += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">` +
-            `<div style="flex:1;min-width:260px"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Расчёт выполнен для вашего дома</div>` +
-            `<div>${[hs.city ? esc(hs.city) : '', hs.area ? n1(hs.area) + ' м²' : '', hs.floors ? hs.floors + ' ' + (hs.floors === 1 ? 'этаж' : 'этажа') : '']
-                .filter(Boolean).join(' · ')}</div>` +
-            (hs.kw ? `<div>Теплопотери дома: <b>${n1(hs.kw)} кВт</b>${hs.t != null ? ` при наружной температуре ${hs.t} °C` : ''}` +
-                `${hs.city ? ` (расчётная зимняя для г. ${esc(hs.city)}, СП 131.13330.2020, табл. 3.1)` : ''}</div>` : '') +
-            `</div>` +
-            (qr && qr.src ? `<div style="text-align:center;width:150px"><img src="${qr.src}" alt="QR" style="width:120px;height:120px;display:block;margin:0 auto 4px">` +
-                `<div style="font-size:10.5px;color:#555">Этот КП онлайн: план дома, смета, согласование — наведите камеру телефона</div></div>` : '') +
-            `</div>`;
+        h += `<div style="font-size:13px;color:#374151;margin:0 0 10px">Посчитано для вашего дома, а не по шаблону: теплопотери, котёл и приборы — под ` +
+            `${hs.area ? n1(hs.area) + ' м²' : 'ваш дом'}${hs.city ? ' в г. ' + esc(hs.city) : ''}.</div>`;
+        if (tiles) h += `<div style="display:flex;gap:10px;flex-wrap:wrap">${tiles}</div>`;
         if (d.asked && d.asked.length) {
-            h += H('Вы просили — мы учли');
-            h += `<table style="width:100%;border-collapse:collapse">` + d.asked.map(x =>
-                `<tr><td style="${td}width:40%">${esc(x.q)}</td><td style="${td}">${x.ok
-                    ? `<span style="color:#15803d;font-weight:700">✓</span> ${esc(x.a)}`
-                    : `<span style="color:#b45309;font-weight:700">—</span> в смету не вошло, обсудим`}</td></tr>`).join('') + `</table>`;
+            h += H('Вы просили — мы учли') + `<div style="display:flex;flex-wrap:wrap;gap:6px">` + d.asked.map(x =>
+                `<span style="display:inline-block;border:1px solid ${x.ok ? '#BBF7D0' : '#FDE68A'};background:${x.ok ? '#F0FDF4' : '#FFFBEB'};border-radius:999px;padding:4px 10px;font-size:12px">` +
+                `<b style="color:${x.ok ? '#15803d' : '#b45309'}">${x.ok ? '✓' : '—'}</b> ${esc(x.q)}${x.ok ? ': ' + esc(x.a) : ' — обсудим'}</span>`).join('') + `</div>`;
         }
         if (d.rooms && d.rooms.length) {
             const two = d.rooms.some(r => r.floor === 2);
             h += H('Ваш дом по комнатам');
-            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666">` +
-                `<th style="${td}text-align:left">Помещение</th><th style="${td}text-align:right">Площадь</th>` +
-                `<th style="${td}text-align:right">Теплопотери</th><th style="${td}text-align:left">Чем греется</th></tr>` +
+            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666;font-size:11px">` +
+                `<th style="${td}text-align:left;font-weight:600">Помещение</th><th style="${td}text-align:right;font-weight:600">Площадь</th>` +
+                `<th style="${td}text-align:right;font-weight:600">Теплопотери</th><th style="${td}text-align:left;font-weight:600">Отопление</th></tr>` +
                 d.rooms.map(r => `<tr><td style="${td}">${esc(r.name)}${two ? ` <span style="color:#888">(${r.floor} эт.)</span>` : ''}</td>` +
                     `<td style="${td}text-align:right">${n1(r.area)} м²</td><td style="${td}text-align:right">${money(r.q)} Вт</td>` +
                     `<td style="${td}">${esc(r.heat || '—')}</td></tr>`).join('') +
                 `<tr style="font-weight:700"><td style="${td}">Итого</td><td style="${td}text-align:right">${n1(d.rooms.reduce((s, r) => s + (r.area || 0), 0))} м²</td>` +
-                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>` +
-                `<div style="font-size:11px;color:#666;margin-top:4px">Теплопотери посчитаны по каждой комнате: стены, окна, пол, кровля и вентиляция (СП 50.13330.2024).</div>`;
+                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>`;
         }
-        if (d.cost) {
-            const c = d.cost;
-            h += H('Сколько будет стоить отопление');
-            h += `<div style="display:flex;gap:24px;flex-wrap:wrap">` +
-                `<div><div style="color:#666">В среднем в месяц отопительного сезона</div><div style="font-size:18px;font-weight:800">${money(c.month)} ₽</div></div>` +
-                `<div><div style="color:#666">За сезон (${c.zOt ? c.zOt + ' сут.' : c.months + ' мес.'})</div><div style="font-size:18px;font-weight:800">${money(c.season)} ₽</div></div>` +
-                `<div><div style="color:#666">${c.fuel === 'gas' ? (c.lpg ? 'Сжиженный газ' : 'Газ') : 'Электроэнергия'} за сезон</div>` +
-                `<div style="font-size:18px;font-weight:800">${money(c.units)} ${esc(c.uName)}</div></div></div>` +
-                `<div style="font-size:11px;color:#666;margin-top:4px">Оценка: тепло за отопительный период по СП 131.13330.2020, табл. 3.1` +
-                `${c.tOt != null ? ` (средняя температура периода ${n1(c.tOt)} °C)` : ''}, ` +
-                `тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, ` +
-                `в доме +20 °C. Счёт зависит от того, как вы живёте в доме.</div>`;
-        }
+        h += `<div style="font-size:10.5px;color:#9CA3AF;margin-top:8px">Расчёт: теплопотери — СП 50.13330.2024${d.rooms && d.rooms.length ? ' по каждой комнате' : ''}, климат — СП 131.13330.2020, табл. 3.1` +
+            (c ? `; тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, в доме +20 °C. Реальный счёт зависит от того, как вы живёте в доме` : '') + `.</div>`;
         return h + `</div>`;
     },
 
@@ -52760,7 +52965,7 @@ const app = {
             // предельной длине петли (ufhLoopMax) на каждом этаже.
             const _fc = (this._ufhFloorCalc || []).filter(f => f && f.m > 0);
             const _stp = [parseInt(this.state.ufhStep1, 10) || 150, parseInt(this.state.ufhStep2, 10) || 150];
-            const _tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            const _tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             const _curPipe = this.ufhPipe();
             const _prc = (it) => it ? ((isRommer && it.rommer) ? it.rommer.price : it.price) || 0 : 0;
             const _perLoop = (p) => 2 * _prc((catalog.parts || []).find(x => x.id === p.conn))
@@ -52845,7 +53050,7 @@ const app = {
             const _matArea = (_matR ? _matR.area : _matCat?.area) || 0.88;
             const _xk = catalog.xps_kit || [];
             const _xpsArea = this.ufhBaseXps()?.area || 0.6844;
-            const _tpA = (Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0);
+            const _tpA = this.r2((Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0));
             const _pipePerM2 = (_tpA > 0 && this.tpMeters > 0) ? this.tpMeters / _tpA : 6.7;
             const _sheetsM2 = 1.05 / _xpsArea;
             const _sub = catalog.ufh_mat && catalog.ufh_mat[0];
@@ -54565,7 +54770,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name two-name">${alt.name}${badgeHtml}${_sub}</td>
+                        <td class="col-name two-name">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${_sub}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         ${_cell('col-two-u', (_twoHead.unitHead || 'Мат / лист, за м²'), alt.unitM2, _baseUnit)}
                         ${_cell('col-two-s', (_twoHead.sysHead || 'Система, за м²'), alt.price, basePrice)}
@@ -54578,7 +54783,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img">${imgHtml}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}${badgeHtml}${alt.note || ''}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand || 'STOUT')}${alt.name}${badgeHtml}${alt.note || ''}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -54595,7 +54800,7 @@ const app = {
                 const _same = this.ssSameSizeAlts(item);
                 if (_same.length) {
                     html += `
-                        <tr style="border-top: 2px solid var(--border);">
+                        <tr class="swap-sub-head" style="border-top: 2px solid var(--border);">
                             <td colspan="6" style="padding:10px 8px 4px; font-size:12px; font-weight:800; color:var(--text-muted, #6B7280); text-align:left;">
                                 Заменить только эту позицию — тот же материал и типоразмер
                             </td>
@@ -54613,7 +54818,7 @@ const app = {
                             <tr style="cursor: pointer;" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${alt.id}')">
                                 <td class="col-idx"></td>
                                 <td class="col-img">${getImg(alt)}</td>
-                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${alt.name}</td>
+                                <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(alt.brand)}${alt.name}</td>
                                 <td class="col-brand" style="text-align: center; font-size: 13px;">${alt.brand}</td>
                                 ${_priceCells}
                             </tr>`;
@@ -54856,7 +55061,7 @@ const app = {
                     <tr class="${activeClass}" style="cursor: pointer; ${activeStyle}" onclick="app.selectSwapAlternative('${item.originalId || item.id}', '${displayAlt.id}')">
                         <td class="col-idx" style="text-align: center; font-size: 13px;">${idx + 1}</td>
                         <td class="col-img" style="text-align: center;">${img}</td>
-                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${_nameDisplay}${_rowCoilStr}${badgeHtml}</td>
+                        <td class="col-name" style="font-size: 13px; font-weight: 600; text-align: left;">${this.altBrandChip(displayAlt.brand || 'STOUT')}${_nameDisplay}${_rowCoilStr}${badgeHtml}</td>
                         <td class="col-brand" style="text-align: center; font-size: 13px;">${displayAlt.brand || 'STOUT'}</td>
                         <td class="col-pct" style="text-align: right; font-weight: 700; font-size: 13px;">${diffHtml}</td>
                         <td style="text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap;">${priceText}</td>
@@ -56720,8 +56925,8 @@ const app = {
             // даёт «хвост» вроде 198.00000000000003, который потом виден в подробном расчёте.
             this.state.area = tA > 0 ? Math.round(tA * 10) / 10 : 50;
             this.state.win = tW > 0 ? tW : 1;
-            this.state.tp1 = tTp1;
-            this.state.tp2 = tTp2;
+            this.state.tp1 = this.r2(tTp1);
+            this.state.tp2 = this.r2(tTp2);
             this.state.ufhZones = this.state.rooms.filter(r => r.sys && r.sys.includes('tp')).length;
 
             if ((tTp1 + tTp2) > 0 && !this.state.systems.includes('tp')) this.state.systems.push('tp');
@@ -59275,7 +59480,7 @@ const app = {
                     if (num < 1) num = 1;
                     alert("Максимальная площадь дома не может превышать " + this.MAX_AREA + " м².");
                 }
-                r.area = num;
+                r.area = this.r2(num);
             } else {
                 r[field] = val;
             }
@@ -62177,7 +62382,7 @@ const app = {
                 }
             }
 
-            r.area = num;
+            r.area = this.r2(num);
             if (r.windows) {
                 r.windows.forEach(w => {
                     if (!w.isManualWidth) {
@@ -62469,7 +62674,7 @@ const app = {
             }
         }
 
-        let tpArea = (parseFloat(this.state.tp1) || 0) + (parseFloat(this.state.tp2) || 0);
+        let tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (parseFloat(this.state.tp2) || 0));
         if (tpArea > 0) {
             let tpRoomsCount = 5;
             if (tpArea <= 80) tpRoomsCount = 5;
@@ -63380,7 +63585,7 @@ const app = {
         let n = this.state.ufhZones + d; if (n < 0) n = 0; if (n > 16) n = 16; this.state.ufhZones = n;
         this.state.zonesManual = true;
         this.state.zonesManualArea = this.state.area;
-        this.state.zonesManualTpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+        this.state.zonesManualTpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
         this.state.zonesManualFloors = this.state.floors;
         this.saveState();
         this.syncUI(); this.render();
@@ -63390,7 +63595,7 @@ const app = {
         if (!isAuto) {
             this.state.zonesManual = true;
             this.state.zonesManualArea = this.state.area;
-            this.state.zonesManualTpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            this.state.zonesManualTpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             this.state.zonesManualFloors = this.state.floors;
         }
         this.saveState();
@@ -63540,7 +63745,7 @@ const app = {
         // Ноль шкала не представляет (минимум 25), поэтому подставляем минимум
         // явно: без этого браузер оставлял прежнее значение.
         _areaInp.value = (parseFloat(this.state.area) || 0) > 0 ? this.state.area : _areaMin;
-        document.getElementById('val_area').innerText = this.state.area;
+        document.getElementById('val_area').innerText = this.r2(this.state.area);
         this.renderPlanAreaNote();
         if (document.getElementById('blk_h2_wrapper')) document.getElementById('blk_h2_wrapper').style.display = (this.state.floors === 2) ? 'flex' : 'none';
         if (document.getElementById('btn_add_floor')) document.getElementById('btn_add_floor').style.display = (this.state.floors === 2) ? 'none' : 'block';
@@ -64201,7 +64406,7 @@ const app = {
         }
 
         const cTabs = document.querySelectorAll('.cool-tab'); cTabs.forEach(t => { t.classList.remove('active'); if (t.dataset.type === this.state.coolant) t.classList.add('active'); });
-        document.getElementById('inp_tp1').max = this.state.area; document.getElementById('inp_tp2').max = this.state.area; document.getElementById('inp_tp1').value = this.state.tp1; document.getElementById('val_tp1').innerText = this.state.tp1; document.getElementById('inp_tp2').value = this.state.tp2; document.getElementById('val_tp2').innerText = this.state.tp2;
+        document.getElementById('inp_tp1').max = this.state.area; document.getElementById('inp_tp2').max = this.state.area; document.getElementById('inp_tp1').value = this.state.tp1; document.getElementById('val_tp1').innerText = this.r2(this.state.tp1); document.getElementById('inp_tp2').value = this.state.tp2; document.getElementById('val_tp2').innerText = this.r2(this.state.tp2);
         document.getElementById('chk_sku').checked = this.state.showSku;
         // Логика доступа для переключателя "СХЕМА" — доступен всем авторизованным пользователям
         let sw = document.getElementById('scheme_wrapper');
@@ -64304,10 +64509,13 @@ const app = {
         // Sync Room-by-room calculation switch header and checkbox
         const roomsHeader = document.getElementById('blk_detailed_rooms_header');
         if (roomsHeader) {
-            roomsHeader.style.display = this.state.detailedRooms ? 'block' : 'none';
+            const count = this.state.rooms ? this.state.rooms.length : 0;
+            // Комнат нет, а строка «План дома» видна — пустой переключатель не
+            // показываем: там же ссылка «или ввести комнаты вручную»
+            const viaPlan = !count && !this.state.showDetailedRoomsPanel && this.canUseUfhPlan();
+            roomsHeader.style.display = this.state.detailedRooms && !viaPlan ? 'block' : 'none';
             const lbl = roomsHeader.querySelector('.lbl');
             if (lbl) {
-                const count = this.state.rooms ? this.state.rooms.length : 0;
                 lbl.innerText = count ? `Расчёт по комнатам (${count} ${this.plural(count, 'комната', 'комнаты', 'комнат')})` : 'Расчёт по комнатам: не заданы';
             }
         }
@@ -64727,7 +64935,7 @@ const app = {
         // Комнаты и окна идут за площадью, пока комнаты не задали руками
         this.syncFlatWindows();
         if (this.state.tp1 > v) this.state.tp1 = v;
-        if (this.state.tp1 + this.state.tp2 > v) this.state.tp2 = v - this.state.tp1;
+        if (this.state.tp1 + this.state.tp2 > v) this.state.tp2 = this.r2(v - this.state.tp1);
         this.state.waterZones.forEach(z => z.dist = this.state.area < 120 ? 6 : 10);
         if (this.state.detailedRooms) {
             this.generateRoomsForDetailedCalculation();
@@ -66361,7 +66569,7 @@ const app = {
                 this.state.ufhZones = 0;
             }
         } else {
-            let tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            let tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             if (this.state.zonesManual) {
                 let currentArea = this.state.area;
                 let currentFloors = this.state.floors;
@@ -66409,10 +66617,10 @@ const app = {
 
         if (f === 1) {
             this.state.tp1 = v;
-            if (this.state.tp1 + this.state.tp2 > max) this.state.tp2 = max - this.state.tp1;
+            if (this.state.tp1 + this.state.tp2 > max) this.state.tp2 = this.r2(max - this.state.tp1);
         } else {
             this.state.tp2 = v;
-            if (this.state.tp1 + this.state.tp2 > max) this.state.tp1 = max - this.state.tp2;
+            if (this.state.tp1 + this.state.tp2 > max) this.state.tp1 = this.r2(max - this.state.tp2);
         }
         if (this.state.detailedRooms) {
             this.applyTpAreaToRooms(1, this.state.tp1);
@@ -69384,7 +69592,7 @@ const app = {
             case 'ufh_pipe': {
                 let stepVal1 = this.state.ufhStep1 || 150;
                 let stepVal2 = this.state.ufhStep2 || 150;
-                let tpArea = this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0);
+                let tpArea = this.r2(this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0));
                 let stepStr = (this.state.floors === 2 && this.state.tp2 > 0) ? `1 этаж: ${stepVal1} мм, 2 этаж: ${stepVal2} мм` : `${stepVal1} мм`;
 
                 // Этаж, размеченный в редакторе планов, считается по нарисованной
@@ -69919,6 +70127,7 @@ const app = {
         try { return this._renderInner(false); } finally { this._inputAnchorAfter(_ia); }
     },
     _renderInner: function (computeOnly) {
+        this.normalizeAreaNumbers();
         if (!computeOnly) this.ensureCalcId();
         if (this.state.disabledSections) {
             const migrations = {
@@ -72586,7 +72795,7 @@ const app = {
         let hasRad = this.state.systems.includes('rad');
         let hasTp = this.state.systems.includes('tp');
         let radSecs = 0, radMeters = 0, tpMeters = 0;
-        let tpArea = this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0);
+        let tpArea = this.r2(this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0));
         if (hasRad) { let load = this.radLoadKw(pwr, hasTp ? tpArea : 0) * 1000; radSecs = Math.ceil(load / 117); if (radSecs > 0) { let pipe = Math.ceil(this.state.win * (Math.sqrt(this.state.area / (this.state.floors === 2 ? 2 : 1)) + 3) * 1.1); radMeters = pipe * 2; } }
 
         let stepVal1 = this.state.ufhStep1 || 150;
@@ -81172,6 +81381,8 @@ function prepareForPrint() {
             let eqClone = printArea.cloneNode(true);
             eqClone.id = 'print_eq_clone';
             // Убираем схему и табы
+            // Бланк гарантии печатается один раз и последним листом (шаг 6)
+            const eqWp = eqClone.querySelector('#warranty_print'); if (eqWp) eqWp.remove();
             let eqScheme = eqClone.querySelector('#dynamic_scheme');
             if (eqScheme) eqScheme.remove();
             let eqTabs = eqClone.querySelector('.main-view-tabs');
@@ -81205,6 +81416,7 @@ function prepareForPrint() {
             if (showEq) {
                 worksClone.classList.add('print-page-break'); // Разрыв страницы
             }
+            const worksWp = worksClone.querySelector('#warranty_print'); if (worksWp) worksWp.remove();
             let worksScheme = worksClone.querySelector('#dynamic_scheme');
             if (worksScheme) worksScheme.remove();
             let wTabs = worksClone.querySelector('.main-view-tabs');
@@ -81269,6 +81481,17 @@ function prepareForPrint() {
                 }
                 printBin.appendChild(hlContainer);
             }
+        }
+
+        // --- ШАГ 6: БЛАНК «ГАРАНТИЯ НА ОБЪЕКТ STOUT» — последним листом всего документа,
+        // после схемы и таблицы теплопотерь. Живой блок (#warranty_print) собирает
+        // render(); пустой (долю STOUT не набрали) в печать не идёт. ---
+        const wpLive = document.getElementById('warranty_print');
+        if (wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
+            const wpPage = document.createElement('div');
+            wpPage.className = 'warranty-print';
+            wpPage.innerHTML = wpLive.innerHTML;
+            printBin.appendChild(wpPage);
         }
 
         // --- #16: ПРЕДУПРЕЖДЕНИЯ О НЕХВАТКЕ МОЩНОСТИ ---

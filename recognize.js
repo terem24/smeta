@@ -849,6 +849,7 @@ const RecognizeUI = {
         this._img = null;
         this._imgs = null;
         this._file = null;
+        this._files = null;     // оригиналы нескольких листов — для окна «План дома»
         this._text = '';
         this._docs = [];
         this._fileName = '';
@@ -1445,6 +1446,7 @@ const RecognizeUI = {
         this._docs = [];
         this._fileName = file.name || '';
         this._file = file;              // держим оригинал для архива
+        this._files = null;
         const oldImgs = document.getElementById('rec_imgs');
         if (oldImgs) oldImgs.style.display = 'none';
         const oldDocs = document.getElementById('rec_docs');
@@ -2265,6 +2267,15 @@ const RecognizeUI = {
         // PDF с текстовым слоем, HTML). Что именно — определил handleFile.
         const hasImgs = this._img || (this._imgs && this._imgs.length);
         if ((!hasImgs && !this._text) || this._busy) return;
+
+        // План этажа (не комплект листов проекта) — в окно «План дома», а не в
+        // разбор моделью: там из него и комнаты в расчёт, и раскладка, и КП.
+        // Догадка арифметикой — ни запроса, ни лимита на это не нужно.
+        if (!this._project && !this._text && this.canPlanWindow() && await this.looksLikePlan()) {
+            this.toPlanWindow();
+            return;
+        }
+
         if (this.blockInfo()) { this.tickBlock(); return; }
 
         const quota = await this.checkQuota();
@@ -2354,9 +2365,10 @@ const RecognizeUI = {
             if (!this._text && this._imgs && this._imgs.length > 1) {
                 const res = await this.runBySheets();
                 // Первый же лист оказался планом этажа — всю пачку читаем
-                // как планы, по своим правилам.
+                // как планы, по своим правилам (или в окно «План дома»).
                 if (res.floorPlan) {
-                    await this.runPlan(true);
+                    if (this.canPlanWindow()) { this.progressStop(); this.toPlanWindow(); }
+                    else await this.runPlan(true);
                     this._busy = false;
                     if (go) go.disabled = false;
                     return;
@@ -2427,7 +2439,8 @@ const RecognizeUI = {
                 // На снимке не смета, а план этажа: модель сказала об этом сама.
                 // Читаем его как план — по своим правилам и в свой экран проверки.
                 if (!this._text && typeof RecognizePlan !== 'undefined' && RecognizePlan.isPlanResult(parsed)) {
-                    await this.runPlan(true);
+                    if (this.canPlanWindow()) { this.progressStop(); this.toPlanWindow(); }
+                    else await this.runPlan(true);
                     this._busy = false;
                     if (go) go.disabled = false;
                     return;
@@ -2460,6 +2473,26 @@ const RecognizeUI = {
         }
         this._busy = false;
         if (go) go.disabled = false;
+    },
+
+    /**
+     * Можно ли отдать план этажа в окно «План дома»: у пользователя есть
+     * раскладка по плану (тариф) и сохранился сам файл. Комплект листов
+     * проекта сюда не идёт — его разбирает распознавание целиком.
+     */
+    canPlanWindow() {
+        if (this._project || typeof app === 'undefined' || !app.canUseUfhPlan || !app.canUseUfhPlan()) return false;
+        return !!((this._files && this._files.length) || this._file);
+    },
+
+    /**
+     * План этажа — в окно «План дома» с тем же файлом. Второго пути для
+     * плана нет: комнаты в расчёт, раскладка, КП и листы проекта — оттуда.
+     */
+    toPlanWindow() {
+        const files = (this._files && this._files.length) ? this._files : [this._file];
+        this.setStatus('Это план дома — открыл его в окне «План дома»: там комнаты, тёплый пол и радиаторы.');
+        app.openUfhPlan(files);
     },
 
     /**
