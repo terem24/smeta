@@ -8361,47 +8361,36 @@ const app = {
         const subview = document.getElementById(containerId);
         if (!subview) return;
 
+        // Заголовок у всех состояний раздела один: .lk-section-head, как у остальных разделов кабинета
+        const head = (sub, actions) => `<div class="lk-section-head"><div><h4>Мой менеджер</h4><div class="lk-sub">${sub}</div></div>${actions || ''}</div>`;
         if (this.state.distributorId && this.state.distributorInfo) {
             const d = this.state.distributorInfo;
+            const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const kv = (label, val) => `<div class="ad-kv"><span>${label}</span><b>${val}</b></div>`;
+            const phoneHref = String(d.manager_phone || '').replace(/[^+\d]/g, '');
             subview.innerHTML = `
-                <div class="lk-section-head"><h4><span class="ui-emo">🤝 </span>Мой менеджер</h4></div>
+                ${head('Контакты поставщика, чат и история по вашим сметам', '<div id="manager_chat_btn_slot"></div>')}
                 <div class="lk-card">
-                    <div class="lk-card-label" style="margin-bottom:10px;">Контакты</div>
-                    <div style="display: grid; gap: 8px; font-size: 13px;">
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Компания</span>
-                            <b style="color: var(--text-main);">${d.company_name || '—'}</b>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Менеджер</span>
-                            <b style="color: var(--text-main);">${d.manager_name || '—'}</b>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Email</span>
-                            <a href="mailto:${d.manager_email}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${d.manager_email || '—'}</a>
-                        </div>
-                        <div style="display: flex; gap: 8px;">
-                            <span style="color: var(--text-sec); min-width: 110px;">Телефон</span>
-                            <a href="tel:${(d.manager_phone || '').replace(/[^+\\d]/g, '')}" style="color: var(--primary); text-decoration: none; font-weight: 600;">${d.manager_phone || '—'}</a>
-                        </div>
-                    </div>
-                    <div id="manager_chat_btn_slot"></div>
+                    ${kv('Компания', esc(d.company_name) || '—')}
+                    ${kv('Менеджер', esc(d.manager_name) || '—')}
+                    ${kv('Email', d.manager_email ? `<a href="mailto:${esc(d.manager_email)}">${esc(d.manager_email)}</a>` : '—')}
+                    ${kv('Телефон', d.manager_phone ? `<a href="tel:${esc(phoneHref)}">${esc(d.manager_phone)}</a>` : '—')}
                 </div>
-                <p class="lk-hint">💡 Счёт на оборудование выставляет компания <strong>${d.company_name}</strong>. При запросе счёта менеджер получит копию на email.</p>
-                <div id="manager_chat_wrapper" style="margin-top:20px;"></div>
-                <details style="margin-top: 14px; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;">
-                    <summary style="cursor: pointer; font-size: 13px; font-weight: 700; color: var(--text-main);">🚚 Условия доставки и оплаты</summary>
-                    <div style="margin-top: 10px;">${this.buildDeliveryPaymentHtml()}</div>
+                <p class="lk-hint">Счёт на оборудование выставляет компания <b>${esc(d.company_name)}</b>. При запросе счёта менеджер получит копию на email.</p>
+                <div id="manager_chat_wrapper"></div>
+                <details class="lk-group">
+                    <summary class="lk-subhead">Условия доставки и оплаты</summary>
+                    <div class="lk-group-body">${this.buildDeliveryPaymentHtml()}</div>
                 </details>
-                <div id="manager_comm_history_container" style="margin-top:20px;"></div>
+                <div id="manager_comm_history_container"></div>
             `;
             this.renderManagerCommHistory();
             this.initManagerChatIfAvailable(d.manager_email);
         } else if (this.state.distributorId && !this.state.distributorInfo) {
-            subview.innerHTML = `<div style="color: var(--text-sec); font-size: 13px;">Загрузка данных менеджера...</div>`;
+            subview.innerHTML = head('Загружаем данные менеджера') + `<div class="lk-empty">Загрузка…</div>`;
             this.loadDistributorInfo().then(() => this.showSupplierSection());
         } else {
-            subview.innerHTML = `<div style="color: var(--text-sec); font-size: 13px;">Загрузка списка менеджеров...</div>`;
+            subview.innerHTML = head('Загружаем список поставщиков') + `<div class="lk-empty">Загрузка…</div>`;
             this.renderDistributorPicker();
         }
 
@@ -8415,7 +8404,7 @@ const app = {
     renderManagerCommHistory: async function () {
         const container = document.getElementById('manager_comm_history_container');
         if (!container) return;
-        container.innerHTML = `<div style="color:var(--text-sec); font-size:12px; padding:6px 0;">⌛ Загрузка истории...</div>`;
+        container.innerHTML = `<div class="lk-subhead">История общения</div><div class="lk-empty">Загрузка истории…</div>`;
 
         const me = await this.resolveCurrentUserForChat();
         if (!me || !me.email) { container.innerHTML = ''; return; }
@@ -8431,7 +8420,7 @@ const app = {
 
             if (!events || !events.length) {
                 container.innerHTML = `
-                    <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">📋 </span>История общения</h4></div>
+                    <div class="lk-subhead">История общения</div>
                     <div class="lk-empty">Пока нет событий по вашим сметам.</div>
                 `;
                 return;
@@ -8439,17 +8428,17 @@ const app = {
 
             const EVENT_META = this.ADMIN_KANBAN_EVENT_META;
             let h = `
-                <div class="lk-section-head" style="margin-top:4px;">
-                    <h4><span class="ui-emo">📋 </span>История общения</h4>
-                    <button type="button" class="lk-btn-sm lk-btn-danger" onclick="app.clearOwnInvoiceHistory()">🗑 Очистить историю</button>
+                <div class="lk-subhead-row">
+                    <div class="lk-subhead">История общения</div>
+                    <button type="button" class="lk-btn-sm lk-btn-danger" onclick="app.clearOwnInvoiceHistory()">Очистить историю</button>
                 </div>
-                <div class="lk-list" style="max-height:260px; overflow-y:auto;">`;
+                <div class="lk-list lk-scroll">`;
             events.forEach(e => {
                 const em = this.kanbanEventView(e.event, e.meta);
                 const dt = new Date(e.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const comment = e.meta && e.meta.comment ? e.meta.comment : '';
                 h += `
-                    <div style="padding:8px 10px; border-radius:8px; background:var(--surface-light); font-size:12px;">
+                    <div class="lk-row lk-row-block">
                         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                             <span style="display:inline-block; background:${em.color}; color:#fff; font-size:10px; font-weight:700; border-radius:10px; padding:2px 8px;">${em.label}</span>
                             <span style="color:var(--text-sec); font-size:10.5px; white-space:nowrap;">${dt}</span>
@@ -8463,7 +8452,8 @@ const app = {
             h += `</div>`;
             container.innerHTML = h;
         } catch (e) {
-            container.innerHTML = `<div style="color:#EF4444; font-size:12px;">Ошибка загрузки истории: ${e.message}</div>`;
+            container.innerHTML = `<div class="lk-subhead">История общения</div><div class="lk-empty" style="color:#EF4444;">Не удалось загрузить историю.</div>`;
+            console.warn('[renderManagerCommHistory]', e);
         }
     },
     // Стирает собственную историю событий по сметам (invoice_events) — только свою, по email.
@@ -8506,16 +8496,18 @@ const app = {
         // монтажник видел только почту и телефон — уходил звонить мимо калькулятора
         const btnSlot = document.getElementById('manager_chat_btn_slot');
         if (btnSlot) {
-            btnSlot.innerHTML = `<button type="button" class="auth-btn-base btn-email-submit" style="margin:14px 0 0; width:auto; height:36px; padding:0 18px; font-size:13px;"
-                onclick="const i = document.getElementById('manager_chat_input'); if (i) { i.scrollIntoView({ behavior: 'smooth', block: 'center' }); i.focus({ preventScroll: true }); }">💬 Написать менеджеру</button>`;
+            btnSlot.innerHTML = `<button type="button" class="lk-btn lk-btn-primary"
+                onclick="const i = document.getElementById('manager_chat_input'); if (i) { i.scrollIntoView({ behavior: 'smooth', block: 'center' }); i.focus({ preventScroll: true }); }">Написать менеджеру</button>`;
         }
 
         wrapper.innerHTML = `
-            <div class="lk-section-head" style="margin-top:4px;"><h4><span class="ui-emo">💬 </span>Чат с менеджером</h4></div>
-            <div id="manager_chat_list" style="display:flex; flex-direction:column; max-height:320px; overflow-y:auto; padding:10px; border:1px solid var(--border); border-radius:10px 10px 0 0; background:var(--bg);"></div>
-            <div style="display:flex; gap:6px; padding:8px; border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; background:var(--bg);">
-                <input type="text" id="manager_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать менеджеру..." style="flex:1; height:34px; font-size:12.5px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--surface); color:var(--text-main); outline:none;" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
-                <button id="manager_chat_send_btn" onpointerdown="event.preventDefault()" class="auth-btn-base btn-email-submit" style="margin:0; width:auto; height:34px; padding:0 14px; font-size:12px;" onclick="app.sendActiveChatMessage()">➤</button>
+            <div class="lk-subhead">Чат с менеджером</div>
+            <div class="lk-chat">
+                <div id="manager_chat_list" class="lk-chat-list"></div>
+                <div class="lk-chat-bar">
+                    <input type="text" id="manager_chat_input" enterkeyhint="send" autocomplete="off" placeholder="Написать менеджеру…" onkeydown="if(event.key==='Enter'){event.preventDefault(); app.sendActiveChatMessage();}">
+                    <button type="button" id="manager_chat_send_btn" onpointerdown="event.preventDefault()" class="lk-btn lk-btn-primary" onclick="app.sendActiveChatMessage()">Отправить</button>
+                </div>
             </div>
         `;
 
@@ -8555,30 +8547,33 @@ const app = {
                 dists = allDists || [];
             }
 
+            const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            const head = sub => `<div class="lk-section-head"><div><h4>Мой менеджер</h4><div class="lk-sub">${sub}</div></div></div>`;
+
             if (!dists || dists.length === 0) {
-                subview.innerHTML = `
-                    <h4 style="margin: 0 0 12px; font-size: 15px; color: var(--text-main);">🤝 Менеджер не назначен</h4>
-                `;
+                subview.innerHTML = head('Менеджер пока не назначен') +
+                    `<div class="lk-empty">Поставщиков в вашем регионе не нашлось. Если вы получили промокод поставщика, введите его в «Профиль → Мои данные».</div>`;
                 return;
             }
 
-            subview.innerHTML = `
-                <h4 style="margin: 0 0 6px; font-size: 15px; color: var(--text-main);">🤝 Выберите вашего менеджера</h4>
-                <p style="font-size: 12px; color: var(--text-sec); margin: 0 0 14px;">${userRegion ? `Поставщики, работающие в регионе «${userRegion}»` : 'Укажите регион в профиле, чтобы видеть только своих поставщиков'}</p>
-                <div style="display:flex; flex-direction:column; gap:8px;">
+            subview.innerHTML = head(userRegion
+                ? `Выберите поставщика, работающего в регионе «${esc(userRegion)}». Позже сменить его можно только через администратора`
+                : 'Укажите регион в «Профиль → Мои данные», чтобы видеть только своих поставщиков. Позже сменить поставщика можно только через администратора') + `
+                <div class="lk-card">
                     ${dists.map(d => `
-                        <div style="border:1px solid var(--border); border-radius:10px; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-                            <div>
-                                <b style="color:var(--text-main); font-size:13px;">${d.company_name}</b><br>
-                                <span style="font-size:11px; color:var(--text-sec);">${d.manager_name || '—'}${d.regions && d.regions.length ? ' · ' + d.regions.join(', ') : ''}</span>
+                        <div class="lk-setting">
+                            <div class="lk-setting-text">
+                                <b>${esc(d.company_name)}</b>
+                                <span>${esc(d.manager_name) || '—'}${d.regions && d.regions.length ? ' · ' + esc(d.regions.join(', ')) : ''}</span>
                             </div>
-                            <button class="auth-btn-base btn-email-submit" style="width:auto; height:32px; padding:0 16px; font-size:12px;" onclick="app.selfAssignDistributor('${d.id}')">Выбрать</button>
+                            <button type="button" class="lk-btn-sm" onclick="app.selfAssignDistributor('${esc(d.id)}')">Выбрать</button>
                         </div>
                     `).join('')}
                 </div>
             `;
         } catch (e) {
-            subview.innerHTML = `<div style="color:#EF4444; font-size:13px;">Ошибка загрузки списка: ${e.message}</div>`;
+            console.warn('[renderDistributorPicker]', e);
+            subview.innerHTML = `<div class="lk-section-head"><div><h4>Мой менеджер</h4></div></div><div class="lk-empty" style="color:#EF4444;">Не удалось загрузить список поставщиков.</div>`;
         }
     },
 
@@ -36700,6 +36695,9 @@ const app = {
         const cs = getComputedStyle(document.body);
         const cv = k => (cs.getPropertyValue('--' + k) || '').trim();
         const dark = document.body.classList.contains('dark-mode');
+        // стороны подключения радиаторов по моделям сметы — трассы окна плана
+        // подходят к приборам так же, как в смете и КП
+        try { localStorage.setItem('heatcalc_rad_conn', JSON.stringify(this.radConnMap())); } catch (e) { }
         try {
             localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
                 dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
@@ -36958,7 +36956,7 @@ const app = {
         try { heat = this.buildHeatLossData() || []; } catch (e) { heat = []; }
         // Радиаторы с трассами — когда они есть в смете; схема разводки — та же,
         // что выбрана в смете (тройниковая или лучевая от коллектора)
-        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee' };
+        const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee', connMap: this.radConnMap() };
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -36983,18 +36981,39 @@ const app = {
      * null — плана с радиаторами нет: смета считает по-старому, формулой.
      * Схема (лучевая/тройниковая) — та же, что в смете.
      */
+    /**
+     * Сторона подключения радиаторов по комнатам — для трасс на плане:
+     * { 'гостиная': 'R' | 'L' | 'C' | 'S' }. Берётся из приборов, подобранных
+     * сметой (radDevices): нижнее подключение — правое, если в названии модели
+     * не сказано «левостороннее» или «центральное»; боковое — 'S'. Замена
+     * прибора в смете меняет и сторону на плане. Комната с разными приборами —
+     * по первому.
+     */
+    radConnMap: function () {
+        const PP = window.projectPlans, map = {};
+        if (!PP || !PP.radSideOfModel) return map;
+        (this.radDevices || []).forEach(d => {
+            if (!d || d.kind !== 'rad') return;
+            const k = String(d.room || '').trim().toLowerCase();
+            if (k && !map[k]) map[k] = PP.radSideOfModel(d.name, d.bottom);
+        });
+        return map;
+    },
+
     radPlanRuns: function () {
         const PP = window.projectPlans, plans = this.currentPlans();
         if (!PP || !PP.radRoutes || !plans || !Array.isArray(plans.floors)) return null;
         const s = this.state, tee = s.radConnectionScheme === 'tee';
-        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1);
+        const connMap = this.radConnMap();
+        const key = (this._plansRev || 0) + '|' + tee + '|' + (s.ufhStep1 || 150) + '|' + (s.ufhStep2 || 150) + '|' + (s.floors || 1) +
+            '|' + JSON.stringify(connMap);
         if (this._radPlanCache && this._radPlanCache.key === key) return this._radPlanCache.val;
         const runs = [], byRoom = {};
         let trunk = 0, floorsWith = 0, maxRun = 0, maxRoom = '';
         plans.floors.forEach((f, fi) => {
             if (!f || !f.pxPerM || !(f.rads || []).length || fi > 1 || (fi === 1 && s.floors !== 2)) return;
             let R = null;
-            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee); } catch (e) { R = null; }
+            try { R = PP.radRoutes(f, fi === 1 ? (s.ufhStep2 || 150) : (s.ufhStep1 || 150), tee, connMap); } catch (e) { R = null; }
             if (!R || !R.items.length) return;
             floorsWith++;
             trunk += R.totalM / 2;
@@ -75535,7 +75554,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + _radQty; }
                         }
                     });
