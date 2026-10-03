@@ -72938,6 +72938,11 @@ const app = {
                     let qUdeUfh = this.ufhQudForRoom(ufhStepVal, roomLoss.Tv, roomLoss.tKind);
 
                     let qUfhMax = this.roomTpArea(r) * qUdeUfh; // Физический предел тепловой мощности теплого пола в этой комнате
+                    // Пол греет там, где лежит труба. Есть раскладка плана — отдача с площади
+                    // под трубой (100 мм у стен, подводки, места «без обогрева» — без неё),
+                    // иначе радиатор рядом с полом недобирал бы эту разницу.
+                    const _laidA = roomHasTp ? this.ufhLaidArea(r, ufhStepVal) : null;
+                    const qUfhGive = _laidA > 0 ? Math.min(qUfhMax, _laidA * qUdeUfh) : qUfhMax;
 
                     // Паспортная мощность прибора дана при ΔT = 50 K: средняя температура воды
                     // 70 °C (80/60 и 75/65) при воздухе +20 °C. Ниже вода (70/55, 55/45) или теплее
@@ -73001,7 +73006,7 @@ const app = {
 
                         if (roomHasTp && roomHasRad) {
                             // Совместный режим: радиатор покрывает только дефицит мощности пола
-                            let portionUfh = qUfhMax / spots.length; // доля мощности пола на это место
+                            let portionUfh = qUfhGive / spots.length; // доля мощности пола на это место
                             let deficit = totalWindowLoss - portionUfh;
                             let minSanitary = (r.area * 30) / spots.length; // минимум 30 Вт/м² на окно для отсечки сквозняков по СНиП
                             wLoad = Math.max(deficit, minSanitary);
@@ -73480,8 +73485,8 @@ const app = {
                     app._roomBalance[r.id] = {
                         q: Math.round(roomLoss.Q_sum),
                         fact: Math.round(roomFactPowerSum),
-                        ufh: roomHasTp ? Math.round(Math.min(qUfhMax, roomLoss.Q_sum)) : 0,
-                        ufhMax: roomHasTp ? Math.round(qUfhMax) : 0,
+                        ufh: roomHasTp ? Math.round(Math.min(qUfhGive, roomLoss.Q_sum)) : 0,
+                        ufhMax: roomHasTp ? Math.round(qUfhGive) : 0,
                         hasTp: roomHasTp, hasRad: roomHasRad
                     };
                     if ((roomHasRad) && roomFactPowerSum > 0 && Math.round(roomDemandSum) > roomFactPowerSum) {
