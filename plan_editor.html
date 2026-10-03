@@ -172,7 +172,34 @@
   html.ufh .ufh-only { display: inline-block; }
   html.ufh #b_fixauto, html.ufh #b_wc,
   html.ufh #wctype, html.ufh #ztype, html.ufh #northsel, html.ufh #b_alltools,
-  html.ufh #b_sheets { display: none !important; }
+  html.ufh #b_sheets, html.ufh #b_hints { display: none !important; }
+  /* Мастер раскладки: в шапке только этажи, масштаб экрана, «Шаг назад» и
+     «Ещё ▾»; инструменты шага — в строке мастера под шапкой. «Ещё» (html.more)
+     возвращает шапку целиком. */
+  html.ufh:not(.more) .bar > :not(.ufh-keep) { display: none !important; }
+  .steps.wz { display: block; padding: 9px 12px 10px; font-size: 13px; }
+  .wz-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .wz-st { padding: 4px 11px 4px 5px; border-radius: 15px; border: 1px solid var(--border-soft);
+           color: var(--text-sec); cursor: pointer; white-space: nowrap; font-weight: 500; }
+  .wz-st .n { display: inline-block; min-width: 19px; height: 19px; line-height: 19px; text-align: center;
+              border-radius: 10px; background: #4a4a4a; color: #fff; font-size: 11px; margin-right: 6px; }
+  .wz-st.done { color: #7ec95a; }
+  .wz-st.done .n { background: #3f7a2a; }
+  .wz-st.cur { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; cursor: default; }
+  .wz-st.cur .n { background: #fff; color: var(--primary); }
+  .wz-st.off { opacity: .45; cursor: default; }
+  .wz-ar { color: #6a6a6a; }
+  .wz-do { margin-top: 8px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .wz-do .tx { flex: 1 1 360px; color: var(--text-main); font-size: 13.5px; line-height: 1.45; }
+  .wz-do .tx b { color: #fff; }
+  .wz-do button.go { font-size: 13.5px; padding: 6px 16px; }
+  .wz-up { margin-top: 6px; font-size: 12px; color: #d8b26a; }
+  .wz-up.bad { color: var(--warn-text); }
+  .wz-up b { cursor: pointer; text-decoration: underline; }
+  /* список комнат мастера: галочка «тёплый пол» прямо в строке */
+  .zone .tpchk { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-sec);
+                 cursor: pointer; white-space: nowrap; }
+  .zone .tpchk input { margin: 0; cursor: pointer; }
   /* выбор имени комнаты при отметке тёплого пола */
   .namepick { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 60;
               display: flex; align-items: center; justify-content: center; }
@@ -196,9 +223,9 @@
 
 <div class="topbar">
 <div class="bar">
-  <b>Планы этажей</b>
-  <span id="tabs"></span>
-  <button class="ghost" onclick="addFloor()">+ этаж</button>
+  <b class="ufh-keep">Планы этажей</b>
+  <span id="tabs" class="ufh-keep"></span>
+  <button class="ghost ufh-keep" onclick="addFloor()">+ этаж</button>
   <span style="flex:1"></span>
   <label class="ghost" id="b_upload" style="padding:6px 12px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer">
     Загрузить план <input type="file" multiple accept="image/*,.pdf,application/pdf" style="display:none" onchange="loadImage(this)">
@@ -232,6 +259,7 @@
     <option value="boiler">Котельная</option>
     <option value="wc">Санузел</option>
     <option value="cold" title="Лестница, колонна, ванна, встроенный шкаф: петли тёплого пола и подводки обходят это место">Без обогрева</option>
+    <option value="room" class="ufh-only">Помещение</option>
   </select>
   <select id="northsel" onchange="setNorth(this.value)" title="Куда на этом плане смотрит север. По нему расчёт сам определяет, на какую сторону выходит каждая комната: на север и восток теплопотери выше.">
     <option value="">Север: не указан</option>
@@ -244,17 +272,22 @@
     <option value="270">Север: ← влево</option>
     <option value="315">Север: ↖ вверх-влево</option>
   </select>
-  <span class="zoombox" title="Масштаб подложки на экране. На расчёт не влияет — только на то, как крупно виден план.">
+  <span class="zoombox ufh-keep" title="Масштаб подложки на экране. На расчёт не влияет — только на то, как крупно виден план.">
     <button onclick="zoomStep(-1)">−</button>
     <span class="val" id="zoom_val" onclick="setZoom(1)" title="Вернуть 100 %">100 %</span>
     <button onclick="zoomStep(1)">+</button>
   </span>
   <button id="b_darkplan" class="on" onclick="toggleDarkPlan()" title="Тёмный вид подложки: чертёж светлыми линиями по тёмному, как в САПР. Для фотографии плана удобнее выключить и смотреть оригинал.">◐ Тёмный план</button>
-  <button class="ghost" onclick="doUndo()" title="Ctrl+Z">↶ Шаг назад</button>
+  <button class="ghost ufh-keep" onclick="doUndo()" title="Ctrl+Z">↶ Шаг назад</button>
   <button onclick="saveAll()" id="b_save" style="background:var(--ok);color:#fff;border-color:var(--ok)">Сохранить</button>
   <button class="ghost" id="b_sheets" onclick="openSheets()" title="Комплект собирается по смете калькулятора вместе с планами">Проект →</button>
   <button class="ghost" id="b_alltools" onclick="toggleAllTools()" title="Показать все инструменты сразу, а не только нужные текущему шагу">Все инструменты</button>
   <button class="ghost" id="b_hints" onclick="toggleHints()">💡 Подсказки: вкл</button>
+  <!-- мастер раскладки: остальные инструменты — под «Ещё», полный редактор — «Листы проекта» -->
+  <button class="ghost ufh-only ufh-keep" id="b_sheets_ufh" onclick="ufhSheets()" style="display:none"
+    title="Полный редактор проектирования: санузлы, котельная, север — и комплект листов проекта">Листы проекта ↗</button>
+  <button class="ghost ufh-only ufh-keep" id="b_more" onclick="toggleAllTools()"
+    title="Все инструменты редактора: масштаб вручную, контуры, тёмный план">Ещё ▾</button>
 </div>
 <div class="steps" id="steps"></div>
 </div>
@@ -560,7 +593,9 @@ function setMode(m) {
   ['scale', 'room', 'rect', 'poly', 'rad', 'coll', 'wc'].forEach(function (k) {
     document.getElementById('b_' + k).className = (mode === k) ? 'on' : '';
   });
-  hint(mode === 'scale' ? 'Кликните две точки известного отрезка (стена, дверь 0.9 м…)'
+  // в мастере раскладки «что делать» говорит строка шага, а справа остаётся
+  // итог последнего действия («найдено комнат: 6») — режим его не стирает
+  if (!UFH) hint(mode === 'scale' ? 'Кликните две точки известного отрезка (стена, дверь 0.9 м…)'
     : mode === 'room' ? 'Кликните внутри комнаты — контур найдётся по стенам.'
     : mode === 'rect' ? 'Растяните прямоугольник по комнате мышью — края прилипнут к стенам.'
     : mode === 'poly' ? 'Кликайте углы контура; двойной клик — замкнуть.'
@@ -571,7 +606,11 @@ function setMode(m) {
   draw();
 }
 function hint(s) {
-  document.getElementById('hint').innerHTML = s ||
+  var el = document.getElementById('hint');
+  // В мастере раскладки инструкция шага — в строке под шапкой; справа только
+  // результаты действий («найдено комнат: 6»), пустое — не показываем.
+  if (UFH) { el.innerHTML = s || ''; el.style.display = s ? '' : 'none'; return; }
+  el.innerHTML = s ||
     'Загрузите фото или скан плана этажа, затем задайте масштаб: кнопка «Масштаб» → две точки на плане → длина отрезка в метрах.';
 }
 
@@ -647,6 +686,7 @@ function applyPlanCanvas(c) {
   // имя появится заново после «Сохранить».
   f.imgFile = null;
   f.w = c.width; f.h = c.height; f.pxPerM = 0; f.zones = []; delete f.roomMask;
+  if (UFH) { f.rads = []; delete f.coll; wzFresh[cur] = 1; }   // новый план — разметка с нуля
   delete imgFailed[cur];
   delete maskCache[cur];
   delete winCache[cur];
@@ -2085,13 +2125,9 @@ function autoMarkAll() {
     var done = zones + rads + colls;
     if (bad.length) heroOff = true;   // что-то осталось руками — открываем шапку
     if (UFH) {
-      hint(!F().pxPerM
-        ? '<b>Масштаб не подобрался сам</b> — на плане нет размеров, а комнат в расчёте мало для подбора. ' +
-          'Нажмите «Масштаб», кликните две точки на плане (например, концы стены или края дверного проёма) ' +
-          'и впишите длину между ними в метрах. Потом — «Распознать комнаты».'
-        : '<span class=ok>Комнат найдено: ' + zones + '.</span> ' +
-          (bad.length ? '<b>Осталось руками:</b> ' + bad.join('; ') + '. ' : '') +
-          'Кликните по комнатам, где нужен тёплый пол, — и «Готово».');
+      // что делать дальше, скажет строка мастера; здесь — только итог
+      hint(F().pxPerM ? '<span class=ok>Найдено комнат: ' + zones + (rads ? ', радиаторов под окнами: ' + rads : '') + '.</span>' +
+        (bad.length ? ' <b>Осталось руками:</b> ' + bad.join('; ') + '.' : '') : '');
       return;
     }
     hint((done
@@ -2239,11 +2275,10 @@ function autoRooms() {
     .map(function (k) { return NAMES[k] + ' ' + cnt[k]; });
   if (UFH) {
     if (!F().coll) ufhAutoColl(F());   // тёплый пол из расчёта — коллектор сразу
-    renderZones(); if (mode !== 'room') setMode('room'); else draw();
+    // режим на плане ведёт мастер (wzGo): на шаге «Комнаты» клик не должен включать тёплый пол
+    renderZones(); draw();
     hint('<span class=ok>Найдено комнат: ' + rooms.length + '.</span> ' +
-      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '. ' : '') +
-      'Кликните по комнатам, где нужен тёплый пол; повторный клик убирает его. ' +
-      'Комната не нашлась — «Иначе ▾» и обведите рамкой.');
+      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : ''));
     return;
   }
   hint('<span class=ok>Найдено комнат: ' + rooms.length + ', создано зон: ' +
@@ -2379,35 +2414,29 @@ function loadPdfPlan(file, done) {
   hint('Читаю PDF…');
   var rd = new FileReader();
   rd.onload = function () {
+    var pdfDoc = null;
     loadPdfJs().then(function (pdfjs) {
       return pdfjs.getDocument({ data: rd.result }).promise;
     }).then(function (pdf) {
-      var pno = 1;
-      if (pdf.numPages > 1) {
-        pno = parseInt(prompt('В PDF «' + file.name + '» ' + pdf.numPages +
-          ' стр. Какая страница с планом?', '1'), 10);
-        if (!(pno >= 1 && pno <= pdf.numPages)) pno = 1;
-      }
-      return pdf.getPage(pno);
-    }).then(function (page) {
-      var vp1 = page.getViewport({ scale: 1 });
-      var k = Math.min(4, 1600 / Math.max(vp1.width, vp1.height));
-      var vp = page.getViewport({ scale: k });
-      var c = document.createElement('canvas');
-      c.width = Math.round(vp.width); c.height = Math.round(vp.height);
-      var g = c.getContext('2d');
-      g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);  // PDF бывает прозрачным
-      // Размерные числа читаем ДО applyPlanCanvas: он сам зовёт автоподбор
-      // масштаба, и к этому моменту размеры уже должны быть под рукой.
-      var fi = cur;
-      return page.getTextContent().then(function (tc) {
-        PDF_DIMS[fi] = textItemsPx(tc, vp);
-      }, function () { PDF_DIMS[fi] = null; }).then(function () {
-        return page.render({ canvasContext: g, viewport: vp }).promise;
-      }).then(function () {
-        applyPlanCanvas(c);
-        if (done) done();
+      pdfDoc = pdf;
+      return pdf.numPages > 1 ? pickPdfPages(file, pdf.numPages) : [1];
+    }).then(function (pages) {
+      // Первая страница — в текущий этаж, каждая следующая — в новый
+      var chain = Promise.resolve();
+      pages.forEach(function (pno, k) {
+        chain = chain.then(function () {
+          if (k > 0) {
+            undoStack.push({ t: 'floorAdd' });
+            DATA.floors.push({ img: null, w: 0, h: 0, pxPerM: 0, zones: [], rads: [] });
+            cur = DATA.floors.length - 1;
+            renderTabs();
+          }
+          return pdfDoc.getPage(pno).then(renderPdfPage);
+        });
       });
+      return chain;
+    }).then(function () {
+      if (done) done();
     }).catch(function (e) {
       console.error('[plan_editor] pdf:', e);
       hint('');
@@ -2417,6 +2446,62 @@ function loadPdfPlan(file, done) {
     });
   };
   rd.readAsArrayBuffer(file);
+}
+
+/**
+ * Несколько страниц в PDF: этажи это или нужна одна. Раньше спрашивали только
+ * номер страницы, а в мастере каждая страница молча становилась этажом —
+ * лишние «2 этаж», «3 этаж» путали (03.10.2026). Резолвит список страниц.
+ */
+function pickPdfPages(file, n) {
+  var ask = function () {
+    var p = parseInt(prompt('В PDF «' + file.name + '» ' + n + ' стр. Какая страница с планом?', '1'), 10);
+    return [(p >= 1 && p <= n) ? p : 1];
+  };
+  if (!UFH) return Promise.resolve(ask());
+  return new Promise(function (res) {
+    var div = document.createElement('div'); div.className = 'namepick';
+    var all = [];
+    for (var i = 1; i <= n; i++) all.push(i);
+    var word = n % 10 === 1 && n % 100 !== 11 ? 'страница' : (n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20)) ? 'страницы' : 'страниц';
+    var fl = n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 10 || n % 100 >= 20) ? 'этажа' : 'этажей';
+    div.innerHTML = '<div class="box"><h3>В файле ' + n + ' ' + word + '</h3>' +
+      '<div class="sub">Это план нескольких этажей — по странице на этаж — или нужна одна страница?' +
+      (n > 2 ? ' Калькулятор считает два этажа.' : '') + '</div>' +
+      '<div class="grid" style="flex-direction:column;align-items:stretch">' +
+      (n <= 4 ? '<button class="calc" data-a="all">Это ' + n + ' ' + fl + ' — по странице на этаж</button>' : '') +
+      '<button data-a="one">Только первая страница</button>' +
+      '<button data-a="pick">Другая страница…</button></div></div>';
+    div.onclick = function (e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      if (!b) return;
+      var a = b.getAttribute('data-a');
+      div.remove();
+      res(a === 'all' ? all : a === 'pick' ? ask() : [1]);
+    };
+    document.body.appendChild(div);
+  });
+}
+
+/** Страница PDF → подложка текущего этажа (с размерными числами для масштаба). */
+function renderPdfPage(page) {
+  var vp1 = page.getViewport({ scale: 1 });
+  var k = Math.min(4, 1600 / Math.max(vp1.width, vp1.height));
+  var vp = page.getViewport({ scale: k });
+  var c = document.createElement('canvas');
+  c.width = Math.round(vp.width); c.height = Math.round(vp.height);
+  var g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);  // PDF бывает прозрачным
+  // Размерные числа читаем ДО applyPlanCanvas: он сам зовёт автоподбор
+  // масштаба, и к этому моменту размеры уже должны быть под рукой.
+  var fi = cur;
+  return page.getTextContent().then(function (tc) {
+    PDF_DIMS[fi] = textItemsPx(tc, vp);
+  }, function () { PDF_DIMS[fi] = null; }).then(function () {
+    return page.render({ canvasContext: g, viewport: vp }).promise;
+  }).then(function () {
+    applyPlanCanvas(c);
+  });
 }
 
 /** Один файл (картинка или PDF) → подложка ТЕКУЩЕГО этажа; резолв по готовности */
@@ -2465,6 +2550,8 @@ function loadImage(inp) {
       return loadOne(file);
     });
   });
+  // мастер раскладки: после загрузки — масштаб, комнаты и радиаторы сами
+  if (UFH) { chain.then(wzAfterLoad); return; }
   if (files.length > 1) chain.then(function () {
     // Масштаб на каждом этаже подбирается сам; напоминаем только про те,
     // где не вышло, — иначе подсказка гонит делать уже сделанное.
@@ -3463,13 +3550,95 @@ function addZone(pts) {
   if (UFH) {
     // раскладка: обвели место без обогрева — назад к клику по комнатам;
     // обвели комнату рамкой — это тёплый пол, спросим имя
+    // На шаге «Комнаты» рамка обводит комнату без тёплого пола (тип «Помещение»)
     if (type === 'cold') { document.getElementById('ztype').value = 'tp'; setMode('room'); }
-    else { if (!F().coll) ufhAutoColl(F()); ufhAskName(nz); }
+    else { if (type === 'tp' && !F().coll) ufhAutoColl(F()); ufhAskName(nz); }
   }
+}
+
+/**
+ * Галочка «тёплый пол» в списке комнат мастера — то же, что клик по комнате
+ * на плане (ufhToggle), только без поиска комнаты по точке.
+ */
+function ufhSetTp(z, on) {
+  var f = F(), zs = f.zones, key = JSON.stringify(z.pts);
+  var copy = null;
+  zs.forEach(function (q) { if (q !== z && q.type === 'tp' && JSON.stringify(q.pts) === key) copy = q; });
+  pushUndo('zones');
+  if (on) {
+    if (z.type === 'room') z.type = 'tp';
+    else if (z.type !== 'tp' && !copy) zs.push({ type: 'tp', name: z.name, roomId: z.roomId, pts: JSON.parse(JSON.stringify(z.pts)) });
+    if (!f.coll) ufhAutoColl(f);
+  } else if (copy) zs.splice(zs.indexOf(copy), 1);
+  else if (z.type === 'tp') z.type = 'room';
+  renderZones(); draw();
+}
+
+/** Список комнат мастера: галочка «тёплый пол», имя с подсказками, площадь, ✕. */
+function renderZonesUfh(box) {
+  var f = F();
+  f.zones.forEach(function (z, i) {
+    if (isTpCopy(f, z)) return;                       // вторая зона той же комнаты — одной строкой
+    var d = document.createElement('div'); d.className = 'zone';
+    var cold = z.type === 'cold';
+    var key = JSON.stringify(z.pts);
+    var tpOn = z.type === 'tp' || f.zones.some(function (q) { return q !== z && q.type === 'tp' && JSON.stringify(q.pts) === key; });
+    var sw = document.createElement('span'); sw.className = 'sw';
+    sw.style.background = cold ? TYPES.cold[1] : tpOn ? TYPES.tp[1] : TYPES.room[1];
+    d.appendChild(sw);
+    if (cold) {
+      var lb = document.createElement('span'); lb.className = 'zt'; lb.textContent = 'Без обогрева';
+      lb.style.flex = '1 1 auto'; d.appendChild(lb);
+    } else {
+      var ch = document.createElement('label'); ch.className = 'tpchk';
+      ch.title = 'Тёплый пол в этой комнате';
+      var cb = document.createElement('input'); cb.type = 'checkbox'; cb.checked = tpOn;
+      cb.onchange = function () { ufhSetTp(z, cb.checked); };
+      ch.appendChild(cb); ch.appendChild(document.createTextNode('ТП'));
+      d.appendChild(ch);
+      var inp = document.createElement('input'); inp.type = 'text';
+      inp.placeholder = 'название комнаты'; inp.value = z.name || '';
+      inp.setAttribute('list', 'ufhNames');
+      inp.oninput = function () {
+        // имя одно на комнату: у санузла с тёплым полом — и у второй зоны
+        f.zones.forEach(function (q) { if (q === z || JSON.stringify(q.pts) === key) { q.name = inp.value; q.roomId = roomIdByName(inp.value); } });
+        draw();
+      };
+      d.appendChild(inp);
+    }
+    var ar = document.createElement('span'); ar.className = 'ar';
+    ar.textContent = area(z.pts).toFixed(1).replace('.', ',') + ' м²';
+    d.appendChild(ar);
+    var del = document.createElement('span'); del.className = 'del'; del.textContent = '✕';
+    del.title = 'Убрать';
+    del.onclick = function () {
+      pushUndo('zones');
+      for (var k = f.zones.length - 1; k >= 0; k--)
+        if (f.zones[k] === z || (!cold && f.zones[k].type !== 'cold' && JSON.stringify(f.zones[k].pts) === key)) f.zones.splice(k, 1);
+      renderZones(); draw();
+    };
+    d.appendChild(del);
+    box.appendChild(d);
+  });
+  if (!f.zones.length) {
+    var em = document.createElement('div'); em.className = 'pempty';
+    em.textContent = f.img ? (f.pxPerM ? 'Комнаты ещё не найдены' : 'Сначала масштаб') : 'Загрузите план этажа';
+    box.appendChild(em);
+  }
+  var rc = (f.rads || []).length;
+  if (rc) {
+    var rd = document.createElement('div'); rd.className = 'zone';
+    rd.innerHTML = '<span class="sw" style="background:#d22222"></span><span class="zt">Радиаторы</span>' +
+      '<span style="flex:1 1 auto"></span><span class="ar">' + rc + ' шт.</span>';
+    box.appendChild(rd);
+  }
+  var sum = document.getElementById('zsummary');
+  if (sum) sum.innerHTML = '';
 }
 
 function renderZones() {
   var box = document.getElementById('zlist'); box.innerHTML = '';
+  if (UFH) { renderZonesUfh(box); return; }
   F().zones.forEach(function (z, i) {
     var d = document.createElement('div'); d.className = 'zone';
     var sw = document.createElement('span'); sw.className = 'sw';
@@ -3828,7 +3997,7 @@ function ufhToggle(p) {
   if (!f.coll) ufhAutoColl(f);
   renderZones(); draw();
   if (!z.name) ufhAskName(z);
-  else hint('<span class=ok>Тёплый пол в «' + z.name + '».</span> Кликните следующую комнату или жмите «Готово».');
+  else hint('<span class=ok>Тёплый пол в «' + z.name + '».</span> Кликните следующую комнату или жмите «Дальше».');
 }
 
 /** «Без обогрева»: рамкой обвести лестницу, ванну, остров внутри комнаты. */
@@ -3913,8 +4082,10 @@ function ufhAskName(z) {
     div.remove();
     if (nm) { z.name = nm; z.roomId = roomIdByName(nm); }
     renderZones(); draw();
-    hint(z.name ? '<span class=ok>Тёплый пол в «' + z.name + '».</span> Кликните следующую комнату или жмите «Готово».'
-      : 'Комната без имени: в расчёт она добавится как «Помещение». Имя можно вписать в списке справа.');
+    var tpz = z.type === 'tp';
+    hint(!z.name ? 'Комната без имени: в расчёт она добавится как «Помещение». Имя можно вписать в списке справа.'
+      : tpz ? '<span class=ok>Тёплый пол в «' + z.name + '».</span> Кликните следующую комнату или жмите «Дальше».'
+      : '<span class=ok>Комната «' + z.name + '» добавлена.</span>');
   };
   div.onclick = function (e) {
     var b = e.target.closest ? e.target.closest('button') : null;
@@ -3956,13 +4127,236 @@ function ufhDone() {
   })();
 }
 
-/** Сказать калькулятору (окно-родитель), что разметка сохранена. */
+/**
+ * Сказать калькулятору (окно-родитель), что разметка сохранена. Вместе с
+ * этим — итог мастера одной строкой: калькулятор покажет его в строке
+ * «План дома», чтобы было видно, что изменилось.
+ */
 function ufhPost(done) {
   try {
     if (window.parent && window.parent !== window)
-      window.parent.postMessage({ type: 'hc-ufhplan', done: !!done }, location.origin);
+      window.parent.postMessage({ type: 'hc-ufhplan', done: !!done, sum: wzSummary().plain }, location.origin);
     else if (done) hint('<span class=ok>Сохранено.</span> Вернитесь в калькулятор — раскладка появится в смете.');
   } catch (e) {}
+}
+
+/**
+ * «Листы проекта ↗»: сохранить и открыть полный редактор проектирования.
+ * Вкладку открываем сразу по нажатию — после ожидания отправки на сервер
+ * браузер счёл бы её всплывающим окном и не открыл. Разметка к этому
+ * моменту уже в браузере (saveAll), полный редактор читает её оттуда.
+ */
+function ufhSheets() {
+  saveAll();
+  window.open('plan_editor.html', '_blank');
+  ufhDone();
+}
+
+// ═══ Мастер раскладки ═══════════════════════════════════════════════════
+// Монтажник видел два десятка кнопок и мелкую полоску шагов, а что делать
+// дальше — не понимал (03.10.2026). Теперь: крупные шаги с номерами, под
+// ними одна фраза «что сделать сейчас», кнопки только этого шага и зелёная
+// «Дальше →». Масштаб — шагом, только если не подобрался сам. Остальные
+// инструменты — под «Ещё ▾».
+
+var wzStep = null;    // шаг, на который перешли кнопкой «Дальше» или кликом
+var wzAuto = {};      // этажи, где комнаты уже искали сами (второй раз не ищем)
+
+/** Радиаторы нужны, если в расчёте они есть хоть в одной комнате этажа (или комнат нет вовсе). */
+function wzWantRad() {
+  var here = calcRooms.filter(function (r) { return (+r.floor || 1) === cur + 1; });
+  return !here.length || here.some(function (r) { return (r.sys || []).indexOf('rad') >= 0; });
+}
+
+/** Зона «Тёплый пол» поверх санузла или котельной — второй контур той же комнаты. */
+function isTpCopy(f, z) {
+  if (z.type !== 'tp') return false;
+  var key = JSON.stringify(z.pts);
+  return (f.zones || []).some(function (q) {
+    return q !== z && q.type !== 'tp' && q.type !== 'cold' && JSON.stringify(q.pts) === key;
+  });
+}
+
+function wzSteps() {
+  var f = F();
+  var L = [{ id: 'plan', t: 'План', ok: !!f.img }];
+  if (f.img && !f.pxPerM) L.push({ id: 'scale', t: 'Масштаб', ok: false });
+  L.push({ id: 'rooms', t: 'Комнаты', ok: f.zones.some(function (z) { return z.type !== 'cold'; }) });
+  L.push({ id: 'tp', t: 'Тёплый пол', ok: f.zones.some(function (z) { return z.type === 'tp'; }) });
+  if (wzWantRad()) L.push({ id: 'rad', t: 'Радиаторы', ok: (f.rads || []).length > 0 });
+  L.push({ id: 'done', t: 'Готово', ok: false });
+  return L;
+}
+
+/** Текущий шаг: без плана — «План», без масштаба — «Масштаб», дальше — выбранный или первый несделанный. */
+function wzCur(L) {
+  var f = F();
+  if (!f.img) return 'plan';
+  if (!f.pxPerM) return 'scale';
+  var ids = L.map(function (s) { return s.id; });
+  if (wzStep && ids.indexOf(wzStep) >= 0 && wzStep !== 'plan' && wzStep !== 'scale') return wzStep;
+  for (var i = 0; i < L.length; i++) if (!L[i].ok) return L[i].id;
+  return 'done';
+}
+
+var WZ_MODE = { rooms: 'select', tp: 'room', rad: 'rad', done: 'select' };
+
+/** Перейти на шаг: включить его режим на плане. */
+function wzGo(id) {
+  if (id === 'plan') {
+    var inp = document.querySelector('#b_upload input');
+    if (inp) inp.click();
+    return;
+  }
+  if (id === 'scale') { wzStep = null; if (mode !== 'scale') setMode('scale'); updateGuide(); return; }
+  wzStep = id;
+  if (id === 'tp') document.getElementById('ztype').value = 'tp';
+  var m = WZ_MODE[id] || 'select';
+  if (F().pxPerM && m !== mode) setMode(m === 'select' ? mode : m);   // setMode(тот же) — выключить в «select»
+  if (id === 'rooms' && F().pxPerM && !F().zones.some(function (z) { return z.type !== 'cold'; })) autoRooms();
+  if (id === 'done') hint('');      // итог — в строке шага, прошлые пояснения справа уже ни к чему
+  draw();
+}
+
+function wzNext() {
+  var L = wzSteps(), c = wzCur(L), ids = L.map(function (s) { return s.id; }), i = ids.indexOf(c);
+  if (c === 'done') { ufhDone(); return; }
+  if (i >= 0 && i + 1 < L.length) wzGo(ids[i + 1]);
+}
+
+/** «Обвести рамкой» на шаге «Комнаты»: контур комнаты без тёплого пола. */
+function wzRect() {
+  document.getElementById('ztype').value = 'room';
+  if (mode !== 'rect') setMode('rect');
+}
+
+/**
+ * После загрузки плана: масштаб, комнаты, радиаторы, коллектор — сами, и
+ * сразу «Комнаты». Размечаем только новые подложки (wzFresh): на старых
+ * этажах «Под окна» вернул бы радиаторы, которые монтажник убрал руками.
+ */
+var wzFresh = {};
+function wzAfterLoad() {
+  var fresh = Object.keys(wzFresh).map(Number);
+  wzFresh = {};
+  if (!F().img || !fresh.length) return;
+  // этаж без масштаба искать не по чему — комнаты найдутся, когда его зададут (wzRender)
+  fresh.forEach(function (i) { if (DATA.floors[i].pxPerM) wzAuto[i] = 1; });
+  var all = DATA.floors.every(function (f, i) { return !f.img || fresh.indexOf(i) >= 0; });
+  if (all) {
+    var p = autoMarkAll();
+    if (p && p.then) p.then(function () { wzGo(F().pxPerM ? 'rooms' : 'scale'); });
+    return;
+  }
+  // новая подложка в доме, где другие этажи уже размечены, — только её этажи
+  var was = cur;
+  fresh.forEach(function (fi) {
+    cur = fi;
+    if (!F().pxPerM) return;
+    autoRooms();
+    if (wzWantRad()) autoRads();
+    if (!F().coll) ufhAutoColl(F());
+  });
+  cur = was;
+  renderTabs(); renderZones();
+  wzGo(F().pxPerM ? 'rooms' : 'scale');
+  saveAll();
+}
+
+/**
+ * Итог по всем этажам: комнаты, тёплый пол (комнаты, петли, метры),
+ * радиаторы. html — для шага «Готово», plain — калькулятору.
+ */
+function wzSummary() {
+  var rooms = 0, tpRooms = 0, loops = 0, m = 0, rads = 0, floors = 0, over = false;
+  DATA.floors.forEach(function (f, fi) {
+    if (!f || !f.img) return;
+    floors++;
+    if (fi > 1) over = true;
+    (f.zones || []).forEach(function (z) {
+      if (z.type === 'cold') return;
+      if (z.type === 'tp') tpRooms++;
+      if (!isTpCopy(f, z)) rooms++;
+    });
+    rads += (f.rads || []).length;
+    if (!f.pxPerM) return;
+    var was = cur, L;
+    cur = fi;
+    try { L = tpLoops(f, UFH_STEP[fi] || 150); } catch (e) { L = {}; }
+    cur = was;
+    Object.keys(L || {}).forEach(function (k) {
+      (L[k] || []).forEach(function (lp) { loops++; m += lp.m || 0; });
+    });
+  });
+  var pl = function (n, a, b, c) { var k = n % 10, h = n % 100; return (k === 1 && h !== 11) ? a : (k >= 2 && k <= 4 && (h < 10 || h >= 20)) ? b : c; };
+  var parts = [rooms + ' ' + pl(rooms, 'комната', 'комнаты', 'комнат')];
+  parts.push(tpRooms ? 'тёплый пол: ' + tpRooms + ' ' + pl(tpRooms, 'комната', 'комнаты', 'комнат') +
+    (loops ? ', ' + loops + ' ' + pl(loops, 'петля', 'петли', 'петель') + ', ' + Math.round(m) + ' м' : '') : 'без тёплого пола');
+  if (rads) parts.push('радиаторов: ' + rads);
+  var plain = parts.join(' · ');
+  return { plain: plain, floors: floors, over: over,
+    html: '<b>Всё готово:</b> ' + plain + (floors > 1 ? ' (этажей: ' + floors + ')' : '') + '. ' +
+      (over ? 'Калькулятор считает два этажа — третий и выше в смету не попадут. ' : '') +
+      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' };
+}
+
+/** Что сказать и какие кнопки показать на шаге. */
+function wzBody(id) {
+  var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
+  if (id === 'plan') return { noNext: true, acts: B("wzGo('plan')", 'Загрузить план', 'go'),
+    tx: 'Загрузите план этажа — фото, скан или PDF. Масштаб и комнаты система найдёт сама.' };
+  if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз'),
+    tx: '<b>Масштаб не подобрался сам</b> — на плане нет размеров. Кликните на плане две точки известного ' +
+      'отрезка (например, края дверного проёма, обычно 0,9 м) и впишите длину между ними в метрах.' };
+  if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B('wzRect()', 'Обвести рамкой'),
+    tx: 'Проверьте комнаты в списке справа и впишите названия — по ним комнаты перейдут в расчёт. ' +
+      'Лишнюю уберите ✕. Комната не нашлась — обведите её рамкой.' };
+  if (id === 'tp') return { acts: B('ufhCold()', 'Без обогрева') + B("setMode('coll')", 'Переставить коллектор'),
+    tx: 'Кликните по комнатам, где нужен тёплый пол, — на плане или галочкой в списке справа. Петли разложатся ' +
+      'сами. Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева».' };
+  if (id === 'rad') return { acts: B('autoRads()', 'Под окна'),
+    tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте ' +
+      'кликом у окна. Трассы к ним построятся сами.' };
+  return { next: 'Готово — в смету', tx: wzSummary().html };
+}
+
+function wzRender(box) {
+  box.className = 'steps wz';
+  var f = F(), L = wzSteps(), c = wzCur(L), ids = L.map(function (s) { return s.id; }), ci = ids.indexOf(c);
+  // Масштаб задали вручную, а комнат ещё нет — ищем их сами, один раз на этаж
+  if (c === 'rooms' && f.pxPerM && !wzAuto[cur] && !f.zones.some(function (z) { return z.type !== 'cold'; })) {
+    wzAuto[cur] = 1;
+    setTimeout(function () {
+      autoRooms();
+      if (wzWantRad() && !(F().rads || []).length) autoRads();
+      var n = F().zones.filter(function (z) { return z.type !== 'cold' && !isTpCopy(F(), z); }).length;
+      var r = (F().rads || []).length;
+      hint(n ? '<span class=ok>Найдено комнат: ' + n + (r ? ', радиаторов под окнами: ' + r : '') + '.</span>'
+        : 'Комнаты по стенам не нашлись — обведите их рамкой.');
+      wzGo('rooms');
+    }, 0);
+  }
+  var h = '<div class="wz-row">';
+  L.forEach(function (s, i) {
+    var reach = s.id === 'plan' || (f.img && (s.id === 'scale' || f.pxPerM));
+    var cls = s.id === c ? 'cur' : (s.ok ? 'done' : '') + (reach ? '' : ' off');
+    if (i) h += '<span class="wz-ar">→</span>';
+    h += '<span class="wz-st ' + cls + '"' + (reach && s.id !== c ? ' onclick="wzGo(\'' + s.id + '\')"' : '') + '>' +
+      '<span class="n">' + (s.ok && s.id !== c ? '✓' : (i + 1)) + '</span>' + s.t + '</span>';
+  });
+  h += '</div>';
+  var b = wzBody(c);
+  h += '<div class="wz-do"><span class="tx"><b>Шаг ' + (ci + 1) + ' из ' + L.length + '.</b> ' + b.tx + '</span>' +
+    (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="wzNext()">' + (b.next || 'Дальше →') + '</button>') + '</div>';
+  if (upState && upState.run) {
+    h += '<div class="wz-up">Отправляю план на сервер: ' + (upState.done + 1) + ' из ' + upState.total +
+      ' — ' + Math.round(upState.pct * 100) + '%</div>';
+  } else if (upState && upState.err) {
+    h += '<div class="wz-up bad">План не ушёл на сервер: ' + upState.err + ' · <b onclick="uploadPending()">повторить</b></div>';
+  }
+  if (h !== stepsHtml) { box.innerHTML = h; stepsHtml = h; }
+  var mb = document.getElementById('b_more');
+  if (mb) mb.textContent = allTools ? 'Ещё ▴' : 'Ещё ▾';
 }
 
 // ─── Пошаговые подсказки (переключаются кнопкой, выбор запоминается) ───
@@ -4212,7 +4606,10 @@ try { allTools = localStorage.getItem('plan_editor_alltools') === '1'; } catch (
 
 function toggleAllTools() {
   allTools = !allTools;
-  try { localStorage.setItem('plan_editor_alltools', allTools ? '1' : '0'); } catch (e) {}
+  // в мастере раскладки «Ещё» — на один раз: выбор не запоминаем, чтобы окно
+  // всегда открывалось простым
+  if (UFH) document.documentElement.classList.toggle('more', allTools);
+  else try { localStorage.setItem('plan_editor_alltools', allTools ? '1' : '0'); } catch (e) {}
   updateGuide();
 }
 
@@ -4342,6 +4739,7 @@ var stepsHtml = '';   // кэш разметки: полоска обновля�
 function renderSteps() {
   var box = document.getElementById('steps');
   if (!box) return;
+  if (UFH) { applyBar(null); wzRender(box); return; }
   var L = stepDefs();
   var act = activeStep(L);
   applyBar(act);
@@ -4381,6 +4779,8 @@ function updateGuide() {
   renderSteps();
   var pulsed = document.querySelectorAll('.pulse');
   for (var i = 0; i < pulsed.length; i++) pulsed[i].classList.remove('pulse');
+  // мастер раскладки говорит «что делать» сам, строкой под шапкой — пузырь не нужен
+  if (UFH) { if (guideEl) guideEl.style.display = 'none'; return; }
   if (!guideEl) {
     guideEl = document.createElement('div');
     guideEl.className = 'guide'; guideEl.style.display = 'none';
@@ -4469,9 +4869,26 @@ if (UFH) (function () {
   var am = document.getElementById('b_automark');
   if (am) { am.textContent = 'Найти комнаты'; am.title = 'Масштаб, комнаты и коллектор — по всем этажам сразу'; }
   document.getElementById('ztype').value = 'tp';
-  // Комнаты уже найдены — сразу режим «клик по комнате»
+  // «Ещё» в мастере не запоминается: окно всегда открывается простым
+  allTools = false;
+  document.documentElement.classList.remove('more');
+  var ph = document.querySelector('.side .phead');
+  if (ph && ph.firstChild) ph.firstChild.textContent = 'Комнаты этажа ';
+  // подсказки названий: комнаты расчёта, затем обычные
+  var dl = document.createElement('datalist'); dl.id = 'ufhNames';
+  roomNames.concat(UFH_NAMES).filter(function (n, i, a) { return a.indexOf(n) === i; }).forEach(function (n) {
+    var o = document.createElement('option'); o.value = n; dl.appendChild(o);
+  });
+  document.body.appendChild(dl);
+  // полный редактор и листы проекта — тем, кому открыто проектирование
+  var design = false;
+  try { design = localStorage.getItem('heatcalc_design_access') === '1'; } catch (e) {}
+  var bs = document.getElementById('b_sheets_ufh');
+  if (bs) bs.style.display = design ? 'inline-block' : 'none';
+  hint('');
+  // План уже размечен — сразу на нужный шаг, с его режимом на плане
   var f = F();
-  if (f && f.pxPerM && (f.zones || []).some(function (z) { return z.type !== 'cold'; })) setMode('room');
+  if (f && f.img && f.pxPerM) wzGo(wzCur(wzSteps()));
 })();
 renderTabs(); draw(); renderZones();
 </script>
