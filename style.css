@@ -19213,6 +19213,132 @@ button.lk-icon-btn:hover { background: var(--primary-light); color: var(--primar
     .lk-price-ctl .lk-icon-btn { margin-left: auto; align-self: flex-end; }
 }
 
+
+
+/* ---------- Шаг A (03.10.2026): переносы при крупном тексте ---------- */
+/* Короткая подпись вкладки — только когда полная не помещается (app.fitMainTabs) */
+.main-view-tabs .tab-short { display: none; }
+.main-view-tabs.tabs-short .tab .tab-long { display: none !important; }
+.main-view-tabs.tabs-short .tab .tab-short { display: inline !important; }
+
+/* «Вариант: подешевле» у тех, у кого есть тумблер «Подешевле», на экране его дублирует.
+   В печати и PDF (он рендерится на экране под html2pdf-printing) пункт остаётся:
+   клиент тумблера не видит. */
+@media screen {
+    .doc-summary .ds-variant-dup { display: none; }
+    body.html2pdf-printing .doc-summary .ds-variant-dup { display: flex !important; }
+}
+
+
+/* ========================================================================
+   Шаг B (03.10.2026): спокойная палитра стандартного оформления
+   ------------------------------------------------------------------------
+   Раньше на экране одновременно жили шесть цветов: красный, синий, оранжевый,
+   бирюзовый, зелёный и голубой — и каждый «что-то значил». Теперь один акцент —
+   цвет бренда (STOUT — тёмно-синий, ROMMER — красный), остальное нейтральное;
+   цветом остаются только статусы. Ничего не завязано на новое имя: подменяется
+   токен --primary и несколько точечных правил для мест с зашитыми цветами
+   (итоги в шапке, плашка «Дешевле на N %», вкладка «Почему дешевле», метка
+   «Гарантия STOUT», плашка «ПРОФИ», шкала заполнения, кнопка «Сохранить»).
+   Темы «Яндекс», «бренд» и «магазин» оформлены отдельно и не затрагиваются.
+   У ROMMER акцент нейтральный графитовый, не красный (владелец 03.10.2026:
+   «слишком красный»; тот же #3E3D40, что у темы бренда ROMMER). Красный остался
+   только у логотипа и у статусов (точка «не сохранено»).
+   ======================================================================== */
+@media screen {
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) { --primary: #203F6F; --primary-light: #EEF3F9; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).dark-mode { --primary: #4A7CC2; --primary-light: #16233A; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer { --primary: #3E3D40; --primary-light: #F1F1F2; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer.dark-mode { --primary: #75757F; --primary-light: #232326; }
+
+    /* Итоги в шапке: цифры одного нейтрального цвета, выделено только «Мне» */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #anim_eq_sum,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #anim_works_sum,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .m-total-eq span,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .m-total-work span { color: var(--text-main); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #hdr_margin_sum { color: var(--primary) !important; }
+
+    /* «Подешевле»: плашка и вкладка одного цвета (связка «плашка ↔ вкладка» осталась),
+       но не зелёные, а в акценте бренда */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) #discount_badge {
+        background: var(--primary-light) !important;
+        color: var(--primary) !important;
+        box-shadow: none !important;
+        border: 1px solid color-mix(in srgb, var(--primary) 30%, transparent);
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper {
+        color: var(--primary);
+        background: var(--primary-light);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent);
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper:hover { color: var(--primary); filter: brightness(0.97); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .tab.tab-cheaper.active { background: var(--primary); color: #fff; box-shadow: none; }
+
+    /* Строка параметров: значения тёмные, а не синие (синее читалось как ссылки) */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary b { color: var(--text-main); }
+
+    /* «Гарантия STOUT»: серая метка, статус говорит только значок */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.ok,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.low {
+        background: var(--surface-light);
+        border-color: var(--border);
+        color: var(--text-sec);
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.ok .ds-stout-ico { color: #16A34A; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .doc-summary .ds-stout.low .ds-stout-ico { color: #D97706; }
+
+    /* «ПРОФИ»: контур акцента вместо оранжевой плашки */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) [style*="linear-gradient(135deg, #F59E0B, #D97706)"] {
+        background: transparent !important;
+        color: var(--primary) !important;
+        border: 1px solid var(--primary);
+        box-shadow: none !important;
+    }
+
+    /* Шкала заполнения: один цвет, отметка без акцента */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .header-fill-bar-fill { background: var(--primary); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .header-fill-bar-marker { color: var(--text-sec); }
+
+    /* «Не сохранено»: красная точка на значке вместо красной рамки со свечением */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .btn-ctrl.btn-unsaved {
+        border-color: var(--border) !important;
+        color: var(--text-sec) !important;
+        box-shadow: none !important;
+        animation: none;
+        position: relative;
+    }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .btn-ctrl.btn-unsaved:hover { background: var(--surface-light) !important; }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .btn-ctrl.btn-unsaved::after {
+        content: '';
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #EF4444;
+    }
+
+    /* Круглая кнопка «Умное заполнение» и пункт «Админка» — в акценте, без фиолетового и зелёного */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .ai-parse-fab { background: var(--primary); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .ai-parse-fab { box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--primary) 40%, transparent); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .ai-parse-fab-glow { background: var(--primary); opacity: 0.35; }
+    /* Заголовки разделов сметы у ROMMER — нейтральным текстом (красный только в заливках) */
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop).mode-rommer .row-sec td { color: var(--text-main); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .lk-rail-admin,
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .lk-rail-admin:hover { color: var(--primary); }
+    body:not(.theme-yandex):not(.theme-brand):not(.theme-shop) .lk-rail-admin:hover { background: var(--primary-light); }
+}
+
+/* Второй шаг сжатия строки параметров (app.fitDocSummary): метка «Гарантия STOUT» — только щит */
+@media screen {
+    .doc-summary.ds-tight .ds-stout-txt { display: none; }
+}
+@media screen {
+    /* Самый тесный режим: чуть мельче и плотнее, чтобы строка гарантированно держалась в линию */
+    .doc-summary.ds-tight { gap: 6px; zoom: 0.94; }
+}
+
 /* === Напоминание «сохранить расчёт» (app.saveReminderShow) === */
 .save-remind-card { max-width: 380px; padding: 28px 26px 18px; gap: 14px; border-radius: 22px; box-shadow: 0 24px 60px -12px rgba(15, 23, 42, 0.35); }
 .save-remind-top { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px; }
