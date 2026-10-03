@@ -26341,7 +26341,7 @@ const app = {
         const ok = t => `<div class="ad-card-note ad-ok">✓ ${t}</div>`;
 
         // Заявки: ждут мастера, и сколько ждут
-        let leadsN = null, leadsBody = '';
+        let leadsN = null, leadsLate = 0, leadsBody = '';
         if (st.leads && st.leads.ok) {
             const asg = id => (this._leadAssign || {})[id] || {};
             const list = (this._leadsData || []).filter(r => !this.isTestLead(r))
@@ -26353,7 +26353,11 @@ const app = {
                     return { r, s, age, late: (s === 'new' && age >= 1) || (s === 'sent' && age >= 2) };
                 })
                 .sort((x, y) => (y.late - x.late) || (y.age - x.age));
-            leadsN = list.filter(x => x.late).length;
+            // Число в углу карточки — все заявки в работе (новые и у мастера); красным оно
+            // становится, только если есть просроченные. Раньше считались одни просроченные,
+            // и свежая заявка лежала в списке при счётчике 0.
+            leadsN = list.length;
+            leadsLate = list.filter(x => x.late).length;
             leadsBody = list.length
                 ? list.slice(0, 5).map(x => row(x.r.name || 'без имени', (x.r.place || '') + (x.r.src && x.r.src !== 'dom' ? ' · ' + x.r.src : ''),
                     (x.s === 'sent' ? 'у мастера ' : 'ждёт ') + (x.age < 1 ? 'меньше суток' : x.age + ' дн.'), x.late ? 'ad-bad' : '')).join('')
@@ -26373,7 +26377,7 @@ const app = {
         const unread = (this._notifications || []).filter(x => !x.isRead).length;
 
         const cards = [
-            card({ title: 'Заявки на монтаж', n: leadsN, urgent: true, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
+            card({ title: 'Заявки на монтаж', n: leadsN, urgent: leadsLate > 0, state: st.leads, body: leadsBody, tab: 'leads', action: 'Открыть заявки' }),
             card({ title: 'Профи заканчивается', n: proRows.length, urgent: true, state: st.pro, body: proBody, tab: 'stats', action: 'Открыть пользователей' }),
             card({ title: 'Замены позиций', n: succN == null ? null : succN, urgent: false, state: st.succ,
                 body: succN ? `<div class="ad-card-note">Новых замен снятых позиций, которые ждут решения: <b>${succN}</b>.</div>` : ok('Новых замен нет'), tab: 'successors', action: 'Открыть замены' }),
