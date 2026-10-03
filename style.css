@@ -9687,6 +9687,7 @@ body.dark-mode .automation-scheme svg {
         break-before: page !important;
     }
     #heat_loss_table_page {
+        page: heat-loss-page !important;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif !important;
         font-size: 10px;
         color: #111;
