@@ -15123,7 +15123,7 @@ const app = {
             if (subs.length > 1) {
                 // Разделы внутри пункта ищем по названию раздела; подпись — в каком пункте он лежит
                 subs.forEach(sb => {
-                    if (tokens.length && !hit(sb.label + ' ' + it.nav + ' ' + it.title)) return;
+                    if (tokens.length && !hit(sb.label + ' ' + it.nav)) return;
                     items.push({ kind: 'section', title: sb.label, sub: it.nav, act: () => this.setProfileTab(sb.id) });
                 });
             } else {
