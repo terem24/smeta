@@ -15054,9 +15054,11 @@ const app = {
         box.innerHTML = head
             + (failed ? '<div class="ad-card-note ad-warn" style="margin-bottom:12px;">Часть данных не загрузилась — список может быть неполным.</div>' : '')
             + `<div class="ad-cards">${cards.join('')}</div>`
+            + `<div class="ad-card lk-home-facts">`
             + (tariff ? `<div class="ad-kv"><span>Тариф</span><b>${esc(tariff)}</b></div>` : '')
             + ((typeof GRM !== 'undefined' && GRM.isEnabled && GRM.isEnabled()) ? `<div class="ad-kv"><span>Баллы, значки и рейтинг</span><button type="button" class="lk-btn-sm" onclick="app.railGo('rating')">Открыть</button></div>` : '')
-            + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`;
+            + `<div class="ad-kv"><span>Сохранённых смет</span><b>${ests.length}${ests.length >= 50 ? '+' : ''}</b></div>`
+            + `</div>`;
         // Список для общего поиска по кабинету — те же свои сметы, второй раз не читаем
         this._cabEstimates = ests;
     },
@@ -18162,19 +18164,28 @@ const app = {
         const swaps = this.installerSettings.swapLog;
         const deletions = this.installerSettings.deletionLog || [];
 
+        // Три блока — свои позиции и две истории — сворачиваются, как группы прайса монтажа:
+        // истории растут без предела и раньше заталкивали нужное далеко вниз.
+        // Открыто по умолчанию только первое; что человек открыл сам, помним (this._wpOpen).
+        const wpOpen = this._wpOpen || (this._wpOpen = {});
+        const grp = (name, n, inner, defOpen) => {
+            const isOpen = wpOpen[name] === undefined ? defOpen : wpOpen[name];
+            return `<details class="lk-group"${isOpen ? ' open' : ''} data-g="${name}" ontoggle="app._wpOpen[this.dataset.g] = this.open"><summary class="lk-subhead">${name} <span class="lk-group-n">${n}</span></summary><div class="lk-group-body">${inner}</div></details>`;
+        };
+
         let html = `
             <div class="lk-section-head">
-                <h4><span class="ui-emo">📦 </span>Своё оборудование</h4>
+                <h4>Своё оборудование</h4>
                 <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.addCustomEqPrompt();">+ Добавить позицию</button>
-            </div>
-            <p class="lk-hint">Позиции, которых нет в каталоге. Клик по строке добавит её в открытую смету.</p>`;
+            </div>`;
 
+        let libHtml = `<p class="lk-hint">Позиции, которых нет в каталоге. Клик по строке добавит её в открытую смету.</p>`;
         if (!lib.length) {
-            html += `<div class="lk-empty">Список пуст. Нажмите «+ Добавить позицию» — она попадёт в смету и останется здесь для следующих смет.</div>`;
+            libHtml += `<div class="lk-empty">Список пуст. Нажмите «+ Добавить позицию» — она попадёт в смету и останется здесь для следующих смет.</div>`;
         } else {
-            html += `<div class="lk-list" style="margin-bottom:18px;">`;
+            libHtml += `<div class="lk-list">`;
             lib.forEach(e => {
-                html += `
+                libHtml += `
                     <div class="lk-row" style="cursor:pointer;" onclick="app.addFromEquipmentLibrary('${e.id}')">
                         <span style="flex:1; min-width:0;">${e.name}</span>
                         <span style="font-weight:700; white-space:nowrap;">${Math.round(e.price).toLocaleString('ru-RU')} ₽</span>
@@ -18182,48 +18193,49 @@ const app = {
                     </div>
                 `;
             });
-            html += `</div>`;
+            libHtml += `</div>`;
         }
+        html += grp('Позиции вне каталога', lib.length, libHtml, true);
 
-        html += `<div class="lk-subhead">История замен</div>`;
-        html += `<p class="lk-hint">Чем вы заменяли позиции в таблице замены — просто история.</p>`;
+        let swHtml = `<p class="lk-hint">Чем вы заменяли позиции в таблице замены — просто история.</p>`;
         if (!swaps.length) {
-            html += `<div class="lk-empty">Пока нет замен оборудования через таблицу замены.</div>`;
+            swHtml += `<div class="lk-empty">Пока нет замен оборудования через таблицу замены.</div>`;
         } else {
-            html += `<div class="lk-list" style="margin-bottom:18px;">`;
+            swHtml += `<div class="lk-list">`;
             swaps.slice(0, 50).forEach(s => {
                 const dateStr = new Date(s.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 // Объект и раздел пишутся с 07.08.2026 — у старых записей их нет
                 const meta = [dateStr, s.projectName, s.section].filter(Boolean)
                     .map(v => String(v).replace(/</g, '&lt;')).join(' · ');
-                html += `
+                swHtml += `
                     <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:10.5px; margin-bottom:2px;">${meta}</div>
+                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${meta}</div>
                         <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${s.fromName}</s> → <b>${s.toName}</b></div>
                     </div>
                 `;
             });
-            html += `</div>`;
+            swHtml += `</div>`;
         }
+        html += grp('История замен', swaps.length, swHtml, false);
 
-        html += `<div class="lk-subhead">История удалений</div>`;
-        html += `<p class="lk-hint">Что вы удаляли из смет — на случай, если нужно вспомнить название.</p>`;
+        let delHtml = `<p class="lk-hint">Что вы удаляли из смет — на случай, если нужно вспомнить название.</p>`;
         if (!deletions.length) {
-            html += `<div class="lk-empty">Пока нет удалённых из сметы позиций.</div>`;
+            delHtml += `<div class="lk-empty">Пока нет удалённых из сметы позиций.</div>`;
         } else {
-            html += `<div class="lk-list">`;
+            delHtml += `<div class="lk-list">`;
             deletions.slice(0, 50).forEach(d => {
                 const dateStr = new Date(d.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const kindLabel = d.kind === 'work' ? 'Работа' : 'Оборудование';
-                html += `
+                delHtml += `
                     <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:10.5px; margin-bottom:2px;">${dateStr} · ${kindLabel}</div>
+                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${dateStr} · ${kindLabel}</div>
                         <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${d.name}</s>${d.price ? ` <span style="color:var(--text-sec);">(${Math.round(d.price).toLocaleString('ru-RU')} ₽${d.qty > 1 ? ` × ${d.qty}` : ''})</span>` : ''}</div>
                     </div>
                 `;
             });
-            html += `</div>`;
+            delHtml += `</div>`;
         }
+        html += grp('История удалений', deletions.length, delHtml, false);
 
         container.innerHTML = html;
     },
@@ -22410,9 +22422,23 @@ const app = {
         let timer = 0;
         new MutationObserver(() => {
             clearTimeout(timer);
-            timer = setTimeout(() => { try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { } }, 30);
+            timer = setTimeout(() => { try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); this.mergeCabinetHeadHints(root); } catch (e) { } }, 30);
         }).observe(root, { childList: true, subtree: true });
-        try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); } catch (e) { }
+        try { this.softenAdminChips(root, true); this.stripCabinetEmoji(root); this.mergeCabinetHeadHints(root); } catch (e) { }
+    },
+
+    // Единая шапка каждого раздела: слева пояснение, справа кнопки. Разделы рисуют пояснение
+    // отдельным абзацем под заголовком (или под строкой кнопок) — здесь оно переносится в
+    // саму шапку, и все разделы открываются одинаково: одна строка «что это — действия».
+    mergeCabinetHeadHints: function (root) {
+        root.querySelectorAll(':scope > div[id^="profile_tab_"]').forEach(tab => {
+            const head = tab.querySelector(':scope > .lk-section-head:first-child');
+            if (!head || head.querySelector('.lk-head-hint')) return;
+            const hint = head.nextElementSibling;
+            if (!hint || !hint.classList.contains('lk-hint')) return;
+            hint.classList.add('lk-head-hint');
+            head.insertBefore(hint, head.firstChild);
+        });
     },
 
     // Ведущие эмодзи в плашках и подсказках («📋 Нет данных от заказчика», «💡 Счёт на оборудование…»):
@@ -42946,7 +42972,7 @@ const app = {
 
         if (actionType === 'share') {
             if (titleEl) titleEl.innerText = "Создание ссылки для клиента";
-            if (descEl) descEl.innerText = "Выберите, какие сметы будут доступны клиенту по ссылке. Клиент увидит только выбранные разделы в режиме чтения (без возможности редактирования).";
+            if (descEl) descEl.innerText = "Клиент увидит только выбранные разделы, без возможности редактирования.";
             if (btnTextEl) btnTextEl.innerText = "Создать ссылку";
             if (iconEl) {
                 iconEl.innerHTML = `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

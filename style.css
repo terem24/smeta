@@ -9763,6 +9763,39 @@ body.dark-mode .sec-analog-badge.active .sec-analog-label {
     outline: none;
 }
 
+/* Окно «Ссылка / Печать / Excel» без вертикальной прокрутки: карточки плотнее,
+   оборудование с работами и теплопотери со схемой — по две в ряд, подсказка таймера
+   одна короткая. Только это окно: .share-option-card есть и в других местах. */
+#share_options_modal_overlay .auth-modal-content {
+    padding: 18px 20px !important;
+}
+
+#share_options_modal_overlay .share-option-card {
+    gap: 10px;
+    padding: 9px 12px;
+    margin-bottom: 8px;
+    border-width: 1.5px;
+    border-radius: 10px;
+}
+
+.share-opt-pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    column-gap: 8px;
+}
+
+.share-opt-pair .share-option-card {
+    min-width: 0;
+}
+
+#share_options_modal_overlay .share-timer-hint-long {
+    display: none;
+}
+
+#share_options_modal_overlay .share-timer-hint-short {
+    display: inline;
+}
+
 /* Карточка «Счёт действителен N дней» в окне ссылки клиенту.
    Число и слово «дня» — одна неразрывная группа: на телефоне поле
    ввода крупнее (16px против приближения в iOS), и без группы слово
@@ -18487,3 +18520,75 @@ body.theme-yandex #profile_modal_overlay {
 #profile_cloud_list_content .inv-table td:nth-child(5) > div { max-width: none; }
 #profile_cloud_list_content .inv-table th:nth-child(1),
 #profile_cloud_list_content .inv-table td:nth-child(1) { max-width: none; }
+
+/* ── Кабинет, четвёртая очередь: одна вёрстка у всех разделов (03.10.2026) ────────
+   Каждый раздел открывался по-своему: у одного подсказка слева абзацем и кнопка справа отдельно,
+   у другого — только кнопка, у третьего три карточки без шапки, у четвёртого таблица без рамки.
+   Теперь каждый раздел: вкладки → шапка (слева пояснение, справа действия) → содержимое
+   карточками одной ширины. */
+
+/* Содержимое не растягивается на весь широкий экран: строки на 1700 px читаются хуже, а поля
+   ввода оказываются далеко от подписей */
+#profile_modal_overlay .lk-pane > div[id^="profile_tab_"] { max-width: 1240px; }
+
+/* Шапка раздела: пояснение слева, кнопки справа */
+#profile_modal_overlay .lk-pane .lk-head-hint {
+    flex: 1 1 320px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--text-sec);
+}
+#profile_modal_overlay .lk-pane .lk-hint { font-size: 13px; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child { justify-content: space-between; align-items: center; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child:has(.lk-head-hint) { display: flex; }
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div .ad-page-h { justify-content: space-between; align-items: center; }
+
+/* «Главная»: сводка — тоже карточка, а не голые строки */
+#profile_modal_overlay .lk-pane .lk-home-facts { gap: 0; padding-top: 4px; padding-bottom: 4px; }
+#profile_modal_overlay .lk-pane .lk-home-facts .ad-kv:last-child { border-bottom: 0; }
+
+/* «Мои данные»: способ входа и оформление — две карточки в ряд, «Выйти» — обычная кнопка под ними,
+   а не красная полоса на всю ширину */
+#profile_modal_overlay #profile_tab_requisites > #profile_login_method { order: 1; }
+#profile_modal_overlay #profile_tab_requisites > #profile_theme_choice { order: 2; }
+#profile_modal_overlay #profile_tab_requisites > .lk-profile-logout {
+    order: 3;
+    grid-column: 1 / span 1;
+    justify-self: start;
+    width: auto;
+    height: 36px;
+    padding: 0 18px;
+    margin: 0 0 14px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: var(--ad-radius);
+}
+
+/* «Объекты»: таблица лежит в такой же карточке, как остальные блоки */
+#profile_modal_overlay #profile_cloud_list_content {
+    background: var(--surface-light);
+    border: 1px solid var(--ad-line);
+    border-radius: var(--ad-card-radius);
+    padding: 4px 16px 8px;
+    margin-top: 12px;
+}
+#profile_modal_overlay #profile_cloud_list_content:has(> .lk-empty),
+#profile_modal_overlay #profile_cloud_list_content:empty { background: transparent; border: 0; padding: 0; }
+
+/* Списки внутри свёрнутых групп: строки без собственных «пилюль», разделитель — тонкая линия */
+#profile_modal_overlay .lk-pane details.lk-group .lk-row {
+    background: transparent;
+    border-radius: 0;
+    border-bottom: 1px solid var(--ad-line);
+}
+#profile_modal_overlay .lk-pane details.lk-group .lk-row:last-child { border-bottom: 0; }
+#profile_modal_overlay .lk-pane details.lk-group > .lk-group-body { padding: 8px 14px 10px; }
+#profile_modal_overlay .lk-pane details.lk-group > .lk-group-body > .lk-hint { margin-top: 0; }
+
+#profile_modal_overlay .lk-layout:not(.lk-forced) #profile_tab_requisites > .lk-section-head { display: none; }
+#profile_modal_overlay .lk-pane .lk-section-head > button:last-child, #profile_modal_overlay .lk-pane .lk-section-head > .summary-period { margin-left: auto; }
+
+#profile_modal_overlay .lk-subtabs:not(:empty) ~ div > .lk-section-head:first-child > h4 { display: none; }
+
+#profile_modal_overlay #profile_tab_manager > :first-child { margin-top: 0 !important; }
