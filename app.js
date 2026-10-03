@@ -4900,6 +4900,42 @@ const app = {
         };
     },
 
+    // Проверка ФИО заказчика в окне «Объект и заказчик»: те же правила, что у анкеты
+    // монтажника (русские буквы, без цифр, не набор клавиатурных рядов), плюс минимум
+    // два слова — фамилия и имя. Возвращает { error, value }: value — с исправленным регистром.
+    checkObjectClient: function (raw) {
+        const v = String(raw || '').trim().replace(/\s+/g, ' ');
+        if (!v) return { error: 'Укажите заказчика: фамилия и имя.' };
+        const words = v.split(' ');
+        if (words.length < 2) return { error: 'Впишите фамилию и имя заказчика, отчество — по желанию. Например: Иванов Пётр Сергеевич.' };
+        if (words.length > 4) return { error: 'Слишком много слов. Впишите только фамилию, имя и отчество.' };
+        for (const w of words) {
+            const err = this.checkNamePart(w, 'Заказчик');
+            if (err) return { error: err };
+        }
+        return { error: '', value: words.map(w => this.tidyNamePart(w)).join(' ') };
+    },
+
+    // Телефон заказчика (необязателен, но если вписан — настоящий). Правила анкеты
+    // (checkPhoneValue: 11 цифр, мобильный 9xx/7xx, не из одной цифры, не по порядку)
+    // плюс «красивые» выдуманные: абонентская часть из одной цифры или почти из одной,
+    // три нуля подряд в конце и лесенка в конце.
+    checkObjectPhone: function (raw) {
+        const v = String(raw || '').trim();
+        if (!v) return '';
+        const err = this.checkPhoneValue(v);
+        if (err) return err;
+        const sub = v.replace(/\D/g, '').slice(-7);
+        const fake = 'Такого номера не существует. Впишите настоящий телефон заказчика.';
+        if (/^(\d)\1+$/.test(sub)) return fake;
+        const counts = {};
+        sub.split('').forEach(c => { counts[c] = (counts[c] || 0) + 1; });
+        if (Math.max.apply(null, Object.values(counts)) >= 6) return fake;
+        if (/(\d)\1{4,}$/.test(sub)) return fake;
+        if (/(01234|12345|23456|34567|45678|56789|98765|87654|76543|65432|54321|43210)$/.test(sub)) return fake;
+        return '';
+    },
+
     objectDetailsComplete: function () {
         const d = this.objectDetails();
         return !!(d.address && d.client);
@@ -4928,7 +4964,7 @@ const app = {
                 <div class="calc-dialog-input-wrapper">
                     <input type="text" class="calc-dialog-input" id="objd_address" placeholder="Адрес объекта: город, улица, дом" autocomplete="street-address">
                     <input type="text" class="calc-dialog-input" id="objd_client" placeholder="Заказчик: фамилия, имя, отчество" autocomplete="name">
-                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика (необязательно)" autocomplete="tel">
+                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика: +7 (9__) ___-__-__, по желанию" autocomplete="tel">
                     <div class="calc-dialog-error" id="objd_err" style="display:none;"></div>
                 </div>
                 <div class="calc-dialog-buttons">
@@ -4946,6 +4982,9 @@ const app = {
                 overlay.classList.remove('active');
                 setTimeout(() => { overlay.remove(); resolve(val); }, 200);
             };
+            $('objd_phone').addEventListener('input', () => { this.maskPhone($('objd_phone')); $('objd_err').style.display = 'none'; });
+            $('objd_client').addEventListener('input', () => { $('objd_err').style.display = 'none'; });
+            if (/^[78]\d{10}$/.test(cur.phone.replace(/\D/g, ''))) this.maskPhone($('objd_phone'));
             $('objd_skip').onclick = () => {
                 this._objDetailsSkipped = this.state.calc_id || 'new';
                 close(true);
@@ -4954,14 +4993,19 @@ const app = {
                 const address = $('objd_address').value.trim();
                 const client = $('objd_client').value.trim();
                 const phone = $('objd_phone').value.trim();
-                if (!address || !client) {
+                const fail = (id, text) => {
                     const err = $('objd_err');
-                    err.innerText = !address ? 'Укажите адрес объекта' : 'Укажите заказчика';
+                    err.innerText = text;
                     err.style.display = 'block';
-                    $(!address ? 'objd_address' : 'objd_client').focus();
-                    return;
-                }
-                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: client });
+                    $(id).focus();
+                };
+                if (!address) return fail('objd_address', 'Укажите адрес объекта');
+                if (address.length < 6 || !/[А-Яа-яЁё]/.test(address)) return fail('objd_address', 'Впишите адрес объекта: город, улица, дом.');
+                const cl = this.checkObjectClient(client);
+                if (cl.error) return fail('objd_client', cl.error);
+                const phErr = this.checkObjectPhone(phone);
+                if (phErr) return fail('objd_phone', phErr);
+                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: cl.value });
                 if (phone) contract.clientPhone = phone;
                 this.state.contract = contract;
                 this.saveState();
