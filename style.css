@@ -7040,6 +7040,12 @@ body.dark-mode .calc-dialog-input {
     border-color: #4B5563;
 }
 
+/* Подпись об ошибке под полями диалога (app.askObjectDetails) */
+.calc-dialog-error {
+    color: var(--warn-text);
+    font-size: 13px;
+}
+
 .calc-dialog-buttons {
     display: flex;
     justify-content: flex-end;

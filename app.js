@@ -4855,6 +4855,97 @@ const app = {
         this.alert(lines.join('\n'), 'Доля STOUT в смете');
     },
 
+    // ===================== Адрес объекта и заказчик перед печатью =====================
+    //
+    // Бланк гарантии STOUT выдаётся на конкретный объект, поэтому у КП должны быть
+    // точный адрес и заказчик. Хранятся там же, где их читают договор, акты и
+    // гарантийный талон (state.contract, поля из Docs.DEFAULTS): введённое один
+    // раз больше не спрашиваем, а docs.js подхватит без правок. Кнопка «Без адреса»
+    // печатает КП как раньше — только бланка гарантии к нему не будет.
+    objectDetails: function () {
+        const c = this.state.contract || {};
+        return {
+            address: String(c.objectAddress || '').trim(),
+            client: String(c.clientName || '').trim(),
+            phone: String(c.clientPhone || '').trim()
+        };
+    },
+
+    objectDetailsComplete: function () {
+        const d = this.objectDetails();
+        return !!(d.address && d.client);
+    },
+
+    ensureObjectDetails: function () {
+        if (this.objectDetailsComplete()) return Promise.resolve(true);
+        // Один раз отказался — по этому расчёту в этой сессии больше не спрашиваем
+        if (this._objDetailsSkipped && this._objDetailsSkipped === (this.state.calc_id || 'new')) return Promise.resolve(true);
+        return this.askObjectDetails();
+    },
+
+    askObjectDetails: function () {
+        if (document.body.classList.contains('menu-open')) {
+            try { this.toggleMenu(); } catch (e) { }
+        }
+        const cur = this.objectDetails();
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'calc-dialog-overlay';
+            const card = document.createElement('div');
+            card.className = 'calc-dialog-card';
+            card.innerHTML = `
+                <h3 class="calc-dialog-title">Объект и заказчик</h3>
+                <p class="calc-dialog-message">Нужны для бланка гарантии STOUT на объект. Те же данные пойдут в договор, акты и гарантийный талон — вводятся один раз.</p>
+                <div class="calc-dialog-input-wrapper">
+                    <input type="text" class="calc-dialog-input" id="objd_address" placeholder="Адрес объекта: город, улица, дом" autocomplete="street-address">
+                    <input type="text" class="calc-dialog-input" id="objd_client" placeholder="Заказчик: фамилия, имя, отчество" autocomplete="name">
+                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика (необязательно)" autocomplete="tel">
+                    <div class="calc-dialog-error" id="objd_err" style="display:none;"></div>
+                </div>
+                <div class="calc-dialog-buttons">
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" id="objd_skip">Без адреса</button>
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="objd_ok">Продолжить</button>
+                </div>`;
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+            const $ = id => card.querySelector('#' + id);
+            // Адрес по умолчанию — название объекта, если оно похоже на адрес (есть номер дома)
+            $('objd_address').value = cur.address || (/\d/.test(this.state.projectName || '') ? this.state.projectName : '');
+            $('objd_client').value = cur.client;
+            $('objd_phone').value = cur.phone;
+            const close = (val) => {
+                overlay.classList.remove('active');
+                setTimeout(() => { overlay.remove(); resolve(val); }, 200);
+            };
+            $('objd_skip').onclick = () => {
+                this._objDetailsSkipped = this.state.calc_id || 'new';
+                close(true);
+            };
+            $('objd_ok').onclick = () => {
+                const address = $('objd_address').value.trim();
+                const client = $('objd_client').value.trim();
+                const phone = $('objd_phone').value.trim();
+                if (!address || !client) {
+                    const err = $('objd_err');
+                    err.innerText = !address ? 'Укажите адрес объекта' : 'Укажите заказчика';
+                    err.style.display = 'block';
+                    $(!address ? 'objd_address' : 'objd_client').focus();
+                    return;
+                }
+                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: client });
+                if (phone) contract.clientPhone = phone;
+                this.state.contract = contract;
+                this.saveState();
+                close(true);
+            };
+            card.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') $('objd_ok').click(); });
+            setTimeout(() => {
+                overlay.classList.add('active');
+                $(cur.address ? 'objd_client' : 'objd_address').focus();
+            }, 10);
+        });
+    },
+
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
     syncEmptyFitPanelScale: function (recalc) { this.fitParamsPanel(recalc); },
     // Отложенный пересчёт: за одну отрисовку панель трогают десятки раз, а ответ
@@ -45737,6 +45828,8 @@ const app = {
     },
     executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
+        // Адрес объекта и заказчик — для бланка гарантии STOUT (см. askObjectDetails)
+        if (!(await this.ensureObjectDetails())) return;
         this.printOptions = {
             eq: showEq,
             works: showWorks,
