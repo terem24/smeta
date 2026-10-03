@@ -2442,10 +2442,11 @@ function autoRooms() {
   // лестницей или проёмом они расходятся на несколько процентов. Пока контур не двигали
   // руками (подпись контура — printedSig), берётся напечатанная
   F().zones.forEach(function (z) {
-    delete z.printedM2; delete z.printedSig;
+    delete z.printedM2; delete z.printedSig; delete z.planM2;
     if (!labs.length || z.type === 'cold') return;
     var inside = labs.filter(function (l) { return pip([l.x, l.y], z.pts); });
     if (inside.length !== 1) return;
+    z.planM2 = inside[0].m2;                    // для подсветки спорных комнат (zoneDisputed)
     var A = area(z.pts);
     // цифры, прочитанные со снимка, доверия меньше: на размытом фото 8,56 читалось как 8,18
     if (Math.abs(A - inside[0].m2) / inside[0].m2 <= (inside[0].scan ? 0.08 : 0.15)) { z.printedM2 = inside[0].m2; z.printedSig = JSON.stringify(z.pts); }
@@ -3161,6 +3162,9 @@ function draw() {
     // сразу видно шаг, число веток и как ляжет труба.
     cx.fillStyle = col + (lp ? '14' : '33'); cx.fill();
     cx.lineWidth = lp ? 1.4 : 2; cx.strokeStyle = col; cx.stroke();
+    if (zoneDisputed(z)) {
+      cx.save(); cx.setLineDash([9, 5]); cx.lineWidth = 3.5; cx.strokeStyle = '#f59e0b'; cx.stroke(); cx.restore();
+    }
     if (lp) {
       var lw = Math.max(1, Math.min(2.4, 0.022 * (f.pxPerM || 100) * k));
       cx.lineJoin = 'round'; cx.lineCap = 'round';
@@ -3194,7 +3198,7 @@ function draw() {
       }
     }
     var c = centroid(z.pts);
-    var nm = (z.name || TYPES[z.type][0]) + ' · ' + zoneM2(z).toFixed(1) + ' м²' +
+    var nm = (zoneDisputed(z) ? '⚠ ' : '') + (z.name || TYPES[z.type][0]) + ' · ' + zoneM2(z).toFixed(1) + ' м²' +
       ' · ' + z.pts.length + ' угл.' +
       (lp && lp.length > 1 ? ' · ' + lp.length + ' петли' : '');
     cx.font = 'bold 13px system-ui'; cx.textAlign = 'center';
@@ -3433,6 +3437,18 @@ function evPt(e) {
   var y = (e.clientY - r.top) * (cv.height / r.height) / cs();
   return [Math.round(x), Math.round(y)];
 }
+/**
+ * Комната, контур которой расходится с площадью, напечатанной на плане, больше чем на 10 %:
+ * её надо проверить глазами (в холл попал тамбур, контур вылез за проём). Флаг считается
+ * на лету по текущему контуру — потянули сторону и площадь сошлась, подсветка гаснет.
+ * Возвращает { geom, plan } или null.
+ */
+function zoneDisputed(z) {
+  if (!(z.planM2 > 0) || z.type === 'cold' || !z.pts) return null;
+  var g = area(z.pts);
+  return Math.abs(g - z.planM2) / z.planM2 > 0.10 ? { geom: g, plan: z.planM2 } : null;
+}
+
 /** Площадь зоны для списка и расчёта: напечатанная на плане (PDF), пока контур не трогали, иначе по контуру */
 function zoneM2(z) {
   return (z.printedM2 > 0 && z.printedSig === JSON.stringify(z.pts)) ? z.printedM2 : area(z.pts);
@@ -4189,14 +4205,14 @@ function printedNote(labs) {
     });
     if (!best) return;
     n++;
-    if (Math.abs(ba - l.m2) / l.m2 <= 0.05) ok++;
+    if (Math.abs(ba - l.m2) / l.m2 <= 0.10) ok++;
     else bad.push(ba.toFixed(1).replace('.', ',') + ' вместо ' + String(l.m2).replace('.', ','));
   });
   if (!n) return '';
   var scan = labs.some(function (l) { return l.scan; });
   return ' Контуры комнат — по стенам плана; площади сверены с подписями' + (scan ? ' (прочитаны со снимка — сверьте цифры с планом)' : '') +
     ': сошлось ' + ok + ' из ' + n +
-    (bad.length ? ' (контур расходится: ' + bad.join('; ') + ' м²)' : '') + '. В расчёт идут площади с плана.';
+    (bad.length ? ' (контур расходится: ' + bad.join('; ') + ' м²; такие комнаты подсвечены жёлтым — потяните стороны к стенам)' : '') + '. В расчёт идут площади с плана.';
 }
 
 /**
@@ -4303,6 +4319,15 @@ function renderZonesUfh(box) {
     }
     var ar = document.createElement('span'); ar.className = 'ar';
     ar.textContent = zoneM2(z).toFixed(1).replace('.', ',') + ' м²';
+    var dsp = zoneDisputed(z);
+    if (dsp) {
+      d.style.background = 'rgba(245,158,11,.16)'; d.style.boxShadow = 'inset 3px 0 0 #f59e0b';
+      var wn = document.createElement('span'); wn.textContent = '⚠'; wn.style.cssText = 'color:#d97706;font-weight:700;cursor:help';
+      wn.title = 'Контур комнаты на плане — ' + dsp.geom.toFixed(1).replace('.', ',') + ' м², а подписано ' +
+        String(dsp.plan).replace('.', ',') + ' м². Потяните стороны к стенам — подсветка погаснет, когда площади сойдутся. ' +
+        'В расчёт идёт площадь с плана.';
+      d.appendChild(wn);
+    }
     d.appendChild(ar);
     var del = document.createElement('span'); del.className = 'del'; del.textContent = '✕';
     del.title = 'Убрать';
