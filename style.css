@@ -9702,17 +9702,17 @@ body.dark-mode .automation-scheme svg {
     #heat_loss_table_page th {
         background: #f3f4f6 !important;
         color: #374151 !important;
-        font-size: 10px !important;
+        font-size: var(--hl-fs, 10px) !important;
         font-weight: 700 !important;
         white-space: normal !important;
-        padding: 5px 4px !important;
+        padding: calc(var(--hl-fs, 10px) * 0.35) 4px !important;
         border: 1px solid #e5e7eb !important;
         text-align: center !important;
     }
     #heat_loss_table_page td {
         border: 1px solid #e5e7eb !important;
-        padding: 3px 4px !important;
-        font-size: 10px !important;
+        padding: calc(var(--hl-fs, 10px) * 0.25) 4px !important;
+        font-size: var(--hl-fs, 10px) !important;
     }
     #heat_loss_table_page .hl-title {
         font-size: 13px !important;

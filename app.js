@@ -60548,10 +60548,11 @@ const app = {
         floorNums.forEach(function (floorNum) {
             var floorRooms = s.rooms.filter(function (r) { return (parseInt(r.floor) || 1) === floorNum; });
             var floorSumExact = 0;
+            var floorRowCount = 0;   // строк таблицы этажа — по ним подбирается кегль, чтобы этаж лёг на один лист
 
             allRows += `
-                <div style="page-break-inside: avoid; margin-bottom: 24px;">
-                <h3 style="margin:0 0 10px 0; ${FONT} font-size: 14pt; color: var(--primary);">Расчет теплопотерь ${floorNum} этажа</h3>
+                <div style="__HLFS__ margin-bottom: 24px;">
+                <h3 style="margin:0 0 6px 0; ${FONT} font-size: 14pt; color: var(--primary);">Расчет теплопотерь ${floorNum} этажа</h3>
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
                 <thead>
                     <tr>
@@ -60589,6 +60590,7 @@ const app = {
                 if (L.Q_vent > 0) items.push({ name: 'Вентиляция', area: L.vol, R: null, n: L.n_vent, Q: L.Q_vent });
 
                 if (items.length === 0) return;
+                floorRowCount += items.length;
 
                 items.forEach(function (item, i) {
                     var isFirst = (i === 0);
@@ -60614,6 +60616,10 @@ const app = {
             });
 
             grandTotalExact += floorSumExact;
+            // Один этаж — один альбомный лист: чем больше строк, тем мельче кегль (от 7,5 до 10,5 px).
+            // Бюджет высоты ~620 px на таблицу; строка = 1,25·кегль + 2·0,25·кегль + рамка.
+            var hlFs = Math.max(7.5, Math.min(10.5, (620 / Math.max(1, floorRowCount + 2) - 1) / 1.75));
+            allRows = allRows.replace('__HLFS__', '--hl-fs:' + hlFs.toFixed(1) + 'px; page-break-inside: avoid;' + (floorNum !== floorNums[0] ? ' page-break-before: always;' : ''));
 
             // Subtotal row for the floor
             allRows += `
