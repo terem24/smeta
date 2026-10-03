@@ -37370,7 +37370,7 @@ const app = {
                 // Окна — по радиаторам на плане (радиатор ставится под окном на
                 // 75 % его ширины); радиаторов нет — одно окно у жилой комнаты
                 const windows = rs.length
-                    ? rs.map((rd, j) => ({ id: id + 1 + j, width: Math.max(0.6, Math.min(3, Math.round((rd.w || 0) / f.pxPerM / 0.75 * 10) / 10)), isPan: false }))
+                    ? rs.map((rd, j) => ({ id: id + 1 + j, width: Math.max(0.6, Math.min(3, Math.round((rd.w || 0) / f.pxPerM / 0.75 * 10) / 10)), isPan: false, radId: rd.rid }))
                     : (living ? [{ id: id + 1, width: this.getDefaultWindowWidth(area), isPan: false }] : []);
                 const sys = [];
                 if (rs.length || !e.tp) sys.push('rad');
@@ -37381,6 +37381,7 @@ const app = {
             if (fl === 2 && this.state.floors !== 2) this.state.floors = 2;
         });
         if (plansChanged) { this.saveState(); this.pushPlansToEditor(); }
+        try { this.linkWindowsToRads(); } catch (e) { console.warn('[план] привязка окон к радиаторам:', e.message); }
         return changed;
     },
 
@@ -37436,6 +37437,7 @@ const app = {
         // что выбрана в смете (тройниковая или лучевая от коллектора)
         const radOpts = { rads: (this.state.systems || []).includes('rad'), tee: this.state.radConnectionScheme === 'tee', connMap: this.radConnMap(),
             kinds: this.radKindsByRoom() };
+        Object.assign(radOpts, this.radKindLinks());          // kindById, linkedRids — тип по номеру радиатора
         const out = [];
         plans.floors.forEach((f0, fi) => {
             if (!f0 || !f0.pxPerM || fi > 1) return;
@@ -37488,11 +37490,70 @@ const app = {
     radKindsByRoom: function () {
         const map = {};
         (this.radDevices || []).forEach(d => {
-            if (!d || (d.kind !== 'rad' && d.kind !== 'conv')) return;
+            if (!d || (d.kind !== 'rad' && d.kind !== 'conv') || d.radId) return;     // привязанные идут по номеру радиатора
             const k = String(d.room || '').trim().toLowerCase();
             if (k) (map[k] = map[k] || []).push(d.kind);
         });
         return map;
+    },
+
+    /**
+     * Тип прибора по номеру радиатора на плане: { kindById: { rid: 'conv' | 'rad' }, linkedRids: { rid: 1 } }.
+     * Связь окна расчёта с радиатором — window.radId (linkWindowsToRads). У окна в пол
+     * подобран конвектор — значок конвектора рисуется на ЕГО радиаторе, а не на первом в комнате.
+     */
+    radKindLinks: function () {
+        const kindById = {}, linkedRids = {};
+        (this.state.rooms || []).forEach(r => (r.windows || []).forEach(w => { if (w && w.radId) linkedRids[w.radId] = 1; }));
+        (this.radDevices || []).forEach(d => {
+            if (!d || (d.kind !== 'rad' && d.kind !== 'conv') || !d.radId) return;
+            if (kindById[d.radId] !== 'conv') kindById[d.radId] = d.kind;
+        });
+        return { kindById, linkedRids };
+    },
+
+    /**
+     * Окна расчёта ↔ радиаторы плана. Окна, созданные по плану, уже помнят свой радиатор;
+     * остальные (комнату завели раньше или окно добавили руками) привязываются по порядку
+     * к радиаторам комнаты, которым окна ещё не нашлось. Радиатор убрали с плана — связь
+     * окна снимается. Номера радиаторам выдаёт редактор; у старых планов их нет — ставим тут.
+     */
+    linkWindowsToRads: function () {
+        const plans = this.state.plans;
+        if (!plans || !Array.isArray(plans.floors) || !this.state.detailedRooms) return;
+        const norm = s => String(s || '').trim().toLowerCase();
+        const pip = (p, P) => {
+            let c = false;
+            for (let a = 0, b = P.length - 1; a < P.length; b = a++)
+                if ((P[a][1] > p[1]) !== (P[b][1] > p[1]) && p[0] < (P[b][0] - P[a][0]) * (p[1] - P[a][1]) / (P[b][1] - P[a][1]) + P[a][0]) c = !c;
+            return c;
+        };
+        let touched = false, plansTouched = false, seq = 0;
+        plans.floors.forEach((f, fi) => {
+            if (!f || !f.pxPerM || fi > 1) return;
+            const zones = (f.zones || []).filter(z => z && z.pts && z.pts.length > 2 && z.type !== 'cold' && norm(z.name));
+            (f.rads || []).forEach(rd => { if (!rd.rid) { rd.rid = 'r' + Date.now().toString(36) + (++seq).toString(36); plansTouched = true; } });
+            const radsOf = {};
+            (f.rads || []).forEach(rd => {
+                const a = (rd.ang || 0) * Math.PI / 180, nx = -Math.sin(a), ny = Math.cos(a), d = 0.3 * f.pxPerM;
+                const z = [[rd.x + nx * d, rd.y + ny * d], [rd.x - nx * d, rd.y - ny * d]]
+                    .map(p => zones.find(q => pip(p, q.pts))).find(Boolean);
+                if (z) (radsOf[norm(z.name)] = radsOf[norm(z.name)] || []).push(rd);
+            });
+            const alive = new Set((f.rads || []).map(rd => rd.rid));
+            (this.state.rooms || []).filter(r => (parseInt(r.floor, 10) || 1) === fi + 1).forEach(r => {
+                const ws = r.windows || [];
+                ws.forEach(w => { if (w.radId && !alive.has(w.radId)) { delete w.radId; touched = true; } });
+                const taken = new Set(ws.filter(w => w.radId).map(w => w.radId));
+                const free = (radsOf[norm(r.name)] || []).filter(rd => !taken.has(rd.rid));
+                ws.filter(w => !w.radId).forEach(w => {
+                    const rd = free.shift();
+                    if (rd) { w.radId = rd.rid; touched = true; }
+                });
+            });
+        });
+        if (plansTouched) { this._ufhGeomCache = null; this.pushPlansToEditor(); }
+        if (touched || plansTouched) this.saveState();
     },
 
     radPlanRuns: function () {
@@ -71043,6 +71104,8 @@ const app = {
         // Подобранные приборы отопления с их фактической мощностью — из них
         // гидравлика берёт расходы (см. radHydraulics).
         app.radDevices = [];
+        // окна расчёта запоминают радиатор плана, под которым они стоят — по нему рисуется тип прибора
+        try { this.linkWindowsToRads(); } catch (e) { /* без привязки тип идёт по порядку в комнате */ }
         // Петли тёплого пола — по ним считаются сервоприводы зональной автоматики
         // (getZoneAutoKit), пока их не задали руками. Заполняется в разделе 4.
         this._ufhLoops = 0;
@@ -75980,7 +76043,7 @@ const app = {
                             // Гидравлика считает по нагрузке: приборы округляются вверх
                             // до типоразмера, но термоголовка держит комнату по
                             // теплопотерям, и лишние ватты в расход не идут.
-                            app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv' });
+                            app.radDevices.push({ room: r.name, watt: factPower, load: wLoad, kind: 'conv', win: w.id, radId: w.radId });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + 1; }
                         } else if (roomHasRad) {
                             let isRommer = (this.state.brandMode === 'rommer');
@@ -76391,7 +76454,7 @@ const app = {
                             // load — потребность места, watt — подобранный прибор (см. конвектор выше).
                             // Приборов на месте может быть больше одного (правка количества руками) —
                             // гидравлике нужен каждый: у каждого своё кольцо и свой расход.
-                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name });
+                            for (let _k = 0; _k < _radQty; _k++) app.radDevices.push({ room: r.name, watt: factPower, load: reqReal, kind: 'rad', bottom: !!_radIsBottom, name: activeItem.name, win: w.id, radId: w.radId });
                             { const _fl = parseInt(r.floor, 10) === 2 ? 2 : 1; app._radDevPerFloor[_fl] = (app._radDevPerFloor[_fl] || 0) + _radQty; }
                         }
                     });

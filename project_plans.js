@@ -1961,7 +1961,7 @@
   /** Значок коллектора ТП: короткая гребёнка с отводами */
   function collectorMark(c, t, f, o, noLabel) {
     var w = Math.max(3.5, 0.55 * (f.pxPerM || 100) * t.s), h = w * 0.36;
-    var X = t.X(c.x), Y = t.Y(c.y), ang = f.coll === c ? (f.collAng || 0) : 0;
+    var X = t.X(c.x), Y = t.Y(c.y), ang = f.coll === c ? collAngle(f, 'tp') : 0, vert = ang % 180 === 90;
     // монтажник мог развернуть коллектор на 90° (стена распознана неверно) —
     // значок поворачивается целиком, отводы идут в ту же сторону
     o.push('<g' + (ang ? ' transform="rotate(' + ang + ' ' + n(X) + ' ' + n(Y) + ')"' : '') + '>');
@@ -1974,7 +1974,7 @@
     }
     o.push('</g>');
     // подпись могут поставить снаружи, в обход других подписей (сводный план)
-    if (!noLabel) o.push(txt(X, Y + (ang ? w : h) / 2 + 3.1, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
+    if (!noLabel) o.push(txt(X, Y + (vert ? w : h) / 2 + 3.1, 'Коллектор ТП', { size: 2.8, anchor: 'middle', fill: '#b35900' }));
   }
 
   // Цвета петель — замер по эталону (растр листа «Сводный план сетей»):
@@ -2304,7 +2304,7 @@
    * коллектор питает), на 0,3 м внутрь: коллектор висит на стене, а не
    * стоит посреди комнаты. Возвращает [x, y] и направление стены [ux, uy].
    */
-  function wallSpot(f, z, to) {
+  function wallSpot(f, z, to, inM) {
     var P = z.pts, zc = centroid(P), best = null, bd = Infinity, ppm = f.pxPerM || 100;
     for (var i = 0; i < P.length; i++) {
       var a = P[i], b = P[(i + 1) % P.length];
@@ -2315,8 +2315,68 @@
       if (d < bd) { bd = d; best = { q: q, u: [dx / Math.sqrt(L2), dy / Math.sqrt(L2)] }; }
     }
     if (!best) return { p: zc, u: [1, 0] };
-    var vx = zc[0] - best.q[0], vy = zc[1] - best.q[1], vl = Math.hypot(vx, vy) || 1, in3 = Math.min(0.3 * ppm, vl / 2);
-    return { p: [best.q[0] + vx / vl * in3, best.q[1] + vy / vl * in3], u: best.u };
+    var vx = zc[0] - best.q[0], vy = zc[1] - best.q[1], vl = Math.hypot(vx, vy) || 1, in3 = Math.min((inM || 0.3) * ppm, vl / 2);
+    // внутрь комнаты — перпендикулярно стене (а не к центру: у длинной комнаты центр далеко вбок)
+    var nx0 = -best.u[1], ny0 = best.u[0];
+    if (nx0 * vx + ny0 * vy < 0) { nx0 = -nx0; ny0 = -ny0; }
+    return { p: [best.q[0] + nx0 * in3, best.q[1] + ny0 * in3], u: best.u, n: [nx0, ny0], q: best.q };
+  }
+
+  /** Угол коллектора (0/90/180/270) по внутренней нормали стены: отводы смотрят в комнату.
+   *  0 — отводы вверх (стена снизу), 90 — вправо, 180 — вниз, 270 — влево. */
+  function angFromNormal(n) {
+    if (!n) return 0;
+    var a = Math.round(Math.atan2(n[0], -n[1]) * 180 / Math.PI / 90) * 90;
+    return ((a % 360) + 360) % 360;
+  }
+
+  /** Зона, в которой лежит точка, а если не лежит — ближайшая по стенам (не «без обогрева») */
+  function roomAround(f, pt) {
+    var zs = (f.zones || []).filter(function (z) { return z && z.pts && z.pts.length > 2 && z.type !== 'cold'; });
+    for (var i = 0; i < zs.length; i++) if (pip(pt, zs[i].pts)) return zs[i];
+    var best = null, bd = Infinity;
+    zs.forEach(function (z) {
+      for (var k = 0; k < z.pts.length; k++) {
+        var a = z.pts[k], b = z.pts[(k + 1) % z.pts.length], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1;
+        var t = Math.max(0, Math.min(1, ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / L2));
+        var d = Math.hypot(pt[0] - a[0] - dx * t, pt[1] - a[1] - dy * t);
+        if (d < bd) { bd = d; best = z; }
+      }
+    });
+    return best;
+  }
+
+  /**
+   * Коллектор — только у стены и вдоль неё. Точку (клик, перенос, середина комнаты) прижимаем
+   * к ближайшей стене комнаты, в которой она лежит, на 0,16 м внутрь (корпус примыкает к стене).
+   * Возвращает { x, y, ang } или null, если комнат нет.
+   */
+  function snapCollector(f, pt) {
+    var z = roomAround(f, pt);
+    if (!z) return null;
+    var ppm = f.pxPerM || 100, P = z.pts, best = null, bd = Infinity;
+    for (var i = 0; i < P.length; i++) {
+      var a = P[i], b = P[(i + 1) % P.length], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy;
+      if (L2 < (0.45 * ppm) * (0.45 * ppm)) continue;                    // огрызок контура — не стена
+      var t = Math.max(0.1, Math.min(0.9, ((pt[0] - a[0]) * dx + (pt[1] - a[1]) * dy) / L2));
+      var q = [a[0] + dx * t, a[1] + dy * t], d = Math.hypot(pt[0] - q[0], pt[1] - q[1]), L = Math.sqrt(L2);
+      if (d < bd) { bd = d; best = { q: q, u: [dx / L, dy / L] }; }
+    }
+    if (!best) return null;
+    var zc = centroid(P), nx = -best.u[1], ny = best.u[0];
+    if (nx * (zc[0] - best.q[0]) + ny * (zc[1] - best.q[1]) < 0) { nx = -nx; ny = -ny; }
+    var inn = 0.16 * ppm;
+    return { x: Math.round(best.q[0] + nx * inn), y: Math.round(best.q[1] + ny * inn), ang: angFromNormal([nx, ny]) };
+  }
+
+  /** Угол значка коллектора: заданный рукой, иначе по стене, у которой он стоит */
+  function collAngle(f, kind) {
+    var c = kind === 'rad' ? radCollector(f) : (f.coll || null);
+    if (kind === 'rad') return typeof f.radCollAng === 'number' ? f.radCollAng : (c ? c.ang || 0 : 0);
+    if (!c) return 0;
+    if (typeof f.collAng === 'number') return f.collAng;
+    var sp = snapCollector(f, [c.x, c.y]);
+    return sp ? sp.ang : 0;
   }
 
   /** Средняя точка радиаторов этажа (или центр комнат, если их нет). */
@@ -2333,19 +2393,25 @@
    * чтобы значки не легли друг на друга.
    */
   function radCollector(f) {
-    var rAng = f.radCollAng || 0;
-    if (f.radColl && isFinite(f.radColl.x)) return { x: f.radColl.x, y: f.radColl.y, src: 'manual', ang: rAng };
-    var rc = radsCenter(f), bz = boilerZone(f);
-    if (bz) {
-      var s = wallSpot(f, bz, rc || centroid(bz.pts)), p = s.p, ppm = f.pxPerM || 100;
+    var rAng = typeof f.radCollAng === 'number' ? f.radCollAng : null;
+    if (f.radColl && isFinite(f.radColl.x)) {
+      var sm = rAng == null ? snapCollector(f, [f.radColl.x, f.radColl.y]) : null;
+      return { x: f.radColl.x, y: f.radColl.y, src: 'manual', ang: rAng != null ? rAng : (sm ? sm.ang : 0) };
+    }
+    var rc = radsCenter(f), bz = boilerZone(f), ppm0 = f.pxPerM || 100;
+    // Котельной нет — комната, где стоит коллектор тёплого пола, а без него — ближайшая к приборам.
+    // Коллектор в середину комнаты не ставим никогда: у стены и вдоль неё.
+    var z = bz || (f.coll ? roomAround(f, [f.coll.x, f.coll.y]) : (rc ? roomAround(f, rc) : null));
+    if (z) {
+      var s = wallSpot(f, z, rc || centroid(z.pts), 0.16), p = s.p, ppm = ppm0;
       if (f.coll && Math.hypot(p[0] - f.coll.x, p[1] - f.coll.y) < 0.6 * ppm) {
         var tries = [[p[0] + s.u[0] * 0.7 * ppm, p[1] + s.u[1] * 0.7 * ppm], [p[0] - s.u[0] * 0.7 * ppm, p[1] - s.u[1] * 0.7 * ppm]];
-        p = tries.filter(function (q) { return pip(q, bz.pts); })[0] || tries[0];
+        p = tries.filter(function (q) { return pip(q, z.pts); })[0] || tries[0];
       }
-      return { x: p[0], y: p[1], src: 'boiler', ang: rAng };
+      return { x: p[0], y: p[1], src: bz ? 'boiler' : (f.coll ? 'tp' : 'rads'), ang: rAng != null ? rAng : angFromNormal(s.n) };
     }
-    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp', ang: rAng };
-    return rc ? { x: rc[0], y: rc[1], src: 'rads', ang: rAng } : { x: 0, y: 0, src: 'rads', ang: rAng };
+    if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp', ang: rAng || 0 };
+    return rc ? { x: rc[0], y: rc[1], src: 'rads', ang: rAng || 0 } : { x: 0, y: 0, src: 'rads', ang: rAng || 0 };
   }
 
   /**
@@ -2482,8 +2548,9 @@
         var cells = trace(src, cellAt(g, conn[i]));
         if (!cells) return;
         addCells(cells, 1);
-        var pts = clean(orthoPath([[C.x, C.y]].concat(cells.map(function (q) { return cellXY(g, q); }), [conn[i]])));
-        items.push({ i: i, p: conn[i], pts: pts, L: 2 * (lenPoly(pts) / ppm + rise), room: roomOfConn(conn[i]) });
+        var full = orthoPath([[C.x, C.y]].concat(cells.map(function (q) { return cellXY(g, q); }), [conn[i]]));
+        var pts = clean(full);
+        items.push({ i: i, p: conn[i], pts: pts, full: full, L: 2 * (lenPoly(pts) / ppm + rise), room: roomOfConn(conn[i]) });
       });
     } else {
       var left = rads.map(function (r, i) { return i; }), at = src, prevP = [C.x, C.y], trunk = [[C.x, C.y]];
@@ -4178,7 +4245,7 @@
     var cw = 0, cX = 0, cY = 0;
     if (f.coll) {
       cw = Math.max(3.5, 0.55 * ppmS); cX = t.X(f.coll.x); cY = t.Y(f.coll.y);
-      if (f.collAng) lp.add([cX - cw * 0.18 - 1.2, cY - cw / 2, cX + cw * 0.18 + 1.2, cY + cw / 2]);
+      if (collAngle(f, 'tp') % 180 === 90) lp.add([cX - cw * 0.18 - 1.2, cY - cw / 2, cX + cw * 0.18 + 1.2, cY + cw / 2]);
       else lp.add([cX - cw / 2, cY - cw * 0.18 - 1.2, cX + cw / 2, cY + cw * 0.18]);
     }
     (f.fixtures || []).forEach(function (q) { lp.add(fixtureBox(q, t, ppmS, 2)); });
@@ -4223,7 +4290,7 @@
     if (f.coll) {
       var cLab = 'Коллектор ТП', cLw = textW(cLab, 2.8), ch = cw * 0.36;
       // повёрнутый на 90° значок: высота и ширина меняются местами
-      var eh = f.collAng ? cw : ch, ew = f.collAng ? ch : cw;
+      var vertC = collAngle(f, 'tp') % 180 === 90, eh = vertC ? cw : ch, ew = vertC ? ch : cw;
       var cb = lp.place([[0, eh / 2 + 3.1], [0, -eh / 2 - 2.6], [ew / 2 + 1.5 + cLw / 2, 1], [-ew / 2 - 1.5 - cLw / 2, 1],
         [0, eh / 2 + 6.6], [0, -eh / 2 - 6]].map(function (d) {
         var bx = [cX + d[0] - cLw / 2, cY + d[1] - 2.4, cX + d[0] + cLw / 2, cY + d[1] + 0.4]; bx.p = [cX + d[0], cY + d[1]];
@@ -4374,11 +4441,96 @@
   // Радиаторы на плане дома: прибор, трассы и пучок — свои цвета, чтобы не
   // путаться с петлями тёплого пола (те — светлые красный и синий).
   var COL_RAD = '#c62828', COL_RAD_BUNDLE = '#9b2c2c';
+
+  /**
+   * Подводки пучком, как на листах проектировщиков: каждая труба идёт своей линией, пучок
+   * ровный, на развилке линии расходятся без пересечений.
+   *
+   * Маршруты — ветви ОДНОГО дерева от общего начала (кратчайшие пути от коллектора), поэтому
+   * порядок линий в пучке можно задать раз и навсегда: обходим дерево в глубину, ветви на
+   * каждом узле — справа налево по повороту. Лист (конец маршрута) получает номер в этом
+   * обходе; на любом участке под ним лежит подряд идущий набор листьев — их номера и есть
+   * места линий. Пара (подача и обратка) — две линии с шагом gap, между парами промежуток.
+   *
+   * routes — [{ pts }] (ломаные из клеточных точек от общего начала). Возвращает для каждого
+   * маршрута [левая, правая] ломаные по ходу от начала (левая — слева по ходу).
+   */
+  function laneLines(routes, gap) {
+    var pitch = 2.4 * gap;                                    // пара + зазор между парами
+    var key = function (p) { return Math.round(p[0] * 2) / 2 + ',' + Math.round(p[1] * 2) / 2; };
+    var R = routes.map(function (r) {
+      var out = [];
+      orthoPath(r.pts).forEach(function (p) { if (!out.length || key(out[out.length - 1]) !== key(p)) out.push(p); });
+      return out;
+    });
+    var root = { p: R[0] && R[0][0], map: {}, kids: [], ends: [] }, nodesOf = [];
+    R.forEach(function (pts, ri) {
+      var node = root, list = [root];
+      for (var i = 1; i < pts.length; i++) {
+        var k = key(pts[i]), ch = node.map[k];
+        if (!ch) { ch = { p: pts[i], map: {}, kids: [], ends: [], parent: node }; node.map[k] = ch; node.kids.push(ch); }
+        node = ch; list.push(node);
+      }
+      node.ends.push(ri); nodesOf.push(list);
+    });
+    var rank = 0, leafRank = [];
+    var dirOf = function (a, b) { var dx = b.p[0] - a.p[0], dy = b.p[1] - a.p[1], L = Math.hypot(dx, dy) || 1; return [dx / L, dy / L]; };
+    var dfs = function (node, din) {
+      node.lo = rank;
+      node.ends.forEach(function (ri) { leafRank[ri] = rank++; });
+      var kids = node.kids.map(function (c) { var d = dirOf(node, c); return { c: c, d: d, k: din ? -(din[0] * d[1] - din[1] * d[0]) + (din[0] * d[0] + din[1] * d[1] < -0.5 ? 2 : 0) : Math.atan2(d[1], d[0]) }; });
+      kids.sort(function (a, b) { return a.k - b.k; });
+      kids.forEach(function (o) { dfs(o.c, o.d); });
+      node.hi = rank - 1;
+    };
+    dfs(root, null);
+    var mm = function (v) { return Math.round(v * 10) / 10; };
+    var assemble = function (P, offs) {
+      var out = [], prev = null;
+      for (var e = 1; e < P.length; e++) {
+        var a = P[e - 1], b = P[e], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+        if (L < 1e-6) continue;
+        var ux = dx / L, uy = dy / L, nx = uy, ny = -ux, o = offs[e];
+        var A = [a[0] + nx * o, a[1] + ny * o], B = [b[0] + nx * o, b[1] + ny * o];
+        if (!prev) out.push(A);
+        else {
+          var dot = prev.ux * ux + prev.uy * uy;
+          if (Math.abs(dot) < 0.5) {                          // поворот: пересечение сдвинутых прямых
+            out.pop();
+            out.push(Math.abs(prev.ux) > 0.5 ? [A[0], prev.A[1]] : [prev.A[0], A[1]]);
+          } else if (dot < 0 || Math.abs(prev.o - o) > 1e-6) out.push(A);   // уступ между полосами
+          else out.pop();                                      // та же линия — склеить
+        }
+        out.push(B);
+        prev = { ux: ux, uy: uy, o: o, A: A };
+      }
+      // лишние точки на прямых
+      var res = [];
+      out.forEach(function (p, i) {
+        var q = res[res.length - 1], q2 = res[res.length - 2];
+        if (q && q2 && Math.abs((q[0] - q2[0]) * (p[1] - q[1]) - (q[1] - q2[1]) * (p[0] - q[0])) < 1e-6) res.pop();
+        if (!res.length || Math.abs(res[res.length - 1][0] - p[0]) > 1e-6 || Math.abs(res[res.length - 1][1] - p[1]) > 1e-6) res.push([mm(p[0]), mm(p[1])]);
+      });
+      return res;
+    };
+    return R.map(function (P, ri) {
+      var nodes = nodesOf[ri], offL = [0], offR = [0];
+      for (var e = 1; e < P.length; e++) {
+        var nd = nodes[e], idx = leafRank[ri] - nd.lo, cnt = nd.hi - nd.lo + 1;
+        var o = (idx - (cnt - 1) / 2) * pitch;
+        offL.push(o + gap / 2); offR.push(o - gap / 2);
+      }
+      return [assemble(P, offL), assemble(P, offR)];
+    });
+  }
+
   // Оформление плана дома в смете и КП — как на листах проектировщиков (корпус
   // Galf, 03.10.2026): тонкие линии, подача красная, обратка сине-фиолетовая, у
   // поворотов дуги, подложка плана видна, комнаты не залиты. Раньше линии были
   // в полтора раза толще шага, пастельные, с острыми углами.
   var V_SUP = '#e0484a', V_RET = '#5560d8';
+  // радиаторы — те же красный/синий, но темнее: трассы радиаторов и подводки пола идут одними коридорами
+  var V_RSUP = '#a61b1b', V_RRET = '#26359f';
   /** Ломаная со скруглёнными углами: дуга радиусом r (число или функция (a, b, c) → радиус;
    *  не больше половины соседних звеньев) */
   function roundedD(pts, r) {
@@ -4447,7 +4599,35 @@
           ';stroke-linecap:butt"/>');
       }
     };
-    bundle.forEach(function (sg) { pipeBundle(sg, lw * 0.5); });
+    // Подводки петель тёплого пола — каждая труба своей линией (дерево от коллектора), без
+    // обрывов и ступенек между участками. Нет путей подводок (старые данные) — пучок отрезками.
+    var leadRows = rows.filter(function (R) { return R.loop && R.loop.sup && R.loop.lead && R.loop.lead.length >= 2; });
+    var leadGap = Math.max(lw * 1.7, 0.034 * ppm);
+    if (leadRows.length) {
+      var ll = laneLines(leadRows.map(function (R) { return { pts: R.loop.lead }; }), leadGap);
+      leadRows.forEach(function (R, i) {
+        var pair = ll[i], lp0 = R.loop, sup0 = lp0.sup[0], ret1 = lp0.ret[lp0.ret.length - 1];
+        // подача — линия, конец которой ближе к началу петли
+        var dA = Math.hypot(pair[0][pair[0].length - 1][0] - sup0[0], pair[0][pair[0].length - 1][1] - sup0[1]) +
+          Math.hypot(pair[1][pair[1].length - 1][0] - ret1[0], pair[1][pair[1].length - 1][1] - ret1[1]);
+        var dB = Math.hypot(pair[1][pair[1].length - 1][0] - sup0[0], pair[1][pair[1].length - 1][1] - sup0[1]) +
+          Math.hypot(pair[0][pair[0].length - 1][0] - ret1[0], pair[0][pair[0].length - 1][1] - ret1[1]);
+        var supL = dA <= dB ? pair[0] : pair[1], retL = dA <= dB ? pair[1] : pair[0];
+        var tie = function (L, T, horizLast) {            // конец подводки → начало трубы петли
+          var e = L[L.length - 1];
+          if (Math.abs(e[0] - T[0]) < 0.5 && Math.abs(e[1] - T[1]) < 0.5) return L;
+          return L.concat([horizLast ? [T[0], e[1]] : [e[0], T[1]], [T[0], T[1]]]);
+        };
+        var lastH = Math.abs(supL[supL.length - 1][1] - supL[supL.length - 2][1]) < 0.5;
+        supL = tie(supL, sup0, lastH); retL = tie(retL, ret1, lastH);
+        o.push('<g data-pl="L' + R.no + '">');
+        [[supL, V_SUP], [retL, V_RET]].forEach(function (pr) {
+          o.push('<path d="' + roundedD(pr[0], leadGap * 0.9) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw * 0.5) +
+            ';stroke-linejoin:round;stroke-linecap:round"/>');
+        });
+        o.push('</g>');
+      });
+    } else bundle.forEach(function (sg) { pipeBundle(sg, lw * 0.5); });
     var badges = [];
     // Дуги подачи и обратки концентрические, как у настоящей трубы: у внутренней трубы
     // поворота радиус меньше, у наружной больше на шаг. Какая из двух внутренняя —
@@ -4487,7 +4667,18 @@
     // прямоугольником вдоль стены, номер «Р1…» с комнатной стороны
     var radRows = [], radBadges = [];
     if (RR) {
-      RR.segs.forEach(function (sg) { pipeBundle(sg, lw * 0.5); });
+      if (!RR.tee && RR.items.length && RR.items.every(function (it) { return it.full; })) {
+        var rg = Math.max(lw * 1.7, 0.034 * ppm);
+        var rl = laneLines(RR.items.map(function (it) { return { pts: it.full }; }), rg);
+        RR.items.forEach(function (it, ii) {
+          o.push('<g data-pl="R' + (it.i + 1) + '">');
+          [[rl[ii][0], V_RSUP], [rl[ii][1], V_RRET]].forEach(function (pr) {
+            o.push('<path d="' + roundedD(pr[0], rg * 0.9) + '" style="fill:none;stroke:' + pr[1] + ';stroke-width:' + m(lw * 0.5) +
+              ';stroke-linejoin:round;stroke-linecap:round"/>');
+          });
+          o.push('</g>');
+        });
+      } else RR.segs.forEach(function (sg) { pipeBundle(sg, lw * 0.5); });
       var byI = {}, kc = {};
       RR.items.forEach(function (it) { byI[it.i] = it; });
       (f.rads || []).forEach(function (rd, i) {
@@ -4497,8 +4688,14 @@
         // Приборы комнаты в смете идут в том же порядке, что окна, а окна заводились по приборам плана
         var rkey = z ? String(z.name || '').trim().toLowerCase() : '';
         var kinds = (opts.kinds && opts.kinds[rkey]) || [];
-        kc[rkey] = kc[rkey] == null ? 0 : kc[rkey] + 1;
-        var isConv = kinds[kc[rkey]] === 'conv';
+        // Радиатор, к которому привязано окно расчёта (rid ↔ window.radId), берёт тип именно
+        // своего окна; окно без прибора — обычный значок. Непривязанные идут по порядку
+        // в комнате среди непривязанных приборов
+        var kindOf = rd.rid && opts.kindById ? opts.kindById[rd.rid] : null;
+        var isConv;
+        if (kindOf) isConv = kindOf === 'conv';
+        else if (rd.rid && opts.linkedRids && opts.linkedRids[rd.rid]) isConv = false;
+        else { kc[rkey] = kc[rkey] == null ? 0 : kc[rkey] + 1; isConv = kinds[kc[rkey]] === 'conv'; }
         var hw = (rd.w || 0.8 * ppm) / 2, nx = -uy, ny = ux;
         var hd = (isConv ? 0.09 : 0.05) * ppm;
         var quad = function (h, e) {
@@ -4564,20 +4761,20 @@
     });
     // Коллектор радиаторов — когда он не там же, где коллектор тёплого пола
     if (RR && !(f.coll && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm)) {
-      var cw2 = 0.6 * ppm, ch2 = 0.22 * ppm, ra = RR.C.ang ? 90 : 0;
+      var cw2 = 0.6 * ppm, ch2 = 0.22 * ppm, ra = RR.C.ang || 0, raV = ra % 180 === 90;
       o.push('<rect x="' + m(RR.C.x - cw2 / 2) + '" y="' + m(RR.C.y - ch2 / 2) + '" width="' + m(cw2) + '" height="' + m(ch2) +
         '" style="fill:#f8d0d0;stroke:' + COL_RAD + ';stroke-width:' + m(lw * 0.7) + '"' +
-        (ra ? ' transform="rotate(90 ' + m(RR.C.x) + ' ' + m(RR.C.y) + ')"' : '') + '/>');
-      o.push('<text x="' + m(RR.C.x) + '" y="' + m(RR.C.y + (ra ? cw2 : ch2) / 2 + fs * 0.95) + '" font-size="' + m(fs * 0.85) +
+        (ra ? ' transform="rotate(' + ra + ' ' + m(RR.C.x) + ' ' + m(RR.C.y) + ')"' : '') + '/>');
+      o.push('<text x="' + m(RR.C.x) + '" y="' + m(RR.C.y + (raV ? cw2 : ch2) / 2 + fs * 0.95) + '" font-size="' + m(fs * 0.85) +
         '" text-anchor="middle" style="fill:' + COL_RAD + ';font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
         (RR.tee ? 'Магистраль радиаторов' : 'Коллектор радиаторов') + '</text>');
     }
     if (f.coll) {
-      var cw = 0.6 * ppm, ch = 0.22 * ppm, ca = f.collAng ? 90 : 0;
+      var cw = 0.6 * ppm, ch = 0.22 * ppm, ca = collAngle(f, 'tp'), caV = ca % 180 === 90;
       o.push('<rect x="' + m(f.coll.x - cw / 2) + '" y="' + m(f.coll.y - ch / 2) + '" width="' + m(cw) + '" height="' + m(ch) +
         '" style="fill:#ffd9a8;stroke:#c25e00;stroke-width:' + m(lw * 0.7) + '"' +
-        (ca ? ' transform="rotate(90 ' + m(f.coll.x) + ' ' + m(f.coll.y) + ')"' : '') + '/>');
-      o.push('<text x="' + m(f.coll.x) + '" y="' + m(f.coll.y - (ca ? cw : ch) / 2 - fs * 0.35) + '" font-size="' + m(fs * 0.85) +
+        (ca ? ' transform="rotate(' + ca + ' ' + m(f.coll.x) + ' ' + m(f.coll.y) + ')"' : '') + '/>');
+      o.push('<text x="' + m(f.coll.x) + '" y="' + m(f.coll.y - (caV ? cw : ch) / 2 - fs * 0.35) + '" font-size="' + m(fs * 0.85) +
         '" text-anchor="middle" style="fill:#c25e00;font-weight:700;paint-order:stroke;stroke:#fff;stroke-width:' + m(fs * 0.2) + '">' +
         (RR && Math.hypot(RR.C.x - f.coll.x, RR.C.y - f.coll.y) < 0.3 * ppm ? 'Коллекторы' : 'Коллектор') + '</text>');
     }
@@ -4595,6 +4792,7 @@
     boilerRoom: boilerRoom,
     floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, radRoutes: radRoutes,
     radCollector: radCollector, boilerZone: boilerZone, wallSpot: wallSpot,
+    snapCollector: snapCollector, collAngle: collAngle, angFromNormal: angFromNormal, roomAround: roomAround,
     radConnSide: radConnSide, radSideOfModel: radSideOfModel,
     contourGuide: contourGuide, offsetOrtho: offsetOrtho,
     // включить/выключить улитку по контуру — для стендов (сравнение «с контуром и без»)

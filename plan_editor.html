@@ -549,6 +549,24 @@ DATA.floors.forEach(function (f) {
   if (!f.img && f.imgFile) f.img = planUrl(f.imgFile);
 });
 
+/**
+ * Свой номер (rid) у каждого радиатора на плане. Окно в расчёте запоминает, под каким
+ * радиатором оно создано (window.radId), и тип прибора, подобранный смете для окна, рисуется
+ * именно на нём: окно в пол даёт конвектор у того окна, у которого его поставили, а не у
+ * первого по порядку в комнате.
+ */
+var _ridSeq = 0;
+function ensureRadIds() {
+  var used = {};
+  DATA.floors.forEach(function (f) {
+    (f.rads || []).forEach(function (r) {
+      if (!r.rid || used[r.rid]) r.rid = 'r' + Date.now().toString(36) + (++_ridSeq).toString(36);
+      used[r.rid] = 1;
+    });
+  });
+}
+ensureRadIds();
+
 // комнаты подробного расчёта калькулятора: имена и площади для привязки зон
 var roomNames = [], calcRooms = [];
 try {
@@ -3293,7 +3311,8 @@ function draw() {
   if (f.coll) {
     var ccx = f.coll.x * k, ccy = f.coll.y * k;
     var cw = Math.max(16, 0.55 * (f.pxPerM || 100) * k), ch = Math.max(6, cw * 0.36);
-    cx.save(); cx.translate(ccx, ccy); cx.rotate((f.collAng || 0) * Math.PI / 180);
+    var cAng = window.projectPlans && projectPlans.collAngle ? projectPlans.collAngle(f, 'tp') : (f.collAng || 0);
+    cx.save(); cx.translate(ccx, ccy); cx.rotate(cAng * Math.PI / 180);
     cx.fillStyle = '#fff'; cx.strokeStyle = '#b35900'; cx.lineWidth = 2;
     cx.fillRect(-cw / 2, -ch / 2, cw, ch);
     cx.strokeRect(-cw / 2, -ch / 2, cw, ch);
@@ -3304,7 +3323,7 @@ function draw() {
     }
     cx.restore();
     cx.fillStyle = '#b35900'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
-    cx.fillText('Коллектор ТП', ccx, ccy + (f.collAng ? cw : ch) / 2 + 13);
+    cx.fillText('Коллектор ТП', ccx, ccy + (cAng % 180 === 90 ? cw : ch) / 2 + 13);
   }
   // Коллектор радиаторов — свой значок: его видно и можно перетащить, как
   // коллектор ТП (раньше он стоял там же, где ТП, и не двигался)
@@ -3312,7 +3331,8 @@ function draw() {
   if (rcp) {
     var rx = rcp.x * k, ry = rcp.y * k;
     var rw = Math.max(16, 0.55 * (f.pxPerM || 100) * k), rh = Math.max(6, rw * 0.36);
-    cx.save(); cx.translate(rx, ry); cx.rotate((f.radCollAng || 0) * Math.PI / 180);
+    var rAng2 = rcp.ang || 0;
+    cx.save(); cx.translate(rx, ry); cx.rotate(rAng2 * Math.PI / 180);
     cx.fillStyle = '#fff'; cx.strokeStyle = '#d22222'; cx.lineWidth = 2;
     cx.fillRect(-rw / 2, -rh / 2, rw, rh);
     cx.strokeRect(-rw / 2, -rh / 2, rw, rh);
@@ -3323,7 +3343,7 @@ function draw() {
     }
     cx.restore();
     cx.fillStyle = '#d22222'; cx.font = 'bold 12px system-ui'; cx.textAlign = 'center';
-    cx.fillText('Коллектор радиаторов', rx, ry + (f.radCollAng ? rw : rh) / 2 + 13);
+    cx.fillText('Коллектор радиаторов', rx, ry + (rAng2 % 180 === 90 ? rw : rh) / 2 + 13);
   }
   // сантехприборы: настоящий габарит и разворот вдоль стены
   (f.fixtures || []).forEach(function (q) {
@@ -3703,6 +3723,15 @@ cv.addEventListener('mouseleave', function () {
 cv.addEventListener('mouseup', function (e) {
   if (dragC) {
     var was = dragC; dragC = null; cv.style.cursor = '';
+    if (was.moved && window.projectPlans && projectPlans.snapCollector) {
+      // коллектор не бывает посреди комнаты: встаёт к ближайшей стене и разворачивается вдоль неё
+      var fs0 = F(), cur0 = was.kind === 'tp' ? fs0.coll : fs0.radColl;
+      var sn0 = cur0 ? projectPlans.snapCollector(fs0, [cur0.x, cur0.y]) : null;
+      if (sn0) {
+        if (was.kind === 'tp') { fs0.coll = { x: sn0.x, y: sn0.y }; delete fs0.collAng; }
+        else { fs0.radColl = { x: sn0.x, y: sn0.y }; delete fs0.radCollAng; }
+      }
+    }
     if (was.moved) {
       justDragged = Date.now();
       hint('<span class=ok>' + (was.kind === 'tp' ? 'Коллектор тёплого пола' : 'Коллектор радиаторов') +
@@ -3734,7 +3763,11 @@ cv.addEventListener('click', function (e) {
     pushUndo('zones');
     var fr2 = F();
     if (fr2.radColl && Math.hypot(p[0] - fr2.radColl.x, p[1] - fr2.radColl.y) < 0.45 * (fr2.pxPerM || 100)) fr2.radColl = null;
-    else fr2.radColl = { x: Math.round(p[0]), y: Math.round(p[1]) };
+    else {
+      var sn1 = window.projectPlans && projectPlans.snapCollector ? projectPlans.snapCollector(fr2, p) : null;
+      fr2.radColl = sn1 ? { x: sn1.x, y: sn1.y } : { x: Math.round(p[0]), y: Math.round(p[1]) };
+      delete fr2.radCollAng;
+    }
     renderZones(); draw();
     return;
   }
@@ -4534,6 +4567,7 @@ function writeLocal(keepImages) {
 }
 
 function saveAll() {
+  ensureRadIds();
   refreshAutoFixtures();   // приборы санузлов из расчёта — на случай правок зон
   computeLeads();   // маршруты подводок к коллектору — свежие на момент сохранения
   computeVk();      // и трассы водоснабжения с канализацией
@@ -4653,11 +4687,11 @@ function radRoomName(r) {
 function collRotate(kind) {
   var f = F();
   pushUndo('zones');
-  if (kind === 'tp') { f.collAng = f.collAng ? 0 : 90; }
-  else { f.radCollAng = f.radCollAng ? 0 : 90; }
-  var a = kind === 'tp' ? f.collAng : f.radCollAng;
-  hint('<span class=ok>Коллектор ' + (kind === 'tp' ? 'тёплого пола' : 'радиаторов') + ' — ' +
-    (a ? 'вертикально' : 'горизонтально') + '.</span> Правый клик по нему (или R над ним) — повернуть ещё раз.');
+  var cur0 = window.projectPlans && projectPlans.collAngle ? projectPlans.collAngle(f, kind === 'tp' ? 'tp' : 'rad') : 0;
+  var a = (cur0 + 90) % 360;
+  if (kind === 'tp') f.collAng = a; else f.radCollAng = a;
+  hint('<span class=ok>Коллектор ' + (kind === 'tp' ? 'тёплого пола' : 'радиаторов') + ' повёрнут на 90°.</span> ' +
+    'Отводы смотрят ' + ({ 0: 'вверх', 90: 'вправо', 180: 'вниз', 270: 'влево' })[a] + '. Правый клик по нему (или R над ним) — повернуть ещё раз.');
   renderZones(); draw();
 }
 
@@ -4840,10 +4874,20 @@ function ufhAutoColl(f) {
   var bz = window.projectPlans && projectPlans.boilerZone ? projectPlans.boilerZone(f)
     : (f.zones || []).filter(function (z) { return z.type === 'boiler'; })[0];
   if (bz) {
-    var bp = window.projectPlans && projectPlans.wallSpot ? projectPlans.wallSpot(f, bz, C).p : centroid(bz.pts);
+    var bp = window.projectPlans && projectPlans.wallSpot ? projectPlans.wallSpot(f, bz, C, 0.16).p : centroid(bz.pts);
     f.coll = { x: Math.round(bp[0]), y: Math.round(bp[1]) };
     f.collAuto = true;
     return true;
+  }
+  // Котельной нет: ближайшая к центру тёплого пола комната, коллектор у её стены и вдоль неё.
+  // Раньше центр площадей, попавший в комнату, и был местом коллектора — посреди комнаты.
+  if (window.projectPlans && projectPlans.snapCollector) {
+    var sn = projectPlans.snapCollector(f, C);
+    if (sn) {
+      // угол, заданный рукой, сбрасываем только когда коллектор переехал: функция зовётся на каждой перерисовке
+      if (!f.coll || f.coll.x !== sn.x || f.coll.y !== sn.y) { f.coll = { x: sn.x, y: sn.y }; delete f.collAng; }
+      f.collAuto = true; return true;
+    }
   }
   (f.zones || []).forEach(function (z) {
     if (z.type === 'cold' || bd === 0) return;
