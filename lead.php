@@ -207,6 +207,69 @@ if (is_array($secret) && !empty($secret['bot_token']) && !empty($secret['chat_id
     $sent = ($code === 200);
 }
 
+// Лента мастеров на Профи (Supabase, функция lead_ingest). Заявка уходит туда сама,
+// если не тестовая и не из другого региона. Это дополнение к журналу и Телеграму:
+// любой сбой здесь молча пропускаем, приём заявки от него не зависит. Секрет лежит
+// в lead_ingest_secret.php рядом (в .gitignore, на Beget кладётся руками); нет файла —
+// блок просто не работает, как и было. Выключатель — во вкладке «Заявки» админки.
+$board = 'нет';
+$ingestPath = __DIR__ . '/lead_ingest_secret.php';
+$isTest = preg_match('/^test/i', $src) || preg_match('/^тест/iu', $name) || mb_strpos($comment, 'ТЕСТОВАЯ') !== false;
+$outside = mb_strpos($comment, 'Регион вне СПб и ЛО') !== false;
+if (is_file($ingestPath) && !$isTest && !$outside) {
+    $ing = include $ingestPath;
+    if (is_array($ing) && !empty($ing['secret'])) {
+        // Мастерам показываем только населённый пункт: берём первую часть адреса без цифр
+        // и без «ул., пр., пер.» и т. п.; нет такой — общая подпись по региону пилота.
+        $pub = 'Санкт-Петербург и область';
+        foreach (explode(',', $place) as $seg) {
+            $seg = trim($seg);
+            if ($seg === '' || preg_match('/\d/u', $seg)) continue;
+            if (preg_match('/(^|\s)(ул|улица|пр|просп|проспект|пер|переулок|ш|шоссе|наб|набережная|бульвар|б-р|д|дом|кв|снт|тер)\.?(\s|$)/iu', $seg)) continue;
+            $pub = mb_substr($seg, 0, 80, 'UTF-8');
+            break;
+        }
+        $payload = json_encode([
+            'p_secret' => $ing['secret'],
+            'p' => [
+                'lead_id'   => $id,
+                'place'     => $pub,
+                'area'      => $area,
+                'works'     => array_values($works),
+                'name'      => $name,
+                'phone'     => $phoneFmt,
+                'when_call' => $when,
+                'comment'   => $comment,
+                'calc'      => $calc,
+            ],
+        ], JSON_UNESCAPED_UNICODE);
+        $anon = 'sb_publishable_gcMJ-PvJmKavObbnePFGZQ_O-pu5O2p';   // публичный ключ сайта, как в app.js
+        $ch = curl_init('https://ahanbwugsmcyvrwbmtlx.supabase.co/rest/v1/rpc/lead_ingest');
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json', 'apikey: ' . $anon, 'Authorization: Bearer ' . $anon]);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+        $ir = curl_exec($ch);
+        $icode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $iok = $icode === 200 ? json_decode((string)$ir, true) : null;
+        $board = (is_array($iok) && !empty($iok['ok'])) ? (isset($iok['skipped']) ? 'выключена' : 'да') : 'ошибка ' . $icode;
+        // Итог пишем в журнал отдельной строкой-заметкой нельзя (формат — по записи на строку),
+        // поэтому сообщаем в Телеграм только при сбое: владелец предложит заявку руками.
+        if ($board !== 'да' && $board !== 'выключена' && is_array($secret) && !empty($secret['bot_token']) && !empty($secret['chat_id'])) {
+            $ch = curl_init('https://api.telegram.org/bot' . $secret['bot_token'] . '/sendMessage');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['chat_id' => $secret['chat_id'], 'text' => "⚠ Заявка № {$id} не попала в ленту мастеров ({$board}). Предложите её руками во вкладке «Заявки»."], JSON_UNESCAPED_UNICODE));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+            curl_exec($ch);
+            curl_close($ch);
+        }
+    }
+}
+
 // Заявка считается принятой, если она хотя бы в одном месте: журнал или Телеграм.
 if (!$logged && !$sent) {
     reply(502, ['ok' => false, 'error' => 'store']);

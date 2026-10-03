@@ -24285,6 +24285,31 @@ const app = {
         }
     },
 
+    // ── Автоматическая публикация заявок в ленту ────────────────────────
+    // Новые заявки уходят в ленту сами: lead.php на Beget вызывает функцию базы
+    // lead_ingest (тестовые и из других регионов отсекает он же). Выключатель живёт
+    // в app_settings, ключ lead_board: auto=false — функция ничего не публикует,
+    // заявки приходят только владельцу, как раньше. Нет записи — включено.
+    leadAutoOn: function () {
+        return ((this.appSettings && this.appSettings.lead_board) || {}).auto !== false;
+    },
+
+    setLeadAuto: async function (on) {
+        if (this.isReadOnlyAdmin()) { app.alert('Режим просмотра. Менять настройки запрещено.'); return; }
+        const value = { auto: !!on };
+        try {
+            const me = (this._currentUserRow && this._currentUserRow.email) || (this.state.tgUser && this.state.tgUser.email) || null;
+            const { error } = await supabaseClient.from('app_settings')
+                .upsert({ key: 'lead_board', value: value, updated_at: new Date().toISOString(), updated_by: me }, { onConflict: 'key' });
+            if (error) throw error;
+            this.appSettings = Object.assign({}, this.appSettings, { lead_board: value });
+        } catch (e) {
+            console.warn('[заявки] выключатель не сохранился:', e);
+            window.alert('Не удалось сохранить: ' + String((e && e.message) || e).slice(0, 140));
+        }
+        this.renderAdminLeads();
+    },
+
     // ── Предложить заявку Профи-мастерам ────────────────────────────────
     // Владелец сам решает, какая заявка уходит в ленту: тестовые и мусорные
     // отсекаются здесь, а не у платящих мастеров. Место показываем без улицы
@@ -24632,7 +24657,13 @@ const app = {
         const stAll = [['active', 'Активные'], ['all', 'Все, с архивом']].concat(this.LEAD_STATUSES);
         const btnS = 'width:auto; padding:0 14px; height:32px; font-size:12px;';
 
+        const autoOn = this.leadAutoOn();
         box.innerHTML = `
+            <label style="display:flex; align-items:flex-start; gap:10px; border:1px solid var(--border); border-radius:10px; padding:12px 14px; margin-bottom:14px; background:var(--surface-light); cursor:pointer;">
+                <input type="checkbox" style="margin-top:3px;"${autoOn ? ' checked' : ''} onchange="app.setLeadAuto(this.checked)">
+                <span style="font-size:13px; color:var(--text-main); line-height:1.5;"><b>Автоматически предлагать новые заявки Профи-мастерам</b><br>
+                <span style="font-size:12px; color:var(--text-sec);">${autoOn ? 'Включено: каждая новая заявка сразу попадает в ленту (кроме тестовых и из других регионов). Ненужную можно снять с ленты кнопкой на карточке.' : 'Выключено: в ленту попадает только то, что вы предложили сами кнопкой на карточке.'} Работает после установки файла на Beget.</span></span>
+            </label>
             <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
                 ${card('всего заявок', pool.length)}
                 ${card('не переданы мастеру', pool.filter(({ r }) => (asg(r.id).status || 'new') === 'new').length)}
