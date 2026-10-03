@@ -2903,48 +2903,53 @@
         <div class="auth-modal-content" style="max-width: 400px; text-align: left; padding: 24px; position: relative;">
             <span class="auth-modal-close" onclick="app.closeShareOptionsModal()" style="top: 12px; right: 16px;">&times;</span>
             
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; margin-top: 4px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 10px; margin-top: 0;">
                 <div id="share_options_modal_icon" style="color: var(--primary); display: flex; align-items: center;">
                     <!-- Иконка вставляется динамически -->
                 </div>
                 <h3 class="auth-modal-title" id="share_options_modal_title" style="margin: 0; text-align: left; font-size: 18px; color: var(--text-main); font-weight: 800;">Создание ссылки для клиента</h3>
             </div>
             
-            <p id="share_options_modal_desc" style="font-size: 12px; color: var(--text-sec); line-height: 1.4; margin-bottom: 20px; margin-top: 0;">
-                Выберите, какие сметы будут доступны клиенту по ссылке. Клиент увидит только выбранные разделы в режиме чтения (без возможности редактирования).
+            <p id="share_options_modal_desc" style="font-size: 12px; color: var(--text-sec); line-height: 1.4; margin-bottom: 12px; margin-top: 0;">
+                Клиент увидит только выбранные разделы, без возможности редактирования.
             </p>
             
-            <div class="share-option-card" id="card_opt_eq" onclick="app.toggleShareOption('eq')">
-                <input type="checkbox" id="share_opt_eq" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
-                <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Оборудование и материалы</span>
-                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">Спецификация и стоимость оборудования Stout & Rommer</span>
+            <!-- Карточки попарно (.share-opt-pair): в две колонки окно ниже и не требует прокрутки -->
+            <div class="share-opt-pair">
+                <div class="share-option-card" id="card_opt_eq" onclick="app.toggleShareOption('eq')" title="Спецификация и стоимость оборудования Stout & Rommer">
+                    <input type="checkbox" id="share_opt_eq" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Оборудование</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">и материалы</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="share-option-card" id="card_opt_works" onclick="app.toggleShareOption('works')">
-                <input type="checkbox" id="share_opt_works" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
-                <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Монтажные работы</span>
-                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">Смета на монтаж и пусконаладочные работы</span>
+
+                <div class="share-option-card" id="card_opt_works" onclick="app.toggleShareOption('works')" title="Смета на монтаж и пусконаладочные работы">
+                    <input type="checkbox" id="share_opt_works" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Монтажные</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">работы</span>
+                    </div>
                 </div>
             </div>
 
             <!-- Показываются только при печати/PDF, когда сделан расчёт по комнатам
                  (режим "Подробный") и таблица теплопотерь/схема готовы — см. app.openShareOptionsModal -->
-            <div class="share-option-card" id="card_opt_heatloss" style="display: none;" onclick="app.toggleShareOption('heatloss')">
-                <input type="checkbox" id="share_opt_heatloss" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
-                <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Расчёт теплопотерь</span>
-                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">Таблица теплопотерь по помещениям</span>
+            <div class="share-opt-pair">
+                <div class="share-option-card" id="card_opt_heatloss" style="display: none;" onclick="app.toggleShareOption('heatloss')" title="Таблица теплопотерь по помещениям">
+                    <input type="checkbox" id="share_opt_heatloss" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Теплопотери</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">по помещениям</span>
+                    </div>
                 </div>
-            </div>
 
-            <div class="share-option-card" id="card_opt_scheme" style="display: none;" onclick="app.toggleShareOption('scheme')">
-                <input type="checkbox" id="share_opt_scheme" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
-                <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
-                    <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Схема</span>
-                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">Гидравлическая схема системы отопления</span>
+                <div class="share-option-card" id="card_opt_scheme" style="display: none;" onclick="app.toggleShareOption('scheme')" title="Гидравлическая схема системы отопления">
+                    <input type="checkbox" id="share_opt_scheme" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Схема</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">гидравлическая</span>
+                    </div>
                 </div>
             </div>
 
@@ -2996,11 +3001,11 @@
                 <input type="checkbox" id="share_opt_names" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
                 <div style="display: flex; flex-direction: column; text-align: left; gap: 2px; flex: 1; min-width: 0;">
                     <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">🔒 Без моделей, размеров и артикулов</span>
-                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">Названия без модели, диаметров и резьбы («Кран шаровой», «Радиатор 7 секций»), артикулов нет. Так смету сложнее повторить у других. Снимите галочку, чтобы отправить полные названия.</span>
+                    <span style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.3;">Названия без модели, диаметров и резьбы, без артикулов: смету сложнее повторить у других. Снимите галочку, чтобы отправить полные.</span>
                 </div>
             </div>
 
-            <button id="btn_confirm_share_options" class="auth-btn-base btn-email-submit" style="width: 100%; height: 44px; margin-top: 20px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;" onclick="app.confirmShareOptions()">
+            <button id="btn_confirm_share_options" class="auth-btn-base btn-email-submit" style="width: 100%; height: 42px; margin-top: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;" onclick="app.confirmShareOptions()">
                 <span id="btn_confirm_share_options_text">Создать ссылку</span>
             </button>
 
