@@ -777,26 +777,91 @@ body.dark-mode .tab.tab-cheaper.active {
     display: none;
 }
 
-/* Доля STOUT в смете — чип для монтажника (app.renderStoutShareChip). В печать,
-   PDF и ссылку клиенту не идёт: класс no-print, и строится он только при входе. */
+/* Метка «Гарантия STOUT» в смете — для монтажника (app.renderStoutShareChip). В печать,
+   PDF и ссылку клиенту не идёт: класс no-print, и строится она только при входе.
+   Короткая таблетка: щит и два слова; состояние — цветом и значком. */
 .doc-summary .ds-stout {
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px 2px 6px;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.3;
+    white-space: nowrap;
+    transition: filter .15s;
 }
+.doc-summary .ds-stout:hover { filter: brightness(.96); }
+.doc-summary .ds-stout .ds-stout-ico { width: 14px; height: 14px; flex: 0 0 14px; }
+.doc-summary .ds-stout.ok { background: #ECFDF3; border-color: #A7F3C0; color: #15803D; }
+.doc-summary .ds-stout.low { background: #FFF7E6; border-color: #FCD9A0; color: #B45309; }
+body.dark-mode .doc-summary .ds-stout.ok { background: rgba(34, 197, 94, .14); border-color: rgba(74, 222, 128, .35); color: #4ADE80; }
+body.dark-mode .doc-summary .ds-stout.low { background: rgba(245, 158, 11, .14); border-color: rgba(251, 191, 36, .35); color: #FBBF24; }
 
-.doc-summary .ds-stout.ok b {
-    color: #16A34A;
-}
-
-.doc-summary .ds-stout.low b {
-    color: #D97706;
-}
-
-body.dark-mode .doc-summary .ds-stout.ok b {
-    color: #4ADE80;
-}
-
-body.dark-mode .doc-summary .ds-stout.low b {
-    color: #FBBF24;
+/* Окно метки «Гарантия STOUT» (app.showStoutShareInfo): синяя шапка, шкала 0–100 % с чертой
+   порога, одна фраза и три плитки либо три позиции на замену. Широкое и низкое — без прокрутки.
+   Карточка диалога — flex-колонка: детям запрещено сжиматься, иначе при нехватке высоты
+   список позиций схлопывался в пустую линию. */
+.calc-dialog-card.sg-card { max-width: 660px; width: calc(100vw - 32px); padding: 0; text-align: left; overflow: hidden auto; max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); }
+.sg-card > * { flex-shrink: 0; }
+.sg-card .sg-head { display: flex; align-items: center; gap: 14px; padding: 18px 26px; background: linear-gradient(135deg, #153C69, #203F6F 60%, #2A5A93); color: #fff; }
+.sg-card .sg-shield { width: 42px; height: 42px; border-radius: 12px; background: rgba(255, 255, 255, .14); color: #fff; display: flex; align-items: center; justify-content: center; flex: 0 0 42px; }
+.sg-card .sg-shield svg { width: 24px; height: 24px; }
+.sg-card .sg-ht { flex: 1 1 auto; min-width: 0; }
+.sg-card .sg-title { font-size: 19px; font-weight: 800; line-height: 1.2; color: #fff; letter-spacing: .01em; }
+.sg-card .sg-sub { font-size: 12px; color: #9CC9F0; margin-top: 2px; }
+.sg-card .sg-pill { font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
+.sg-card .sg-pill.ok { background: #DCFCE7; color: #15803D; }
+.sg-card .sg-pill.low { background: #FEF3C7; color: #B45309; }
+.sg-card .sg-body { padding: 20px 26px 22px; }
+.sg-card .sg-meter { display: flex; align-items: center; gap: 22px; }
+.sg-card .sg-big { flex: 0 0 auto; }
+.sg-card .sg-big b { display: block; font-size: 46px; line-height: 1; font-weight: 800; color: var(--text-main); letter-spacing: -1.5px; }
+.sg-card .sg-big b small { font-size: 22px; font-weight: 700; letter-spacing: 0; margin-left: 1px; }
+.sg-card .sg-big em { display: block; font-style: normal; font-size: 12px; color: var(--text-sec); margin-top: 4px; }
+.sg-card .sg-scale { flex: 1 1 auto; padding-top: 20px; }
+.sg-card .sg-track { position: relative; height: 12px; border-radius: 6px; background: var(--border); }
+.sg-card .sg-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; transition: width .5s ease; }
+.sg-card .sg-fill.ok { background: linear-gradient(90deg, #22C55E, #16A34A); }
+.sg-card .sg-fill.low { background: linear-gradient(90deg, #FBBF24, #F59E0B); }
+.sg-card .sg-mark { position: absolute; top: -5px; bottom: -5px; width: 2px; background: var(--text-main); text-decoration: none; border-radius: 1px; }
+.sg-card .sg-mark span { position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); margin-bottom: 3px; font-size: 11px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+.sg-card .sg-ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-sec); margin-top: 6px; }
+.sg-card .sg-lead { margin: 18px 0 12px; font-size: 14px; line-height: 1.45; color: var(--text-main); }
+.sg-card .sg-perks { display: flex; gap: 10px; }
+.sg-card .sg-perks > div { flex: 1 1 0; background: var(--surface-light); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+.sg-card .sg-perks b { display: block; font-size: 16px; font-weight: 800; color: #203F6F; line-height: 1.15; }
+.sg-card .sg-perks span { display: block; font-size: 12px; color: var(--text-sec); margin-top: 3px; line-height: 1.3; }
+.sg-card .sg-rows { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+.sg-card .sg-row { display: flex; align-items: center; gap: 10px; padding: 9px 14px; font-size: 13px; border-top: 1px solid var(--border); }
+.sg-card .sg-row:first-child { border-top: 0; }
+.sg-card .sg-row-n { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-main); }
+.sg-card .sg-row-b { flex: 0 0 auto; font-size: 11px; color: var(--text-sec); background: var(--surface-light); border-radius: 6px; padding: 1px 7px; }
+.sg-card .sg-row-s { flex: 0 0 auto; font-weight: 700; color: var(--text-main); }
+.sg-card .sg-more { padding: 7px 14px; font-size: 12px; color: var(--text-sec); border-top: 1px solid var(--border); background: var(--surface-light); }
+.sg-card .sg-foot { margin-top: 14px; font-size: 11.5px; color: var(--text-sec); line-height: 1.45; }
+.sg-card .calc-dialog-buttons { margin-top: 14px; }
+.sg-card .sg-row-n, .sg-card .sg-lead { font-weight: 400; }
+.sg-card .sg-lead b { font-weight: 700; }
+/* Тёмная тема: --border слишком близок к фону карточки, шкала и рамки списка пропадали */
+body.dark-mode .sg-card .sg-track { background: rgba(255, 255, 255, .16); }
+body.dark-mode .sg-card .sg-rows, body.dark-mode .sg-card .sg-row, body.dark-mode .sg-card .sg-more, body.dark-mode .sg-card .sg-perks > div { border-color: rgba(255, 255, 255, .14); }
+body.dark-mode .sg-card .sg-more, body.dark-mode .sg-card .sg-perks > div { background: rgba(255, 255, 255, .05); }
+body.dark-mode .sg-card .sg-row-b { background: rgba(255, 255, 255, .09); }
+body.dark-mode .sg-card .sg-perks b { color: #7CC4F2; }
+body.dark-mode .sg-card .sg-pill.ok { background: rgba(34, 197, 94, .2); color: #4ADE80; }
+body.dark-mode .sg-card .sg-pill.low { background: rgba(245, 158, 11, .2); color: #FBBF24; }
+@media (max-width: 520px) {
+    .sg-card .sg-meter { flex-direction: column; align-items: stretch; gap: 8px; }
+    .sg-card .sg-perks { flex-direction: column; }
+    .sg-card .sg-head, .sg-card .sg-body { padding-left: 18px; padding-right: 18px; }
+    .sg-card .sg-head { gap: 10px; padding-top: 14px; padding-bottom: 14px; }
+    .sg-card .sg-title { font-size: 16px; }
+    .sg-card .sg-sub { display: none; }
+    .sg-card .sg-big b { font-size: 40px; }
 }
 
 /* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
@@ -15696,6 +15761,8 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-stout.dark-mode .btn-ctrl.is-on,
     body.brand-stout.dark-mode .btn-ctrl.is-on:hover,
     body.brand-stout.dark-mode .custom-modal-btn,
+    body.brand-stout.dark-mode .lk-btn-primary,
+    body.brand-stout.dark-mode .lk-btn-primary:hover,
     body.brand-stout.dark-mode .calc-dialog-btn-confirm,
     body.brand-stout.dark-mode .btn-tg,
     body.brand-stout.dark-mode .btn-share {
@@ -15785,6 +15852,8 @@ body.dark-mode #hyd_card .hyd-card__p {
     body.brand-rommer.dark-mode .btn-ctrl.is-on,
     body.brand-rommer.dark-mode .btn-ctrl.is-on:hover,
     body.brand-rommer.dark-mode .custom-modal-btn,
+    body.brand-rommer.dark-mode .lk-btn-primary,
+    body.brand-rommer.dark-mode .lk-btn-primary:hover,
     body.brand-rommer.dark-mode .calc-dialog-btn-confirm,
     body.brand-rommer.dark-mode .btn-tg,
     body.brand-rommer.dark-mode .btn-share {
@@ -18981,3 +19050,96 @@ body.theme-yandex #profile_modal_overlay {
     #profile_cloud_list_content .inv-table tr[id^="obj_history_"] > td { display: block !important; width: auto !important; padding: 0 !important; }
 }
 
+/* ═══════ «МОЙ МЕНЕДЖЕР»: тот же язык, что у остальных разделов (03.10.2026) ═══════ */
+/* Подзаголовок с кнопкой справа («История общения» + «Очистить историю») */
+.lk-subhead-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 20px 0 8px;
+}
+.lk-subhead-row .lk-subhead { margin: 0; padding-bottom: 0; border-bottom: 0; }
+/* Контакты: строки «подпись — значение» внутри карточки, без линии после последней */
+.lk-card > .ad-kv:first-child { padding-top: 0; }
+.lk-card > .ad-kv:last-child { border-bottom: 0; padding-bottom: 0; }
+.lk-card .ad-kv b a { font-weight: 600; }
+/* Строки истории — .lk-row с несколькими строками внутри */
+.lk-row.lk-row-block { display: block; }
+.lk-list.lk-scroll { max-height: 260px; overflow-y: auto; }
+/* Чат: рамка вокруг ленты и поля ввода. Лента на --bg, как раньше: пузыри сообщений
+   (общие для менеджера, монтажника и админа) рассчитаны на этот фон */
+.lk-chat {
+    border: 1px solid var(--ad-line, var(--border));
+    border-radius: var(--ad-card-radius, 12px);
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+.lk-chat-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 12px;
+    background: var(--bg);
+}
+.lk-chat-bar {
+    display: flex;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--ad-line, var(--border));
+    background: var(--surface-light);
+}
+.lk-chat-bar input { flex: 1; min-width: 0; }
+#profile_tab_manager .lk-btn { white-space: nowrap; }
+
+/* ═══════ «МОИ МОНТАЖНИКИ»: тот же язык, что у остальных разделов (03.10.2026) ═══════ */
+/* Карточка «Пригласить монтажника» */
+.lk-invite { padding: 14px 16px; }
+.lk-invite-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+.lk-invite-count { font-size: 13px; color: var(--text-main); }
+.lk-invite-code {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+    margin-bottom: 12px;
+}
+.lk-invite-lbl { font-size: 12px; color: var(--text-sec); }
+.lk-invite-code b { font-size: 18px; letter-spacing: 0.08em; color: var(--primary); }
+.lk-invite-link { font-size: 12px; color: var(--text-sec); word-break: break-all; min-width: 0; }
+.lk-invite-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.lk-invite .lk-sub { margin-top: 0; }
+/* Строки списков: название и подпись в две строки, справа значение или стрелка */
+.lk-row-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 1px; }
+.lk-row-main b { font-size: 13px; font-weight: 600; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; }
+.lk-row-main small { font-size: 12px; color: var(--text-sec); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lk-row-r { flex: 0 0 auto; text-align: right; font-size: 13px; font-weight: 700; color: var(--text-main); }
+.lk-row-r small { font-size: 12px; font-weight: 500; color: var(--text-sec); }
+.lk-row-quiet { font-weight: 500; color: var(--text-sec); }
+.lk-row-chev { flex: 0 0 auto; color: var(--text-sec); font-size: 16px; line-height: 1; }
+.lk-row-link { cursor: pointer; }
+.lk-row-link:hover .lk-row-chev { color: var(--primary); }
+/* Плитки сводки: раскладка (цвета и отступы — общие для кабинета, см. «Показатели») */
+#profile_modal_overlay .lk-pane #profile_tab_installers .sm-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 12px;
+    margin-bottom: 4px;
+}
+#profile_tab_installers .sm-tile { min-width: 0; }
+#profile_tab_installers .sm-tile-val { white-space: nowrap; }
+
+/* Телефон: плитки сводки по две в ряд, а не по одной на экран */
+@media screen and (max-width: 599px) {
+    #profile_modal_overlay .lk-pane #profile_tab_installers .sm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    #profile_modal_overlay .lk-pane #profile_tab_installers .sm-tile { padding: 10px 12px; }
+}
