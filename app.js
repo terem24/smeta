@@ -8257,6 +8257,24 @@ const app = {
     },
 
     TRIAL_DAYS: 14,
+    // Длительность из настроек («Оплата подписки» → «Пробный период»); 14 — по умолчанию
+    trialDays: function () {
+        try { if (typeof Subscription !== 'undefined') return Subscription.trialSettings().days; } catch (e) { }
+        return this.TRIAL_DAYS;
+    },
+    // Сотрудник ТЕРЕМ: почта на teremopt.ru (основная или рабочая) либо привязка к
+    // компании «ТЕРЕМ» (в названии подразделений — «ООО ТЕРЕМ ОП …»). Им пробный Профи
+    // не предлагаем: у них своя выдача тарифов.
+    isTeremStaff: function () {
+        try {
+            const row = this._currentUserRow || {}, tg = this.state.tgUser || {};
+            const mails = [row.email, row.work_email, tg.email, this._myWorkEmail]
+                .filter(Boolean).map(x => String(x).trim().toLowerCase());
+            if (mails.some(m => /@([a-z0-9-]+\.)*teremopt\.ru$/.test(m))) return true;
+            const dn = (this.state.distributorInfo && this.state.distributorInfo.company_name) || '';
+            return /терем/i.test(dn);
+        } catch (e) { return false; }
+    },
     // Предложение пробного Профи после сохранения сметы: человек уже увидел цену
     // своего объекта, и показать ему, что умеет платный тариф, имеет смысл именно
     // сейчас. Не навязываем: не чаще раза в 3 дня и не больше двух раз за всё
@@ -8266,6 +8284,8 @@ const app = {
     maybeOfferTrial: async function () {
         try {
             if (this._trialOfferBusy) return;
+            await this.loadAppSettings();
+            if (typeof Subscription !== 'undefined' && !Subscription.trialOfferAllowed()) return;
             const tg = this.state.tgUser || {};
             if (!tg.authUserId && !tg.email && !tg.id) return;
             if (this.isPro() || this.state.demoUsed || tg.demo_ends_at) return;
@@ -8279,8 +8299,8 @@ const app = {
             let benefits = '';
             try { if (typeof Subscription !== 'undefined') benefits = Subscription.benefitsText(Subscription.userAccount()); } catch (e) { }
             const yes = await this.confirmChoice(
-                (benefits ? benefits + '\n\n' : '') + 'Карта не нужна. Через ' + this.TRIAL_DAYS + ' дней доступ вернётся к базовому — ничего не спишется.',
-                'Попробуйте Профи ' + this.TRIAL_DAYS + ' дней бесплатно',
+                (benefits ? benefits + '\n\n' : '') + 'Карта не нужна. Через ' + this.trialDays() + ' дней доступ вернётся к базовому — ничего не спишется.',
+                'Попробуйте Профи ' + this.trialDays() + ' дней бесплатно',
                 'Включить', 'Не сейчас');
             this._trialOfferBusy = false;
             if (yes) this.activateTrial14();
@@ -8309,7 +8329,7 @@ const app = {
         try {
             // Длительность пробного периода — TRIAL_DAYS суток (было 2: за двое суток
             // монтажник не успевал довести до клиента ни одну смету)
-            let trialDurationMs = this.TRIAL_DAYS * 24 * 60 * 60 * 1000;
+            let trialDurationMs = this.trialDays() * 24 * 60 * 60 * 1000;
             let endDate = new Date(Date.now() + trialDurationMs).toISOString();
 
             // Сначала найдем пользователя в БД по любому доступному признаку
@@ -8329,7 +8349,7 @@ const app = {
 
             if (!uRow) {
                 app.alert("Профиль пользователя не найден в базе данных. Пожалуйста, попробуйте перезайти в аккаунт.");
-                if (btn) btn.innerText = "Попробовать бесплатно " + this.TRIAL_DAYS + " дней";
+                if (btn) btn.innerText = "Попробовать бесплатно " + this.trialDays() + " дней";
                 return;
             }
 
@@ -8362,12 +8382,12 @@ const app = {
             this.syncUI();
             this.closeModal();
 
-            app.alert("✅ Профи включён на " + this.TRIAL_DAYS + " дней — до " + new Date(Date.now() + trialDurationMs).toLocaleDateString('ru-RU') + ". Вам открыты функции Профи; через " + this.TRIAL_DAYS + " дней доступ вернётся к базовому, ничего не спишется." + (window.__HC_NATIVE__ ? "" : " Страница будет перезагружена через 6 секунд."));
+            app.alert("✅ Профи включён на " + this.trialDays() + " дней — до " + new Date(Date.now() + trialDurationMs).toLocaleDateString('ru-RU') + ". Вам открыты функции Профи; через " + this.trialDays() + " дней доступ вернётся к базовому, ничего не спишется." + (window.__HC_NATIVE__ ? "" : " Страница будет перезагружена через 6 секунд."));
             this.softReload(6000);
         } catch (e) {
             console.error("Ошибка активации:", e);
             app.alert("Ошибка активации. Попробуйте позже.");
-            if (btn) btn.innerText = "Попробовать бесплатно " + this.TRIAL_DAYS + " дней";
+            if (btn) btn.innerText = "Попробовать бесплатно " + this.trialDays() + " дней";
         }
     },
 
