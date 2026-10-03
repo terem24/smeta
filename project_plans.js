@@ -1259,8 +1259,16 @@
    * Комнаты нет (планы без режима помещений) — считаем по площади и шагу.
    */
   function zoneHeat(room, area, stepMm) {
-    var cap = area * qUdeFor(stepMm);
+    var cap = area * qudOf(room, stepMm);
     return (room && room.q > 0) ? Math.min(room.q, cap) : cap;
+  }
+
+  /**
+   * Отдача пола с м² для комнаты: из расчёта (room.qud — при температуре этой
+   * комнаты, как в смете: в тёплой отдаёт меньше), иначе — по шагу.
+   */
+  function qudOf(room, stepMm) {
+    return (room && room.qud > 0) ? room.qud : qUdeFor(stepMm);
   }
 
   /** Запасная укладка совсем узких зон (меньше двух витков): встречная змейка —
@@ -1310,7 +1318,7 @@
       Z.loops.forEach(function (lp, li) {
         var q;
         if (laidSum > 0 && lp.loopM > 0) {
-          var cap = lp.loopM * s * qUdeFor(stepMm);
+          var cap = lp.loopM * s * qudOf(rm, stepMm);
           q = (rm && rm.q > 0) ? Math.min(rm.q * lp.loopM / laidSum, cap) : cap;
         } else q = zoneHeat(rm, Z.area, stepMm) / k;
         out.push({ no: ++no, name: zName + (k > 1 ? ' ' + (li + 1) + '/' + k : ''),

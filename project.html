@@ -230,7 +230,8 @@ if (payload && payload.items && payload.items.length) {
   var expRooms = [];
   (payload.heatloss || []).forEach(function (fl, fi) {
     (fl.rooms || []).forEach(function (r) {
-      expRooms.push({ id: r.id, name: r.name, area: r.area, q: r.total, floor: fi + 1 });
+      // qud — отдача тёплого пола с м² при температуре этой комнаты, как в смете
+      expRooms.push({ id: r.id, name: r.name, area: r.area, q: r.total, qud: r.ufhQud, floor: fi + 1 });
     });
   });
   // Труба тёплого пола — из сметы, для «Общих условий» на плане напольного
