@@ -13,8 +13,9 @@
  *   3) масштаб — 1:100 листа А3 (так выпущен весь корпус); площади подписей
  *      только для проверки карты; комнаты с тёплым полом — где на картинке
  *      красные трубы;
- *   4) комната → прямоугольный контур по сетке 0,1 м → наша раскладка
- *      (projectPlans.floorLoops);
+ *   4) комната → как её обводит монтажник: 1–3 прямоугольника от подписи на
+ *      площадь экспликации (rectRoom; OLDZONES=1 — прежняя подрезка волной,
+ *      дававшая «облака») → наша раскладка (projectPlans.floorLoops);
  *   5) сверка: длина трубы и число петель против проектировщика, пересечения
  *      петель между собой и наложения пучка подводок на петли, незаложенные зоны.
  *
@@ -88,7 +89,83 @@ function pipePx(mask, inZone, W, H) {
 }
 
 // ── область карты → прямоугольный контур по сетке g пикселей ───────────────
-function regionPoly(reg, W, H, id, g) {
+/**
+ * 1–3 прямоугольника внутри маски комнаты (клетки сетки): первый — самый
+ * большой, что содержит клетку подписи, следующие — самые большие из оставшихся,
+ * что примыкают к уже взятым стороной. Каждый — не больше остатка площади
+ * экспликации (+15 %), не меньше 1 м² и 0,75 м в ширину (~ 3 клетки по 0,25 м);
+ * стоп, когда набрано 92 % площади. Возвращает маску клеток или null.
+ */
+function rectRoom(mask, GW, GH, sx, sy, target) {
+  const N = GW * GH, used = new Uint8Array(N), minW = 3, minA = 16;
+  // ближайшая к подписи клетка комнаты
+  if (!mask[sy * GW + sx]) {
+    let bd = Infinity, bk = -1;
+    for (let k = 0; k < N; k++) if (mask[k]) { const d = Math.abs(k % GW - sx) + Math.abs(((k / GW) | 0) - sy); if (d < bd) { bd = d; bk = k; } }
+    if (bk < 0) return null;
+    sx = bk % GW; sy = (bk / GW) | 0;
+  }
+  let got = 0;
+  // Обычная комната — один прямоугольник: пристройку берём, только если первый
+  // набрал меньше 80 % площади (Г-образная комната), иначе это шум карты у стены
+  for (let n = 0; n < 3 && got < (n === 1 ? 0.8 : 0.92) * target; n++) {
+    const free = k => mask[k] && !used[k];
+    const left = (target - got) * 1.15;
+    let best = null;
+    // перебор пар строк сверху/снизу: столбцы, где все клетки свободны, — отрезками
+    const ok = new Uint8Array(GW);
+    for (let top = 0; top < GH; top++) {
+      ok.fill(1);
+      for (let bot = top; bot < GH; bot++) {
+        let any = false;
+        for (let x = 0; x < GW; x++) { if (ok[x] && !free(bot * GW + x)) ok[x] = 0; if (ok[x]) any = true; }
+        if (!any) break;
+        const h = bot - top + 1;
+        if (n === 0 && (sy < top || sy > bot)) continue;
+        for (let x = 0; x < GW;) {
+          if (!ok[x]) { x++; continue; }
+          let x1 = x; while (x1 + 1 < GW && ok[x1 + 1]) x1++;
+          let a0 = x, a1 = x1;
+          if (n === 0) { if (sx < a0 || sx > a1) { x = x1 + 1; continue; } }
+          const w = a1 - a0 + 1;
+          // по площади — не больше остатка: длинный отрезок укорачиваем
+          let ww = w;
+          if (ww * h > left) ww = Math.max(0, Math.floor(left / h));
+          // площадь со скидкой за вытянутость: комната длиннее 1:3 — редкость,
+          // а узкая полоса чаще всего протечка карты через проём
+          const sc = ww * h / Math.max(1, Math.max(ww, h) / Math.min(ww, h) / 3);
+          if (ww >= minW && h >= minW && ww * h >= minA && (!best || sc > best.sc)) {
+            // для первого — окно ширины ww вокруг подписи; для прочих — у края с примыканием
+            const cands = n === 0 ? [Math.max(a0, Math.min(sx - (ww >> 1), a1 - ww + 1))] : [a0, a1 - ww + 1];
+            for (const c0 of cands) {
+              const r = { x0: c0, x1: c0 + ww - 1, y0: top, y1: bot, a: ww * h, sc: sc };
+              if (n > 0 && !touches(r)) continue;
+              if (!best || r.sc > best.sc) best = r;
+            }
+          }
+          x = x1 + 1;
+        }
+      }
+    }
+    if (!best) break;
+    for (let y = best.y0; y <= best.y1; y++) for (let x = best.x0; x <= best.x1; x++) used[y * GW + x] = 1;
+    got += best.a;
+  }
+  return got ? used : null;
+  function touches(r) {
+    for (let x = r.x0; x <= r.x1; x++) {
+      if (r.y0 > 0 && used[(r.y0 - 1) * GW + x]) return true;
+      if (r.y1 < GH - 1 && used[(r.y1 + 1) * GW + x]) return true;
+    }
+    for (let y = r.y0; y <= r.y1; y++) {
+      if (r.x0 > 0 && used[y * GW + r.x0 - 1]) return true;
+      if (r.x1 < GW - 1 && used[y * GW + r.x1 + 1]) return true;
+    }
+    return false;
+  }
+}
+
+function regionPoly(reg, W, H, id, g, fit) {
   const GW = Math.ceil(W / g), GH = Math.ceil(H / g);
   const cnt = new Uint16Array(GW * GH);
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
@@ -112,11 +189,20 @@ function regionPoly(reg, W, H, id, g) {
     if (!best || cells.length > best.length) best = cells;
   }
   if (!best || best.length < 30) return null;
+  if (fit) {
+    // Комната как её обводит монтажник: 1–3 прямоугольника от подписи на площадь
+    // экспликации (rectRoom). Прежняя подрезка волной от подписи давала ромбы и
+    // «облака» — покрытие на них не сравнить с проектировщиком.
+    inC = rectRoom(inC, GW, GH, Math.min(GW - 1, (fit.sx / g) | 0), Math.min(GH - 1, (fit.sy / g) | 0), fit.target / (g * g));
+    if (!inC) return null;
+  }
+  let bx0 = GW, by0 = GH, bx1 = -1, by1 = -1;
+  if (fit) best = [];
+  if (fit) for (let i = 0; i < GW * GH; i++) if (inC[i]) best.push(i);
   // Как упрощает обвод редактор (simplifyZone): комната почти прямоугольная —
   // берём прямоугольник габарита. Монтажник обводит именно так.
-  let bx0 = GW, by0 = GH, bx1 = -1, by1 = -1;
   best.forEach(k => { const cx = k % GW, cy = (k / GW) | 0; bx0 = Math.min(bx0, cx); by0 = Math.min(by0, cy); bx1 = Math.max(bx1, cx); by1 = Math.max(by1, cy); });
-  if (best.length >= 0.8 * (bx1 - bx0 + 1) * (by1 - by0 + 1))
+  if (best.length >= (fit ? 1 : 0.8) * (bx1 - bx0 + 1) * (by1 - by0 + 1))
     return [[bx0 * g, by0 * g], [(bx1 + 1) * g, by0 * g], [(bx1 + 1) * g, (by1 + 1) * g], [bx0 * g, (by1 + 1) * g]];
   inC = new Uint8Array(GW * GH);
   best.forEach(k => { inC[k] = 1; });
@@ -253,12 +339,15 @@ for (const m of meta) {
   let labA = 0, labZ = 0, badRooms = 0, noArea = 0;
   labs.forEach((l, i) => {
     if (!cntA[i] || cntR[i] / cntA[i] < 0.004) return;
-    let src = map.reg;
-    if (l.area > 0 && map.areas[i] / kA > l.area * 1.1) {   // комната больше своей площади — подрезать
+    let src = map.reg, fit = null;
+    if (l.area > 0 && !process.env.OLDZONES) {
+      // прямоугольники от подписи на площадь экспликации (как обводит монтажник)
+      fit = { sx: seeds[i].x / 100 * W, sy: seeds[i].y / 100 * H, target: l.area * pxPerM * pxPerM };
+    } else if (l.area > 0 && map.areas[i] / kA > l.area * 1.1) {   // комната больше своей площади — подрезать
       const t = trimTo(i, l.area);
       if (t) src = t.reg;
     }
-    const pts = regionPoly(src, W, H, i, g);
+    const pts = regionPoly(src, W, H, i, g, fit);
     if (!pts) return;
     zones.push({ type: 'tp', name: l.no + (l.name ? ' ' + l.name : ''), pts });
     const a = polyA(pts) / pxPerM / pxPerM;
