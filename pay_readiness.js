@@ -87,6 +87,8 @@ const PayReadiness = {
                 id: u.id, auth: u.auth_user_id,
                 name: [u.last_name, u.first_name].filter(Boolean).join(' ') || u.username || u.email || '—',
                 email: u.email || '',
+                first: u.first_name || '',
+                rawRegion: u.region || '',
                 type: u.account_type || '',
                 role: this.roleOf(u.activity_types),
                 region: this.regionGroup(u.region),
@@ -349,6 +351,133 @@ const PayReadiness = {
             ${cur}`;
     },
 
+    // ── «Предложить»: готовое сообщение с преимуществами и ссылками на оплату ──
+    // Цены и ссылки — те же, что видит сам человек в окне тарифа: Subscription.resolve
+    // с его регионом (региональная цена и действующая акция учитываются).
+    // Магазинного тарифа в «Оплате подписки» пока нет, поэтому продавцу тоже уходит «Профи»,
+    // но с перечнем преимуществ именно для продавца.
+    LS_SENT: 'pay_readiness_offers',
+
+    sentMap: function () {
+        try { return JSON.parse(localStorage.getItem(this.LS_SENT) || '{}') || {}; } catch (e) { return {}; }
+    },
+
+    offerCell: function (p) {
+        if (p.type === 'pro') return '<span class="pr-sent">уже Профи</span>';
+        const sent = this.sentMap()[p.id];
+        const mark = sent ? `<span class="pr-sent" title="Предложение уже отправляли">отправлено ${new Date(sent).toLocaleDateString('ru-RU')}</span>` : '';
+        return `<button type="button" class="admin-btn" onclick="PayReadiness.openOffer('${this.esc(p.id)}')">Предложить</button>${mark}`;
+    },
+
+    // Текст для человека p. Возвращает { text, missing } — missing: тарифы без ссылки на оплату
+    offerText: function (p) {
+        const S = (typeof Subscription !== 'undefined') ? Subscription : null;
+        const account = (p.role === 'seller' || p.role === 'both') ? 'seller' : 'installer';
+        const lines = [];
+        lines.push(p.first ? 'Здравствуйте, ' + p.first + '!' : 'Здравствуйте!');
+        lines.push('');
+        const facts = [];
+        if (p.est30 > 0) facts.push('смет за последний месяц — ' + p.est30);
+        if (p.invoices > 0) facts.push('отправленных КП и счетов — ' + p.invoices);
+        lines.push('Это команда HeatCalc.ru.' + (facts.length ? ' Вижу, что вы активно пользуетесь калькулятором (' + facts.join(', ') + ').' : ''));
+        lines.push('Предлагаем подключить тариф «Профи».');
+        lines.push('');
+        if (S) lines.push(S.benefitsText(account));
+        const missing = [];
+        if (S) {
+            const plans = S.planList(false).map(pl => S.resolve(pl.id, { region: p.rawRegion })).filter(Boolean);
+            if (plans.length) {
+                lines.push('');
+                lines.push('Стоимость и оплата:');
+                plans.forEach(r => {
+                    let row = '• ' + r.label + ' — ' + S.fmtRub(r.rub);
+                    const pct = r.promo ? r.promoPct : r.termPct;
+                    if (r.months > 1) row += ' (' + S.fmtRub(r.perMonth) + ' в месяц' + (pct > 0 ? ', скидка ' + pct + ' %' : '') + ')';
+                    else if (pct > 0) row += ' (скидка ' + pct + ' %)';
+                    if (r.promo && r.promo.title) row += ' — акция «' + r.promo.title + '»';
+                    lines.push(row);
+                    if (r.url) lines.push('  Оплатить: ' + r.url); else missing.push(r.label);
+                });
+                lines.push('');
+                lines.push('После оплаты нажмите «Я оплатил» в окне тарифа — мы увидим заявку и подключим доступ.');
+            }
+        }
+        lines.push('Если есть вопросы, просто ответьте на это сообщение.');
+        return { text: lines.join('\n'), missing: missing };
+    },
+
+    _offerFor: null,
+
+    openOffer: function (id) {
+        const p = this._data && this._data.people.find(x => x.id === id);
+        if (!p) return;
+        this._offerFor = p;
+        const o = this.offerText(p);
+        let el = document.getElementById('pr_offer_overlay');
+        if (el) el.remove();
+        el = document.createElement('div');
+        el.id = 'pr_offer_overlay';
+        el.style.cssText = 'position:fixed; inset:0; z-index:2147483000; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px;';
+        el.addEventListener('mousedown', e => { if (e.target === el) this.closeOffer(); });
+        const warn = o.missing.length ? `<div class="ad-card-note ad-warn" style="padding:0;">У тарифа без ссылки на оплату: ${this.esc(o.missing.join(', '))}. Добавьте её в «Оплате подписки» или впишите в текст вручную.</div>` : '';
+        el.innerHTML = `<div class="pr-offer">
+            <div class="pr-offer-h"><b>Предложение: ${this.esc(p.name)}</b><button type="button" class="admin-btn" onclick="PayReadiness.closeOffer()">✕</button></div>
+            <div class="ad-card-note" style="padding:0;">Текст собран автоматически: преимущества для роли «${this.ROLE_LABEL[p.role]}», цены и ссылки с учётом региона${p.rawRegion ? ' (' + this.esc(p.rawRegion) + ')' : ''}. Можно поправить перед отправкой.</div>
+            <textarea id="pr_offer_text" class="pr-offer-text" rows="14">${this.esc(o.text)}</textarea>
+            ${warn}
+            <div class="pr-offer-btns">
+                <button type="button" class="admin-btn" onclick="PayReadiness.copyOffer()">Скопировать</button>
+                <button type="button" class="admin-btn pr-offer-send" onclick="PayReadiness.sendOffer()">Отправить в сообщения</button>
+                <span id="pr_offer_status" class="ad-card-note" style="padding:0;"></span>
+            </div></div>`;
+        document.body.appendChild(el);
+    },
+
+    closeOffer: function () {
+        const el = document.getElementById('pr_offer_overlay');
+        if (el) el.remove();
+        this._offerFor = null;
+    },
+
+    offerStatus: function (msg) {
+        const s = document.getElementById('pr_offer_status');
+        if (s) s.textContent = msg;
+    },
+
+    copyOffer: async function () {
+        const ta = document.getElementById('pr_offer_text');
+        if (!ta) return;
+        try {
+            await navigator.clipboard.writeText(ta.value);
+            this.offerStatus('Скопировано');
+        } catch (e) {
+            ta.select();
+            this.offerStatus('Выделено — нажмите Ctrl+C');
+        }
+    },
+
+    // Личное сообщение в «Сообщения» человека; дальше как у sendAdminMessage: пуш получателю
+    sendOffer: async function () {
+        const p = this._offerFor, ta = document.getElementById('pr_offer_text');
+        if (!p || !ta || !ta.value.trim()) return;
+        const me = (typeof app !== 'undefined') && app._currentUserRow;
+        if (!me || !me.id) { this.offerStatus('Не нашёл вашу учётную запись — скопируйте текст и отправьте вручную.'); return; }
+        this.offerStatus('Отправляю…');
+        try {
+            const { data: inserted, error } = await supabaseClient.from('messages')
+                .insert({ sender_id: me.id, recipient_id: p.id, text: ta.value.trim(), type: 'private' })
+                .select('id').maybeSingle();
+            if (error) throw error;
+            if (inserted && inserted.id && typeof appPush !== 'undefined') appPush.notify('broadcast', inserted.id);
+            const m = this.sentMap(); m[p.id] = Date.now();
+            try { localStorage.setItem(this.LS_SENT, JSON.stringify(m)); } catch (e) { }
+            this.closeOffer();
+            this.renderPeople();
+        } catch (e) {
+            this.offerStatus('Не отправилось: ' + ((e && e.message) || e));
+        }
+    },
+
     setHeat: function (f) { this._heatFilter = f; this.renderPeople(); },
 
     renderPeople: function () {
@@ -370,9 +499,10 @@ const PayReadiness = {
             <td class="n">${p.invoices}</td>
             <td class="n">${p.days}</td>
             <td class="n"><span class="pr-score pr-${p.level}">${p.score}</span></td>
-            <td>${p.offer === 'shop' ? 'Магазин' : 'Профи'}</td></tr>`).join('');
+            <td>${p.offer === 'shop' ? 'Магазин' : 'Профи'}</td>
+            <td class="pr-act">${this.offerCell(p)}</td></tr>`).join('');
         el.innerHTML = `<div class="ad-chips" style="margin:0 0 4px;">${chips}</div>` + (list.length
-            ? `<div class="pr-wrap"><table class="pr-table pr-people"><thead><tr><th>Кто</th><th>Роль</th><th>Город</th><th>Дистрибьютор</th><th class="n">Смет 30д / всего</th><th class="n">КП, счетов</th><th class="n">Дней</th><th class="n">Балл</th><th>Предложить</th></tr></thead><tbody>${rows}</tbody></table></div>`
+            ? `<div class="pr-wrap"><table class="pr-table pr-people"><thead><tr><th>Кто</th><th>Роль</th><th>Город</th><th>Дистрибьютор</th><th class="n">Смет 30д / всего</th><th class="n">КП, счетов</th><th class="n">Дней</th><th class="n">Балл</th><th>Что предлагать</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`
             : '<div class="ad-card-note">В этой группе никого нет.</div>');
     }
 };

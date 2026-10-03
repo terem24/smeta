@@ -19423,3 +19423,12 @@ body.dark-mode .save-remind-field input { background: #121212; border-color: #4B
     .pr-fun-row { grid-template-columns: 1fr 84px; }
     .pr-fun-track { grid-column: 1 / -1; order: 3; }
 }
+
+/* «Предложить» в «Готовности платить»: окно с готовым текстом */
+.pr-act { white-space: nowrap; }
+.pr-act .pr-sent { display: block; margin-top: 3px; font-size: 11px; color: var(--text-sec); }
+.pr-offer { width: 560px; max-width: 100%; max-height: 92vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: var(--surface-light, var(--bg)); color: var(--text-main); border: 1px solid var(--border); border-radius: 14px; padding: 16px; box-shadow: 0 20px 50px rgba(0, 0, 0, .4); box-sizing: border-box; }
+.pr-offer-h { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 14px; }
+.pr-offer-text { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text-main); font: inherit; font-size: 13px; line-height: 1.5; resize: vertical; }
+.pr-offer-btns { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pr-offer-send { border-color: var(--primary) !important; color: var(--primary) !important; }
