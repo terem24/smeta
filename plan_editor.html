@@ -5482,10 +5482,17 @@ function pjDoTodo() {
   pjGo(t.step);
 }
 
+var pjGoOk = null;   // был ли шаг закрыт в момент, когда на него нажали
 function pjCur(L) {
   var ids = L.map(function (s) { return s.id; });
   if (!F().img) return 'plan';
-  if (pjStep && ids.indexOf(pjStep) >= 0) return pjStep;
+  if (pjStep && ids.indexOf(pjStep) >= 0) {
+    // Шаг выбран кнопкой, пока был не закрыт, и вот закрылся (план загружен, комнаты найдены,
+    // котельная отмечена) — идём дальше сами, а не стоим на сделанном
+    var cs = L[ids.indexOf(pjStep)];
+    if (pjGoOk === false && cs.ok && /^(plan|scale|rooms|boiler)$/.test(pjStep)) { pjStep = null; pjGoOk = null; }
+    else return pjStep;
+  }
   for (var i = 0; i < L.length; i++) if (!L[i].ok) return L[i].id;
   return 'release';
 }
@@ -5493,7 +5500,7 @@ function pjCur(L) {
 function pjGo(id) {
   var L = pjSteps(), s = null;
   for (var i = 0; i < L.length; i++) if (L[i].id === id) s = L[i];
-  pjStep = id;
+  pjStep = id; pjGoOk = s ? !!s.ok : null;
   hint('');
   if (id === 'plan') { var inp = document.querySelector('#b_upload input'); if (inp) inp.click(); return; }
   if (!s) { updateGuide(); return; }
