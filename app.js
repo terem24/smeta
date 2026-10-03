@@ -37008,6 +37008,27 @@ const app = {
      * сначала включаем подробный — план работает в нём — и говорим об этом
      * одной строкой в шапке окна.
      */
+    /**
+     * Кнопка «Загрузить план» в панели: сразу выбор файла, окно — уже с ним.
+     * Раньше окно открывалось пустым и просило загрузить то же самое второй раз.
+     * Если план уже есть («Открыть») — просто открываем окно.
+     */
+    pickPlanThenOpen: function () {
+        if (!this.canUseUfhPlan() || this.planRowSummary()) { this.openUfhPlan(); return; }
+        const inp = document.createElement('input');
+        inp.type = 'file';
+        inp.multiple = true;
+        inp.accept = 'image/*,.pdf,application/pdf';
+        inp.style.display = 'none';
+        inp.addEventListener('change', () => {
+            const fl = Array.from(inp.files || []);
+            inp.remove();
+            if (fl.length) this.openUfhPlan(fl);
+        });
+        document.body.appendChild(inp);
+        inp.click();
+    },
+
     openUfhPlan: function (files) {
         if (window.SessionTrack) SessionTrack.screen('ufhplan');
         if (!this.canUseUfhPlan()) { app.alert('Раскладка тёплого пола входит в тариф «Профи».'); return; }

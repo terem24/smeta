@@ -2816,7 +2816,16 @@ function draw() {
   tryAutoScaleOnce();
   if (im2) {
     cv.width = 1200; cv.height = Math.round(1200 * f.h / f.w);
-  } else { cv.width = 1200; cv.height = 850; }
+  } else {
+    // Пустое поле — по высоте окна, без вертикальной прокрутки: холст масштабируется
+    // по ширине, поэтому высоту подбираем из доступной области (03.10.2026)
+    cv.width = 1200; cv.height = 850;
+    try {
+      var bx = cv.parentNode, r0 = bx.getBoundingClientRect();
+      var aw = bx.clientWidth - 16, ah = window.innerHeight - r0.top - 26;
+      if (aw > 200 && ah > 200) cv.height = Math.max(300, Math.min(850, Math.round(1200 * ah / aw)));
+    } catch (e) { }
+  }
   cx.fillStyle = darkPlan ? '#1e1e1e' : '#fff'; cx.fillRect(0, 0, cv.width, cv.height);
   drawGrid();
   if (im2) {
@@ -5108,6 +5117,7 @@ saveAll = function () {
   return r;
 };
 window.addEventListener('resize', updateGuide);
+window.addEventListener('resize', function () { try { if (!imgCache[cur]) draw(); } catch (e) { } });
 window.addEventListener('scroll', updateGuide, true);
 document.getElementById('b_hints').textContent = '💡 Подсказки: ' + (hintsOn ? 'вкл' : 'выкл');
 
