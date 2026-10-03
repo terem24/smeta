@@ -2146,7 +2146,22 @@
   // Проекция изометрическая: X = (x − y)·cos30°, Y = (x + y)·sin30° − z.
 
   var ISO_C = Math.cos(Math.PI / 6), ISO_S = Math.sin(Math.PI / 6);
-  var ISO_BOX = { x0: 120, y0: 30, x1: 400, y1: 244 };   // поле под вид
+  var ISO_BOX = { x0: 62, y0: 30, x1: 372, y1: 246 };   // поле под вид: слева и справа колонки табличек
+
+  /**
+   * Габарит этажа для объёмного вида. С контурами стен — габарит дома с полем 0,6 м, иначе плита
+   * рисовалась по всей подложке (фото с полями): вокруг дома лежал пустой пол, а сам дом выходил
+   * в полтора раза мельче. Без контуров — вся подложка, как раньше.
+   */
+  function isoRect(f) {
+    var g = f.geom;
+    if (!g || !(g.walls || []).length || !f.pxPerM) return { x0: 0, y0: 0, x1: f.w, y1: f.h };
+    var pts = [];
+    g.walls.forEach(function (pl) { pl.forEach(function (p) { pts.push(p); }); });
+    (f.zones || []).forEach(function (z) { (z.pts || []).forEach(function (p) { pts.push(p); }); });
+    var b = bbox(pts), pad = 0.6 * f.pxPerM;
+    return { x0: b[0] - pad, y0: b[1] - pad, x1: b[2] + pad, y1: b[3] + pad };
+  }
 
   /**
    * Изометрия этажа: перевод координат подложки (пиксели плана) в лист.
@@ -2157,7 +2172,8 @@
     var raw = function (px, py, z) {
       return [(px - py) * ISO_C, (px + py) * ISO_S - (z || 0)];
     };
-    var cor = [raw(0, 0, 0), raw(f.w, 0, 0), raw(f.w, f.h, 0), raw(0, f.h, 0)];
+    var R = isoRect(f);
+    var cor = [raw(R.x0, R.y0, 0), raw(R.x1, R.y0, 0), raw(R.x1, R.y1, 0), raw(R.x0, R.y1, 0)];
     var bb = bbox(cor);
     var s = Math.min((B.x1 - B.x0) / (bb[2] - bb[0]), (B.y1 - B.y0) / (bb[3] - bb[1]));
     var ox = B.x0 + ((B.x1 - B.x0) - (bb[2] - bb[0]) * s) / 2 - bb[0] * s;
@@ -2207,7 +2223,8 @@
   function isoWalls(f, t, o, hMm) {
     if (f.geom && (f.geom.walls || []).length) return isoWallsGeom(f, t, o, hMm);
     var h = t.mm(hMm || 2700);
-    [[[0, 0], [f.w, 0]], [[0, 0], [0, f.h]]].forEach(function (e) {
+    var R = isoRect(f);
+    [[[R.x0, R.y0], [R.x1, R.y0]], [[R.x0, R.y0], [R.x0, R.y1]]].forEach(function (e) {
       var a = t.P(e[0][0], e[0][1], 0), b = t.P(e[1][0], e[1][1], 0);
       var b2 = t.P(e[1][0], e[1][1], h), a2 = t.P(e[0][0], e[0][1], h);
       o.push('<polygon points="' + [a, b, b2, a2].map(function (p) {
@@ -2286,9 +2303,10 @@
 
   function isoSlab(f, t, o, thick) {
     var th = t.mm(thick == null ? 250 : thick);
-    var top = [[0, 0], [f.w, 0], [f.w, f.h], [0, f.h]];
+    var R = isoRect(f);
+    var top = [[R.x0, R.y0], [R.x1, R.y0], [R.x1, R.y1], [R.x0, R.y1]];
     // боковые грани — те, что обращены к зрителю
-    [[[f.w, 0], [f.w, f.h]], [[f.w, f.h], [0, f.h]]].forEach(function (e) {
+    [[[R.x1, R.y0], [R.x1, R.y1]], [[R.x1, R.y1], [R.x0, R.y1]]].forEach(function (e) {
       var a = t.P(e[0][0], e[0][1], 0), b = t.P(e[1][0], e[1][1], 0);
       var a2 = t.P(e[0][0], e[0][1], -th), b2 = t.P(e[1][0], e[1][1], -th);
       o.push('<polygon points="' + [a, b, b2, a2].map(function (p) {
@@ -2306,6 +2324,51 @@
         m.map(function (v) { return n(v); }).join(',') + ')" href="' +
         String(f.img).replace(/&/g, '&amp;') + '"/>');
     }
+  }
+
+
+  /**
+   * Таблички на объёмных видах: колонки у краёв поля вида, каждая табличка стоит на уровне своей
+   * точки, насколько позволяет соседство, а выноска — горизонтальный выход и короткий уклон к точке.
+   * Порядок табличек повторяет порядок точек сверху вниз, поэтому выноски не пересекаются и не
+   * тянутся через весь чертёж, как раньше (прямые диагонали с края листа на другой край).
+   * Табличек больше, чем помещается в колонку, — остальным остаётся номер у самой точки.
+   */
+  function isoCardColumns(o, cards, W) {
+    var mid = (ISO_BOX.x0 + ISO_BOX.x1) / 2, L = [], R = [], yMin = 30, yMax = 248, gap = 2.2, extra = [];
+    cards.forEach(function (c) { (c.p[0] < mid ? L : R).push(c); });
+    [[L, 24, 1], [R, 378, -1]].forEach(function (g) {
+      var arr = g[0].slice().sort(function (a, b) { return a.p[1] - b.p[1]; }), x = g[1], dir = g[2], i;
+      var fit2 = function (gp) {
+        arr.forEach(function (c) {
+          c.h = 5.4 * c.lines.length;
+          c.y = Math.max(yMin, Math.min(yMax - c.h, c.p[1] - c.h / 2));
+        });
+        for (i = 1; i < arr.length; i++) if (arr[i].y < arr[i - 1].y + arr[i - 1].h + gp) arr[i].y = arr[i - 1].y + arr[i - 1].h + gp;
+        for (i = arr.length - 1; i >= 0; i--) {
+          var lim = (i === arr.length - 1 ? yMax : arr[i + 1].y - gp) - arr[i].h;
+          if (arr[i].y > lim) arr[i].y = lim;
+        }
+        return !arr.length || arr[0].y >= yMin - 0.01;
+      };
+      if (!fit2(gap) && !fit2(0.8)) {
+        // не влезают — лишние (дальние от краёв списка) остаются номерами у точек
+        while (arr.length && !fit2(0.8)) extra.push(arr.pop());
+      }
+      arr.forEach(function (c) {
+        isoCard(o, x, c.y, c.lines, W);
+        var ex = dir > 0 ? x + W : x, ey = c.y + c.h / 2;
+        var pts = Math.abs(ey - c.p[1]) < 0.5 ? [[ex, ey], c.p] : [[ex, ey], [ex + dir * 7, ey], c.p];
+        o.push('<polyline points="' + pts.map(function (q) { return n(q[0]) + ',' + n(q[1]); }).join(' ') +
+          '" style="fill:none;stroke:#000;stroke-width:0.2"/>');
+        o.push('<circle cx="' + n(c.p[0]) + '" cy="' + n(c.p[1]) + '" r="0.6" style="fill:#000"/>');
+      });
+    });
+    extra.forEach(function (c) {
+      o.push('<rect x="' + n(c.p[0] - 2.4) + '" y="' + n(c.p[1] - 5) + '" width="4.8" height="4.4" rx="0.6"' +
+        ' style="fill:#ffffff;stroke:#000;stroke-width:0.2"/>');
+      o.push(txt(c.p[0], c.p[1] - 1.7, String(c.no || c.lines[0].replace(/\D+/g, '')), { size: 3.1, anchor: 'middle' }));
+    });
   }
 
   /** Табличка контура: номер, шаг, длина, расход — как в образце */
@@ -2329,8 +2392,16 @@
     rooms = (rooms || []).filter(function (r) { return (r.floor || 1) === num; });
 
     var cards = [];
-    // пучок подводок — той же полосой, что на плане
-    (floorLoops(f, stepMm, loopLimit(stepMm)).bundle || []).forEach(function (sg) {
+    // подводки к коллектору — парами тонких линий, как на плане
+    var isoFL = floorLoops(f, stepMm, loopLimit(stepMm)), isoLoops = [];
+    isoFL.forEach(function (Z) { Z.loops.forEach(function (l) { isoLoops.push(l); }); });
+    var isoPairs = leadPairs(f, isoLoops, f.pxPerM || 100);
+    if (isoPairs.length) {
+      isoPairs.forEach(function (pr) {
+        o.push('<path d="' + isoPath(pr.sup, t) + '" style="fill:none;stroke:' + V_SUP + ';stroke-width:0.32;stroke-linejoin:round"/>');
+        o.push('<path d="' + isoPath(pr.ret, t) + '" style="fill:none;stroke:' + V_RET + ';stroke-width:0.32;stroke-linejoin:round"/>');
+      });
+    } else (isoFL.bundle || []).forEach(function (sg) {
       o.push('<path d="' + isoPath([sg.a, sg.b], t) + '" style="fill:none;stroke:' + COL_BUNDLE +
         ';stroke-opacity:0.85;stroke-width:' + n(Math.max(0.4, sg.n * 2 * BUNDLE_DRAW_M * (f.pxPerM || 100) * t.s)) +
         ';stroke-linecap:square"/>');
@@ -2358,25 +2429,8 @@
       }
       return o.join('');
     }
-    // Таблички раскладываем по краям листа и тянем выноску к своей петле:
-    // в середине вида им места нет, они закрыли бы укладку.
-    var left = [], right = [];
-    cards.forEach(function (c) {
-      (c.p[0] < (ISO_BOX.x0 + ISO_BOX.x1) / 2 ? left : right).push(c);
-    });
-    [[left, 24, 1], [right, 380, -1]].forEach(function (g) {
-      var arr = g[0], x = g[1], dir = g[2], y = 34;
-      arr.sort(function (a, b) { return a.p[1] - b.p[1]; });
-      arr.forEach(function (c) {
-        var h = isoCard(o, x, y, c.lines, 30);
-        var ax = dir > 0 ? x + 30 : x;
-        o.push('<line x1="' + n(ax) + '" y1="' + n(y + h / 2) + '" x2="' + n(c.p[0]) +
-          '" y2="' + n(c.p[1]) + '" style="stroke:#000;stroke-width:0.2"/>');
-        o.push('<circle cx="' + n(c.p[0]) + '" cy="' + n(c.p[1]) +
-          '" r="0.6" style="fill:#000"/>');
-        y += h + 3.2;
-      });
-    });
+    // Таблички — колонками у краёв поля вида, на уровне своих петель
+    isoCardColumns(o, cards, 34);
 
     if (f.coll) {
       var c = t.P(f.coll.x, f.coll.y, 0);
@@ -2915,30 +2969,8 @@
     });
 
     if (opts.bare) return o.join('');   // сводная схема: без табличек, легенды и примечаний
-    // Таблички по краям листа, как на 3D виде тёплого пола. Не влезли по
-    // высоте — остаётся номер у самого прибора: он совпадает с табличкой,
-    // если её потом допишут руками.
-    var L2 = [], R2 = [];
-    cards.forEach(function (c) { (c.p[0] < (ISO_BOX.x0 + ISO_BOX.x1) / 2 ? L2 : R2).push(c); });
-    [[L2, 24, 1], [R2, 372, -1]].forEach(function (g) {
-      var arr = g[0], x = g[1], dir = g[2], y = 34;
-      arr.sort(function (a, b) { return a.p[1] - b.p[1]; });
-      arr.forEach(function (c) {
-        var h = 5.4 * c.lines.length;
-        if (y + h > 246) {
-          o.push('<rect x="' + n(c.p[0] - 2.4) + '" y="' + n(c.p[1] - 5) + '" width="4.8" height="4.4" rx="0.6"' +
-            ' style="fill:#ffffff;stroke:#000;stroke-width:0.2"/>');
-          o.push(txt(c.p[0], c.p[1] - 1.7, String(c.no), { size: 3.1, anchor: 'middle' }));
-          return;
-        }
-        isoCard(o, x, y, c.lines, 38);
-        var ax = dir > 0 ? x + 38 : x;
-        o.push('<line x1="' + n(ax) + '" y1="' + n(y + h / 2) + '" x2="' + n(c.p[0]) +
-          '" y2="' + n(c.p[1]) + '" style="stroke:#000;stroke-width:0.2"/>');
-        o.push('<circle cx="' + n(c.p[0]) + '" cy="' + n(c.p[1]) + '" r="0.6" style="fill:#000"/>');
-        y += h + 3.2;
-      });
-    });
+    // Таблички — колонками у краёв поля вида, на уровне своих приборов
+    isoCardColumns(o, cards, 34);
 
     o.push(txt(24, 252, 'Условные обозначения систем трубопроводов:', { size: 3.4 }));
     o.push('<line x1="24" y1="256" x2="44" y2="256" style="stroke:' + COL_SUP + ';stroke-width:0.8"/>');
@@ -2975,7 +3007,7 @@
     });
     if ((f.zones || []).some(function (z) { return (z.type || 'tp') === 'tp'; })) {
       o.push(isoTpBody(f, num, stepMm, opts.rooms, true));
-      legend.push([COL_SUP, 'Т11 / Т21 — напольное отопление'], [COL_BUNDLE, 'Подводки в теплоизоляции']);
+      legend.push([COL_SUP, 'Т11 / Т21 — напольное отопление'], [V_SUP, 'Подводки к контурам (парами линий)']);
     }
     if ((f.rads || []).length) {
       o.push(isoRadBody(f, num, { rooms: opts.rooms, tee: !!opts.tee, radH: opts.radH, bare: true }));
