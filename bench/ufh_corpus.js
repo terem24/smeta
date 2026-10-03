@@ -41,6 +41,7 @@ vm.createContext(ctx);
 for (const f of ['project_sheets.js', 'project_plans.js'])
   vm.runInContext(fs.readFileSync(path.join(root, f), 'utf8'), ctx, { filename: f });
 const PP = ctx.projectPlans;
+if (process.env.POLY === '0') PP.setPoly(false);          // POLY=0 — как до улитки по контуру
 const Geo = require(path.join(root, 'recognize_geo.js'));
 
 const SHORT_M = 25;                                 // «короткая петля», м с подводками
@@ -389,6 +390,7 @@ for (const m of meta) {
     }
   }); });
   row.ourN = ourN; row.ourM = Math.round(ourM); row.est = est; row.leadM = Math.round(leadM);
+  row.polyTried = FL.polyTried || 0; row.polyUsed = FL.polyUsed || 0;
   // Короткие петли — полная длина с подводками меньше SHORT_M: такая петля греет
   // метр-другой, а выход коллектора и пару подводок занимает как полная.
   row.shortOur = 0; row.shortDesign = m.L.filter(L => L < SHORT_M).length;
@@ -486,6 +488,8 @@ if (done.length) {
     `(из них на боковом участке комнаты ${done.reduce((a, r) => a + r.shortSide, 0)}), ` +
     `у проектировщиков ${done.reduce((a, r) => a + r.shortDesign, 0)} из ${done.reduce((a, r) => a + r.designN, 0)}; ` +
     `на этажах из обычных комнат — наших ${real.reduce((a, r) => a + r.shortOur, 0)}, у них ${real.reduce((a, r) => a + r.shortDesign, 0)}`);
+  console.log(`Улитка по контуру: зон пробовали ${done.reduce((a, r) => a + r.polyTried, 0)}, осталось по контуру ${done.reduce((a, r) => a + r.polyUsed, 0)} ` +
+    `(остальные вернулись к прямоугольникам: контур не вышел или трубы сходились)`);
   const sp = [].concat(...real.map(r => r.spreads || []));
   if (sp.length) console.log(`Ровность петель в комнате (длиннейшая / кратчайшая), обычные комнаты, ${sp.length} комнат с 2+ петлями: ` +
     `медиана ${q(sp, 0.5).toFixed(2)}, 75 % — ${q(sp, 0.75).toFixed(2)}, больше 1,3 — ${sp.filter(v => v > 1.3).length}, больше 1,6 — ${sp.filter(v => v > 1.6).length}`);

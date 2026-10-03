@@ -286,6 +286,12 @@
   // участках 49 → 24, всего петель 96 → 92 (у проектировщиков 99), покрытие
   // обычных комнат 75 → 73 % (у проектировщиков 45 %); 15 м — 16 коротких, 72 %.
   var SIDE_LOOP_MIN_M = 12;
+  // Улитка по контуру (комната буквой Г): включена, для зон не крупнее POLY_MAX_M2
+  var POLY_ON = true, POLY_MAX_M2 = 45;
+  // Пустота — клетка куска дальше 0,25 м от любой трубы (дальше тепло пола не
+  // достаёт; тем же радиусом меряет стенд bench/ufh_room.js); допустимо до 5 % куска —
+  // столько пустого в комнатах и у прямоугольной раскладки (2–5 %)
+  var POLY_VOID_M = 0.25, POLY_VOID_MAX = 0.05;
   // Зазор между участками соседних петель, клеток. Без зазора (пробовали
   // 03.10.2026) покрытие комнаты растёт лишь на 1–2 %, а пучку подводок
   // становится негде пройти между петлями — появляются наложения. Клетка.
@@ -797,6 +803,221 @@
     return { guide: [map([h, s])], sup: sup, ret: ret, kind: 'spiral' };
   }
 
+  // ─── Улитка по контуру ─────────────────────────────────────────────────
+  // Комната буквой Г режется на прямоугольники, и у каждого своя петля со
+  // своей парой подводок; петли выходят разной длины (кухня-гостиная 46 и
+  // 75 м, 03.10.2026). Здесь петля идёт по контуру самой комнаты: витки —
+  // вложенные кольца контура через 2 шага, как у прямоугольной улитки, только
+  // кольца Г-образные. Маска — растр с клеткой в треть шага; кольцо — граница
+  // области «дальше k клеток от стены» (расстояние по Чебышёву — оно даёт
+  // ортогональные кольца).
+
+  /** Расстояние до края маски в клетках (по Чебышёву): 0 вне маски, 1 — у самого края. */
+  function chebDepth(M, W, H) {
+    var D = new Uint16Array(W * H), INF = 60000, x, y, i;
+    for (i = 0; i < W * H; i++) D[i] = M[i] ? INF : 0;
+    var at = function (xx, yy) { return xx < 0 || yy < 0 || xx >= W || yy >= H ? 0 : D[yy * W + xx]; };
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      i = y * W + x; if (!D[i]) continue;
+      var m = Math.min(at(x - 1, y), at(x - 1, y - 1), at(x, y - 1), at(x + 1, y - 1)) + 1;
+      if (m < D[i]) D[i] = m;
+    }
+    for (y = H - 1; y >= 0; y--) for (x = W - 1; x >= 0; x--) {
+      i = y * W + x; if (!D[i]) continue;
+      var m2 = Math.min(at(x + 1, y), at(x + 1, y + 1), at(x, y + 1), at(x - 1, y + 1)) + 1;
+      if (m2 < D[i]) D[i] = m2;
+    }
+    return D;
+  }
+
+  /**
+   * Границы области R (маска W×H): замкнутые контуры по часовой стрелке
+   * (экранные координаты), область справа по ходу. Вершины — углы клеток.
+   * Диагонально касающиеся клетки не склеиваются: на стыке берётся правый
+   * поворот. Внешние контуры — с положительной площадью, дыры — с отрицательной.
+   */
+  function regionLoops(R, W, H) {
+    var DX = [1, 0, -1, 0], DY = [0, 1, 0, -1], edges = [], from = {}, x, y, i;
+    var vk = function (px, py) { return py * (W + 1) + px; };
+    var add = function (ax, ay, d) {
+      var e = { ax: ax, ay: ay, bx: ax + DX[d], by: ay + DY[d], d: d, used: false };
+      var k = vk(ax, ay);
+      (from[k] = from[k] || []).push(edges.length); edges.push(e);
+    };
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      if (!R[y * W + x]) continue;
+      if (y === 0 || !R[(y - 1) * W + x]) add(x, y, 0);
+      if (x === W - 1 || !R[y * W + x + 1]) add(x + 1, y, 1);
+      if (y === H - 1 || !R[(y + 1) * W + x]) add(x + 1, y + 1, 2);
+      if (x === 0 || !R[y * W + x - 1]) add(x, y + 1, 3);
+    }
+    var loops = [];
+    for (i = 0; i < edges.length; i++) {
+      if (edges[i].used) continue;
+      var pts = [], e = edges[i], guard = 0;
+      while (e && !e.used && guard++ < 200000) {
+        e.used = true; pts.push([e.ax, e.ay]);
+        var cand = from[vk(e.bx, e.by)] || [], nx = null, pref = [1, 0, 3, 2];
+        for (var q = 0; q < pref.length && !nx; q++) {
+          var want = (e.d + pref[q]) & 3;
+          for (var c = 0; c < cand.length; c++) if (!edges[cand[c]].used && edges[cand[c]].d === want) { nx = edges[cand[c]]; break; }
+        }
+        e = nx;
+      }
+      if (pts.length < 4) continue;
+      var a = 0;
+      for (var j = 0, n = pts.length; j < n; j++) { var p1 = pts[j], p2 = pts[(j + 1) % n]; a += p1[0] * p2[1] - p2[0] * p1[1]; }
+      loops.push({ pts: pts, area: a / 2 });
+    }
+    return loops;
+  }
+
+  /** Убрать вершины на прямых и нулевые звенья. */
+  function collapseLoop(P) {
+    var out = P.slice(), ch = true;
+    while (ch && out.length > 3) {
+      ch = false;
+      for (var i = 0; i < out.length; i++) {
+        var a = out[(i + out.length - 1) % out.length], b = out[i], c = out[(i + 1) % out.length];
+        var cross = (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]);
+        if ((a[0] === b[0] && a[1] === b[1]) || cross === 0) { out.splice(i, 1); ch = true; break; }
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Направляющая улитки по контуру маски M (W×H клеток размером r пикселей,
+   * угол клетки (0,0) — org). s — шаг трубы, пиксели; entry — точка ввода или
+   * null. Возвращает { guide, rings, covered } или null (форма не годится:
+   * дыры, несколько кусков, узко, кольцам не за что зацепиться).
+   */
+  function contourGuide(M, W, H, r, org, s, entry, pick) {
+    var n0 = Math.round(s / r), pc = 2 * n0, p = pc * r;           // p — расстояние между витками
+    if (n0 < 2) return null;
+    // кольца от начала витка не зависят — при переборе начал (pick) берём готовые
+    var memo = contourGuide.memo, rings, i;
+    if (memo && memo.M === M && memo.W === W && memo.H === H && memo.n0 === n0) {
+      if (memo.fail) return null;
+      rings = memo.rings;
+    } else {
+    var D = chebDepth(M, W, H), maxD = 0;
+    for (i = 0; i < D.length; i++) if (D[i] > maxD) maxD = D[i];
+    var thr = function (k) { var R = new Uint8Array(W * H); for (var q = 0; q < R.length; q++) R[q] = D[q] >= k ? 1 : 0; return R; };
+    rings = [];
+    var k = n0 + 1;
+    for (var j = 0; j < 40; j++, k += pc) {
+      // кольцо годится, пока стороны шире p (две трубы витка не должны сойтись);
+      // уже, но не пусто — остаётся тонкое ядро: по нему пройдёт одна прямая
+      // (как у прямоугольной улитки: последний виток вырождается в линию)
+      var thin = maxD < k + n0 - 1;
+      if (maxD < k) break;
+      var loops = regionLoops(thr(k), W, H), outer = null, rest = 0, holes = 0;
+      loops.forEach(function (L) { if (L.area > 0) { if (!outer || L.area > outer.area) { if (outer) rest += outer.area; outer = L; } else rest += L.area; } else holes++; });
+      if (!outer) break;
+      if (holes && j === 0) { contourGuide.memo = { M: M, W: W, H: H, n0: n0, fail: true }; return null; }   // место без обогрева внутри — улитка по контуру не годится
+      if (rest > 0.12 * outer.area) { if (j === 0) { contourGuide.memo = { M: M, W: W, H: H, n0: n0, fail: true }; return null; } break; }   // форма распалась на куски
+      var ring = collapseLoop(outer.pts);
+      if (ring.length < 4) break;
+      if (thin && j === 0) { contourGuide.memo = { M: M, W: W, H: H, n0: n0, fail: true }; return null; }   // сама зона уже витка — улитка не нужна
+      rings.push({ V: ring, area: outer.area, thin: thin });
+      if (thin) break;
+    }
+    contourGuide.memo = { M: M, W: W, H: H, n0: n0, rings: rings, fail: !rings.length };
+    }
+    if (!rings.length) return null;
+
+    var cell = function (v) { return [org[0] + v[0] * r, org[1] + v[1] * r]; };
+    var len = function (a, b) { return Math.hypot(b[0] - a[0], b[1] - a[1]); };
+    var cross3 = function (a, b, c) { return (b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]); };
+    // Начало: выпуклый угол внешнего кольца, ближний к вводу, и направление
+    // обхода такое, чтобы последнее звено (в начало) было не короче p: по нему
+    // виток замыкается, а следующий начинается в p внутрь от его конца.
+    var R0 = rings[0].V, n = R0.length, best = null, cands = [];
+    for (var ci = 0; ci < n; ci++) {
+      if (cross3(R0[(ci + n - 1) % n], R0[ci], R0[(ci + 1) % n]) <= 0) continue;   // у кольца по часовой выпуклый — поворот направо (>0)
+      for (var dir = 1; dir >= -1; dir -= 2) {
+        var prev = R0[(ci - dir + n) % n], nxt = R0[(ci + dir + n) % n];
+        var lastL = len(prev, R0[ci]) * r, firstL = len(R0[ci], nxt) * r;
+        // Обе стороны угла не короче витка: начало в ступеньке контура (след
+        // подводки, колонна) давало на каждом витке излом у самого перехода
+        if (lastL < p - 1e-6 || firstL < p - 1e-6) continue;
+        // Продолжение витка должно существовать: точка на p внутрь от конца витка
+        // обязана быть вершиной следующего кольца. У комнаты с узким плечом
+        // следующее кольцо плеча уже не содержит — начало в плече обрывало улитку.
+        if (rings.length > 1) {
+          var Sp = cell(R0[ci]), Pp = cell(prev), uxl = Sp[0] - Pp[0], uyl = Sp[1] - Pp[1], ull = Math.hypot(uxl, uyl) || 1;
+          uxl /= ull; uyl /= ull;
+          var nrx = -uyl * dir, nry = uxl * dir;
+          var Tt = [Sp[0] - uxl * p + nrx * p, Sp[1] - uyl * p + nry * p], okT = false;
+          rings[1].V.forEach(function (v1) { if (len(cell(v1), Tt) <= 1.5 * r) okT = true; });
+          if (!okT) continue;
+        }
+        // при обходе против часовой выпуклость меняет знак — угол всё равно выпуклый
+        var d = entry ? len(cell(R0[ci]), entry) : 0;
+        var score = d - (firstL > lastL ? 0.01 * p : 0);
+        cands.push({ ci: ci, dir: dir, score: score });
+      }
+    }
+    // pick — какое по порядку начало брать: первое по близости к вводу не всегда
+    // даёт чистый виток, вызывающий пробует следующие
+    cands.sort(function (a, b) { return a.score - b.score; });
+    best = cands[pick || 0];
+    if (!best) return null;
+    var guide = [], dirSign = best.dir, start = best.ci, S = null;
+    for (var rj = 0; rj < rings.length; rj++) {
+      var V = rings[rj].V, m = V.length, si;
+      if (rj === 0) si = start;
+      else {
+        // следующее кольцо начинается там, где предыдущий виток закончился (T)
+        var T = S.target, bd = Infinity; si = -1;
+        for (var vi = 0; vi < m; vi++) { var dd = len(cell(V[vi]), T); if (dd < bd) { bd = dd; si = vi; } }
+        if (si < 0 || bd > 0.6 * p) break;
+        // у нового кольца последнее звено должно быть не короче p (тонкое ядро идёт одной прямой — ему не нужно)
+        var pv = V[(si - dirSign + m) % m];
+        if (!rings[rj].thin && len(pv, V[si]) * r < p - 1e-6) break;
+      }
+      var pts = [cell(V[si])];
+      if (rings[rj].thin) {
+        // ядро: одна прямая по первой стороне (по длинной, если начало выбрано верно)
+        pts.push(cell(V[((si + dirSign) % m + m) % m]));
+        if (len(pts[0], pts[1]) < 0.5 * s) { if (rj > 0) { /* крошечное ядро — без него */ } break; }
+        if (guide.length) guide.push(pts[0]);
+        for (var tp = 0; tp < pts.length; tp++) guide.push(pts[tp]);
+        break;
+      }
+      // обход кольца от si до точки E за p до возврата в si
+      for (var step = 1; step <= m; step++) pts.push(cell(V[((si + dirSign * step) % m + m) % m]));
+      // pts заканчивается снова в V[si]; обрезаем последние p по длине
+      var cut = p, L2 = pts.length - 1;
+      while (L2 > 0 && cut > 0) {
+        var sl = len(pts[L2 - 1], pts[L2]);
+        if (sl > cut + 1e-6) {
+          var t = (sl - cut) / sl;
+          pts[L2] = [pts[L2 - 1][0] + (pts[L2][0] - pts[L2 - 1][0]) * t, pts[L2 - 1][1] + (pts[L2][1] - pts[L2 - 1][1]) * t];
+          cut = 0; break;
+        }
+        cut -= sl; pts.length = L2; L2--;
+      }
+      if (guide.length && pts.length) guide.push(pts[0]);               // перескок на следующий виток
+      for (var pi = 0; pi < pts.length; pi++) guide.push(pts[pi]);
+      // цель для следующего кольца: конец витка + p внутрь
+      var E = pts[pts.length - 1], Pm = pts[pts.length - 2] || E, ux = E[0] - Pm[0], uy = E[1] - Pm[1], ul = Math.hypot(ux, uy) || 1;
+      ux /= ul; uy /= ul;
+      var nxr = -uy, nyr = ux;                                         // справа по ходу (экран: y вниз)
+      if (dirSign < 0) { nxr = -nxr; nyr = -nyr; }                      // против часовой — внутрь слева
+      S = { target: [E[0] + nxr * p, E[1] + nyr * p] };
+    }
+    // убрать повторные точки; перескок между витками — ортогональный
+    var G = [guide[0]];
+    for (i = 1; i < guide.length; i++) {
+      var a = G[G.length - 1], b = guide[i];
+      if (Math.abs(a[0] - b[0]) < 1e-6 && Math.abs(a[1] - b[1]) < 1e-6) continue;
+      G.push(b);
+    }
+    return { guide: orthoPath(G), rings: rings.length, cands: cands.length };
+  }
+
   /** Отрезки пучка: клетки трасс → прямые участки с числом петель в них */
   function bundleSegs(g, paths) {
     var cnt = {}, last = {}, i, j;
@@ -910,10 +1131,38 @@
     // Пробовали (03.10.2026) разбивать комнаты заново в обход прохода пучка,
     // найденного первой прикидкой, — покрытие упало с 81 до 75 %: проход
     // вырезался дважды. Разбиение — одно, проход вырезается при раскладке.
-    if (g) decompose(layable(f, g, zs, own, s));
+    if (g) { g.lay = layable(f, g, zs, own, s); decompose(g.lay); }
+    // Комната буквой Г и подобные: если по контуру хватит не больше петель,
+    // чем по прямоугольникам, петли идут по контуру комнаты (polyLoop)
+    var revertPoly = function (zi) {
+      var I = info[zi];
+      if (!I || !I.poly) return;
+      I.rects = I.polyBackup.rects; I.k = I.polyBackup.k; I.poly = null; I.w = null;
+    };
+    if (g && POLY_ON) zs.forEach(function (Z) {
+      var I = info[Z.i];
+      if (I.rects.length < 2 || I.rects.length > 3 || I.cells * CELL_M * CELL_M > POLY_MAX_M2) return;
+      var cells = [], X0 = 1e9, X1 = -1, Y0 = 1e9, Y1 = -1, x, y, c;
+      for (y = I.bb[1]; y <= I.bb[3]; y++) for (x = I.bb[0]; x <= I.bb[2]; x++) {
+        c = y * g.W + x;
+        if (g.lay[c] !== Z.i + 1) continue;
+        cells.push(c);
+        if (x < X0) X0 = x; if (x > X1) X1 = x; if (y < Y0) Y0 = y; if (y > Y1) Y1 = y;
+      }
+      var kp = Math.max(1, Math.ceil(cells.length * CELL_M * CELL_M / (stepMm / 1000) * 1.05 / lim));
+      var kr = I.k.reduce(function (a, v) { return a + v; }, 0);
+      if (kp > kr) return;
+      I.polyBackup = { rects: I.rects, k: I.k };
+      I.polyTried = true;
+      I.poly = { cells: cells };
+      I.rects = [{ x0: X0, x1: X1, y0: Y0, y1: Y1, area: (X1 - X0 + 1) * (Y1 - Y0 + 1) }];
+      I.k = [kp];
+    });
     var res = null;
     for (var round = 0; round < 8 && g; round++) {
       res = layRound(f, g, own, zs, info, s, lim);
+      var failed = Object.keys(res.polyFail || {});
+      if (failed.length) { failed.forEach(function (zi) { revertPoly(+zi); }); round--; continue; }
       // Петля длиннее предела — у её участка больше петель: сразу во столько
       // раз, во сколько перебор (огромный зал за один проход, а не по одной).
       var grow = false;
@@ -930,6 +1179,11 @@
       if (!grow) break;
     }
     if (res) res = balanceLoops(f, g, own, zs, info, s, lim, res);
+    // выравнивание могло привести к отказу контура в куске — тогда зона на прямоугольники
+    if (res && Object.keys(res.polyFail || {}).length) {
+      Object.keys(res.polyFail).forEach(function (zi) { revertPoly(+zi); });
+      res = layRound(f, g, own, zs, info, s, lim);
+    }
     zs.forEach(function (Z) {
       // площадь обогрева — без мест «без обогрева» внутри зоны
       var I = info[Z.i], S = areaM2(Z.z, f) * (I && I.all ? I.cells / I.all : 1);
@@ -943,6 +1197,9 @@
       out.push({ i: Z.i, name: Z.z.name || '', area: S, perim: perimM(Z.z, f), est: !lp[0].sup, loops: lp });
     });
     if (res) out.bundle = res.bundle;
+    // сколько зон пробовали вести по контуру и сколько осталось (стенды)
+    out.polyTried = zs.filter(function (Z) { return info[Z.i].polyTried; }).length;
+    out.polyUsed = zs.filter(function (Z) { return info[Z.i].poly; }).length;
     return out;
   }
 
@@ -1193,7 +1450,7 @@
         Object.keys(byR).forEach(function (ri) {
           var L = byR[ri], k = I.k[ri];
           if (L.length < 2 || L.length !== k) return;
-          if (splitRect(I.rects[ri], k).grid) return;       // сетку плиток не ровняем
+          if (!I.poly && splitRect(I.rects[ri], k).grid) return;       // сетку плиток не ровняем
           var lens = L.map(function (l) { return l.lenM; });
           if (Math.max.apply(null, lens) / Math.min.apply(null, lens) < BALANCE_FROM) return;
           L.sort(function (a, b) { return a.ti - b.ti; });
@@ -1214,7 +1471,15 @@
       });
       if (!changed) break;
       var res2 = layRound(f, g, own, zs, info, s, lim);
-      if (worstSpread(res2) <= worstSpread(res) && sumSpread(res2) < sumSpread(res) - 0.02 &&
+      // у зоны-многоугольника новые доли могли сломать контур в куске — ей вернуть
+      // прежние доли, остальным оставить новые
+      var pfz = Object.keys(res2.polyFail || {});
+      if (pfz.length) {
+        pfz.forEach(function (zi) { zs.forEach(function (Z, j) { if (Z.i === +zi) info[Z.i].w = saved[j]; }); });
+        res2 = layRound(f, g, own, zs, info, s, lim);
+      }
+      if (!Object.keys(res2.polyFail || {}).length &&
+          worstSpread(res2) <= worstSpread(res) && sumSpread(res2) < sumSpread(res) - 0.02 &&
           bundleOnLoops(res2, g.ppm) <= bundleOnLoops(res, g.ppm)) { res = res2; continue; }
       zs.forEach(function (Z, j) { info[Z.i].w = saved[j]; });   // не стало ровнее — как было
       break;
@@ -1222,11 +1487,217 @@
     return res;
   }
 
+  /**
+   * Зона-многоугольник (комната буквой Г и т. п.) режется на k кусков из
+   * клеток поровну по площади — прямыми разрезами поперёк одной оси, между
+   * кусками клетка зазора (SLAB_GAP). w — доли площади по кускам (сумма 1),
+   * нужны для выравнивания длин петель. Ось выбирается по тому, у какого
+   * разреза куски ближе к прямоугольникам; кусок обязан быть связным.
+   * Возвращает массив массивов индексов клеток или null.
+   */
+  function splitPoly(g, cells, k, w) {
+    if (k <= 1) return [cells.slice()];
+    var best = null;
+    ['x', 'y'].forEach(function (ax) {
+      var key = function (c) { return ax === 'x' ? c % g.W : Math.floor(c / g.W); };
+      var cnt = {}, keys = [];
+      cells.forEach(function (c) { var q = key(c); if (!cnt[q]) { cnt[q] = 0; keys.push(q); } cnt[q]++; });
+      keys.sort(function (a, b) { return a - b; });
+      var total = cells.length, acc = 0, cut = [], fr = 0, wi = 0, i;
+      for (i = 0; i < keys.length && cut.length < k - 1; i++) {
+        acc += cnt[keys[i]];
+        var want = (w && w.length === k) ? (fr + w[wi]) : (wi + 1) / k;
+        if (acc >= want * total) { cut.push(keys[i]); fr = want; wi++; }
+      }
+      if (cut.length < k - 1) return;
+      var parts = [];
+      for (i = 0; i < k; i++) parts.push([]);
+      cells.forEach(function (c) {
+        var q = key(c), pi = 0;
+        for (var j = 0; j < cut.length; j++) { if (q === cut[j]) return; if (q > cut[j]) pi = j + 1; }
+        parts[pi].push(c);
+      });
+      var sc = 0;
+      for (i = 0; i < k; i++) {
+        if (parts[i].length < 20) return;
+        // связность и непрямоугольность
+        var set = {}, x0 = 1e9, x1 = -1, y0 = 1e9, y1 = -1;
+        parts[i].forEach(function (c) { set[c] = 1; var cx = c % g.W, cy = (c - cx) / g.W; if (cx < x0) x0 = cx; if (cx > x1) x1 = cx; if (cy < y0) y0 = cy; if (cy > y1) y1 = cy; });
+        var seen = {}, st = [parts[i][0]], n = 0; seen[parts[i][0]] = 1;
+        while (st.length) {
+          var c0 = st.pop(); n++;
+          [c0 - 1, c0 + 1, c0 - g.W, c0 + g.W].forEach(function (m) { if (set[m] && !seen[m]) { seen[m] = 1; st.push(m); } });
+        }
+        if (n !== parts[i].length) return;
+        sc += 1 - parts[i].length / ((x1 - x0 + 1) * (y1 - y0 + 1));
+      }
+      if (!best || sc < best.sc - 1e-9) best = { sc: sc, parts: parts };
+    });
+    return best ? best.parts : null;
+  }
+
+  /**
+   * Клетки у стены, не вошедшие в раскладку (layable их отрезал), — какому куску
+   * достаётся: ближайшему по клеткам (до двух клеток), и только своей зоны.
+   * Без этого петля в многоугольнике останавливалась бы в 0,1–0,2 м от стены
+   * — ровно то, на что жаловался владелец («до стен не доходит»).
+   */
+  function stripOwners(g, own, lay, slabOf, slabs) {
+    var N = g.W * g.H, W = g.W, res = new Int32Array(N).fill(-1), k, pass, i;
+    var DX = [-1, 0, 1, -1, 1, -1, 0, 1], DY = [-1, -1, -1, 0, 0, 1, 1, 1];
+    for (pass = 0; pass < 3; pass++) {
+      var upd = [];
+      for (k = 0; k < N; k++) {
+        if (!own[k] || lay[k] || slabOf[k] >= 0 || res[k] >= 0) continue;
+        var x = k % W, y = (k - x) / W, best = -1;
+        for (i = 0; i < 8; i++) {
+          var xx = x + DX[i], yy = y + DY[i];
+          if (xx < 0 || yy < 0 || xx >= W || yy >= g.H) continue;
+          var q = yy * W + xx, id = slabOf[q] >= 0 ? slabOf[q] : res[q];
+          if (id >= 0 && slabs[id].cells && own[k] === slabs[id].zi + 1 && (best < 0 || id < best)) best = id;
+        }
+        if (best >= 0) upd.push(k, best);
+      }
+      for (i = 0; i < upd.length; i += 2) res[upd[i]] = upd[i + 1];
+    }
+    return res;
+  }
+
+  /** Расстояние между двумя отрезками (для проверки, что трубы не сошлись). */
+  function segSegDist2(a, b, c, d) {
+    var sd = function (p, u, v) {
+      var dx = v[0] - u[0], dy = v[1] - u[1], L2 = dx * dx + dy * dy || 1;
+      var t = Math.max(0, Math.min(1, ((p[0] - u[0]) * dx + (p[1] - u[1]) * dy) / L2));
+      return Math.hypot(p[0] - u[0] - t * dx, p[1] - u[1] - t * dy);
+    };
+    var o = function (p, q, r2) { return (q[0] - p[0]) * (r2[1] - p[1]) - (q[1] - p[1]) * (r2[0] - p[0]); };
+    var d1 = o(a, b, c), d2 = o(a, b, d), d3 = o(c, d, a), d4 = o(c, d, b);
+    if (d1 * d2 < 0 && d3 * d4 < 0) return 0;
+    return Math.min(sd(a, c, d), sd(b, c, d), sd(c, a, b), sd(d, a, b));
+  }
+  /** Есть ли в одной трубе (ломаной) звенья ближе minD друг к другу; смежные звенья не в счёт. */
+  function pipeClash(P, minD) {
+    for (var i = 0; i + 1 < P.length; i++)
+      for (var j = i + 3; j + 1 < P.length; j++) {
+        var dd = segSegDist2(P[i], P[i + 1], P[j], P[j + 1]);
+        if (dd < minD) {
+          return true;
+        }
+      }
+    return false;
+  }
+
+  /**
+   * Петля в куске-многоугольнике: растр в треть шага, маска = клетки куска и
+   * полосы у стены, не ближе положенного к стене (отступ квадратом — углы
+   * остаются прямыми) и к месту без обогрева; дальше contourGuide. null — не
+   * вышло (узко, дыры, распался на куски, трубы сошлись): зона вернётся к
+   * прямоугольникам.
+   */
+  function polyLoop(f, g, sl, id, slabOf, who, strip, s, entry) {
+    var ppm = g.ppm, r = s / 3;
+    if (!(r >= 1)) return null;
+    var colds = (f.zones || []).filter(function (q) { return q.type === 'cold' && q.pts && q.pts.length > 2; });
+    var bx0 = 1e9, by0 = 1e9, bx1 = -1e9, by1 = -1e9;
+    sl.cells.forEach(function (c) {
+      var x = g.ox + (c % g.W) * g.c, y = g.oy + Math.floor(c / g.W) * g.c;
+      if (x < bx0) bx0 = x; if (y < by0) by0 = y; if (x + g.c > bx1) bx1 = x + g.c; if (y + g.c > by1) by1 = y + g.c;
+    });
+    var mg = 3 * g.c;                                   // полоса у стены лежит за краем куска
+    bx0 -= mg; by0 -= mg; bx1 += mg; by1 += mg;
+    var W = Math.ceil((bx1 - bx0) / r) + 2, H = Math.ceil((by1 - by0) / r) + 2;
+    if (W * H > 300000) return null;
+    var org = [bx0 - r, by0 - r], hh = Math.max(0, WALL_OFFSET_M * ppm - s / 2) + r / 2;
+    var zp = sl.z.pts, M = new Uint8Array(W * H), cnt = 0, x, y;
+    var probes = [[0, 0], [hh, 0], [-hh, 0], [0, hh], [0, -hh], [hh, hh], [hh, -hh], [-hh, hh], [-hh, -hh]];
+    var nearCells = Math.ceil(hh / g.c) + 1;
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      var px = org[0] + (x + 0.5) * r, py = org[1] + (y + 0.5) * r;
+      var cx = Math.floor((px - g.ox) / g.c), cy = Math.floor((py - g.oy) / g.c);
+      if (cx < 0 || cy < 0 || cx >= g.W || cy >= g.H) continue;
+      var k = cy * g.W + cx;
+      var inSlab = slabOf[k] === id;
+      if (!inSlab && strip[k] !== id) continue;
+      if (who[k] !== -1 && who[k] !== id) continue;     // пучок подводок
+      // у стены — точная проверка отступа; в глубине куска клетка заведомо внутри
+      if (!(inSlab && g.wallD && g.wallD[k] > nearCells)) {
+        var okp = true;
+        for (var pi = 0; pi < probes.length && okp; pi++) {
+          var q = [px + probes[pi][0], py + probes[pi][1]];
+          if (!pip(q, zp)) okp = false;
+          else for (var ci = 0; ci < colds.length; ci++) if (pip(q, colds[ci].pts)) { okp = false; break; }
+        }
+        if (!okp) continue;
+      }
+      M[y * W + x] = 1; cnt++;
+    }
+    if (cnt * r * r / (ppm * ppm) < 1.2) return null;       // меньше 1,2 м² — не улитка
+    // Начало витка: пробуем несколько по близости ко вводу и берём первое, у
+    // которого трубы не сходятся (ступеньки контура у следа подводки)
+    var G = null, sup, ret;
+    for (var pick = 0; pick < 8; pick++) {
+      var G1 = contourGuide(M, W, H, r, org, s, entry, pick);
+      if (!G1) break;
+      var su = offsetOrtho(G1.guide, s / 2), re = offsetOrtho(G1.guide, -s / 2);
+      if (su && re) {
+        re = re.reverse();
+        if (!pipeClash(su.concat(re), 0.7 * s)) { G = G1; sup = su; ret = re; break; }
+      }
+      if (pick + 1 >= G1.cands) break;
+    }
+    if (!G) return null;
+    // Пустоты: клетки куска дальше POLY_VOID_S шагов от любой трубы. У фигур с
+    // «плечами» внутренний виток в плечо не заходит, и середина плеча остаётся
+    // пустой — прямоугольная раскладка заполнила бы её своей улиткой. Больше
+    // POLY_VOID_MAX пустого — контур не берём (корпус Galf, 03.10.2026: без
+    // этой проверки покрытие падало с 73 до 67 %).
+    var segs = [], si, lim2 = POLY_VOID_M * ppm;
+    [sup, ret].forEach(function (Pq) { for (si = 1; si < Pq.length; si++) segs.push([Pq[si - 1], Pq[si]]); });
+    var void_ = 0, tot = 0;
+    for (y = 0; y < H; y++) for (x = 0; x < W; x++) {
+      if (!M[y * W + x]) continue;
+      tot++;
+      var cxp = org[0] + (x + 0.5) * r, cyp = org[1] + (y + 0.5) * r, near = false;
+      for (si = 0; si < segs.length; si++) {
+        var a2 = segs[si][0], b2 = segs[si][1];
+        if (cxp < Math.min(a2[0], b2[0]) - lim2 || cxp > Math.max(a2[0], b2[0]) + lim2 ||
+            cyp < Math.min(a2[1], b2[1]) - lim2 || cyp > Math.max(a2[1], b2[1]) + lim2) continue;
+        var ddx = b2[0] - a2[0], ddy = b2[1] - a2[1], L2 = ddx * ddx + ddy * ddy || 1;
+        var tt = Math.max(0, Math.min(1, ((cxp - a2[0]) * ddx + (cyp - a2[1]) * ddy) / L2));
+        if (Math.hypot(cxp - a2[0] - tt * ddx, cyp - a2[1] - tt * ddy) <= lim2) { near = true; break; }
+      }
+      if (!near) void_++;
+    }
+    if (tot && void_ / tot > POLY_VOID_MAX) {
+      return null;
+    }
+    var gx0 = 1e9, gy0 = 1e9, gx1 = -1e9, gy1 = -1e9;
+    G.guide.forEach(function (p) { if (p[0] < gx0) gx0 = p[0]; if (p[0] > gx1) gx1 = p[0]; if (p[1] < gy0) gy0 = p[1]; if (p[1] > gy1) gy1 = p[1]; });
+    return { guide: G.guide, sup: sup, ret: ret, kind: 'spiral', box: [gx0 - s, gy0 - s, gx1 + s, gy1 + s] };
+  }
+
   /** Один проход раскладки при заданном числе петель на участок */
   function layRound(f, g, own, zs, info, s, lim) {
-    var N = g.W * g.H, ppm = g.ppm, slabs = [];
+    var N = g.W * g.H, ppm = g.ppm, slabs = [], polyFail = {};
     var slabOf = new Int32Array(N).fill(-1), edge = new Uint8Array(N);
     zs.forEach(function (Z) {
+      var I0 = info[Z.i];
+      if (I0.poly) {
+        // комната режется на куски из клеток (а не на прямоугольники): петля
+        // в куске идёт по его контуру (contourGuide)
+        var parts = splitPoly(g, I0.poly.cells, I0.k[0], I0.w && I0.w[0]);
+        if (!parts) { polyFail[Z.i] = 1; return; }
+        parts.forEach(function (cells, ti) {
+          var id = slabs.length, x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+          cells.forEach(function (c) {
+            var cx = c % g.W, cy = (c - cx) / g.W;
+            if (cx < x0) x0 = cx; if (cx > x1) x1 = cx; if (cy < y0) y0 = cy; if (cy > y1) y1 = cy;
+            slabOf[c] = id;
+          });
+          slabs.push({ zi: Z.i, ri: 0, ti: ti, z: Z.z, cells: cells, r: { x0: x0, x1: x1, y0: y0, y1: y1 } });
+        });
+        return;
+      }
       info[Z.i].rects.forEach(function (r, ri) {
         splitRect(r, info[Z.i].k[ri], info[Z.i].w && info[Z.i].w[ri]).forEach(function (b, ti) {
           var id = slabs.length, x, y;
@@ -1236,6 +1707,17 @@
             if (x === b.x0 || x === b.x1 || y === b.y0 || y === b.y1) edge[y * g.W + x] = 1;
           }
         });
+      });
+    });
+    // края кусков-многоугольников: клетки, у которых сосед по стороне — не этот кусок
+    slabs.forEach(function (sl, id) {
+      if (!sl.cells) return;
+      sl.edgeCells = [];
+      sl.cells.forEach(function (c) {
+        var x = c % g.W, y = (c - x) / g.W;
+        var inner = x > 0 && y > 0 && x < g.W - 1 && y < g.H - 1 &&
+          slabOf[c - 1] === id && slabOf[c + 1] === id && slabOf[c - g.W] === id && slabOf[c + g.W] === id;
+        if (!inner) { edge[c] = 1; sl.edgeCells.push(c); }
       });
     });
     // цена клетки для трассы; за габаритом зон — улица, туда трубу не ведём
@@ -1276,7 +1758,14 @@
     var paths = slabs.map(function (sl, id) {
       if (!R) return null;
       var b = sl.r, best = -1, bd = Infinity, x, y, d;
-      for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) {
+      if (sl.edgeCells) {
+        sl.edgeCells.forEach(function (c) {
+          for (var d2 = 0; d2 < 4; d2++) {
+            var st2 = c * 4 + d2;
+            if (R.dist[st2] < bd) { bd = R.dist[st2]; best = st2; }
+          }
+        });
+      } else for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) {
         if (!(x === b.x0 || x === b.x1 || y === b.y0 || y === b.y1)) continue;
         for (d = 0; d < 4; d++) {
           var st = (y * g.W + x) * 4 + d;
@@ -1316,7 +1805,17 @@
       }
     }
     var byZone = {}, used = [], okBuf = new Uint8Array(N), boxes = bundleBoxes(g, paths);
+    var strip = null;
+    if (slabs.some(function (s0) { return s0.cells; })) strip = stripOwners(g, own, g.lay, slabOf, slabs);
     slabs.forEach(function (sl, id) {
+      var Rp, L, P = paths[id], entry;
+      if (sl.cells) {
+        // участок-многоугольник: петля по контуру
+        entry = P ? cellXY(g, P.cells[P.cells.length - 1]) : (f.coll ? [f.coll.x, f.coll.y] : null);
+        L = polyLoop(f, g, sl, id, slabOf, who, strip, s, entry);
+        if (!L) { polyFail[sl.zi] = 1; return; }
+        Rp = L.box;
+      } else {
       // один буфер на все участки: размечаем свой прямоугольник и после стираем
       var b = sl.r, ok = okBuf, x, y;
       for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) {
@@ -1326,13 +1825,14 @@
       var r = maxRect(g, ok, [b.x0, b.y0, b.x1, b.y1]);
       for (y = b.y0; y <= b.y1; y++) for (x = b.x0; x <= b.x1; x++) ok[y * g.W + x] = 0;
       if (!r || r.area * CELL_M * CELL_M < 0.2) return;
-      var Rp = [g.ox + r.x0 * g.c, g.oy + r.y0 * g.c, g.ox + (r.x1 + 1) * g.c, g.oy + (r.y1 + 1) * g.c];
-      var P = paths[id], entry = P ? cellXY(g, P.cells[P.cells.length - 1]) : (f.coll ? [f.coll.x, f.coll.y] : null);
+      Rp = [g.ox + r.x0 * g.c, g.oy + r.y0 * g.c, g.ox + (r.x1 + 1) * g.c, g.oy + (r.y1 + 1) * g.c];
+      entry = P ? cellXY(g, P.cells[P.cells.length - 1]) : (f.coll ? [f.coll.x, f.coll.y] : null);
       snapToWalls(Rp, r, sl, id, g, own, boxes, s, f, entry);
       var shortM = Math.min(Rp[2] - Rp[0], Rp[3] - Rp[1]) / ppm;
       var kind = sl.z.lay === 'snake' || sl.z.lay === 'spiral' ? sl.z.lay : (shortM < SNAKE_BELOW_M ? 'snake' : 'spiral');
-      var L = loopInRect(Rp, s, kind, entry);
+      L = loopInRect(Rp, s, kind, entry);
       if (!L) return;
+      }
       // подводка: коллектор → трасса → начало петли
       var lead = [];
       if (P) {
@@ -1353,7 +1853,7 @@
     var headN = used.length;
     used.forEach(function (P) { P.headN = headN; });
     if (used.length) used.slice(1).forEach(function (P) { P.head = null; });
-    return { byZone: byZone, bundle: g && used.length ? bundleSegs(g, used) : [], blocked: blocked };
+    return { byZone: byZone, bundle: g && used.length ? bundleSegs(g, used) : [], blocked: blocked, polyFail: polyFail };
   }
 
   /** Полилиния, сдвинутая на o px перпендикулярно ходу (для пары подводок) */
@@ -3995,6 +4495,9 @@
     floorLoops: floorLoops, loopRows: loopRows, num1: num1, ufhView: ufhView, radRoutes: radRoutes,
     radCollector: radCollector, boilerZone: boilerZone, wallSpot: wallSpot,
     radConnSide: radConnSide, radSideOfModel: radSideOfModel,
+    contourGuide: contourGuide, offsetOrtho: offsetOrtho,
+    // включить/выключить улитку по контуру — для стендов (сравнение «с контуром и без»)
+    setPoly: function (on) { POLY_ON = !!on; loopsCache.length = 0; },
     UFH_DT: UFH_DT, ufhDt: ufhDt, UFH_C: UFH_C,
     MAX_LOOP_M: MAX_LOOP_M, loopLimit: loopLimit, setLoopLimits: setLoopLimits };
 })();
