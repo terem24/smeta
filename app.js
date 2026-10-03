@@ -18874,7 +18874,7 @@ const app = {
 
         const updatedAt = this.installerSettings.workPricesUpdatedAt;
         const updatedAtHtml = updatedAt
-            ? `<span style="font-size:10.5px; color:var(--text-sec);">Обновлено: ${new Date(updatedAt).toLocaleDateString('ru-RU')}</span>`
+            ? ` Обновлено: ${new Date(updatedAt).toLocaleDateString('ru-RU')}.`
             : '';
 
         // Вторая колонка — сколько из расценки уходит бригаде. Показываем только
@@ -18887,13 +18887,12 @@ const app = {
 
         let html = `
             <div class="lk-section-head">
-                <h4><span class="ui-emo">🔧 </span>Прайс монтажа</h4>
+                <div><h4>Прайс монтажа</h4><div class="lk-sub">Цены по умолчанию для новых смет; в самой смете цену можно поменять.${updatedAtHtml}</div></div>
                 <button type="button" class="lk-btn-sm" onclick="app.resetAllInstallerWorkPrices()">Сбросить всё</button>
             </div>
-            <p class="lk-hint" style="margin-bottom:8px;">Цены по умолчанию для новых смет; в самой смете цену можно поменять. ${updatedAtHtml}</p>
         `;
         if (showCosts) {
-            html += `<p class="lk-hint" style="margin-bottom:8px;">
+            html += `<p class="lk-hint">
                 Вторая колонка — <b>сколько из этой цены уходит бригаде</b>. Заполнять не обязательно:
                 ${mgSet
                     ? `у незаполненных берётся общая доля ${crewShare} % из вкладки «Деньги»${costsFilled ? `. Своя оплата задана у ${costsFilled} ${this.plural(costsFilled, 'работы', 'работ', 'работ')}` : ''}.`
@@ -18908,13 +18907,7 @@ const app = {
             const isOpen = wpOpen[groupName] === undefined ? gi === 0 : wpOpen[groupName];
             html += `<details class="lk-group"${isOpen ? ' open' : ''} data-g="${String(groupName).replace(/"/g, '&quot;')}" ontoggle="app._wpOpen[this.dataset.g] = this.open"><summary class="lk-subhead">${groupName} <span class="lk-group-n">${groups[groupName].length}</span></summary>`;
             if (showCosts) {
-                html += `<div style="display:flex; justify-content:flex-end; gap:6px; padding:0 4px 4px 0; font-size:10px; font-weight:700; color:var(--text-sec); text-transform:uppercase; letter-spacing:.4px;">
-                    <span style="width:82px; text-align:right;">Клиенту</span>
-                    <span style="width:14px;"></span>
-                    <span style="width:82px; text-align:right;">Бригаде</span>
-                    <span style="width:14px;"></span>
-                    <span style="width:22px;"></span>
-                </div>`;
+                html += `<div class="lk-price-cols"><span>Клиенту</span><span>Бригаде</span></div>`;
             }
             html += `<div class="lk-list">`;
             groups[groupName].forEach(w => {
@@ -18928,25 +18921,26 @@ const app = {
                 // видно, от чего человек отталкивается, когда ставит свою цифру.
                 const costPlaceholder = Math.round((val || 0) * crewShare / 100);
                 const costCell = showCosts ? `
+                        <label class="lk-money"><span class="lk-price-cap">Бригаде</span>
                         <input type="text" inputmode="numeric" value="${hasOwnCost ? Math.round(ownCost) : ''}"
                             placeholder="${costPlaceholder}"
+                            class="${hasOwnCost ? 'is-own' : ''}"
                             title="${hasOwnCost ? 'Своя оплата бригаде' : 'Пусто — считается общей долей ' + crewShare + ' %'}"
-                            style="width:82px; text-align:right; height:24px; font-size:12px; padding:2px 8px; border-radius:6px; border:1px solid ${hasOwnCost ? 'var(--primary)' : 'var(--border)'}; background:var(--bg); color:var(--text-main);"
                             onblur="app.setInstallerWorkCost('${nameArg}', this.value)"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
-                        <span style="font-size:11px; color:var(--text-sec); width:14px;">₽</span>` : '';
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"><em>₽</em></label>` : '';
                 html += `
-                    <div class="lk-row">
-                        <span style="flex:1; min-width:0;">${w.name} <span style="color:var(--text-sec);">(${w.unit})</span></span>
-                        ${isCustom ? `<span title="Своя цена" style="font-size:10px; color:var(--primary); font-weight:700;">СВОЯ</span>` : ''}
-                        <input type="text" inputmode="numeric" value="${Math.round(val)}" style="width:82px; text-align:right; height:24px; font-size:12px; padding:2px 8px; border-radius:6px; border:1px solid var(--border); background:var(--bg); color:var(--text-main);"
-                            onblur="app.setInstallerWorkPrice('${nameArg}', this.value)"
-                            onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">
-                        <span style="font-size:11px; color:var(--text-sec); width:14px;">₽</span>
-                        ${costCell}
-                        ${isCustom || hasOwnCost
-                            ? `<span title="Сбросить к значениям по умолчанию (цена ${w.price} ₽${hasOwnCost ? ', оплата бригады — по общей доле' : ''})" style="cursor:pointer; color:var(--text-sec); font-size:14px; padding:0 4px;" onclick="app.resetWorkPriceRow('${nameArg}')">↺</span>`
-                            : `<span style="width:22px;"></span>`}
+                    <div class="lk-row lk-price-row">
+                        <span class="lk-price-name">${w.name} <span class="lk-price-unit">(${w.unit})</span>${isCustom ? ' <span class="lk-badge-own" title="Своя цена">своя</span>' : ''}</span>
+                        <div class="lk-price-ctl">
+                            <label class="lk-money"><span class="lk-price-cap">Клиенту</span>
+                            <input type="text" inputmode="numeric" value="${Math.round(val)}"
+                                onblur="app.setInstallerWorkPrice('${nameArg}', this.value)"
+                                onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}"><em>₽</em></label>
+                            ${costCell}
+                            ${isCustom || hasOwnCost
+                                ? `<button type="button" class="lk-icon-btn" title="Сбросить к значениям по умолчанию (цена ${w.price} ₽${hasOwnCost ? ', оплата бригады — по общей доле' : ''})" aria-label="Сбросить" onclick="app.resetWorkPriceRow('${nameArg}')">↺</button>`
+                                : `<span class="lk-icon-btn lk-icon-gap"></span>`}
+                        </div>
                     </div>
                 `;
             });
@@ -18991,7 +18985,7 @@ const app = {
 
         let html = `
             <div class="lk-section-head">
-                <h4>Своё оборудование</h4>
+                <div><h4>Своё оборудование</h4><div class="lk-sub">Позиции, которых нет в каталоге, и история ваших замен и удалений</div></div>
                 <button type="button" class="lk-btn-sm" onclick="app.closeProfileModal(); app.addCustomEqPrompt();">+ Добавить позицию</button>
             </div>`;
 
@@ -19002,10 +18996,10 @@ const app = {
             libHtml += `<div class="lk-list">`;
             lib.forEach(e => {
                 libHtml += `
-                    <div class="lk-row" style="cursor:pointer;" onclick="app.addFromEquipmentLibrary('${e.id}')">
-                        <span style="flex:1; min-width:0;">${e.name}</span>
-                        <span style="font-weight:700; white-space:nowrap;">${Math.round(e.price).toLocaleString('ru-RU')} ₽</span>
-                        <span title="Удалить" style="cursor:pointer; color:var(--text-sec); font-size:14px; padding:0 4px;" onclick="event.stopPropagation(); app.removeFromEquipmentLibrary('${e.id}')">✕</span>
+                    <div class="lk-row lk-row-link" onclick="app.addFromEquipmentLibrary('${e.id}')">
+                        <div class="lk-row-main"><b>${String(e.name).replace(/</g, '&lt;')}</b></div>
+                        <b class="lk-row-r">${Math.round(e.price).toLocaleString('ru-RU')} ₽</b>
+                        <button type="button" class="lk-icon-btn" title="Удалить из списка" aria-label="Удалить" onclick="event.stopPropagation(); app.removeFromEquipmentLibrary('${e.id}')">✕</button>
                     </div>
                 `;
             });
@@ -19024,9 +19018,9 @@ const app = {
                 const meta = [dateStr, s.projectName, s.section].filter(Boolean)
                     .map(v => String(v).replace(/</g, '&lt;')).join(' · ');
                 swHtml += `
-                    <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${meta}</div>
-                        <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${s.fromName}</s> → <b>${s.toName}</b></div>
+                    <div class="lk-row lk-row-block">
+                        <div class="lk-meta">${meta}</div>
+                        <div><s class="lk-was">${s.fromName}</s> → <b>${s.toName}</b></div>
                     </div>
                 `;
             });
@@ -19043,9 +19037,9 @@ const app = {
                 const dateStr = new Date(d.date).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
                 const kindLabel = d.kind === 'work' ? 'Работа' : 'Оборудование';
                 delHtml += `
-                    <div class="lk-row" style="display:block;">
-                        <div style="color:var(--text-sec); font-size:11px; margin-bottom:2px;">${dateStr} · ${kindLabel}</div>
-                        <div style="color:var(--text-main);"><s style="color:var(--text-sec);">${d.name}</s>${d.price ? ` <span style="color:var(--text-sec);">(${Math.round(d.price).toLocaleString('ru-RU')} ₽${d.qty > 1 ? ` × ${d.qty}` : ''})</span>` : ''}</div>
+                    <div class="lk-row lk-row-block">
+                        <div class="lk-meta">${dateStr} · ${kindLabel}</div>
+                        <div><s class="lk-was">${d.name}</s>${d.price ? ` <span class="lk-meta">(${Math.round(d.price).toLocaleString('ru-RU')} ₽${d.qty > 1 ? ` × ${d.qty}` : ''})</span>` : ''}</div>
                     </div>
                 `;
             });
@@ -21445,11 +21439,9 @@ const app = {
         // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
         const ufh = this.canUseUfhPlan();
         try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
-        // Строка — только в подробном режиме: в быстром она сдвигала все настройки
-        // вниз, а пользы там нет; в быстром вместо неё одна ссылка под площадью.
+        // Строка — только в подробном режиме: в быстром плана нет вовсе (владелец
+        // 03.10.2026 убрал и строку, и ссылку под площадью — быстрый режим без него).
         if (planRow) planRow.style.display = (ufh && this.state.detailedRooms) ? 'flex' : 'none';
-        const qLink = document.getElementById('plan_quick_link');
-        if (qLink) qLink.style.display = (ufh && !this.state.detailedRooms) ? 'block' : 'none';
         const bU = document.getElementById('btn_ufhplan');
         const sum = this.planRowSummary();
         if (bU) {
@@ -36783,6 +36775,13 @@ const app = {
         // стороны подключения радиаторов по моделям сметы — трассы окна плана
         // подходят к приборам так же, как в смете и КП
         try { localStorage.setItem('heatcalc_rad_conn', JSON.stringify(this.radConnMap())); } catch (e) { }
+        // нехватка тепла по комнатам из последнего расчёта — шаг «Готово» покажет её,
+        // пока план не тронут (после правок плана цифры устарели)
+        try {
+            const bal = {};
+            this.radDeficits().forEach(x => { bal[String(x.name).trim()] = x.diff; });
+            localStorage.setItem('heatcalc_room_deficit', JSON.stringify(bal));
+        } catch (e) { }
         try {
             localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
                 dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
@@ -62903,6 +62902,43 @@ const app = {
             (diff < 0 ? 'Тепла не хватает: добавьте прибор или утеплите помещение.' : 'Баланс в плюсе — в самые морозы комната не остынет.');
         return `<span style="font-size:10px; font-weight:800; color:${col}; white-space:nowrap;" title="${tip}">${diff >= 0 ? '+' : '−'}${Math.abs(diff)}</span>`;
     },
+    /**
+     * Комнаты, где тепла не хватает: приборы + тёплый пол меньше теплопотерь
+     * больше чем на 50 Вт (те же цифры, что плашки «−515» в списке комнат).
+     * Меньший недобор — округление подбора, говорить о нём незачем.
+     */
+    radDeficits: function () {
+        const out = [];
+        if (!this.state.detailedRooms) return out;
+        (this.state.rooms || []).forEach(r => {
+            const b = (this._roomBalance || {})[r.id];
+            if (!b || !(b.q > 0)) return;
+            const diff = Math.round((b.fact || 0) + (b.ufh || 0) - b.q);
+            if (diff < -50) out.push({ id: r.id, name: r.name, diff, q: b.q });
+        });
+        return out;
+    },
+
+    /**
+     * Строка под «Планом дома»: «Не хватает тепла: Кухня −515 Вт, Кабинет −388 Вт».
+     * Монтажник видел это только по плашке в смете и красным числам в списке
+     * комнат — а нужно сразу после «Готово» в окне плана, пока план перед
+     * глазами и радиатор можно добавить (03.10.2026). Клик по названию —
+     * к карточке комнаты.
+     */
+    updatePlanRowWarn: function () {
+        const el = document.getElementById('plan_row_warn');
+        if (!el) return;
+        const d = this.radDeficits();
+        if (!d.length || !this.planRowSummary()) { el.style.display = 'none'; el.innerHTML = ''; return; }
+        const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+        el.innerHTML = 'Не хватает тепла: ' + d.slice(0, 4).map(x =>
+            `<a href="#" style="color:inherit;text-decoration:underline;" onclick="app.jumpToRoom(${Number(x.id) || 0}); return false;">${esc(x.name)}</a> −${Math.abs(x.diff)} Вт`
+        ).join(', ') + (d.length > 4 ? ' и ещё ' + (d.length - 4) : '') +
+            '. Добавьте радиатор или тёплый пол в этих комнатах.';
+        el.style.display = 'block';
+    },
+
     // render() пересчитывает баланс после пересборки сметы — обновляем плашки
     // в уже отрисованном списке, не трогая сам список (ввод и фокус целы).
     updateRoomBalanceChips: function () {
@@ -80255,6 +80291,7 @@ const app = {
         // Плашки баланса в списке помещений: подбор приборов только что положил
         // свежие цифры в _roomBalance — обновляем плашки, не пересобирая список.
         if (this.state.detailedRooms) this.updateRoomBalanceChips();
+        this.updatePlanRowWarn();
     },
 
     // ─── Подсказка «из чего складывается экономия» ──────────────────────────

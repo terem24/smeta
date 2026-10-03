@@ -328,7 +328,7 @@
   </div>
 </div>
 
-<script src="project_plans.js?v=1.27"></script>
+<script src="project_plans.js?v=1.28"></script>
 <script>
 'use strict';
 // Доступ к проектированию. Своей авторизации у страницы нет, поэтому отметку
@@ -4357,6 +4357,13 @@ function ufhSheets() {
 // «Дальше →». Масштаб — шагом, только если не подобрался сам. Остальные
 // инструменты — под «Ещё ▾».
 
+/** Отпечаток разметки: комнаты (тип и имя) и число радиаторов по этажам. */
+function wzSig() {
+  return JSON.stringify(DATA.floors.map(function (f) {
+    return [(f.zones || []).map(function (z) { return z.type + ':' + (z.name || ''); }).join('|'), (f.rads || []).length];
+  }));
+}
+var WZ_SIG0 = '';     // отпечаток при открытии окна — ставится в конце загрузки
 var wzStep = null;    // шаг, на который перешли кнопкой «Дальше» или кликом
 var wzAuto = {};      // этажи, где комнаты уже искали сами (второй раз не ищем)
 
@@ -4497,10 +4504,23 @@ function wzSummary() {
     (loops ? ', ' + loops + ' ' + pl(loops, 'петля', 'петли', 'петель') + ', ' + Math.round(m) + ' м' : '') : 'без тёплого пола');
   if (rads) parts.push('радиаторов: ' + rads);
   var plain = parts.join(' · ');
+  // Нехватка тепла по последнему расчёту — только пока план не менялся с
+  // открытия окна: после правок цифры устарели, там честнее промолчать (свежие
+  // калькулятор покажет в строке «План дома» сразу после «Готово»)
+  var lack = '';
+  if (wzSig() === WZ_SIG0) {
+    var def = {};
+    try { def = JSON.parse(localStorage.getItem('heatcalc_room_deficit') || '{}') || {}; } catch (e) {}
+    var names = Object.keys(def);
+    if (names.length) lack = '<br><span style="color:#d97706">Не хватает тепла по текущей смете: ' +
+      names.slice(0, 4).map(function (k) { return k.replace(/</g, '&lt;') + ' −' + Math.abs(def[k]) + ' Вт'; }).join(', ') +
+      (names.length > 4 ? ' и ещё ' + (names.length - 4) : '') +
+      '. Добавьте радиатор на шаге «Радиаторы» или тёплый пол.</span>';
+  }
   return { plain: plain, floors: floors, over: over,
     html: '<b>Всё готово:</b> ' + plain + (floors > 1 ? ' (этажей: ' + floors + ')' : '') + '. ' +
       (over ? 'Калькулятор считает два этажа — третий и выше в смету не попадут. ' : '') +
-      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' };
+      'Нажмите «Готово — в смету»: комнаты перейдут в расчёт, раскладка — в смету и КП.' + lack };
 }
 
 /** Что сказать и какие кнопки показать на шаге. */
@@ -5094,6 +5114,7 @@ if (UFH) (function () {
   var bs = document.getElementById('b_sheets_ufh');
   if (bs) bs.style.display = design ? 'inline-block' : 'none';
   hint('');
+  WZ_SIG0 = wzSig();
   // План уже размечен — сразу на нужный шаг, с его режимом на плане
   var f = F();
   if (f && f.img && f.pxPerM) wzGo(wzCur(wzSteps()), true);
