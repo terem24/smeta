@@ -11780,6 +11780,27 @@ const app = {
         }
     },
 
+    // Площади и метры — не больше двух знаков после запятой. Сумма дробных площадей комнат
+    // даёт «хвост» вроде 58.599999999999994, а он попадал в ползунок тёплого пола, в подсказки
+    // «i» и в количество работ сметы. Округляем в источнике (r2) и при каждом пересчёте
+    // (normalizeAreaNumbers) — последнее чинит и старые сохранённые сметы.
+    r2: function (v) {
+        const n = Number(v);
+        return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+    },
+    normalizeAreaNumbers: function () {
+        const s = this.state;
+        if (!s) return;
+        const fix = (o, k) => {
+            const v = o[k];
+            if (typeof v !== 'number' || !isFinite(v)) return;
+            const r = Math.round(v * 100) / 100;
+            if (r !== v) o[k] = r;
+        };
+        ['tp1', 'tp2', 'area'].forEach(k => fix(s, k));
+        (s.rooms || []).forEach(r => { if (r) { fix(r, 'area'); fix(r, 'tpArea'); } });
+    },
+
     // Крупная сумма в узком месте (карточки админки на телефоне): от миллиона — «107 млн ₽»,
     // «18,4 млн ₽», по обычному округлению; рубль всегда на одной строке с числом (неразрывный
     // пробел). Меньше миллиона и на широком экране — сумма целиком, как была.
@@ -52848,7 +52869,7 @@ const app = {
             // предельной длине петли (ufhLoopMax) на каждом этаже.
             const _fc = (this._ufhFloorCalc || []).filter(f => f && f.m > 0);
             const _stp = [parseInt(this.state.ufhStep1, 10) || 150, parseInt(this.state.ufhStep2, 10) || 150];
-            const _tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            const _tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             const _curPipe = this.ufhPipe();
             const _prc = (it) => it ? ((isRommer && it.rommer) ? it.rommer.price : it.price) || 0 : 0;
             const _perLoop = (p) => 2 * _prc((catalog.parts || []).find(x => x.id === p.conn))
@@ -52933,7 +52954,7 @@ const app = {
             const _matArea = (_matR ? _matR.area : _matCat?.area) || 0.88;
             const _xk = catalog.xps_kit || [];
             const _xpsArea = this.ufhBaseXps()?.area || 0.6844;
-            const _tpA = (Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0);
+            const _tpA = this.r2((Number(this.state.tp1) || 0) + (this.state.floors === 2 ? (Number(this.state.tp2) || 0) : 0));
             const _pipePerM2 = (_tpA > 0 && this.tpMeters > 0) ? this.tpMeters / _tpA : 6.7;
             const _sheetsM2 = 1.05 / _xpsArea;
             const _sub = catalog.ufh_mat && catalog.ufh_mat[0];
@@ -56808,8 +56829,8 @@ const app = {
             // даёт «хвост» вроде 198.00000000000003, который потом виден в подробном расчёте.
             this.state.area = tA > 0 ? Math.round(tA * 10) / 10 : 50;
             this.state.win = tW > 0 ? tW : 1;
-            this.state.tp1 = tTp1;
-            this.state.tp2 = tTp2;
+            this.state.tp1 = this.r2(tTp1);
+            this.state.tp2 = this.r2(tTp2);
             this.state.ufhZones = this.state.rooms.filter(r => r.sys && r.sys.includes('tp')).length;
 
             if ((tTp1 + tTp2) > 0 && !this.state.systems.includes('tp')) this.state.systems.push('tp');
@@ -59363,7 +59384,7 @@ const app = {
                     if (num < 1) num = 1;
                     alert("Максимальная площадь дома не может превышать " + this.MAX_AREA + " м².");
                 }
-                r.area = num;
+                r.area = this.r2(num);
             } else {
                 r[field] = val;
             }
@@ -62265,7 +62286,7 @@ const app = {
                 }
             }
 
-            r.area = num;
+            r.area = this.r2(num);
             if (r.windows) {
                 r.windows.forEach(w => {
                     if (!w.isManualWidth) {
@@ -62557,7 +62578,7 @@ const app = {
             }
         }
 
-        let tpArea = (parseFloat(this.state.tp1) || 0) + (parseFloat(this.state.tp2) || 0);
+        let tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (parseFloat(this.state.tp2) || 0));
         if (tpArea > 0) {
             let tpRoomsCount = 5;
             if (tpArea <= 80) tpRoomsCount = 5;
@@ -63468,7 +63489,7 @@ const app = {
         let n = this.state.ufhZones + d; if (n < 0) n = 0; if (n > 16) n = 16; this.state.ufhZones = n;
         this.state.zonesManual = true;
         this.state.zonesManualArea = this.state.area;
-        this.state.zonesManualTpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+        this.state.zonesManualTpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
         this.state.zonesManualFloors = this.state.floors;
         this.saveState();
         this.syncUI(); this.render();
@@ -63478,7 +63499,7 @@ const app = {
         if (!isAuto) {
             this.state.zonesManual = true;
             this.state.zonesManualArea = this.state.area;
-            this.state.zonesManualTpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            this.state.zonesManualTpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             this.state.zonesManualFloors = this.state.floors;
         }
         this.saveState();
@@ -63628,7 +63649,7 @@ const app = {
         // Ноль шкала не представляет (минимум 25), поэтому подставляем минимум
         // явно: без этого браузер оставлял прежнее значение.
         _areaInp.value = (parseFloat(this.state.area) || 0) > 0 ? this.state.area : _areaMin;
-        document.getElementById('val_area').innerText = this.state.area;
+        document.getElementById('val_area').innerText = this.r2(this.state.area);
         this.renderPlanAreaNote();
         if (document.getElementById('blk_h2_wrapper')) document.getElementById('blk_h2_wrapper').style.display = (this.state.floors === 2) ? 'flex' : 'none';
         if (document.getElementById('btn_add_floor')) document.getElementById('btn_add_floor').style.display = (this.state.floors === 2) ? 'none' : 'block';
@@ -64289,7 +64310,7 @@ const app = {
         }
 
         const cTabs = document.querySelectorAll('.cool-tab'); cTabs.forEach(t => { t.classList.remove('active'); if (t.dataset.type === this.state.coolant) t.classList.add('active'); });
-        document.getElementById('inp_tp1').max = this.state.area; document.getElementById('inp_tp2').max = this.state.area; document.getElementById('inp_tp1').value = this.state.tp1; document.getElementById('val_tp1').innerText = this.state.tp1; document.getElementById('inp_tp2').value = this.state.tp2; document.getElementById('val_tp2').innerText = this.state.tp2;
+        document.getElementById('inp_tp1').max = this.state.area; document.getElementById('inp_tp2').max = this.state.area; document.getElementById('inp_tp1').value = this.state.tp1; document.getElementById('val_tp1').innerText = this.r2(this.state.tp1); document.getElementById('inp_tp2').value = this.state.tp2; document.getElementById('val_tp2').innerText = this.r2(this.state.tp2);
         document.getElementById('chk_sku').checked = this.state.showSku;
         // Логика доступа для переключателя "СХЕМА" — доступен всем авторизованным пользователям
         let sw = document.getElementById('scheme_wrapper');
@@ -64818,7 +64839,7 @@ const app = {
         // Комнаты и окна идут за площадью, пока комнаты не задали руками
         this.syncFlatWindows();
         if (this.state.tp1 > v) this.state.tp1 = v;
-        if (this.state.tp1 + this.state.tp2 > v) this.state.tp2 = v - this.state.tp1;
+        if (this.state.tp1 + this.state.tp2 > v) this.state.tp2 = this.r2(v - this.state.tp1);
         this.state.waterZones.forEach(z => z.dist = this.state.area < 120 ? 6 : 10);
         if (this.state.detailedRooms) {
             this.generateRoomsForDetailedCalculation();
@@ -66452,7 +66473,7 @@ const app = {
                 this.state.ufhZones = 0;
             }
         } else {
-            let tpArea = (parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0);
+            let tpArea = this.r2((parseFloat(this.state.tp1) || 0) + (this.state.floors === 2 ? (parseFloat(this.state.tp2) || 0) : 0));
             if (this.state.zonesManual) {
                 let currentArea = this.state.area;
                 let currentFloors = this.state.floors;
@@ -66500,10 +66521,10 @@ const app = {
 
         if (f === 1) {
             this.state.tp1 = v;
-            if (this.state.tp1 + this.state.tp2 > max) this.state.tp2 = max - this.state.tp1;
+            if (this.state.tp1 + this.state.tp2 > max) this.state.tp2 = this.r2(max - this.state.tp1);
         } else {
             this.state.tp2 = v;
-            if (this.state.tp1 + this.state.tp2 > max) this.state.tp1 = max - this.state.tp2;
+            if (this.state.tp1 + this.state.tp2 > max) this.state.tp1 = this.r2(max - this.state.tp2);
         }
         if (this.state.detailedRooms) {
             this.applyTpAreaToRooms(1, this.state.tp1);
@@ -69475,7 +69496,7 @@ const app = {
             case 'ufh_pipe': {
                 let stepVal1 = this.state.ufhStep1 || 150;
                 let stepVal2 = this.state.ufhStep2 || 150;
-                let tpArea = this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0);
+                let tpArea = this.r2(this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0));
                 let stepStr = (this.state.floors === 2 && this.state.tp2 > 0) ? `1 этаж: ${stepVal1} мм, 2 этаж: ${stepVal2} мм` : `${stepVal1} мм`;
 
                 // Этаж, размеченный в редакторе планов, считается по нарисованной
@@ -70010,6 +70031,7 @@ const app = {
         try { return this._renderInner(false); } finally { this._inputAnchorAfter(_ia); }
     },
     _renderInner: function (computeOnly) {
+        this.normalizeAreaNumbers();
         if (!computeOnly) this.ensureCalcId();
         if (this.state.disabledSections) {
             const migrations = {
@@ -72677,7 +72699,7 @@ const app = {
         let hasRad = this.state.systems.includes('rad');
         let hasTp = this.state.systems.includes('tp');
         let radSecs = 0, radMeters = 0, tpMeters = 0;
-        let tpArea = this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0);
+        let tpArea = this.r2(this.state.tp1 + (this.state.floors === 2 ? this.state.tp2 : 0));
         if (hasRad) { let load = this.radLoadKw(pwr, hasTp ? tpArea : 0) * 1000; radSecs = Math.ceil(load / 117); if (radSecs > 0) { let pipe = Math.ceil(this.state.win * (Math.sqrt(this.state.area / (this.state.floors === 2 ? 2 : 1)) + 3) * 1.1); radMeters = pipe * 2; } }
 
         let stepVal1 = this.state.ufhStep1 || 150;
