@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Замер дома для расчёта отопления: что снять и сфотографировать | HeatCalc.ru</title>
+    <meta name="description" content="Чек-лист замера для расчёта отопления и воды: размеры помещений, стены, окна, высота, место котельной, ввод воды, канализация. Что фотографировать, чтобы не возвращаться на объект.">
+    <link rel="canonical" href="https://heatcalc.ru/zamer-dlya-rascheta-chto-snyat/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/zamer-dlya-rascheta-chto-snyat/">
+    <meta property="og:title" content="Замер дома для расчёта: что снять, чтобы не ездить дважды">
+    <meta property="og:description" content="Чек-лист данных для расчёта теплопотерь и сметы: после замера не должно оставаться вопросов.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/zamer-dlya-rascheta-chto-snyat/#webpage",
+      "url": "https://heatcalc.ru/zamer-dlya-rascheta-chto-snyat/",
+      "name": "Замер дома для расчёта: что снять и сфотографировать, чтобы не ездить дважды",
+      "description": "Чек-лист замера для расчёта отопления и воды: размеры помещений, стены, окна, высота, место котельной, ввод воды, канализация. Что фотографировать, чтобы не возвращаться на объект.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "замер дома для расчёта отопления"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Замер дома для расчёта: что снять и сфотографировать, чтобы не ездить дважды",
+          "item": "https://heatcalc.ru/zamer-dlya-rascheta-chto-snyat/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Что нужно замерить в доме для расчёта отопления?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Размеры и высоту каждого помещения, наружные стены с их толщиной и ориентацией, окна и двери, тип пола и перекрытия, назначение комнат, место котельной и вводов коммуникаций."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как узнать толщину стены и утепление?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Замерьте толщину в проёме окна или двери, где виден срез, и спросите заказчика, утепляли ли дом и чем. Если утепление снаружи, на проёме его не видно, нужна информация от строителей или проекта."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Сколько фотографий делать на замере?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Каждое помещение минимум с двух углов, плюс ввод коммуникаций, котельная, щиток, фасады и места, где труба будет проходить через перекрытия. Файлы подписывайте сразу."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Что делать, если после замера не хватает данных?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Попросите заказчика прислать недостающие размеры и фото в мессенджере или договоритесь об уточнении при втором визите. Лучше проверить полноту данных до отъезда с объекта."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/zamer-dlya-rascheta-chto-snyat/#article",
+      "headline": "Замер дома для расчёта: что снять и сфотографировать, чтобы не ездить дважды",
+      "description": "Чек-лист замера для расчёта отопления и воды: размеры помещений, стены, окна, высота, место котельной, ввод воды, канализация. Что фотографировать, чтобы не возвращаться на объект.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/zamer-dlya-rascheta-chto-snyat/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2026-11-04",
+      "dateModified": "2026-11-04",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 557,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Замер дома для расчёта: что снять и сфотографировать, чтобы не ездить дважды</nav>
+
+        <h1>Замер дома для расчёта: что снять и сфотографировать, чтобы не ездить дважды</h1>
+
+        <p class="art-meta"><time datetime="2026-11-04">4 ноября 2026</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Что нужно снять и сфотографировать на замере для расчёта отопления?</p>
+            <p>Размеры каждого помещения и высоту потолков, толщину и материал наружных стен, размеры и тип окон и дверей, ориентацию по сторонам света, полы и перекрытия, место котельной и ввода коммуникаций, трассы стояков и точки водоразбора. Каждое помещение фотографируйте от двух углов и подписывайте. Лучше потратить лишние двадцать минут на объекте, чем вторую поездку.</p>
+        </div>
+
+        <p class="lead">Вы вернулись с замера, села за расчёт — и выясняется, что не записали высоту потолка во втором этаже, толщину стены у веранды и куда выходит окно в углу. Звонить заказчику «а померяйте» неловко, ехать второй раз — полдня. Хороший замер — это заранее известный список того, что нужно привезти с объекта.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#princip-snimat-to-chto-popadet-v-raschet">Принцип: снимать то, что попадёт в расчёт</a></li>
+            <li><a href="#chto-snyat-v-kazhdom-pomeschenii">Что снять в каждом помещении</a></li>
+            <li><a href="#steny-okna-i-poly-detali-kotorye-zabyvayut">Стены, окна и полы: детали, которые забывают</a></li>
+            <li><a href="#kotelnaya-i-kommunikacii">Котельная и коммуникации</a></li>
+            <li><a href="#poryadok-obhoda">Порядок обхода</a></li>
+            <li><a href="#ot-zamera-k-raschetu">От замера к расчёту</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="princip-snimat-to-chto-popadet-v-raschet">Принцип: снимать то, что попадёт в расчёт</h2>
+
+        <p>Замер — это сбор исходных данных. Лишнее вы просто не откроете, а недостающее остановит работу. Поэтому удобно опираться на список того, что требует расчёт: чтобы оценить мощность и подобрать оборудование, нужны размеры помещений, характеристики ограждений и положение коммуникаций. Всё остальное — приятное дополнение.</p>
+
+        <p>Если планы дома уже есть (о том, как их получить, мы писали в статье про <a href="/pervyy-zvonok-i-vyezd-na-zamer/">первый звонок и выезд</a>), на объекте вы не снимаете всё с нуля, а сверяете чертёж с реальностью. Привычка проверять размеры по плану спасает от ошибок, потому что дом нередко строят не по чертежу.</p>
+
+        <h2 id="chto-snyat-v-kazhdom-pomeschenii">Что снять в каждом помещении</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Что</th><th>Зачем это в расчёте</th><th>Как зафиксировать</th></tr>
+                <tr><td>Длина и ширина</td><td>Площадь, объём воздуха, длина контуров тёплого пола</td><td>Лазерная рулетка, цифры на плане</td></tr>
+                <tr><td>Высота потолка</td><td>Объём помещения и нагрев воздуха</td><td>Замер в двух точках, особенно под скосами</td></tr>
+                <tr><td>Наружные стены</td><td>Теплопотери через стену</td><td>Какие стены наружные, их длина и ориентация</td></tr>
+                <tr><td>Окна и двери</td><td>Самая слабая часть ограждения</td><td>Ширина и высота, тип стеклопакета, высота подоконника</td></tr>
+                <tr><td>Пол и перекрытие</td><td>Потери вниз и вверх</td><td>Что под полом и что над потолком</td></tr>
+                <tr><td>Назначение комнаты</td><td>Расчётная температура</td><td>Спальня, ванная, прихожая, кладовая</td></tr>
+            </table>
+        </div>
+        <p class="note">Ориентацию по сторонам света проверяйте по компасу в телефоне: север и юг на чертеже часто нарисованы условно.</p>
+
+        <h2 id="steny-okna-i-poly-detali-kotorye-zabyvayut">Стены, окна и полы: детали, которые забывают</h2>
+
+        <ul>
+            <li><strong>Толщина и материал стены.</strong> Замерьте толщину в проёме окна или двери: там виден срез. Спросите про утеплитель и его толщину — если дом утеплён снаружи, толщины стены на проёме будет недостаточно.</li>
+            <li><strong>Окна.</strong> Количество камер стеклопакета, наличие энергосберегающего покрытия, ширина профиля. Если окон ещё нет, запишите размеры проёмов и спросите, что собираются ставить.</li>
+            <li><strong>Полы.</strong> Плита по грунту, перекрытие над подвалом, лаги. Для тёплого пола спросите, какая высота выделена под стяжку и утеплитель: это определяет, что можно положить.</li>
+            <li><strong>Перекрытие и кровля.</strong> Что над последним этажом: чердак, утеплённая кровля, мансарда.</li>
+            <li><strong>Входные двери.</strong> Сколько их, куда выходят, есть ли тамбур.</li>
+        </ul>
+
+        <div class="callout">
+            <p><strong>Лучше лишнее фото, чем второй выезд.</strong> Снимайте каждую комнату от двух противоположных углов и обязательно общим планом включайте окна. Подписывайте файлы сразу: «кухня_1», «котельная_вход». Через неделю по неподписанным снимкам вы уже не восстановите, что где.</p>
+        </div>
+
+        <h2 id="kotelnaya-i-kommunikacii">Котельная и коммуникации</h2>
+
+        <p>Для котельной нужны размеры помещения, высота, расположение окна и вентиляции, дверной проём (пролезет ли оборудование), состояние пола и стен. Отдельно снимите место ввода газа или электричества, расположение электрощита, точку выпуска дымохода и пути его прохождения через перекрытия.</p>
+
+        <p>Для воды и канализации зафиксируйте точку ввода водопровода, глубину и состояние колодца или скважины, место водомерного узла, положение стояков, места водоразбора (кухня, санузлы, постирочная, полив) и, если дом старый, материал существующих труб. Для канализации — точку выпуска, уклон и глубину, наличие септика или выгребной ямы.</p>
+
+        <h2 id="poryadok-obhoda">Порядок обхода</h2>
+
+        <ol>
+            <li>Обойдите дом снаружи: фасады, цоколь, кровля, ввод коммуникаций, участок под септик.</li>
+            <li>Начните внутри с котельной и мест ввода коммуникаций — они определяют схему.</li>
+            <li>Пройдите этажи сверху вниз или снизу вверх, не перескакивая: так не пропустите комнату.</li>
+            <li>В каждой комнате: размеры, окна, стены, фото. Отметьте на плане найденные расхождения.</li>
+            <li>Перед отъездом просмотрите фотографии и список: чего не хватает, пока вы ещё на объекте.</li>
+            <li>Договоритесь с заказчиком, что вы можете уточнять мелочи по фото в мессенджере.</li>
+        </ol>
+
+        <h2 id="ot-zamera-k-raschetu">От замера к расчёту</h2>
+
+        <p>Собранные данные удобно сразу вносить в расчёт: помещения, стены, окна, полы и места установки приборов. Калькулятор HeatCalc.ru считает теплопотери по комнатам и подбирает оборудование, а результат становится основой для предложения — как оформить его, смотрите в статье про <a href="/kp-na-montazh-otopleniya/">КП на монтаж отопления</a>. Если при внесении данных обнаружилось, что чего-то не хватает, это тот самый сигнал, ради которого и нужна проверка перед отъездом с объекта.</p>
+
+        <a class="cta" href="/">
+            Внести данные замера в расчёт
+            <small>Помещения, стены, окна и полы — в расчёт теплопотерь по комнатам</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что нужно замерить в доме для расчёта отопления?</span></summary>
+            <div class="answer">
+                <p>Размеры и высоту каждого помещения, наружные стены с их толщиной и ориентацией, окна и двери, тип пола и перекрытия, назначение комнат, место котельной и вводов коммуникаций.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как узнать толщину стены и утепление?</span></summary>
+            <div class="answer">
+                <p>Замерьте толщину в проёме окна или двери, где виден срез, и спросите заказчика, утепляли ли дом и чем. Если утепление снаружи, на проёме его не видно, нужна информация от строителей или проекта.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Сколько фотографий делать на замере?</span></summary>
+            <div class="answer">
+                <p>Каждое помещение минимум с двух углов, плюс ввод коммуникаций, котельная, щиток, фасады и места, где труба будет проходить через перекрытия. Файлы подписывайте сразу.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что делать, если после замера не хватает данных?</span></summary>
+            <div class="answer">
+                <p>Попросите заказчика прислать недостающие размеры и фото в мессенджере или договоритесь об уточнении при втором визите. Лучше проверить полноту данных до отъезда с объекта.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=zamer-dlya-rascheta-chto-snyat#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/pervyy-zvonok-i-vyezd-na-zamer/">первый звонок и выезд на замер: что спросить у заказчика</a> · <a href="/samozanyatyy-ili-ip-montazhnik/">самозанятый или ип: как монтажнику продавать оборудование и работы</a> · <a href="/zakazchik-ne-podpisyvaet-akt/">заказчик не подписывает акт: что делать подрядчику</a> · <a href="/dopolnitelnye-raboty-po-hodu-montazha/">дополнительные работы по ходу монтажа: как оформить и получить деньги</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=zamer-dlya-rascheta-chto-snyat">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

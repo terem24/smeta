@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Расценки за точку, за метр или за час: как считать работы | HeatCalc.ru</title>
+    <meta name="description" content="За точку, за метр, за комплект или за час: четыре способа считать работы монтажника. Где какой выгоден, на чём теряют деньги и как проверить расценку по трудоёмкости.">
+    <link rel="canonical" href="https://heatcalc.ru/tseny-za-tochku-ili-za-metr/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/tseny-za-tochku-ili-za-metr/">
+    <meta property="og:title" content="Цена за точку или за метр">
+    <meta property="og:description" content="Сравниваем способы расчёта работ: точка, метр, комплект, час. Пример с цифрами.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/tseny-za-tochku-ili-za-metr/#webpage",
+      "url": "https://heatcalc.ru/tseny-za-tochku-ili-za-metr/",
+      "name": "Цена за точку или за метр: как считать работы",
+      "description": "За точку, за метр, за комплект или за час: четыре способа считать работы монтажника. Где какой выгоден, на чём теряют деньги и как проверить расценку по трудоёмкости.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "расценки на монтаж за точку за метр"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Цена за точку или за метр: как считать работы",
+          "item": "https://heatcalc.ru/tseny-za-tochku-ili-za-metr/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Что выгоднее заказчику: цена за точку или за час?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Заказчику чаще удобнее фиксированная цена за единицу: он понимает итог заранее. Почасовая оплата выглядит как риск неопределённости, поэтому её лучше оставить для нестандартных и ремонтных работ и ограничить потолком суммы."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как учесть сложность объекта в расценке за метр?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Добавьте поправки отдельными строками: сложные помещения, стеснённые условия, работа на высоте, скрытая прокладка. Так базовая расценка остаётся понятной, а доплата видна и обоснована."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли считать тёплый пол за точку?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Нет, трудоёмкость тёплого пола определяется площадью и сложностью контуров, а не числом точек. Считайте за квадратный метр с поправками, а подключение коллектора — отдельным комплектом."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как часто пересматривать расценки?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Не реже раза в сезон, а также при изменении оплаты бригады, цен на материалы или накладных. Проверяйте расценки по трудоёмкости и по остатку с готовых объектов."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/tseny-za-tochku-ili-za-metr/#article",
+      "headline": "Цена за точку или за метр: как считать работы",
+      "description": "За точку, за метр, за комплект или за час: четыре способа считать работы монтажника. Где какой выгоден, на чём теряют деньги и как проверить расценку по трудоёмкости.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/tseny-za-tochku-ili-za-metr/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-09-29",
+      "dateModified": "2027-09-29",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 646,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Цена за точку или за метр: как считать работы</nav>
+
+        <h1>Цена за точку или за метр: как считать работы</h1>
+
+        <p class="art-meta"><time datetime="2027-09-29">29 сентября 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Как лучше считать работы: за точку, за метр или за час?</p>
+            <p>Универсального способа нет: единицу надо подбирать под вид работ. Приборы и точки водоразбора удобно считать за штуку, трубопроводы и тёплый пол — за метр или квадратный метр, нестандартные и ремонтные работы — за час, котельную — комплектом. Любую расценку проверяйте через трудоёмкость: сколько человеко-часов уходит на единицу и сколько стоит ваш час. Расценка без такой проверки может оказаться убыточной.</p>
+        </div>
+
+        <p class="lead">Один монтажник берёт за радиатор, другой за метр трубы, третий считает часы. Заказчик сравнивает цифры и не понимает, почему у одного дороже. А сами монтажники теряют деньги, когда считают одним способом то, что в этом способе не помещается: например, тёплый пол за точку.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#chetyre-sposoba-schitat-raboty">Четыре способа считать работы</a></li>
+            <li><a href="#za-tochku-prosto-no-s-ogovorkami">За точку: просто, но с оговорками</a></li>
+            <li><a href="#za-metr-udobno-dlya-trass">За метр: удобно для трасс</a></li>
+            <li><a href="#proverka-rascenki-cherez-trudoemkost">Проверка расценки через трудоёмкость</a></li>
+            <li><a href="#kak-sochetat-sposoby-v-odnoy-smete">Как сочетать способы в одной смете</a></li>
+            <li><a href="#chto-vidit-zakazchik-i-chto-nuzhno-vam">Что видит заказчик и что нужно вам</a></li>
+            <li><a href="#chto-est-v-kalkulyatore">Что есть в калькуляторе</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="chetyre-sposoba-schitat-raboty">Четыре способа считать работы</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Способ</th><th>Единица</th><th>Где подходит</th><th>Слабое место</th></tr>
+                <tr><td>За точку</td><td>Прибор, точка водоразбора, узел</td><td>Радиаторы, смесители, санузлы</td><td>Не учитывает расстояние и сложность трассы</td></tr>
+                <tr><td>За метр</td><td>Погонный метр трубы, кв. м пола</td><td>Трубопроводы, тёплый пол</td><td>Не учитывает узлы и сложность</td></tr>
+                <tr><td>За комплект</td><td>Котельная, коллекторный узел</td><td>Типовые узлы</td><td>Нужна точная комплектация</td></tr>
+                <tr><td>За час</td><td>Человеко-час или смена</td><td>Нестандартное, ремонт, диагностика</td><td>Заказчик боится неопределённости</td></tr>
+            </table>
+        </div>
+        <p class="note">Расценки на типовые работы собраны на странице <a href="/rascenki-na-montazh-otopleniya/">расценок на монтаж отопления</a>.</p>
+
+        <h2 id="za-tochku-prosto-no-s-ogovorkami">За точку: просто, но с оговорками</h2>
+
+        <p>Расценка за точку проста для заказчика: он понимает, что платит за радиатор или за смеситель. Но «точка» скрывает расстояние. Радиатор в трёх метрах от коллектора и радиатор на другом конце дома требуют разной трассы и разного времени. Чтобы не потерять деньги, в расценку включают типовую длину подводки, а превышение оплачивают отдельно за метр.</p>
+
+        <p>Ещё одна ловушка — разные виды работ под одной точкой: радиатор на кирпичной стене и на гипсокартоне, в новом доме и при замене. Если расценка одна, она сработает для среднего случая и проиграет в сложном.</p>
+
+        <h2 id="za-metr-udobno-dlya-trass">За метр: удобно для трасс</h2>
+
+        <p>Метр хорош там, где объём определяется длиной: трубопровод, гофра, утепление, штроблёние. Тёплый пол считают за квадратный метр, но трудоёмкость зависит от шага укладки, сложности помещений и количества контуров. Поэтому и здесь работают поправки: сложные помещения, мелкие комнаты, подключение коллектора.</p>
+
+        <p>Как считать метраж, чтобы не ошибиться при подсчёте, разобрано в статье <a href="/kak-schitat-metrazh-trub/">про подсчёт метража труб</a>. А как не пропустить узлы и фитинги, которые метром не покрыть, учитывайте отдельной строкой.</p>
+
+        <h2 id="proverka-rascenki-cherez-trudoemkost">Проверка расценки через трудоёмкость</h2>
+
+        <p>Любую расценку можно проверить по одной формуле. Пример, цифры условные: бригада из двух человек, ваш час стоит 700 ₽ на человека (с учётом накладных и прибыли).</p>
+
+        <div class="formula">
+            <p>Расценка = часы на единицу × число рабочих × стоимость часа</p>
+        </div>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Работа</th><th>Единица</th><th>Время на единицу</th><th>Расчёт</th><th>Расценка</th></tr>
+                <tr><td>Установка радиатора</td><td>1 шт.</td><td>2 часа, 2 человека</td><td class="num">2 × 2 × 700</td><td class="num">2 800 ₽</td></tr>
+                <tr><td>Прокладка трубы</td><td>1 п. м</td><td>0,3 часа, 2 человека</td><td class="num">0,3 × 2 × 700</td><td class="num">420 ₽</td></tr>
+                <tr><td>Укладка тёплого пола</td><td>1 м²</td><td>0,5 часа, 2 человека</td><td class="num">0,5 × 2 × 700</td><td class="num">700 ₽</td></tr>
+                <tr><td>Диагностика на выезде</td><td>1 час</td><td>1 час, 1 человек</td><td class="num">1 × 1 × 700</td><td class="num">700 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Время на единицу в примере условное: берите свои данные, измеренные на реальных объектах. Все цифры в таблице пересчитываются арифметикой, проверьте её на своих значениях.</p>
+
+        <p>Если расценка из прайса оказалась меньше расчётной, вы работаете за счёт собственной прибыли. Если больше, у вас есть запас, и можно уступить в торге. Стоимость часа и порядок её расчёта — в статье про <a href="/sebestoimost-chasa-brigady/">себестоимость часа бригады</a>.</p>
+
+        <div class="callout">
+            <p><strong>Единица расчёта — не вопрос вкуса, а вопрос того, что в этой работе главное.</strong> Если цену определяет длина — считайте за метр, если число приборов — за штуку, если время — за час.</p>
+        </div>
+
+        <h2 id="kak-sochetat-sposoby-v-odnoy-smete">Как сочетать способы в одной смете</h2>
+
+        <p>В реальном проекте работы не однородны, и смета почти всегда смешанная. Пример, цифры условные: дом с 12 радиаторами, 85 метрами трубопроводов и тёплым полом на 100 м².</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Вид работ</th><th>Количество</th><th>Расценка</th><th>Сумма</th></tr>
+                <tr><td>Установка радиаторов</td><td class="num">12 шт.</td><td class="num">3 500 ₽</td><td class="num">42 000 ₽</td></tr>
+                <tr><td>Прокладка трубопроводов</td><td class="num">85 п. м</td><td class="num">450 ₽</td><td class="num">38 250 ₽</td></tr>
+                <tr><td>Тёплый пол</td><td class="num">100 м²</td><td class="num">900 ₽</td><td class="num">90 000 ₽</td></tr>
+                <tr><td>Монтаж котельной</td><td class="num">1 комплект</td><td class="num">60 000 ₽</td><td class="num">60 000 ₽</td></tr>
+                <tr><td>Итого</td><td class="num"></td><td class="num"></td><td class="num">230 250 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Сумма: 42 000 + 38 250 + 90 000 + 60 000 = 230 250 ₽. Расценки в примере условные и к реальному прайсу отношения не имеют.</p>
+
+        <p>Доплаты за сложность прописывайте отдельными строками и в договоре, чтобы заказчик видел, за что платит. Как поступать с работами, которых не было в смете, описано в статье про <a href="/dopolnitelnye-raboty-po-hodu-montazha/">дополнительные работы</a>.</p>
+
+        <h2 id="chto-vidit-zakazchik-i-chto-nuzhno-vam">Что видит заказчик и что нужно вам</h2>
+
+        <p>Заказчику удобнее понятные единицы: штуки и метры. Вам нужно знать, сколько вы зарабатываете на каждой. Поэтому полезно вести два уровня: клиентскую смету с понятными расценками и внутренний расчёт трудоёмкости. Остаток по объекту показывает, как расценки сходятся с реальными затратами и накладными; подробно об этом — в статье про <a href="/nacenka-montazhnika/">наценку монтажника</a>.</p>
+
+        <h2 id="chto-est-v-kalkulyatore">Что есть в калькуляторе</h2>
+
+        <p>Смета в калькуляторе считает работы по видам и объёмам, а в тарифе «Профи» вкладка «Деньги» позволяет задать долю бригады или свою оплату по видам работ, накладные фиксом и процентом. Таблица показывает, сколько получает клиент, сколько вы платите бригаде и сколько остаётся вам; карточки «уступить ещё 5 и 10 %» сразу пересчитывают остаток.</p>
+
+        <a class="cta" href="/">
+            Посмотреть расценки и смету
+            <small>Работы в смете и вкладка «Деньги» в тарифе «Профи»</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Что выгоднее заказчику: цена за точку или за час?</span></summary>
+            <div class="answer">
+                <p>Заказчику чаще удобнее фиксированная цена за единицу: он понимает итог заранее. Почасовая оплата выглядит как риск неопределённости, поэтому её лучше оставить для нестандартных и ремонтных работ и ограничить потолком суммы.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как учесть сложность объекта в расценке за метр?</span></summary>
+            <div class="answer">
+                <p>Добавьте поправки отдельными строками: сложные помещения, стеснённые условия, работа на высоте, скрытая прокладка. Так базовая расценка остаётся понятной, а доплата видна и обоснована.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли считать тёплый пол за точку?</span></summary>
+            <div class="answer">
+                <p>Нет, трудоёмкость тёплого пола определяется площадью и сложностью контуров, а не числом точек. Считайте за квадратный метр с поправками, а подключение коллектора — отдельным комплектом.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как часто пересматривать расценки?</span></summary>
+            <div class="answer">
+                <p>Не реже раза в сезон, а также при изменении оплаты бригады, цен на материалы или накладных. Проверяйте расценки по трудоёмкости и по остатку с готовых объектов.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=tseny-za-tochku-ili-za-metr#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/sebestoimost-chasa-brigady/">себестоимость рабочего дня бригады: как посчитать</a> · <a href="/iz-chego-skladyvaetsya-cena-montazha/">из чего складывается цена монтажа</a> · <a href="/soglasie-na-obrabotku-dannyh-zakazchika/">персональные данные заказчика: что можно хранить и как</a> · <a href="/tehzadanie-i-spetsifikatsiya-oborudovaniya/">техзадание и спецификация: что согласовывать до закупки</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=tseny-za-tochku-ili-za-metr">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>

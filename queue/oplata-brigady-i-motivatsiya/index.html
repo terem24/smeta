@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оплата труда монтажников: сдельная, почасовая или процент | HeatCalc.ru</title>
+    <meta name="description" content="Как платить бригаде монтажников: сдельно по объёму, по часам или процентом от работ. Сравнение на условном примере, риски каждой схемы и как привязать оплату к качеству приёмки.">
+    <link rel="canonical" href="https://heatcalc.ru/oplata-brigady-i-motivatsiya/">
+    <meta name="robots" content="noindex, follow">
+    <link rel="icon" type="image/png" href="/img/logo_HC.png">
+    <meta name="theme-color" content="#F3F4F6">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/seo.css?v=7">
+
+    <!-- Тему ставим до первой отрисовки, иначе тёмная страница моргает белым.
+         Флаг общий с калькулятором — stout_save.darkMode. -->
+    <script>
+        (function () {
+            var dark;
+            try {
+                var saved = JSON.parse(localStorage.getItem('stout_save') || 'null');
+                dark = saved && typeof saved.darkMode === 'boolean' ? saved.darkMode : null;
+            } catch (e) { dark = null; }
+            if (dark === null) {
+                var h = new Date().getHours();
+                dark = (h < 7 || h >= 19);
+            }
+            if (dark) document.documentElement.classList.add('dark-mode');
+        })();
+    </script>
+
+    <script src="/cookie-consent.js" defer></script>
+    <script src="/seo-theme.js" defer></script>
+
+    <meta property="og:type" content="article">
+    <meta property="og:site_name" content="HeatCalc.ru">
+    <meta property="og:locale" content="ru_RU">
+    <meta property="og:url" content="https://heatcalc.ru/oplata-brigady-i-motivatsiya/">
+    <meta property="og:title" content="Оплата бригады: сдельная, почасовая или процент">
+    <meta property="og:description" content="Три схемы на одном объекте: кто выигрывает при затяжке и при лишнем объёме.">
+    <meta property="og:image" content="https://heatcalc.ru/img/og_cover.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://heatcalc.ru/img/og_cover.png">
+
+    <!-- Вопросы и ответы собраны из того же источника, что и видимый текст ниже,
+         поэтому разойтись не могут. -->
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://heatcalc.ru/oplata-brigady-i-motivatsiya/#webpage",
+      "url": "https://heatcalc.ru/oplata-brigady-i-motivatsiya/",
+      "name": "Оплата бригады: сдельная, почасовая, процент",
+      "description": "Как платить бригаде монтажников: сдельно по объёму, по часам или процентом от работ. Сравнение на условном примере, риски каждой схемы и как привязать оплату к качеству приёмки.",
+      "inLanguage": "ru-RU",
+      "isPartOf": {
+        "@id": "https://heatcalc.ru/#website"
+      },
+      "about": {
+        "@type": "Thing",
+        "name": "оплата труда монтажников"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Калькулятор отопления",
+          "item": "https://heatcalc.ru/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Оплата бригады: сдельная, почасовая, процент",
+          "item": "https://heatcalc.ru/oplata-brigady-i-motivatsiya/"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Какая схема оплаты бригады самая выгодная для подрядчика?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Сдельная по объёму: она не растёт при затяжке и стимулирует скорость. Но она требует точных расценок и контроля качества, иначе скорость достигается за счёт аккуратности."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Можно ли платить бригаде процент от суммы по договору с клиентом?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Можно, но процент привязан к цене для клиента, а не к трудоёмкости. Если вы снизили цену или объём работ оказался сложнее, доля бригады перестанет отражать реальные затраты. Пересматривайте процент по типам объектов."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Нужно ли удерживать часть оплаты до приёмки?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Это распространённая практика, если она согласована заранее и записана: так бригада заинтересована сдать работу без недочётов. Условия удержания должны быть понятны обеим сторонам до начала работ."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Как учесть налоги при выплатах бригаде?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Зависит от формы оформления исполнителей: трудовой договор, договор с самозанятым или другой. Ставки и пороги меняются, поэтому уточняйте у бухгалтера или на сайте ФНС и закладывайте результат в накладные."
+          }
+        }
+      ]
+    },
+    {
+      "@type": "Article",
+      "@id": "https://heatcalc.ru/oplata-brigady-i-motivatsiya/#article",
+      "headline": "Оплата бригады: сдельная, почасовая, процент",
+      "description": "Как платить бригаде монтажников: сдельно по объёму, по часам или процентом от работ. Сравнение на условном примере, риски каждой схемы и как привязать оплату к качеству приёмки.",
+      "mainEntityOfPage": {
+        "@id": "https://heatcalc.ru/oplata-brigady-i-motivatsiya/#webpage"
+      },
+      "inLanguage": "ru-RU",
+      "datePublished": "2027-05-26",
+      "dateModified": "2027-05-26",
+      "author": {
+        "@type": "Person",
+        "name": "Дмитрий Ибатуллин"
+      },
+      "publisher": {
+        "@type": "Organization",
+        "name": "HeatCalc.ru",
+        "url": "https://heatcalc.ru/"
+      },
+      "isAccessibleForFree": true,
+      "wordCount": 591,
+      "citation": []
+    }
+  ]
+}
+    </script>
+
+</head>
+
+<body>
+
+    <header class="top">
+        <div class="wrap">
+            <a class="logo" href="/">HeatCalc<span>.ru</span></a>
+            <div class="head-actions">
+                <a class="head-link" href="/">Открыть калькулятор →</a>
+                <button class="theme-toggle" type="button" aria-label="Сменить тему">
+                    <span class="i-moon" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></span>
+                    <span class="i-sun" aria-hidden="true"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="wrap">
+
+        <nav class="crumbs"><a href="/">Калькулятор отопления</a> → Оплата бригады: сдельная, почасовая, процент</nav>
+
+        <h1>Оплата бригады: сдельная, почасовая, процент</h1>
+
+        <p class="art-meta"><time datetime="2027-05-26">26 мая 2027</time></p>
+
+        <div class="short-answer">
+            <p class="short-answer-q">Как лучше платить бригаде: сдельно, по часам или процентом от работ?</p>
+            <p>Нет схемы, подходящей всем. Сдельная оплата по объёму защищает вас от затяжки и стимулирует скорость, но требует чётких расценок и контроля качества. Почасовая подходит для неопределённых задач и работы помощников, но не мотивирует торопиться. Процент от работ прост, но привязан к цене для клиента, а не к трудоёмкости. На практике схемы сочетают: сдельно за типовое, почасово за нестандартное, часть выплаты — после приёмки.</p>
+        </div>
+
+        <p class="lead">Бригадир просит «как обычно, от суммы», помощник хочет почасовую, а вы не понимаете, почему на одном объекте остаётся прибыль, а на соседнем, такого же размера, ничего. Часто причина в схеме оплаты: она незаметно решает, кому выгодно торопиться, а кому затягивать. Сравниваем три схемы на одном условном объекте.</p>
+
+        <nav class="toc" aria-label="Содержание">
+            <p class="toc-title">В статье</p>
+            <ol>
+            <li><a href="#tri-shemy-i-ih-logika">Три схемы и их логика</a></li>
+            <li><a href="#odin-obekt-tri-rezultata">Один объект, три результата</a></li>
+            <li><a href="#kogda-kakuyu-shemu-primenyat">Когда какую схему применять</a></li>
+            <li><a href="#chast-oplaty-posle-priemki">Часть оплаты — после приёмки</a></li>
+            <li><a href="#chto-vklyuchit-v-raschet">Что включить в расчёт</a></li>
+            <li><a href="#kak-poschitat-v-kalkulyatore">Как посчитать в калькуляторе</a></li>
+            </ol>
+        </nav>
+
+        <h2 id="tri-shemy-i-ih-logika">Три схемы и их логика</h2>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Схема</th><th>Как считается</th><th>Кому выгодна затяжка</th><th>Основной риск</th></tr>
+                <tr><td>Сдельная</td><td>объём × расценка: точки, метры, комплекты</td><td>никому: чем быстрее, тем больше за день</td><td>спешка и снижение качества</td></tr>
+                <tr><td>Почасовая</td><td>часы × ставка</td><td>исполнителю: больше часов — больше денег</td><td>затянутые сроки и спор о часах</td></tr>
+                <tr><td>Процент от работ</td><td>доля от цены работ для клиента</td><td>никому, но исполнитель не зависит от трудоёмкости</td><td>на лёгком объекте переплата, на тяжёлом недоплата</td></tr>
+            </table>
+        </div>
+        <p class="note">Схема определяет поведение людей сильнее, чем разговоры о дисциплине.</p>
+
+        <h2 id="odin-obekt-tri-rezultata">Один объект, три результата</h2>
+
+        <p>Условный пример: работы по смете для клиента — 200 000 ₽, работает бригада из двух человек. Плановый срок — 10 рабочих дней по 8 часов. Посмотрим, сколько заплатите при разных схемах и что будет, если объект затянется до 14 дней.</p>
+
+        <div class="table-scroll">
+            <table>
+                <tr><th>Схема</th><th>Условия</th><th>Плановые 10 дней</th><th>Затяжка до 14 дней</th></tr>
+                <tr><td>Сдельная</td><td>расценки дают 80 000 ₽ на весь объём</td><td class="num">80 000 ₽</td><td class="num">80 000 ₽</td></tr>
+                <tr><td>Почасовая</td><td>500 ₽ за час на человека</td><td class="num">2 × 10 × 8 × 500 = 80 000 ₽</td><td class="num">2 × 14 × 8 × 500 = 112 000 ₽</td></tr>
+                <tr><td>Процент</td><td>40 % от 200 000 ₽</td><td class="num">80 000 ₽</td><td class="num">80 000 ₽</td></tr>
+            </table>
+        </div>
+        <p class="note">Цифры подобраны так, чтобы в плане все схемы давали одну сумму. Разница проявляется при отклонениях: при почасовой затяжка на четыре дня стоит вам лишних 32 000 ₽.</p>
+
+        <p>Важно: дело не в том, что почасовая плоха. Если затяжка случилась по вине заказчика, например не готовы стены или нет доступа, почасовая — честная схема. Когда же причина в медленной работе, платить за это приходится вам.</p>
+
+        <h2 id="kogda-kakuyu-shemu-primenyat">Когда какую схему применять</h2>
+
+        <ul>
+            <li><strong>Сдельную</strong> — на типовых повторяющихся работах: точки подключения, метры трубы, установка радиаторов, монтаж контура тёплого пола. Для неё нужен прайс расценок, как в материале про <a href="/rascenki-na-montazh-otopleniya/">расценки на монтаж отопления</a>.</li>
+            <li><strong>Почасовую</strong> — на нестандартных и непредсказуемых работах: переделки, демонтаж, работа в стеснённых условиях, помощь на подхвате.</li>
+            <li><strong>Процент от работ</strong> — для простых объектов и постоянной бригады, когда набор работ у вас стабилен и вы знаете среднюю трудоёмкость. Для нового типа объектов он слабо предсказуем.</li>
+        </ul>
+
+        <h2 id="chast-oplaty-posle-priemki">Часть оплаты — после приёмки</h2>
+
+        <p>Любую схему стоит связать с качеством. Типовой приём: аванс на материал и текущие нужды, основная часть — по окончании этапа, а часть, например пятая или десятая от суммы, — после сдачи работ заказчику и подписания акта. Так бригадир заинтересован в том, чтобы результат приняли с первого раза, а не просто закрыть наряд.</p>
+
+        <p>Это не наказание, а общие правила, которые лучше согласовать до начала работ и записать. Если вы платите бригаде только после того, как сами получили деньги от клиента, учитывайте, что бригада ждёт; тогда этапы оплаты бригаде должны совпадать с этапами оплаты вам. Как строить этапы с заказчиком, описано в материале про <a href="/avans-i-oplata-po-etapam/">аванс и оплату по этапам</a>.</p>
+
+        <div class="callout">
+            <p><strong>Платите за результат, который можно проверить.</strong> «Сделали всю разводку» проверить нельзя, «выполнено 24 точки и принято по акту скрытых работ» — можно. Чем конкретнее единица оплаты, тем меньше споров.</p>
+        </div>
+
+        <h2 id="chto-vklyuchit-v-raschet">Что включить в расчёт</h2>
+
+        <ol>
+            <li><strong>Свою оплату как руководителя объекта.</strong> Если вы тоже стоите на объекте, это не «бесплатно», а отдельная строка.</li>
+            <li><strong>Расходы на дорогу и инструмент.</strong> Бригаде их компенсируют отдельно или закладывают в ставку; решите это один раз.</li>
+            <li><strong>Налоги и взносы с выплат.</strong> Они зависят от того, как оформлена бригада; цифры ставок и порогов меняются, уточняйте у бухгалтера.</li>
+            <li><strong>Ремонт и переделку.</strong> Кто оплачивает исправление брака — условие, которое надо записать заранее.</li>
+            <li><strong>Простои.</strong> Что платится, если не пускают на объект или нет материала по вашей вине.</li>
+        </ol>
+
+        <h2 id="kak-poschitat-v-kalkulyatore">Как посчитать в калькуляторе</h2>
+
+        <p>Во вкладке «Деньги» тарифа «Профи» задайте, по какому виду работ бригада получает долю от сметы, а по какому вы платите свою ставку. Накладные можно указать фиксированной суммой и процентом. Таблица покажет, сколько уйдёт клиенту, сколько вам и что остаётся с объекта. Карточки «уступить ещё 5 и 10 %» подскажут, как изменится остаток, если придётся сбросить цену.</p>
+
+        <a class="cta" href="/">
+            Посчитать долю бригады
+            <small>Вкладка «Деньги»: доля бригады или своя оплата по видам работ</small>
+        </a>
+
+        <h2>Частые вопросы</h2>
+
+        <details open>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Какая схема оплаты бригады самая выгодная для подрядчика?</span></summary>
+            <div class="answer">
+                <p>Сдельная по объёму: она не растёт при затяжке и стимулирует скорость. Но она требует точных расценок и контроля качества, иначе скорость достигается за счёт аккуратности.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Можно ли платить бригаде процент от суммы по договору с клиентом?</span></summary>
+            <div class="answer">
+                <p>Можно, но процент привязан к цене для клиента, а не к трудоёмкости. Если вы снизили цену или объём работ оказался сложнее, доля бригады перестанет отражать реальные затраты. Пересматривайте процент по типам объектов.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Нужно ли удерживать часть оплаты до приёмки?</span></summary>
+            <div class="answer">
+                <p>Это распространённая практика, если она согласована заранее и записана: так бригада заинтересована сдать работу без недочётов. Условия удержания должны быть понятны обеим сторонам до начала работ.</p>
+            </div>
+        </details>
+
+        <details>
+            <summary><svg class="faq-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.7-.9 1.3v.5"/><path d="M12 17h.01"/></svg><span class="faq-q">Как учесть налоги при выплатах бригаде?</span></summary>
+            <div class="answer">
+                <p>Зависит от формы оформления исполнителей: трудовой договор, договор с самозанятым или другой. Ставки и пороги меняются, поэтому уточняйте у бухгалтера или на сайте ФНС и закладывайте результат в накладные.</p>
+            </div>
+        </details>
+
+        <div class="callout">
+            <p>
+                <strong>Нужен мастер, а не только расчёт?</strong> Монтаж отопления, тёплого пола,
+                котельной и водоснабжения — Санкт-Петербург и Ленинградская область. Оставьте
+                заявку: мастер позвонит, уточнит задачу и договорится о выезде. Расчёт
+                из калькулятора можно приложить — тогда разговор будет короче.
+            </p>
+        </div>
+
+        <a class="cta" href="/montazh-otopleniya-spb/?src=oplata-brigady-i-motivatsiya#zayavka">
+            Заказать монтаж в СПб и области
+            <small>Отопление, тёплый пол, котельная, водоснабжение</small>
+        </a>
+
+        <div class="author">
+            <img src="/img/author_ibatullin.jpg" width="64" height="64" loading="lazy"
+                 alt="Дмитрий Ибатуллин, автор HeatCalc.ru">
+            <p><b>Дмитрий Ибатуллин</b><br><span>Инженер</span></p>
+        </div>
+
+        <h2>Читать дальше</h2>
+        <p><a href="/sebestoimost-chasa-brigady/">себестоимость рабочего дня бригады: как посчитать</a> · <a href="/nacenka-montazhnika/">наценка монтажника: сколько закладывать на оборудование и работы</a> · <a href="/poisk-i-obuchenie-pomoshchnika/">помощник монтажника: где искать и как обучать</a> · <a href="/instrument-brigady-chto-nuzhno/">инструмент и оснастка бригады: что окупается</a> · <a href="/smeta/">что входит в смету на отопление</a> · <a href="/raschet-teplopoter/">как считаются теплопотери дома</a></p>
+
+    </main>
+
+    <footer class="bottom">
+        <div class="wrap">
+            <p>
+                <a href="/">Калькулятор</a>
+                <a href="/smeta/">Смета на отопление</a>
+                <a href="/raschet-teplopoter/">Теплопотери</a>
+                <a href="/rascenki-na-montazh-otopleniya/">Расценки</a>
+                <a href="/montazh-otopleniya-spb/?src=oplata-brigady-i-motivatsiya">Монтаж в СПб</a>
+                <a href="/goroda/">Города</a>
+                <a href="/oferta.html">Оферта</a>
+                <a href="https://t.me/heatcalc">Поддержка</a>
+            </p>
+            <p>© 2026 HeatCalc.ru — инженерный калькулятор отопления, водоснабжения и канализации.</p>
+        </div>
+    </footer>
+
+</body>
+
+</html>
