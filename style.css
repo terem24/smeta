@@ -9919,8 +9919,11 @@ body.dark-mode #share_options_modal_overlay .share-option-card input[type="check
 
 .share-opt-pair {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     column-gap: 8px;
+}
+@media (max-width: 520px) {
+    .share-opt-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 .share-opt-pair .share-option-card {
