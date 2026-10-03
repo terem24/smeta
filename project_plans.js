@@ -2462,14 +2462,31 @@
     return { x: Math.round(best.q[0] + nx * inn), y: Math.round(best.q[1] + ny * inn), ang: angFromNormal([nx, ny]) };
   }
 
-  /** Угол значка коллектора: заданный рукой, иначе по стене, у которой он стоит */
+  /**
+   * Куда смотрят отводы коллектора, если угол не задан рукой. Корпус стоит вдоль стены, и отводы
+   * могут смотреть в обе стороны от неё. Выбираем ту, к которой лежит большинство целей (петли
+   * или приборы). Раньше брали «внутрь комнаты, где стоит коллектор», и у коллектора радиаторов в
+   * котельной отводы смотрели вглубь котельной, от дома: все линии выходили не в ту сторону и
+   * разворачивались поперёк остальных.
+   */
+  function faceTargets(base, C, targets) {
+    if (!targets || !targets.length) return base;
+    var a = base * Math.PI / 180, d = [Math.sin(a), -Math.cos(a)], sc = 0;
+    targets.forEach(function (q) { sc += (q[0] - C.x) * d[0] + (q[1] - C.y) * d[1]; });
+    return sc < 0 ? (base + 180) % 360 : base;
+  }
+
+  /** Угол значка коллектора: заданный рукой, иначе по стене, у которой он стоит, лицом к целям */
   function collAngle(f, kind) {
     var c = kind === 'rad' ? radCollector(f) : (f.coll || null);
     if (kind === 'rad') return typeof f.radCollAng === 'number' ? f.radCollAng : (c ? c.ang || 0 : 0);
     if (!c) return 0;
     if (typeof f.collAng === 'number') return f.collAng;
     var sp = snapCollector(f, [c.x, c.y]);
-    return sp ? sp.ang : 0;
+    if (!sp) return 0;
+    var cs = [];
+    (f.zones || []).forEach(function (z) { if (z && z.type === 'tp' && z.pts && z.pts.length > 2) cs.push(centroid(z.pts)); });
+    return faceTargets(sp.ang, c, cs);
   }
 
   /** Средняя точка радиаторов этажа (или центр комнат, если их нет). */
@@ -2489,7 +2506,8 @@
     var rAng = typeof f.radCollAng === 'number' ? f.radCollAng : null;
     if (f.radColl && isFinite(f.radColl.x)) {
       var sm = rAng == null ? snapCollector(f, [f.radColl.x, f.radColl.y]) : null;
-      return { x: f.radColl.x, y: f.radColl.y, src: 'manual', ang: rAng != null ? rAng : (sm ? sm.ang : 0) };
+      return { x: f.radColl.x, y: f.radColl.y, src: 'manual',
+        ang: rAng != null ? rAng : faceTargets(sm ? sm.ang : 0, f.radColl, (f.rads || []).map(function (r) { return [r.x, r.y]; })) };
     }
     var rc = radsCenter(f), bz = boilerZone(f), ppm0 = f.pxPerM || 100;
     // Котельной нет — комната, где стоит коллектор тёплого пола, а без него — ближайшая к приборам.
@@ -2502,7 +2520,16 @@
         var tries = [[p[0] + s.u[0] * 1.3 * ppm, p[1] + s.u[1] * 1.3 * ppm], [p[0] - s.u[0] * 1.3 * ppm, p[1] - s.u[1] * 1.3 * ppm]];
         p = tries.filter(function (q) { return pip(q, z.pts); })[0] || tries[0];
       }
-      return { x: p[0], y: p[1], src: bz ? 'boiler' : (f.coll ? 'tp' : 'rads'), ang: rAng != null ? rAng : angFromNormal(s.n) };
+      var ang0 = rAng != null ? rAng : angFromNormal(s.n);
+      if (rAng == null) {
+        ang0 = faceTargets(ang0, { x: p[0], y: p[1] }, (f.rads || []).map(function (r) { return [r.x, r.y]; }));
+        // рядом с коллектором пола (в котельной они стоят друг над другом) смотрят в одну сторону
+        if (f.coll && Math.hypot(p[0] - f.coll.x, p[1] - f.coll.y) < 3.2 * ppm) {
+          var ta = collAngle(f, 'tp');
+          if (ta % 180 === ang0 % 180) ang0 = ta;
+        }
+      }
+      return { x: p[0], y: p[1], src: bz ? 'boiler' : (f.coll ? 'tp' : 'rads'), ang: ang0 };
     }
     if (f.coll) return { x: f.coll.x, y: f.coll.y, src: 'tp', ang: rAng || 0 };
     return rc ? { x: rc[0], y: rc[1], src: 'rads', ang: rAng || 0 } : { x: 0, y: 0, src: 'rads', ang: rAng || 0 };
@@ -4747,10 +4774,21 @@
     var dirOf = function (a, b) { var dx = b.p[0] - a.p[0], dy = b.p[1] - a.p[1], L = Math.hypot(dx, dy) || 1; return [dx / L, dy / L]; };
     var dfs = function (node, din) {
       node.lo = rank;
-      node.ends.forEach(function (ri) { leafRank[ri] = rank++; });
-      var kids = node.kids.map(function (c) { var d = dirOf(node, c); return { c: c, d: d, k: din ? -(din[0] * d[1] - din[1] * d[0]) + (din[0] * d[0] + din[1] * d[1] < -0.5 ? 2 : 0) : Math.atan2(d[1], d[0]) }; });
-      kids.sort(function (a, b) { return a.k - b.k; });
-      kids.forEach(function (o) { dfs(o.c, o.d); });
+      var key2 = function (d) { return din ? -(din[0] * d[1] - din[1] * d[0]) + (din[0] * d[0] + din[1] * d[1] < -0.5 ? 2 : 0) : Math.atan2(d[1], d[0]); };
+      var items = node.kids.map(function (c) { var d = dirOf(node, c); return { c: c, d: d, k: key2(d) }; });
+      // Маршрут, который кончается в этом узле, а труба идёт дальше (общий ствол), должен уйти в ту сторону, где
+      // его цель: ставим его среди ветвей по направлению на цель. Раньше все такие шли первыми (правая полоса)
+      // и пересекали ветви, продолжающиеся мимо, когда цель лежала слева.
+      node.ends.forEach(function (ri) {
+        var tg = routes[ri].target, d = null;
+        if (tg && node.kids.length) {
+          var dx = tg[0] - node.p[0], dy = tg[1] - node.p[1], L = Math.hypot(dx, dy);
+          if (L > 1e-6) d = [dx / L, dy / L];
+        }
+        items.push({ ri: ri, k: d ? key2(d) : -1e9 });
+      });
+      items.sort(function (a, b) { return a.k - b.k; });
+      items.forEach(function (o) { if (o.c) dfs(o.c, o.d); else leafRank[o.ri] = rank++; });
       node.hi = rank - 1;
     };
     dfs(root, null);
@@ -4802,13 +4840,27 @@
    * все линии росли из одной точки в центре коллектора, а не из его гребёнки.
    * pts — маршрут от центра коллектора; возвращает маршрут [центр, точка выхода, … прежний путь].
    */
-  function collectorFan(pts, C, ang, stub) {
-    var a = ang * Math.PI / 180, d = [Math.sin(a), -Math.cos(a)];
+  function collectorFan(pts, C, ang, stub, half) {
+    var a = ang * Math.PI / 180, d = [Math.sin(a), -Math.cos(a)], e = [-d[1], d[0]];
     var T = [C.x + d[0] * stub, C.y + d[1] * stub], j = -1, i;
     for (i = 1; i < pts.length; i++) {
       if ((pts[i][0] - C.x) * d[0] + (pts[i][1] - C.y) * d[1] >= stub - 0.01) { j = i; break; }
     }
-    if (j < 0) return pts;                                    // маршрут уходит вбок — оставляем как есть
+    if (j < 0) {
+      // Маршрут уходит назад или вдоль корпуса. Труба всё равно выходит из отвода, как у всех, а потом
+      // идёт вдоль корпуса за его край и дальше к цели. Без этого такие линии росли из центра коллектора
+      // сквозь корпус и резали остальные у самого выхода.
+      if (!half) return pts;
+      var k = -1;
+      for (i = 1; i < pts.length; i++) if (Math.abs((pts[i][0] - C.x) * e[0] + (pts[i][1] - C.y) * e[1]) >= half) { k = i; break; }
+      if (k < 0) return pts;
+      var sg = ((pts[k][0] - C.x) * e[0] + (pts[k][1] - C.y) * e[1]) > 0 ? 1 : -1;
+      var T2 = [T[0] + e[0] * sg * half, T[1] + e[1] * sg * half];
+      var o2 = [[C.x, C.y], T, T2];
+      orthoPath([T2, pts[k]]).slice(1).forEach(function (q) { o2.push(q); });
+      for (i = k + 1; i < pts.length; i++) o2.push(pts[i]);
+      return o2;
+    }
     var out = [[C.x, C.y], T];
     orthoPath([T, pts[j]]).slice(1).forEach(function (q) { out.push(q); });
     for (i = j + 1; i < pts.length; i++) out.push(pts[i]);
@@ -4914,8 +4966,10 @@
     var tpBodyW = 0.6 * ppm;
     if (leadRows.length) {
       var tpAng0 = f.coll ? collAngle(f, 'tp') : 0;
+      if (opts.dbg) opts.dbg.tpColl = { x: f.coll && f.coll.x, y: f.coll && f.coll.y, ang: tpAng0 };
       var ll = laneLines(leadRows.map(function (R) {
-        return { pts: f.coll ? collectorFan(R.loop.lead, f.coll, tpAng0, 0.28 * ppm) : R.loop.lead };
+        return { pts: f.coll ? collectorFan(R.loop.lead, f.coll, tpAng0, 0.28 * ppm, (leadRows.length * LANE_PITCH * leadGap) / 2 + 0.12 * ppm) : R.loop.lead,
+          target: [(R.loop.sup[0][0] + R.loop.ret[R.loop.ret.length - 1][0]) / 2, (R.loop.sup[0][1] + R.loop.ret[R.loop.ret.length - 1][1]) / 2] };
       }), leadGap);
       tpBodyW = Math.max(0.6 * ppm, leadRows.length * LANE_PITCH * leadGap + 0.16 * ppm);
       leadRows.forEach(function (R, i) {
@@ -4989,7 +5043,8 @@
     if (RR) {
       if (!RR.tee && RR.items.length && RR.items.every(function (it) { return it.full; })) {
         var rg = Math.max(lw * 1.0, 0.028 * ppm);
-        var rl = laneLines(RR.items.map(function (it) { return { pts: collectorFan(it.full, RR.C, RR.C.ang || 0, 0.28 * ppm) }; }), rg);
+        if (opts.dbg) opts.dbg.radColl = { x: RR.C.x, y: RR.C.y, ang: RR.C.ang || 0, src: RR.C.src };
+        var rl = laneLines(RR.items.map(function (it) { return { pts: collectorFan(it.full, RR.C, RR.C.ang || 0, 0.28 * ppm, (RR.items.length * LANE_PITCH * rg) / 2 + 0.12 * ppm), target: it.p }; }), rg);
         radBodyW = Math.max(0.6 * ppm, RR.items.length * LANE_PITCH * rg + 0.16 * ppm);
         RR.items.forEach(function (it, ii) {
           if (opts.dbg) (opts.dbg.rad = opts.dbg.rad || []).push({ no: it.i + 1, lines: [rl[ii][0], rl[ii][1]] });
