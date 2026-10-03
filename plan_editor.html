@@ -4458,6 +4458,27 @@ function renderZonesUfh(box) {
   if (sum) sum.innerHTML = '';
 }
 
+/** Зона с именем «Котельная…», обведённая не тем типом — найти (на любом этаже котельной ещё нет). */
+function boilerLookalike() {
+  if (DATA.floors.some(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'boiler'; }); })) return null;
+  var found = null;
+  F().zones.forEach(function (z) {
+    if (!found && z.type !== 'boiler' && z.type !== 'cold' && /котельн/i.test(z.name || '')) found = z;
+  });
+  return found;
+}
+
+/** Одна кнопка: зона «Котельная», обведённая как тёплый пол, становится котельной. */
+function makeBoiler(z) {
+  z = z || boilerLookalike();
+  if (!z) return;
+  pushUndo('zones');
+  z.type = 'boiler';
+  renderZones(); draw();
+  if (typeof updateGuide === 'function') updateGuide();
+  hint('<span class=ok>Зона «' + (z.name || 'Котельная') + '» теперь котельная.</span> Нажмите «Сохранить».');
+}
+
 function renderZones() {
   var box = document.getElementById('zlist'); box.innerHTML = '';
   if (UFH) { renderZonesUfh(box); return; }
@@ -4467,6 +4488,15 @@ function renderZones() {
     sw.style.background = TYPES[z.type][1]; d.appendChild(sw);
     var lb = document.createElement('span'); lb.className = 'zt';
     lb.textContent = TYPES[z.type][0]; d.appendChild(lb);
+    if (z === boilerLookalike()) {
+      d.style.background = 'rgba(245,158,11,.16)'; d.style.boxShadow = 'inset 3px 0 0 #f59e0b';
+      var mb = document.createElement('button'); mb.type = 'button';
+      mb.textContent = '→ котельная';
+      mb.title = 'Зона названа котельной, но обведена как «' + TYPES[z.type][0] + '». Нажмите, чтобы сделать её котельной.';
+      mb.style.cssText = 'font-size:11px;padding:2px 6px;white-space:nowrap;border-color:#d97706;color:#92400e;background:#fef3c7;cursor:pointer';
+      mb.onclick = function () { makeBoiler(z); };
+      d.appendChild(mb);
+    }
     var inp = document.createElement('input'); inp.type = 'text';
     inp.placeholder = 'помещение…'; inp.value = z.name;
     if (roomNames.length) inp.setAttribute('list', 'roomNames');
@@ -5486,8 +5516,9 @@ function pjBody(id) {
   if (id === 'coll') return { acts: B("setMode('coll')", 'Коллектор ТП') + B("setMode('radcoll')", 'Коллектор радиаторов'),
     tx: 'Коллекторы встают у стены котельной сами. Чтобы переставить, нажмите кнопку и кликните в нужную комнату — коллектор прижмётся к стене. ' +
       'Правый клик по нему (или R над ним) поворачивает на 90°.' };
-  if (id === 'boiler') return { acts: B("document.getElementById('ztype').value='boiler';setMode('room')", 'Отметить котельную кликом'),
-    tx: '<b>Обязательно:</b> отметьте котельную — кликните по её комнате на плане. По ней собирается компоновка котельной, ' +
+  if (id === 'boiler') return { acts: (boilerLookalike() ? B('makeBoiler()', 'Сделать «' + boilerLookalike().name + '» котельной', 'go') : '') +
+      B("document.getElementById('ztype').value='boiler';setMode('room')", 'Отметить котельную кликом'),
+    tx: (boilerLookalike() ? 'Зона «' + boilerLookalike().name + '» уже обведена, но как другой тип — нажмите первую кнопку. ' : '') + '<b>Обязательно:</b> отметьте котельную — кликните по её комнате на плане. По ней собирается компоновка котельной, ' +
       'и без неё проект не выпускается. На этаже она одна.' };
   if (id === 'wc') return { acts: B("document.getElementById('ztype').value='wc';setMode('room')", 'Санузел кликом') + B('toggleFixAuto()', 'Приборы: из расчёта'),
     tx: 'Кликните по санузлам и впишите их имена как в расчёте — приборы расставятся сами по карточкам санузлов.' };
