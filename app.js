@@ -5443,6 +5443,7 @@ const app = {
     warrantyFormEligible: function () {
         if (!this.state.tgUser) return false;
         if (this.printOptions && this.printOptions.eq === false) return false;
+        if (this.kpWarrantyOn === false) return false;   // снята галочка «Гарантия на объект» в окне печати
         if (!this.objectDetailsComplete()) return false;
         const sh = this.stoutShare();
         return sh.pct !== null && sh.pct >= this.warrantyThreshold();
@@ -5619,6 +5620,7 @@ const app = {
     // заказчик). Сами адрес и ФИО в ссылку не идут — там личных данных нет.
     warrantyLinkEligible: function (showEq) {
         if (!this.state.tgUser || showEq === false) return false;
+        if (this.kpWarrantyOn === false) return false;   // снята галочка «Гарантия на объект»
         // Как и в PDF: без адреса и заказчика гарантия в ссылку не добавляется
         if (!this.objectDetailsComplete()) return false;
         const sh = this.stoutShare();
@@ -45431,6 +45433,15 @@ const app = {
         // «Ваш дом» — в печать и в ссылку клиенту, если есть что показать
         const chkHouse = document.getElementById('share_opt_house');
         if (chkHouse) chkHouse.checked = true;
+        // «Гарантия на объект» — лист гарантии STOUT; есть, когда доля STOUT не ниже порога
+        const chkWarr = document.getElementById('share_opt_warranty');
+        if (chkWarr) chkWarr.checked = true;
+        const cardWarr = document.getElementById('card_opt_warranty');
+        if (cardWarr) {
+            let okW = false;
+            try { const shW = this.stoutShare(); okW = (actionType === 'print' || actionType === 'share') && !!this.state.tgUser && shW.pct !== null && shW.pct >= this.warrantyThreshold(); } catch (e) { okW = false; }
+            cardWarr.style.display = okW ? 'flex' : 'none';
+        }
         const cardHouse = document.getElementById('card_opt_house');
         if (cardHouse) {
             let has = false;
@@ -45624,6 +45635,8 @@ const app = {
 
         const cardHouseUi = document.getElementById('card_opt_house'), chkHouseUi = document.getElementById('share_opt_house');
         if (cardHouseUi && chkHouseUi) cardHouseUi.classList.toggle('selected', chkHouseUi.checked);
+        const cardWarrUi = document.getElementById('card_opt_warranty'), chkWarrUi = document.getElementById('share_opt_warranty');
+        if (cardWarrUi && chkWarrUi) cardWarrUi.classList.toggle('selected', chkWarrUi.checked);
 
         const cardNames = document.getElementById('card_opt_names');
         const chkNamesUi = document.getElementById('share_opt_names');
@@ -45676,6 +45689,9 @@ const app = {
         // Раздел «Ваш дом»: читают prepareForPrint и executeShareInvoice
         const cardHouseOpt = document.getElementById('card_opt_house'), chkHouseOpt = document.getElementById('share_opt_house');
         this.kpHouseOn = !!(cardHouseOpt && cardHouseOpt.style.display !== 'none' && chkHouseOpt && chkHouseOpt.checked);
+        // Гарантия на объект: читают prepareForPrint и executeShareInvoice (через warrantyLinkEligible / warrantyFormEligible)
+        const cardWarrOpt = document.getElementById('card_opt_warranty'), chkWarrOpt = document.getElementById('share_opt_warranty');
+        this.kpWarrantyOn = !!(cardWarrOpt && cardWarrOpt.style.display !== 'none' && chkWarrOpt && chkWarrOpt.checked);
 
         this.closeShareOptionsModal();
 
@@ -47260,6 +47276,9 @@ const app = {
         // Продавцу работы в ссылку не идут ни при каком вызове (в том числе из
         // режима обучения, который зовёт эту функцию напрямую)
         if (!this.canUseWorks()) showWorks = false;
+        // Гарантия на объект включена, а адреса и заказчика нет — спрашиваем, как при печати;
+        // отказались или «Без адреса» — ссылка уйдёт без листа гарантии
+        if (this.kpWarrantyOn && !this.objectDetailsComplete()) await this.ensureObjectDetails();
         // Срок действия счёта. Обходные вызовы (режим обучения, переотправка из
         // списка объектов) третьего аргумента не передают — берём настройку кабинета.
         if (validDays === undefined || validDays === null) validDays = this.invoiceValidDaysDefault();
