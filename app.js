@@ -245,6 +245,8 @@ function compactPayload(data) {
             // клиент увидел бы цены Терема, а итог в шапке был бы посчитан по ценам
             // дистрибьютора, и строки со сметой не сошлись бы.
             k: data.object_info.priceListKey || '',
+            // Полные названия и артикулы (галочка «Без моделей и артикулов» снята)
+            fn: data.object_info.fullNames ? 1 : undefined,
             // Срок действия счёта. Без этих полей длинная офлайн-ссылка (её
             // получает монтажник, когда Supabase не ответил за отведённое время)
             // открывалась без отсчёта: страница читает срок из ссылки, а строка
@@ -42858,6 +42860,8 @@ const app = {
         if (chkWorks) chkWorks.checked = true;
         if (chkHeatLoss) chkHeatLoss.checked = true;
         if (chkScheme) chkScheme.checked = true;
+        const chkNames = document.getElementById('share_opt_names');
+        if (chkNames) chkNames.checked = true;
 
         // Продавец монтаж не делает: раздела «Монтажные работы» у него нет на
         // экране, и наружу — в печать, Excel и ссылку клиенту — он тоже не
@@ -43040,6 +43044,10 @@ const app = {
             else cardScheme.classList.remove('selected');
         }
 
+        const cardNames = document.getElementById('card_opt_names');
+        const chkNamesUi = document.getElementById('share_opt_names');
+        if (cardNames && chkNamesUi) cardNames.classList.toggle('selected', chkNamesUi.checked);
+
         // Таймер счёта: подсветка карточки и склонение «день/дня/дней» под число.
         // На кнопку не влияет — ссылка без таймера тоже ссылка.
         const cardTimer = document.getElementById('card_opt_timer');
@@ -43081,6 +43089,10 @@ const app = {
             return;
         }
 
+        // По умолчанию названия сокращены; полные уходят только при снятой галочке
+        const chkNamesOpt = document.getElementById('share_opt_names');
+        const shortNames = chkNamesOpt ? chkNamesOpt.checked : true;
+
         this.closeShareOptionsModal();
 
         if (this.shareActionType === 'share') {
@@ -43093,11 +43105,11 @@ const app = {
                 if (validDays < 0) validDays = 0;
                 if (validDays > this.INVOICE_VALID_DAYS_MAX) validDays = this.INVOICE_VALID_DAYS_MAX;
             }
-            this.executeShareInvoice(showEq, showWorks, validDays);
+            this.executeShareInvoice(showEq, showWorks, validDays, !shortNames);
         } else if (this.shareActionType === 'excel') {
-            this.executeExcelDownload(showEq, showWorks, showHeatLoss, this.excelLayout === 'flat');
+            this.executeExcelDownload(showEq, showWorks, showHeatLoss, this.excelLayout === 'flat', shortNames);
         } else {
-            this.executeDownload(showEq, showWorks, showHeatLoss, showScheme);
+            this.executeDownload(showEq, showWorks, showHeatLoss, showScheme, shortNames);
         }
     },
 
@@ -44599,7 +44611,7 @@ const app = {
         this.openShareOptionsModal('share');
     },
 
-    executeShareInvoice: async function (showEq, showWorks, validDays) {
+    executeShareInvoice: async function (showEq, showWorks, validDays, fullNames) {
         // Продавцу работы в ссылку не идут ни при каком вызове (в том числе из
         // режима обучения, который зовёт эту функцию напрямую)
         if (!this.canUseWorks()) showWorks = false;
@@ -44661,6 +44673,8 @@ const app = {
             eqDiscount: this.state.eqDiscount || 0,
             priceListKey: this.activeDistPriceKey()
         };
+        // Монтажник снял галочку «Без моделей и артикулов»: клиент увидит полные названия
+        if (fullNames) object_info.fullNames = true;
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
@@ -44949,6 +44963,13 @@ const app = {
     downloadExcel: async function () {
         return this.requestExport('excel');
     },
+    // Название позиции в строке сметы. На экране — как есть; пока собирается печатная
+    // копия (PDF и Excel, флаг _exportShort ставит prepareForPrint) — без названия
+    // модели, см. short_names.js. Артикул в этом режиме скрыт в render().
+    exportName: function (item) {
+        if (!this._exportShort || !window.HcShortName) return item.name;
+        return window.HcShortName.of({ id: item.id, name: item.name });
+    },
     // Общая часть печати и выгрузки в Excel: проверить доступ, спросить название
     // объекта и контакты монтажника, затем открыть окно выбора разделов.
     requestExport: async function (actionType) {
@@ -45015,13 +45036,14 @@ const app = {
         }
         return cssText;
     },
-    executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme) {
+    executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
         this.printOptions = {
             eq: showEq,
             works: showWorks,
             heatLoss: !!showHeatLoss,
-            scheme: !!showScheme
+            scheme: !!showScheme,
+            shortNames: shortNames !== false
         };
 
         // Гарантируем, что смета попадёт в базу (и станет доступна через "Загрузить код"),
@@ -45214,7 +45236,7 @@ const app = {
     // он читает уже готовую печатную вёрстку. За счёт этого в файл попадает та же
     // смета, что и в PDF: те же разделы, строки, скидки и группировки, без второй
     // копии логики сметы. В Excel не переносятся только фотографии и схема.
-    executeExcelDownload: async function (showEq, showWorks, showHeatLoss, flat) {
+    executeExcelDownload: async function (showEq, showWorks, showHeatLoss, flat, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
         if (!window.ExcelExport) await this.lazy('excel').catch(() => { });
         if (!window.ExcelExport) {
@@ -45226,7 +45248,8 @@ const app = {
             eq: showEq,
             works: showWorks,
             heatLoss: !!showHeatLoss,
-            scheme: false
+            scheme: false,
+            shortNames: shortNames !== false
         };
 
         // Как и при печати: смета должна попасть в базу, даже если сейчас нет связи,
@@ -69161,7 +69184,8 @@ const app = {
         // проставляет syncUI, и когда настройку меняет код (в приложении
         // артикулы включаются сами после первого входа), отрисовка успевала
         // раньше — артикулов не было, пока человек не щёлкал переключателем.
-        let h = "", sum = 0, globalIdx = 1, showSku = !!app.state.showSku;
+        // В печать и Excel артикул не идёт никогда (см. exportName)
+        let h = "", sum = 0, globalIdx = 1, showSku = !!app.state.showSku && !app._exportShort;
 
         // Разделы, для которых flushBill уже вызывался. Нужно, чтобы после
         // основной отрисовки дофлашить разделы со своими/распознанными
@@ -69578,7 +69602,7 @@ const app = {
                     i.locs.forEach((locStr, locIdx) => {
                         let subNum = `${globalIdx}.${subIdx++}`;
                         let cleanLocStr = locStr.replace(/^•\s*/, '');
-                        let fullSubRowName = `${i.name} — ${cleanLocStr}`;
+                        let fullSubRowName = `${app.exportName(i)} — ${cleanLocStr}`;
                         const subKey = i.instanceKeys && i.instanceKeys[locIdx];
                         const subSwapBtn = subKey ? `<div onclick="event.stopPropagation();app.openSwapModal('${subKey}')" title="Заменить этот радиатор" style="cursor:pointer;color:var(--primary);display:inline-flex;align-items:center;justify-content:center;">${_swapSvg}</div>` : '';
 
@@ -69710,7 +69734,7 @@ const app = {
                 const portTagHtml = (i.portTag && this.schemeOn())
                     ? ` <span class="port-tag no-print">(${i.portTag})</span>`
                     : '';
-                rows += `<tr ${rowStyle}${rowClass} data-rk="${this._rowKey('e', title, lookupId)}" onclick="${rowClick}"><td class="col-idx">${recSelHtml}${globalIdx++}</td>${imgCellHtml}<td class="${nameClass}" ${nameClick}>${i.name}${portTagHtml}${nameBtnHtml}${eqBadgeHtml}${swapInlineHtml}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">${i.displaySku}</td><td class="col-brand">${i.brand || 'STOUT'}</td><td class="col-unit">${i.unit || 'шт'}</td><td class="col-qty">${qHtml}</td>${priceCell}${sumCell}</tr>` + locsRows;
+                rows += `<tr ${rowStyle}${rowClass} data-rk="${this._rowKey('e', title, lookupId)}" onclick="${rowClick}"><td class="col-idx">${recSelHtml}${globalIdx++}</td>${imgCellHtml}<td class="${nameClass}" ${nameClick}>${app.exportName(i)}${portTagHtml}${nameBtnHtml}${eqBadgeHtml}${swapInlineHtml}</td><td class="col-sku col-art ${showSku ? '' : 'hidden-col'}">${i.displaySku}</td><td class="col-brand">${i.brand || 'STOUT'}</td><td class="col-unit">${i.unit || 'шт'}</td><td class="col-qty">${qHtml}</td>${priceCell}${sumCell}</tr>` + locsRows;
             });
             let addCustomRow = "";
             if (this.state.viewMode === 'equipment') {
@@ -79626,6 +79650,10 @@ function prepareForPrint() {
     let originalMode = app.state.viewMode;
     let printArea = document.getElementById('print-area');
 
+    // Документ уходит наружу: названия без моделей, артикулов нет. Флаг читает
+    // render() на время сборки печатной копии; перед возвратом интерфейса он снимается.
+    app._exportShort = !app.printOptions || app.printOptions.shortNames !== false;
+
     // Сборка может прийти дважды подряд: executeDownload собирает копию заранее
     // (чтобы дождаться картинок), а потом window.print() поднимает 'beforeprint'
     // и собирает снова. Вторая сборка вредна дважды: клон наследовал метку
@@ -79754,9 +79782,11 @@ function prepareForPrint() {
         });
 
         // Возвращаем интерфейс в исходное состояние
+        app._exportShort = false;
         app.state.viewMode = originalMode;
         app.render();
     }
+    app._exportShort = false;
 }
 window.addEventListener('beforeprint', prepareForPrint);
 
@@ -79764,7 +79794,7 @@ window.addEventListener('beforeprint', prepareForPrint);
 // функцию — вызывается напрямую из executeDownload() после html2pdf() на мобильных/планшетах,
 // где событие 'afterprint' не наступает (не было настоящего window.print()).
 function cleanupAfterPrint() {
-    if (app) app._printBinReady = false;
+    if (app) { app._printBinReady = false; app._exportShort = false; }
     if (app && app.state && app.state.darkMode) {
         document.body.classList.add('dark-mode');
     }
