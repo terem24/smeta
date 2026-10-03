@@ -3560,10 +3560,18 @@
                         class="show-mobile">Итого:</span></span>
                 <span class="sum-val" id="total_eq">0 ₽</span>
             </div>
+            <div class="sum-item" id="disc_eq_row" style="display: none; font-size: 0.9em;">
+                <span>в том числе скидка на оборудование:</span>
+                <span class="sum-val" id="disc_eq_val" style="font-weight: 600;"></span>
+            </div>
             <div class="sum-item">
                 <span><span class="hide-mobile">Итого по монтажным работам:</span><span
                         class="show-mobile">Монтаж:</span></span>
                 <span class="sum-val" id="total_works">0 ₽</span>
+            </div>
+            <div class="sum-item" id="disc_works_row" style="display: none; font-size: 0.9em;">
+                <span>в том числе скидка на монтаж:</span>
+                <span class="sum-val" id="disc_works_val" style="font-weight: 600;"></span>
             </div>
             <div class="sum-item grand-total">
                 <span><span class="hide-mobile">Общая сумма по смете:</span><span class="show-mobile">Итого по
@@ -5158,6 +5166,7 @@
                     showSku: compact.o.s === 1,
                     fullNames: compact.o.fn === 1,
                     eqDiscount: discountPercent,
+                    worksDiscount: compact.o.cw || 0,
                     sequence_id: compact.o.q || '',
                     kp_version: compact.o.v || null,
                     // Срок действия счёта из ссылки (ссылки до 23.09.2026 его не везли —
@@ -5560,6 +5569,21 @@
             const noWorksAtAll = !(totals.works) && !(((data.items || {}).works) || []).length;
             const worksSumRow = document.getElementById('total_works').closest('.sum-item');
             if (worksSumRow) worksSumRow.style.display = noWorksAtAll ? 'none' : '';
+
+            // Скидка монтажника: процент и рубли. Цены в таблицах уже со скидкой,
+            // поэтому сумма скидки — разница между суммой до неё и итогом. Наценку
+            // (отрицательное значение) не показываем: она растворена в ценах.
+            const showDisc = (rowId, valId, pct, total) => {
+                const row = document.getElementById(rowId);
+                if (!row) return;
+                pct = Number(pct) || 0;
+                if (pct <= 0 || pct >= 100 || !(total > 0)) { row.style.display = 'none'; return; }
+                const rub = Math.round(total / (1 - pct / 100)) - Math.round(total);
+                document.getElementById(valId).textContent = `−${rub.toLocaleString()} ₽ (${pct} %)`;
+                row.style.display = '';
+            };
+            showDisc('disc_eq_row', 'disc_eq_val', obj.eqDiscount, totals.equipment || 0);
+            showDisc('disc_works_row', 'disc_works_val', obj.worksDiscount, noWorksAtAll ? 0 : (totals.works || 0));
 
             // 4. Specifications Tables
             const items = data.items || {};

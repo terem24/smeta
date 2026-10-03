@@ -238,6 +238,7 @@ function compactPayload(data) {
             d: data.object_info.date || '',
             s: data.object_info.showSku ? 1 : 0,
             c: data.object_info.eqDiscount || 0,
+            cw: data.object_info.worksDiscount || undefined,
             q: data.object_info.sequence_id || '',
             v: data.object_info.kp_version || 0,
             // Прайс-лист дистрибьютора. У обычных позиций в ссылку уходит только
@@ -47314,6 +47315,7 @@ const app = {
             sequence_id: this.state.calc_id,
             kp_version: kpVersion || null,
             eqDiscount: this.state.eqDiscount || 0,
+            worksDiscount: this.state.worksDiscount || 0,
             priceListKey: this.activeDistPriceKey()
         };
         // Монтажник снял галочку «Без моделей и артикулов»: клиент увидит полные названия
