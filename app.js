@@ -51691,6 +51691,17 @@ const app = {
         // Ссылка из опросника заказчика: параметры объекта — в state, текстовые
         // ответы — окном монтажнику (см. applyOprosFromUrl)
         this.applyOprosFromUrl();
+        // Ссылка ?tarif=pro (кнопка в дайджесте новостей) открывает окно тарифа.
+        // Ждём, пока восстановится сессия: у тех, у кого Профи уже есть, окно не нужно
+        try {
+            const _p = new URLSearchParams(window.location.search || '');
+            if (_p.get('tarif') === 'pro') {
+                const u = new URL(window.location.href);
+                u.searchParams.delete('tarif');
+                window.history.replaceState({}, '', u.toString());
+                setTimeout(() => { try { if (!this.isPro()) this.showModal('pro'); } catch (e) { } }, 2500);
+            }
+        } catch (e) { }
         // Заявки, пришедшие в базу по персональной ссылке опросника, — после
         // восстановления сессии Supabase (без сессии RLS ничего не отдаст)
         setTimeout(() => { try { this.checkOprosInbox(); } catch (e) { } }, 5000);

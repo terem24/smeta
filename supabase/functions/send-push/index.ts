@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const reason = String(body.reason || "");
     const rowId = String(body.id || "");
-    if (!reason || !rowId) return json({ error: "Не указано событие" }, 400);
+    if (!reason || (!rowId && reason !== "digest")) return json({ error: "Не указано событие" }, 400);
 
     // Ответ клиента приходит со страницы без входа — сессии там нет и быть не может.
     // Сообщения и статусы отправляет авторизованный пользователь, и мы обязаны знать
@@ -185,7 +185,8 @@ Deno.serve(async (req) => {
     // же анонимная страница по ссылке. Поэтому здесь токен не требуем, а требуем его
     // внутри ветки — для всех событий, кроме открытия.
     const needsAuth = reason !== "shared_invoice" && reason !== "invoice_event" &&
-      reason !== "inactivity" && reason !== "kp_reminder" && reason !== "opros_lead";
+      reason !== "inactivity" && reason !== "kp_reminder" && reason !== "opros_lead" &&
+      reason !== "digest";
     let callerId = "";
     let isAdmin = false;
 
@@ -267,6 +268,41 @@ Deno.serve(async (req) => {
       }
       title = row.sender_name || "Сообщение от администратора";
       text = row.text || "";
+      payload.open = "messages";
+    } else if (reason === "digest") {
+      // Еженедельный дайджест новинок. Зовёт его не человек, а GitHub Action по
+      // понедельникам (tools/publish_digest.py), поэтому сессии нет — пропуском
+      // служит общий секрет DIGEST_SECRET. Функция сама кладёт объявление в
+      // messages (оно попадает в колокольчик всем, как «Объявление для всех») и
+      // будит телефоны. Отправитель — владелец, его users.id лежит в DIGEST_SENDER_ID.
+      const secret = Deno.env.get("DIGEST_SECRET") || "";
+      const senderId = Deno.env.get("DIGEST_SENDER_ID") || "";
+      if (!secret || !senderId || String(body.secret || "") !== secret) {
+        return json({ error: "Нет доступа" }, 403);
+      }
+      const dTitle = String(body.title || "").trim().slice(0, 120);
+      const dText = String(body.text || "").trim().slice(0, 2000);
+      if (!dTitle || !dText) return json({ error: "Пустой дайджест" }, 400);
+
+      const ins = await fetch(`${supabaseUrl}/rest/v1/messages`, {
+        method: "POST",
+        headers: { ...rest, Prefer: "return=minimal" },
+        body: JSON.stringify({
+          sender_id: senderId,
+          recipient_id: null,
+          type: "broadcast",
+          sender_name: dTitle,
+          text: dText,
+        }),
+      });
+      if (!ins.ok) {
+        console.error("send-push: дайджест не записан", ins.status, await ins.text());
+        return json({ error: "Не удалось записать дайджест" }, 500);
+      }
+      // Тот же путь, что у «Объявления для всех»: получателей нет — значит все устройства
+      recipientUserIds = [];
+      title = dTitle;
+      text = String(body.push || dText);
       payload.open = "messages";
     } else if (reason === "installer_reply") {
       // Ответ монтажника администрации. Раньше о нём сообщали письмом на каждый из
@@ -591,7 +627,9 @@ Deno.serve(async (req) => {
     // --- Достаём адреса устройств ------------------------------------------
 
     let tokenRows: Array<{ id: string; token: string }> | null;
-    if (recipientUserIds.length === 0 && reason === "broadcast") {
+    if (recipientUserIds.length === 0 && reason === "digest") {
+      tokenRows = await get(`push_tokens?select=id,token`);
+    } else if (recipientUserIds.length === 0 && reason === "broadcast") {
       tokenRows = await get(`push_tokens?select=id,token&user_id=neq.${encodeURIComponent(callerId)}`);
     } else if (recipientUserIds.length === 0) {
       return json({ status: "skipped", reason: "no-recipients" });
