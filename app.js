@@ -5106,10 +5106,11 @@ const app = {
         phone: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14 6h7l3 8-4 3a22 22 0 0 0 11 11l3-4 8 3v7a4 4 0 0 1-4 4C21 38 10 27 10 10a4 4 0 0 1 4-4z"/><path d="M29 9a10 10 0 0 1 10 10M29 15a4 4 0 0 1 4 4" stroke="#3F9DE1"/></svg>'
     },
 
-    // Листовка на одну страницу в оформлении stout.ru: шапка с логотипом, синий
-    // баннер с одной мыслью и большим фото, четыре иконки-цифры, карточки того, что
-    // стоит в доме, тёмный подвал с телефоном исполнителя. Клиенту не нужно
-    // разбираться, на какую из гарантий смотреть: одна цифра в баннере, один телефон.
+    // Листовка на одну страницу — один документ, а не набор блоков: синяя шапка с
+    // главной цифрой и фото, под ней «паспорт» (объект, заказчик, расчёт), четыре
+    // опоры гарантии одной лентой, строки «что стоит в доме» с полосой срока и тот
+    // же синий подвал с телефоном. Один цвет, один шрифт для цифр, одна толщина линий.
+    // Клиенту не нужно разбираться, на какую из гарантий смотреть: одна цифра, один телефон.
     warrantyFormHtml: function () {
         const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
         const od = this.objectDetails();
@@ -5131,42 +5132,49 @@ const app = {
         const tiles = this.warrantyPhotoTiles(5);
         const hero = tiles[0];
         const img = id => `<img src="img/${e(id)}.jpg" alt="" onerror="this.onerror=null;this.style.visibility='hidden';">`;
-        const prods = tiles.map(t => `<div class="wp-prod">${img(t.it.id)}<div class="wp-pn">${e(cap(t.kind))}</div><div class="wp-pt">${e(years(t.months))} <small>гарантии</small></div></div>`).join('');
-        const grp = groups.map(g => `<span><b>${e(years(g.months))}</b> — ${e(g.kinds.slice(0, 3).join(', '))}${g.kinds.length > 3 ? ' и др.' : ''}</span>`).join('');
-        const feat = (icon, num, txt) => `<div class="wp-feat">${icon}<div class="wp-fn wp-cond">${num}</div><div class="wp-ft">${txt}</div></div>`;
+        const rows = tiles.map(t => `<div class="wp-row">
+            <div class="wp-row-img">${img(t.it.id)}</div>
+            <div class="wp-row-name">${e(cap(t.kind))}</div>
+            <div class="wp-row-bar"><i style="width:${Math.max(12, Math.round(t.months / (maxM || 1) * 100))}%"></i></div>
+            <div class="wp-row-term wp-cond">${e(years(t.months))}</div></div>`).join('');
+        const shown = new Set(tiles.map(t => t.kind));
+        const rest = groups.map(g => ({ months: g.months, kinds: g.kinds.filter(k => !shown.has(k)) })).filter(g => g.kinds.length);
+        const more = rest.map(g => `<b>${e(years(g.months))}</b> — ${e(g.kinds.slice(0, 4).join(', '))}${g.kinds.length > 4 ? ' и др.' : ''}`).join('<span class="wp-dot">·</span>');
+        const pillar = (icon, num, txt) => `<div class="wp-pil">${icon}<div><div class="wp-pn wp-cond">${num}</div><div class="wp-pt">${txt}</div></div></div>`;
         return `
-        <div class="wp-top">
-            <img src="img/stout_logo.png" alt="STOUT">
-            <div class="wp-nav">Гарантийные обязательства&nbsp;&nbsp;·&nbsp;&nbsp;Объект: <b>${e(od.address)}</b></div>
-        </div>
-        <div class="wp-hero">
-            <div class="wp-hero-txt">
-                <div class="wp-kicker">Оборудование STOUT в вашем доме</div>
+        <div class="wp-head">
+            <div class="wp-head-txt">
+                <img class="wp-logo" src="img/stout_logo.png" alt="STOUT">
+                <div class="wp-kicker">Гарантийное свидетельство на объект</div>
                 <h2>Гарантия <b>до ${e(years(maxM))}</b><br>на системы вашего дома</h2>
                 <p class="wp-lead">Одна система, один бренд, один телефон. За ваш дом отвечают вместе завод STOUT, исполнитель и страховая компания.</p>
-                <span class="wp-btn">Любой вопрос — ${e(phone)}</span>
             </div>
-            <div class="wp-hero-img">${hero ? img(hero.it.id) : ''}${hero ? `<div class="wp-badge"><b>${e(years(hero.months))}</b>${e(hero.kind)}</div>` : ''}</div>
+            <div class="wp-head-img">${hero ? img(hero.it.id) : ''}${hero ? `<div class="wp-badge"><b class="wp-cond">${e(years(hero.months))}</b>${e(hero.kind)}</div>` : ''}</div>
         </div>
-        <div class="wp-feats">
-            ${feat(I.shield, 'до ' + e(years(maxM)), 'гарантия завода STOUT на оборудование')}
-            ${feat(I.wrench, e(years(extM)), 'гарантия исполнителя на монтаж — вместо обычного года')}
-            ${ins ? feat(I.umbrella, e(mln(ins.sum)), 'ответственность завода за ущерб застрахована в ' + e(ins.insurer.replace(/^СПАО\s+/, ''))) : ''}
-            ${feat(I.phone, '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом')}
+        <div class="wp-id">
+            <div><span>Объект</span>${e(od.address)}</div>
+            <div><span>Заказчик</span>${e(od.client)}</div>
+            <div><span>Расчёт</span>№ ${e(kp)} от ${e(dateRu)}</div>
         </div>
-        <h3>Что стоит в вашем доме<small>сроки гарантии завода по группам</small></h3>
-        <div class="wp-prods">${prods}</div>
-        <div class="wp-groups">${grp}</div>
-        <div class="wp-sys">В расчёте: ${e(this.systemSummary())}</div>
-        <div class="wp-foot">
-            <div class="wp-fl"><b>Заказчик:</b> ${e(od.client)}${od.phone ? ', ' + e(od.phone) : ''}<br>
-                <b>Расчёт</b> № ${e(kp)} от ${e(dateRu)}<br>
-                Чтобы гарантия действовала: храните паспорта и акт опрессовки, осмотр системы раз в год, изменения — через исполнителя.</div>
-            <div class="wp-fr"><div class="wp-phone wp-cond">${e(phone)}</div><div class="wp-fname">${e(execName)}${cc.name ? ' · ' + e(cc.name) : ''}</div></div>
+        <div class="wp-pils">
+            ${pillar(I.shield, 'до ' + e(years(maxM)), 'гарантия завода на оборудование')}
+            ${pillar(I.wrench, e(years(extM)), 'гарантия исполнителя на монтаж, вместо обычного года')}
+            ${ins ? pillar(I.umbrella, e(mln(ins.sum)), 'ответственность завода застрахована в ' + e(ins.insurer.replace(/^СПАО\s+/, ''))) : ''}
+            ${pillar(I.phone, '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом')}
         </div>
-        <div class="wp-sign"><div>Исполнитель ______________</div><div>Заказчик ______________</div><div><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
-        <div class="wp-src">Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
-        ${ins ? `Полис ${e(ins.insurer)} № ${e(ins.policy)}, лимит на случай ${e(mln(ins.perCase))}, действует по ${e(Docs.dateRu(ins.to))}` : ''}
+        <div class="wp-sec"><span class="wp-cond">Что стоит в вашем доме</span><i></i><em>срок гарантии завода</em></div>
+        <div class="wp-rows">${rows}</div>
+        ${more ? `<div class="wp-more">${more}</div>` : ''}
+        <div class="wp-cta">
+            <div class="wp-cta-l">
+                <div class="wp-cta-h wp-cond">Любой вопрос — одним звонком</div>
+                <div class="wp-cta-t">Чтобы гарантия действовала: храните паспорта и акт опрессовки, раз в год показывайте систему специалисту, изменения вносите через исполнителя.</div>
+            </div>
+            <div class="wp-cta-r"><div class="wp-phone wp-cond">${e(phone)}</div><div class="wp-fname">${e(execName)}${cc.name ? ' · ' + e(cc.name) : ''}</div></div>
+        </div>
+        <div class="wp-sign"><div><u></u>Исполнитель</div><div><u></u>Заказчик</div><div class="wp-sign-note"><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
+        <div class="wp-src">В расчёте: ${e(this.systemSummary())}. Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
+        ${ins ? `Полис ${e(ins.insurer)} № ${e(ins.policy)}, лимит на случай ${e(mln(ins.perCase))}, действует по ${e(Docs.dateRu(ins.to))} ` : ''}
         Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
@@ -36936,58 +36944,56 @@ const app = {
      * таблица стилей страницы урезана) и на страницу клиента.
      * qr — { src, url } для печати: картинка QR на онлайн-КП.
      */
+
+    /**
+     * Разметка раздела. Стили встроенные: одна и та же уходит в печать (там
+     * таблица стилей страницы урезана) и на страницу клиента (invoice.html,
+     * renderKpHouse, — та же раскладка, но через textContent).
+     * Для заказчика, не для эксперта: три плитки с цифрами (теплопотери, в месяц,
+     * за сезон), «вы просили — мы учли» бейджами, комнаты таблицей, нормы и
+     * тариф — одной серой строкой внизу. qr — { src, url }: картинка QR на онлайн-КП.
+     */
     kpPersonalHtml: function (d, qr) {
         if (!d) return '';
         const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const n1 = v => String(Math.round((v || 0) * 10) / 10).replace('.', ',');
         const money = v => Math.round(v || 0).toLocaleString('ru-RU');
-        const H = (t) => `<div style="font-weight:700;font-size:14px;margin:14px 0 6px;color:#111">${t}</div>`;
+        const H = (t) => `<div style="font-weight:700;font-size:13px;margin:14px 0 6px;color:#111">${t}</div>`;
         const td = 'padding:4px 6px;border-bottom:1px solid #eee;';
+        const hs = d.house || {}, c = d.cost;
+        const tileCss = 'flex:1 1 150px;min-width:140px;border:1px solid #E5E7EB;border-radius:10px;padding:10px 12px;page-break-inside:avoid;';
+        const tile = (lbl, val, sub) => `<div style="${tileCss}"><div style="font-size:9.5px;color:#6B7280;font-weight:700;text-transform:uppercase;letter-spacing:.5px">${lbl}</div>` +
+            `<div style="font-size:21px;font-weight:800;color:#111;line-height:1.15;margin:2px 0">${val}</div>${sub ? `<div style="font-size:11px;color:#6B7280">${sub}</div>` : ''}</div>`;
+        let tiles = '';
+        if (hs.kw) tiles += tile('Теплопотери дома', `${n1(hs.kw)} кВт`, [hs.t != null ? `при ${hs.t} °C` : '', hs.city ? esc(hs.city) : ''].filter(Boolean).join(', '));
+        if (c) {
+            tiles += tile('Отопление в месяц', `≈ ${money(c.month)} ₽`, 'в среднем за отопительный сезон');
+            tiles += tile('За сезон', `${money(c.season)} ₽`, `${c.zOt ? c.zOt + ' дн.' : c.months + ' мес.'} · ${c.fuel === 'gas' ? (c.lpg ? 'сжиженный газ' : 'газ') : 'электроэнергия'} ${money(c.units)} ${esc(c.uName)}`);
+        }
+        if (qr && qr.src) tiles += `<div style="${tileCss}flex:0 0 auto;text-align:center"><img src="${qr.src}" alt="QR" style="width:84px;height:84px;display:block;margin:0 auto 2px"><div style="font-size:10px;color:#6B7280">Это КП онлайн</div></div>`;
         let h = `<div class="kp-personal" style="font-family:inherit;color:#222;font-size:12.5px;line-height:1.45;margin:6px 0 16px;page-break-inside:auto">`;
-        const hs = d.house || {};
-        h += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">` +
-            `<div style="flex:1;min-width:260px"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Расчёт выполнен для вашего дома</div>` +
-            `<div>${[hs.city ? esc(hs.city) : '', hs.area ? n1(hs.area) + ' м²' : '', hs.floors ? hs.floors + ' ' + (hs.floors === 1 ? 'этаж' : 'этажа') : '']
-                .filter(Boolean).join(' · ')}</div>` +
-            (hs.kw ? `<div>Теплопотери дома: <b>${n1(hs.kw)} кВт</b>${hs.t != null ? ` при наружной температуре ${hs.t} °C` : ''}` +
-                `${hs.city ? ` (расчётная зимняя для г. ${esc(hs.city)}, СП 131.13330.2020, табл. 3.1)` : ''}</div>` : '') +
-            `</div>` +
-            (qr && qr.src ? `<div style="text-align:center;width:150px"><img src="${qr.src}" alt="QR" style="width:120px;height:120px;display:block;margin:0 auto 4px">` +
-                `<div style="font-size:10.5px;color:#555">Этот КП онлайн: план дома, смета, согласование — наведите камеру телефона</div></div>` : '') +
-            `</div>`;
+        h += `<div style="font-size:13px;color:#374151;margin:0 0 10px">Посчитано для вашего дома, а не по шаблону: теплопотери, котёл и приборы — под ` +
+            `${hs.area ? n1(hs.area) + ' м²' : 'ваш дом'}${hs.city ? ' в г. ' + esc(hs.city) : ''}.</div>`;
+        if (tiles) h += `<div style="display:flex;gap:10px;flex-wrap:wrap">${tiles}</div>`;
         if (d.asked && d.asked.length) {
-            h += H('Вы просили — мы учли');
-            h += `<table style="width:100%;border-collapse:collapse">` + d.asked.map(x =>
-                `<tr><td style="${td}width:40%">${esc(x.q)}</td><td style="${td}">${x.ok
-                    ? `<span style="color:#15803d;font-weight:700">✓</span> ${esc(x.a)}`
-                    : `<span style="color:#b45309;font-weight:700">—</span> в смету не вошло, обсудим`}</td></tr>`).join('') + `</table>`;
+            h += H('Вы просили — мы учли') + `<div style="display:flex;flex-wrap:wrap;gap:6px">` + d.asked.map(x =>
+                `<span style="display:inline-block;border:1px solid ${x.ok ? '#BBF7D0' : '#FDE68A'};background:${x.ok ? '#F0FDF4' : '#FFFBEB'};border-radius:999px;padding:4px 10px;font-size:12px">` +
+                `<b style="color:${x.ok ? '#15803d' : '#b45309'}">${x.ok ? '✓' : '—'}</b> ${esc(x.q)}${x.ok ? ': ' + esc(x.a) : ' — обсудим'}</span>`).join('') + `</div>`;
         }
         if (d.rooms && d.rooms.length) {
             const two = d.rooms.some(r => r.floor === 2);
             h += H('Ваш дом по комнатам');
-            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666">` +
-                `<th style="${td}text-align:left">Помещение</th><th style="${td}text-align:right">Площадь</th>` +
-                `<th style="${td}text-align:right">Теплопотери</th><th style="${td}text-align:left">Чем греется</th></tr>` +
+            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666;font-size:11px">` +
+                `<th style="${td}text-align:left;font-weight:600">Помещение</th><th style="${td}text-align:right;font-weight:600">Площадь</th>` +
+                `<th style="${td}text-align:right;font-weight:600">Теплопотери</th><th style="${td}text-align:left;font-weight:600">Отопление</th></tr>` +
                 d.rooms.map(r => `<tr><td style="${td}">${esc(r.name)}${two ? ` <span style="color:#888">(${r.floor} эт.)</span>` : ''}</td>` +
                     `<td style="${td}text-align:right">${n1(r.area)} м²</td><td style="${td}text-align:right">${money(r.q)} Вт</td>` +
                     `<td style="${td}">${esc(r.heat || '—')}</td></tr>`).join('') +
                 `<tr style="font-weight:700"><td style="${td}">Итого</td><td style="${td}text-align:right">${n1(d.rooms.reduce((s, r) => s + (r.area || 0), 0))} м²</td>` +
-                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>` +
-                `<div style="font-size:11px;color:#666;margin-top:4px">Теплопотери посчитаны по каждой комнате: стены, окна, пол, кровля и вентиляция (СП 50.13330.2024).</div>`;
+                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>`;
         }
-        if (d.cost) {
-            const c = d.cost;
-            h += H('Сколько будет стоить отопление');
-            h += `<div style="display:flex;gap:24px;flex-wrap:wrap">` +
-                `<div><div style="color:#666">В среднем в месяц отопительного сезона</div><div style="font-size:18px;font-weight:800">${money(c.month)} ₽</div></div>` +
-                `<div><div style="color:#666">За сезон (${c.zOt ? c.zOt + ' сут.' : c.months + ' мес.'})</div><div style="font-size:18px;font-weight:800">${money(c.season)} ₽</div></div>` +
-                `<div><div style="color:#666">${c.fuel === 'gas' ? (c.lpg ? 'Сжиженный газ' : 'Газ') : 'Электроэнергия'} за сезон</div>` +
-                `<div style="font-size:18px;font-weight:800">${money(c.units)} ${esc(c.uName)}</div></div></div>` +
-                `<div style="font-size:11px;color:#666;margin-top:4px">Оценка: тепло за отопительный период по СП 131.13330.2020, табл. 3.1` +
-                `${c.tOt != null ? ` (средняя температура периода ${n1(c.tOt)} °C)` : ''}, ` +
-                `тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, ` +
-                `в доме +20 °C. Счёт зависит от того, как вы живёте в доме.</div>`;
-        }
+        h += `<div style="font-size:10.5px;color:#9CA3AF;margin-top:8px">Расчёт: теплопотери — СП 50.13330.2024${d.rooms && d.rooms.length ? ' по каждой комнате' : ''}, климат — СП 131.13330.2020, табл. 3.1` +
+            (c ? `; тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, в доме +20 °C. Реальный счёт зависит от того, как вы живёте в доме` : '') + `.</div>`;
         return h + `</div>`;
     },
 
@@ -81189,6 +81195,8 @@ function prepareForPrint() {
             let eqClone = printArea.cloneNode(true);
             eqClone.id = 'print_eq_clone';
             // Убираем схему и табы
+            // Бланк гарантии печатается один раз и последним листом (шаг 6)
+            const eqWp = eqClone.querySelector('#warranty_print'); if (eqWp) eqWp.remove();
             let eqScheme = eqClone.querySelector('#dynamic_scheme');
             if (eqScheme) eqScheme.remove();
             let eqTabs = eqClone.querySelector('.main-view-tabs');
@@ -81222,6 +81230,7 @@ function prepareForPrint() {
             if (showEq) {
                 worksClone.classList.add('print-page-break'); // Разрыв страницы
             }
+            const worksWp = worksClone.querySelector('#warranty_print'); if (worksWp) worksWp.remove();
             let worksScheme = worksClone.querySelector('#dynamic_scheme');
             if (worksScheme) worksScheme.remove();
             let wTabs = worksClone.querySelector('.main-view-tabs');
@@ -81286,6 +81295,17 @@ function prepareForPrint() {
                 }
                 printBin.appendChild(hlContainer);
             }
+        }
+
+        // --- ШАГ 6: БЛАНК «ГАРАНТИЯ НА ОБЪЕКТ STOUT» — последним листом всего документа,
+        // после схемы и таблицы теплопотерь. Живой блок (#warranty_print) собирает
+        // render(); пустой (долю STOUT не набрали) в печать не идёт. ---
+        const wpLive = document.getElementById('warranty_print');
+        if (wpLive && wpLive.innerHTML.trim() && printBin.children.length > 0) {
+            const wpPage = document.createElement('div');
+            wpPage.className = 'warranty-print';
+            wpPage.innerHTML = wpLive.innerHTML;
+            printBin.appendChild(wpPage);
         }
 
         // --- #16: ПРЕДУПРЕЖДЕНИЯ О НЕХВАТКЕ МОЩНОСТИ ---
