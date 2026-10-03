@@ -1587,6 +1587,15 @@ const app = {
     applyOprosData: function (d) {
         const s = this.state;
         try {
+            // Что заказчик просил — для раздела КП «Вы просили — мы учли»
+            // (kpPersonalData). Без имени, телефона и адреса: в КП и в ссылку
+            // клиенту они не нужны.
+            const pick = {};
+            ['tp', 'rad', 'fuel', 'hw', 'people', 'auto', 'vent', 'watersource', 'live'].forEach(k => {
+                if (d[k] !== undefined && d[k] !== null && d[k] !== '') pick[k] = d[k];
+            });
+            if (d.tpRooms) pick.tpRooms = String(d.tpRooms).slice(0, 200);
+            if (Object.keys(pick).length) s.oprosAnswers = pick;
             s.objectType = 'house';
             const _a = parseFloat(d.area);
             if (_a > 0) s.area = Math.min(this.MAX_AREA || 2000, Math.round(_a));
@@ -35950,6 +35959,9 @@ const app = {
      */
     adoptPlans: function (loadedState) {
         this.state.plans = (loadedState && loadedState.plans) ? loadedState.plans : null;
+        // Ответы анкеты заказчика — той же болезнью: без явного присваивания
+        // «Вы просили — мы учли» одного дома приехало бы в КП другого
+        this.state.oprosAnswers = (loadedState && loadedState.oprosAnswers) ? loadedState.oprosAnswers : null;
         this.pushPlansToEditor();
         this.renderPlanChecks(); this.renderPlanAreaNote();
     },
@@ -36276,6 +36288,156 @@ const app = {
             const i = used[k] || 0; used[k] = i + 1;
             return list[Math.min(i, list.length - 1)];
         });
+    },
+
+    // ═══ КП «про этот дом», а не шаблон ══════════════════════════════════
+    // Раздел «Ваш дом» в начале КП (печать и ссылка клиенту): город и расчётная
+    // температура, что заказчик просил в анкете и чем это закрыто, комнаты с
+    // теплопотерями и приборами, сколько будет стоить отопление. Только то, что
+    // уже посчитано, — ничего не выдумываем; блока нет — нет и данных.
+
+    /**
+     * Данные раздела. Названия оборудования — без моделей (как в КП с короткими
+     * названиями): мощность, объём, тип — да, артикул и серия — нет.
+     */
+    kpPersonalData: function () {
+        const s = this.state, out = {};
+        const r1 = v => Math.round((v || 0) * 10) / 10;
+        const eq = (this.currentEquipmentList || []).filter(i => !i.isOpt);
+        const find = re => eq.find(i => re.test(String(i.name || '')));
+        let kw = 0;
+        try { kw = r1(this.getHouseHeatLoss()); } catch (e) { kw = 0; }
+        let tD = null;
+        try { tD = this.getDesignTemp(); } catch (e) { tD = null; }
+        out.house = {
+            city: (s.selectedCity && s.selectedCity.name) || '', t: tD, area: r1(s.area), floors: s.floors || 1, kw: kw,
+            people: parseInt(s.res, 10) || 0
+        };
+        const sys = s.systems || [];
+        const gasKw = parseFloat(this._gasBoilerKw) || 0, elKw = parseFloat(this._elBoilerKw) || 0;
+        // сам бойлер, а не «Кран шаровой … (Змеевик бойлера)»
+        const tank = find(/^\s*(бойлер|водонагреват)/i);
+        // «150 л» — \b после кириллицы не работает, поэтому граница словом «не буква»
+        const tankL = tank ? (String(tank.name).match(/(\d{2,4})\s*(?:л|литр)(?![а-яё])/i) || [])[1] : null;
+        const c1 = v => String(r1(v)).replace('.', ',');
+
+        // «Вы просили — мы учли»: ответы анкеты, сохранённые при её применении
+        const a = s.oprosAnswers;
+        if (a && typeof a === 'object') {
+            const asked = [];
+            const tpRooms = (s.rooms || []).filter(r => (r.sys || []).includes('tp')).map(r => r.name);
+            if (a.tp) asked.push({ q: 'Тёплый пол' + (a.tpRooms ? ' (' + String(a.tpRooms).slice(0, 120) + ')' : ''),
+                a: sys.includes('tp') ? 'тёплый пол ' + c1((s.tp1 || 0) + (s.floors === 2 ? (s.tp2 || 0) : 0)) + ' м²' +
+                    (s.detailedRooms && tpRooms.length ? ': ' + tpRooms.join(', ') : '') : '', ok: sys.includes('tp') });
+            if (a.rad) asked.push({ q: 'Радиаторы', a: sys.includes('rad') ? 'радиаторы — ' + ((this.totalDevicesCount || 0) || 'по окнам') + ' шт.' : '', ok: sys.includes('rad') });
+            if (a.fuel === 'gas' || a.fuel === 'el') {
+                const ok = a.fuel === 'gas' ? gasKw > 0 : elKw > 0;
+                asked.push({ q: a.fuel === 'gas' ? 'Газовый котёл' : 'Электрокотёл',
+                    a: ok ? (a.fuel === 'gas' ? 'газовый котёл ' + c1(gasKw) : 'электрокотёл ' + c1(elKw)) + ' кВт' +
+                        (s.hotWater ? ', с запасом на горячую воду' : '') : '', ok });
+            }
+            if (a.hw === true) asked.push({ q: 'Горячая вода' + (a.people ? ' на ' + a.people + ' чел.' : ''),
+                a: s.hotWater ? (tank ? 'бойлер' + (tankL ? ' ' + tankL + ' л' : '') : 'горячее водоснабжение от котла') : '', ok: !!s.hotWater });
+            if (a.auto === true) asked.push({ q: 'Автоматика отопления', a: s.boilerAuto ? 'контроллер котельной: погодозависимое управление и расписание' : '', ok: !!s.boilerAuto });
+            if (a.vent === true) asked.push({ q: 'Приточная вентиляция с подогревом', a: s.ventilationEnabled ? 'учтена в теплопотерях дома' : '', ok: !!s.ventilationEnabled });
+            if (a.watersource === 'well') asked.push({ q: 'Вода из скважины', a: s.well ? 'скважинный насос и узел ввода' : '', ok: !!s.well });
+            if (asked.length) out.asked = asked;
+        }
+
+        // «Ваш дом по комнатам» — подробный режим
+        if (s.detailedRooms && Array.isArray(s.rooms) && s.rooms.length) {
+            const bal = app._roomBalance || {}, devs = app.radDevices || [];
+            out.rooms = s.rooms.map(r => {
+                let q = 0;
+                try { q = this.getRoomHeatLoss(r).Q_sum || 0; } catch (e) { q = 0; }
+                const b = bal[r.id] || {};
+                const my = devs.filter(d => d.room === r.name);
+                const parts = [];
+                if (my.length) {
+                    const w = my.reduce((s2, d) => s2 + (d.watt || 0), 0);
+                    const conv = my.some(d => d.kind === 'conv');
+                    parts.push((conv ? 'приборы' : 'радиаторы') + ' ' + my.length + ' шт., ' + Math.round(w).toLocaleString('ru-RU') + ' Вт');
+                }
+                if ((r.sys || []).includes('tp')) parts.push('тёплый пол' + (b.ufh ? ' ' + Math.round(b.ufh).toLocaleString('ru-RU') + ' Вт' : ''));
+                return { name: r.name, floor: r.floor || 1, area: r1(r.area), q: Math.round(q), heat: parts.join(' + ') };
+            });
+        }
+
+        // «Сколько будет стоить отопление» — основной котёл дома
+        try {
+            const fuel = gasKw > 0 ? 'gas' : (elKw > 0 ? 'el' : null);
+            const c = fuel === 'gas' ? this.calcGasHeatingCost() : fuel === 'el' ? this.calcElHeatingCost() : null;
+            if (c && c.seasonCost > 0) {
+                out.cost = {
+                    fuel: fuel, month: Math.round(c.avgMonthCost / 10) * 10, season: Math.round(c.seasonCost / 100) * 100,
+                    months: c.activeMonths || 7, zOt: c.zOt, tOt: c.tOt,
+                    tariff: fuel === 'gas' ? (c.tariff && c.tariff.rub) : (c.tariffDay || null),
+                    unit: fuel === 'gas' ? (c.lpg ? '₽/л' : '₽/м³') : '₽/кВт·ч', lpg: !!c.lpg,
+                    units: fuel === 'gas' ? Math.round(c.seasonUnits) : Math.round(c.seasonKwh), uName: fuel === 'gas' ? (c.lpg ? 'л' : 'м³') : 'кВт·ч'
+                };
+            }
+        } catch (e) { /* прогноза нет — блока тоже */ }
+        return (out.asked || out.rooms || out.cost) ? out : null;
+    },
+
+    /**
+     * Разметка раздела. Стили встроенные: одна и та же уходит в печать (там
+     * таблица стилей страницы урезана) и на страницу клиента.
+     * qr — { src, url } для печати: картинка QR на онлайн-КП.
+     */
+    kpPersonalHtml: function (d, qr) {
+        if (!d) return '';
+        const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const n1 = v => String(Math.round((v || 0) * 10) / 10).replace('.', ',');
+        const money = v => Math.round(v || 0).toLocaleString('ru-RU');
+        const H = (t) => `<div style="font-weight:700;font-size:14px;margin:14px 0 6px;color:#111">${t}</div>`;
+        const td = 'padding:4px 6px;border-bottom:1px solid #eee;';
+        let h = `<div class="kp-personal" style="font-family:inherit;color:#222;font-size:12.5px;line-height:1.45;margin:6px 0 16px;page-break-inside:auto">`;
+        const hs = d.house || {};
+        h += `<div style="display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap">` +
+            `<div style="flex:1;min-width:260px"><div style="font-weight:800;font-size:16px;margin-bottom:4px">Расчёт выполнен для вашего дома</div>` +
+            `<div>${[hs.city ? esc(hs.city) : '', hs.area ? n1(hs.area) + ' м²' : '', hs.floors ? hs.floors + ' ' + (hs.floors === 1 ? 'этаж' : 'этажа') : '']
+                .filter(Boolean).join(' · ')}</div>` +
+            (hs.kw ? `<div>Теплопотери дома: <b>${n1(hs.kw)} кВт</b>${hs.t != null ? ` при наружной температуре ${hs.t} °C` : ''}` +
+                `${hs.city ? ` (расчётная зимняя для г. ${esc(hs.city)}, СП 131.13330.2020, табл. 3.1)` : ''}</div>` : '') +
+            `</div>` +
+            (qr && qr.src ? `<div style="text-align:center;width:150px"><img src="${qr.src}" alt="QR" style="width:120px;height:120px;display:block;margin:0 auto 4px">` +
+                `<div style="font-size:10.5px;color:#555">Этот КП онлайн: план дома, смета, согласование — наведите камеру телефона</div></div>` : '') +
+            `</div>`;
+        if (d.asked && d.asked.length) {
+            h += H('Вы просили — мы учли');
+            h += `<table style="width:100%;border-collapse:collapse">` + d.asked.map(x =>
+                `<tr><td style="${td}width:40%">${esc(x.q)}</td><td style="${td}">${x.ok
+                    ? `<span style="color:#15803d;font-weight:700">✓</span> ${esc(x.a)}`
+                    : `<span style="color:#b45309;font-weight:700">—</span> в смету не вошло, обсудим`}</td></tr>`).join('') + `</table>`;
+        }
+        if (d.rooms && d.rooms.length) {
+            const two = d.rooms.some(r => r.floor === 2);
+            h += H('Ваш дом по комнатам');
+            h += `<table style="width:100%;border-collapse:collapse"><tr style="color:#666">` +
+                `<th style="${td}text-align:left">Помещение</th><th style="${td}text-align:right">Площадь</th>` +
+                `<th style="${td}text-align:right">Теплопотери</th><th style="${td}text-align:left">Чем греется</th></tr>` +
+                d.rooms.map(r => `<tr><td style="${td}">${esc(r.name)}${two ? ` <span style="color:#888">(${r.floor} эт.)</span>` : ''}</td>` +
+                    `<td style="${td}text-align:right">${n1(r.area)} м²</td><td style="${td}text-align:right">${money(r.q)} Вт</td>` +
+                    `<td style="${td}">${esc(r.heat || '—')}</td></tr>`).join('') +
+                `<tr style="font-weight:700"><td style="${td}">Итого</td><td style="${td}text-align:right">${n1(d.rooms.reduce((s, r) => s + (r.area || 0), 0))} м²</td>` +
+                `<td style="${td}text-align:right">${money(d.rooms.reduce((s, r) => s + (r.q || 0), 0))} Вт</td><td style="${td}"></td></tr></table>` +
+                `<div style="font-size:11px;color:#666;margin-top:4px">Теплопотери посчитаны по каждой комнате: стены, окна, пол, кровля и вентиляция (СП 50.13330.2024).</div>`;
+        }
+        if (d.cost) {
+            const c = d.cost;
+            h += H('Сколько будет стоить отопление');
+            h += `<div style="display:flex;gap:24px;flex-wrap:wrap">` +
+                `<div><div style="color:#666">В среднем в месяц отопительного сезона</div><div style="font-size:18px;font-weight:800">${money(c.month)} ₽</div></div>` +
+                `<div><div style="color:#666">За сезон (${c.zOt ? c.zOt + ' сут.' : c.months + ' мес.'})</div><div style="font-size:18px;font-weight:800">${money(c.season)} ₽</div></div>` +
+                `<div><div style="color:#666">${c.fuel === 'gas' ? (c.lpg ? 'Сжиженный газ' : 'Газ') : 'Электроэнергия'} за сезон</div>` +
+                `<div style="font-size:18px;font-weight:800">${money(c.units)} ${esc(c.uName)}</div></div></div>` +
+                `<div style="font-size:11px;color:#666;margin-top:4px">Оценка: тепло за отопительный период по СП 131.13330.2020, табл. 3.1` +
+                `${c.tOt != null ? ` (средняя температура периода ${n1(c.tOt)} °C)` : ''}, ` +
+                `тариф ${c.tariff ? n1(c.tariff) + ' ' + esc(c.unit) : 'по региону'}${c.fuel === 'gas' ? ', КПД котла 92 %' : ''}, ` +
+                `в доме +20 °C. Счёт зависит от того, как вы живёте в доме.</div>`;
+        }
+        return h + `</div>`;
     },
 
     /** Для ссылки клиенту: те же этажи, числа округлены — страница их не пересчитывает. */
@@ -43493,6 +43655,15 @@ const app = {
         if (chkWorks) chkWorks.checked = true;
         if (chkHeatLoss) chkHeatLoss.checked = true;
         if (chkScheme) chkScheme.checked = true;
+        // «Ваш дом» — в печать и в ссылку клиенту, если есть что показать
+        const chkHouse = document.getElementById('share_opt_house');
+        if (chkHouse) chkHouse.checked = true;
+        const cardHouse = document.getElementById('card_opt_house');
+        if (cardHouse) {
+            let has = false;
+            try { has = (actionType === 'print' || actionType === 'share') && !!this.kpPersonalData(); } catch (e) { has = false; }
+            cardHouse.style.display = has ? 'flex' : 'none';
+        }
         // Сокращённые названия — как задано в «Настройки → КП и счета» (по умолчанию включено)
         const chkNames = document.getElementById('share_opt_names');
         if (chkNames) chkNames.checked = this.shortNamesDefault();
@@ -43726,6 +43897,9 @@ const app = {
         // По умолчанию названия сокращены; полные уходят только при снятой галочке
         const chkNamesOpt = document.getElementById('share_opt_names');
         const shortNames = chkNamesOpt ? chkNamesOpt.checked : true;
+        // Раздел «Ваш дом»: читают prepareForPrint и executeShareInvoice
+        const cardHouseOpt = document.getElementById('card_opt_house'), chkHouseOpt = document.getElementById('share_opt_house');
+        this.kpHouseOn = !!(cardHouseOpt && cardHouseOpt.style.display !== 'none' && chkHouseOpt && chkHouseOpt.checked);
 
         this.closeShareOptionsModal();
 
@@ -45325,6 +45499,14 @@ const app = {
             const up = this.ufhPlanForShare();
             if (up) object_info.ufhPlan = up;
         } catch (e) { console.warn('[ссылка] раскладка ТП не добавлена:', e.message); }
+        // Раздел «Ваш дом»: город, теплопотери, учтённое из анкеты, комнаты,
+        // стоимость отопления — данными, страница клиента рисует их сама
+        if (this.kpHouseOn !== false) {
+            try {
+                const kp = this.kpPersonalData();
+                if (kp) object_info.kp = kp;
+            } catch (e) { console.warn('[ссылка] раздел «Ваш дом» не добавлен:', e.message); }
+        }
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
@@ -45705,6 +45887,15 @@ const app = {
         // заголовка страницы: он же имя файла, «КП №452712-3 …»
         this.stampKpVersion('pdf');
         this.queueCloudSave(JSON.parse(JSON.stringify(this.state)), app.lastEqSum || 0, app.lastWorksSum || 0);
+
+        // QR на онлайн-КП для раздела «Ваш дом» — если ссылка клиенту уже
+        // создавалась (номер ссылки есть в расчёте). Картинка рисуется
+        // асинхронно, поэтому до сборки печатной копии.
+        this._kpQr = null;
+        if (this.kpHouseOn !== false && this.isValidUUID && this.isValidUUID(this.state.shared_invoice_id)) {
+            const url = 'https://heatcalc.ru/invoice.html?id=' + this.state.shared_invoice_id;
+            try { const src = await this.qrDataUrl(url, 220); if (src) this._kpQr = { src, url }; } catch (e) { this._kpQr = null; }
+        }
 
         let tgUser = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user) ? window.Telegram.WebApp.initDataUnsafe.user : this.state.tgUser;
         const isLocal = (HC_LOCAL_DEV);
@@ -80436,6 +80627,20 @@ function prepareForPrint() {
             let eqTabs = eqClone.querySelector('.main-view-tabs');
             if (eqTabs) eqTabs.style.display = 'none';
             printBin.appendChild(eqClone);
+        }
+
+        // --- ШАГ 1а: РАЗДЕЛ «ВАШ ДОМ» — перед таблицей оборудования (или в начале,
+        // если оборудование не печатают): город, теплопотери, «вы просили — мы
+        // учли», комнаты, стоимость отопления, QR на онлайн-КП ---
+        if (app.kpHouseOn !== false) {
+            let kpHtml = '';
+            try { kpHtml = app.kpPersonalHtml(app.kpPersonalData(), app._kpQr); } catch (e) { kpHtml = ''; }
+            if (kpHtml) {
+                const eqC = document.getElementById('print_eq_clone');
+                const tbl = eqC && eqC.querySelector('.table-responsive');
+                if (tbl) tbl.insertAdjacentHTML('beforebegin', kpHtml);
+                else printBin.insertAdjacentHTML('afterbegin', kpHtml);
+            }
         }
 
         // --- ШАГ 2: ЛИСТ МОНТАЖНЫХ РАБОТ (Доступно авторизованным пользователям на любом

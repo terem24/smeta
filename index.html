@@ -2959,6 +2959,17 @@
                         <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">гидравлическая</span>
                     </div>
                 </div>
+
+                <!-- Раздел «Ваш дом» в начале КП: город и теплопотери, «Вы просили —
+                     мы учли», комнаты, стоимость отопления, QR на онлайн-КП
+                     (app.kpPersonalData). Виден, когда есть что показать. -->
+                <div class="share-option-card" id="card_opt_house" style="display: none;" onclick="app.toggleShareOption('house')" title="Раздел о доме заказчика в начале КП: комнаты, стоимость отопления, что учтено из анкеты">
+                    <input type="checkbox" id="share_opt_house" checked onclick="event.stopPropagation(); app.updateShareOptionsUI();" style="width: 18px; height: 18px; cursor: pointer; flex-shrink: 0; margin: 0;">
+                    <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                        <span style="font-size: 13.5px; font-weight: 700; color: var(--text-main); line-height: 1.2;">Ваш дом</span>
+                        <span class="share-opt-sub" style="font-size: 11px; color: var(--text-sec); font-weight: 500; line-height: 1.2;">комнаты, стоимость отопления</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Вид файла Excel: с разделами, как на экране, или списком, как обычный счёт.
