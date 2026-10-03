@@ -1331,6 +1331,7 @@ function cleanBar(bar, W, H, ppm) {
  * островки внутри комнаты (лестничный проём, шахта) целиком отходят той
  * комнате, которая их окружает.
  */
+var GROW_ROOMS = true;    // сверка с подписанными площадями (reconcileRooms) гасит рост на один прогон
 function growToWalls(lab, bar, W, H, ppm) {
   var N = W * H, i, x, C = cleanBar(bar, W, H, ppm);
   var cap = Math.max(2, Math.round(0.9 * ppm));
@@ -1411,7 +1412,7 @@ function labelRooms() {
     if (id2 >= W && d[id2 - W] > 0 && !lab[id2 - W]) { lab[id2 - W] = Lc; q[qt++] = id2 - W; }
     if (id2 < N - W && d[id2 + W] > 0 && !lab[id2 + W]) { lab[id2 + W] = Lc; q[qt++] = id2 + W; }
   }
-  if (mode === 'raw' && L) growToWalls(lab, m.bar, W, H, ppm);
+  if (mode === 'raw' && L && GROW_ROOMS) growToWalls(lab, m.bar, W, H, ppm);
   var cnt = new Int32Array(L + 1), edge = new Uint8Array(L + 1);
   var mn = new Int32Array(L + 1);
   for (i = 0; i <= L; i++) mn[i] = -1;
@@ -2261,7 +2262,7 @@ function autoMarkAll() {
     if (bad.length) heroOff = true;   // что-то осталось руками — открываем шапку
     if (UFH) {
       // что делать дальше, скажет строка мастера; здесь — только итог
-      hint(F().pxPerM ? '<span class=ok>Найдено комнат: ' + zones + (rads ? ', радиаторов под окнами: ' + rads : '') + '.</span>' +
+      hint(F().pxPerM ? '<span class=ok>Найдено комнат: ' + zones + (rads ? ', радиаторов под окнами: ' + rads : '') + '.</span>' + lastRoomsNote +
         (bad.length ? ' <b>Осталось руками:</b> ' + bad.join('; ') + '.' : '') : '');
       return;
     }
@@ -2309,6 +2310,7 @@ function hasBoilerZone() {
  *  котельная и санузлы, тип берётся из самой комнаты (zoneKindsOfRoom).
  *  Сопоставление по площади (лучшие пары, допуск 25% или 2 м²); без расчёта —
  *  зоны ТП для всех найденных комнат. Уже размеченные комнаты не трогаются. */
+var lastRoomsNote = '';   // итог сверки с подписанными площадями — для строки «Найдено комнат…»
 function autoRooms() {
   if (!F().pxPerM) { alert('Сначала задайте масштаб: кнопкой «Подобрать масштаб» или «Масштаб».'); return; }
   var rooms = [];
@@ -2332,6 +2334,21 @@ function autoRooms() {
   if (!rooms.length) {
     hint('Комнаты распознать не удалось (пёстрая подложка?) — обведите зоны вручную.');
     return;
+  }
+  // Подписи площадей на плане (PDF): сверяем масштаб и выбираем вариант контура,
+  // ближе всего к напечатанному
+  var labs = PDF_AREAS[cur] || [], scaleNote = '';
+  lastRoomsNote = '';
+  if (labs.length) {
+    var fixPpm = scaleFromPrinted(rooms, labs);
+    if (fixPpm) {
+      var oldPpm = F().pxPerM;
+      F().pxPerM = fixPpm; resetScaleCaches();
+      try { rooms = enumerateRooms(); } catch (e) { rooms = []; }
+      scaleNote = ' Масштаб уточнён по площадям, напечатанным на плане: ' + oldPpm.toFixed(1) + ' → ' + fixPpm.toFixed(1) + ' px/м.';
+      if (!rooms.length) { hint('Комнаты распознать не удалось.' + scaleNote); return; }
+    }
+    rooms = reconcileRooms(rooms, labs);
   }
   var free = rooms.filter(function (r) {
     var c = centroid(r.pts);
@@ -2361,7 +2378,7 @@ function autoRooms() {
       var t = targets[p[1]];
       if (p[0] > Math.max(2, 0.25 * t.area)) return;
       tU[p[1]] = 1; cU[p[2]] = 1;
-      var pts = simplifyZone(free[p[2]].pts, F().pxPerM || 100);
+      var pts = fitZonePts(free[p[2]].pts, F().pxPerM || 100, free[p[2]].printed);
       // Раскладка: у комнаты без своего типа — контур «Помещение», чтобы
       // клик по ней включал тёплый пол, а не искал стены заново
       if (UFH && !zoneKindsOfRoom(t).length) {
@@ -2389,14 +2406,14 @@ function autoRooms() {
     free.forEach(function (c) {
       var cc = centroid(c.pts);
       if (F().zones.some(function (z) { return pip(cc, z.pts); })) return;
-      F().zones.push({ type: 'room', name: '', pts: simplifyZone(c.pts, F().pxPerM || 100) });
+      F().zones.push({ type: 'room', name: '', pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
       cnt.room = (cnt.room || 0) + 1; made++;
     });
     missed = [];
   }
   if (!made && !targets.length) {
     free.forEach(function (c) {
-      F().zones.push({ type: 'tp', name: '', pts: simplifyZone(c.pts, F().pxPerM || 100) });
+      F().zones.push({ type: 'tp', name: '', pts: fitZonePts(c.pts, F().pxPerM || 100, c.printed) });
       made++;
     });
     cnt = { tp: made };
@@ -2405,6 +2422,7 @@ function autoRooms() {
   // Санузел подписан именем из расчёта — приборы по его карточке встают сами
   if (cnt.wc && fixAuto) refreshAutoFixtures();
   renderZones(); draw();
+  lastRoomsNote = printedNote(labs) + scaleNote;
   var NAMES = { tp: 'тёплый пол', boiler: 'котельная', wc: 'санузлы', room: 'прочие помещения' };
   var parts = ['tp', 'boiler', 'wc', 'room'].filter(function (k) { return cnt[k]; })
     .map(function (k) { return NAMES[k] + ' ' + cnt[k]; });
@@ -2413,7 +2431,7 @@ function autoRooms() {
     // режим на плане ведёт мастер (wzGo): на шаге «Комнаты» клик не должен включать тёплый пол
     renderZones(); draw();
     hint('<span class=ok>Найдено комнат: ' + rooms.length + '.</span> ' +
-      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : ''));
+      (cnt.tp ? 'Тёплый пол из расчёта уже отмечен: ' + cnt.tp + '.' : '') + lastRoomsNote);
     return;
   }
   hint('<span class=ok>Найдено комнат: ' + rooms.length + ', создано зон: ' +
@@ -2472,7 +2490,50 @@ function textItemsPx(tc, vp) {
     var str = String(it.str == null ? '' : it.str).trim();
     if (!str || !it.transform) return;
     var m = mulT(vp.transform, it.transform);
-    out.push({ s: str, x: m[4], y: m[5] });
+    out.push({ s: str, x: m[4], y: m[5], w: (it.width || 0) * vp.scale, h: (it.height || 0) * vp.scale });
+  });
+  return out;
+}
+
+/**
+ * Подписи площадей на плане («19,16 м²») из текстового слоя PDF.
+ *
+ * Проектировщик печатает площадь каждой комнаты — это самая точная цифра,
+ * какая у нас есть: по ней сверяются найденные комнаты и масштаб (03.10.2026,
+ * на плане заказчика найденные площади расходились с подписанными на 13–30 %).
+ * Подпись бывает одним куском «19,16 м²» или двумя — число и «м²» рядом.
+ * Число без единицы не берём: размерные цепочки тоже полны десятичных дробей.
+ * Возвращает [{ m2, x, y }] — центр подписи в пикселях подложки.
+ */
+var PDF_AREAS = {};
+function areaLabelsFrom(items) {
+  var out = [], UNIT = /^(?:м\s*[²2]|м\.?\s*кв|кв\.?\s*м)/i;
+  // Показатель степени в PDF обычно отдельный кусок «2» чуть выше строки:
+  // «24,78 м» + «2». Ищем его сразу за концом числа.
+  var sup = function (t, items) {
+    for (var j = 0; j < items.length; j++) {
+      var u = items[j];
+      if (!/^[²2]$/.test(u.s)) continue;
+      var dx = u.x - (t.x + (t.w || 0)), dy = Math.abs(u.y - t.y);
+      if (dx > -3 && dx < Math.max(8, (t.h || 8)) && dy < Math.max(8, (t.h || 8))) return true;
+    }
+    return false;
+  };
+  (items || []).forEach(function (t, i) {
+    var cx = t.x + (t.w || 0) / 2, cy = t.y - (t.h || 0) / 2, v = null, m;
+    if ((m = /^(\d{1,3}[.,]\d{1,2})\s*(?:м\s*[²2]|м\.?\s*кв|кв\.?\s*м)/i.exec(t.s))) v = m[1];
+    else if ((m = /^(\d{1,3}[.,]\d{1,2})\s*м$/i.exec(t.s))) { if (sup(t, items)) v = m[1]; }
+    else if (/^\d{1,3}[.,]\d{1,2}$/.test(t.s)) {
+      for (var j = 0; j < items.length; j++) {
+        var u = items[j];
+        if (j === i || !UNIT.test(u.s)) continue;
+        var dy = Math.abs(u.y - t.y), dx = u.x - (t.x + (t.w || 0));
+        if (dy <= Math.max(3, (t.h || 8) * 0.6) && dx > -2 && dx < Math.max(12, (t.h || 8) * 2)) { v = t.s; break; }
+      }
+    }
+    if (v === null) return;
+    var a = parseFloat(String(v).replace(',', '.'));
+    if (a >= 1.5 && a <= 300) out.push({ m2: a, x: cx, y: cy });
   });
   return out;
 }
@@ -2632,7 +2693,8 @@ function renderPdfPage(page) {
   var fi = cur;
   return page.getTextContent().then(function (tc) {
     PDF_DIMS[fi] = textItemsPx(tc, vp);
-  }, function () { PDF_DIMS[fi] = null; }).then(function () {
+    PDF_AREAS[fi] = areaLabelsFrom(PDF_DIMS[fi]);
+  }, function () { PDF_DIMS[fi] = null; PDF_AREAS[fi] = []; }).then(function () {
     return page.render({ canvasContext: g, viewport: vp }).promise;
   }).then(function () {
     applyPlanCanvas(c);
@@ -3655,9 +3717,12 @@ document.addEventListener('keydown', function (e) {
  * Г-образные, поэтому стороны выпрямляем по осям, короткие (меньше 0.35 м)
  * убираем, а дальше прореживаем, пока не останется 4–8 углов.
  */
-function simplifyZone(pts, ppm) {
+function simplifyZone(pts, ppm, o) {
   if (!pts || pts.length < 5) return pts;   // прямоугольник упрощать нечего
   ppm = ppm || 100;
+  // o.maxCorners / o.minSide — мягче к сложным комнатам (fitZonePts): по умолчанию
+  // до 6 углов и ступеньки короче 0,9 м выпрямляются
+  var maxC = (o && o.maxCorners) || 6, ms = (o && o.minSide) || 0.9;
   var out = dpSimp(pts.slice(), Math.max(2, 0.06 * ppm));
   // стороны почти по осям — выпрямляем
   var ax = function (P) {
@@ -3690,12 +3755,12 @@ function simplifyZone(pts, ppm) {
     }
     return res.length >= 4 ? res : P;
   };
-  out = col(drop(ax(out), 0.6 * ppm));
+  out = col(drop(ax(out), Math.min(0.6, ms) * ppm));
   // Из распознавания оставляем только четырёх- и шестиугольники: сложнее
   // фигуру монтажник дочертит руками по точкам, зато за любую сторону
   // готовой зоны можно потянуть. Лишние углы убираем по одному — тот,
   // без которого площадь меняется меньше всего.
-  var target = out.length <= 4 ? 4 : (out.length <= 6 ? out.length : 6);
+  var target = out.length <= 4 ? 4 : (out.length <= maxC ? out.length : maxC);
   if (target === 5) target = 4;
   while (out.length > target) {
     var worst = -1, wd = Infinity;
@@ -3725,7 +3790,7 @@ function simplifyZone(pts, ppm) {
   out = col(rect(out));
   // Ступеньки короче 0.9 м — это не форма комнаты, а огрехи распознавания
   // у лестницы и дверных откосов: убираем их и выпрямляем контур ещё раз.
-  out = col(rect(drop(out, 0.9 * ppm)));
+  out = col(rect(drop(out, ms * ppm)));
   while (out.length === 5) {                        // пятиугольник сводим к четырём
     var w5 = -1, wd5 = Infinity;
     for (var i5 = 0; i5 < out.length; i5++) {
@@ -3773,6 +3838,146 @@ function simplifyZone(pts, ppm) {
       : dpSimp(pts.slice(), Math.max(2, 0.06 * ppm));
   }
   return out.map(function (q) { return [Math.round(q[0]), Math.round(q[1])]; });
+}
+
+/**
+ * Контур комнаты для зоны: упрощённый, но с той же площадью.
+ *
+ * simplifyZone сводит контур к 4–6 углам и выпрямляет ступеньки короче 0,9 м.
+ * На комнате с лестничным проёмом это съедало 15 % площади (19,16 м² на плане →
+ * 16,3 м² в зоне, 03.10.2026). Берём первое упрощение, которое держит площадь
+ * контура в пределах 2,5 %: сначала прежнее, потом с большим числом углов и
+ * более короткой ступенькой. Ничего не сошлось — лучшее из попыток.
+ */
+function fitZonePts(pts, ppm, printedM2) {
+  ppm = ppm || F().pxPerM || 100;
+  if (!pts || pts.length < 5) return pts;
+  // иголки контура: заход в сторону и обратно меньше чем на 0,35 м при просвете
+  // меньше 0,12 м — следы штриховки и подписей, не форма комнаты
+  var P0 = pts.map(function (q) { return q.slice(); }), k0;
+  for (var pass = 0; pass < 3; pass++) {
+    var cut = false;
+    for (k0 = 0; k0 < P0.length && P0.length > 4; k0++) {
+      var pa = P0[(k0 + P0.length - 1) % P0.length], pb = P0[k0], pc = P0[(k0 + 1) % P0.length];
+      if (Math.hypot(pc[0] - pa[0], pc[1] - pa[1]) < 0.12 * ppm &&
+          Math.max(Math.hypot(pb[0] - pa[0], pb[1] - pa[1]), Math.hypot(pb[0] - pc[0], pb[1] - pc[1])) < 0.35 * ppm) {
+        P0.splice(k0, 1); cut = true; k0--;
+      }
+    }
+    if (!cut) break;
+  }
+  pts = P0;
+  var A0 = area(pts), best = null, bestErr = Infinity;
+  var tries = [null, { maxCorners: 8, minSide: 0.5 }, { maxCorners: 10, minSide: 0.35 }, { maxCorners: 12, minSide: 0.25 }];
+  for (var i = 0; i < tries.length; i++) {
+    var S = simplifyZone(pts.map(function (q) { return q.slice(); }), ppm, tries[i]);
+    var err = A0 > 0 ? Math.abs(area(S) - A0) / A0 : 0;
+    if (err < bestErr) { bestErr = err; best = S; }
+    if (err <= 0.025) break;
+  }
+  // Прямоугольные упрощения не удержали площадь (диагональная стенка, скос) —
+  // берём сам контур, прореженный до 1,5 см на метр масштаба: углов больше,
+  // зато площадь та же
+  if (bestErr > 0.025) {
+    var Dp = dpSimp(pts.map(function (q) { return q.slice(); }), Math.max(1.5, 0.015 * ppm));
+    var eD = A0 > 0 ? Math.abs(area(Dp) - A0) / A0 : 0;
+    if (Dp.length >= 4 && Dp.length <= 24 && eD < bestErr) { best = Dp.map(function (q) { return [Math.round(q[0]), Math.round(q[1])]; }); bestErr = eD; }
+  }
+  // Подписанная площадь известна и расходится на 1,5–15 % — подгоняем зону к
+  // ней растяжением от центра: так «Помещение · N м²» на плане и площадь,
+  // уходящая в расчёт, равны напечатанной. Расхождение больше 15 % не трогаем:
+  // там комната найдена неверно, и подгонка спрятала бы это.
+  if (printedM2 > 0 && best) {
+    var Ab = area(best), dev = Math.abs(Ab - printedM2) / printedM2;
+    if (dev > 0.015 && dev <= 0.15) {
+      var cc = centroid(best), kk = Math.sqrt(printedM2 / Ab);
+      best = best.map(function (q) { return [Math.round(cc[0] + (q[0] - cc[0]) * kk), Math.round(cc[1] + (q[1] - cc[1]) * kk)]; });
+    }
+  }
+  return best;
+}
+
+/** Комнаты плана, в которых стоит ровно одна подпись площади: [{ room, label }] */
+function printedPairs(rooms, labs) {
+  var out = [];
+  rooms.forEach(function (r) {
+    var inside = labs.filter(function (l) { return pip([l.x, l.y], r.pts); });
+    if (inside.length === 1) out.push({ room: r, label: inside[0] });
+  });
+  return out;
+}
+
+/**
+ * Масштаб по площадям, напечатанным на плане. Размерные числа могут дать
+ * масштаб мимо (чужие цепочки, лишний слой), а подписи площадей комнат —
+ * независимый свидетель: если три и больше комнат разом выходят меньше или
+ * больше подписанных в одно и то же число раз, неверен масштаб, а не стены.
+ * Возвращает новый px/м или 0, если поправка не нужна.
+ */
+function scaleFromPrinted(rooms, labs) {
+  var f = F(), pr = printedPairs(rooms, labs).map(function (p) {
+    return { r: p.label.m2 / area(p.room.pts) };
+  }).filter(function (p) { return isFinite(p.r) && p.r > 0; });
+  if (pr.length < 3) return 0;
+  var med = median(pr.map(function (p) { return p.r; }));
+  var near = pr.filter(function (p) { return Math.abs(p.r / med - 1) <= 0.1; });
+  if (near.length < 3 || near.length < pr.length * 0.6) return 0;
+  if (Math.abs(med - 1) <= 0.1) return 0;
+  var ppm = f.pxPerM / Math.sqrt(med);
+  return (ppm > 10 && ppm < 600) ? ppm : 0;
+}
+
+/** Итог сверки для подсказки: сколько комнат сошлось с подписями на плане */
+function printedNote(labs) {
+  if (!labs || !labs.length) return '';
+  var ok = 0, n = 0, bad = [];
+  labs.forEach(function (l) {
+    var best = null, ba = Infinity;
+    F().zones.forEach(function (z) {
+      if (!pip([l.x, l.y], z.pts)) return;
+      var a = area(z.pts);
+      if (a < ba) { ba = a; best = z; }
+    });
+    if (!best) return;
+    n++;
+    if (Math.abs(ba - l.m2) / l.m2 <= 0.05) ok++;
+    else bad.push(ba.toFixed(1).replace('.', ',') + ' вместо ' + String(l.m2).replace('.', ','));
+  });
+  if (!n) return '';
+  return ' Площади сверены с подписями на плане: сошлось ' + ok + ' из ' + n +
+    (bad.length ? ' (расходятся: ' + bad.join('; ') + ' м²)' : '') + '.';
+}
+
+/**
+ * Сверка найденных комнат с подписанными площадями: для каждой подписи берём
+ * вариант, который ближе к ней, — с ростом до стены или без него (рост вытекает
+ * через проём, если за стеной свободное место). Комнате ставим printed, и по
+ * нему же в конце видно, сколько комнат сошлось.
+ */
+function reconcileRooms(rooms, labs) {
+  var alt = [];
+  GROW_ROOMS = false; resetScaleCaches();
+  try { alt = enumerateRooms(); } catch (e) { alt = []; }
+  GROW_ROOMS = true; resetScaleCaches();
+  var out = rooms.slice();
+  labs.forEach(function (l) {
+    var pick = function (list) {
+      var best = -1, ba = Infinity;
+      list.forEach(function (r, i) {
+        if (!pip([l.x, l.y], r.pts)) return;
+        var a = area(r.pts);
+        if (a < ba) { ba = a; best = i; }     // самая малая из вложенных
+      });
+      return best;
+    };
+    var ia = pick(out), ib = pick(alt);
+    if (ia < 0) return;
+    var A = area(out[ia].pts), B = ib >= 0 ? area(alt[ib].pts) : Infinity;
+    var eA = Math.abs(A - l.m2) / l.m2, eB = Math.abs(B - l.m2) / l.m2;
+    if (ib >= 0 && eB + 0.02 < eA) out[ia] = alt[ib];
+  });
+  printedPairs(out, labs).forEach(function (p) { p.room.printed = p.label.m2; });
+  return out;
 }
 
 function addZone(pts) {
@@ -4264,7 +4469,7 @@ function ufhToggle(p) {
       hint('Комнату по стенам найти не удалось (проём или пёстрая подложка) — «Иначе ▾» и обведите её рамкой.');
       return;
     }
-    z = { type: 'tp', name: '', pts: simplifyZone(poly, f.pxPerM || 100) };
+    z = { type: 'tp', name: '', pts: fitZonePts(poly, f.pxPerM || 100) };
     zs.push(z);
   }
   if (!f.coll) ufhAutoColl(f);
