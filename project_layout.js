@@ -18,11 +18,11 @@
 (function () {
   'use strict';
 
-  var SZ = { txt: 3.68, dim: 2.5, title: 7.36, mark: 3.0 };
+  var SZ = { txt: 3.68, dim: 3.0, title: 7.36, mark: 3.0 };
   var COL = {
-    wall: '#f4f4f2', wallEnd: '#7588a1', tile: '#dcdcdc',
+    wall: '#f4f4f2', wallEnd: '#848484', tile: '#dcdcdc',
     plinth: '#e0e0e0', screed: '#aaaaaa', ground: '#5d5870', warm: '#ff8000',
-    supply: '#ff0000', ret: '#0000ff', dhw: '#ff8000', cold: '#00ffff',
+    supply: '#d62a2a', ret: '#2f3fd0', dhw: '#ff8000', cold: '#00ffff',
     rail: '#bdbbb8', body: '#f4f4f2', panel: '#191919', valve: '#c33326',
     brass: '#d5bf6f', pump: '#282828', tankHeat: '#c33326', tankDhw: '#ffffff',
     dim: '#000000'
@@ -715,8 +715,11 @@
     o.push(dimV([Y(0), Y(ROOM_D)], X(B.W) + PART * s + 8, { vals: [ROOM_D] }));
 
     // ─── выноски ───
-    var cy = 55, CX = 122;
-    function co(ax, ay, name) { o.push(callout(ax, ay, CX, cy, name)); cy += 12; }
+    // Полка выноски идёт горизонтально от подписи до вертикали якоря. Чтобы выноски не резали друг друга,
+    // верхняя подпись — у самого правого якоря, ниже — левее: полка каждой следующей кончается раньше
+    // вертикали предыдущей.
+    var cy = 55, CX = 122, cos = [];
+    function co(ax, ay, name) { cos.push([ax, ay, name]); }
     if (ctx.tankH) co(X(B.tankH.x + B.tankH.w / 2), Y(40 + ctx.tankH.d / 2), ctx.names.tankH);
     if (ctx.gasCount) co(X(B.boilers[0].x + B.boilers[0].w / 2), Y(30 + ctx.boilerD / 2), ctx.names.gas);
     if (ctx.elCount) {
@@ -725,7 +728,9 @@
     }
     if (ctx.tankD) co(X(B.tankD.x + B.tankD.w / 2), Y(40 + ctx.tankD.d / 2), ctx.names.tankD);
     if (ctx.indirect) co(X(B.indirect.x + B.indirect.w / 2), Y(40 + ctx.indirect.d / 2), ctx.names.boiler);
-    o.push(callout(X(30), Y(wiY + wiH / 2), CX, cy, 'Узел ввода воды'));
+    cos.sort(function (a, b) { return b[0] - a[0]; });
+    cos.push([X(30), Y(wiY + wiH / 2), 'Узел ввода воды']);
+    cos.forEach(function (c) { o.push(callout(c[0], c[1], CX, cy, c[2])); cy += 12; });
 
     o.push(txt(228, 273.8, room
       ? 'Размеры помещения — по зоне «Котельная» плана этажа; расстановка уточняется по месту.'

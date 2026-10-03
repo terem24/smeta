@@ -832,15 +832,15 @@
   // Колонки и размеры обмерены по стр. 5 оригинала (лист 4 раздела MEP)
   var HL_COLS = [
     { w: 25.4, title: '№ пом.' },
-    { w: 44.5, title: 'Конструкция', fill: '#edf0ee' },
-    { w: 19.5, title: 'К-во', fill: '#edf0ff' },
+    { w: 44.5, title: 'Конструкция', fill: '#8080ff' },
+    { w: 19.5, title: 'К-во', fill: '#8080ff' },
     { w: 29.4, title: 'Площадь, м2' },
-    { w: 24.5, title: 'Тв, °C', fill: '#edc8ee' },
-    { w: 24.3, title: 'Тн, °C', fill: '#edc8ee' },
+    { w: 24.5, title: 'Тв, °C', fill: '#ff80c0' },
+    { w: 24.3, title: 'Тн, °C', fill: '#ff80c0' },
     { w: 44.8, title: 'R, (м²·K)/Вт' },
-    { w: 26.2, title: 'n', fill: '#edf0d3' },
+    { w: 26.2, title: 'n', fill: '#808000' },
     { w: 115, title: 'Расчет' },
-    { w: 41.4, title: 'Теплопотери, Вт', fill: '#edffff' }
+    { w: 41.4, title: 'Теплопотери, Вт', fill: '#80ffff' }
   ];
 
   /**
@@ -857,7 +857,7 @@
     var fmtNo = opts.num || function (v) { return String(v); };
 
     (floors || []).forEach(function (fl) {
-      var rows = [];
+      var rows = [], notes = [];
       (fl.rooms || []).forEach(function (r) {
         (r.items || []).forEach(function (it) {
           // У вентиляции нет сопротивления: строка приносит свою формулу и
@@ -865,6 +865,13 @@
           var isVent = (it.R === null || it.R === undefined);
           var formula = it.formula || (it.count + ' х ' + f1(it.area) + ' м² х (' + it.Tv +
             ' °C - (' + it.Tn + ' °C)) / ' + f2(it.R) + ' (м²·K)/Вт х ' + it.n);
+          // десятичный знак в строке один — точка, как в остальных строках листа
+          formula = String(formula).replace(/(\d),(\d)/g, '$1.$2');
+          // расшифровка зон пола по грунту не помещается в графу — уходит в примечание под таблицей
+          if (formula.length > 105) {
+            notes.push(r.id + ': ' + formula);
+            formula = 'по зонам пола — см. примечание ' + notes.length;
+          }
           rows.push([r.id, it.type, it.count,
             f2(it.area) + (isVent ? ' м³' : ' м²'), it.Tv + ' °C',
             it.Tn + ' °C', isVent ? '—' : f2(it.R) + ' (м²·K)/Вт', it.n, formula,
@@ -887,12 +894,23 @@
       });
       if (page.length) pages.push(page);
 
-      pages.forEach(function (pageRows) {
+      pages.forEach(function (pageRows, pi) {
         var t = table(FR.l, BODY_TOP, HL_COLS, pageRows, { rowH: 5.47, headH: 5.5 });
+        var body = t.svg;
+        if (pi === pages.length - 1 && notes.length) {
+          var ny = t.bottom + 6;
+          body += text(FR.l + 1, ny, 'Примечания:', { size: 3.4 });
+          notes.forEach(function (nt, k) {
+            wrap(nt, 190).forEach(function (ln, j) {
+              ny += 3.9;
+              body += text(FR.l + 1 + (j ? 5 : 0), ny, (j ? '' : (k + 1) + '. ') + ln, { size: 2.9 });
+            });
+          });
+        }
         sheets.push(sheet({
           title: 'Расчет теплопотерь ' + fl.label.replace(/(\d+)\s*этаж/, '$1 этажа'),
           titleSize: 5.19, titleY: 11.2,
-          code: opts.code, sheet: fmtNo(start + sheets.length), body: t.svg
+          code: opts.code, sheet: fmtNo(start + sheets.length), body: body
         }));
       });
     });

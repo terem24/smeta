@@ -47147,6 +47147,37 @@ const app = {
         }, () => { });
     },
 
+    // Лимит КП на бесплатном тарифе (настройки — вкладка «Оплата подписки» → «Лимит КП»,
+    // по умолчанию выключен). Вызывается перед окном выбора разделов, то есть до
+    // того, как КП уйдёт клиенту. true — можно продолжать. Любая ошибка подсчёта
+    // пропускает человека: лимит не должен мешать работать.
+    sendLimitOk: async function () {
+        try {
+            await this.loadAppSettings();
+            if (typeof Subscription === 'undefined' || !Subscription.limitApplies()) return true;
+            const tg = this.state.tgUser || {};
+            if (!tg.id) return true;
+            const d = new Date();
+            const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
+            const { data, error } = await supabaseClient.from('invoice_events').select('calc_id')
+                .eq('user_id', String(tg.id)).in('event', ['printed', 'sent']).gte('created_at', start).limit(500);
+            if (error) throw error;
+            const used = new Set((data || []).map(r => String(r.calc_id)));
+            const cur = String(this.state.calc_id || '');
+            if (cur && used.has(cur)) return true;            // это КП уже отправляли в этом месяце
+            const max = Subscription.limitSettings().perMonth;
+            if (used.size < max) return true;
+            const go = await this.confirmChoice(
+                'На бесплатном тарифе можно отправить клиентам ' + max + ' разных КП в месяц, в этом месяце вы уже отправили ' + used.size + '. Ранее отправленные КП можно отправлять снова. Счётчик обнулится 1 числа. Профи — без ограничения.',
+                'Лимит бесплатных КП', 'Оформить Профи', 'Закрыть');
+            if (go) this.showModal('pro');
+            return false;
+        } catch (e) {
+            console.warn('[лимит КП] не проверен, пропускаем:', e);
+            return true;
+        }
+    },
+
     shareInvoice: async function () {
         if (!this.checkAccess('base')) return;
 
@@ -47180,6 +47211,7 @@ const app = {
             this.syncUI();
         }
 
+        if (!(await this.sendLimitOk())) return;
         this.openShareOptionsModal('share');
     },
 
@@ -47606,6 +47638,7 @@ const app = {
             return;
         }
 
+        if (!(await this.sendLimitOk())) return;
         this.openShareOptionsModal(actionType);
     },
     // html2canvas (используется html2pdf на мобильных, см. executeDownload) рендерит DOM как
