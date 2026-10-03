@@ -21808,6 +21808,7 @@ const app = {
         // нет: оставляем им отметку о доступе, чтобы прямая ссылка не открывала
         // инструмент тому, кому его не включали.
         try { localStorage.setItem('heatcalc_design_access', on ? '1' : '0'); } catch (e) { }
+        try { this.renderProjectBanner(); } catch (e) { /* полоса — удобство, не повод ронять интерфейс */ }
         ['btn_sheets_trigger', 'btn_plan_areas'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = on ? '' : 'none';
@@ -37357,7 +37358,64 @@ const app = {
         // а без номера его нельзя ни сохранить в облако, ни отличить от других.
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         this.pushPlansToEditor();
-        window.open('plan_editor.html', '_blank');
+        // Выпуск проекта начат: калькулятор показывает полосу «Разметка плана → Листы проекта»,
+        // пока проект не выпущен или полосу не закрыли. Окно именованное — повторное нажатие
+        // возвращает в уже открытую вкладку разметки, а не плодит новые.
+        try { localStorage.setItem('hc_project_flow', String(Date.now())); } catch (e) { }
+        window.open('plan_editor.html', 'hc_plan_editor');
+        this.renderProjectBanner();
+    },
+
+    /** Идёт ли выпуск проекта (редактор планов открывали для проекта и проект ещё не выпущен) */
+    projectFlowOn: function () {
+        try {
+            const t = +localStorage.getItem('hc_project_flow');
+            return t > 0 && Date.now() - t < 12 * 3600 * 1000 && this.canUseDesign();
+        } catch (e) { return false; }
+    },
+
+    /** Полоса под шапкой: на каком этапе выпуск, сколько условий закрыто, куда нажать дальше */
+    renderProjectBanner: function () {
+        let el = document.getElementById('project_banner');
+        if (!this.projectFlowOn()) { if (el) el.remove(); return; }
+        const hdr = document.querySelector('.site-header');
+        if (!hdr) return;
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'project_banner';
+            el.className = 'no-print';
+            hdr.insertAdjacentElement('afterend', el);
+        }
+        let checks = [];
+        try { checks = this.projectChecks(); } catch (e) { checks = []; }
+        const done = checks.filter(c => c.ok).length, all = checks.length;
+        const ready = all > 0 && done === all;
+        const btn = 'font:inherit;font-size:12.5px;padding:5px 12px;border-radius:8px;cursor:pointer;border:1px solid var(--border);' +
+            'background:transparent;color:var(--text-main);';
+        el.style.cssText = 'display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:7px 16px;font-size:13px;' +
+            'background:var(--surface);border-bottom:1px solid var(--border);color:var(--text-main);';
+        el.innerHTML =
+            '<b style="font-size:14px">Выпуск проекта</b>' +
+            '<span style="color:var(--text-sec)"><span style="color:#16a34a">✓ Расчёт</span> › <b style="color:var(--primary)">Разметка плана</b> › ' +
+            (ready ? '<b style="color:#16a34a">Листы проекта</b>' : 'Листы проекта') + '</span>' +
+            '<span style="flex:1 1 120px;color:' + (ready ? '#16a34a' : 'var(--text-sec)') + '">Условий выполнено: ' + done + ' из ' + all +
+            (ready ? ' — можно выпускать' : '') + '</span>' +
+            '<button type="button" style="' + btn + '" onclick="app.openProjectMarkup()">Открыть разметку</button>' +
+            '<button type="button" style="' + btn + '" onclick="app.showProjectReadiness()">Что осталось</button>' +
+            '<button type="button" style="' + btn + 'background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600" ' +
+            'onclick="app.openProjectSheets()">Выпустить проект →</button>' +
+            '<button type="button" style="' + btn + 'padding:5px 9px" title="Скрыть полосу" onclick="app.closeProjectFlow()">✕</button>';
+    },
+
+    openProjectMarkup: function () {
+        if (!this.canUseDesign()) return;
+        this.pushPlansToEditor();
+        window.open('plan_editor.html', 'hc_plan_editor');
+    },
+
+    closeProjectFlow: function () {
+        try { localStorage.removeItem('hc_project_flow'); } catch (e) { }
+        this.renderProjectBanner();
     },
 
     // ═══ Модуль «Раскладка тёплого пола» ═════════════════════════════════
@@ -46921,6 +46979,7 @@ const app = {
         // и открытием стоит окно адреса — а браузеры считают всплывающим окном
         // всё, что открылось не «сразу по клику», и молча блокируют. Ловим это:
         // если окно не открылось, показываем ссылку, по которой достаточно щёлкнуть.
+        this.closeProjectFlow();                       // проект выпущен — полоса «Выпуск проекта» больше не нужна
         const win = window.open('project.html', '_blank');
         if (!win || win.closed) {
             this.alert(
@@ -51549,6 +51608,7 @@ const app = {
                 this.pullPlansFromEditor();
                 this.loadPlanCheckData();
                 this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
+                this.renderProjectBanner();
             }
         });
         // На случай, если событие storage не дошло (в части браузеров его не
@@ -51558,6 +51618,7 @@ const app = {
                 this.loadPlanCheckData();
                 this.renderPlanChecks(); this.renderWaterPlanChecks(); this.renderPlanAreaNote();
             }
+            this.renderProjectBanner();
         });
         // Первый запуск после переноса: планы ещё лежат старым общим ключом, а
         // в смете их нет. Сначала забираем их в текущий объект — иначе запись

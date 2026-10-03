@@ -24,9 +24,26 @@
   body { margin: 0; background: #6b6b6b; font: 14px/1.4 system-ui, sans-serif; color: #fff; }
   /* Шапка липкая: в комплекте десятки листов А3, и добраться до разделов,
      пролистав их до конца, было нельзя. */
+  .topwrap { position: sticky; top: 0; z-index: 5; }
   .bar { padding: 10px 16px; background: #2b2b2b; display: flex; gap: 14px; align-items: center;
-         flex-wrap: wrap; position: sticky; top: 0; z-index: 5; }
+         flex-wrap: wrap; }
   .bar b { font-weight: 600; }
+  /* Путь выпуска — как в редакторе плана: Расчёт → Разметка плана → Листы проекта (мы здесь) */
+  .pj-head { padding: 8px 16px; background: #3a3a3a; border-bottom: 1px solid #1c1c1c; display: flex; gap: 12px;
+             align-items: center; flex-wrap: wrap; }
+  .pj-head button { font: inherit; font-size: 12.5px; padding: 5px 12px; border-radius: 8px; cursor: pointer;
+                    border: 1px solid #666; background: #4a4a4a; color: #eee; }
+  .pj-head button:hover { background: #5a5a5a; }
+  .pj-head .t { font-size: 15px; font-weight: 700; }
+  .pj-head .sub { color: #b8b8b8; flex: 1 1 220px; font-size: 12.5px; }
+  .pj-path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pj-path .p { padding: 4px 12px; border-radius: 15px; border: 1px solid #666; color: #b8b8b8; white-space: nowrap; }
+  .pj-path .p.done { color: #7ec95a; cursor: pointer; }
+  .pj-path .p.done:hover { background: #4a4a4a; }
+  .pj-path .p.cur { background: #ff6b35; border-color: #ff6b35; color: #fff; font-weight: 600; }
+  .pj-path .ar { color: #888; }
+  /* переходы по разделам не должны прятать верх листа под двухрядной шапкой */
+  [id] { scroll-margin-top: 110px; }
   .secs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .secs .sec { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px;
                border: 1px solid #555; border-radius: 8px; font-size: 13px; }
@@ -43,7 +60,7 @@
   @media print {
     @page { size: A3 landscape; margin: 0; }
     body { background: #fff; }
-    .bar { display: none; }
+    .bar, .pj-head { display: none; }
     /* Печать одного раздела: остальные листы на время печати скрыты —
        заказчику обычно нужен раздел целиком, а не весь комплект. */
     body.print-one .paper { display: none; }
@@ -57,6 +74,18 @@
 </head>
 <body>
 
+<div class="topwrap">
+<div class="pj-head">
+  <button type="button" onclick="pjBack()" title="Вернуться в калькулятор">← В калькулятор</button>
+  <button type="button" onclick="pjMarkup()" title="Вернуться к разметке плана: поправить комнаты, котельную, коллекторы">← К разметке плана</button>
+  <span class="t">Выпуск проекта</span>
+  <span class="sub">Комплект собран по смете и разметке плана. Проверьте листы; чего-то не хватает — вернитесь к разметке и выпустите заново.</span>
+  <span class="pj-path">
+    <span class="p done" onclick="pjBack()" title="Смета и комнаты — в калькуляторе">✓ 1. Расчёт</span><span class="ar">→</span>
+    <span class="p done" onclick="pjMarkup()" title="Разметка плана этажей">✓ 2. Разметка плана</span><span class="ar">→</span>
+    <span class="p cur">3. Листы проекта</span>
+  </span>
+</div>
 <div class="bar">
   <b id="bar_title">Листы проекта</b>
   <span id="bar_note"></span>
@@ -69,8 +98,23 @@
   </label>
   <button onclick="window.print()">Печать / PDF — весь комплект</button>
 </div>
+</div>
 
 <div class="wrap" id="out"></div>
+
+<script>
+// Возврат по маршруту выпуска. Листы открывает калькулятор (window.open), поэтому opener — он.
+function pjBack() {
+  var op = null;
+  try { if (window.opener && !window.opener.closed && window.opener.app) op = window.opener; } catch (e) {}
+  if (op) { try { op.focus(); } catch (e) {} window.close(); }
+  else location.href = 'index.html';
+}
+function pjMarkup() {
+  // та же именованная вкладка, что открывает калькулятор: вернёт в уже открытую разметку
+  window.open('plan_editor.html', 'hc_plan_editor');
+}
+</script>
 
 <script src="project_sheets.js?v=4.25"></script>
 <script src="project_scheme.js?v=4.51"></script>

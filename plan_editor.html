@@ -170,6 +170,26 @@
      листы проекта — не его дело. !important — шаги ставят display в style. */
   .ufh-only { display: none; }
   html.ufh .ufh-only { display: inline-block; }
+  /* Выпуск проекта (полный редактор, не мастер раскладки): та же простая шапка и шаги по
+     номерам; все инструменты — под «Ещё ▾» (html.more) */
+  .pj-head { display: none; }
+  html.pj .pj-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 12px;
+                     background: var(--surface); border-bottom: 1px solid #222; }
+  .pj-head .t { font-size: 15px; font-weight: 700; }
+  .pj-head .sub { color: var(--text-sec); flex: 1 1 220px; font-size: 12.5px; }
+  .pj-path { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .pj-path .p { padding: 4px 12px; border-radius: 15px; border: 1px solid var(--border-soft); color: var(--text-sec);
+                white-space: nowrap; }
+  .pj-path .p.done { color: #7ec95a; cursor: pointer; }
+  .pj-path .p.cur { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .pj-path .p.rel { cursor: pointer; border-color: var(--ok); color: #9be07a; }
+  .pj-path .ar { color: #6a6a6a; }
+  html.pj #b_more { display: inline-block; }
+  html.pj #b_sheets_ufh { display: none !important; }
+  html.pj:not(.more) .bar > :not(.ufh-keep):not(#b_save) { display: none !important; }
+  html.pj #b_save { margin-left: auto; }
+  .pj-checks { margin: 6px 0 0; padding-left: 18px; color: #d8b26a; font-size: 12.5px; }
+  .pj-checks li { margin: 1px 0; }
   html.ufh #b_fixauto, html.ufh #b_wc,
   html.ufh #wctype, html.ufh #ztype, html.ufh #northsel, html.ufh #b_alltools,
   html.ufh #b_sheets, html.ufh #b_hints { display: none !important; }
@@ -244,6 +264,12 @@
 <body>
 
 <div class="topbar">
+<div class="pj-head" id="pj_head">
+  <button type="button" class="ghost" onclick="pjBack()" title="Сохранить разметку и вернуться в калькулятор">← В калькулятор</button>
+  <span class="t">Выпуск проекта</span>
+  <span class="sub">Подготовка плана перед выпуском листов: подложка с масштабом, комнаты, котельная и коллекторы.</span>
+  <span class="pj-path" id="pj_path"></span>
+</div>
 <div class="bar">
   <b class="ufh-keep">Планы этажей</b>
   <span id="tabs" class="ufh-keep"></span>
@@ -339,6 +365,8 @@
 // Открывается окном поверх калькулятора (app.openUfhPlan) и пускается своей
 // отметкой: модуль раскладки включают тарифом, а не проектированием.
 var UFH = /[?&]m=ufh(&|$)/.test(location.search);
+var PJ = !UFH;     // полный редактор = «Выпуск проекта»: шаги по номерам, шапка с возвратом в калькулятор
+if (PJ) document.documentElement.classList.add('pj');
 if (UFH) document.documentElement.classList.add('ufh');
 // Мастер раскладки открывается внутри калькулятора и оформляется его цветами
 // (app.openUfhPlan кладёт их в heatcalc_ufh_theme): светлый калькулятор —
@@ -4951,6 +4979,34 @@ function ufhAutoColl(f) {
 }
 
 /**
+ * Котельную отметили (зона «Котельная» или комната с таким названием) — оба коллектора,
+ * тёплого пола и радиаторов, переезжают к её стене, даже если их переставляли руками: отметка
+ * котельной — прямое указание, где им стоять. Срабатывает на появление или смену контура
+ * котельной (f.boilerKey), а не на каждую перерисовку, поэтому потом коллекторы можно
+ * переставить; у проектов, где котельная уже стояла до этой функции, ничего не двигаем.
+ */
+function ufhBoilerSync(f) {
+  if (!window.projectPlans || !projectPlans.boilerZone) return false;
+  var bz = projectPlans.boilerZone(f), key = bz ? JSON.stringify(bz.pts) : '';
+  var first = f.boilerKey === undefined;                      // этаж впервые попал сюда: котельной ещё не было ('') или проект старый
+  if (key === (f.boilerKey || '') && !first) return false;
+  if (first && !bz) { f.boilerKey = ''; return false; }       // запомнили: котельной нет — её появление будет переходом
+  f.boilerKey = key;
+  if (!bz) return false;
+  if (first && f.coll && !f.collAuto) return false;        // старый проект: котельная уже стояла, коллектор поставлен рукой — не трогаем
+  var tz = (f.zones || []).filter(function (z) { return z.type === 'tp'; });
+  var sx = 0, sy = 0, sa = 0;
+  tz.forEach(function (z) { var a = Math.abs(area(z.pts)) || 1, c = centroid(z.pts); sx += c[0] * a; sy += c[1] * a; sa += a; });
+  var C = sa ? [sx / sa, sy / sa] : centroid(bz.pts);
+  var bp = projectPlans.wallSpot(f, bz, C, 0.16).p;
+  if (tz.length) { f.coll = { x: Math.round(bp[0]), y: Math.round(bp[1]) }; delete f.collAng; f.collAuto = true; }
+  delete f.radColl; delete f.radCollAng;                     // коллектор радиаторов сам встанет у стены котельной
+  if (!first) hint('<span class=ok>Котельная отмечена — коллекторы перенесены к её стене.</span> Переставить можно мышью.');
+  setTimeout(function () { renderZones(); draw(); }, 0);
+  return true;
+}
+
+/**
  * Коллектор тёплого пола, поставленный самим мастером (collAuto), следит за
  * разметкой: назвали комнату «Котельная» позже первого клика по тёплому
  * полу — коллектор переезжает к её стене. Поставленный рукой не трогаем.
@@ -4959,6 +5015,7 @@ function ufhAutoColl(f) {
  */
 function ufhFollowColl() {
   var f = F();
+  if (f && f.pxPerM && !dragC) ufhBoilerSync(f);
   if (!f || !f.pxPerM || (f.coll && !f.collAuto) || dragC) return;
   var was = f.coll ? f.coll.x + ',' + f.coll.y : '';
   if (!f.zones.some(function (z) { return z.type === 'tp'; })) {
@@ -5078,7 +5135,12 @@ function ufhPost(done) {
  */
 function ufhSheets() {
   saveAll();
-  window.open('plan_editor.html', '_blank');
+  // открываем от имени калькулятора, а не окна мастера: окно сейчас закроется, а вкладке выпуска
+  // нужно, куда вернуться (window.opener)
+  var host = window;
+  try { if (window.parent && window.parent !== window && window.parent.app) host = window.parent; } catch (e) {}
+  try { host.localStorage.setItem('hc_project_flow', String(Date.now())); } catch (e) {}
+  host.open('plan_editor.html', 'hc_plan_editor');
   ufhDone();
 }
 
@@ -5315,6 +5377,170 @@ function wzRender(box) {
     h += '<div class="wz-up bad">План не ушёл на сервер: ' + upState.err + ' · <b onclick="uploadPending()">повторить</b></div>';
   }
   if (h !== stepsHtml) { box.innerHTML = h; stepsHtml = h; }
+  var mb = document.getElementById('b_more');
+  if (mb) mb.textContent = allTools ? 'Ещё ▴' : 'Ещё ▾';
+}
+
+// ═══ Выпуск проекта: шаги по номерам (полный редактор) ══════════════════
+// Раньше шапка была полосой из двух десятков кнопок и чипов «Шаги», и было непонятно, что
+// делать дальше и что нужно, чтобы выпустить проект (03.10.2026). Теперь так же, как в окне
+// «План дома»: крупные пронумерованные шаги, под ними фраза «что сделать сейчас», кнопки
+// только этого шага и зелёная «Дальше →». Последний шаг — «Выпустить проект»: он
+// показывает, чего не хватает, и запускает сборку листов в калькуляторе. Сверху — путь
+// «Расчёт → Разметка плана → Листы проекта» и возврат в калькулятор.
+
+var pjStep = null;       // шаг, выбранный руками (null — ведёт первый незакрытый)
+
+function pjSteps() {
+  var f = F(), L = [];
+  var wantTp = calcRooms.some(function (r) { return (r.sys || []).indexOf('tp') >= 0; }) ||
+    f.zones.some(function (z) { return z.type === 'tp'; });
+  stepDefs().forEach(function (s) {
+    if (s.id === 'scale' && (s.ok || !f.img)) return;           // масштаб подбирается сам; шаг — только если не вышло
+    if (s.id === 'tp' && !wantTp) return;
+    if (s.id === 'rad' && !wzWantRad()) return;
+    if (s.id === 'names') return;                               // имена вписывают в списке справа — отдельный шаг не нужен
+    L.push(s);
+  });
+  // «Комнаты» — сразу после масштаба: контуры по стенам и привязка к комнатам расчёта
+  var at = 0;
+  L.forEach(function (s, i) { if (s.id === 'plan' || s.id === 'scale') at = i + 1; });
+  L.splice(at, 0, { id: 'rooms', t: 'Комнаты', ok: f.zones.length > 0 || (f.rads || []).length > 0, mode: 'select' });
+  L.push({ id: 'release', t: 'Выпуск', ok: false });
+  return L;
+}
+
+function pjCur(L) {
+  var ids = L.map(function (s) { return s.id; });
+  if (!F().img) return 'plan';
+  if (pjStep && ids.indexOf(pjStep) >= 0) return pjStep;
+  for (var i = 0; i < L.length; i++) if (!L[i].ok) return L[i].id;
+  return 'release';
+}
+
+function pjGo(id) {
+  var L = pjSteps(), s = null;
+  for (var i = 0; i < L.length; i++) if (L[i].id === id) s = L[i];
+  pjStep = id;
+  hint('');
+  if (id === 'plan') { var inp = document.querySelector('#b_upload input'); if (inp) inp.click(); return; }
+  if (!s) { updateGuide(); return; }
+  if (s.type) { var sel = document.getElementById('ztype'); if (sel) sel.value = s.type; }
+  if (s.mode) { if (mode !== s.mode) setMode(s.mode); else { draw(); updateGuide(); } }
+  else if (mode !== 'select') setMode(mode);                  // setMode(тот же) — выключить режим
+  else { draw(); updateGuide(); }
+}
+
+function pjNext() {
+  var L = pjSteps(), c = pjCur(L), ids = L.map(function (s) { return s.id; }), i = ids.indexOf(c);
+  if (c === 'release') { pjRelease(); return; }
+  if (i >= 0 && i + 1 < L.length) pjGo(ids[i + 1]);
+}
+
+/** Калькулятор, который открыл эту вкладку (если он ещё жив) */
+function pjOpener() {
+  try { if (window.opener && !window.opener.closed && window.opener.app) return window.opener; } catch (e) {}
+  return null;
+}
+
+function pjBack() {
+  saveAll();
+  var op = pjOpener();
+  if (op) { try { op.focus(); } catch (e) {} window.close(); }
+  else location.href = 'index.html';
+}
+
+/** Условия выпуска от калькулятора: смета, комнаты расчёта, план, котельная, зоны пола */
+function pjChecks() {
+  var op = pjOpener();
+  try { if (op && op.app.projectChecks) return op.app.projectChecks(); } catch (e) {}
+  return null;
+}
+
+function pjRelease() {
+  saveAll();
+  var op = pjOpener();
+  if (op) {
+    try { op.focus(); } catch (e) {}
+    try { op.app.openProjectSheets(); return; } catch (e) { console.warn('[plan_editor] выпуск:', e && e.message); }
+  }
+  openSheets();
+}
+
+function pjBody(id) {
+  var B = function (fn, t, cls) { return '<button class="' + (cls || '') + '" onclick="' + fn + '">' + t + '</button>'; };
+  var f = F();
+  if (id === 'plan') return { noNext: true, acts: B("pjGo('plan')", 'Загрузить план', 'go'),
+    tx: 'Загрузите план этажа — фото, скан или PDF. Масштаб и комнаты система найдёт сама.' };
+  if (id === 'scale') return { noNext: true, acts: B('autoScale()', 'Подобрать ещё раз') + B("setMode('scale')", 'Задать вручную'),
+    tx: '<b>Масштаб не подобрался сам.</b> Нажмите «Задать вручную», кликните две точки известного отрезка ' +
+      '(например, края дверного проёма, обычно 0,9 м) и впишите длину в метрах.' };
+  if (id === 'rooms') return { acts: B('autoRooms()', 'Найти комнаты') + B("document.getElementById('ztype').value='tp';setMode('room')", 'Обвести кликом'),
+    tx: 'Нажмите «Найти комнаты» — контуры найдутся по стенам плана и сопоставятся с комнатами расчёта: тёплый пол, котельная и санузлы отметятся сами. ' +
+      'Проверьте зоны в списке справа, лишнюю уберите ✕. Комната не нашлась — «Обвести кликом» (клик внутри комнаты).' };
+  if (id === 'tp') return { acts: B("document.getElementById('ztype').value='tp';setMode('room')", 'Зона: клик по комнате') + B('ufhCold()', 'Без обогрева'),
+    tx: 'Отметьте комнаты с тёплым полом: кликните по комнате на плане (если «Найти комнаты» уже отметило их по расчёту — проверьте). ' +
+      'Лестницу, ванну, кухонный остров обведите кнопкой «Без обогрева».' };
+  if (id === 'rad') return { acts: B('autoRads()', 'Под окна') + B("setMode('rad')", 'Радиатор вручную'),
+    tx: 'Радиаторы встают под найденными окнами. Лишний уберите кликом по значку, недостающий добавьте кликом у окна.' };
+  if (id === 'coll') return { acts: B("setMode('coll')", 'Коллектор ТП') + B("setMode('radcoll')", 'Коллектор радиаторов'),
+    tx: 'Коллекторы встают у стены котельной сами. Чтобы переставить, нажмите кнопку и кликните в нужную комнату — коллектор прижмётся к стене. ' +
+      'Правый клик по нему (или R над ним) поворачивает на 90°.' };
+  if (id === 'boiler') return { acts: B("document.getElementById('ztype').value='boiler';setMode('room')", 'Отметить котельную кликом'),
+    tx: '<b>Обязательно:</b> отметьте котельную — кликните по её комнате на плане. По ней собирается компоновка котельной, ' +
+      'и без неё проект не выпускается. На этаже она одна.' };
+  if (id === 'wc') return { acts: B("document.getElementById('ztype').value='wc';setMode('room')", 'Санузел кликом') + B('toggleFixAuto()', 'Приборы: из расчёта'),
+    tx: 'Кликните по санузлам и впишите их имена как в расчёте — приборы расставятся сами по карточкам санузлов.' };
+  if (id === 'release') {
+    var checks = pjChecks(), ownMiss = [];
+    var L = pjSteps().filter(function (s) { return s.id !== 'release'; });
+    L.forEach(function (s) { if (!s.ok) ownMiss.push(s.t); });
+    var miss = [];
+    if (checks) checks.forEach(function (c) { if (!c.ok) miss.push(c.t); });
+    var list = miss.length ? miss : ownMiss;
+    var tx = '<b>Разметка закончена.</b> ';
+    if (!list.length) tx += 'Нажмите «Выпустить проект» — калькулятор соберёт комплект листов по смете и этому плану.';
+    else tx += 'Прежде чем выпускать, не хватает:<ul class="pj-checks">' + list.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ul>' +
+      (checks ? '' : 'Калькулятор не открыт в соседней вкладке — условия сметы проверит он сам при выпуске. ');
+    return { next: 'Выпустить проект →', tx: tx };
+  }
+  return { tx: '' };
+}
+
+function pjRender(box) {
+  box.className = 'steps wz';
+  ufhFollowColl();
+  var f = F(), L = pjSteps(), c = pjCur(L), ids = L.map(function (s) { return s.id; }), ci = ids.indexOf(c);
+  var h = '<div class="wz-row">';
+  L.forEach(function (s, i) {
+    var reach = s.id === 'plan' || (f.img && (s.id === 'scale' || f.pxPerM));
+    var cls = s.id === c ? 'cur' : (s.ok ? 'done' : '') + (reach ? '' : ' off');
+    if (i) h += '<span class="wz-ar">→</span>';
+    h += '<span class="wz-st ' + cls + '"' + (reach && s.id !== c ? ' onclick="pjGo(\'' + s.id + '\')"' : '') + '>' +
+      '<span class="n">' + (s.ok && s.id !== c ? '✓' : (i + 1)) + '</span>' + s.t + '</span>';
+  });
+  h += '</div>';
+  var b = pjBody(c);
+  h += '<div class="wz-do"><span class="tx"><b>Шаг ' + (ci + 1) + ' из ' + L.length + '.</b> ' + b.tx + '</span>' +
+    (b.acts || '') + (b.noNext ? '' : '<button class="go" onclick="pjNext()">' + (b.next || 'Дальше →') + '</button>') + '</div>';
+  if (MODE_BAR[mode]) h += '<div class="wz-up" style="color:#9ccbe8">' + MODE_BAR[mode] + '</div>';
+  if (upState && upState.run) {
+    h += '<div class="wz-up">Отправляю план на сервер: ' + (upState.done + 1) + ' из ' + upState.total +
+      ' — ' + Math.round(upState.pct * 100) + '%</div>';
+  } else if (upState && upState.err) {
+    h += '<div class="wz-up bad">План не ушёл на сервер: ' + upState.err + ' · <b onclick="uploadPending()">повторить</b></div>';
+  }
+  if (h !== stepsHtml) { box.innerHTML = h; stepsHtml = h; }
+  // путь выпуска: Расчёт → Разметка плана → Листы проекта
+  var path = document.getElementById('pj_path');
+  if (path) {
+    var allOk = L.filter(function (s) { return s.id !== 'release'; }).every(function (s) { return s.ok; });
+    var hp = '<span class="p done" onclick="pjBack()" title="Смета и комнаты — в калькуляторе">✓ 1. Расчёт</span><span class="ar">→</span>' +
+      '<span class="p cur">2. Разметка плана</span><span class="ar">→</span>' +
+      '<span class="p ' + (allOk ? 'rel' : '') + '"' + (allOk ? ' onclick="pjRelease()"' : '') +
+      ' title="' + (allOk ? 'Всё размечено — выпустить комплект листов' : 'Откроется, когда закончится разметка') + '">3. Листы проекта</span>';
+    if (path._h !== hp) { path.innerHTML = hp; path._h = hp; }
+  }
   var mb = document.getElementById('b_more');
   if (mb) mb.textContent = allTools ? 'Ещё ▴' : 'Ещё ▾';
 }
@@ -5563,12 +5789,13 @@ function heroMode() {
 var curStep = null;      // шаг, выбранный вручную (null — ведёт первый незакрытый)
 var allTools = false;    // «Все инструменты»: показывать шапку целиком
 try { allTools = localStorage.getItem('plan_editor_alltools') === '1'; } catch (e) {}
+if (PJ) allTools = false;
 
 function toggleAllTools() {
   allTools = !allTools;
-  // в мастере раскладки «Ещё» — на один раз: выбор не запоминаем, чтобы окно
-  // всегда открывалось простым
-  if (UFH) document.documentElement.classList.toggle('more', allTools);
+  // в мастере раскладки и в выпуске проекта «Ещё» — на один раз: выбор не запоминаем, чтобы
+  // страница всегда открывалась простой
+  if (UFH || PJ) document.documentElement.classList.toggle('more', allTools);
   else try { localStorage.setItem('plan_editor_alltools', allTools ? '1' : '0'); } catch (e) {}
   updateGuide();
 }
@@ -5700,6 +5927,7 @@ function renderSteps() {
   var box = document.getElementById('steps');
   if (!box) return;
   if (UFH) { applyBar(null); wzRender(box); return; }
+  if (PJ) { applyBar(null); pjRender(box); return; }
   var L = stepDefs();
   var act = activeStep(L);
   applyBar(act);
@@ -5740,7 +5968,7 @@ function updateGuide() {
   var pulsed = document.querySelectorAll('.pulse');
   for (var i = 0; i < pulsed.length; i++) pulsed[i].classList.remove('pulse');
   // мастер раскладки говорит «что делать» сам, строкой под шапкой — пузырь не нужен
-  if (UFH) { if (guideEl) guideEl.style.display = 'none'; return; }
+  if (UFH || PJ) { if (guideEl) guideEl.style.display = 'none'; return; }
   if (!guideEl) {
     guideEl = document.createElement('div');
     guideEl.className = 'guide'; guideEl.style.display = 'none';
@@ -5820,6 +6048,7 @@ refreshAutoFixtures();   // приборы санузлов из расчёта 
   var b = document.getElementById('b_darkplan');
   if (b) b.className = darkPlan ? 'on' : 'ghost';
 })();
+if (PJ) document.title = 'Выпуск проекта — план этажей';
 // Режим раскладки: свои подписи; «Сохранить» становится «Готово» и закрывает окно
 if (UFH) (function () {
   // название «План дома» — в шапке окна калькулятора; здесь только этажи
