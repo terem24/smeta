@@ -173,7 +173,7 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
             rel="stylesheet">
     </noscript>
-    <link rel="stylesheet" href="style.css?v=4.61">
+    <link rel="stylesheet" href="style.css?v=4.62">
 
     <script src="supabase-js.js" defer></script>
     <script src="catalog.js?v=3.28" defer></script>
@@ -203,7 +203,7 @@
     <script src="boiler_wall.js?v=1.0" defer></script>
     <!-- Названия без модели для PDF, Excel и страницы клиента. -->
     <script src="short_names.js?v=1.1" defer></script>
-    <script src="app.js?v=10.73" defer></script>
+    <script src="app.js?v=10.74" defer></script>
     <!-- Счётчик активного времени и открытых экранов: по нему в панели видно, чем
          занят тот, кто заходит каждый день и не считает. Идёт после app.js —
          берёт у него getDeviceName() и адрес базы. -->
@@ -243,6 +243,7 @@
             recognize: ['recognize_match.js?v=7.6', 'recognize_geo.js?v=1.2', 'recognize_files.js?v=2.8',
                 'recognize.js?v=9.20', 'recognize_plan.js?v=2.6', 'recognize_project.js?v=2.6', 'recognize_sketch.js?v=1.4'],
             docs: ['warranty.js?v=1.0', 'docs.js?v=3.5'],
+            warranty_admin: ['warranty_admin.js?v=1.0'],
             excel: ['excel_export.js?v=1.4'],
             reprice: ['reprice.js?v=1.4'],
             qrcode: ['qrcode.min.js'],
@@ -2348,6 +2349,9 @@
             <!-- Обоснование варианта «Подешевле» на печати и в PDF: на экране скрыто,
                  печатается последней страницей КП (app.renderCheaperPrint) -->
             <div id="cheaper_print" class="cheaper-print"></div>
+            <!-- Бланк «Гарантия на систему STOUT»: на экране скрыт, печатается последним
+                 листом КП при доле STOUT не ниже порога (app.renderWarrantyPrint) -->
+            <div id="warranty_print" class="warranty-print"></div>
             <div id="contest_widget" class="no-print"></div>
             <div class="doc-footer" style="display: flex; flex-direction: column; align-items: stretch;">
                 <div class="discount-container no-print" id="discount_block" style="display: none; width: 100%; flex-direction: column; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;">

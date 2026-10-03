@@ -1412,7 +1412,8 @@ const app = {
     // входа — режим регистрации нужен форме ещё до появления сессии. Ошибка
     // чтения (нет связи, таблица ещё не создана) означает «как было»: открытая
     // регистрация, а не запертая дверь для всех.
-    appSettings: { registration: { mode: 'open' } },
+    // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -4705,6 +4706,468 @@ const app = {
                 new ResizeObserver(() => { const w = out.offsetWidth; if (w !== lastW) { lastW = w; again(); } }).observe(out);
             }
         }
+    },
+
+    // ===================== Доля STOUT в смете =====================
+    //
+    // Для монтажника, не для клиента: по ней решается, подходит ли объект под
+    // бланк гарантии STOUT (порог — в настройках, по умолчанию 90 %).
+    //
+    // Делитель — не вся смета, а только то, где STOUT мог стоять: позиции, у чьей
+    // группы каталога есть хоть одна позиция STOUT. Газовый котёл, инсталляция,
+    // защита от протечек, теплоноситель, электрический тёплый пол в делитель не
+    // входят: STOUT их не делает, и штрафовать монтажника за них не за что.
+    // Канализационная труба REHAU входит — у STOUT бесшумная канализация есть.
+    // По отправленным КП (100 шт., 03.10.2026) так честнее: медиана доли по всей
+    // смете 84 %, а там, где STOUT мог стоять, — 91 %.
+    //
+    // Группы одного ROMMER, у которых STOUT-двойник лежит отдельным массивом:
+    // без этого списка ROMMER-дымоход считался бы «местом, где STOUT нет».
+    STOUT_TWIN_GROUPS: ['chimney_trad_60100', 'chimney_cond_60100', 'chimney_cond_80125', 'chimney_split_d80',
+        'water_manifolds_rommer', 'manifolds_shutoff_auto', 'rommer_pumps', 'outdoor_faucets', 'actuators_rommer'],
+
+    isStoutItem: function (it) {
+        if (!it) return false;
+        const art = String(it.id || it.displaySku || '');
+        if (/^S[A-Z]{2}-\d{4}-/.test(art)) return true;
+        if (/^R[A-Z]{2}-\d{4}-/.test(art)) return false;
+        // В список оборудования бренд попадает с умолчанием 'STOUT' (см. сборку
+        // currentEquipmentList), поэтому у своего и распознанного оборудования
+        // полю не верим — только названию.
+        if (it.recognized || /^(custom|rec_|user_)/i.test(art) || /^custom/.test(String(it.originalId || ''))) {
+            return /stout/i.test(String(it.name || ''));
+        }
+        return String(it.brand || '').trim().toUpperCase() === 'STOUT';
+    },
+
+    _stoutCoverage: null,
+    stoutCoverageIndex: function () {
+        if (this._stoutCoverage) return this._stoutCoverage;
+        const idx = new Map();   // артикул → true, если в его группе есть STOUT
+        const mark = (arr, has) => {
+            arr.forEach(x => {
+                if (!x || !x.id) return;
+                const cur = idx.get(x.id);
+                if (cur === undefined || has) idx.set(x.id, has);   // «есть STOUT» главнее
+            });
+        };
+        for (const key in catalog) {
+            const arr = catalog[key];
+            if (!Array.isArray(arr) || !arr.length) continue;
+            const has = arr.some(x => this.isStoutItem(x)) || this.STOUT_TWIN_GROUPS.includes(key);
+            mark(arr, has);
+            // Вложенные замены позиции STOUT (.rommer, .alts) — место, где по
+            // умолчанию стоял STOUT
+            arr.forEach(x => {
+                if (!x || !this.isStoutItem(x)) return;
+                [].concat(x.rommer || [], x.alts || []).forEach(n => { if (n && n.id) idx.set(n.id, true); });
+            });
+        }
+        // Радиаторы любой серии: категория у STOUT есть целиком
+        try { this._getSecRadSeries().forEach(s => { if (s.arr) mark(s.arr, true); }); } catch (e) { }
+        this._stoutCoverage = idx;
+        return idx;
+    },
+
+    // Бренды, чьи изделия лежат в смешанных группах рядом со STOUT, но аналога
+    // у STOUT не имеют (греющий кабель водопровода в узле ввода). Группа «с STOUT»
+    // записала бы их в чужой бренд на месте STOUT — а ставить там нечего.
+    STOUT_NEVER_BRANDS: ['SELFTEC DW'],
+
+    // Мог ли здесь стоять STOUT: своя группа каталога содержит STOUT
+    stoutCouldBeHere: function (it) {
+        if (this.isStoutItem(it)) return true;
+        if (this.STOUT_NEVER_BRANDS.includes(String(it.brand || '').trim().toUpperCase())) return false;
+        // Позиция пришла заменой позиции STOUT (режим ROMMER, ручная замена):
+        // originalId — артикул STOUT, значит STOUT здесь и стоял
+        if (/^S[A-Z]{2}-\d{4}-/.test(String(it.originalId || ''))) return true;
+        const idx = this.stoutCoverageIndex();
+        const keys = [it.originalId, it.id, it.displaySku].filter(Boolean);
+        for (const k of keys) { if (idx.has(k)) return !!idx.get(k); }
+        return false;   // своё/распознанное чужого бренда — вне каталога, не судим
+    },
+
+    stoutShare: function () {
+        const list = this.currentEquipmentList || [];
+        let total = 0, base = 0, stout = 0;
+        const missing = [];
+        list.forEach(it => {
+            if (!it || it.isOpt) return;
+            const s = Number(it.sum) || 0;
+            if (s <= 0) return;
+            total += s;
+            if (!this.stoutCouldBeHere(it)) return;
+            base += s;
+            if (this.isStoutItem(it)) stout += s;
+            else missing.push(it);
+        });
+        missing.sort((a, b) => (b.sum || 0) - (a.sum || 0));
+        return {
+            total, base, stout, missing,
+            pct: base > 0 ? Math.round(100 * stout / base) : null,
+            pctAll: total > 0 ? Math.round(100 * stout / total) : null
+        };
+    },
+
+    // Порог доли STOUT для бланка гарантии: app_settings, ключ warranty
+    // ({ threshold: 90, overrides: { '<calc_id>': 80 } }); меняется в панели
+    // управления (warranty_admin.js). Порог по объекту сильнее общего.
+    warrantyThreshold: function () {
+        const w = (this.appSettings && this.appSettings.warranty) || {};
+        const own = parseFloat(((w.overrides && typeof w.overrides === 'object') ? w.overrides : {})[String(this.state.calc_id || '')]);
+        if (own > 0 && own <= 100) return own;
+        const t = parseFloat(w.threshold);
+        return (t > 0 && t <= 100) ? t : 90;
+    },
+
+    // Снимок доли для реестра в панели управления: уезжает в calc_data.warranty при
+    // сохранении сметы в облако (stateForCloud). Панель смету не пересчитывает —
+    // ей хватает этих чисел, адреса и заказчика.
+    warrantySnapshot: function () {
+        if (!(this.currentEquipmentList || []).length) return null;
+        const sh = this.stoutShare();
+        if (sh.pct === null) return null;
+        const od = this.objectDetails();
+        return {
+            pct: sh.pct, pctAll: sh.pctAll,
+            stout: Math.round(sh.stout), base: Math.round(sh.base), total: Math.round(sh.total),
+            threshold: this.warrantyThreshold(),
+            address: od.address, client: od.client,
+            at: new Date().toISOString().slice(0, 10)
+        };
+    },
+
+    // Чип «STOUT: 84 %» в строке параметров сметы. Только при входе (клиент
+    // открывает КП по ссылке без входа) и с классом no-print — в печать и PDF
+    // не попадает. Зовётся из render() после сборки списка оборудования:
+    // сама строка параметров рисуется раньше, когда долю ещё не посчитать.
+    renderStoutShareChip: function () {
+        const ds = document.getElementById('doc_summary');
+        if (!ds) return;
+        const old = ds.querySelector('.ds-stout');
+        if (old) old.remove();
+        if (!this.state.tgUser) return;
+        const sh = this.stoutShare();
+        if (sh.pct === null) return;
+        const ok = sh.pct >= this.warrantyThreshold();
+        const el = document.createElement('span');
+        el.className = 'param-item no-print ds-stout ' + (ok ? 'ok' : 'low');
+        el.setAttribute('role', 'button');
+        el.tabIndex = 0;
+        el.innerHTML = `<span class="ui-emo">${ok ? '🛡️' : '🔸'} </span>STOUT: <b>${sh.pct} %</b>`;
+        el.onclick = () => this.showStoutShareInfo();
+        const date = ds.querySelector('.param-date');
+        if (date) ds.insertBefore(el, date); else ds.appendChild(el);
+        this.fitDocSummary();
+    },
+
+    showStoutShareInfo: function () {
+        const sh = this.stoutShare();
+        const thr = this.warrantyThreshold();
+        const rub = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const lines = [];
+        lines.push(`Оборудование STOUT: ${rub(sh.stout)} из ${rub(sh.base)} там, где STOUT мог стоять — ${sh.pct} %.`);
+        if (sh.pctAll !== null && sh.pctAll !== sh.pct) {
+            lines.push(`По всей смете (${rub(sh.total)}) — ${sh.pctAll} %: газовый котёл, инсталляции, защита от протечек и прочее, чего STOUT не делает, в расчёт доли не входят.`);
+        }
+        lines.push('');
+        if (sh.pct >= thr) {
+            lines.push(`Порог ${thr} % пройден — объект подходит под бланк гарантии STOUT.`);
+        } else {
+            const need = Math.ceil(thr / 100 * sh.base - sh.stout);
+            lines.push(`До порога ${thr} % не хватает ${rub(need)}. Чужой бренд там, где есть STOUT:`);
+            sh.missing.slice(0, 8).forEach(it => lines.push(`• ${it.name} — ${it.brand || '—'}, ${rub(it.sum)}`));
+            if (sh.missing.length > 8) lines.push(`… и ещё ${sh.missing.length - 8}`);
+            lines.push('');
+            lines.push('Заменить на STOUT: кнопка «Аналог» у раздела или таблица замены по клику на фото позиции.');
+        }
+        this.alert(lines.join('\n'), 'Доля STOUT в смете');
+    },
+
+    // ===================== Адрес объекта и заказчик перед печатью =====================
+    //
+    // Бланк гарантии STOUT выдаётся на конкретный объект, поэтому у КП должны быть
+    // точный адрес и заказчик. Хранятся там же, где их читают договор, акты и
+    // гарантийный талон (state.contract, поля из Docs.DEFAULTS): введённое один
+    // раз больше не спрашиваем, а docs.js подхватит без правок. Кнопка «Без адреса»
+    // печатает КП как раньше — только бланка гарантии к нему не будет.
+    objectDetails: function () {
+        const c = this.state.contract || {};
+        return {
+            address: String(c.objectAddress || '').trim(),
+            client: String(c.clientName || '').trim(),
+            phone: String(c.clientPhone || '').trim()
+        };
+    },
+
+    objectDetailsComplete: function () {
+        const d = this.objectDetails();
+        return !!(d.address && d.client);
+    },
+
+    ensureObjectDetails: function () {
+        if (this.objectDetailsComplete()) return Promise.resolve(true);
+        // Один раз отказался — по этому расчёту в этой сессии больше не спрашиваем
+        if (this._objDetailsSkipped && this._objDetailsSkipped === (this.state.calc_id || 'new')) return Promise.resolve(true);
+        return this.askObjectDetails();
+    },
+
+    askObjectDetails: function () {
+        if (document.body.classList.contains('menu-open')) {
+            try { this.toggleMenu(); } catch (e) { }
+        }
+        const cur = this.objectDetails();
+        return new Promise((resolve) => {
+            const overlay = document.createElement('div');
+            overlay.className = 'calc-dialog-overlay';
+            const card = document.createElement('div');
+            card.className = 'calc-dialog-card';
+            card.innerHTML = `
+                <h3 class="calc-dialog-title">Объект и заказчик</h3>
+                <p class="calc-dialog-message">Нужны для бланка гарантии STOUT на объект. Те же данные пойдут в договор, акты и гарантийный талон — вводятся один раз.</p>
+                <div class="calc-dialog-input-wrapper">
+                    <input type="text" class="calc-dialog-input" id="objd_address" placeholder="Адрес объекта: город, улица, дом" autocomplete="street-address">
+                    <input type="text" class="calc-dialog-input" id="objd_client" placeholder="Заказчик: фамилия, имя, отчество" autocomplete="name">
+                    <input type="tel" class="calc-dialog-input" id="objd_phone" placeholder="Телефон заказчика (необязательно)" autocomplete="tel">
+                    <div class="calc-dialog-error" id="objd_err" style="display:none;"></div>
+                </div>
+                <div class="calc-dialog-buttons">
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-cancel" id="objd_skip">Без адреса</button>
+                    <button type="button" class="calc-dialog-btn calc-dialog-btn-confirm" id="objd_ok">Продолжить</button>
+                </div>`;
+            overlay.appendChild(card);
+            document.body.appendChild(overlay);
+            const $ = id => card.querySelector('#' + id);
+            // Адрес по умолчанию — название объекта, если оно похоже на адрес (есть номер дома)
+            $('objd_address').value = cur.address || (/\d/.test(this.state.projectName || '') ? this.state.projectName : '');
+            $('objd_client').value = cur.client;
+            $('objd_phone').value = cur.phone;
+            const close = (val) => {
+                overlay.classList.remove('active');
+                setTimeout(() => { overlay.remove(); resolve(val); }, 200);
+            };
+            $('objd_skip').onclick = () => {
+                this._objDetailsSkipped = this.state.calc_id || 'new';
+                close(true);
+            };
+            $('objd_ok').onclick = () => {
+                const address = $('objd_address').value.trim();
+                const client = $('objd_client').value.trim();
+                const phone = $('objd_phone').value.trim();
+                if (!address || !client) {
+                    const err = $('objd_err');
+                    err.innerText = !address ? 'Укажите адрес объекта' : 'Укажите заказчика';
+                    err.style.display = 'block';
+                    $(!address ? 'objd_address' : 'objd_client').focus();
+                    return;
+                }
+                const contract = Object.assign({}, this.state.contract || {}, { objectAddress: address, clientName: client });
+                if (phone) contract.clientPhone = phone;
+                this.state.contract = contract;
+                this.saveState();
+                close(true);
+            };
+            card.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') $('objd_ok').click(); });
+            setTimeout(() => {
+                overlay.classList.add('active');
+                $(cur.address ? 'objd_client' : 'objd_address').focus();
+            }, 10);
+        });
+    },
+
+    // ===================== Бланк «Гарантия на систему STOUT» =====================
+    //
+    // Последний лист КП. Печатается, когда доля STOUT не ниже порога, у расчёта
+    // есть адрес и заказчик, печатают оборудование и монтажник вошёл. Три слоя,
+    // у каждого свой подписант (решение владельца 03.10.2026):
+    //   1) гарантия изготовителя STOUT по разделам сметы — цитируем stout.ru/guarantee
+    //      и паспорта (Docs.warrantyMonthsFor: BRAND_WARRANTY + warranty.js);
+    //   2) ответственность изготовителя застрахована (Docs.INSURANCE);
+    //   3) исполнитель даёт срок на работы сверх закона — его собственное
+    //      дополнительное обязательство (п. 7 ст. 5 ЗоЗПП). Только срок, без сервиса.
+    // Слов «расширенная гарантия STOUT» от имени завода нет: такой программы у
+    // STOUT не существует, а бланк подписывает монтажник. На стадии КП — отметка
+    // «предварительно»: обязательство вступает после акта. Шапка — монтажника,
+    // STOUT только в заголовке: чужой логотип в шапке читался бы как бумага от завода.
+    WARRANTY_EXT_WORKS_MONTHS: 36,
+
+    // Группы артикулов STOUT словами — для таблицы сроков (ключ — начало артикула).
+    // Только то, что сверено по каталогу; неизвестный префикс берёт слова из названия.
+    WARRANTY_KINDS: {
+        SRB: 'радиаторы биметаллические', SRA: 'радиаторы алюминиевые', SCN: 'конвекторы', SCQ: 'конвекторы',
+        SVT: 'термостатические клапаны', SVL: 'клапаны радиаторные', SVR: 'клапаны радиаторные', SVH: 'узлы нижнего подключения',
+        SPX: 'трубы', SPM: 'трубы', SPS: 'трубы', SPI: 'трубы',
+        SFA: 'фитинги', SFP: 'фитинги', SFC: 'фитинги', SFH: 'фитинги', SFS: 'фитинги', SFB: 'фитинги', SFT: 'резьбовые фитинги',
+        SVB: 'шаровые краны', SVS: 'предохранительная и воздухоотводная арматура', SEB: 'котлы электрические', SST: 'стабилизаторы и дымоходы',
+        SMB: 'коллекторы', SMS: 'коллекторные блоки', SMF: 'маты тёплого пола', SSV: 'принадлежности тёплого пола', SDG: 'насосные группы и узлы подмеса',
+        SPC: 'циркуляционные насосы', STH: 'расширительные баки', STW: 'расширительные баки', SWH: 'водонагреватели', SCC: 'коллекторные шкафы',
+        STE: 'автоматика', SMH: 'автоматика', SKB: 'канализация бесшумная', SAC: 'крепёж', SHQ: 'полотенцесушители', SFW: 'фильтры'
+    },
+
+    warrantyFormEligible: function () {
+        if (!this.state.tgUser) return false;
+        if (this.printOptions && this.printOptions.eq === false) return false;
+        if (!this.objectDetailsComplete()) return false;
+        const sh = this.stoutShare();
+        return sh.pct !== null && sh.pct >= this.warrantyThreshold();
+    },
+
+    renderWarrantyPrint: function () {
+        const el = document.getElementById('warranty_print');
+        if (!el) return;
+        // Сроки и полисы — в docs.js: грузится лениво перед печатью (executeDownload).
+        // Пока его нет, блок пуст и на печати скрыт (:empty).
+        el.innerHTML = (typeof Docs !== 'undefined' && this.warrantyFormEligible()) ? this.warrantyFormHtml() : '';
+    },
+
+    // Вид оборудования словами: по префиксу артикула, иначе первые слова
+    // названия без размеров, дюймов и резьбы
+    warrantyKindOf: function (it) {
+        const art = String(it.displaySku || it.id || '');
+        return this.WARRANTY_KINDS[art.split('-')[0]]
+            || String(it.name || '').toLowerCase().split(/[,(]/)[0].trim().split(/\s+/)
+                .filter(wd => !/[\d"”″’']/.test(wd) && !/^(вр|нр|бар|мм|dn|х|x|-)$/.test(wd)).slice(0, 3).join(' ');
+    },
+
+    // Позиции STOUT сметы со сроком и видом; без необязательных и без срока в паспорте
+    warrantyItems: function () {
+        const out = [];
+        (this.currentEquipmentList || []).forEach(it => {
+            if (!it || it.isOpt || !this.isStoutItem(it)) return;
+            const kind = this.warrantyKindOf(it);
+            const w = Docs.warrantyMonthsFor(it);
+            if (!kind || !w || !w.months) return;
+            out.push({ it: it, kind: kind, months: w.months, sum: Number(it.sum) || 0 });
+        });
+        return out;
+    },
+
+    // Сроки по группам: «10 лет — радиаторы; 5 лет — трубы, фитинги, краны; …».
+    // Клиенту нужен один взгляд, а не таблица на двенадцать строк: виды сворачиваем
+    // по сроку, у вида с разными сроками в разных позициях остаётся меньший.
+    warrantyTermGroups: function () {
+        const byKind = new Map();
+        this.warrantyItems().forEach(x => {
+            const k = byKind.get(x.kind);
+            if (!k || x.months < k.months) byKind.set(x.kind, { months: x.months, sum: (k ? k.sum : 0) + x.sum });
+            else k.sum += x.sum;
+        });
+        const byMonths = new Map();
+        byKind.forEach((v, kind) => {
+            if (!byMonths.has(v.months)) byMonths.set(v.months, []);
+            byMonths.get(v.months).push({ kind: kind, sum: v.sum });
+        });
+        return [...byMonths.entries()]
+            .sort((a, b) => b[0] - a[0])
+            .map(([months, kinds]) => ({
+                months: months,
+                kinds: kinds.sort((a, b) => b.sum - a.sum).map(k => k.kind)
+            }));
+    },
+
+    // Плитки с фото: самые весомые позиции STOUT разных видов. Расходники со
+    // сроком меньше двух лет (маты, шкафы, баки) в витрину не берём — они не то,
+    // ради чего клиент выбирает систему, а «1 год» рядом с «10 лет» сбивает.
+    warrantyPhotoTiles: function (max) {
+        const seen = new Set();
+        return this.warrantyItems()
+            .filter(x => x.months >= 24)
+            .sort((a, b) => b.sum - a.sum)
+            .filter(x => { if (seen.has(x.kind)) return false; seen.add(x.kind); return true; })
+            .slice(0, max || 5);
+    },
+
+    // Система объекта одной строкой: котёл, бойлер, приборы, тёплый пол, вода
+    systemSummary: function () {
+        const st = this.state;
+        const list = (this.currentEquipmentList || []).filter(it => it && !it.isOpt);
+        const inSec = (re) => list.filter(it => re.test(String(it.sectionTitle || '')));
+        const parts = [];
+        const boiler = inSec(/^1\./).find(it => /кот[её]л/i.test(it.name || ''));
+        if (boiler) parts.push(String(boiler.name));
+        const tank = inSec(/^1\./).find(it => /бойлер|водонагреват/i.test(it.name || ''));
+        if (tank) parts.push(String(tank.name));
+        const rads = inSec(/^3\./).filter(it => /радиатор|конвектор/i.test(it.name || '')).reduce((a, it) => a + (Number(it.q) || 0), 0);
+        if (rads) parts.push(`приборы отопления — ${rads} шт.`);
+        const tp = (parseFloat(st.tp1) || 0) + (parseFloat(st.tp2) || 0);
+        if ((st.systems || []).includes('tp') && tp > 0) parts.push(`водяной тёплый пол ${Math.round(tp)} м²`);
+        if (st.water) parts.push('водоснабжение' + (st.hotWater ? ' и ГВС' : ''));
+        if (inSec(/^8\./).length) parts.push('канализация');
+        if (st.well) parts.push('скважина');
+        const head = (parseFloat(st.area) > 0) ? `дом ${st.area} м², ${st.floors === 2 ? 2 : 1} эт.: ` : '';
+        return head + (parts.length ? parts.join('; ') : 'инженерные системы по смете');
+    },
+
+    // Контурные иконки в манере stout.ru (тёмно-синий контур, голубой акцент)
+    WARRANTY_ICONS: {
+        shield: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 4l17 6v14c0 10-7.5 17.5-17 20C14.5 41.5 7 34 7 24V10z"/><rect x="16" y="20" width="16" height="12" fill="#3F9DE1" stroke="none"/><path d="M16 20h16M19 17v3M29 17v3" stroke="#203F6F"/></svg>',
+        wrench: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M30 6a9 9 0 0 0-8.6 11.7L7 32a3.5 3.5 0 0 0 5 5l14.3-14.4A9 9 0 0 0 38 14l-5.5 5.5-4-4L34 10a9 9 0 0 0-4-4z"/><circle cx="10" cy="38" r="1.6" fill="#3F9DE1" stroke="none"/><path d="M28 30l10 10" /><path d="M31 27l10 10" stroke="#3F9DE1"/></svg>',
+        umbrella: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M24 6v3M5 25a19 19 0 0 1 38 0z"/><path d="M5 25a19 19 0 0 1 19-19v19z" fill="#3F9DE1" stroke="none" opacity=".9"/><path d="M5 25a19 19 0 0 1 38 0z"/><path d="M24 25v13a4 4 0 0 1-8 0"/></svg>',
+        phone: '<svg viewBox="0 0 48 48" fill="none" stroke="#203F6F" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><path d="M14 6h7l3 8-4 3a22 22 0 0 0 11 11l3-4 8 3v7a4 4 0 0 1-4 4C21 38 10 27 10 10a4 4 0 0 1 4-4z"/><path d="M29 9a10 10 0 0 1 10 10M29 15a4 4 0 0 1 4 4" stroke="#3F9DE1"/></svg>'
+    },
+
+    // Листовка на одну страницу в оформлении stout.ru: шапка с логотипом, синий
+    // баннер с одной мыслью и большим фото, четыре иконки-цифры, карточки того, что
+    // стоит в доме, тёмный подвал с телефоном исполнителя. Клиенту не нужно
+    // разбираться, на какую из гарантий смотреть: одна цифра в баннере, один телефон.
+    warrantyFormHtml: function () {
+        const e = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        const od = this.objectDetails();
+        const tg = this.state.tgUser || {};
+        const cc = this.effectiveCompanyDetails() || {};
+        const execName = (Docs.contractor && Docs.contractor().fio) || this.formatShortName(tg) || '';
+        const phone = tg.phone || '';
+        const groups = this.warrantyTermGroups();
+        const maxM = groups.length ? groups[0].months : 0;
+        const today = new Date();
+        const dateRu = today.toLocaleDateString('ru-RU');
+        const kp = this.kpNumber() || '';
+        const ins = (Docs.activeInsurance(today.toISOString().slice(0, 10)) || []).find(p => p.brand === 'STOUT');
+        const years = m => Docs.monthsWords(m);
+        const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
+        const mln = n => Math.round(n / 1e6) + ' млн ₽';
+        const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+        const I = this.WARRANTY_ICONS;
+        const tiles = this.warrantyPhotoTiles(5);
+        const hero = tiles[0];
+        const img = id => `<img src="img/${e(id)}.jpg" alt="" onerror="this.onerror=null;this.style.visibility='hidden';">`;
+        const prods = tiles.map(t => `<div class="wp-prod">${img(t.it.id)}<div class="wp-pn">${e(cap(t.kind))}</div><div class="wp-pt">${e(years(t.months))} <small>гарантии</small></div></div>`).join('');
+        const grp = groups.map(g => `<span><b>${e(years(g.months))}</b> — ${e(g.kinds.slice(0, 3).join(', '))}${g.kinds.length > 3 ? ' и др.' : ''}</span>`).join('');
+        const feat = (icon, num, txt) => `<div class="wp-feat">${icon}<div class="wp-fn wp-cond">${num}</div><div class="wp-ft">${txt}</div></div>`;
+        return `
+        <div class="wp-top">
+            <img src="img/stout_logo.png" alt="STOUT">
+            <div class="wp-nav">Гарантийные обязательства&nbsp;&nbsp;·&nbsp;&nbsp;Объект: <b>${e(od.address)}</b></div>
+        </div>
+        <div class="wp-hero">
+            <div class="wp-hero-txt">
+                <div class="wp-kicker">Оборудование STOUT в вашем доме</div>
+                <h2>Гарантия <b>до ${e(years(maxM))}</b><br>на системы вашего дома</h2>
+                <p class="wp-lead">Одна система, один бренд, один телефон. За ваш дом отвечают вместе завод STOUT, исполнитель и страховая компания.</p>
+                <span class="wp-btn">Любой вопрос — ${e(phone)}</span>
+            </div>
+            <div class="wp-hero-img">${hero ? img(hero.it.id) : ''}${hero ? `<div class="wp-badge"><b>${e(years(hero.months))}</b>${e(hero.kind)}</div>` : ''}</div>
+        </div>
+        <div class="wp-feats">
+            ${feat(I.shield, 'до ' + e(years(maxM)), 'гарантия завода STOUT на оборудование')}
+            ${feat(I.wrench, e(years(extM)), 'гарантия исполнителя на монтаж — вместо обычного года')}
+            ${ins ? feat(I.umbrella, e(mln(ins.sum)), 'ответственность завода за ущерб застрахована в ' + e(ins.insurer.replace(/^СПАО\s+/, ''))) : ''}
+            ${feat(I.phone, '1 звонок', 'исполнитель приезжает и сам решает вопрос с заводом')}
+        </div>
+        <h3>Что стоит в вашем доме<small>сроки гарантии завода по группам</small></h3>
+        <div class="wp-prods">${prods}</div>
+        <div class="wp-groups">${grp}</div>
+        <div class="wp-sys">В расчёте: ${e(this.systemSummary())}</div>
+        <div class="wp-foot">
+            <div class="wp-fl"><b>Заказчик:</b> ${e(od.client)}${od.phone ? ', ' + e(od.phone) : ''}<br>
+                <b>Расчёт</b> № ${e(kp)} от ${e(dateRu)}<br>
+                Чтобы гарантия действовала: храните паспорта и акт опрессовки, осмотр системы раз в год, изменения — через исполнителя.</div>
+            <div class="wp-fr"><div class="wp-phone wp-cond">${e(phone)}</div><div class="wp-fname">${e(execName)}${cc.name ? ' · ' + e(cc.name) : ''}</div></div>
+        </div>
+        <div class="wp-sign"><div>Исполнитель ______________</div><div>Заказчик ______________</div><div><span class="wp-prelim">предварительно</span> выдаётся после подписания акта</div></div>
+        <div class="wp-src">Сроки — по паспортам изделий и stout.ru/guarantee, при расхождении указан меньший, отсчёт с даты продажи.
+        ${ins ? `Полис ${e(ins.insurer)} № ${e(ins.policy)}, лимит на случай ${e(mln(ins.perCase))}, действует по ${e(Docs.dateRu(ins.to))}` : ''}
+        Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
@@ -16702,7 +17165,8 @@ const app = {
     // Реквизиты — итоговые: у человека дистрибьютора без своих данных клиент увидит
     // шапку дистрибьютора.
     stateForCloud: function (base) {
-        return Object.assign({}, base || this.state, { customCompany: this.effectiveCompanyDetails() });
+        // warranty — снимок доли STOUT для реестра «Гарантия STOUT» в панели (warrantySnapshot)
+        return Object.assign({}, base || this.state, { customCompany: this.effectiveCompanyDetails(), warranty: this.warrantySnapshot() });
     },
     // Заполняет поля раздела «Реквизиты компании». Вызывается при открытии кабинета и
     // ещё раз, когда настройки доехали из облака (вход с нового устройства).
@@ -22412,7 +22876,8 @@ const app = {
         { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
-        { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' }
+        { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
+        { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' }
     ],
 
     // Значки разделов — одноцветные линейные, берут цвет текста (currentColor).
@@ -22439,7 +22904,8 @@ const app = {
         analytics: '<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
-        leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'
+        leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+        warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>'
     },
 
     // Разделы панели в группах. Двадцать вкладок в два ряда без порядка — это «конструктор»,
@@ -22450,7 +22916,7 @@ const app = {
     ADMIN_GROUPS: [
         { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
-        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects'] },
+        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription'] },
@@ -24112,6 +24578,19 @@ const app = {
             content.innerHTML = navHtml + '<div id="admin_subscription_box"></div>';
             if (typeof Subscription !== 'undefined') Subscription.render();
             else content.insertAdjacentHTML('beforeend', '<div style="color:#EF4444; font-size:13px;">Модуль подписки (subscription.js) не загрузился — обновите страницу.</div>');
+            return;
+        }
+
+        if (this._adminTab === 'warranty') {
+            // Модуль вкладки грузится лениво: нужен только здесь (warranty_admin.js)
+            content.innerHTML = navHtml + '<div id="admin_warranty_box"><div style="color:var(--text-sec); font-size:13px;">Загружаю…</div></div>';
+            this.lazy('warranty_admin').then(() => {
+                if (typeof WarrantyAdmin !== 'undefined') WarrantyAdmin.render();
+            }).catch(e => {
+                console.error('[панель] warranty_admin.js не загрузился:', e);
+                const box = document.getElementById('admin_warranty_box');
+                if (box) box.innerHTML = '<div style="color:#EF4444; font-size:13px;">Модуль гарантии не загрузился — обновите страницу.</div>';
+            });
             return;
         }
 
@@ -45870,6 +46349,8 @@ const app = {
     },
     executeDownload: async function (showEq, showWorks, showHeatLoss, showScheme, shortNames) {
         if (!this.canUseWorks()) showWorks = false; // монтаж закрыт (у продавца исходно)
+        // Адрес объекта и заказчик — для бланка гарантии STOUT (см. askObjectDetails)
+        if (!(await this.ensureObjectDetails())) return;
         this.printOptions = {
             eq: showEq,
             works: showWorks,
@@ -45877,6 +46358,11 @@ const app = {
             scheme: !!showScheme,
             shortNames: shortNames !== false
         };
+        // Бланк гарантии STOUT печатается последним листом: сроки и полисы лежат в
+        // docs.js, грузим его заранее — печатная копия собирается синхронно
+        if (this.warrantyFormEligible()) {
+            try { await this.lazy('docs'); } catch (e) { console.warn('[executeDownload] docs.js не загрузился, бланк гарантии пропущен', e); }
+        }
 
         // Гарантируем, что смета попадёт в базу (и станет доступна через "Загрузить код"),
         // даже если сейчас нет связи с Supabase — задача уйдёт в фоновую очередь с повторами.
@@ -79017,6 +79503,8 @@ const app = {
         const _estBefore = this._estimateBefore();
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
+        // Доля STOUT в строке параметров — считается по готовому списку оборудования
+        this.renderStoutShareChip();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
         this.renderContestWidget();
@@ -79379,6 +79867,7 @@ const app = {
         this.syncCheaperTab();
         if (this.state.viewMode === 'cheaper') this.renderCheaperPanel();
         this.renderCheaperPrint();
+        this.renderWarrantyPrint();
 
         // Ограничение мощности и прогноз стоимости электроотопления считаются от
         // теплопотерь, поэтому обновляем их на каждую отрисовку сметы, а не только
