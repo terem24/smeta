@@ -2609,7 +2609,8 @@
         .kpw-src { margin-top: 8px; color: var(--text-sec); font-size: 11.5px; line-height: 1.55; }
 
         /* Плитка в «Ваш дом»: фирменная синяя, ведёт к листу гарантии */
-        .kp-kpi-w {
+        /* Два класса: базовый .kp-kpi объявлен ниже по файлу и иначе перебил бы фон */
+        .kp-kpi.kp-kpi-w {
             display: block;
             border-color: #203F6F;
             background: #203F6F;
@@ -2618,7 +2619,7 @@
             transition: transform .15s ease, box-shadow .15s ease;
         }
 
-        .kp-kpi-w:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(32, 63, 111, .35); }
+        .kp-kpi.kp-kpi-w:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(32, 63, 111, .35); }
         .kp-kpi-w .kp-kpi-l { color: #9CC9F0; }
         .kp-kpi-w .kp-kpi-v { color: #fff; }
         .kp-kpi-w .kp-kpi-s { color: #DCE8F5; }
@@ -3057,8 +3058,25 @@
             .kp-main { min-width: 0; }
             .kp-tabs, .kp-plan-hint, .kp-acc-c, .kp-fl-c, .kp-fl-hint { display: none !important; }
             .kp-main tr.kp-hide { display: table-row !important; }
-            .kp-rooms tr.kp-fl { cursor: default; }
+            .kp-rooms tr.kp-fl { cursor: default; break-after: avoid; page-break-after: avoid; }
+            .kp-fl-title { break-after: avoid; page-break-after: avoid; }
             .kp-fpanel { display: block !important; margin-bottom: 18px; }
+            /* Лист гарантии вместе с шапкой компании должен умещаться на одной странице */
+            .kpw-hero-t { padding: 18px 24px; }
+            .kpw-hero-i { min-height: 130px; }
+            .kpw-hero-i img { max-height: 130px; }
+            .kpw-pils { margin-top: 10px; }
+            .kpw-pil { padding: 10px 12px; }
+            .kpw-pil svg { width: 32px; height: 32px; }
+            .kpw-row { grid-template-columns: 38px minmax(120px, 1.4fr) 2fr auto; padding: 4px 0; }
+            .kpw-row-i { width: 38px; height: 38px; }
+            .kpw-cta { margin-top: 10px; flex-wrap: nowrap; padding: 12px 18px; }
+            .kpw-cta-t { max-width: 380px; }
+            .kpw-hero h2 { font-size: 24px; margin: 4px 0 8px; }
+            .kpw-prelim { margin-top: 8px; }
+            .kpw-src { margin-top: 4px; font-size: 10px; line-height: 1.45; }
+            /* Заголовок раздела не остаётся один в конце страницы */
+            .kp-sheet .sec-header-row, .kp-h { break-after: avoid; page-break-after: avoid; }
             .kp-multi .kp-fl-title { display: block; }
             .kp-acc-b { display: block !important; }
             .kp-acc-h { background: none; cursor: default; }
@@ -3074,8 +3092,24 @@
         body.html2pdf-printing .kp-fl-c,
         body.html2pdf-printing .kp-fl-hint { display: none !important; }
         body.html2pdf-printing .kp-main tr.kp-hide { display: table-row !important; }
-        body.html2pdf-printing .kp-rooms tr.kp-fl { cursor: default; }
+        body.html2pdf-printing .kp-rooms tr.kp-fl { cursor: default; break-after: avoid; page-break-after: avoid; }
+        body.html2pdf-printing .kp-fl-title { break-after: avoid; page-break-after: avoid; }
         body.html2pdf-printing .kp-fpanel { display: block !important; margin-bottom: 18px; }
+        body.html2pdf-printing .kpw-hero-t { padding: 18px 24px; }
+        body.html2pdf-printing .kpw-hero-i { min-height: 130px; }
+        body.html2pdf-printing .kpw-hero-i img { max-height: 130px; }
+        body.html2pdf-printing .kpw-pils { margin-top: 10px; }
+        body.html2pdf-printing .kpw-pil { padding: 10px 12px; }
+        body.html2pdf-printing .kpw-pil svg { width: 32px; height: 32px; }
+        body.html2pdf-printing .kpw-row { grid-template-columns: 38px minmax(120px, 1.4fr) 2fr auto; padding: 4px 0; }
+        body.html2pdf-printing .kpw-row-i { width: 38px; height: 38px; }
+        body.html2pdf-printing .kpw-cta { margin-top: 10px; flex-wrap: nowrap; padding: 12px 18px; }
+        body.html2pdf-printing .kpw-cta-t { max-width: 380px; }
+        body.html2pdf-printing .kpw-hero h2 { font-size: 24px; margin: 4px 0 8px; }
+        body.html2pdf-printing .kpw-prelim { margin-top: 8px; }
+        body.html2pdf-printing .kpw-src { margin-top: 4px; font-size: 10px; line-height: 1.45; }
+        body.html2pdf-printing .kp-sheet .sec-header-row,
+        body.html2pdf-printing .kp-h { break-after: avoid; page-break-after: avoid; }
         body.html2pdf-printing .kp-multi .kp-fl-title { display: block; }
         body.html2pdf-printing .kp-acc-b { display: block !important; }
         body.html2pdf-printing .kp-acc-h { background: none; cursor: default; }
@@ -4765,7 +4799,8 @@
             const dateRu = iso => /^\d{4}-\d{2}-\d{2}$/.test(String(iso || '')) ? String(iso).split('-').reverse().join('.') : '';
             const img = id => {
                 const i = document.createElement('img');
-                i.src = 'img/' + id + '.jpg'; i.alt = ''; i.loading = 'lazy';
+                // Без loading=lazy: html2pdf снимает страницу целиком и не дожидается картинок вне экрана
+                i.src = 'img/' + id + '.jpg'; i.alt = '';
                 i.onerror = () => { i.style.visibility = 'hidden'; };
                 return i;
             };
