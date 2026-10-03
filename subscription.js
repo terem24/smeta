@@ -215,6 +215,9 @@ const Subscription = {
     trialSettings: function () {
         const t = Object.assign({}, this.TRIAL_DEFAULTS, this.raw().trial || {});
         t.days = Math.min(60, Math.max(1, Math.round(this.num(t.days)) || 14));
+        // Дата с годом до 2000 — след старого поля, где ввод года застревал на «0020»; такой даты не бывает
+        if (String(t.from || '') < '2000') t.from = '';
+        if (String(t.to || '') < '2000') t.to = '';
         return t;
     },
 
@@ -248,6 +251,105 @@ const Subscription = {
         this.render();
     },
 
+    // Обе даты за один раз: одна запись в базу и одна перерисовка. Раньше у каждой даты было
+    // своё нативное поле, и перерисовка по change стирала ввод посреди года («0020»).
+    setTrialRange: function (from, to) {
+        const ok = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) ? String(s) : '';
+        from = ok(from); to = ok(to);
+        if (from && to && to < from) { const x = from; from = to; to = x; }
+        this.apply(v => { v.trial = Object.assign({}, v.trial || {}, { from: from, to: to }); return v; });
+        this.render();
+    },
+
+    trialRangeLabel: function (t) {
+        if (!t.from && !t.to) return 'Без ограничения по датам';
+        if (t.from && !t.to) return 'с ' + this.fmtDate(t.from) + ' без конца';
+        if (!t.from && t.to) return 'до ' + this.fmtDate(t.to);
+        return this.fmtDate(t.from) + ' — ' + this.fmtDate(t.to);
+    },
+
+    // ── календарь выбора периода ────────────────────────────────────────
+    _cal: null,
+    dayStr: function (y, m, d) { return y + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0'); },
+
+    openTrialRange: function () {
+        const t = this.trialSettings();
+        const base = t.from || this.localDay();
+        this._cal = { from: t.from || '', to: t.to || '', y: +base.slice(0, 4), m: +base.slice(5, 7) - 1 };
+        this.renderCal();
+    },
+
+    closeCal: function () {
+        const el = document.getElementById('sub_cal_overlay');
+        if (el) el.remove();
+        this._cal = null;
+    },
+
+    calNav: function (delta) {
+        const c = this._cal; if (!c) return;
+        const d = new Date(c.y, c.m + delta, 1);
+        c.y = d.getFullYear(); c.m = d.getMonth();
+        this.renderCal();
+    },
+
+    // Первый щелчок — начало, второй — конец (раньше начала — меняем местами); третий начинает заново
+    calPick: function (day) {
+        const c = this._cal; if (!c) return;
+        if (!c.from || (c.from && c.to)) { c.from = day; c.to = ''; this.renderCal(); return; }
+        c.to = day;
+        if (c.to < c.from) { const x = c.from; c.from = c.to; c.to = x; }
+        this.setTrialRange(c.from, c.to);
+        this.closeCal();
+    },
+    calApplyOpenEnd: function () { const c = this._cal; if (!c || !c.from) return; this.setTrialRange(c.from, ''); this.closeCal(); },
+    calClear: function () { this.setTrialRange('', ''); this.closeCal(); },
+
+    renderCal: function () {
+        const c = this._cal; if (!c) return;
+        let el = document.getElementById('sub_cal_overlay');
+        if (!el) {
+            el = document.createElement('div');
+            el.id = 'sub_cal_overlay';
+            // Выше окон-оверлеев админки (у них 9999999+): со 100000 календарь открывался под панелью
+            el.style.cssText = 'position:fixed; inset:0; z-index:2147483000; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px;';
+            el.addEventListener('mousedown', e => { if (e.target === el) this.closeCal(); });
+            document.body.appendChild(el);
+        }
+        const MONTHS = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+        const today = this.localDay();
+        const first = new Date(c.y, c.m, 1);
+        const lead = (first.getDay() + 6) % 7;               // неделя с понедельника
+        const total = new Date(c.y, c.m + 1, 0).getDate();
+        const cell = 'width:38px; height:36px; border:0; border-radius:8px; font-size:13px; cursor:pointer; background:transparent; color:var(--text-main);';
+        let grid = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(w => `<div style="width:38px; text-align:center; font-size:11px; color:var(--text-sec); padding-bottom:4px;">${w}</div>`).join('');
+        for (let i = 0; i < lead; i++) grid += '<div style="width:38px;"></div>';
+        for (let d = 1; d <= total; d++) {
+            const s = this.dayStr(c.y, c.m, d);
+            const edge = s === c.from || s === c.to;
+            const mid = c.from && c.to && s > c.from && s < c.to;
+            let st = cell;
+            if (edge) st += 'background:#2563EB; color:#fff; font-weight:700;';
+            else if (mid) st += 'background:rgba(37,99,235,.22);';
+            else if (s === today) st += 'box-shadow:inset 0 0 0 1px #2563EB;';
+            grid += `<button type="button" style="${st}" onclick="Subscription.calPick('${s}')">${d}</button>`;
+        }
+        const hint = !c.from ? 'Выберите первый день' : (!c.to ? 'Теперь выберите последний день' : 'Период выбран');
+        const btn = 'height:32px; padding:0 12px; border:1px solid var(--border); border-radius:8px; background:var(--bg); color:var(--text-main); font-size:12.5px; cursor:pointer;';
+        el.innerHTML = `<div style="background:var(--bg); color:var(--text-main); border:1px solid var(--border); border-radius:14px; padding:16px; box-shadow:0 20px 50px rgba(0,0,0,.4); max-width:100%;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                <button type="button" style="${btn}" onclick="Subscription.calNav(-1)">‹</button>
+                <b style="font-size:14px;">${MONTHS[c.m]} ${c.y}</b>
+                <button type="button" style="${btn}" onclick="Subscription.calNav(1)">›</button>
+            </div>
+            <div style="font-size:12px; color:var(--text-sec); text-align:center; margin-bottom:10px;">${hint}${c.from ? ': ' + this.fmtDate(c.from) + (c.to ? ' — ' + this.fmtDate(c.to) : '') : ''}</div>
+            <div style="display:flex; flex-wrap:wrap; width:${38 * 7}px; margin:0 auto 12px;">${grid}</div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center;">
+                ${c.from && !c.to ? `<button type="button" style="${btn}" onclick="Subscription.calApplyOpenEnd()">Без даты окончания</button>` : ''}
+                <button type="button" style="${btn}" onclick="Subscription.calClear()">Без дат</button>
+                <button type="button" style="${btn}" onclick="Subscription.closeCal()">Закрыть</button>
+            </div></div>`;
+    },
+
     viewTrial: function (canEdit) {
         const t = this.trialSettings(), st = this.trialStatus(), dis = !canEdit;
         const u = this.ui;
@@ -259,10 +361,8 @@ const Subscription = {
                 <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;"><b style="font-size:14px; color:var(--text-main);">Сейчас:</b> ${this.chip(st.label, st.color)}</div>
                 ${row('Предлагать пробный Профи', 'Общий выключатель. Выключено — предложение не показывается никому, уже включённые пробные периоды не прерываются.',
                     this.toggleHtml(!!t.enabled, `Subscription.setTrialField('enabled', ${!t.enabled})`, dis))}
-                ${row('Начало показа', 'С этого дня (включительно). Пусто — с любого дня.',
-                    `<input type="date" value="${this.esc(t.from)}" ${dis ? 'disabled' : ''} onchange="Subscription.setTrialField('from', this.value)" style="${u.input} width:150px;">`)}
-                ${row('Конец показа', 'По этот день (включительно). Пусто — без даты окончания.',
-                    `<input type="date" value="${this.esc(t.to)}" ${dis ? 'disabled' : ''} onchange="Subscription.setTrialField('to', this.value)" style="${u.input} width:150px;">`)}
+                ${row('Период показа', 'Нажмите и выберите в календаре первый и последний день (оба включительно). Без дат — предложение показывается в любой день.',
+                    `<button type="button" ${dis ? 'disabled' : ''} onclick="Subscription.openTrialRange()" style="${u.input} min-width:230px; text-align:left; cursor:${dis ? 'default' : 'pointer'};">${this.trialRangeLabel(t)}</button>`)}
                 ${row('Длительность пробного периода', 'В днях, от 1 до 60. Действует для тех, кто включит его после изменения.',
                     `<input type="number" min="1" max="60" value="${t.days}" ${dis ? 'disabled' : ''} onchange="Subscription.setTrialField('days', this.value)" style="${u.input} width:80px;">`)}
                 ${row('Не показывать сотрудникам ТЕРЕМ', 'Почта на @teremopt.ru (основная или рабочая) либо привязка к компании «ТЕРЕМ» или её обособленному подразделению.',

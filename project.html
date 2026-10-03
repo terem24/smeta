@@ -114,17 +114,27 @@ function pjBack() {
   if (op) { try { op.focus(); } catch (e) {} window.close(); }
   else location.href = 'index.html';
 }
+/** Пересобрать комплект: просим калькулятор (или редактор плана, открывший эту вкладку) собрать его заново. */
+function pjRebuild() {
+  var o = null;
+  try { o = window.opener && !window.opener.closed ? window.opener : null; } catch (e) {}
+  try {
+    if (o && o.pjRelease) { o.pjRelease(); window.close(); return; }
+    if (o && o.app && o.app.openProjectSheets) { o.focus(); o.app.openProjectSheets(); window.close(); return; }
+  } catch (e) { console.warn('[проект] пересборка:', e && e.message); }
+  alert('Вкладка калькулятора не найдена. Откройте калькулятор и нажмите «Выпустить проект».');
+}
 function pjMarkup() {
   // та же именованная вкладка, что открывает калькулятор: вернёт в уже открытую разметку
   window.open('plan_editor.html', 'hc_plan_editor');
 }
 </script>
 
-<script src="project_sheets.js?v=4.25"></script>
+<script src="project_sheets.js?v=4.26"></script>
 <script src="project_scheme.js?v=4.51"></script>
 <script src="boiler_wall.js?v=1.0"></script>
-<script src="project_layout.js?v=4.17"></script>
-<script src="project_plans.js?v=4.46"></script>
+<script src="project_layout.js?v=4.18"></script>
+<script src="project_plans.js?v=4.55"></script>
 <script src="project_nodes.js?v=4.15"></script>
 <!-- Листы узлов по 3D-рендеру: коллектор водоснабжения и панельный радиатор. -->
 <script src="project_node_sheets.js?v=4.15"></script>
@@ -333,7 +343,13 @@ if (payload && payload.items && payload.items.length) {
       got.forEach(function (p) { mepPlans.push(p); mepSlots.push([pad2(base), p.title, '']); });
       if (!got.length) mepSlots.push([pad2(base),
         'Этаж ' + pad2(fl) + '. Сводный план сетей', 'лист не сформирован']);
-      mepSlots.push([pad2(base + 1), 'Сводная схема сетей ' + fl + ' этажа', 'лист не формируется']);
+      // 3D-схема сетей этажа: все системы на одном объёмном виде
+      var sch = projectPlans.iso3dSheets(plans, { kind: 'summary', code: MARK.mep.code,
+        sheetStart: base + 1, floor: fl, num: numMep, steps: payload.ufhSteps, stepMm: tpStep,
+        rooms: expRooms,
+        tee: !!(payload.hydro && /тройник/i.test(payload.hydro.scheme || '')) });
+      sch.forEach(function (p) { mepPlans.push(p); mepSlots.push([pad2(base + 1), p.title, '']); });
+      if (!sch.length) mepSlots.push([pad2(base + 1), 'Сводная схема сетей ' + fl + ' этажа', 'лист не формируется']);
     });
   }
   // Сводка по помещениям — перед подробным расчётом: сначала «какая нагрузка»,
@@ -447,7 +463,7 @@ if (payload && payload.items && payload.items.length) {
         sheetStart: n, stepMm: tpStep, rooms: expRooms, floor: fl, num: numOf('o') }); },
         ttl + '. 3D вид напольного отопления', hasTp);
       put(function (n) { return projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
-        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o') })); },
+        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o'), tee: radTee })); },
         ttl + '. План отопления', true);
       put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'rad', code: MARK.o.code,
         sheetStart: n, rooms: expRooms, floor: fl, num: numOf('o'),
@@ -897,7 +913,7 @@ if (payload && payload.items && payload.items.length) {
     st.style.display = 'block';
     st.innerHTML = '<b>Комплект собран прежней версией калькулятора</b> — листов узлов обвязки в нём нет. ' +
       'Вернитесь в калькулятор и нажмите «Выпустить проект» ещё раз: комплект соберётся заново, ' +
-      'с готовыми узлами из проектов-образцов. <button type="button" onclick="pjBack()">В калькулятор</button>';
+      'с готовыми узлами из проектов-образцов. <button type="button" onclick="pjRebuild()">Пересобрать комплект</button> <button type="button" onclick="pjBack()">В калькулятор</button>';
   }
 
   // Марка каждого листа — по границам разделов: они идут подряд, поэтому

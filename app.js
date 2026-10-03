@@ -5613,6 +5613,35 @@ const app = {
         Гарантия на монтаж — дополнительное обязательство исполнителя (п. 7 ст. 5 Закона «О защите прав потребителей»), с даты акта. Сформировано в HeatCalc.ru.</div>`;
     },
 
+    // Гарантия STOUT в ссылке клиенту. Условие то же, что у бланка при печати (вошёл
+    // монтажник, оборудование в ссылке, доля STOUT не ниже порога), но без требования
+    // «адрес и заказчик заполнены»: в ссылку они всё равно не идут (как и в разделе
+    // «Ваш дом» — личных данных там нет), а клиенту нужно само обещание.
+    warrantyLinkEligible: function (showEq) {
+        if (!this.state.tgUser || showEq === false) return false;
+        const sh = this.stoutShare();
+        return sh.pct !== null && sh.pct >= this.warrantyThreshold();
+    },
+
+    // Данные листа «Гарантия» для страницы клиента (object_info.warranty): сроки по
+    // группам, витрина из позиций сметы, срок на монтаж, страховка. Рисует их invoice.html.
+    // Нужен Docs (сроки и полисы лежат в docs.js) — executeShareInvoice грузит его заранее.
+    warrantyLinkData: function () {
+        if (typeof Docs === 'undefined') return null;
+        const groups = this.warrantyTermGroups();
+        if (!groups.length) return null;
+        const ins = (Docs.activeInsurance(new Date().toISOString().slice(0, 10)) || []).find(p => p.brand === 'STOUT');
+        const extM = parseInt((this.state.contract || {}).extWorksMonths) || this.WARRANTY_EXT_WORKS_MONTHS;
+        return {
+            maxM: groups[0].months,
+            extM: extM,
+            groups: groups.map(g => ({ m: g.months, k: g.kinds.slice(0, 6) })),
+            tiles: this.warrantyPhotoTiles(5).map(t => ({ id: String(t.it.id), kind: t.kind, m: t.months })),
+            ins: ins ? { sum: ins.sum, perCase: ins.perCase, insurer: String(ins.insurer).replace(/^СПАО\s+/, ''), policy: ins.policy, to: ins.to } : null,
+            system: this.systemSummary()
+        };
+    },
+
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
     syncEmptyFitPanelScale: function (recalc) { this.fitParamsPanel(recalc); },
     // Отложенный пересчёт: за одну отрисовку панель трогают десятки раз, а ответ
@@ -23510,6 +23539,7 @@ const app = {
         { id: 'distributors', icon: '🏢', label: 'Дистрибьюторы', hint: 'Промокоды, менеджеры, свои цены' },
         { id: 'tariffs', icon: '🎚', label: 'Тарифы', hint: 'Что открыто учётке на её тарифе' },
         { id: 'subscription', icon: '💳', label: 'Оплата подписки', hint: 'Цены и ссылки на оплату, QR, акции, регионы, кто запрашивал и кто оплатил' },
+        { id: 'payready', icon: '🎯', label: 'Готовность платить', hint: 'Воронка до оплаты, горячие клиенты, выручка при ваших ценах' },
         { id: 'kanban', icon: '📅', label: 'Планировщик', hint: 'Статусы смет по этапам' },
         { id: 'branches', icon: '🏬', label: 'Филиалы', hint: 'Схема компании: ссылки, монтажники, работа менеджеров' },
         { id: 'pricelist', icon: '💵', label: 'Прайс-лист', sub: 'Цены работ', hint: 'Свои расценки монтажников' },
@@ -23538,6 +23568,7 @@ const app = {
         distributors: '<rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/>',
         tariffs: '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
         subscription: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/>',
+        payready: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
         kanban: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/>',
         branches: '<rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-2a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2"/>',
         pricelist: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
@@ -23565,7 +23596,7 @@ const app = {
         { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'equipment', 'successors'] },
-        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription'] },
+        { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription', 'payready'] },
         { id: 'ai', label: 'ИИ и файлы', icon: 'recognition', tabs: ['recognition', 'plans', 'aifill'] },
         { id: 'content', label: 'Контент', icon: 'articles', tabs: ['articles'] }
     ],
@@ -23775,7 +23806,7 @@ const app = {
     // «Заявки» — только владельцу: там имя и телефон заказчика, и видеть их
     // всем администраторам ни к чему. Ту же проверку делает lead_list.php,
     // клиентская здесь только чтобы не показывать пустую вкладку.
-    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription'],
+    OWNER_ONLY_TABS: ['home', 'dashboard', 'analytics', 'aifill', 'articles', 'leads', 'subscription', 'payready'],
 
     // Разделы, закрытые для наблюдателя и менеджера. «Дистрибьюторы» — карточки
     // компаний целиком: промокоды, свои цены, контакты директоров. Это хозяйство
@@ -25470,6 +25501,19 @@ const app = {
             content.innerHTML = navHtml + '<div id="admin_subscription_box"></div>';
             if (typeof Subscription !== 'undefined') Subscription.render();
             else content.insertAdjacentHTML('beforeend', '<div style="color:#EF4444; font-size:13px;">Модуль подписки (subscription.js) не загрузился — обновите страницу.</div>');
+            return;
+        }
+
+        if (this._adminTab === 'payready') {
+            // Отчёт только читает базу; модуль грузится лениво (pay_readiness.js)
+            content.innerHTML = navHtml + '<div id="admin_payready_box"><div style="color:var(--text-sec); font-size:13px;">Загружаю…</div></div>';
+            this.lazy('pay_readiness').then(() => {
+                if (typeof PayReadiness !== 'undefined') PayReadiness.render();
+            }).catch(e => {
+                console.error('[панель] pay_readiness.js не загрузился:', e);
+                const box = document.getElementById('admin_payready_box');
+                if (box) box.innerHTML = '<div style="color:#EF4444; font-size:13px;">Модуль отчёта не загрузился — обновите страницу.</div>';
+            });
             return;
         }
 
@@ -47251,6 +47295,15 @@ const app = {
                 if (kp) object_info.kp = kp;
             } catch (e) { console.warn('[ссылка] раздел «Ваш дом» не добавлен:', e.message); }
         }
+        // Гарантия STOUT — отдельным листом и плиткой в «Ваш дом»: преимущество, которое
+        // клиент должен увидеть в ссылке, а не только в печатном бланке. Без адреса и ФИО.
+        try {
+            if (this.warrantyLinkEligible(showEq)) {
+                await this.lazy('docs');
+                const wr = this.warrantyLinkData();
+                if (wr) object_info.warranty = wr;
+            }
+        } catch (e) { console.warn('[ссылка] гарантия не добавлена:', e.message); }
 
         // Таймер счёта. sent_at — момент этой отправки (переотправка ставит новый),
         // valid_until — когда страница клиента спрячет цены и оставит одну кнопку
