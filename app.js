@@ -21365,7 +21365,11 @@ const app = {
         // Раскладка тёплого пола — своя отметка для редактора в режиме ?m=ufh
         const ufh = this.canUseUfhPlan();
         try { localStorage.setItem('heatcalc_ufhplan_access', ufh ? '1' : '0'); } catch (e) { }
-        if (planRow) planRow.style.display = ufh ? 'flex' : 'none';
+        // Строка — только в подробном режиме: в быстром она сдвигала все настройки
+        // вниз, а пользы там нет; в быстром вместо неё одна ссылка под площадью.
+        if (planRow) planRow.style.display = (ufh && this.state.detailedRooms) ? 'flex' : 'none';
+        const qLink = document.getElementById('plan_quick_link');
+        if (qLink) qLink.style.display = (ufh && !this.state.detailedRooms) ? 'block' : 'none';
         const bU = document.getElementById('btn_ufhplan');
         const sum = this.planRowSummary();
         if (bU) {
@@ -36631,18 +36635,51 @@ const app = {
         if (!this.state.calc_id) { this.ensureCalcId(true); this.saveState(); }
         try { localStorage.setItem('heatcalc_ufhplan_access', '1'); } catch (e) { }
         this.pushPlansToEditor();
+        // Окно оформляется как калькулятор, а не как отдельная чертёжная
+        // программа: тёмное окно поверх светлой сметы выглядело непонятно
+        // откуда взявшимся (03.10.2026). Цвета берём у текущей темы — у
+        // калькулятора их несколько (обычная, тёмная, брендовые).
+        const cs = getComputedStyle(document.body);
+        const cv = k => (cs.getPropertyValue('--' + k) || '').trim();
+        const dark = document.body.classList.contains('dark-mode');
+        try {
+            localStorage.setItem('heatcalc_ufh_theme', JSON.stringify({
+                dark, primary: cv('primary'), bg: cv('bg'), surface: cv('surface'),
+                'text-main': cv('text-main'), 'text-sec': cv('text-sec'), border: cv('border')
+            }));
+        } catch (e) { }
         let ov = document.getElementById('ufhplan_overlay');
         if (ov) ov.remove();
         ov = document.createElement('div');
         ov.id = 'ufhplan_overlay';
-        ov.style.cssText = 'position:fixed;inset:0;z-index:10050;background:#1e1e1e;display:flex;flex-direction:column;';
+        // Под шапкой калькулятора: она остаётся на месте, и видно, что это всё
+        // тот же расчёт, а не другая страница
+        ov.style.cssText = 'position:fixed;left:0;right:0;bottom:0;top:0;z-index:10050;background:var(--bg);' +
+            'display:flex;flex-direction:column;border-top:1px solid var(--border);';
         ov.innerHTML =
-            '<div style="display:flex;align-items:center;gap:10px;padding:6px 12px;background:#141414;color:#ddd;font:13px/1.3 system-ui,sans-serif;">' +
-            '<span style="flex:1">План дома — комнаты, тёплый пол и радиаторы' +
-            (modeNote ? '<span style="color:#9ccbe8"> · ' + modeNote + '</span>' : '') + '</span>' +
-            '<button type="button" onclick="app.closeUfhPlan(true)" style="font:inherit;padding:4px 12px;border-radius:7px;border:1px solid #555;background:transparent;color:#ddd;cursor:pointer;">✕ Сохранить и закрыть</button></div>' +
-            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:#1e1e1e;"></iframe>';
+            '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:8px 16px;background:var(--surface);' +
+            'border-bottom:1px solid var(--border);color:var(--text-main);font-size:13px;">' +
+            '<button type="button" onclick="app.closeUfhPlan(true)" title="Сохранить план и вернуться к смете" ' +
+            'style="font:inherit;font-weight:600;padding:6px 14px;border-radius:8px;border:1px solid var(--primary);' +
+            'background:var(--primary);color:#fff;cursor:pointer;">← К смете</button>' +
+            '<b style="font-size:15px;">План дома</b>' +
+            '<span style="flex:1;min-width:0;color:var(--text-sec);">комнаты, тёплый пол и радиаторы' +
+            (modeNote ? ' · <span style="color:var(--primary)">' + modeNote + '</span>' : '') + '</span></div>' +
+            '<iframe id="ufhplan_frame" src="plan_editor.html?m=ufh" style="flex:1;border:0;width:100%;background:var(--bg);"></iframe>';
         document.body.appendChild(ov);
+        const hdr = document.querySelector('.site-header');
+        const place = () => {
+            const o = document.getElementById('ufhplan_overlay');
+            if (!o) return;
+            const b = hdr ? Math.max(0, Math.round(hdr.getBoundingClientRect().bottom)) : 0;
+            o.style.top = b + 'px';
+        };
+        place();
+        if (hdr && window.ResizeObserver) {
+            if (this._ufhHdrObs) this._ufhHdrObs.disconnect();
+            this._ufhHdrObs = new ResizeObserver(place);
+            this._ufhHdrObs.observe(hdr);
+        }
         this._ufhOverflow = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
         // План из «Распознавания» — сразу в окно, как будто его выбрали там
@@ -36685,6 +36722,7 @@ const app = {
             } catch (e) { }
         }
         if (ov) ov.remove();
+        if (this._ufhHdrObs) { this._ufhHdrObs.disconnect(); this._ufhHdrObs = null; }
         document.body.style.overflow = this._ufhOverflow || '';
         this.applyPlansFromEditor();
     },
