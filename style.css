@@ -777,6 +777,28 @@ body.dark-mode .tab.tab-cheaper.active {
     display: none;
 }
 
+/* Доля STOUT в смете — чип для монтажника (app.renderStoutShareChip). В печать,
+   PDF и ссылку клиенту не идёт: класс no-print, и строится он только при входе. */
+.doc-summary .ds-stout {
+    cursor: pointer;
+}
+
+.doc-summary .ds-stout.ok b {
+    color: #16A34A;
+}
+
+.doc-summary .ds-stout.low b {
+    color: #D97706;
+}
+
+body.dark-mode .doc-summary .ds-stout.ok b {
+    color: #4ADE80;
+}
+
+body.dark-mode .doc-summary .ds-stout.low b {
+    color: #FBBF24;
+}
+
 /* Строка не помещается в линию — app.fitDocSummary сжимает промежутки и отступы
    (и прячет значки, где они есть), чтобы «Дата» не уезжала одна на вторую строку.
    На печати у строки свои правила (@media print ниже), поэтому только для экрана. */

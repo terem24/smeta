@@ -1412,7 +1412,8 @@ const app = {
     // входа — режим регистрации нужен форме ещё до появления сессии. Ошибка
     // чтения (нет связи, таблица ещё не создана) означает «как было»: открытая
     // регистрация, а не запертая дверь для всех.
-    appSettings: { registration: { mode: 'open' } },
+    // warranty.threshold — порог доли STOUT для бланка гарантии (см. stoutShare)
+    appSettings: { registration: { mode: 'open' }, warranty: { threshold: 90 } },
     _appSettingsPromise: null,
     loadAppSettings: function (force) {
         if (this._appSettingsPromise && !force) return this._appSettingsPromise;
@@ -4696,6 +4697,162 @@ const app = {
                 new ResizeObserver(() => { const w = out.offsetWidth; if (w !== lastW) { lastW = w; again(); } }).observe(out);
             }
         }
+    },
+
+    // ===================== Доля STOUT в смете =====================
+    //
+    // Для монтажника, не для клиента: по ней решается, подходит ли объект под
+    // бланк гарантии STOUT (порог — в настройках, по умолчанию 90 %).
+    //
+    // Делитель — не вся смета, а только то, где STOUT мог стоять: позиции, у чьей
+    // группы каталога есть хоть одна позиция STOUT. Газовый котёл, инсталляция,
+    // защита от протечек, теплоноситель, электрический тёплый пол в делитель не
+    // входят: STOUT их не делает, и штрафовать монтажника за них не за что.
+    // Канализационная труба REHAU входит — у STOUT бесшумная канализация есть.
+    // По отправленным КП (100 шт., 03.10.2026) так честнее: медиана доли по всей
+    // смете 84 %, а там, где STOUT мог стоять, — 91 %.
+    //
+    // Группы одного ROMMER, у которых STOUT-двойник лежит отдельным массивом:
+    // без этого списка ROMMER-дымоход считался бы «местом, где STOUT нет».
+    STOUT_TWIN_GROUPS: ['chimney_trad_60100', 'chimney_cond_60100', 'chimney_cond_80125', 'chimney_split_d80',
+        'water_manifolds_rommer', 'manifolds_shutoff_auto', 'rommer_pumps', 'outdoor_faucets', 'actuators_rommer'],
+
+    isStoutItem: function (it) {
+        if (!it) return false;
+        const art = String(it.id || it.displaySku || '');
+        if (/^S[A-Z]{2}-\d{4}-/.test(art)) return true;
+        if (/^R[A-Z]{2}-\d{4}-/.test(art)) return false;
+        // В список оборудования бренд попадает с умолчанием 'STOUT' (см. сборку
+        // currentEquipmentList), поэтому у своего и распознанного оборудования
+        // полю не верим — только названию.
+        if (it.recognized || /^(custom|rec_|user_)/i.test(art) || /^custom/.test(String(it.originalId || ''))) {
+            return /stout/i.test(String(it.name || ''));
+        }
+        return String(it.brand || '').trim().toUpperCase() === 'STOUT';
+    },
+
+    _stoutCoverage: null,
+    stoutCoverageIndex: function () {
+        if (this._stoutCoverage) return this._stoutCoverage;
+        const idx = new Map();   // артикул → true, если в его группе есть STOUT
+        const mark = (arr, has) => {
+            arr.forEach(x => {
+                if (!x || !x.id) return;
+                const cur = idx.get(x.id);
+                if (cur === undefined || has) idx.set(x.id, has);   // «есть STOUT» главнее
+            });
+        };
+        for (const key in catalog) {
+            const arr = catalog[key];
+            if (!Array.isArray(arr) || !arr.length) continue;
+            const has = arr.some(x => this.isStoutItem(x)) || this.STOUT_TWIN_GROUPS.includes(key);
+            mark(arr, has);
+            // Вложенные замены позиции STOUT (.rommer, .alts) — место, где по
+            // умолчанию стоял STOUT
+            arr.forEach(x => {
+                if (!x || !this.isStoutItem(x)) return;
+                [].concat(x.rommer || [], x.alts || []).forEach(n => { if (n && n.id) idx.set(n.id, true); });
+            });
+        }
+        // Радиаторы любой серии: категория у STOUT есть целиком
+        try { this._getSecRadSeries().forEach(s => { if (s.arr) mark(s.arr, true); }); } catch (e) { }
+        this._stoutCoverage = idx;
+        return idx;
+    },
+
+    // Бренды, чьи изделия лежат в смешанных группах рядом со STOUT, но аналога
+    // у STOUT не имеют (греющий кабель водопровода в узле ввода). Группа «с STOUT»
+    // записала бы их в чужой бренд на месте STOUT — а ставить там нечего.
+    STOUT_NEVER_BRANDS: ['SELFTEC DW'],
+
+    // Мог ли здесь стоять STOUT: своя группа каталога содержит STOUT
+    stoutCouldBeHere: function (it) {
+        if (this.isStoutItem(it)) return true;
+        if (this.STOUT_NEVER_BRANDS.includes(String(it.brand || '').trim().toUpperCase())) return false;
+        // Позиция пришла заменой позиции STOUT (режим ROMMER, ручная замена):
+        // originalId — артикул STOUT, значит STOUT здесь и стоял
+        if (/^S[A-Z]{2}-\d{4}-/.test(String(it.originalId || ''))) return true;
+        const idx = this.stoutCoverageIndex();
+        const keys = [it.originalId, it.id, it.displaySku].filter(Boolean);
+        for (const k of keys) { if (idx.has(k)) return !!idx.get(k); }
+        return false;   // своё/распознанное чужого бренда — вне каталога, не судим
+    },
+
+    stoutShare: function () {
+        const list = this.currentEquipmentList || [];
+        let total = 0, base = 0, stout = 0;
+        const missing = [];
+        list.forEach(it => {
+            if (!it || it.isOpt) return;
+            const s = Number(it.sum) || 0;
+            if (s <= 0) return;
+            total += s;
+            if (!this.stoutCouldBeHere(it)) return;
+            base += s;
+            if (this.isStoutItem(it)) stout += s;
+            else missing.push(it);
+        });
+        missing.sort((a, b) => (b.sum || 0) - (a.sum || 0));
+        return {
+            total, base, stout, missing,
+            pct: base > 0 ? Math.round(100 * stout / base) : null,
+            pctAll: total > 0 ? Math.round(100 * stout / total) : null
+        };
+    },
+
+    // Порог доли STOUT для бланка гарантии: app_settings, ключ warranty
+    // ({ threshold: 90 }); меняется в админке.
+    warrantyThreshold: function () {
+        const w = (this.appSettings && this.appSettings.warranty) || {};
+        const t = parseFloat(w.threshold);
+        return (t > 0 && t <= 100) ? t : 90;
+    },
+
+    // Чип «STOUT: 84 %» в строке параметров сметы. Только при входе (клиент
+    // открывает КП по ссылке без входа) и с классом no-print — в печать и PDF
+    // не попадает. Зовётся из render() после сборки списка оборудования:
+    // сама строка параметров рисуется раньше, когда долю ещё не посчитать.
+    renderStoutShareChip: function () {
+        const ds = document.getElementById('doc_summary');
+        if (!ds) return;
+        const old = ds.querySelector('.ds-stout');
+        if (old) old.remove();
+        if (!this.state.tgUser) return;
+        const sh = this.stoutShare();
+        if (sh.pct === null) return;
+        const ok = sh.pct >= this.warrantyThreshold();
+        const el = document.createElement('span');
+        el.className = 'param-item no-print ds-stout ' + (ok ? 'ok' : 'low');
+        el.setAttribute('role', 'button');
+        el.tabIndex = 0;
+        el.innerHTML = `<span class="ui-emo">${ok ? '🛡️' : '🔸'} </span>STOUT: <b>${sh.pct} %</b>`;
+        el.onclick = () => this.showStoutShareInfo();
+        const date = ds.querySelector('.param-date');
+        if (date) ds.insertBefore(el, date); else ds.appendChild(el);
+        this.fitDocSummary();
+    },
+
+    showStoutShareInfo: function () {
+        const sh = this.stoutShare();
+        const thr = this.warrantyThreshold();
+        const rub = n => Math.round(n).toLocaleString('ru-RU') + ' ₽';
+        const lines = [];
+        lines.push(`Оборудование STOUT: ${rub(sh.stout)} из ${rub(sh.base)} там, где STOUT мог стоять — ${sh.pct} %.`);
+        if (sh.pctAll !== null && sh.pctAll !== sh.pct) {
+            lines.push(`По всей смете (${rub(sh.total)}) — ${sh.pctAll} %: газовый котёл, инсталляции, защита от протечек и прочее, чего STOUT не делает, в расчёт доли не входят.`);
+        }
+        lines.push('');
+        if (sh.pct >= thr) {
+            lines.push(`Порог ${thr} % пройден — объект подходит под бланк гарантии STOUT.`);
+        } else {
+            const need = Math.ceil(thr / 100 * sh.base - sh.stout);
+            lines.push(`До порога ${thr} % не хватает ${rub(need)}. Чужой бренд там, где есть STOUT:`);
+            sh.missing.slice(0, 8).forEach(it => lines.push(`• ${it.name} — ${it.brand || '—'}, ${rub(it.sum)}`));
+            if (sh.missing.length > 8) lines.push(`… и ещё ${sh.missing.length - 8}`);
+            lines.push('');
+            lines.push('Заменить на STOUT: кнопка «Аналог» у раздела или таблица замены по клику на фото позиции.');
+        }
+        this.alert(lines.join('\n'), 'Доля STOUT в смете');
     },
 
     // Прежнее имя: зовётся из нескольких мест по ходу отрисовки.
@@ -78683,6 +78840,8 @@ const app = {
         const _estBefore = this._estimateBefore();
         document.getElementById('tbody').innerHTML = h;
         document.getElementById('total_sum').innerHTML = app.formatPriceHtml(sum, true);
+        // Доля STOUT в строке параметров — считается по готовому списку оборудования
+        this.renderStoutShareChip();
         // Лист не скачет, а к новым строкам плавно едет (см. _estimateAfter).
         this._estimateAfter(_estBefore);
         this.renderContestWidget();
