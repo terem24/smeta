@@ -114,6 +114,16 @@ function pjBack() {
   if (op) { try { op.focus(); } catch (e) {} window.close(); }
   else location.href = 'index.html';
 }
+/** Пересобрать комплект: просим калькулятор (или редактор плана, открывший эту вкладку) собрать его заново. */
+function pjRebuild() {
+  var o = null;
+  try { o = window.opener && !window.opener.closed ? window.opener : null; } catch (e) {}
+  try {
+    if (o && o.pjRelease) { o.pjRelease(); window.close(); return; }
+    if (o && o.app && o.app.openProjectSheets) { o.focus(); o.app.openProjectSheets(); window.close(); return; }
+  } catch (e) { console.warn('[проект] пересборка:', e && e.message); }
+  alert('Вкладка калькулятора не найдена. Откройте калькулятор и нажмите «Выпустить проект».');
+}
 function pjMarkup() {
   // та же именованная вкладка, что открывает калькулятор: вернёт в уже открытую разметку
   window.open('plan_editor.html', 'hc_plan_editor');
@@ -897,7 +907,7 @@ if (payload && payload.items && payload.items.length) {
     st.style.display = 'block';
     st.innerHTML = '<b>Комплект собран прежней версией калькулятора</b> — листов узлов обвязки в нём нет. ' +
       'Вернитесь в калькулятор и нажмите «Выпустить проект» ещё раз: комплект соберётся заново, ' +
-      'с готовыми узлами из проектов-образцов. <button type="button" onclick="pjBack()">В калькулятор</button>';
+      'с готовыми узлами из проектов-образцов. <button type="button" onclick="pjRebuild()">Пересобрать комплект</button> <button type="button" onclick="pjBack()">В калькулятор</button>';
   }
 
   // Марка каждого листа — по границам разделов: они идут подряд, поэтому
