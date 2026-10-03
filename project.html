@@ -134,7 +134,7 @@ function pjMarkup() {
 <script src="project_scheme.js?v=4.51"></script>
 <script src="boiler_wall.js?v=1.0"></script>
 <script src="project_layout.js?v=4.17"></script>
-<script src="project_plans.js?v=4.52"></script>
+<script src="project_plans.js?v=4.53"></script>
 <script src="project_nodes.js?v=4.15"></script>
 <!-- Листы узлов по 3D-рендеру: коллектор водоснабжения и панельный радиатор. -->
 <script src="project_node_sheets.js?v=4.15"></script>
@@ -463,7 +463,7 @@ if (payload && payload.items && payload.items.length) {
         sheetStart: n, stepMm: tpStep, rooms: expRooms, floor: fl, num: numOf('o') }); },
         ttl + '. 3D вид напольного отопления', hasTp);
       put(function (n) { return projectPlans.sheets(plans, withOpts({ code: MARK.o.code,
-        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o') })); },
+        sheetStart: n, only: ['floor'], floor: fl, num: numOf('o'), tee: radTee })); },
         ttl + '. План отопления', true);
       put(function (n) { return projectPlans.iso3dSheets(plans, { kind: 'rad', code: MARK.o.code,
         sheetStart: n, rooms: expRooms, floor: fl, num: numOf('o'),
