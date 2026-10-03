@@ -2438,7 +2438,7 @@ function autoRooms() {
     return (+r.floor || 1) === cur + 1 && r.area > 0;
   });
   pushUndo('zones');
-  var made = 0, missed = [], cnt = {}, boiler = hasBoilerZone();
+  var made = 0, missed = [], cnt = {}, boiler = hasBoilerZone() || cur !== 0;   // на 2 этаже котельную не заводим
   if (targets.length) {
     var pairs = [];
     targets.forEach(function (t, ti) {
@@ -3901,6 +3901,7 @@ cv.addEventListener('click', function (e) {
       // (тёплый пол, радиаторы): сверху кладём зону этого типа с тем же контуром и именем.
       // Разметка под ней остаётся — калькулятор считает такие две зоны одной комнатой.
       var wantT = document.getElementById('ztype').value, hz = F().zones[hitZ.zi];
+      if (wantT === 'boiler' && cur !== 0) { alert('Котельная отмечается только на 1 этаже — переключитесь на вкладку «1 этаж».'); return; }
       if ((wantT === 'boiler' || wantT === 'wc') && hz.type !== wantT && hz.type !== 'cold') {
         var sig = JSON.stringify(hz.pts);
         var have = -1;
@@ -4440,6 +4441,7 @@ function dumpPlan() {
 function addZone(pts, fitted) {
   if (!fitted) pts = simplifyZone(pts, F().pxPerM || 100);
   var type = document.getElementById('ztype').value;
+  if (type === 'boiler' && cur !== 0) { alert('Котельная отмечается только на 1 этаже — переключитесь на вкладку «1 этаж».'); return; }
   if (type === 'boiler' && F().zones.some(function (z) { return z.type === 'boiler'; })) {
     alert('Котельная на этаже уже отмечена.'); return;
   }
@@ -4557,6 +4559,7 @@ function renderZonesUfh(box) {
 
 /** Зона с именем «Котельная…», обведённая не тем типом — найти (на любом этаже котельной ещё нет). */
 function boilerLookalike() {
+  if (cur !== 0) return null;      // котельная — только на 1 этаже
   if (DATA.floors.some(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'boiler'; }); })) return null;
   var found = null;
   F().zones.forEach(function (z) {
@@ -4686,7 +4689,7 @@ function renderZones() {
   var fl = UFH ? [['Тёплый пол', tpN ? tpN + ' комн. · ' + tpS.toFixed(1) + ' м²' : '—']] : [
     ['Тёплый пол', tpN ? tpN + ' зон · ' + tpS.toFixed(1) + ' м²' : '—'],
     ['Радиаторы', rc ? rc + ' шт.' : '—'],
-    ['Котельная', hasB ? (F().zones.some(function (z) { return z.type === 'boiler'; }) ? 'отмечена' : 'отмечена на ' + (DATA.floors.findIndex(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'boiler'; }); }) + 1) + ' этаже') : 'не отмечена', hasB ? 'good' : 'warn']
+    ['Котельная', hasB ? (F().zones.some(function (z) { return z.type === 'boiler'; }) ? 'отмечена' : 'отмечена на ' + (DATA.floors.findIndex(function (fl) { return (fl.zones || []).some(function (z) { return z.type === 'boiler'; }); }) + 1) + ' этаже') : (cur !== 0 ? 'нужна на 1 этаже' : 'не отмечена'), hasB ? 'good' : 'warn']
   ];
   if (tpN) fl.push(['Коллектор ТП', F().coll ? 'отмечен' : 'не отмечен',
     F().coll ? 'good' : 'warn']);
@@ -5529,6 +5532,7 @@ function pjSteps() {
     if (s.id === 'scale' && (s.ok || !f.img)) return;           // масштаб подбирается сам; шаг — только если не вышло
     if (s.id === 'tp' && !wantTp) return;
     if (s.id === 'rad' && !wzWantRad()) return;
+    if (s.id === 'boiler' && cur !== 0) return;                 // котельная — только на 1 этаже
     if (s.id === 'names') return;                               // имена вписывают в списке справа — отдельный шаг не нужен
     L.push(s);
   });
@@ -5564,7 +5568,7 @@ function pjTodo() {
       return { fi: marked[k], step: 'coll', text: 'Поставьте коллектор тёплого пола', btn: 'Поставить коллектор' };
   }
   var hasBoiler = fl.some(function (q) { return (q.zones || []).some(function (z) { return z.type === 'boiler'; }); });
-  if (!hasBoiler) return { fi: fi, step: 'boiler', text: 'Отметьте котельную на плане — без неё проект не выпускается', btn: 'Отметить котельную' };
+  if (!hasBoiler) return { fi: hasImg(fl[0]) ? 0 : fi, step: 'boiler', text: 'Отметьте котельную на плане — без неё проект не выпускается', btn: 'Отметить котельную' };
   var checks = pjChecks(), miss = checks ? checks.filter(function (c) { return !c.ok; }) : [];
   if (miss.length) return { fi: -1, back: true, text: 'В калькуляторе не закрыто: ' + miss.map(function (c) { return c.t; }).join('; '), btn: 'В калькулятор' };
   return { fi: fi, release: true, text: 'Разметка закончена — можно выпускать проект', btn: 'Выпустить проект →' };
@@ -5665,7 +5669,7 @@ function pjBody(id) {
       'Правый клик по нему (или R над ним) поворачивает на 90°.' };
   if (id === 'boiler') return { acts: (boilerLookalike() ? B('makeBoiler()', 'Сделать «' + boilerLookalike().name + '» котельной', 'go') : '') +
       B("document.getElementById('ztype').value='boiler';setMode('room')", 'Отметить котельную кликом'),
-    tx: (boilerLookalike() ? 'Зона «' + boilerLookalike().name + '» уже обведена, но как другой тип — нажмите первую кнопку. ' : '') + '<b>Обязательно:</b> отметьте котельную — кликните по её комнате на плане. По ней собирается компоновка котельной, ' +
+    tx: (boilerLookalike() ? 'Зона «' + boilerLookalike().name + '» уже обведена, но как другой тип — нажмите первую кнопку. ' : '') + '<b>Обязательно:</b> отметьте котельную — кликните по её комнате на плане (котельная отмечается только на 1 этаже). По ней собирается компоновка котельной, ' +
       'и без неё проект не выпускается. На этаже она одна.' };
   if (id === 'wc') return { acts: B("document.getElementById('ztype').value='wc';setMode('room')", 'Санузел кликом') + B('toggleFixAuto()', 'Приборы: из расчёта'),
     tx: 'Кликните по санузлам и впишите их имена как в расчёте — приборы расставятся сами по карточкам санузлов.' };
