@@ -4801,11 +4801,31 @@ const app = {
     },
 
     // Порог доли STOUT для бланка гарантии: app_settings, ключ warranty
-    // ({ threshold: 90 }); меняется в админке.
+    // ({ threshold: 90, overrides: { '<calc_id>': 80 } }); меняется в панели
+    // управления (warranty_admin.js). Порог по объекту сильнее общего.
     warrantyThreshold: function () {
         const w = (this.appSettings && this.appSettings.warranty) || {};
+        const own = parseFloat(((w.overrides && typeof w.overrides === 'object') ? w.overrides : {})[String(this.state.calc_id || '')]);
+        if (own > 0 && own <= 100) return own;
         const t = parseFloat(w.threshold);
         return (t > 0 && t <= 100) ? t : 90;
+    },
+
+    // Снимок доли для реестра в панели управления: уезжает в calc_data.warranty при
+    // сохранении сметы в облако (stateForCloud). Панель смету не пересчитывает —
+    // ей хватает этих чисел, адреса и заказчика.
+    warrantySnapshot: function () {
+        if (!(this.currentEquipmentList || []).length) return null;
+        const sh = this.stoutShare();
+        if (sh.pct === null) return null;
+        const od = this.objectDetails();
+        return {
+            pct: sh.pct, pctAll: sh.pctAll,
+            stout: Math.round(sh.stout), base: Math.round(sh.base), total: Math.round(sh.total),
+            threshold: this.warrantyThreshold(),
+            address: od.address, client: od.client,
+            at: new Date().toISOString().slice(0, 10)
+        };
     },
 
     // Чип «STOUT: 84 %» в строке параметров сметы. Только при входе (клиент
@@ -17136,7 +17156,8 @@ const app = {
     // Реквизиты — итоговые: у человека дистрибьютора без своих данных клиент увидит
     // шапку дистрибьютора.
     stateForCloud: function (base) {
-        return Object.assign({}, base || this.state, { customCompany: this.effectiveCompanyDetails() });
+        // warranty — снимок доли STOUT для реестра «Гарантия STOUT» в панели (warrantySnapshot)
+        return Object.assign({}, base || this.state, { customCompany: this.effectiveCompanyDetails(), warranty: this.warrantySnapshot() });
     },
     // Заполняет поля раздела «Реквизиты компании». Вызывается при открытии кабинета и
     // ещё раз, когда настройки доехали из облака (вход с нового устройства).
@@ -22846,7 +22867,8 @@ const app = {
         { id: 'analytics', icon: '📈', label: 'Аналитика', hint: 'Спрос и конкуренты по регионам' },
         { id: 'aifill', icon: '✨', label: 'Умное заполнение', hint: 'Что говорили и писали в окно ✨' },
         { id: 'articles', icon: '📰', label: 'Статьи', hint: 'Очередь публикаций на год: даты, тексты, что уже вышло' },
-        { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' }
+        { id: 'leads', icon: '📨', label: 'Заявки', hint: 'Заявки на монтаж: откуда пришли и что просят' },
+        { id: 'warranty', icon: '🛡', label: 'Гарантия STOUT', hint: 'Объекты с долей STOUT: порог для бланка, порог по объекту, реестр' }
     ],
 
     // Значки разделов — одноцветные линейные, берут цвет текста (currentColor).
@@ -22873,7 +22895,8 @@ const app = {
         analytics: '<path d="M22 7l-8.5 8.5-5-5L2 17"/><path d="M16 7h6v6"/>',
         aifill: '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 3v4M21 5h-4"/>',
         articles: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8M8 9h2"/>',
-        leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>'
+        leads: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+        warranty: '<path d="M12 2l8 3v7c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V5z"/><path d="M9 12l2 2 4-4"/>'
     },
 
     // Разделы панели в группах. Двадцать вкладок в два ряда без порядка — это «конструктор»,
@@ -22884,7 +22907,7 @@ const app = {
     ADMIN_GROUPS: [
         { id: 'overview', label: 'Обзор', icon: 'dashboard', tabs: ['home', 'dashboard', 'analytics'] },
         { id: 'people', label: 'Клиенты', icon: 'stats', tabs: ['stats', 'distributors', 'branches', 'inactive'] },
-        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects'] },
+        { id: 'sales', label: 'Продажи', icon: 'estimates', tabs: ['leads', 'estimates', 'kanban', 'projects', 'warranty'] },
         { id: 'messages', label: 'Сообщения', icon: 'messages', tabs: ['messages'] },
         { id: 'catalog', label: 'Каталог', icon: 'pricelist', tabs: ['pricelist', 'equipment', 'successors'] },
         { id: 'money', label: 'Деньги', icon: 'subscription', tabs: ['tariffs', 'subscription'] },
@@ -24546,6 +24569,19 @@ const app = {
             content.innerHTML = navHtml + '<div id="admin_subscription_box"></div>';
             if (typeof Subscription !== 'undefined') Subscription.render();
             else content.insertAdjacentHTML('beforeend', '<div style="color:#EF4444; font-size:13px;">Модуль подписки (subscription.js) не загрузился — обновите страницу.</div>');
+            return;
+        }
+
+        if (this._adminTab === 'warranty') {
+            // Модуль вкладки грузится лениво: нужен только здесь (warranty_admin.js)
+            content.innerHTML = navHtml + '<div id="admin_warranty_box"><div style="color:var(--text-sec); font-size:13px;">Загружаю…</div></div>';
+            this.lazy('warranty_admin').then(() => {
+                if (typeof WarrantyAdmin !== 'undefined') WarrantyAdmin.render();
+            }).catch(e => {
+                console.error('[панель] warranty_admin.js не загрузился:', e);
+                const box = document.getElementById('admin_warranty_box');
+                if (box) box.innerHTML = '<div style="color:#EF4444; font-size:13px;">Модуль гарантии не загрузился — обновите страницу.</div>';
+            });
             return;
         }
 
